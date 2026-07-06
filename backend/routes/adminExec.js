@@ -99,22 +99,34 @@ router.post('/teste-vencimento-ca', async (req, res) => {
         const passos = [];
         const snap = async (rotulo) => {
             const d = await contaAzulService.buscarParcelaDetalhe(parcelaId);
-            passos.push({ rotulo, versao: d?.versao, data_vencimento: d?.data_vencimento });
+            passos.push({
+                rotulo, versao: d?.versao,
+                data_vencimento: d?.data_vencimento,
+                data_pagamento_previsto: d?.data_pagamento_previsto,
+                data_pagamento_esperado: d?.data_pagamento_esperado
+            });
             return d;
         };
 
         const antes = await snap('1-antes');
-        const original = antes.data_vencimento;
+        const origVenc = antes.data_vencimento;
+        const origPrev = antes.data_pagamento_previsto;
 
-        await contaAzulService.atualizarParcela(parcelaId, { versao: antes.versao, vencimento: testeData });
+        // Testa mudar as DUAS datas juntas (vencimento + data_pagamento_esperado)
+        await contaAzulService.atualizarParcela(parcelaId, { versao: antes.versao, vencimento: testeData, data_pagamento_esperado: testeData });
         const depoisTeste = await snap('2-apos-mudar-para-teste');
 
-        // Restaura a data original
-        await contaAzulService.atualizarParcela(parcelaId, { versao: depoisTeste.versao, vencimento: original });
+        // Restaura
+        await contaAzulService.atualizarParcela(parcelaId, { versao: depoisTeste.versao, vencimento: origVenc, ...(origPrev ? { data_pagamento_esperado: origPrev } : {}) });
         await snap('3-restaurada');
 
-        const funcionou = passos[1].data_vencimento === testeData;
-        res.json({ ok: true, funcionou, testeData, original, passos });
+        res.json({
+            ok: true, testeData, origVenc, origPrev,
+            vencMudou: passos[1].data_vencimento === testeData,
+            previstoMudou: passos[1].data_pagamento_previsto === testeData,
+            passos,
+            rawAntes: antes
+        });
     } catch (error) {
         console.error('[admin-exec] Erro teste-vencimento-ca:', error.response?.data || error.message);
         res.status(500).json({ error: error.response?.data || error.message });
