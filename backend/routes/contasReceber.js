@@ -420,7 +420,7 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
 // ── POST /baixa-lote — Dar baixa em várias parcelas de uma vez ──
 router.post('/baixa-lote', verificarAuth, checkBaixa, async (req, res) => {
     try {
-        const { parcelaIds, formaPagamento, dataPagamento, observacao } = req.body;
+        const { parcelaIds, formaPagamento, dataPagamento, observacao, contaFinanceiraCaId } = req.body;
 
         if (!Array.isArray(parcelaIds) || parcelaIds.length === 0) {
             return res.status(400).json({ error: 'Informe ao menos uma parcela.' });
@@ -452,6 +452,7 @@ router.post('/baixa-lote', verificarAuth, checkBaixa, async (req, res) => {
                         status: 'PAGO',
                         valorPago: parcela.valor,
                         formaPagamento: formaPagamento || null,
+                        contaFinanceiraCaId: contaFinanceiraCaId || parcela.contaFinanceiraCaId,
                         dataPagamento: dataPgto,
                         baixadoPorId: req.user.id,
                         observacao: observacao || null
@@ -462,6 +463,7 @@ router.post('/baixa-lote', verificarAuth, checkBaixa, async (req, res) => {
                         parcelaId: parcela.id,
                         valorRecebido: parcela.valor,
                         formaPagamento: formaPagamento || null,
+                        contaFinanceiraCaId: contaFinanceiraCaId || null,
                         dataPagamento: dataPgto,
                         observacao: observacao || null,
                         registradoPorId: req.user.id
@@ -480,12 +482,15 @@ router.post('/baixa-lote', verificarAuth, checkBaixa, async (req, res) => {
                     data: { status: calcularStatusConta(todasParcelas) }
                 });
             }
+        }, { timeout: 20000, maxWait: 10000 });
 
-            // 3. Registrar no histórico
+        // Registrar no histórico — fora da transação para não derrubar a baixa
+        // se o banco estiver lento (a baixa em si já foi efetivada).
+        try {
             for (const parcela of elegiveis) {
                 const conta = parcela.contaReceber;
                 const formaPg = formaPagamento || 'N/I';
-                await tx.atendimento.create({
+                await prisma.atendimento.create({
                     data: {
                         tipo: 'FINANCEIRO',
                         observacao: `Baixa em lote - parcela ${parcela.numeroParcela} - R$ ${Number(parcela.valor).toFixed(2)} (${formaPg})${observacao ? ` | ${observacao}` : ''}`,
@@ -495,7 +500,9 @@ router.post('/baixa-lote', verificarAuth, checkBaixa, async (req, res) => {
                     }
                 });
             }
-        });
+        } catch (logErr) {
+            console.error('Falha ao registrar histórico da baixa em lote (baixa já efetivada):', logErr);
+        }
 
         res.json({
             message: `Baixa realizada em ${elegiveis.length} parcela(s)!`,

@@ -714,7 +714,7 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
                     where: { id: conta.id },
                     data: { ...dadosConta, valorTotal: novoValorTotal }
                 });
-            });
+            }, { timeout: 20000, maxWait: 10000 });
         } else if (Object.keys(dadosConta).length > 0) {
             await prisma.contaPagar.update({ where: { id: conta.id }, data: dadosConta });
         }
@@ -916,7 +916,8 @@ router.post('/baixar-lote', verificarAuth, checkEscrita, async (req, res) => {
                             valorPago: round2(saldo),
                             dataPagamento: dataPgto,
                             formaPagamento: metodo,
-                            contaFinanceiraCaId: naCA ? String(contaFinanceiraCaId) : null,
+                            // Banco/caixa registrado sempre (rastreio local); só empurra ao CA se a conta está lá.
+                            contaFinanceiraCaId: String(contaFinanceiraCaId),
                             statusEnvioCA: naCA ? 'ENVIAR' : 'NAO_ENVIAR',
                             observacao: observacao?.trim() || 'Baixa em lote',
                             origem: 'MANUAL',
@@ -924,7 +925,7 @@ router.post('/baixar-lote', verificarAuth, checkEscrita, async (req, res) => {
                         }
                     });
                     await contasPagarCaSyncService.recalcularParcelaEConta(tx, parcelaId);
-                });
+                }, { timeout: 20000, maxWait: 10000 });
                 baixadas++;
             } catch (err) {
                 console.error(`[baixar-lote] Falha na parcela ${parcelaId}:`, err.message);
@@ -969,7 +970,7 @@ router.post('/:id/parcelas/:parcelaId/estorno', verificarAuth, checkEscrita, asy
                 data: { estornado: true, estornadoEm: new Date(), estornadoPorId: req.user.id }
             });
             resultado = await contasPagarCaSyncService.recalcularParcelaEConta(tx, parcelaId);
-        });
+        }, { timeout: 20000, maxWait: 10000 });
 
         res.json({
             message: 'Pagamento estornado com sucesso!',

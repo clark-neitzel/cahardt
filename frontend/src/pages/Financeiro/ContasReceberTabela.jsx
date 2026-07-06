@@ -96,7 +96,8 @@ const ContasReceberTabela = () => {
 
     // Modais
     const [baixaLoteOpen, setBaixaLoteOpen] = useState(false);
-    const [baixaLoteForm, setBaixaLoteForm] = useState({ formaPagamento: '', dataPagamento: '', observacao: '' });
+    const [baixaLoteForm, setBaixaLoteForm] = useState({ formaPagamento: '', dataPagamento: '', observacao: '', contaFinanceiraCaId: '' });
+    const [contasFinanceiras, setContasFinanceiras] = useState([]);
     const [salvando, setSalvando] = useState(false);
     const [relatorioOpen, setRelatorioOpen] = useState(false);
     const [relatorioData, setRelatorioData] = useState(null);
@@ -107,6 +108,13 @@ const ContasReceberTabela = () => {
     useEffect(() => {
         vendedorService.listarAtivos().then(setVendedores).catch(() => {});
         categoriaClienteService.listar().then(setCategorias).catch(() => {});
+        contasReceberService.contasFinanceiras()
+            .then(cf => {
+                setContasFinanceiras(cf);
+                const padrao = cf.find(c => c.padrao);
+                if (padrao) setBaixaLoteForm(f => ({ ...f, contaFinanceiraCaId: f.contaFinanceiraCaId || padrao.id }));
+            })
+            .catch(() => {});
     }, []);
 
     // Condições distintas, derivadas das contas carregadas
@@ -393,7 +401,8 @@ const ContasReceberTabela = () => {
                 parcelaIds: [...sel],
                 formaPagamento: baixaLoteForm.formaPagamento || null,
                 dataPagamento: baixaLoteForm.dataPagamento || null,
-                observacao: baixaLoteForm.observacao || null
+                observacao: baixaLoteForm.observacao || null,
+                contaFinanceiraCaId: baixaLoteForm.contaFinanceiraCaId || null
             });
             toast.success(r.message);
             setBaixaLoteOpen(false);
@@ -1114,6 +1123,13 @@ const ContasReceberTabela = () => {
                             <div>
                                 <label className="text-xs text-gray-500">Data do pagamento</label>
                                 <input type="date" value={baixaLoteForm.dataPagamento} onChange={e => setBaixaLoteForm(f => ({ ...f, dataPagamento: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm" />
+                            </div>
+                            <div>
+                                <label className="text-xs text-gray-500">Banco / caixa (em qual conta entrou)</label>
+                                <SelectBusca value={baixaLoteForm.contaFinanceiraCaId} onChange={e => setBaixaLoteForm(f => ({ ...f, contaFinanceiraCaId: e.target.value }))} className="w-full">
+                                    <option value="">Não informar</option>
+                                    {contasFinanceiras.map(c => <option key={c.id} value={c.id}>{c.nome}{c.padrao ? ' (padrão)' : ''}</option>)}
+                                </SelectBusca>
                             </div>
                             <div>
                                 <label className="text-xs text-gray-500">Observação</label>

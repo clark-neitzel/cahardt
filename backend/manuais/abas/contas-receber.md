@@ -67,14 +67,14 @@ Gestão financeira de todas as contas a receber geradas pelos pedidos. Cada pedi
 2. Clique no botão de baixa (ícone de cheque) na linha
 3. O modal abre já com o **valor recebido** preenchido com o saldo restante — reduza esse valor para registrar um pagamento parcial
 4. Opcionalmente marque **Aplicar desconto no saldo restante** (só aparece habilitado para quem tem a permissão `Pode_Dar_Desconto_Baixa`): escolha R$ ou % e informe o motivo (obrigatório). Um desconto de 100% do saldo quita a parcela sem receber nada
-5. Informe forma de pagamento, data e observação (opcionais além do valor)
+5. Informe forma de pagamento, data, o **banco/caixa** em que o dinheiro entrou (vem pré-selecionado com a conta padrão; alimenta o relatório "Saldos por Conta") e observação (opcionais além do valor)
 6. O modal mostra ao vivo se a parcela vai ficar **PARCIAL** (com o saldo que ainda falta) ou **PAGO** (quitada)
 7. Confirme — cada baixa fica registrada no histórico de pagamentos da parcela (visível em "Ver detalhes"), permitindo estornar só aquele pagamento depois, sem afetar os demais
 
 ### Dar baixa em lote
 1. Marque os checkboxes das parcelas desejadas (só aparecem parcelas ainda sem nenhum pagamento — Pendente/Vencido)
 2. Clique em **Baixa em Lote** (botão no topo da tabela)
-3. Informe a forma de pagamento e data para todas
+3. Informe a forma de pagamento, a data e o **banco/caixa** em que o dinheiro entrou (vem pré-selecionado com a conta padrão; alimenta o relatório "Saldos por Conta") para todas
 4. Confirme — todas as parcelas selecionadas são baixadas de uma vez pelo valor cheio (baixa em lote não aceita valor parcial nem desconto — para isso, use a baixa individual)
 
 ### Sincronizar com o Conta Azul
