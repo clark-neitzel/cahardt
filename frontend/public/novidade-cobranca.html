@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Régua de Cobrança — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🔔 Novidade no Hardt App: Régua de Cobrança">
+<meta property="og:description" content="O app agora cobra os clientes inadimplentes sozinho, por WhatsApp e e-mail — e cria tarefa automática quando o envio falha. Veja como funciona!">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da mensagem de WhatsApp flutuando sobre o hero */
+  .mock {
+    max-width: 400px;
+    margin: -68px auto 28px;
+    background: #e5ddd5;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-bell { font-size: 26px; animation: pulse 1.4s ease-in-out infinite; will-change: opacity; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { .mock-bell { animation: none; } }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-body { padding: 14px; }
+  .bolha {
+    background: #fff;
+    border-radius: 12px;
+    border-top-left-radius: 2px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.12);
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    color: #222;
+  }
+  .bolha .hora { text-align: right; font-size: 10px; color: #9ca3af; margin-top: 6px; }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible, .pop button:focus-visible {
+    outline: 3px solid var(--gold);
+    outline-offset: 2px;
+  }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    vertical-align: 1px;
+  }
+  .tag.mint { background: var(--mint); color: var(--primary-dark); }
+  .tag.escuro { background: var(--house); color: #fff; }
+  .tag.dourado { background: #fdf6e9; color: #8a6d2f; border: 1.5px solid var(--gold); }
+
+  /* passos "como acessar" */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .abrir-app {
+    display: block;
+    text-align: center;
+    max-width: 400px;
+    margin: 22px auto 0;
+    background: var(--house);
+    color: #fff;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 800;
+    padding: 15px;
+    border-radius: 999px;
+  }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── POP-UP DE DEMONSTRAÇÃO (tarefa de cobrança) ── */
+  .pop-fundo {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.6);
+    backdrop-filter: blur(2px);
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 16px;
+    z-index: 50;
+  }
+  .pop-fundo.on { display: flex; }
+  .pop {
+    background: #fff;
+    border-radius: 20px;
+    max-width: 400px;
+    width: 100%;
+    overflow: hidden;
+    animation: sobe .25s ease-out;
+  }
+  @keyframes sobe { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .pop { animation: none; } }
+  .pop-body { padding: 14px 18px 18px; }
+  .pop-body p { font-size: 13px; color: var(--ink-soft); margin: 0 0 14px; }
+  .pop .mock-botoes { display: flex; gap: 8px; }
+  .pop .mock-botoes button {
+    flex: 1;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 13px 6px;
+    border-radius: 999px;
+    cursor: pointer;
+    min-height: 46px;
+  }
+  .pop .b1 { background: var(--primary); color: #fff; border: none; }
+  .pop .b1:hover { background: var(--primary-dark); }
+  .pop .b2 { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .pop-obs { text-align: center; font-size: 11px; color: #9aa5a0; margin: 12px 0 0; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 26px;
+    transform: translateX(-50%);
+    background: #12241f;
+    color: #fff;
+    font-size: 13.5px;
+    font-weight: 600;
+    padding: 12px 20px;
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.3);
+    display: none;
+    z-index: 60;
+    max-width: 92vw;
+    text-align: center;
+  }
+  .toast.on { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Régua de Cobrança:<br>o app cobra sozinho</h1>
+    <p>Cliente com fatura vencida agora recebe a cobrança automaticamente, por WhatsApp e e-mail — no ritmo certo, sem ninguém precisar lembrar. E quando o envio não funciona, o app cria uma tarefa para a pessoa certa resolver.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock: a mensagem que o CLIENTE recebe -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-bell">🔔</span>
+      <div>
+        <small>O cliente recebe no WhatsApp</small>
+        <strong>Cobrança automática</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="bolha">Olá, <b>Padaria Exemplo</b>! 😊
+Passando para avisar que consta em aberto conosco o valor de <b>R$ 530,50</b>:
+
+• R$ 350,00 — vencimento 28/06 — 8 dias em atraso
+• R$ 180,50 — vencimento 05/07 — 1 dia em atraso
+
+Se o pagamento já foi realizado, por favor desconsidere esta mensagem. 🙏
+<i>Hardt Salgados</i><div class="hora">08:31 ✓✓</div></div>
+    </div>
+  </div>
+
+  <button class="demo-cta" onclick="abrirDemo()">🔔 Ver a tarefa que o app cria quando falha</button>
+  <p class="demo-hint">É a mesma tarefa com alerta da aba Tarefas — demonstração, pode clicar sem medo.</p>
+
+  <!-- ══════════ COMO FUNCIONA ══════════ -->
+  <div class="sec-label">Como funciona</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)">
+      <span class="acc-ico">📏</span>
+      <strong>Cada forma de recebimento tem sua régua</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Nas configurações, cada forma (ex.: <b>Boleto 28 dias</b>, <b>PIX à vista</b>) define:</p>
+      <ul>
+        <li><b>Quantos dias depois do vencimento</b> sai o 1º aviso;</li>
+        <li><b>De quanto em quanto tempo repete</b> (ex.: a cada 7 dias) e o máximo de avisos;</li>
+        <li>Se cobra fatura vencida ou não, e se manda <b>lembrete antes de vencer</b>;</li>
+        <li>Por quais canais: <span class="tag mint">WhatsApp</span> <span class="tag mint">E-mail</span> <span class="tag dourado">SMS em breve</span></li>
+        <li>O texto das mensagens (dá para personalizar aviso 1, aviso 2...).</li>
+      </ul>
+      <p>Todo dia, no horário configurado, o app confere quem está devendo e dispara o que estiver no ponto. Sem planilha, sem lembrete manual.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)">
+      <span class="acc-ico">🚨</span>
+      <strong>Envio falhou? Vira tarefa — na hora</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O bot de WhatsApp só entrega para cliente <b>com celular cadastrado</b> e que <b>já conversou com o bot</b>. Quando não dá:</p>
+      <ul>
+        <li>O app cria uma <b>tarefa com alerta sonoro</b> para a pessoa responsável (definida na configuração da forma);</li>
+        <li>A tarefa já vem com o passo a passo: cadastrar o celular, iniciar a conversa no bot e enviar a mensagem (o texto vai pronto, é só copiar);</li>
+        <li>Tem link direto para o cadastro do cliente;</li>
+        <li>Se concluir a tarefa mas o próximo envio falhar de novo, <b>nasce outra tarefa</b> — até resolver. Depois disso, a cobrança sai sozinha para sempre.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)">
+      <span class="acc-ico">📊</span>
+      <strong>Painel de inadimplentes sempre atualizado</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>A aba <b>Inadimplentes</b> mostra todo cliente com parcela vencida:</p>
+      <ul>
+        <li>Valor vencido, quantas parcelas e <b>dias de atraso</b>;</li>
+        <li>O <b>último envio</b> (deu certo? deu erro? por quê?) e quando sai o próximo;</li>
+        <li>Quem está <b>sem celular cadastrado</b> (para correr atrás);</li>
+        <li>Botão <b>"Cobrar agora"</b> para não esperar o horário automático.</li>
+      </ul>
+      <p>E a aba <b>Histórico</b> guarda todos os envios — dá para provar quando e o que o cliente recebeu.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)">
+      <span class="acc-ico">✉️</span>
+      <strong>E-mail junto, SMS em breve</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Além do WhatsApp, a cobrança pode sair por <b>e-mail</b> (atendimento@hardtsalgados.com.br), com uma tabela bonita das parcelas em aberto.</p>
+      <p>O canal de <b>SMS</b> já está pronto no sistema — falta só contratar o provedor. Quando ativar, é mais um reforço para cliente que não usa WhatsApp.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ QUEM USA ══════════ -->
+  <div class="sec-label">O que muda para você</div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)">
+      <span class="acc-ico">🏢</span>
+      <strong>Escritório / Financeiro</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Chega de cobrar cliente um por um — a régua faz o grosso;</li>
+        <li>Fique de olho na aba <b>Inadimplentes</b>: erro de envio e cliente sem celular aparecem destacados;</li>
+        <li>Se você for o responsável de uma forma de recebimento, vai receber as <b>tarefas automáticas</b> quando um envio falhar — é só seguir o passo a passo da tarefa.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)">
+      <span class="acc-ico">🚗</span>
+      <strong>Vendedores</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Seus clientes em atraso passam a receber o aviso educado e padronizado — menos climão na visita;</li>
+        <li><b>Capriche no cadastro do celular</b> do cliente: é ele que faz a cobrança automática funcionar;</li>
+        <li>Cliente reclamou que "não recebeu nada"? Peça para o escritório conferir o Histórico da cobrança.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO ACESSAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div>Abra o app e vá em <b>Financeiro → Régua de Cobrança</b> (precisa da permissão "Régua de Cobrança" — fale com o admin).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Na aba <b>Régua</b>, configure cada forma de recebimento: dias, repetição, mensagens e <b>quem recebe a tarefa</b> quando o envio falha.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Na aba <b>Inadimplentes</b>, ligue a chave <b>Cobrança automática</b> e escolha o horário do disparo diário.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Pronto — acompanhe pelo painel. Dúvidas? Pergunte ao <b>Clippy</b> dentro do app: ele já conhece a tela nova.</div>
+    </div>
+  </div>
+
+  <a class="abrir-app" href="/">Abrir o Hardt App →</a>
+
+  <p class="rodape">Hardt Salgados · <strong>Régua de Cobrança</strong> · Julho/2026</p>
+</div>
+
+<!-- ══════════ POP-UP DEMO (tarefa de cobrança) ══════════ -->
+<div class="pop-fundo" id="popFundo" role="dialog" aria-modal="true" aria-label="Demonstração da tarefa de cobrança">
+  <div class="pop">
+    <div class="mock-top">
+      <span class="mock-bell">🔔</span>
+      <div>
+        <small>Tarefa automática · agora</small>
+        <strong>Cobrança manual: Restaurante Exemplo</strong>
+      </div>
+    </div>
+    <div class="pop-body">
+      <p><b>A cobrança automática por WhatsApp FALHOU para este cliente.</b><br>
+      Motivo: cliente sem celular cadastrado.<br><br>
+      1. Confira/cadastre o celular no cadastro do cliente;<br>
+      2. Inicie a conversa pelo bot;<br>
+      3. Envie a mensagem de cobrança (texto pronto na tarefa).<br><br>
+      Valor em aberto: <b>R$ 8.816,00</b> (2 parcelas) · 🔗 Cadastro do cliente</p>
+      <div class="mock-botoes">
+        <button class="b1" onclick="fecharDemo(true)">Concluir tarefa</button>
+        <button class="b2" onclick="fecharDemo(false)">Lembrar em 5 min</button>
+      </div>
+      <p class="pop-obs">Demonstração — nenhuma cobrança foi enviada.</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function alternar(btn) {
+    btn.parentElement.classList.toggle('aberto');
+  }
+  function abrirDemo() {
+    document.getElementById('popFundo').classList.add('on');
+  }
+  function fecharDemo(concluiu) {
+    document.getElementById('popFundo').classList.remove('on');
+    const t = document.getElementById('toast');
+    t.textContent = concluiu
+      ? '✅ Na vida real, a tarefa seria concluída — e a próxima cobrança sairia sozinha.'
+      : '⏰ Na vida real, o alerta voltaria em 5 minutos — ele insiste até resolver.';
+    t.classList.add('on');
+    clearTimeout(window._toastTimer);
+    window._toastTimer = setTimeout(() => t.classList.remove('on'), 4200);
+  }
+  document.getElementById('popFundo').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) fecharDemo(false);
+  });
+</script>
+
+</body>
+</html>
