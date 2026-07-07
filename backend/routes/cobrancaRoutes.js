@@ -43,7 +43,7 @@ router.get('/configs', async (req, res) => {
             include: { responsavelTarefa: { select: { id: true, nome: true } } },
             orderBy: { formaRecebimento: 'asc' }
         });
-        res.json({ configs, templatesPadrao: cobrancaService.TEMPLATES_PADRAO });
+        res.json({ configs, templatesPadrao: cobrancaService.TEMPLATES_PADRAO, modelos: cobrancaService.MODELOS_PRONTOS });
     } catch (e) {
         res.status(500).json({ error: 'Erro ao listar configurações.' });
     }
@@ -62,7 +62,16 @@ const camposConfig = (body) => ({
     canalEmail: body.canalEmail === true,
     canalSms: body.canalSms === true,
     templates: Array.isArray(body.templates)
-        ? body.templates.filter(t => t && t.texto).map(t => ({ nome: String(t.nome || '').slice(0, 60), texto: String(t.texto).slice(0, 2000) }))
+        ? body.templates.filter(t => t && t.texto).map(t => {
+            const deDias = parseInt(t.deDias, 10);
+            const ateDias = parseInt(t.ateDias, 10);
+            return {
+                nome: String(t.nome || '').slice(0, 60),
+                texto: String(t.texto).slice(0, 2000),
+                deDias: Number.isFinite(deDias) ? Math.max(0, deDias) : null,
+                ateDias: Number.isFinite(ateDias) ? Math.max(0, ateDias) : null
+            };
+        })
         : [],
     templateLembrete: body.templateLembrete ? String(body.templateLembrete).slice(0, 2000) : null,
     responsavelTarefaId: body.responsavelTarefaId || null,

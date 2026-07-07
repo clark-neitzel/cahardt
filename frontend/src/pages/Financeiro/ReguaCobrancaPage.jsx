@@ -334,11 +334,15 @@ const CONFIG_VAZIA = {
     templates: [], templateLembrete: '', responsavelTarefaId: '', horaEnvio: ''
 };
 
-function CardConfig({ config, formas, equipe, onSalvar, onExcluir, novo = false }) {
+function CardConfig({ config, formas, equipe, modelos = [], onSalvar, onExcluir, novo = false }) {
     const [expandido, setExpandido] = useState(novo);
     const [dados, setDados] = useState({ ...CONFIG_VAZIA, ...config, responsavelTarefaId: config?.responsavelTarefaId || '', horaEnvio: config?.horaEnvio || '' });
     const [salvando, setSalvando] = useState(false);
     const [previewTexto, setPreviewTexto] = useState(null);
+    const [escolhendoModelo, setEscolhendoModelo] = useState(false);
+
+    const modelosAviso = modelos.filter(m => !m.lembrete);
+    const modeloLembrete = modelos.find(m => m.lembrete);
 
     const set = (campo, valor) => setDados(d => ({ ...d, [campo]: valor }));
 
@@ -362,8 +366,22 @@ function CardConfig({ config, formas, equipe, onSalvar, onExcluir, novo = false 
         } catch (e) { toast.error('Erro ao gerar preview'); }
     };
 
-    const addTemplate = () => set('templates', [...(dados.templates || []), { nome: `Aviso ${(dados.templates?.length || 0) + 1}`, texto: '' }]);
-    const setTemplate = (i, texto) => set('templates', dados.templates.map((t, idx) => idx === i ? { ...t, texto } : t));
+    // Sugestão de faixa para a nova mensagem: continua de onde a última parou
+    const proximaFaixa = () => {
+        const ultima = (dados.templates || []).filter(t => t.ateDias != null).sort((a, b) => b.ateDias - a.ateDias)[0];
+        const de = ultima ? Number(ultima.ateDias) + 1 : 1;
+        return { deDias: de, ateDias: de + 6 };
+    };
+    const addTemplate = (modelo) => {
+        const faixa = proximaFaixa();
+        set('templates', [...(dados.templates || []), {
+            nome: modelo?.nome || `Aviso ${(dados.templates?.length || 0) + 1}`,
+            texto: modelo?.texto || '',
+            ...faixa
+        }]);
+        setEscolhendoModelo(false);
+    };
+    const setTemplate = (i, campo, valor) => set('templates', dados.templates.map((t, idx) => idx === i ? { ...t, [campo]: valor } : t));
     const rmTemplate = (i) => set('templates', dados.templates.filter((_, idx) => idx !== i));
 
     return (
@@ -476,23 +494,49 @@ function CardConfig({ config, formas, equipe, onSalvar, onExcluir, novo = false 
                         </div>
                     </div>
 
-                    {/* Mensagens */}
+                    {/* Mensagens por faixa de dias de atraso */}
                     <div>
                         <div className="flex items-center justify-between mb-2">
-                            <label className="text-sm font-medium text-gray-700">Mensagens de cobrança (aviso 1, 2, 3... — a última repete)</label>
-                            <button onClick={addTemplate} className="px-3 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-xs inline-flex items-center gap-1">
+                            <label className="text-sm font-medium text-gray-700">Mensagens de cobrança (por dias de atraso)</label>
+                            <button onClick={() => setEscolhendoModelo(!escolhendoModelo)} className="px-3 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-xs inline-flex items-center gap-1">
                                 <Plus className="h-3 w-3" /> Adicionar mensagem
                             </button>
                         </div>
+                        {escolhendoModelo && (
+                            <div className="border border-primary/30 bg-mint/30 rounded-lg p-3 mb-3">
+                                <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Comece por um modelo pronto (dá para editar depois)</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {modelosAviso.map((m, i) => (
+                                        <button key={i} onClick={() => addTemplate(m)}
+                                            className="px-3 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-xs min-h-[44px] md:min-h-0">
+                                            {m.nome}
+                                        </button>
+                                    ))}
+                                    <button onClick={() => addTemplate(null)}
+                                        className="px-3 py-2 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-full font-medium text-xs min-h-[44px] md:min-h-0">
+                                        ✏️ Em branco
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                         {(!dados.templates || dados.templates.length === 0) && (
                             <p className="text-xs text-gray-500 mb-2">Sem mensagens próprias — será usada a mensagem padrão do sistema. Variáveis: {'{nome}'} {'{valor_total}'} {'{parcelas}'} {'{qtd_parcelas}'} {'{dias_atraso}'} {'{vencimento}'}</p>
                         )}
                         <div className="space-y-3">
                             {(dados.templates || []).map((t, i) => (
                                 <div key={i} className="border border-gray-200 rounded-lg p-3">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Aviso nº {i + 1}</span>
-                                        <div className="flex gap-1">
+                                    <div className="flex flex-col md:flex-row md:items-center gap-2 mb-2">
+                                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600 flex-1 truncate">{t.nome || `Mensagem ${i + 1}`}</span>
+                                        <div className="flex items-center gap-1.5 text-xs text-gray-700">
+                                            <span>De</span>
+                                            <input type="number" min="0" value={t.deDias ?? ''} onChange={e => setTemplate(i, 'deDias', e.target.value)}
+                                                className="w-16 border border-gray-300 rounded px-2 py-1 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                            <span>a</span>
+                                            <input type="number" min="0" value={t.ateDias ?? ''} onChange={e => setTemplate(i, 'ateDias', e.target.value)} placeholder="∞"
+                                                className="w-16 border border-gray-300 rounded px-2 py-1 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                            <span>dias de atraso</span>
+                                        </div>
+                                        <div className="flex gap-1 md:ml-2">
                                             <button onClick={() => verPreview(t.texto)} className="p-1.5 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100" title="Ver como o cliente recebe">
                                                 <Eye className="h-4 w-4" />
                                             </button>
@@ -501,21 +545,32 @@ function CardConfig({ config, formas, equipe, onSalvar, onExcluir, novo = false 
                                             </button>
                                         </div>
                                     </div>
-                                    <textarea rows={4} value={t.texto} onChange={e => setTemplate(i, e.target.value)}
+                                    <textarea rows={4} value={t.texto} onChange={e => setTemplate(i, 'texto', e.target.value)}
                                         placeholder={'Olá, *{nome}*! Consta em aberto R$ {valor_total}:\n\n{parcelas}\n\nQualquer dúvida estamos à disposição!'}
                                         className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none font-mono" />
                                 </div>
                             ))}
                         </div>
+                        {(dados.templates || []).length > 0 && (
+                            <p className="text-xs text-gray-500 mt-2">O sistema escolhe a mensagem pela faixa em que o atraso do cliente se encaixa. Deixe o "a" vazio na última = "em diante".</p>
+                        )}
                     </div>
 
                     {dados.lembreteAntes && (
                         <div>
                             <div className="flex items-center justify-between mb-1">
                                 <label className="text-sm font-medium text-gray-700">Mensagem do lembrete (antes de vencer)</label>
-                                <button onClick={() => verPreview(dados.templateLembrete)} className="p-1.5 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100" title="Preview">
-                                    <Eye className="h-4 w-4" />
-                                </button>
+                                <div className="flex items-center gap-1">
+                                    {modeloLembrete && (
+                                        <button onClick={() => set('templateLembrete', modeloLembrete.texto)}
+                                            className="px-3 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-xs">
+                                            Usar modelo pronto
+                                        </button>
+                                    )}
+                                    <button onClick={() => verPreview(dados.templateLembrete)} className="p-1.5 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100" title="Preview">
+                                        <Eye className="h-4 w-4" />
+                                    </button>
+                                </div>
                             </div>
                             <textarea rows={3} value={dados.templateLembrete || ''} onChange={e => set('templateLembrete', e.target.value)}
                                 placeholder="Vazio = mensagem padrão do sistema"
@@ -563,6 +618,7 @@ function AbaConfiguracao() {
     const [configs, setConfigs] = useState([]);
     const [formas, setFormas] = useState([]);
     const [equipe, setEquipe] = useState([]);
+    const [modelos, setModelos] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const carregar = useCallback(async () => {
@@ -574,6 +630,7 @@ function AbaConfiguracao() {
                 cobrancaService.listarEquipe()
             ]);
             setConfigs(c.configs || []);
+            setModelos(c.modelos || []);
             setFormas(f.formas || []);
             setEquipe(e.equipe || []);
         } catch (err) { toast.error('Erro ao carregar configurações'); }
@@ -619,10 +676,10 @@ function AbaConfiguracao() {
                 A linha <b>PADRÃO</b> vale para todas as formas sem régua própria.
             </div>
             {configs.map(c => (
-                <CardConfig key={c.id} config={c} formas={[c.formaRecebimento, ...formasDisponiveis]} equipe={equipe}
+                <CardConfig key={c.id} config={c} formas={[c.formaRecebimento, ...formasDisponiveis]} equipe={equipe} modelos={modelos}
                     onSalvar={atualizar(c.id)} onExcluir={excluir(c)} />
             ))}
-            <CardConfig novo config={CONFIG_VAZIA} formas={formasDisponiveis} equipe={equipe} onSalvar={criar} />
+            <CardConfig novo config={CONFIG_VAZIA} formas={formasDisponiveis} equipe={equipe} modelos={modelos} onSalvar={criar} />
         </div>
     );
 }

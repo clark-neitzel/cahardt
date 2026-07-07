@@ -30,7 +30,7 @@ Um cartão por forma de recebimento (ex.: Boleto 28 dias, PIX à vista). A linha
 - **Cobrar faturas vencidas** (liga/desliga) e **lembrete antes de vencer** (X dias antes, opcional, com mensagem própria).
 - **Canais**: WhatsApp, E-mail, SMS (pode combinar).
 - **Responsável pela tarefa**: quem recebe a tarefa automática quando o envio de WhatsApp falha. Obrigatório quando o canal WhatsApp está ligado.
-- **Mensagens**: lista de textos (aviso 1, aviso 2... o último repete). Variáveis: `{nome}`, `{valor_total}`, `{parcelas}`, `{qtd_parcelas}`, `{dias_atraso}`, `{vencimento}`. Sem mensagem própria, usa o texto padrão do sistema. O olho (👁) mostra **como o cliente recebe** (preview estilo WhatsApp com dados de exemplo).
+- **Mensagens**: cada mensagem tem uma **faixa de dias de atraso** ("de X a Y dias" — "a" vazio = em diante) e o sistema escolhe a que encaixa no atraso do cliente. Ao adicionar, dá para partir de um **modelo pronto** (Aviso 1 leve, Aviso 2 educada, Aviso 3 firme, Aviso final, Lembrete) e editar. Variáveis: `{nome}`, `{valor_total}`, `{parcelas}`, `{qtd_parcelas}`, `{dias_atraso}`, `{vencimento}`. Sem mensagem própria, usa o texto padrão do sistema. O olho (👁) mostra **como o cliente recebe** (preview estilo WhatsApp com dados de exemplo).
 
 ## Aba Canais
 

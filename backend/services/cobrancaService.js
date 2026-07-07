@@ -46,6 +46,66 @@ Lembrete amigo: você tem pagamento(s) chegando no vencimento:
 Total: *R$ {valor_total}*. Qualquer dúvida, estamos à disposição!
 _Hardt Salgados_`;
 
+// Modelos prontos oferecidos na tela ao adicionar uma mensagem (o usuário
+// escolhe um e ajusta o texto como quiser)
+const MODELOS_PRONTOS = [
+    {
+        nome: 'Aviso 1 — tom leve',
+        texto: `Olá, *{nome}*! 😊
+Tudo bem? Passando para avisar que consta em aberto conosco o valor de *R$ {valor_total}*:
+
+{parcelas}
+
+Se o pagamento já foi feito, por favor desconsidere esta mensagem. 🙏
+Qualquer dúvida ou para combinar o pagamento, é só responder por aqui!
+_Hardt Salgados_`
+    },
+    {
+        nome: 'Aviso 2 — cobrança educada',
+        texto: `Olá, *{nome}*!
+Ainda consta em aberto conosco o valor de *R$ {valor_total}* ({qtd_parcelas} parcela(s), a mais antiga com *{dias_atraso} dias* de atraso):
+
+{parcelas}
+
+Pedimos a gentileza de regularizar o pagamento ou entrar em contato para combinarmos a melhor forma. Contamos com você! 🙏
+_Hardt Salgados_`
+    },
+    {
+        nome: 'Aviso 3 — tom firme',
+        texto: `*{nome}*, precisamos da sua atenção. ⚠️
+Seu débito com a Hardt Salgados segue em aberto há *{dias_atraso} dias*:
+
+{parcelas}
+
+Total: *R$ {valor_total}*
+
+Pedimos a regularização para mantermos o atendimento normal dos seus pedidos. Se preferir, respondemos por aqui para combinar parcelamento. 📞
+_Hardt Salgados — Financeiro_`
+    },
+    {
+        nome: 'Aviso final — último automático',
+        texto: `*{nome}*, este é nosso último aviso automático. 🔴
+Débito em aberto há *{dias_atraso} dias* com a Hardt Salgados:
+
+{parcelas}
+
+Total: *R$ {valor_total}*
+
+Sem retorno, os próximos pedidos ficarão condicionados à quitação e o caso seguirá para tratativa direta com nosso financeiro. Vamos resolver? Responda esta mensagem *hoje* que encontramos juntos a melhor saída. 🤝
+_Hardt Salgados — Financeiro_`
+    },
+    {
+        nome: 'Lembrete — antes de vencer',
+        lembrete: true,
+        texto: `Olá, *{nome}*! 😊
+Lembrete amigo da Hardt Salgados: você tem pagamento chegando no vencimento:
+
+{parcelas}
+
+Total: *R$ {valor_total}*. Assim evitamos qualquer transtorno. Qualquer dúvida, é só chamar por aqui! 🙏`
+    }
+];
+
 // ── Helpers ──────────────────────────────────────────────────────────
 
 const hojeLocal = () => {
@@ -227,8 +287,22 @@ function montarMensagemCobranca(config, grupo, numeroAviso) {
     const templates = Array.isArray(config?.templates) ? config.templates.filter(t => t && t.texto) : [];
     let texto;
     if (templates.length > 0) {
-        const idx = Math.min(numeroAviso - 1, templates.length - 1);
-        texto = templates[idx].texto;
+        const dias = Math.max(0, ...grupo.parcelasVencidas.map(p => p.diasAtraso));
+        const comFaixa = templates.filter(t => t.deDias != null);
+        if (comFaixa.length > 0) {
+            // Mensagem escolhida pela FAIXA de dias de atraso (de X a Y dias).
+            // ateDias vazio = "em diante". Sem faixa exata, usa a de maior
+            // "de" que já foi atingido; senão, a primeira.
+            const escolhido =
+                comFaixa.find(t => dias >= t.deDias && (t.ateDias == null || dias <= t.ateDias)) ||
+                [...comFaixa].sort((a, b) => b.deDias - a.deDias).find(t => dias >= t.deDias) ||
+                comFaixa[0];
+            texto = escolhido.texto;
+        } else {
+            // Compatibilidade: sem faixas, aviso nº N usa o template N (último repete)
+            const idx = Math.min(numeroAviso - 1, templates.length - 1);
+            texto = templates[idx].texto;
+        }
     } else {
         texto = numeroAviso <= 1 ? TEMPLATE_PADRAO_1 : TEMPLATE_PADRAO_2;
     }
@@ -725,5 +799,6 @@ module.exports = {
     previewMensagem,
     getCobrancaConfigGlobal,
     getStatusExecucao,
-    TEMPLATES_PADRAO: { aviso1: TEMPLATE_PADRAO_1, aviso2: TEMPLATE_PADRAO_2, lembrete: TEMPLATE_LEMBRETE_PADRAO }
+    TEMPLATES_PADRAO: { aviso1: TEMPLATE_PADRAO_1, aviso2: TEMPLATE_PADRAO_2, lembrete: TEMPLATE_LEMBRETE_PADRAO },
+    MODELOS_PRONTOS
 };
