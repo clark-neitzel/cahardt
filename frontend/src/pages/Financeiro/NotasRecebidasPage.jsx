@@ -7,7 +7,6 @@ import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search } from 
 import toast from 'react-hot-toast';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
-import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 // ── Helpers ──
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -169,7 +168,7 @@ const NotasRecebidasPage = () => {
     const [statusNfse, setStatusNfse] = useState(null);
     const [notas, setNotas] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [chip, setChip] = useFiltroSalvo('notas-recebidas:chip', 'NOVAS');
+    const [chip, setChip] = useState('NOVAS');
     const [consultando, setConsultando] = useState(false);
 
     const [busca, setBusca] = useState('');
