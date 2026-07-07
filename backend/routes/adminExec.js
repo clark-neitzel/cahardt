@@ -2009,4 +2009,55 @@ router.get('/gdrive-status', async (req, res) => {
     }
 });
 
+// ═══════════════ RÉGUA DE COBRANÇA (diagnóstico/config em produção) ═══════════════
+
+// POST /api/admin-exec/cobranca-email-config
+// Grava (upsert) a config SMTP em app_configs (chave email_config).
+// Body: { ativo, host, port, secure, user, pass, from, fromName }
+router.post('/cobranca-email-config', async (req, res) => {
+    try {
+        const { ativo, host, port, secure, user, pass, from, fromName } = req.body || {};
+        if (!host || !user || !pass) {
+            return res.status(400).json({ ok: false, error: 'host, user e pass são obrigatórios.' });
+        }
+        const value = { ativo: ativo !== false, host, port: Number(port || 465), secure: secure !== false, user, pass, from: from || user, fromName: fromName || 'Hardt Salgados' };
+        await prisma.appConfig.upsert({
+            where: { key: 'email_config' },
+            update: { value },
+            create: { key: 'email_config', value },
+        });
+        try { require('../services/emailService').limparCacheConfig(); } catch (_) {}
+        res.json({ ok: true, salvo: { ativo: value.ativo, host, port: value.port, user, from: value.from } });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// GET /api/admin-exec/cobranca-email-teste?para=alguem@dominio.com
+// Verifica a conexão SMTP e (se ?para=) envia um e-mail de teste.
+router.get('/cobranca-email-teste', async (req, res) => {
+    try {
+        const emailService = require('../services/emailService');
+        const conexao = await emailService.testarConexao();
+        let envio = null;
+        if (conexao.ok && req.query.para) {
+            envio = await emailService.enviar(req.query.para, 'Teste — Régua de Cobrança Hardt', '<p>E-mail de teste da régua de cobrança. Se você recebeu, o SMTP está funcionando. ✅</p>');
+        }
+        res.json({ conexao, envio });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/admin-exec/cobranca-executar — roda a régua agora (mesmo pausada)
+router.post('/cobranca-executar', async (req, res) => {
+    try {
+        const cobrancaService = require('../services/cobrancaService');
+        const r = await cobrancaService.executarRegua({ forcarManual: true });
+        res.json(r);
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;

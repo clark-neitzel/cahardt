@@ -64,6 +64,7 @@ const kitFestaRoutes = require('./routes/kitFestaRoutes'); // Kit Festa: painel 
 const kitFestaPublicRoutes = require('./routes/kitFestaPublicRoutes'); // Kit Festa: site público do cliente
 const congeladosRoutes = require('./routes/congeladosRoutes'); // Site Congelados: painel admin
 const tarefaRoutes = require('./routes/tarefaRoutes'); // Tarefas da Equipe (agenda com alerta sonoro)
+const cobrancaRoutes = require('./routes/cobrancaRoutes'); // Régua de Cobrança (inadimplentes)
 const congeladosPublicRoutes = require('./routes/congeladosPublicRoutes'); // Site Congelados: site público do cliente
 const visitorRoutes = require('./routes/visitorRoutes'); // Rastreio de visitantes online (ping público + stats admin)
 const pontoPublicRoutes = require('./routes/pontoPublicRoutes'); // RH: bater ponto por link público (sem login)
@@ -180,6 +181,7 @@ app.use('/api/comissoes', authMiddleware, comissaoRoutes); // Módulo de Comiss�
 app.use('/api/kitfesta', authMiddleware, kitFestaRoutes); // Kit Festa: painel admin (agenda, produtos, pedidos)
 app.use('/api/congelados', authMiddleware, congeladosRoutes); // Site Congelados: painel admin (produtos, pedidos)
 app.use('/api/tarefas', authMiddleware, tarefaRoutes); // Tarefas da Equipe (agenda com alerta sonoro)
+app.use('/api/cobranca', cobrancaRoutes); // Régua de Cobrança de inadimplentes (auth inside)
 
 // Rota base
 app.get('/', (req, res) => {

@@ -6,7 +6,7 @@ import {
     Box, UserCog, Car, RefreshCw, FileText,
     Settings, DollarSign, Warehouse, TrendingUp,
     Factory, Package, BookOpen as BookOpenIcon, Play, Calendar, Lightbulb, BarChart3, BarChart2,
-    Clock, CalendarOff, ClipboardCheck, Tag, PartyPopper, Inbox, Building2, CalendarCheck
+    Clock, CalendarOff, ClipboardCheck, Tag, PartyPopper, Inbox, Building2, CalendarCheck, BellRing
 } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import configService from '../../../services/configService';
@@ -86,6 +86,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Acessar_Notas_Recebidas: false,
     Pode_Acessar_Fornecedores: false,
     Pode_Acessar_Financeiro_Gerencial: false,
+    Pode_Acessar_Cobranca: false,
     // Devoluções
     Pode_Fazer_Devolucao: false,
     Pode_Reverter_Devolucao: false,
@@ -332,7 +333,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     const countFinanceiro = [
         permissoes.Pode_Acessar_Caixa, permissoes.Pode_Acessar_Contas_Receber,
         permissoes.Pode_Acessar_Contas_Pagar, permissoes.Pode_Acessar_Notas_Recebidas,
-        permissoes.Pode_Acessar_Fornecedores, permissoes.Pode_Acessar_Financeiro_Gerencial
+        permissoes.Pode_Acessar_Fornecedores, permissoes.Pode_Acessar_Financeiro_Gerencial,
+        permissoes.Pode_Acessar_Cobranca
     ].filter(Boolean).length;
     const countAdmin = [
         permissoes.produtos?.view, permissoes.vendedores?.view, permissoes.sync?.view, permissoes.Pode_Acessar_Veiculos
@@ -771,6 +773,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         <MenuToggle icon={Receipt} label="Despesas" checked={!!permissoes.Pode_Acessar_Caixa} onChange={() => toggleBool('Pode_Acessar_Caixa')} />
                         <MenuToggle icon={Search} label="Auditoria Entregas" checked={!!permissoes.Pode_Ver_Todas_Entregas} onChange={() => toggleBool('Pode_Ver_Todas_Entregas')} />
                         <MenuToggle icon={DollarSign} label="Contas a Receber" checked={!!permissoes.Pode_Acessar_Contas_Receber} onChange={() => toggleBool('Pode_Acessar_Contas_Receber')} />
+                        <MenuToggle icon={BellRing} label="Régua de Cobrança" checked={!!permissoes.Pode_Acessar_Cobranca} onChange={() => toggleBool('Pode_Acessar_Cobranca')} />
                         <MenuToggle icon={Wallet} label="Contas a Pagar" checked={!!permissoes.Pode_Acessar_Contas_Pagar} onChange={() => toggleBool('Pode_Acessar_Contas_Pagar')} />
                         <MenuToggle icon={Inbox} label="Notas Recebidas" checked={!!permissoes.Pode_Acessar_Notas_Recebidas} onChange={() => toggleBool('Pode_Acessar_Notas_Recebidas')} />
                         <MenuToggle icon={Building2} label="Fornecedores" checked={!!permissoes.Pode_Acessar_Fornecedores} onChange={() => toggleBool('Pode_Acessar_Fornecedores')} />

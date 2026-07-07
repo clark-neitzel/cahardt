@@ -44,6 +44,7 @@ const MargemProdutosPage = lazy(() => import('./pages/Financeiro/MargemProdutosP
 const ConciliacaoBancariaPage = lazy(() => import('./pages/Financeiro/ConciliacaoBancariaPage'));
 const DashboardFinanceiroPage = lazy(() => import('./pages/Financeiro/DashboardFinanceiroPage'));
 const CategoriasDespesaPage = lazy(() => import('./pages/Financeiro/CategoriasDespesaPage'));
+const ReguaCobrancaPage = lazy(() => import('./pages/Financeiro/ReguaCobrancaPage'));
 const RelatorioPedidos = lazy(() => import('./pages/Relatorios/RelatorioPedidos'));
 const RelatorioVendas = lazy(() => import('./pages/Relatorios/RelatorioVendas'));
 const RelatorioFlex = lazy(() => import('./pages/Relatorios/RelatorioFlex'));
@@ -238,7 +239,7 @@ const Layout = ({ children }) => {
   const closeMobile = () => setIsMobileMenuOpen(false);
 
   const showLogistica = hasPermission('Pode_Acessar_Embarque') || hasPermission('Pode_Ver_Todas_Entregas');
-  const showFinanceiro = hasPermission('Pode_Acessar_Caixa') || hasPermission('Pode_Ver_Todas_Entregas') || hasPermission('Pode_Acessar_Contas_Receber') || hasPermission('Pode_Acessar_Notas_Recebidas') || hasPermission('Pode_Acessar_Financeiro_Gerencial');
+  const showFinanceiro = hasPermission('Pode_Acessar_Caixa') || hasPermission('Pode_Ver_Todas_Entregas') || hasPermission('Pode_Acessar_Contas_Receber') || hasPermission('Pode_Acessar_Notas_Recebidas') || hasPermission('Pode_Acessar_Financeiro_Gerencial') || hasPermission('Pode_Acessar_Cobranca');
   const showAdmin = hasPermission('produtos') || hasPermission('vendedores') || hasPermission('sync') || user?.permissoes?.admin;
   const showEstoque = user?.permissoes?.admin || (Array.isArray(user?.permissoes?.estoque) && user.permissoes.estoque.length > 0);
   const pcpPerms = user?.permissoes?.pcp || {};
@@ -275,6 +276,7 @@ const Layout = ({ children }) => {
       hasPermission('Pode_Acessar_Caixa') && { to: '/despesas', icon: Receipt, label: 'Despesas' },
       hasPermission('Pode_Ver_Todas_Entregas') && { to: '/admin/auditoria-entregas', icon: Search, label: 'Auditoria' },
       hasPermission('Pode_Acessar_Contas_Receber') && { to: '/financeiro/contas-receber/tabela', icon: DollarSign, label: 'Contas a Receber' },
+      hasPermission('Pode_Acessar_Cobranca') && { to: '/financeiro/cobranca', icon: BellRing, label: 'Régua de Cobrança' },
       hasPermission('Pode_Acessar_Contas_Pagar') && { to: '/contas-pagar', icon: Wallet, label: 'Contas a Pagar' },
       hasPermission('Pode_Acessar_Notas_Recebidas') && { to: '/notas-recebidas', icon: Inbox, label: 'Notas Recebidas' },
       hasPermission('Pode_Acessar_Fornecedores') && { to: '/fornecedores', icon: Building2, label: 'Fornecedores' },
@@ -478,6 +480,7 @@ const Layout = ({ children }) => {
                 {hasPermission('Pode_Acessar_Caixa') && <NavLink to="/despesas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Despesas</NavLink>}
                 {hasPermission('Pode_Ver_Todas_Entregas') && <NavLink to="/admin/auditoria-entregas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Auditoria</NavLink>}
                 {hasPermission('Pode_Acessar_Contas_Receber') && <NavLink to="/financeiro/contas-receber/tabela" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Contas a Receber</NavLink>}
+                {hasPermission('Pode_Acessar_Cobranca') && <NavLink to="/financeiro/cobranca" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Régua de Cobrança</NavLink>}
                 {hasPermission('Pode_Acessar_Contas_Pagar') && <NavLink to="/contas-pagar" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Contas a Pagar</NavLink>}
                 {hasPermission('Pode_Acessar_Notas_Recebidas') && <NavLink to="/notas-recebidas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Notas Recebidas</NavLink>}
                 {hasPermission('Pode_Acessar_Fornecedores') && <NavLink to="/fornecedores" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Fornecedores</NavLink>}
@@ -672,6 +675,7 @@ function App() {
               {/* Financeiro */}
               <Route path="/financeiro/contas-receber" element={<Navigate to="/financeiro/contas-receber/tabela" replace />} />
               <Route path="/financeiro/contas-receber/tabela" element={<PrivateRoute tab="Pode_Acessar_Contas_Receber"><ContasReceberTabela /></PrivateRoute>} />
+              <Route path="/financeiro/cobranca" element={<PrivateRoute tab="Pode_Acessar_Cobranca"><ReguaCobrancaPage /></PrivateRoute>} />
               <Route path="/contas-pagar" element={<PrivateRoute tab="Pode_Acessar_Contas_Pagar"><ContasPagarPage /></PrivateRoute>} />
               <Route path="/notas-recebidas" element={<PrivateRoute tab="Pode_Acessar_Notas_Recebidas"><NotasRecebidasPage /></PrivateRoute>} />
               <Route path="/fornecedores" element={<PrivateRoute tab="Pode_Acessar_Fornecedores"><FornecedoresPage /></PrivateRoute>} />

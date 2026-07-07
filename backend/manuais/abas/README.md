@@ -51,6 +51,7 @@
 | Despesas | `/caixa/despesas` | Registro de despesas operacionais do dia (combustível, pedágio, hotel, etc.) | [despesas.md](despesas.md) |
 | Auditoria de Entregas | `/admin/auditoria-entregas` | Revisão e correção de pagamentos registrados pelos motoristas | [auditoria-entregas.md](auditoria-entregas.md) |
 | Contas a Receber | `/financeiro/contas-receber` | Gestão de parcelas, baixas manuais e sincronização com o Conta Azul | [contas-receber.md](contas-receber.md) |
+| Régua de Cobrança | `/financeiro/cobranca` | Cobrança automática de inadimplentes por WhatsApp/e-mail/SMS com régua por forma de recebimento e tarefa automática em falha | [regua-cobranca.md](regua-cobranca.md) |
 | Contas a Pagar | `/contas-pagar` | Despesas com parcelas, envio ao Conta Azul e baixa automática quando pagas lá (DDA/conciliação) | [contas-a-pagar.md](contas-a-pagar.md) |
 | Fornecedores | `/fornecedores` | Cadastro de fornecedores sincronizado com o Conta Azul (envio automático + importação) | [fornecedores.md](fornecedores.md) |
 | Notas Recebidas | `/notas-recebidas` | Caixa de entrada das NF-e capturadas automaticamente na SEFAZ, com geração de conta a pagar a partir da nota | [notas-recebidas.md](notas-recebidas.md) |

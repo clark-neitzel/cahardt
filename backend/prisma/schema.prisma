@@ -171,6 +171,7 @@ model Cliente {
   contasReceber ContaReceber[]
   devolucoes    Devolucao[]
   atendimentos  Atendimento[]
+  cobrancaEnvios CobrancaEnvio[]
 
   // Indicação (auto-referência: quem indicou este cliente)
   indicacaoId String?   @map("indicacao_id")
@@ -423,6 +424,9 @@ model Vendedor {
   // Tarefas da Equipe (agenda com alertas)
   tarefasCriadas   Tarefa[] @relation("TarefasCriadas")
   tarefasRecebidas Tarefa[] @relation("TarefasRecebidas")
+
+  // Régua de Cobrança: configs em que este usuário recebe a tarefa de falha de envio
+  cobrancaConfigsResponsavel CobrancaConfig[] @relation("CobrancaResponsavelTarefa")
 
   @@map("vendedores")
 }
@@ -2855,6 +2859,72 @@ model ConciliacaoGrupoItem {
 
   @@index([grupoId])
   @@map("conciliacao_grupo_itens")
+}
+
+// ═══════════════ RÉGUA DE COBRANÇA (inadimplentes) ═══════════════
+// Uma configuração por forma de recebimento (nome da condição de pagamento do pedido).
+// A linha especial forma_recebimento = 'PADRAO' vale para qualquer parcela cuja
+// condição não tenha configuração própria (inclui contas importadas do CA sem pedido).
+model CobrancaConfig {
+  id               String  @id @default(uuid())
+  formaRecebimento String  @unique @map("forma_recebimento")
+  ativo            Boolean @default(true)
+
+  // Régua (dias sempre relativos ao vencimento da parcela)
+  diasPrimeiroAviso Int     @default(1) @map("dias_primeiro_aviso") // 1º aviso: X dias APÓS vencer
+  repetirCadaDias   Int     @default(7) @map("repetir_cada_dias") // frequência dos avisos seguintes
+  maxAvisos         Int     @default(5) @map("max_avisos") // teto de avisos automáticos por dívida
+  enviarVencida     Boolean @default(true) @map("enviar_vencida") // false = não cobra vencidas (só lembrete)
+  lembreteAntes     Boolean @default(false) @map("lembrete_antes") // lembrete ANTES de vencer
+  diasLembrete      Int     @default(3) @map("dias_lembrete") // quantos dias antes do vencimento
+
+  // Canais de envio
+  canalWhatsapp Boolean @default(true) @map("canal_whatsapp")
+  canalEmail    Boolean @default(false) @map("canal_email")
+  canalSms      Boolean @default(false) @map("canal_sms")
+
+  // Mensagens: [{ nome, texto }] — o aviso nº N usa o template N (o último repete).
+  // Placeholders: {nome} {valor_total} {parcelas} {qtd_parcelas} {dias_atraso} {vencimento}
+  templates        Json?
+  templateLembrete String? @map("template_lembrete") @db.Text
+
+  // Quem recebe a TAREFA quando o envio de WhatsApp falha (sem celular / bot recusou)
+  responsavelTarefaId String?   @map("responsavel_tarefa_id")
+  responsavelTarefa   Vendedor? @relation("CobrancaResponsavelTarefa", fields: [responsavelTarefaId], references: [id])
+
+  envios CobrancaEnvio[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("cobranca_configs")
+}
+
+// Log de cada tentativa de envio de cobrança (um registro por cliente+canal por disparo)
+model CobrancaEnvio {
+  id        String          @id @default(uuid())
+  clienteId String          @map("cliente_id")
+  cliente   Cliente         @relation(fields: [clienteId], references: [UUID])
+  configId  String?         @map("config_id")
+  config    CobrancaConfig? @relation(fields: [configId], references: [id])
+
+  tipo        String  @default("COBRANCA") // COBRANCA | LEMBRETE | MANUAL
+  canal       String // WHATSAPP | EMAIL | SMS
+  destino     String? // telefone/e-mail/número usado no envio
+  status      String // ENVIADO | ERRO
+  erro        String? @db.Text
+  mensagem    String? @db.Text // texto enviado (auditoria)
+  numeroAviso Int     @default(1) @map("numero_aviso")
+  parcelas    Json? // snapshot [{ parcelaId, numero, valor, vencimento }]
+  valorTotal  Decimal @default(0) @map("valor_total") @db.Decimal(12, 2)
+  tarefaId    String? @map("tarefa_id") // tarefa criada por causa da falha (se houve)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([clienteId, createdAt])
+  @@index([status])
+  @@index([createdAt])
+  @@map("cobranca_envios")
 }
 
 // Singleton de controle da distribuição DF-e (último NSU consumido, bloqueio 656, etc.)

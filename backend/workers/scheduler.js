@@ -279,6 +279,40 @@ function startSchedulers() {
         }
     }, 60 * 1000); // a cada 1 minuto
 
+    // === 7.1. RÉGUA DE COBRANÇA (inadimplentes) ===
+    // A cada 5 min confere se chegou o horário configurado (app_configs
+    // 'cobranca_config' = { ativo, horaEnvio }) e roda a régua UMA vez por dia
+    // (controle em 'cobranca_ultima_execucao' = 'YYYY-MM-DD'). 100% isolado:
+    // com a régua pausada ou sem config, não faz nada.
+    console.log('⏰ Iniciando Régua de Cobrança (inadimplentes)...');
+    const cobrancaService = require('../services/cobrancaService');
+    setInterval(async () => {
+        try {
+            const global = await cobrancaService.getCobrancaConfigGlobal();
+            if (!global.ativo) return;
+
+            const agora = new Date();
+            const horaAtual = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
+            if (horaAtual < global.horaEnvio) return;
+
+            const hojeStr = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
+            const ultima = await prisma.appConfig.findUnique({ where: { key: 'cobranca_ultima_execucao' } });
+            if (ultima?.value === hojeStr) return; // já rodou hoje
+
+            // Marca ANTES de rodar (se falhar no meio, não fica reenviando o dia todo)
+            await prisma.appConfig.upsert({
+                where: { key: 'cobranca_ultima_execucao' },
+                update: { value: hojeStr },
+                create: { key: 'cobranca_ultima_execucao', value: hojeStr }
+            });
+
+            console.log(`[Cobranca] Horário ${global.horaEnvio} atingido — executando régua...`);
+            await cobrancaService.executarRegua();
+        } catch (e) {
+            console.error('⚠️ Worker Régua de Cobrança Error:', e.message);
+        }
+    }, 5 * 60 * 1000); // a cada 5 minutos
+
     // === 8. ALERTA DE CERTIFICADO A1 VENCENDO ===
     // 1x/dia (08:00) avisa os admins (com telefone) por WhatsApp nos limiares
     // 30/15/7/3/1 dias e quando vencido. Isolado: nunca derruba nada.

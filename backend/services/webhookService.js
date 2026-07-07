@@ -358,6 +358,41 @@ const webhookService = {
         }
     },
 
+    /**
+     * Envia mensagem de COBRANÇA via BotConversa com o payload COMPLETO
+     * (7 campos — o webhook recusa com 400 silencioso se faltar qualquer um).
+     * Não depende do toggle whatsapp_ativo: a régua de cobrança tem o próprio
+     * liga/desliga em cobranca_config.
+     * Retorna { ok: true } ou { ok: false, motivo }.
+     */
+    enviarCobranca: async ({ telefone, nome, mensagem, total, dataVencimento, condicao }) => {
+        try {
+            const webhookUrl = await getWebhookUrl();
+            if (!webhookUrl) return { ok: false, motivo: 'URL do webhook não configurada' };
+
+            let phone = (telefone || '').replace(/\D/g, '');
+            if (phone.length < 10) return { ok: false, motivo: 'Cliente sem telefone celular válido' };
+            if (!phone.startsWith('55')) phone = '55' + phone;
+
+            const payload = {
+                phone,
+                nome: nome || 'Cliente',
+                mensagem,
+                data_pedido: formatDate(new Date()),
+                data_entrega: formatDate(dataVencimento || new Date()),
+                total: Number(total || 0).toFixed(2),
+                condicao: condicao || 'Cobrança'
+            };
+
+            await enviarWebhook(webhookUrl, payload);
+            console.log(`[Webhook-Cobranca] Enviada para ${payload.nome} (${phone})`);
+            return { ok: true };
+        } catch (error) {
+            console.error('[Webhook-Cobranca] Erro:', error.message);
+            return { ok: false, motivo: error.message };
+        }
+    },
+
     notificarDelivery: async (pedidoId, novaEtapa, opcoes = {}) => {
         const { skipWhatsapp = false } = opcoes;
         const ETAPAS_LABEL = {
