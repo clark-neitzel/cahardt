@@ -132,7 +132,21 @@ async function montarGrupos() {
         where: {
             status: { in: ['PENDENTE', 'PARCIAL', 'VENCIDO'] },
             dataVencimento: { lt: limiteFuturo },
-            contaReceber: { status: { in: ['ABERTO', 'PARCIAL'] } }
+            contaReceber: {
+                status: { in: ['ABERTO', 'PARCIAL'] },
+                // Mesma regra da tela Contas a Receber: esconde contas cujo pedido
+                // foi excluído/cancelado no CA ou é bonificação (nunca cobrar essas)
+                OR: [
+                    { pedidoId: null },
+                    {
+                        pedido: {
+                            statusEnvio: { notIn: ['EXCLUIDO'] },
+                            situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] },
+                            bonificacao: false
+                        }
+                    }
+                ]
+            }
         },
         include: {
             contaReceber: {
