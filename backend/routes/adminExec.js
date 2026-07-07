@@ -65,12 +65,19 @@ router.get('/diag-dashboard-vendas', async (req, res) => {
         const mes = hoje.slice(0, 7);
         const gte = new Date(`${mes}-01T00:00:00-03:00`);
         const lte = new Date(`${hoje}T23:59:59.999-03:00`);
-        const [totalMes, porDia, ultimo, devolucoes] = await Promise.all([
+        const [y, m] = mes.split('-').map(Number);
+        const fimMes = new Date(`${mes}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}T23:59:59.999-03:00`);
+        const [totalMes, totalMesInteiro, porDia, ultimo, devolucoes] = await Promise.all([
             prisma.$queryRaw`
                 SELECT COALESCE(SUM(i.valor * i.quantidade), 0)::float AS total, COUNT(DISTINCT p.id)::int AS pedidos
                 FROM pedidos p JOIN pedido_itens i ON i.pedido_id = p.id
                 WHERE p.bonificacao = false AND (p.situacao_ca = 'FATURADO' OR p.especial = true)
                   AND p.data_venda >= ${gte} AND p.data_venda <= ${lte}`,
+            prisma.$queryRaw`
+                SELECT COALESCE(SUM(i.valor * i.quantidade), 0)::float AS total, COUNT(DISTINCT p.id)::int AS pedidos
+                FROM pedidos p JOIN pedido_itens i ON i.pedido_id = p.id
+                WHERE p.bonificacao = false AND (p.situacao_ca = 'FATURADO' OR p.especial = true)
+                  AND p.data_venda >= ${gte} AND p.data_venda <= ${fimMes}`,
             prisma.$queryRaw`
                 SELECT to_char((p.data_venda AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD') AS dia,
                        COALESCE(SUM(i.valor * i.quantidade), 0)::float AS total, COUNT(DISTINCT p.id)::int AS pedidos
@@ -90,8 +97,10 @@ router.get('/diag-dashboard-vendas', async (req, res) => {
         ]);
         res.json({
             hojeSP: hoje,
-            regra: 'FATURADO ou especial, sem bonificação, data_venda no mês até hoje',
-            mes: { ...totalMes[0], devolucoes: Number(devolucoes._sum.valorTotal || 0) },
+            regra: 'FATURADO ou especial, sem bonificação, data_venda no período',
+            mesAteHoje: { ...totalMes[0] },
+            mesInteiro: { ...totalMesInteiro[0], nota: 'é este que o Dashboard Gerencial mostra' },
+            devolucoesMes: Number(devolucoes._sum.valorTotal || 0),
             porDia,
             pedidoMaisRecente: ultimo
         });

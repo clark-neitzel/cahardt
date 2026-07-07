@@ -169,12 +169,24 @@ router.get('/geral/visao-geral', verificarAuth, checkGestor, async (req, res) =>
         const inicioHoje = inicioDiaSP(hoje);
         const diaAtual = Number(hoje.slice(8, 10));
         const totalDias = diasNoMes(mes);
+        // Mês INTEIRO: pedido lançado hoje para entrega depois de amanhã é venda do mês
+        // do mesmo jeito — cortar em "até hoje" fazia o número parecer congelado.
+        const fimMes = fimDiaSP(`${mes}-${String(totalDias).padStart(2, '0')}`);
 
-        const [vendasMes, devolMes, metaAgg, vendasHoje, atendHoje, margem, fluxo, aging] = await Promise.all([
-            vendasPeriodo(inicioMes, fimHoje, categoria),
+        const [vendasMes, devolMes, metaAgg, vendasHojeRaw, atendHoje, margem, fluxo, aging] = await Promise.all([
+            vendasPeriodo(inicioMes, fimMes, categoria),
             devolucoesPeriodo(inicioMes, fimHoje, categoria),
             prisma.metaMensalVendedor.aggregate({ _sum: { valorMensal: true }, where: { mesReferencia: mes } }),
-            vendasPeriodo(inicioHoje, fimHoje, categoria, false), // hoje: tudo que foi lançado, faturado ou não
+            // "Hoje" = o que foi LANÇADO hoje (created_at), qualquer situação/data de entrega
+            prisma.$queryRaw`
+                SELECT COALESCE(SUM(i.valor * i.quantidade), 0)::float AS total, COUNT(DISTINCT p.id)::int AS pedidos
+                FROM pedidos p
+                JOIN pedido_itens i ON i.pedido_id = p.id
+                JOIN produtos pr ON pr.id = i.produto_id
+                WHERE p.bonificacao = false
+                  AND p.created_at >= ${inicioHoje} AND p.created_at <= ${fimHoje}
+                  ${filtroCategoriaItem(categoria)}
+            `,
             prisma.atendimento.findMany({
                 where: { criadoEm: { gte: inicioHoje, lte: fimHoje } },
                 select: { pedidoId: true, clienteId: true, leadId: true }
@@ -235,8 +247,8 @@ router.get('/geral/visao-geral', verificarAuth, checkGestor, async (req, res) =>
                 margemBrutaPct
             },
             hoje: {
-                vendas: round2(vendasHoje.total),
-                pedidos: vendasHoje.pedidos,
+                vendas: round2(num(vendasHojeRaw[0]?.total)),
+                pedidos: num(vendasHojeRaw[0]?.pedidos),
                 atendimentos: atendHoje.length,
                 atendimentosComPedido: atendHoje.filter((a) => a.pedidoId).length,
                 clientesAtendidos: new Set(atendHoje.map((a) => a.clienteId || `lead:${a.leadId}`)).size
@@ -273,6 +285,9 @@ router.get('/geral/vendas', verificarAuth, checkGestor, async (req, res) => {
         const mes = hoje.slice(0, 7);
         const inicioMes = inicioDiaSP(`${mes}-01`);
         const fimHoje = fimDiaSP(hoje);
+        // Mês/semana INTEIROS: venda lançada para entrega futura conta no período dela
+        const fimMes = fimDiaSP(`${mes}-${String(diasNoMes(mes)).padStart(2, '0')}`);
+        const fimSemanaAtual = fimDiaSP(somaDiasISO(segundaDaSemana(hoje), 6));
         const inicioSerie = inicioDiaSP(segundaDaSemana(somaDiasISO(hoje, -7 * (semanas - 1))));
         const ini30 = inicioDiaSP(somaDiasISO(hoje, -29));
         const ini60 = inicioDiaSP(somaDiasISO(hoje, -59));
@@ -287,7 +302,7 @@ router.get('/geral/vendas', verificarAuth, checkGestor, async (req, res) => {
                 JOIN produtos pr ON pr.id = i.produto_id
                 WHERE p.bonificacao = false
                   AND (p.situacao_ca = 'FATURADO' OR p.especial = true)
-                  AND p.data_venda >= ${inicioSerie} AND p.data_venda <= ${fimHoje}
+                  AND p.data_venda >= ${inicioSerie} AND p.data_venda <= ${fimSemanaAtual}
                   ${filtroCategoriaItem(categoria)}
                 GROUP BY 1 ORDER BY 1
             `,
@@ -319,7 +334,7 @@ router.get('/geral/vendas', verificarAuth, checkGestor, async (req, res) => {
                 JOIN pedido_itens i ON i.pedido_id = p.id
                 WHERE p.bonificacao = false
                   AND (p.situacao_ca = 'FATURADO' OR p.especial = true)
-                  AND p.data_venda >= ${inicioMes} AND p.data_venda <= ${fimHoje}
+                  AND p.data_venda >= ${inicioMes} AND p.data_venda <= ${fimMes}
                 GROUP BY 1
             `,
             prisma.metaMensalVendedor.findMany({
@@ -374,7 +389,7 @@ router.get('/geral/vendas', verificarAuth, checkGestor, async (req, res) => {
                 JOIN clientes c ON c."UUID" = p.cliente_id
                 WHERE p.bonificacao = false
                   AND (p.situacao_ca = 'FATURADO' OR p.especial = true)
-                  AND p.data_venda >= ${inicioMes} AND p.data_venda <= ${fimHoje}
+                  AND p.data_venda >= ${inicioMes} AND p.data_venda <= ${fimMes}
                   ${filtroCategoriaItem(categoria)}
                 GROUP BY 1 ORDER BY 2 DESC LIMIT 8
             `
@@ -733,11 +748,12 @@ router.get('/vendedor', verificarAuth, async (req, res) => {
         const diaSemanaPt = DIAS_SEMANA_PT[new Date(`${hoje}T12:00:00-03:00`).getDay()];
 
         const [pedidosHojeRaw, atendHoje, rotaHoje, rankingRaw, rankingAnteriorRaw, insightsCarteira, retornos, vencidos] = await Promise.all([
+            // "Vendi hoje" = pedidos LANÇADOS hoje (mesmo com entrega futura)
             prisma.$queryRaw`
                 SELECT COALESCE(SUM(i.valor * i.quantidade), 0)::float AS total, COUNT(DISTINCT p.id)::int AS pedidos
                 FROM pedidos p JOIN pedido_itens i ON i.pedido_id = p.id
                 WHERE p.bonificacao = false AND p.vendedor_id = ${vendedorId}
-                  AND p.data_venda >= ${inicioHoje} AND p.data_venda <= ${fimHoje}
+                  AND p.created_at >= ${inicioHoje} AND p.created_at <= ${fimHoje}
             `,
             prisma.atendimento.findMany({
                 where: { idVendedor: vendedorId, criadoEm: { gte: inicioHoje, lte: fimHoje } },
@@ -746,11 +762,12 @@ router.get('/vendedor', verificarAuth, async (req, res) => {
             prisma.cliente.count({
                 where: { Ativo: true, idVendedor: vendedorId, Dia_de_venda: { contains: diaSemanaPt } }
             }),
+            // Ranking: a semana INTEIRA (seg–dom), incluindo entregas futuras da semana
             prisma.$queryRaw`
                 SELECT p.vendedor_id AS vendedor_id, COALESCE(SUM(i.valor * i.quantidade), 0)::float AS total
                 FROM pedidos p JOIN pedido_itens i ON i.pedido_id = p.id
                 WHERE p.bonificacao = false AND (p.situacao_ca = 'FATURADO' OR p.especial = true)
-                  AND p.data_venda >= ${inicioSemana} AND p.data_venda <= ${fimHoje}
+                  AND p.data_venda >= ${inicioSemana} AND p.data_venda <= ${fimDiaSP(somaDiasISO(segunda, 6))}
                 GROUP BY 1 ORDER BY 2 DESC
             `,
             prisma.$queryRaw`
