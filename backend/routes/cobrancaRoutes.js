@@ -107,16 +107,19 @@ router.delete('/configs/:id', async (req, res) => {
 });
 
 // ── Opções para os seletores ─────────────────────────────────────────
-// Formas de recebimento: somente as condições de pagamento ATIVAS + PADRAO
+// Formas de recebimento: condições ATIVAS das tabelas de preço + PADRAO.
+// É o TabelaPreco.nomeCondicao que abastece o pedido.nomeCondicaoPagamento —
+// o mesmo nome que aparece na coluna "Forma" do painel de inadimplentes.
 router.get('/formas', async (req, res) => {
     try {
-        const condicoes = await prisma.condicaoPagamento.findMany({
+        const condicoes = await prisma.tabelaPreco.findMany({
             where: { ativo: true },
-            select: { nome: true },
-            orderBy: { nome: 'asc' }
+            select: { nomeCondicao: true },
+            distinct: ['nomeCondicao'],
+            orderBy: { nomeCondicao: 'asc' }
         });
         const nomes = new Set(['PADRAO']);
-        condicoes.forEach(c => c.nome && nomes.add(c.nome));
+        condicoes.forEach(c => c.nomeCondicao && nomes.add(c.nomeCondicao));
         res.json({ formas: [...nomes].sort((a, b) => (a === 'PADRAO' ? -1 : b === 'PADRAO' ? 1 : a.localeCompare(b))) });
     } catch (e) {
         res.status(500).json({ error: 'Erro ao listar formas de recebimento.' });
