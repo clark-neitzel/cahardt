@@ -88,7 +88,7 @@ const CongeladosSite = lazy(() => import('./pages/Site/CongeladosSite'));
 const SiteAdmin = lazy(() => import('./pages/SiteAdmin/SiteAdmin'));
 
 import {
-  Menu, X, LogOut, ChevronDown,
+  Menu, X, LogOut, ChevronDown, ChevronRight,
   LayoutDashboard, BookOpen, ClipboardList, Map, Target, Users,
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
@@ -162,6 +162,42 @@ const SidebarSection = ({ label }) => (
   </div>
 );
 
+// Item dentro do submenu (flyout) do desktop
+const FlyItem = ({ to, icon: Icon, label, end }) => (
+  <NavLink
+    to={to}
+    end={end}
+    title={label}
+    className={({ isActive }) => `flex items-center gap-2.5 px-3 h-9 rounded-lg text-sm whitespace-nowrap transition-colors ${isActive ? 'bg-primary text-white font-medium' : 'text-white/80 hover:bg-primary hover:text-white'}`}
+  >
+    {Icon && <Icon className="h-4 w-4 shrink-0" />}
+    <span className="truncate">{label}</span>
+  </NavLink>
+);
+
+// Seção do menu desktop: linha na barra recolhida + submenu que abre à DIREITA no hover.
+// A barra fica estreita (só ícones); ao passar o mouse ela alarga (mostra os nomes) e,
+// sobre uma seção, o submenu daquela seção aparece ao lado.
+const SidebarCat = ({ icon: Icon, label, items, twoCols }) => {
+  const location = useLocation();
+  const active = items.some(i => i.to !== '/' && location.pathname.startsWith(i.to));
+  return (
+    <div className="relative group/cat">
+      <div className={`flex items-center gap-3 mx-2 px-3 py-2 rounded-lg text-[13px] cursor-default overflow-hidden transition-colors ${active ? 'bg-primary/25 text-white font-semibold' : 'text-white/70 group-hover/cat:bg-white/10 group-hover/cat:text-white'}`}>
+        <Icon className="h-5 w-5 shrink-0" />
+        <span className="flex-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">{label}</span>
+        <ChevronRight className="h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />
+      </div>
+      <div className={`absolute left-full top-0 bg-[#24413a] rounded-r-xl shadow-2xl p-2 z-[70] max-h-[85vh] overflow-y-auto invisible opacity-0 -translate-x-1 group-hover/cat:visible group-hover/cat:opacity-100 group-hover/cat:translate-x-0 transition-all duration-150 ${twoCols ? 'w-[430px]' : 'w-56'}`}>
+        <div className="text-[10px] font-bold uppercase tracking-widest text-white/40 px-3 pt-1 pb-1.5">{label}</div>
+        <div className={twoCols ? 'grid grid-cols-2 gap-0.5' : 'space-y-0.5'}>
+          {items.map(i => <FlyItem key={i.to} {...i} />)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Componente de seção colapsável do menu mobile
 const MobileMenuSection = ({ label, icon: Icon, children, defaultOpen = false }) => {
   const [open, setOpen] = useState(defaultOpen);
@@ -210,12 +246,90 @@ const Layout = ({ children }) => {
   const showRH = isAdmin || hasPermission('Pode_Ver_RH') || hasPermission('Pode_Editar_RH');
   const showPonto = isAdmin || hasPermission('Pode_Ver_Ponto') || hasPermission('Pode_Editar_Ponto');
 
+  // ── Seções do menu DESKTOP (barra recolhida + flyout). Mesmas permissões de antes. ──
+  const desktopSections = [
+    { label: 'Vendas', icon: ClipboardList, twoCols: true, items: [
+      hasPermission('catalogo') && { to: '/catalogo', icon: BookOpen, label: 'Catálogo' },
+      hasPermission('pedidos') && { to: '/pedidos', icon: ClipboardList, label: 'Pedidos' },
+      hasPermission('pedidos') && { to: '/relatorios/pedidos', icon: FileText, label: 'Rel. Pedidos' },
+      hasPermission('relatorioVendas') && { to: '/relatorios/vendas', icon: BarChart2, label: 'Rel. Vendas' },
+      hasPermission('pedidos') && { to: '/relatorios/flex', icon: Percent, label: 'Análise Flex' },
+      hasPermission('delivery') && { to: '/delivery', icon: Truck, label: 'Delivery' },
+      (isAdmin || hasPermission('kitFesta')) && { to: '/kit-festa-admin', icon: PartyPopper, label: 'Kit Festa' },
+      (isAdmin || hasPermission('kitFesta')) && { to: '/site-admin', icon: Snowflake, label: 'Site' },
+      hasPermission('pedidos') && { to: '/rota', icon: Map, label: 'Rota' },
+      hasPermission('rota') && { to: '/leads', icon: Target, label: 'Leads' },
+      (isAdmin || hasPermission('Pode_Ver_Atendimentos')) && { to: '/atendimentos', icon: ClipboardCheck, label: 'Atendimentos' },
+      (isAdmin || hasPermission('Pode_Ver_Analise_IA')) && { to: '/analise-ia', icon: Sparkles, label: 'Análise IA' },
+      hasPermission('clientes') && { to: '/clientes', icon: Users, label: 'Clientes' },
+    ].filter(Boolean) },
+    { label: 'Logística', icon: Truck, items: [
+      hasPermission('Pode_Acessar_Embarque') && { to: '/admin/embarques', icon: PackageCheck, label: 'Embarque' },
+      hasPermission('Pode_Ver_Todas_Entregas') && { to: '/entregas', icon: Truck, label: 'Entregas' },
+    ].filter(Boolean) },
+    { label: 'Financeiro', icon: Wallet, twoCols: true, items: [
+      hasPermission('Pode_Acessar_Caixa') && { to: '/caixa', icon: Wallet, label: 'Caixa' },
+      hasPermission('Pode_Acessar_Caixa') && { to: '/despesas', icon: Receipt, label: 'Despesas' },
+      hasPermission('Pode_Ver_Todas_Entregas') && { to: '/admin/auditoria-entregas', icon: Search, label: 'Auditoria' },
+      hasPermission('Pode_Acessar_Contas_Receber') && { to: '/financeiro/contas-receber/tabela', icon: DollarSign, label: 'Contas a Receber' },
+      hasPermission('Pode_Acessar_Contas_Pagar') && { to: '/contas-pagar', icon: Wallet, label: 'Contas a Pagar' },
+      hasPermission('Pode_Acessar_Notas_Recebidas') && { to: '/notas-recebidas', icon: Inbox, label: 'Notas Recebidas' },
+      hasPermission('Pode_Acessar_Fornecedores') && { to: '/fornecedores', icon: Building2, label: 'Fornecedores' },
+      hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/dashboard', icon: Wallet, label: 'Visão Geral' },
+      hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/fluxo-caixa', icon: TrendingUp, label: 'Fluxo de Caixa' },
+      hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/por-conta', icon: Landmark, label: 'Saldos por Conta' },
+      hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/dre', icon: BarChart3, label: 'DRE' },
+      hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/margem-produtos', icon: Percent, label: 'Margem por Produto' },
+      hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/conciliacao', icon: ClipboardCheck, label: 'Conciliação Bancária' },
+      hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/categorias-despesa', icon: Tag, label: 'Categorias de Despesa' },
+    ].filter(Boolean) },
+    { label: 'Administração', icon: UserCog, items: [
+      hasPermission('produtos') && { to: '/admin/produtos', icon: Box, label: 'Produtos' },
+      hasPermission('vendedores') && { to: '/admin/vendedores', icon: UserCog, label: 'Vendedores' },
+      isAdmin && { to: '/admin/mensagens', icon: BellRing, label: 'Mensagens' },
+      (user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && { to: '/admin/veiculos', icon: Car, label: 'Veículos' },
+      hasPermission('sync') && { to: '/admin/sync', icon: RefreshCw, label: 'Sincronizar' },
+    ].filter(Boolean) },
+    { label: 'RH', icon: UserCheck, items: [
+      showRH && { to: '/rh/curriculos', icon: UserCheck, label: 'Currículos' },
+      showPonto && { to: '/rh/funcionarios', icon: Fingerprint, label: 'Funcionários' },
+      showPonto && { to: '/rh/ponto', icon: Clock, label: 'Ponto' },
+    ].filter(Boolean) },
+    { label: 'PCP', icon: Factory, twoCols: true, items: [
+      canPcp('itens') && { to: '/pcp/itens', icon: Package, label: 'Itens' },
+      canPcp('receitas') && { to: '/pcp/receitas', icon: BookOpenIcon, label: 'Receitas' },
+      canPcp('ordens') && { to: '/pcp/ordens', icon: ClipboardListIcon, label: 'Ordens' },
+      canPcp('ordens') && { to: '/pcp/painel', icon: Play, label: 'Painel' },
+      canPcp('agenda') && { to: '/pcp/calendario', icon: CalendarIcon, label: 'Calendário' },
+      canPcp('estoque') && { to: '/pcp/estoque', icon: Factory, label: 'Estoque PCP' },
+      canPcp('sugestoes') && { to: '/pcp/sugestoes', icon: Lightbulb, label: 'Sugestoes' },
+      canPcp('sugestoes') && { to: '/pcp/dashboard', icon: BarChart3, label: 'Dashboard' },
+      canPcp('etiquetas') && { to: '/pcp/etiquetas', icon: Tag, label: 'Etiquetas' },
+      canPcp('etiquetas') && { to: '/pcp/etiquetas/dados', icon: DatabaseZap, label: 'Dados Etiquetas' },
+    ].filter(Boolean) },
+    { label: 'Produção / Estoque', icon: Warehouse, items: (showEstoque ? [
+      { to: '/estoque/posicao', icon: Warehouse, label: 'Posição' },
+      { to: '/estoque', icon: Warehouse, label: 'Ajuste de Estoque' },
+      { to: '/estoque/historico', icon: History, label: 'Histórico' },
+    ] : []) },
+    { label: 'Configurações', icon: Settings, items: (showConfig ? [
+      { to: '/admin/config', icon: Settings, label: 'Gerais' },
+      { to: '/config/tabela-precos', icon: DollarSign, label: 'Preços' },
+      { to: '/config/contas-financeiras', icon: Building2, label: 'Bancos' },
+      { to: '/config/metas', icon: TrendingUp, label: 'Metas de Vendas' },
+      { to: '/config/comissoes', icon: DollarSign, label: 'Comissões' },
+      { to: '/config/categorias-produto', icon: FolderOpen, label: 'Cat. Produtos' },
+      { to: '/config/categorias-cliente', icon: FolderOpen, label: 'Cat. Clientes' },
+      { to: '/config/categorias-estoque', icon: FolderOpen, label: 'Cat. Estoque' },
+    ] : []) },
+  ].filter(s => s.items.length > 0);
+
   return (
     <div className="min-h-screen bg-secondary flex">
       {/* ═══════════════════════════════════════════ */}
       {/* SIDEBAR — Desktop only                     */}
       {/* ═══════════════════════════════════════════ */}
-      <aside className="hidden md:flex group fixed left-0 top-0 h-screen w-16 hover:w-60 bg-house border-r border-black/20 flex-col z-50 transition-all duration-200 overflow-hidden shadow-sm">
+      <aside className="hidden md:flex group fixed left-0 top-0 h-screen w-16 hover:w-60 bg-house border-r border-black/20 flex-col z-50 transition-all duration-200 overflow-visible shadow-sm">
         {/* Logo */}
         <div className="flex items-center h-14 px-4 border-b border-white/10 shrink-0">
           <Link to="/" className="flex items-center gap-2 text-white font-bold text-lg tracking-tight">
@@ -224,92 +338,12 @@ const Layout = ({ children }) => {
           </Link>
         </div>
 
-        {/* Nav items — scrollable */}
-        <nav className="flex-1 overflow-y-auto overflow-x-hidden py-2 space-y-0.5">
-          {/* Principal */}
+        {/* Nav — só as SEÇÕES (barra curta); cada uma abre o submenu à direita no hover */}
+        <nav className="flex-1 py-2 space-y-0.5">
           <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" end />
-
-          {/* Vendas */}
-          <SidebarSection label="Vendas" />
-          {hasPermission('catalogo') && <SidebarItem to="/catalogo" icon={BookOpen} label="Catálogo" />}
-          {hasPermission('pedidos') && <SidebarItem to="/pedidos" icon={ClipboardList} label="Pedidos" />}
-          {hasPermission('pedidos') && <SidebarItem to="/relatorios/pedidos" icon={FileText} label="Rel. Pedidos" />}
-          {hasPermission('relatorioVendas') && <SidebarItem to="/relatorios/vendas" icon={BarChart2} label="Rel. Vendas" />}
-          {hasPermission('pedidos') && <SidebarItem to="/relatorios/flex" icon={Percent} label="Análise Flex" />}
-          {hasPermission('delivery') && <SidebarItem to="/delivery" icon={Truck} label="Delivery" />}
-          {(isAdmin || hasPermission('kitFesta')) && <SidebarItem to="/kit-festa-admin" icon={PartyPopper} label="Kit Festa" />}
-          {(isAdmin || hasPermission('kitFesta')) && <SidebarItem to="/site-admin" icon={Snowflake} label="Site" />}
-          {hasPermission('pedidos') && <SidebarItem to="/rota" icon={Map} label="Rota" />}
-          {hasPermission('rota') && <SidebarItem to="/leads" icon={Target} label="Leads" />}
-          {(isAdmin || hasPermission('Pode_Ver_Atendimentos')) && <SidebarItem to="/atendimentos" icon={ClipboardCheck} label="Atendimentos" />}
-          {(isAdmin || hasPermission('Pode_Ver_Analise_IA')) && <SidebarItem to="/analise-ia" icon={Sparkles} label="Análise IA" />}
-          {hasPermission('clientes') && <SidebarItem to="/clientes" icon={Users} label="Clientes" />}
-
-          {/* Logística */}
-          {showLogistica && <SidebarSection label="Logística" />}
-          {hasPermission('Pode_Acessar_Embarque') && <SidebarItem to="/admin/embarques" icon={PackageCheck} label="Embarque" />}
-          {hasPermission('Pode_Ver_Todas_Entregas') && <SidebarItem to="/entregas" icon={Truck} label="Entregas" />}
-
-          {/* Financeiro */}
-          {showFinanceiro && <SidebarSection label="Financeiro" />}
-          {hasPermission('Pode_Acessar_Caixa') && <SidebarItem to="/caixa" icon={Wallet} label="Caixa" />}
-          {hasPermission('Pode_Acessar_Caixa') && <SidebarItem to="/despesas" icon={Receipt} label="Despesas" />}
-          {hasPermission('Pode_Ver_Todas_Entregas') && <SidebarItem to="/admin/auditoria-entregas" icon={Search} label="Auditoria" />}
-          {hasPermission('Pode_Acessar_Contas_Receber') && <SidebarItem to="/financeiro/contas-receber/tabela" icon={DollarSign} label="Contas a Receber" />}
-          {hasPermission('Pode_Acessar_Contas_Pagar') && <SidebarItem to="/contas-pagar" icon={Wallet} label="Contas a Pagar" />}
-          {hasPermission('Pode_Acessar_Notas_Recebidas') && <SidebarItem to="/notas-recebidas" icon={Inbox} label="Notas Recebidas" />}
-          {hasPermission('Pode_Acessar_Fornecedores') && <SidebarItem to="/fornecedores" icon={Building2} label="Fornecedores" />}
-          {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/dashboard" icon={Wallet} label="Visão Geral" />}
-          {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/fluxo-caixa" icon={TrendingUp} label="Fluxo de Caixa" />}
-          {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/por-conta" icon={Landmark} label="Saldos por Conta" />}
-          {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/dre" icon={BarChart3} label="DRE" />}
-          {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/margem-produtos" icon={Percent} label="Margem por Produto" />}
-          {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/conciliacao" icon={ClipboardCheck} label="Conciliação Bancária" />}
-          {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <SidebarItem to="/financeiro/categorias-despesa" icon={Tag} label="Categorias de Despesa" />}
-
-          {/* Admin */}
-          {showAdmin && <SidebarSection label="Admin" />}
-          {hasPermission('produtos') && <SidebarItem to="/admin/produtos" icon={Box} label="Produtos" />}
-          {hasPermission('vendedores') && <SidebarItem to="/admin/vendedores" icon={UserCog} label="Vendedores" />}
-          {isAdmin && <SidebarItem to="/admin/mensagens" icon={BellRing} label="Mensagens" />}
-          {(user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && <SidebarItem to="/admin/veiculos" icon={Car} label="Veículos" />}
-          {hasPermission('sync') && <SidebarItem to="/admin/sync" icon={RefreshCw} label="Sincronizar" />}
-
-          {/* RH */}
-          {(showRH || showPonto) && <SidebarSection label="RH" />}
-          {showRH && <SidebarItem to="/rh/curriculos" icon={UserCheck} label="Currículos" />}
-          {showPonto && <SidebarItem to="/rh/funcionarios" icon={Fingerprint} label="Funcionários" />}
-          {showPonto && <SidebarItem to="/rh/ponto" icon={Clock} label="Ponto" />}
-
-          {/* PCP */}
-          {showPcp && <SidebarSection label="PCP" />}
-          {canPcp('itens') && <SidebarItem to="/pcp/itens" icon={Package} label="Itens" />}
-          {canPcp('receitas') && <SidebarItem to="/pcp/receitas" icon={BookOpenIcon} label="Receitas" />}
-          {canPcp('ordens') && <SidebarItem to="/pcp/ordens" icon={ClipboardListIcon} label="Ordens" />}
-          {canPcp('ordens') && <SidebarItem to="/pcp/painel" icon={Play} label="Painel" />}
-          {canPcp('agenda') && <SidebarItem to="/pcp/calendario" icon={CalendarIcon} label="Calendário" />}
-          {canPcp('estoque') && <SidebarItem to="/pcp/estoque" icon={Factory} label="Estoque PCP" />}
-          {canPcp('sugestoes') && <SidebarItem to="/pcp/sugestoes" icon={Lightbulb} label="Sugestoes" />}
-          {canPcp('sugestoes') && <SidebarItem to="/pcp/dashboard" icon={BarChart3} label="Dashboard" />}
-          {canPcp('etiquetas') && <SidebarItem to="/pcp/etiquetas" icon={Tag} label="Etiquetas" />}
-          {canPcp('etiquetas') && <SidebarItem to="/pcp/etiquetas/dados" icon={DatabaseZap} label="Dados Etiquetas" />}
-
-          {/* Produção / Estoque */}
-          {showEstoque && <SidebarSection label="Produção" />}
-          {showEstoque && <SidebarItem to="/estoque/posicao" icon={Warehouse} label="Posição" />}
-          {showEstoque && <SidebarItem to="/estoque" icon={Warehouse} label="Ajuste" />}
-          {showEstoque && <SidebarItem to="/estoque/historico" icon={History} label="Histórico" />}
-
-          {/* Configurações */}
-          {showConfig && <SidebarSection label="Configurações" />}
-          {showConfig && <SidebarItem to="/admin/config" icon={Settings} label="Gerais" />}
-          {showConfig && <SidebarItem to="/config/tabela-precos" icon={DollarSign} label="Preços" />}
-          {showConfig && <SidebarItem to="/config/contas-financeiras" icon={Building2} label="Bancos" />}
-          {showConfig && <SidebarItem to="/config/metas" icon={TrendingUp} label="Metas" />}
-          {showConfig && <SidebarItem to="/config/comissoes" icon={DollarSign} label="Comissões" />}
-          {showConfig && <SidebarItem to="/config/categorias-produto" icon={FolderOpen} label="Cat. Produtos" />}
-          {showConfig && <SidebarItem to="/config/categorias-cliente" icon={FolderOpen} label="Cat. Clientes" />}
-          {showConfig && <SidebarItem to="/config/categorias-estoque" icon={FolderOpen} label="Cat. Estoque" />}
+          {desktopSections.map(s => (
+            <SidebarCat key={s.label} icon={s.icon} label={s.label} items={s.items} twoCols={s.twoCols} />
+          ))}
         </nav>
 
         {/* Footer */}
