@@ -84,6 +84,8 @@ const BaterPonto = lazy(() => import('./pages/Ponto/BaterPonto'));
 const KitFestaAdmin = lazy(() => import('./pages/KitFesta/KitFestaAdmin'));
 const KitFestaSite = lazy(() => import('./pages/KitFestaSite/KitFestaSite'));
 const HomeSite = lazy(() => import('./pages/Site/HomeSite'));
+const TarefasAgenda = lazy(() => import('./pages/Tarefas/TarefasAgenda'));
+const TarefasParecer = lazy(() => import('./pages/Tarefas/TarefasParecer'));
 const CongeladosSite = lazy(() => import('./pages/Site/CongeladosSite'));
 const SiteAdmin = lazy(() => import('./pages/SiteAdmin/SiteAdmin'));
 
@@ -93,7 +95,7 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, PartyPopper, Snowflake, Clock, Fingerprint, Inbox, Landmark
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, PartyPopper, Snowflake, Clock, Fingerprint, Inbox, Landmark, CalendarCheck
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -102,6 +104,7 @@ import DiarioGateway from './components/Diario/DiarioGateway';
 import DiarioCheckout from './components/Diario/DiarioCheckout';
 import PendenciaRotaGateway from './components/PendenciaRotaGateway';
 import AlertaFaturamento from './components/AlertaFaturamento';
+import AlertaTarefas from './components/AlertaTarefas';
 import AlertaPedidosSite from './components/AlertaPedidosSite';
 import Clippy from './components/Clippy/Clippy';
 import { useVersionCheck } from './hooks/useVersionCheck';
@@ -340,6 +343,7 @@ const Layout = ({ children }) => {
 
         {/* Nav — só as SEÇÕES (barra curta); cada uma abre o submenu à direita no hover */}
         <nav className="flex-1 py-2 space-y-0.5">
+          <SidebarItem to="/tarefas" icon={CalendarCheck} label="Tarefas" />
           <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" end />
           {desktopSections.map(s => (
             <SidebarCat key={s.label} icon={s.icon} label={s.label} items={s.items} twoCols={s.twoCols} />
@@ -430,6 +434,12 @@ const Layout = ({ children }) => {
 
           {/* Drawer body — scrollable */}
           <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
+            {/* Tarefas — sempre visível (1º item) */}
+            <NavLink to="/tarefas" onClick={closeMobile} className={({ isActive }) => `flex items-center gap-2.5 px-4 py-3 text-sm font-semibold transition-colors ${isActive ? 'text-primary bg-primary-50/50' : 'text-gray-700 hover:bg-gray-50'}`}>
+              <CalendarCheck className="h-4 w-4" />
+              Tarefas
+            </NavLink>
+
             {/* Dashboard — sempre visível */}
             <NavLink to="/" end onClick={closeMobile} className={({ isActive }) => `flex items-center gap-2.5 px-4 py-3 text-sm font-semibold transition-colors ${isActive ? 'text-primary bg-primary-50/50' : 'text-gray-700 hover:bg-gray-50'}`}>
               <LayoutDashboard className="h-4 w-4" />
@@ -571,6 +581,9 @@ const Layout = ({ children }) => {
         {/* ALERTA DE PEDIDOS PENDENTES DE FATURAMENTO (popup a cada 10 min) */}
         <AlertaFaturamento />
 
+        {/* ALERTA DE TAREFAS DA EQUIPE (pop-up + som no horário; insiste a cada 5 min) */}
+        <AlertaTarefas />
+
         {/* ALERTA DE PEDIDOS NOVOS DO SITE — Kit Festa + Congelados (popup a cada 15 min) */}
         {(isAdmin || hasPermission('kitFesta')) && <AlertaPedidosSite />}
 
@@ -610,6 +623,10 @@ function App() {
 
               {/* Raiz: visitante vê o site público; logado vai pro painel */}
               <Route path="/" element={<RootRoute />} />
+
+              {/* Tarefas da Equipe (agenda com alertas) — toda a equipe logada */}
+              <Route path="/tarefas" element={<PrivateRoute><TarefasAgenda /></PrivateRoute>} />
+              <Route path="/tarefas/parecer" element={<PrivateRoute tab="Pode_Ver_Parecer_Tarefas"><TarefasParecer /></PrivateRoute>} />
 
               {/* Catálogo */}
               <Route path="/catalogo" element={<PrivateRoute tab="catalogo"><Catalogo /></PrivateRoute>} />

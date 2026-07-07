@@ -420,7 +420,70 @@ model Vendedor {
   // RH: funcionários vinculados a este usuário do app (opcional)
   funcionarios Funcionario[]
 
+  // Tarefas da Equipe (agenda com alertas)
+  tarefasCriadas   Tarefa[] @relation("TarefasCriadas")
+  tarefasRecebidas Tarefa[] @relation("TarefasRecebidas")
+
   @@map("vendedores")
+}
+
+// ─────────── Tarefas da Equipe (agenda com alerta sonoro) ───────────
+// Datas/horas guardadas como texto ('YYYY-MM-DD' / 'HH:MM') no horário local
+// do usuário — o relógio que manda é o do aparelho de quem recebe o alerta.
+model Tarefa {
+  id             String  @id @default(uuid())
+  titulo         String
+  descricao      String?
+  dataInicio     String  @map("data_inicio") // 'YYYY-MM-DD'
+  hora           String // 'HH:MM' — horário do alerta
+  recorrencia    String  @default("NUNCA") // NUNCA | DIARIA | DIAS_UTEIS | SEMANAL | MENSAL
+  recorrenciaFim String? @map("recorrencia_fim") // 'YYYY-MM-DD' (opcional)
+  insistir       Boolean @default(true) // re-alerta a cada 5 min até concluir
+  ativo          Boolean @default(true)
+  criadoPorId    String  @map("criado_por_id")
+  responsavelId  String  @map("responsavel_id")
+
+  criadoPor   Vendedor           @relation("TarefasCriadas", fields: [criadoPorId], references: [id])
+  responsavel Vendedor           @relation("TarefasRecebidas", fields: [responsavelId], references: [id])
+  anexos      TarefaAnexo[]
+  ocorrencias TarefaOcorrencia[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([responsavelId, dataInicio])
+  @@map("tarefas")
+}
+
+model TarefaAnexo {
+  id        String   @id @default(uuid())
+  tarefaId  String   @map("tarefa_id")
+  tipo      String // LINK | IMAGEM | ARQUIVO
+  nome      String
+  url       String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tarefa Tarefa @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+
+  @@map("tarefa_anexos")
+}
+
+// Uma linha por dia em que a tarefa "tocou" (tarefa simples = 1; recorrente = 1 por dia)
+model TarefaOcorrencia {
+  id            String    @id @default(uuid())
+  tarefaId      String    @map("tarefa_id")
+  dataRef       String    @map("data_ref") // 'YYYY-MM-DD' da ocorrência
+  status        String    @default("PENDENTE") // PENDENTE | CONCLUIDA
+  concluidaEm   DateTime? @map("concluida_em")
+  concluidaHora String?   @map("concluida_hora") // 'HH:MM' local do usuário
+  adiamentos    Int       @default(0) // vezes que clicou "lembrar em 5 min"
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  tarefa Tarefa @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+
+  @@unique([tarefaId, dataRef])
+  @@map("tarefa_ocorrencias")
 }
 
 model MensagemAgendada {

@@ -6,7 +6,7 @@ import {
     Box, UserCog, Car, RefreshCw, FileText,
     Settings, DollarSign, Warehouse, TrendingUp,
     Factory, Package, BookOpen as BookOpenIcon, Play, Calendar, Lightbulb, BarChart3, BarChart2,
-    Clock, CalendarOff, ClipboardCheck, Tag, PartyPopper, Inbox, Building2
+    Clock, CalendarOff, ClipboardCheck, Tag, PartyPopper, Inbox, Building2, CalendarCheck
 } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import configService from '../../../services/configService';
@@ -121,6 +121,10 @@ const DEFAULT_PERMISSIONS = {
     telaInicial: '/',
     // Barra de visitantes online (site ao vivo no topo do admin)
     Pode_Ver_Barra_Online: false,
+    // Tarefas da Equipe (agenda com alertas)
+    Pode_Criar_Tarefas_Para_Outros: false,
+    Pode_Ver_Agenda_Colegas: false,
+    Pode_Ver_Parecer_Tarefas: false,
 };
 
 const TELAS_INICIAIS = [
@@ -480,6 +484,32 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                             label="Ver Painel Administrativo (master)"
                             sublabel="Libera o painel completo: vendas/projeção/top10/inadimplência/inativos/ruptura. Dado financeiro sensível."
                             colorClass="bg-blue-600"
+                        />
+                    </DeptSection>
+
+                    {/* ── TAREFAS DA EQUIPE ── */}
+                    <DeptSection label="Tarefas da Equipe" icon={CalendarCheck} color="emerald">
+                        <p className="text-xs text-gray-500 px-2 mb-1.5">A aba Tarefas é visível para todos. Estas chaves liberam funções extras:</p>
+                        <Toggle
+                            checked={!!permissoes.Pode_Criar_Tarefas_Para_Outros}
+                            onChange={() => toggleBool('Pode_Criar_Tarefas_Para_Outros')}
+                            label="Pode criar tarefas para outros"
+                            sublabel="Sem isso, a pessoa só cria tarefa para si mesma"
+                            colorClass="bg-emerald-600"
+                        />
+                        <Toggle
+                            checked={!!permissoes.Pode_Ver_Agenda_Colegas}
+                            onChange={() => toggleBool('Pode_Ver_Agenda_Colegas')}
+                            label="Pode ver a agenda dos colegas"
+                            sublabel="Ver as tarefas dos outros (sem editar) e o filtro 'Toda a equipe'"
+                            colorClass="bg-emerald-600"
+                        />
+                        <Toggle
+                            checked={!!permissoes.Pode_Ver_Parecer_Tarefas}
+                            onChange={() => toggleBool('Pode_Ver_Parecer_Tarefas')}
+                            label="Pode ver o parecer do dia"
+                            sublabel="Relatório por funcionário: concluídas no horário, com atraso, não feitas e adiamentos"
+                            colorClass="bg-emerald-600"
                         />
                     </DeptSection>
 

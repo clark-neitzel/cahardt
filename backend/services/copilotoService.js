@@ -30,6 +30,9 @@ const ai = require('./aiProvider');
 //   - null: acesso público (qualquer usuário logado)
 // ─────────────────────────────────────────────
 const ABAS = [
+    // ── Equipe ──────────────────────────────────
+    { slug: 'tarefas',            nome: 'Tarefas da Equipe',            rota: '/tarefas',                            perm: null },
+    { slug: 'tarefas-parecer',    nome: 'Tarefas — Parecer do Dia',     rota: '/tarefas/parecer',                    perm: 'Pode_Ver_Parecer_Tarefas' },
     // ── Vendas ──────────────────────────────────
     { slug: 'dashboard',          nome: 'Dashboard',                    rota: '/',                                   perm: null },
     { slug: 'catalogo',           nome: 'Catálogo',                     rota: '/catalogo',                           perm: 'catalogo' },

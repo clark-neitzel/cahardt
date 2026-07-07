@@ -4,6 +4,15 @@
 
 ---
 
+## Equipe
+
+| Aba | Rota | Descrição | Manual |
+|-----|------|-----------|--------|
+| Tarefas da Equipe | `/tarefas` | Agenda de tarefas com alerta sonoro (pop-up que insiste a cada 5 min até concluir), anexos de ajuda e permissões por criador | [tarefas.md](tarefas.md) |
+| Tarefas — Parecer do Dia | `/tarefas/parecer` | Relatório diário por funcionário: concluídas no horário, com atraso, não feitas e adiamentos (admin) | [tarefas-parecer.md](tarefas-parecer.md) |
+
+---
+
 ## Vendas
 
 | Aba | Rota | Descrição | Manual |
