@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import pcpReceitaService from '../../services/pcpReceitaService';
 import SelectBusca from '../../components/SelectBusca';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const STATUS_CORES = {
     ativa: 'bg-green-100 text-green-800',
@@ -16,7 +17,7 @@ export default function ReceitasList() {
     const [receitas, setReceitas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [statusFiltro, setStatusFiltro] = useState('');
+    const [statusFiltro, setStatusFiltro] = useFiltroSalvo('receitas-list:statusFiltro', '');
 
     const carregar = useCallback(async () => {
         try {

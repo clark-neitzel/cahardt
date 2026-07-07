@@ -3,6 +3,7 @@ import financeiroGerencialService from '../../services/financeiroGerencialServic
 import SelectBusca from '../../components/SelectBusca';
 import { Percent, Loader2, RefreshCw, Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useFiltroSalvo, useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 
 // ── Helpers ──
 const fmt = (v, casas = 2) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
@@ -62,12 +63,19 @@ const BadgeFonte = ({ fonte }) => {
 
 const MargemProdutosPage = () => {
     const opcoesPeriodo = useMemo(periodos, []);
-    const [periodo, setPeriodo] = useState(opcoesPeriodo[0]);
+    // Do período persiste só a CHAVE ('MES' etc.) — as datas são recalculadas a
+    // partir de hoje a cada visita (senão o usuário ficaria preso num mês velho).
+    const [periodoKey, setPeriodoKey] = useFiltroSalvo('margem-produtos:periodoKey', 'MES');
+    const periodo = useMemo(
+        () => opcoesPeriodo.find(p => p.key === periodoKey) || opcoesPeriodo[0],
+        [opcoesPeriodo, periodoKey]
+    );
+    const setPeriodo = (p) => setPeriodoKey(p.key);
     const [dados, setDados] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [busca, setBusca] = useState('');
-    const [categoria, setCategoria] = useState('todas');
-    const [ordem, setOrdem] = useState({ campo: 'receita', dir: 'desc' });
+    const [busca, setBusca] = useState(''); // texto livre — não persiste
+    const [categoria, setCategoria] = useFiltroSalvo('margem-produtos:categoria', 'todas');
+    const [ordem, setOrdem] = useFiltrosSalvos('margem-produtos:ordem', { campo: 'receita', dir: 'desc' });
 
     const carregar = useCallback(async (p) => {
         setLoading(true);

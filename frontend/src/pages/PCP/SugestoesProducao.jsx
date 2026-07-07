@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Lightbulb, RefreshCw, Check, X, Loader2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpSugestaoService from '../../services/pcpSugestaoService';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const STATUS_BADGE = {
     PENDENTE: 'bg-yellow-100 text-yellow-800',
@@ -13,7 +14,7 @@ export default function SugestoesProducao() {
     const [sugestoes, setSugestoes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [gerando, setGerando] = useState(false);
-    const [filtroStatus, setFiltroStatus] = useState('');
+    const [filtroStatus, setFiltroStatus] = useFiltroSalvo('sugestoes-producao:filtroStatus', '');
     const [processando, setProcessando] = useState(null);
 
     const carregar = async () => {

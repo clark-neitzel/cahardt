@@ -9,32 +9,13 @@ import toast from 'react-hot-toast';
 import ImportarCaModal from './ImportarCaModal';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
+import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 
-// Filtros salvos por navegador/usuário — ao sair e voltar, continuam aplicados
-const LS_FILTROS = 'contasPagar_filtros';
 const mesAtual = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
 // Período por DATA (YYYY-MM-DD). Default: do 1º ao último dia do mês corrente.
 const primeiroDiaMesAtual = () => `${mesAtual()}-01`;
 const ultimoDiaDoMes = (ym) => { const [a, m] = ym.split('-').map(Number); return `${ym}-${String(new Date(a, m, 0).getDate()).padStart(2, '0')}`; };
 const ultimoDiaMesAtual = () => ultimoDiaDoMes(mesAtual());
-const loadFiltros = () => {
-    const def = { busca: '', status: '', categoria: '', dataDe: primeiroDiaMesAtual(), dataAte: ultimoDiaMesAtual() };
-    try {
-        const s = JSON.parse(localStorage.getItem(LS_FILTROS) || '{}');
-        // Migração de filtros antigos: intervalo por mês (mesDe/mesAte) ou mês único (mes) → datas.
-        const de = s.dataDe !== undefined ? s.dataDe
-            : (s.mesDe !== undefined ? (s.mesDe ? `${s.mesDe}-01` : '') : (s.mes !== undefined ? (s.mes ? `${s.mes}-01` : '') : def.dataDe));
-        const ate = s.dataAte !== undefined ? s.dataAte
-            : (s.mesAte !== undefined ? (s.mesAte ? ultimoDiaDoMes(s.mesAte) : '') : (s.mes !== undefined ? (s.mes ? ultimoDiaDoMes(s.mes) : '') : def.dataAte));
-        return {
-            busca: s.busca || '',
-            status: s.status || '',
-            categoria: s.categoria || '',
-            dataDe: de,  // '' = sem início (mais antigo)
-            dataAte: ate // '' = sem fim (mais novo). Ambos '' = todas as datas
-        };
-    } catch { return def; }
-};
 
 // ── Helpers ──
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -167,12 +148,23 @@ const ContasPagarPage = () => {
     const [categoriasErro, setCategoriasErro] = useState(false);
     const [fornecedores, setFornecedores] = useState([]);
 
-    const filtrosIniciais = useMemo(loadFiltros, []);
-    const [filtros, setFiltros] = useState(filtrosIniciais);
-    const [buscaInput, setBuscaInput] = useState(filtrosIniciais.busca);
+    // Só status/categoria persistem (por usuário/tela). Busca é texto livre e o
+    // período tem padrão calculado (mês corrente) — persistir prenderia o usuário
+    // num mês velho.
+    const [filtrosSalvos, setFiltrosSalvos] = useFiltrosSalvos('contas-pagar', { status: '', categoria: '' });
+    const [filtros, setFiltros] = useState({
+        busca: '',
+        status: filtrosSalvos.status,
+        categoria: filtrosSalvos.categoria,
+        dataDe: primeiroDiaMesAtual(), // '' = sem início (mais antigo)
+        dataAte: ultimoDiaMesAtual()   // '' = sem fim (mais novo). Ambos '' = todas as datas
+    });
+    const [buscaInput, setBuscaInput] = useState('');
 
-    // Persiste os filtros para reaplicar quando o usuário voltar à tela
-    useEffect(() => { localStorage.setItem(LS_FILTROS, JSON.stringify(filtros)); }, [filtros]);
+    // Espelha no armazenamento só a parte persistível dos filtros
+    useEffect(() => {
+        setFiltrosSalvos({ status: filtros.status, categoria: filtros.categoria });
+    }, [filtros.status, filtros.categoria]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Quantos filtros estão ativos (para sinalizar na tela)
     const filtrosAtivos = useMemo(() => {

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import financeiroGerencialService from '../../services/financeiroGerencialService';
 import { TrendingUp, Loader2, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 // ── Helpers ──
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -74,7 +75,14 @@ const BarraDupla = ({ prev, real, max, corReal }) => {
 
 const FluxoCaixaPage = () => {
     const opcoesPeriodo = useMemo(periodos, []);
-    const [periodo, setPeriodo] = useState(opcoesPeriodo[0]);
+    // Do período persiste só a CHAVE ('MES' etc.) — as datas são recalculadas a
+    // partir de hoje a cada visita (senão o usuário ficaria preso num mês velho).
+    const [periodoKey, setPeriodoKey] = useFiltroSalvo('fluxo-caixa:periodoKey', 'MES');
+    const periodo = useMemo(
+        () => opcoesPeriodo.find(p => p.key === periodoKey) || opcoesPeriodo[0],
+        [opcoesPeriodo, periodoKey]
+    );
+    const setPeriodo = (p) => setPeriodoKey(p.key);
     const [dados, setDados] = useState(null);
     const [loading, setLoading] = useState(false);
 

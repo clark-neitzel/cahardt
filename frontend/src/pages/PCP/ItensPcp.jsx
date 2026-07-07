@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import pcpItemService from '../../services/pcpItemService';
 import SelectBusca from '../../components/SelectBusca';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const TIPO_CORES = {
     MP: 'bg-amber-100 text-amber-800',
@@ -17,7 +18,7 @@ export default function ItensPcp() {
     const [itens, setItens] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [ativoFiltro, setAtivoFiltro] = useState('true');
+    const [ativoFiltro, setAtivoFiltro] = useFiltroSalvo('itens-pcp:ativoFiltro', 'true');
 
     const carregar = useCallback(async () => {
         try {

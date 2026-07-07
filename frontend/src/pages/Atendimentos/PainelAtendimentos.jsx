@@ -3,6 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import atendimentoService from '../../services/atendimentoService';
 import vendedorService from '../../services/vendedorService';
 import SelectBusca from '../../components/SelectBusca';
+import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import ClientePopup from '../Rota/ClientePopup';
 import {
     Search, RefreshCw, ChevronLeft, ChevronRight,
@@ -48,23 +49,10 @@ const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: '
 const fmtHora = (d) => d ? new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : '';
 const fmtDataHora = (d) => d ? `${fmtData(d)} ${fmtHora(d)}` : '-';
 
-const LS_KEY = 'painelAtendimentos_filters_v2';
-
-const loadFilters = () => {
-    try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); }
-    catch { return {}; }
-};
-
-const saveFilters = (f) => {
-    try { localStorage.setItem(LS_KEY, JSON.stringify(f)); }
-    catch { /* ignore */ }
-};
-
 const PainelAtendimentos = () => {
     const { user } = useAuth();
     const isAdmin = !!user?.permissoes?.admin;
 
-    const saved = loadFilters();
     const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 
     const [data, setData] = useState([]);
@@ -79,15 +67,19 @@ const PainelAtendimentos = () => {
     const [confirmDelete, setConfirmDelete] = useState(null);
     const [deletando, setDeletando] = useState(false);
 
+    // Filtros persistidos por usuário (busca livre, datas — padrão "hoje" — e paginação ficam de fora)
+    const [filtrosSalvos, setFiltrosSalvos] = useFiltrosSalvos('painel-atendimentos', {
+        vendedorId: '',
+        tipo: '',
+        filtroEspecial: '',
+        cidade: '',
+        acao: '',
+    });
     const [filtros, setFiltros] = useState({
-        vendedorId: saved.vendedorId || '',
-        tipo: saved.tipo || '',
-        busca: saved.busca || '',
-        filtroEspecial: saved.filtroEspecial || '',
-        cidade: saved.cidade || '',
-        acao: saved.acao || '',
-        dataInicio: saved.dataInicio || hoje,
-        dataFim: saved.dataFim || hoje,
+        ...filtrosSalvos,
+        busca: '',
+        dataInicio: hoje,
+        dataFim: hoje,
         page: 1,
         limit: 50,
     });
@@ -131,8 +123,8 @@ const PainelAtendimentos = () => {
     useEffect(() => { carregar(); }, [carregar]);
 
     useEffect(() => {
-        const { page, limit, ...rest } = filtros;
-        saveFilters(rest);
+        const { busca, dataInicio, dataFim, page, limit, ...persistiveis } = filtros;
+        setFiltrosSalvos(persistiveis);
     }, [filtros]);
 
     const handleFiltro = (campo, valor) => {

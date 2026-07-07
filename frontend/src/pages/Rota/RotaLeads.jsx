@@ -26,6 +26,7 @@ import api from '../../services/api';
 import MetaCidadeHojeBanner from '../../components/Rota/MetaCidadeHojeBanner';
 import MetaAdminHojeBanner from '../../components/Rota/MetaAdminHojeBanner';
 import SelectBusca from '../../components/SelectBusca';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'N/D'];
 
@@ -1479,7 +1480,7 @@ const RotaLeads = () => {
     // Filtro de dia da semana (default hoje, reseta a cada dia, não persiste)
     const [diaSemanaFiltro, setDiaSemanaFiltro] = useState(() => getDiaSiglaHoje());
     // Filtro de forma de atendimento (persistido por usuário)
-    const [formaFiltro, setFormaFiltro] = useState(() => localStorage.getItem('rota_formaFiltro') || 'TODOS');
+    const [formaFiltro, setFormaFiltro] = useFiltroSalvo('rota-leads:formaFiltro', 'TODOS');
     const [formaOpen, setFormaOpen] = useState(false);
     // Resultados de busca global (clientes fora da carteira do vendedor)
     const [resultadosGlobais, setResultadosGlobais] = useState([]);
@@ -1561,11 +1562,6 @@ const RotaLeads = () => {
 
     useEffect(() => { refreshUser(); }, []); // garante permissões frescas do banco
 
-    // Persiste filtro de forma de atendimento por usuário
-    useEffect(() => {
-        localStorage.setItem('rota_formaFiltro', formaFiltro);
-    }, [formaFiltro]);
-
     // Busca global de clientes (debounced) — só dispara com 2+ caracteres
     useEffect(() => {
         const termo = busca.trim();
@@ -1593,10 +1589,8 @@ const RotaLeads = () => {
     const podeAjustar = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Ajustar_Entregas);
     const podeUsarIAOrientacao = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Usar_IA_Orientacao);
 
-    // Filtro mantido no localStorage para não resetar ao voltar pra tela
-    const [vendedorFiltro, setVendedorFiltro] = useState(() => {
-        return localStorage.getItem('rota_vendedorFiltro') || 'todos';
-    });
+    // Filtro persistido para não resetar ao voltar pra tela
+    const [vendedorFiltro, setVendedorFiltro] = useFiltroSalvo('rota-leads:vendedorFiltro', 'todos');
     const [vendedores, setVendedores] = useState([]);
 
     // Carrega vendedores para o select (quem pode escolher vendedor)
@@ -1611,9 +1605,7 @@ const RotaLeads = () => {
     }, [podeEscolherVendedor]);
 
     const handleFiltroVendedor = (e) => {
-        const val = e.target.value;
-        setVendedorFiltro(val);
-        localStorage.setItem('rota_vendedorFiltro', val);
+        setVendedorFiltro(e.target.value);
     };
 
     useEffect(() => {

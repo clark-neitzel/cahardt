@@ -8,8 +8,7 @@ import {
 import toast from 'react-hot-toast';
 import { API_URL } from '../../services/api';
 import SelectBusca from '../../components/SelectBusca';
-
-const LS_KEY = 'contasReceber_filters';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
@@ -27,32 +26,24 @@ const PARCELA_BADGES = {
     CANCELADO: { label: 'Cancelado', class: 'bg-gray-100 text-gray-400' }
 };
 
-const loadSavedFilters = () => {
-    try {
-        return JSON.parse(localStorage.getItem(LS_KEY) || '{}');
-    } catch { return {}; }
-};
-
 const ContasReceberPage = () => {
     const { user } = useAuth();
     const podeBaixar = user?.permissoes?.admin || user?.permissoes?.Pode_Baixar_Contas_Receber;
     const podeReverter = user?.permissoes?.admin || user?.permissoes?.Pode_Reverter_Especial;
     const podeReverterCancelamento = user?.permissoes?.admin || user?.permissoes?.Pode_Reverter_Cancelamento_CR;
 
-    const saved = loadSavedFilters();
-
     const [contas, setContas] = useState([]);
     const [indicadores, setIndicadores] = useState({});
     const [loading, setLoading] = useState(false);
     const [expandido, setExpandido] = useState(null);
 
-    // Filtros (inicializa com valores salvos)
-    const [filtroStatus, setFiltroStatus] = useState(saved.status || '');
-    const [filtroBusca, setFiltroBusca] = useState(saved.busca || '');
-    const [filtroOrigem, setFiltroOrigem] = useState(saved.origem || '');
-    const [filtroVencDe, setFiltroVencDe] = useState(saved.vencDe || '');
-    const [filtroVencAte, setFiltroVencAte] = useState(saved.vencAte || '');
-    const [ordenarPor, setOrdenarPor] = useState(saved.ordenarPor || 'vencimento');
+    // Filtros (persistidos por usuário/tela; busca por texto livre NÃO persiste)
+    const [filtroStatus, setFiltroStatus] = useFiltroSalvo('contas-receber:status', '');
+    const [filtroBusca, setFiltroBusca] = useState('');
+    const [filtroOrigem, setFiltroOrigem] = useFiltroSalvo('contas-receber:origem', '');
+    const [filtroVencDe, setFiltroVencDe] = useFiltroSalvo('contas-receber:vencDe', '');
+    const [filtroVencAte, setFiltroVencAte] = useFiltroSalvo('contas-receber:vencAte', '');
+    const [ordenarPor, setOrdenarPor] = useFiltroSalvo('contas-receber:ordenarPor', 'vencimento');
     const [showFiltros, setShowFiltros] = useState(false);
 
     const [syncing, setSyncing] = useState(null);
@@ -156,19 +147,6 @@ const ContasReceberPage = () => {
         .filter(p => selecionadas.has(p.id))
         .reduce((sum, p) => sum + Number(p.valor || 0), 0);
 
-    const saveFilters = useCallback((overrides = {}) => {
-        const filters = {
-            status: filtroStatus,
-            busca: filtroBusca,
-            origem: filtroOrigem,
-            vencDe: filtroVencDe,
-            vencAte: filtroVencAte,
-            ordenarPor,
-            ...overrides
-        };
-        localStorage.setItem(LS_KEY, JSON.stringify(filters));
-    }, [filtroStatus, filtroBusca, filtroOrigem, filtroVencDe, filtroVencAte, ordenarPor]);
-
     const fetchData = useCallback(async (overrides = {}) => {
         try {
             setLoading(true);
@@ -211,7 +189,6 @@ const ContasReceberPage = () => {
     useEffect(() => { fetchData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleFiltrar = () => {
-        saveFilters();
         fetchData();
     };
 
@@ -223,13 +200,11 @@ const ContasReceberPage = () => {
         setFiltroVencAte('');
         setOrdenarPor('vencimento');
         const cleared = { status: '', busca: '', origem: '', vencDe: '', vencAte: '', ordenarPor: 'vencimento' };
-        localStorage.setItem(LS_KEY, JSON.stringify(cleared));
         fetchData(cleared);
     };
 
     const handleOrdenarChange = (val) => {
         setOrdenarPor(val);
-        saveFilters({ ordenarPor: val });
         fetchData({ ordenarPor: val });
     };
 

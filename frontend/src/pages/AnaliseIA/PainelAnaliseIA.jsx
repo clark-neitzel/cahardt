@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SelectBusca from '../../components/SelectBusca';
+import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 
 const DISPARADO_POR_OPTIONS = [
     { value: '', label: 'Todos os disparos' },
@@ -30,10 +31,6 @@ const fmtDuracao = (ms) => {
     if (ms < 1000) return `${ms}ms`;
     return `${(ms / 1000).toFixed(1)}s`;
 };
-
-const LS_KEY = 'painelAnaliseIA_filters';
-const loadFilters = () => { try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; } };
-const saveFilters = (f) => { try { localStorage.setItem(LS_KEY, JSON.stringify(f)); } catch { /* ignore */ } };
 
 // ─── Componente de aba expandida ────────────────────────────────────────────
 const DetalhesLog = ({ log }) => {
@@ -119,8 +116,6 @@ const PainelAnaliseIA = () => {
     const { user } = useAuth();
     const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 
-    const saved = loadFilters();
-
     const [data, setData] = useState([]);
     const [resumo, setResumo] = useState({ total: 0, sucesso: 0, erro: 0, tokensTotal: 0, duracaoMedia: null });
     const [loading, setLoading] = useState(false);
@@ -129,13 +124,17 @@ const PainelAnaliseIA = () => {
     const [vendedores, setVendedores] = useState([]);
     const [expandedRow, setExpandedRow] = useState(null);
 
+    // Filtros persistidos por usuário (busca livre, datas — padrão "hoje" — e paginação ficam de fora)
+    const [filtrosSalvos, setFiltrosSalvos] = useFiltrosSalvos('painel-analise-ia', {
+        vendedorId: '',
+        disparadoPor: '',
+        sucesso: '',
+    });
     const [filtros, setFiltros] = useState({
-        dataInicio:  saved.dataInicio  || hoje,
-        dataFim:     saved.dataFim     || hoje,
-        vendedorId:  saved.vendedorId  || '',
-        disparadoPor: saved.disparadoPor || '',
-        sucesso:     saved.sucesso     || '',
-        busca:       saved.busca       || '',
+        ...filtrosSalvos,
+        dataInicio: hoje,
+        dataFim: hoje,
+        busca: '',
         page: 1,
         limit: 50,
     });
@@ -169,8 +168,8 @@ const PainelAnaliseIA = () => {
     useEffect(() => { carregar(); }, [carregar]);
 
     useEffect(() => {
-        const { page, limit, ...rest } = filtros;
-        saveFilters(rest);
+        const { busca, dataInicio, dataFim, page, limit, ...persistiveis } = filtros;
+        setFiltrosSalvos(persistiveis);
     }, [filtros]);
 
     const handleFiltro = (campo, valor) => {

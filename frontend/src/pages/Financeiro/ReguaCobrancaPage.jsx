@@ -7,6 +7,7 @@ import {
 import toast from 'react-hot-toast';
 import cobrancaService from '../../services/cobrancaService';
 import SelectBusca from '../../components/SelectBusca';
+import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 
 const fmtMoeda = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
@@ -854,13 +855,15 @@ function AbaCanais() {
 
 function AbaHistorico() {
     const [dados, setDados] = useState(null);
-    const [filtros, setFiltros] = useState({ canal: '', status: '', pagina: 1 });
+    // canal/status persistem por usuário/tela; a página NÃO (sempre volta na 1ª)
+    const [filtros, setFiltros] = useFiltrosSalvos('regua-cobranca-historico', { canal: '', status: '' });
+    const [pagina, setPagina] = useState(1);
     const [loading, setLoading] = useState(true);
 
-    const carregar = useCallback(async (f) => {
+    const carregar = useCallback(async (f, pag) => {
         setLoading(true);
         try {
-            const params = { pagina: f.pagina };
+            const params = { pagina: pag };
             if (f.canal) params.canal = f.canal;
             if (f.status) params.status = f.status;
             setDados(await cobrancaService.listarEnvios(params));
@@ -868,9 +871,9 @@ function AbaHistorico() {
         finally { setLoading(false); }
     }, []);
 
-    useEffect(() => { carregar(filtros); }, [filtros, carregar]);
+    useEffect(() => { carregar(filtros, pagina); }, [filtros, pagina, carregar]);
 
-    const setF = (campo, valor) => setFiltros(f => ({ ...f, [campo]: valor, pagina: 1 }));
+    const setF = (campo, valor) => { setFiltros(f => ({ ...f, [campo]: valor })); setPagina(1); };
 
     return (
         <div className="space-y-4">
@@ -957,9 +960,9 @@ function AbaHistorico() {
                         <div className="flex items-center justify-between px-5 py-3 border-t border-gray-100 text-sm text-gray-600">
                             <span>{dados.total} envio(s)</span>
                             <div className="flex gap-2">
-                                <button disabled={filtros.pagina <= 1} onClick={() => setFiltros(f => ({ ...f, pagina: f.pagina - 1 }))}
+                                <button disabled={pagina <= 1} onClick={() => setPagina(p => p - 1)}
                                     className="px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium disabled:opacity-40">Anterior</button>
-                                <button disabled={filtros.pagina * dados.porPagina >= dados.total} onClick={() => setFiltros(f => ({ ...f, pagina: f.pagina + 1 }))}
+                                <button disabled={pagina * dados.porPagina >= dados.total} onClick={() => setPagina(p => p + 1)}
                                     className="px-3 py-1.5 bg-white border border-gray-300 rounded-full text-xs font-medium disabled:opacity-40">Próxima</button>
                             </div>
                         </div>

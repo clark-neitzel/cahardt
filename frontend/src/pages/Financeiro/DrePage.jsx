@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import financeiroGerencialService from '../../services/financeiroGerencialService';
 import { BarChart3, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 // ── Helpers ──
 const fmt0 = (v) => Number(v || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
@@ -35,7 +36,14 @@ const KpiCard = ({ titulo, valor, cor = 'text-gray-900' }) => (
 
 const DrePage = () => {
     const opcoesPeriodo = useMemo(periodos, []);
-    const [periodo, setPeriodo] = useState(opcoesPeriodo[0]);
+    // Do período persiste só a CHAVE ('ANO' etc.) — os meses são recalculados a
+    // partir de hoje a cada visita (senão o usuário ficaria preso num período velho).
+    const [periodoKey, setPeriodoKey] = useFiltroSalvo('dre:periodoKey', 'ANO');
+    const periodo = useMemo(
+        () => opcoesPeriodo.find(p => p.key === periodoKey) || opcoesPeriodo[0],
+        [opcoesPeriodo, periodoKey]
+    );
+    const setPeriodo = (p) => setPeriodoKey(p.key);
     const [dados, setDados] = useState(null);
     const [loading, setLoading] = useState(false);
     const [mesMobile, setMesMobile] = useState(null); // 'YYYY-MM' selecionado na visão mobile

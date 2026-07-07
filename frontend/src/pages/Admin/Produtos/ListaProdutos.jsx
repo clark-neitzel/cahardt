@@ -9,36 +9,14 @@ import { Search, ArrowLeft, Plus, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MultiSelect from '../../../components/MultiSelect';
 import SelectBusca from '../../../components/SelectBusca';
-
-const STORAGE_KEY = '@CAHardt:ProdutosFiltros';
-
-const loadSavedFilters = () => {
-    try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        return saved ? JSON.parse(saved) : {};
-    } catch {
-        return {};
-    }
-};
+import { useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
 
 const ListaProdutos = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
 
-    const saved = loadSavedFilters();
-
-    // URL params têm prioridade; depois cai para localStorage
-    const initialSearch = searchParams.get('search') || saved.search || '';
+    const initialSearch = searchParams.get('search') || '';
     const initialPage = parseInt(searchParams.get('page')) || 1;
-    const initialStatus = searchParams.get('ativo') || saved.statusFilter || 'ativo';
-    const initialCategoriaStr = searchParams.get('categorias') || '';
-    const initialCategories = initialCategoriaStr
-        ? initialCategoriaStr.split(',')
-        : (saved.selectedCategories || []);
-    const initialCatComercialStr = searchParams.get('categoriasComerciais') || '';
-    const initialCatsComerciais = initialCatComercialStr
-        ? initialCatComercialStr.split(',')
-        : (saved.selectedCatsComerciais || []);
 
     const [produtos, setProdutos] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -46,10 +24,22 @@ const ListaProdutos = () => {
 
     const [search, setSearch] = useState(initialSearch);
     const [page, setPage] = useState(initialPage);
-    const [statusFilter, setStatusFilter] = useState(initialStatus);
-    const [selectedCategories, setSelectedCategories] = useState(initialCategories);
+    // Filtros persistidos por usuário (busca livre e página não persistem)
+    const [statusFilter, setStatusFilter] = useFiltroSalvo('lista-produtos:status', 'ativo');
+    const [selectedCategories, setSelectedCategories] = useFiltroSalvo('lista-produtos:categorias', []);
     const [availableCategories, setAvailableCategories] = useState([]);
-    const [selectedCatsComerciais, setSelectedCatsComerciais] = useState(initialCatsComerciais);
+    const [selectedCatsComerciais, setSelectedCatsComerciais] = useFiltroSalvo('lista-produtos:categoriasComerciais', []);
+
+    // URL params têm prioridade sobre o filtro salvo (uma vez, ao abrir)
+    useEffect(() => {
+        const ativo = searchParams.get('ativo');
+        if (ativo) setStatusFilter(ativo);
+        const cats = searchParams.get('categorias');
+        if (cats) setSelectedCategories(cats.split(','));
+        const catsCom = searchParams.get('categoriasComerciais');
+        if (catsCom) setSelectedCatsComerciais(catsCom.split(','));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Fase 6: criar produto novo (nasce no Conta Azul primeiro)
     const [modalNovo, setModalNovo] = useState(false);
@@ -84,7 +74,7 @@ const ListaProdutos = () => {
             .catch(err => console.error(err));
     }, []);
 
-    // Sync State -> URL + localStorage
+    // Sync State -> URL (a persistência dos filtros fica por conta do useFiltroSalvo)
     useEffect(() => {
         const params = {};
         if (search) params.search = search;
@@ -94,15 +84,6 @@ const ListaProdutos = () => {
         if (selectedCatsComerciais.length > 0) params.categoriasComerciais = selectedCatsComerciais.join(',');
 
         setSearchParams(params, { replace: true });
-
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({
-                search,
-                statusFilter,
-                selectedCategories,
-                selectedCatsComerciais,
-            }));
-        } catch { }
     }, [search, page, statusFilter, selectedCategories, selectedCatsComerciais, setSearchParams]);
 
     // Fetch produtos

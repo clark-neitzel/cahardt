@@ -4,8 +4,7 @@ import { Search, Filter, Users, TrendingUp, ChevronRight, RefreshCw, ChevronDown
 import { listarCurriculos, obterContagens } from '../../services/curriculoService';
 import SelectBusca from '../../components/SelectBusca';
 import { API_URL } from '../../services/api';
-
-const STORAGE_KEY = 'rh.curriculos.filtros.v1';
+import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 
 const AREAS = ['', 'Produção', 'Entrega', 'Vendas', 'Administrativo', 'Outros'];
 const STATUS_LISTA = [
@@ -29,21 +28,6 @@ const STATUS_COR = {
   'Não Disponível': 'bg-slate-100 text-slate-600',
 };
 
-function lerFiltrosSalvos() {
-  try {
-    const s = localStorage.getItem(STORAGE_KEY);
-    if (s) {
-      const f = JSON.parse(s);
-      return {
-        status: Array.isArray(f.status) ? f.status : [],
-        areaInteresse: f.areaInteresse || '',
-        busca: f.busca || '',
-      };
-    }
-  } catch { /* ignora */ }
-  return { status: [], areaInteresse: '', busca: '' };
-}
-
 function Badge({ status }) {
   return (
     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COR[status] || 'bg-gray-100 text-gray-600'}`}>
@@ -60,16 +44,15 @@ export default function ListaCurriculos() {
   const [carregando, setCarregando] = useState(true);
   const [contagens, setContagens] = useState({ porStatus: [], porArea: [] });
 
-  const [filtros, setFiltros] = useState(lerFiltrosSalvos);
-  const [buscaInput, setBuscaInput] = useState(() => lerFiltrosSalvos().busca);
+  // Filtros persistidos por usuário; a busca por texto livre fica de fora (não persiste)
+  const [filtrosSalvos, setFiltros] = useFiltrosSalvos('lista-curriculos', { status: [], areaInteresse: '' });
+  const [busca, setBusca] = useState('');
+  const [buscaInput, setBuscaInput] = useState('');
+  const filtros = { ...filtrosSalvos, busca };
   const [statusAberto, setStatusAberto] = useState(false);
   const statusRef = useRef(null);
 
   const LIMITE = 20;
-
-  useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(filtros)); } catch { /* ignora */ }
-  }, [filtros]);
 
   useEffect(() => {
     function onClick(e) {
@@ -90,13 +73,13 @@ export default function ListaCurriculos() {
   const carregar = useCallback(async (pg = 1) => {
     setCarregando(true);
     try {
-      const res = await listarCurriculos({ ...filtros, pagina: pg, limite: LIMITE });
+      const res = await listarCurriculos({ ...filtrosSalvos, busca, pagina: pg, limite: LIMITE });
       setCurriculos(res.curriculos);
       setTotal(res.total);
       setPagina(pg);
     } catch { /* silencioso */ }
     setCarregando(false);
-  }, [filtros]);
+  }, [filtrosSalvos, busca]);
 
   useEffect(() => { carregar(1); }, [carregar]);
 
@@ -105,7 +88,7 @@ export default function ListaCurriculos() {
   }, []);
 
   function aplicarBusca() {
-    setFiltros(f => ({ ...f, busca: buscaInput }));
+    setBusca(buscaInput);
   }
 
   const novosCount = contagens.porStatus.find(s => s.status === 'Novo')?._count?.status || 0;
@@ -201,7 +184,7 @@ export default function ListaCurriculos() {
             {AREAS.filter(Boolean).map(a => <option key={a}>{a}</option>)}
           </SelectBusca>
           {(filtros.status.length > 0 || filtros.areaInteresse || filtros.busca) && (
-            <button onClick={() => { setFiltros({ status: [], areaInteresse: '', busca: '' }); setBuscaInput(''); }}
+            <button onClick={() => { setFiltros({ status: [], areaInteresse: '' }); setBusca(''); setBuscaInput(''); }}
               className="text-sm text-gray-500 hover:text-red-500 flex items-center gap-1">
               <Filter size={14} /> Limpar
             </button>

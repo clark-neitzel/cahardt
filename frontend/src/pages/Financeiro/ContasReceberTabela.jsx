@@ -15,8 +15,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
-
-const LS_KEY = 'contasReceberTabela_filters';
+import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '-';
@@ -39,17 +38,10 @@ const STATUS_PARC = {
 
 const FORMAS = ['Dinheiro', 'Pix', 'Boleto', 'Cartão Crédito', 'Cartão Débito', 'Transferência', 'Cheque', 'Outro'];
 
-const loadFilters = () => {
-    try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); }
-    catch { return {}; }
-};
-
 const ContasReceberTabela = () => {
     const { user } = useAuth();
     const podeBaixar = user?.permissoes?.admin || user?.permissoes?.Pode_Baixar_Contas_Receber;
     const podeDarDesconto = user?.permissoes?.admin || user?.permissoes?.Pode_Dar_Desconto_Baixa;
-
-    const saved = loadFilters();
 
     const [linhas, setLinhas] = useState([]);
     const [indicadores, setIndicadores] = useState({});
@@ -64,27 +56,28 @@ const ContasReceberTabela = () => {
     const [vendedores, setVendedores] = useState([]);
     const [categorias, setCategorias] = useState([]);
 
-    // Filtros — status/statusParcela/condicao/forma são ARRAYS (multi-select)
-    const asArr = (v) => Array.isArray(v) ? v : (v ? [v] : []);
-    const [filtros, setFiltros] = useState({
-        busca: saved.busca || '',
-        status: asArr(saved.status).filter(s => s !== 'PARCIAL'),
-        statusParcela: asArr(saved.statusParcela),
-        origem: saved.origem || '',
-        vendedorId: saved.vendedorId || '',
-        categoriaClienteId: saved.categoriaClienteId || '',
-        condicaoPagamento: asArr(saved.condicaoPagamento),
-        formaPagamentoEntrega: asArr(saved.formaPagamentoEntrega),
-        formaPagamento: asArr(saved.formaPagamento),
-        vencDe: saved.vencDe || '',
-        vencAte: saved.vencAte || '',
-        pagDe: saved.pagDe || '',
-        pagAte: saved.pagAte || ''
+    // Busca por texto livre — não persiste (useState normal)
+    const [busca, setBusca] = useState('');
+    // Filtros — status/statusParcela/condicao/forma são ARRAYS (multi-select).
+    // Persistidos por usuário/tela via useFiltrosSalvos.
+    const [filtros, setFiltros] = useFiltrosSalvos('contas-receber-tabela', {
+        status: [],
+        statusParcela: [],
+        origem: '',
+        vendedorId: '',
+        categoriaClienteId: '',
+        condicaoPagamento: [],
+        formaPagamentoEntrega: [],
+        formaPagamento: [],
+        vencDe: '',
+        vencAte: '',
+        pagDe: '',
+        pagAte: ''
     });
     const [relatorioFiltros, setRelatorioFiltros] = useState({ vencDe: '', vencAte: '', categoriaClienteId: '' });
 
-    // Ordenação client-side
-    const [sort, setSort] = useState({ col: 'vencimento', dir: 'asc' });
+    // Ordenação client-side (persistida)
+    const [sort, setSort] = useFiltrosSalvos('contas-receber-tabela:sort', { col: 'vencimento', dir: 'asc' });
 
     // Seleção
     const [sel, setSel] = useState(new Set());
@@ -102,7 +95,7 @@ const ContasReceberTabela = () => {
     const [relatorioOpen, setRelatorioOpen] = useState(false);
     const [relatorioData, setRelatorioData] = useState(null);
     const [relatorioLoading, setRelatorioLoading] = useState(false);
-    const [relatorioAgrupamento, setRelatorioAgrupamento] = useState('pedido'); // pedido | cliente | vendedor | nenhum
+    const [relatorioAgrupamento, setRelatorioAgrupamento] = useFiltroSalvo('contas-receber-tabela:relatorioAgrupamento', 'pedido'); // pedido | cliente | vendedor | nenhum
 
     // Carrega aux
     useEffect(() => {
@@ -138,15 +131,11 @@ const ContasReceberTabela = () => {
         return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
     }, [linhas]);
 
-    const saveFilters = useCallback(() => {
-        localStorage.setItem(LS_KEY, JSON.stringify(filtros));
-    }, [filtros]);
-
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const params = {};
-            if (filtros.busca) params.busca = filtros.busca;
+            if (busca) params.busca = busca;
             // ABERTO inclui PARCIAL (conta com pagamento parcial ainda está em aberto)
             const statusQuery = filtros.status.includes('ABERTO')
                 ? [...new Set([...filtros.status, 'PARCIAL'])]
@@ -227,13 +216,12 @@ const ContasReceberTabela = () => {
             if (filtros.pagAte) filtered = filtered.filter(l => l.dataPagamento && toYMD(l.dataPagamento) <= filtros.pagAte);
             setLinhas(filtered);
             setIndicadores(data.indicadores || {});
-            saveFilters();
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao carregar');
         } finally {
             setLoading(false);
         }
-    }, [filtros, saveFilters]);
+    }, [filtros, busca]);
 
     useEffect(() => { fetchData(); }, []); // eslint-disable-line
 
@@ -254,11 +242,11 @@ const ContasReceberTabela = () => {
 
     const aplicarFiltros = () => fetchData();
     const limparFiltros = () => {
+        setBusca('');
         setFiltros({
-            busca: '', status: [], statusParcela: [], origem: '', vendedorId: '', categoriaClienteId: '',
+            status: [], statusParcela: [], origem: '', vendedorId: '', categoriaClienteId: '',
             condicaoPagamento: [], formaPagamentoEntrega: [], formaPagamento: [], vencDe: '', vencAte: '', pagDe: '', pagAte: ''
         });
-        localStorage.removeItem(LS_KEY);
         // fetchData é disparado pelo useEffect acima quando filtrosKey muda.
     };
 
@@ -443,7 +431,7 @@ const ContasReceberTabela = () => {
         setRelatorioData(null);
         try {
             const params = {};
-            if (filtros.busca) params.busca = filtros.busca;
+            if (busca) params.busca = busca;
             const statusQueryRel = filtros.status.includes('ABERTO')
                 ? [...new Set([...filtros.status, 'PARCIAL'])]
                 : filtros.status;
@@ -638,8 +626,8 @@ const ContasReceberTabela = () => {
     };
 
     const filtrosAtivos = useMemo(() =>
-        Object.values(filtros).filter(v => Array.isArray(v) ? v.length > 0 : Boolean(v)).length
-    , [filtros]);
+        (busca ? 1 : 0) + Object.values(filtros).filter(v => Array.isArray(v) ? v.length > 0 : Boolean(v)).length
+    , [filtros, busca]);
 
     const abrirPedido = async (pedidoId) => {
         if (!pedidoId) return;
@@ -791,8 +779,8 @@ const ContasReceberTabela = () => {
                         <div className="relative">
                             <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
                             <input
-                                value={filtros.busca}
-                                onChange={e => setFiltros(f => ({ ...f, busca: e.target.value }))}
+                                value={busca}
+                                onChange={e => setBusca(e.target.value)}
                                 onKeyDown={e => e.key === 'Enter' && aplicarFiltros()}
                                 placeholder="Buscar..."
                                 className="w-full border border-gray-300 rounded pl-9 pr-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"

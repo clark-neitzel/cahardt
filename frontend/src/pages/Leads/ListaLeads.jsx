@@ -10,6 +10,7 @@ import ModalNovoLead from '../Rota/ModalNovoLead';
 import ModalReferenciarCliente from './ModalReferenciarCliente';
 import ModalEditarLead from './ModalEditarLead';
 import SelectBusca from '../../components/SelectBusca';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const ETAPA_COLORS = {
     NOVO: 'bg-blue-100 text-blue-700',
@@ -21,7 +22,6 @@ const ETAPA_COLORS = {
 
 const ETAPAS = ['', 'NOVO', 'VISITA', 'PEDIDO', 'CONVERTIDO', 'FINALIZADO'];
 const LIMITS = [12, 25, 50, 100];
-const LS_KEY = 'leads_filters';
 
 const ListaLeads = () => {
     const { user, hasPermission } = useAuth();
@@ -29,13 +29,8 @@ const ListaLeads = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const podeEscolherVendedor = user?.permissoes?.pedidos?.clientes === 'todos';
 
-    // Recuperar filtros salvos
-    const saved = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
-    const initialSearch = searchParams.get('search') || saved.search || '';
-    const initialEtapa = searchParams.get('etapa') || saved.etapa || '';
-    const initialVendedor = searchParams.get('vendedorId') || saved.vendedorId || '';
+    const initialSearch = searchParams.get('search') || '';
     const initialPage = parseInt(searchParams.get('page')) || 1;
-    const initialLimit = parseInt(searchParams.get('limit')) || saved.limit || 25;
 
     const [leads, setLeads] = useState([]);
     const [total, setTotal] = useState(0);
@@ -44,10 +39,22 @@ const ListaLeads = () => {
     const [vendedores, setVendedores] = useState([]);
 
     const [search, setSearch] = useState(initialSearch);
-    const [etapa, setEtapa] = useState(initialEtapa);
-    const [vendedorId, setVendedorId] = useState(initialVendedor);
+    // Filtros persistidos por usuário (busca livre e página não persistem)
+    const [etapa, setEtapa] = useFiltroSalvo('lista-leads:etapa', '');
+    const [vendedorId, setVendedorId] = useFiltroSalvo('lista-leads:vendedorId', '');
     const [page, setPage] = useState(initialPage);
-    const [limit, setLimit] = useState(initialLimit);
+    const [limit, setLimit] = useFiltroSalvo('lista-leads:limit', 25);
+
+    // Parâmetros da URL têm prioridade sobre o filtro salvo (uma vez, ao abrir)
+    useEffect(() => {
+        const e = searchParams.get('etapa');
+        if (e) setEtapa(e);
+        const v = searchParams.get('vendedorId');
+        if (v) setVendedorId(v);
+        const l = parseInt(searchParams.get('limit'));
+        if (l) setLimit(l);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const [modalNovoLead, setModalNovoLead] = useState(false);
     const [modalReferenciar, setModalReferenciar] = useState(null);
@@ -66,7 +73,7 @@ const ListaLeads = () => {
         }
     }, [podeEscolherVendedor]);
 
-    // Salvar filtros e sincronizar URL
+    // Sincronizar URL (a persistência dos filtros fica por conta do useFiltroSalvo)
     const saveFilters = useCallback((s, e, v, p, l) => {
         const params = {};
         if (s) params.search = s;
@@ -75,7 +82,6 @@ const ListaLeads = () => {
         if (p > 1) params.page = String(p);
         if (l !== 25) params.limit = String(l);
         setSearchParams(params, { replace: true });
-        localStorage.setItem(LS_KEY, JSON.stringify({ search: s, etapa: e, vendedorId: v, limit: l }));
     }, [setSearchParams]);
 
     // Fetch leads

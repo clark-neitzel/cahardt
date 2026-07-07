@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import pcpOrdemService from '../../services/pcpOrdemService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const STATUS_CORES = {
     PLANEJADA: 'bg-blue-100 text-blue-800',
@@ -26,7 +27,7 @@ export default function OrdensProducao() {
     const [ordens, setOrdens] = useState([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
-    const [statusFiltro, setStatusFiltro] = useState('');
+    const [statusFiltro, setStatusFiltro] = useFiltroSalvo('ordens-producao:statusFiltro', '');
     const [pagina, setPagina] = useState(1);
 
     const carregar = useCallback(async () => {

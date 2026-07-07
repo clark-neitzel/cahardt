@@ -5,30 +5,11 @@ import entregasService from '../../../services/entregasService';
 import vendedorService from '../../../services/vendedorService';
 import SelectBusca from '../../../components/SelectBusca';
 import ModalDetalheEntrega from './ModalDetalheEntrega';
+import { useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
 
 const ListaEntregasGerencial = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [entregaSelecionada, setEntregaSelecionada] = useState(null);
-
-    // Helpers LocalStorage
-    const getSaved = (key, defaultVal) => {
-        const saved = localStorage.getItem(`entregasFiltro_${key}`);
-        return saved !== null ? saved : defaultVal;
-    };
-    const saveToLocal = (key, val) => {
-        if (val) localStorage.setItem(`entregasFiltro_${key}`, val);
-        else localStorage.removeItem(`entregasFiltro_${key}`);
-    };
-
-    // Filtros Estado Inicial
-    const initialSearch = searchParams.get('search') !== null ? searchParams.get('search') : getSaved('search', '');
-    const initialDataInicio = searchParams.get('dataInicio') !== null ? searchParams.get('dataInicio') : getSaved('dataInicio', '');
-    const initialDataFim = searchParams.get('dataFim') !== null ? searchParams.get('dataFim') : getSaved('dataFim', '');
-    const initialVendedor = searchParams.get('vendedorId') !== null ? searchParams.get('vendedorId') : getSaved('vendedorId', '');
-    const initialEntregador = searchParams.get('entregadorId') !== null ? searchParams.get('entregadorId') : getSaved('entregadorId', '');
-    const initialStatus = searchParams.get('status') !== null ? searchParams.get('status') : getSaved('status', '');
-    const initialPage = parseInt(searchParams.get('page')) || 1;
-    const initialLimit = parseInt(searchParams.get('limit')) || parseInt(getSaved('limit', '20'));
 
     const [entregas, setEntregas] = useState([]);
     const [vendedores, setVendedores] = useState([]);
@@ -37,16 +18,27 @@ const ListaEntregasGerencial = () => {
     const [totalRegistros, setTotalRegistros] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
 
-    // Filter states
-    const [search, setSearch] = useState(initialSearch);
-    const [dataInicio, setDataInicio] = useState(initialDataInicio);
-    const [dataFim, setDataFim] = useState(initialDataFim);
-    const [vendedorId, setVendedorId] = useState(initialVendedor);
-    const [entregadorId, setEntregadorId] = useState(initialEntregador);
-    const [status, setStatus] = useState(initialStatus);
-    const [page, setPage] = useState(initialPage);
-    const [limit, setLimit] = useState(initialLimit);
+    // Filter states (persistidos por usuário; a URL tem prioridade — ver effect abaixo)
+    const [search, setSearch] = useState(searchParams.get('search') || ''); // busca livre — não persiste
+    const [dataInicio, setDataInicio] = useFiltroSalvo('entregas-gerencial:dataInicio', '');
+    const [dataFim, setDataFim] = useFiltroSalvo('entregas-gerencial:dataFim', '');
+    const [vendedorId, setVendedorId] = useFiltroSalvo('entregas-gerencial:vendedorId', '');
+    const [entregadorId, setEntregadorId] = useFiltroSalvo('entregas-gerencial:entregadorId', '');
+    const [status, setStatus] = useFiltroSalvo('entregas-gerencial:status', '');
+    const [page, setPage] = useState(parseInt(searchParams.get('page')) || 1);
+    const [limit, setLimit] = useFiltroSalvo('entregas-gerencial:limit', 20);
     const [showFilters, setShowFilters] = useState(false);
+
+    // Se a URL veio com filtros (link compartilhado), eles têm prioridade sobre o salvo
+    useEffect(() => {
+        if (searchParams.get('dataInicio') !== null) setDataInicio(searchParams.get('dataInicio'));
+        if (searchParams.get('dataFim') !== null) setDataFim(searchParams.get('dataFim'));
+        if (searchParams.get('vendedorId') !== null) setVendedorId(searchParams.get('vendedorId'));
+        if (searchParams.get('entregadorId') !== null) setEntregadorId(searchParams.get('entregadorId'));
+        if (searchParams.get('status') !== null) setStatus(searchParams.get('status'));
+        if (searchParams.get('limit') !== null) setLimit(parseInt(searchParams.get('limit')) || 20);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     // Carregar vendedores ao montar
     useEffect(() => {
@@ -64,7 +56,7 @@ const ListaEntregasGerencial = () => {
         fetchVendedores();
     }, []);
 
-    // Atualiza URl e LocalStorage
+    // Atualiza URL (a persistência dos filtros fica por conta do useFiltroSalvo)
     useEffect(() => {
         const params = {};
         if (search) params.search = search;
@@ -76,14 +68,6 @@ const ListaEntregasGerencial = () => {
         if (page > 1) params.page = page;
         if (limit !== 20) params.limit = limit;
         setSearchParams(params, { replace: true });
-
-        saveToLocal('search', search);
-        saveToLocal('dataInicio', dataInicio);
-        saveToLocal('dataFim', dataFim);
-        saveToLocal('vendedorId', vendedorId);
-        saveToLocal('entregadorId', entregadorId);
-        saveToLocal('status', status);
-        saveToLocal('limit', limit !== 20 ? limit.toString() : '');
     }, [search, dataInicio, dataFim, vendedorId, entregadorId, status, page, limit, setSearchParams]);
 
     const fetchEntregas = async () => {

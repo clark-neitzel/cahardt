@@ -123,6 +123,20 @@ Sempre `px-2 py-1 text-xs font-semibold rounded-full` com as cores:
 <input className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
 ```
 
+### Filtros de tela — SEMPRE lembrar a escolha do usuário (`useFiltrosSalvos`)
+
+**Todo filtro de tela (novo ou alterado) deve usar `frontend/src/hooks/useFiltrosSalvos.js`** em vez de `useState` — a última escolha do usuário fica salva (localStorage, por usuário e por tela) e volta ao reabrir a tela. Pedido explícito do usuário (07/2026): isso é o padrão do sistema.
+
+```jsx
+import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos'; // ajuste o caminho
+const [filtros, setFiltros] = useFiltrosSalvos('contas-receber', { status: 'ABERTO' }); // objeto de filtros
+const [soAtivos, setSoAtivos] = useFiltroSalvo('produtos:soAtivos', true);              // filtro único
+```
+
+- Chave = slug da tela (`'lista-pedidos'`) ou `'slug:campo'` para valor único. Objeto salvo é mesclado sobre o padrão — campo de filtro novo entra com o valor padrão sem quebrar o que já estava salvo.
+- **NÃO persistir:** busca por texto livre, paginação, dados carregados, estado de modal/loading, e filtros de data cujo padrão é calculado (hoje/mês corrente — senão o usuário fica preso numa data velha). Data com padrão vazio `''` pode persistir.
+- Botão "limpar filtros" não precisa de tratamento especial (setar os padrões sobrescreve o salvo).
+
 ### Dropdowns/menus — usar SEMPRE `SelectBusca`, nunca `<select>` nativo
 O `<select>` nativo renderiza como um menu escuro do sistema (macOS/iOS), sem busca — ruim de usar em lista longa. **Todo menu suspenso novo deve usar `frontend/src/components/SelectBusca.jsx`** (menu branco no tema, com busca no topo quando há muitas opções; renderiza em portal, então não é cortado dentro de modais e abre para cima quando falta espaço). É drop-in do `<select>` — mesma API:
 ```jsx

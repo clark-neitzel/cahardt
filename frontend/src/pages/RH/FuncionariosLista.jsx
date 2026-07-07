@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { Users, Plus, Clock, Upload, ChevronRight, RefreshCw } from 'lucide-react';
 import funcionarioService from '../../services/funcionarioService';
 import SelectBusca from '../../components/SelectBusca';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 export default function FuncionariosLista() {
   const navigate = useNavigate();
   const [lista, setLista] = useState([]);
   const [busca, setBusca] = useState('');
-  const [status, setStatus] = useState('ativos');
+  const [status, setStatus] = useFiltroSalvo('funcionarios-lista:status', 'ativos');
   const [carregando, setCarregando] = useState(true);
 
   const carregar = useCallback(async () => {

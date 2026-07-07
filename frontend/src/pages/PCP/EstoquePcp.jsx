@@ -3,6 +3,7 @@ import { Search, AlertTriangle, Package, ArrowUpCircle, ArrowDownCircle, X, Load
 import toast from 'react-hot-toast';
 import pcpEstoqueService from '../../services/pcpEstoqueService';
 import SelectBusca from '../../components/SelectBusca';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const TIPO_CORES = {
     MP: 'bg-amber-100 text-amber-800',
@@ -15,8 +16,8 @@ export default function EstoquePcp() {
     const [itens, setItens] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [tipoFiltro, setTipoFiltro] = useState('');
-    const [apenasAbaixo, setApenasAbaixo] = useState(false);
+    const [tipoFiltro, setTipoFiltro] = useFiltroSalvo('estoque-pcp:tipoFiltro', '');
+    const [apenasAbaixo, setApenasAbaixo] = useFiltroSalvo('estoque-pcp:apenasAbaixo', false);
     const [modalAjuste, setModalAjuste] = useState(null);
     const [ajusteForm, setAjusteForm] = useState({ tipo: 'ENTRADA', quantidade: '', observacao: '' });
     const [salvandoAjuste, setSalvandoAjuste] = useState(false);

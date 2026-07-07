@@ -4,6 +4,7 @@ import { toast } from 'react-hot-toast';
 import { MessageCircle, ArrowLeft, Settings, RefreshCw, Send, MessageSquareOff, MessageSquare, Search, ChevronDown, Move, X, AlertCircle, Calendar } from 'lucide-react';
 import deliveryService from '../../services/deliveryService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const { ETAPAS, LABELS } = deliveryService;
 const COL_COLORS = {
@@ -66,9 +67,9 @@ export default function DeliveryKanban() {
     const [loading, setLoading] = useState(true);
     const [moving, setMoving] = useState(null);
 
-    // Filtros
+    // Filtros (busca livre não persiste; data de entrega fica salva por usuário)
     const [busca, setBusca] = useState('');
-    const [dataEntrega, setDataEntrega] = useState('');
+    const [dataEntrega, setDataEntrega] = useFiltroSalvo('delivery-kanban:dataEntrega', '');
 
     // Modal de detalhes
     const [pedidoDetalhe, setPedidoDetalhe] = useState(null);

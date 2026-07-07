@@ -4,10 +4,10 @@ import api from '../../services/api';
 import { BarChart2, Filter, Download, Printer, ChevronUp, ChevronDown, ChevronsUpDown, X, ArrowLeft, ListFilter, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SelectBusca from '../../components/SelectBusca';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (v) => v ? new Date(v + 'T12:00:00').toLocaleDateString('pt-BR') : '-';
-const STORAGE_KEY = 'relatorio-vendas-v6';
 
 const COLUNAS = [
     { id: 'criacao',  label: 'Criação',   field: 'dataCriacao',           tipo: 'data',   filtravel: false },
@@ -40,13 +40,6 @@ const SortIcon = ({ col, sortCol, sortDir }) => {
     return sortDir === 'asc'
         ? <ChevronUp className="h-3 w-3 text-indigo-500 flex-shrink-0" />
         : <ChevronDown className="h-3 w-3 text-indigo-500 flex-shrink-0" />;
-};
-
-const salvar = (filtros) => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(filtros)); } catch {}
-};
-const carregar = () => {
-    try { const s = localStorage.getItem(STORAGE_KEY); return s ? JSON.parse(s) : {}; } catch { return {}; }
 };
 
 // Dropdown de filtro por coluna (estilo Excel)
@@ -282,7 +275,6 @@ const PRINT_CSS = `
 
 export default function RelatorioVendas() {
     const { user } = useAuth();
-    const saved = carregar();
 
     const [pedidos, setPedidos] = useState([]);
     const [resumo, setResumo] = useState({});
@@ -291,24 +283,27 @@ export default function RelatorioVendas() {
     const [showPrint, setShowPrint] = useState(false);
     const [vendedores, setVendedores] = useState([]);
 
-    const [dataVendaDe,        setDataVendaDe]        = useState(saved.dataVendaDe        ?? '');
-    const [dataVendaAte,       setDataVendaAte]       = useState(saved.dataVendaAte       ?? '');
-    const [dataCriacaoDe,      setDataCriacaoDe]      = useState(saved.dataCriacaoDe      ?? '');
-    const [dataCriacaoAte,     setDataCriacaoAte]     = useState(saved.dataCriacaoAte     ?? '');
-    const [vendedorId,         setVendedorId]         = useState(saved.vendedorId         ?? '');
-    const [situacaoCA,         setSituacaoCA]         = useState(saved.situacaoCA         ?? 'FATURADO');
-    const [excluirBonificacao, setExcluirBonificacao] = useState(saved.excluirBonificacao ?? 'true');
+    // Filtros persistidos por usuário
+    const [dataVendaDe,        setDataVendaDe]        = useFiltroSalvo('relatorio-vendas:dataVendaDe', '');
+    const [dataVendaAte,       setDataVendaAte]       = useFiltroSalvo('relatorio-vendas:dataVendaAte', '');
+    const [dataCriacaoDe,      setDataCriacaoDe]      = useFiltroSalvo('relatorio-vendas:dataCriacaoDe', '');
+    const [dataCriacaoAte,     setDataCriacaoAte]     = useFiltroSalvo('relatorio-vendas:dataCriacaoAte', '');
+    const [vendedorId,         setVendedorId]         = useFiltroSalvo('relatorio-vendas:vendedorId', '');
+    const [situacaoCA,         setSituacaoCA]         = useFiltroSalvo('relatorio-vendas:situacaoCA', 'FATURADO');
+    const [excluirBonificacao, setExcluirBonificacao] = useFiltroSalvo('relatorio-vendas:excluirBonificacao', 'true');
 
-    const [sortCol, setSortCol] = useState('dataVenda');
-    const [sortDir, setSortDir] = useState('desc');
+    const [sortCol, setSortCol] = useFiltroSalvo('relatorio-vendas:sortCol', 'dataVenda');
+    const [sortDir, setSortDir] = useFiltroSalvo('relatorio-vendas:sortDir', 'desc');
     const [colsVisiveis, setColsVisiveis] = useState(() => new Set(COLUNAS.map(c => c.id)));
     const [colOrdem, setColOrdem] = useState(() => COLUNAS.map(c => c.id));
+    // Filtros de coluna (Sets) — persistidos como objeto de arrays via hook
+    const [filtrosAtivosSalvos, setFiltrosAtivosSalvos] = useFiltroSalvo('relatorio-vendas:filtrosAtivos', {});
     const [filtrosAtivos, setFiltrosAtivos] = useState(() => {
-        const fa = saved.filtrosAtivos;
-        if (!fa || typeof fa !== 'object') return {};
         const out = {};
-        for (const [k, arr] of Object.entries(fa)) {
-            if (Array.isArray(arr) && arr.length) out[k] = new Set(arr);
+        if (filtrosAtivosSalvos && typeof filtrosAtivosSalvos === 'object') {
+            for (const [k, arr] of Object.entries(filtrosAtivosSalvos)) {
+                if (Array.isArray(arr) && arr.length) out[k] = new Set(arr);
+            }
         }
         return out;
     });
@@ -326,8 +321,8 @@ export default function RelatorioVendas() {
         for (const [k, set] of Object.entries(filtrosAtivos)) {
             if (set && set.size) fa[k] = [...set];
         }
-        salvar({ dataVendaDe, dataVendaAte, dataCriacaoDe, dataCriacaoAte, vendedorId, situacaoCA, excluirBonificacao, filtrosAtivos: fa });
-    }, [dataVendaDe, dataVendaAte, dataCriacaoDe, dataCriacaoAte, vendedorId, situacaoCA, excluirBonificacao, filtrosAtivos]);
+        setFiltrosAtivosSalvos(fa);
+    }, [filtrosAtivos]);
 
     const fetchRelatorio = useCallback(async () => {
         try {
@@ -357,7 +352,6 @@ export default function RelatorioVendas() {
         setDataCriacaoDe(''); setDataCriacaoAte('');
         setVendedorId(''); setSituacaoCA('FATURADO'); setExcluirBonificacao('true');
         setFiltrosAtivos({});
-        localStorage.removeItem(STORAGE_KEY);
     };
 
     const handleSort = (col, e) => {

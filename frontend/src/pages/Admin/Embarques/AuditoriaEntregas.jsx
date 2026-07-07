@@ -5,27 +5,18 @@ import api from '../../../services/api';
 import tabelaPrecoService from '../../../services/tabelaPrecoService';
 import formasPagamentoService from '../../../services/formasPagamentoService';
 import SelectBusca from '../../../components/SelectBusca';
+import { useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
 
-const STORAGE_KEY = 'auditoria_filtros';
 const hojeISO = new Date().toISOString().slice(0, 10);
 
-const carregarFiltrosSalvos = () => {
-    try {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) return JSON.parse(saved);
-    } catch { /* ignore */ }
-    return null;
-};
-
 const AuditoriaEntregas = () => {
-    const saved = carregarFiltrosSalvos();
     const [entregas, setEntregas] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filtroDivergente, setFiltroDivergente] = useState(saved?.filtroDivergente ?? false);
-    const [embarqueIdFilter, setEmbarqueIdFilter] = useState(saved?.embarqueIdFilter ?? '');
-    const [dataFilter, setDataFilter] = useState(saved?.dataFilter ?? hojeISO);
-    const [motoristaFilter, setMotoristaFilter] = useState(saved?.motoristaFilter ?? '');
-    const [clienteFilter, setClienteFilter] = useState(saved?.clienteFilter ?? '');
+    const [filtroDivergente, setFiltroDivergente] = useFiltroSalvo('auditoria-entregas:filtroDivergente', false);
+    const [embarqueIdFilter, setEmbarqueIdFilter] = useState('');
+    const [dataFilter, setDataFilter] = useState(hojeISO); // data padrão calculada (hoje) — não persistir
+    const [motoristaFilter, setMotoristaFilter] = useState('');
+    const [clienteFilter, setClienteFilter] = useState('');
 
     const [editandoEntrega, setEditandoEntrega] = useState(null);
     const [editPagamentos, setEditPagamentos] = useState([]);
@@ -51,12 +42,6 @@ const AuditoriaEntregas = () => {
             setLoading(false);
         }
     };
-
-    useEffect(() => {
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({ filtroDivergente, embarqueIdFilter, dataFilter, motoristaFilter, clienteFilter }));
-        } catch { /* ignore */ }
-    }, [filtroDivergente, embarqueIdFilter, dataFilter, motoristaFilter, clienteFilter]);
 
     useEffect(() => {
         const t = setTimeout(fetchAuditoria, 300);
@@ -238,7 +223,7 @@ const AuditoriaEntregas = () => {
                     <div className="col-span-2 md:col-span-1 flex items-end">
                         <button
                             type="button"
-                            onClick={() => { setDataFilter(hojeISO); setEmbarqueIdFilter(''); setMotoristaFilter(''); setClienteFilter(''); setFiltroDivergente(false); try { localStorage.removeItem(STORAGE_KEY); } catch {} }}
+                            onClick={() => { setDataFilter(hojeISO); setEmbarqueIdFilter(''); setMotoristaFilter(''); setClienteFilter(''); setFiltroDivergente(false); }}
                             className="w-full px-2 py-2 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-300 rounded-md"
                         >
                             Limpar filtros

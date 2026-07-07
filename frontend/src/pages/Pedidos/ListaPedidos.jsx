@@ -6,6 +6,7 @@ import { API_URL } from '../../services/api';
 import amostraService from '../../services/amostraService';
 import vendedorService from '../../services/vendedorService';
 import SelectBusca from '../../components/SelectBusca';
+import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import ListaDevolucoes from './ListaDevolucoes';
@@ -41,31 +42,23 @@ const ListaPedidos = () => {
     const { user } = useAuth();
     const [highlightId, setHighlightId] = useState(null);
     
-    // Filtros persistentes
+    // Filtros persistentes (busca livre e janela de entrega — que tem padrão calculado — não persistem)
+    const [filtrosSalvos, setFiltrosSalvos] = useFiltrosSalvos('lista-pedidos', {
+        dataCriacaoDe: '',
+        dataCriacaoAte: '',
+        vencimentoDe: '',
+        vencimentoAte: '',
+        embarqueNumero: '',
+        motorista: '',
+        vendedorId: ''
+    });
     const [filtros, setFiltros] = useState(() => {
-        const key = `pedidos_filtros_v2_${user?.id}`; // v2: reseta cache antigo com janela de 30d
-        const saved = localStorage.getItem(key);
-        if (saved) {
-            try {
-                return JSON.parse(saved);
-            } catch (e) {
-                console.error("Erro ao carregar filtros salvos", e);
-            }
-        }
-
         const hoje = new Date().toISOString().split('T')[0];
         const noventaDiasAtras = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
         return {
+            ...filtrosSalvos,
             dataEntregaDe: noventaDiasAtras,
             dataEntregaAte: hoje,
-            dataCriacaoDe: '',
-            dataCriacaoAte: '',
-            vencimentoDe: '',
-            vencimentoAte: '',
-            embarqueNumero: '',
-            motorista: '',
-            vendedorId: '',
             busca: ''
         };
     });
@@ -107,15 +100,7 @@ const ListaPedidos = () => {
     const [expandedAmostra, setExpandedAmostra] = useState(null);
     const [todosVendedores, setTodosVendedores] = useState([]);
     const [showFilters, setShowFilters] = useState(false);
-    const [filtroStatus, setFiltroStatus] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem(`pedidos_filtro_status_${user?.id}`)) || 'TODOS';
-        } catch { return 'TODOS'; }
-    });
-
-    useEffect(() => {
-        localStorage.setItem(`pedidos_filtro_status_${user?.id}`, JSON.stringify(filtroStatus));
-    }, [filtroStatus, user]);
+    const [filtroStatus, setFiltroStatus] = useFiltroSalvo('lista-pedidos:filtroStatus', 'TODOS');
 
     const podeAprovar = user?.permissoes?.Pode_Aprovar_Especial || user?.permissoes?.admin;
     const podeReverter = user?.permissoes?.Pode_Reverter_Especial || user?.permissoes?.admin;
@@ -166,11 +151,11 @@ const ListaPedidos = () => {
         }
     };
 
-    // Salvar filtros no localStorage sempre que mudarem
+    // Salvar filtros sempre que mudarem (exceto busca e janela de entrega, que resetam a cada visita)
     useEffect(() => {
-        const key = `pedidos_filtros_v2_${user?.id}`;
-        localStorage.setItem(key, JSON.stringify(filtros));
-    }, [filtros, user]);
+        const { dataEntregaDe, dataEntregaAte, busca, ...persistiveis } = filtros;
+        setFiltrosSalvos(persistiveis);
+    }, [filtros]);
 
     const carregarDados = useCallback(async () => {
         try {

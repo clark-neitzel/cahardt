@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SelectBusca from '../../components/SelectBusca';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
@@ -38,17 +39,18 @@ const RelatorioPedidos = () => {
 
     const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
     const inicioMes = hoje.slice(0, 8) + '01';
+    // Datas de criação têm padrão calculado (mês corrente) — não persistem; o resto fica salvo por usuário
     const [dataCriacaoDe, setDataCriacaoDe] = useState(inicioMes);
     const [dataCriacaoAte, setDataCriacaoAte] = useState(hoje);
-    const [dataVendaDe, setDataVendaDe] = useState('');
-    const [dataVendaAte, setDataVendaAte] = useState('');
-    const [vendedorId, setVendedorId] = useState('');
-    const [statusEnvio, setStatusEnvio] = useState('');
-    const [especial, setEspecial] = useState('');
-    const [situacaoCA, setSituacaoCA] = useState('');
-    const [statusEntrega, setStatusEntrega] = useState('');
+    const [dataVendaDe, setDataVendaDe] = useFiltroSalvo('relatorio-pedidos:dataVendaDe', '');
+    const [dataVendaAte, setDataVendaAte] = useFiltroSalvo('relatorio-pedidos:dataVendaAte', '');
+    const [vendedorId, setVendedorId] = useFiltroSalvo('relatorio-pedidos:vendedorId', '');
+    const [statusEnvio, setStatusEnvio] = useFiltroSalvo('relatorio-pedidos:statusEnvio', '');
+    const [especial, setEspecial] = useFiltroSalvo('relatorio-pedidos:especial', '');
+    const [situacaoCA, setSituacaoCA] = useFiltroSalvo('relatorio-pedidos:situacaoCA', '');
+    const [statusEntrega, setStatusEntrega] = useFiltroSalvo('relatorio-pedidos:statusEntrega', '');
     const [buscaCliente, setBuscaCliente] = useState('');
-    const [filtroFlex, setFiltroFlex] = useState('');
+    const [filtroFlex, setFiltroFlex] = useFiltroSalvo('relatorio-pedidos:filtroFlex', '');
 
     const podeVerTodos = user?.permissoes?.admin || user?.permissoes?.pedidos?.clientes === 'todos';
 

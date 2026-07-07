@@ -4,6 +4,7 @@ import JsBarcode from 'jsbarcode';
 import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
 import EtiquetaLabel, { codExibir, imprimirEtiquetas } from './EtiquetaLabel';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 // ─── Utilidades de data ───────────────────────────────────────────────────────
 
@@ -195,16 +196,12 @@ export default function EtiquetasList() {
     const [todas, setTodas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [categoriaSel, setCategoriaSel] = useState(
-        () => localStorage.getItem('etiquetas_categoria') || null
-    );
+    const [categoriaSel, setCategoriaSel] = useFiltroSalvo('etiquetas-list:categoria', null);
     const [selecionada, setSelecionada] = useState(null);
     const inputRef = useRef(null);
 
     const selecionarCategoria = (id) => {
-        setCategoriaSel(id);
-        if (id) localStorage.setItem('etiquetas_categoria', id);
-        else localStorage.removeItem('etiquetas_categoria');
+        setCategoriaSel(id || null);
     };
 
     const carregar = useCallback(async () => {

@@ -4,6 +4,7 @@ import contasReceberService from '../../services/contasReceberService';
 import SelectBusca from '../../components/SelectBusca';
 import { Landmark, Loader2, RefreshCw, Upload, Wand2, Check, X, Undo2, ChevronDown, ChevronUp, Layers, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (ymd) => `${ymd.slice(8)}/${ymd.slice(5, 7)}/${ymd.slice(0, 4)}`;
@@ -189,9 +190,16 @@ const GrupoModal = ({ lancamento, pendentes, contaId, periodo, onClose, onSucces
 const ConciliacaoBancariaPage = () => {
     const opcoesPeriodo = useMemo(periodos, []);
     const [contas, setContas] = useState([]);
-    const [contaId, setContaId] = useState('');
-    const [periodo, setPeriodo] = useState(opcoesPeriodo[1]); // últimos 30 dias
-    const [statusFiltro, setStatusFiltro] = useState('todos');
+    // Filtros persistidos por usuário/tela. Do período salvamos só a CHAVE
+    // ('ULT30' etc.) — as datas são recalculadas a partir de hoje a cada visita.
+    const [contaId, setContaId] = useFiltroSalvo('conciliacao-bancaria:contaId', '');
+    const [periodoKey, setPeriodoKey] = useFiltroSalvo('conciliacao-bancaria:periodoKey', 'ULT30'); // últimos 30 dias
+    const periodo = useMemo(
+        () => opcoesPeriodo.find(p => p.key === periodoKey) || opcoesPeriodo[1],
+        [opcoesPeriodo, periodoKey]
+    );
+    const setPeriodo = (p) => setPeriodoKey(p.key);
+    const [statusFiltro, setStatusFiltro] = useFiltroSalvo('conciliacao-bancaria:statusFiltro', 'todos');
     const [dados, setDados] = useState(null);
     const [loading, setLoading] = useState(false);
     const [agindo, setAgindo] = useState(null); // id do lançamento com ação em andamento
@@ -207,7 +215,8 @@ const ConciliacaoBancariaPage = () => {
             .then(cf => {
                 setContas(cf);
                 const padrao = cf.find(c => c.padrao) || cf[0];
-                if (padrao) setContaId(padrao.id);
+                // Mantém a conta salva do usuário se ela ainda existir; senão, usa a padrão
+                setContaId(prev => (prev && cf.some(c => c.id === prev)) ? prev : (padrao ? padrao.id : ''));
             })
             .catch(() => toast.error('Não consegui carregar as contas (bancos/caixas).'));
     }, []);
