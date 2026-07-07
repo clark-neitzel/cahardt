@@ -80,8 +80,8 @@ router.get('/diag-dashboard-vendas', async (req, res) => {
                 GROUP BY 1 ORDER BY 1 DESC LIMIT 10`,
             prisma.pedido.findFirst({
                 where: { bonificacao: false },
-                orderBy: { criadoEm: 'desc' },
-                select: { numero: true, criadoEm: true, dataVenda: true, situacaoCA: true, especial: true }
+                orderBy: { createdAt: 'desc' },
+                select: { numero: true, createdAt: true, dataVenda: true, situacaoCA: true, especial: true }
             }),
             prisma.devolucao.aggregate({
                 _sum: { valorTotal: true },
