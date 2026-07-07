@@ -18,6 +18,13 @@ const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const financeiroGerencialService = require('../services/financeiroGerencialService');
 
+// Dados vivos: proíbe cache das respostas (o Safari do iOS cacheia GET de API
+// sem Cache-Control e o dashboard "congela" no celular).
+router.use((req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+});
+
 const num = (v) => Number(v || 0);
 const round2 = (v) => Math.round(num(v) * 100) / 100;
 const TZ = 'America/Sao_Paulo';

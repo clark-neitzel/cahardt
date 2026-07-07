@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { Truck, MapPin, CheckCircle2, CalendarDays } from 'lucide-react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
-import { Card, Carregando, fmtRS0, fmtInt } from './dashUi';
+import { Card, Carregando, fmtRS0, fmtInt, useAtualizaAoVoltar } from './dashUi';
 
 dayjs.locale('pt-br');
 
@@ -32,13 +32,18 @@ const DashboardEntregador = () => {
     const { user } = useAuth();
     const [d, setD] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [tick, setTick] = useState(0);
+
+    // Dado vivo: rebusca ao voltar para o app e a cada 5 min (o motorista deixa a tela aberta)
+    const marcarAtualizado = useAtualizaAoVoltar(() => setTick((t) => t + 1));
 
     useEffect(() => {
         api.get('/dashboards/entregador')
-            .then((res) => setD(res.data))
+            .then((res) => { setD(res.data); marcarAtualizado(); })
             .catch(() => toast.error('Não foi possível carregar o painel de entregas.'))
             .finally(() => setLoading(false));
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [tick]);
 
     if (loading) return <Carregando />;
 

@@ -12,7 +12,8 @@ import SelectBusca from '../../components/SelectBusca';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import {
     Card, Kpi, BarraMeta, LinhaBarra, BarrasVerticais, Gauge,
-    BadgeRecompra, ItemAlerta, Carregando, fmtRS, fmtRS0, fmtK, fmtBR, fmtInt
+    BadgeRecompra, ItemAlerta, Carregando, fmtRS, fmtRS0, fmtK, fmtBR, fmtInt,
+    useAtualizaAoVoltar
 } from './dashUi';
 
 dayjs.locale('pt-br');
@@ -33,9 +34,14 @@ const DashboardGeral = () => {
     const [categorias, setCategorias] = useState([]);
     const [dados, setDados] = useState({});     // { [aba]: payload }
     const [carregando, setCarregando] = useState({});
+    const [atualizadoEm, setAtualizadoEm] = useState(null);
+    const [tick, setTick] = useState(0);        // gatilho de recarga (voltar ao app, aba re-clicada, 5min)
 
     const aba = ABAS.some((a) => a.key === filtros.aba) ? filtros.aba : 'visao';
     const categoria = filtros.categoria || '';
+
+    // Dado vivo: rebusca ao voltar para o app (PWA em segundo plano) e a cada 5 min
+    const marcarAtualizado = useAtualizaAoVoltar(() => setTick((t) => t + 1));
 
     useEffect(() => {
         api.get('/dashboards/geral/categorias')
@@ -49,18 +55,22 @@ const DashboardGeral = () => {
             const params = ABAS_COM_CATEGORIA.includes(chave) && cat ? { categoria: cat } : {};
             const res = await api.get(`/dashboards/geral/${chave === 'visao' ? 'visao-geral' : chave}`, { params });
             setDados((d) => ({ ...d, [chave]: res.data }));
+            setAtualizadoEm(new Date());
+            marcarAtualizado();
         } catch (e) {
             toast.error('Não foi possível carregar esta aba do dashboard.');
         } finally {
             setCarregando((c) => ({ ...c, [chave]: false }));
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Carrega a aba ativa (e recarrega as sensíveis à categoria quando o filtro muda)
+    // Busca sempre que troca de aba, muda o filtro ou o gatilho de recarga dispara.
+    // O dado anterior continua na tela durante a rebusca (sem "piscar").
     useEffect(() => {
         buscarAba(aba, categoria);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [aba, categoria]);
+    }, [aba, categoria, tick]);
 
     const trocarCategoria = (valor) => {
         setDados((d) => {
@@ -103,7 +113,7 @@ const DashboardGeral = () => {
                     {ABAS.map(({ key, label, icon: Icon }) => (
                         <button
                             key={key}
-                            onClick={() => setFiltros({ ...filtros, aba: key })}
+                            onClick={() => (key === aba ? setTick((t) => t + 1) : setFiltros({ ...filtros, aba: key }))}
                             className={`flex-none flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold min-h-[40px] border transition-colors ${aba === key
                                 ? 'bg-primary border-primary text-white shadow-sm'
                                 : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}
@@ -112,6 +122,11 @@ const DashboardGeral = () => {
                             {label}
                         </button>
                     ))}
+                    {atualizadoEm && (
+                        <span className="flex-none self-center ml-1 text-[11px] font-semibold text-gray-500 whitespace-nowrap">
+                            atualizado {atualizadoEm.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                    )}
                 </div>
             </div>
 

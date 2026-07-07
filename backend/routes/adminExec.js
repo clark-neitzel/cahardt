@@ -56,6 +56,51 @@ router.get('/ping', (req, res) => {
     });
 });
 
+// GET /api/admin-exec/diag-dashboard-vendas — confere as vendas do mês na regra do
+// Dashboard Gerencial (FATURADO ou especial, sem bonificação) direto no banco de
+// produção: total do mês, últimos 7 dias por dia e o pedido mais recente.
+router.get('/diag-dashboard-vendas', async (req, res) => {
+    try {
+        const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const mes = hoje.slice(0, 7);
+        const gte = new Date(`${mes}-01T00:00:00-03:00`);
+        const lte = new Date(`${hoje}T23:59:59.999-03:00`);
+        const [totalMes, porDia, ultimo, devolucoes] = await Promise.all([
+            prisma.$queryRaw`
+                SELECT COALESCE(SUM(i.valor * i.quantidade), 0)::float AS total, COUNT(DISTINCT p.id)::int AS pedidos
+                FROM pedidos p JOIN pedido_itens i ON i.pedido_id = p.id
+                WHERE p.bonificacao = false AND (p.situacao_ca = 'FATURADO' OR p.especial = true)
+                  AND p.data_venda >= ${gte} AND p.data_venda <= ${lte}`,
+            prisma.$queryRaw`
+                SELECT to_char((p.data_venda AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM-DD') AS dia,
+                       COALESCE(SUM(i.valor * i.quantidade), 0)::float AS total, COUNT(DISTINCT p.id)::int AS pedidos
+                FROM pedidos p JOIN pedido_itens i ON i.pedido_id = p.id
+                WHERE p.bonificacao = false AND (p.situacao_ca = 'FATURADO' OR p.especial = true)
+                  AND p.data_venda >= ${gte}
+                GROUP BY 1 ORDER BY 1 DESC LIMIT 10`,
+            prisma.pedido.findFirst({
+                where: { bonificacao: false },
+                orderBy: { criadoEm: 'desc' },
+                select: { numero: true, criadoEm: true, dataVenda: true, situacaoCA: true, especial: true }
+            }),
+            prisma.devolucao.aggregate({
+                _sum: { valorTotal: true },
+                where: { status: 'ATIVA', dataDevolucao: { gte, lte } }
+            })
+        ]);
+        res.json({
+            hojeSP: hoje,
+            regra: 'FATURADO ou especial, sem bonificação, data_venda no mês até hoje',
+            mes: { ...totalMes[0], devolucoes: Number(devolucoes._sum.valorTotal || 0) },
+            porDia,
+            pedidoMaisRecente: ultimo
+        });
+    } catch (error) {
+        console.error('[admin-exec] diag-dashboard-vendas:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /api/admin-exec/testar-alerta-certificado — roda o alerta de validade do A1 na hora.
 // Se faltar > 30 dias, só retorna { dias, alertado:false } (não envia WhatsApp) — seguro p/ testar.
 router.get('/testar-alerta-certificado', async (req, res) => {

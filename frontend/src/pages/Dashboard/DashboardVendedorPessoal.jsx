@@ -10,7 +10,8 @@ import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
 import {
-    Card, BarraMeta, Gauge, BadgeRecompra, Carregando, fmtRS, fmtRS0, fmtBR, fmtInt
+    Card, BarraMeta, Gauge, BadgeRecompra, Carregando, fmtRS, fmtRS0, fmtBR, fmtInt,
+    useAtualizaAoVoltar
 } from './dashUi';
 
 dayjs.locale('pt-br');
@@ -36,6 +37,10 @@ const DashboardVendedorPessoal = ({ vendedorInicial = '' }) => {
     const [loading, setLoading] = useState(true);
     const [vendedores, setVendedores] = useState([]);
     const [vendedorSelecionado, setVendedorSelecionado] = useState(vendedorInicial);
+    const [tick, setTick] = useState(0);
+
+    // Dado vivo: rebusca ao voltar para o app (PWA em segundo plano) e a cada 5 min
+    const marcarAtualizado = useAtualizaAoVoltar(() => setTick((t) => t + 1));
 
     const isGestor = !!user?.permissoes?.admin
         || !!user?.permissoes?.Pode_Ver_Dashboard_Admin
@@ -52,15 +57,16 @@ const DashboardVendedorPessoal = ({ vendedorInicial = '' }) => {
 
     useEffect(() => {
         const params = vendedorSelecionado ? { vendedorId: vendedorSelecionado } : {};
-        setLoading(true);
+        if (!metas) setLoading(true); // rebusca silenciosa quando já há dado na tela
         Promise.all([
             api.get('/metas/dashboard', { params }),
             api.get('/dashboards/vendedor', { params })
         ])
-            .then(([m, e]) => { setMetas(m.data); setExtras(e.data); })
+            .then(([m, e]) => { setMetas(m.data); setExtras(e.data); marcarAtualizado(); })
             .catch(() => toast.error('Não foi possível carregar o seu dashboard.'))
             .finally(() => setLoading(false));
-    }, [vendedorSelecionado]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [vendedorSelecionado, tick]);
 
     if (loading) return <Carregando />;
 
