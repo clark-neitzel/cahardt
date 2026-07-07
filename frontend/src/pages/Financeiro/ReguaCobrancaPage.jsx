@@ -7,6 +7,7 @@ import {
 import toast from 'react-hot-toast';
 import cobrancaService from '../../services/cobrancaService';
 import SelectBusca from '../../components/SelectBusca';
+import { useAuth } from '../../contexts/AuthContext';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 
 const fmtMoeda = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -40,7 +41,7 @@ const BadgeEnvio = ({ envio }) => {
 
 // ══════════════════ ABA: INADIMPLENTES ══════════════════
 
-function AbaInadimplentes() {
+function AbaInadimplentes({ podeEditar }) {
     const [dados, setDados] = useState(null);
     const [global, setGlobal] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -118,39 +119,42 @@ function AbaInadimplentes() {
             {/* Controle da régua automática */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-3">
                 <div className="flex flex-col md:flex-row md:items-center gap-3">
-                    <button onClick={toggleRegua}
-                        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${global?.ativo ? 'bg-primary' : 'bg-gray-300'}`}>
+                    <button onClick={toggleRegua} disabled={!podeEditar}
+                        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${global?.ativo ? 'bg-primary' : 'bg-gray-300'} ${!podeEditar ? 'opacity-60 cursor-default' : ''}`}>
                         <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${global?.ativo ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
                     <div className="flex-1">
-                        <div className="text-sm font-semibold text-gray-900">
+                        <div className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                             Cobrança automática {global?.ativo ? 'LIGADA' : 'desligada'}
+                            {!podeEditar && <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 inline-flex items-center gap-1"><Eye className="h-3 w-3" />Somente visualização</span>}
                         </div>
                         <div className="text-xs text-gray-500">Dispara nos dias marcados, a partir do horário abaixo (horário de São Paulo).</div>
                     </div>
                     <div className="flex items-center gap-2">
                         <label className="text-sm font-medium text-gray-700">Horário:</label>
-                        <input type="time" value={global?.horaEnvio || '08:30'} onChange={e => salvarGlobal({ horaEnvio: e.target.value })}
-                            className="border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                        <input type="time" value={global?.horaEnvio || '08:30'} onChange={e => salvarGlobal({ horaEnvio: e.target.value })} disabled={!podeEditar}
+                            className="border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:bg-gray-50 disabled:text-gray-500" />
                     </div>
-                    <button onClick={executarAgora} disabled={executando}
-                        className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-2 disabled:opacity-60 min-h-[44px] md:min-h-0">
-                        {executando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                        Executar agora
-                    </button>
+                    {podeEditar && (
+                        <button onClick={executarAgora} disabled={executando}
+                            className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-2 disabled:opacity-60 min-h-[44px] md:min-h-0">
+                            {executando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                            Executar agora
+                        </button>
+                    )}
                 </div>
                 <div className="flex flex-col md:flex-row md:items-center gap-3 pt-3 border-t border-gray-100">
                     <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-sm font-medium text-gray-700 mr-1">Envia em:</span>
                         {['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'].map(d => (
-                            <button key={d} onClick={() => toggleDia(d)}
-                                className={`px-2.5 py-1.5 rounded-full text-xs font-bold min-w-[42px] ${global?.diasSemana?.includes(d) ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                            <button key={d} onClick={() => toggleDia(d)} disabled={!podeEditar}
+                                className={`px-2.5 py-1.5 rounded-full text-xs font-bold min-w-[42px] ${global?.diasSemana?.includes(d) ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'} ${podeEditar ? (global?.diasSemana?.includes(d) ? '' : 'hover:bg-gray-200') : 'opacity-70 cursor-default'}`}>
                                 {d}
                             </button>
                         ))}
                     </div>
                     <label className="flex items-center gap-2 text-sm text-gray-700 md:ml-auto">
-                        <input type="checkbox" checked={global?.prorrogarFimDeSemana !== false}
+                        <input type="checkbox" checked={global?.prorrogarFimDeSemana !== false} disabled={!podeEditar}
                             onChange={e => salvarGlobal({ prorrogarFimDeSemana: e.target.checked }, 'Regra de fim de semana salva')}
                             className="h-4 w-4 accent-[#00754A]" />
                         Vencimento no fim de semana só conta como vencido na segunda
@@ -227,10 +231,12 @@ function AbaInadimplentes() {
                                         className="flex-1 px-3 py-2 bg-white border border-primary text-primary rounded-full font-medium text-xs min-h-[44px]">
                                         {detalhe === item ? 'Fechar' : 'Detalhes'}
                                     </button>
-                                    <button onClick={() => cobrarAgora(item)} disabled={cobrando === item.cliente.id}
-                                        className="flex-1 px-3 py-2 bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-xs disabled:opacity-60 min-h-[44px]">
-                                        {cobrando === item.cliente.id ? 'Enviando...' : 'Cobrar agora'}
-                                    </button>
+                                    {podeEditar && (
+                                        <button onClick={() => cobrarAgora(item)} disabled={cobrando === item.cliente.id}
+                                            className="flex-1 px-3 py-2 bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-xs disabled:opacity-60 min-h-[44px]">
+                                            {cobrando === item.cliente.id ? 'Enviando...' : 'Cobrar agora'}
+                                        </button>
+                                    )}
                                 </div>
                                 {detalhe === item && <DetalheParcelas item={item} />}
                             </div>
@@ -285,10 +291,12 @@ function AbaInadimplentes() {
                                                     className="p-1.5 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 mr-1" title="Ver parcelas">
                                                     <Eye className="h-4 w-4" />
                                                 </button>
-                                                <button onClick={() => cobrarAgora(item)} disabled={cobrando === item.cliente.id}
-                                                    className="px-3 py-1.5 bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-xs disabled:opacity-60">
-                                                    {cobrando === item.cliente.id ? 'Enviando...' : 'Cobrar agora'}
-                                                </button>
+                                                {podeEditar && (
+                                                    <button onClick={() => cobrarAgora(item)} disabled={cobrando === item.cliente.id}
+                                                        className="px-3 py-1.5 bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-xs disabled:opacity-60">
+                                                        {cobrando === item.cliente.id ? 'Enviando...' : 'Cobrar agora'}
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                         {detalhe === item && (
@@ -335,7 +343,7 @@ const CONFIG_VAZIA = {
     templates: [], templateLembrete: '', responsavelTarefaId: '', horaEnvio: ''
 };
 
-function CardConfig({ config, formas, equipe, modelos = [], onSalvar, onExcluir, novo = false }) {
+function CardConfig({ config, formas, equipe, modelos = [], onSalvar, onExcluir, novo = false, readOnly = false }) {
     const [expandido, setExpandido] = useState(novo);
     const [dados, setDados] = useState({ ...CONFIG_VAZIA, ...config, responsavelTarefaId: config?.responsavelTarefaId || '', horaEnvio: config?.horaEnvio || '' });
     const [salvando, setSalvando] = useState(false);
@@ -414,18 +422,18 @@ function CardConfig({ config, formas, equipe, modelos = [], onSalvar, onExcluir,
             </button>
 
             {expandido && (
-                <div className="border-t border-gray-100 p-5 space-y-4">
+                <fieldset disabled={readOnly} className="border-t border-gray-100 p-5 space-y-4 min-w-0">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="text-sm font-medium text-gray-700 block mb-1">Forma de recebimento</label>
-                            <SelectBusca value={dados.formaRecebimento} onChange={e => set('formaRecebimento', e.target.value)} className="w-full" disabled={!novo && dados.formaRecebimento === 'PADRAO'}>
+                            <SelectBusca value={dados.formaRecebimento} onChange={e => set('formaRecebimento', e.target.value)} className="w-full" disabled={readOnly || (!novo && dados.formaRecebimento === 'PADRAO')}>
                                 <option value="">Selecione...</option>
                                 {formas.map(f => <option key={f} value={f}>{f === 'PADRAO' ? 'PADRÃO (todas as demais formas)' : f}</option>)}
                             </SelectBusca>
                         </div>
                         <div>
                             <label className="text-sm font-medium text-gray-700 block mb-1">Responsável pela tarefa (falha no WhatsApp)</label>
-                            <SelectBusca value={dados.responsavelTarefaId} onChange={e => set('responsavelTarefaId', e.target.value)} className="w-full">
+                            <SelectBusca value={dados.responsavelTarefaId} onChange={e => set('responsavelTarefaId', e.target.value)} className="w-full" disabled={readOnly}>
                                 <option value="">Selecione quem resolve...</option>
                                 {equipe.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
                             </SelectBusca>
@@ -499,9 +507,11 @@ function CardConfig({ config, formas, equipe, modelos = [], onSalvar, onExcluir,
                     <div>
                         <div className="flex items-center justify-between mb-2">
                             <label className="text-sm font-medium text-gray-700">Mensagens de cobrança (por dias de atraso)</label>
-                            <button onClick={() => setEscolhendoModelo(!escolhendoModelo)} className="px-3 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-xs inline-flex items-center gap-1">
-                                <Plus className="h-3 w-3" /> Adicionar mensagem
-                            </button>
+                            {!readOnly && (
+                                <button onClick={() => setEscolhendoModelo(!escolhendoModelo)} className="px-3 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-xs inline-flex items-center gap-1">
+                                    <Plus className="h-3 w-3" /> Adicionar mensagem
+                                </button>
+                            )}
                         </div>
                         {escolhendoModelo && (
                             <div className="border border-primary/30 bg-mint/30 rounded-lg p-3 mb-3">
@@ -597,25 +607,27 @@ function CardConfig({ config, formas, equipe, modelos = [], onSalvar, onExcluir,
                                 Régua ativa para esta forma
                             </label>
                         ) : <span />}
-                        <div className="flex gap-2">
-                            {!novo && onExcluir && (
-                                <button onClick={onExcluir} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full font-semibold text-sm min-h-[44px] md:min-h-0">
-                                    Excluir
+                        {!readOnly && (
+                            <div className="flex gap-2">
+                                {!novo && onExcluir && (
+                                    <button onClick={onExcluir} className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full font-semibold text-sm min-h-[44px] md:min-h-0">
+                                        Excluir
+                                    </button>
+                                )}
+                                <button onClick={salvar} disabled={salvando}
+                                    className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-60 min-h-[44px] md:min-h-0">
+                                    {salvando ? 'Salvando...' : 'Salvar'}
                                 </button>
-                            )}
-                            <button onClick={salvar} disabled={salvando}
-                                className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-60 min-h-[44px] md:min-h-0">
-                                {salvando ? 'Salvando...' : 'Salvar'}
-                            </button>
-                        </div>
+                            </div>
+                        )}
                     </div>
-                </div>
+                </fieldset>
             )}
         </div>
     );
 }
 
-function AbaConfiguracao() {
+function AbaConfiguracao({ podeEditar }) {
     const [configs, setConfigs] = useState([]);
     const [formas, setFormas] = useState([]);
     const [equipe, setEquipe] = useState([]);
@@ -676,18 +688,23 @@ function AbaConfiguracao() {
                 de quanto em quanto tempo repete, por quais canais e quem resolve quando o WhatsApp falha.
                 A linha <b>PADRÃO</b> vale para todas as formas sem régua própria.
             </div>
+            {!podeEditar && (
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm text-gray-600 flex items-center gap-2">
+                    <Eye className="h-4 w-4 shrink-0" /> Você tem acesso somente de visualização — dá para abrir e conferir cada régua, mas não alterar.
+                </div>
+            )}
             {configs.map(c => (
                 <CardConfig key={c.id} config={c} formas={[c.formaRecebimento, ...formasDisponiveis]} equipe={equipe} modelos={modelos}
-                    onSalvar={atualizar(c.id)} onExcluir={excluir(c)} />
+                    onSalvar={atualizar(c.id)} onExcluir={excluir(c)} readOnly={!podeEditar} />
             ))}
-            <CardConfig novo config={CONFIG_VAZIA} formas={formasDisponiveis} equipe={equipe} modelos={modelos} onSalvar={criar} />
+            {podeEditar && <CardConfig novo config={CONFIG_VAZIA} formas={formasDisponiveis} equipe={equipe} modelos={modelos} onSalvar={criar} />}
         </div>
     );
 }
 
 // ══════════════════ ABA: CANAIS ══════════════════
 
-function AbaCanais() {
+function AbaCanais({ podeEditar }) {
     const [canais, setCanais] = useState(null);
     const [salvando, setSalvando] = useState(false);
     const [testando, setTestando] = useState(false);
@@ -757,7 +774,7 @@ function AbaCanais() {
                         {canais.email.ativo ? 'Ativo' : 'Desligado'}
                     </span>
                 </div>
-                <div className="p-5 space-y-4">
+                <fieldset disabled={!podeEditar} className="p-5 space-y-4 min-w-0">
                     <label className="flex items-center gap-2 text-sm text-gray-700">
                         <input type="checkbox" checked={canais.email.ativo} onChange={e => setEmail('ativo', e.target.checked)} className="h-4 w-4 accent-[#00754A]" />
                         Enviar cobranças também por e-mail
@@ -794,17 +811,19 @@ function AbaCanais() {
                             <input className={inputCls} placeholder="voce@gmail.com" value={emailTeste} onChange={e => setEmailTeste(e.target.value)} />
                         </div>
                     </div>
-                    <div className="flex flex-col md:flex-row gap-2 md:justify-end">
-                        <button onClick={testarEmail} disabled={testando}
-                            className="px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm disabled:opacity-60 min-h-[44px] md:min-h-0">
-                            {testando ? 'Testando...' : 'Testar conexão / enviar teste'}
-                        </button>
-                        <button onClick={salvarEmail} disabled={salvando}
-                            className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-60 min-h-[44px] md:min-h-0">
-                            Salvar e-mail
-                        </button>
-                    </div>
-                </div>
+                    {podeEditar && (
+                        <div className="flex flex-col md:flex-row gap-2 md:justify-end">
+                            <button onClick={testarEmail} disabled={testando}
+                                className="px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm disabled:opacity-60 min-h-[44px] md:min-h-0">
+                                {testando ? 'Testando...' : 'Testar conexão / enviar teste'}
+                            </button>
+                            <button onClick={salvarEmail} disabled={salvando}
+                                className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-60 min-h-[44px] md:min-h-0">
+                                Salvar e-mail
+                            </button>
+                        </div>
+                    )}
+                </fieldset>
             </div>
 
             {/* SMS */}
@@ -816,7 +835,7 @@ function AbaCanais() {
                         {canais.sms.ativo ? 'Ativo' : 'Desligado'}
                     </span>
                 </div>
-                <div className="p-5 space-y-4">
+                <fieldset disabled={!podeEditar} className="p-5 space-y-4 min-w-0">
                     <p className="flex items-start gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
                         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
                         <span>SMS exige contratar um provedor (recomendado: <b>Twilio</b> — twilio.com, paga por mensagem enviada, ~R$ 0,35/SMS no Brasil). Depois de criar a conta, cole aqui o Account SID, o Auth Token e o número remetente.</span>
@@ -839,13 +858,15 @@ function AbaCanais() {
                             <input className={inputCls} placeholder="+15551234567" value={canais.sms.from} onChange={e => setSms('from', e.target.value)} />
                         </div>
                     </div>
-                    <div className="flex md:justify-end">
-                        <button onClick={salvarSms} disabled={salvando}
-                            className="w-full md:w-auto px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-60 min-h-[44px] md:min-h-0">
-                            Salvar SMS
-                        </button>
-                    </div>
-                </div>
+                    {podeEditar && (
+                        <div className="flex md:justify-end">
+                            <button onClick={salvarSms} disabled={salvando}
+                                className="w-full md:w-auto px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-60 min-h-[44px] md:min-h-0">
+                                Salvar SMS
+                            </button>
+                        </div>
+                    )}
+                </fieldset>
             </div>
         </div>
     );
@@ -984,6 +1005,8 @@ const ABAS = [
 
 export default function ReguaCobrancaPage() {
     const [aba, setAba] = useState('inadimplentes');
+    const { hasPermission } = useAuth();
+    const podeEditar = hasPermission('Pode_Editar_Cobranca'); // admin já retorna true
 
     return (
         <div className="max-w-full overflow-x-hidden min-h-screen bg-secondary">
@@ -993,6 +1016,11 @@ export default function ReguaCobrancaPage() {
                         <BellRing className="h-4 w-4 md:h-5 md:w-5 text-amber-600" />
                     </div>
                     <h1 className="text-base md:text-2xl font-bold text-gray-900">Régua de Cobrança</h1>
+                    {!podeEditar && (
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 inline-flex items-center gap-1">
+                            <Eye className="h-3 w-3" /> Somente visualização
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -1006,9 +1034,9 @@ export default function ReguaCobrancaPage() {
                     ))}
                 </div>
 
-                {aba === 'inadimplentes' && <AbaInadimplentes />}
-                {aba === 'regua' && <AbaConfiguracao />}
-                {aba === 'canais' && <AbaCanais />}
+                {aba === 'inadimplentes' && <AbaInadimplentes podeEditar={podeEditar} />}
+                {aba === 'regua' && <AbaConfiguracao podeEditar={podeEditar} />}
+                {aba === 'canais' && <AbaCanais podeEditar={podeEditar} />}
                 {aba === 'historico' && <AbaHistorico />}
             </div>
         </div>

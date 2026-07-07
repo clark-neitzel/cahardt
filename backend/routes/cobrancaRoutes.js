@@ -14,16 +14,28 @@ const getPerms = async (userId) => {
         : (vendedor?.permissoes || {});
 };
 
+// Ver: Pode_Acessar_Cobranca (ou editar, que inclui ver). Editar: Pode_Editar_Cobranca.
 const checkAcesso = async (req, res, next) => {
     const perms = req._perms || await getPerms(req.user.id);
     req._perms = perms;
-    if (!perms.admin && !perms.Pode_Acessar_Cobranca) {
+    if (!perms.admin && !perms.Pode_Acessar_Cobranca && !perms.Pode_Editar_Cobranca) {
         return res.status(403).json({ error: 'Sem permissão para acessar a régua de cobrança.' });
     }
     next();
 };
 
-router.use(verificarAuth, checkAcesso);
+// Toda rota de escrita (ligar/desligar, configurar, executar, cobrar, canais) exige editar.
+// GET e o preview de mensagem continuam liberados para quem só visualiza.
+const checkEdicao = (req, res, next) => {
+    if (req.method === 'GET' || req.path === '/preview') return next();
+    const perms = req._perms || {};
+    if (!perms.admin && !perms.Pode_Editar_Cobranca) {
+        return res.status(403).json({ error: 'Você tem acesso somente de visualização à régua de cobrança.' });
+    }
+    next();
+};
+
+router.use(verificarAuth, checkAcesso, checkEdicao);
 
 // ── Painel de inadimplentes ──────────────────────────────────────────
 router.get('/painel', async (req, res) => {

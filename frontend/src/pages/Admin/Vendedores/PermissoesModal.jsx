@@ -87,6 +87,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Acessar_Fornecedores: false,
     Pode_Acessar_Financeiro_Gerencial: false,
     Pode_Acessar_Cobranca: false,
+    Pode_Editar_Cobranca: false,
     // Devoluções
     Pode_Fazer_Devolucao: false,
     Pode_Reverter_Devolucao: false,
@@ -288,6 +289,13 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     };
     const toggleBool = (key) => {
         setPermissoes(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+    // Desligar o acesso à Régua de Cobrança também desliga o editar (editar pressupõe ver)
+    const toggleAcessoCobranca = () => {
+        setPermissoes(prev => {
+            const ver = !prev.Pode_Acessar_Cobranca;
+            return { ...prev, Pode_Acessar_Cobranca: ver, Pode_Editar_Cobranca: ver ? prev.Pode_Editar_Cobranca : false };
+        });
     };
     const togglePcp = (key) => {
         setPermissoes(prev => ({
@@ -773,11 +781,19 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         <MenuToggle icon={Receipt} label="Despesas" checked={!!permissoes.Pode_Acessar_Caixa} onChange={() => toggleBool('Pode_Acessar_Caixa')} />
                         <MenuToggle icon={Search} label="Auditoria Entregas" checked={!!permissoes.Pode_Ver_Todas_Entregas} onChange={() => toggleBool('Pode_Ver_Todas_Entregas')} />
                         <MenuToggle icon={DollarSign} label="Contas a Receber" checked={!!permissoes.Pode_Acessar_Contas_Receber} onChange={() => toggleBool('Pode_Acessar_Contas_Receber')} />
-                        <MenuToggle icon={BellRing} label="Régua de Cobrança" checked={!!permissoes.Pode_Acessar_Cobranca} onChange={() => toggleBool('Pode_Acessar_Cobranca')} />
+                        <MenuToggle icon={BellRing} label="Régua de Cobrança" checked={!!permissoes.Pode_Acessar_Cobranca} onChange={toggleAcessoCobranca} />
                         <MenuToggle icon={Wallet} label="Contas a Pagar" checked={!!permissoes.Pode_Acessar_Contas_Pagar} onChange={() => toggleBool('Pode_Acessar_Contas_Pagar')} />
                         <MenuToggle icon={Inbox} label="Notas Recebidas" checked={!!permissoes.Pode_Acessar_Notas_Recebidas} onChange={() => toggleBool('Pode_Acessar_Notas_Recebidas')} />
                         <MenuToggle icon={Building2} label="Fornecedores" checked={!!permissoes.Pode_Acessar_Fornecedores} onChange={() => toggleBool('Pode_Acessar_Fornecedores')} />
                         <MenuToggle icon={BarChart3} label="Fluxo de Caixa e DRE (gerencial)" checked={!!permissoes.Pode_Acessar_Financeiro_Gerencial} onChange={() => toggleBool('Pode_Acessar_Financeiro_Gerencial')} />
+
+                        {permissoes.Pode_Acessar_Cobranca && (
+                            <div className="border-t mt-3 pt-3">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Permissões da Régua de Cobrança</p>
+                                <Toggle checked={!!permissoes.Pode_Editar_Cobranca} onChange={() => toggleBool('Pode_Editar_Cobranca')}
+                                    label="Editar Régua de Cobrança" sublabel="Ligar/desligar a régua, configurar mensagens e canais, executar e cobrar manualmente. Desligado = só visualiza." />
+                            </div>
+                        )}
 
                         {permissoes.Pode_Acessar_Caixa && (
                             <div className="border-t mt-3 pt-3">

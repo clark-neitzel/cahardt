@@ -1,6 +1,8 @@
 # Régua de Cobrança
 
-**Rota:** `/financeiro/cobranca` · **Permissão:** `Pode_Acessar_Cobranca` (ou admin) · **Menu:** Financeiro → Régua de Cobrança
+**Rota:** `/financeiro/cobranca` · **Permissão:** ver = `Pode_Acessar_Cobranca` · editar = `Pode_Editar_Cobranca` (ou admin) · **Menu:** Financeiro → Régua de Cobrança
+
+**Dois níveis de acesso:** quem tem só "Régua de Cobrança" (ver) enxerga tudo — inadimplentes, configurações, canais e histórico — mas **não altera nada** (a tela mostra o selo "Somente visualização"; botões de executar/cobrar/salvar ficam ocultos e os campos bloqueados). Quem tem também "Editar Régua de Cobrança" pode ligar/desligar, configurar, executar e cobrar. Quem não tem nenhuma das duas não vê a tela no menu.
 
 Cobra automaticamente os clientes inadimplentes por **WhatsApp** (bot), **e-mail** e **SMS**, seguindo uma régua configurável por **forma de recebimento** (condição de pagamento). Quando o WhatsApp falha (cliente sem celular cadastrado ou que nunca conversou com o bot), o sistema **cria uma tarefa automática** (aba Tarefas, com alerta sonoro) para a pessoa responsável resolver.
 
@@ -53,4 +55,5 @@ Todos os envios (automáticos, lembretes e manuais) com data, cliente, canal, ti
 - **A cobrança não saiu:** confira se a régua geral está LIGADA (aba Inadimplentes), se a forma de recebimento tem régua ativa, se o cliente já atingiu os dias do 1º aviso e se não bateu o limite de avisos.
 - **Cliente recebeu no WhatsApp mas não no e-mail:** o canal E-mail precisa estar ligado na régua da forma E o SMTP configurado na aba Canais E o cliente precisa ter e-mail no cadastro.
 - **Não quero cobrar um cliente:** hoje a régua cobra todos os inadimplentes da forma configurada; para pausar um caso específico, desative a régua da forma ou trate manualmente (o limite de avisos também para os envios).
-- **Quem pode acessar:** permissão "Régua de Cobrança" no grupo Financeiro do modal de permissões do usuário.
+- **Quem pode acessar:** no grupo Financeiro do modal de permissões do usuário (Admin → Vendedores → Acessos): "Régua de Cobrança" libera **ver**; o toggle extra "Editar Régua de Cobrança" (aparece ao ligar o primeiro) libera **alterar/executar/cobrar**. Desligar o "ver" desliga o "editar" junto.
+- **Consigo abrir a tela mas os botões sumiram / campos bloqueados:** você tem acesso somente de visualização — peça ao administrador a permissão "Editar Régua de Cobrança".
