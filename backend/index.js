@@ -112,6 +112,16 @@ app.use('/uploads/certificado', (req, res) => res.status(403).json({ error: 'Ace
 app.use('/uploads/notas-xml', (req, res) => res.status(403).json({ error: 'Acesso negado.' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Dados vivos NUNCA são cacheados. O Safari do iOS (app PWA instalado na tela
+// inicial) guarda GET de API sem Cache-Control e reusa sem revalidar — a tela
+// "congela" no número da última vez que foi aberta (sintoma real relatado no
+// Dashboard). no-store em TODA resposta /api garante dado sempre fresco. Não
+// afeta imagens/JS (servidos pelo nginx, fora de /api).
+app.use('/api', (req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+});
+
 // Rotas
 // (auth e sync abertos)
 app.use('/api/auth', authRoutes);
