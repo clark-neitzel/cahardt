@@ -65,28 +65,31 @@ function AbaInadimplentes() {
 
     useEffect(() => { carregar(); }, [carregar]);
 
-    const toggleRegua = async () => {
-        const novo = { ...global, ativo: !global.ativo };
+    const salvarGlobal = async (mudanca, msg) => {
+        const novo = { ...global, ...mudanca };
         setGlobal(novo);
         try {
             await cobrancaService.salvarConfigGlobal(novo);
-            toast.success(novo.ativo ? 'Régua automática LIGADA' : 'Régua automática pausada');
+            if (msg) toast.success(msg);
         } catch (e) { toast.error('Erro ao salvar'); carregar(); }
     };
 
-    const salvarHora = async (horaEnvio) => {
-        const novo = { ...global, horaEnvio };
-        setGlobal(novo);
-        try { await cobrancaService.salvarConfigGlobal(novo); } catch (e) { toast.error('Erro ao salvar horário'); }
+    const toggleRegua = () => salvarGlobal({ ativo: !global.ativo }, !global.ativo ? 'Régua automática LIGADA' : 'Régua automática pausada');
+
+    const toggleDia = (sigla) => {
+        const atual = global.diasSemana || [];
+        const novo = atual.includes(sigla) ? atual.filter(d => d !== sigla) : [...atual, sigla];
+        if (!novo.length) { toast.error('Deixe ao menos um dia de envio'); return; }
+        salvarGlobal({ diasSemana: novo });
     };
 
     const executarAgora = async () => {
-        if (!window.confirm('Executar a régua AGORA? Serão enviadas as cobranças que estiverem no ponto de envio.')) return;
+        if (!window.confirm('Iniciar a fila de cobrança AGORA? Os envios saem 1 por minuto, conferindo no Conta Azul antes de cada um.')) return;
         setExecutando(true);
         try {
             const r = await cobrancaService.executarRegua();
-            if (r.ok) toast.success(`Régua executada: ${r.cobrancasEnviadas || 0} cobrança(s), ${r.lembretesEnviados || 0} lembrete(s), ${r.tarefasCriadas || 0} tarefa(s) por falha`);
-            else toast.error(r.motivo || 'Falha ao executar');
+            if (r.ok) toast.success('Fila iniciada! Os envios saem 1 por minuto — acompanhe pelo Histórico.');
+            else toast.error(r.motivo || 'Falha ao iniciar a fila');
             carregar();
         } catch (e) { toast.error('Erro ao executar a régua'); }
         finally { setExecutando(false); }
@@ -112,28 +115,56 @@ function AbaInadimplentes() {
     return (
         <div className="space-y-4">
             {/* Controle da régua automática */}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col md:flex-row md:items-center gap-3">
-                <button onClick={toggleRegua}
-                    className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${global?.ativo ? 'bg-primary' : 'bg-gray-300'}`}>
-                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${global?.ativo ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
-                <div className="flex-1">
-                    <div className="text-sm font-semibold text-gray-900">
-                        Cobrança automática {global?.ativo ? 'LIGADA' : 'desligada'}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-3">
+                <div className="flex flex-col md:flex-row md:items-center gap-3">
+                    <button onClick={toggleRegua}
+                        className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${global?.ativo ? 'bg-primary' : 'bg-gray-300'}`}>
+                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${global?.ativo ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                    <div className="flex-1">
+                        <div className="text-sm font-semibold text-gray-900">
+                            Cobrança automática {global?.ativo ? 'LIGADA' : 'desligada'}
+                        </div>
+                        <div className="text-xs text-gray-500">Dispara nos dias marcados, a partir do horário abaixo (horário de São Paulo).</div>
                     </div>
-                    <div className="text-xs text-gray-500">Dispara todo dia no horário abaixo, seguindo a régua de cada forma de recebimento.</div>
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-gray-700">Horário:</label>
+                        <input type="time" value={global?.horaEnvio || '08:30'} onChange={e => salvarGlobal({ horaEnvio: e.target.value })}
+                            className="border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                    </div>
+                    <button onClick={executarAgora} disabled={executando}
+                        className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-2 disabled:opacity-60 min-h-[44px] md:min-h-0">
+                        {executando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                        Executar agora
+                    </button>
                 </div>
-                <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-gray-700">Horário:</label>
-                    <input type="time" value={global?.horaEnvio || '08:30'} onChange={e => salvarHora(e.target.value)}
-                        className="border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                <div className="flex flex-col md:flex-row md:items-center gap-3 pt-3 border-t border-gray-100">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-sm font-medium text-gray-700 mr-1">Envia em:</span>
+                        {['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'].map(d => (
+                            <button key={d} onClick={() => toggleDia(d)}
+                                className={`px-2.5 py-1.5 rounded-full text-xs font-bold min-w-[42px] ${global?.diasSemana?.includes(d) ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                                {d}
+                            </button>
+                        ))}
+                    </div>
+                    <label className="flex items-center gap-2 text-sm text-gray-700 md:ml-auto">
+                        <input type="checkbox" checked={global?.prorrogarFimDeSemana !== false}
+                            onChange={e => salvarGlobal({ prorrogarFimDeSemana: e.target.checked }, 'Regra de fim de semana salva')}
+                            className="h-4 w-4 accent-[#00754A]" />
+                        Vencimento no fim de semana só conta como vencido na segunda
+                    </label>
                 </div>
-                <button onClick={executarAgora} disabled={executando}
-                    className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-2 disabled:opacity-60 min-h-[44px] md:min-h-0">
-                    {executando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    Executar agora
-                </button>
             </div>
+
+            {/* Fila em andamento */}
+            {dados.execucao?.executando && (
+                <div className="bg-mint/50 border border-primary/20 rounded-xl p-3 flex items-center gap-3 text-sm text-primaryDark">
+                    <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                    <span>Fila de envio em andamento: <b>{dados.execucao.processados}/{dados.execucao.total}</b> (1 mensagem por minuto, conferindo no Conta Azul antes de cada envio)</span>
+                    <button onClick={carregar} className="ml-auto p-1.5 text-primaryDark hover:bg-mint rounded-full"><RefreshCw className="h-4 w-4" /></button>
+                </div>
+            )}
 
             {/* KPIs */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -300,12 +331,12 @@ const CONFIG_VAZIA = {
     formaRecebimento: '', ativo: true, diasPrimeiroAviso: 1, repetirCadaDias: 7, maxAvisos: 5,
     enviarVencida: true, lembreteAntes: false, diasLembrete: 3,
     canalWhatsapp: true, canalEmail: false, canalSms: false,
-    templates: [], templateLembrete: '', responsavelTarefaId: ''
+    templates: [], templateLembrete: '', responsavelTarefaId: '', horaEnvio: ''
 };
 
 function CardConfig({ config, formas, equipe, onSalvar, onExcluir, novo = false }) {
     const [expandido, setExpandido] = useState(novo);
-    const [dados, setDados] = useState({ ...CONFIG_VAZIA, ...config, responsavelTarefaId: config?.responsavelTarefaId || '' });
+    const [dados, setDados] = useState({ ...CONFIG_VAZIA, ...config, responsavelTarefaId: config?.responsavelTarefaId || '', horaEnvio: config?.horaEnvio || '' });
     const [salvando, setSalvando] = useState(false);
     const [previewTexto, setPreviewTexto] = useState(null);
 
@@ -319,7 +350,7 @@ function CardConfig({ config, formas, equipe, onSalvar, onExcluir, novo = false 
         }
         setSalvando(true);
         try {
-            await onSalvar({ ...dados, responsavelTarefaId: dados.responsavelTarefaId || null });
+            await onSalvar({ ...dados, responsavelTarefaId: dados.responsavelTarefaId || null, horaEnvio: dados.horaEnvio || null });
             if (novo) setDados({ ...CONFIG_VAZIA });
         } finally { setSalvando(false); }
     };
@@ -349,6 +380,7 @@ function CardConfig({ config, formas, equipe, onSalvar, onExcluir, novo = false 
                         <div className="text-xs text-gray-500">
                             1º aviso {dados.diasPrimeiroAviso}d após vencer · repete a cada {dados.repetirCadaDias}d · máx {dados.maxAvisos} avisos
                             {dados.lembreteAntes ? ` · lembrete ${dados.diasLembrete}d antes` : ''}
+                            {dados.horaEnvio ? ` · envia às ${dados.horaEnvio}` : ''}
                         </div>
                     )}
                 </div>
@@ -382,7 +414,7 @@ function CardConfig({ config, formas, equipe, onSalvar, onExcluir, novo = false 
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
                             <label className="text-sm font-medium text-gray-700 block mb-1">1º aviso (dias após vencer)</label>
                             <input type="number" min="0" value={dados.diasPrimeiroAviso} onChange={e => set('diasPrimeiroAviso', e.target.value)}
@@ -397,6 +429,12 @@ function CardConfig({ config, formas, equipe, onSalvar, onExcluir, novo = false 
                             <label className="text-sm font-medium text-gray-700 block mb-1">Máximo de avisos</label>
                             <input type="number" min="1" value={dados.maxAvisos} onChange={e => set('maxAvisos', e.target.value)}
                                 className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium text-gray-700 block mb-1">Horário de envio</label>
+                            <input type="time" value={dados.horaEnvio || ''} onChange={e => set('horaEnvio', e.target.value)}
+                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                            <p className="text-xs text-gray-500 mt-1">Vazio = usa o horário geral</p>
                         </div>
                     </div>
 

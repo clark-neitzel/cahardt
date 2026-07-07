@@ -29,7 +29,7 @@ router.use(verificarAuth, checkAcesso);
 router.get('/painel', async (req, res) => {
     try {
         const painel = await cobrancaService.painelInadimplentes();
-        res.json(painel);
+        res.json({ ...painel, execucao: cobrancaService.getStatusExecucao() });
     } catch (e) {
         console.error('[Cobranca] Erro no painel:', e);
         res.status(500).json({ error: 'Erro ao montar o painel de inadimplentes.' });
@@ -65,7 +65,8 @@ const camposConfig = (body) => ({
         ? body.templates.filter(t => t && t.texto).map(t => ({ nome: String(t.nome || '').slice(0, 60), texto: String(t.texto).slice(0, 2000) }))
         : [],
     templateLembrete: body.templateLembrete ? String(body.templateLembrete).slice(0, 2000) : null,
-    responsavelTarefaId: body.responsavelTarefaId || null
+    responsavelTarefaId: body.responsavelTarefaId || null,
+    horaEnvio: /^\d{2}:\d{2}$/.test(body.horaEnvio || '') ? body.horaEnvio : null
 });
 
 router.post('/configs', async (req, res) => {
@@ -181,8 +182,16 @@ router.get('/envios', async (req, res) => {
 // ── Ações ────────────────────────────────────────────────────────────
 router.post('/executar', async (req, res) => {
     try {
-        const r = await cobrancaService.executarRegua({ forcarManual: true });
-        res.json(r);
+        const status = cobrancaService.getStatusExecucao();
+        if (status.executando) {
+            return res.json({ ok: false, motivo: `Fila já em andamento (${status.processados}/${status.total})` });
+        }
+        // A fila envia 1 mensagem por minuto — roda em segundo plano e a
+        // resposta volta na hora (acompanhe pelo painel/histórico)
+        cobrancaService.executarRegua({ forcarManual: true })
+            .then(r => console.log('[Cobranca] Fila manual concluída:', JSON.stringify(r)))
+            .catch(e => console.error('[Cobranca] Fila manual falhou:', e.message));
+        res.json({ ok: true, iniciado: true });
     } catch (e) {
         console.error('[Cobranca] Erro ao executar régua:', e);
         res.status(500).json({ error: 'Erro ao executar a régua.' });
@@ -214,11 +223,17 @@ router.get('/config-global', async (req, res) => {
     }
 });
 
+const DIAS_VALIDOS = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+
 router.post('/config-global', async (req, res) => {
     try {
+        const diasSemana = (Array.isArray(req.body?.diasSemana) ? req.body.diasSemana : [])
+            .filter(d => DIAS_VALIDOS.includes(d));
         const value = {
             ativo: req.body?.ativo === true,
-            horaEnvio: /^\d{2}:\d{2}$/.test(req.body?.horaEnvio || '') ? req.body.horaEnvio : '08:30'
+            horaEnvio: /^\d{2}:\d{2}$/.test(req.body?.horaEnvio || '') ? req.body.horaEnvio : '08:30',
+            diasSemana: diasSemana.length ? diasSemana : ['SEG', 'TER', 'QUA', 'QUI', 'SEX'],
+            prorrogarFimDeSemana: req.body?.prorrogarFimDeSemana !== false
         };
         await prisma.appConfig.upsert({
             where: { key: 'cobranca_config' },

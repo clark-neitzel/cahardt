@@ -4,9 +4,17 @@
 
 Cobra automaticamente os clientes inadimplentes por **WhatsApp** (bot), **e-mail** e **SMS**, seguindo uma régua configurável por **forma de recebimento** (condição de pagamento). Quando o WhatsApp falha (cliente sem celular cadastrado ou que nunca conversou com o bot), o sistema **cria uma tarefa automática** (aba Tarefas, com alerta sonoro) para a pessoa responsável resolver.
 
+## Como os envios saem (fila e proteções)
+
+- Os envios saem em **fila, 1 mensagem por minuto** — proteção para o número de WhatsApp não ser bloqueado por rajada.
+- **Antes de cada envio o sistema confere no Conta Azul** se a dívida ainda está em aberto (sincroniza as baixas feitas lá). Se o cliente já pagou no CA, o envio é pulado e o painel se atualiza.
+- A régua só roda nos **dias da semana marcados** (padrão: segunda a sexta — não cobra em fim de semana).
+- **Vencimento que cai em sábado/domingo** conta como vencido só na segunda (opção "prorrogar fim de semana", ligada por padrão). Ex.: venceu sábado + 1 dia de carência → 1º aviso sai na terça.
+- Horários são sempre no **horário de São Paulo**.
+
 ## Aba Inadimplentes
 
-- **Liga/desliga geral** da cobrança automática + **horário do disparo diário** (padrão 08:30) + botão **Executar agora** (roda a régua na hora, respeitando as regras de cada forma).
+- **Liga/desliga geral** da cobrança automática + **horário geral do disparo diário** (padrão 08:30) + **dias da semana de envio** + regra de fim de semana + botão **Executar agora** (inicia a fila na hora; um aviso azul mostra o progresso "X/Y" enquanto a fila roda).
 - **Indicadores:** valor total vencido, nº de clientes, envios com erro, clientes sem celular.
 - **Lista de clientes com parcelas vencidas** mostrando: forma de recebimento, valor vencido, dias de atraso, último envio (canal/resultado/erro), situação na régua (aguardando 1º aviso, aguardando repetição, limite de avisos atingido, sem régua configurada) e se existe **tarefa aberta** para o caso.
 - **Cobrar agora** (por cliente): envia a cobrança imediatamente pelos canais da régua, ignorando o calendário. Se o WhatsApp falhar, a tarefa é criada na hora.
@@ -17,6 +25,7 @@ Cobra automaticamente os clientes inadimplentes por **WhatsApp** (bot), **e-mail
 Um cartão por forma de recebimento (ex.: Boleto 28 dias, PIX à vista). A linha **PADRÃO** vale para qualquer forma sem régua própria (inclusive contas importadas do Conta Azul sem pedido). Em cada cartão:
 
 - **1º aviso**: quantos dias **após o vencimento** sai a primeira mensagem.
+- **Horário de envio próprio** (opcional): cada forma pode disparar num horário diferente; vazio usa o horário geral.
 - **Repetir a cada X dias** e **máximo de avisos** por dívida (o contador zera quando a dívida antiga é paga).
 - **Cobrar faturas vencidas** (liga/desliga) e **lembrete antes de vencer** (X dias antes, opcional, com mensagem própria).
 - **Canais**: WhatsApp, E-mail, SMS (pode combinar).

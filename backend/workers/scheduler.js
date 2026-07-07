@@ -280,10 +280,12 @@ function startSchedulers() {
     }, 60 * 1000); // a cada 1 minuto
 
     // === 7.1. RÉGUA DE COBRANÇA (inadimplentes) ===
-    // A cada 5 min confere se chegou o horário configurado (app_configs
-    // 'cobranca_config' = { ativo, horaEnvio }) e roda a régua UMA vez por dia
-    // (controle em 'cobranca_ultima_execucao' = 'YYYY-MM-DD'). 100% isolado:
-    // com a régua pausada ou sem config, não faz nada.
+    // A cada 5 min confere, PARA CADA forma de recebimento ativa, se chegou o
+    // horário dela (horaEnvio próprio ou o horário geral de app_configs
+    // 'cobranca_config') e roda a régua daquela forma UMA vez por dia
+    // (controle em cobranca_configs.ultima_execucao_dia). Respeita os dias da
+    // semana configurados (padrão seg–sex). Os envios saem em FILA, com 1 min
+    // entre mensagens, conferindo no CA antes de cada envio. 100% isolado.
     console.log('⏰ Iniciando Régua de Cobrança (inadimplentes)...');
     const cobrancaService = require('../services/cobrancaService');
     setInterval(async () => {
@@ -292,22 +294,28 @@ function startSchedulers() {
             if (!global.ativo) return;
 
             const agora = new Date();
+            // Só roda nos dias da semana configurados (nada de cobrar no fim de semana)
+            const siglaHoje = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'][agora.getDay()];
+            if (!global.diasSemana.includes(siglaHoje)) return;
+
             const horaAtual = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`;
-            if (horaAtual < global.horaEnvio) return;
-
             const hojeStr = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, '0')}-${String(agora.getDate()).padStart(2, '0')}`;
-            const ultima = await prisma.appConfig.findUnique({ where: { key: 'cobranca_ultima_execucao' } });
-            if (ultima?.value === hojeStr) return; // já rodou hoje
 
-            // Marca ANTES de rodar (se falhar no meio, não fica reenviando o dia todo)
-            await prisma.appConfig.upsert({
-                where: { key: 'cobranca_ultima_execucao' },
-                update: { value: hojeStr },
-                create: { key: 'cobranca_ultima_execucao', value: hojeStr }
-            });
+            const configs = await prisma.cobrancaConfig.findMany({ where: { ativo: true } });
+            for (const cfg of configs) {
+                const hora = cfg.horaEnvio || global.horaEnvio;
+                if (horaAtual < hora) continue;
+                if (cfg.ultimaExecucaoDia === hojeStr) continue; // já rodou hoje
 
-            console.log(`[Cobranca] Horário ${global.horaEnvio} atingido — executando régua...`);
-            await cobrancaService.executarRegua();
+                // Marca ANTES de rodar (se falhar no meio, não repete o dia todo)
+                await prisma.cobrancaConfig.update({ where: { id: cfg.id }, data: { ultimaExecucaoDia: hojeStr } });
+                console.log(`[Cobranca] ${hora} atingido — executando régua da forma "${cfg.formaRecebimento}"...`);
+                const r = await cobrancaService.executarRegua({ configId: cfg.id });
+                if (r && r.motivo === 'Régua já em execução') {
+                    // Outra fila em andamento (ex.: disparo manual) — devolve a vez p/ o próximo ciclo
+                    await prisma.cobrancaConfig.update({ where: { id: cfg.id }, data: { ultimaExecucaoDia: cfg.ultimaExecucaoDia } });
+                }
+            }
         } catch (e) {
             console.error('⚠️ Worker Régua de Cobrança Error:', e.message);
         }

@@ -17,6 +17,10 @@ const smsService = require('./smsService');
  */
 
 const DIA_MS = 24 * 60 * 60 * 1000;
+// Fila de envio: intervalo entre uma mensagem e outra (protege o número de
+// WhatsApp de bloqueio por rajada de envios)
+const INTERVALO_ENTRE_ENVIOS_MS = 60 * 1000;
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 const TEMPLATE_PADRAO_1 = `Olá, *{nome}*! 😊
 Passando para avisar que consta em aberto conosco o valor de *R$ {valor_total}*:
@@ -80,10 +84,31 @@ const formaDoGrupo = (contaReceber) => {
     return combinado || 'PADRAO';
 };
 
+const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
+
 async function getCobrancaConfigGlobal() {
     const row = await prisma.appConfig.findUnique({ where: { key: 'cobranca_config' } });
     const v = row?.value || {};
-    return { ativo: v.ativo === true, horaEnvio: v.horaEnvio || '08:30' };
+    return {
+        ativo: v.ativo === true,
+        horaEnvio: v.horaEnvio || '08:30', // horário de São Paulo (TZ do servidor)
+        // Dias da semana em que a régua PODE enviar (padrão: dias úteis)
+        diasSemana: Array.isArray(v.diasSemana) && v.diasSemana.length ? v.diasSemana : ['SEG', 'TER', 'QUA', 'QUI', 'SEX'],
+        // Vencimento que cai em sáb/dom conta como vencido só na segunda
+        prorrogarFimDeSemana: v.prorrogarFimDeSemana !== false
+    };
+}
+
+// Vencimento efetivo: caindo em sábado/domingo, empurra para a segunda-feira.
+// Ex.: venceu sábado → só é "vencido" a partir de segunda → com 1 dia de
+// carência, o 1º aviso sai na terça.
+function vencimentoEfetivo(vencimento, prorrogar) {
+    const v = new Date(vencimento);
+    const dia = new Date(v.getFullYear(), v.getMonth(), v.getDate());
+    if (!prorrogar) return dia;
+    if (dia.getDay() === 6) return new Date(dia.getTime() + 2 * DIA_MS); // sábado → segunda
+    if (dia.getDay() === 0) return new Date(dia.getTime() + 1 * DIA_MS); // domingo → segunda
+    return dia;
 }
 
 // ── Montagem dos grupos (cliente + forma de recebimento) ─────────────
@@ -93,6 +118,7 @@ async function getCobrancaConfigGlobal() {
  * lembrete) e agrupa por cliente + configuração de forma de recebimento.
  */
 async function montarGrupos() {
+    const global = await getCobrancaConfigGlobal();
     const configs = await prisma.cobrancaConfig.findMany({
         include: { responsavelTarefa: { select: { id: true, nome: true } } }
     });
@@ -140,12 +166,16 @@ async function montarGrupos() {
             grupos.set(chave, { cliente, forma, config, parcelasVencidas: [], parcelasAVencer: [] });
         }
         const g = grupos.get(chave);
-        const dias = diasAtrasoDe(p.dataVencimento);
+        // Dias de atraso contados a partir do vencimento EFETIVO (fim de semana → segunda)
+        const efetivo = vencimentoEfetivo(p.dataVencimento, global.prorrogarFimDeSemana);
+        const dias = diasAtrasoDe(efetivo);
         const item = {
             parcelaId: p.id,
+            contaReceberId: p.contaReceberId,
             numero: p.numeroParcela,
             valor: devido,
             vencimento: p.dataVencimento,
+            vencimentoEfetivo: efetivo,
             diasAtraso: dias,
             pedidoNumero: p.contaReceber.pedido?.numero || null
         };
@@ -427,11 +457,12 @@ async function avaliarGrupo(grupo) {
     }
 
     if (enviosAnteriores.length === 0) {
-        // 1º aviso: X dias após o vencimento
+        // 1º aviso: X dias após o vencimento (efetivo — fim de semana conta como segunda)
         if (diasMax >= cfg.diasPrimeiroAviso) {
             return { deveEnviar: true, situacao: 'ENVIAR', proximoEnvio: null, numeroAviso: 1 };
         }
-        const proximo = new Date(vencMaisAntigo.getTime() + cfg.diasPrimeiroAviso * DIA_MS);
+        const baseEfetiva = grupo.parcelasVencidas[0].vencimentoEfetivo || vencMaisAntigo;
+        const proximo = new Date(new Date(baseEfetiva).getTime() + cfg.diasPrimeiroAviso * DIA_MS);
         return { deveEnviar: false, situacao: 'AGUARDANDO_PRIMEIRO', proximoEnvio: proximo, numeroAviso: 1 };
     }
 
@@ -471,57 +502,126 @@ async function deveEnviarLembrete(grupo) {
     return !jaEnviado;
 }
 
+// ── Conferência no Conta Azul antes de enviar ────────────────────────
+
+/**
+ * Antes de cobrar, sincroniza as contas do grupo com o Conta Azul (aplica
+ * baixas feitas lá que ainda não chegaram aqui) e refiltra as parcelas.
+ * Retorna true se ainda sobrou algo em aberto para cobrar.
+ */
+async function conferirNoCA(grupo) {
+    const contasReceberSyncService = require('./contasReceberSyncService');
+    const contas = [...new Set(grupo.parcelasVencidas.map(p => p.contaReceberId))];
+    for (const contaId of contas) {
+        try { await contasReceberSyncService.sincronizarConta(contaId); }
+        catch (e) { /* sem vínculo com o CA ou CA fora do ar — segue com o dado local */ }
+    }
+
+    const ids = grupo.parcelasVencidas.map(p => p.parcelaId);
+    const atuais = await prisma.parcela.findMany({ where: { id: { in: ids } } });
+    const abertas = new Map(
+        atuais.filter(p => ['PENDENTE', 'PARCIAL', 'VENCIDO'].includes(p.status)).map(p => [p.id, p])
+    );
+    grupo.parcelasVencidas = grupo.parcelasVencidas.filter(item => {
+        const p = abertas.get(item.parcelaId);
+        if (!p) return false;
+        const devido = valorDevido(p);
+        if (devido < 0.01) return false;
+        item.valor = devido; // baixa parcial no CA reduz o valor cobrado
+        return true;
+    });
+    return grupo.parcelasVencidas.length > 0;
+}
+
 // ── Execução da régua (worker + botão "Executar agora") ─────────────
 
 let _executando = false;
+const _status = { executando: false, total: 0, processados: 0, iniciadoEm: null };
 
-async function executarRegua({ forcarManual = false } = {}) {
+const getStatusExecucao = () => ({ ..._status });
+
+/**
+ * Roda a régua como FILA: avalia todo mundo, e envia um cliente por vez com
+ * intervalo de 1 minuto entre mensagens (proteção do WhatsApp). Antes de cada
+ * envio confere no Conta Azul se a dívida ainda está em aberto.
+ * opts.configId: processa só os grupos daquela forma de recebimento (disparo
+ * por horário próprio da forma).
+ */
+async function executarRegua({ forcarManual = false, configId = null } = {}) {
     if (_executando) return { ok: false, motivo: 'Régua já em execução' };
     _executando = true;
+    Object.assign(_status, { executando: true, total: 0, processados: 0, iniciadoEm: new Date() });
     try {
         const global = await getCobrancaConfigGlobal();
         if (!global.ativo && !forcarManual) {
             return { ok: false, motivo: 'Régua de cobrança desativada nas configurações' };
         }
 
-        const { grupos } = await montarGrupos();
-        const resumo = { clientesAvaliados: grupos.length, cobrancasEnviadas: 0, lembretesEnviados: 0, falhas: 0, tarefasCriadas: 0 };
+        let { grupos } = await montarGrupos();
+        if (configId) grupos = grupos.filter(g => g.config?.id === configId);
+        const resumo = { clientesAvaliados: grupos.length, cobrancasEnviadas: 0, lembretesEnviados: 0, puladosPagosCA: 0, falhas: 0, tarefasCriadas: 0 };
 
+        // 1) Avalia tudo primeiro e monta a fila
+        const fila = [];
         for (const grupo of grupos) {
             try {
-                // Cobrança de vencidas
                 const avaliacao = await avaliarGrupo(grupo);
-                if (avaliacao.deveEnviar) {
-                    const r = await enviarCobrancaGrupo(grupo, { tipo: 'COBRANCA', numeroAviso: avaliacao.numeroAviso });
-                    const algumOk = ['whatsapp', 'email', 'sms'].some(c => r[c]?.ok);
-                    if (algumOk) resumo.cobrancasEnviadas++;
-                    else resumo.falhas++;
-                    if (r.whatsapp && !r.whatsapp.ok) resumo.tarefasCriadas++;
+                if (avaliacao.deveEnviar) fila.push({ grupo, tipo: 'COBRANCA', numeroAviso: avaliacao.numeroAviso });
+                else if (await deveEnviarLembrete(grupo)) fila.push({ grupo, tipo: 'LEMBRETE', numeroAviso: 0 });
+            } catch (e) {
+                console.error(`[Cobranca] Erro ao avaliar ${grupo.cliente.Nome}:`, e.message);
+            }
+        }
+        _status.total = fila.length;
+        console.log(`[Cobranca] Fila montada: ${fila.length} envio(s)${configId ? ` (forma ${configId})` : ''}`);
+
+        // 2) Processa a fila: 1 cliente por vez, 1 minuto entre envios
+        let enviados = 0;
+        for (const { grupo, tipo, numeroAviso } of fila) {
+            try {
+                // Confere no CA se ainda está em aberto (só para cobrança de vencidas)
+                if (tipo !== 'LEMBRETE' && !(await conferirNoCA(grupo))) {
+                    resumo.puladosPagosCA++;
+                    _status.processados++;
+                    console.log(`[Cobranca] Pulado (pago no CA): ${grupo.cliente.Nome}`);
+                    continue;
                 }
 
-                // Lembrete pré-vencimento
-                if (await deveEnviarLembrete(grupo)) {
-                    const r = await enviarCobrancaGrupo(grupo, { tipo: 'LEMBRETE', numeroAviso: 0 });
-                    if (['whatsapp', 'email', 'sms'].some(c => r[c]?.ok)) resumo.lembretesEnviados++;
-                }
+                if (enviados > 0) await sleep(INTERVALO_ENTRE_ENVIOS_MS);
+                const r = await enviarCobrancaGrupo(grupo, { tipo, numeroAviso });
+                enviados++;
+                const algumOk = ['whatsapp', 'email', 'sms'].some(c => r[c]?.ok);
+                if (tipo === 'LEMBRETE') { if (algumOk) resumo.lembretesEnviados++; }
+                else if (algumOk) resumo.cobrancasEnviadas++;
+                else resumo.falhas++;
+                if (tipo !== 'LEMBRETE' && r.whatsapp && !r.whatsapp.ok) resumo.tarefasCriadas++;
             } catch (e) {
-                console.error(`[Cobranca] Erro no grupo ${grupo.cliente.Nome}:`, e.message);
+                console.error(`[Cobranca] Erro no envio para ${grupo.cliente.Nome}:`, e.message);
                 resumo.falhas++;
             }
+            _status.processados++;
         }
 
         console.log(`[Cobranca] Régua executada: ${JSON.stringify(resumo)}`);
         return { ok: true, ...resumo };
     } finally {
         _executando = false;
+        Object.assign(_status, { executando: false });
     }
 }
 
 /** Envio manual imediato para um cliente (botão "Cobrar agora" do painel). */
 async function cobrarClienteAgora(clienteId) {
     const { grupos } = await montarGrupos();
-    const doCliente = grupos.filter(g => g.cliente.UUID === clienteId && g.parcelasVencidas.length > 0);
-    if (!doCliente.length) return { ok: false, motivo: 'Cliente sem parcelas vencidas em aberto' };
+    const candidatos = grupos.filter(g => g.cliente.UUID === clienteId && g.parcelasVencidas.length > 0);
+    if (!candidatos.length) return { ok: false, motivo: 'Cliente sem parcelas vencidas em aberto' };
+
+    // Confere no CA antes de cobrar (se pagou lá, não incomoda o cliente)
+    const doCliente = [];
+    for (const grupo of candidatos) {
+        if (await conferirNoCA(grupo)) doCliente.push(grupo);
+    }
+    if (!doCliente.length) return { ok: false, motivo: 'Parcelas já baixadas no Conta Azul — nada a cobrar (painel será atualizado)' };
 
     const resultados = [];
     for (const grupo of doCliente) {
@@ -610,5 +710,6 @@ module.exports = {
     painelInadimplentes,
     previewMensagem,
     getCobrancaConfigGlobal,
+    getStatusExecucao,
     TEMPLATES_PADRAO: { aviso1: TEMPLATE_PADRAO_1, aviso2: TEMPLATE_PADRAO_2, lembrete: TEMPLATE_LEMBRETE_PADRAO }
 };

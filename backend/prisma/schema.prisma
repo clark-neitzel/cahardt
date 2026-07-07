@@ -2878,6 +2878,11 @@ model CobrancaConfig {
   lembreteAntes     Boolean @default(false) @map("lembrete_antes") // lembrete ANTES de vencer
   diasLembrete      Int     @default(3) @map("dias_lembrete") // quantos dias antes do vencimento
 
+  // Horário próprio de disparo (HH:MM, São Paulo); null = usa o horário geral
+  horaEnvio          String? @map("hora_envio")
+  // 'YYYY-MM-DD' do último disparo automático (evita rodar 2x no mesmo dia)
+  ultimaExecucaoDia  String? @map("ultima_execucao_dia")
+
   // Canais de envio
   canalWhatsapp Boolean @default(true) @map("canal_whatsapp")
   canalEmail    Boolean @default(false) @map("canal_email")
