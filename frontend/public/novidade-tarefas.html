@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Tarefas da Equipe — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="📋 Novidade no Hardt App: Tarefas da Equipe">
+<meta property="og:description" content="Agenda de tarefas com alerta sonoro que insiste até você concluir. Veja como funciona — tem demonstração com som!">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock do pop-up flutuando sobre o hero */
+  .mock {
+    max-width: 400px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-bell { font-size: 26px; animation: pulse 1.4s ease-in-out infinite; will-change: opacity; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { .mock-bell { animation: none; } }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-body { padding: 14px 18px 18px; }
+  .mock-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .chip {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #f1f3f2;
+    color: #444;
+  }
+  .chip.verde { background: var(--mint); color: var(--primary-dark); }
+  .mock-body p { font-size: 13px; color: var(--ink-soft); margin: 0 0 14px; }
+  .mock-botoes { display: flex; gap: 8px; }
+  .mock-botoes span {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 11px 6px;
+    border-radius: 999px;
+  }
+  .b-cheio { background: var(--primary); color: #fff; }
+  .b-vazio { border: 1.5px solid var(--primary); color: var(--primary); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible, .pop button:focus-visible {
+    outline: 3px solid var(--gold);
+    outline-offset: 2px;
+  }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    vertical-align: 1px;
+  }
+  .tag.mint { background: var(--mint); color: var(--primary-dark); }
+  .tag.escuro { background: var(--house); color: #fff; }
+  .tag.dourado { background: #fdf6e9; color: #8a6d2f; border: 1.5px solid var(--gold); }
+
+  /* passos "como acessar" */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .abrir-app {
+    display: block;
+    text-align: center;
+    max-width: 400px;
+    margin: 22px auto 0;
+    background: var(--house);
+    color: #fff;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 800;
+    padding: 15px;
+    border-radius: 999px;
+  }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── POP-UP DE DEMONSTRAÇÃO ── */
+  .pop-fundo {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.6);
+    backdrop-filter: blur(2px);
+    display: none;
+    align-items: center; justify-content: center;
+    padding: 16px;
+    z-index: 50;
+  }
+  .pop-fundo.on { display: flex; }
+  .pop {
+    background: #fff;
+    border-radius: 20px;
+    max-width: 400px;
+    width: 100%;
+    overflow: hidden;
+    animation: sobe .25s ease-out;
+  }
+  @keyframes sobe { from { opacity: 0; transform: translateY(14px) scale(.96); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .pop { animation: none; } }
+  .pop .mock-botoes button {
+    flex: 1;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 13px 6px;
+    border-radius: 999px;
+    cursor: pointer;
+    min-height: 46px;
+  }
+  .pop .b1 { background: var(--primary); color: #fff; border: none; }
+  .pop .b1:hover { background: var(--primary-dark); }
+  .pop .b2 { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .pop-obs { text-align: center; font-size: 11px; color: #9aa5a0; margin: 12px 0 0; }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 26px;
+    transform: translateX(-50%);
+    background: #12241f;
+    color: #fff;
+    font-size: 13.5px;
+    font-weight: 600;
+    padding: 12px 20px;
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.3);
+    display: none;
+    z-index: 60;
+    max-width: 92vw;
+    text-align: center;
+  }
+  .toast.on { display: block; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Tarefas da Equipe,<br>com alerta na hora certa</h1>
+    <p>Agora o app tem uma agenda de tarefas: na hora marcada, aparece um aviso com som na sua tela — e ele insiste até você concluir. Nada mais passa batido.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do pop-up -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-bell">⏰</span>
+      <div>
+        <small>Hora da tarefa · 15:00</small>
+        <strong>Separar amostras Kit Festa</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-chips">
+        <span class="chip">🔒 Criada pelo Admin</span>
+        <span class="chip verde">Repete: seg a sex</span>
+      </div>
+      <p>Separar 3 amostras de coxinha e 2 de risole para a degustação. Deixar identificadas na câmara fria.</p>
+      <div class="mock-botoes">
+        <span class="b-cheio">✓ Concluir tarefa</span>
+        <span class="b-vazio">Lembrar em 5 min</span>
+      </div>
+    </div>
+  </div>
+
+  <button class="demo-cta" onclick="abrirDemo()">🔊 Toque aqui e veja o alerta funcionando</button>
+  <p class="demo-hint">É uma demonstração — pode clicar sem medo, com som e tudo.</p>
+
+  <!-- ══════════ COMO FUNCIONA ══════════ -->
+  <div class="sec-label">Como funciona — toque para abrir</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⏰</span>
+      <strong>O alerta que não deixa esquecer</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Na hora marcada da tarefa, um <b>aviso grande com som</b> aparece por cima de qualquer tela do app.</li>
+        <li>Fechou ou tocou em <b>"Lembrar em 5 min"</b>? Ele volta sozinho a cada 5 minutos até a tarefa ser concluída.</li>
+        <li>Se outra tarefa chegar na hora, a nova assume a tela — a anterior fica guardada no sino 🔔, sem se perder.</li>
+        <li>Ao tocar em <b>"✓ Concluir tarefa"</b>, o aviso para e fica registrado o horário em que você concluiu.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="false">
+      <span class="acc-ico">🗓️</span>
+      <strong>A agenda (igual Google Agenda)</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p><b>Tarefas</b> é o primeiro item do menu. No computador você vê a semana inteira em grade; no celular, o dia ou a lista dos próximos 30 dias.</p>
+      <p>As cores dizem de quem é a tarefa:</p>
+      <ul>
+        <li><span class="tag mint">verde-claro</span> — tarefa que <b>você</b> criou</li>
+        <li><span class="tag escuro">🔒 verde-escuro</span> — criada pelo <b>Admin</b> (só ele edita ou exclui; você conclui)</li>
+        <li><span class="tag dourado">borda dourada</span> — criada por um <b>colega</b> para você</li>
+      </ul>
+      <p>Tarefa piscando = o horário chegou e ela ainda não foi concluída.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="false">
+      <span class="acc-ico">➕</span>
+      <strong>Criando suas tarefas</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Toque em <b>"+ Nova tarefa"</b> (ou num horário vazio da grade) e preencha título, data e horário do alerta.</li>
+        <li>Dá para <b>repetir</b>: todo dia, dias úteis (seg a sex), toda semana ou todo mês.</li>
+        <li>Todo mundo pode criar tarefa <b>para si</b>. Quem tiver a permissão liberada também cria <b>para colegas</b> — cada um recebe a sua cópia com o mesmo alerta.</li>
+        <li>Quer avisar só uma vez, sem insistência? É só desmarcar <b>"Insistir a cada 5 minutos"</b> na tarefa.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="false">
+      <span class="acc-ico">📎</span>
+      <strong>Material de ajuda anexado</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Cada tarefa pode levar <b>links, fotos e PDFs</b> de apoio — um checklist, a foto da etiqueta certa, a ficha do cliente. Tudo aparece direto no aviso, na hora de fazer.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="false">
+      <span class="acc-ico">📊</span>
+      <strong>Parecer do dia (para a gestão)</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>No fim do dia, a administração consegue ver um <b>resumo por pessoa</b>: o que foi concluído no horário, o que atrasou, o que ficou sem fazer — e quantas vezes o alerta foi adiado. Concluir até 15 minutos depois do horário ainda conta como "no horário". 😉</p>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO ACESSAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra o menu e toque em <b>Tarefas</b> — é o primeiro item da lista.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Crie sua primeira tarefa com <b>"+ Nova tarefa"</b> e espere o alerta tocar. 🔔</div>
+    </div>
+  </div>
+
+  <a class="abrir-app" href="/tarefas">Abrir a aba Tarefas no app →</a>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<!-- ══════════ DEMO DO POP-UP ══════════ -->
+<div class="pop-fundo" id="popFundo" role="dialog" aria-modal="true" aria-label="Demonstração do alerta de tarefa">
+  <div class="pop">
+    <div class="mock-top">
+      <span class="mock-bell">⏰</span>
+      <div>
+        <small>Hora da tarefa · agora</small>
+        <strong>Experimentar a nova aba Tarefas</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-chips">
+        <span class="chip verde">Demonstração</span>
+        <span class="chip">📎 1 anexo de ajuda</span>
+      </div>
+      <p>É assim que o alerta aparece no app, em qualquer tela. Escolha um botão para ver o que acontece:</p>
+      <div class="mock-botoes">
+        <button class="b1" onclick="concluirDemo()">✓ Concluir tarefa</button>
+        <button class="b2" onclick="adiarDemo()">Lembrar em 5 min</button>
+      </div>
+      <p class="pop-obs">No app de verdade, "lembrar" traz o aviso de volta em 5 minutos.<br>Aqui na demonstração, ele volta em 10 segundos. 😄</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+
+  function somAlerta() {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      [[880, 0], [1174.66, .18], [880, .36]].forEach(([f, t]) => {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = f;
+        o.connect(g); g.connect(ctx.destination);
+        g.gain.setValueAtTime(.0001, ctx.currentTime + t);
+        g.gain.exponentialRampToValueAtTime(.32, ctx.currentTime + t + .02);
+        g.gain.exponentialRampToValueAtTime(.0001, ctx.currentTime + t + .28);
+        o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + .3);
+      });
+    } catch (e) {}
+  }
+
+  let timerDemo = null;
+  function abrirDemo() {
+    clearTimeout(timerDemo);
+    document.getElementById('popFundo').classList.add('on');
+    somAlerta();
+  }
+  function adiarDemo() {
+    document.getElementById('popFundo').classList.remove('on');
+    toast('Adiado! No app volta em 5 min — aqui, em 10 segundos… ⏳');
+    timerDemo = setTimeout(abrirDemo, 10000);
+  }
+  function concluirDemo() {
+    clearTimeout(timerDemo);
+    document.getElementById('popFundo').classList.remove('on');
+    toast('✓ Tarefa concluída — o aviso não volta mais. É assim que funciona!');
+  }
+  let timerToast = null;
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('on');
+    clearTimeout(timerToast);
+    timerToast = setTimeout(() => t.classList.remove('on'), 5000);
+  }
+</script>
+</body>
+</html>
