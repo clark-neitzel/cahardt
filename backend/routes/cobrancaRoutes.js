@@ -107,20 +107,16 @@ router.delete('/configs/:id', async (req, res) => {
 });
 
 // ── Opções para os seletores ─────────────────────────────────────────
-// Formas de recebimento conhecidas (condições de pagamento do CA + usadas em pedidos)
+// Formas de recebimento: somente as condições de pagamento ATIVAS + PADRAO
 router.get('/formas', async (req, res) => {
     try {
-        const [condicoes, usadas] = await Promise.all([
-            prisma.condicaoPagamento.findMany({ where: { ativo: true }, select: { nome: true }, orderBy: { nome: 'asc' } }),
-            prisma.pedido.findMany({
-                where: { nomeCondicaoPagamento: { not: null } },
-                select: { nomeCondicaoPagamento: true },
-                distinct: ['nomeCondicaoPagamento']
-            })
-        ]);
+        const condicoes = await prisma.condicaoPagamento.findMany({
+            where: { ativo: true },
+            select: { nome: true },
+            orderBy: { nome: 'asc' }
+        });
         const nomes = new Set(['PADRAO']);
         condicoes.forEach(c => c.nome && nomes.add(c.nome));
-        usadas.forEach(p => p.nomeCondicaoPagamento && nomes.add(p.nomeCondicaoPagamento));
         res.json({ formas: [...nomes].sort((a, b) => (a === 'PADRAO' ? -1 : b === 'PADRAO' ? 1 : a.localeCompare(b))) });
     } catch (e) {
         res.status(500).json({ error: 'Erro ao listar formas de recebimento.' });
