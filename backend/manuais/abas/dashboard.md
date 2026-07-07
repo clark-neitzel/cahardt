@@ -1,49 +1,78 @@
 ---
 aba: Dashboard
-rota: /dashboard
-permissao: todos (vendedor vê o próprio; admin pode ver qualquer vendedor)
+rota: /
+permissao: todos (cada perfil vê o seu — gestão, vendedor ou entregador)
 ---
 
-# Dashboard
+# Dashboard (tela inicial)
 
 ## O que é
 
-Painel de acompanhamento de desempenho em vendas. O vendedor vê o próprio progresso em tempo real: quanto vendeu no mês, se está no ritmo para bater a meta, quanto precisa vender por visita para fechar o mês. O admin (ou quem tiver `Pode_Ver_Dashboard_Admin`) vê um painel gerencial com todos os vendedores juntos.
+A tela inicial do app. Desde julho/2026 existe **um dashboard para cada perfil**, escolhido automaticamente pelas permissões de quem entrou:
+
+- **Gestão** (`admin` ou `Pode_Ver_Dashboard_Admin`) → **Dashboard Gerencial** com 5 abas: Visão Geral, Vendas & Pedidos, Recorrência, Atendimentos e Resultado & Margem.
+- **Vendedor** (demais usuários) → **Dashboard pessoal**: minha meta, meu dia, ranking da semana e "quem visitar primeiro".
+- **Entregador** (`Pode_Executar_Entregas`, sem meta de venda) → **Dashboard do Entregador**: rota de hoje, próxima parada, dinheiro a receber na entrega e resumo da semana.
+
+Os painéis antigos (cockpit, painel clássico) foram substituídos por este.
 
 ---
 
-## O que dá pra fazer aqui
+## Dashboard Gerencial (gestão)
 
-- Ver o total vendido no mês x meta definida (barra de progresso colorida)
-- Ver a projeção de fechamento do mês com base no ritmo atual
-- Saber quanto precisa vender por visita para bater a meta
-- Ver as cidades programadas para hoje com status de meta individual
-- Clicar em uma cidade e abrir o detalhe: progresso, próximas visitas, dia da semana com mais venda
-- Admin: trocar o vendedor selecionado para ver o dashboard de qualquer pessoa da equipe
-- Admin: ver painel gerencial com visão de todas as cidades do dia
+### Filtro de categoria
+No topo há um seletor de **categoria de produto** (padrão: Produto Acabado). Ele filtra as abas Visão Geral, Vendas e a margem por produto. A escolha fica salva por usuário.
+
+### Aba Visão Geral
+- O mês até agora: vendas líquidas, meta da equipe, **projeção de fechamento** (verde quando bate a meta), ticket médio, margem bruta e devoluções
+- O dia de hoje: vendas, pedidos, atendimentos (% que virou pedido) e clientes atendidos
+- **Precisa de atenção**: clientes em recompra crítica, retornos vencidos, clientes com parcela vencida, pedidos com erro de envio ao Conta Azul
+- Saúde do caixa: a receber vencido, a pagar em 7 dias, saldo previsto 30 dias
+
+### Aba Vendas & Pedidos
+- Gráfico de vendas por semana (12 semanas, semana atual em dourado; no celular desliza para o lado)
+- Vendedores × meta do mês com projeção e situação (acima da meta / quase lá / precisa reagir)
+- Top produtos dos últimos 30 dias, produtos em queda (30d vs 30 anteriores) e vendas por cidade
+- Link "ver como vendedor →" abre o dashboard individual de qualquer vendedor
+
+### Aba Recorrência
+- Funil de recompra da carteira: No prazo / Atenção / Atrasado / Crítico (calculado pelo ciclo de compra de cada cliente)
+- **R$ em risco**: quanto os clientes atrasados+críticos compravam por mês
+- Lista "clientes críticos — agir primeiro" ordenada pela venda em risco (clique abre o cliente)
+- Sinais de enfraquecimento (ticket caindo, produto que sumiu da cesta)
+- Movimento da carteira: novos, reativados, sem compra +90d, 1ª compra sem recompra
+
+### Aba Atendimentos
+- Total do mês, % que virou pedido, sem venda e leads novos
+- Atendimentos por tipo (visita, WhatsApp, ligação...)
+- **Por que não vendeu**: ranking dos motivos registrados pelos vendedores
+- Aproveitamento por vendedor (conversão) e retornos vencidos
+
+### Aba Resultado & Margem
+- DRE simplificada do mês: receita bruta → devoluções → receita líquida → despesas operacionais → financeiro → **resultado do mês**, com comparação ao mês anterior
+- Melhores e piores margens por produto (custo da ficha técnica do PCP ou custo de compra)
+- Recebíveis por idade (aging) e custos que mais pesaram no mês
 
 ---
 
-## Como fazer (passo a passo real)
+## Dashboard do Vendedor
 
-### Acompanhar a meta do mês
-1. Abra o app — o Dashboard é a tela inicial padrão
-2. O card principal mostra: valor realizado, meta, % atingido e projeção
-3. A barra de progresso muda de cor:
-   - Vermelha: abaixo de 50%
-   - Azul: entre 50% e 79%
-   - Amarela: entre 80% e 99%
-   - Verde: 100% ou mais
+- **Minha meta do mês**: anel de progresso, realizado, projeção e flex disponível, com a orientação "para bater a meta: vender R$ X por dia"
+- **Hoje**: vendi hoje (vs meta do dia), pedidos e clientes atendidos vs rota do dia
+- Barras da semana e do flex usado
+- **Ranking da semana**: sua posição e quanto falta para subir (sem expor os números dos colegas)
+- **Quem visitar primeiro**: clientes críticos/atrasados da SUA carteira (por valor em risco), retornos que você prometeu e clientes com parcela vencida para lembrar na visita — tudo clicável
+- Minha meta por cidade e por produto (seções recolhíveis)
+- Atalhos: Minha rota e Novo pedido
+- Gestores podem escolher outro vendedor no seletor do topo (ou entrar por "ver como vendedor" no Dashboard Gerencial)
 
-### Ver detalhe de uma cidade
-1. Role a tela até a seção de cidades
-2. Clique no card da cidade desejada
-3. Um painel lateral abre mostrando: meta, realizado, projeção, quanto falta, próximas datas de visita e dia da semana com mais venda
-4. Feche clicando fora ou pressionando Esc
+## Dashboard do Entregador
 
-### Admin: trocar vendedor
-1. Selecione o nome do vendedor no seletor no topo
-2. O dashboard atualiza para mostrar os dados daquele vendedor
+- **Minha rota de hoje**: X de Y entregas feitas com barra de progresso
+- **Próxima parada** em destaque com botões "Abrir no mapa" e "Fazer check-in" (leva ao Painel de Entregas)
+- Dinheiro a receber na entrega (quais clientes pagam na hora), devoluções e divergências do dia
+- Próximas paradas em ordem de prioridade e finalizadas hoje
+- Minha semana: entregas, devoluções e divergências, comparadas à semana passada
 
 ---
 
@@ -51,17 +80,20 @@ Painel de acompanhamento de desempenho em vendas. O vendedor vê o próprio prog
 
 | Permissão | Efeito |
 |-----------|--------|
-| Qualquer usuário logado | Vê o próprio dashboard |
-| `admin` ou `Pode_Ver_Dashboard_Admin` | Vê o painel admin com visão geral e pode trocar de vendedor |
-| `Pode_Gerenciar_Metas` | Também acessa o painel admin |
+| Qualquer usuário logado | Vê o dashboard do seu perfil |
+| `admin` ou `Pode_Ver_Dashboard_Admin` | Vê o Dashboard Gerencial (5 abas) e o dashboard de qualquer vendedor |
+| `Pode_Executar_Entregas` (sem meta de venda) | Vê o Dashboard do Entregador |
 
 ---
 
 ## Depende de / Interfere em
 
-- **Metas** (`/config/metas`) — os valores de meta mensal, cidades e produtos vêm de lá
-- **Pedidos** — o "realizado" considera pedidos com situação FATURADO no Conta Azul
-- **Rota** — dias de visita por cidade são configurados nos dias de venda do cliente
+- **Metas** (`/config/metas`) — meta mensal, por cidade e por produto do vendedor
+- **Pedidos** — vendas consideram pedidos FATURADOS (ou especiais), sem bonificação, menos devoluções
+- **Atendimentos** — contagens, conversão e motivos de não venda
+- **Recompra (ClienteInsight)** — status No prazo/Atenção/Atrasado/Crítico por ciclo de compra
+- **Financeiro** — DRE, margem por produto, aging e fluxo de caixa (mesmas regras das telas do Financeiro)
+- **Entregas/Embarques** — rota do dia do entregador
 
 ---
 
@@ -69,7 +101,9 @@ Painel de acompanhamento de desempenho em vendas. O vendedor vê o próprio prog
 
 | Caminho | Papel |
 |---------|-------|
-| `frontend/src/pages/Dashboard/DashboardVendedor.jsx` | Componente principal da tela |
-| `frontend/src/pages/Dashboard/DashboardAdminSection.jsx` | Painel gerencial (admin) |
-| `frontend/src/pages/Dashboard/DashboardAdminSectionClassic.jsx` | Visão clássica do admin |
-| `backend/src/routes/metas.js` | API `/metas/dashboard`, `/metas/cidades-hoje-todos` |
+| `frontend/src/pages/Dashboard/DashboardHome.jsx` | Escolhe o dashboard pelo perfil |
+| `frontend/src/pages/Dashboard/DashboardGeral.jsx` | Dashboard Gerencial (5 abas) |
+| `frontend/src/pages/Dashboard/DashboardVendedorPessoal.jsx` | Dashboard do vendedor (rota própria: `/dashboard-vendedor`) |
+| `frontend/src/pages/Dashboard/DashboardEntregador.jsx` | Dashboard do entregador |
+| `backend/routes/dashboards.js` | API `/api/dashboards/geral/*`, `/api/dashboards/vendedor`, `/api/dashboards/entregador` |
+| `backend/routes/metaRoutes.js` | API `/metas/dashboard` (painel de metas do vendedor) |

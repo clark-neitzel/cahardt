@@ -17,7 +17,8 @@ const GerenciarComissoes = lazy(() => import('./pages/Configuracoes/Comissoes/Ge
 const CategoriasProduto = lazy(() => import('./pages/Configuracoes/CategoriasProduto'));
 const CategoriasCliente = lazy(() => import('./pages/Configuracoes/CategoriasCliente'));
 const CategoriasEstoque = lazy(() => import('./pages/Configuracoes/CategoriasEstoque'));
-const DashboardVendedor = lazy(() => import('./pages/Dashboard/DashboardVendedor'));
+const DashboardHome = lazy(() => import('./pages/Dashboard/DashboardHome'));
+const DashboardVendedorPessoal = lazy(() => import('./pages/Dashboard/DashboardVendedorPessoal'));
 const ListaPedidos = lazy(() => import('./pages/Pedidos/ListaPedidos'));
 const Veiculos = lazy(() => import('./pages/Veiculos/Veiculos'));
 const NovoPedido = lazy(() => import('./pages/Pedidos/NovoPedido'));
@@ -126,7 +127,7 @@ const HomeRedirect = () => {
   if (telaInicial && telaInicial !== '/') {
     return <Navigate to={telaInicial} replace />;
   }
-  return <DashboardVendedor />;
+  return <DashboardHome />;
 };
 
 // Raiz do domínio: visitante (não logado) vê o site público de início;
@@ -627,6 +628,9 @@ function App() {
 
               {/* Raiz: visitante vê o site público; logado vai pro painel */}
               <Route path="/" element={<RootRoute />} />
+
+              {/* Dashboard individual de vendedor (gestor escolhe o vendedor no seletor) */}
+              <Route path="/dashboard-vendedor" element={<PrivateRoute><DashboardVendedorPessoal /></PrivateRoute>} />
 
               {/* Tarefas da Equipe (agenda com alertas) — toda a equipe logada */}
               <Route path="/tarefas" element={<PrivateRoute><TarefasAgenda /></PrivateRoute>} />

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Dashboards novos — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="📊 Novidade no Hardt App: Dashboards novos para cada um">
+<meta property="og:description" content="A tela inicial mudou: o vendedor vê a meta e quem visitar primeiro, o entregador vê a rota do dia, e a gestão vê o negócio inteiro em 5 abas.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cream); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 96px; text-align: center; }
+  .hero .tag { display: inline-block; background: var(--gold); color: #3b2f14; font-weight: 800; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; border-radius: 999px; padding: 6px 14px; }
+  .hero h1 { font-size: 28px; line-height: 1.2; margin: 14px auto 8px; max-width: 480px; font-weight: 800; }
+  .hero p { color: #bcd3c9; font-weight: 600; font-size: 15px; max-width: 440px; margin: 0 auto; }
+
+  .mock { background: #fff; border-radius: 18px; box-shadow: 0 14px 36px rgba(0,0,0,.22); margin: -72px auto 24px; overflow: hidden; border: 1px solid #e3e0d8; }
+  .mock .mtop { background: var(--house); color: #fff; padding: 14px 16px; }
+  .mock .mtop .mt1 { font-weight: 800; font-size: 16px; }
+  .mock .mtop .mt2 { font-size: 12px; color: #bcd3c9; font-weight: 600; }
+  .mock .mtabs { display: flex; gap: 6px; padding: 10px 12px; overflow-x: auto; scrollbar-width: none; border-bottom: 1px solid #efece6; }
+  .mock .mtabs::-webkit-scrollbar { display: none; }
+  .mock .mtab { flex: none; border-radius: 999px; padding: 7px 13px; font-size: 12px; font-weight: 700; background: #fff; border: 1px solid #e3e0d8; color: #5f6b66; white-space: nowrap; }
+  .mock .mtab.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .mock .mbody { padding: 14px; }
+  .mock .mkpis { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mock .mkpi { border: 1px solid #efece6; border-radius: 12px; padding: 10px 12px; }
+  .mock .mkpi .l { font-size: 11px; font-weight: 700; color: #78716c; }
+  .mock .mkpi .v { font-size: 18px; font-weight: 800; }
+  .mock .malerta { margin-top: 10px; background: #faf9f6; border: 1px solid #efece6; border-radius: 10px; padding: 10px 12px; display: flex; gap: 10px; align-items: center; }
+  .mock .malerta .n { flex: none; width: 32px; height: 32px; border-radius: 9px; background: #fee2e2; color: #b91c1c; font-weight: 800; display: flex; align-items: center; justify-content: center; font-size: 13px; }
+  .mock .malerta .t { font-size: 13px; font-weight: 700; }
+  .mock .malerta .s { font-size: 11.5px; color: #78716c; font-weight: 500; }
+
+  h2.secao { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: #5f6b66; font-weight: 800; margin: 30px 4px 12px; }
+
+  details { background: #fff; border: 1px solid #e3e0d8; border-radius: 14px; margin-bottom: 10px; overflow: hidden; }
+  summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 15px 16px; font-weight: 800; font-size: 15px; min-height: 44px; }
+  summary::-webkit-details-marker { display: none; }
+  summary .emoji { flex: none; width: 36px; height: 36px; border-radius: 10px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 17px; }
+  summary .seta { margin-left: auto; color: #a8a29e; transition: transform .18s; }
+  details[open] summary .seta { transform: rotate(180deg); }
+  .dbody { padding: 0 16px 16px 62px; font-size: 14px; color: #44403c; }
+  .dbody ul { margin: 6px 0 0; padding-left: 18px; }
+  .dbody li { margin-bottom: 6px; }
+  .dbody b { color: var(--ink); }
+
+  .passos { background: #fff; border: 1px solid #e3e0d8; border-radius: 14px; padding: 18px 16px; }
+  .passo { display: flex; gap: 12px; margin-bottom: 14px; }
+  .passo:last-child { margin-bottom: 0; }
+  .passo .num { flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo p { margin: 2px 0 0; font-size: 14px; }
+  .cta { display: block; text-align: center; background: var(--primary); color: #fff; text-decoration: none; font-weight: 800; font-size: 16px; border-radius: 999px; padding: 15px 20px; margin-top: 24px; }
+  .rodape { text-align: center; color: #8a8580; font-size: 12.5px; font-weight: 600; margin-top: 28px; }
+  @media (prefers-reduced-motion: reduce) { summary .seta { transition: none; } }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="tag">Novidade no Hardt App</span>
+  <h1>📊 A tela inicial mudou: um dashboard para cada um</h1>
+  <p>Agora, quando você abre o app, a primeira tela já mostra o que importa para o SEU trabalho — sem procurar nada.</p>
+</div>
+
+<div class="wrap">
+  <!-- Mock -->
+  <div class="mock">
+    <div class="mtop">
+      <div class="mt1">Dashboard Gerencial</div>
+      <div class="mt2">julho de 2026 · Produto Acabado</div>
+    </div>
+    <div class="mtabs">
+      <span class="mtab on">Visão Geral</span>
+      <span class="mtab">Vendas & Pedidos</span>
+      <span class="mtab">Recorrência</span>
+      <span class="mtab">Atendimentos</span>
+      <span class="mtab">Resultado & Margem</span>
+    </div>
+    <div class="mbody">
+      <div class="mkpis">
+        <div class="mkpi"><div class="l">Vendas do mês</div><div class="v">R$ 61.480</div></div>
+        <div class="mkpi"><div class="l">Projeção</div><div class="v" style="color:#166534">R$ 265.900 ✓</div></div>
+      </div>
+      <div class="malerta">
+        <span class="n">41</span>
+        <span><span class="t">Clientes em recompra crítica</span><br><span class="s">passaram do dobro do ciclo normal de compra</span></span>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="secao">O que cada um vê</h2>
+
+  <details open>
+    <summary><span class="emoji">💼</span> Vendedor: sua meta e quem visitar primeiro <span class="seta">▾</span></summary>
+    <div class="dbody">
+      <ul>
+        <li><b>Minha meta do mês</b> com a conta pronta: "para bater a meta, vender R$ X por dia".</li>
+        <li><b>Ranking da semana</b> 🏆 — sua posição e quanto falta para subir.</li>
+        <li><b>Quem visitar primeiro</b>: os clientes da SUA carteira que estão sumindo (com o valor que compravam por mês), os retornos que você prometeu e quem está com parcela vencida para lembrar na visita.</li>
+        <li>Suas metas por cidade e por produto continuam lá, organizadas.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="emoji">🚚</span> Entregador: sua rota do dia <span class="seta">▾</span></summary>
+    <div class="dbody">
+      <ul>
+        <li><b>Progresso da rota</b>: "14 de 22 entregas feitas" com barra.</li>
+        <li><b>Próxima parada</b> em destaque, com botão de mapa e check-in.</li>
+        <li><b>Dinheiro a receber na entrega</b> — quais clientes pagam na hora, para não esquecer de cobrar.</li>
+        <li>Resumo da semana: entregas, devoluções e divergências.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="emoji">👑</span> Gestão: o negócio inteiro em 5 abas <span class="seta">▾</span></summary>
+    <div class="dbody">
+      <ul>
+        <li><b>Visão Geral</b>: o mês contra a meta, projeção de fechamento, o dia de hoje, alertas e saúde do caixa.</li>
+        <li><b>Vendas & Pedidos</b>: evolução semanal, cada vendedor contra a meta, top produtos e cidades.</li>
+        <li><b>Recorrência</b>: quem está saindo do ritmo de compra ANTES de virar cliente perdido — com o R$ em risco.</li>
+        <li><b>Atendimentos</b>: quantos viram pedido e, quando não viram, por quê.</li>
+        <li><b>Resultado & Margem</b>: a conta do mês linha por linha e a margem de cada produto.</li>
+      </ul>
+    </div>
+  </details>
+
+  <h2 class="secao">Para começar a usar</h2>
+  <div class="passos">
+    <div class="passo"><span class="num">1</span><p>Abra o Hardt App — o dashboard novo já é a primeira tela.</p></div>
+    <div class="passo"><span class="num">2</span><p>Se o app parecer antigo, toque no ícone de <b>atualizar (↻)</b> no topo.</p></div>
+    <div class="passo"><span class="num">3</span><p>Vendedor: olhe o quadro <b>"Quem visitar primeiro"</b> antes de sair para a rua — é a sua lista de ouro do dia.</p></div>
+  </div>
+
+  <a class="cta" href="https://cahardt-github.xrqvlq.easypanel.host/">Abrir o Hardt App →</a>
+  <p class="rodape">Hardt Salgados · qualquer dúvida, pergunte ao Clippy 📎 dentro do app</p>
+</div>
+</body>
+</html>
