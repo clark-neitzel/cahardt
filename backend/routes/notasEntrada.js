@@ -153,7 +153,19 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                 { chave: { contains: b.replace(/\D/g, '') || b } },
                 { numero: { contains: b, mode: 'insensitive' } },
                 { fornecedorNome: { contains: b, mode: 'insensitive' } },
-                { fornecedorCnpj: { contains: b.replace(/\D/g, '') || b } }
+                { fornecedorCnpj: { contains: b.replace(/\D/g, '') || b } },
+                // produtos da nota (itens só existem após o XML completo chegar)
+                {
+                    itens: {
+                        some: {
+                            OR: [
+                                { descricao: { contains: b, mode: 'insensitive' } },
+                                { codigoFornecedor: { contains: b, mode: 'insensitive' } },
+                                { ean: { contains: b.replace(/\D/g, '') || b } }
+                            ]
+                        }
+                    }
+                }
             ];
         }
 

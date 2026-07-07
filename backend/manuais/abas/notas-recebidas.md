@@ -55,6 +55,7 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 ## O que dá pra fazer aqui
 
 - Ver todas as notas capturadas (NF-e e NFS-e, com etiqueta do tipo) com fornecedor, número, emissão, valor e status
+- **Buscar uma nota** pelo campo de busca acima das abas: procura por **nome do fornecedor, CNPJ, produto da nota (descrição, código ou código de barras), número da nota ou chave de acesso**. A busca vale em **todas as abas** (Novas, Despesa gerada, Ignoradas e Todas). Observação: a busca por produto só encontra notas que já têm o **XML completo** (as "Aguardando XML" ainda não têm a lista de itens)
 - Ver o **status da captura**: NF-e (ligada/desligada, última consulta à SEFAZ) e NFS-e (última consulta ao ambiente nacional), além de quantas notas novas aguardam conferência
 - **Consultar agora**: dispara uma busca imediata (SEFAZ **e** ambiente nacional) sem esperar a próxima hora
 - Abrir o **detalhe da nota**: itens (código do fornecedor, EAN, descrição, quantidade, valores), **informações adicionais de cada item** (infAdProd — lote, validade etc.), duplicatas (vencimentos) e as **observações da nota**. Na NFS-e o detalhe mostra a **discriminação do serviço** e o valor

@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import notasEntradaService from '../../services/notasEntradaService';
 import contasPagarService from '../../services/contasPagarService';
-import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer } from 'lucide-react';
+import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 // ── Helpers ──
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -168,8 +169,16 @@ const NotasRecebidasPage = () => {
     const [statusNfse, setStatusNfse] = useState(null);
     const [notas, setNotas] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [chip, setChip] = useState('NOVAS');
+    const [chip, setChip] = useFiltroSalvo('notas-recebidas:chip', 'NOVAS');
     const [consultando, setConsultando] = useState(false);
+
+    const [busca, setBusca] = useState('');
+    const [buscaAplicada, setBuscaAplicada] = useState('');
+    // espera o usuário parar de digitar antes de consultar o servidor
+    useEffect(() => {
+        const t = setTimeout(() => setBuscaAplicada(busca.trim()), 400);
+        return () => clearTimeout(t);
+    }, [busca]);
 
     const [expandedId, setExpandedId] = useState(null);
     const [detalhe, setDetalhe] = useState(null);
@@ -183,7 +192,7 @@ const NotasRecebidasPage = () => {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await notasEntradaService.listar();
+            const data = await notasEntradaService.listar(buscaAplicada ? { busca: buscaAplicada } : {});
             setStatusCaptura(data?.statusCaptura || null);
             setStatusNfse(data?.statusCapturaNfse || null);
             setNotas(Array.isArray(data?.notas) ? data.notas : []);
@@ -192,7 +201,7 @@ const NotasRecebidasPage = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [buscaAplicada]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -323,6 +332,27 @@ const NotasRecebidasPage = () => {
                     </div>
                 )}
 
+                {/* Busca (vale para todas as abas — consulta o servidor) */}
+                <div className="relative md:max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                    <input
+                        type="text"
+                        value={busca}
+                        onChange={e => setBusca(e.target.value)}
+                        placeholder="Buscar fornecedor, CNPJ, produto ou nº da nota…"
+                        className="w-full bg-white border border-gray-300 rounded-full pl-9 pr-9 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                    />
+                    {busca && (
+                        <button
+                            onClick={() => setBusca('')}
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                            title="Limpar busca"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    )}
+                </div>
+
                 {/* Chips de filtro */}
                 <div className="flex gap-2 overflow-x-auto hide-scrollbar">
                     {CHIPS.map(c => (
@@ -350,7 +380,9 @@ const NotasRecebidasPage = () => {
                 <div className="space-y-3">
                     {notasFiltradas.length === 0 && !loading && (
                         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 text-center text-sm text-gray-400">
-                            Nenhuma nota {chip === 'NOVAS' ? 'nova' : 'encontrada'} por aqui.
+                            {buscaAplicada
+                                ? <>Nenhuma nota encontrada para <span className="font-semibold text-gray-500">"{buscaAplicada}"</span> nesta aba.</>
+                                : <>Nenhuma nota {chip === 'NOVAS' ? 'nova' : 'encontrada'} por aqui.</>}
                         </div>
                     )}
 
