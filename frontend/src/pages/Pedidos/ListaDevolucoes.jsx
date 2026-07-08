@@ -19,30 +19,44 @@ const ListaDevolucoes = ({ filtros }) => {
     const { user } = useAuth();
     const podeReverter = user?.permissoes?.admin || user?.permissoes?.Pode_Reverter_Devolucao;
 
+    const TAM_PAGINA = 50;
     const [devolucoes, setDevolucoes] = useState([]);
+    const [total, setTotal] = useState(0);
+    const [pagina, setPagina] = useState(1);
     const [loading, setLoading] = useState(true);
+    const [loadingMais, setLoadingMais] = useState(false);
     const [expandedId, setExpandedId] = useState(null);
     const [revertendo, setRevertendo] = useState(null);
     const [motivoReversao, setMotivoReversao] = useState('');
 
     useEffect(() => {
-        carregar();
+        carregar(1);
     }, [filtros?.dataEntregaDe, filtros?.dataEntregaAte, filtros?.vendedorId]);
 
-    const carregar = async () => {
+    // pg === 1 reinicia a lista; pg > 1 acrescenta (Carregar mais). Antes a tela mostrava
+    // só as 50 primeiras (limite do backend) e escondia o resto silenciosamente.
+    const carregar = async (pg = 1) => {
+        const primeira = pg === 1;
         try {
-            setLoading(true);
-            const params = {};
+            if (primeira) setLoading(true); else setLoadingMais(true);
+            const params = { pagina: pg, tamanhoPagina: TAM_PAGINA };
             if (filtros?.dataEntregaDe) params.dataInicio = filtros.dataEntregaDe;
             if (filtros?.dataEntregaAte) params.dataFim = filtros.dataEntregaAte;
             const result = await devolucaoService.listar(params);
-            setDevolucoes(result.items || []);
+            const items = result.items || [];
+            setTotal(result.total || 0);
+            setPagina(pg);
+            if (primeira) setDevolucoes(items);
+            else setDevolucoes(prev => [...prev, ...items]);
         } catch (error) {
             toast.error('Erro ao carregar devoluções.');
         } finally {
             setLoading(false);
+            setLoadingMais(false);
         }
     };
+
+    const carregarMais = () => carregar(pagina + 1);
 
     const handleReverter = async (id) => {
         if (!motivoReversao.trim()) {
@@ -223,6 +237,20 @@ const ListaDevolucoes = ({ filtros }) => {
                     );
                 })}
             </div>
+            {/* Carregar mais (paginação servidor) */}
+            {devolucoes.length < total && (
+                <div className="flex flex-col items-center gap-2 p-3 border-t border-gray-100">
+                    <span className="text-[11px] text-gray-400">Mostrando {devolucoes.length} de {total}</span>
+                    <button
+                        onClick={carregarMais}
+                        disabled={loadingMais}
+                        className="w-full sm:w-auto px-6 py-2.5 rounded-full border border-gray-300 text-sm text-gray-600 font-semibold hover:bg-gray-50 inline-flex items-center justify-center gap-2 disabled:opacity-60"
+                    >
+                        {loadingMais && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Carregar mais {Math.min(TAM_PAGINA, total - devolucoes.length)}
+                    </button>
+                </div>
+            )}
         </div>
     );
 };
