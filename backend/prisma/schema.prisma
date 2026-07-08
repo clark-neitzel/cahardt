@@ -2969,12 +2969,13 @@ model CatalogoPersonalizado {
   id               String    @id @default(uuid())
   token            String    @unique // token curto p/ a URL pública: /lista/<token>
   titulo           String? // opcional (ex.: "Lista de agosto")
-  clienteUuid      String    @map("cliente_uuid") // sem FK (snapshot)
-  clienteNome      String    @map("cliente_nome")
+  clienteUuid      String?   @map("cliente_uuid") // null = destinatário avulso (não-cliente); sem FK (snapshot)
+  clienteNome      String    @map("cliente_nome") // nome do cliente OU do destinatário avulso
   clienteTelefone  String?   @map("cliente_telefone")
   clienteCidade    String?   @map("cliente_cidade")
   condicaoId       String    @map("condicao_id") // TabelaPreco.id no momento
   condicaoNome     String    @map("condicao_nome")
+  medianteAprovacao Boolean  @default(false) @map("mediante_aprovacao") // condição c/ prazo não aprovada p/ o destinatário
   acrescimoPreco   Decimal   @default(0) @map("acrescimo_preco") @db.Decimal(10, 2)
   valorMinimo      Decimal?  @default(0) @map("valor_minimo") @db.Decimal(12, 2)
   total            Decimal   @default(0) @db.Decimal(12, 2) // soma dos precoFinal (snapshot)

@@ -5,7 +5,7 @@ const prisma = require('../config/database');
 // body: { clienteUuid, condicaoId, validadeDias, produtoIds:[], titulo?, observacoes? }
 async function gerar(req, res) {
     try {
-        const { clienteUuid, condicaoId, validadeDias, produtoIds, titulo, observacoes } = req.body || {};
+        const { clienteUuid, clienteNome, condicaoId, produtoIds, titulo, observacoes } = req.body || {};
 
         // Dados do vendedor logado (para o snapshot: nome + telefone do WhatsApp)
         let vendedor = { id: req.user?.id, nome: req.user?.nome || null, telefone: null };
@@ -20,7 +20,7 @@ async function gerar(req, res) {
         } catch (_) { /* segue com o que veio do token */ }
 
         const catalogo = await service.criar({
-            vendedor, clienteUuid, condicaoId, validadeDias, produtoIds, titulo, observacoes
+            vendedor, clienteUuid, clienteNome, condicaoId, produtoIds, titulo, observacoes
         });
 
         return res.status(201).json({

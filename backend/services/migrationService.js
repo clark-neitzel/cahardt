@@ -902,12 +902,13 @@ const migrationService = {
                 "id" TEXT NOT NULL,
                 "token" TEXT NOT NULL,
                 "titulo" TEXT,
-                "cliente_uuid" TEXT NOT NULL,
+                "cliente_uuid" TEXT,
                 "cliente_nome" TEXT NOT NULL,
                 "cliente_telefone" TEXT,
                 "cliente_cidade" TEXT,
                 "condicao_id" TEXT NOT NULL,
                 "condicao_nome" TEXT NOT NULL,
+                "mediante_aprovacao" BOOLEAN NOT NULL DEFAULT false,
                 "acrescimo_preco" DECIMAL(10,2) NOT NULL DEFAULT 0,
                 "valor_minimo" DECIMAL(12,2) DEFAULT 0,
                 "total" DECIMAL(12,2) NOT NULL DEFAULT 0,
@@ -949,7 +950,10 @@ const migrationService = {
                         ADD CONSTRAINT "catalogos_personalizados_itens_catalogo_id_fkey"
                         FOREIGN KEY ("catalogo_id") REFERENCES "catalogos_personalizados"("id") ON DELETE CASCADE ON UPDATE CASCADE;
                 END IF;
-            END $$;`
+            END $$;`,
+            // Catálogo Personalizado v2: destinatário avulso (cliente_uuid nullable) + mediante aprovação de crédito
+            `ALTER TABLE "catalogos_personalizados" ALTER COLUMN "cliente_uuid" DROP NOT NULL`,
+            `ALTER TABLE "catalogos_personalizados" ADD COLUMN IF NOT EXISTS "mediante_aprovacao" BOOLEAN NOT NULL DEFAULT false`
         ];
 
         for (const [index, cmd] of commands.entries()) {

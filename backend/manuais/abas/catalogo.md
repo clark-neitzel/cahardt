@@ -32,17 +32,20 @@ O botão **"Montar catálogo"** (no topo da tela) liga o **modo seleção**:
 
 1. Toque em **Montar catálogo** — o cabeçalho muda e os cards passam a ter uma marca de seleção (bolinha com ✓)
 2. Toque nos produtos que quer incluir (o contador no topo mostra quantos foram marcados)
-3. Toque em **"Cliente e condição"** na barra inferior
-4. Escolha o **cliente** (busca por nome) — o sistema já sugere a **condição de pagamento padrão** dele e mostra só as **condições permitidas** desse cliente
-5. Ajuste a condição se quiser — os preços da lista recalculam na hora usando o **mesmo cálculo do Novo Pedido** (`preço de tabela + acréscimo da condição`); "à vista" pode ficar mais barato, prazos maiores mais caros
-6. Escolha a **validade do link** (7, 15, 30 dias ou sem validade)
-7. Toque em **"Gerar link do catálogo"**
-8. O sistema devolve o link (`hardtsalgados.com.br/lista/<código>`) — botões **Copiar** e **Enviar no WhatsApp** (já abre a conversa do cliente com o link pronto)
+3. Toque em **"Destinatário e condição"** na barra inferior
+4. Escolha **para quem enviar**:
+   - **Cliente cadastrado** (busca por nome) — o sistema já sugere a **condição de pagamento padrão** dele;
+   - **Outro destinatário** — para quem ainda não é cliente: é só digitar o nome da pessoa ou empresa.
+5. Escolha a **condição de pagamento** — aparecem **todas as condições**. As **aprovadas** do cliente ficam normais (com selo "padrão"); as **não aprovadas com prazo** ficam marcadas como **"aprov. crédito"**. Os preços recalculam na hora com o **mesmo cálculo do Novo Pedido** (`preço de tabela + acréscimo da condição`); "à vista" pode ficar mais barato, prazos maiores mais caros
+6. Toque em **"Gerar link do catálogo"** (a validade é sempre **7 dias**)
+7. O sistema devolve o link (`hardtsalgados.com.br/lista/<código>`) — botões **Copiar** e **Enviar no WhatsApp**
 
-O que o **cliente** vê ao abrir o link: uma página no visual da marca Hardt com o nome dele, a condição, a validade, a lista de produtos com o preço final de cada um, o total e um botão para fazer o pedido no WhatsApp. Não precisa de login.
+O que o **cliente** vê ao abrir o link: uma página no visual da marca Hardt (com a logo real) com o nome dele, a condição, a validade e a lista de produtos com o preço final de cada um — e um botão para fazer o pedido no WhatsApp. **Não aparece o total da lista** (só o vendedor vê o total ao montar). Não precisa de login.
 
+> **Mediante aprovação de crédito:** se a condição escolhida **não estiver aprovada** para aquele destinatário **e tiver prazo** (ex.: 30/60 dias), a lista sai marcada como **"mediante aprovação de crédito"** — tanto no app quanto na página do cliente. Condições à vista nunca precisam de aprovação. Para não-cliente (destinatário avulso), toda condição com prazo entra como "mediante aprovação de crédito".
+> **WhatsApp da página do cliente:** cliente cadastrado → abre a conversa do **vendedor** que montou a lista; não-cliente → abre o **WhatsApp da loja**.
 > **Preços congelados:** a lista guarda os preços do momento em que foi gerada. Se o produto mudar de preço depois, o link que o cliente já recebeu **não muda**. Para atualizar, é só montar uma lista nova.
-> **Aviso de pedido mínimo:** se o total da lista ficar abaixo do mínimo da condição, aparece um lembrete para o vendedor (não bloqueia o envio).
+> **Aviso de pedido mínimo:** se o total ficar abaixo do mínimo da condição, aparece um lembrete só para o vendedor (não bloqueia o envio).
 
 ---
 

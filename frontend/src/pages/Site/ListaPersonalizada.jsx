@@ -63,22 +63,19 @@ export default function ListaPersonalizada() {
         );
     }
 
-    const { clienteNome, clienteCidade, condicaoNome, validadeEm, expirado, observacoes, itens, total, whatsapp, vendedorTelefone, vendedorNome } = dados;
+    const { clienteNome, clienteCidade, condicaoNome, medianteAprovacao, validadeEm, expirado, observacoes, itens, whatsapp, vendedorNome } = dados;
 
-    // WhatsApp: fala com o vendedor (se houver) ou com a loja
-    const destino = vendedorTelefone || whatsapp;
+    // WhatsApp já vem resolvido do backend (vendedor p/ cliente cadastrado, loja p/ não-cliente)
     const msg = encodeURIComponent(`Olá! Recebi a lista de preços da Hardt${clienteNome ? ` (${clienteNome})` : ''} e gostaria de fazer um pedido.`);
-    const waHref = `https://wa.me/${String(destino || '').replace(/\D/g, '')}?text=${msg}`;
+    const waHref = `https://wa.me/${String(whatsapp || '').replace(/\D/g, '')}?text=${msg}`;
 
     return (
         <div className="lpx">
             <div className="lpx-wrap">
                 {/* header */}
                 <div className="lpx-head">
-                    <div className="lpx-logo">
-                        <span className="l1">HARDT</span>
-                        <span className="l2">SALGADOS</span>
-                    </div>
+                    <img className="lpx-logo-img" src="/cong/logo.png" alt="Hardt Salgados"
+                        onError={(e) => { e.currentTarget.outerHTML = '<div class="lpx-logo"><span class="l1">HARDT</span><span class="l2">SALGADOS</span></div>'; }} />
                     <div className="htag">Lista de<br />preços</div>
                 </div>
                 <div className="lpx-saw" />
@@ -93,6 +90,12 @@ export default function ListaPersonalizada() {
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                             {condicaoNome}
                         </span>
+                        {medianteAprovacao && (
+                            <span className="lpx-chip apr">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10z" /><path d="M12 8v4M12 16h.01" /></svg>
+                                Mediante aprovação de crédito
+                            </span>
+                        )}
                         {validadeEm && (
                             <span className={'lpx-chip' + (expirado ? ' exp' : '')}>
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></svg>
@@ -126,12 +129,6 @@ export default function ListaPersonalizada() {
                             </div>
                         );
                     })}
-                </div>
-
-                {/* total */}
-                <div className="lpx-total">
-                    <div className="tl">Lista completa<small>{itens.length} {itens.length === 1 ? 'item' : 'itens'} · {condicaoNome}</small></div>
-                    <div className="tv">{money(total)}</div>
                 </div>
 
                 {observacoes && (

@@ -28,7 +28,8 @@
 .lpx-wrap { max-width: 640px; margin: 0 auto; min-height: 100vh; background: var(--paper); box-shadow: 0 0 60px -20px rgba(8,20,10,.25); }
 
 /* header */
-.lpx-head { background: var(--ink); color: var(--chalk); padding: 18px 20px 16px; display: flex; align-items: center; gap: 14px; }
+.lpx-head { background: var(--ink); color: var(--chalk); padding: 16px 20px; display: flex; align-items: center; gap: 14px; min-height: 70px; }
+.lpx-logo-img { height: 44px; width: auto; max-width: 210px; display: block; object-fit: contain; }
 .lpx-logo { display: flex; flex-direction: column; line-height: .9; }
 .lpx-logo img { height: 40px; width: auto; display: block; }
 .lpx-logo .l1 { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: .02em; color: #fff; }
@@ -46,6 +47,7 @@
 .lpx-chip { display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 1.5px solid rgba(18,130,64,.25); color: var(--green-dark); font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 12.5px; padding: 7px 13px; border-radius: 999px; }
 .lpx-chip svg { width: 14px; height: 14px; }
 .lpx-chip.exp { border-color: var(--yellow-d); color: #8a6100; background: #fffdf5; }
+.lpx-chip.apr { border-color: var(--yellow-d); color: #8a6100; background: #fffdf5; }
 
 .lpx-banner { margin: 4px 16px 10px; background: #fff4d6; border: 1px solid var(--yellow-d); color: #7a5600; border-radius: 12px; padding: 11px 14px; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 600; text-align: center; }
 

@@ -291,72 +291,69 @@ const Catalogo = () => {
     );
 };
 
-/* ------- helpers de condição (espelham a lógica do Novo Pedido) ------- */
-function condicoesPermitidasDoCliente(cliente, todasCondicoes) {
-    let idsArray = [];
-    if (Array.isArray(cliente?.condicoes_pagamento_permitidas)) idsArray = cliente.condicoes_pagamento_permitidas;
-    else if (typeof cliente?.condicoes_pagamento_permitidas === 'string' && cliente.condicoes_pagamento_permitidas.trim().length > 0)
-        idsArray = cliente.condicoes_pagamento_permitidas.split(',').map(s => s.trim());
-
-    let base = idsArray.length > 0
-        ? todasCondicoes.filter(c => idsArray.includes(c.idCondicao) || idsArray.includes(c.id))
-        : (cliente?.Condicao_de_pagamento
-            ? [todasCondicoes.find(c => c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento)].filter(Boolean)
-            : []);
-    let permitidas = base.filter(c => c.ativo !== false && c.permitePedido !== false && c.permiteBonificacao !== true);
-    // Fallback amigável: cliente sem restrição configurada → todas as condições normais ativas
-    if (!permitidas.length) permitidas = todasCondicoes.filter(c => c.ativo !== false && c.permitePedido !== false && c.permiteBonificacao !== true);
-    return permitidas;
+/* ------- helpers de condição ------- */
+// Condições "normais" ativas (as mesmas que valem para um pedido comum), da mais barata p/ a mais cara
+function condicoesNormais(todasCondicoes) {
+    return (todasCondicoes || [])
+        .filter(c => c.ativo !== false && c.permitePedido !== false && c.permiteBonificacao !== true)
+        .slice()
+        .sort((a, b) => (Number(a.acrescimoPreco) || 0) - (Number(b.acrescimoPreco) || 0) || (Number(a.parcelasDias) || 0) - (Number(b.parcelasDias) || 0));
 }
-function condicaoPadraoDoCliente(cliente, permitidas) {
-    const padrao = permitidas.find(c => c.idCondicao === cliente?.Condicao_de_pagamento || c.id === cliente?.Condicao_de_pagamento);
-    return padrao || permitidas[0] || null;
+// A condição está aprovada para este cliente? (lista de permitidas ou, na falta, só a padrão)
+function condAprovadaParaCliente(cliente, c) {
+    if (!cliente) return false;
+    let ids = [];
+    if (Array.isArray(cliente.condicoes_pagamento_permitidas)) ids = cliente.condicoes_pagamento_permitidas;
+    else if (typeof cliente.condicoes_pagamento_permitidas === 'string' && cliente.condicoes_pagamento_permitidas.trim())
+        ids = cliente.condicoes_pagamento_permitidas.split(',').map(s => s.trim());
+    if (ids.length) return ids.includes(c.idCondicao) || ids.includes(c.id);
+    return c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento;
 }
-
-const VALIDADES = [
-    { v: 7, label: '7 dias' },
-    { v: 15, label: '15 dias' },
-    { v: 30, label: '30 dias' },
-    { v: 0, label: 'Sem validade' },
-];
 
 /* ------- Modal: gerar catálogo personalizado ------- */
 function GerarCatalogoModal({ produtos, clientes, condicoes, onClose, onConcluir }) {
+    const [destMode, setDestMode] = useState('cliente'); // 'cliente' | 'outro'
     const [clienteId, setClienteId] = useState('');
+    const [nomeAvulso, setNomeAvulso] = useState('');
     const [condId, setCondId] = useState('');
-    const [validade, setValidade] = useState(15);
     const [gerando, setGerando] = useState(false);
     const [erro, setErro] = useState('');
     const [resultado, setResultado] = useState(null);
     const [copiado, setCopiado] = useState(false);
 
     const cliente = useMemo(() => clientes.find(c => c.UUID === clienteId) || null, [clientes, clienteId]);
-    const permitidas = useMemo(() => cliente ? condicoesPermitidasDoCliente(cliente, condicoes) : [], [cliente, condicoes]);
-    const cond = useMemo(() => permitidas.find(c => c.id === condId) || null, [permitidas, condId]);
+    const conds = useMemo(() => condicoesNormais(condicoes), [condicoes]);
+    const cond = useMemo(() => conds.find(c => c.id === condId) || null, [conds, condId]);
 
-    // Ao escolher o cliente, já seleciona a condição padrão dele
+    const aprovada = (c) => destMode === 'cliente' && condAprovadaParaCliente(cliente, c);
+    const precisaAprovacao = (c) => !!c && !aprovada(c) && (Number(c.parcelasDias) || 0) > 0;
+
+    // condição padrão inicial: do cliente (se cadastrado) ou a mais barata (à vista) p/ avulso
     useEffect(() => {
-        if (!cliente) { setCondId(''); return; }
-        const padrao = condicaoPadraoDoCliente(cliente, permitidas);
-        setCondId(padrao ? padrao.id : '');
-    }, [clienteId]); // eslint-disable-line react-hooks/exhaustive-deps
+        let padrao = null;
+        if (destMode === 'cliente' && cliente)
+            padrao = conds.find(c => c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento);
+        setCondId((padrao || conds[0])?.id || '');
+    }, [clienteId, destMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const acr = cond ? Number(cond.acrescimoPreco) || 0 : 0;
     const itens = produtos.map(p => ({ ...p, precoFinal: Number(p.valorVenda) * (1 + acr / 100) }));
     const subtotal = itens.reduce((s, it) => s + it.precoFinal, 0);
     const valorMin = cond && cond.valorMinimo != null ? Number(cond.valorMinimo) : 0;
+    const nomeDestino = destMode === 'cliente' ? (cliente ? (cliente.NomeFantasia || cliente.Nome) : '') : nomeAvulso.trim();
+    const destinoOk = destMode === 'cliente' ? !!clienteId : nomeAvulso.trim().length >= 2;
 
     const gerar = async () => {
-        if (!cliente || !cond) return;
+        if (!destinoOk || !cond) return;
         setGerando(true); setErro('');
         try {
             const r = await catalogoPersonalizadoService.gerar({
-                clienteUuid: cliente.UUID,
+                clienteUuid: destMode === 'cliente' ? cliente.UUID : undefined,
+                clienteNome: destMode === 'outro' ? nomeAvulso.trim() : undefined,
                 condicaoId: cond.id,
-                validadeDias: validade,
                 produtoIds: produtos.map(p => p.id),
             });
-            setResultado({ token: r.token, link: `${window.location.origin}/lista/${r.token}`, total: r.total });
+            setResultado({ token: r.token, link: `${window.location.origin}/lista/${r.token}`, aprovacao: precisaAprovacao(cond) });
         } catch (e) {
             setErro(e?.response?.data?.error || 'Não foi possível gerar o link. Tente de novo.');
         } finally {
@@ -371,7 +368,8 @@ function GerarCatalogoModal({ produtos, clientes, condicoes, onClose, onConcluir
             .catch(() => { });
     };
 
-    const telCliente = cliente ? String(cliente.Telefone_Celular || cliente.Telefone || '').replace(/\D/g, '') : '';
+    // Envio do vendedor: cliente cadastrado → conversa dele; avulso → tela de compartilhar
+    const telCliente = destMode === 'cliente' && cliente ? String(cliente.Telefone_Celular || cliente.Telefone || '').replace(/\D/g, '') : '';
     const telDDI = telCliente ? (telCliente.startsWith('55') ? telCliente : '55' + telCliente) : '';
     const waMsg = resultado ? encodeURIComponent(`Olá! 😊 Preparei uma lista de preços da Hardt Salgados especialmente pra você. É só abrir:\n\n${resultado.link}\n\nQualquer dúvida, me chama!`) : '';
     const waHref = resultado ? `https://wa.me/${telDDI}?text=${waMsg}` : '#';
@@ -398,7 +396,7 @@ function GerarCatalogoModal({ produtos, clientes, condicoes, onClose, onConcluir
                                 </div>
                                 <h4 className="text-lg font-bold text-gray-900">Link gerado!</h4>
                                 <p className="text-sm text-gray-500 max-w-xs">
-                                    Catálogo de <b className="text-gray-700">{cliente?.NomeFantasia || cliente?.Nome}</b> em <b className="text-gray-700">{cond?.nomeCondicao}</b>{validade > 0 ? `, válido por ${validade} dias` : ''}.
+                                    Lista de <b className="text-gray-700">{nomeDestino}</b> em <b className="text-gray-700">{cond?.nomeCondicao}</b>{resultado.aprovacao ? ' (mediante aprovação de crédito)' : ''}, válida por 7 dias.
                                 </p>
                             </div>
                             <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 mt-2">
@@ -412,58 +410,67 @@ function GerarCatalogoModal({ produtos, clientes, condicoes, onClose, onConcluir
                         </div>
                     ) : (
                         <>
+                            {/* Destinatário: cliente cadastrado ou nome avulso */}
                             <div className="mb-4">
-                                <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Cliente</label>
-                                <SelectBusca value={clienteId} onChange={e => setClienteId(e.target.value)} className="w-full">
-                                    <option value="">Selecione o cliente…</option>
-                                    {clientes.map(c => (
-                                        <option key={c.UUID} value={c.UUID}>
-                                            {(c.NomeFantasia || c.Nome)}{c.End_Cidade ? ` — ${c.End_Cidade}` : ''}
-                                        </option>
-                                    ))}
-                                </SelectBusca>
+                                <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Enviar para</label>
+                                <div className="flex bg-gray-100 rounded-xl p-1 gap-1 mb-2.5">
+                                    <button type="button" onClick={() => setDestMode('cliente')}
+                                        className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${destMode === 'cliente' ? 'bg-white text-primaryDark shadow-sm' : 'text-gray-500'}`}>Cliente cadastrado</button>
+                                    <button type="button" onClick={() => setDestMode('outro')}
+                                        className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${destMode === 'outro' ? 'bg-white text-primaryDark shadow-sm' : 'text-gray-500'}`}>Outro destinatário</button>
+                                </div>
+                                {destMode === 'cliente' ? (
+                                    <SelectBusca value={clienteId} onChange={e => setClienteId(e.target.value)} className="w-full">
+                                        <option value="">Selecione o cliente…</option>
+                                        {clientes.map(c => (
+                                            <option key={c.UUID} value={c.UUID}>
+                                                {(c.NomeFantasia || c.Nome)}{c.End_Cidade ? ` — ${c.End_Cidade}` : ''}
+                                            </option>
+                                        ))}
+                                    </SelectBusca>
+                                ) : (
+                                    <>
+                                        <input value={nomeAvulso} onChange={e => setNomeAvulso(e.target.value)}
+                                            placeholder="Nome da pessoa ou empresa…"
+                                            className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                        <p className="text-[11px] text-gray-400 mt-1.5">Para quem ainda não é cliente. Condições com prazo entram como “mediante aprovação de crédito”.</p>
+                                    </>
+                                )}
                             </div>
 
-                            {cliente && (
-                                <div className="mb-4">
-                                    <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Condição de pagamento</label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {permitidas.map(c => {
-                                            const on = c.id === condId;
-                                            const a = Number(c.acrescimoPreco) || 0;
-                                            const isStd = c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento;
-                                            const lbl = a > 0 ? `+${a}% no preço` : (a < 0 ? `${a}% (desconto)` : 'preço de tabela');
-                                            const cls = a > 0 ? 'text-amber-700' : (a < 0 ? 'text-emerald-700' : 'text-gray-500');
-                                            return (
-                                                <button key={c.id} type="button" onClick={() => setCondId(c.id)}
-                                                    className={`text-left rounded-xl border px-3 py-2 transition-colors ${on ? 'border-primary bg-mint' : 'border-gray-200 hover:border-gray-300'}`}>
-                                                    <div className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 flex-wrap">
-                                                        {c.nomeCondicao}
-                                                        {isStd && <span className="text-[8.5px] font-extrabold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full uppercase tracking-wide">padrão</span>}
-                                                    </div>
-                                                    <div className={`text-[11px] font-semibold mt-0.5 ${cls}`}>{lbl}</div>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-
-                            {cliente && (
-                                <div className="mb-4">
-                                    <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Validade do link</label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {VALIDADES.map(o => (
-                                            <button key={o.v} type="button" onClick={() => setValidade(o.v)}
-                                                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border ${validade === o.v ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'}`}>
-                                                {o.label}
+                            {/* Condição de pagamento — todas as condições, marcando aprovação */}
+                            <div className="mb-4">
+                                <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Condição de pagamento</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {conds.map(c => {
+                                        const on = c.id === condId;
+                                        const a = Number(c.acrescimoPreco) || 0;
+                                        const isStd = destMode === 'cliente' && cliente && (c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento);
+                                        const apr = precisaAprovacao(c);
+                                        const lbl = a > 0 ? `+${a}% no preço` : (a < 0 ? `${a}% (desconto)` : 'preço de tabela');
+                                        const cls = a > 0 ? 'text-amber-700' : (a < 0 ? 'text-emerald-700' : 'text-gray-500');
+                                        return (
+                                            <button key={c.id} type="button" onClick={() => setCondId(c.id)}
+                                                className={`text-left rounded-xl border px-3 py-2 transition-colors ${on ? 'border-primary bg-mint' : 'border-gray-200 hover:border-gray-300'}`}>
+                                                <div className="text-[13px] font-bold text-gray-900 flex items-center gap-1.5 flex-wrap">
+                                                    {c.nomeCondicao}
+                                                    {isStd && <span className="text-[8px] font-extrabold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full uppercase tracking-wide">padrão</span>}
+                                                    {apr && <span className="text-[8px] font-extrabold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full uppercase tracking-wide">aprov. crédito</span>}
+                                                </div>
+                                                <div className={`text-[11px] font-semibold mt-0.5 ${cls}`}>{lbl}</div>
                                             </button>
-                                        ))}
-                                    </div>
+                                        );
+                                    })}
                                 </div>
-                            )}
+                                {precisaAprovacao(cond) && (
+                                    <div className="flex gap-2 items-start bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl px-3 py-2.5 mt-2">
+                                        <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                                        <span>Essa condição não está aprovada para este destinatário. A lista sai marcada como <b>“mediante aprovação de crédito”</b>.</span>
+                                    </div>
+                                )}
+                            </div>
 
-                            {cliente && cond && (
+                            {cond && (
                                 <div>
                                     <label className="block text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">{produtos.length} {produtos.length === 1 ? 'item' : 'itens'} · preço em {cond.nomeCondicao}</label>
                                     <div className="border border-gray-100 rounded-xl overflow-hidden">
@@ -484,9 +491,10 @@ function GerarCatalogoModal({ produtos, clientes, condicoes, onClose, onConcluir
                                         })}
                                     </div>
                                     <div className="flex items-center justify-between mt-3 px-1">
-                                        <span className="text-sm text-gray-500 font-medium">Total da lista</span>
+                                        <span className="text-sm text-gray-500 font-medium">Total <span className="text-gray-400 font-normal">(só o vendedor vê)</span></span>
                                         <span className="text-base font-bold text-gray-900">{money(subtotal)}</span>
                                     </div>
+                                    <p className="text-[11px] text-gray-400 mt-1 px-1">O cliente vê só a lista com o preço de cada item.</p>
                                     {valorMin > 0 && subtotal < valorMin && (
                                         <div className="flex gap-2 items-start bg-amber-50 border border-amber-200 text-amber-800 text-xs rounded-xl px-3 py-2.5 mt-2">
                                             <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
@@ -515,7 +523,7 @@ function GerarCatalogoModal({ produtos, clientes, condicoes, onClose, onConcluir
                     ) : (
                         <button
                             onClick={gerar}
-                            disabled={!cliente || !cond || gerando}
+                            disabled={!destinoOk || !cond || gerando}
                             className="w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-primary hover:bg-primaryDark disabled:bg-gray-300 text-white font-bold text-sm"
                         >
                             {gerando ? <><Loader2 className="h-4 w-4 animate-spin" /> Gerando…</> : <><Link2 className="h-4 w-4" /> Gerar link do catálogo</>}
