@@ -1,10 +1,10 @@
 # API de Consulta para IA Externa (WhatsApp / Antigravity)
 
-API somente-leitura (+ criação de lead) para um assistente de IA externo (hoje, o projeto
-"Antigravity", em outra pasta) consultar dados do Hardt em tempo real e responder clientes no
-WhatsApp. Não cria pedidos ainda — consulta catálogo/agenda/entrega do Kit Festa,
-catálogo/condição comercial dos Congelados, e reconhecimento de cliente/histórico/lead para
-qualquer linha.
+API para um assistente de IA externo (hoje, o projeto "Antigravity", em outra pasta) consultar
+dados do Hardt em tempo real e responder clientes no WhatsApp: catálogo/agenda/entrega do Kit
+Festa, catálogo/condição comercial dos Congelados, reconhecimento de cliente/histórico/lead para
+qualquer linha e — desde a **v1.4** — **criação de pedido** (Congelados e Kit Festa) que cai na
+fila de aprovação do CA-Hardt; nada vira venda direto, o faturamento aprova (ver seção "Fase 2").
 
 **IMPORTANTE:** esta API existe para o bot NUNCA precisar de acesso direto ao banco de dados
 (`DATABASE_URL`/SQL cru). Se alguma informação que o bot precisa não está aqui, a resposta é
@@ -23,7 +23,7 @@ para o incidente que motivou essa regra.
 
 ```json
 {
-  "meta": { "versaoApi": "1.3.0", "avisos": [], "geradoEm": "2026-07-02T00:00:00.000Z" },
+  "meta": { "versaoApi": "1.4.0", "avisos": [], "geradoEm": "2026-07-02T00:00:00.000Z" },
   "dados": { /* conteúdo específico do endpoint */ }
 }
 ```
@@ -56,7 +56,7 @@ mencionada na mensagem. Assim a mudança nunca pega o app de surpresa.
 | GET | `/congelados/grupos` | — | Categorias/grupos do catálogo de congelados |
 | GET | `/congelados/config` | — | Dados da loja, mínimo padrão, se atende sábado/domingo (`entregas.sabado/domingo`) |
 | GET | `/congelados/produto/:id/ficha` | `:id` = id do produto no site | Ficha técnica/nutricional do produto |
-| POST | `/congelados/reconhecer-telefone` | `{ telefone }` | Se o telefone bater com um cliente cadastrado: catálogo já com preço/condição/dias de entrega REAIS dele. Senão: `{ reconhecido: false }` |
+| POST | `/congelados/reconhecer-telefone` | `{ telefone }` | Se o telefone bater com um cliente cadastrado: catálogo já com preço/condição/dias de entrega REAIS dele. **(v1.4)** cada produto traz `comprado:true/false` e a resposta traz `ultimoPedido:[{id,congeladosProdutoId,produtoId,nome,unidade,quantidade,precoUnit}]` (o "de sempre"). Senão: `{ reconhecido: false }` |
 | POST | `/congelados/criar-senha-telefone` | `{ telefone, senha }` | Cria a senha do site (mesma conta do login) — só funciona se `telefone` bater com um cadastro. Devolve `{ token, cliente }` |
 | POST | `/congelados/check-doc` | `{ documento }` (CPF/CNPJ) | `{ situacao, temCadastroApp, nome }` — descobre se o documento já tem cadastro/senha |
 | POST | `/congelados/login` | `{ documento, senha }` | `{ token, cliente }` se a senha bater |
@@ -66,8 +66,20 @@ mencionada na mensagem. Assim a mudança nunca pega o app de surpresa.
 | GET | `/congelados/meu-catalogo` | header `Authorization: Bearer <token>` | Catálogo com preço/condição/dias de entrega do cliente autenticado |
 | GET | `/congelados/perfil` | header `Authorization: Bearer <token>` | Dados do cliente autenticado (nome, dias de entrega, condição padrão) |
 | POST | `/cliente/reconhecer-telefone` | `{ telefone }` | **Geral, qualquer linha.** Se bater com um cadastro: `{ reconhecido:true, cliente:{nome,documento,cidade,vendedor}, diasEntrega:[...], diasVenda:[...], condicaoPagamento:{nome,valorMinimo} }`. Senão: `{ reconhecido:false }` |
-| POST | `/cliente/historico-pedidos` | `{ telefone, limite? }` (limite padrão 10, máx 30) | Se o telefone bater: `{ reconhecido:true, cliente:{nome}, pedidos:[{numero,data,dataEntrega,statusEntrega,tipo,total}] }`. Senão: `{ reconhecido:false }` |
+| POST | `/cliente/historico-pedidos` | `{ telefone, limite?, comItens? }` (limite padrão 10, máx 30) | Se o telefone bater: `{ reconhecido:true, cliente:{nome}, pedidos:[{numero,data,dataEntrega,statusEntrega,tipo,total}] }`. **(v1.4)** com `comItens:true`, cada pedido também traz `itens:[{produtoId,nome,quantidade,unidade,precoUnit}]`. Senão: `{ reconhecido:false }` |
 | POST | `/cliente/criar-lead` | `{ nomeEstabelecimento, whatsapp, contato?, cidade?, observacoes? }` | Cria um prospect no CRM interno (mesma tabela que os vendedores veem). Retorna `{ id, numero, etapa }`. `origemLead` é sempre fixado como `"WHATSAPP_IA"` |
+| POST | `/congelados/pedido` | `{ telefone, itens:[{id,quantidade}], data?, modo?, observacoes?, idempotencyKey?, visitante?:{nome,telefone,cpf?} }` | **(v1.4)** Cria pedido de Congelados na fila de aprovação (`AGUARDANDO`; `PENDENTE_CADASTRO` se telefone novo). Preço recalculado no servidor. Retorna `{ id, numero, status, total }`. Ver "Fase 2". |
+| POST | `/kitfesta/pedido` | `{ telefone, itens:[{id,quantidade,opcao?}], modo, data, horario, enderecoEntrega?, cep?, cupomCodigo?, observacoes?, idempotencyKey?, visitante?:{nome,telefone,cpf?} }` | **(v1.4)** Cria pedido de Kit Festa na fila de aprovação. Webhook automático desligado (a Ana confirma). Retorna `{ id, numero, status, total }`. Ver "Fase 2". |
+
+### Imagem de produto — JÁ disponível (não precisa de endpoint novo)
+
+Todo produto devolvido pelos catálogos já traz a foto principal no campo **`imagem`** (URL pública,
+ou `null` se ninguém subiu foto ainda). Vale para `GET /kitfesta/catalogo`,
+`GET /congelados/catalogo`, `POST /congelados/reconhecer-telefone` e `GET /congelados/meu-catalogo`.
+Congelados ainda traz **`imagens`** (array com todas as fotos, principal primeiro) no catálogo e na
+ficha (`GET /congelados/produto/:id/ficha`). Ou seja, o campo já existe — o app consumidor só precisa
+ler `imagem`; não há nada a implementar aqui. (Se a foto vier `null`, é porque falta o cadastro da
+imagem do produto no app, não a API.)
 
 ### Como a IA deve reconhecer o cliente de Congelados, do jeito mais simples pro mais seguro
 
@@ -151,6 +163,17 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
 curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   -d '{"nomeEstabelecimento":"Mercado do João","whatsapp":"5547988887777","cidade":"Joinville"}' \
   https://<dominio>/api/ia-consulta/v1/cliente/criar-lead
+# v1.4 — histórico com itens ("o de sempre")
+curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
+  -d '{"telefone":"5547999998888","comItens":true}' https://<dominio>/api/ia-consulta/v1/cliente/historico-pedidos
+# v1.4 — criar pedido de Congelados (cliente reconhecido pelo telefone; itens[].id = id do catálogo)
+curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
+  -d '{"telefone":"5547999998888","itens":[{"id":"<congeladosProdutoId>","quantidade":2}],"data":"2026-07-15","idempotencyKey":"abc-123"}' \
+  https://<dominio>/api/ia-consulta/v1/congelados/pedido
+# v1.4 — criar pedido de Kit Festa (cliente novo → nome+cpf no visitante)
+curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
+  -d '{"telefone":"5547999998888","visitante":{"nome":"Maria","cpf":"12345678909"},"itens":[{"id":"<kitFestaProdutoId>","quantidade":4,"opcao":"Frango"}],"modo":"retirada","data":"2026-07-15","horario":"10:00","idempotencyKey":"xyz-789"}' \
+  https://<dominio>/api/ia-consulta/v1/kitfesta/pedido
 ```
 
 ## Histórico de versões
@@ -168,6 +191,166 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
 - **1.3.0** (2026-07-04) — Nova seção `/cliente/*` (geral, qualquer linha): `reconhecer-telefone`,
   `historico-pedidos`, `criar-lead`. Substitui o SQL direto contra o banco de produção que o bot
   rodava para essas funções (ver "Endpoints `/cliente/*`..." acima).
+- **1.4.0** (2026-07-07) — Fase 2 (criação de pedido pela IA): `congelados/reconhecer-telefone` passa a
+  trazer `ultimoPedido[]` + `comprado` por produto; `cliente/historico-pedidos` aceita `comItens`; novos
+  `POST /congelados/pedido` e `POST /kitfesta/pedido` (caem na fila de aprovação do CA-Hardt, preço
+  recalculado no servidor, `idempotencyKey`, webhook do Kit Festa desligado para pedidos do bot). Tudo
+  aditivo — nenhum campo removido/renomeado.
+
+## Fase 2 — Criação de pedido pela IA (IMPLEMENTADA na v1.4)
+
+> **Status: no ar desde a v1.4 (2026-07-07).** Endpoints `POST /congelados/pedido` e
+> `POST /kitfesta/pedido`, além do enriquecimento de `reconhecer-telefone` (`ultimoPedido[]`+`comprado`)
+> e do `comItens` no `historico-pedidos`. Cada campo vale a regra de contrato acima (não
+> remover/renomear sem aviso).
+
+### Princípio (quem se adapta a quem)
+
+O CA-Hardt é o **dono dos dados e das regras** (cliente, preço negociado, vendedor, condição de
+pagamento, número do pedido, envio ao Conta Azul). O bot é **consumidor** e se adapta a este sistema
+— não o contrário. Na prática:
+
+1. **O bot manda só o essencial:** quem é o cliente (telefone), o que ele quer (produto + quantidade),
+   quando (data/horário) e observações. **O bot NÃO manda preço, vendedor, condição, tipo de pedido
+   nem número** — isso o CA-Hardt preenche sozinho a partir do cadastro do cliente.
+2. **Nenhum pedido do bot vira venda direto.** Ele nasce **PENDENTE na fila de aprovação da linha**
+   (Congelados ou Kit Festa) — a **mesma fila do site** — e só o **faturamento** aprova, escolhendo o
+   **tipo** (Normal/Especial/Bonificação) e a **data**. Só então vira um Pedido real. Esse fluxo de
+   aprovação **já existe hoje** para os pedidos feitos no site; o bot apenas entra na mesma fila.
+3. **Preço:** o bot recebe os preços no "pacote" da identificação (abaixo) só para **conversar** com o
+   cliente ("esse sai por R$ X"). Na hora de **gravar**, o servidor **recalcula** o preço real do
+   cliente (é assim que o site já funciona hoje). Isso evita que um preço "velho" que o bot guardou
+   entre no pedido, e o faturamento ainda revê tudo na aprovação.
+
+> **Sobre o `tipo` que o bot propôs (`"congelados" | "kit_festa"`):** isso vira a **escolha do
+> endpoint** (um para cada linha — abaixo), não um campo. E "tipo de pedido" no CA-Hardt significa
+> outra coisa (Normal/Especial/Bonificação), decidida **pelo faturamento na aprovação** — o bot não
+> manda esse campo.
+
+> **Namespace e autenticação (decidido):** TODOS os endpoints desta fase ficam sob
+> `…/api/ia-consulta/v1/*` e exigem o header `x-ia-api-key` — o **mesmo** cliente HTTP e a mesma chave
+> que o bot já usa. As rotas públicas do site (`POST /congelados/pedido`, `POST /kitfesta-publico/pedido`)
+> **não** são usadas pelo bot: elas são só do site. Cada endpoint desta fase é um "espelho" fino dessas
+> rotas, protegido pela chave da IA — assim ninguém posta pedido falso na fila sem a chave.
+
+### (A) "Pacote" da identificação — o "de sempre" vem pelo TELEFONE (sem login)
+
+O bot identifica por telefone (a Ana nunca pede CPF/senha pra isso). Então o reconhecimento por telefone
+já devolve tudo que o bot precisa para montar o carrinho sem novas chamadas — inclusive o último pedido:
+
+- **Congelados — `POST /congelados/reconhecer-telefone` (enriquecido na v1.4):** devolve o catálogo com
+  **preço do cliente**, `diasEntrega`, `condicaoPadrao` e, por item, **`id`** (`congeladosProdutoId`) +
+  **`produtoId`** + `imagem` + **`comprado`**. Passou a trazer também o último pedido, liberado pela mesma
+  identificação por telefone (antes só existia no `meu-catalogo`, que exige login):
+  ```
+  "ultimoPedido": [ { "id": "<congeladosProdutoId>", "produtoId": "<id app>",
+                      "nome": "...", "quantidade": 2, "unidade": "cx", "precoUnit": 120.00 } ]
+  ```
+  → é o que fecha o "quero o de sempre" (RF-B2) por telefone, sem armazenar nada do lado do bot.
+- **Geral (qualquer linha) — `POST /cliente/historico-pedidos` (já existe):** hoje devolve
+  `{numero,data,dataEntrega,statusEntrega,tipo,total}` **sem itens**. Passa a aceitar `comItens: true` no
+  corpo, devolvendo em cada pedido `itens: [{ produtoId, nome, quantidade, unidade, precoUnit }]` (adição
+  segura; sem `comItens`, a resposta é idêntica à de hoje).
+
+**ID do produto — em TODOS os catálogos (confirmado):** cada item **já traz o `id`** (o
+`congeladosProdutoId`; no Kit Festa, o `id` = `kitFestaProdutoId`) além do `produtoId`. Vale para o
+catálogo do reconhecimento por telefone **e** para os catálogos gerais `GET /congelados/catalogo` e
+`GET /kitfesta/catalogo` — os três usam o mesmo serializer. É esse **`id`** que o bot manda de volta em
+`itens[].id` ao criar o pedido. Então, mesmo quando o cliente pede algo **fora** do "de sempre", o bot
+mapeia `nome → id` pelo catálogo que já tem em mãos, sem casar por nome na hora de gravar.
+
+### (B) Criar pedido de Congelados — `POST /api/ia-consulta/v1/congelados/pedido` (novo, sob a chave da IA)
+
+Espelho fino do `criarPedidoSite` que o site já usa. Header `x-ia-api-key`. Cliente identificado por telefone.
+
+```
+POST /api/ia-consulta/v1/congelados/pedido
+{
+  "telefone": "5547999998888",
+  "itens": [ { "id": "<congeladosProdutoId do catálogo>", "quantidade": 2 } ],
+  "data": "2026-07-15",                  // opcional (data de entrega, YYYY-MM-DD)
+  "modo": "entrega" | "retirada",        // opcional (default entrega)
+  "observacoes": "...",                  // opcional
+  "idempotencyKey": "<uuid do bot>",     // opcional — ver Idempotência
+  "visitante": { "nome": "...", "telefone": "...", "cpf": "..." }  // só se telefone NÃO reconhecido (cliente novo): nome + cpf obrigatórios
+}
+→ dados: { "numero": 123, "status": "AGUARDANDO", "total": 240.00 }
+```
+
+- **Preço recalculado no servidor** (o bot não manda `valor`). Respeita o mínimo da condição do cliente.
+- Nasce `AGUARDANDO` (ou `PENDENTE_CADASTRO` se o telefone não tiver cadastro vinculado ao CA) na
+  **mesma fila de aprovação do site de Congelados**.
+- Faturamento aprova no painel → cria o Pedido real (escolhe Normal/Especial/Bonificação + data).
+
+### (C) Criar pedido de Kit Festa — `POST /api/ia-consulta/v1/kitfesta/pedido` (novo, sob a chave da IA)
+
+Espelho fino do `criarPedidoSite` do Kit Festa. Header `x-ia-api-key`. **Mesmos nomes de campo** que o de
+Congelados no que é comum (`telefone`, `itens[].id`, `itens[].quantidade`, `data` em `YYYY-MM-DD`, `modo`,
+`observacoes`, `idempotencyKey`, `visitante`), só com os extras próprios do Kit Festa:
+
+```
+POST /api/ia-consulta/v1/kitfesta/pedido
+{
+  "telefone": "5547999998888",
+  "itens": [ { "id": "<kitFestaProdutoId do catálogo>", "quantidade": 4, "opcao": "Frango" } ],
+  "modo": "entrega" | "retirada",
+  "data": "2026-07-15",
+  "horario": "10:00",                    // Kit Festa trabalha com horário/slot
+  "enderecoEntrega": "...",              // se entrega
+  "cep": "89239000",                     // se entrega
+  "cupomCodigo": "...",                  // opcional
+  "observacoes": "...",                  // opcional
+  "idempotencyKey": "<uuid do bot>",     // opcional
+  "visitante": { "nome": "...", "telefone": "...", "cpf": "..." }  // cliente novo: nome + cpf obrigatórios (dispensado se o telefone já casar com conta do site)
+}
+→ dados: { "numero": 45, "status": "AGUARDANDO", "total": 320.00 }
+```
+
+- Valida mínimo de caixas, antecedência e (se entrega) o CEP/raio — igual ao site.
+- Nasce `AGUARDANDO` na **mesma fila de aprovação do Kit Festa**; faturamento aprova → vira Pedido real.
+
+### (D) Cross-sell "comprados juntos" — `POST /api/ia-consulta/v1/produtos/comprados-juntos` (opcional, por último)
+
+Não existe hoje; exigiria análise de cesta no histórico. É "nice to have" (item 4) — fica para depois de
+A, B e C estarem no ar.
+
+### Onde o humano aprova (decisão de produto)
+
+**O pedido do bot cai direto na fila de aprovação do CA-Hardt** (`AGUARDANDO`), e o **faturamento aprova
+no próprio painel do CA-Hardt** (tela que já existe: busca por nome/telefone/CPF, vincula visitante,
+escolhe Normal/Especial/Bonificação + data → vira Pedido real). Com isso, **acaba o passo de redigitar** e
+a tela de rascunho do lado do bot deixa de ser necessária (no máximo vira um espelho só-leitura). É a
+evolução natural do "modo assistido".
+
+### Detalhes de contrato
+
+- **Idempotência:** o bot pode mandar `idempotencyKey` (um UUID por tentativa de fechamento). Se a mesma
+  chave chegar de novo (timeout + retry), o servidor **devolve o mesmo pedido** em vez de criar outro. Se
+  o bot não mandar a chave, o servidor faz um dedupe de segurança por `telefone + itens` numa janela curta
+  (ex.: 10 min). Objetivo: nunca duplicar pedido na fila.
+- **Visitante (telefone não reconhecido):** para **cliente já reconhecido pelo telefone (o caso comum),
+  a Ana NÃO pede nada** — o CPF/CNPJ já vem do cadastro e o pedido nasce `AGUARDANDO`. Só quando o
+  telefone **não** bate com nenhum cadastro (cliente NOVO) o bot manda `visitante: { nome, cpf, telefone }`
+  — aí **nome + CPF/CNPJ são obrigatórios**, porque o registro do cliente e a nota fiscal precisam do
+  documento (a conta do site tem o documento como chave). Esse pedido nasce `PENDENTE_CADASTRO` e o
+  faturamento vincula/cadastra na aprovação. (No Kit Festa, se o telefone já casar com uma conta do site
+  existente, o CPF também é dispensado.)
+- **Kit Festa — frete "a combinar":** `taxaEntrega` nasce `0` (a combinar), então o `total` **não inclui
+  frete**. A Ana deve avisar isso na conversa (já está no prompt dela) — comportamento esperado, confirmado.
+- **Webhook de confirmação (Kit Festa) — evitar mensagem dobrada:** o site dispara um WhatsApp de
+  confirmação (via BotConversa, provavelmente outro número) ao criar o pedido. Para **pedidos vindos do
+  bot esse envio nasce DESLIGADO por padrão** — quem confirma é a Ana, na própria conversa (Z-API). O
+  corpo aceita `notificarCliente: true` só se algum dia quiser reativar o envio automático para um pedido
+  específico. Assim o cliente nunca recebe duas mensagens.
+
+### Segurança (mantida, igual ao resto da API)
+
+- Identificação **por telefone** (o WhatsApp já autentica o número); nunca gravar/liberar dado sensível só
+  com CPF/CNPJ digitado. Endpoints de criação **sempre** sob `x-ia-api-key` (nunca públicos).
+- Visitante sem cadastro cai em `PENDENTE_CADASTRO` e **exige vínculo manual** antes de o faturamento
+  aprovar — o bot nunca cria cliente "de verdade" no CA por conta própria.
+- Como tudo passa pela aprovação humana, o pior caso de um erro do bot é um pedido pendente que o
+  faturamento recusa — nunca uma venda errada lançada direto.
 
 ## Próximos passos previstos (ainda não implementados)
 
@@ -180,5 +363,6 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
 - Depois que o bot migrar 100% para esta API (nenhuma função restante em SQL direto), rotacionar
   a senha do banco de produção usada pelo bot — combinar com quem mantém a Antigravity antes de
   fazer isso, para não quebrar nada no meio da migração.
-- Criação de pedido pela IA (hoje o escopo é só consulta — confirmação humana decide o pedido).
+- Criação de pedido pela IA — desenho já detalhado acima na seção **"Fase 2 — Criação de pedido pela
+  IA"**; falta combinar o formato com o time do WhatsApp e implementar.
 - Programa de fidelidade para cliente B2B comum (hoje só existe indicação/crédito/cupom no Kit Festa).

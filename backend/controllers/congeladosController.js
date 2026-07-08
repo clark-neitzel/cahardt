@@ -65,6 +65,11 @@ const congeladosController = {
             res.json(await svc.criarPedidoSite({ ...req.body, clienteId }));
         } catch (e) { erro(res, e, 'criarPedido'); }
     },
+    // Criação de pedido pela IA de WhatsApp (identifica por telefone; ver ia-consulta-api.md).
+    criarPedidoIA: async (req, res) => {
+        try { res.json(await svc.criarPedidoIA(req.body)); }
+        catch (e) { erro(res, e, 'criarPedidoIA'); }
+    },
     meusPedidos: async (req, res) => {
         try { res.json(await svc.meusPedidos(req.congelados.id)); }
         catch (e) { erro(res, e, 'meusPedidos'); }

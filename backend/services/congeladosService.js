@@ -514,34 +514,47 @@ const congeladosService = {
             p.preco = precoVendedor({ base: p.preco, acrescimoPct: ctx.acrescimoPct, ultimoPreco: ultimaMap[p.produtoId], maxDescontoPct: ctx.maxDescontoPct });
         });
 
-        // Último pedido (para "repetir último pedido") — mapeado ao catálogo de congelados.
-        // Usa o último pedido REAL (não bonificação, não excluído) e desconta devoluções:
-        // item totalmente devolvido não volta no carrinho.
-        let ultimoPedido = [];
-        if (clienteUuid) {
-            const ultimo = await prisma.pedido.findFirst({
-                where: { clienteId: clienteUuid, bonificacao: false, statusEnvio: { not: 'EXCLUIDO' } },
-                orderBy: { createdAt: 'desc' }, // o pedido real feito por último
-                select: { id: true, itens: { select: { produtoId: true, quantidade: true } } },
-            });
-            if (ultimo) {
-                const porProduto = {};
-                catalogo.forEach(p => { porProduto[p.produtoId] = p.id; });
-                // quantidade pedida por produto (só os que estão no site)
-                const qtd = {};
-                ultimo.itens.forEach(i => { if (porProduto[i.produtoId]) qtd[i.produtoId] = (qtd[i.produtoId] || 0) + Number(i.quantidade || 0); });
-                // desconta as devoluções ATIVAS desse pedido
-                const devs = await prisma.devolucao.findMany({
-                    where: { pedidoOriginalId: ultimo.id, status: 'ATIVA' },
-                    select: { itens: { select: { produtoId: true, quantidade: true } } },
-                });
-                devs.forEach(d => d.itens.forEach(i => { if (qtd[i.produtoId] != null) qtd[i.produtoId] -= Number(i.quantidade || 0); }));
-                ultimoPedido = Object.keys(qtd)
-                    .filter(pid => qtd[pid] > 0.0001)
-                    .map(pid => ({ congeladosProdutoId: porProduto[pid], quantidade: Math.round(qtd[pid]) || 1 }));
-            }
-        }
+        // Último pedido (para "repetir último pedido"), remontado sobre o catálogo já com o preço do
+        // cliente. Mesma regra do reconhecimento por telefone — helper único _ultimoPedidoCliente.
+        const ultimoPedido = await this._ultimoPedidoCliente(clienteUuid, catalogo);
         return { catalogo, ultimoPedido };
+    },
+
+    // Último pedido REAL do cliente (não bonificação, não excluído), remontado sobre o catálogo já
+    // precificado para ele — é o "quero o de sempre" do bot. Desconta devoluções ATIVAS (item
+    // totalmente devolvido não volta) e ignora produto que não está mais no site. Cada item traz
+    // `id` (= congeladosProdutoId, para recriar o carrinho) + nome/unidade/precoUnit (para a conversa).
+    async _ultimoPedidoCliente(clienteUuid, catalogo) {
+        if (!clienteUuid) return [];
+        const ultimo = await prisma.pedido.findFirst({
+            where: { clienteId: clienteUuid, bonificacao: false, statusEnvio: { not: 'EXCLUIDO' } },
+            orderBy: { createdAt: 'desc' }, // o pedido real feito por último
+            select: { id: true, itens: { select: { produtoId: true, quantidade: true } } },
+        });
+        if (!ultimo) return [];
+        const porProduto = {}; // produtoId -> item do catálogo (com preço do cliente)
+        catalogo.forEach(p => { porProduto[p.produtoId] = p; });
+        const qtd = {};
+        ultimo.itens.forEach(i => { if (i.produtoId && porProduto[i.produtoId]) qtd[i.produtoId] = (qtd[i.produtoId] || 0) + Number(i.quantidade || 0); });
+        const devs = await prisma.devolucao.findMany({
+            where: { pedidoOriginalId: ultimo.id, status: 'ATIVA' },
+            select: { itens: { select: { produtoId: true, quantidade: true } } },
+        });
+        devs.forEach(d => d.itens.forEach(i => { if (qtd[i.produtoId] != null) qtd[i.produtoId] -= Number(i.quantidade || 0); }));
+        return Object.keys(qtd)
+            .filter(pid => qtd[pid] > 0.0001)
+            .map(pid => {
+                const p = porProduto[pid];
+                return {
+                    id: p.id,                    // congeladosProdutoId — usar em itens[].id ao criar pedido
+                    congeladosProdutoId: p.id,   // legado (mantido para não quebrar consumidores antigos)
+                    produtoId: p.produtoId,
+                    nome: p.nome,
+                    unidade: p.unidade,
+                    quantidade: Math.round(qtd[pid]) || 1,
+                    precoUnit: p.preco,
+                };
+            });
     },
 
     // Acha o Cliente cadastrado cujo telefone bate com o informado (Telefone, Telefone_Celular ou
@@ -580,6 +593,12 @@ const congeladosService = {
             p.preco = precoVendedor({ base: p.preco, acrescimoPct: ctx.acrescimoPct, ultimoPreco: ultimaMap[p.produtoId], maxDescontoPct: ctx.maxDescontoPct });
         });
 
+        // "de sempre" liberado pela identificação por telefone (sem login): marca cada produto já
+        // comprado (últimos 5 pedidos) e monta o último pedido para o bot oferecer "quero o de sempre".
+        const compradosIds = await this._produtoIdsHistorico(cliente.UUID, 5);
+        catalogo.forEach(p => { p.comprado = compradosIds.has(p.produtoId); });
+        const ultimoPedido = await this._ultimoPedidoCliente(cliente.UUID, catalogo);
+
         return {
             reconhecido: true,
             cliente: { nome: cliente.NomeFantasia || cliente.Nome, documento: cliente.Documento },
@@ -587,6 +606,7 @@ const congeladosService = {
             diasEntrega: diasEntregaLabels(cliente.Dia_de_entrega),
             diasEntregaNums: diasEntregaNums(cliente.Dia_de_entrega),
             catalogo,
+            ultimoPedido,
         };
     },
 
@@ -611,7 +631,7 @@ const congeladosService = {
     },
 
     // ───────── Criação de pedido (cliente logado ou visitante) ─────────
-    async criarPedidoSite({ clienteId, visitante, itens, diaEntrega, dataEntrega, modo, observacoes, telefone }) {
+    async criarPedidoSite({ clienteId, visitante, itens, diaEntrega, dataEntrega, modo, observacoes, telefone, idempotencyKey }) {
         if (!Array.isArray(itens) || itens.length === 0) throw new Error('Carrinho vazio.');
 
         let auth;
@@ -739,6 +759,7 @@ const congeladosService = {
                 totalCaixas,
                 observacoes: observacoes || null,
                 status: semCadastro ? 'PENDENTE_CADASTRO' : 'AGUARDANDO',
+                idempotencyKey: idempotencyKey || null,
                 itens: { create: itensData },
             },
             include: { itens: true },
@@ -747,6 +768,65 @@ const congeladosService = {
         // NÃO enviamos mais cópia automática pelo nosso WhatsApp (risco de bloqueio).
         // O próprio cliente envia o pedido à loja pelo WhatsApp dele, na tela de confirmação.
         return pedido;
+    },
+
+    // ───────── Criação de pedido pela IA (WhatsApp/Antigravity) ─────────
+    // Espelho fino do criarPedidoSite, mas identificando o cliente pelo TELEFONE de quem manda a
+    // mensagem (autenticado pelo WhatsApp) — nunca por CPF digitado. Cliente reconhecido nasce
+    // AGUARDANDO com o preço da condição dele; telefone novo exige nome+CPF e nasce PENDENTE_CADASTRO.
+    // O pedido cai na MESMA fila de aprovação do site; o faturamento aprova escolhendo tipo/data.
+    async criarPedidoIA({ telefone, itens, data, modo, observacoes, visitante, idempotencyKey }) {
+        if (!Array.isArray(itens) || itens.length === 0) throw new Error('Carrinho vazio.');
+
+        // Idempotência: se a mesma chave já criou um pedido, devolve o mesmo (retry/timeout do bot).
+        if (idempotencyKey) {
+            const existente = await prisma.congeladosPedido.findFirst({ where: { idempotencyKey } }).catch(() => null);
+            if (existente) return { id: existente.id, numero: existente.numero, status: existente.status, total: dec(existente.total) };
+        }
+
+        const itensMap = itens.map(i => ({ congeladosProdutoId: i.id, quantidade: i.quantidade }));
+        const obs = observacoes ? `[WhatsApp IA] ${observacoes}` : '[WhatsApp IA]';
+
+        const cliente = await this._clientePorTelefone(telefone);
+        let pedido;
+        if (cliente) {
+            const cc = await this._congeladosClienteVinculado(cliente, telefone);
+            pedido = await this.criarPedidoSite({ clienteId: cc.id, itens: itensMap, dataEntrega: data, modo, observacoes: obs, telefone, idempotencyKey });
+        } else {
+            if (!visitante?.nome || !docValido(soDigitos(visitante?.cpf))) {
+                const e = new Error('Cliente novo (telefone não reconhecido): informe nome e CPF/CNPJ para criar o pedido.');
+                e.code = 'VISITANTE_SEM_CPF';
+                throw e;
+            }
+            pedido = await this.criarPedidoSite({
+                visitante: { documento: visitante.cpf, nome: visitante.nome, telefone: visitante.telefone || telefone },
+                itens: itensMap, dataEntrega: data, modo, observacoes: obs, telefone: visitante.telefone || telefone, idempotencyKey,
+            });
+        }
+        return { id: pedido.id, numero: pedido.numero, status: pedido.status, total: dec(pedido.total) };
+    },
+
+    // Garante uma conta do site (CongeladosCliente) vinculada ao Cliente reconhecido, para o pedido
+    // do bot nascer AGUARDANDO (não PENDENTE_CADASTRO) e com o preço da condição real do cliente.
+    async _congeladosClienteVinculado(cliente, telefoneRaw) {
+        let cc = await prisma.congeladosCliente.findUnique({ where: { clienteUuid: cliente.UUID } }).catch(() => null);
+        if (cc) return cc;
+        const documento = soDigitos(cliente.Documento);
+        if (!documento) throw new Error('Cadastro do cliente sem CPF/CNPJ — não é possível criar o pedido pelo bot.');
+        const telefone = soDigitos(telefoneRaw) || null;
+        cc = await prisma.congeladosCliente.findUnique({ where: { documento } }).catch(() => null);
+        if (cc) {
+            if (!cc.clienteUuid) cc = await prisma.congeladosCliente.update({ where: { id: cc.id }, data: { clienteUuid: cliente.UUID } }).catch(() => cc);
+            return cc;
+        }
+        try {
+            return await prisma.congeladosCliente.create({ data: { documento, nome: cliente.NomeFantasia || cliente.Nome, telefone, clienteUuid: cliente.UUID } });
+        } catch (e) {
+            // corrida/violação de unicidade — tenta reler pelo documento
+            cc = await prisma.congeladosCliente.findUnique({ where: { documento } }).catch(() => null);
+            if (cc) return cc;
+            throw e;
+        }
     },
 
     async meusPedidos(clienteId) {

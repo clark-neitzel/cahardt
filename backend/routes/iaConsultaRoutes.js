@@ -27,6 +27,9 @@ v1.get('/kitfesta/agenda', kitFestaCtrl.agenda);
 v1.get('/kitfesta/slots', kitFestaCtrl.slots);
 v1.post('/kitfesta/validar-cupom', kitFestaCtrl.validarCupom);
 v1.post('/kitfesta/verificar-entrega', kitFestaCtrl.verificarEntrega);
+// Kit Festa — criação de pedido pela IA (cai na fila de aprovação; webhook automático desligado,
+// quem confirma é a Ana na conversa). Identifica por telefone; cliente novo informa nome+CPF.
+v1.post('/kitfesta/pedido', kitFestaCtrl.criarPedidoIA);
 
 // Congelados — catálogo, grupos e ficha técnica (preço GENÉRICO, tabela "Site")
 v1.get('/congelados/catalogo', congeladosCtrl.catalogo);
@@ -38,6 +41,10 @@ v1.get('/congelados/produto/:id/ficha', congeladosCtrl.ficha);
 // sensível é liberado sem essa checagem bater com o cadastro real do cliente).
 v1.post('/congelados/reconhecer-telefone', congeladosCtrl.catalogoPorTelefone);
 v1.post('/congelados/criar-senha-telefone', congeladosCtrl.criarSenhaPorTelefone);
+
+// Congelados — criação de pedido pela IA (cai na fila de aprovação do site; preço recalculado no
+// servidor). Identifica por telefone; cliente novo informa nome+CPF. Faturamento aprova no painel.
+v1.post('/congelados/pedido', congeladosCtrl.criarPedidoIA);
 
 // Congelados — fluxo manual por CPF/CNPJ (quando o telefone não bate com o cadastro): descobre a
 // situação, faz login com a senha existente, cria senha (só se ainda não tiver) ou envia/confirma

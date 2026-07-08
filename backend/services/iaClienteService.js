@@ -73,9 +73,16 @@ const iaClienteService = {
 
     // Últimos pedidos do cliente — exige o MESMO reconhecimento por telefone (não aceita CPF
     // sozinho): histórico de compra é dado sensível, igual preço negociado.
-    async historicoPedidos(telefoneRaw, limite = 10) {
+    // Com `comItens: true`, cada pedido também traz `itens: [{ produtoId, nome, quantidade, unidade,
+    // precoUnit }]` (destrava "o de sempre"/repetição). Sem o flag, a resposta é IDÊNTICA à de antes
+    // (sem o campo itens) — mudança 100% aditiva, não quebra o contrato.
+    async historicoPedidos(telefoneRaw, limite = 10, comItens = false) {
         const cliente = await _clientePorTelefone(telefoneRaw);
         if (!cliente) return { reconhecido: false };
+
+        const itemSelect = comItens
+            ? { produtoId: true, valor: true, quantidade: true, produto: { select: { nome: true, unidade: true } } }
+            : { valor: true, quantidade: true };
 
         const pedidos = await prisma.pedido.findMany({
             where: { clienteId: cliente.UUID, statusEnvio: { not: 'EXCLUIDO' } },
@@ -84,7 +91,7 @@ const iaClienteService = {
             select: {
                 numero: true, dataVenda: true, dataEntrega: true, statusEntrega: true,
                 especial: true, bonificacao: true,
-                itens: { select: { valor: true, quantidade: true } },
+                itens: { select: itemSelect },
             },
         });
 
@@ -98,6 +105,15 @@ const iaClienteService = {
                 statusEntrega: p.statusEntrega,
                 tipo: p.bonificacao ? 'BONIFICACAO' : (p.especial ? 'ESPECIAL' : 'NORMAL'),
                 total: Math.round(p.itens.reduce((s, i) => s + dec(i.valor) * dec(i.quantidade), 0) * 100) / 100,
+                ...(comItens ? {
+                    itens: p.itens.map(i => ({
+                        produtoId: i.produtoId,
+                        nome: i.produto?.nome || null,
+                        quantidade: dec(i.quantidade),
+                        unidade: i.produto?.unidade || null,
+                        precoUnit: dec(i.valor),
+                    })),
+                } : {}),
             })),
         };
     },

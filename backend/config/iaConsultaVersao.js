@@ -10,8 +10,12 @@
 // externamente) · 1.2.0 (2026-07-02) corrige a 1.1.0: reconhecimento por telefone + login/senha/código
 // com token, removendo o endpoint que aceitava só CPF/CNPJ sem prova de identidade · 1.3.0
 // (2026-07-04) + seção /cliente (geral, todas as linhas): reconhecer-telefone, historico-pedidos,
-// criar-lead — substitui o SQL direto que o bot da IA rodava contra o banco de produção.
-const VERSAO_API = '1.3.0';
+// criar-lead — substitui o SQL direto que o bot da IA rodava contra o banco de produção · 1.4.0
+// (2026-07-07) Fase 2 (criação de pedido pela IA): congelados/reconhecer-telefone ganha ultimoPedido[]
+// + flag comprado; cliente/historico-pedidos aceita comItens; novos POST congelados/pedido e
+// kitfesta/pedido (caem na fila de aprovação, preço recalculado, idempotencyKey, webhook do Kit
+// Festa desligado). Tudo aditivo — nenhum campo removido/renomeado.
+const VERSAO_API = '1.4.0';
 
 const AVISOS = [
     // Exemplo (remover quando o aviso deixar de ser válido):

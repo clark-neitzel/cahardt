@@ -2206,6 +2206,10 @@ model KitFestaPedido {
   id     String @id @default(uuid())
   numero Int    @unique @default(autoincrement())
 
+  // Idempotência: chave enviada pelo bot (WhatsApp IA) para não duplicar pedido em retry/timeout.
+  // Null nos pedidos do site. Índice COMUM (não único) — ver nota em CongeladosPedido.idempotencyKey.
+  idempotencyKey String? @map("idempotency_key")
+
   // Cliente do site (sempre presente; pode estar sem cadastro CA)
   kitFestaClienteId String          @map("kitfesta_cliente_id")
   kitFestaCliente   KitFestaCliente @relation(fields: [kitFestaClienteId], references: [id])
@@ -2263,6 +2267,7 @@ model KitFestaPedido {
   @@index([status])
   @@index([data])
   @@index([kitFestaClienteId])
+  @@index([idempotencyKey])
   @@map("kitfesta_pedidos")
 }
 
@@ -2371,6 +2376,12 @@ model CongeladosPedido {
   id     String @id @default(uuid())
   numero Int    @unique @default(autoincrement())
 
+  // Idempotência: chave enviada pelo bot (WhatsApp IA) para não duplicar pedido em retry/timeout.
+  // Null nos pedidos do site. Índice COMUM (não único) de propósito: o deploy roda `prisma db push`
+  // sem --accept-data-loss e ele RECUSA criar índice único (quebraria o deploy). A dedupe é por
+  // checagem da chave no código + a fila de aprovação humana como rede.
+  idempotencyKey String? @map("idempotency_key")
+
   congeladosClienteId String            @map("congelados_cliente_id")
   congeladosCliente   CongeladosCliente @relation(fields: [congeladosClienteId], references: [id])
 
@@ -2414,6 +2425,7 @@ model CongeladosPedido {
 
   @@index([status])
   @@index([congeladosClienteId])
+  @@index([idempotencyKey])
   @@map("congelados_pedidos")
 }
 

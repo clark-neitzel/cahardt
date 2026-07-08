@@ -464,7 +464,7 @@ const kitFestaService = {
     },
 
     // ───────── Criação de pedido (cliente logado ou visitante) ─────────
-    async criarPedidoSite({ clienteId, visitante, itens, modo, data, horario, bairroId, enderecoEntrega, cep, cupomCodigo, indicacaoCodigo, usarCredito, observacoes, telefone }) {
+    async criarPedidoSite({ clienteId, visitante, itens, modo, data, horario, bairroId, enderecoEntrega, cep, cupomCodigo, indicacaoCodigo, usarCredito, observacoes, telefone, notificarCliente = true, idempotencyKey }) {
         if (!Array.isArray(itens) || itens.length === 0) throw new Error('Carrinho vazio.');
 
         // Cliente autenticado ou visitante (cria registro sem cadastro)
@@ -608,6 +608,7 @@ const kitFestaService = {
                 totalCaixas,
                 observacoes: observacoes || null,
                 status: semCadastro ? 'PENDENTE_CADASTRO' : 'AGUARDANDO',
+                idempotencyKey: idempotencyKey || null,
                 itens: { create: itensData },
             },
             include: { itens: true, bairro: true },
@@ -632,10 +633,58 @@ const kitFestaService = {
 
         // Confirmação automática pelo nosso WhatsApp (BotConversa) para o CELULAR DO CLIENTE.
         // Não bloqueia a resposta: se o webhook falhar, o pedido já está salvo.
-        webhookService.notificarPedidoKitFesta(pedido.id).catch(err =>
-            console.error('[Webhook-KitFesta] Erro async:', err.message)
-        );
+        // Pedidos vindos do bot (WhatsApp IA) passam notificarCliente:false — quem confirma é a
+        // própria Ana na conversa, para o cliente não receber DUAS mensagens.
+        if (notificarCliente !== false) {
+            webhookService.notificarPedidoKitFesta(pedido.id).catch(err =>
+                console.error('[Webhook-KitFesta] Erro async:', err.message)
+            );
+        }
         return pedido;
+    },
+
+    // ───────── Criação de pedido pela IA (WhatsApp/Antigravity) ─────────
+    // Espelho fino do criarPedidoSite. Identifica pelo TELEFONE (autenticado pelo WhatsApp): se já
+    // existe uma conta do site com esse número, reaproveita (sem pedir CPF); senão exige nome+CPF
+    // (necessário para o cadastro do site e para a nota). Webhook automático DESLIGADO (a Ana
+    // confirma na conversa). Cai na MESMA fila de aprovação do Kit Festa; faturamento aprova.
+    async criarPedidoIA({ telefone, itens, modo, data, horario, enderecoEntrega, cep, cupomCodigo, observacoes, visitante, idempotencyKey }) {
+        if (!Array.isArray(itens) || itens.length === 0) throw new Error('Carrinho vazio.');
+
+        // Idempotência: mesma chave → devolve o mesmo pedido (retry/timeout do bot).
+        if (idempotencyKey) {
+            const existente = await prisma.kitFestaPedido.findFirst({ where: { idempotencyKey } }).catch(() => null);
+            if (existente) return { id: existente.id, numero: existente.numero, status: existente.status, total: dec(existente.total) };
+        }
+
+        const itensMap = itens.map(i => ({ kitFestaProdutoId: i.id, quantidade: i.quantidade, opcao: i.opcao }));
+        const obs = observacoes ? `[WhatsApp IA] ${observacoes}` : '[WhatsApp IA]';
+
+        // Reconhece uma conta do site pelo telefone (compara só os dígitos, tolerando DDI 55).
+        let clienteId = null;
+        const alvo = soDigitos(telefone).replace(/^55/, '');
+        if (alvo.length >= 10) {
+            const contas = await prisma.kitFestaCliente.findMany({ where: { telefone: { not: null } }, select: { id: true, telefone: true } });
+            const achado = contas.find(c => { const d = soDigitos(c.telefone).replace(/^55/, ''); return d && (d === alvo || d.slice(-8) === alvo.slice(-8)); });
+            if (achado) clienteId = achado.id;
+        }
+
+        let visitanteFinal = null;
+        if (!clienteId) {
+            if (!visitante?.nome || !visitante?.cpf) {
+                const e = new Error('Cliente novo (telefone não reconhecido): informe nome e CPF/CNPJ para criar o pedido do Kit Festa.');
+                e.code = 'VISITANTE_SEM_CPF';
+                throw e;
+            }
+            visitanteFinal = { nome: visitante.nome, cpf: visitante.cpf, telefone: visitante.telefone || telefone };
+        }
+
+        const pedido = await this.criarPedidoSite({
+            clienteId, visitante: visitanteFinal, itens: itensMap, modo, data, horario,
+            enderecoEntrega, cep, cupomCodigo, observacoes: obs, telefone,
+            notificarCliente: false, idempotencyKey,
+        });
+        return { id: pedido.id, numero: pedido.numero, status: pedido.status, total: dec(pedido.total) };
     },
 
     // Marca/desmarca pagamento (quitação). Ao quitar, gera o crédito do indicador

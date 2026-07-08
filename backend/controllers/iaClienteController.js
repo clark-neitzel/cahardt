@@ -11,7 +11,7 @@ module.exports = {
         catch (e) { erro(res, e, 'reconhecerTelefone'); }
     },
     historicoPedidos: async (req, res) => {
-        try { res.json(await svc.historicoPedidos(req.body.telefone, req.body.limite)); }
+        try { res.json(await svc.historicoPedidos(req.body.telefone, req.body.limite, req.body.comItens === true)); }
         catch (e) { erro(res, e, 'historicoPedidos'); }
     },
     criarLead: async (req, res) => {

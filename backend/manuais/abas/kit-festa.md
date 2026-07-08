@@ -35,6 +35,8 @@ No site o cliente logado também vê a seção **"Indique e ganhe"** com o códi
 
 ### 1. Pedidos
 Fila de pedidos vindos do site, **do mais recente para o mais antigo**, com **pílulas de status com contagem** (Todos / Aguardando / Sem cadastro / Convertidos / Recusados / Cancelados) e busca por **nome, razão social, nome fantasia, cidade, CPF ou CNPJ** (e telefone). A lista **atualiza sozinha a cada 45 segundos**. Pedidos novos aparecem com **aviso amarelo pulsante** e etiqueta **"Novo"** com borda destacada. Quando o pedido gerado é **excluído no sistema**, o pedido do site vira **Cancelado** automaticamente.
+
+> **Pedidos pelo WhatsApp (assistente "Ana"):** esta fila também recebe os pedidos que o **assistente de IA do WhatsApp** fecha com o cliente. Vêm com **"[WhatsApp IA]"** no início das observações e são tratados igual aos do site (conferir → **Aprovar** escolhendo tipo e vendedor). Diferença: nesses pedidos a **mensagem automática de confirmação NÃO é enviada** pelo nosso WhatsApp — quem confirma é a própria Ana na conversa, para o cliente não receber a mensagem duas vezes.
 - Abrir um pedido mostra itens, cliente, modo, data/horário, endereço de entrega, total e observações. Nos pedidos de entrega aparece o aviso **"Taxa de entrega a combinar (conforme endereço)"** — a taxa é acertada com o cliente no WhatsApp.
 - **Pedidos "Sem cadastro"** aparecem destacados em vermelho. Antes de aprovar, é preciso **vincular** o pedido a um cliente do app (cadastre no Conta Azul, sincronize, busque e vincule).
 - **Celular alterado:** quando o cliente informa/corrige o número no checkout, o pedido mostra o aviso **"celular alterado"** (laranja) com o novo número — atualize no cadastro do cliente no app/CA.
