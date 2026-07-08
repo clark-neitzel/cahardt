@@ -143,10 +143,23 @@ const formatarNotaLista = (n) => ({
 // ── GET / — caixa de entrada + status da captura ──
 router.get('/', verificarAuth, checkAcesso, async (req, res) => {
     try {
-        const { status, busca } = req.query;
+        const { status, busca, tipo, dataInicio, dataFim } = req.query;
 
         const where = {};
         if (status) where.status = status;
+
+        // Filtro por tipo de nota (NFE = produto / NFSE = serviço)
+        const tipoUp = String(tipo || '').toUpperCase();
+        if (tipoUp === 'NFE' || tipoUp === 'NFSE') where.tipo = tipoUp;
+
+        // Filtro por período de EMISSÃO (datas YYYY-MM-DD no fuso de São Paulo).
+        // gte no início do dia inicial; lte no fim do dia final.
+        const isYMD = (s) => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
+        const emissaoRange = {};
+        if (isYMD(dataInicio)) emissaoRange.gte = new Date(`${dataInicio}T00:00:00-03:00`);
+        if (isYMD(dataFim)) emissaoRange.lte = new Date(`${dataFim}T23:59:59.999-03:00`);
+        if (emissaoRange.gte || emissaoRange.lte) where.emissao = emissaoRange;
+
         if (busca?.trim()) {
             const b = busca.trim();
             where.OR = [
@@ -269,6 +282,150 @@ router.post('/consultar-agora', verificarAuth, checkEscrita, async (req, res) =>
     } catch (error) {
         console.error('Erro ao iniciar consulta à SEFAZ:', error);
         res.status(500).json({ error: 'Erro ao iniciar consulta à SEFAZ.' });
+    }
+});
+
+// Body parser dedicado do XML (o express.json global tem limite de 100kb; um XML de nota passa disso).
+// type:()=>true → aceita o corpo em qualquer content-type (text/plain, application/xml…).
+const bodyXml = express.text({ type: () => true, limit: '25mb' });
+
+// ── POST /importar-xml — importa o XML de UMA nota (NF-e ou NFS-e do padrão nacional) ──
+// Reaproveita a MESMA gravação da captura automática → a nota importada se comporta idêntica.
+// Idempotente por chave: reimportar completa/atualiza sem duplicar.
+router.post('/importar-xml', verificarAuth, checkEscrita, bodyXml, async (req, res) => {
+    try {
+        const xmlString = (typeof req.body === 'string' ? req.body : '').trim();
+        if (!xmlString || !xmlString.includes('<')) {
+            return res.status(400).json({ error: 'Envie o conteúdo de um arquivo XML de nota fiscal.' });
+        }
+
+        // Nosso CNPJ (do certificado ativo) — para recusar XML de nota que a PRÓPRIA empresa emitiu.
+        let cnpjNosso = null;
+        try {
+            const cert = await prisma.certificadoDigital.findFirst({
+                where: { ativo: true }, orderBy: { instaladoEm: 'desc' }, select: { cnpj: true }
+            });
+            cnpjNosso = cert?.cnpj ? String(cert.cnpj).replace(/\D/g, '') : null;
+        } catch { /* sem certificado: segue sem a checagem de nota própria */ }
+
+        const ehNfse = /infNFSe/i.test(xmlString) || /<\s*NFSe[\s>]/i.test(xmlString);
+
+        // 1) Parse (valida o XML e detecta nota própria ANTES de gravar).
+        let chave, emitenteCnpj, tipoNota;
+        try {
+            if (ehNfse) {
+                const p = nfseAdnService.parseNfse(xmlString);
+                chave = p.chave; emitenteCnpj = p.prestador?.cnpj || ''; tipoNota = 'NFSE';
+            } else {
+                const p = sefazDfeService.parseProcNFe(xmlString);
+                chave = p.chave; emitenteCnpj = p.emitente?.cnpj || ''; tipoNota = 'NFE';
+            }
+        } catch (e) {
+            return res.status(422).json({
+                error: ehNfse
+                    ? 'Não consegui ler este XML de NFS-e. Muitas prefeituras usam um layout próprio, diferente do padrão nacional — nesse caso use a opção "Lançar manualmente".'
+                    : `Não consegui ler este XML de NF-e: ${e.message}`
+            });
+        }
+
+        const chaveMin = tipoNota === 'NFSE' ? 40 : 44;
+        if (!chave || chave.length < chaveMin) {
+            return res.status(422).json({ error: 'O XML não tem uma chave de acesso válida.' });
+        }
+        if (cnpjNosso && emitenteCnpj && emitenteCnpj === cnpjNosso) {
+            return res.status(400).json({ error: 'Este XML é de uma nota que a SUA empresa emitiu (você é o emitente). Aqui entram só notas recebidas de fornecedores.' });
+        }
+
+        const existente = await prisma.notaEntrada.findUnique({ where: { chave } });
+
+        // 2) Grava com a mesma função da captura automática (nsu=null: veio de upload manual).
+        if (ehNfse) await nfseAdnService.registrarNfse(xmlString, null, cnpjNosso);
+        else await sefazDfeService.registrarProcNFe(xmlString, null, cnpjNosso);
+
+        const nota = await prisma.notaEntrada.findUnique({ where: { chave } });
+        if (!nota) return res.status(500).json({ error: 'A nota não pôde ser gravada.' });
+
+        res.status(existente ? 200 : 201).json({
+            ok: true,
+            jaExistia: !!existente,
+            statusAnterior: existente?.status || null,
+            nota: formatarNotaLista(nota)
+        });
+    } catch (error) {
+        console.error('Erro ao importar XML de nota:', error);
+        res.status(500).json({ error: 'Erro ao importar o XML da nota.' });
+    }
+});
+
+// ── POST /lancar-manual — cria uma nota "na mão" quando não há XML legível ──
+// (ex.: NFS-e de prefeitura fora do padrão nacional, que nunca chega sozinha).
+// A nota entra como NOVA, pronta para conferir e gerar a despesa. Chave sintética
+// (não vai ao Conta Azul — o CA usa o número da nota, não a chave).
+router.post('/lancar-manual', verificarAuth, checkEscrita, async (req, res) => {
+    try {
+        const body = req.body || {};
+        const tipo = String(body.tipo || 'NFSE').toUpperCase() === 'NFE' ? 'NFE' : 'NFSE';
+        const fornecedorNome = String(body.fornecedorNome || '').trim();
+        const cnpj = String(body.fornecedorCnpj || '').replace(/\D/g, '');
+        const numero = body.numero ? String(body.numero).trim() : null;
+        const valor = Number(body.valorTotal);
+        const emissao = body.emissao;
+
+        if (!fornecedorNome) return res.status(400).json({ error: 'Informe o nome do fornecedor.' });
+        if (!Number.isFinite(valor) || valor <= 0) return res.status(400).json({ error: 'Informe o valor total da nota (maior que zero).' });
+        if (!emissao || isNaN(new Date(emissao).getTime())) return res.status(400).json({ error: 'Informe uma data de emissão válida.' });
+
+        // Fornecedor: reaproveita/cria (mesmo padrão da captura automática).
+        let fornecedor = cnpj ? await prisma.fornecedor.findFirst({ where: { cnpjCpf: cnpj } }) : null;
+        if (!fornecedor && cnpj) {
+            fornecedor = await prisma.fornecedor.create({
+                data: { cnpjCpf: cnpj, razaoSocial: fornecedorNome || `Fornecedor ${cnpj}`, origem: tipo, statusEnvioCA: 'NAO_ENVIAR' }
+            });
+        }
+
+        // Evita duplicar o mesmo lançamento (fornecedor + número).
+        if (numero && cnpj) {
+            const dup = await prisma.notaEntrada.findFirst({
+                where: { fornecedorCnpj: cnpj, numero, status: { not: 'CANCELADA_EMITENTE' } }
+            });
+            if (dup) return res.status(409).json({ error: `Já existe a nota ${dup.numero} deste fornecedor na lista (status ${dup.status}).` });
+        }
+
+        const chaveManual = `MANUAL-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const descricao = String(body.descricao || '').trim()
+            || (tipo === 'NFSE' ? 'Serviço (lançamento manual)' : 'Item (lançamento manual)');
+
+        const nota = await prisma.notaEntrada.create({
+            data: {
+                tipo,
+                chave: chaveManual,
+                numero,
+                fornecedorCnpj: cnpj || '',
+                fornecedorNome,
+                fornecedorId: fornecedor?.id || null,
+                emissao: parseVencimento(emissao),
+                valorTotal: round2(valor),
+                status: 'NOVA',
+                manifestada: true,
+                infComplementar: 'Nota lançada manualmente (sem XML capturado).',
+                itens: {
+                    create: [{
+                        numeroItem: 1,
+                        codigoFornecedor: 'MANUAL',
+                        descricao,
+                        unidade: tipo === 'NFSE' ? 'SV' : 'UN',
+                        quantidade: 1,
+                        valorUnitario: round2(valor),
+                        valorTotal: round2(valor)
+                    }]
+                }
+            }
+        });
+
+        res.status(201).json({ ok: true, nota: formatarNotaLista(nota) });
+    } catch (error) {
+        console.error('Erro ao lançar nota manual:', error);
+        res.status(500).json({ error: 'Erro ao lançar a nota manualmente.' });
     }
 });
 

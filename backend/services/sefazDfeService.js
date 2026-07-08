@@ -609,6 +609,8 @@ module.exports = {
     podeConsultar,
     statusCaptura,
     capturaAtiva,
+    // gravação (reaproveitada na importação manual de XML — mesma lógica da captura automática)
+    registrarProcNFe,
     // funções puras (testáveis offline)
     parseProcNFe,
     parseResNFe,

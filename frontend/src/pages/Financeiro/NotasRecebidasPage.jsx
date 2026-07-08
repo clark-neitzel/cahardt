@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import notasEntradaService from '../../services/notasEntradaService';
 import contasPagarService from '../../services/contasPagarService';
-import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search } from 'lucide-react';
+import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search, Upload, Calendar, FilePlus, UploadCloud } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 // ── Helpers ──
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -83,6 +84,31 @@ const notaPassaChip = (nota, chip) => {
     if (chip === 'TODAS') return true;
     // NOVAS: novas + resumos aguardando o XML completo
     return nota.status === 'NOVA' || nota.status === 'AGUARDANDO_XML';
+};
+
+// Filtro por tipo de nota (segmentado)
+const TIPOS_NOTA = [
+    { key: 'TODAS', label: 'Todas' },
+    { key: 'NFE', label: 'NF-e (produto)' },
+    { key: 'NFSE', label: 'NFS-e (serviço)' }
+];
+
+// Atalhos de período (dias para trás a partir de hoje; 'all' = sem filtro de data)
+const PERIODO_PRESETS = [
+    { key: '7', label: '7 dias', dias: 7 },
+    { key: '15', label: '15 dias', dias: 15 },
+    { key: '30', label: '30 dias', dias: 30 },
+    { key: 'all', label: 'Tudo', dias: null }
+];
+
+// Nota criada pela opção "Lançar manualmente" (chave sintética, sem XML fiscal)
+const ehNotaManual = (nota) => String(nota?.chave || '').startsWith('MANUAL-');
+
+// Data N dias atrás, em YYYY-MM-DD (fuso de São Paulo)
+const ymdDiasAtras = (dias) => {
+    const d = new Date();
+    d.setDate(d.getDate() - dias);
+    return d.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 };
 
 // Baixa o XML autenticado e dispara o download (sem window.open — PWA/iPad)
@@ -179,6 +205,24 @@ const NotasRecebidasPage = () => {
         return () => clearTimeout(t);
     }, [busca]);
 
+    // Filtros novos: tipo de nota (lembrado por usuário) + período de emissão (de/até)
+    const [tipoNota, setTipoNota] = useFiltroSalvo('notas-recebidas:tipo', 'TODAS');
+    const [dataInicio, setDataInicio] = useState('');
+    const [dataFim, setDataFim] = useState('');
+    const [periodoPreset, setPeriodoPreset] = useState('all');
+    const [importarAberto, setImportarAberto] = useState(false);
+
+    const aplicarPreset = (p) => {
+        setPeriodoPreset(p.key);
+        if (p.dias == null) { setDataInicio(''); setDataFim(''); }
+        else { setDataInicio(ymdDiasAtras(p.dias)); setDataFim(hojeYMD()); }
+    };
+    const limparFiltros = () => {
+        setTipoNota('TODAS'); setChip('NOVAS');
+        setDataInicio(''); setDataFim(''); setPeriodoPreset('all'); setBusca('');
+    };
+    const filtrosAtivos = tipoNota !== 'TODAS' || !!dataInicio || !!dataFim || !!buscaAplicada;
+
     const [expandedId, setExpandedId] = useState(null);
     const [detalhe, setDetalhe] = useState(null);
     const [loadingDetalhe, setLoadingDetalhe] = useState(false);
@@ -191,7 +235,12 @@ const NotasRecebidasPage = () => {
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await notasEntradaService.listar(buscaAplicada ? { busca: buscaAplicada } : {});
+            const params = {};
+            if (buscaAplicada) params.busca = buscaAplicada;
+            if (tipoNota && tipoNota !== 'TODAS') params.tipo = tipoNota;
+            if (dataInicio) params.dataInicio = dataInicio;
+            if (dataFim) params.dataFim = dataFim;
+            const data = await notasEntradaService.listar(params);
             setStatusCaptura(data?.statusCaptura || null);
             setStatusNfse(data?.statusCapturaNfse || null);
             setNotas(Array.isArray(data?.notas) ? data.notas : []);
@@ -200,7 +249,7 @@ const NotasRecebidasPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [buscaAplicada]);
+    }, [buscaAplicada, tipoNota, dataInicio, dataFim]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -275,14 +324,26 @@ const NotasRecebidasPage = () => {
                     <h1 className="text-base md:text-2xl font-bold text-gray-900">Notas Recebidas</h1>
                 </div>
                 {podeOperar && (
-                    <button
-                        onClick={consultarAgora}
-                        disabled={consultando}
-                        className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-xs md:text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-50"
-                    >
-                        <RefreshCw className={`h-3.5 w-3.5 ${consultando ? 'animate-spin' : ''}`} />
-                        {consultando ? 'Consultando…' : 'Consultar agora'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setImportarAberto(true)}
+                            className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs md:text-sm font-medium inline-flex items-center gap-1.5"
+                            title="Importar o XML de uma nota que não chegou sozinha, ou lançar manualmente"
+                        >
+                            <Upload className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Importar XML</span>
+                            <span className="sm:hidden">Importar</span>
+                        </button>
+                        <button
+                            onClick={consultarAgora}
+                            disabled={consultando}
+                            className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-xs md:text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                            <RefreshCw className={`h-3.5 w-3.5 ${consultando ? 'animate-spin' : ''}`} />
+                            <span className="hidden sm:inline">{consultando ? 'Consultando…' : 'Consultar agora'}</span>
+                            <span className="sm:hidden">{consultando ? '…' : 'Consultar'}</span>
+                        </button>
+                    </div>
                 )}
             </div>
 
@@ -352,7 +413,70 @@ const NotasRecebidasPage = () => {
                     )}
                 </div>
 
-                {/* Chips de filtro */}
+                {/* Filtros: tipo de nota + período de emissão */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 md:p-4 flex flex-col md:flex-row md:items-end gap-3 md:gap-6">
+                    <div>
+                        <div className="text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">Tipo de nota</div>
+                        <div className="inline-flex bg-gray-100 rounded-full p-0.5 gap-0.5">
+                            {TIPOS_NOTA.map(t => (
+                                <button
+                                    key={t.key}
+                                    onClick={() => { setTipoNota(t.key); fecharNota(); }}
+                                    className={`px-3 py-1.5 min-h-[36px] rounded-full text-xs font-semibold transition-colors ${
+                                        tipoNota === t.key ? 'bg-white text-primaryDark shadow-sm' : 'text-gray-600 hover:text-gray-800'
+                                    }`}
+                                >
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <div className="text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">Período de emissão</div>
+                        <div className="flex flex-wrap items-center gap-2">
+                            <input
+                                type="date"
+                                value={dataInicio}
+                                onChange={e => { setDataInicio(e.target.value); setPeriodoPreset(''); }}
+                                className="border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                            />
+                            <span className="text-xs text-gray-400">até</span>
+                            <input
+                                type="date"
+                                value={dataFim}
+                                onChange={e => { setDataFim(e.target.value); setPeriodoPreset(''); }}
+                                className="border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                            />
+                            <div className="flex flex-wrap gap-1.5">
+                                {PERIODO_PRESETS.map(p => (
+                                    <button
+                                        key={p.key}
+                                        onClick={() => { aplicarPreset(p); fecharNota(); }}
+                                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                                            periodoPreset === p.key
+                                                ? 'bg-mint border-primary text-primaryDark'
+                                                : 'bg-white border-gray-300 text-gray-600 hover:border-primary hover:text-primary'
+                                        }`}
+                                    >
+                                        {p.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {filtrosAtivos && (
+                        <button
+                            onClick={limparFiltros}
+                            className="text-xs text-gray-500 hover:text-gray-700 underline self-start md:self-end md:ml-auto"
+                        >
+                            limpar filtros
+                        </button>
+                    )}
+                </div>
+
+                {/* Chips de situação */}
                 <div className="flex gap-2 overflow-x-auto hide-scrollbar">
                     {CHIPS.map(c => (
                         <button
@@ -421,6 +545,13 @@ const NotasRecebidasPage = () => {
                     o vínculo e a conversão ficam <span className="font-semibold">salvos por fornecedor + código do produto na nota</span> (e código de barras, quando houver). Na próxima nota deste fornecedor, tudo já entra preenchido — mesmo que o trigo venha de 3 empresas diferentes, aqui vira sempre o nosso "Farinha de trigo (kg)".
                 </div>
             </div>
+
+            {importarAberto && podeOperar && (
+                <ImportarXmlModal
+                    onClose={() => setImportarAberto(false)}
+                    onChanged={fetchData}
+                />
+            )}
         </div>
     );
 };
@@ -439,14 +570,21 @@ const NotaCard = ({ nota, podeOperar, onAbrir }) => {
                 <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-gray-900 truncate">{nota.fornecedorNome || 'Fornecedor não identificado'}</span>
                     <BadgeStatusNota status={nota.status} />
-                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 whitespace-nowrap">
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
+                        String(nota.tipo || '').toUpperCase().includes('NFS') ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'
+                    }`}>
                         {tipoNotaLabel(nota.tipo)}{nota.numero ? ` ${nota.numero}` : ''}
                     </span>
+                    {ehNotaManual(nota) && (
+                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">lançada manual</span>
+                    )}
                 </div>
-                <div className="text-xs text-gray-500 mt-1">
-                    Emitida {fmtData(nota.emissao)}
-                    {nota.fornecedorCnpj ? ` · CNPJ ${fmtCnpj(nota.fornecedorCnpj)}` : ''}
-                    {nota.status === 'CONFERIDA' && nota.contaPagarId ? ' · despesa gerada em Contas a Pagar' : ''}
+                <div className="flex items-center gap-2 flex-wrap mt-1.5">
+                    <span className="inline-flex items-center gap-1 bg-mint text-primaryDark rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap">
+                        <Calendar className="h-3 w-3" /> Emitida {fmtData(nota.emissao)}
+                    </span>
+                    {nota.fornecedorCnpj && <span className="text-xs text-gray-500">CNPJ {fmtCnpj(nota.fornecedorCnpj)}</span>}
+                    {nota.status === 'CONFERIDA' && nota.contaPagarId && <span className="text-xs text-gray-500">· despesa gerada em Contas a Pagar</span>}
                 </div>
             </div>
             <div className="flex items-center justify-between md:justify-end gap-4 shrink-0">
@@ -459,6 +597,203 @@ const NotaCard = ({ nota, podeOperar, onAbrir }) => {
                         {conferivel ? 'Conferir' : 'Detalhes'}
                     </button>
                 )}
+            </div>
+        </div>
+    );
+};
+
+// ═══════════════════════════════════════════════════════════
+// MODAL — IMPORTAR XML  /  LANÇAR NOTA MANUALMENTE
+// ═══════════════════════════════════════════════════════════
+const ImportarXmlModal = ({ onClose, onChanged }) => {
+    const [modo, setModo] = useState('xml'); // 'xml' | 'manual'
+    const [enviando, setEnviando] = useState(false);
+    const [resultados, setResultados] = useState([]);
+    const [dragOver, setDragOver] = useState(false);
+    const inputRef = useRef(null);
+
+    // Lançamento manual
+    const [mTipo, setMTipo] = useState('NFSE');
+    const [mNome, setMNome] = useState('');
+    const [mCnpj, setMCnpj] = useState('');
+    const [mNumero, setMNumero] = useState('');
+    const [mEmissao, setMEmissao] = useState(hojeYMD());
+    const [mValor, setMValor] = useState('');
+
+    const pill = (on) => `px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${on ? 'bg-white text-primaryDark shadow-sm' : 'text-gray-600 hover:text-gray-800'}`;
+    const inputCls = 'w-full mt-1 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none';
+
+    const processarArquivos = async (files) => {
+        const lista = Array.from(files || []).filter(f => /\.xml$/i.test(f.name) || String(f.type).includes('xml'));
+        if (lista.length === 0) { toast.error('Selecione arquivo(s) .xml'); return; }
+        setEnviando(true);
+        const res = [];
+        let algumOk = false;
+        for (const f of lista) {
+            try {
+                const texto = await f.text();
+                const r = await notasEntradaService.importarXml(texto);
+                algumOk = true;
+                res.push({
+                    nome: f.name, ok: true,
+                    msg: r.jaExistia
+                        ? `já estava na lista (${STATUS_NOTA[r.statusAnterior]?.label || r.statusAnterior || 'existente'}) — XML atualizado`
+                        : `importada: ${r.nota?.fornecedorNome || 'nota'} · ${tipoNotaLabel(r.nota?.tipo)}${r.nota?.numero ? ' ' + r.nota.numero : ''}`
+                });
+            } catch (e) {
+                res.push({ nome: f.name, ok: false, msg: e.response?.data?.error || 'não foi possível importar' });
+            }
+        }
+        setResultados(res);
+        setEnviando(false);
+        if (inputRef.current) inputRef.current.value = ''; // permite reescolher o mesmo arquivo
+        if (algumOk) { toast.success('Nota(s) importada(s)!'); onChanged(); } // recarrega a lista; modal fica aberto p/ ver o resultado
+    };
+
+    const enviarManual = async () => {
+        if (!mNome.trim()) { toast.error('Informe o nome do fornecedor.'); return; }
+        const valorNum = parseNum(mValor);
+        if (valorNum <= 0) { toast.error('Informe o valor total da nota (maior que zero).'); return; }
+        if (!mEmissao) { toast.error('Informe a data de emissão.'); return; }
+        setEnviando(true);
+        try {
+            await notasEntradaService.lancarManual({
+                tipo: mTipo,
+                fornecedorNome: mNome.trim(),
+                fornecedorCnpj: mCnpj.replace(/\D/g, '') || undefined,
+                numero: mNumero.trim() || undefined,
+                emissao: mEmissao,
+                valorTotal: valorNum
+            });
+            toast.success('Nota lançada! Já aparece na lista para conferir.');
+            onChanged();
+            onClose();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Não foi possível lançar a nota.');
+        } finally {
+            setEnviando(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-3 md:p-4" onClick={onClose}>
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                {/* Cabeçalho */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white rounded-t-2xl">
+                    <div className="flex items-center gap-2">
+                        <div className="bg-mint p-2 rounded-lg"><Upload className="h-5 w-5 text-primaryDark" /></div>
+                        <h2 className="text-lg font-bold text-gray-900">Importar nota</h2>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="h-5 w-5" /></button>
+                </div>
+
+                {/* Alternador de modo */}
+                <div className="px-5 pt-4">
+                    <div className="inline-flex bg-gray-100 rounded-full p-0.5 gap-0.5">
+                        <button onClick={() => setModo('xml')} className={pill(modo === 'xml')}>Tenho o XML</button>
+                        <button onClick={() => setModo('manual')} className={pill(modo === 'manual')}>Lançar manualmente</button>
+                    </div>
+                </div>
+
+                <div className="p-5">
+                    {modo === 'xml' ? (
+                        <>
+                            <p className="text-sm text-gray-600 mb-3">
+                                Anexe o arquivo <b>.xml</b> da nota (NF-e ou NFS-e). Serve para notas que não chegaram sozinhas na captura automática.
+                            </p>
+                            <label
+                                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                                onDragLeave={() => setDragOver(false)}
+                                onDrop={e => { e.preventDefault(); setDragOver(false); processarArquivos(e.dataTransfer.files); }}
+                                className={`block border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors ${dragOver ? 'border-primary bg-mint/30' : 'border-gray-300 bg-gray-50 hover:border-primary hover:bg-mint/20'}`}
+                            >
+                                <input
+                                    ref={inputRef}
+                                    type="file"
+                                    accept=".xml,text/xml,application/xml"
+                                    multiple
+                                    className="hidden"
+                                    onChange={e => processarArquivos(e.target.files)}
+                                />
+                                <UploadCloud className="h-9 w-9 text-gray-400 mx-auto mb-2" />
+                                <div className="text-sm font-semibold text-gray-700">Arraste o XML aqui ou clique para escolher</div>
+                                <div className="text-xs text-gray-400 mt-0.5">pode selecionar vários arquivos .xml</div>
+                            </label>
+
+                            {enviando && (
+                                <div className="mt-3 text-sm text-gray-500 flex items-center gap-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" /> Importando…
+                                </div>
+                            )}
+
+                            {resultados.length > 0 && (
+                                <div className="mt-4 space-y-1.5">
+                                    {resultados.map((r, i) => (
+                                        <div key={i} className={`text-xs rounded-lg px-3 py-2 border ${r.ok ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                                            <span className="font-semibold break-all">{r.nome}</span> — {r.msg}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900 leading-relaxed">
+                                <b>Onde consigo o XML?</b> No e-mail que o fornecedor manda com a nota, ou no site da prefeitura (NFS-e). A nota entra como <b>"Nova"</b>, pronta para conferir. Se já existir, o sistema não duplica.
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-sm text-gray-600 mb-3">
+                                Não tem o XML (ex.: NFS-e de prefeitura que não vem sozinha)? Lance os dados da nota — ela entra como <b>"Nova"</b> para conferir e gerar a despesa.
+                            </p>
+                            <div className="space-y-3">
+                                <div>
+                                    <label className="text-xs font-medium text-gray-500">Tipo</label>
+                                    <SelectBusca value={mTipo} onChange={e => setMTipo(e.target.value)} className="w-full mt-1">
+                                        <option value="NFSE">NFS-e (serviço)</option>
+                                        <option value="NFE">NF-e (produto)</option>
+                                    </SelectBusca>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-medium text-gray-500">Fornecedor *</label>
+                                    <input value={mNome} onChange={e => setMNome(e.target.value)} placeholder="Nome do fornecedor" className={inputCls} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-xs font-medium text-gray-500">CNPJ (opcional)</label>
+                                        <input value={mCnpj} onChange={e => setMCnpj(e.target.value)} placeholder="00.000.000/0000-00" inputMode="numeric" className={inputCls} />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-medium text-gray-500">Nº da nota</label>
+                                        <input value={mNumero} onChange={e => setMNumero(e.target.value)} placeholder="Ex.: 57454" className={inputCls} />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="text-xs font-medium text-gray-500">Emissão *</label>
+                                        <input type="date" value={mEmissao} onChange={e => setMEmissao(e.target.value)} className={inputCls} />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-medium text-gray-500">Valor total *</label>
+                                        <div className="mt-1 flex items-center gap-1">
+                                            <span className="text-sm text-gray-500">R$</span>
+                                            <input value={mValor} onChange={e => setMValor(e.target.value)} placeholder="0,00" inputMode="decimal" className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="mt-5 flex justify-end gap-2">
+                                <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full text-sm font-medium">Cancelar</button>
+                                <button
+                                    onClick={enviarManual}
+                                    disabled={enviando}
+                                    className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
+                                >
+                                    {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <FilePlus className="h-4 w-4" />} Lançar nota
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
             </div>
         </div>
     );

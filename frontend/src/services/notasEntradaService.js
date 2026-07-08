@@ -38,6 +38,19 @@ const notasEntradaService = {
         const response = await api.post('/notas-entrada/consultar-agora');
         return response.data;
     },
+    // Importa o XML de UMA nota (NF-e ou NFS-e nacional). Envia o conteúdo cru como texto.
+    // Retorna { ok, jaExistia, statusAnterior, nota }.
+    importarXml: async (xmlText) => {
+        const response = await api.post('/notas-entrada/importar-xml', xmlText, {
+            headers: { 'Content-Type': 'text/plain' }
+        });
+        return response.data;
+    },
+    // Lança uma nota manualmente (sem XML) — { tipo, fornecedorCnpj, fornecedorNome, numero, emissao, valorTotal }.
+    lancarManual: async (dados) => {
+        const response = await api.post('/notas-entrada/lancar-manual', dados);
+        return response.data;
+    },
     // XML da nota (blob, para baixar/abrir com o token de auth)
     baixarXml: async (id) => {
         const response = await api.get(`/notas-entrada/${id}/xml`, { responseType: 'blob' });

@@ -617,6 +617,8 @@ module.exports = {
     statusCaptura,
     capturaAtiva,
     montarEspelhoNfseHtml,
+    // gravação (reaproveitada na importação manual de XML — mesma lógica da captura automática)
+    registrarNfse,
     // funções puras (testáveis offline)
     parseNfse,
     parseEventoNfse,

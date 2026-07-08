@@ -36,7 +36,7 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 4. Cancelamento da NFS-e pelo prestador → **CANCELADA PELO EMITENTE** (igual à NF-e).
 5. Prestador novo é criado automaticamente como fornecedor (origem NFSE).
 
-> **Importante:** só chegam NFS-e de **municípios já integrados ao sistema nacional** (nfse.gov.br). Prefeituras com sistema próprio não compartilhado não aparecem aqui.
+> **Importante:** só chegam NFS-e de **municípios já integrados ao sistema nacional** (nfse.gov.br). Prefeituras com sistema próprio não compartilhado **não aparecem aqui automaticamente** — nesses casos use **Importar XML** (se você tiver o arquivo) ou **Lançar manualmente** (veja "O que dá pra fazer aqui").
 
 ---
 
@@ -56,8 +56,13 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 
 - Ver todas as notas capturadas (NF-e e NFS-e, com etiqueta do tipo) com fornecedor, número, emissão, valor e status
 - **Buscar uma nota** pelo campo de busca acima das abas: procura por **nome do fornecedor, CNPJ, produto da nota (descrição, código ou código de barras), número da nota ou chave de acesso**. A busca vale em **todas as abas** (Novas, Despesa gerada, Ignoradas e Todas). Observação: a busca por produto só encontra notas que já têm o **XML completo** (as "Aguardando XML" ainda não têm a lista de itens)
+- **Filtrar por tipo de nota**: alternar entre **Todas / NF-e (produto) / NFS-e (serviço)** — a escolha fica **lembrada** para as próximas vezes que abrir a tela
+- **Filtrar por período de emissão**: campos **De / Até** com atalhos rápidos (**7, 15, 30 dias** ou **Tudo**) — útil para achar uma nota antiga específica
+- A **data de emissão** aparece em **destaque** (etiqueta verde) em cada nota da lista
 - Ver o **status da captura**: NF-e (ligada/desligada, última consulta à SEFAZ) e NFS-e (última consulta ao ambiente nacional), além de quantas notas novas aguardam conferência
 - **Consultar agora**: dispara uma busca imediata (SEFAZ **e** ambiente nacional) sem esperar a próxima hora
+- **Importar XML** (botão no topo): quando uma nota **não chegou sozinha** na captura automática, anexe o **arquivo XML** dela (NF-e ou NFS-e do padrão nacional) e ela entra na lista como **NOVA**, igual às automáticas — pronta para conferir. Aceita **vários arquivos** de uma vez e **não duplica** (se a nota já existir, só completa/atualiza o XML). Recusa XML de nota que a **própria empresa emitiu** (só entram notas recebidas de fornecedores)
+- **Lançar manualmente** (dentro de "Importar XML"): para notas **sem XML legível** — caso típico é **NFS-e de prefeitura fora do padrão nacional**, que nunca chega automaticamente. Você informa **tipo, fornecedor, CNPJ (opcional), número, data de emissão e valor**, e a nota entra como **NOVA** para conferir e gerar a despesa. Fica marcada com a etiqueta **"lançada manual"**
 - Abrir o **detalhe da nota**: itens (código do fornecedor, EAN, descrição, quantidade, valores), **informações adicionais de cada item** (infAdProd — lote, validade etc.), duplicatas (vencimentos) e as **observações da nota**. Na NFS-e o detalhe mostra a **discriminação do serviço** e o valor
 - **Baixar o XML** completo da nota
 - **Imprimir a DANFE** (NF-e: visão em folha com emitente, chave, itens com NCM/CFOP, totais, duplicatas) ou o **DANFSE** (NFS-e: espelho com prestador, tomador, discriminação do serviço, valores e retenções) — impressos na própria página, funciona no iPad/PWA
@@ -142,7 +147,7 @@ Envio Contabilidade
 |---------|-------|
 | `backend/services/sefazDfeService.js` | Robô de captura de NF-e na SEFAZ (Distribuição DF-e + manifestação 210210) |
 | `backend/services/nfseAdnService.js` | Robô de captura de NFS-e no Ambiente de Dados Nacional (ADN) + espelho DANFSE |
-| `backend/routes/notasEntrada.js` | Rotas da API (listar, detalhar, XML, DANFE/DANFSE, gerar conta com categoria por item + rateio, ignorar, consultar agora) — dispara o salvamento do XML no Drive ao dar entrada/ignorar |
+| `backend/routes/notasEntrada.js` | Rotas da API (listar com filtro de tipo/período, detalhar, XML, DANFE/DANFSE, gerar conta com categoria por item + rateio, ignorar, consultar agora, **importar-xml** e **lancar-manual**) — dispara o salvamento do XML no Drive ao dar entrada/ignorar |
 | `backend/services/googleDriveService.js` | Salva o XML da nota no Google Drive da Contabilidade (pasta do mês por emissão; subpasta "Ignoradas"); credenciais OAuth em `app_configs.gdrive_config` |
 | `backend/services/danfeHtmlService.js` | Monta o HTML da DANFE simplificada (função pura) a partir do XML da NF-e |
 | `backend/routes/configNotas.js` | Certificado digital + liga/desliga das capturas (NF-e e NFS-e) |
