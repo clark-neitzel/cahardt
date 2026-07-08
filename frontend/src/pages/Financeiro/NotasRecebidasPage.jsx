@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import notasEntradaService from '../../services/notasEntradaService';
 import contasPagarService from '../../services/contasPagarService';
-import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search, Upload, Calendar, FilePlus, UploadCloud } from 'lucide-react';
+import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search, Upload, Calendar, FilePlus, UploadCloud, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
@@ -314,7 +314,12 @@ const NotasRecebidasPage = () => {
         setConsultando(true);
         try {
             const res = await notasEntradaService.consultarAgora();
-            toast.success(res?.mensagem || res?.message || 'Consulta à SEFAZ solicitada!');
+            if (res?.ok === false) {
+                // SEFAZ ainda no intervalo de espera — não é erro, só informa quando libera.
+                toast(res.motivo || 'A SEFAZ ainda está no intervalo entre consultas.', { icon: '⏳', duration: 6000 });
+            } else {
+                toast.success('Consulta à SEFAZ solicitada!');
+            }
             fetchData();
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao consultar a SEFAZ agora');
@@ -404,6 +409,12 @@ const NotasRecebidasPage = () => {
                         {qtdNovas === 1 ? '1 nota nova aguardando conferência' : `${qtdNovas} notas novas aguardando conferência`}
                         {qtdAguardando > 0 ? ` · ${qtdAguardando} aguardando XML completo` : ''}
                     </div>
+                    {statusCaptura?.proximaConsultaEm && !emPausaSefaz && new Date(statusCaptura.proximaConsultaEm) > new Date() && (
+                        <div className="text-gray-500">
+                            Próxima consulta automática:{' '}
+                            <span className="font-medium text-gray-700">{fmtHora(statusCaptura.proximaConsultaEm)}</span>
+                        </div>
+                    )}
                 </div>
 
                 {/* Pausa pedida pela SEFAZ */}
@@ -681,6 +692,11 @@ const ImportarXmlModal = ({ onClose, onChanged }) => {
         setResultados([]);
         try {
             const r = await notasEntradaService.buscarPorChave(soDigitosChave);
+            // SEFAZ no intervalo de espera → oferece agendar (busca sozinho ao liberar).
+            if (r.ok === false && r.emEspera) {
+                setResultados([{ emEspera: true, proximaConsultaEm: r.proximaConsultaEm, msg: r.motivo }]);
+                return;
+            }
             onChanged(); // recarrega a lista
             const nome = r.nota?.fornecedorNome || 'nota';
             const num = r.nota?.numero ? ' ' + r.nota.numero : '';
@@ -694,6 +710,21 @@ const ImportarXmlModal = ({ onClose, onChanged }) => {
             toast.success('Nota encontrada na SEFAZ!');
         } catch (e) {
             setResultados([{ ok: false, nome: 'Busca', msg: e.response?.data?.error || 'não foi possível buscar a nota' }]);
+        } finally {
+            setEnviando(false);
+        }
+    };
+
+    const agendarChave = async () => {
+        setEnviando(true);
+        try {
+            const r = await notasEntradaService.agendarBuscaChave(soDigitosChave);
+            if (r.jaExistia) { toast.success('Essa nota já está na lista!'); onChanged(); onClose(); return; }
+            const quando = r.proximaConsultaEm ? fmtDataHora(r.proximaConsultaEm) : 'em breve';
+            toast.success(`Agendado! A nota aparece sozinha assim que a SEFAZ liberar (${quando}).`, { duration: 8000 });
+            setResultados([{ ok: true, nome: 'Agendado ✓', msg: `vou buscar sozinho por volta de ${quando} — a nota aparece na lista automaticamente, sem você precisar voltar aqui.` }]);
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Não foi possível agendar a busca.');
         } finally {
             setEnviando(false);
         }
@@ -819,11 +850,25 @@ const ImportarXmlModal = ({ onClose, onChanged }) => {
                             </button>
 
                             {resultados.length > 0 && (
-                                <div className="mt-4 space-y-1.5">
+                                <div className="mt-4 space-y-2">
                                     {resultados.map((r, i) => (
-                                        <div key={i} className={`text-xs rounded-lg px-3 py-2 border ${r.ok ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
-                                            <span className="font-semibold">{r.nome}</span> — {r.msg}
-                                        </div>
+                                        r.emEspera ? (
+                                            <div key={i} className="rounded-lg px-3 py-3 border bg-amber-50 border-amber-200 text-amber-800 text-xs">
+                                                <div className="font-semibold mb-1">⏳ A SEFAZ está no intervalo entre consultas</div>
+                                                <div className="mb-2">{r.msg}</div>
+                                                <button
+                                                    onClick={agendarChave}
+                                                    disabled={enviando}
+                                                    className="px-3 py-2 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
+                                                >
+                                                    {enviando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Clock className="h-3.5 w-3.5" />} Agendar — buscar sozinho ao liberar
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div key={i} className={`text-xs rounded-lg px-3 py-2 border ${r.ok ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                                                <span className="font-semibold">{r.nome}</span> — {r.msg}
+                                            </div>
+                                        )
                                     ))}
                                 </div>
                             )}

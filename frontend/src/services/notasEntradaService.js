@@ -51,9 +51,14 @@ const notasEntradaService = {
         const response = await api.post('/notas-entrada/lancar-manual', dados);
         return response.data;
     },
-    // Busca uma NF-e na SEFAZ pela chave de acesso (44 dígitos) — { ok, jaExistia, aguardandoXml, nota }.
+    // Busca uma NF-e na SEFAZ pela chave de acesso (44 dígitos) — { ok, jaExistia, aguardandoXml, nota } ou { ok:false, emEspera, proximaConsultaEm }.
     buscarPorChave: async (chave) => {
         const response = await api.post('/notas-entrada/buscar-chave', { chave });
+        return response.data;
+    },
+    // Agenda a busca por chave (quando a SEFAZ está no intervalo de espera) — { ok, agendada, proximaConsultaEm }.
+    agendarBuscaChave: async (chave) => {
+        const response = await api.post('/notas-entrada/buscar-chave/agendar', { chave });
         return response.data;
     },
     // XML da nota (blob, para baixar/abrir com o token de auth)

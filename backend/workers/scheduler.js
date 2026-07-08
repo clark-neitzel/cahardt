@@ -119,10 +119,12 @@ function startSchedulers() {
     setInterval(_runContasFin, 6 * 3600000); // 6 horas
 
     // === 4.3. CAPTURA DE NF-e (SEFAZ Distribuição DF-e) ===
-    // A cada 1 hora consulta as NF-e emitidas contra o nosso CNPJ e alimenta a
-    // caixa de Notas Recebidas. 100% isolado: sem certificado instalado ou com a
-    // captura desligada (AppConfig captura_nfe_ativa), o ciclo pula silenciosamente;
-    // cStat 656 (consumo indevido) grava bloqueio de 1h15 e o worker respeita.
+    // Consulta as NF-e emitidas contra o nosso CNPJ e alimenta a caixa de Notas Recebidas.
+    // O tick roda de hora em hora, mas a CADÊNCIA REAL é a trava do serviço
+    // (app_configs.sefaz_intervalo_horas, padrão 3h): o ciclo só consulta se já passou o
+    // intervalo desde a última — evita o cStat 656 (consumo indevido) e deixa folga para
+    // as consultas manuais (Consultar agora / Buscar pela chave). 100% isolado: sem
+    // certificado ou com a captura desligada (captura_nfe_ativa), o ciclo pula em silêncio.
     console.log('⏰ Iniciando Captura de NF-e (SEFAZ DF-e)...');
     const sefazDfeService = require('../services/sefazDfeService');
     const _runDfe = () => {
@@ -131,12 +133,12 @@ function startSchedulers() {
     };
     // Primeira execução 4min após o start (servidor estável, sem competir com os outros syncs)
     setTimeout(_runDfe, 240000);
-    setInterval(_runDfe, 3600000); // 60 minutos
+    setInterval(_runDfe, 3600000); // tick de 60 min (a trava de intervalo controla a cadência real)
 
     // === 4.4. CAPTURA DE NFS-e (Ambiente de Dados Nacional — serviços tomados) ===
-    // A cada 1 hora consulta as NFS-e onde somos tomador no ambiente nacional
-    // (mesmo certificado A1). Isolado igual à NF-e: sem certificado ou com a
-    // captura desligada (AppConfig captura_nfse_ativa), o ciclo pula em silêncio.
+    // Consulta as NFS-e onde somos tomador no ambiente nacional (mesmo certificado A1).
+    // Mesma trava de intervalo da NF-e (padrão 3h). Isolado: sem certificado ou com a
+    // captura desligada (captura_nfse_ativa), o ciclo pula em silêncio.
     console.log('⏰ Iniciando Captura de NFS-e (ADN nacional)...');
     const nfseAdnService = require('../services/nfseAdnService');
     const _runNfse = () => {
@@ -145,7 +147,18 @@ function startSchedulers() {
     };
     // 7min após o start (defasado da NF-e para não competir)
     setTimeout(_runNfse, 420000);
-    setInterval(_runNfse, 3600000); // 60 minutos
+    setInterval(_runNfse, 3600000); // tick de 60 min (a trava de intervalo controla a cadência real)
+
+    // === 4.5. BUSCAS POR CHAVE AGENDADAS ===
+    // Quando o usuário agenda uma busca por chave (SEFAZ estava no intervalo de espera),
+    // este worker processa a fila UMA por vez — a própria trava de ~1 consulta por hora
+    // regula o ritmo. A nota aparece sozinha na lista quando a SEFAZ libera.
+    const _runBuscasAgendadas = () => {
+        sefazDfeService.processarBuscasAgendadas()
+            .catch(err => console.error('⚠️ Worker Buscas Agendadas Error:', err.message));
+    };
+    setTimeout(_runBuscasAgendadas, 300000);    // 5min após o start
+    setInterval(_runBuscasAgendadas, 600000);   // a cada 10 min tenta processar a próxima da fila
 
     // === 5. CRON JOB INTELLIGENCE COMERCIAL ===
     // Recalcula todos os clientes 1 vez por dia, na madrugada (aprox 03:00)

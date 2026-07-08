@@ -261,20 +261,22 @@ router.get('/itens-pcp', verificarAuth, checkAcesso, async (req, res) => {
 // (antes de /:id para a rota não ser engolida pelo parâmetro)
 router.post('/consultar-agora', verificarAuth, checkEscrita, async (req, res) => {
     try {
+        // Manual: usa o piso de ~1h (não a cadência automática de 3h) — força a consulta se a SEFAZ já liberou.
         const [preNfe, preNfse] = await Promise.all([
-            sefazDfeService.podeConsultar(),
-            nfseAdnService.podeConsultar()
+            sefazDfeService.podeConsultar({ manual: true }),
+            nfseAdnService.podeConsultar({ manual: true })
         ]);
         if (!preNfe.ok && !preNfse.ok) {
-            return res.json({ ok: false, iniciado: false, motivo: preNfe.motivo || preNfse.motivo });
+            const proxima = preNfe.proximaConsultaEm || preNfse.proximaConsultaEm || null;
+            return res.json({ ok: false, iniciado: false, emEspera: !!(preNfe.emEspera || preNfse.emEspera), proximaConsultaEm: proxima, motivo: preNfe.motivo || preNfse.motivo });
         }
 
         if (preNfe.ok) {
-            sefazDfeService.executarCiclo()
+            sefazDfeService.executarCiclo({ manual: true })
                 .catch((e) => console.error('[NotasEntrada] Erro no ciclo manual NF-e:', e.message));
         }
         if (preNfse.ok) {
-            nfseAdnService.executarCiclo()
+            nfseAdnService.executarCiclo({ manual: true })
                 .catch((e) => console.error('[NotasEntrada] Erro no ciclo manual NFS-e:', e.message));
         }
 
@@ -441,7 +443,11 @@ router.post('/buscar-chave', verificarAuth, checkEscrita, async (req, res) => {
 
         const jaExistente = await prisma.notaEntrada.findUnique({ where: { chave } });
         const r = await sefazDfeService.buscarPorChave(chave);
-        if (!r.ok) return res.status(422).json({ error: r.motivo || 'Não foi possível consultar a SEFAZ agora.' });
+        if (!r.ok) {
+            // Em espera (SEFAZ no intervalo) → o front oferece agendar. Não é erro: HTTP 200 com emEspera.
+            if (r.emEspera) return res.json({ ok: false, emEspera: true, proximaConsultaEm: r.proximaConsultaEm || null, motivo: r.motivo });
+            return res.status(422).json({ error: r.motivo || 'Não foi possível consultar a SEFAZ agora.' });
+        }
 
         const nota = await prisma.notaEntrada.findUnique({ where: { chave } });
         if (!nota) {
@@ -457,6 +463,32 @@ router.post('/buscar-chave', verificarAuth, checkEscrita, async (req, res) => {
     } catch (error) {
         console.error('Erro ao buscar nota por chave:', error);
         res.status(500).json({ error: 'Erro ao buscar a nota pela chave.' });
+    }
+});
+
+// ── POST /buscar-chave/agendar — agenda a busca por chave quando a SEFAZ está no intervalo de espera ──
+// O worker processa quando liberar e a nota aparece sozinha na lista.
+router.post('/buscar-chave/agendar', verificarAuth, checkEscrita, async (req, res) => {
+    try {
+        const chave = String(req.body?.chave || '').replace(/\D/g, '');
+        if (chave.length !== 44) {
+            return res.status(400).json({ error: 'Informe a chave de acesso com 44 dígitos.' });
+        }
+        // Se a nota já está na lista, não precisa agendar.
+        const existente = await prisma.notaEntrada.findUnique({ where: { chave } });
+        if (existente) {
+            return res.json({ ok: true, jaExistia: true, nota: formatarNotaLista(existente) });
+        }
+        // Dedupe: se já houver uma pendente para a mesma chave, reaproveita.
+        const pendente = await prisma.notaBuscaAgendada.findFirst({ where: { chave, status: 'PENDENTE' } });
+        if (!pendente) {
+            await prisma.notaBuscaAgendada.create({ data: { chave, criadoPorId: req.user.id } });
+        }
+        const status = await sefazDfeService.statusCaptura();
+        res.status(201).json({ ok: true, agendada: true, proximaConsultaEm: status.proximaConsultaEm || null });
+    } catch (error) {
+        console.error('Erro ao agendar busca por chave:', error);
+        res.status(500).json({ error: 'Erro ao agendar a busca pela chave.' });
     }
 });
 

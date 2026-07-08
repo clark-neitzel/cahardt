@@ -64,6 +64,7 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 - **Consultar agora**: dispara uma busca imediata (SEFAZ **e** ambiente nacional) sem esperar a próxima hora
 - **Importar XML** (botão no topo): quando uma nota **não chegou sozinha** na captura automática, anexe o **arquivo XML** dela (NF-e ou NFS-e do padrão nacional) e ela entra na lista como **NOVA**, igual às automáticas — pronta para conferir. Aceita **vários arquivos** de uma vez e **não duplica** (se a nota já existir, só completa/atualiza o XML). Recusa XML de nota que a **própria empresa emitiu** (só entram notas recebidas de fornecedores)
 - **Buscar pela chave** (aba dentro de "Importar XML"): sem ter o arquivo, cole a **chave de acesso (44 dígitos)** de uma **NF-e** e o sistema **busca a nota direto na SEFAZ** (pela chave — não pelo número, que a SEFAZ não permite consultar). Se vier só o resumo, o sistema já envia a **Ciência da Operação** e traz o XML completo na sequência (senão chega na próxima consulta). Vale **só para NF-e** e **só onde a empresa é a destinatária** da nota. A chave está na DANFE, no boleto ou no e-mail da nota
+  - **Busca agendável:** se a SEFAZ estiver no **intervalo entre consultas** na hora, em vez de dar erro aparece o botão **"Agendar — buscar sozinho ao liberar"**. O sistema fica com a chave na fila e busca automaticamente quando a SEFAZ liberar; a nota aparece sozinha na lista, sem precisar voltar à tela
 - **Lançar manualmente** (aba dentro de "Importar XML"): para notas **sem XML legível** — caso típico é **NFS-e de prefeitura fora do padrão nacional**, que nunca chega automaticamente. Você informa **tipo, fornecedor, CNPJ (opcional), número, data de emissão e valor**, e a nota entra como **NOVA** para conferir e gerar a despesa. Fica marcada com a etiqueta **"lançada manual"**
 - Abrir o **detalhe da nota**: itens (código do fornecedor, EAN, descrição, quantidade, valores), **informações adicionais de cada item** (infAdProd — lote, validade etc.), duplicatas (vencimentos) e as **observações da nota**. Na NFS-e o detalhe mostra a **discriminação do serviço** e o valor
 - **Baixar o XML** completo da nota
@@ -120,7 +121,9 @@ Envio Contabilidade
 
 - **Configurações → Notas Fiscais**: instalar o certificado digital A1 (obrigatório) e ligar/desligar **separadamente** a captura de **NF-e (SEFAZ)** e a de **NFS-e (Ambiente Nacional)** — as duas usam o mesmo certificado
 - Sem certificado instalado ou com a captura desligada, o robô simplesmente não consulta (nada quebra)
-- Se a SEFAZ bloquear por excesso de consultas (erro 656) ou o ambiente nacional pedir pausa (HTTP 429), o sistema pausa sozinho por 1h15 e mostra até quando
+- **Cadência das consultas automáticas:** o robô consulta a cada **3 horas** por padrão (configurável em `app_configs.sefaz_intervalo_horas`, mínimo ~1h). A SEFAZ só permite ~1 consulta por hora — consultar demais causa o bloqueio de 1h15 (cStat 656). Por isso o sistema tem uma **trava de segurança**: nunca consulta (nem o robô, nem os botões) antes de passar o intervalo, o que **evita o bloqueio** e deixa **folga para as consultas manuais** (Consultar agora / Buscar pela chave). No topo da tela aparece a **"Próxima consulta automática: HH:MM"**
+- "Consultar agora" e "Buscar pela chave" usam o piso de ~1h (forçam a consulta se a SEFAZ já liberou); se ainda estiver no intervalo, mostram até quando esperar (e a busca por chave permite **agendar**)
+- Se mesmo assim a SEFAZ bloquear (erro 656) ou o ambiente nacional pedir pausa (HTTP 429), o sistema pausa sozinho por 1h15 e mostra até quando
 
 ---
 

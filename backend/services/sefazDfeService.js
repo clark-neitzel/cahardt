@@ -30,6 +30,8 @@ const { XMLParser } = require('fast-xml-parser');
 const XML_DIR = path.join(__dirname, '..', 'uploads', 'notas-xml');
 const DFE_ID = 'dfe';                    // singleton DfeControle
 const BLOQUEIO_656_MS = 75 * 60 * 1000;  // 1h15
+const INTERVALO_MANUAL_MS = 61 * 60 * 1000; // piso: nunca consultar antes de ~1h (regra SEFAZ — evita o cStat 656)
+const INTERVALO_AUTO_PADRAO_H = 3;          // cadência automática padrão (horas); configurável em app_configs.sefaz_intervalo_horas
 const MAX_ITERACOES = 30;                // ~50 docs por lote → até 1500 docs/ciclo
 const CUF_AUTOR = '42';                  // SC
 const TP_AMB = '1';                      // produção
@@ -221,15 +223,38 @@ async function certificadoAtivo() {
     });
 }
 
-/** Pré-checagens compartilhadas (rota "consultar agora" e ciclo). */
-async function podeConsultar() {
+/** Cadência automática (ms) entre ciclos — configurável em app_configs.sefaz_intervalo_horas. Piso: ~1h. */
+async function intervaloAutomaticoMs() {
+    try {
+        const cfg = await prisma.appConfig.findUnique({ where: { key: 'sefaz_intervalo_horas' } });
+        const h = Number(cfg?.value);
+        if (Number.isFinite(h) && h > 0) return Math.max(INTERVALO_MANUAL_MS, h * 3600000);
+    } catch (_) { /* sem config: usa o padrão */ }
+    return INTERVALO_AUTO_PADRAO_H * 3600000;
+}
+
+/**
+ * Pré-checagens compartilhadas (ciclo automático, "consultar agora" e busca por chave).
+ * Trava anti-656: nunca consulta antes do intervalo — piso de ~1h no modo manual,
+ * cadência configurada (3h padrão) no automático. Evita o bloqueio de 1h15 da SEFAZ.
+ * @param {{manual?: boolean}} opts
+ */
+async function podeConsultar({ manual = false } = {}) {
     if (!(await capturaAtiva())) return { ok: false, motivo: 'Captura de NF-e está desligada nas configurações.' };
     const cert = await certificadoAtivo();
     if (!cert) return { ok: false, motivo: 'Nenhum certificado digital instalado.' };
     if (new Date(cert.validade) < new Date()) return { ok: false, motivo: 'Certificado digital vencido.' };
     const ctrl = await getControle();
     if (ctrl.bloqueadoAte && new Date(ctrl.bloqueadoAte) > new Date()) {
-        return { ok: false, motivo: `SEFAZ bloqueou consultas até ${new Date(ctrl.bloqueadoAte).toLocaleString('pt-BR')} (consumo indevido — cStat 656).` };
+        return { ok: false, emEspera: true, proximaConsultaEm: ctrl.bloqueadoAte, motivo: `SEFAZ bloqueou consultas até ${new Date(ctrl.bloqueadoAte).toLocaleString('pt-BR')} (consumo indevido — cStat 656).` };
+    }
+    const intervaloMs = manual ? INTERVALO_MANUAL_MS : await intervaloAutomaticoMs();
+    if (ctrl.ultimaConsulta) {
+        const desdeMs = Date.now() - new Date(ctrl.ultimaConsulta).getTime();
+        if (desdeMs < intervaloMs) {
+            const proxima = new Date(new Date(ctrl.ultimaConsulta).getTime() + intervaloMs);
+            return { ok: false, emEspera: true, proximaConsultaEm: proxima, motivo: `Consulta recente à SEFAZ — a próxima é liberada às ${proxima.toLocaleString('pt-BR')} (a SEFAZ permite ~1 consulta por hora).` };
+        }
     }
     return { ok: true, cert, ctrl };
 }
@@ -241,11 +266,17 @@ async function statusCaptura() {
     try {
         ctrl = await prisma.dfeControle.findUnique({ where: { id: DFE_ID } });
     } catch (_) { /* tabela ainda não criada em prod */ }
+    const intervaloMs = await intervaloAutomaticoMs();
+    const proximaConsultaEm = ctrl?.ultimaConsulta
+        ? new Date(new Date(ctrl.ultimaConsulta).getTime() + intervaloMs)
+        : null;
     return {
         ativa,
         ultimaConsulta: ctrl?.ultimaConsulta || null,
         ultimoResultado: ctrl?.ultimoResultado || null,
         bloqueadoAte: (ctrl?.bloqueadoAte && new Date(ctrl.bloqueadoAte) > new Date()) ? ctrl.bloqueadoAte : null,
+        proximaConsultaEm,
+        intervaloHoras: Math.round(intervaloMs / 3600000),
         totalCapturadas: ctrl?.totalCapturadas || 0
     };
 }
@@ -461,13 +492,13 @@ async function manifestarCiencia(cert, pfx, senha) {
 
 let _rodando = false;
 
-async function executarCiclo() {
+async function executarCiclo({ manual = false } = {}) {
     if (_rodando) return { ok: false, motivo: 'Já existe um ciclo de captura em execução.' };
     _rodando = true;
     try {
-        const pre = await podeConsultar();
+        const pre = await podeConsultar({ manual });
         if (!pre.ok) {
-            // silencioso: sem certificado / desligada é situação normal
+            // silencioso: sem certificado / desligada / em espera são situações normais
             return pre;
         }
         const { cert } = pre;
@@ -615,8 +646,8 @@ async function buscarPorChave(chave) {
     const ch = soDigitos(chave);
     if (ch.length !== 44) return { ok: false, motivo: 'A chave de acesso precisa ter 44 dígitos.' };
 
-    const pre = await podeConsultar();
-    if (!pre.ok) return { ok: false, motivo: pre.motivo };
+    const pre = await podeConsultar({ manual: true });
+    if (!pre.ok) return { ok: false, motivo: pre.motivo, emEspera: pre.emEspera, proximaConsultaEm: pre.proximaConsultaEm };
     const { cert } = pre;
     const cnpjNosso = soDigitos(cert.cnpj);
 
@@ -657,10 +688,13 @@ async function buscarPorChave(chave) {
     try {
         const r = await consultarEProcessar();
         if (r.erro) return { ok: false, motivo: `Erro na consulta à SEFAZ: ${r.erro}` };
-        if (r.bloqueadoAte) return { ok: false, motivo: `SEFAZ pausou as consultas (consumo indevido). Tente após ${r.bloqueadoAte.toLocaleString('pt-BR')}.` };
+        if (r.bloqueadoAte) return { ok: false, emEspera: true, proximaConsultaEm: r.bloqueadoAte, motivo: `SEFAZ pausou as consultas (consumo indevido). Tente após ${r.bloqueadoAte.toLocaleString('pt-BR')}.` };
+
+        // Consulta à SEFAZ efetivada → conta para a trava de intervalo (não consultar de novo antes de ~1h/cadência).
+        await prisma.dfeControle.update({ where: { id: DFE_ID }, data: { ultimaConsulta: new Date() } }).catch(() => {});
 
         // Só veio o resumo? Manda ciência e tenta de novo — pode já vir o XML completo.
-        let nota = await prisma.notaEntrada.findUnique({ where: { chave: ch } });
+        const nota = await prisma.notaEntrada.findUnique({ where: { chave: ch } });
         if (nota && nota.status === 'AGUARDANDO_XML') {
             try { await manifestarCiencia(cert, pfx, senha); } catch (e) { console.warn('[SefazDFe] buscarPorChave ciência:', e.message); }
             await consultarEProcessar();
@@ -673,9 +707,49 @@ async function buscarPorChave(chave) {
     }
 }
 
+/**
+ * Processa UMA busca por chave agendada (fila `notaBuscaAgendada`), respeitando a trava
+ * de intervalo (buscarPorChave já checa `podeConsultar({manual:true})`). Roda no scheduler.
+ * Uma por vez: a própria trava garante ~1 consulta por hora.
+ */
+async function processarBuscasAgendadas() {
+    let item;
+    try {
+        item = await prisma.notaBuscaAgendada.findFirst({ where: { status: 'PENDENTE' }, orderBy: { criadoEm: 'asc' } });
+    } catch (_) {
+        return { processadas: 0 }; // tabela ainda não migrada em prod
+    }
+    if (!item) return { processadas: 0 };
+
+    const r = await buscarPorChave(item.chave);
+    if (!r.ok) {
+        if (r.emEspera) return { processadas: 0, emEspera: true }; // ainda no intervalo — tenta no próximo tick
+        const tentativas = (item.tentativas || 0) + 1;
+        await prisma.notaBuscaAgendada.update({
+            where: { id: item.id },
+            data: { tentativas, status: tentativas >= 5 ? 'FALHOU' : 'PENDENTE', resultado: String(r.motivo || 'erro').substring(0, 500) }
+        }).catch(() => {});
+        return { processadas: 0 };
+    }
+
+    const nota = await prisma.notaEntrada.findUnique({ where: { chave: soDigitos(item.chave) } });
+    await prisma.notaBuscaAgendada.update({
+        where: { id: item.id },
+        data: {
+            status: nota ? 'CONCLUIDA' : 'FALHOU',
+            processadoEm: new Date(),
+            resultado: nota
+                ? `Encontrada (${nota.status}).`
+                : 'A SEFAZ não retornou a nota (confira a chave / se a empresa é a destinatária).'
+        }
+    }).catch(() => {});
+    return { processadas: 1, encontrada: !!nota };
+}
+
 module.exports = {
     executarCiclo,
     buscarPorChave,
+    processarBuscasAgendadas,
     podeConsultar,
     statusCaptura,
     capturaAtiva,

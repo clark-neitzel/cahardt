@@ -2959,6 +2959,22 @@ model DfeControle {
   @@map("dfe_controle")
 }
 
+// Fila de buscas por chave agendadas (quando a SEFAZ está no intervalo de espera).
+// O worker processa uma por vez, respeitando a trava de ~1 consulta por hora.
+model NotaBuscaAgendada {
+  id           String    @id @default(uuid())
+  chave        String
+  status       String    @default("PENDENTE") // PENDENTE | CONCLUIDA | FALHOU
+  tentativas   Int       @default(0)
+  resultado    String?   @db.Text
+  criadoPorId  String?   @map("criado_por_id")
+  criadoEm     DateTime  @default(now()) @map("criado_em")
+  processadoEm DateTime? @map("processado_em")
+
+  @@index([status])
+  @@map("notas_busca_agendada")
+}
+
 // =============================================
 // CATÁLOGO PERSONALIZADO
 // Lista de preços montada pelo vendedor para um cliente/condição, compartilhável por

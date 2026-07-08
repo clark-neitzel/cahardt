@@ -39,6 +39,8 @@ const XML_DIR = path.join(__dirname, '..', 'uploads', 'notas-xml');
 const NFSE_ID = 'nfse';                  // linha própria na tabela dfe_controle
 const ADN_DFE_URL = 'https://adn.nfse.gov.br/contribuintes/DFe';
 const BLOQUEIO_MS = 75 * 60 * 1000;      // 1h15 (mesma pausa da NF-e)
+const INTERVALO_MANUAL_MS = 61 * 60 * 1000; // piso: nunca consultar antes de ~1h (evita bloqueio por excesso)
+const INTERVALO_AUTO_PADRAO_H = 3;          // cadência automática padrão (horas); compartilha app_configs.sefaz_intervalo_horas
 const MAX_ITERACOES = 20;                // até ~1000 docs por ciclo
 const TIMEOUT_MS = 90000;
 
@@ -240,15 +242,37 @@ async function certificadoAtivo() {
     });
 }
 
-/** Pré-checagens compartilhadas (rota "consultar agora" e ciclo). */
-async function podeConsultar() {
+/** Cadência automática (ms) entre ciclos — compartilha app_configs.sefaz_intervalo_horas. Piso ~1h. */
+async function intervaloAutomaticoMs() {
+    try {
+        const cfg = await prisma.appConfig.findUnique({ where: { key: 'sefaz_intervalo_horas' } });
+        const h = Number(cfg?.value);
+        if (Number.isFinite(h) && h > 0) return Math.max(INTERVALO_MANUAL_MS, h * 3600000);
+    } catch (_) { /* sem config: usa o padrão */ }
+    return INTERVALO_AUTO_PADRAO_H * 3600000;
+}
+
+/**
+ * Pré-checagens compartilhadas (ciclo automático e "consultar agora").
+ * Trava anti-excesso: não consulta antes do intervalo (piso ~1h no manual; cadência configurada no automático).
+ * @param {{manual?: boolean}} opts
+ */
+async function podeConsultar({ manual = false } = {}) {
     if (!(await capturaAtiva())) return { ok: false, motivo: 'Captura de NFS-e está desligada nas configurações.' };
     const cert = await certificadoAtivo();
     if (!cert) return { ok: false, motivo: 'Nenhum certificado digital instalado.' };
     if (new Date(cert.validade) < new Date()) return { ok: false, motivo: 'Certificado digital vencido.' };
     const ctrl = await getControle();
     if (ctrl.bloqueadoAte && new Date(ctrl.bloqueadoAte) > new Date()) {
-        return { ok: false, motivo: `Ambiente nacional pediu pausa nas consultas até ${new Date(ctrl.bloqueadoAte).toLocaleString('pt-BR')}.` };
+        return { ok: false, emEspera: true, proximaConsultaEm: ctrl.bloqueadoAte, motivo: `Ambiente nacional pediu pausa nas consultas até ${new Date(ctrl.bloqueadoAte).toLocaleString('pt-BR')}.` };
+    }
+    const intervaloMs = manual ? INTERVALO_MANUAL_MS : await intervaloAutomaticoMs();
+    if (ctrl.ultimaConsulta) {
+        const desdeMs = Date.now() - new Date(ctrl.ultimaConsulta).getTime();
+        if (desdeMs < intervaloMs) {
+            const proxima = new Date(new Date(ctrl.ultimaConsulta).getTime() + intervaloMs);
+            return { ok: false, emEspera: true, proximaConsultaEm: proxima, motivo: `Consulta recente ao ambiente nacional — a próxima é liberada às ${proxima.toLocaleString('pt-BR')}.` };
+        }
     }
     return { ok: true, cert, ctrl };
 }
@@ -260,11 +284,16 @@ async function statusCaptura() {
     try {
         ctrl = await prisma.dfeControle.findUnique({ where: { id: NFSE_ID } });
     } catch (_) { /* tabela ainda não criada */ }
+    const intervaloMs = await intervaloAutomaticoMs();
+    const proximaConsultaEm = ctrl?.ultimaConsulta
+        ? new Date(new Date(ctrl.ultimaConsulta).getTime() + intervaloMs)
+        : null;
     return {
         ativa,
         ultimaConsulta: ctrl?.ultimaConsulta || null,
         ultimoResultado: ctrl?.ultimoResultado || null,
         bloqueadoAte: (ctrl?.bloqueadoAte && new Date(ctrl.bloqueadoAte) > new Date()) ? ctrl.bloqueadoAte : null,
+        proximaConsultaEm,
         totalCapturadas: ctrl?.totalCapturadas || 0
     };
 }
@@ -391,12 +420,12 @@ async function registrarEventoNfse(xmlString) {
 
 let _rodando = false;
 
-async function executarCiclo() {
+async function executarCiclo({ manual = false } = {}) {
     if (_rodando) return { ok: false, motivo: 'Já existe um ciclo de captura de NFS-e em execução.' };
     _rodando = true;
     try {
-        const pre = await podeConsultar();
-        if (!pre.ok) return pre; // silencioso: sem certificado / desligada é situação normal
+        const pre = await podeConsultar({ manual });
+        if (!pre.ok) return pre; // silencioso: sem certificado / desligada / em espera é situação normal
         const { cert } = pre;
         const cnpjNosso = soDigitos(cert.cnpj);
 
