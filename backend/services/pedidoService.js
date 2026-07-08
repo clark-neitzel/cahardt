@@ -10,8 +10,14 @@ const pedidoService = {
     resumoPendencias: async (filtros = {}) => {
         const { vendedorId, dataVendaDe, dataVendaAte } = filtros;
 
+        // Pendentes = tudo que NÃO está faturado. Atenção: nesta versão do Prisma
+        // `not` NÃO inclui null, e pedidos ENVIAR/ABERTO têm situacaoCA null — sem o
+        // OR explícito, os avisos de "Enviar"/"Erro" ficavam zerados (bug antigo).
         const where = {
-            situacaoCA: { not: 'FATURADO' },
+            OR: [
+                { situacaoCA: null },
+                { situacaoCA: { not: 'FATURADO' } },
+            ],
         };
         if (vendedorId) where.vendedorId = vendedorId;
         if (dataVendaDe || dataVendaAte) {
