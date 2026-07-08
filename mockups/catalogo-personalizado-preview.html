@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Prévia · Catálogo Personalizado — CA-Hardt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Oswald:wght@500;600;700&family=Bitter:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  /* =========================================================
+     TOKENS
+     - App interno (esquerda): tema Starbucks do sistema
+     - Site público (direita): marca Hardt (hardtsalgados.com.br)
+     ========================================================= */
+  :root{
+    /* App */
+    --primary:#00754A; --primaryDark:#006241; --mint:#d4e9e2;
+    --app-bg:#f2f0eb; --app-surface:#ffffff; --ink:rgba(0,0,0,.87);
+    /* Marca Hardt (site público) */
+    --h-green:#128240; --h-green-dark:#0b5e2c; --h-green-darkest:#08431f;
+    --h-yellow:#f6c21b; --h-yellow-dark:#e0a500;
+    --h-paper:#f3e7cd; --h-card:#fffaf0; --h-ink:#191b17; --h-chalk:#f3ecdc;
+    --wa:#25d366;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:'Manrope',system-ui,-apple-system,'SF Pro Text',sans-serif;
+    background:#e7e5e1;
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    letter-spacing:-0.01em;
+    font-variant-numeric:tabular-nums;
+  }
+
+  /* ---------- shell / cabeçalho do mockup (neutro, cara de ferramenta) ---------- */
+  .shell{max-width:1180px;margin:0 auto;padding:22px 18px 60px}
+  .head{display:flex;align-items:flex-start;gap:14px;margin-bottom:8px;flex-wrap:wrap}
+  .head .badge{background:var(--primary);color:#fff;font-weight:800;font-size:11px;letter-spacing:.14em;text-transform:uppercase;padding:6px 10px;border-radius:999px;white-space:nowrap}
+  .head h1{font-size:20px;font-weight:800;margin:0;color:#111827;letter-spacing:-.02em}
+  .head p{margin:2px 0 0;font-size:13px;color:#6b7280;max-width:640px;line-height:1.45}
+  .flow{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 22px}
+  .flow .step{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid #e5e7eb;border-radius:999px;padding:7px 13px 7px 9px;font-size:12.5px;color:#374151;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .flow .n{width:20px;height:20px;border-radius:50%;background:var(--mint);color:var(--primaryDark);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .flow .arrow{color:#cbd5e1;align-self:center;font-size:13px}
+
+  /* ---------- área dos dois "celulares" ---------- */
+  .stage{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
+  @media (max-width:900px){ .stage{grid-template-columns:1fr;gap:34px} }
+  .col{min-width:0}
+  .col-label{display:flex;align-items:center;gap:8px;margin:0 auto 12px;max-width:390px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:#6b7280}
+  .col-label .dot{width:8px;height:8px;border-radius:50%}
+  .col-label .tag{margin-left:auto;font-weight:600;text-transform:none;letter-spacing:0;color:#9ca3af;font-size:11px}
+
+  /* moldura de celular */
+  .phone{position:relative;width:100%;max-width:390px;margin:0 auto;background:#111;border-radius:38px;padding:10px;box-shadow:0 30px 60px -24px rgba(0,0,0,.5),0 6px 16px rgba(0,0,0,.18)}
+  .phone .screen{position:relative;background:var(--app-bg);border-radius:29px;overflow:hidden;height:720px;display:flex;flex-direction:column}
+  .phone .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:120px;height:22px;background:#111;border-radius:0 0 14px 14px;z-index:60}
+  .scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+  .scroll::-webkit-scrollbar{width:0}
+
+  /* =========================================================
+     TELA DO APP (espelha Catalogo.jsx)
+     ========================================================= */
+  .app{background:var(--app-bg)}
+  .app .topbar{position:sticky;top:0;z-index:30;background:#fff;border-bottom:1px solid #eef0f2;padding:12px 14px;display:flex;align-items:center;gap:10px}
+  .app .modicon{background:#f3e8ff;padding:8px;border-radius:11px;display:flex}
+  .app .modicon svg{width:18px;height:18px;color:#9333ea}
+  .app .ttl{line-height:1.1}
+  .app .ttl h2{margin:0;font-size:16px;font-weight:800;color:#111827}
+  .app .ttl span{font-size:11px;color:#6b7280}
+  .btn-primary{margin-left:auto;background:var(--primary);color:#fff;border:none;font-weight:700;font-size:12.5px;padding:9px 14px;border-radius:999px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.08);display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background .15s}
+  .btn-primary:hover{background:var(--primaryDark)}
+  .btn-ghost{background:none;border:none;color:#6b7280;font-weight:700;font-size:13px;cursor:pointer;padding:6px;border-radius:999px}
+  .btn-ghost:hover{background:#f3f4f6}
+
+  /* topbar em modo seleção */
+  .selbar{background:var(--primaryDark);color:#fff}
+  .selbar .modicon{background:rgba(255,255,255,.15)}
+  .selbar .modicon svg{color:#fff}
+  .selbar h2{color:#fff}
+  .selbar span{color:rgba(255,255,255,.8)}
+  .selcount{margin-left:auto;background:rgba(255,255,255,.16);border:none;color:#fff;font-weight:800;font-size:13px;padding:7px 13px;border-radius:999px;display:flex;align-items:center;gap:6px}
+
+  .pad{padding:12px 14px}
+  .search{position:relative;margin-bottom:12px}
+  .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:#9ca3af}
+  .search input{width:100%;padding:11px 12px 11px 34px;border:1px solid #d1d5db;border-radius:13px;background:#fff;font-size:13.5px;font-family:inherit;color:#111827;outline:none}
+  .search input:focus{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+
+  .pills{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;margin-bottom:6px}
+  .pills::-webkit-scrollbar{height:0}
+  .pill{border:1px solid #d1d5db;background:#fff;color:#374151;font-weight:700;font-size:12px;padding:6px 13px;border-radius:999px;white-space:nowrap;cursor:pointer;flex-shrink:0}
+  .pill.active{color:#fff;border-color:transparent}
+
+  .section{padding:2px 14px 4px}
+  .sec-head{display:flex;align-items:center;gap:8px;margin:14px 0 10px}
+  .sec-head .bar{width:5px;height:18px;border-radius:999px;flex-shrink:0}
+  .sec-head h3{margin:0;font-size:12.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#374151}
+  .sec-head .cnt{font-size:11px;color:#9ca3af;font-weight:600}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+  .card{position:relative;background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04);cursor:pointer;transition:transform .12s,box-shadow .12s,border-color .12s;display:flex;flex-direction:column;text-align:left;padding:0;font-family:inherit}
+  .card:active{transform:scale(.98)}
+  .card .thumb{position:relative;aspect-ratio:4/3;display:flex;align-items:center;justify-content:center}
+  .card .thumb>span:first-child{color:rgba(255,255,255,.95);font-size:11px;font-weight:600;text-align:center;padding:0 8px;line-height:1.25}
+  .card .stock{position:absolute;top:7px;right:7px;background:rgba(255,255,255,.94);color:#065f46;font-size:9px;font-weight:800;padding:3px 7px;border-radius:999px;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+  .card .body{padding:9px 10px;display:flex;flex-direction:column;flex:1}
+  .card .code{font-size:9.5px;color:#9ca3af;font-family:ui-monospace,monospace}
+  .card .name{font-size:12.5px;font-weight:600;color:#111827;line-height:1.25;margin:1px 0 0;min-height:31px}
+  .card .foot{margin-top:auto;padding-top:7px;display:flex;align-items:flex-end;justify-content:space-between;gap:4px}
+  .card .price{font-size:15px;font-weight:800;color:var(--primary)}
+  .card .qty{font-size:9.5px;color:#9ca3af}
+  /* modo seleção */
+  .selectable .check{position:absolute;top:7px;left:7px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.85);border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;z-index:5}
+  .selectable .check svg{width:14px;height:14px;color:transparent}
+  .card.on{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary)}
+  .card.on .check{background:var(--primary);border-color:var(--primary)}
+  .card.on .check svg{color:#fff}
+
+  /* barra flutuante em modo seleção */
+  .fab{position:absolute;left:0;right:0;bottom:0;z-index:40;background:#fff;border-top:1px solid #e5e7eb;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 -8px 24px -12px rgba(0,0,0,.25);transform:translateY(120%);transition:transform .28s cubic-bezier(.2,.9,.3,1)}
+  .fab.show{transform:translateY(0)}
+  .fab .info{line-height:1.15}
+  .fab .info b{font-size:15px;color:#111827}
+  .fab .info small{display:block;font-size:11px;color:#6b7280}
+  .fab .go{margin-left:auto;background:var(--primary);color:#fff;border:none;font-weight:800;font-size:13.5px;padding:12px 18px;border-radius:999px;cursor:pointer;display:flex;align-items:center;gap:7px}
+  .fab .go:disabled{background:#d1d5db;cursor:not-allowed}
+
+  /* bottom sheet "gerar" */
+  .sheet-wrap{position:absolute;inset:0;z-index:50;display:none}
+  .sheet-wrap.open{display:block}
+  .sheet-scrim{position:absolute;inset:0;background:rgba(17,24,39,.45);backdrop-filter:blur(1px);opacity:0;transition:opacity .25s}
+  .sheet-wrap.open .sheet-scrim{opacity:1}
+  .sheet{position:absolute;left:0;right:0;bottom:0;max-height:92%;background:#fff;border-radius:22px 22px 0 0;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .32s cubic-bezier(.2,.9,.3,1)}
+  .sheet-wrap.open .sheet{transform:translateY(0)}
+  .sheet .grip{width:38px;height:4px;border-radius:999px;background:#e5e7eb;margin:9px auto 2px}
+  .sheet .sh-head{display:flex;align-items:center;gap:10px;padding:6px 16px 12px;border-bottom:1px solid #f1f2f4}
+  .sheet .sh-head h3{margin:0;font-size:15.5px;font-weight:800;color:#111827}
+  .sheet .sh-head small{font-size:11.5px;color:#6b7280}
+  .sheet .sh-body{overflow-y:auto;padding:14px 16px 4px}
+  .field{margin-bottom:14px}
+  .field label{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:6px}
+  .selbox{position:relative}
+  .selbox svg.pin{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:#9ca3af;pointer-events:none}
+  .selbox svg.chev{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:#9ca3af;pointer-events:none}
+  .selbox select{width:100%;appearance:none;-webkit-appearance:none;padding:11px 32px 11px 33px;border:1px solid #d1d5db;border-radius:11px;background:#fff;font-size:13.5px;font-family:inherit;color:#111827;font-weight:600;outline:none;cursor:pointer}
+  .selbox select:focus{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary)}
+
+  .cond-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .cond{border:1.5px solid #e5e7eb;border-radius:12px;padding:9px 11px;cursor:pointer;background:#fff;text-align:left;transition:border-color .12s,background .12s;font-family:inherit}
+  .cond .cn{font-size:12.5px;font-weight:700;color:#111827;display:flex;align-items:center;gap:6px}
+  .cond .cd{font-size:11px;font-weight:700;margin-top:2px}
+  .cond .up{color:#b45309}.cond .down{color:#047857}.cond .eq{color:#6b7280}
+  .cond.on{border-color:var(--primary);background:var(--mint)}
+  .cond .std{font-size:8.5px;font-weight:800;letter-spacing:.05em;background:#e0e7ff;color:#4338ca;padding:1px 5px;border-radius:999px;text-transform:uppercase}
+
+  .preview-list{border:1px solid #eef0f2;border-radius:13px;overflow:hidden;margin-top:2px}
+  .prow{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #f3f4f6}
+  .prow:last-child{border-bottom:none}
+  .prow .pn{flex:1;min-width:0}
+  .prow .pn b{display:block;font-size:12.5px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .prow .pn small{font-size:10.5px;color:#9ca3af}
+  .prow .pp{text-align:right}
+  .prow .pp b{font-size:13.5px;font-weight:800;color:var(--primary)}
+  .prow .pp small{display:block;font-size:9.5px;color:#9ca3af;text-decoration:line-through}
+  .sub{display:flex;align-items:center;justify-content:space-between;padding:12px 4px 4px;font-size:13px}
+  .sub b{font-size:16px;font-weight:800;color:#111827}
+  .warn{display:flex;gap:8px;align-items:flex-start;background:#fffbeb;border:1px solid #fde68a;color:#92400e;font-size:11.5px;border-radius:11px;padding:9px 11px;margin-top:8px;line-height:1.35}
+  .warn svg{width:15px;height:15px;flex-shrink:0;margin-top:1px}
+
+  .sh-foot{padding:12px 16px 16px;border-top:1px solid #f1f2f4;background:#fff}
+  .gen{width:100%;background:var(--primary);color:#fff;border:none;font-weight:800;font-size:14.5px;padding:14px;border-radius:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+  .gen:disabled{background:#d1d5db;cursor:not-allowed}
+
+  /* estado: link gerado */
+  .done{padding:6px 2px 2px}
+  .done .ok{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:6px 0 14px}
+  .done .ok .ring{width:56px;height:56px;border-radius:50%;background:var(--mint);display:flex;align-items:center;justify-content:center}
+  .done .ok .ring svg{width:30px;height:30px;color:var(--primary)}
+  .done .ok h4{margin:2px 0 0;font-size:16px;font-weight:800;color:#111827}
+  .done .ok p{margin:0;font-size:12.5px;color:#6b7280;max-width:250px;line-height:1.4}
+  .linkbox{display:flex;align-items:center;gap:8px;background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:10px 12px;margin:2px 0 12px}
+  .linkbox .lk{flex:1;min-width:0;font-size:12px;color:#334155;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:ui-monospace,monospace}
+  .linkbox button{background:#fff;border:1px solid #d1d5db;color:#374151;font-weight:700;font-size:11.5px;padding:7px 11px;border-radius:9px;cursor:pointer;white-space:nowrap;font-family:inherit}
+  .linkbox button:active{background:#f3f4f6}
+  .wa{width:100%;background:var(--wa);color:#fff;border:none;font-weight:800;font-size:14.5px;padding:14px;border-radius:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 6px 16px -6px rgba(37,211,102,.5);font-family:inherit}
+  .meta-note{font-size:11px;color:#9ca3af;text-align:center;margin-top:10px}
+  .secbtn{width:100%;background:#fff;border:1px solid #d1d5db;color:#374151;font-weight:700;font-size:13px;padding:11px;border-radius:12px;cursor:pointer;margin-top:8px;font-family:inherit}
+
+  /* =========================================================
+     PÁGINA PÚBLICA (marca Hardt — hardtsalgados.com.br)
+     ========================================================= */
+  .pub{background:var(--h-paper);font-family:'Bitter',Georgia,serif;color:var(--h-ink)}
+  .pub .urlbar{background:#2b2d28;color:#cbd0c6;font-size:11px;padding:7px 12px;display:flex;align-items:center;gap:8px;font-family:'Manrope',sans-serif}
+  .pub .urlbar .lock{width:12px;height:12px;color:#8b9083;flex-shrink:0}
+  .pub .urlbar .u{font-family:ui-monospace,monospace;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pub .urlbar .u b{color:#fff}
+  .pub-head{background:var(--h-ink);color:var(--h-chalk);padding:16px 18px 15px;display:flex;align-items:center;gap:12px}
+  .logo{display:flex;flex-direction:column;line-height:.92}
+  .logo .lg1{font-family:'Oswald',sans-serif;font-weight:700;font-size:22px;letter-spacing:.02em;color:#fff}
+  .logo .lg2{font-family:'Oswald',sans-serif;font-weight:500;font-size:9.5px;letter-spacing:.42em;color:var(--h-yellow);margin-top:2px}
+  .pub-head .htag{margin-left:auto;font-family:'Manrope',sans-serif;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(243,236,220,.65);text-align:right;line-height:1.4}
+
+  .sawtooth{height:11px;background:linear-gradient(-45deg,var(--h-yellow) 25%,transparent 25%) 0 0/11px 11px,linear-gradient(45deg,var(--h-yellow) 25%,transparent 25%) 0 0/11px 11px}
+
+  .pub-hero{padding:18px 18px 14px;text-align:center}
+  .pub-hero .lista{font-family:'Oswald',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:13px;color:var(--h-green-dark)}
+  .pub-hero h2{font-family:'Oswald',sans-serif;font-weight:700;font-size:25px;line-height:1.05;margin:4px 0 0;color:var(--h-green-darkest);text-transform:uppercase}
+  .pub-hero .cli{font-family:'Bitter',serif;font-size:14px;color:#4b4a41;margin-top:6px}
+  .pub-chips{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .hchip{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid rgba(18,130,64,.25);color:var(--h-green-dark);font-family:'Manrope',sans-serif;font-weight:700;font-size:11.5px;padding:6px 11px;border-radius:999px}
+  .hchip svg{width:13px;height:13px}
+
+  .pub-body{padding:6px 14px 4px}
+  .hitem{display:flex;align-items:center;gap:12px;background:var(--h-card);border:1px solid rgba(8,20,10,.08);border-radius:14px;padding:11px 13px;margin-bottom:9px;box-shadow:0 6px 16px -14px rgba(8,20,10,.5)}
+  .hitem .hi-img{width:46px;height:46px;border-radius:11px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.95);font-size:8.5px;font-weight:700;text-align:center;font-family:'Manrope',sans-serif;overflow:hidden;padding:2px}
+  .hitem .hi-main{flex:1;min-width:0}
+  .hitem .hi-main .hn{font-family:'Oswald',sans-serif;font-weight:600;text-transform:uppercase;letter-spacing:.01em;font-size:13.5px;color:var(--h-green-darkest);line-height:1.1}
+  .hitem .hi-main .hd{font-family:'Bitter',serif;font-size:11px;color:#7a7768;margin-top:2px}
+  .hitem .hi-price{text-align:right;flex-shrink:0}
+  .hitem .hi-price .hp{font-family:'Oswald',sans-serif;font-weight:700;font-size:18px;color:var(--h-green);line-height:1}
+  .hitem .hi-price .hu{font-family:'Manrope',sans-serif;font-size:9.5px;color:#9a9788;font-weight:600}
+
+  .pub-empty{padding:54px 26px;text-align:center;color:#8a8778;font-family:'Bitter',serif;line-height:1.5}
+  .pub-empty .big{font-family:'Oswald',sans-serif;font-size:20px;color:var(--h-green-darkest);text-transform:uppercase;margin-bottom:8px}
+  .pub-empty b{color:var(--h-green-dark)}
+
+  .pub-total{margin:8px 14px 2px;background:var(--h-ink);color:var(--h-chalk);border-radius:16px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+  .pub-total .tl{font-family:'Manrope',sans-serif;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:rgba(243,236,220,.7);font-weight:700}
+  .pub-total .tl small{display:block;font-size:10px;letter-spacing:0;text-transform:none;color:rgba(243,236,220,.55);margin-top:2px}
+  .pub-total .tv{font-family:'Oswald',sans-serif;font-weight:700;font-size:26px;color:var(--h-yellow)}
+
+  .pub-cta{padding:14px}
+  .pub-wa{width:100%;background:var(--wa);color:#fff;border:none;font-family:'Manrope',sans-serif;font-weight:800;font-size:15px;padding:15px;border-radius:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 10px 22px -10px rgba(37,211,102,.6)}
+  .pub-foot{background:var(--h-ink);color:rgba(243,236,220,.75);font-family:'Bitter',serif;font-size:11.5px;text-align:center;padding:16px 18px 22px;line-height:1.6}
+  .pub-foot b{color:var(--h-yellow);font-family:'Manrope',sans-serif;font-weight:700}
+  .pub-foot .rd{font-family:'Manrope',sans-serif;font-size:10px;color:rgba(243,236,220,.45);margin-top:8px;letter-spacing:.03em}
+
+  /* toast */
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:#111827;color:#fff;font-size:13px;font-weight:600;padding:11px 18px;border-radius:999px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.3)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .foot-note{max-width:1180px;margin:34px auto 0;padding:18px 20px;background:#fff;border:1px solid #e5e7eb;border-radius:16px;font-size:13px;color:#4b5563;line-height:1.6}
+  .foot-note h4{margin:0 0 8px;font-size:13px;font-weight:800;color:#111827;text-transform:uppercase;letter-spacing:.05em}
+  .foot-note b{color:#111827}
+  .foot-note code{background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;padding:1px 6px;font-size:12px;font-family:ui-monospace,monospace;color:#0b5e2c}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="head">
+    <span class="badge">Prévia</span>
+    <div>
+      <h1>Catálogo Personalizado</h1>
+      <p>O vendedor monta uma lista de preços sob medida dentro da aba <b>Catálogo</b> e envia um link no WhatsApp. À esquerda, a tela interna (tema do app). À direita, o que o cliente abre no domínio <b>hardtsalgados.com.br</b> (marca Hardt). Tudo interativo — clique e experimente.</p>
+    </div>
+  </div>
+
+  <div class="flow">
+    <div class="step"><span class="n">1</span> Montar catálogo</div>
+    <span class="arrow">→</span>
+    <div class="step"><span class="n">2</span> Marcar os itens</div>
+    <span class="arrow">→</span>
+    <div class="step"><span class="n">3</span> Cliente + condição</div>
+    <span class="arrow">→</span>
+    <div class="step"><span class="n">4</span> Gerar link</div>
+    <span class="arrow">→</span>
+    <div class="step"><span class="n">5</span> Enviar no WhatsApp</div>
+  </div>
+
+  <div class="stage">
+    <!-- ============ COLUNA ESQUERDA: APP INTERNO ============ -->
+    <div class="col">
+      <div class="col-label"><span class="dot" style="background:#9333ea"></span> No app — o vendedor <span class="tag">tema do sistema</span></div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen app">
+          <!-- topbar -->
+          <div id="topbar" class="topbar">
+            <div class="modicon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            </div>
+            <div class="ttl">
+              <h2>Catálogo</h2>
+              <span id="topcount">9 produtos</span>
+            </div>
+            <button id="btnMontar" class="btn-primary" onclick="enterSel()">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              Montar catálogo
+            </button>
+          </div>
+
+          <div class="scroll" id="appScroll">
+            <div class="pad">
+              <div class="search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                <input id="busca" type="text" placeholder="Buscar por nome ou código…" oninput="renderCatalog()" />
+              </div>
+              <div class="pills" id="pills"></div>
+            </div>
+            <div id="sections"></div>
+            <div style="height:90px"></div>
+          </div>
+
+          <!-- barra flutuante -->
+          <div id="fab" class="fab">
+            <div class="info"><b id="fabN">0 itens</b><small>selecionados para o catálogo</small></div>
+            <button class="go" id="fabGo" onclick="openSheet()" disabled>
+              Cliente e condição
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+            </button>
+          </div>
+
+          <!-- bottom sheet -->
+          <div class="sheet-wrap" id="sheetWrap">
+            <div class="sheet-scrim" onclick="closeSheet()"></div>
+            <div class="sheet">
+              <div class="grip"></div>
+              <div class="sh-head">
+                <div style="flex:1">
+                  <h3 id="shTitle">Gerar catálogo</h3>
+                  <small id="shSub">Escolha o cliente e a condição de pagamento</small>
+                </div>
+                <button class="btn-ghost" onclick="closeSheet()">Fechar</button>
+              </div>
+              <div class="sh-body" id="sheetBody"><!-- form ou resultado --></div>
+              <div class="sh-foot" id="sheetFoot"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ COLUNA DIREITA: PÁGINA PÚBLICA ============ -->
+    <div class="col">
+      <div class="col-label"><span class="dot" style="background:#128240"></span> O que o cliente recebe <span class="tag">marca Hardt · página pública</span></div>
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen pub">
+          <div class="urlbar">
+            <svg class="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <span class="u"><b>hardtsalgados.com.br</b><span id="urlToken">/lista/…</span></span>
+          </div>
+          <div class="scroll" id="pubScroll">
+            <div class="pub-head">
+              <div class="logo"><span class="lg1">HARDT</span><span class="lg2">SALGADOS</span></div>
+              <div class="htag">Lista de<br>preços</div>
+            </div>
+            <div class="sawtooth"></div>
+            <div id="pubContent"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot-note">
+    <h4>Como isso se encaixa no que já existe</h4>
+    <p>Reaproveita o que o sistema já tem: o cálculo <code>valorVenda × (1 + acrescimoPreco/100)</code> é o mesmo do <b>Novo Pedido</b>; a condição vem da tabela de preços (<code>TabelaPreco</code>) e respeita a <b>condição padrão</b> e as <b>condições permitidas</b> de cada cliente (<code>Condicao_de_pagamento</code> / <code>condicoes_pagamento_permitidas</code>). Ao gerar, o app salva um <b>snapshot</b> (preços congelados + validade + token) e devolve o link <code>hardtsalgados.com.br/lista/&lt;token&gt;</code> — servido sem login, como o site de Congelados. Se o produto mudar de preço depois, o link que o cliente já recebeu continua igual.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= DADOS DE EXEMPLO (espelham os modelos reais) ================= */
+const money = n => 'R$ ' + Number(n||0).toFixed(2).replace('.',',');
+const tile = seed => { let h=0,s=String(seed||'x'); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; const hue=20+(h%40); return 'linear-gradient(150deg, hsl('+hue+' 46% 62%), hsl('+hue+' 50% 50%))'; };
+
+const CATS = {
+  fritos:  {id:'fritos',  nome:'Fritos',      cor:'#d97706'},
+  assados: {id:'assados', nome:'Assados',     cor:'#7c3aed'},
+  festa:   {id:'festa',   nome:'Linha Festa', cor:'#00754A'},
+};
+const PRODUCTS = [
+  {id:'p1', cat:'fritos',  codigo:'COX-100', nome:'Coxinha de Frango 1kg',       valorVenda:24.90, unidade:'KG', estoque:120},
+  {id:'p2', cat:'fritos',  codigo:'KIB-100', nome:'Kibe Tradicional 1kg',        valorVenda:26.50, unidade:'KG', estoque:80},
+  {id:'p3', cat:'fritos',  codigo:'RIS-100', nome:'Risole de Carne 1kg',         valorVenda:25.90, unidade:'KG', estoque:60},
+  {id:'p4', cat:'fritos',  codigo:'BOL-100', nome:'Bolinha de Queijo 1kg',       valorVenda:27.90, unidade:'KG', estoque:45},
+  {id:'p5', cat:'assados', codigo:'ENR-200', nome:'Enroladinho de Salsicha 1kg', valorVenda:23.50, unidade:'KG', estoque:90},
+  {id:'p6', cat:'assados', codigo:'EMP-200', nome:'Empada de Frango 1kg',        valorVenda:28.90, unidade:'KG', estoque:30},
+  {id:'p7', cat:'assados', codigo:'ESF-200', nome:'Esfiha de Carne 1kg',         valorVenda:27.50, unidade:'KG', estoque:50},
+  {id:'p8', cat:'festa',   codigo:'BRG-300', nome:'Mini Hambúrguer Festa 1kg',   valorVenda:32.90, unidade:'KG', estoque:20},
+  {id:'p9', cat:'festa',   codigo:'QUI-300', nome:'Quiche Alho-poró 1kg',        valorVenda:34.90, unidade:'KG', estoque:15},
+];
+
+/* TabelaPreco: acrescimoPreco em % (negativo = desconto), valorMinimo */
+const CONDITIONS = [
+  {id:'AV',    nome:'À vista (Pix/Dinheiro)', acrescimoPreco:-5, valorMinimo:150},
+  {id:'P7',    nome:'7 dias',                 acrescimoPreco:0,  valorMinimo:200},
+  {id:'P14',   nome:'14 dias',                acrescimoPreco:2,  valorMinimo:250},
+  {id:'P2128', nome:'21/28 dias',             acrescimoPreco:4,  valorMinimo:300},
+  {id:'P3060', nome:'30/60 dias',             acrescimoPreco:7,  valorMinimo:400},
+];
+const condById = id => CONDITIONS.find(c=>c.id===id);
+
+/* Cliente: condição padrão + condições permitidas */
+const CLIENTS = [
+  {id:'c1', nome:'Panificadora Trigo de Ouro', cidade:'Blumenau · SC', padrao:'P2128', permitidas:['AV','P7','P14','P2128','P3060']},
+  {id:'c2', nome:'Mercado São José',           cidade:'Gaspar · SC',   padrao:'P7',    permitidas:['AV','P7','P14']},
+  {id:'c3', nome:'Lanchonete da Praça',        cidade:'Indaial · SC',  padrao:'AV',    permitidas:['AV','P7']},
+  {id:'c4', nome:'Buffet Encanto',             cidade:'Blumenau · SC', padrao:'P3060', permitidas:['P2128','P3060']},
+];
+
+/* ================= ESTADO ================= */
+let selMode=false;
+let sel=new Set();
+let filtro='todos';
+let clientId=null, condId=null, validade=15;
+let generated=false, token=null;
+
+/* ================= CATÁLOGO (app) ================= */
+function filtered(){
+  const busca=(document.getElementById('busca').value||'').toLowerCase();
+  return PRODUCTS.filter(p=>!busca||p.nome.toLowerCase().includes(busca)||p.codigo.toLowerCase().includes(busca));
+}
+function renderPills(){
+  const cats=[...new Set(filtered().map(p=>p.cat))].map(id=>CATS[id]);
+  let h='<button class="pill '+(filtro==='todos'?'active':'')+'" style="'+(filtro==='todos'?'background:#00754A;':'')+'" onclick="setFiltro(\'todos\')">Todos</button>';
+  cats.forEach(c=>{
+    const on=filtro===c.id;
+    h+='<button class="pill '+(on?'active':'')+'" style="'+(on?'background:'+c.cor+';':'color:'+c.cor+';border-color:'+c.cor+'66;')+'" onclick="setFiltro(\''+c.id+'\')">'+c.nome+'</button>';
+  });
+  document.getElementById('pills').innerHTML=h;
+}
+function setFiltro(f){ filtro=f; renderCatalog(); }
+
+function renderCatalog(){
+  renderPills();
+  let list=filtered();
+  if(filtro!=='todos') list=list.filter(p=>p.cat===filtro);
+  const cats=[...new Set(list.map(p=>p.cat))].map(id=>CATS[id]);
+  const cont=document.getElementById('sections');
+  if(!list.length){ cont.innerHTML='<div style="padding:50px 20px;text-align:center;color:#9ca3af;font-size:13px">Nenhum produto encontrado.</div>'; return; }
+  let h='';
+  cats.forEach(c=>{
+    const items=list.filter(p=>p.cat===c.id);
+    h+='<div class="section"><div class="sec-head"><span class="bar" style="background:'+c.cor+'"></span><h3>'+c.nome+'</h3><span class="cnt">('+items.length+')</span></div><div class="grid">';
+    items.forEach(p=>{
+      const on=sel.has(p.id);
+      h+='<button class="card '+(selMode?'selectable':'')+' '+(on?'on':'')+'" onclick="cardTap(\''+p.id+'\')">'
+        +(selMode?'<span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></span>':'')
+        +'<div class="thumb" style="background:'+tile(p.codigo)+'"><span>'+p.nome+'</span>'
+          +'<span class="stock">'+p.estoque+' '+p.unidade+'</span>'
+        +'</div>'
+        +'<div class="body">'
+          +'<div class="code">'+p.codigo+'</div>'
+          +'<div class="name">'+p.nome+'</div>'
+          +'<div class="foot"><span class="price">'+money(p.valorVenda)+'</span><span class="qty">/'+p.unidade.toLowerCase()+'</span></div>'
+        +'</div>'
+      +'</button>';
+    });
+    h+='</div></div>';
+  });
+  cont.innerHTML=h;
+}
+
+function cardTap(id){
+  if(!selMode){ toast('Toque em “Montar catálogo” para começar a selecionar'); return; }
+  if(sel.has(id)) sel.delete(id); else sel.add(id);
+  renderCatalog(); updateFab();
+}
+function updateFab(){
+  const n=sel.size;
+  document.getElementById('fabN').textContent = n+(n===1?' item':' itens');
+  document.getElementById('fabGo').disabled = n===0;
+  const sc=document.getElementById('selCount'); if(sc) sc.textContent=n;
+}
+function enterSel(){
+  selMode=true;
+  const tb=document.getElementById('topbar');
+  tb.classList.add('selbar');
+  tb.innerHTML='<button class="btn-ghost" style="color:#fff" onclick="exitSel()">✕</button>'
+    +'<div class="ttl"><h2>Selecionar itens</h2><span>toque nos produtos do catálogo</span></div>'
+    +'<span class="selcount" id="selCount">0</span>';
+  document.getElementById('fab').classList.add('show');
+  renderCatalog(); updateFab();
+}
+function exitSel(){
+  selMode=false; sel.clear(); generated=false; clientId=null; condId=null;
+  const tb=document.getElementById('topbar');
+  tb.classList.remove('selbar');
+  tb.innerHTML='<div class="modicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></div>'
+    +'<div class="ttl"><h2>Catálogo</h2><span>9 produtos</span></div>'
+    +'<button class="btn-primary" onclick="enterSel()"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Montar catálogo</button>';
+  document.getElementById('fab').classList.remove('show');
+  closeSheet();
+  renderCatalog(); renderPublic();
+  document.getElementById('urlToken').textContent='/lista/…';
+}
+
+/* ================= SHEET (cliente + condição) ================= */
+function openSheet(){
+  if(!clientId) clientId=CLIENTS[0].id;
+  const cli=CLIENTS.find(c=>c.id===clientId);
+  if(!condId || !cli.permitidas.includes(condId)) condId=cli.padrao;
+  generated=false;
+  document.getElementById('sheetWrap').classList.add('open');
+  renderSheet();
+}
+function closeSheet(){ document.getElementById('sheetWrap').classList.remove('open'); }
+
+function selectedProducts(){ return PRODUCTS.filter(p=>sel.has(p.id)); }
+function priceFor(p,cond){ return p.valorVenda*(1+(cond?cond.acrescimoPreco:0)/100); }
+function subtotal(cond){ return selectedProducts().reduce((s,p)=>s+priceFor(p,cond),0); }
+
+function renderSheet(){
+  const cli=CLIENTS.find(c=>c.id===clientId);
+  const cond=condById(condId);
+  document.getElementById('shTitle').textContent = generated?'Catálogo pronto':'Gerar catálogo';
+  document.getElementById('shSub').textContent = generated?'Copie o link ou envie direto no WhatsApp':'Escolha o cliente e a condição de pagamento';
+  if(generated){ renderDone(); return; }
+
+  const permit=cli.permitidas.map(condById);
+  let h='';
+  h+='<div class="field"><label>Cliente</label>'
+    +'<div class="selbox">'
+      +'<svg class="pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>'
+      +'<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg>'
+      +'<select onchange="pickClient(this.value)">'
+        +CLIENTS.map(c=>'<option value="'+c.id+'" '+(c.id===clientId?'selected':'')+'>'+c.nome+' — '+c.cidade+'</option>').join('')
+      +'</select>'
+    +'</div></div>';
+
+  h+='<div class="field"><label>Condição de pagamento</label><div class="cond-grid">';
+  permit.forEach(c=>{
+    const on=c.id===condId, isStd=c.id===cli.padrao;
+    const cls = c.acrescimoPreco>0?'up':(c.acrescimoPreco<0?'down':'eq');
+    const lbl = c.acrescimoPreco>0?('+'+c.acrescimoPreco+'% no preço'):(c.acrescimoPreco<0?(c.acrescimoPreco+'% (desconto)'):'preço de tabela');
+    h+='<button class="cond '+(on?'on':'')+'" onclick="pickCond(\''+c.id+'\')">'
+      +'<div class="cn">'+c.nome+(isStd?'<span class="std">padrão</span>':'')+'</div>'
+      +'<div class="cd '+cls+'">'+lbl+'</div>'
+    +'</button>';
+  });
+  h+='</div></div>';
+
+  h+='<div class="field"><label>Validade do link</label>'
+    +'<div class="selbox">'
+      +'<svg class="pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>'
+      +'<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="m6 9 6 6 6-6"/></svg>'
+      +'<select onchange="validade=+this.value;renderSheet()">'
+        +'<option value="7" '+(validade===7?'selected':'')+'>7 dias</option>'
+        +'<option value="15" '+(validade===15?'selected':'')+'>15 dias</option>'
+        +'<option value="30" '+(validade===30?'selected':'')+'>30 dias</option>'
+      +'</select>'
+    +'</div></div>';
+
+  h+='<label style="display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin-bottom:6px">'+sel.size+' itens · preço em '+cond.nome+'</label>';
+  h+='<div class="preview-list">';
+  selectedProducts().forEach(p=>{
+    const fin=priceFor(p,cond), base=p.valorVenda, diff=Math.abs(fin-base)>0.005;
+    h+='<div class="prow"><div class="pn"><b>'+p.nome+'</b><small>'+p.codigo+'</small></div>'
+      +'<div class="pp"><b>'+money(fin)+'</b>'+(diff?'<small>'+money(base)+'</small>':'')+'</div></div>';
+  });
+  h+='</div>';
+  const sub=subtotal(cond);
+  h+='<div class="sub"><span style="color:#6b7280;font-weight:600">Total da lista ('+sel.size+' itens)</span><b>'+money(sub)+'</b></div>';
+  if(sub<cond.valorMinimo){
+    h+='<div class="warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4M12 17h.01"/></svg>'
+      +'<span>O pedido mínimo para <b>'+cond.nome+'</b> é '+money(cond.valorMinimo)+'. A lista pode ser enviada mesmo assim — é só um lembrete pro vendedor.</span></div>';
+  }
+  document.getElementById('sheetBody').innerHTML=h;
+
+  document.getElementById('sheetFoot').innerHTML='<button class="gen" onclick="doGenerate()">'
+    +'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'
+    +'Gerar link do catálogo</button>';
+}
+function pickClient(id){
+  clientId=id;
+  const cli=CLIENTS.find(c=>c.id===id);
+  if(!cli.permitidas.includes(condId)) condId=cli.padrao;
+  renderSheet();
+}
+function pickCond(id){ condId=id; renderSheet(); }
+
+function doGenerate(){
+  generated=true;
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  token=''; for(let i=0;i<6;i++) token+=chars[Math.floor(Math.random()*chars.length)];
+  renderSheet();
+  renderPublic();
+  document.getElementById('urlToken').textContent='/lista/'+token;
+}
+
+function renderDone(){
+  const cli=CLIENTS.find(c=>c.id===clientId);
+  const cond=condById(condId);
+  const link='hardtsalgados.com.br/lista/'+token;
+  document.getElementById('sheetBody').innerHTML='<div class="done">'
+    +'<div class="ok"><div class="ring"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6 9 17l-5-5"/></svg></div>'
+      +'<h4>Link gerado!</h4>'
+      +'<p>Catálogo de <b>'+cli.nome+'</b> em <b>'+cond.nome+'</b>, válido por '+validade+' dias.</p></div>'
+    +'<div class="linkbox"><span class="lk">'+link+'</span><button onclick="copyLink(\'https://'+link+'\')">Copiar</button></div>'
+    +'<div class="meta-note">Preços congelados neste momento — se o produto mudar depois, o cliente continua vendo o que você enviou.</div>'
+  +'</div>';
+  document.getElementById('sheetFoot').innerHTML='<button class="wa" onclick="waSend()">'
+    +'<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.06L2 22l5.06-1.33A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.18-1.14l-.3-.18-3 .79.8-2.93-.2-.31A8.2 8.2 0 1 1 12 20.2z"/></svg>'
+    +'Enviar no WhatsApp</button>'
+    +'<button class="secbtn" onclick="generated=false;renderSheet()">← Ajustar itens ou condição</button>';
+}
+function copyLink(url){
+  if(navigator.clipboard){ navigator.clipboard.writeText(url).then(()=>toast('Link copiado!')).catch(()=>toast('Link: '+url)); }
+  else toast('Link: '+url);
+}
+function waSend(){ toast('Abriria o WhatsApp com o link pronto ✓'); }
+
+/* ================= PÁGINA PÚBLICA (marca Hardt) ================= */
+function renderPublic(){
+  const cont=document.getElementById('pubContent');
+  if(!generated || sel.size===0){
+    cont.innerHTML='<div class="pub-empty"><div class="big">Seu catálogo aparece aqui</div>'
+      +'<div>No app ao lado: toque em <b>“Montar catálogo”</b>, marque os salgados, escolha o cliente e a condição, e gere o link. Esta página se monta sozinha.</div></div>'
+      +'<div class="pub-foot"><b>Hardt Salgados</b> · Desde 2007<br>WhatsApp (47) 98854-8476<div class="rd">hardtsalgados.com.br</div></div>';
+    return;
+  }
+  const cli=CLIENTS.find(c=>c.id===clientId);
+  const cond=condById(condId);
+  const sub=subtotal(cond);
+  const validTxt=validade+' dias';
+  let h='<div class="pub-hero">'
+    +'<div class="lista">Lista de preços exclusiva</div>'
+    +'<h2>'+cli.nome+'</h2>'
+    +'<div class="pub-chips">'
+      +'<span class="hchip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>'+cond.nome+'</span>'
+      +'<span class="hchip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Válido por '+validTxt+'</span>'
+    +'</div></div>';
+  h+='<div class="pub-body">';
+  selectedProducts().forEach(p=>{
+    const fin=priceFor(p,cond);
+    h+='<div class="hitem"><div class="hi-img" style="background:'+tile(p.codigo)+'">'+p.nome.split(' ')[0]+'</div>'
+      +'<div class="hi-main"><div class="hn">'+p.nome+'</div><div class="hd">Cód. '+p.codigo+' · congelado</div></div>'
+      +'<div class="hi-price"><div class="hp">'+money(fin)+'</div><div class="hu">por '+p.unidade.toLowerCase()+'</div></div></div>';
+  });
+  h+='</div>';
+  h+='<div class="pub-total"><div class="tl">Lista completa<small>'+sel.size+' itens em '+cond.nome+'</small></div><div class="tv">'+money(sub)+'</div></div>';
+  h+='<div class="pub-cta"><button class="pub-wa" onclick="toast(\'No cliente: abre o WhatsApp da Hardt para fechar o pedido\')">'
+    +'<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.06L2 22l5.06-1.33A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.18-1.14l-.3-.18-3 .79.8-2.93-.2-.31A8.2 8.2 0 1 1 12 20.2z"/></svg>'
+    +'Fazer meu pedido no WhatsApp</button></div>';
+  h+='<div class="pub-foot"><b>Hardt Salgados</b> · Desde 2007<br>Preços válidos por '+validTxt+' · WhatsApp (47) 98854-8476<div class="rd">Lista preparada pelo seu vendedor Hardt · hardtsalgados.com.br/lista/'+(token||'…')+'</div></div>';
+  cont.innerHTML=h;
+}
+
+/* ================= util ================= */
+let toastT;
+function toast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2200); }
+
+/* init */
+renderCatalog();
+renderPublic();
+</script>
+</body>
+</html>

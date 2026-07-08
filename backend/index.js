@@ -67,6 +67,8 @@ const congeladosRoutes = require('./routes/congeladosRoutes'); // Site Congelado
 const tarefaRoutes = require('./routes/tarefaRoutes'); // Tarefas da Equipe (agenda com alerta sonoro)
 const cobrancaRoutes = require('./routes/cobrancaRoutes'); // Régua de Cobrança (inadimplentes)
 const congeladosPublicRoutes = require('./routes/congeladosPublicRoutes'); // Site Congelados: site público do cliente
+const catalogoPersonalizadoRoutes = require('./routes/catalogoPersonalizadoRoutes'); // Catálogo Personalizado: gerar/listar (privado)
+const catalogoPersonalizadoPublicRoutes = require('./routes/catalogoPersonalizadoPublicRoutes'); // Catálogo Personalizado: página pública por token
 const visitorRoutes = require('./routes/visitorRoutes'); // Rastreio de visitantes online (ping público + stats admin)
 const pontoPublicRoutes = require('./routes/pontoPublicRoutes'); // RH: bater ponto por link público (sem login)
 const iaConsultaRoutes = require('./routes/iaConsultaRoutes'); // API de consulta somente-leitura p/ IA externa (ex.: bot WhatsApp)
@@ -128,6 +130,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/kitfesta-publico', kitFestaPublicRoutes); // Kit Festa: site público (auth do cliente é interna)
 app.use('/api/congelados-publico', congeladosPublicRoutes); // Site Congelados: site público (auth do cliente é interna)
+app.use('/api/catalogo-personalizado-publico', catalogoPersonalizadoPublicRoutes); // Catálogo Personalizado: página pública por token (sem login)
 app.use('/api/visitors', visitorRoutes); // ping público + stats protegida (auth interna na rota)
 app.use('/api/ponto-publico', pontoPublicRoutes); // RH: bater ponto por link público (token identifica o funcionário)
 app.use('/api/ia-consulta', iaConsultaRoutes); // API de consulta somente-leitura p/ IA externa (própria chave x-ia-api-key, não usa admin-secret)
@@ -192,6 +195,7 @@ app.use('/api/copiloto', authMiddleware, copilotoRoutes); // Copiloto (Clippy): 
 app.use('/api/comissoes', authMiddleware, comissaoRoutes); // Módulo de Comissões
 app.use('/api/kitfesta', authMiddleware, kitFestaRoutes); // Kit Festa: painel admin (agenda, produtos, pedidos)
 app.use('/api/congelados', authMiddleware, congeladosRoutes); // Site Congelados: painel admin (produtos, pedidos)
+app.use('/api/catalogo-personalizado', authMiddleware, catalogoPersonalizadoRoutes); // Catálogo Personalizado: montar lista de preços e gerar link
 app.use('/api/tarefas', authMiddleware, tarefaRoutes); // Tarefas da Equipe (agenda com alerta sonoro)
 app.use('/api/cobranca', cobrancaRoutes); // Régua de Cobrança de inadimplentes (auth inside)
 

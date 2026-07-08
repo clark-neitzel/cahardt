@@ -89,6 +89,7 @@ const HomeSite = lazy(() => import('./pages/Site/HomeSite'));
 const TarefasAgenda = lazy(() => import('./pages/Tarefas/TarefasAgenda'));
 const TarefasParecer = lazy(() => import('./pages/Tarefas/TarefasParecer'));
 const CongeladosSite = lazy(() => import('./pages/Site/CongeladosSite'));
+const ListaPersonalizada = lazy(() => import('./pages/Site/ListaPersonalizada'));
 const SiteAdmin = lazy(() => import('./pages/SiteAdmin/SiteAdmin'));
 
 import {
@@ -623,6 +624,9 @@ function App() {
               {/* Site público da Hardt (home + congelados) — sem autenticação do app */}
               <Route path="/inicio" element={<HomeSite />} />
               <Route path="/congelados" element={<CongeladosSite />} />
+
+              {/* Catálogo personalizado (lista de preços) por token — sem autenticação */}
+              <Route path="/lista/:token" element={<ListaPersonalizada />} />
 
               <Route path="/login" element={<Login />} />
 

@@ -2956,3 +2956,63 @@ model DfeControle {
 
   @@map("dfe_controle")
 }
+
+// =============================================
+// CATÁLOGO PERSONALIZADO
+// Lista de preços montada pelo vendedor para um cliente/condição, compartilhável por
+// link público (/lista/<token>). É um SNAPSHOT: os preços ficam congelados no momento
+// da geração — se o produto mudar de preço depois, o link que o cliente já recebeu não muda.
+// Aditivo por design: guarda clienteUuid/produtoId como IDs soltos (sem FK, igual
+// Condicao_de_pagamento), então não altera os models Cliente/Produto.
+// =============================================
+model CatalogoPersonalizado {
+  id               String    @id @default(uuid())
+  token            String    @unique // token curto p/ a URL pública: /lista/<token>
+  titulo           String? // opcional (ex.: "Lista de agosto")
+  clienteUuid      String    @map("cliente_uuid") // sem FK (snapshot)
+  clienteNome      String    @map("cliente_nome")
+  clienteTelefone  String?   @map("cliente_telefone")
+  clienteCidade    String?   @map("cliente_cidade")
+  condicaoId       String    @map("condicao_id") // TabelaPreco.id no momento
+  condicaoNome     String    @map("condicao_nome")
+  acrescimoPreco   Decimal   @default(0) @map("acrescimo_preco") @db.Decimal(10, 2)
+  valorMinimo      Decimal?  @default(0) @map("valor_minimo") @db.Decimal(12, 2)
+  total            Decimal   @default(0) @db.Decimal(12, 2) // soma dos precoFinal (snapshot)
+  validadeEm       DateTime? @map("validade_em") // null = sem validade
+  observacoes      String?   @db.Text
+  status           String    @default("ATIVO") // ATIVO | REMOVIDO
+  vendedorId       String?   @map("vendedor_id")
+  vendedorNome     String?   @map("vendedor_nome")
+  vendedorTelefone String?   @map("vendedor_telefone")
+  visualizacoes    Int       @default(0)
+  ultimaVisita     DateTime? @map("ultima_visita")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  itens CatalogoPersonalizadoItem[]
+
+  @@index([token])
+  @@index([clienteUuid])
+  @@index([vendedorId])
+  @@map("catalogos_personalizados")
+}
+
+model CatalogoPersonalizadoItem {
+  id            String  @id @default(uuid())
+  catalogoId    String  @map("catalogo_id")
+  produtoId     String  @map("produto_id") // sem FK (snapshot)
+  codigo        String
+  nome          String
+  unidade       String
+  imagemUrl     String? @map("imagem_url")
+  valorBase     Decimal @map("valor_base") @db.Decimal(12, 2) // valorVenda no momento da geração
+  precoFinal    Decimal @map("preco_final") @db.Decimal(12, 2) // valorVenda * (1 + acrescimoPreco/100)
+  categoriaNome String? @map("categoria_nome")
+  categoriaCor  String? @map("categoria_cor")
+  ordem         Int     @default(0)
+
+  catalogo CatalogoPersonalizado @relation(fields: [catalogoId], references: [id], onDelete: Cascade)
+
+  @@index([catalogoId])
+  @@map("catalogos_personalizados_itens")
+}

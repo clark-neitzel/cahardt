@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Oswald:wght@500;600;700&family=Bitter:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
+/* =========================================================
+   Página pública "Lista de preços personalizada" (marca Hardt)
+   Escopo: tudo sob .lpx (não vaza para o resto do app)
+   ========================================================= */
+.lpx {
+  --green: #128240;
+  --green-dark: #0b5e2c;
+  --green-darkest: #08431f;
+  --green-l: #1ba252;
+  --yellow: #f6c21b;
+  --yellow-d: #e0a500;
+  --paper: #f3e7cd;
+  --card: #fffaf0;
+  --ink: #191b17;
+  --chalk: #f3ecdc;
+  --wa: #25d366;
+
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Bitter', Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+}
+.lpx * { box-sizing: border-box; }
+
+.lpx-wrap { max-width: 640px; margin: 0 auto; min-height: 100vh; background: var(--paper); box-shadow: 0 0 60px -20px rgba(8,20,10,.25); }
+
+/* header */
+.lpx-head { background: var(--ink); color: var(--chalk); padding: 18px 20px 16px; display: flex; align-items: center; gap: 14px; }
+.lpx-logo { display: flex; flex-direction: column; line-height: .9; }
+.lpx-logo img { height: 40px; width: auto; display: block; }
+.lpx-logo .l1 { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: .02em; color: #fff; }
+.lpx-logo .l2 { font-family: 'Oswald', sans-serif; font-weight: 500; font-size: 10px; letter-spacing: .42em; color: var(--yellow); margin-top: 2px; }
+.lpx-head .htag { margin-left: auto; font-family: 'Manrope', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: rgba(243,236,220,.65); text-align: right; line-height: 1.4; }
+
+.lpx-saw { height: 12px; background: linear-gradient(-45deg, var(--yellow) 25%, transparent 25%) 0 0/12px 12px, linear-gradient(45deg, var(--yellow) 25%, transparent 25%) 0 0/12px 12px; }
+
+/* hero */
+.lpx-hero { padding: 22px 20px 16px; text-align: center; }
+.lpx-hero .kicker { font-family: 'Oswald', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; font-size: 14px; color: var(--green-dark); }
+.lpx-hero h1 { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 30px; line-height: 1.05; margin: 4px 0 0; color: var(--green-darkest); text-transform: uppercase; }
+.lpx-hero .cidade { font-family: 'Bitter', serif; font-size: 14px; color: #6b6a5c; margin-top: 4px; }
+.lpx-chips { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+.lpx-chip { display: inline-flex; align-items: center; gap: 6px; background: #fff; border: 1.5px solid rgba(18,130,64,.25); color: var(--green-dark); font-family: 'Manrope', sans-serif; font-weight: 700; font-size: 12.5px; padding: 7px 13px; border-radius: 999px; }
+.lpx-chip svg { width: 14px; height: 14px; }
+.lpx-chip.exp { border-color: var(--yellow-d); color: #8a6100; background: #fffdf5; }
+
+.lpx-banner { margin: 4px 16px 10px; background: #fff4d6; border: 1px solid var(--yellow-d); color: #7a5600; border-radius: 12px; padding: 11px 14px; font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 600; text-align: center; }
+
+/* itens */
+.lpx-body { padding: 6px 16px 4px; }
+.lpx-item { display: flex; align-items: center; gap: 13px; background: var(--card); border: 1px solid rgba(8,20,10,.08); border-radius: 15px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 8px 18px -16px rgba(8,20,10,.6); }
+.lpx-item .img { width: 54px; height: 54px; border-radius: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,.95); font-size: 9px; font-weight: 700; text-align: center; font-family: 'Manrope', sans-serif; overflow: hidden; padding: 3px; }
+.lpx-item .img img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
+.lpx-item .main { flex: 1; min-width: 0; }
+.lpx-item .main .nome { font-family: 'Oswald', sans-serif; font-weight: 600; text-transform: uppercase; letter-spacing: .01em; font-size: 15px; color: var(--green-darkest); line-height: 1.12; }
+.lpx-item .main .det { font-family: 'Bitter', serif; font-size: 11.5px; color: #8a8778; margin-top: 3px; }
+.lpx-item .preco { text-align: right; flex-shrink: 0; }
+.lpx-item .preco .v { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 20px; color: var(--green); line-height: 1; }
+.lpx-item .preco .u { font-family: 'Manrope', sans-serif; font-size: 10px; color: #9a9788; font-weight: 600; margin-top: 2px; }
+
+/* total */
+.lpx-total { margin: 10px 16px 4px; background: var(--ink); color: var(--chalk); border-radius: 18px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; }
+.lpx-total .tl { font-family: 'Manrope', sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: rgba(243,236,220,.7); font-weight: 700; }
+.lpx-total .tl small { display: block; font-size: 10.5px; letter-spacing: 0; text-transform: none; color: rgba(243,236,220,.55); margin-top: 3px; }
+.lpx-total .tv { font-family: 'Oswald', sans-serif; font-weight: 700; font-size: 30px; color: var(--yellow); }
+
+/* obs */
+.lpx-obs { margin: 10px 16px 0; background: #fff; border: 1px dashed rgba(8,20,10,.18); border-radius: 12px; padding: 12px 14px; font-family: 'Bitter', serif; font-size: 13.5px; color: #5c5b4f; line-height: 1.5; }
+.lpx-obs b { font-family: 'Manrope', sans-serif; font-size: 10.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--green-dark); display: block; margin-bottom: 3px; }
+
+/* cta */
+.lpx-cta { padding: 16px; }
+.lpx-wa { width: 100%; background: var(--wa); color: #fff; border: none; font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 16px; padding: 16px; border-radius: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 12px 26px -12px rgba(37,211,102,.65); text-decoration: none; }
+.lpx-wa:active { transform: scale(.99); }
+
+.lpx-foot { background: var(--ink); color: rgba(243,236,220,.75); font-family: 'Bitter', serif; font-size: 12px; text-align: center; padding: 20px 20px 30px; line-height: 1.7; }
+.lpx-foot b { color: var(--yellow); font-family: 'Manrope', sans-serif; font-weight: 700; }
+.lpx-foot .rd { font-family: 'Manrope', sans-serif; font-size: 10.5px; color: rgba(243,236,220,.45); margin-top: 10px; letter-spacing: .03em; }
+
+/* estados */
+.lpx-center { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 28px; gap: 12px; }
+.lpx-center .big { font-family: 'Oswald', sans-serif; font-size: 24px; color: var(--green-darkest); text-transform: uppercase; }
+.lpx-center p { font-family: 'Bitter', serif; color: #6b6a5c; font-size: 15px; max-width: 320px; line-height: 1.5; }
+.lpx-spin { width: 34px; height: 34px; border-radius: 50%; border: 3px solid rgba(18,130,64,.2); border-top-color: var(--green); animation: lpxspin .8s linear infinite; }
+@keyframes lpxspin { to { transform: rotate(360deg); } }

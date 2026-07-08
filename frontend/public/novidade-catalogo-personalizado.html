@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Catálogo Personalizado — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🧾 Novidade no Hardt App: Catálogo Personalizado">
+<meta property="og:description" content="O vendedor monta uma lista de preços sob medida (cliente + condição) e manda um link pronto no WhatsApp. Veja como funciona!">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    /* marca Hardt (mock da página do cliente) */
+    --h-paper: #f3e7cd;
+    --h-card: #fffaf0;
+    --h-green: #128240;
+    --h-green-dd: #08431f;
+    --h-yellow: #f6c21b;
+    --h-ink: #191b17;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 104px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow { display: inline-block; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.78); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  /* mock da página do cliente flutuando sobre o hero */
+  .mock { max-width: 340px; margin: -80px auto 30px; background: var(--h-paper); border-radius: 22px; box-shadow: 0 22px 50px rgba(20,40,34,.32); overflow: hidden; text-align: left; }
+  .mock-head { background: var(--h-ink); color: #f3ecdc; padding: 14px 18px; display: flex; align-items: center; gap: 10px; }
+  .mock-logo1 { font-family: "Oswald", Impact, sans-serif; font-weight: 800; font-size: 20px; letter-spacing: .02em; color: #fff; line-height: 1; }
+  .mock-logo2 { font-size: 8px; letter-spacing: .4em; color: var(--h-yellow); font-weight: 700; }
+  .mock-htag { margin-left: auto; font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: rgba(243,236,220,.6); text-align: right; }
+  .mock-saw { height: 9px; background: linear-gradient(-45deg, var(--h-yellow) 25%, transparent 25%) 0 0/9px 9px, linear-gradient(45deg, var(--h-yellow) 25%, transparent 25%) 0 0/9px 9px; }
+  .mock-hero { text-align: center; padding: 16px 16px 10px; }
+  .mock-kick { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--primary-dark); }
+  .mock-cli { font-family: "Oswald", Impact, sans-serif; font-weight: 800; font-size: 22px; color: var(--h-green-dd); text-transform: uppercase; line-height: 1.05; margin-top: 2px; }
+  .mock-chips { display: flex; justify-content: center; gap: 6px; margin-top: 10px; }
+  .mock-chip { background: #fff; border: 1.4px solid rgba(18,130,64,.28); color: var(--primary-dark); font-size: 10px; font-weight: 800; padding: 4px 9px; border-radius: 999px; }
+  .mock-items { padding: 4px 12px 8px; }
+  .mrow { display: flex; align-items: center; gap: 10px; background: var(--h-card); border: 1px solid rgba(8,20,10,.08); border-radius: 12px; padding: 8px 11px; margin-bottom: 7px; }
+  .mrow .mimg { width: 34px; height: 34px; border-radius: 9px; flex: none; }
+  .mrow .mnome { flex: 1; font-family: "Oswald", Impact, sans-serif; font-weight: 700; text-transform: uppercase; font-size: 12px; color: var(--h-green-dd); }
+  .mrow .mpreco { font-family: "Oswald", Impact, sans-serif; font-weight: 800; font-size: 15px; color: var(--h-green); }
+  .mock-wa { margin: 4px 12px 14px; background: #25d366; color: #fff; text-align: center; font-weight: 800; font-size: 13px; padding: 11px; border-radius: 12px; }
+
+  /* ── SEÇÕES ── */
+  .lead { text-align: center; font-size: 17px; color: var(--ink-soft); margin: 0 auto 30px; max-width: 48ch; text-wrap: balance; }
+  .lead b { color: var(--ink); }
+
+  h2 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--primary-dark); text-align: center; margin: 40px 0 18px; }
+
+  .steps { display: grid; gap: 12px; }
+  .step { background: #fff; border: 1px solid #e6e8e7; border-radius: 16px; padding: 16px 18px; display: flex; gap: 14px; align-items: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+  .step .num { flex: none; width: 30px; height: 30px; border-radius: 50%; background: var(--mint); color: var(--primary-dark); font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .step h3 { margin: 2px 0 3px; font-size: 15.5px; font-weight: 800; }
+  .step p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+
+  .cards2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 460px) { .cards2 { grid-template-columns: 1fr; } }
+  .feat { background: #fff; border: 1px solid #e6e8e7; border-radius: 16px; padding: 16px; }
+  .feat .ico { font-size: 22px; }
+  .feat h3 { margin: 8px 0 4px; font-size: 14.5px; font-weight: 800; }
+  .feat p { margin: 0; font-size: 13px; color: var(--ink-soft); }
+
+  .cta { background: linear-gradient(168deg, var(--primary) 0%, var(--primary-dark) 100%); color: #fff; border-radius: 20px; padding: 24px 20px; text-align: center; margin-top: 40px; }
+  .cta h3 { margin: 0 0 6px; font-size: 19px; font-weight: 800; }
+  .cta p { margin: 0; color: rgba(255,255,255,.82); font-size: 14.5px; }
+  .cta .badge { display: inline-block; margin-top: 14px; background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.28); border-radius: 999px; padding: 8px 16px; font-weight: 700; font-size: 13.5px; }
+
+  .foot { text-align: center; color: #9aa4a0; font-size: 12px; margin-top: 34px; }
+  .foot b { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+  <div class="hero">
+    <div class="hero-inner">
+      <span class="eyebrow">✨ Novidade no App</span>
+      <h1>Catálogo personalizado por link</h1>
+      <p>O vendedor escolhe os produtos, o cliente e a condição de pagamento — e o app gera uma lista de preços pronta pra mandar no WhatsApp.</p>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <!-- mock: o que o cliente recebe -->
+    <div class="mock">
+      <div class="mock-head">
+        <div><div class="mock-logo1">HARDT</div><div class="mock-logo2">SALGADOS</div></div>
+        <div class="mock-htag">Lista de<br>preços</div>
+      </div>
+      <div class="mock-saw"></div>
+      <div class="mock-hero">
+        <div class="mock-kick">Lista de preços exclusiva</div>
+        <div class="mock-cli">Panificadora Trigo de Ouro</div>
+        <div class="mock-chips">
+          <span class="mock-chip">21/28 dias</span>
+          <span class="mock-chip">Válida 15 dias</span>
+        </div>
+      </div>
+      <div class="mock-items">
+        <div class="mrow"><span class="mimg" style="background:linear-gradient(150deg,#d8ab6b,#c98f45)"></span><span class="mnome">Coxinha de Frango</span><span class="mpreco">R$ 25,90</span></div>
+        <div class="mrow"><span class="mimg" style="background:linear-gradient(150deg,#cf9d64,#bd863f)"></span><span class="mnome">Kibe Tradicional</span><span class="mpreco">R$ 27,56</span></div>
+        <div class="mrow"><span class="mimg" style="background:linear-gradient(150deg,#d3a463,#c28c44)"></span><span class="mnome">Empada de Frango</span><span class="mpreco">R$ 30,06</span></div>
+      </div>
+      <div class="mock-wa">✅ Fazer meu pedido no WhatsApp</div>
+    </div>
+
+    <p class="lead">Sabe quando o cliente pede “me manda uma lista com os preços”? Agora dá pra fazer isso em <b>30 segundos</b>, já com o <b>preço certo daquele cliente</b> e num link bonito com a cara da Hardt.</p>
+
+    <h2>Como funciona</h2>
+    <div class="steps">
+      <div class="step"><div class="num">1</div><div><h3>Toque em “Montar catálogo”</h3><p>Na aba <b>Catálogo</b>, o botão liga o modo de seleção.</p></div></div>
+      <div class="step"><div class="num">2</div><div><h3>Marque os produtos</h3><p>Toque nos itens que quer incluir na lista — quantos quiser.</p></div></div>
+      <div class="step"><div class="num">3</div><div><h3>Escolha o cliente e a condição</h3><p>O app já sugere a condição de pagamento padrão do cliente e mostra só as permitidas. Os preços se ajustam na hora.</p></div></div>
+      <div class="step"><div class="num">4</div><div><h3>Gere o link</h3><p>Escolha a validade (7, 15, 30 dias) e o app cria o link <b>hardtsalgados.com.br/lista/…</b></p></div></div>
+      <div class="step"><div class="num">5</div><div><h3>Envie no WhatsApp</h3><p>Um toque em “Enviar no WhatsApp” já abre a conversa do cliente com o link pronto.</p></div></div>
+    </div>
+
+    <h2>Por que é bom</h2>
+    <div class="cards2">
+      <div class="feat"><div class="ico">💰</div><h3>Preço certo do cliente</h3><p>Usa o mesmo cálculo do pedido: a condição de pagamento ajusta o valor automaticamente.</p></div>
+      <div class="feat"><div class="ico">🔒</div><h3>Preço congelado</h3><p>Se o produto mudar de preço depois, o link que o cliente recebeu continua igual.</p></div>
+      <div class="feat"><div class="ico">📱</div><h3>Sem login pro cliente</h3><p>Ele só abre o link e vê a lista — bonita, com a marca da Hardt, e já pede pelo WhatsApp.</p></div>
+      <div class="feat"><div class="ico">⏱️</div><h3>Rápido de montar</h3><p>Seleciona, escolhe cliente e condição, gera. Pronto pra enviar em segundos.</p></div>
+    </div>
+
+    <div class="cta">
+      <h3>Já está no ar 🎉</h3>
+      <p>É só abrir a aba <b>Catálogo</b> e tocar em “Montar catálogo”.</p>
+      <span class="badge">Catálogo → Montar catálogo</span>
+    </div>
+
+    <div class="foot"><b>Hardt Salgados</b> · atualização do app · toque no ícone de atualizar se não aparecer</div>
+  </div>
+</body>
+</html>

@@ -895,7 +895,61 @@ const migrationService = {
             `ALTER TABLE "categorias_produto" ADD COLUMN IF NOT EXISTS "tipo_flex" TEXT NOT NULL DEFAULT 'NORMAL'`,
             `ALTER TABLE "categorias_produto" ADD COLUMN IF NOT EXISTS "flex_positivo" BOOLEAN NOT NULL DEFAULT true`,
             `ALTER TABLE "categorias_produto" ADD COLUMN IF NOT EXISTS "flex_negativo" BOOLEAN NOT NULL DEFAULT true`,
-            `ALTER TABLE "categorias_estoque" ADD COLUMN IF NOT EXISTS "contabiliza_flex" BOOLEAN NOT NULL DEFAULT true`
+            `ALTER TABLE "categorias_estoque" ADD COLUMN IF NOT EXISTS "contabiliza_flex" BOOLEAN NOT NULL DEFAULT true`,
+
+            // Catálogo Personalizado — lista de preços por cliente/condição, compartilhável por link público (snapshot)
+            `CREATE TABLE IF NOT EXISTS "catalogos_personalizados" (
+                "id" TEXT NOT NULL,
+                "token" TEXT NOT NULL,
+                "titulo" TEXT,
+                "cliente_uuid" TEXT NOT NULL,
+                "cliente_nome" TEXT NOT NULL,
+                "cliente_telefone" TEXT,
+                "cliente_cidade" TEXT,
+                "condicao_id" TEXT NOT NULL,
+                "condicao_nome" TEXT NOT NULL,
+                "acrescimo_preco" DECIMAL(10,2) NOT NULL DEFAULT 0,
+                "valor_minimo" DECIMAL(12,2) DEFAULT 0,
+                "total" DECIMAL(12,2) NOT NULL DEFAULT 0,
+                "validade_em" TIMESTAMP(3),
+                "observacoes" TEXT,
+                "status" TEXT NOT NULL DEFAULT 'ATIVO',
+                "vendedor_id" TEXT,
+                "vendedor_nome" TEXT,
+                "vendedor_telefone" TEXT,
+                "visualizacoes" INTEGER NOT NULL DEFAULT 0,
+                "ultima_visita" TIMESTAMP(3),
+                "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                CONSTRAINT "catalogos_personalizados_pkey" PRIMARY KEY ("id")
+            )`,
+            `CREATE UNIQUE INDEX IF NOT EXISTS "catalogos_personalizados_token_key" ON "catalogos_personalizados"("token")`,
+            `CREATE INDEX IF NOT EXISTS "catalogos_personalizados_cliente_uuid_idx" ON "catalogos_personalizados"("cliente_uuid")`,
+            `CREATE INDEX IF NOT EXISTS "catalogos_personalizados_vendedor_id_idx" ON "catalogos_personalizados"("vendedor_id")`,
+
+            `CREATE TABLE IF NOT EXISTS "catalogos_personalizados_itens" (
+                "id" TEXT NOT NULL,
+                "catalogo_id" TEXT NOT NULL,
+                "produto_id" TEXT NOT NULL,
+                "codigo" TEXT NOT NULL,
+                "nome" TEXT NOT NULL,
+                "unidade" TEXT NOT NULL,
+                "imagem_url" TEXT,
+                "valor_base" DECIMAL(12,2) NOT NULL,
+                "preco_final" DECIMAL(12,2) NOT NULL,
+                "categoria_nome" TEXT,
+                "categoria_cor" TEXT,
+                "ordem" INTEGER NOT NULL DEFAULT 0,
+                CONSTRAINT "catalogos_personalizados_itens_pkey" PRIMARY KEY ("id")
+            )`,
+            `CREATE INDEX IF NOT EXISTS "catalogos_personalizados_itens_catalogo_id_idx" ON "catalogos_personalizados_itens"("catalogo_id")`,
+            `DO $$ BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'catalogos_personalizados_itens_catalogo_id_fkey') THEN
+                    ALTER TABLE "catalogos_personalizados_itens"
+                        ADD CONSTRAINT "catalogos_personalizados_itens_catalogo_id_fkey"
+                        FOREIGN KEY ("catalogo_id") REFERENCES "catalogos_personalizados"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+                END IF;
+            END $$;`
         ];
 
         for (const [index, cmd] of commands.entries()) {
