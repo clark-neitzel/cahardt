@@ -203,6 +203,7 @@ async function obterPublico(token) {
         clienteNome: cat.clienteNome,
         clienteCidade: cat.clienteCidade,
         condicaoNome: cat.condicaoNome,
+        valorMinimo: cat.valorMinimo != null ? Number(cat.valorMinimo) : 0,
         medianteAprovacao: cat.medianteAprovacao,
         validadeEm: cat.validadeEm,
         expirado,

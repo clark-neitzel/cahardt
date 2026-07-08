@@ -63,7 +63,7 @@ export default function ListaPersonalizada() {
         );
     }
 
-    const { clienteNome, clienteCidade, condicaoNome, medianteAprovacao, validadeEm, expirado, observacoes, itens, whatsapp, vendedorNome } = dados;
+    const { clienteNome, clienteCidade, condicaoNome, valorMinimo, medianteAprovacao, validadeEm, expirado, observacoes, itens, whatsapp, vendedorNome } = dados;
 
     // WhatsApp já vem resolvido do backend (vendedor p/ cliente cadastrado, loja p/ não-cliente)
     const msg = encodeURIComponent(`Olá! Recebi a lista de preços da Hardt${clienteNome ? ` (${clienteNome})` : ''} e gostaria de fazer um pedido.`);
@@ -94,6 +94,12 @@ export default function ListaPersonalizada() {
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                             {condicaoNome}
                         </span>
+                        {valorMinimo > 0 && (
+                            <span className="lpx-chip">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></svg>
+                                Pedido mín. {money(valorMinimo)}
+                            </span>
+                        )}
                         {medianteAprovacao && (
                             <span className="lpx-chip apr">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 22c5.5 0 10-4.5 10-10S17.5 2 12 2 2 6.5 2 12s4.5 10 10 10z" /><path d="M12 8v4M12 16h.01" /></svg>

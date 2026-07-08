@@ -444,11 +444,9 @@ function GerarCatalogoModal({ produtos, clientes, condicoes, onClose, onConcluir
                                 <div className="grid grid-cols-2 gap-2">
                                     {conds.map(c => {
                                         const on = c.id === condId;
-                                        const a = Number(c.acrescimoPreco) || 0;
+                                        const min = Number(c.valorMinimo) || 0;
                                         const isStd = destMode === 'cliente' && cliente && (c.idCondicao === cliente.Condicao_de_pagamento || c.id === cliente.Condicao_de_pagamento);
                                         const apr = precisaAprovacao(c);
-                                        const lbl = a > 0 ? `+${a}% no preço` : (a < 0 ? `${a}% (desconto)` : 'preço de tabela');
-                                        const cls = a > 0 ? 'text-amber-700' : (a < 0 ? 'text-emerald-700' : 'text-gray-500');
                                         return (
                                             <button key={c.id} type="button" onClick={() => setCondId(c.id)}
                                                 className={`text-left rounded-xl border px-3 py-2 transition-colors ${on ? 'border-primary bg-mint' : 'border-gray-200 hover:border-gray-300'}`}>
@@ -457,7 +455,7 @@ function GerarCatalogoModal({ produtos, clientes, condicoes, onClose, onConcluir
                                                     {isStd && <span className="text-[8px] font-extrabold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full uppercase tracking-wide">padrão</span>}
                                                     {apr && <span className="text-[8px] font-extrabold bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full uppercase tracking-wide">aprov. crédito</span>}
                                                 </div>
-                                                <div className={`text-[11px] font-semibold mt-0.5 ${cls}`}>{lbl}</div>
+                                                <div className="text-[11px] font-semibold mt-0.5 text-gray-500">{min > 0 ? `Mín. ${money(min)}` : 'Sem mínimo'}</div>
                                             </button>
                                         );
                                     })}
