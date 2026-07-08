@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Notas Recebidas — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="📥 Novidade no Hardt App: Notas Recebidas mais completa">
+<meta property="og:description" content="Filtro por tipo e por período, data em destaque e — o mais pedido — importar o XML (ou lançar manual) quando a nota não chega sozinha.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .14em;
+    padding: 6px 14px; border-radius: 999px; margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75); font-size: 16px; max-width: 48ch; margin: 0 auto; text-wrap: balance;
+  }
+
+  /* mock da nota flutuando sobre o hero */
+  .mock {
+    max-width: 430px; margin: -68px auto 30px;
+    background: #fff; border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden; text-align: left;
+  }
+  .mock-top {
+    background: var(--house); color: #fff;
+    padding: 13px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .mock-top strong { font-size: 15px; }
+  .mock-imp {
+    font-size: 12px; font-weight: 700; color: #fff;
+    border: 1.5px solid rgba(255,255,255,.5); border-radius: 999px; padding: 5px 12px;
+  }
+  .mock-filtros { display: flex; gap: 6px; flex-wrap: wrap; padding: 12px 16px 4px; }
+  .fchip { font-size: 11px; font-weight: 700; padding: 5px 11px; border-radius: 999px; background: #f1f3f2; color: #555; }
+  .fchip.on { background: #fff; color: var(--primary-dark); box-shadow: inset 0 0 0 1.5px var(--primary); }
+  .fchip.data { background: var(--mint); color: var(--primary-dark); }
+  .mock-body { padding: 10px 16px 18px; }
+  .nota {
+    border: 1px solid #eceae4; border-radius: 14px; padding: 13px 14px; margin-top: 10px;
+  }
+  .nota-l1 { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 8px; }
+  .nota-l1 .forn { font-weight: 700; font-size: 14.5px; }
+  .badge { font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+  .b-nova { background: #dbeafe; color: #1e40af; }
+  .b-tipo { background: #f3e8ff; color: #7e22ce; }
+  .b-manual { background: #fef3c7; color: #92400e; }
+  .nota-l2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .data-chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--mint); color: var(--primary-dark);
+    font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+  }
+  .nota-l2 .cnpj { font-size: 12px; color: var(--ink-soft); }
+  .nota-val { float: right; font-weight: 800; font-size: 15px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em;
+    color: var(--primary-dark); margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff; border: 1px solid #e3e1da; border-radius: 16px;
+    margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%; display: flex; align-items: center; gap: 12px;
+    background: none; border: none; font: inherit; text-align: left;
+    padding: 15px 16px; cursor: pointer; min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px; border-radius: 11px; background: var(--mint);
+    display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-head .tag { margin-left: 4px; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .tag { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px; }
+  .tag.mint { background: var(--mint); color: var(--primary-dark); }
+  .tag.dourado { background: #fdf6e9; color: #8a6d2f; border: 1.5px solid var(--gold); }
+
+  .destaque {
+    background: #fff; border: 1.5px solid var(--gold); border-radius: 16px;
+    padding: 16px 18px; margin: 6px 0 4px;
+  }
+  .destaque h3 { margin: 0 0 6px; font-size: 16px; }
+  .destaque p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%;
+    background: var(--primary); color: #fff; font-weight: 800; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .abrir-app {
+    display: block; text-align: center; max-width: 400px; margin: 22px auto 0;
+    background: var(--house); color: #fff; text-decoration: none;
+    font-size: 15px; font-weight: 800; padding: 15px; border-radius: 999px;
+  }
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade no App</span>
+    <h1>Notas Recebidas mais completa</h1>
+    <p>Agora dá pra <b>filtrar por tipo e por período</b>, a <b>data</b> aparece em destaque e — o mais pedido — você pode <b>importar o XML</b> (ou lançar na mão) quando uma nota não chega sozinha.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- MOCK -->
+  <div class="mock">
+    <div class="mock-top">
+      <strong>📥 Notas Recebidas</strong>
+      <span class="mock-imp">⬆ Importar XML</span>
+    </div>
+    <div class="mock-filtros">
+      <span class="fchip on">Todas</span>
+      <span class="fchip">NF-e</span>
+      <span class="fchip">NFS-e</span>
+      <span class="fchip data">📅 7 dias</span>
+      <span class="fchip data">30 dias</span>
+    </div>
+    <div class="mock-body">
+      <div class="nota">
+        <span class="nota-val">R$ 850,00</span>
+        <div class="nota-l1">
+          <span class="forn">Kontisa Contabilidade</span>
+          <span class="badge b-nova">Nova</span>
+          <span class="badge b-tipo">NFS-e 57454</span>
+          <span class="badge b-manual">lançada manual</span>
+        </div>
+        <div class="nota-l2">
+          <span class="data-chip">📅 Emitida 01/07/2026</span>
+          <span class="cnpj">CNPJ 00.000.000/0001-00</span>
+        </div>
+      </div>
+      <div class="nota">
+        <span class="nota-val">R$ 334,60</span>
+        <div class="nota-l1">
+          <span class="forn">Produpan Panificação</span>
+          <span class="badge b-nova">Nova</span>
+          <span class="badge" style="background:#f1f3f2;color:#555;">NF-e 860755</span>
+        </div>
+        <div class="nota-l2">
+          <span class="data-chip">📅 Emitida 07/07/2026</span>
+          <span class="cnpj">CNPJ 02.921.322/0001-07</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DESTAQUE PRINCIPAL -->
+  <div class="destaque">
+    <h3>📎 "A nota não chegou. E agora?"</h3>
+    <p>Algumas notas — principalmente <b>NFS-e de serviço</b> (contador, etc.) — nem sempre chegam sozinhas, porque a prefeitura não manda pro sistema nacional. Agora você resolve na hora: <b>importa o XML</b> ou <b>lança os dados manualmente</b>. A nota entra na lista igual às automáticas.</p>
+  </div>
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="toggle(this)">
+      <span class="acc-ico">📎</span>
+      <strong>Importar XML da nota</strong>
+      <span class="tag mint">novo</span>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Botão <b>"Importar XML"</b> no topo da tela. Você anexa o arquivo <b>.xml</b> da nota (NF-e ou NFS-e) e ela entra na lista como <b>Nova</b>, pronta pra conferir e gerar a despesa.</p>
+      <ul>
+        <li>Pode subir <b>vários arquivos</b> de uma vez (arrastar e soltar também funciona).</li>
+        <li><b>Não duplica</b>: se a nota já existir, o sistema só completa/atualiza.</li>
+        <li>Onde pegar o XML? No <b>e-mail do fornecedor</b> ou no <b>site da prefeitura</b> (NFS-e).</li>
+        <li>Só entram notas <b>recebidas</b> — o sistema recusa XML de nota que a própria empresa emitiu.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="toggle(this)">
+      <span class="acc-ico">✍️</span>
+      <strong>Lançar manualmente (sem XML)</strong>
+      <span class="tag mint">novo</span>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Não tem o XML e a nota nunca chega (típico de <b>NFS-e de prefeitura fora do padrão nacional</b>)? Dentro de "Importar XML" tem a aba <b>"Lançar manualmente"</b>.</p>
+      <ul>
+        <li>Você informa <b>tipo, fornecedor, CNPJ (opcional), número, data e valor</b>.</li>
+        <li>A nota entra como <b>Nova</b> pra conferir e gerar a despesa, igual às outras.</li>
+        <li>Fica com a etiqueta <b>"lançada manual"</b>, pra você reconhecer depois.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="toggle(this)">
+      <span class="acc-ico">🏷️</span>
+      <strong>Filtro por tipo de nota</strong>
+      <span class="tag mint">novo</span>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Um botão pra alternar entre <b>Todas · NF-e (produto) · NFS-e (serviço)</b>. Sua escolha fica <b>lembrada</b> — na próxima vez que abrir a tela, já vem do jeito que você deixou.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="toggle(this)">
+      <span class="acc-ico">📅</span>
+      <strong>Filtro por período de emissão</strong>
+      <span class="tag mint">novo</span>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Campos <b>De / Até</b> mais atalhos rápidos: <b>7 dias, 15 dias, 30 dias</b> ou <b>Tudo</b>. Ótimo pra achar uma nota antiga específica sem rolar a lista inteira.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="toggle(this)">
+      <span class="acc-ico">✅</span>
+      <strong>Data em destaque na lista</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>A <b>data de emissão</b> de cada nota agora aparece numa etiqueta verde, fácil de bater o olho e conferir.</p>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <div class="passo-n">1</div>
+      <div>Abra <b>Financeiro → Notas Recebidas</b>.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">2</div>
+      <div>Use os <b>filtros de tipo e período</b> pra achar rápido o que precisa.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">3</div>
+      <div>Faltou uma nota? Clique em <b>"Importar XML"</b> e anexe o arquivo — ou use <b>"Lançar manualmente"</b> se não tiver o XML.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">4</div>
+      <div>A nota entra como <b>Nova</b>. É só <b>conferir</b> e <b>gerar a despesa</b> normalmente.</div>
+    </div>
+  </div>
+
+  <a class="abrir-app" href="https://cahardt-github.xrqvlq.easypanel.host/notas-recebidas">Abrir Notas Recebidas →</a>
+
+  <div class="rodape">
+    Dúvidas? Chama o <strong>Clippy</strong> dentro do app (o clipe no canto) — ele já sabe explicar essas novidades.
+  </div>
+
+</div>
+
+<script>
+  function toggle(btn){ btn.parentElement.classList.toggle('aberto'); }
+  // Abre a primeira seção por padrão
+  document.querySelector('.acc')?.classList.add('aberto');
+</script>
+</body>
+</html>
