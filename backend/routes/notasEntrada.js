@@ -143,10 +143,17 @@ const formatarNotaLista = (n) => ({
 // ── GET / — caixa de entrada + status da captura ──
 router.get('/', verificarAuth, checkAcesso, async (req, res) => {
     try {
-        const { status, busca, tipo, dataInicio, dataFim } = req.query;
+        const { status, chip, busca, tipo, dataInicio, dataFim, pagina, tamanhoPagina } = req.query;
 
         const where = {};
-        if (status) where.status = status;
+        // Situação: aceita `chip` (agrupado, usado pela tela) ou `status` (direto/legado).
+        // NOVAS agrupa NOVA + AGUARDANDO_XML (resumos que ainda esperam o XML completo).
+        const chipUp = String(chip || '').toUpperCase();
+        if (chipUp === 'NOVAS') where.status = { in: ['NOVA', 'AGUARDANDO_XML'] };
+        else if (chipUp === 'GERADAS') where.status = 'CONFERIDA';
+        else if (chipUp === 'IGNORADAS') where.status = 'IGNORADA';
+        else if (chipUp === 'TODAS') { /* sem filtro de situação */ }
+        else if (status) where.status = status;
 
         // Filtro por tipo de nota (NFE = produto / NFSE = serviço)
         const tipoUp = String(tipo || '').toUpperCase();
@@ -182,12 +189,19 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             ];
         }
 
-        const [notas, novas, aguardandoXml, captura, capturaNfse] = await Promise.all([
+        // Paginação: COM pagina/tamanhoPagina → página (skip/take); SEM → legado (até 500 numa página só).
+        const tam = tamanhoPagina ? parseInt(tamanhoPagina) : 500;
+        const pag = pagina ? parseInt(pagina) : 1;
+        const skip = (pag - 1) * tam;
+
+        const [notas, total, novas, aguardandoXml, captura, capturaNfse] = await Promise.all([
             prisma.notaEntrada.findMany({
                 where,
                 orderBy: [{ emissao: { sort: 'desc', nulls: 'last' } }, { criadoEm: 'desc' }],
-                take: 500
+                skip,
+                take: tam
             }),
+            prisma.notaEntrada.count({ where }),
             prisma.notaEntrada.count({ where: { status: 'NOVA' } }),
             prisma.notaEntrada.count({ where: { status: 'AGUARDANDO_XML' } }),
             sefazDfeService.statusCaptura(),
@@ -209,7 +223,8 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                 ultimoResultado: capturaNfse.ultimoResultado,
                 bloqueadoAte: capturaNfse.bloqueadoAte
             },
-            notas: notas.map(formatarNotaLista)
+            notas: notas.map(formatarNotaLista),
+            total
         });
     } catch (error) {
         console.error('Erro ao listar notas recebidas:', error);

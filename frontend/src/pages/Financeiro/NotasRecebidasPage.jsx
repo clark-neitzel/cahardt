@@ -211,6 +211,10 @@ const NotasRecebidasPage = () => {
     const [statusCaptura, setStatusCaptura] = useState(null);
     const [statusNfse, setStatusNfse] = useState(null);
     const [notas, setNotas] = useState([]);
+    const [total, setTotal] = useState(0);
+    const [pagina, setPagina] = useState(1);
+    const [loadingMais, setLoadingMais] = useState(false);
+    const TAM_PAGINA = 50;
     const [loading, setLoading] = useState(false);
     const [consultando, setConsultando] = useState(false);
 
@@ -255,10 +259,13 @@ const NotasRecebidasPage = () => {
     const [categorias, setCategorias] = useState([]);
     const [categoriasErro, setCategoriasErro] = useState(false);
 
-    const fetchData = useCallback(async () => {
-        setLoading(true);
+    // Carrega uma página. pg === 1 reinicia a lista; pg > 1 acrescenta ("Carregar mais").
+    // A situação (chip) agora é filtrada no SERVIDOR (junto de busca/tipo/período).
+    const fetchData = useCallback(async (pg = 1) => {
+        const primeira = pg === 1;
+        if (primeira) setLoading(true); else setLoadingMais(true);
         try {
-            const params = {};
+            const params = { pagina: pg, tamanhoPagina: TAM_PAGINA, chip };
             if (buscaAplicada) params.busca = buscaAplicada;
             if (tipoNota && tipoNota !== 'TODAS') params.tipo = tipoNota;
             if (dataInicio) params.dataInicio = dataInicio;
@@ -266,15 +273,25 @@ const NotasRecebidasPage = () => {
             const data = await notasEntradaService.listar(params);
             setStatusCaptura(data?.statusCaptura || null);
             setStatusNfse(data?.statusCapturaNfse || null);
-            setNotas(Array.isArray(data?.notas) ? data.notas : []);
+            setTotal(Number(data?.total || 0));
+            const lista = Array.isArray(data?.notas) ? data.notas : [];
+            if (primeira) setNotas(lista);
+            else setNotas(prev => [...prev, ...lista]);
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao carregar notas recebidas');
         } finally {
             setLoading(false);
+            setLoadingMais(false);
         }
-    }, [buscaAplicada, tipoNota, dataInicio, dataFim]);
+    }, [chip, buscaAplicada, tipoNota, dataInicio, dataFim]);
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => { setPagina(1); fetchData(1); }, [fetchData]);
+
+    const carregarMais = () => {
+        const nova = pagina + 1;
+        setPagina(nova);
+        fetchData(nova);
+    };
 
     useEffect(() => {
         contasPagarService.categorias()
@@ -328,10 +345,8 @@ const NotasRecebidasPage = () => {
         }
     };
 
-    const notasFiltradas = useMemo(
-        () => notas.filter(n => notaPassaChip(n, chip)),
-        [notas, chip]
-    );
+    // Situação (chip) agora vem filtrada do servidor — a lista já chega pronta.
+    const notasFiltradas = notas;
 
     const qtdNovas = statusCaptura?.novas != null
         ? Number(statusCaptura.novas)
@@ -571,6 +586,23 @@ const NotasRecebidasPage = () => {
                             />
                         )
                     ))}
+
+                    {/* Carregar mais (paginação no servidor) */}
+                    {!loading && notasFiltradas.length > 0 && (
+                        <div className="flex flex-col items-center gap-2 pt-1">
+                            <span className="text-[11px] text-gray-400">Mostrando {notasFiltradas.length} de {total}</span>
+                            {notasFiltradas.length < total && (
+                                <button
+                                    onClick={carregarMais}
+                                    disabled={loadingMais}
+                                    className="w-full sm:w-auto px-6 py-2.5 rounded-full border border-gray-300 text-sm text-gray-600 font-semibold hover:bg-gray-50 inline-flex items-center justify-center gap-2 disabled:opacity-60"
+                                >
+                                    {loadingMais && <Loader2 className="h-4 w-4 animate-spin" />}
+                                    Carregar mais {Math.min(TAM_PAGINA, total - notasFiltradas.length)}
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* Banner da memorização de vínculos */}
@@ -583,7 +615,7 @@ const NotasRecebidasPage = () => {
             {importarAberto && podeOperar && (
                 <ImportarXmlModal
                     onClose={() => setImportarAberto(false)}
-                    onChanged={fetchData}
+                    onChanged={() => fetchData()}
                 />
             )}
         </div>
