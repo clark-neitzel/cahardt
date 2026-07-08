@@ -138,10 +138,11 @@ const pedidoService = {
         return c;
     },
 
-    // 1. Listagem paginada de pedidos com filtros (tela de Pedidos).
-    // Retorna { items, total, pagina, tamanhoPagina, contagens }.
-    // - total: quantidade para o filtro ativo (usado no "Carregar mais").
-    // - contagens: breakdown por status para os chips (só calculado na 1ª página).
+    // 1. Listagem de pedidos com filtros. DOIS modos, pelo parâmetro de paginação:
+    //   - SEM pagina/tamanhoPagina → retorna ARRAY com todos os itens (modo legado; usado
+    //     por Rota, HistoricoModal, DetalheCliente e outras telas que esperam array).
+    //   - COM pagina/tamanhoPagina → retorna { items, total, pagina, tamanhoPagina, contagens }
+    //     (tela de Pedidos): total p/ "Carregar mais"; contagens dos chips só na 1ª página.
     listar: async (filtros) => {
         const { statusRapido, pagina, tamanhoPagina } = filtros;
 
@@ -167,6 +168,55 @@ const pedidoService = {
             }
         }
 
+        const includePedido = {
+            cliente: {
+                select: { Nome: true, NomeFantasia: true, Documento: true, End_Cidade: true, End_Bairro: true }
+            },
+            vendedor: {
+                select: { id: true, nome: true }
+            },
+            usuarioLancamento: {
+                select: { nome: true }
+            },
+            itens: {
+                include: {
+                    produto: { select: { nome: true, codigo: true } }
+                }
+            },
+            itensDevolvidos: {
+                include: {
+                    produto: { select: { nome: true } }
+                }
+            },
+            pagamentosReais: {
+                select: { formaPagamentoNome: true, valor: true }
+            },
+            embarque: {
+                select: { id: true, numero: true, responsavel: { select: { id: true, nome: true } } }
+            },
+            devolucoes: {
+                where: { status: 'ATIVA' },
+                select: {
+                    id: true, numero: true, tipo: true, escopo: true,
+                    valorTotal: true, dataDevolucao: true, motivo: true,
+                    notaDevolucaoCA: true, pdfDevolucaoUrl: true, pdfBoletoUrl: true, processadoCA: true,
+                    itens: { select: { quantidade: true, valorUnitario: true, produto: { select: { nome: true } } } }
+                }
+            }
+        };
+
+        // Modo LEGADO (sem paginação): retorna ARRAY com TODOS os itens. Mantém compatíveis
+        // as telas que consomem pedidoService.listar esperando array (Rota/atendido-hoje,
+        // HistoricoModal, DetalheCliente). SÓ a tela de Pedidos passa pagina/tamanhoPagina.
+        if (pagina === undefined && tamanhoPagina === undefined) {
+            return await prisma.pedido.findMany({
+                where,
+                include: includePedido,
+                orderBy: { createdAt: 'desc' }
+            });
+        }
+
+        // Modo PAGINADO (tela de Pedidos): retorna { items, total, contagens }
         const pag = pagina ? parseInt(pagina) : 1;
         const tam = tamanhoPagina ? parseInt(tamanhoPagina) : 50;
         const skip = (pag - 1) * tam;
@@ -176,42 +226,7 @@ const pedidoService = {
                 where,
                 skip,
                 take: tam,
-                include: {
-                cliente: {
-                    select: { Nome: true, NomeFantasia: true, Documento: true, End_Cidade: true, End_Bairro: true }
-                },
-                vendedor: {
-                    select: { id: true, nome: true }
-                },
-                usuarioLancamento: {
-                    select: { nome: true }
-                },
-                itens: {
-                    include: {
-                        produto: { select: { nome: true, codigo: true } }
-                    }
-                },
-                itensDevolvidos: {
-                    include: {
-                        produto: { select: { nome: true } }
-                    }
-                },
-                pagamentosReais: {
-                    select: { formaPagamentoNome: true, valor: true }
-                },
-                embarque: {
-                    select: { id: true, numero: true, responsavel: { select: { id: true, nome: true } } }
-                },
-                devolucoes: {
-                    where: { status: 'ATIVA' },
-                    select: {
-                        id: true, numero: true, tipo: true, escopo: true,
-                        valorTotal: true, dataDevolucao: true, motivo: true,
-                        notaDevolucaoCA: true, pdfDevolucaoUrl: true, pdfBoletoUrl: true, processadoCA: true,
-                        itens: { select: { quantidade: true, valorUnitario: true, produto: { select: { nome: true } } } }
-                    }
-                }
-                },
+                include: includePedido,
                 orderBy: { createdAt: 'desc' }
             }),
             prisma.pedido.count({ where }),
