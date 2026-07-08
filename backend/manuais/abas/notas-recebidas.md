@@ -56,8 +56,9 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 
 - Ver todas as notas capturadas (NF-e e NFS-e, com etiqueta do tipo) com fornecedor, número, emissão, valor e status
 - **Buscar uma nota** pelo campo de busca acima das abas: procura por **nome do fornecedor, CNPJ, produto da nota (descrição, código ou código de barras), número da nota ou chave de acesso**. A busca vale em **todas as abas** (Novas, Despesa gerada, Ignoradas e Todas). Observação: a busca por produto só encontra notas que já têm o **XML completo** (as "Aguardando XML" ainda não têm a lista de itens)
-- **Filtrar por tipo de nota**: alternar entre **Todas / NF-e (produto) / NFS-e (serviço)** — a escolha fica **lembrada** para as próximas vezes que abrir a tela
+- **Filtrar por tipo de nota**: alternar entre **Todas / NF-e (produto) / NFS-e (serviço)**
 - **Filtrar por período de emissão**: campos **De / Até** com atalhos rápidos (**7, 15, 30 dias** ou **Tudo**) — útil para achar uma nota antiga específica
+- **Todos os filtros ficam lembrados por usuário** (situação, tipo e período): ao reabrir a tela, voltam do jeito que você deixou. Os atalhos de período (7/15/30 dias) **recalculam a partir de hoje** — você não fica preso numa data velha; datas digitadas à mão em De/Até ficam salvas como estão
 - A **data de emissão** aparece em **destaque** (etiqueta verde) em cada nota da lista
 - Ver o **status da captura**: NF-e (ligada/desligada, última consulta à SEFAZ) e NFS-e (última consulta ao ambiente nacional), além de quantas notas novas aguardam conferência
 - **Consultar agora**: dispara uma busca imediata (SEFAZ **e** ambiente nacional) sem esperar a próxima hora

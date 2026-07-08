@@ -7,7 +7,7 @@ import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search, Upload
 import toast from 'react-hot-toast';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
-import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 
 // ── Helpers ──
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -212,7 +212,6 @@ const NotasRecebidasPage = () => {
     const [statusNfse, setStatusNfse] = useState(null);
     const [notas, setNotas] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [chip, setChip] = useState('NOVAS');
     const [consultando, setConsultando] = useState(false);
 
     const [busca, setBusca] = useState('');
@@ -223,23 +222,29 @@ const NotasRecebidasPage = () => {
         return () => clearTimeout(t);
     }, [busca]);
 
-    // Filtros novos: tipo de nota (lembrado por usuário) + período de emissão (de/até)
-    const [tipoNota, setTipoNota] = useFiltroSalvo('notas-recebidas:tipo', 'TODAS');
-    const [dataInicio, setDataInicio] = useState('');
-    const [dataFim, setDataFim] = useState('');
-    const [periodoPreset, setPeriodoPreset] = useState('all');
+    // Filtros LEMBRADOS por usuário (padrão do sistema — useFiltrosSalvos):
+    // situação (chip), tipo de nota e período de emissão.
+    const FILTROS_PADRAO = { chip: 'NOVAS', tipo: 'TODAS', periodoPreset: 'all', dataInicio: '', dataFim: '' };
+    const [filtros, setFiltros] = useFiltrosSalvos('notas-recebidas', FILTROS_PADRAO);
+    const { chip, tipo: tipoNota, periodoPreset } = filtros;
     const [importarAberto, setImportarAberto] = useState(false);
 
-    const aplicarPreset = (p) => {
-        setPeriodoPreset(p.key);
-        if (p.dias == null) { setDataInicio(''); setDataFim(''); }
-        else { setDataInicio(ymdDiasAtras(p.dias)); setDataFim(hojeYMD()); }
-    };
-    const limparFiltros = () => {
-        setTipoNota('TODAS'); setChip('NOVAS');
-        setDataInicio(''); setDataFim(''); setPeriodoPreset('all'); setBusca('');
-    };
-    const filtrosAtivos = tipoNota !== 'TODAS' || !!dataInicio || !!dataFim || !!buscaAplicada;
+    // Datas EFETIVAS do período: atalhos relativos (7/15/30 dias) recalculam a partir de HOJE
+    // (não guardamos data fixa — senão o usuário abriria preso numa data velha); 'custom' usa o que foi digitado.
+    const { dataInicio, dataFim } = useMemo(() => {
+        const p = PERIODO_PRESETS.find(x => x.key === periodoPreset);
+        if (p && p.dias != null) return { dataInicio: ymdDiasAtras(p.dias), dataFim: hojeYMD() };
+        if (periodoPreset === 'custom') return { dataInicio: filtros.dataInicio || '', dataFim: filtros.dataFim || '' };
+        return { dataInicio: '', dataFim: '' }; // 'all'
+    }, [periodoPreset, filtros.dataInicio, filtros.dataFim]);
+
+    const setChip = (v) => setFiltros(f => ({ ...f, chip: v }));
+    const setTipoNota = (v) => setFiltros(f => ({ ...f, tipo: v }));
+    const aplicarPreset = (p) => setFiltros(f => ({ ...f, periodoPreset: p.key }));
+    const setDataInicio = (v) => setFiltros(f => ({ ...f, periodoPreset: 'custom', dataInicio: v }));
+    const setDataFim = (v) => setFiltros(f => ({ ...f, periodoPreset: 'custom', dataFim: v }));
+    const limparFiltros = () => { setFiltros(FILTROS_PADRAO); setBusca(''); };
+    const filtrosAtivos = tipoNota !== 'TODAS' || periodoPreset !== 'all' || !!buscaAplicada;
 
     const [expandedId, setExpandedId] = useState(null);
     const [detalhe, setDetalhe] = useState(null);
@@ -456,14 +461,14 @@ const NotasRecebidasPage = () => {
                             <input
                                 type="date"
                                 value={dataInicio}
-                                onChange={e => { setDataInicio(e.target.value); setPeriodoPreset(''); }}
+                                onChange={e => setDataInicio(e.target.value)}
                                 className="border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                             />
                             <span className="text-xs text-gray-400">até</span>
                             <input
                                 type="date"
                                 value={dataFim}
-                                onChange={e => { setDataFim(e.target.value); setPeriodoPreset(''); }}
+                                onChange={e => setDataFim(e.target.value)}
                                 className="border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                             />
                             <div className="flex flex-wrap gap-1.5">
