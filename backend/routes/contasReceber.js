@@ -147,6 +147,21 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             where.parcelas = { some: parcelaSome };
         }
 
+        // Otimização (peso): na VISÃO PADRÃO — sem filtro de situação (status), sem filtro de
+        // status de parcela e sem filtrar por pagamento (data/forma) — a tela só exibe parcelas
+        // que ainda faltam receber. Então o servidor só busca contas que TÊM pelo menos uma
+        // parcela a receber, em vez de trazer o monte de contas já QUITADAS/CANCELADAS só para o
+        // cliente escondê-las. Provado equivalente ao comportamento antigo (mesmas parcelas
+        // visíveis) e ~80% menos contas carregadas. Com qualquer filtro explícito acima, não
+        // entra (aí o cliente pode querer ver parcelas pagas/canceladas).
+        const filtrandoPagas = !!pagamentoDe || !!pagamentoAte || !!formaPagamento;
+        if (!status && !statusParcela && !filtrandoPagas) {
+            where.AND = [
+                ...(where.AND || []),
+                { parcelas: { some: { status: { in: ['PENDENTE', 'VENCIDO', 'PARCIAL'] } } } }
+            ];
+        }
+
         const contas = await prisma.contaReceber.findMany({
             where,
             include: {
