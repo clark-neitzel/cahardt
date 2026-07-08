@@ -73,12 +73,16 @@ export default function ListaPersonalizada() {
         <div className="lpx">
             <div className="lpx-wrap">
                 {/* header */}
-                <div className="lpx-head">
-                    <img className="lpx-logo-img" src="/cong/logo.png" alt="Hardt Salgados"
-                        onError={(e) => { e.currentTarget.outerHTML = '<div class="lpx-logo"><span class="l1">HARDT</span><span class="l2">SALGADOS</span></div>'; }} />
-                    <div className="htag">Lista de<br />preços</div>
-                </div>
-                <div className="lpx-saw" />
+                <header className="lpx-nav">
+                    <div className="lpx-nav-in">
+                        <div className="lpx-nav-logo">
+                            <img src="/cong/logo.png" alt="Hardt Salgados"
+                                onError={(e) => { e.currentTarget.outerHTML = '<div class="lpx-logo"><span class="l1">HARDT</span><span class="l2">SALGADOS</span></div>'; }} />
+                            <span className="since">desde 2007</span>
+                        </div>
+                        <div className="lpx-nav-tag">Lista de<br />preços</div>
+                    </div>
+                </header>
 
                 {/* hero */}
                 <div className="lpx-hero">

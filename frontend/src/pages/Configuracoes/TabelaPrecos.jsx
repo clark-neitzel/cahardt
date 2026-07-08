@@ -16,7 +16,7 @@ const TabelaPrecos = () => {
     const [editingItem, setEditingItem] = useState(null);
     const [isCreating, setIsCreating] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [editForm, setEditForm] = useState({ acrescimoPreco: 0, valorMinimo: 0, ativo: true, debitaCaixa: false, permitePedido: true, permiteEspecial: false, permiteBonificacao: false });
+    const [editForm, setEditForm] = useState({ acrescimoPreco: 0, valorMinimo: 0, ativo: true, debitaCaixa: false, permitePedido: true, permiteEspecial: false, permiteBonificacao: false, permiteCatalogoPersonalizado: true, exigeAprovacaoCredito: false });
     const [categoriasCA, setCategoriasCA] = useState([]);
     const [formasEntrega, setFormasEntrega] = useState([]);
 
@@ -62,6 +62,8 @@ const TabelaPrecos = () => {
             permiteEspecial: item.permiteEspecial || false,
             permiteBonificacao: item.permiteBonificacao || false,
             permitePedido: item.permitePedido !== undefined ? item.permitePedido : true,
+            permiteCatalogoPersonalizado: item.permiteCatalogoPersonalizado !== undefined ? item.permiteCatalogoPersonalizado : true,
+            exigeAprovacaoCredito: item.exigeAprovacaoCredito || false,
             categoriasEspecial: item.categoriasEspecial || [],
             ativo: item.ativo,
             regrasCategoria: item.regrasCategoria || [],
@@ -97,6 +99,8 @@ const TabelaPrecos = () => {
             permiteEspecial: origem.permiteEspecial || false,
             permiteBonificacao: origem.permiteBonificacao || false,
             permitePedido: origem.permitePedido !== undefined ? origem.permitePedido : true,
+            permiteCatalogoPersonalizado: origem.permiteCatalogoPersonalizado !== undefined ? origem.permiteCatalogoPersonalizado : true,
+            exigeAprovacaoCredito: origem.exigeAprovacaoCredito || false,
             categoriasEspecial: origem.categoriasEspecial || [],
             regrasCategoria: origem.regrasCategoria || [],
             formasRecebimentoPermitidas: origem.formasRecebimentoPermitidas || [],
@@ -126,6 +130,8 @@ const TabelaPrecos = () => {
             permiteEspecial: false,
             permiteBonificacao: false,
             permitePedido: true,
+            permiteCatalogoPersonalizado: true,
+            exigeAprovacaoCredito: false,
             categoriasEspecial: [],
             ativo: true,
             regrasCategoria: [],
@@ -273,6 +279,16 @@ const TabelaPrecos = () => {
                                                 {item.permiteBonificacao && (
                                                     <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-green-50 text-green-700 border-green-200">
                                                         Bonificação
+                                                    </span>
+                                                )}
+                                                {item.permiteCatalogoPersonalizado !== false && (
+                                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-teal-50 text-teal-700 border-teal-200">
+                                                        Catálogo
+                                                    </span>
+                                                )}
+                                                {item.exigeAprovacaoCredito && (
+                                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">
+                                                        Aprov. crédito
                                                     </span>
                                                 )}
                                                 {item.regrasCategoria?.length > 0 && (
@@ -613,6 +629,34 @@ const TabelaPrecos = () => {
                                 </label>
                                 <p className="text-[11px] text-green-600 mt-1 ml-6">
                                     Marque se esta condição pode ser usada em pedidos de bonificação. Apenas condições marcadas aparecerão quando o vendedor ativar "Bonificação".
+                                </p>
+                            </div>
+
+                            {/* Catálogo Personalizado */}
+                            <div className="p-4 bg-teal-50 rounded-lg border border-teal-200 space-y-2">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 h-4 w-4"
+                                        checked={editForm.permiteCatalogoPersonalizado !== false}
+                                        onChange={(e) => setEditForm({ ...editForm, permiteCatalogoPersonalizado: e.target.checked })}
+                                    />
+                                    <span className="text-sm font-semibold text-teal-800">Aparece no Catálogo Personalizado</span>
+                                </label>
+                                <p className="text-[11px] text-teal-600 ml-6">
+                                    Marque para o vendedor poder escolher esta condição ao montar uma lista de preços para enviar ao cliente.
+                                </p>
+                                <label className="flex items-center gap-2 cursor-pointer pt-2 mt-1 border-t border-teal-200">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded border-gray-300 text-amber-600 focus:ring-amber-500 h-4 w-4"
+                                        checked={editForm.exigeAprovacaoCredito === true}
+                                        onChange={(e) => setEditForm({ ...editForm, exigeAprovacaoCredito: e.target.checked })}
+                                    />
+                                    <span className="text-sm font-semibold text-amber-800">Exige aprovação de crédito</span>
+                                </label>
+                                <p className="text-[11px] text-amber-600 ml-6">
+                                    Ex.: boleto a prazo. Ao usar esta condição num catálogo para quem ainda não a tem aprovada, a lista sai marcada como "mediante aprovação de crédito".
                                 </p>
                             </div>
 

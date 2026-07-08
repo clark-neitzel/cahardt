@@ -715,6 +715,8 @@ model TabelaPreco {
   permiteEspecial             Boolean  @default(false) @map("permite_especial") // Condição disponível para pedidos especiais
   permitePedido               Boolean  @default(true) @map("permite_pedido") // Condição disponível para pedidos comuns
   permiteBonificacao          Boolean  @default(false) @map("permite_bonificacao") // Condição disponível para pedidos bonificação
+  permiteCatalogoPersonalizado Boolean @default(true) @map("permite_catalogo_personalizado") // Aparece no seletor de condição do catálogo personalizado
+  exigeAprovacaoCredito       Boolean  @default(false) @map("exige_aprovacao_credito") // Condição sujeita a aprovação de crédito (ex.: boleto) — marca a lista como "mediante aprovação de crédito" quando não aprovada
   obs                         String?
   formasRecebimentoPermitidas Json?    @map("formas_recebimento_permitidas") // IDs das formas de recebimento permitidas na entrega: ["tabela_1000", "uuid-forma"]
   permiteDevolucaoTotal       Boolean  @default(true) @map("permite_devolucao_total")

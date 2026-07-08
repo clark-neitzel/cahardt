@@ -953,7 +953,11 @@ const migrationService = {
             END $$;`,
             // Catálogo Personalizado v2: destinatário avulso (cliente_uuid nullable) + mediante aprovação de crédito
             `ALTER TABLE "catalogos_personalizados" ALTER COLUMN "cliente_uuid" DROP NOT NULL`,
-            `ALTER TABLE "catalogos_personalizados" ADD COLUMN IF NOT EXISTS "mediante_aprovacao" BOOLEAN NOT NULL DEFAULT false`
+            `ALTER TABLE "catalogos_personalizados" ADD COLUMN IF NOT EXISTS "mediante_aprovacao" BOOLEAN NOT NULL DEFAULT false`,
+
+            // Tags por condição p/ o catálogo personalizado: aparece no catálogo? exige aprovação de crédito?
+            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "permite_catalogo_personalizado" BOOLEAN NOT NULL DEFAULT true`,
+            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "exige_aprovacao_credito" BOOLEAN NOT NULL DEFAULT false`
         ];
 
         for (const [index, cmd] of commands.entries()) {

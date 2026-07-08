@@ -54,6 +54,8 @@ const tabelaPrecoController = {
                     permiteEspecial: permiteEspecial || false,
                     permiteBonificacao: permiteBonificacao || false,
                     permitePedido: permitePedido !== undefined ? permitePedido : true,
+                    permiteCatalogoPersonalizado: req.body.permiteCatalogoPersonalizado !== undefined ? req.body.permiteCatalogoPersonalizado : true,
+                    exigeAprovacaoCredito: req.body.exigeAprovacaoCredito || false,
                     ativo: true,
                     formasRecebimentoPermitidas: formasRecebimentoPermitidas || null,
                     permiteDevolucaoTotal: permiteDevolucaoTotal !== undefined ? permiteDevolucaoTotal : true,
@@ -107,6 +109,9 @@ const tabelaPrecoController = {
             }
             if (req.body.permiteEspecial !== undefined) updateData.permiteEspecial = req.body.permiteEspecial;
             if (req.body.permiteBonificacao !== undefined) updateData.permiteBonificacao = req.body.permiteBonificacao;
+            if (req.body.permitePedido !== undefined) updateData.permitePedido = req.body.permitePedido;
+            if (req.body.permiteCatalogoPersonalizado !== undefined) updateData.permiteCatalogoPersonalizado = req.body.permiteCatalogoPersonalizado;
+            if (req.body.exigeAprovacaoCredito !== undefined) updateData.exigeAprovacaoCredito = req.body.exigeAprovacaoCredito;
             if (req.body.formasRecebimentoPermitidas !== undefined) updateData.formasRecebimentoPermitidas = req.body.formasRecebimentoPermitidas;
             if (req.body.permiteDevolucaoTotal !== undefined) updateData.permiteDevolucaoTotal = req.body.permiteDevolucaoTotal;
             if (req.body.permiteDevolucaoParcial !== undefined) updateData.permiteDevolucaoParcial = req.body.permiteDevolucaoParcial;

@@ -76,12 +76,13 @@ async function criar({ vendedor, clienteUuid, clienteNome, condicaoId, produtoId
         where: { OR: [{ id: condicaoId }, { idCondicao: condicaoId }] }
     });
     if (!condicao) throw Object.assign(new Error('Condição de pagamento não encontrada.'), { status: 404 });
+    if (condicao.permiteCatalogoPersonalizado === false)
+        throw Object.assign(new Error('Essa condição não está disponível para o catálogo.'), { status: 400 });
 
     const acrescimo = Number(condicao.acrescimoPreco) || 0;
-    const parcelasDias = Number(condicao.parcelasDias) || 0;
     const aprovada = condicaoAprovadaParaCliente(cliente, condicao);
-    // Condição com prazo, não aprovada p/ o destinatário → "mediante aprovação de crédito"
-    const medianteAprovacao = !aprovada && parcelasDias > 0;
+    // Condição sujeita a aprovação de crédito (tag na condição), não aprovada p/ o destinatário
+    const medianteAprovacao = !aprovada && condicao.exigeAprovacaoCredito === true;
 
     // Produtos frescos do catálogo
     const produtos = await prisma.produto.findMany({

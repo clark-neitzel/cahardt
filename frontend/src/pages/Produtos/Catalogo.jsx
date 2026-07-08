@@ -292,10 +292,10 @@ const Catalogo = () => {
 };
 
 /* ------- helpers de condição ------- */
-// Condições "normais" ativas (as mesmas que valem para um pedido comum), da mais barata p/ a mais cara
+// Condições liberadas para o catálogo personalizado (tag por condição), da mais barata p/ a mais cara
 function condicoesNormais(todasCondicoes) {
     return (todasCondicoes || [])
-        .filter(c => c.ativo !== false && c.permitePedido !== false && c.permiteBonificacao !== true)
+        .filter(c => c.ativo !== false && c.permiteCatalogoPersonalizado !== false)
         .slice()
         .sort((a, b) => (Number(a.acrescimoPreco) || 0) - (Number(b.acrescimoPreco) || 0) || (Number(a.parcelasDias) || 0) - (Number(b.parcelasDias) || 0));
 }
@@ -326,7 +326,7 @@ function GerarCatalogoModal({ produtos, clientes, condicoes, onClose, onConcluir
     const cond = useMemo(() => conds.find(c => c.id === condId) || null, [conds, condId]);
 
     const aprovada = (c) => destMode === 'cliente' && condAprovadaParaCliente(cliente, c);
-    const precisaAprovacao = (c) => !!c && !aprovada(c) && (Number(c.parcelasDias) || 0) > 0;
+    const precisaAprovacao = (c) => !!c && !aprovada(c) && c.exigeAprovacaoCredito === true;
 
     // condição padrão inicial: do cliente (se cadastrado) ou a mais barata (à vista) p/ avulso
     useEffect(() => {

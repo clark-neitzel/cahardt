@@ -40,6 +40,8 @@ Cadastro das condições de pagamento disponíveis no sistema. Cada "condição"
 | Permite Pedido | Se pode ser usada em pedidos normais |
 | Permite Especial | Se pode ser usada em pedidos especiais |
 | Permite Bonificação | Se pode ser usada em bonificações |
+| Aparece no Catálogo Personalizado | Se o vendedor pode escolher esta condição ao montar uma lista de preços (catálogo personalizado) para o cliente |
+| Exige aprovação de crédito | Marca a condição como sujeita a análise de crédito (ex.: boleto). No catálogo personalizado, se o destinatário ainda não a tem aprovada, a lista sai como "mediante aprovação de crédito" |
 | Formas de Recebimento | Quais formas o motorista pode usar na entrega |
 | Permite Devolução Total / Parcial | Se permite devoluções por esta condição |
 
