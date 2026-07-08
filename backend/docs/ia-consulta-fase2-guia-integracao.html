@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API de Consulta Hardt — Guia de Integração v1.4 (Criação de Pedido)</title>
+<style>
+  :root{
+    --green:#00754A; --green-d:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --cream:#f2f0eb; --ink:#1b1b1b; --muted:#5b6b6b; --line:#e3e0d8;
+    --code-bg:#0f2b23; --code-ink:#e7f3ee; --amber:#8a5a00; --red:#a11;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--cream);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.55;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:920px;margin:0 auto;padding:0 20px 80px;}
+  header.hero{background:var(--house);color:#fff;padding:44px 20px 40px;margin-bottom:34px;}
+  header.hero .inner{max-width:920px;margin:0 auto;}
+  .tag{display:inline-block;background:var(--green);color:#fff;font-size:12px;font-weight:700;
+    letter-spacing:.08em;text-transform:uppercase;padding:5px 12px;border-radius:999px;margin-bottom:14px;}
+  header.hero h1{margin:0 0 8px;font-size:28px;line-height:1.2;}
+  header.hero p{margin:0;color:#cfe3db;font-size:15px;max-width:680px;}
+  h2{font-size:21px;margin:38px 0 12px;color:var(--house);border-bottom:2px solid var(--mint);padding-bottom:6px;}
+  h3{font-size:16px;margin:24px 0 8px;color:var(--green-d);}
+  p{margin:10px 0;}
+  a{color:var(--green-d);}
+  code{background:#eceae3;padding:1.5px 6px;border-radius:5px;font-size:.9em;
+    font-family:"SF Mono",Menlo,Consolas,monospace;}
+  pre{background:var(--code-bg);color:var(--code-ink);padding:16px 18px;border-radius:12px;
+    overflow-x:auto;font-size:13px;line-height:1.5;
+    font-family:"SF Mono",Menlo,Consolas,monospace;}
+  pre code{background:none;padding:0;color:inherit;font-size:inherit;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin:16px 0;
+    box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  .ep{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;}
+  .method{font-size:12px;font-weight:800;letter-spacing:.05em;padding:3px 9px;border-radius:6px;color:#fff;}
+  .post{background:#2563eb;} .get{background:var(--green);}
+  .path{font-family:"SF Mono",Menlo,Consolas,monospace;font-size:14px;font-weight:600;}
+  .pill{display:inline-block;background:var(--mint);color:var(--green-d);font-size:11px;font-weight:700;
+    padding:2px 8px;border-radius:999px;text-transform:uppercase;letter-spacing:.04em;}
+  .new{background:#fde68a;color:#7a5b00;}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:14px;}
+  th,td{border:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top;}
+  th{background:#f7f5ef;font-weight:700;}
+  .note{background:var(--mint);border-left:4px solid var(--green);border-radius:0 10px 10px 0;
+    padding:12px 16px;margin:16px 0;font-size:14px;}
+  .warn{background:#fff6e6;border-left:4px solid #d9a300;border-radius:0 10px 10px 0;
+    padding:12px 16px;margin:16px 0;font-size:14px;}
+  ol,ul{padding-left:22px;} li{margin:6px 0;}
+  .steps{counter-reset:s;list-style:none;padding-left:0;}
+  .steps li{position:relative;padding:6px 0 6px 44px;margin:8px 0;}
+  .steps li::before{counter-increment:s;content:counter(s);position:absolute;left:0;top:4px;
+    width:30px;height:30px;background:var(--green);color:#fff;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;}
+  footer{margin-top:50px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:13px;}
+  .kv{font-size:14px;} .kv b{color:var(--house);}
+  @media print{ body{background:#fff;} header.hero{background:#fff;color:#000;border-bottom:3px solid var(--green);}
+    header.hero h1{color:var(--house);} header.hero p{color:#333;} pre{background:#f4f2ec;color:#111;border:1px solid var(--line);}
+    .card{box-shadow:none;} .tag{background:var(--green);} }
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="inner">
+    <span class="tag">API de Consulta • Contrato v1.4</span>
+    <h1>Guia de Integração — Criação de Pedido pela IA (WhatsApp)</h1>
+    <p>Como o assistente do WhatsApp (Antigravity/“Ana”) reconhece o cliente, monta o carrinho e
+       cria o pedido no CA-Hardt. Tudo pela API <code>/api/ia-consulta/v1</code>, com a mesma chave que já usam.
+       <b>No ar na v1.4</b> — depende do próximo deploy do backend.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <h2>1. Princípio (quem se adapta a quem)</h2>
+  <p>O <b>CA-Hardt é o dono dos dados e das regras</b> (cliente, preço negociado, vendedor, condição de
+     pagamento, numeração, envio ao Conta Azul). O bot é <b>consumidor</b> e se adapta a este sistema.</p>
+  <ul>
+    <li><b>O bot manda só o essencial:</b> quem é o cliente (<code>telefone</code>), o que quer
+        (<code>produto + quantidade</code>), quando (data/horário) e observações. <b>Não manda preço,
+        vendedor, tipo de pedido nem número</b> — o CA-Hardt preenche.</li>
+    <li><b>Nada vira venda direto.</b> O pedido do bot nasce <b>na fila de aprovação</b> da linha
+        (Congelados ou Kit Festa) — a <b>mesma fila do site</b>. O <b>faturamento aprova</b> no painel do
+        CA-Hardt, escolhendo o tipo (Normal/Especial/Bonificação) e a data. Só então vira Pedido real.</li>
+    <li><b>Preço:</b> o bot recebe os preços no “pacote” da identificação só para <i>conversar</i>. Na hora de
+        <i>gravar</i>, o servidor <b>recalcula</b> o preço real do cliente. O bot não envia <code>valor</code>.</li>
+  </ul>
+
+  <h2>2. Acesso</h2>
+  <div class="card kv">
+    <p><b>Base:</b> <code>https://&lt;dominio-do-backend&gt;/api/ia-consulta/v1</code></p>
+    <p><b>Autenticação:</b> header <code>x-ia-api-key: &lt;chave&gt;</code> em <b>toda</b> requisição (a mesma já usada hoje).</p>
+    <p><b>Limite:</b> 60 req/min por chave (429 se exceder). Sem chave no servidor → 503. Chave errada → 401.</p>
+  </div>
+  <h3>Formato de toda resposta de sucesso</h3>
+  <pre><code>{
+  "meta": { "versaoApi": "1.4.0", "avisos": [], "geradoEm": "2026-07-07T..." },
+  "dados": { /* conteúdo do endpoint */ }
+}</code></pre>
+  <div class="note"><b>Regra do <code>meta.avisos</code>:</b> a cada chamada (ou 1×/dia via <code>/status</code>),
+    verificar se <code>meta.avisos</code> não está vazio. Ele avisa, <b>com antecedência</b>, qualquer mudança
+    futura que exija ajuste do lado de vocês — antes de quebrar. Erros (4xx/5xx) vêm como <code>{ "error": "..." }</code> (sem envelope).</div>
+
+  <h2>3. Fluxo completo (Congelados)</h2>
+  <ol class="steps">
+    <li><b>Reconhecer o cliente pelo telefone</b> — <code>POST /congelados/reconhecer-telefone</code>. Volta o
+        catálogo já com o <b>preço do cliente</b>, dias de entrega, condição, e agora também o <b>“de sempre”</b>.</li>
+    <li><b>Montar o carrinho</b> — usar o <code>id</code> de cada item do catálogo (não o nome).</li>
+    <li><b>Criar o pedido</b> — <code>POST /congelados/pedido</code> com <code>itens:[{id,quantidade}]</code>.
+        Nasce <code>AGUARDANDO</code> na fila de aprovação.</li>
+    <li><b>Faturamento aprova</b> no painel do CA-Hardt (escolhe tipo e data) → vira Pedido real. <b>Sem redigitar.</b></li>
+  </ol>
+  <p>Kit Festa é igual, no <code>POST /kitfesta/pedido</code> (com <code>horario</code>, <code>opcao</code> por item e endereço/CEP se for entrega).</p>
+
+  <h2>4. Endpoints usados na criação de pedido</h2>
+
+  <div class="card">
+    <div class="ep"><span class="method post">POST</span><span class="path">/congelados/reconhecer-telefone</span><span class="pill new">enriquecido v1.4</span></div>
+    <p>Identifica o cliente pelo telefone de quem manda a mensagem (autenticado pelo WhatsApp) — sem pedir CPF/senha.</p>
+    <p><b>Body:</b> <code>{ "telefone": "5547999998888" }</code></p>
+    <p><b>Responde</b> (em <code>dados</code>):</p>
+<pre><code>{
+  "reconhecido": true,
+  "cliente": { "nome": "...", "documento": "..." },
+  "condicaoPadrao": { "id": "...", "nome": "...", "valorMinimo": 0, "permitePedido": true, "permiteEspecial": true },
+  "diasEntrega": ["Segunda","Quarta"], "diasEntregaNums": [1,3],
+  "catalogo": [
+    { "id": "&lt;congeladosProdutoId&gt;", "produtoId": "...", "nome": "...", "unidade": "cx",
+      "preco": 120.00, "imagem": "https://...", "comprado": true /* já pediu antes */ }
+  ],
+  "ultimoPedido": [    /* NOVO v1.4 — o "de sempre" (RF-B2), liberado pelo telefone */
+    { "id": "&lt;congeladosProdutoId&gt;", "produtoId": "...", "nome": "...", "unidade": "cx",
+      "quantidade": 2, "precoUnit": 120.00 }
+  ]
+}</code></pre>
+    <p>Se o telefone não bater: <code>{ "reconhecido": false }</code>.</p>
+  </div>
+
+  <div class="card">
+    <div class="ep"><span class="method post">POST</span><span class="path">/cliente/historico-pedidos</span><span class="pill new">+ comItens v1.4</span></div>
+    <p><b>Body:</b> <code>{ "telefone": "...", "limite": 10, "comItens": true }</code></p>
+    <p>Com <code>comItens:true</code>, cada pedido também traz os itens. <b>Sem</b> o flag, a resposta é idêntica à de antes.</p>
+<pre><code>{
+  "reconhecido": true,
+  "cliente": { "nome": "..." },
+  "pedidos": [
+    { "numero": 920, "data": "...", "dataEntrega": "...", "statusEntrega": "...", "tipo": "NORMAL", "total": 177.30,
+      "itens": [ { "produtoId": "...", "nome": "MINI COXINHA...", "quantidade": 15, "unidade": "PT", "precoUnit": 29.55 } ] }
+  ]
+}</code></pre>
+  </div>
+
+  <div class="card">
+    <div class="ep"><span class="method post">POST</span><span class="path">/congelados/pedido</span><span class="pill new">novo v1.4</span></div>
+    <p>Cria o pedido de Congelados na fila de aprovação. Preço recalculado no servidor.</p>
+    <p><b>Body:</b></p>
+<pre><code>{
+  "telefone": "5547999998888",
+  "itens": [ { "id": "&lt;congeladosProdutoId do catálogo&gt;", "quantidade": 2 } ],
+  "data": "2026-07-15",            // opcional (entrega, YYYY-MM-DD; deve ser a partir de amanhã)
+  "modo": "entrega",               // opcional: "entrega" | "retirada" (default entrega)
+  "observacoes": "...",            // opcional
+  "idempotencyKey": "uuid-do-bot", // opcional — evita duplicar em retry (ver §5)
+  "visitante": { "nome": "...", "cpf": "...", "telefone": "..." }  // só se telefone NÃO reconhecido (ver §5)
+}</code></pre>
+    <p><b>Responde:</b> <code>{ "numero": 123, "status": "AGUARDANDO", "total": 240.00, "id": "..." }</code>
+       (<code>PENDENTE_CADASTRO</code> se for cliente novo).</p>
+  </div>
+
+  <div class="card">
+    <div class="ep"><span class="method post">POST</span><span class="path">/kitfesta/pedido</span><span class="pill new">novo v1.4</span></div>
+    <p>Mesmos nomes de campo que o de Congelados no que é comum (<code>telefone</code>, <code>itens[].id</code>,
+       <code>itens[].quantidade</code>, <code>data</code> em <code>YYYY-MM-DD</code>, <code>modo</code>,
+       <code>observacoes</code>, <code>idempotencyKey</code>, <code>visitante</code>), + extras do Kit Festa.</p>
+<pre><code>{
+  "telefone": "5547999998888",
+  "itens": [ { "id": "&lt;kitFestaProdutoId&gt;", "quantidade": 4, "opcao": "Frango" } ],
+  "modo": "entrega",  "data": "2026-07-15",  "horario": "10:00",
+  "enderecoEntrega": "...", "cep": "89239000",   // se entrega
+  "cupomCodigo": "...",                          // opcional
+  "observacoes": "...", "idempotencyKey": "uuid-do-bot",
+  "visitante": { "nome": "...", "cpf": "...", "telefone": "..." }
+}</code></pre>
+    <p><b>Responde:</b> <code>{ "numero": 45, "status": "AGUARDANDO", "total": 320.00, "id": "..." }</code></p>
+  </div>
+
+  <div class="note"><b>Foto do produto já existe.</b> Todos os catálogos (<code>/congelados/catalogo</code>,
+    <code>/kitfesta/catalogo</code>, <code>reconhecer-telefone</code>, <code>meu-catalogo</code>) já trazem a foto no
+    campo <code>imagem</code> (Congelados traz também <code>imagens[]</code>). <b>Não use <code>imagemUrl</code></b> — o campo é <code>imagem</code>.</p></div>
+
+  <h2>5. Regras que importam na integração</h2>
+  <table>
+    <tr><th>Tema</th><th>Regra</th></tr>
+    <tr><td><b>ID do produto</b></td><td>Cada item de <b>qualquer</b> catálogo (reconhecimento e catálogos gerais) traz o <code>id</code> (<code>congeladosProdutoId</code>/<code>kitFestaProdutoId</code>). Mande <b><code>itens[].id</code></b> — não case por nome na hora de gravar.</td></tr>
+    <tr><td><b>Preço</b></td><td>O bot <b>não</b> envia preço. O servidor recalcula o preço real do cliente ao gravar. Os preços do reconhecimento servem só para a conversa.</td></tr>
+    <tr><td><b>Tipo do pedido</b></td><td>O bot <b>não</b> escolhe Normal/Especial/Bonificação — isso é decidido pelo <b>faturamento na aprovação</b>.</td></tr>
+    <tr><td><b>Cliente reconhecido</b></td><td>Se o telefone bate no cadastro (o caso comum), <b>não pede nada</b> — o CPF já vem do cadastro e o pedido nasce <code>AGUARDANDO</code>.</td></tr>
+    <tr><td><b>Cliente novo</b></td><td>Só quando o telefone <b>não</b> é reconhecido: mandar <code>visitante: { nome, cpf, telefone }</code>. <b>Nome e CPF/CNPJ são obrigatórios</b> nesse caso (a conta do site tem o documento como chave e a nota precisa dele). Nasce <code>PENDENTE_CADASTRO</code>; o faturamento vincula. <i>(No Kit Festa, se o telefone já casar com uma conta do site existente, o CPF é dispensado.)</i></td></tr>
+    <tr><td><b>Idempotência</b></td><td>Mandar <code>idempotencyKey</code> (um UUID por tentativa de fechamento). Se a mesma chave chegar de novo (timeout + retry), o servidor <b>devolve o mesmo pedido</b> em vez de criar outro.</td></tr>
+    <tr><td><b>Kit Festa — frete</b></td><td>A taxa de entrega é “a combinar” — o <code>total</code> <b>não inclui frete</b>. A Ana avisa isso na conversa.</td></tr>
+    <tr><td><b>Kit Festa — confirmação</b></td><td>O envio automático de confirmação (nosso WhatsApp) nasce <b>desligado</b> para pedidos do bot — quem confirma é a Ana, para o cliente não receber duas mensagens.</td></tr>
+    <tr><td><b>Segurança</b></td><td>Identificação sempre por <b>telefone</b> (o WhatsApp autentica o número). Nunca liberar/gravar dado sensível só com CPF/CNPJ digitado.</td></tr>
+  </table>
+
+  <h2>6. O que muda do lado do bot</h2>
+  <ul>
+    <li>Dois métodos novos no cliente HTTP: <code>criarPedidoCongelados</code> e <code>criarPedidoKitFesta</code>.</li>
+    <li><code>fecharPedido</code>: em vez de só marcar “confirmado local”, chama o <code>/pedido</code> e usa
+        <code>numero</code>/<code>status</code>/<code>total</code> que voltam. O total “oficial” passa a ser o que o CA recalcula.</li>
+    <li>Mapear <b>nome → id</b> no carrinho usando o catálogo do reconhecimento.</li>
+    <li>Kit Festa: capturar a <code>opcao</code> (sabor) por item.</li>
+    <li>Aprovação migra para o painel do CA-Hardt — a tela de rascunho de vocês vira monitor/espelho (acaba a redigitação).</li>
+  </ul>
+
+  <h2>7. Exemplos de teste (curl)</h2>
+<pre><code># Reconhecer + "de sempre"
+curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
+  -d '{"telefone":"5547999998888"}' https://&lt;dominio&gt;/api/ia-consulta/v1/congelados/reconhecer-telefone
+
+# Histórico com itens
+curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
+  -d '{"telefone":"5547999998888","comItens":true}' https://&lt;dominio&gt;/api/ia-consulta/v1/cliente/historico-pedidos
+
+# Criar pedido de Congelados (cliente reconhecido pelo telefone)
+curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
+  -d '{"telefone":"5547999998888","itens":[{"id":"&lt;congeladosProdutoId&gt;","quantidade":2}],"data":"2026-07-15","idempotencyKey":"abc-123"}' \
+  https://&lt;dominio&gt;/api/ia-consulta/v1/congelados/pedido
+
+# Criar pedido de Kit Festa (cliente novo → nome+cpf no visitante)
+curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
+  -d '{"telefone":"5547999998888","visitante":{"nome":"Maria","cpf":"12345678909"},"itens":[{"id":"&lt;kitFestaProdutoId&gt;","quantidade":4,"opcao":"Frango"}],"modo":"retirada","data":"2026-07-15","horario":"10:00","idempotencyKey":"xyz-789"}' \
+  https://&lt;dominio&gt;/api/ia-consulta/v1/kitfesta/pedido</code></pre>
+
+  <footer>
+    <p><b>Contrato de referência:</b> <code>backend/docs/ia-consulta-api.md</code> (v1.4) — regra de não remover/renomear
+       campo sem aviso; mudança que quebra o formato exige <code>/v2</code>. Toda alteração é testada com <code>curl</code> antes de subir.</p>
+    <p>CA-Hardt · API de Consulta para IA externa · Fase 2 (v1.4, 2026-07-07).</p>
+  </footer>
+</div>
+</body>
+</html>
