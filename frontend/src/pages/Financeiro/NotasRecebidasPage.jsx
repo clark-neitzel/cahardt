@@ -24,6 +24,24 @@ const hojeYMD = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Americ
 const parseNum = (v) => parseFloat(String(v ?? '').replace(/\./g, '').replace(',', '.')) || 0;
 // Fator de conversão ("0,5" / "50") → número (sem tratar ponto como milhar)
 const parseFator = (v) => parseFloat(String(v ?? '').trim().replace(',', '.')) || 0;
+const round2 = (v) => Math.round(Number(v || 0) * 100) / 100;
+// Soma `dias` a uma data 'YYYY-MM-DD' preservando o dia local (sem salto de fuso) → 'YYYY-MM-DD'
+const addDiasYMD = (ymd, dias) => {
+    const [y, m, d] = String(ymd || '').split('-').map(Number);
+    if (!y || !m || !d) return ymd || '';
+    const dt = new Date(y, m - 1, d);
+    dt.setDate(dt.getDate() + Number(dias || 0));
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+};
+// Divide um total em `n` parcelas que somam EXATO o total (a 1ª absorve os centavos). → [Number]
+const dividirValores = (n, total) => {
+    const q = Math.max(1, Number(n) || 1);
+    const t = round2(total);
+    const base = Math.floor((t / q) * 100) / 100;
+    const arr = Array(q).fill(base);
+    arr[0] = round2(base + (t - base * q));
+    return arr;
+};
 
 const fmtCnpj = (c) => {
     const d = String(c || '').replace(/\D/g, '');
@@ -1008,6 +1026,10 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         // para a despesa aparecer no Conta Azul com a data da nota.
         return [{ dataVencimento: toYMD(nota.emissao) || hojeYMD(), valor: fmt(nota.valorTotal), doXml: false }];
     });
+    // Nota com boleto no XML: mantém as parcelas do XML (não redivide/re-sequencia).
+    const temDuplicatasXml = (Array.isArray(nota.duplicatas) ? nota.duplicatas : []).length > 0;
+    // Intervalo (dias) entre parcelas geradas manualmente — sequencia as datas.
+    const [intervaloDias, setIntervaloDias] = useState(30);
 
     const [categoriaPadrao, setCategoriaPadrao] = useState('');
     const [observacoes, setObservacoes] = useState('');
@@ -1048,11 +1070,56 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
 
     const setParcela = (idx, campo, valor) =>
         setParcelas(prev => prev.map((p, i) => (i === idx ? { ...p, [campo]: valor } : p)));
-    const addParcela = () => setParcelas(prev => [...prev, { dataVencimento: hojeYMD(), valor: '', doXml: false }]);
-    const removeParcela = (idx) => setParcelas(prev => prev.filter((_, i) => i !== idx));
+
+    const totalNota = Number(nota.valorTotal || 0);
+
+    // Gera `qtd` parcelas iguais (somando o total da nota), com datas em sequência a partir de `base`.
+    const gerarParcelasSeq = (qtd, base) => {
+        const valores = dividirValores(qtd, totalNota);
+        return Array.from({ length: qtd }, (_, i) => ({
+            dataVencimento: i === 0 ? base : addDiasYMD(base, intervaloDias * i),
+            valor: fmt(valores[i]),
+            doXml: false
+        }));
+    };
+
+    // + parcela: nota do XML só acrescenta uma vazia; nas demais, redivide igual e sequencia as datas.
+    const addParcela = () => setParcelas(prev => {
+        if (temDuplicatasXml) return [...prev, { dataVencimento: hojeYMD(), valor: '', doXml: false }];
+        const base = prev[0]?.dataVencimento || toYMD(nota.emissao) || hojeYMD();
+        return gerarParcelasSeq(prev.length + 1, base);
+    });
+
+    const removeParcela = (idx) => setParcelas(prev => {
+        const rest = prev.filter((_, i) => i !== idx);
+        if (temDuplicatasXml || rest.length === 0) return rest;
+        const base = rest[0]?.dataVencimento || toYMD(nota.emissao) || hojeYMD();
+        return gerarParcelasSeq(rest.length, base);
+    });
+
+    // Ao terminar de digitar o valor de uma parcela, o SALDO restante se divide nas parcelas SEGUINTES.
+    const redistribuirSaldo = (idx) => {
+        if (temDuplicatasXml) return;
+        setParcelas(prev => {
+            const restantes = prev.length - (idx + 1);
+            if (restantes <= 0) return prev;
+            const usado = prev.slice(0, idx + 1).reduce((s, p) => s + parseNum(p.valor), 0);
+            const valores = dividirValores(restantes, Math.max(0, round2(totalNota - usado)));
+            return prev.map((p, i) => (i > idx ? { ...p, valor: fmt(valores[i - idx - 1]) } : p));
+        });
+    };
+
+    // Muda o intervalo (dias) e re-sequencia as datas a partir da 1ª parcela (mantém os valores).
+    const aplicarIntervalo = (dias) => {
+        const n = Math.max(0, parseInt(dias, 10) || 0);
+        setIntervaloDias(n);
+        if (temDuplicatasXml) return;
+        setParcelas(prev => prev.map((p, i) => (
+            i === 0 ? p : { ...p, dataVencimento: addDiasYMD(prev[0]?.dataVencimento || toYMD(nota.emissao) || hojeYMD(), n * i) }
+        )));
+    };
 
     const somaParcelas = parcelas.reduce((s, p) => s + parseNum(p.valor), 0);
-    const totalNota = Number(nota.valorTotal || 0);
     const somaDiverge = Math.abs(somaParcelas - totalNota) > 0.01;
 
     // categoriaCaId a partir do nome da categoria (null se for texto livre fora da lista do CA)
@@ -1354,14 +1421,29 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
 
             {/* Parcelas da despesa */}
             <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
                     <div className="text-xs font-bold uppercase tracking-widest text-gray-600">Parcelas da despesa</div>
-                    <button
-                        onClick={addParcela}
-                        className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-xs"
-                    >
-                        + Adicionar parcela
-                    </button>
+                    <div className="flex items-center gap-2">
+                        {!temDuplicatasXml && parcelas.length > 1 && (
+                            <div className="flex items-center gap-1.5 text-xs text-gray-600" title="Dias entre uma parcela e a próxima (sequencia as datas)">
+                                <span>a cada</span>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={intervaloDias}
+                                    onChange={e => aplicarIntervalo(e.target.value)}
+                                    className="w-14 border border-gray-300 rounded px-2 py-1.5 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                />
+                                <span>dias</span>
+                            </div>
+                        )}
+                        <button
+                            onClick={addParcela}
+                            className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-xs whitespace-nowrap"
+                        >
+                            + Adicionar parcela
+                        </button>
+                    </div>
                 </div>
                 <div className="space-y-2">
                     {parcelas.map((p, idx) => (
@@ -1378,6 +1460,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                 <input
                                     value={p.valor}
                                     onChange={e => setParcela(idx, 'valor', e.target.value)}
+                                    onBlur={() => redistribuirSaldo(idx)}
                                     placeholder="0,00"
                                     inputMode="decimal"
                                     className="w-28 border border-gray-300 rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
@@ -1404,7 +1487,9 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                         : <span className="text-green-700"> — confere com o valor da nota ✓</span>}
                 </div>
                 <div className="mt-2 text-xs text-gray-500">
-                    As parcelas vêm preenchidas do boleto no XML quando existem — mas você pode <span className="font-semibold text-gray-700">corrigir datas e valores, criar ou excluir</span> parcelas antes de gerar a conta.
+                    {temDuplicatasXml
+                        ? <>As parcelas vieram do <span className="font-semibold text-gray-700">boleto no XML</span> — você pode corrigir datas e valores antes de gerar a conta.</>
+                        : <>Ao <span className="font-semibold text-gray-700">adicionar parcela</span>, o valor é dividido igualmente e as datas entram na sequência do intervalo. Ao <span className="font-semibold text-gray-700">digitar um valor</span> numa parcela, o saldo se ajusta nas seguintes. Você pode editar qualquer <span className="font-semibold text-gray-700">data</span> manualmente.</>}
                 </div>
             </div>
 
