@@ -604,8 +604,78 @@ async function _salvarResultado(texto) {
     });
 }
 
+/**
+ * Busca UMA nota específica na SEFAZ pela CHAVE de acesso (44 dígitos) e a grava,
+ * reaproveitando a mesma gravação do ciclo. Se a SEFAZ devolver só o resumo
+ * (AGUARDANDO_XML), envia a Ciência da Operação e tenta de novo o XML completo.
+ * NÃO mexe no NSU sequencial do ciclo. Retorna { ok, motivo?, cStat? }.
+ * A rota consulta a nota gravada pela própria chave.
+ */
+async function buscarPorChave(chave) {
+    const ch = soDigitos(chave);
+    if (ch.length !== 44) return { ok: false, motivo: 'A chave de acesso precisa ter 44 dígitos.' };
+
+    const pre = await podeConsultar();
+    if (!pre.ok) return { ok: false, motivo: pre.motivo };
+    const { cert } = pre;
+    const cnpjNosso = soDigitos(cert.cnpj);
+
+    let pfx, senha;
+    try {
+        const certificadoService = require('./certificadoService');
+        ({ pfx, senha } = certificadoService.descriptografarCertificado(cert));
+    } catch (e) {
+        return { ok: false, motivo: `Falha ao abrir o certificado: ${e.message}` };
+    }
+
+    const { DistribuicaoDFe } = require('node-mde');
+    const distribuicao = new DistribuicaoDFe({ pfx, passphrase: senha, cnpj: cnpjNosso, cUFAutor: CUF_AUTOR, tpAmb: TP_AMB });
+
+    // Consulta a chave e grava os documentos retornados (mesma lógica do ciclo).
+    const consultarEProcessar = async () => {
+        const consulta = await distribuicao.consultaChNFe(ch);
+        if (consulta.error) return { erro: String(consulta.error).substring(0, 400) };
+        const { cStat, xMotivo, docZip } = consulta.data || {};
+        if (cStat === '656') {
+            const ate = new Date(Date.now() + BLOQUEIO_656_MS);
+            await prisma.dfeControle.update({ where: { id: DFE_ID }, data: { bloqueadoAte: ate } }).catch(() => {});
+            return { cStat, xMotivo, bloqueadoAte: ate };
+        }
+        if (cStat === '138') {
+            for (const docItem of docZip || []) {
+                try {
+                    const schema = String(docItem.schema || '');
+                    if (schema.startsWith('resNFe')) await registrarResumo(parseResNFe(docItem.xml), docItem.nsu, cnpjNosso);
+                    else if (schema.startsWith('procNFe') || schema.startsWith('nfeProc')) await registrarProcNFe(docItem.xml, docItem.nsu, cnpjNosso);
+                    else if (schema.startsWith('resEvento') || schema.startsWith('procEventoNFe')) await registrarEvento(docItem.xml);
+                } catch (e) { console.warn(`[SefazDFe] buscarPorChave doc (${docItem.schema}):`, e.message); }
+            }
+        }
+        return { cStat, xMotivo };
+    };
+
+    try {
+        const r = await consultarEProcessar();
+        if (r.erro) return { ok: false, motivo: `Erro na consulta à SEFAZ: ${r.erro}` };
+        if (r.bloqueadoAte) return { ok: false, motivo: `SEFAZ pausou as consultas (consumo indevido). Tente após ${r.bloqueadoAte.toLocaleString('pt-BR')}.` };
+
+        // Só veio o resumo? Manda ciência e tenta de novo — pode já vir o XML completo.
+        let nota = await prisma.notaEntrada.findUnique({ where: { chave: ch } });
+        if (nota && nota.status === 'AGUARDANDO_XML') {
+            try { await manifestarCiencia(cert, pfx, senha); } catch (e) { console.warn('[SefazDFe] buscarPorChave ciência:', e.message); }
+            await consultarEProcessar();
+        }
+
+        return { ok: true, cStat: r.cStat, xMotivo: r.xMotivo };
+    } catch (error) {
+        console.error('[SefazDFe] Erro na busca por chave:', error.message);
+        return { ok: false, motivo: error.message };
+    }
+}
+
 module.exports = {
     executarCiclo,
+    buscarPorChave,
     podeConsultar,
     statusCaptura,
     capturaAtiva,

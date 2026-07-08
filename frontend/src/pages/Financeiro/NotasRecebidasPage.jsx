@@ -629,11 +629,12 @@ const NotaCard = ({ nota, podeOperar, onAbrir }) => {
 // MODAL — IMPORTAR XML  /  LANÇAR NOTA MANUALMENTE
 // ═══════════════════════════════════════════════════════════
 const ImportarXmlModal = ({ onClose, onChanged }) => {
-    const [modo, setModo] = useState('xml'); // 'xml' | 'manual'
+    const [modo, setModo] = useState('xml'); // 'xml' | 'chave' | 'manual'
     const [enviando, setEnviando] = useState(false);
     const [resultados, setResultados] = useState([]);
     const [dragOver, setDragOver] = useState(false);
     const inputRef = useRef(null);
+    const [chave, setChave] = useState(''); // busca pela chave de acesso (44 dígitos)
 
     // Lançamento manual
     const [mTipo, setMTipo] = useState('NFSE');
@@ -671,6 +672,31 @@ const ImportarXmlModal = ({ onClose, onChanged }) => {
         setEnviando(false);
         if (inputRef.current) inputRef.current.value = ''; // permite reescolher o mesmo arquivo
         if (algumOk) { toast.success('Nota(s) importada(s)!'); onChanged(); } // recarrega a lista; modal fica aberto p/ ver o resultado
+    };
+
+    const soDigitosChave = String(chave).replace(/\D/g, '');
+    const buscarChave = async () => {
+        if (soDigitosChave.length !== 44) { toast.error('A chave de acesso precisa ter 44 dígitos.'); return; }
+        setEnviando(true);
+        setResultados([]);
+        try {
+            const r = await notasEntradaService.buscarPorChave(soDigitosChave);
+            onChanged(); // recarrega a lista
+            const nome = r.nota?.fornecedorNome || 'nota';
+            const num = r.nota?.numero ? ' ' + r.nota.numero : '';
+            setResultados([{
+                ok: true,
+                nome: `NF-e${num}`,
+                msg: r.aguardandoXml
+                    ? `encontrada: ${nome}. Já aparece na lista; o XML completo (itens/parcelas) chega na próxima consulta — clique em "Consultar agora" daqui a pouco.`
+                    : `${r.jaExistia ? 'já estava na lista' : 'importada'}: ${nome} — pronta para conferir.`
+            }]);
+            toast.success('Nota encontrada na SEFAZ!');
+        } catch (e) {
+            setResultados([{ ok: false, nome: 'Busca', msg: e.response?.data?.error || 'não foi possível buscar a nota' }]);
+        } finally {
+            setEnviando(false);
+        }
     };
 
     const enviarManual = async () => {
@@ -712,14 +738,15 @@ const ImportarXmlModal = ({ onClose, onChanged }) => {
 
                 {/* Alternador de modo */}
                 <div className="px-5 pt-4">
-                    <div className="inline-flex bg-gray-100 rounded-full p-0.5 gap-0.5">
+                    <div className="flex flex-wrap bg-gray-100 rounded-2xl p-0.5 gap-0.5">
                         <button onClick={() => setModo('xml')} className={pill(modo === 'xml')}>Tenho o XML</button>
+                        <button onClick={() => setModo('chave')} className={pill(modo === 'chave')}>Buscar pela chave</button>
                         <button onClick={() => setModo('manual')} className={pill(modo === 'manual')}>Lançar manualmente</button>
                     </div>
                 </div>
 
                 <div className="p-5">
-                    {modo === 'xml' ? (
+                    {modo === 'xml' && (
                         <>
                             <p className="text-sm text-gray-600 mb-3">
                                 Anexe o arquivo <b>.xml</b> da nota (NF-e ou NFS-e). Serve para notas que não chegaram sozinhas na captura automática.
@@ -763,7 +790,51 @@ const ImportarXmlModal = ({ onClose, onChanged }) => {
                                 <b>Onde consigo o XML?</b> No e-mail que o fornecedor manda com a nota, ou no site da prefeitura (NFS-e). A nota entra como <b>"Nova"</b>, pronta para conferir. Se já existir, o sistema não duplica.
                             </div>
                         </>
-                    ) : (
+                    )}
+
+                    {modo === 'chave' && (
+                        <>
+                            <p className="text-sm text-gray-600 mb-3">
+                                Não tem o arquivo? Cole a <b>chave de acesso</b> (44 dígitos) da <b>NF-e</b> e o sistema busca a nota direto na SEFAZ.
+                            </p>
+                            <label className="text-xs font-medium text-gray-500">Chave de acesso (44 dígitos)</label>
+                            <input
+                                value={chave}
+                                onChange={e => setChave(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter' && !enviando) buscarChave(); }}
+                                placeholder="0000 0000 0000 0000 0000 0000 0000 0000 0000 0000 0000"
+                                inputMode="numeric"
+                                className="w-full mt-1 border border-gray-300 rounded px-3 py-2 text-sm font-mono tracking-tight focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                            />
+                            <div className={`mt-1 text-xs ${soDigitosChave.length === 44 ? 'text-green-600' : 'text-gray-400'}`}>
+                                {soDigitosChave.length}/44 dígitos
+                            </div>
+
+                            <button
+                                onClick={buscarChave}
+                                disabled={enviando || soDigitosChave.length !== 44}
+                                className="mt-3 w-full px-4 py-2.5 bg-primary hover:bg-primaryDark text-white rounded-full text-sm font-semibold inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                            >
+                                {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />} Buscar na SEFAZ
+                            </button>
+
+                            {resultados.length > 0 && (
+                                <div className="mt-4 space-y-1.5">
+                                    {resultados.map((r, i) => (
+                                        <div key={i} className={`text-xs rounded-lg px-3 py-2 border ${r.ok ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                                            <span className="font-semibold">{r.nome}</span> — {r.msg}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900 leading-relaxed">
+                                A chave está na <b>DANFE</b>, no <b>boleto</b> ou no <b>e-mail</b> da nota (44 números seguidos). Vale só para <b>NF-e</b> em que a sua empresa é a <b>destinatária</b>. Para NFS-e, use "Tenho o XML" ou "Lançar manualmente".
+                            </div>
+                        </>
+                    )}
+
+                    {modo === 'manual' && (
                         <>
                             <p className="text-sm text-gray-600 mb-3">
                                 Não tem o XML (ex.: NFS-e de prefeitura que não vem sozinha)? Lance os dados da nota — ela entra como <b>"Nova"</b> para conferir e gerar a despesa.

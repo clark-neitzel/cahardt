@@ -429,6 +429,37 @@ router.post('/lancar-manual', verificarAuth, checkEscrita, async (req, res) => {
     }
 });
 
+// ── POST /buscar-chave — busca UMA NF-e na SEFAZ pela chave de acesso (44 dígitos) ──
+// Puxa a nota sem precisar do arquivo XML (a chave está na DANFE/boleto/e-mail).
+// Só NF-e (SEFAZ) e só onde a empresa é a destinatária.
+router.post('/buscar-chave', verificarAuth, checkEscrita, async (req, res) => {
+    try {
+        const chave = String(req.body?.chave || '').replace(/\D/g, '');
+        if (chave.length !== 44) {
+            return res.status(400).json({ error: 'Informe a chave de acesso com 44 dígitos (está na DANFE, no boleto ou no e-mail da nota).' });
+        }
+
+        const jaExistente = await prisma.notaEntrada.findUnique({ where: { chave } });
+        const r = await sefazDfeService.buscarPorChave(chave);
+        if (!r.ok) return res.status(422).json({ error: r.motivo || 'Não foi possível consultar a SEFAZ agora.' });
+
+        const nota = await prisma.notaEntrada.findUnique({ where: { chave } });
+        if (!nota) {
+            return res.status(404).json({ error: 'A SEFAZ não retornou essa nota. Confira a chave — e lembre que só dá para puxar notas em que a sua empresa é a destinatária.' });
+        }
+
+        res.status(jaExistente ? 200 : 201).json({
+            ok: true,
+            jaExistia: !!jaExistente,
+            aguardandoXml: nota.status === 'AGUARDANDO_XML',
+            nota: formatarNotaLista(nota)
+        });
+    } catch (error) {
+        console.error('Erro ao buscar nota por chave:', error);
+        res.status(500).json({ error: 'Erro ao buscar a nota pela chave.' });
+    }
+});
+
 // ── GET /:id — detalhe da nota com itens (+ de-para lembrado) e duplicatas ──
 router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
     try {

@@ -63,7 +63,8 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 - Ver o **status da captura**: NF-e (ligada/desligada, última consulta à SEFAZ) e NFS-e (última consulta ao ambiente nacional), além de quantas notas novas aguardam conferência
 - **Consultar agora**: dispara uma busca imediata (SEFAZ **e** ambiente nacional) sem esperar a próxima hora
 - **Importar XML** (botão no topo): quando uma nota **não chegou sozinha** na captura automática, anexe o **arquivo XML** dela (NF-e ou NFS-e do padrão nacional) e ela entra na lista como **NOVA**, igual às automáticas — pronta para conferir. Aceita **vários arquivos** de uma vez e **não duplica** (se a nota já existir, só completa/atualiza o XML). Recusa XML de nota que a **própria empresa emitiu** (só entram notas recebidas de fornecedores)
-- **Lançar manualmente** (dentro de "Importar XML"): para notas **sem XML legível** — caso típico é **NFS-e de prefeitura fora do padrão nacional**, que nunca chega automaticamente. Você informa **tipo, fornecedor, CNPJ (opcional), número, data de emissão e valor**, e a nota entra como **NOVA** para conferir e gerar a despesa. Fica marcada com a etiqueta **"lançada manual"**
+- **Buscar pela chave** (aba dentro de "Importar XML"): sem ter o arquivo, cole a **chave de acesso (44 dígitos)** de uma **NF-e** e o sistema **busca a nota direto na SEFAZ** (pela chave — não pelo número, que a SEFAZ não permite consultar). Se vier só o resumo, o sistema já envia a **Ciência da Operação** e traz o XML completo na sequência (senão chega na próxima consulta). Vale **só para NF-e** e **só onde a empresa é a destinatária** da nota. A chave está na DANFE, no boleto ou no e-mail da nota
+- **Lançar manualmente** (aba dentro de "Importar XML"): para notas **sem XML legível** — caso típico é **NFS-e de prefeitura fora do padrão nacional**, que nunca chega automaticamente. Você informa **tipo, fornecedor, CNPJ (opcional), número, data de emissão e valor**, e a nota entra como **NOVA** para conferir e gerar a despesa. Fica marcada com a etiqueta **"lançada manual"**
 - Abrir o **detalhe da nota**: itens (código do fornecedor, EAN, descrição, quantidade, valores), **informações adicionais de cada item** (infAdProd — lote, validade etc.), duplicatas (vencimentos) e as **observações da nota**. Na NFS-e o detalhe mostra a **discriminação do serviço** e o valor
 - **Baixar o XML** completo da nota
 - **Imprimir a DANFE** (NF-e: visão em folha com emitente, chave, itens com NCM/CFOP, totais, duplicatas) ou o **DANFSE** (NFS-e: espelho com prestador, tomador, discriminação do serviço, valores e retenções) — impressos na própria página, funciona no iPad/PWA
@@ -147,7 +148,7 @@ Envio Contabilidade
 
 | Caminho | Papel |
 |---------|-------|
-| `backend/services/sefazDfeService.js` | Robô de captura de NF-e na SEFAZ (Distribuição DF-e + manifestação 210210) |
+| `backend/services/sefazDfeService.js` | Robô de captura de NF-e na SEFAZ (Distribuição DF-e + manifestação 210210) + busca pontual por chave de acesso (`buscarPorChave`) |
 | `backend/services/nfseAdnService.js` | Robô de captura de NFS-e no Ambiente de Dados Nacional (ADN) + espelho DANFSE |
 | `backend/routes/notasEntrada.js` | Rotas da API (listar com filtro de tipo/período, detalhar, XML, DANFE/DANFSE, gerar conta com categoria por item + rateio, ignorar, consultar agora, **importar-xml** e **lancar-manual**) — dispara o salvamento do XML no Drive ao dar entrada/ignorar |
 | `backend/services/googleDriveService.js` | Salva o XML da nota no Google Drive da Contabilidade (pasta do mês por emissão; subpasta "Ignoradas"); credenciais OAuth em `app_configs.gdrive_config` |

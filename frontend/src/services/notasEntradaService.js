@@ -51,6 +51,11 @@ const notasEntradaService = {
         const response = await api.post('/notas-entrada/lancar-manual', dados);
         return response.data;
     },
+    // Busca uma NF-e na SEFAZ pela chave de acesso (44 dígitos) — { ok, jaExistia, aguardandoXml, nota }.
+    buscarPorChave: async (chave) => {
+        const response = await api.post('/notas-entrada/buscar-chave', { chave });
+        return response.data;
+    },
     // XML da nota (blob, para baixar/abrir com o token de auth)
     baixarXml: async (id) => {
         const response = await api.get(`/notas-entrada/${id}/xml`, { responseType: 'blob' });
