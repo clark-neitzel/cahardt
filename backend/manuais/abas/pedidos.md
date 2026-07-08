@@ -18,8 +18,9 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 
 - Visualizar pedidos separados por tipo (sub-abas: Pedidos | Especiais | Bonificação | Amostras | Devoluções)
 - Filtrar por data de entrega, data de criação, vencimento, embarque, motorista e vendedor
-- Buscar por cliente, cidade, número do pedido ou valor total
+- Buscar por cliente, cidade, vendedor, documento ou número do pedido
 - Filtrar rapidamente por status (Aberto, Enviar, Sincronizando, Aprovado, Faturado, Erro)
+- Carregar a lista aos poucos: mostra os 50 primeiros e um botão **Carregar mais** (deixa a tela leve e rápida)
 - Ver pendências de envio ao Conta Azul em tempo real
 - Imprimir pedido individual ou vários ao mesmo tempo (seleção em lote)
 - Enviar comprovante do pedido via WhatsApp para o cliente
@@ -29,6 +30,15 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - Reatribuir pedido para outro vendedor (quem tem permissão)
 - Excluir pedidos (quem tem permissão específica por tipo)
 - Avançar status de amostras (Solicitada → Preparação → Liberado)
+
+---
+
+## Como a lista carrega (rápido e leve)
+
+- A lista mostra **50 pedidos por vez**, do mais novo para o mais antigo. Para ver mais, clique em **Carregar mais** no fim da lista (o rodapé mostra "Mostrando X de Y").
+- A **busca** e o **filtro rápido de status** (Aberto/Enviar/Faturado…) valem sobre **todos os pedidos**, não só os que já apareceram na tela — o sistema busca no servidor. As contagens ao lado de cada status também são o total real.
+- O filtro de **data de entrega** começa **limpo**. Se você escolher um período, ele fica **lembrado** para a próxima vez que abrir a tela. O botão **Limpar** zera todos os filtros (inclusive a data) e volta ao normal.
+- A busca por texto encontra por **cliente, cidade, vendedor, documento ou número** (ex.: `123`, `ZZ#45`, `BN#7`). Não busca mais pelo valor total do pedido.
 
 ---
 

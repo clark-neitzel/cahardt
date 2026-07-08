@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Pedidos mais rápido — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="⚡ Novidade no Hardt App: aba Pedidos mais rápida">
+<meta property="og:description" content="A lista de Pedidos agora abre leve: carrega aos poucos com 'Carregar mais', e o filtro de data começa limpo. Menos espera, mesma informação.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.78);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da lista flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top .ico { font-size: 22px; }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-body { padding: 14px 16px 18px; }
+
+  .row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 10px; padding: 10px 4px; border-bottom: 1px solid #eef1f0;
+  }
+  .row:last-of-type { border-bottom: 0; }
+  .tag {
+    font-size: 10px; font-weight: 800; color: var(--primary-dark);
+    background: var(--mint); border-radius: 6px; padding: 2px 6px; flex-shrink: 0;
+  }
+  .row .nome { font-size: 13px; font-weight: 700; color: var(--ink); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .valor { font-size: 13px; font-weight: 800; color: var(--ink); flex-shrink: 0; }
+
+  .contador { text-align: center; font-size: 11px; color: #9aa4a0; margin: 12px 0 8px; }
+  .btn-mais {
+    display: block; width: 100%; text-align: center;
+    border: 1.5px solid #d5dbd8; color: #566; background: #fff;
+    font-size: 13px; font-weight: 800; padding: 11px; border-radius: 999px;
+  }
+
+  /* seções */
+  .card {
+    background: #fff; border: 1px solid #e7ebe9; border-radius: 16px;
+    padding: 18px 18px 16px; margin-top: 14px;
+    box-shadow: 0 1px 2px rgba(20,40,34,.04);
+  }
+  .card h2 {
+    font-size: 17px; font-weight: 800; margin: 0 0 6px;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .card h2 .emoji { font-size: 20px; }
+  .card p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+  .card p + p { margin-top: 8px; }
+  .antes-depois { display: flex; gap: 8px; margin-top: 12px; }
+  .ad {
+    flex: 1; border-radius: 12px; padding: 10px 12px; font-size: 12.5px;
+  }
+  .ad small { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 3px; }
+  .ad.antes { background: #fbeceb; color: #7a2a24; }
+  .ad.antes small { color: #b5453c; }
+  .ad.depois { background: var(--mint); color: var(--primary-dark); }
+  .ad.depois small { color: var(--primary); }
+
+  .passos { counter-reset: p; list-style: none; padding: 0; margin: 8px 0 0; }
+  .passos li {
+    position: relative; padding: 8px 0 8px 40px; font-size: 14px; color: var(--ink);
+    border-bottom: 1px solid #f0f3f2;
+  }
+  .passos li:last-child { border-bottom: 0; }
+  .passos li::before {
+    counter-increment: p; content: counter(p);
+    position: absolute; left: 0; top: 7px;
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--primary); color: #fff;
+    font-size: 13px; font-weight: 800;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .selo {
+    margin-top: 22px; text-align: center; font-size: 13px; color: var(--ink-soft);
+  }
+  .selo strong { color: var(--primary-dark); }
+  .foot { text-align: center; margin-top: 26px; font-size: 12px; color: #9aa4a0; }
+</style>
+</head>
+<body>
+
+  <div class="hero">
+    <div class="hero-inner">
+      <span class="eyebrow">⚡ Mais rápido</span>
+      <h1>A aba Pedidos agora abre leve</h1>
+      <p>Cansou de esperar a lista carregar? Agora ela abre na hora e você puxa mais quando quiser — sem perder nenhuma informação.</p>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <!-- Mock da lista -->
+    <div class="mock">
+      <div class="mock-top">
+        <span class="ico">📦</span>
+        <div>
+          <small>Aba Pedidos</small>
+          <strong>Lista rápida</strong>
+        </div>
+      </div>
+      <div class="mock-body">
+        <div class="row"><span class="tag">#8412</span><span class="nome">Panificadora Bom Pão</span><span class="valor">R$ 1.240</span></div>
+        <div class="row"><span class="tag">ZZ#331</span><span class="nome">Mercado Central</span><span class="valor">R$ 890</span></div>
+        <div class="row"><span class="tag">#8411</span><span class="nome">Restaurante da Praça</span><span class="valor">R$ 2.115</span></div>
+        <div class="row"><span class="tag">BN#77</span><span class="nome">Padaria Estrela</span><span class="valor">R$ 0</span></div>
+        <div class="contador">Mostrando 50 de 850</div>
+        <div class="btn-mais">Carregar mais 50</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="emoji">🚀</span> Abre na hora</h2>
+      <p>Antes, a tela tentava trazer <em>todos</em> os pedidos de uma vez — por isso demorava. Agora ela mostra os <strong>50 mais recentes</strong> e um botão <strong>Carregar mais</strong> para ver o resto quando precisar.</p>
+      <div class="antes-depois">
+        <div class="ad antes"><small>Antes</small>Esperava carregar centenas de pedidos toda vez</div>
+        <div class="ad depois"><small>Agora</small>Abre leve; você puxa mais só se precisar</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="emoji">📅</span> Filtro de data começa limpo</h2>
+      <p>O filtro de <strong>data de entrega</strong> não vem mais preso num período. Ele começa <strong>vazio</strong> — e, se você escolher um período, o sistema <strong>lembra</strong> a sua escolha na próxima vez que abrir a tela.</p>
+      <p>O botão <strong>Limpar</strong> zera todos os filtros de uma vez (data inclusive) e volta ao normal.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="emoji">🔎</span> Busca e status continuam completos</h2>
+      <p>A <strong>busca</strong> (cliente, cidade, vendedor, nº) e os <strong>filtros de status</strong> (Aberto, Enviar, Faturado…) procuram em <strong>todos</strong> os pedidos — não só nos que estão na tela. Os números ao lado de cada status também mostram o total real.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="emoji">✅</span> Para começar a usar</h2>
+      <ol class="passos">
+        <li>Abra a aba <strong>Pedidos</strong> normalmente — já está valendo.</li>
+        <li>Role até o fim e toque em <strong>Carregar mais</strong> para ver pedidos mais antigos.</li>
+        <li>Precisa de um período? Use o filtro de <strong>data de entrega</strong> — ele fica lembrado.</li>
+      </ol>
+    </div>
+
+    <div class="selo">
+      Nada muda na forma de trabalhar — <strong>é a mesma tela, só mais rápida.</strong>
+    </div>
+
+    <div class="foot">Hardt App · atualize o app pelo ícone de 🔄 se aparecer</div>
+
+  </div>
+
+</body>
+</html>

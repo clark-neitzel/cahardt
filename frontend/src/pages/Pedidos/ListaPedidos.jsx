@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck, CircleDollarSign } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
@@ -42,8 +42,11 @@ const ListaPedidos = () => {
     const { user } = useAuth();
     const [highlightId, setHighlightId] = useState(null);
     
-    // Filtros persistentes (busca livre e janela de entrega — que tem padrão calculado — não persistem)
-    const [filtrosSalvos, setFiltrosSalvos] = useFiltrosSalvos('lista-pedidos', {
+    // Filtros persistentes por usuário/tela. Entrega começa LIMPA (padrão vazio) e,
+    // por ser vazio, pode ser lembrada se o usuário digitar uma data. Busca livre NÃO persiste.
+    const [filtros, setFiltros] = useFiltrosSalvos('lista-pedidos', {
+        dataEntregaDe: '',
+        dataEntregaAte: '',
         dataCriacaoDe: '',
         dataCriacaoAte: '',
         vencimentoDe: '',
@@ -52,18 +55,17 @@ const ListaPedidos = () => {
         motorista: '',
         vendedorId: ''
     });
-    const [filtros, setFiltros] = useState(() => {
-        const hoje = new Date().toISOString().split('T')[0];
-        const noventaDiasAtras = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        return {
-            ...filtrosSalvos,
-            dataEntregaDe: noventaDiasAtras,
-            dataEntregaAte: hoje,
-            busca: ''
-        };
-    });
+    const [busca, setBusca] = useState('');
+    const [buscaServer, setBuscaServer] = useState('');
+    const debounceRef = useRef(null);
 
+    // Paginação: carrega TAM_PAGINA por vez + botão "Carregar mais"
+    const TAM_PAGINA = 50;
     const [pedidos, setPedidos] = useState([]);
+    const [total, setTotal] = useState(0);
+    const [pagina, setPagina] = useState(1);
+    const [contagens, setContagens] = useState(null); // { TODOS, ABERTO, ENVIAR, ... } do backend
+    const [loadingMais, setLoadingMais] = useState(false);
     const [loading, setLoading] = useState(true);
     const [selectedPedido, setSelectedPedido] = useState(null);
     const [abaAtiva, setAbaAtiva] = useState(() => {
@@ -151,95 +153,114 @@ const ListaPedidos = () => {
         }
     };
 
-    // Salvar filtros sempre que mudarem (exceto busca e janela de entrega, que resetam a cada visita)
-    useEffect(() => {
-        const { dataEntregaDe, dataEntregaAte, busca, ...persistiveis } = filtros;
-        setFiltrosSalvos(persistiveis);
-    }, [filtros]);
+    // Monta os params comuns (datas/embarque/motorista/vendedor) a partir dos filtros
+    const montarParamsFiltro = useCallback((f) => {
+        const params = {};
+        if (f.dataEntregaDe && f.dataEntregaAte) {
+            params.dataVendaDe = f.dataEntregaDe;
+            params.dataVendaAte = f.dataEntregaAte;
+        }
+        if (f.dataCriacaoDe && f.dataCriacaoAte) {
+            params.createdAtDe = f.dataCriacaoDe;
+            params.createdAtAte = f.dataCriacaoAte;
+        }
+        if (f.vencimentoDe) params.vencimentoDe = f.vencimentoDe;
+        if (f.vencimentoAte) params.vencimentoAte = f.vencimentoAte;
+        if (f.embarqueNumero) params.embarqueNumero = f.embarqueNumero;
+        if (f.motorista) params.motorista = f.motorista;
+        if (f.vendedorId) params.vendedorId = f.vendedorId;
+        return params;
+    }, []);
 
-    const carregarDados = useCallback(async () => {
+    // Carrega uma página. pg === 1 reinicia a lista; pg > 1 acrescenta (Carregar mais).
+    const carregar = useCallback(async (pg, aba, f, status, buscaSrv) => {
+        const primeira = pg === 1;
+        if (primeira) setLoading(true); else setLoadingMais(true);
         try {
-            setLoading(true);
-            setLoadingAmostras(true);
-            
-            // Busca numérica (valor/numero) é feita client-side para permitir match por valor total
-            const buscaTrim = (filtros.busca || '').trim();
-            const buscaNumerica = /^[\d.,]+$/.test(buscaTrim);
-            const params = {
-                busca: buscaNumerica ? '' : buscaTrim,
-                vendedorId: filtros.vendedorId,
-            };
+            const params = { ...montarParamsFiltro(f) };
+            if (buscaSrv) params.busca = buscaSrv;
 
-            if (filtros.dataEntregaDe && filtros.dataEntregaAte) {
-                params.dataVendaDe = filtros.dataEntregaDe;
-                params.dataVendaAte = filtros.dataEntregaAte;
-            }
-
-            if (filtros.dataCriacaoDe && filtros.dataCriacaoAte) {
-                params.createdAtDe = filtros.dataCriacaoDe;
-                params.createdAtAte = filtros.dataCriacaoAte;
-            }
-
-            if (filtros.vencimentoDe || filtros.vencimentoAte) {
-                if (filtros.vencimentoDe) params.vencimentoDe = filtros.vencimentoDe;
-                if (filtros.vencimentoAte) params.vencimentoAte = filtros.vencimentoAte;
-            }
-
-            if (filtros.embarqueNumero) params.embarqueNumero = filtros.embarqueNumero;
-            if (filtros.motorista) params.motorista = filtros.motorista;
-
-            // Se for aba de pedidos, especiais ou bonificacao, busca da tabela de pedidos
-            if (abaAtiva === 'pedidos' || abaAtiva === 'especiais' || abaAtiva === 'bonificacao') {
-                if (abaAtiva === 'bonificacao') {
-                    params.bonificacao = 'true';
-                } else {
-                    params.especial = abaAtiva === 'especiais' ? 'true' : 'false';
-                    params.bonificacao = 'false';
-                }
-                const data = await pedidoService.listar(params);
-                setPedidos(data);
-                // Inicializar status WhatsApp a partir dos dados persistidos
-                const wsStatus = {};
-                data.forEach(p => {
-                    if (p.whatsappEnviado) wsStatus[p.id] = { status: 'ok' };
-                    else if (p.whatsappErro) wsStatus[p.id] = { status: 'erro', motivo: p.whatsappErro };
-                });
-                setWhatsappStatus(prev => ({ ...prev, ...wsStatus }));
-            } 
-            // Se for aba de amostras, busca da tabela de amostras
-            else if (abaAtiva === 'amostras') {
-                // Adaptando params para amostras
+            // Aba de amostras: serviço próprio, sem paginação (lista menor)
+            if (aba === 'amostras') {
+                setLoadingAmostras(true);
                 const amostraParams = { ...params };
-                if (filtros.dataEntregaDe && filtros.dataEntregaAte) {
-                    amostraParams.dataEntregaDe = filtros.dataEntregaDe;
-                    amostraParams.dataEntregaAte = filtros.dataEntregaAte;
+                if (f.dataEntregaDe && f.dataEntregaAte) {
+                    amostraParams.dataEntregaDe = f.dataEntregaDe;
+                    amostraParams.dataEntregaAte = f.dataEntregaAte;
                     delete amostraParams.dataVendaDe;
                     delete amostraParams.dataVendaAte;
                 }
                 const data = await amostraService.listar(amostraParams);
                 setAmostras(data);
+                setLoadingAmostras(false);
+                return;
             }
 
-            // Carregar pendências em paralelo (não bloqueia)
-            const pendenciaParams = {};
-            if (filtros.dataEntregaDe) pendenciaParams.dataVendaDe = filtros.dataEntregaDe;
-            if (filtros.dataEntregaAte) pendenciaParams.dataVendaAte = filtros.dataEntregaAte;
-            pedidoService.resumoPendencias(pendenciaParams)
-                .then(setPendencias)
-                .catch(() => {});
+            // Aba de devoluções: renderiza componente próprio (ListaDevolucoes) — nada a buscar aqui
+            if (aba === 'devolucoes') return;
 
+            // Abas de pedidos/especiais/bonificação: paginado no servidor
+            params.pagina = pg;
+            params.tamanhoPagina = TAM_PAGINA;
+            if (status && status !== 'TODOS') params.statusRapido = status;
+            if (aba === 'bonificacao') {
+                params.bonificacao = 'true';
+            } else {
+                params.especial = aba === 'especiais' ? 'true' : 'false';
+                params.bonificacao = 'false';
+            }
+
+            const data = await pedidoService.listar(params);
+            const items = data.items || [];
+            setTotal(data.total || 0);
+            if (primeira) {
+                setPedidos(items);
+                if (data.contagens) setContagens(data.contagens);
+            } else {
+                setPedidos(prev => [...prev, ...items]);
+            }
+
+            // Inicializar status WhatsApp a partir dos dados persistidos
+            const wsStatus = {};
+            items.forEach(p => {
+                if (p.whatsappEnviado) wsStatus[p.id] = { status: 'ok' };
+                else if (p.whatsappErro) wsStatus[p.id] = { status: 'erro', motivo: p.whatsappErro };
+            });
+            setWhatsappStatus(prev => ({ ...prev, ...wsStatus }));
+
+            // Pendências (banner) em paralelo — só na 1ª página
+            if (primeira) {
+                const pendenciaParams = {};
+                if (f.dataEntregaDe) pendenciaParams.dataVendaDe = f.dataEntregaDe;
+                if (f.dataEntregaAte) pendenciaParams.dataVendaAte = f.dataEntregaAte;
+                pedidoService.resumoPendencias(pendenciaParams).then(setPendencias).catch(() => {});
+            }
         } catch (error) {
             console.error("Erro ao carregar dados", error);
             toast.error("Erro ao carregar lista.");
         } finally {
             setLoading(false);
-            setLoadingAmostras(false);
+            setLoadingMais(false);
         }
-    }, [abaAtiva, filtros]);
+    }, [montarParamsFiltro]);
 
+    // Recarrega a 1ª página sempre que aba, filtros, status ou busca (debounced) mudam
     useEffect(() => {
-        carregarDados();
-    }, [carregarDados]);
+        setPagina(1);
+        carregar(1, abaAtiva, filtros, filtroStatus, buscaServer);
+    }, [carregar, abaAtiva, filtros, filtroStatus, buscaServer]);
+
+    const carregarMais = () => {
+        const nova = pagina + 1;
+        setPagina(nova);
+        carregar(nova, abaAtiva, filtros, filtroStatus, buscaServer);
+    };
+
+    const handleBuscaChange = (valor) => {
+        setBusca(valor);
+        clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => setBuscaServer(valor.trim()), 400);
+    };
 
     useEffect(() => {
         if (podeVerTodosVendedores || podeReatribuirVendedor) {
@@ -510,23 +531,24 @@ const ListaPedidos = () => {
         navigate(`/pedidos/imprimir/lote?ids=${ids}`);
     };
 
-    const filtrosPadrao = React.useMemo(() => {
-        const hoje = new Date().toISOString().split('T')[0];
-        const trintaDiasAtras = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-        return { dataEntregaDe: trintaDiasAtras, dataEntregaAte: hoje, dataCriacaoDe: '', dataCriacaoAte: '', vencimentoDe: '', vencimentoAte: '', embarqueNumero: '', motorista: '', vendedorId: '', busca: '' };
-    }, []);
+    // Padrão = tudo limpo (entrega inclusive). "Limpar" volta a este estado.
+    const filtrosPadrao = React.useMemo(() => (
+        { dataEntregaDe: '', dataEntregaAte: '', dataCriacaoDe: '', dataCriacaoAte: '', vencimentoDe: '', vencimentoAte: '', embarqueNumero: '', motorista: '', vendedorId: '' }
+    ), []);
 
     const isFiltroAtivo = React.useMemo(() => {
         if (filtros.vendedorId) return true;
+        if (filtros.dataEntregaDe || filtros.dataEntregaAte) return true;
         if (filtros.dataCriacaoDe || filtros.dataCriacaoAte) return true;
         if (filtros.vencimentoDe || filtros.vencimentoAte) return true;
         if (filtros.embarqueNumero || filtros.motorista) return true;
-        if (filtros.dataEntregaDe !== filtrosPadrao.dataEntregaDe || filtros.dataEntregaAte !== filtrosPadrao.dataEntregaAte) return true;
         return false;
-    }, [filtros, filtrosPadrao]);
+    }, [filtros]);
 
     const limparFiltros = () => {
         setFiltros({ ...filtrosPadrao });
+        setBusca('');
+        setBuscaServer('');
         setFiltroStatus('TODOS');
     };
 
@@ -549,14 +571,14 @@ const ListaPedidos = () => {
                         <input
                             autoFocus
                             type="text"
-                            placeholder="Buscar cliente, cidade, vendedor, nº, valor..."
-                            value={filtros.busca}
-                            onChange={e => setFiltros(prev => ({ ...prev, busca: e.target.value }))}
+                            placeholder="Buscar cliente, cidade, vendedor, nº..."
+                            value={busca}
+                            onChange={e => handleBuscaChange(e.target.value)}
                             className="w-full pl-9 pr-8 py-1.5 border border-gray-300 rounded focus:ring-1 focus:ring-primary focus:border-primary text-sm shadow-sm"
                         />
-                        {filtros.busca && (
+                        {busca && (
                             <button
-                                onClick={() => setFiltros(prev => ({ ...prev, busca: '' }))}
+                                onClick={() => handleBuscaChange('')}
                                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                             >
                                 <X className="h-4 w-4" />
@@ -785,10 +807,8 @@ const ListaPedidos = () => {
                         { key: 'FATURADO', label: 'Faturado', icon: Receipt, active: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
                     ].map(({ key, label, icon: Icon, active }) => {
                         const ativo = filtroStatus === key;
-                        const count = key === 'TODOS' ? pedidos.length
-                            : key === 'FATURADO' ? pedidos.filter(p => p.situacaoCA === 'FATURADO').length
-                            : key === 'APROVADO' ? pedidos.filter(p => p.situacaoCA === 'APROVADO' && p.situacaoCA !== 'FATURADO').length
-                            : pedidos.filter(p => p.statusEnvio === key && p.situacaoCA !== 'FATURADO' && p.situacaoCA !== 'APROVADO').length;
+                        // Contagens vêm do backend (groupBy sobre a aba/filtro atual, não só a página carregada)
+                        const count = contagens?.[key] ?? 0;
                         return (
                             <button
                                 key={key}
@@ -953,22 +973,8 @@ const ListaPedidos = () => {
                                 <span className="text-sm text-gray-400">Nenhum pedido encontrado nos filtros aplicados.</span>
                             </div>
                         ) : (
-                            pedidos.filter(p => {
-                                if (filtroStatus === 'TODOS') return true;
-                                if (filtroStatus === 'FATURADO') return p.situacaoCA === 'FATURADO';
-                                if (filtroStatus === 'APROVADO') return p.situacaoCA === 'APROVADO' && p.situacaoCA !== 'FATURADO';
-                                return p.statusEnvio === filtroStatus && p.situacaoCA !== 'FATURADO' && p.situacaoCA !== 'APROVADO';
-                            }).filter(p => {
-                                const termo = (filtros.busca || '').trim();
-                                if (!termo) return true;
-                                if (!/^[\d.,]+$/.test(termo)) return true; // busca textual já filtrada no backend
-                                const num = parseInt(termo.replace(/\D/g, ''));
-                                if (!isNaN(num) && p.numero === num) return true;
-                                const total = (p.itens?.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0) || 0) + Number(p.valorFrete || 0);
-                                const totalStr = total.toFixed(2).replace('.', ',');
-                                const alvo = termo.replace(/\./g, ',');
-                                return totalStr.includes(alvo);
-                            }).map((pedido) => (
+                            /* Filtro de status e busca já aplicados no servidor (paginado) */
+                            pedidos.map((pedido) => (
                                 <div key={pedido.id} id={`pedido-row-${pedido.id}`} className={`px-3 pt-3 pb-2 hover:bg-gray-50 transition-colors border-b border-gray-100 overflow-hidden ${highlightId === pedido.id ? 'ring-2 ring-primary bg-yellow-50 animate-pulse' : ''}`}>
                                     {/* Linha 1: checkbox + número + cliente + valor */}
                                     <div className="flex items-start gap-2 mb-1">
@@ -1154,6 +1160,24 @@ const ListaPedidos = () => {
                             ))
                         )}
                     </div>
+                    {/* Rodapé: contador + Carregar mais (paginação servidor) */}
+                    {!loading && pedidos.length > 0 && (
+                        <div className="flex flex-col items-center gap-2 p-3 border-t border-gray-100">
+                            <span className="text-[11px] text-gray-400">
+                                Mostrando {pedidos.length} de {total}
+                            </span>
+                            {pedidos.length < total && (
+                                <button
+                                    onClick={carregarMais}
+                                    disabled={loadingMais}
+                                    className="w-full sm:w-auto px-6 py-2.5 rounded-full border border-gray-300 text-sm text-gray-600 font-semibold hover:bg-gray-50 flex items-center justify-center gap-2 disabled:opacity-60"
+                                >
+                                    {loadingMais && <Loader2 className="h-4 w-4 animate-spin" />}
+                                    Carregar mais {Math.min(TAM_PAGINA, total - pedidos.length)}
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
             )}
 

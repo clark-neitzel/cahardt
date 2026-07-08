@@ -37,8 +37,9 @@ const pedidoService = {
         return resultado;
     },
 
-    // 1. Listagem de pedidos com filtros (para a tela de histórico)
-    listar: async (filtros) => {
+    // Monta o WHERE de listagem (tab, datas, embarque, busca...) SEM o filtro rápido
+    // de status — reaproveitado tanto pela listagem paginada quanto pela contagem dos chips.
+    _montarWhereListagem: (filtros) => {
         const { statusEnvio, vendedorId, clienteId, especial, bonificacao, dataVendaDe, dataVendaAte, createdAtDe, createdAtAte, vencimentoDe, vencimentoAte, embarqueNumero, motorista, busca } = filtros;
 
         const where = {};
@@ -90,7 +91,7 @@ const pedidoService = {
         if (busca && busca.trim() !== '') {
             const termo = busca.trim();
             const numBusca = parseInt(termo);
-            
+
             where.OR = [
                 { cliente: { Nome: { contains: termo, mode: 'insensitive' } } },
                 { cliente: { NomeFantasia: { contains: termo, mode: 'insensitive' } } },
@@ -109,9 +110,67 @@ const pedidoService = {
             ].filter(Boolean);
         }
 
-        return await prisma.pedido.findMany({
-            where,
-            include: {
+        return where;
+    },
+
+    // Contagem dos chips de status (TODOS/ABERTO/ENVIAR/... /FATURADO) para a aba/filtro
+    // atual. groupBy leve (só COUNT, sem include) — espelha a lógica client-side antiga.
+    contarPorStatus: async (whereBase) => {
+        const rows = await prisma.pedido.groupBy({
+            by: ['statusEnvio', 'situacaoCA'],
+            where: whereBase,
+            _count: { id: true },
+        });
+        const c = { TODOS: 0, ABERTO: 0, ENVIAR: 0, SINCRONIZANDO: 0, APROVADO: 0, ERRO: 0, FATURADO: 0 };
+        for (const r of rows) {
+            const n = r._count.id;
+            c.TODOS += n;
+            if (r.situacaoCA === 'FATURADO') c.FATURADO += n;
+            else if (r.situacaoCA === 'APROVADO') c.APROVADO += n;
+            else if (c[r.statusEnvio] !== undefined) c[r.statusEnvio] += n;
+        }
+        return c;
+    },
+
+    // 1. Listagem paginada de pedidos com filtros (tela de Pedidos).
+    // Retorna { items, total, pagina, tamanhoPagina, contagens }.
+    // - total: quantidade para o filtro ativo (usado no "Carregar mais").
+    // - contagens: breakdown por status para os chips (só calculado na 1ª página).
+    listar: async (filtros) => {
+        const { statusRapido, pagina, tamanhoPagina } = filtros;
+
+        const whereBase = pedidoService._montarWhereListagem(filtros);
+
+        // Aplica o filtro rápido de status por cima do WHERE base (sem mutar o base)
+        const where = { ...whereBase };
+        if (statusRapido && statusRapido !== 'TODOS') {
+            if (statusRapido === 'FATURADO') {
+                where.situacaoCA = 'FATURADO';
+            } else if (statusRapido === 'APROVADO') {
+                where.situacaoCA = 'APROVADO';
+            } else {
+                where.statusEnvio = statusRapido;
+                // situacaoCA != FATURADO e != APROVADO — INCLUINDO null (pedidos em aberto têm
+                // situacaoCA null). Atenção: nesta versão do Prisma `not`/`notIn` NÃO inclui null,
+                // por isso o OR explícito com { situacaoCA: null }. Vai como termo do AND para não
+                // colidir com o where.OR da busca.
+                where.AND = [
+                    ...(whereBase.AND || []),
+                    { OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['FATURADO', 'APROVADO'] } }] },
+                ];
+            }
+        }
+
+        const pag = pagina ? parseInt(pagina) : 1;
+        const tam = tamanhoPagina ? parseInt(tamanhoPagina) : 50;
+        const skip = (pag - 1) * tam;
+
+        const [items, total] = await Promise.all([
+            prisma.pedido.findMany({
+                where,
+                skip,
+                take: tam,
+                include: {
                 cliente: {
                     select: { Nome: true, NomeFantasia: true, Documento: true, End_Cidade: true, End_Bairro: true }
                 },
@@ -146,9 +205,17 @@ const pedidoService = {
                         itens: { select: { quantidade: true, valorUnitario: true, produto: { select: { nome: true } } } }
                     }
                 }
-            },
-            orderBy: { createdAt: 'desc' }
-        });
+                },
+                orderBy: { createdAt: 'desc' }
+            }),
+            prisma.pedido.count({ where }),
+        ]);
+
+        // Contagem dos chips só na 1ª página (não recalcula a cada "Carregar mais")
+        let contagens = null;
+        if (pag === 1) contagens = await pedidoService.contarPorStatus(whereBase);
+
+        return { items, total, pagina: pag, tamanhoPagina: tam, contagens };
     },
 
     // 2. Criação de novo pedido validando banco e regras de negócio
