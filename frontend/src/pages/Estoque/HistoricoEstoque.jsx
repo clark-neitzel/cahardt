@@ -3,6 +3,7 @@ import { ArrowUpCircle, ArrowDownCircle, Filter, ChevronLeft, Loader2, AlertCirc
 import { useNavigate } from 'react-router-dom';
 import estoqueService from '../../services/estoqueService';
 import SelectBusca from '../../components/SelectBusca';
+import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 
 const MOTIVO_LABEL = {
     AJUSTE_MANUAL: 'Ajuste Manual',
@@ -102,6 +103,10 @@ export default function HistoricoEstoque() {
     useEffect(() => {
         carregar(1, filtrosAplicados, buscaServer);
     }, [carregar, filtrosAplicados, buscaServer]);
+
+    // Rebusca ao voltar ao app / a cada 5 min: recarrega a 1ª página com os
+    // filtros atuais (movimentos novos aparecem no topo, sem perder o filtro)
+    useAtualizaAoVoltar(() => carregar(1, filtrosAplicados, buscaServer));
 
     const handleBuscaChange = (valor) => {
         setBusca(valor);

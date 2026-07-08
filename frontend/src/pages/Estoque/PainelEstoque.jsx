@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import estoqueService from '../../services/estoqueService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 
 // ─── Card de produto ──────────────────────────────────────────────────────────
 
@@ -141,6 +142,9 @@ export default function PainelEstoque() {
     }, []);
 
     useEffect(() => { carregarLancamentosHoje(); }, [carregarLancamentosHoje]);
+
+    // Rebusca ao voltar ao app / a cada 5 min (tela deixada aberta): estoque e movimentos de hoje
+    useAtualizaAoVoltar(() => { carregarProdutos(); carregarLancamentosHoje(); });
 
     // Carrega últimos lançamentos do produto selecionado
     const carregarHistoricoItem = useCallback(async (produtoId) => {

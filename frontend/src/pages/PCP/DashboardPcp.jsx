@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 import { BarChart3, ClipboardList, AlertTriangle, TrendingUp, Lightbulb, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -31,18 +32,19 @@ export default function DashboardPcp() {
     const [kpis, setKpis] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        (async () => {
-            try {
-                const data = await pcpSugestaoService.dashboard();
-                setKpis(data);
-            } catch {
-                toast.error('Erro ao carregar dashboard PCP');
-            } finally {
-                setLoading(false);
-            }
-        })();
+    const carregar = useCallback(async () => {
+        try {
+            const data = await pcpSugestaoService.dashboard();
+            setKpis(data);
+        } catch {
+            toast.error('Erro ao carregar dashboard PCP');
+        } finally {
+            setLoading(false);
+        }
     }, []);
+
+    useEffect(() => { carregar(); }, [carregar]);
+    useAtualizaAoVoltar(carregar); // rebusca ao voltar ao app / a cada 5 min (tela deixada aberta)
 
     if (loading) return (
         <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-gray-400" /></div>

@@ -5,6 +5,7 @@ import estoqueService from '../../services/estoqueService';
 import categoriaProdutoService from '../../services/categoriaProdutoService';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 
 const STORAGE_KEY = 'posicao_estoque_filtros';
 
@@ -691,6 +692,13 @@ export default function PosicaoEstoque() {
             setLoading(false);
         }
     };
+
+    // Rebusca ao voltar ao app / a cada 5 min (tela deixada aberta no iPad).
+    // Atualiza sempre a posição e, se estiver na aba Demanda, também a demanda.
+    useAtualizaAoVoltar(() => {
+        carregar();
+        if (abaAtiva === 'demanda') carregarDemanda();
+    });
 
     const carregarDemanda = async () => {
         setLoadingDemanda(true);

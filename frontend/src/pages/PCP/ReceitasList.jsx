@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import pcpReceitaService from '../../services/pcpReceitaService';
 import SelectBusca from '../../components/SelectBusca';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 
 const STATUS_CORES = {
     ativa: 'bg-green-100 text-green-800',
@@ -34,6 +35,7 @@ export default function ReceitasList() {
     }, [statusFiltro]);
 
     useEffect(() => { carregar(); }, [carregar]);
+    useAtualizaAoVoltar(carregar); // rebusca ao voltar ao app / a cada 5 min
 
     const filtradas = search.trim()
         ? receitas.filter(r =>

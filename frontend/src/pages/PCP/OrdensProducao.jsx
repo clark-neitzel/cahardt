@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import pcpOrdemService from '../../services/pcpOrdemService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 
 const STATUS_CORES = {
     PLANEJADA: 'bg-blue-100 text-blue-800',
@@ -46,6 +47,7 @@ export default function OrdensProducao() {
     }, [statusFiltro, pagina]);
 
     useEffect(() => { carregar(); }, [carregar]);
+    useAtualizaAoVoltar(carregar); // rebusca ao voltar ao app / a cada 5 min (tela deixada aberta)
 
     const cancelar = async (id) => {
         if (!confirm('Cancelar esta ordem?')) return;

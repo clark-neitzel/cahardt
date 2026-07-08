@@ -3,6 +3,7 @@ import { Lightbulb, RefreshCw, Check, X, Loader2, AlertTriangle } from 'lucide-r
 import toast from 'react-hot-toast';
 import pcpSugestaoService from '../../services/pcpSugestaoService';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 
 const STATUS_BADGE = {
     PENDENTE: 'bg-yellow-100 text-yellow-800',
@@ -30,6 +31,7 @@ export default function SugestoesProducao() {
     };
 
     useEffect(() => { carregar(); }, [filtroStatus]);
+    useAtualizaAoVoltar(carregar); // rebusca ao voltar ao app / a cada 5 min (tela deixada aberta)
 
     const gerarSugestoes = async () => {
         setGerando(true);

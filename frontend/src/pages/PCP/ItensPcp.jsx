@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import pcpItemService from '../../services/pcpItemService';
 import SelectBusca from '../../components/SelectBusca';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 
 const TIPO_CORES = {
     MP: 'bg-amber-100 text-amber-800',
@@ -36,6 +37,7 @@ export default function ItensPcp() {
     }, [search, ativoFiltro]);
 
     useEffect(() => { carregar(); }, [carregar]);
+    useAtualizaAoVoltar(carregar); // rebusca ao voltar ao app / a cada 5 min (tela deixada aberta)
 
     const toggleAtivo = async (id) => {
         try {

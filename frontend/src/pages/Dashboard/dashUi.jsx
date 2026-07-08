@@ -1,40 +1,7 @@
-import React, { useEffect, useRef } from 'react';
-
-/**
- * Recarrega dados "vivos" quando o usuário volta para o app (PWA que ficou em
- * segundo plano no celular) e periodicamente com a tela aberta. Sem isso o
- * dashboard congela no número da última vez que a tela montou.
- *
- * @param recarregar função que dispara a nova busca
- * @param ttlMs      idade máxima do dado antes de rebuscar ao voltar (padrão 60s)
- * @returns marcarAtualizado — chame quando uma busca terminar com sucesso
- */
-export const useAtualizaAoVoltar = (recarregar, ttlMs = 60 * 1000) => {
-    const ultimaRef = useRef(Date.now());
-    const cbRef = useRef(recarregar);
-    cbRef.current = recarregar;
-
-    useEffect(() => {
-        const revalidar = () => {
-            if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
-            if (Date.now() - ultimaRef.current >= ttlMs) {
-                ultimaRef.current = Date.now();
-                cbRef.current();
-            }
-        };
-        document.addEventListener('visibilitychange', revalidar);
-        window.addEventListener('focus', revalidar);
-        const timer = setInterval(revalidar, 5 * 60 * 1000); // tela deixada aberta (ex.: iPad no balcão)
-        return () => {
-            document.removeEventListener('visibilitychange', revalidar);
-            window.removeEventListener('focus', revalidar);
-            clearInterval(timer);
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    return () => { ultimaRef.current = Date.now(); };
-};
+import React from 'react';
+// Hook compartilhado (usado também pelas telas de Estoque/PCP). Reexportado
+// aqui para os dashboards continuarem importando de './dashUi'.
+export { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 
 /**
  * Componentes visuais compartilhados dos dashboards (Geral, Vendedor, Entregador).

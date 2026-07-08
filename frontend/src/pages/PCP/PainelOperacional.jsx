@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import pcpOrdemService from '../../services/pcpOrdemService';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 
 const STATUS_CORES = {
     PLANEJADA: 'border-blue-300 bg-blue-50',
@@ -49,6 +50,7 @@ export default function PainelOperacional() {
     }, []);
 
     useEffect(() => { carregar(); }, [carregar]);
+    useAtualizaAoVoltar(carregar); // rebusca ao voltar ao app / a cada 5 min (painel deixado aberto na fábrica)
 
     const carregarDetalhe = async (ordemId) => {
         if (expandido[ordemId]) {
