@@ -430,7 +430,8 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
     try {
         const {
             fornecedorId, descricao, categoria, categoriaCaId, numeroNota,
-            competencia, observacoes, enviarCA, parcelas, itens
+            competencia, observacoes, enviarCA, parcelas, itens,
+            metodoPagamento, contaFinanceiraCaId, pago, dataPagamento
         } = req.body;
 
         if (!descricao?.trim()) return res.status(400).json({ error: 'Informe a descrição da conta.' });
@@ -444,6 +445,27 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
         }
         if (enviarCA && !fornecedorId) {
             return res.status(400).json({ error: 'Para enviar ao Conta Azul é obrigatório informar o fornecedor.' });
+        }
+
+        // ── Condição de pagamento (forma + banco) — OBRIGATÓRIA ao enviar ao Conta Azul.
+        // "Já paguei" (ex.: dinheiro saindo do caixinha) também registra a baixa e marca para quitar no CA.
+        let condicaoCA = null; // { metodoPagamento, contaFinanceiraCaId }
+        let pagto = null;      // preenchido só quando "já paguei"
+        if (enviarCA) {
+            const metodo = String(metodoPagamento || '').toUpperCase();
+            if (!contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(metodo)) {
+                return res.status(400).json({ error: 'Escolha a forma de pagamento.' });
+            }
+            if (!contaFinanceiraCaId) {
+                return res.status(400).json({ error: 'Escolha o banco/caixa da despesa.' });
+            }
+            condicaoCA = { metodoPagamento: metodo, contaFinanceiraCaId: String(contaFinanceiraCaId) };
+            if (pago) {
+                if (!dataPagamento || isNaN(new Date(dataPagamento).getTime())) {
+                    return res.status(400).json({ error: 'Informe uma data de pagamento válida.' });
+                }
+                pagto = { ...condicaoCA, dataPagamento: parseVencimento(dataPagamento) };
+            }
         }
 
         // ── Produtos comprados (opcional): validação antes de criar a conta ──
@@ -482,34 +504,67 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
         }
 
         const valorTotal = round2(parcelas.reduce((s, p) => s + Number(p.valor), 0));
+        const includeConta = {
+            fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true } },
+            parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: true } }
+        };
 
-        const conta = await prisma.contaPagar.create({
-            data: {
-                fornecedorId: fornecedorId || null,
-                descricao: descricao.trim(),
-                categoria: categoria?.trim() || null,
-                categoriaCaId: categoriaCaId || null,
-                numeroNota: numeroNota?.trim() || null,
-                competencia: competencia ? parseVencimento(competencia) : null,
-                observacoes: observacoes?.trim() || null,
-                origem: 'MANUAL',
-                valorTotal,
-                status: 'ABERTO',
-                statusEnvioCA: enviarCA ? 'ENVIAR' : 'NAO_ENVIAR',
-                criadoPorId: req.user.id,
-                parcelas: {
-                    create: parcelas.map((p, i) => ({
-                        numeroParcela: i + 1,
-                        valor: round2(p.valor),
-                        dataVencimento: parseVencimento(p.dataVencimento)
-                    }))
+        let conta;
+        await prisma.$transaction(async (tx) => {
+            conta = await tx.contaPagar.create({
+                data: {
+                    fornecedorId: fornecedorId || null,
+                    descricao: descricao.trim(),
+                    categoria: categoria?.trim() || null,
+                    categoriaCaId: categoriaCaId || null,
+                    numeroNota: numeroNota?.trim() || null,
+                    competencia: competencia ? parseVencimento(competencia) : null,
+                    observacoes: observacoes?.trim() || null,
+                    origem: 'MANUAL',
+                    valorTotal,
+                    status: 'ABERTO',
+                    statusEnvioCA: enviarCA ? 'ENVIAR' : 'NAO_ENVIAR',
+                    metodoPagamentoCA: condicaoCA?.metodoPagamento || null,
+                    contaFinanceiraCaId: condicaoCA?.contaFinanceiraCaId || null,
+                    criadoPorId: req.user.id,
+                    parcelas: {
+                        create: parcelas.map((p, i) => ({
+                            numeroParcela: i + 1,
+                            valor: round2(p.valor),
+                            dataVencimento: parseVencimento(p.dataVencimento)
+                        }))
+                    }
+                },
+                include: includeConta
+            });
+
+            // "Já paguei" (ex.: dinheiro do caixinha): registra a baixa em cada parcela e marca p/ empurrar ao CA.
+            if (pagto) {
+                const labelMetodo = contasPagarCaSyncService.METODOS_PAGAMENTO_BAIXA
+                    .find((m) => m.value === pagto.metodoPagamento)?.label || pagto.metodoPagamento;
+                for (const p of conta.parcelas) {
+                    await tx.pagamentoParcelaPagar.create({
+                        data: {
+                            parcelaPagarId: p.id,
+                            valorPago: round2(p.valor),
+                            dataPagamento: pagto.dataPagamento,
+                            formaPagamento: pagto.metodoPagamento,
+                            contaFinanceiraCaId: pagto.contaFinanceiraCaId,
+                            statusEnvioCA: 'ENVIAR',
+                            origem: 'MANUAL',
+                            observacao: `Pago na criação da despesa (${labelMetodo}).`,
+                            registradoPorId: req.user.id
+                        }
+                    });
+                    await contasPagarCaSyncService.recalcularParcelaEConta(tx, p.id);
                 }
-            },
-            include: {
-                fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true } },
-                parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: true } }
             }
-        });
+        }, { timeout: 20000, maxWait: 10000 });
+
+        // Se pagou, re-busca para refletir o status atualizado das parcelas/conta na resposta.
+        if (pagto) {
+            conta = await prisma.contaPagar.findUnique({ where: { id: conta.id }, include: includeConta });
+        }
 
         // Produtos lançados dão ENTRADA no estoque, atualizam o custo e alimentam o
         // histórico de compras. Best-effort: falha aqui NÃO desfaz a conta criada.

@@ -639,6 +639,34 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
     const [valorTotal, setValorTotal] = useState(conta?.valorTotal != null ? fmt(conta.valorTotal) : '');
     const [salvando, setSalvando] = useState(false);
 
+    // Condição de pagamento (forma + banco) — obrigatória ao enviar ao CA (só na criação).
+    // "Já paguei" (ex.: dinheiro do caixinha) marca a despesa como quitada no Conta Azul.
+    const [modoPagamento, setModoPagamento] = useState('DDA'); // 'DDA' (ainda vou pagar) | 'PAGO' (já paguei)
+    const [metodoPagamento, setMetodoPagamento] = useState('');
+    const [contaFinanceiraCaId, setContaFinanceiraCaId] = useState('');
+    const [dataPagamento, setDataPagamento] = useState(hojeYMD());
+    const [opcoesBaixa, setOpcoesBaixa] = useState({ contasFinanceiras: [], metodosPagamento: [] });
+    const [opcoesCarregadas, setOpcoesCarregadas] = useState(false);
+    const [loadingOpcoes, setLoadingOpcoes] = useState(false);
+    const pago = !editando && enviarCA && modoPagamento === 'PAGO';
+
+    // Carrega bancos + formas do CA quando a despesa vai ao CA (forma+banco são obrigatórios).
+    useEffect(() => {
+        if (editando || !enviarCA || opcoesCarregadas || loadingOpcoes) return;
+        setLoadingOpcoes(true);
+        contasPagarService.opcoesBaixa()
+            .then(op => {
+                const cf = Array.isArray(op?.contasFinanceiras) ? op.contasFinanceiras : [];
+                const mp = Array.isArray(op?.metodosPagamento) ? op.metodosPagamento : [];
+                setOpcoesBaixa({ contasFinanceiras: cf, metodosPagamento: mp });
+                const padrao = cf.find(c => c.padrao) || cf[0];
+                setContaFinanceiraCaId(prev => prev || padrao?.id || '');
+                setOpcoesCarregadas(true);
+            })
+            .catch(() => toast.error('Não consegui carregar os bancos do Conta Azul.'))
+            .finally(() => setLoadingOpcoes(false));
+    }, [editando, enviarCA, opcoesCarregadas, loadingOpcoes]);
+
     // Parcelas: em edição, parcelas pagas ficam travadas
     const [parcelas, setParcelas] = useState(() => {
         if (conta?.parcelas?.length) {
@@ -746,6 +774,11 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                 return;
             }
         }
+        if (!editando && enviarCA) {
+            if (!metodoPagamento) { toast.error('Escolha a forma de pagamento.'); return; }
+            if (!contaFinanceiraCaId) { toast.error('Escolha o banco/caixa.'); return; }
+            if (pago && !dataPagamento) { toast.error('Informe a data do pagamento.'); return; }
+        }
         setSalvando(true);
         try {
             const payload = {
@@ -758,6 +791,11 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                 enviarCA,
                 parcelas: parcelasValidas.map(p => ({ ...(p.id ? { id: p.id } : {}), valor: parseNum(p.valor), dataVencimento: p.dataVencimento }))
             };
+            if (!editando && enviarCA) {
+                payload.metodoPagamento = metodoPagamento;
+                payload.contaFinanceiraCaId = contaFinanceiraCaId;
+                if (pago) { payload.pago = true; payload.dataPagamento = dataPagamento; }
+            }
             if (!editando && itensCompra.length > 0) {
                 payload.itens = itensCompra.map(it => ({
                     vinculo: it.vinculo,
@@ -1040,10 +1078,65 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                     </div>
 
                     {!editando && (
-                        <label className="flex items-start gap-2 text-sm text-gray-700 bg-blue-50 border border-blue-200 rounded-lg p-3 cursor-pointer">
-                            <input type="checkbox" checked={enviarCA} onChange={e => setEnviarCA(e.target.checked)} className="rounded mt-0.5" />
-                            <span><span className="font-semibold">Enviar para a Conta Azul</span> (para pagar via DDA)</span>
-                        </label>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-3">
+                            <label className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
+                                <input type="checkbox" checked={enviarCA} onChange={e => setEnviarCA(e.target.checked)} className="rounded mt-0.5" />
+                                <span><span className="font-semibold">Enviar para a Conta Azul</span></span>
+                            </label>
+
+                            {enviarCA && (
+                                <div className="space-y-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-600 mb-1">Forma de pagamento *</label>
+                                            <SelectBusca value={metodoPagamento} onChange={e => setMetodoPagamento(e.target.value)} className="w-full">
+                                                <option value="">Selecionar…</option>
+                                                {opcoesBaixa.metodosPagamento.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                            </SelectBusca>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-600 mb-1">Banco / caixa *</label>
+                                            <SelectBusca value={contaFinanceiraCaId} onChange={e => setContaFinanceiraCaId(e.target.value)} className="w-full">
+                                                <option value="">Selecionar…</option>
+                                                {opcoesBaixa.contasFinanceiras.map(c => <option key={c.id} value={c.id}>{c.nome}{c.padrao ? ' (padrão)' : ''}</option>)}
+                                            </SelectBusca>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setModoPagamento('DDA')}
+                                            className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium ${modoPagamento === 'DDA' ? 'border-primary bg-white text-primaryDark ring-1 ring-primary' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'}`}
+                                        >
+                                            Ainda vou pagar
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setModoPagamento('PAGO')}
+                                            className={`flex-1 px-3 py-2 rounded-lg border text-sm font-medium ${modoPagamento === 'PAGO' ? 'border-primary bg-white text-primaryDark ring-1 ring-primary' : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-50'}`}
+                                        >
+                                            Já paguei
+                                        </button>
+                                    </div>
+                                    {pago && (
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-600 mb-1">Data do pagamento *</label>
+                                            <input
+                                                type="date"
+                                                value={dataPagamento}
+                                                onChange={e => setDataPagamento(e.target.value)}
+                                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                            />
+                                        </div>
+                                    )}
+                                    <div className="text-xs text-gray-500">
+                                        {pago
+                                            ? 'A despesa entra já quitada no Conta Azul (o app cria e dá a baixa).'
+                                            : 'A despesa entra em aberto no Conta Azul, já com a forma e o banco/caixa definidos.'}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
 
