@@ -168,7 +168,9 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
 
   useEffect(() => {
     if (!buscaCli || buscaCli.length < 2) { setResultados([]); return; }
-    const t = setTimeout(() => clienteService.buscarGlobal(buscaCli, 8).then(setResultados).catch(() => {}), 350);
+    const t = setTimeout(() => clienteService.buscarGlobal(buscaCli, 8)
+      .then(r => setResultados(Array.isArray(r) ? r : (r?.data || [])))  // buscarGlobal devolve { data: [...] }
+      .catch(() => {}), 350);
     return () => clearTimeout(t);
   }, [buscaCli]);
 
