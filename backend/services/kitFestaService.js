@@ -1033,7 +1033,7 @@ const kitFestaService = {
             orderBy: { createdAt: 'desc' }, // mais recente primeiro
             include: {
                 itens: true, bairro: true,
-                kitFestaCliente: { include: { cliente: { select: { Nome: true, NomeFantasia: true, End_Cidade: true } } } },
+                kitFestaCliente: { include: { cliente: { select: { Nome: true, NomeFantasia: true, Documento: true, End_Cidade: true } } } },
                 pedido: { select: { id: true, numero: true, statusEnvio: true } },
             },
             take: 300,

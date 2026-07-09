@@ -8,6 +8,12 @@ import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
 
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
+const docLabel = (doc) => (String(doc || '').replace(/\D/g, '').length > 11 ? 'CNPJ' : 'CPF');
+// Nome digitado no site quando difere do cadastro vinculado (mostrado como dica)
+const nomeDoSite = (nomeSite, nomeCadastro) => {
+  const a = String(nomeSite || '').trim(), b = String(nomeCadastro || '').trim();
+  return a && b && a.toLowerCase() !== b.toLowerCase() ? a : '';
+};
 // Data/hora que o cliente fez o pedido, no fuso de São Paulo
 const feitoEm = (d) => {
   if (!d) return null;
@@ -107,8 +113,12 @@ export default function AbaPedidos() {
             const novo = p.status === 'AGUARDANDO' || p.status === 'PENDENTE_CADASTRO';
             const inativo = p.status === 'RECUSADO' || p.status === 'CANCELADO';
             const cli = p.kitFestaCliente?.cliente;
-            const fantasia = cli?.NomeFantasia && cli.NomeFantasia !== p.nomeCliente ? cli.NomeFantasia : '';
+            // Vinculado a um cadastro → mostra nome (razão social) e documento do cadastro; senão, o que veio do site
+            const nomeExib = cli?.Nome || p.nomeCliente;
+            const docExib = cli?.Documento || p.cpfCliente;
+            const fantasia = cli?.NomeFantasia && cli.NomeFantasia !== nomeExib ? cli.NomeFantasia : '';
             const cidade = cli?.End_Cidade || '';
+            const nomeSite = cli ? nomeDoSite(p.nomeCliente, nomeExib) : '';
             return (
             <button key={p.id} onClick={() => setAberto(p)}
               className={`text-left bg-white rounded-xl border p-3 hover:shadow-md transition-shadow ${novo ? 'border-amber-300 ring-1 ring-amber-200' : 'border-gray-200'} ${inativo ? 'opacity-60' : ''}`}>
@@ -119,8 +129,9 @@ export default function AbaPedidos() {
                   <span className={`text-xs px-2 py-0.5 rounded-full ${BADGE[p.status]}`}>{STATUS_LABEL[p.status]}</span>
                 </div>
               </div>
-              <div className="font-semibold text-gray-800 text-sm">{p.nomeCliente}</div>
-              <div className="text-xs text-gray-400">{[fantasia, cidade, p.telefoneCliente || p.cpfCliente].filter(Boolean).join(' · ')}</div>
+              <div className="font-semibold text-gray-800 text-sm">{nomeExib}</div>
+              <div className="text-xs text-gray-400">{[fantasia, cidade, p.telefoneCliente || docExib].filter(Boolean).join(' · ')}</div>
+              {nomeSite && <div className="text-[11px] text-gray-400 mt-0.5">Pedido feito por {nomeSite}</div>}
               <div className="flex items-center gap-2 text-xs text-gray-500 mt-2">
                 <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{String(p.data).slice(0, 10).split('-').reverse().join('/')}</span>
                 <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{p.horario}</span>
@@ -163,6 +174,8 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
   const [clienteVinc, setClienteVinc] = useState(null);
 
   const precisaVinculo = pedido.status === 'PENDENTE_CADASTRO' && !pedido.kitFestaCliente?.clienteUuid;
+  // Cadastro do app vinculado ao pedido (define nome/CPF exibidos) — vínculo recém-feito nesta sessão tem prioridade
+  const cliVinc = clienteVinc || pedido.kitFestaCliente?.cliente || null;
 
   useEffect(() => { vendedorService.listarAtivos().then(setVendedores).catch(() => {}); }, []);
 
@@ -233,8 +246,11 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
         <div className="p-4 space-y-4">
           {/* Cliente */}
           <div>
-            <div className="font-medium text-gray-800">{pedido.nomeCliente}</div>
-            <div className="text-sm text-gray-500">CPF {pedido.cpfCliente} · {pedido.telefoneCliente || 'sem telefone'}</div>
+            <div className="font-medium text-gray-800">{cliVinc?.Nome || pedido.nomeCliente}</div>
+            <div className="text-sm text-gray-500">{docLabel(cliVinc?.Documento || pedido.cpfCliente)} {cliVinc?.Documento || pedido.cpfCliente} · {pedido.telefoneCliente || 'sem telefone'}</div>
+            {cliVinc && nomeDoSite(pedido.nomeCliente, cliVinc.Nome) && (
+              <div className="mt-0.5 text-xs text-gray-400">Pedido feito por {pedido.nomeCliente} (nome informado no site)</div>
+            )}
             {feitoEm(pedido.createdAt) && (
               <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-400"><Clock className="h-3.5 w-3.5" />Pedido feito em {feitoEm(pedido.createdAt)}</div>
             )}
