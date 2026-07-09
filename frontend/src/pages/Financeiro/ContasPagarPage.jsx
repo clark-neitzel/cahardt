@@ -759,6 +759,44 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
     const addParcela = () => setParcelas(prev => [...prev, { dataVencimento: hojeYMD(), valor: '', paga: false }]);
     const removeParcela = (idx) => setParcelas(prev => prev.filter((_, i) => i !== idx));
 
+    // ── Gerador de parcelas (assinatura/seguro): nº, valor, 1ª data + recorrência ──
+    const [gerAberto, setGerAberto] = useState(false);
+    const [gerN, setGerN] = useState('12');
+    const [gerValor, setGerValor] = useState('');
+    const [gerData, setGerData] = useState(hojeYMD());
+    const [gerModo, setGerModo] = useState('mensal'); // 'mensal' (dia fixo) | 'dias' (a cada N dias)
+    const [gerDias, setGerDias] = useState('30');
+
+    const addMesesYMD = (ymd, n) => {
+        const [a, m, d] = ymd.split('-').map(Number);
+        const base = new Date(Date.UTC(a, m - 1, 1));
+        base.setUTCMonth(base.getUTCMonth() + n);
+        const ano = base.getUTCFullYear(), mes = base.getUTCMonth();
+        const ultimoDia = new Date(Date.UTC(ano, mes + 1, 0)).getUTCDate(); // clampa dia 31 → último do mês
+        const dia = Math.min(d, ultimoDia);
+        return `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+    };
+    const addDiasYMD = (ymd, n) => {
+        const dt = new Date(`${ymd}T12:00:00Z`);
+        dt.setUTCDate(dt.getUTCDate() + n);
+        return dt.toISOString().slice(0, 10);
+    };
+    const gerN_int = Math.max(1, Math.min(360, parseInt(gerN, 10) || 0));
+    const gerValor_num = parseNum(gerValor);
+    const gerarParcelas = () => {
+        if (!gerData) { toast.error('Informe a data da 1ª parcela.'); return; }
+        if (gerValor_num <= 0) { toast.error('Informe o valor de cada parcela.'); return; }
+        const dias = Math.max(1, parseInt(gerDias, 10) || 30);
+        const novas = [];
+        for (let i = 0; i < gerN_int; i++) {
+            const venc = gerModo === 'dias' ? addDiasYMD(gerData, i * dias) : addMesesYMD(gerData, i);
+            novas.push({ dataVencimento: venc, valor: fmt(gerValor_num), paga: false });
+        }
+        setParcelas(prev => [...prev.filter(p => p.paga), ...novas]);
+        setGerAberto(false);
+        toast.success(`${gerN_int} parcela(s) geradas.`);
+    };
+
     const salvar = async () => {
         if (!fornecedorId) { toast.error('Selecione o fornecedor.'); return; }
         if (!descricao.trim()) { toast.error('Informe a descrição.'); return; }
@@ -1007,14 +1045,74 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                         <div className="flex items-center justify-between mb-2">
                             <div className="text-xs font-bold uppercase tracking-widest text-gray-600">Parcelas</div>
                             {!parcelasTravadas && (
-                                <button
-                                    onClick={addParcela}
-                                    className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-xs"
-                                >
-                                    + Adicionar parcela
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setGerAberto(v => !v)}
+                                        className={`px-3 py-1.5 rounded-md font-semibold text-xs border ${gerAberto ? 'bg-mint/50 border-primary text-primaryDark' : 'bg-white border-primary text-primary hover:bg-mint/40'}`}
+                                    >
+                                        ⚡ Gerar várias
+                                    </button>
+                                    <button
+                                        onClick={addParcela}
+                                        className="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-xs"
+                                    >
+                                        + Adicionar parcela
+                                    </button>
+                                </div>
                             )}
                         </div>
+
+                        {/* Gerador de parcelas (assinatura / seguro) */}
+                        {gerAberto && !parcelasTravadas && (
+                            <div className="mb-3 rounded-xl border border-primary/30 bg-mint/20 p-3 md:p-4">
+                                <div className="text-xs font-semibold text-primaryDark mb-3">Gerar várias parcelas de uma vez (ex.: seguro, assinatura)</div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Nº de parcelas</label>
+                                        <input type="number" min="1" max="360" value={gerN} onChange={e => setGerN(e.target.value)} className="w-full border border-gray-300 rounded px-2 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Valor de cada</label>
+                                        <div className="flex items-center border border-gray-300 rounded overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary bg-white">
+                                            <span className="px-2 py-2 bg-gray-50 border-r border-gray-300 text-xs text-gray-500">R$</span>
+                                            <input value={gerValor} onChange={e => setGerValor(e.target.value)} placeholder="0,00" className="w-full min-w-0 px-2 py-2 text-sm text-right outline-none" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Data da 1ª</label>
+                                        <input type="date" value={gerData} onChange={e => setGerData(e.target.value)} className="w-full border border-gray-300 rounded px-2 py-2 text-sm text-gray-700 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Repetir</label>
+                                        <SelectBusca value={gerModo} onChange={e => setGerModo(e.target.value)} className="w-full">
+                                            <option value="mensal">Todo mês (dia fixo)</option>
+                                            <option value="dias">A cada N dias</option>
+                                        </SelectBusca>
+                                    </div>
+                                </div>
+                                <div className="flex flex-wrap items-center justify-between gap-3 mt-3">
+                                    <div className="flex items-center gap-2">
+                                        {gerModo === 'dias' && (
+                                            <label className="text-xs text-gray-600 flex items-center gap-1.5">
+                                                Intervalo:
+                                                <input type="number" min="1" value={gerDias} onChange={e => setGerDias(e.target.value)} className="w-16 border border-gray-300 rounded px-2 py-1.5 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                                dias
+                                            </label>
+                                        )}
+                                        {gerModo === 'mensal' && (
+                                            <span className="text-xs text-gray-500">Vence sempre no dia <b>{gerData ? gerData.slice(8) : '—'}</b> de cada mês.</span>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-xs text-gray-600">Total: <b>R$ {fmt(gerN_int * gerValor_num)}</b></span>
+                                        <button onClick={gerarParcelas} className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm">
+                                            Gerar {gerN_int} parcelas
+                                        </button>
+                                    </div>
+                                </div>
+                                <p className="text-[11px] text-gray-500 mt-2">Isso substitui as parcelas em aberto da lista abaixo. Depois você ainda pode ajustar cada uma individualmente.</p>
+                            </div>
+                        )}
                         {enviadaCA && (
                             <div className="mb-2 text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                                 Despesa já enviada ao Conta Azul. Você pode ajustar o <b>vencimento</b> e o <b>valor</b> das parcelas em aberto — a mudança é aplicada também no Conta Azul. Não é possível adicionar, excluir ou mexer em parcela já paga.
