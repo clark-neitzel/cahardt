@@ -8,6 +8,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
 
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
+// Data/hora que o cliente fez o pedido, no fuso de São Paulo
+const feitoEm = (d) => {
+  if (!d) return null;
+  try {
+    return new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', ' ·');
+  } catch { return null; }
+};
 const STATUS_FILTROS = [
   ['', 'Todos'],
   ['AGUARDANDO', 'Aguardando'],
@@ -226,6 +233,9 @@ function ModalPedido({ pedido, isAdmin, onClose, onChanged }) {
           <div>
             <div className="font-medium text-gray-800">{pedido.nomeCliente}</div>
             <div className="text-sm text-gray-500">CPF {pedido.cpfCliente} · {pedido.telefoneCliente || 'sem telefone'}</div>
+            {feitoEm(pedido.createdAt) && (
+              <div className="mt-1 flex items-center gap-1.5 text-xs text-gray-400"><Clock className="h-3.5 w-3.5" />Pedido feito em {feitoEm(pedido.createdAt)}</div>
+            )}
             {pedido.celularAlterado && (
               <div className="mt-1.5 text-xs bg-amber-50 text-amber-700 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5">
                 <Phone className="h-3.5 w-3.5" /> O cliente informou/corrigiu o celular ({pedido.telefoneCliente}). Atualize no cadastro do app/CA.
