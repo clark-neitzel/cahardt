@@ -719,8 +719,14 @@ async function _enviarDespesasPendentes() {
             const dataCompetencia = fmtDataCA(conta.competencia || parcelasAbertas[0].dataVencimento || new Date());
             const notaParcela = conta.numeroNota ? `NF ${conta.numeroNota}` : conta.descricao;
 
+            // Descrição no CA = descrição automática (nº da nota + fornecedor, usada na conciliação)
+            // + as observações digitadas na conferência. Cap de 255 p/ não estourar o campo do CA
+            // (o texto completo continua no campo observação).
+            const obsTxt = String(conta.observacoes || '').trim();
+            const descricaoCA = (obsTxt ? `${conta.descricao} — ${obsTxt}` : conta.descricao).substring(0, 255);
+
             const payload = {
-                descricao: conta.descricao,
+                descricao: descricaoCA,
                 // Referência única (id da nossa conta) — rastreio e base para evitar duplicidade no reenvio
                 codigo_referencia: conta.id,
                 // observacao é OBRIGATÓRIA na spec — nunca mandar vazia
