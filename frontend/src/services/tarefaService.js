@@ -10,6 +10,19 @@ export const horaStr = (d = new Date()) => {
     return `${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
+// texto amigável da repetição (DIAS_SEMANA lista os dias escolhidos)
+export const labelRecorrencia = (recorrencia, diasSemana = []) => {
+    const DIAS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+    switch (recorrencia) {
+        case 'DIARIA': return 'todo dia';
+        case 'DIAS_UTEIS': return 'seg a sex';
+        case 'SEMANAL': return 'toda semana';
+        case 'MENSAL': return 'todo mês';
+        case 'DIAS_SEMANA': return (diasSemana || []).map(d => DIAS[d]).join(', ') || 'dias escolhidos';
+        default: return null;
+    }
+};
+
 const tarefaService = {
     equipe: async () => {
         const response = await api.get('/tarefas/equipe');

@@ -11,8 +11,15 @@ const RECORRENCIAS = [
     { value: 'NUNCA', label: 'Não repete' },
     { value: 'DIARIA', label: 'Todo dia' },
     { value: 'DIAS_UTEIS', label: 'Dias úteis (seg a sex)' },
+    { value: 'DIAS_SEMANA', label: 'Dias da semana (escolher quais)' },
     { value: 'SEMANAL', label: 'Toda semana (mesmo dia)' },
     { value: 'MENSAL', label: 'Todo mês (mesmo dia)' },
+];
+
+const DIAS_SEMANA_OPCOES = [
+    { valor: 0, label: 'Dom' }, { valor: 1, label: 'Seg' }, { valor: 2, label: 'Ter' },
+    { valor: 3, label: 'Qua' }, { valor: 4, label: 'Qui' }, { valor: 5, label: 'Sex' },
+    { valor: 6, label: 'Sáb' },
 ];
 
 const AnexoChip = ({ icone: Icone, nome, onRemove }) => (
@@ -36,6 +43,7 @@ const TarefaFormModal = ({ tarefa, inicial, equipe, podeParaOutros, usuario, onC
         hora: tarefa?.hora || inicial?.hora || '08:00',
         recorrencia: tarefa?.recorrencia || 'NUNCA',
         recorrenciaFim: tarefa?.recorrenciaFim || '',
+        diasSemana: tarefa?.diasSemana || [],
         insistir: tarefa ? tarefa.insistir !== false : true,
     }));
     const [responsaveis, setResponsaveis] = useState(() =>
@@ -50,6 +58,10 @@ const TarefaFormModal = ({ tarefa, inicial, equipe, podeParaOutros, usuario, onC
     const fileRef = useRef(null);
 
     const set = (campo, valor) => setForm(f => ({ ...f, [campo]: valor }));
+    const toggleDia = (d) => setForm(f => ({
+        ...f,
+        diasSemana: f.diasSemana.includes(d) ? f.diasSemana.filter(x => x !== d) : [...f.diasSemana, d].sort(),
+    }));
 
     const addArquivos = (files) => {
         const aceitos = Array.from(files).filter(f =>
@@ -79,7 +91,10 @@ const TarefaFormModal = ({ tarefa, inicial, equipe, podeParaOutros, usuario, onC
         if (!form.titulo.trim()) return toast.error('Informe o título da tarefa.');
         if (!form.dataInicio) return toast.error('Informe a data.');
         if (!form.hora) return toast.error('Informe o horário do alerta.');
-        if (!editando && responsaveis.length === 0) return toast.error('Escolha para quem é a tarefa.');
+        if (responsaveis.length === 0) return toast.error('Escolha para quem é a tarefa.');
+        if (form.recorrencia === 'DIAS_SEMANA' && form.diasSemana.length === 0) {
+            return toast.error('Escolha ao menos um dia da semana para repetir.');
+        }
 
         setSalvando(true);
         try {
@@ -90,18 +105,22 @@ const TarefaFormModal = ({ tarefa, inicial, equipe, podeParaOutros, usuario, onC
                 hora: form.hora,
                 recorrencia: form.recorrencia,
                 recorrenciaFim: form.recorrencia !== 'NUNCA' && form.recorrenciaFim ? form.recorrenciaFim : null,
+                diasSemana: form.recorrencia === 'DIAS_SEMANA' ? form.diasSemana : [],
                 insistir: form.insistir,
             };
 
             if (editando) {
-                await tarefaService.atualizar(tarefa.id, { ...payload, responsavelId: responsaveis[0] });
+                // anexos novos entram ANTES de salvar — assim as cópias p/ outras pessoas já saem com eles
                 for (const l of novosLinks) await tarefaService.anexarLink(tarefa.id, l.nome, l.url);
                 if (novosArquivos.length > 0) {
                     const fd = new FormData();
                     novosArquivos.forEach(f => fd.append('arquivos', f));
                     await tarefaService.anexarArquivos(tarefa.id, fd);
                 }
-                toast.success('Tarefa atualizada!');
+                const resp = await tarefaService.atualizar(tarefa.id, { ...payload, responsaveis });
+                toast.success(resp.copiasCriadas > 0
+                    ? `Tarefa atualizada! Criada cópia para +${resp.copiasCriadas} pessoa(s).`
+                    : 'Tarefa atualizada!');
             } else {
                 const { tarefas: criadas } = await tarefaService.criar({
                     ...payload,
@@ -180,6 +199,23 @@ const TarefaFormModal = ({ tarefa, inicial, equipe, podeParaOutros, usuario, onC
                         </div>
                     </div>
 
+                    {form.recorrencia === 'DIAS_SEMANA' && (
+                        <div>
+                            <label className="text-sm font-medium text-gray-700 block mb-1.5">Em quais dias? *</label>
+                            <div className="flex flex-wrap gap-1.5">
+                                {DIAS_SEMANA_OPCOES.map(d => (
+                                    <button key={d.valor} type="button" onClick={() => toggleDia(d.valor)}
+                                        className={`px-3.5 py-2 rounded-full text-sm font-semibold min-h-[40px] transition-colors ${form.diasSemana.includes(d.valor)
+                                            ? 'bg-primary text-white shadow-sm'
+                                            : 'bg-white border border-gray-300 text-gray-600 hover:border-primary hover:text-primary'}`}>
+                                        {d.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1.5">Ex.: toque em Seg, Qua e Sex para dias alternados.</p>
+                        </div>
+                    )}
+
                     {form.recorrencia !== 'NUNCA' && (
                         <div>
                             <label className="text-sm font-medium text-gray-700 block mb-1">Repetir até (opcional)</label>
@@ -191,28 +227,22 @@ const TarefaFormModal = ({ tarefa, inicial, equipe, podeParaOutros, usuario, onC
                     <div>
                         <label className="text-sm font-medium text-gray-700 block mb-1">Para quem é a tarefa? *</label>
                         {podeParaOutros ? (
-                            editando ? (
-                                <SelectBusca value={responsaveis[0] || ''} onChange={e => setResponsaveis([e.target.value])} className="w-full">
-                                    {equipe.map(v => <option key={v.id} value={v.id}>{v.nome}{v.id === usuario.id ? ' (eu)' : ''}</option>)}
-                                </SelectBusca>
-                            ) : (
-                                <MultiSelect
-                                    options={equipe.map(v => ({ id: v.id, nome: v.id === usuario.id ? `${v.nome} (eu)` : v.nome }))}
-                                    selected={responsaveis}
-                                    onChange={setResponsaveis}
-                                    valueKey="id"
-                                    labelKey="nome"
-                                    placeholder="Escolha uma ou mais pessoas"
-                                    searchable
-                                />
-                            )
+                            <MultiSelect
+                                options={equipe.map(v => ({ id: v.id, nome: v.id === usuario.id ? `${v.nome} (eu)` : v.nome }))}
+                                selected={responsaveis}
+                                onChange={setResponsaveis}
+                                valueKey="id"
+                                labelKey="nome"
+                                placeholder="Escolha uma ou mais pessoas"
+                                searchable
+                            />
                         ) : (
                             <div className="w-full border border-gray-200 bg-gray-50 rounded px-3 py-2 text-sm text-gray-600">
                                 {usuario.nome} (você)
                             </div>
                         )}
-                        {podeParaOutros && !editando && (
-                            <p className="text-xs text-gray-500 mt-1">Escolhendo mais de uma pessoa, cada uma recebe a própria tarefa com o mesmo alerta.</p>
+                        {podeParaOutros && (
+                            <p className="text-xs text-gray-500 mt-1">Escolhendo mais de uma pessoa, cada uma recebe a própria cópia da tarefa com o mesmo alerta.</p>
                         )}
                     </div>
 

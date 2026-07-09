@@ -440,8 +440,9 @@ model Tarefa {
   descricao      String?
   dataInicio     String  @map("data_inicio") // 'YYYY-MM-DD'
   hora           String // 'HH:MM' — horário do alerta
-  recorrencia    String  @default("NUNCA") // NUNCA | DIARIA | DIAS_UTEIS | SEMANAL | MENSAL
+  recorrencia    String  @default("NUNCA") // NUNCA | DIARIA | DIAS_UTEIS | SEMANAL | MENSAL | DIAS_SEMANA
   recorrenciaFim String? @map("recorrencia_fim") // 'YYYY-MM-DD' (opcional)
+  diasSemana     Int[]   @default([]) @map("dias_semana") // p/ DIAS_SEMANA: 0=dom ... 6=sáb
   insistir       Boolean @default(true) // re-alerta a cada 5 min até concluir
   ativo          Boolean @default(true)
   criadoPorId    String  @map("criado_por_id")

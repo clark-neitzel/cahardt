@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AlarmClock, X, Lock, Repeat, CheckCircle2, CalendarCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import tarefaService, { hojeStr } from '../services/tarefaService';
+import tarefaService, { hojeStr, labelRecorrencia } from '../services/tarefaService';
 import AnexosTarefa from './AnexosTarefa';
 
 // Pop-up global das Tarefas da Equipe: quando chega o horário de uma tarefa,
@@ -12,13 +12,6 @@ import AnexosTarefa from './AnexosTarefa';
 const POLL_MS = 60 * 1000; // confere o relógio a cada 1 min
 const SNOOZE_MS = 5 * 60 * 1000; // "lembrar em 5 min"
 const DELAY_INICIAL_MS = 6000;
-
-const RECORRENCIA_LABEL = {
-    DIARIA: 'Repete: todo dia',
-    DIAS_UTEIS: 'Repete: seg a sex',
-    SEMANAL: 'Repete: toda semana',
-    MENSAL: 'Repete: todo mês',
-};
 
 function bipTarefa() {
     try {
@@ -140,9 +133,9 @@ const AlertaTarefas = () => {
                                 Criada por {tarefa.criadoPor?.nome}
                             </span>
                         )}
-                        {RECORRENCIA_LABEL[tarefa.recorrencia] && (
+                        {tarefa.recorrencia !== 'NUNCA' && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-mint text-primaryDark">
-                                <Repeat className="h-3 w-3" /> {RECORRENCIA_LABEL[tarefa.recorrencia]}
+                                <Repeat className="h-3 w-3" /> Repete: {labelRecorrencia(tarefa.recorrencia, tarefa.diasSemana)}
                             </span>
                         )}
                     </div>

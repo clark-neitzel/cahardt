@@ -25,7 +25,14 @@ const uploadTarefa = require('../middlewares/uploadTarefaMiddleware');
 
 const RE_DATA = /^\d{4}-\d{2}-\d{2}$/;
 const RE_HORA = /^\d{2}:\d{2}$/;
-const RECORRENCIAS = ['NUNCA', 'DIARIA', 'DIAS_UTEIS', 'SEMANAL', 'MENSAL'];
+const RECORRENCIAS = ['NUNCA', 'DIARIA', 'DIAS_UTEIS', 'SEMANAL', 'MENSAL', 'DIAS_SEMANA'];
+
+// normaliza/valida a lista de dias (0=dom..6=sáb) da recorrência DIAS_SEMANA
+const normalizarDiasSemana = (dias) => {
+    if (!Array.isArray(dias)) return null;
+    const ok = [...new Set(dias.map(Number))].filter(d => Number.isInteger(d) && d >= 0 && d <= 6).sort();
+    return ok.length > 0 ? ok : null;
+};
 const TOLERANCIA_MIN = 15; // concluída até 15 min após o horário conta como "no horário"
 
 const isAdmin = (req) => !!req.user?.permissoes?.admin;
@@ -54,6 +61,7 @@ function ocorreNoDia(tarefa, dataRef) {
         }
         case 'SEMANAL': return diaSemana(dataRef) === diaSemana(tarefa.dataInicio);
         case 'MENSAL': return dataRef.slice(8) === tarefa.dataInicio.slice(8);
+        case 'DIAS_SEMANA': return (tarefa.diasSemana || []).includes(diaSemana(dataRef));
         default: return false;
     }
 }
@@ -84,6 +92,7 @@ const resumoTarefa = (t, req) => ({
     hora: t.hora,
     recorrencia: t.recorrencia,
     recorrenciaFim: t.recorrenciaFim,
+    diasSemana: t.diasSemana || [],
     insistir: t.insistir,
     criadoPor: t.criadoPor ? { id: t.criadoPor.id, nome: t.criadoPor.nome } : null,
     responsavel: t.responsavel ? { id: t.responsavel.id, nome: t.responsavel.nome } : null,
@@ -227,6 +236,7 @@ router.post('/', async (req, res) => {
             titulo, descricao, dataInicio, hora,
             recorrencia = 'NUNCA', recorrenciaFim = null,
             insistir = true, responsaveis, linksAjuda = [],
+            diasSemana = [],
         } = req.body;
 
         if (!titulo || !String(titulo).trim()) return res.status(400).json({ error: 'Informe o título da tarefa.' });
@@ -234,6 +244,10 @@ router.post('/', async (req, res) => {
         if (!RE_HORA.test(hora || '')) return res.status(400).json({ error: 'Horário inválido (use HH:MM).' });
         if (!RECORRENCIAS.includes(recorrencia)) return res.status(400).json({ error: 'Repetição inválida.' });
         if (recorrenciaFim && !RE_DATA.test(recorrenciaFim)) return res.status(400).json({ error: 'Data final de repetição inválida.' });
+        const diasNorm = recorrencia === 'DIAS_SEMANA' ? normalizarDiasSemana(diasSemana) : [];
+        if (recorrencia === 'DIAS_SEMANA' && !diasNorm) {
+            return res.status(400).json({ error: 'Escolha ao menos um dia da semana para repetir.' });
+        }
 
         const ids = Array.isArray(responsaveis) && responsaveis.length > 0 ? [...new Set(responsaveis)] : [req.user.id];
         if (ids.some(id => id !== req.user.id) && !podeCriarParaOutros(req)) {
@@ -261,6 +275,7 @@ router.post('/', async (req, res) => {
                         descricao: descricao ? String(descricao) : null,
                         dataInicio, hora, recorrencia,
                         recorrenciaFim: recorrenciaFim || null,
+                        diasSemana: diasNorm || [],
                         insistir: insistir !== false,
                         criadoPorId: req.user.id,
                         responsavelId,
@@ -287,13 +302,57 @@ router.post('/', async (req, res) => {
     }
 });
 
+// clona uma tarefa (campos + anexos) para outro responsável.
+// Arquivos físicos são COPIADOS para a pasta do clone — assim excluir a
+// tarefa original não quebra os anexos das cópias.
+async function clonarTarefaPara(base, anexos, responsavelId) {
+    const nova = await prisma.tarefa.create({
+        data: {
+            titulo: base.titulo,
+            descricao: base.descricao,
+            dataInicio: base.dataInicio,
+            hora: base.hora,
+            recorrencia: base.recorrencia,
+            recorrenciaFim: base.recorrenciaFim,
+            diasSemana: base.diasSemana || [],
+            insistir: base.insistir,
+            criadoPorId: base.criadoPorId,
+            responsavelId,
+        },
+    });
+    for (const a of anexos || []) {
+        try {
+            if (a.tipo === 'LINK') {
+                await prisma.tarefaAnexo.create({
+                    data: { tarefaId: nova.id, tipo: 'LINK', nome: a.nome, url: a.url },
+                });
+            } else {
+                const origem = path.join(__dirname, '..', a.url.replace(/^\//, ''));
+                if (!fs.existsSync(origem)) continue;
+                const destDir = path.join(__dirname, '../uploads/tarefas', nova.id);
+                fs.mkdirSync(destDir, { recursive: true });
+                const nomeArq = path.basename(origem);
+                fs.copyFileSync(origem, path.join(destDir, nomeArq));
+                await prisma.tarefaAnexo.create({
+                    data: { tarefaId: nova.id, tipo: a.tipo, nome: a.nome, url: `/uploads/tarefas/${nova.id}/${nomeArq}` },
+                });
+            }
+        } catch (anexoErr) {
+            console.error('[Tarefas] Falha ao copiar anexo para o clone (segue sem ele):', anexoErr.message);
+        }
+    }
+    return nova;
+}
+
 // ── PUT /:id — editar (só criador ou admin) ──
+// Aceita `responsaveis: [ids]`: a tarefa fica com um deles e os demais
+// recebem uma CÓPIA (com anexos). `responsavelId` (único) segue aceito.
 router.put('/:id', async (req, res) => {
     try {
         const tarefa = await carregarComPermissaoDeEdicao(req, res);
         if (!tarefa) return;
 
-        const { titulo, descricao, dataInicio, hora, recorrencia, recorrenciaFim, insistir, responsavelId } = req.body;
+        const { titulo, descricao, dataInicio, hora, recorrencia, recorrenciaFim, insistir, responsavelId, responsaveis, diasSemana } = req.body;
         const data = {};
         if (titulo !== undefined) {
             if (!String(titulo).trim()) return res.status(400).json({ error: 'O título não pode ficar vazio.' });
@@ -317,11 +376,36 @@ router.put('/:id', async (req, res) => {
             data.recorrenciaFim = recorrenciaFim || null;
         }
         if (insistir !== undefined) data.insistir = insistir !== false;
-        if (responsavelId !== undefined && responsavelId !== tarefa.responsavelId) {
-            if (responsavelId !== req.user.id && !podeCriarParaOutros(req)) {
-                return res.status(403).json({ error: 'Sem permissão para passar a tarefa para outra pessoa.' });
+
+        // dias da semana coerentes com a repetição final
+        const recorrenciaFinal = data.recorrencia ?? tarefa.recorrencia;
+        if (recorrenciaFinal === 'DIAS_SEMANA') {
+            const diasNorm = diasSemana !== undefined ? normalizarDiasSemana(diasSemana) : normalizarDiasSemana(tarefa.diasSemana);
+            if (!diasNorm) return res.status(400).json({ error: 'Escolha ao menos um dia da semana para repetir.' });
+            data.diasSemana = diasNorm;
+        } else if (data.recorrencia !== undefined) {
+            data.diasSemana = [];
+        }
+
+        // responsáveis: um fica nesta tarefa, os novos recebem cópias
+        let novos = [];
+        const lista = Array.isArray(responsaveis) && responsaveis.length > 0
+            ? [...new Set(responsaveis)]
+            : (responsavelId !== undefined ? [responsavelId] : null);
+        if (lista) {
+            if (lista.some(id => id !== req.user.id) && !podeCriarParaOutros(req)) {
+                return res.status(403).json({ error: 'Sem permissão para atribuir a tarefa a outras pessoas.' });
             }
-            data.responsavelId = responsavelId;
+            const validos = await prisma.vendedor.findMany({
+                where: { id: { in: lista }, ativo: true },
+                select: { id: true },
+            });
+            if (validos.length !== lista.length) {
+                return res.status(400).json({ error: 'Responsável inválido ou inativo.' });
+            }
+            const principal = lista.includes(tarefa.responsavelId) ? tarefa.responsavelId : lista[0];
+            data.responsavelId = principal;
+            novos = lista.filter(id => id !== principal);
         }
 
         const atualizada = await prisma.tarefa.update({
@@ -333,7 +417,21 @@ router.put('/:id', async (req, res) => {
                 anexos: true,
             },
         });
-        res.json({ tarefa: resumoTarefa({ ...atualizada, criadoPorPermissoes: atualizada.criadoPor?.permissoes }, req) });
+
+        let clonadas = 0;
+        for (const respId of novos) {
+            try {
+                await clonarTarefaPara(atualizada, atualizada.anexos, respId);
+                clonadas++;
+            } catch (cloneErr) {
+                console.error('[Tarefas] Falha ao criar cópia para outro responsável:', cloneErr.message);
+            }
+        }
+
+        res.json({
+            tarefa: resumoTarefa({ ...atualizada, criadoPorPermissoes: atualizada.criadoPor?.permissoes }, req),
+            copiasCriadas: clonadas,
+        });
     } catch (error) {
         console.error('[Tarefas] Erro ao editar tarefa:', error);
         res.status(500).json({ error: 'Erro ao editar a tarefa.' });

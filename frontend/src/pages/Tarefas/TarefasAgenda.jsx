@@ -8,7 +8,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
 import AnexosTarefa from '../../components/AnexosTarefa';
-import tarefaService, { hojeStr, horaStr } from '../../services/tarefaService';
+import tarefaService, { hojeStr, horaStr, labelRecorrencia } from '../../services/tarefaService';
 import TarefaFormModal from './TarefaFormModal';
 
 // ── helpers de data (sempre no fuso local do aparelho) ──
@@ -24,9 +24,6 @@ const MES_LABEL = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set'
 
 const HORA_INI = 6, HORA_FIM = 20, ALTURA_HORA = 44; // grade: 06h–20h
 
-const RECORRENCIA_LABEL = {
-    DIARIA: 'todo dia', DIAS_UTEIS: 'seg a sex', SEMANAL: 'toda semana', MENSAL: 'todo mês',
-};
 
 // cor do bloco/card conforme quem criou
 const estiloOrigem = (oc, userId) => {
@@ -83,7 +80,7 @@ const TarefaDetalheModal = ({ oc, usuario, onClose, onConcluir, onEditar, onExcl
                         )}
                         {oc.recorrencia !== 'NUNCA' && (
                             <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-mint text-primaryDark">
-                                <Repeat className="h-3 w-3" /> Repete: {RECORRENCIA_LABEL[oc.recorrencia]}
+                                <Repeat className="h-3 w-3" /> Repete: {labelRecorrencia(oc.recorrencia, oc.diasSemana)}
                             </span>
                         )}
                     </div>
@@ -140,7 +137,7 @@ const CardTarefa = ({ oc, userId, onClick, mostrarResponsavel }) => {
                 {mostrarResponsavel && <span className="font-medium text-gray-600">{oc.responsavel?.nome}</span>}
                 {oc.criadaPeloAdmin && <span className="inline-flex items-center gap-1"><Lock className="h-3 w-3" /> Admin</span>}
                 {!oc.criadaPeloAdmin && oc.criadoPor?.id !== userId && <span className="inline-flex items-center gap-1"><UserIcon className="h-3 w-3" /> {oc.criadoPor?.nome}</span>}
-                {oc.recorrencia !== 'NUNCA' && <span className="inline-flex items-center gap-1"><Repeat className="h-3 w-3" /> {RECORRENCIA_LABEL[oc.recorrencia]}</span>}
+                {oc.recorrencia !== 'NUNCA' && <span className="inline-flex items-center gap-1"><Repeat className="h-3 w-3" /> {labelRecorrencia(oc.recorrencia, oc.diasSemana)}</span>}
                 {oc.anexos?.length > 0 && <span>📎 {oc.anexos.length}</span>}
             </div>
         </button>

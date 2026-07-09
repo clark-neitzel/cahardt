@@ -17,11 +17,12 @@ Agenda de tarefas com alerta sonoro, estilo Google Agenda, para toda a equipe. C
 - Ver a própria agenda em três visões: **Semana** (grade tipo Google Agenda, só desktop), **Dia** e **Lista** (próximos 30 dias)
 - Criar tarefa para si mesmo (todos podem)
 - Criar tarefa para colegas — exige a permissão **Pode criar tarefas para outros**; escolhendo várias pessoas, cada uma recebe a própria cópia da tarefa
+- Ao **editar** também dá para escolher várias pessoas: a tarefa continua com uma delas e as demais recebem uma cópia (com os anexos); cada pessoa conclui a sua
 - Ver a agenda de um colega ou de toda a equipe — exige **Pode ver a agenda dos colegas** (ou admin)
 - Marcar tarefa como **concluída** (pelo pop-up ou abrindo a tarefa na agenda)
 - Editar/excluir tarefa — só quem criou (ou o admin)
 - Anexar **material de ajuda**: links, imagens (JPG/PNG/WebP) e PDF — as imagens aparecem como **miniatura** no alerta e no detalhe da tarefa (tocar amplia na própria tela, sem sair do app); PDFs aparecem como cartão "toque para abrir"
-- Repetição: não repete, todo dia, dias úteis (seg a sex), toda semana ou todo mês — com data final opcional
+- Repetição: não repete, todo dia, dias úteis (seg a sex), **dias da semana escolhidos** (ex.: seg/qua/sex — botões de Dom a Sáb no formulário), toda semana ou todo mês — com data final opcional
 - Clicar num horário vazio da grade semanal cria tarefa já naquele dia/hora
 - Abrir o **Parecer do dia** (botão no topo) — exige **Pode ver o parecer do dia**
 
