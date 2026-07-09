@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AlarmClock, X, Lock, Repeat, Link2, FileText, Image as ImageIcon, CheckCircle2, CalendarCheck } from 'lucide-react';
+import { AlarmClock, X, Lock, Repeat, CheckCircle2, CalendarCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import tarefaService, { hojeStr } from '../services/tarefaService';
-import { API_URL } from '../services/api';
+import AnexosTarefa from './AnexosTarefa';
 
 // Pop-up global das Tarefas da Equipe: quando chega o horário de uma tarefa,
 // aparece por cima de qualquer tela, com som. Fechar/adiar = volta em 5 min
@@ -38,13 +38,6 @@ function bipTarefa() {
         toque(880, ctx.currentTime + 0.36);
     } catch { /* áudio bloqueado antes de interação — ignora */ }
 }
-
-const anexoUrl = (url) => (url?.startsWith('/') ? `${API_URL}${url}` : url);
-const AnexoIcone = ({ tipo }) => {
-    if (tipo === 'LINK') return <Link2 className="h-3.5 w-3.5" />;
-    if (tipo === 'IMAGEM') return <ImageIcon className="h-3.5 w-3.5" />;
-    return <FileText className="h-3.5 w-3.5" />;
-};
 
 const AlertaTarefas = () => {
     const { user } = useAuth();
@@ -156,19 +149,7 @@ const AlertaTarefas = () => {
 
                     {tarefa.descricao && <p className="text-sm text-gray-600 whitespace-pre-wrap">{tarefa.descricao}</p>}
 
-                    {tarefa.anexos?.length > 0 && (
-                        <div>
-                            <div className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Material de ajuda</div>
-                            <div className="flex flex-wrap gap-2">
-                                {tarefa.anexos.map(a => (
-                                    <a key={a.id} href={anexoUrl(a.url)} target="_blank" rel="noopener noreferrer"
-                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 border rounded-full text-xs font-medium min-h-[32px] ${a.tipo === 'LINK' ? 'bg-gray-50 border-gray-200 text-primary underline' : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100'}`}>
-                                        <AnexoIcone tipo={a.tipo} /> <span className="max-w-[180px] truncate">{a.nome}</span>
-                                    </a>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    <AnexosTarefa anexos={tarefa.anexos} />
 
                     <div className="flex flex-col sm:flex-row gap-3 pt-1">
                         <button onClick={concluir}

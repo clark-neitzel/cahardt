@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
     CalendarCheck, ChevronLeft, ChevronRight, Plus, Bell, Lock, User as UserIcon,
-    Repeat, Link2, FileText, Image as ImageIcon, CheckCircle2, Pencil, Trash2, X, BarChart3,
+    Repeat, CheckCircle2, Pencil, Trash2, X, BarChart3,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
+import AnexosTarefa from '../../components/AnexosTarefa';
 import tarefaService, { hojeStr, horaStr } from '../../services/tarefaService';
-import { API_URL } from '../../services/api';
 import TarefaFormModal from './TarefaFormModal';
 
 // ── helpers de data (sempre no fuso local do aparelho) ──
@@ -27,8 +27,6 @@ const HORA_INI = 6, HORA_FIM = 20, ALTURA_HORA = 44; // grade: 06h–20h
 const RECORRENCIA_LABEL = {
     DIARIA: 'todo dia', DIAS_UTEIS: 'seg a sex', SEMANAL: 'toda semana', MENSAL: 'todo mês',
 };
-
-const anexoUrl = (url) => (url?.startsWith('/') ? `${API_URL}${url}` : url);
 
 // cor do bloco/card conforme quem criou
 const estiloOrigem = (oc, userId) => {
@@ -94,20 +92,7 @@ const TarefaDetalheModal = ({ oc, usuario, onClose, onConcluir, onEditar, onExcl
                         {oc.adiamentos > 0 && <span className="text-gray-400"> · adiou o alerta {oc.adiamentos}×</span>}
                     </div>
                     {oc.descricao && <p className="text-sm text-gray-600 whitespace-pre-wrap">{oc.descricao}</p>}
-                    {oc.anexos?.length > 0 && (
-                        <div>
-                            <div className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">Material de ajuda</div>
-                            <div className="flex flex-wrap gap-2">
-                                {oc.anexos.map(a => (
-                                    <a key={a.id} href={anexoUrl(a.url)} target="_blank" rel="noopener noreferrer"
-                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 border border-gray-200 rounded-full text-xs font-medium min-h-[32px] ${a.tipo === 'LINK' ? 'text-primary underline' : 'text-gray-700 hover:bg-gray-100'}`}>
-                                        {a.tipo === 'LINK' ? <Link2 className="h-3.5 w-3.5" /> : a.tipo === 'IMAGEM' ? <ImageIcon className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
-                                        <span className="max-w-[180px] truncate">{a.nome}</span>
-                                    </a>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+                    <AnexosTarefa anexos={oc.anexos} />
                     <div className="flex flex-col gap-2.5 pt-1">
                         {podeConcluir && (
                             <button onClick={() => onConcluir(oc)}
