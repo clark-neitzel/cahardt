@@ -99,7 +99,7 @@ Observação: devoluções e baixas de dinheiro **não** entram nesse checklist 
 
 O relatório sai em **2 folhas A4**:
 - **Folha 1 (conferência):** valor a prestar em destaque + campos para preencher à mão (Contado, Diferença, Conferido por) + todas as entregas do dia com checkbox e a coluna "Dinheiro" (soma do que deve estar no caixa, com subtotal) + assinaturas do motorista e do conferente. Cabe até ~52 entregas na folha 1; acima disso a lista continua numa folha extra.
-- **Folha 2 (apoio):** veículo/KM/média/adiantamento, composição do valor a prestar (o que entra e o que não entra no caixa), despesas detalhadas, resumo das entregas, conferência de devoluções, amostras, atendimentos/pedidos do dia e linhas para observações do conferente.
+- **Folha 2 (apoio):** veículo/KM/média/adiantamento, composição do valor a prestar (o que entra e o que não entra no caixa), despesas detalhadas, resumo das entregas, conferência de devoluções, amostras, **resumo** dos atendimentos/pedidos do dia (contagem por tipo + números dos pedidos; o detalhe de cada atendimento fica só na tela do caixa) e linhas para observações do conferente.
 
 ### Conferir o caixa (admin)
 1. Selecione o vendedor e o dia desejado

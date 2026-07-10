@@ -116,20 +116,18 @@ const RelatorioCaixaPrint = () => {
         }
     }
 
-    // ── Atendimentos + pedidos do vendedor numa lista só, por hora ──
-    const linhasAtendimento = [
-        ...atendimentos.map(a => ({ ...a, _origem: 'atendimento' })),
-        ...pedidosVendedor.map(p => ({
-            tipo: 'PEDIDO',
-            clienteNome: p.clienteNome,
-            observacao: p.observacao,
-            pedidoId: p.bonificacao ? `BN#${p.numero || '—'}` : p.especial ? `ZZ#${p.numero || '—'}` : `#${p.numero || '—'}`,
-            canal: null,
-            leadNome: null,
-            hora: p.createdAt,
-            _origem: 'pedido'
-        }))
-    ].sort((a, b) => new Date(a.hora) - new Date(b.hora));
+    // ── Atendimentos: só o resumo sai na folha (detalhe fica na tela do caixa) ──
+    const TIPO_LABELS = { WHATSAPP: 'WhatsApp', VISITA: 'Visita', LIGACAO: 'Ligação', LEAD_NOVO: 'Lead novo', PEDIDO: 'Pedido' };
+    const atendPorTipo = {};
+    atendimentos.forEach(a => {
+        const t = TIPO_LABELS[a.tipo] || a.tipo || 'Outro';
+        atendPorTipo[t] = (atendPorTipo[t] || 0) + 1;
+    });
+    const leadsNovosCount = atendimentos.filter(a => a.tipo === 'LEAD_NOVO').length;
+    const pedidosLabel = pedidosVendedor.map(p => {
+        const num = p.bonificacao ? `BN#${p.numero || '—'}` : p.especial ? `ZZ#${p.numero || '—'}` : `#${p.numero || '—'}`;
+        return `${num} (${p.clienteNome})`;
+    });
 
     const cabecalhoEntregas = (
         <tr>
@@ -169,6 +167,12 @@ const RelatorioCaixaPrint = () => {
                 @media print {
                     html, body, #root, .bg-secondary { background: #fff !important; }
                     body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    /* O shell do app é flex com overflow — impede a quebra em várias páginas.
+                       Vira bloco fluido na impressão, senão a folha 2 sai em branco. */
+                    #root > div { display: block !important; min-height: 0 !important; height: auto !important; }
+                    #root > div > div { display: block !important; }
+                    aside { display: none !important; }
+                    main { display: block !important; overflow: visible !important; padding: 0 !important; margin: 0 !important; width: auto !important; }
                     .no-print, nav, header { display: none !important; }
                     .page-break { page-break-before: always; }
                 }
@@ -475,38 +479,23 @@ const RelatorioCaixaPrint = () => {
                         <div className="vazio">Nenhuma amostra entregue no dia.</div>
                     )}
 
-                    <div className="sec-title">Atendimentos e pedidos do dia ({atendimentos.length} atendimento(s) · {pedidosVendedor.length} pedido(s))</div>
-                    {linhasAtendimento.length > 0 ? (
-                        <table className="f10">
-                            <thead>
-                                <tr>
-                                    <th style={{ width: '20px' }} className="c">#</th>
-                                    <th style={{ width: '44px' }} className="c">Hora</th>
-                                    <th style={{ width: '78px' }}>Tipo</th>
-                                    <th>Cliente / Lead</th>
-                                    <th style={{ width: '70px' }}>Detalhe</th>
-                                    <th>Observação</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {linhasAtendimento.map((a, i) => {
-                                    let detalhe = '—';
-                                    if (a._origem === 'pedido') detalhe = a.pedidoId || '—';
-                                    else if (a.tipo === 'LEAD_NOVO' || a.leadNome) detalhe = a.canal ? `Canal: ${a.canal}` : 'Lead Novo';
-                                    else if (a.pedidoId) detalhe = `Ped: ${a.pedidoId}`;
-                                    return (
-                                        <tr key={i}>
-                                            <td className="c" style={{ fontWeight: 700 }}>{i + 1}</td>
-                                            <td className="c">{a.hora ? new Date(a.hora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
-                                            <td style={{ fontWeight: 700 }}>{a.tipo}</td>
-                                            <td>{a.clienteNome || a.leadNome || '—'}</td>
-                                            <td>{detalhe}</td>
-                                            <td style={{ color: '#444' }}>{a.observacao || '—'}</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                    <div className="sec-title">Atendimentos e pedidos do dia — resumo</div>
+                    {(atendimentos.length > 0 || pedidosVendedor.length > 0) ? (
+                        <>
+                            <div className="chips" style={{ marginBottom: '6px' }}>
+                                <div className="chip"><div className="n">{atendimentos.length}</div><div className="l">Atendimentos</div></div>
+                                <div className="chip"><div className="n" style={{ color: '#00754A' }}>{pedidosVendedor.length}</div><div className="l">Pedidos novos</div></div>
+                                <div className="chip"><div className="n" style={{ color: '#b45309' }}>{leadsNovosCount}</div><div className="l">Leads novos</div></div>
+                            </div>
+                            <div style={{ fontSize: '10.5px', color: '#333', lineHeight: 1.7 }}>
+                                {Object.keys(atendPorTipo).length > 0 && (
+                                    <><b>Por tipo:</b> {Object.entries(atendPorTipo).map(([t, n]) => `${t} ${n}`).join(' · ')}<br /></>
+                                )}
+                                {pedidosLabel.length > 0 && (
+                                    <><b>Pedidos feitos no dia:</b> {pedidosLabel.join(' · ')}</>
+                                )}
+                            </div>
+                        </>
                     ) : (
                         <div className="vazio">Nenhum atendimento registrado no dia.</div>
                     )}
