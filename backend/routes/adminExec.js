@@ -91,6 +91,27 @@ router.post('/asaas-registrar-webhook', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/asaas-configurar-conta-ca — acha a conta financeira "ASAAS" no
+// Conta Azul e grava o id em app_configs.asaas_conta_financeira_ca_id (baixas do PIX caem nela)
+router.post('/asaas-configurar-conta-ca', async (req, res) => {
+    try {
+        const contas = await contaAzulService.listarContasFinanceiras();
+        const alvo = req.body?.nome || 'asaas';
+        const conta = contas.find(c => (c.nome || '').toLowerCase().includes(String(alvo).toLowerCase()));
+        if (!conta) {
+            return res.status(404).json({ ok: false, error: `Nenhuma conta financeira com "${alvo}" no nome.`, contas: contas.map(c => c.nome) });
+        }
+        await prisma.appConfig.upsert({
+            where: { key: 'asaas_conta_financeira_ca_id' },
+            create: { key: 'asaas_conta_financeira_ca_id', value: conta.id },
+            update: { value: conta.id }
+        });
+        res.json({ ok: true, contaEscolhida: conta });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/asaas-cobrancas — últimas cobranças (diagnóstico)
 router.get('/asaas-cobrancas', async (req, res) => {
     try {
