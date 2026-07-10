@@ -10,7 +10,11 @@
 const axios = require('axios');
 const prisma = require('../config/database');
 
-const API_KEY = process.env.ASAAS_API_KEY || null;
+// Toda chave do Asaas começa com "$aact_". O EasyPanel engole o "$" inicial
+// (interpolação de variável), então recolocamos se estiver faltando.
+let _key = process.env.ASAAS_API_KEY || null;
+if (_key && _key.startsWith('aact_')) _key = '$' + _key;
+const API_KEY = _key;
 const IS_SANDBOX = !!API_KEY && API_KEY.includes('hmlg');
 const BASE_URL = IS_SANDBOX ? 'https://api-sandbox.asaas.com/v3' : 'https://api.asaas.com/v3';
 const AMBIENTE = IS_SANDBOX ? 'SANDBOX' : 'PRODUCAO';
