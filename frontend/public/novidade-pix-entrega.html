@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: PIX na Entrega — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="💸 Novidade no Hardt App: PIX com QR Code na entrega">
+<meta property="og:description" content="O motorista gera o QR Code na hora, o cliente paga e a confirmação chega em segundos, direto do banco. Chega de comprovante pelo WhatsApp!">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock do celular flutuando sobre o hero */
+  .mock {
+    max-width: 400px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: center;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 18px; }
+  .mock-valor { font-size: 28px; font-weight: 800; font-family: ui-monospace, Menlo, monospace; margin: 0 0 12px; }
+  .qr {
+    width: 168px; height: 168px;
+    margin: 0 auto 12px;
+    border: 1px solid #e3e1da;
+    border-radius: 12px;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(13, 1fr);
+    grid-template-rows: repeat(13, 1fr);
+    gap: 1px;
+  }
+  .qr i { background: #fff; border-radius: 1px; }
+  .qr i.p { background: #12241f; }
+  .mock-status {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 13.5px; font-weight: 700;
+    color: var(--primary-dark);
+  }
+  .spin {
+    width: 14px; height: 14px;
+    border: 2.5px solid var(--mint);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: gira 1s linear infinite;
+    will-change: transform;
+  }
+  @keyframes gira { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+  .mock-obs { font-size: 11.5px; color: var(--ink-soft); margin: 8px 0 0; }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 400px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos "como usar" */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .abrir-app {
+    display: block;
+    text-align: center;
+    max-width: 400px;
+    margin: 22px auto 0;
+    background: var(--house);
+    color: #fff;
+    text-decoration: none;
+    font-size: 15px;
+    font-weight: 800;
+    padding: 15px;
+    border-radius: 999px;
+  }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>PIX na entrega,<br>confirmado na hora</h1>
+    <p>O motorista gera o QR Code na tela do celular, o cliente paga e em segundos aparece "Recebido" — direto do banco. Chega de esperar comprovante pelo WhatsApp.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do celular do motorista -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico" id="mock-ico">🔳</span>
+      <div>
+        <small>Check-in de doca · Pedido #4128</small>
+        <strong id="mock-titulo">Receber com PIX</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <p class="mock-valor" id="mock-valor">R$ 387,50</p>
+      <div class="qr" id="mock-qr"></div>
+      <span class="mock-status" id="mock-status"><span class="spin"></span> Aguardando pagamento...</span>
+      <p class="mock-obs">A confirmação vem do banco — não tem como falsificar.</p>
+    </div>
+  </div>
+
+  <button class="demo-cta" id="btn-demo">▶ Ver a demonstração (o PIX cai em 3s)</button>
+  <p class="demo-hint">É só uma simulação — nenhuma cobrança de verdade.</p>
+
+  <!-- ══════════ O QUE MUDA ══════════ -->
+  <p class="sec-label">O que muda no dia a dia</p>
+
+  <div class="acc aberto">
+    <button class="acc-head" aria-expanded="true">
+      <span class="acc-ico">📱</span>
+      <strong>QR Code na tela do motorista</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>No check-in da entrega, na parte de pagamento, apareceu o botão <b>Receber com PIX (QR Code)</b>. O motorista confere o valor, toca em gerar, e mostra a tela para o cliente escanear.</p>
+      <ul>
+        <li>Se o cliente prefere pagar do escritório dele, dá para <b>copiar o código PIX</b> (copia e cola) e mandar por mensagem.</li>
+        <li>O valor já vem preenchido com o saldo da entrega — e pode ser mudado.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" aria-expanded="false">
+      <span class="acc-ico">✅</span>
+      <strong>Confirmação em segundos, direto do banco</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Assim que o cliente paga, a tela do motorista muda para <b>"PIX Recebido!"</b> sozinha. Não precisa de comprovante, print nem ligação para o escritório conferir o extrato.</p>
+      <p>O pagamento entra na entrega como uma linha verde <b>"PIX Asaas — Confirmado pelo banco"</b>, que ninguém consegue editar. O motorista só finaliza a entrega depois que o dinheiro caiu de verdade.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" aria-expanded="false">
+      <span class="acc-ico">➗</span>
+      <strong>Aceita pagamento misto (dinheiro + PIX + devolução)</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O PIX não precisa ser o valor total. Exemplos que funcionam:</p>
+      <ul>
+        <li>Total R$ 500 → <b>R$ 200 em dinheiro + R$ 300 no PIX</b></li>
+        <li>Com devolução de mercadoria: o app desconta a devolução e sugere o PIX só do restante</li>
+        <li>Só PIX, dinheiro + PIX, devolução + PIX, ou os três juntos</li>
+      </ul>
+      <p>A conta continua tendo que fechar centavo por centavo, como sempre.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" aria-expanded="false">
+      <span class="acc-ico">🏦</span>
+      <strong>Baixa automática no financeiro</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O valor do PIX não fica "com o motorista": ele cai na conta Asaas da empresa e <b>não entra no valor a prestar</b> do caixa dele.</p>
+      <p>Na conferência do Caixa, a baixa no Conta Azul sai automaticamente, já identificada como PIX Asaas — o escritório não precisa caçar pagamento no extrato.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO USAR ══════════ -->
+  <p class="sec-label">Como usar (motorista)</p>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div>Na entrega, faça o <b>check-in normal</b> e chegue na parte de pagamento.</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Toque em <b>Receber com PIX (QR Code)</b>, confira o valor e gere o QR.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Mostre a tela para o cliente <b>escanear e pagar</b> (ou copie o código PIX).</div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Espere o <b>"PIX Recebido!"</b> aparecer (segundos) e finalize a entrega normalmente.</div></div>
+  </div>
+
+  <a class="abrir-app" href="https://cahardt-github.xrqvlq.easypanel.host/minhas-entregas">Abrir o Hardt App →</a>
+
+  <p class="rodape">Dúvida? Pergunte ao <strong>Clippy</strong> dentro do app: "como recebo com PIX na entrega?"</p>
+</div>
+
+<script>
+  // QR fake (só visual)
+  (function () {
+    var qr = document.getElementById('mock-qr');
+    var seed = 7;
+    for (var i = 0; i < 169; i++) {
+      var cel = document.createElement('i');
+      seed = (seed * 31 + 17) % 97;
+      var lin = Math.floor(i / 13), col = i % 13;
+      var canto = (lin < 4 && col < 4) || (lin < 4 && col > 8) || (lin > 8 && col < 4);
+      if (canto ? (lin % 3 !== 1 || col % 3 !== 1) : seed % 2 === 0) cel.className = 'p';
+      qr.appendChild(cel);
+    }
+  })();
+
+  // Demonstração: PIX "cai" depois de 3 segundos
+  (function () {
+    var btn = document.getElementById('btn-demo');
+    var st = document.getElementById('mock-status');
+    var ico = document.getElementById('mock-ico');
+    var tit = document.getElementById('mock-titulo');
+    var qr = document.getElementById('mock-qr');
+    var rodando = false;
+    btn.addEventListener('click', function () {
+      if (rodando) return;
+      rodando = true;
+      ico.textContent = '🔳';
+      tit.textContent = 'Receber com PIX';
+      qr.style.opacity = '1';
+      st.innerHTML = '<span class="spin"></span> Aguardando pagamento...';
+      st.style.color = 'var(--primary-dark)';
+      btn.textContent = 'Cliente pagando...';
+      setTimeout(function () {
+        st.innerHTML = '✅ PIX Recebido! R$ 387,50';
+        st.style.color = '#15803d';
+        ico.textContent = '✅';
+        tit.textContent = 'Pagamento confirmado';
+        qr.style.opacity = '.25';
+        btn.textContent = '▶ Ver de novo';
+        rodando = false;
+      }, 3000);
+    });
+  })();
+
+  // Accordions
+  document.querySelectorAll('.acc-head').forEach(function (h) {
+    h.addEventListener('click', function () {
+      var acc = h.parentElement;
+      var aberto = acc.classList.toggle('aberto');
+      h.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+    });
+  });
+</script>
+</body>
+</html>
