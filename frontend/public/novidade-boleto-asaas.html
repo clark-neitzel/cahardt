@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Boletos pelo App — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="📄 Novidade no Hardt App: boleto emitido pelo próprio app">
+<meta property="og:description" content="Emita boletos direto do Contas a Receber, mande por WhatsApp em 1 toque e a baixa acontece sozinha quando o cliente pagar.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  /* mock do modal de boletos */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 34px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top { background: var(--house); color: #fff; padding: 14px 18px; }
+  .mock-top small { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; color: rgba(255,255,255,.55); }
+  .mock-top strong { font-size: 16px; }
+  .mock-body { padding: 14px; display: grid; gap: 10px; }
+  .parcela {
+    border: 1px solid #e3e1da;
+    border-radius: 14px;
+    padding: 12px 14px;
+  }
+  .parcela-l1 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .parcela-l1 b { font-size: 14px; }
+  .parcela-l1 .venc { font-size: 11.5px; color: var(--ink-soft); }
+  .chip { font-size: 10.5px; font-weight: 800; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+  .chip.azul { background: #dbeafe; color: #1e40af; }
+  .chip.verde { background: #dcfce7; color: #166534; }
+  .botoes { display: flex; gap: 6px; flex-wrap: wrap; }
+  .botoes span {
+    font-size: 11px; font-weight: 700;
+    padding: 6px 11px; border-radius: 999px;
+  }
+  .b-cheio { background: var(--primary); color: #fff; }
+  .b-zap { background: #16a34a; color: #fff; }
+  .b-vazio { border: 1.5px solid var(--primary); color: var(--primary); }
+  .pago-nota { font-size: 11.5px; color: #166534; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px; padding: 8px 10px; }
+
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; color: var(--primary-dark); margin: 34px 4px 12px; }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit; text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px; }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .abrir-app { display: block; text-align: center; max-width: 400px; margin: 22px auto 0; background: var(--house); color: #fff; text-decoration: none; font-size: 15px; font-weight: 800; padding: 15px; border-radius: 999px; }
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Boleto emitido<br>pelo próprio app</h1>
+    <p>O escritório agora emite boletos direto do Contas a Receber, manda por WhatsApp em 1 toque — e quando o cliente paga, a baixa acontece sozinha, aqui e no Conta Azul.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <small>Contas a Receber · Pedido #4127</small>
+      <strong>📄 Boletos Asaas — Padaria Dois Irmãos</strong>
+    </div>
+    <div class="mock-body">
+      <div class="parcela">
+        <div class="parcela-l1">
+          <b>Parcela 1 · R$ 850,00</b>
+          <span class="chip verde">Pago via Asaas</span>
+        </div>
+        <div class="pago-nota">✅ Pago em 08/07 · baixa no app OK · baixa no CA OK</div>
+      </div>
+      <div class="parcela">
+        <div class="parcela-l1">
+          <div><b>Parcela 2 · R$ 850,00</b> <span class="venc">vence 15/07</span></div>
+          <span class="chip azul">Boleto emitido</span>
+        </div>
+        <div class="botoes">
+          <span class="b-vazio">Abrir PDF</span>
+          <span class="b-vazio">Linha digitável</span>
+          <span class="b-zap">WhatsApp</span>
+        </div>
+      </div>
+      <div class="parcela">
+        <div class="parcela-l1">
+          <div><b>Parcela 3 · R$ 850,00</b> <span class="venc">vence 22/07</span></div>
+        </div>
+        <div class="botoes">
+          <span class="b-cheio">Emitir boleto</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="sec-label">O que muda</p>
+
+  <div class="acc aberto">
+    <button class="acc-head" aria-expanded="true">
+      <span class="acc-ico">📄</span>
+      <strong>Boleto sai do app, sem entrar no Conta Azul</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>No Contas a Receber, cada conta ganhou o botão <b>Boletos Asaas</b>. Dá para emitir o boleto de uma parcela ou de <b>todas as parcelas em aberto de uma vez</b> — valor e vencimento já vêm certinhos do sistema.</p>
+      <p>A <b>nota fiscal continua no Conta Azul</b>, como sempre. O que muda é a cobrança.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" aria-expanded="false">
+      <span class="acc-ico">📲</span>
+      <strong>Cliente recebe por WhatsApp em 1 toque</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Cada boleto emitido tem os botões <b>Abrir PDF</b>, <b>copiar a linha digitável</b> e <b>enviar por WhatsApp</b> — a mensagem já vai pronta com valor, vencimento, link do boleto e linha digitável.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" aria-expanded="false">
+      <span class="acc-ico">🏦</span>
+      <strong>Pagou? Baixa automática dupla</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Quando o cliente paga o boleto, o banco avisa o sistema e a baixa acontece <b>sozinha</b>:</p>
+      <ul>
+        <li>A parcela fica <b>Paga</b> no Contas a Receber do app</li>
+        <li>A baixa é registrada <b>no Conta Azul</b>, na conta ASAAS</li>
+      </ul>
+      <p>Ninguém mais precisa conferir extrato nem dar baixa na mão.</p>
+    </div>
+  </div>
+
+  <p class="sec-label">Como usar (escritório)</p>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div>Abra <b>Financeiro → Contas a Receber</b> e expanda a conta do cliente.</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Toque em <b>Boletos Asaas</b> e emita o boleto (uma parcela ou todas).</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Toque em <b>WhatsApp</b> para mandar o boleto pronto ao cliente.</div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Pronto — quando ele pagar, a baixa acontece <b>sozinha</b> no app e no Conta Azul.</div></div>
+  </div>
+
+  <a class="abrir-app" href="https://cahardt-github.xrqvlq.easypanel.host/financeiro/contas-receber">Abrir o Hardt App →</a>
+
+  <p class="rodape">Dúvida? Pergunte ao <strong>Clippy</strong> dentro do app: "como emito boleto pelo app?"</p>
+</div>
+
+<script>
+  document.querySelectorAll('.acc-head').forEach(function (h) {
+    h.addEventListener('click', function () {
+      var acc = h.parentElement;
+      var aberto = acc.classList.toggle('aberto');
+      h.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+    });
+  });
+</script>
+</body>
+</html>

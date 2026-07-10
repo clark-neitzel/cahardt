@@ -11,8 +11,10 @@ import {
     DollarSign, Search, Filter, X, RefreshCw, CheckCircle, Undo2,
     Download, ArrowUpDown, CheckSquare, Square, Link as LinkIcon,
     ChevronDown, ChevronUp, MoreVertical, Eye, Package, Truck, Wallet,
-    Receipt, ShieldAlert
+    Receipt, ShieldAlert, FileText
 } from 'lucide-react';
+import asaasService from '../../services/asaasService';
+import BoletosAsaasModal from './BoletosAsaasModal';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
@@ -85,6 +87,15 @@ const ContasReceberTabela = () => {
     // UI
     const [filtrosAbertos, setFiltrosAbertos] = useState(false);
     const [detalheLinha, setDetalheLinha] = useState(null);
+
+    // Boletos Asaas (integração configurada no servidor?)
+    const [asaasDisponivel, setAsaasDisponivel] = useState(false);
+    const [boletosModal, setBoletosModal] = useState(null); // { id, clienteNome, pedidoNumero }
+    useEffect(() => {
+        asaasService.status()
+            .then(s => setAsaasDisponivel(!!s.configurado))
+            .catch(() => setAsaasDisponivel(false));
+    }, []);
     const [baixaModalLinha, setBaixaModalLinha] = useState(null);
 
     // Modais
@@ -1041,6 +1052,15 @@ const ContasReceberTabela = () => {
                                                         <Undo2 className="w-4 h-4" />
                                                     </button>
                                                 )}
+                                                {podeBaixar && asaasDisponivel && l.statusConta !== 'CANCELADO' && l.statusConta !== 'QUITADO' && (
+                                                    <button
+                                                        onClick={() => setBoletosModal({ id: l.contaId, clienteNome: l.clienteNome, pedidoNumero: l.pedidoNumero })}
+                                                        title="Boletos Asaas (emitir / enviar / acompanhar)"
+                                                        className="p-1 rounded hover:bg-mint text-primary"
+                                                    >
+                                                        <FileText className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                                 {podeBaixar && l.idVendaContaAzul && l.statusConta !== 'CANCELADO' && (
                                                     <button
                                                         onClick={() => handleSyncCA(l.contaId, l.idVendaContaAzul)}
@@ -1524,6 +1544,15 @@ const ContasReceberTabela = () => {
             {/* Popup cliente (reuso do Rota) */}
             {clientePopup && (
                 <ClientePopup cliente={clientePopup} onClose={() => setClientePopup(null)} />
+            )}
+
+            {/* Modal de boletos Asaas da conta */}
+            {boletosModal && (
+                <BoletosAsaasModal
+                    conta={boletosModal}
+                    onClose={() => setBoletosModal(null)}
+                    onAtualizado={() => fetchData()}
+                />
             )}
 
             {/* Modal Relatório de Itens por Pedido */}
