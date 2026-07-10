@@ -127,16 +127,16 @@ router.post('/asaas-reprocessar-baixas', async (req, res) => {
 // (investigação: a API devolve link de DANFE PDF/XML?)
 router.get('/diag-nota-fiscal', async (req, res) => {
     try {
-        const { idVenda, numero } = req.query;
-        const params = new URLSearchParams({ pagina: '1', tamanho_pagina: '10' });
-        if (idVenda) params.set('id_venda', idVenda);
-        if (numero) params.set('numero_nota', numero);
-        // Range de data amplo (a API pode exigir)
-        const hoje = new Date();
-        const antes = new Date(hoje.getTime() - 90 * 24 * 3600 * 1000);
-        params.set('data_inicial', antes.toISOString().split('T')[0]);
-        params.set('data_final', hoje.toISOString().split('T')[0]);
-        const url = `https://api-v2.contaazul.com/v1/notas-fiscais?${params.toString()}`;
+        // `qs` cru para experimentar formatos (ex.: ?qs=pagina=1%26tamanho_pagina=5).
+        // `path` opcional para variar o recurso (ex.: notas-fiscais/{id}/pdf).
+        const path = req.query.path || 'notas-fiscais';
+        let qs = req.query.qs;
+        if (!qs) {
+            const hoje = new Date();
+            const antes = new Date(hoje.getTime() - 30 * 24 * 3600 * 1000);
+            qs = `pagina=1&tamanho_pagina=5&data_inicial=${antes.toISOString().split('T')[0]}&data_final=${hoje.toISOString().split('T')[0]}`;
+        }
+        const url = `https://api-v2.contaazul.com/v1/${path}${qs ? `?${qs}` : ''}`;
         const response = await contaAzulService._axiosGet(url, 'NOTA_FISCAL_DIAG');
         res.json({ url, data: response.data });
     } catch (e) {
