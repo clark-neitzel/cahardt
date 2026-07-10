@@ -112,6 +112,17 @@ router.post('/asaas-configurar-conta-ca', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/asaas-reprocessar-baixas — cobranças RECEBIDAS com baixa pendente (app ou CA)
+router.post('/asaas-reprocessar-baixas', async (req, res) => {
+    try {
+        const asaasBaixaService = require('../services/asaasBaixaService');
+        const resultados = await asaasBaixaService.reprocessarPendentes();
+        res.json({ ok: true, total: resultados.length, resultados });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/asaas-cobrancas — últimas cobranças (diagnóstico)
 router.get('/asaas-cobrancas', async (req, res) => {
     try {

@@ -26,6 +26,7 @@ Gestão financeira de todas as contas a receber geradas pelos pedidos. Cada pedi
 - Abrir popup do pedido para ver detalhes
 - Gerar relatório de inadimplência agrupado por pedido, cliente, vendedor ou sem agrupamento
 - Exportar a lista filtrada em CSV
+- Emitir e gerenciar **boletos via Asaas** por parcela (botão "Boletos Asaas" na conta expandida da visão resumo)
 
 ---
 
@@ -76,6 +77,14 @@ Gestão financeira de todas as contas a receber geradas pelos pedidos. Cada pedi
 2. Clique em **Baixa em Lote** (botão no topo da tabela)
 3. Informe a forma de pagamento, a data e o **banco/caixa** em que o dinheiro entrou (vem pré-selecionado com a conta padrão; alimenta o relatório "Saldos por Conta") para todas
 4. Confirme — todas as parcelas selecionadas são baixadas de uma vez pelo valor cheio (baixa em lote não aceita valor parcial nem desconto — para isso, use a baixa individual)
+
+### Emitir boleto pelo app (Asaas)
+1. Na visão resumo (acordeão), expanda a conta e clique em **Boletos Asaas** (aparece só se a integração Asaas estiver configurada no servidor)
+2. No modal, emita o boleto de uma parcela específica ou de **todas as parcelas em aberto** de uma vez — o vencimento e o valor (saldo) vêm do nosso Contas a Receber
+3. Para cada boleto emitido dá para: **Abrir o PDF**, **copiar a linha digitável**, **enviar por WhatsApp** ao cliente (mensagem pronta com link e linha digitável) e **cancelar** o boleto
+4. Quando o cliente pagar, o Asaas avisa o sistema e a **baixa acontece sozinha** — na parcela local E no Conta Azul (lançada na conta financeira ASAAS). O modal mostra "Pago via Asaas" com o status das duas baixas
+5. O cliente precisa ter **CPF/CNPJ no cadastro** (exigência do boleto registrado); sem isso a emissão avisa o erro
+6. A nota fiscal continua sendo emitida no Conta Azul, como sempre — o Asaas cuida só da cobrança
 
 ### Sincronizar com o Conta Azul
 - Clique no ícone de atualização (reload) em uma conta específica para atualizar só aquela

@@ -21,6 +21,28 @@ const asaasService = {
     cancelar: async (cobrancaId) => {
         const response = await api.delete(`/asaas/cobrancas/${cobrancaId}`);
         return response.data;
+    },
+
+    // ── Boletos (Contas a Receber) ──
+    boletosDaConta: async (contaReceberId) => {
+        const response = await api.get(`/asaas/contas/${contaReceberId}/boletos`);
+        return response.data;
+    },
+    emitirBoletos: async ({ contaReceberId, parcelaIds }) => {
+        const response = await api.post('/asaas/boletos', { contaReceberId, parcelaIds });
+        return response.data;
+    },
+    consultarBoleto: async (cobrancaId) => {
+        const response = await api.get(`/asaas/boletos/${cobrancaId}`);
+        return response.data;
+    },
+    cancelarBoleto: async (cobrancaId) => {
+        const response = await api.delete(`/asaas/boletos/${cobrancaId}`);
+        return response.data;
+    },
+    enviarBoletoWhatsapp: async (cobrancaId) => {
+        const response = await api.post(`/asaas/boletos/${cobrancaId}/whatsapp`);
+        return response.data;
     }
 };
 

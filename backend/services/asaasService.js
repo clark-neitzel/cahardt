@@ -270,6 +270,127 @@ const asaasService = {
         if (count > 0) {
             console.log(`✅ [Asaas] Cobrança ${cobranca?.asaasPaymentId} recebida: R$ ${Number(cobranca?.valorRecebido || cobranca?.valor).toFixed(2)}`);
         }
+        // Cobrança com parcela vinculada (boleto/PIX do financeiro) → baixa automática app + CA.
+        // PIX de entrega tem parcelaId nulo (baixa acontece no fluxo do Caixa).
+        if (cobranca?.parcelaId && (!cobranca.baixaAppOk || !cobranca.baixaCaOk)) {
+            const asaasBaixaService = require('./asaasBaixaService'); // require tardio (evita ciclo de import)
+            try { await asaasBaixaService.registrarBaixa(cobranca.id); }
+            catch (e) { console.error('[Asaas] Erro na baixa automática (registrado p/ reprocesso):', e.message); }
+        }
+        return cobranca;
+    },
+
+    // ── Criar boleto de UMA parcela do Contas a Receber ──
+    // Idempotente: se já existe boleto PENDENTE da parcela, devolve o existente.
+    criarBoletoParcela: async ({ parcelaId, criadoPorId }) => {
+        exigirConfig();
+
+        const parcela = await prisma.parcela.findUnique({
+            where: { id: parcelaId },
+            include: {
+                contaReceber: {
+                    include: {
+                        cliente: { select: { UUID: true, Nome: true } },
+                        pedido: { select: { id: true, numero: true } }
+                    }
+                }
+            }
+        });
+        if (!parcela) throw new Error('Parcela não encontrada.');
+        if (!['PENDENTE', 'VENCIDO', 'PARCIAL'].includes(parcela.status)) {
+            const err = new Error(`Parcela está ${parcela.status} — não dá para emitir boleto.`);
+            err.statusCode = 400;
+            throw err;
+        }
+
+        const existente = await prisma.cobrancaAsaas.findFirst({
+            where: { parcelaId, tipo: 'BOLETO', status: 'PENDENTE', ambiente: AMBIENTE },
+            orderBy: { createdAt: 'desc' }
+        });
+        if (existente) return existente;
+
+        const saldo = Math.round((Number(parcela.valor) - Number(parcela.valorPago || 0) - Number(parcela.valorDescontoTotal || 0)) * 100) / 100;
+        if (saldo <= 0) {
+            const err = new Error('Parcela sem saldo em aberto.');
+            err.statusCode = 400;
+            throw err;
+        }
+
+        const conta = parcela.contaReceber;
+        const customerId = await asaasService.ensureCustomer(conta.cliente.UUID);
+
+        // Vencimento do boleto = vencimento da parcela (nunca no passado)
+        const hoje = hojeSP();
+        const vencParcela = parcela.dataVencimento
+            ? new Date(parcela.dataVencimento).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+            : hoje;
+        const dueDate = vencParcela < hoje ? hoje : vencParcela;
+
+        // Multa/juros opcionais via config (app_configs.asaas_boleto_config = { multaPercent, jurosMesPercent })
+        let multaJuros = {};
+        try {
+            const cfg = await prisma.appConfig.findUnique({ where: { key: 'asaas_boleto_config' } });
+            const v = cfg?.value || {};
+            if (Number(v.multaPercent) > 0) multaJuros.fine = { value: Number(v.multaPercent) };
+            if (Number(v.jurosMesPercent) > 0) multaJuros.interest = { value: Number(v.jurosMesPercent) };
+        } catch (_) { /* sem config → sem multa/juros */ }
+
+        const numeroPedido = conta.pedido?.numero ? `#${conta.pedido.numero}` : 's/n';
+        let payment;
+        try {
+            const resp = await http.post('/payments', {
+                customer: customerId,
+                billingType: 'BOLETO',
+                value: saldo,
+                dueDate,
+                description: `Pedido ${numeroPedido} - parcela ${parcela.numeroParcela} - Hardt`.slice(0, 500),
+                externalReference: parcelaId,
+                ...multaJuros
+            });
+            payment = resp.data;
+        } catch (e) {
+            throw erroAsaas(e, 'criar boleto');
+        }
+
+        // Linha digitável (se ainda não disponível, fica nula e o app busca depois)
+        let linhaDigitavel = null;
+        try {
+            const li = await http.get(`/payments/${payment.id}/identificationField`);
+            linhaDigitavel = li.data?.identificationField || null;
+        } catch (_) { /* boleto pode demorar alguns segundos para registrar */ }
+
+        return prisma.cobrancaAsaas.create({
+            data: {
+                asaasPaymentId: payment.id,
+                tipo: 'BOLETO',
+                status: 'PENDENTE',
+                valor: saldo,
+                descricao: `Pedido ${numeroPedido} - parcela ${parcela.numeroParcela}`,
+                clienteId: conta.cliente.UUID,
+                pedidoId: conta.pedido?.id || null,
+                parcelaId,
+                boletoUrl: payment.bankSlipUrl || payment.invoiceUrl || null,
+                linhaDigitavel,
+                vencimento: new Date(dueDate + 'T12:00:00-03:00'),
+                criadoPorId: criadoPorId || null,
+                ambiente: AMBIENTE
+            }
+        });
+    },
+
+    // ── Completar a linha digitável de um boleto salvo sem ela ──
+    completarLinhaDigitavel: async (cobrancaId) => {
+        const cobranca = await prisma.cobrancaAsaas.findUnique({ where: { id: cobrancaId } });
+        if (!cobranca || cobranca.tipo !== 'BOLETO' || cobranca.linhaDigitavel || !configurado()) return cobranca;
+        try {
+            const li = await http.get(`/payments/${cobranca.asaasPaymentId}/identificationField`);
+            if (li.data?.identificationField) {
+                return prisma.cobrancaAsaas.update({
+                    where: { id: cobrancaId },
+                    data: { linhaDigitavel: li.data.identificationField }
+                });
+            }
+        } catch (_) { /* tenta de novo na próxima consulta */ }
         return cobranca;
     },
 

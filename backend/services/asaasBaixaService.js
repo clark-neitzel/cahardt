@@ -1,0 +1,224 @@
+// =====================================================================
+// Baixa automática de cobranças Asaas com PARCELA vinculada (boletos e
+// PIX avulsos do financeiro — NÃO os PIX de entrega, que têm parcelaId
+// nulo e são baixados pelo fluxo do Caixa).
+//
+// Quando o Asaas avisa que a cobrança foi paga:
+//   1) baixa a parcela local (ledger PagamentoParcela, como a baixa manual)
+//   2) registra a baixa no Conta Azul na conta financeira do Asaas
+// Tudo idempotente via flags baixaAppOk/baixaCaOk (webhook e poll podem
+// disparar juntos; reprocessar é seguro).
+// =====================================================================
+const prisma = require('../config/database');
+const contaAzulService = require('./contaAzulService');
+
+// Espelho de backend/routes/contasReceber.js:47 (recalcular status da parcela)
+const calcularStatusParcela = (valor, valorPago, valorDescontoTotal) => {
+    const recebidoTotal = Number(valorPago || 0) + Number(valorDescontoTotal || 0);
+    if (recebidoTotal <= 0) return 'PENDENTE';
+    if (recebidoTotal >= Number(valor) - 0.01) return 'PAGO';
+    return 'PARCIAL';
+};
+
+// Espelho de backend/routes/contasReceber.js:55 (recalcular status da conta)
+const calcularStatusConta = (todasParcelas) => {
+    const total = todasParcelas.length;
+    const pagas = todasParcelas.filter(p => p.status === 'PAGO').length;
+    const parciais = todasParcelas.filter(p => p.status === 'PARCIAL').length;
+    const canceladas = todasParcelas.filter(p => p.status === 'CANCELADO').length;
+    if (pagas + canceladas >= total) return 'QUITADO';
+    if (pagas > 0 || parciais > 0) return 'PARCIAL';
+    return 'ABERTO';
+};
+
+async function contaAsaasCaId() {
+    try {
+        const cfg = await prisma.appConfig.findUnique({ where: { key: 'asaas_conta_financeira_ca_id' } });
+        return cfg?.value || null;
+    } catch (_) { return null; }
+}
+
+const asaasBaixaService = {
+    /**
+     * Processa a baixa (app + CA) de uma cobrança Asaas RECEBIDA que tem parcela.
+     * Nunca lança: registra o problema em cobranca.baixaErro e devolve o resumo.
+     */
+    registrarBaixa: async (cobrancaId) => {
+        const resultado = { baixaApp: false, baixaCa: false, erros: [] };
+
+        const cobranca = await prisma.cobrancaAsaas.findUnique({
+            where: { id: cobrancaId },
+            include: {
+                parcela: { include: { contaReceber: true } },
+                pedido: { select: { id: true, numero: true, idVendaContaAzul: true, dataVenda: true, vendedorId: true, especial: true } },
+                cliente: { select: { UUID: true, Nome: true } }
+            }
+        });
+        if (!cobranca || cobranca.status !== 'RECEBIDO' || !cobranca.parcelaId || !cobranca.parcela) {
+            return resultado; // nada a fazer (PIX de entrega ou cobrança não paga)
+        }
+
+        const parcela = cobranca.parcela;
+        const forma = cobranca.tipo === 'BOLETO' ? 'Boleto Asaas' : 'PIX Asaas';
+        const dataPgto = cobranca.recebidoEm || new Date();
+        const contaCaId = await contaAsaasCaId();
+
+        // ── 1) Baixa local (ledger, igual à baixa manual de contasReceber.js) ──
+        if (!cobranca.baixaAppOk) {
+            try {
+                if (parcela.status === 'CANCELADO') throw new Error('Parcela local está CANCELADA.');
+
+                const saldoRestante = Number(parcela.valor) - Number(parcela.valorPago || 0) - Number(parcela.valorDescontoTotal || 0);
+                // Recebe o que o cliente pagou, limitado ao saldo (juros/multa ficam na observação)
+                const valorPagoAsaas = Number(cobranca.valorRecebido ?? cobranca.valor);
+                const recebido = Math.round(Math.min(Math.max(saldoRestante, 0), valorPagoAsaas) * 100) / 100;
+
+                if (recebido > 0) {
+                    // registradoPorId é obrigatório no ledger — quem emitiu a cobrança (fallback: vendedor do pedido)
+                    const registradoPorId = cobranca.criadoPorId || cobranca.pedido?.vendedorId;
+                    if (!registradoPorId) throw new Error('Sem usuário para registrar a baixa (cobrança sem criadoPor e pedido sem vendedor).');
+
+                    const novoValorPago = Number(parcela.valorPago || 0) + recebido;
+                    const novoStatusParcela = calcularStatusParcela(parcela.valor, novoValorPago, parcela.valorDescontoTotal);
+                    const obs = `Pago via ${forma} (${cobranca.asaasPaymentId})${valorPagoAsaas > recebido + 0.01 ? ` — recebido R$ ${valorPagoAsaas.toFixed(2)} (juros/multa R$ ${(valorPagoAsaas - recebido).toFixed(2)})` : ''}`;
+
+                    await prisma.$transaction(async (tx) => {
+                        await tx.pagamentoParcela.create({
+                            data: {
+                                parcelaId: parcela.id,
+                                valorRecebido: recebido,
+                                valorDesconto: 0,
+                                formaPagamento: forma,
+                                contaFinanceiraCaId: contaCaId,
+                                dataPagamento: dataPgto,
+                                observacao: obs,
+                                registradoPorId
+                            }
+                        });
+                        await tx.parcela.update({
+                            where: { id: parcela.id },
+                            data: {
+                                status: novoStatusParcela,
+                                valorPago: novoValorPago,
+                                formaPagamento: forma,
+                                contaFinanceiraCaId: contaCaId || parcela.contaFinanceiraCaId,
+                                dataPagamento: novoStatusParcela === 'PAGO' ? dataPgto : parcela.dataPagamento,
+                                baixadoPorId: registradoPorId
+                            }
+                        });
+                        const todasParcelas = await tx.parcela.findMany({ where: { contaReceberId: parcela.contaReceberId } });
+                        const atualizadas = todasParcelas.map(p => p.id === parcela.id ? { ...p, status: novoStatusParcela } : p);
+                        await tx.contaReceber.update({
+                            where: { id: parcela.contaReceberId },
+                            data: { status: calcularStatusConta(atualizadas) }
+                        });
+                    }, { timeout: 20000, maxWait: 10000 });
+                }
+
+                await prisma.cobrancaAsaas.update({ where: { id: cobranca.id }, data: { baixaAppOk: true } });
+                resultado.baixaApp = true;
+            } catch (e) {
+                console.error(`[Asaas baixa] Falha na baixa local da cobrança ${cobranca.asaasPaymentId}:`, e.message);
+                resultado.erros.push(`baixa local: ${e.message}`);
+            }
+        } else {
+            resultado.baixaApp = true;
+        }
+
+        // ── 2) Baixa no Conta Azul (fora de transação — chamada de rede) ──
+        if (!cobranca.baixaCaOk) {
+            try {
+                const pedido = cobranca.pedido;
+                if (!pedido || !pedido.idVendaContaAzul) {
+                    // Pedido especial/sem venda no CA: não há o que baixar lá
+                    await prisma.cobrancaAsaas.update({ where: { id: cobranca.id }, data: { baixaCaOk: true } });
+                    resultado.baixaCa = true;
+                } else {
+                    const dataVendaStr = pedido.dataVenda
+                        ? new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+                        : new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+
+                    const parcelasCA = await contaAzulService.encontrarParcelasDeVenda(
+                        cobranca.cliente.UUID, pedido.idVendaContaAzul, dataVendaStr
+                    );
+                    // Casa pela numeração (fallback: vencimento igual)
+                    const vencLocal = parcela.dataVencimento ? new Date(parcela.dataVencimento).toISOString().split('T')[0] : null;
+                    const caPar = (parcelasCA || []).find(p => (p.numero_parcela || 0) === parcela.numeroParcela)
+                        || (parcelasCA || []).find(p => p.data_vencimento === vencLocal)
+                        || ((parcelasCA || []).length === 1 ? parcelasCA[0] : null);
+                    if (!caPar) throw new Error('Parcela correspondente não encontrada no Conta Azul.');
+
+                    const jaPagaCA = ['RECEBIDO', 'QUITADO', 'ACQUITTED', 'PAID'].includes(caPar.status);
+                    if (!jaPagaCA) {
+                        if (!contaCaId) throw new Error('Conta financeira do Asaas não configurada (asaas_conta_financeira_ca_id).');
+                        const valorBaixaCa = Number(cobranca.valorRecebido ?? cobranca.valor);
+                        await contaAzulService.criarBaixa(caPar.id, {
+                            data_pagamento: new Date(dataPgto).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }),
+                            composicao_valor: { valor_bruto: valorBaixaCa, multa: 0, juros: 0, desconto: 0, taxa: 0 },
+                            conta_financeira: contaCaId,
+                            metodo_pagamento: cobranca.tipo === 'BOLETO' ? 'BOLETO_BANCARIO' : 'PIX_PAGAMENTO_INSTANTANEO',
+                            observacao: `${forma} ${cobranca.asaasPaymentId} — baixa automática (webhook Asaas)`
+                        });
+                    }
+                    await prisma.cobrancaAsaas.update({ where: { id: cobranca.id }, data: { baixaCaOk: true } });
+                    resultado.baixaCa = true;
+                }
+            } catch (e) {
+                console.error(`[Asaas baixa] Falha na baixa CA da cobrança ${cobranca.asaasPaymentId}:`, e.message);
+                resultado.erros.push(`baixa CA: ${e.message}`);
+            }
+        } else {
+            resultado.baixaCa = true;
+        }
+
+        // Registrar erro (ou limpar) na cobrança + log de histórico do cliente
+        try {
+            await prisma.cobrancaAsaas.update({
+                where: { id: cobranca.id },
+                data: { baixaErro: resultado.erros.length ? resultado.erros.join(' | ') : null }
+            });
+        } catch (_) { /* não crítico */ }
+
+        if (resultado.baixaApp && !cobranca.baixaAppOk) {
+            try {
+                await prisma.atendimento.create({
+                    data: {
+                        tipo: 'FINANCEIRO',
+                        observacao: `${forma} recebido: R$ ${Number(cobranca.valorRecebido ?? cobranca.valor).toFixed(2)} (parcela ${parcela.numeroParcela}) — baixa automática`,
+                        clienteId: cobranca.clienteId,
+                        idVendedor: cobranca.criadoPorId || cobranca.pedido?.vendedorId || null,
+                        pedidoId: cobranca.pedidoId || null
+                    }
+                });
+            } catch (logErr) {
+                console.error('[Asaas baixa] Falha no log de histórico (baixa já efetivada):', logErr.message);
+            }
+        }
+
+        return resultado;
+    },
+
+    /**
+     * Reprocessa cobranças RECEBIDAS com baixa pendente (webhook falhou na hora).
+     * Usado pelo admin-exec e pode ser chamado após deploy.
+     */
+    reprocessarPendentes: async () => {
+        const pendentes = await prisma.cobrancaAsaas.findMany({
+            where: {
+                status: 'RECEBIDO',
+                parcelaId: { not: null },
+                OR: [{ baixaAppOk: false }, { baixaCaOk: false }]
+            },
+            select: { id: true, asaasPaymentId: true },
+            take: 50
+        });
+        const resultados = [];
+        for (const c of pendentes) {
+            const r = await asaasBaixaService.registrarBaixa(c.id);
+            resultados.push({ asaasPaymentId: c.asaasPaymentId, ...r });
+        }
+        return resultados;
+    }
+};
+
+module.exports = asaasBaixaService;

@@ -9,6 +9,8 @@ import toast from 'react-hot-toast';
 import { API_URL } from '../../services/api';
 import SelectBusca from '../../components/SelectBusca';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import asaasService from '../../services/asaasService';
+import BoletosAsaasModal from './BoletosAsaasModal';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
@@ -47,6 +49,15 @@ const ContasReceberPage = () => {
     const [showFiltros, setShowFiltros] = useState(false);
 
     const [syncing, setSyncing] = useState(null);
+
+    // Boletos Asaas (integração configurada no servidor?)
+    const [asaasDisponivel, setAsaasDisponivel] = useState(false);
+    const [boletosModal, setBoletosModal] = useState(null); // conta em gestão de boletos
+    useEffect(() => {
+        asaasService.status()
+            .then(s => setAsaasDisponivel(!!s.configurado))
+            .catch(() => setAsaasDisponivel(false));
+    }, []);
 
     // Modal baixa
     const [baixaModal, setBaixaModal] = useState(null);
@@ -756,6 +767,15 @@ const ContasReceberPage = () => {
                                         {/* Ações da conta */}
                                         {(podeBaixar || podeReverter || podeReverterCancelamento) && (
                                             <div className="mt-3 pt-3 border-t border-gray-200 flex justify-end gap-2 flex-wrap">
+                                                {podeBaixar && asaasDisponivel && conta.status !== 'QUITADO' && conta.status !== 'CANCELADO' && (
+                                                    <button
+                                                        onClick={() => setBoletosModal(conta)}
+                                                        className="flex items-center gap-1 px-3 py-1.5 text-xs text-white bg-primary rounded-md hover:bg-primaryDark active:bg-primaryDark font-medium"
+                                                        title="Emitir e gerenciar boletos via Asaas"
+                                                    >
+                                                        <FileText className="h-3.5 w-3.5" /> Boletos Asaas
+                                                    </button>
+                                                )}
                                                 {podeBaixar && conta.idVendaContaAzul && conta.origem !== 'ESPECIAL' && (
                                                     <button
                                                         onClick={() => handleSyncCA(conta.id)}
@@ -966,6 +986,15 @@ const ContasReceberPage = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Modal de boletos Asaas da conta */}
+            {boletosModal && (
+                <BoletosAsaasModal
+                    conta={boletosModal}
+                    onClose={() => setBoletosModal(null)}
+                    onAtualizado={() => fetchData()}
+                />
             )}
         </div>
     );

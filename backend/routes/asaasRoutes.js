@@ -110,4 +110,156 @@ router.delete('/cobrancas/:id', verificarAuth, checkPodeCobrar, async (req, res)
     }
 });
 
+// ═══════════════ BOLETOS (Contas a Receber) ═══════════════
+
+const mapBoleto = (c) => c && ({
+    id: c.id,
+    parcelaId: c.parcelaId,
+    status: c.status,
+    valor: Number(c.valor),
+    valorRecebido: c.valorRecebido != null ? Number(c.valorRecebido) : null,
+    recebidoEm: c.recebidoEm,
+    boletoUrl: c.boletoUrl,
+    linhaDigitavel: c.linhaDigitavel,
+    vencimento: c.vencimento,
+    baixaAppOk: c.baixaAppOk,
+    baixaCaOk: c.baixaCaOk,
+    baixaErro: c.baixaErro,
+    createdAt: c.createdAt
+});
+
+// ── GET /contas/:contaReceberId/boletos — boletos de todas as parcelas da conta ──
+router.get('/contas/:contaReceberId/boletos', verificarAuth, async (req, res) => {
+    try {
+        const conta = await prisma.contaReceber.findUnique({
+            where: { id: req.params.contaReceberId },
+            include: { parcelas: { orderBy: { numeroParcela: 'asc' } } }
+        });
+        if (!conta) return res.status(404).json({ error: 'Conta não encontrada.' });
+
+        const cobrancas = await prisma.cobrancaAsaas.findMany({
+            where: { parcelaId: { in: conta.parcelas.map(p => p.id) }, tipo: 'BOLETO' },
+            orderBy: { createdAt: 'desc' }
+        });
+        const parcelas = conta.parcelas.map(p => {
+            const doBoleto = cobrancas.filter(c => c.parcelaId === p.id);
+            const ativo = doBoleto.find(c => ['PENDENTE', 'RECEBIDO'].includes(c.status)) || doBoleto[0] || null;
+            return {
+                id: p.id,
+                numeroParcela: p.numeroParcela,
+                valor: Number(p.valor),
+                saldo: Math.max(0, Math.round((Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0)) * 100) / 100),
+                dataVencimento: p.dataVencimento,
+                status: p.status,
+                boleto: mapBoleto(ativo)
+            };
+        });
+        res.json({ contaId: conta.id, parcelas });
+    } catch (e) {
+        console.error('[Asaas] Erro ao listar boletos da conta:', e.message);
+        res.status(500).json({ error: 'Erro ao listar boletos.' });
+    }
+});
+
+// ── POST /boletos — emitir boletos (todas as parcelas em aberto da conta, ou parcelas específicas) ──
+router.post('/boletos', verificarAuth, checkPodeCobrar, async (req, res) => {
+    try {
+        const { contaReceberId, parcelaIds } = req.body;
+        let ids = Array.isArray(parcelaIds) ? parcelaIds : [];
+        if (!ids.length && contaReceberId) {
+            const parcelas = await prisma.parcela.findMany({
+                where: { contaReceberId, status: { in: ['PENDENTE', 'VENCIDO', 'PARCIAL'] } },
+                orderBy: { numeroParcela: 'asc' },
+                select: { id: true }
+            });
+            ids = parcelas.map(p => p.id);
+        }
+        if (!ids.length) return res.status(400).json({ error: 'Nenhuma parcela em aberto para emitir boleto.' });
+
+        const resultados = [];
+        for (const parcelaId of ids) {
+            try {
+                const cobranca = await asaasService.criarBoletoParcela({ parcelaId, criadoPorId: req.user.id });
+                resultados.push({ parcelaId, ok: true, boleto: mapBoleto(cobranca) });
+            } catch (e) {
+                resultados.push({ parcelaId, ok: false, erro: e.message });
+            }
+        }
+        const okCount = resultados.filter(r => r.ok).length;
+        res.json({
+            message: `${okCount} boleto(s) emitido(s)${okCount < resultados.length ? `, ${resultados.length - okCount} com erro` : ''}.`,
+            resultados
+        });
+    } catch (e) {
+        console.error('[Asaas] Erro ao emitir boletos:', e.message);
+        res.status(e.statusCode || 500).json({ error: e.message || 'Erro ao emitir boletos.' });
+    }
+});
+
+// ── GET /boletos/:cobrancaId — atualizar/consultar um boleto (status + linha digitável) ──
+router.get('/boletos/:cobrancaId', verificarAuth, async (req, res) => {
+    try {
+        let cobranca = await asaasService.consultarCobranca(req.params.cobrancaId);
+        if (!cobranca) return res.status(404).json({ error: 'Boleto não encontrado.' });
+        if (!cobranca.linhaDigitavel) cobranca = await asaasService.completarLinhaDigitavel(cobranca.id);
+        res.json(mapBoleto(cobranca));
+    } catch (e) {
+        res.status(e.statusCode || 500).json({ error: e.message || 'Erro ao consultar boleto.' });
+    }
+});
+
+// ── DELETE /boletos/:cobrancaId — cancelar boleto pendente ──
+router.delete('/boletos/:cobrancaId', verificarAuth, checkPodeCobrar, async (req, res) => {
+    try {
+        const cobranca = await asaasService.cancelarCobranca(req.params.cobrancaId);
+        res.json(mapBoleto(cobranca));
+    } catch (e) {
+        res.status(e.statusCode || 500).json({ error: e.message || 'Erro ao cancelar boleto.' });
+    }
+});
+
+// ── POST /boletos/:cobrancaId/whatsapp — enviar o boleto ao cliente via BotConversa ──
+router.post('/boletos/:cobrancaId/whatsapp', verificarAuth, checkPodeCobrar, async (req, res) => {
+    try {
+        const webhookService = require('../services/webhookService');
+        let cobranca = await prisma.cobrancaAsaas.findUnique({
+            where: { id: req.params.cobrancaId },
+            include: {
+                cliente: { select: { Nome: true, NomeFantasia: true, Telefone_Celular: true, Telefone: true } },
+                parcela: { include: { contaReceber: { select: { pedido: { select: { numero: true } } } } } }
+            }
+        });
+        if (!cobranca) return res.status(404).json({ error: 'Boleto não encontrado.' });
+        if (cobranca.status !== 'PENDENTE') return res.status(400).json({ error: `Boleto está ${cobranca.status} — nada a enviar.` });
+        if (!cobranca.boletoUrl) return res.status(400).json({ error: 'Boleto ainda sem link. Tente de novo em instantes.' });
+        if (!cobranca.linhaDigitavel) {
+            const atualizada = await asaasService.completarLinhaDigitavel(cobranca.id);
+            cobranca.linhaDigitavel = atualizada?.linhaDigitavel || null;
+        }
+
+        const nome = cobranca.cliente?.NomeFantasia || cobranca.cliente?.Nome || 'Cliente';
+        const telefone = cobranca.cliente?.Telefone_Celular || cobranca.cliente?.Telefone;
+        if (!telefone) return res.status(400).json({ error: 'Cliente sem telefone cadastrado.' });
+
+        const venc = cobranca.vencimento ? new Date(cobranca.vencimento) : new Date();
+        const vencStr = venc.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        const numeroPedido = cobranca.parcela?.contaReceber?.pedido?.numero;
+        const mensagem = `Olá, *${nome}*! 😊\n\nSegue o boleto${numeroPedido ? ` do pedido *#${numeroPedido}*` : ''} (parcela ${cobranca.parcela?.numeroParcela || 1}):\n\n💰 Valor: *R$ ${Number(cobranca.valor).toFixed(2).replace('.', ',')}*\n📅 Vencimento: *${vencStr}*\n\n📄 Boleto (PDF): ${cobranca.boletoUrl}${cobranca.linhaDigitavel ? `\n\n*Linha digitável:*\n${cobranca.linhaDigitavel}` : ''}\n\nQualquer dúvida, estamos à disposição!\n_Hardt Doces e Salgados_`;
+
+        const r = await webhookService.enviarCobranca({
+            telefone,
+            nome,
+            mensagem,
+            total: Number(cobranca.valor),
+            dataVencimento: venc,
+            condicao: 'Boleto'
+        });
+        if (!r.ok) return res.status(400).json({ error: `WhatsApp não enviado: ${r.motivo}` });
+        res.json({ ok: true, message: 'Boleto enviado por WhatsApp!' });
+    } catch (e) {
+        console.error('[Asaas] Erro ao enviar boleto por WhatsApp:', e.message);
+        res.status(500).json({ error: 'Erro ao enviar por WhatsApp.' });
+    }
+});
+
 module.exports = router;
