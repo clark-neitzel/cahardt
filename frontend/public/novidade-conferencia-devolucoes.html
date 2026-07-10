@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Conferência de Devoluções no Caixa — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="📦 Novidade no Hardt App: Conferência de Devoluções no Caixa">
+<meta property="og:description" content="A mercadoria que o motorista marcou como devolvida agora é conferida item por item. Faltou? Cobra na hora, pelo caixa. Veja como funciona.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+    text-align: center;
+  }
+  .hero .tag {
+    display: inline-block; background: rgba(255,255,255,.12); color: #cde8dd;
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .12em;
+    padding: 6px 16px; border-radius: 999px; margin-bottom: 16px;
+  }
+  .hero h1 { font-size: 26px; margin: 0 0 10px; line-height: 1.25; }
+  .hero p { margin: 0 auto; max-width: 460px; font-size: 15px; opacity: .82; }
+
+  .mock {
+    background: #fff; border-radius: 16px; box-shadow: 0 16px 40px rgba(0,0,0,.18);
+    margin: -72px auto 28px; overflow: hidden; text-align: left;
+  }
+  .mock-h { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #f0f0f0;
+    font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #555; flex-wrap: wrap; }
+  .badge { padding: 3px 10px; font-size: 11px; font-weight: 700; border-radius: 999px; white-space: nowrap; }
+  .b-amber { background: #fef3c7; color: #b45309; }
+  .b-green { background: #dcfce7; color: #166534; }
+  .b-red   { background: #fee2e2; color: #b91c1c; }
+  .b-blue  { background: #dbeafe; color: #1e40af; }
+  .mock table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .mock th { text-align: left; font-size: 10px; text-transform: uppercase; color: #999; padding: 8px 10px; background: #fafafa; border-bottom: 1px solid #eee; }
+  .mock td { padding: 9px 10px; border-bottom: 1px solid #f4f4f4; vertical-align: top; }
+  .mock .sub { font-size: 10.5px; color: #999; margin-top: 2px; }
+  .mock .tot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap;
+    background: #fff7ed; border-top: 1px solid #fed7aa; padding: 10px 16px; font-size: 12.5px; color: #7c2d12; }
+  .mock .tot b { color: #c2410c; }
+
+  h2.sec { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--primary-dark); margin: 30px 0 10px; }
+  .card { background: #fff; border-radius: 14px; border: 1px solid #e6e3dc; margin-bottom: 10px; overflow: hidden; }
+  .card summary {
+    list-style: none; cursor: pointer; padding: 14px 16px; font-weight: 700; font-size: 14.5px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .card summary::-webkit-details-marker { display: none; }
+  .card summary .ico { flex: none; width: 30px; height: 30px; border-radius: 10px; background: var(--mint);
+    display: inline-flex; align-items: center; justify-content: center; font-size: 15px; }
+  .card summary .chev { margin-left: auto; color: #a8a29a; transition: transform .18s; }
+  .card[open] summary .chev { transform: rotate(180deg); }
+  .card .body { padding: 0 16px 16px 56px; font-size: 14px; color: #444; }
+  .card .body p { margin: 0 0 10px; }
+  .card .body ul { margin: 0 0 10px; padding-left: 18px; }
+  .card .body li { margin-bottom: 6px; }
+
+  .steps { counter-reset: passo; margin: 0; padding: 0; list-style: none; }
+  .steps li { counter-increment: passo; display: flex; gap: 12px; margin-bottom: 12px; font-size: 14px; color: #444; }
+  .steps li::before {
+    content: counter(passo); flex: none; width: 26px; height: 26px; border-radius: 999px;
+    background: var(--primary); color: #fff; font-weight: 800; font-size: 13px;
+    display: inline-flex; align-items: center; justify-content: center; margin-top: 1px;
+  }
+  .note { background: var(--mint); border-radius: 12px; padding: 12px 16px; font-size: 13.5px; color: var(--primary-dark); margin: 16px 0; }
+  .foot { text-align: center; color: #a8a29a; font-size: 12px; margin-top: 36px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="tag">Novidade no app</span>
+  <h1>📦 Conferência de Devoluções no Caixa</h1>
+  <p>O que o motorista marcou como devolvido agora é conferido item por item quando o caminhão volta. Bateu, ótimo. Faltou, o sistema calcula e cobra na hora, direto no caixa.</p>
+</div>
+
+<div class="wrap">
+
+  <!-- Mock -->
+  <div class="mock">
+    <div class="mock-h">📦 Conferência de Devoluções <span class="badge b-amber" style="margin-left:auto;">Aguardando conferência</span></div>
+    <table>
+      <thead>
+        <tr><th>Produto</th><th style="text-align:center;">Dev.</th><th style="text-align:center;">Voltou</th><th>Situação</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Pastel de Carne<div class="sub">Ped. 2001 · SIRLENE — 5</div></td>
+          <td style="text-align:center;">5</td><td style="text-align:center;">5</td>
+          <td><span class="badge b-green">Confere ✓</span></td>
+        </tr>
+        <tr>
+          <td>Mini Coxinha<div class="sub">sobra avulsa</div></td>
+          <td style="text-align:center;">0</td><td style="text-align:center;">1</td>
+          <td><span class="badge b-blue">Sobra — registrada</span></td>
+        </tr>
+        <tr>
+          <td>Frito Salsicha<div class="sub">Ped. 1998 · RB COMERCIO — 2</div></td>
+          <td style="text-align:center;">2</td><td style="text-align:center;">0</td>
+          <td><span class="badge b-amber">1 desconsiderada · aut. Clarkson</span><br><span class="badge b-red" style="margin-top:4px;display:inline-block;">Cobrar 1 — R$ 12,00</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="tot"><span>Faltas a cobrar do motorista (tabela À vista - Funcionário)</span><b>R$ 12,00 → somado ao valor a prestar</b></div>
+  </div>
+
+  <h2 class="sec">Como funciona</h2>
+
+  <details class="card" open>
+    <summary><span class="ico">🚚</span> A mercadoria voltou? Alguém confere <span class="chev">▾</span></summary>
+    <div class="body">
+      <p>Quando o dia tem devolução, aparece um cartão novo no <b>Caixa Diário</b> do motorista com tudo que <b>deveria voltar</b> no caminhão — cada produto com o número do pedido e o nome do cliente.</p>
+      <p>Quem recebe a mercadoria conta e digita <b>quanto voltou de verdade</b>. Só quem tem a permissão de conferir consegue digitar.</p>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary><span class="ico">💰</span> Faltou mercadoria? Cobra na hora <span class="chev">▾</span></summary>
+    <div class="body">
+      <p>Se voltou menos do que o marcado, o sistema calcula o valor pela <b>tabela do motorista</b> (normalmente À vista - Funcionário) e <b>soma ao valor a prestar do caixa</b> — o acerto acontece no mesmo dia, sem planilha nem discussão.</p>
+      <p>Se voltou a mais (sobra sem devolução registrada), é só registrar — fica no histórico.</p>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary><span class="ico">🔐</span> Não foi carregado de manhã? Autorização com senha <span class="chev">▾</span></summary>
+    <div class="body">
+      <p>Quando a falta não é culpa do motorista (ex.: o produto nem foi carregado), o responsável autoriza desconsiderar — <b>com a senha do próprio login, direto no celular</b>.</p>
+      <ul>
+        <li>Dá para desconsiderar <b>só parte</b> das unidades; o restante continua cobrado</li>
+        <li>Fica registrado <b>quem autorizou, quando e o motivo</b></li>
+        <li>Só autoriza quem tiver a permissão ligada na aba Vendedores</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary><span class="ico">🖨️</span> Tudo no relatório e travado no histórico <span class="chev">▾</span></summary>
+    <div class="body">
+      <p>Depois de confirmada, a conferência fica <b>travada</b> no caixa daquele dia (é só abrir a data para consultar) e sai na <b>impressão do caixa</b>: produto, pedido, cliente, o que voltou, o que foi autorizado e o que foi cobrado.</p>
+      <p>E atenção: <b>o caixa de um dia com devolução só fecha depois da conferência confirmada</b>.</p>
+    </div>
+  </details>
+
+  <details class="card">
+    <summary><span class="ico">👥</span> Seletor do caixa sem vendedores inativos <span class="chev">▾</span></summary>
+    <div class="body">
+      <p>De quebra, o seletor de vendedor do caixa agora mostra <b>só quem está ativo</b>. Um inativo só aparece nos dias em que teve caixa com movimento, marcado como "inativo · teve caixa" — o histórico continua acessível.</p>
+    </div>
+  </details>
+
+  <h2 class="sec">Para começar a usar</h2>
+  <ol class="steps">
+    <li>Na aba <b>Vendedores → escudo (permissões) → Permissões do Caixa</b>, ligue <b>"Conferir Devoluções no Caixa"</b> para quem recebe a mercadoria.</li>
+    <li>Na mesma tela, ligue <b>"Autorizar Desconsiderar Devolução"</b> para os responsáveis (a senha deles vira a chave da autorização).</li>
+    <li>Se quiser, escolha a <b>tabela de cobrança de faltas</b> de cada motorista — sem escolher nada, vale a "À vista - Funcionário".</li>
+    <li>Pronto: no próximo dia com devolução, o cartão aparece sozinho no Caixa Diário.</li>
+  </ol>
+
+  <div class="note">
+    💡 A conferência <b>não mexe no estoque</b> — o estoque volta quando o faturamento emite a nota de devolução, como sempre foi.
+  </div>
+
+  <div class="foot">Hardt App · julho/2026</div>
+</div>
+
+</body>
+</html>

@@ -120,7 +120,11 @@ const RelatorioCaixaPrint = () => {
     const recOutros = relatorio.totalRecebidoOutros ?? totalOutros;
     const adiantamento = Number(relatorio.caixa?.adiantamento || 0);
     const totalDesp = Number(relatorio.totalDespesas || 0);
-    const valorAPrestar = relatorio.valorAPrestar ?? (adiantamento + recCaixa - totalDesp);
+    const faltasDevolucao = Number(relatorio.faltasDevolucao || 0);
+    const valorAPrestar = relatorio.valorAPrestar ?? (adiantamento + recCaixa + faltasDevolucao - totalDesp);
+    const confDev = relatorio.conferenciaDevolucao;
+    const confDevItens = confDev?.itens || [];
+    const autorizacoesDev = confDevItens.filter(i => Number(i.qtdDesconsiderada) > 0);
 
     return (
         <>
@@ -362,11 +366,69 @@ const RelatorioCaixaPrint = () => {
                         </div>
                     )}
 
+                    {/* Conferência de Devoluções */}
+                    {confDev && confDevItens.length > 0 && (
+                        <div className="box" style={{ marginTop: '10px' }}>
+                            <div className="box-title">
+                                Conferência de Devoluções
+                                {confDev.status === 'CONFERIDA'
+                                    ? ` — conferida por ${confDev.conferidoPorNome || '—'}${confDev.conferidoEm ? ` às ${new Date(confDev.conferidoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}`
+                                    : ' — PENDENTE'}
+                            </div>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style={{ textAlign: 'left' }}>Produto</th>
+                                        <th style={{ textAlign: 'left' }}>Pedido / Cliente</th>
+                                        <th style={{ width: '48px', textAlign: 'center' }}>Dev.</th>
+                                        <th style={{ width: '52px', textAlign: 'center' }}>Voltou</th>
+                                        <th style={{ width: '62px', textAlign: 'center' }}>Descons.</th>
+                                        <th style={{ width: '75px', textAlign: 'right' }}>Cobrado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {confDevItens.map((i, idx) => (
+                                        <tr key={idx}>
+                                            <td style={{ fontWeight: 600 }}>{i.produtoNome}{i.sobra ? ' (sobra avulsa)' : ''}</td>
+                                            <td style={{ fontSize: '9px' }}>
+                                                {(i.pedidosOrigem || []).map(po => `${po.numero || '?'} ${po.cliente || ''}`).join(' / ') || '—'}
+                                            </td>
+                                            <td style={{ textAlign: 'center' }}>{Number(i.qtdEsperada)}</td>
+                                            <td style={{ textAlign: 'center' }}>{Number(i.qtdRecebida)}</td>
+                                            <td style={{ textAlign: 'center' }}>{Number(i.qtdDesconsiderada) > 0 ? `${Number(i.qtdDesconsiderada)}*` : '—'}</td>
+                                            <td style={{ textAlign: 'right', fontWeight: 700 }}>
+                                                {Number(i.valorCobrado) > 0 ? `R$ ${fmt(i.valorCobrado)}` : '—'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    <tr style={{ fontWeight: 900, borderTop: '2px solid #000', fontSize: '12px' }}>
+                                        <td colSpan={5}>FALTAS COBRADAS DO MOTORISTA{confDev.tabelaCobrancaNome ? ` (tabela ${confDev.tabelaCobrancaNome})` : ''}</td>
+                                        <td style={{ textAlign: 'right' }}>R$ {fmt(confDev.totalCobrado)}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            {autorizacoesDev.length > 0 && (
+                                <div style={{ fontSize: '9px', color: '#333', marginTop: '4px' }}>
+                                    {autorizacoesDev.map((i, idx) => (
+                                        <div key={idx}>
+                                            * {i.produtoNome}: {Number(i.qtdDesconsiderada)} desconsiderada(s) — autorizado por {i.autorizadoPorNome || '—'}{i.motivoDesconsiderar ? ` (motivo: ${i.motivoDesconsiderar})` : ''}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Rodapé - Recebidos + Assinaturas */}
-                    <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'space-between', borderTop: '2px solid #000', paddingTop: '8px' }}>
+                    <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px', borderTop: '2px solid #000', paddingTop: '8px' }}>
                         <div style={{ fontSize: '13px', fontWeight: 900 }}>
                             Recebido Caixa: R$ {fmt(recCaixa)}
                         </div>
+                        {faltasDevolucao > 0 && (
+                            <div style={{ fontSize: '13px', fontWeight: 900 }}>
+                                (+) Faltas de devolução: R$ {fmt(faltasDevolucao)}
+                            </div>
+                        )}
                         <div style={{ fontSize: '13px', fontWeight: 900 }}>
                             Recebido Outros: R$ {fmt(recOutros)}
                         </div>

@@ -380,6 +380,10 @@ model Vendedor {
   // Alerta de pedidos não faturados (popup a cada 10 min)
   alertaFaturamento Boolean @default(true) @map("alerta_faturamento")
 
+  // Caixa: tabela de preço usada para cobrar faltas na conferência de devoluções
+  // (id ou idCondicao da TabelaPreco, sem FK — mesma flexibilidade de Cliente.Condicao_de_pagamento)
+  tabelaCobrancaFaltaId String? @map("tabela_cobranca_falta_id")
+
   clientes                 Cliente[]
   pedidos                  Pedido[]
   pedidosLancados          Pedido[]         @relation("UsuarioLancamento")
@@ -1130,8 +1134,9 @@ model CaixaDiario {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  vendedor           Vendedor                @relation(fields: [vendedorId], references: [id])
-  entregasConferidas CaixaEntregaConferida[]
+  vendedor             Vendedor                   @relation(fields: [vendedorId], references: [id])
+  entregasConferidas   CaixaEntregaConferida[]
+  conferenciaDevolucao CaixaConferenciaDevolucao?
 
   @@unique([vendedorId, dataReferencia])
   @@index([vendedorId])
@@ -1157,6 +1162,63 @@ model CaixaEntregaConferida {
 
   @@unique([caixaDiarioId, pedidoId])
   @@map("caixa_entrega_conferida")
+}
+
+// Conferência física da mercadoria devolvida pelo motorista (1 por caixa/dia).
+// O que o motorista marcou como devolvido nas entregas tem que voltar fisicamente;
+// falta sem autorização vira cobrança (valor somado ao valor a prestar do caixa).
+model CaixaConferenciaDevolucao {
+  id            String @id @default(uuid())
+  caixaDiarioId String @unique @map("caixa_diario_id")
+
+  status            String    @default("PENDENTE") // PENDENTE | CONFERIDA
+  conferidoPorId    String?   @map("conferido_por_id")
+  conferidoPorNome  String?   @map("conferido_por_nome")
+  conferidoEm       DateTime? @map("conferido_em")
+  totalCobrado      Decimal   @default(0) @map("total_cobrado") @db.Decimal(12, 2)
+  // Snapshot da tabela de preço usada na cobrança (não muda se a config do vendedor mudar depois)
+  tabelaCobrancaId   String? @map("tabela_cobranca_id")
+  tabelaCobrancaNome String? @map("tabela_cobranca_nome")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  caixaDiario CaixaDiario                     @relation(fields: [caixaDiarioId], references: [id], onDelete: Cascade)
+  itens       CaixaConferenciaDevolucaoItem[]
+
+  @@map("caixa_conferencia_devolucao")
+}
+
+model CaixaConferenciaDevolucaoItem {
+  id            String @id @default(uuid())
+  conferenciaId String @map("conferencia_id")
+  produtoId     String @map("produto_id")
+  produtoNome   String @map("produto_nome") // snapshot
+
+  qtdEsperada       Decimal @default(0) @map("qtd_esperada") @db.Decimal(12, 3) // devoluções registradas nas entregas
+  qtdRecebida       Decimal @default(0) @map("qtd_recebida") @db.Decimal(12, 3) // contagem física de quem conferiu
+  qtdDesconsiderada Decimal @default(0) @map("qtd_desconsiderada") @db.Decimal(12, 3) // autorizada com senha
+  qtdCobrada        Decimal @default(0) @map("qtd_cobrada") @db.Decimal(12, 3) // falta cobrada do motorista
+  sobra             Boolean @default(false) // voltou sem devolução registrada (só registro)
+
+  valorUnitCobranca Decimal? @map("valor_unit_cobranca") @db.Decimal(12, 2) // preço na tabela do motorista (snapshot)
+  valorCobrado      Decimal  @default(0) @map("valor_cobrado") @db.Decimal(12, 2)
+
+  // Autorização para desconsiderar (senha de quem tem a permissão)
+  motivoDesconsiderar String?   @map("motivo_desconsiderar")
+  autorizadoPorId     String?   @map("autorizado_por_id")
+  autorizadoPorNome   String?   @map("autorizado_por_nome")
+  autorizadoEm        DateTime? @map("autorizado_em")
+
+  pedidosOrigem Json? @map("pedidos_origem") // [{ pedidoId, numero, cliente, quantidade }]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  conferencia CaixaConferenciaDevolucao @relation(fields: [conferenciaId], references: [id], onDelete: Cascade)
+
+  @@unique([conferenciaId, produtoId])
+  @@map("caixa_conferencia_devolucao_itens")
 }
 
 // =============================================

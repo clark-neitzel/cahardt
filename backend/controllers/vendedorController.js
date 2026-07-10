@@ -71,7 +71,7 @@ const vendedorController = {
                 return res.status(403).json({ error: 'Sem permissão para editar usuários.' });
             }
 
-            const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, percentualFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento } = req.body;
+            const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, percentualFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento, tabelaCobrancaFaltaId } = req.body;
 
             // Campos sensíveis (permissões, login, senha, status) só por admin — evita
             // escalonamento de privilégio e sequestro de conta por um gestor não-admin.
@@ -93,6 +93,7 @@ const vendedorController = {
             if (permissoes !== undefined) dataToUpdate.permissoes = permissoes;
             if (formasAtendimentoVisiveis !== undefined) dataToUpdate.formasAtendimentoVisiveis = formasAtendimentoVisiveis;
             if (alertaFaturamento !== undefined) dataToUpdate.alertaFaturamento = alertaFaturamento;
+            if (tabelaCobrancaFaltaId !== undefined) dataToUpdate.tabelaCobrancaFaltaId = tabelaCobrancaFaltaId || null;
 
             if (senha && senha.trim() !== '') {
                 const salt = await bcrypt.genSalt(10);

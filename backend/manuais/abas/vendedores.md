@@ -35,6 +35,7 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 ### Configurar permissões
 1. Clique no ícone de escudo (permissões) na linha do vendedor
 2. O modal de permissões abre com todas as flags disponíveis
+3. Na seção **Permissões do Caixa** também fica o campo **"Tabela para cobrança de faltas de devolução"** — a tabela de preço usada para cobrar o motorista quando falta mercadoria na conferência de devoluções (padrão automático: "À vista - Funcionário")
 3. Marque/desmarque conforme necessário
 4. Salve
 
@@ -64,6 +65,8 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 | `Pode_Fazer_Devolucao` | Registra devoluções |
 | `Pode_Executar_Entregas` | Aparece como motorista nos embarques |
 | `Pode_Editar_Caixa` | Acessa caixas de outros vendedores |
+| `Pode_Conferir_Devolucao_Caixa` | Recebe a mercadoria devolvida e digita a contagem na conferência de devoluções do caixa |
+| `Pode_Autorizar_Desconsiderar_Devolucao` | A senha desta pessoa libera falta de devolução sem cobrança ao motorista |
 | `Pode_Gerenciar_Metas` | Cria e edita metas de vendas |
 | `Pode_Ver_Dashboard_Admin` | Vê o painel gerencial do dashboard |
 | `Pode_Editar_Veiculos` | Cadastra e edita veículos |

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const verificarAuth = require('../middlewares/authMiddleware');
 
@@ -94,13 +95,13 @@ router.get('/resumo', async (req, res) => {
         // 1. Buscar ou criar CaixaDiario
         let caixa = await prisma.caixaDiario.findUnique({
             where: { vendedorId_dataReferencia: { vendedorId: targetVendedor, dataReferencia: data } },
-            include: { entregasConferidas: true }
+            include: { entregasConferidas: true, conferenciaDevolucao: true }
         });
 
         if (!caixa) {
             caixa = await prisma.caixaDiario.create({
                 data: { vendedorId: targetVendedor, dataReferencia: data },
-                include: { entregasConferidas: true }
+                include: { entregasConferidas: true, conferenciaDevolucao: true }
             });
         }
 
@@ -323,7 +324,12 @@ router.get('/resumo', async (req, res) => {
             debitaCaixa: info.debitaCaixa
         }));
 
-        const valorAPrestar = Math.round((Number(caixa.adiantamento) + totalRecebidoCaixa - totalDespesas) * 100) / 100;
+        // Faltas de devolução cobradas do motorista (conferência confirmada) somam ao valor a prestar
+        const confDev = caixa.conferenciaDevolucao;
+        const faltasDevolucao = confDev?.status === 'CONFERIDA' ? Math.round(Number(confDev.totalCobrado) * 100) / 100 : 0;
+        const temDevolucoesDia = entregas.some(e => (e.itensDevolvidos?.length || 0) > 0);
+
+        const valorAPrestar = Math.round((Number(caixa.adiantamento) + totalRecebidoCaixa + faltasDevolucao - totalDespesas) * 100) / 100;
 
         // Atendimentos do dia: registrados pelo vendedor OU em clientes que foram entregues na rota
         const clienteIdsEntreguesRes = [...new Set(entregas.filter(e => e.clienteId).map(e => e.clienteId))];
@@ -417,6 +423,7 @@ router.get('/resumo', async (req, res) => {
                 p.formaNome?.toLowerCase().includes('dinheiro')
             );
         }).length;
+        const conferenciaDevolucaoPendente = temDevolucoesDia && confDev?.status !== 'CONFERIDA';
 
         res.json({
             caixa: {
@@ -467,10 +474,19 @@ router.get('/resumo', async (req, res) => {
                 createdAt: p.createdAt,
                 observacao: p.observacoes || null
             })),
+            conferenciaDevolucao: {
+                temDevolucoes: temDevolucoesDia || (faltasDevolucao > 0),
+                status: confDev?.status || 'PENDENTE',
+                totalCobrado: faltasDevolucao,
+                conferidoPorNome: confDev?.conferidoPorNome || null,
+                conferidoEm: confDev?.conferidoEm || null
+            },
+            faltasDevolucao,
             pendencias: {
                 devolucoesNaoFeitas,
                 quitacoesNaoFeitas,
-                podeFechar: devolucoesNaoFeitas === 0 && quitacoesNaoFeitas === 0
+                conferenciaDevolucaoPendente,
+                podeFechar: devolucoesNaoFeitas === 0 && quitacoesNaoFeitas === 0 && !conferenciaDevolucaoPendente
             },
             finalizacaoDia
         });
@@ -555,7 +571,8 @@ router.post('/fechar', async (req, res) => {
             include: {
                 pagamentosReais: { where: { valor: { gt: 0 } } },
                 contaReceber: { select: { status: true } },
-                cliente: { select: { NomeFantasia: true, Nome: true } }
+                cliente: { select: { NomeFantasia: true, Nome: true } },
+                itensDevolvidos: { select: { id: true } }
             }
         });
 
@@ -588,6 +605,17 @@ router.post('/fechar', async (req, res) => {
         if (quitPendentes.length > 0) {
             const nomes = quitPendentes.map(e => `#${e.numero || '?'} ${e.cliente?.NomeFantasia || e.cliente?.Nome || ''}`).join(', ');
             pendencias.push(`${quitPendentes.length} baixa(s) de dinheiro pendente(s): ${nomes}`);
+        }
+
+        // 3. Conferência de devoluções: se o dia teve devolução, precisa estar confirmada
+        const caixaExistente = await prisma.caixaDiario.findUnique({
+            where: { vendedorId_dataReferencia: { vendedorId: targetVendedor, dataReferencia: data } },
+            include: { conferenciaDevolucao: true }
+        });
+        const temDevolucoesFechar = entregas.some(e => (e.itensDevolvidos?.length || 0) > 0);
+        const confDevFechar = caixaExistente?.conferenciaDevolucao;
+        if (temDevolucoesFechar && confDevFechar?.status !== 'CONFERIDA') {
+            pendencias.push('Conferência de devoluções pendente: confira a mercadoria que voltou antes de fechar o caixa.');
         }
 
         if (pendencias.length > 0) {
@@ -630,6 +658,12 @@ router.post('/fechar', async (req, res) => {
             });
         });
 
+        // Snapshot do valor a prestar — mesma fórmula do /resumo:
+        // adiantamento + recebido em caixa + faltas de devolução − despesas
+        const adiantamentoFechar = Number(caixaExistente?.adiantamento || 0);
+        const faltasDevolucaoFechar = confDevFechar?.status === 'CONFERIDA' ? Number(confDevFechar.totalCobrado) : 0;
+        const valorAPrestarFechar = Math.round((adiantamentoFechar + totalRecebidoCaixa + faltasDevolucaoFechar - totalDespesas) * 100) / 100;
+
         const caixa = await prisma.caixaDiario.upsert({
             where: { vendedorId_dataReferencia: { vendedorId: targetVendedor, dataReferencia: data } },
             update: {
@@ -637,7 +671,7 @@ router.post('/fechar', async (req, res) => {
                 totalDespesas: Math.round(totalDespesas * 100) / 100,
                 totalRecebidoCaixa: Math.round(totalRecebidoCaixa * 100) / 100,
                 totalRecebidoOutros: Math.round(totalRecebidoOutros * 100) / 100,
-                valorAPrestar: Math.round(totalRecebidoCaixa - totalDespesas) * 100 / 100
+                valorAPrestar: valorAPrestarFechar
             },
             create: {
                 vendedorId: targetVendedor,
@@ -646,7 +680,7 @@ router.post('/fechar', async (req, res) => {
                 totalDespesas: Math.round(totalDespesas * 100) / 100,
                 totalRecebidoCaixa: Math.round(totalRecebidoCaixa * 100) / 100,
                 totalRecebidoOutros: Math.round(totalRecebidoOutros * 100) / 100,
-                valorAPrestar: Math.round(totalRecebidoCaixa - totalDespesas) * 100 / 100
+                valorAPrestar: valorAPrestarFechar
             }
         });
 
@@ -886,6 +920,547 @@ router.patch('/entrega-conferir', checkEditor, async (req, res) => {
     }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFERÊNCIA DE DEVOLUÇÕES
+// O que o motorista marcou como devolvido nas entregas tem que voltar
+// fisicamente. Quem tem Pode_Conferir_Devolucao_Caixa conta a mercadoria;
+// falta sem autorização vira cobrança pela tabela do motorista (soma ao
+// valor a prestar). Desconsiderar falta exige senha de quem tem
+// Pode_Autorizar_Desconsiderar_Devolucao.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const PERM_CONFERIR_DEV = 'Pode_Conferir_Devolucao_Caixa';
+const PERM_AUTORIZAR_DEV = 'Pode_Autorizar_Desconsiderar_Devolucao';
+
+const round2 = (n) => Math.round(Number(n) * 100) / 100;
+const round3 = (n) => Math.round(Number(n) * 1000) / 1000;
+
+// Devoluções registradas nas entregas do dia do vendedor, agrupadas por produto
+const buscarDevolucoesEsperadas = async (vendedorId, data) => {
+    const inicioDia = new Date(data + 'T00:00:00.000Z');
+    const fimDia = new Date(data + 'T23:59:59.999Z');
+    const pedidos = await prisma.pedido.findMany({
+        where: {
+            dataEntrega: { gte: inicioDia, lte: fimDia },
+            statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL', 'DEVOLVIDO'] },
+            embarque: { responsavelId: vendedorId },
+            itensDevolvidos: { some: {} }
+        },
+        select: {
+            id: true,
+            numero: true,
+            cliente: { select: { NomeFantasia: true, Nome: true } },
+            itensDevolvidos: {
+                include: { produto: { select: { id: true, nome: true, unidade: true, valorVenda: true } } }
+            }
+        }
+    });
+
+    const porProduto = new Map();
+    for (const p of pedidos) {
+        const clienteNome = p.cliente?.NomeFantasia || p.cliente?.Nome || 'N/A';
+        for (const item of p.itensDevolvidos) {
+            if (!porProduto.has(item.produtoId)) {
+                porProduto.set(item.produtoId, {
+                    produtoId: item.produtoId,
+                    produtoNome: item.produto?.nome || 'Produto',
+                    unidade: item.produto?.unidade || null,
+                    valorVendaBase: Number(item.produto?.valorVenda || 0),
+                    qtdEsperada: 0,
+                    pedidosOrigem: []
+                });
+            }
+            const g = porProduto.get(item.produtoId);
+            g.qtdEsperada = round3(g.qtdEsperada + Number(item.quantidade));
+            g.pedidosOrigem.push({
+                pedidoId: p.id,
+                numero: p.numero,
+                cliente: clienteNome,
+                quantidade: Number(item.quantidade)
+            });
+        }
+    }
+    return [...porProduto.values()];
+};
+
+// Tabela de preço usada para cobrar faltas do motorista (config no cadastro do vendedor;
+// padrão: tabela "funcionário" ativa; último recurso: preço base do produto)
+const buscarTabelaCobranca = async (vendedorId) => {
+    const vendedor = await prisma.vendedor.findUnique({
+        where: { id: vendedorId },
+        select: { tabelaCobrancaFaltaId: true }
+    });
+    let tabela = null;
+    if (vendedor?.tabelaCobrancaFaltaId) {
+        tabela = await prisma.tabelaPreco.findFirst({
+            where: { OR: [{ id: vendedor.tabelaCobrancaFaltaId }, { idCondicao: vendedor.tabelaCobrancaFaltaId }] }
+        });
+    }
+    if (!tabela) {
+        tabela = await prisma.tabelaPreco.findFirst({
+            where: { ativo: true, nomeCondicao: { contains: 'funcion', mode: 'insensitive' } }
+        });
+    }
+    return tabela;
+};
+
+const precoNaTabela = (valorVenda, tabela) =>
+    round2(Number(valorVenda || 0) * (1 + Number(tabela?.acrescimoPreco || 0) / 100));
+
+const getCaixaDoDia = (vendedorId, data) => prisma.caixaDiario.upsert({
+    where: { vendedorId_dataReferencia: { vendedorId, dataReferencia: data } },
+    update: {},
+    create: { vendedorId, dataReferencia: data }
+});
+
+// ── GET /conferencia-devolucao — Estado da conferência do dia ──
+router.get('/conferencia-devolucao', async (req, res) => {
+    try {
+        const { data, vendedorId } = req.query;
+        if (!data) return res.status(400).json({ error: 'Parâmetro "data" obrigatório.' });
+
+        const targetVendedor = vendedorId || req.user.id;
+        if (targetVendedor !== req.user.id && !req._perms.admin && !req._perms.Pode_Editar_Caixa && !req._perms[PERM_CONFERIR_DEV]) {
+            return res.status(403).json({ error: 'Sem permissão para ver caixa de outro usuário.' });
+        }
+
+        const esperadas = await buscarDevolucoesEsperadas(targetVendedor, data);
+        const caixa = await prisma.caixaDiario.findUnique({
+            where: { vendedorId_dataReferencia: { vendedorId: targetVendedor, dataReferencia: data } },
+            include: { conferenciaDevolucao: { include: { itens: true } } }
+        });
+        const conf = caixa?.conferenciaDevolucao || null;
+        const tabela = await buscarTabelaCobranca(targetVendedor);
+
+        const itensSalvos = new Map((conf?.itens || []).map(i => [i.produtoId, i]));
+        const itens = esperadas.map(e => {
+            const s = itensSalvos.get(e.produtoId);
+            return {
+                produtoId: e.produtoId,
+                produtoNome: e.produtoNome,
+                unidade: e.unidade,
+                qtdEsperada: e.qtdEsperada,
+                pedidosOrigem: e.pedidosOrigem,
+                valorUnitCobranca: s?.valorUnitCobranca != null ? Number(s.valorUnitCobranca) : precoNaTabela(e.valorVendaBase, tabela),
+                qtdRecebida: s ? Number(s.qtdRecebida) : null,
+                qtdDesconsiderada: s ? Number(s.qtdDesconsiderada) : 0,
+                qtdCobrada: s ? Number(s.qtdCobrada) : 0,
+                valorCobrado: s ? Number(s.valorCobrado) : 0,
+                motivoDesconsiderar: s?.motivoDesconsiderar || null,
+                autorizadoPorNome: s?.autorizadoPorNome || null,
+                autorizadoEm: s?.autorizadoEm || null,
+                sobra: false
+            };
+        });
+
+        // Sobras registradas (voltou sem devolução registrada)
+        const idsEsperados = new Set(esperadas.map(e => e.produtoId));
+        for (const s of (conf?.itens || [])) {
+            if (idsEsperados.has(s.produtoId)) continue;
+            itens.push({
+                produtoId: s.produtoId,
+                produtoNome: s.produtoNome,
+                unidade: null,
+                qtdEsperada: 0,
+                pedidosOrigem: Array.isArray(s.pedidosOrigem) ? s.pedidosOrigem : [],
+                valorUnitCobranca: s.valorUnitCobranca != null ? Number(s.valorUnitCobranca) : null,
+                qtdRecebida: Number(s.qtdRecebida),
+                qtdDesconsiderada: 0,
+                qtdCobrada: 0,
+                valorCobrado: 0,
+                motivoDesconsiderar: null,
+                autorizadoPorNome: null,
+                autorizadoEm: null,
+                sobra: true
+            });
+        }
+
+        // Quem pode autorizar desconsiderar (lista do modal de autorização)
+        const vendedoresAtivos = await prisma.vendedor.findMany({
+            where: { ativo: true },
+            select: { id: true, nome: true, permissoes: true },
+            orderBy: { nome: 'asc' }
+        });
+        const autorizadores = vendedoresAtivos
+            .filter(v => {
+                const p = typeof v.permissoes === 'string' ? JSON.parse(v.permissoes) : (v.permissoes || {});
+                return p.admin || p[PERM_AUTORIZAR_DEV];
+            })
+            .map(v => ({ id: v.id, nome: v.nome }));
+
+        res.json({
+            temDevolucoes: esperadas.length > 0 || (conf?.itens?.length || 0) > 0,
+            status: conf?.status || 'PENDENTE',
+            conferidoPorNome: conf?.conferidoPorNome || null,
+            conferidoEm: conf?.conferidoEm || null,
+            totalCobrado: Number(conf?.totalCobrado || 0),
+            tabelaCobranca: tabela ? { id: tabela.id, nome: tabela.nomeCondicao } : null,
+            itens,
+            autorizadores,
+            podeConferir: !!(req._perms.admin || req._perms[PERM_CONFERIR_DEV])
+        });
+    } catch (error) {
+        console.error('Erro ao buscar conferência de devoluções:', error);
+        res.status(500).json({ error: 'Erro ao buscar conferência de devoluções.' });
+    }
+});
+
+// ── POST /conferencia-devolucao/autorizar — Desconsiderar falta com senha ──
+router.post('/conferencia-devolucao/autorizar', async (req, res) => {
+    try {
+        if (!req._perms.admin && !req._perms[PERM_CONFERIR_DEV]) {
+            return res.status(403).json({ error: 'Sem permissão para conferir devoluções.' });
+        }
+
+        const { vendedorId, data, produtoId, quantidade, motivo, autorizadorId, senha } = req.body;
+        if (!data || !produtoId || !autorizadorId || !senha) {
+            return res.status(400).json({ error: 'Campos obrigatórios: data, produtoId, autorizadorId, senha.' });
+        }
+        const qtd = Number(quantidade);
+        if (!(qtd > 0)) return res.status(400).json({ error: 'Quantidade a desconsiderar deve ser maior que zero.' });
+
+        const targetVendedor = vendedorId || req.user.id;
+
+        // Validar autorizador: ativo + permissão + senha do próprio login
+        const autorizador = await prisma.vendedor.findUnique({ where: { id: autorizadorId } });
+        if (!autorizador || !autorizador.ativo) {
+            return res.status(403).json({ error: 'Autorizador inválido ou inativo.' });
+        }
+        const permsAut = typeof autorizador.permissoes === 'string'
+            ? JSON.parse(autorizador.permissoes)
+            : (autorizador.permissoes || {});
+        if (!permsAut.admin && !permsAut[PERM_AUTORIZAR_DEV]) {
+            return res.status(403).json({ error: `${autorizador.nome} não tem permissão para autorizar desconsiderar devolução.` });
+        }
+        if (!autorizador.senha) {
+            return res.status(403).json({ error: 'Autorizador sem senha configurada no app.' });
+        }
+        const senhaValida = await bcrypt.compare(senha, autorizador.senha);
+        if (!senhaValida) return res.status(401).json({ error: 'Senha incorreta.' });
+
+        // Produto precisa ter devolução registrada no dia
+        const esperadas = await buscarDevolucoesEsperadas(targetVendedor, data);
+        const esperado = esperadas.find(e => e.produtoId === produtoId);
+        if (!esperado) return res.status(400).json({ error: 'Produto sem devolução registrada neste dia.' });
+
+        const qtdFinal = Math.min(round3(qtd), esperado.qtdEsperada);
+
+        const caixa = await getCaixaDoDia(targetVendedor, data);
+        let conf = await prisma.caixaConferenciaDevolucao.findUnique({ where: { caixaDiarioId: caixa.id } });
+        if (conf?.status === 'CONFERIDA') {
+            return res.status(400).json({ error: 'Conferência já confirmada. Reabra a conferência para alterar.' });
+        }
+        if (!conf) {
+            conf = await prisma.caixaConferenciaDevolucao.create({ data: { caixaDiarioId: caixa.id } });
+        }
+
+        const dadosAutorizacao = {
+            qtdEsperada: esperado.qtdEsperada,
+            qtdDesconsiderada: qtdFinal,
+            motivoDesconsiderar: (motivo || '').trim() || null,
+            autorizadoPorId: autorizador.id,
+            autorizadoPorNome: autorizador.nome,
+            autorizadoEm: new Date(),
+            pedidosOrigem: esperado.pedidosOrigem
+        };
+        const item = await prisma.caixaConferenciaDevolucaoItem.upsert({
+            where: { conferenciaId_produtoId: { conferenciaId: conf.id, produtoId } },
+            update: dadosAutorizacao,
+            create: {
+                conferenciaId: conf.id,
+                produtoId,
+                produtoNome: esperado.produtoNome,
+                ...dadosAutorizacao
+            }
+        });
+
+        // Log de auditoria FORA da operação principal — falha no log não desfaz a autorização
+        try {
+            await prisma.auditLog.create({
+                data: {
+                    acao: 'AUTORIZAR_DESCONSIDERAR_DEVOLUCAO',
+                    entidade: 'CaixaConferenciaDevolucao',
+                    entidadeId: conf.id,
+                    detalhes: JSON.stringify({
+                        vendedorId: targetVendedor,
+                        data,
+                        produto: esperado.produtoNome,
+                        quantidade: qtdFinal,
+                        motivo: dadosAutorizacao.motivoDesconsiderar,
+                        digitadoPor: req.user.id
+                    }),
+                    usuarioId: autorizador.id,
+                    usuarioNome: autorizador.nome
+                }
+            });
+        } catch (logErr) {
+            console.error('[conferencia-devolucao] falha no audit log (autorização já gravada):', logErr.message);
+        }
+
+        res.json({
+            ok: true,
+            produtoId,
+            qtdDesconsiderada: qtdFinal,
+            autorizadoPorNome: autorizador.nome,
+            autorizadoEm: item.autorizadoEm
+        });
+    } catch (error) {
+        console.error('Erro ao autorizar desconsiderar devolução:', error);
+        res.status(500).json({ error: 'Erro ao autorizar desconsiderar devolução.' });
+    }
+});
+
+// ── POST /conferencia-devolucao/confirmar — Grava contagem e calcula cobrança ──
+router.post('/conferencia-devolucao/confirmar', async (req, res) => {
+    try {
+        if (!req._perms.admin && !req._perms[PERM_CONFERIR_DEV]) {
+            return res.status(403).json({ error: 'Sem permissão para conferir devoluções.' });
+        }
+
+        const { vendedorId, data, itens, sobras } = req.body;
+        if (!data) return res.status(400).json({ error: 'Campo "data" obrigatório.' });
+
+        const targetVendedor = vendedorId || req.user.id;
+
+        const esperadas = await buscarDevolucoesEsperadas(targetVendedor, data);
+        const sobrasInformadas = (sobras || []).filter(s => Number(s.quantidade) > 0 && !esperadas.some(e => e.produtoId === s.produtoId));
+        if (esperadas.length === 0 && sobrasInformadas.length === 0) {
+            return res.status(400).json({ error: 'Não há devoluções para conferir neste dia.' });
+        }
+
+        const caixa = await getCaixaDoDia(targetVendedor, data);
+        const confExistente = await prisma.caixaConferenciaDevolucao.findUnique({
+            where: { caixaDiarioId: caixa.id },
+            include: { itens: true }
+        });
+        // Idempotência: clique duplo não recalcula nem duplica
+        if (confExistente?.status === 'CONFERIDA') {
+            return res.status(400).json({ error: 'Conferência já confirmada. Reabra a conferência para alterar.' });
+        }
+
+        const tabela = await buscarTabelaCobranca(targetVendedor);
+        const recebidasMap = new Map((itens || []).map(i => [i.produtoId, Number(i.qtdRecebida) || 0]));
+        const salvosMap = new Map((confExistente?.itens || []).map(i => [i.produtoId, i]));
+
+        const linhas = esperadas.map(e => {
+            const salvo = salvosMap.get(e.produtoId);
+            const qtdRecebida = round3(Math.max(0, recebidasMap.get(e.produtoId) ?? 0));
+            const faltaAposContagem = Math.max(0, round3(e.qtdEsperada - qtdRecebida));
+            const qtdDesconsiderada = Math.min(round3(Number(salvo?.qtdDesconsiderada || 0)), faltaAposContagem);
+            const qtdCobrada = round3(Math.max(0, e.qtdEsperada - qtdRecebida - qtdDesconsiderada));
+            const valorUnit = precoNaTabela(e.valorVendaBase, tabela);
+            return {
+                produtoId: e.produtoId,
+                produtoNome: e.produtoNome,
+                qtdEsperada: e.qtdEsperada,
+                qtdRecebida,
+                qtdDesconsiderada,
+                qtdCobrada,
+                sobra: false,
+                valorUnitCobranca: valorUnit,
+                valorCobrado: round2(qtdCobrada * valorUnit),
+                motivoDesconsiderar: qtdDesconsiderada > 0 ? (salvo?.motivoDesconsiderar || null) : null,
+                autorizadoPorId: qtdDesconsiderada > 0 ? (salvo?.autorizadoPorId || null) : null,
+                autorizadoPorNome: qtdDesconsiderada > 0 ? (salvo?.autorizadoPorNome || null) : null,
+                autorizadoEm: qtdDesconsiderada > 0 ? (salvo?.autorizadoEm || null) : null,
+                pedidosOrigem: e.pedidosOrigem
+            };
+        });
+
+        // Sobras avulsas (produto que voltou sem devolução registrada)
+        if (sobrasInformadas.length > 0) {
+            const prods = await prisma.produto.findMany({
+                where: { id: { in: sobrasInformadas.map(s => s.produtoId) } },
+                select: { id: true, nome: true }
+            });
+            const nomePorId = new Map(prods.map(p => [p.id, p.nome]));
+            for (const s of sobrasInformadas) {
+                if (!nomePorId.has(s.produtoId)) continue;
+                linhas.push({
+                    produtoId: s.produtoId,
+                    produtoNome: nomePorId.get(s.produtoId),
+                    qtdEsperada: 0,
+                    qtdRecebida: round3(Number(s.quantidade)),
+                    qtdDesconsiderada: 0,
+                    qtdCobrada: 0,
+                    sobra: true,
+                    valorUnitCobranca: null,
+                    valorCobrado: 0,
+                    motivoDesconsiderar: null,
+                    autorizadoPorId: null,
+                    autorizadoPorNome: null,
+                    autorizadoEm: null,
+                    pedidosOrigem: []
+                });
+            }
+        }
+
+        const totalCobrado = round2(linhas.reduce((s, l) => s + l.valorCobrado, 0));
+
+        const conferente = await prisma.vendedor.findUnique({
+            where: { id: req.user.id },
+            select: { nome: true }
+        });
+
+        const dadosConf = {
+            status: 'CONFERIDA',
+            conferidoPorId: req.user.id,
+            conferidoPorNome: conferente?.nome || null,
+            conferidoEm: new Date(),
+            totalCobrado,
+            tabelaCobrancaId: tabela?.id || null,
+            tabelaCobrancaNome: tabela?.nomeCondicao || null
+        };
+
+        await prisma.$transaction(async (tx) => {
+            const c = await tx.caixaConferenciaDevolucao.upsert({
+                where: { caixaDiarioId: caixa.id },
+                update: dadosConf,
+                create: { caixaDiarioId: caixa.id, ...dadosConf }
+            });
+            await tx.caixaConferenciaDevolucaoItem.deleteMany({ where: { conferenciaId: c.id } });
+            await tx.caixaConferenciaDevolucaoItem.createMany({
+                data: linhas.map(l => ({ ...l, conferenciaId: c.id }))
+            });
+        }, { timeout: 20000, maxWait: 10000 });
+
+        // Log FORA da transação — falha no log nunca desfaz a conferência
+        try {
+            await prisma.auditLog.create({
+                data: {
+                    acao: 'CONFIRMAR_CONFERENCIA_DEVOLUCAO',
+                    entidade: 'CaixaDiario',
+                    entidadeId: caixa.id,
+                    detalhes: JSON.stringify({
+                        vendedorId: targetVendedor,
+                        data,
+                        totalCobrado,
+                        tabela: tabela?.nomeCondicao || null,
+                        itens: linhas.map(l => ({
+                            produto: l.produtoNome,
+                            esperada: l.qtdEsperada,
+                            recebida: l.qtdRecebida,
+                            desconsiderada: l.qtdDesconsiderada,
+                            cobrada: l.qtdCobrada,
+                            valor: l.valorCobrado
+                        }))
+                    }),
+                    usuarioId: req.user.id,
+                    usuarioNome: conferente?.nome || 'Usuário'
+                }
+            });
+        } catch (logErr) {
+            console.error('[conferencia-devolucao] falha no audit log (conferência já gravada):', logErr.message);
+        }
+
+        res.json({ ok: true, totalCobrado, itens: linhas.length });
+    } catch (error) {
+        console.error('Erro ao confirmar conferência de devoluções:', error);
+        res.status(500).json({ error: 'Erro ao confirmar conferência de devoluções.' });
+    }
+});
+
+// ── POST /conferencia-devolucao/reabrir — Volta CONFERIDA → PENDENTE ──
+router.post('/conferencia-devolucao/reabrir', async (req, res) => {
+    try {
+        const perms = req._perms || await getPerms(req.user.id);
+        if (!perms.admin && !perms.Pode_Reverter_Caixa) {
+            return res.status(403).json({ error: 'Sem permissão para reabrir conferência.' });
+        }
+
+        const { vendedorId, data } = req.body;
+        if (!data) return res.status(400).json({ error: 'Campo "data" obrigatório.' });
+        const targetVendedor = vendedorId || req.user.id;
+
+        const caixa = await prisma.caixaDiario.findUnique({
+            where: { vendedorId_dataReferencia: { vendedorId: targetVendedor, dataReferencia: data } },
+            include: { conferenciaDevolucao: true }
+        });
+        if (!caixa?.conferenciaDevolucao) return res.status(404).json({ error: 'Conferência não encontrada.' });
+        if (caixa.status !== 'ABERTO') {
+            return res.status(400).json({ error: 'Reabra o caixa antes de reabrir a conferência de devoluções.' });
+        }
+
+        const conf = await prisma.caixaConferenciaDevolucao.update({
+            where: { id: caixa.conferenciaDevolucao.id },
+            data: { status: 'PENDENTE', conferidoPorId: null, conferidoPorNome: null, conferidoEm: null, totalCobrado: 0 }
+        });
+
+        try {
+            await prisma.auditLog.create({
+                data: {
+                    acao: 'REABRIR_CONFERENCIA_DEVOLUCAO',
+                    entidade: 'CaixaConferenciaDevolucao',
+                    entidadeId: conf.id,
+                    detalhes: JSON.stringify({ vendedorId: targetVendedor, data }),
+                    usuarioId: req.user.id,
+                    usuarioNome: req.user.nome || 'Admin'
+                }
+            });
+        } catch (logErr) {
+            console.error('[conferencia-devolucao] falha no audit log (reabertura já gravada):', logErr.message);
+        }
+
+        res.json({ ok: true });
+    } catch (error) {
+        console.error('Erro ao reabrir conferência de devoluções:', error);
+        res.status(500).json({ error: 'Erro ao reabrir conferência de devoluções.' });
+    }
+});
+
+// ── GET /vendedores-do-dia — Vendedores do seletor do caixa ──
+// Só ativos; inativo aparece apenas se tiver movimento no dia (caixa fechado/adiantamento,
+// despesa, diário de veículo ou embarque como responsável).
+router.get('/vendedores-do-dia', async (req, res) => {
+    try {
+        const { data } = req.query;
+        if (!data) return res.status(400).json({ error: 'Parâmetro "data" obrigatório.' });
+
+        const inicioDia = new Date(data + 'T00:00:00.000Z');
+        const fimDia = new Date(data + 'T23:59:59.999Z');
+
+        const [ativos, caixas, despesas, diarios, embarques] = await Promise.all([
+            prisma.vendedor.findMany({ where: { ativo: true }, select: { id: true, nome: true }, orderBy: { nome: 'asc' } }),
+            prisma.caixaDiario.findMany({
+                where: { dataReferencia: data, OR: [{ status: { not: 'ABERTO' } }, { adiantamento: { gt: 0 } }] },
+                select: { vendedorId: true }
+            }),
+            prisma.despesa.findMany({ where: { dataReferencia: data }, select: { vendedorId: true }, distinct: ['vendedorId'] }),
+            prisma.diarioVendedor.findMany({ where: { dataReferencia: data }, select: { vendedorId: true } }),
+            prisma.embarque.findMany({
+                where: { dataSaida: { gte: inicioDia, lte: fimDia } },
+                select: { responsavelId: true },
+                distinct: ['responsavelId']
+            })
+        ]);
+
+        const comMovimento = new Set([
+            ...caixas.map(c => c.vendedorId),
+            ...despesas.map(d => d.vendedorId),
+            ...diarios.map(d => d.vendedorId),
+            ...embarques.map(e => e.responsavelId).filter(Boolean)
+        ]);
+
+        const idsAtivos = new Set(ativos.map(v => v.id));
+        const idsInativosComMov = [...comMovimento].filter(id => !idsAtivos.has(id));
+        const inativos = idsInativosComMov.length
+            ? await prisma.vendedor.findMany({
+                where: { id: { in: idsInativosComMov } },
+                select: { id: true, nome: true },
+                orderBy: { nome: 'asc' }
+            })
+            : [];
+
+        res.json([
+            ...ativos.map(v => ({ id: v.id, nome: v.nome, ativo: true })),
+            ...inativos.map(v => ({ id: v.id, nome: v.nome, ativo: false, teveCaixa: true }))
+        ].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')));
+    } catch (error) {
+        console.error('Erro ao listar vendedores do dia:', error);
+        res.status(500).json({ error: 'Erro ao listar vendedores.' });
+    }
+});
+
 // ── GET /relatorio — Dados formatados para impressão A4 ──
 router.get('/relatorio', async (req, res) => {
     try {
@@ -907,7 +1482,7 @@ router.get('/relatorio', async (req, res) => {
         // Buscar caixa
         const caixa = await prisma.caixaDiario.findUnique({
             where: { vendedorId_dataReferencia: { vendedorId: targetVendedor, dataReferencia: data } },
-            include: { entregasConferidas: true }
+            include: { entregasConferidas: true, conferenciaDevolucao: { include: { itens: true } } }
         });
 
         // Buscar diário
@@ -1100,7 +1675,29 @@ router.get('/relatorio', async (req, res) => {
                 solicitadoPor: a.solicitadoPor?.nome,
                 itens: a.itens?.map(i => ({ nome: i.nomeProduto, quantidade: Number(i.quantidade) })) || []
             })),
-            amostrasCount: amostrasEntreguesRel.length
+            amostrasCount: amostrasEntreguesRel.length,
+            conferenciaDevolucao: caixa?.conferenciaDevolucao ? {
+                status: caixa.conferenciaDevolucao.status,
+                conferidoPorNome: caixa.conferenciaDevolucao.conferidoPorNome,
+                conferidoEm: caixa.conferenciaDevolucao.conferidoEm,
+                totalCobrado: Number(caixa.conferenciaDevolucao.totalCobrado || 0),
+                tabelaCobrancaNome: caixa.conferenciaDevolucao.tabelaCobrancaNome,
+                itens: caixa.conferenciaDevolucao.itens.map(i => ({
+                    produtoNome: i.produtoNome,
+                    qtdEsperada: Number(i.qtdEsperada),
+                    qtdRecebida: Number(i.qtdRecebida),
+                    qtdDesconsiderada: Number(i.qtdDesconsiderada),
+                    qtdCobrada: Number(i.qtdCobrada),
+                    valorCobrado: Number(i.valorCobrado),
+                    sobra: i.sobra,
+                    motivoDesconsiderar: i.motivoDesconsiderar,
+                    autorizadoPorNome: i.autorizadoPorNome,
+                    pedidosOrigem: Array.isArray(i.pedidosOrigem) ? i.pedidosOrigem : []
+                }))
+            } : null,
+            faltasDevolucao: caixa?.conferenciaDevolucao?.status === 'CONFERIDA'
+                ? Number(caixa.conferenciaDevolucao.totalCobrado || 0)
+                : 0
         });
     } catch (error) {
         console.error('Erro ao gerar relatório:', error);

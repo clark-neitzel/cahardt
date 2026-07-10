@@ -43,6 +43,8 @@ const DEFAULT_PERMISSIONS = {
     Pode_Definir_Adiantamento: false,
     Pode_Ver_Historico_Caixa: false,
     Pode_Reverter_Caixa: false,
+    Pode_Conferir_Devolucao_Caixa: false,
+    Pode_Autorizar_Desconsiderar_Devolucao: false,
     // Módulo de Veículos
     Pode_Acessar_Veiculos: false,
     Pode_Editar_Veiculos: false,
@@ -232,6 +234,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     const [todasCategorias, setTodasCategorias] = useState([]);
     const [todasCondicoes, setTodasCondicoes] = useState([]);
     const [todasCategoriasComerciais, setTodasCategoriasComerciais] = useState([]);
+    // Caixa: tabela de preço usada para cobrar faltas na conferência de devoluções
+    const [tabelaCobrancaFaltaId, setTabelaCobrancaFaltaId] = useState('');
 
     useEffect(() => {
         if (vendedor) {
@@ -248,6 +252,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                 }
             }
             setPermissoes(parsedPermissoes);
+            setTabelaCobrancaFaltaId(vendedor.tabelaCobrancaFaltaId || '');
         }
         configService.getCategorias().then(cats => setTodasCategorias(cats || [])).catch(() => {});
         tabelaPrecoService.listar(true).then(conds => setTodasCondicoes(conds || [])).catch(() => {});
@@ -316,7 +321,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     const handleSave = async () => {
         try {
             setSaving(true);
-            const data = { login, permissoes };
+            const data = { login, permissoes, tabelaCobrancaFaltaId: tabelaCobrancaFaltaId || null };
             if (senha && senha.trim() !== '') data.senha = senha;
             await vendedorService.atualizar(vendedor.id, data);
             toast.success('Permissões e acessos salvos!');
@@ -810,6 +815,24 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                     label="Ver Caixas de Outros Dias" sublabel="Navegar por datas passadas ou futuras" />
                                 <Toggle checked={!!permissoes.Pode_Reverter_Caixa} onChange={() => toggleBool('Pode_Reverter_Caixa')}
                                     label="Reverter Caixa" sublabel="Reverter conferência e reabrir caixas fechados" danger />
+                                <Toggle checked={!!permissoes.Pode_Conferir_Devolucao_Caixa} onChange={() => toggleBool('Pode_Conferir_Devolucao_Caixa')}
+                                    label="Conferir Devoluções no Caixa" sublabel="Recebe a mercadoria que voltou e digita a contagem física na conferência" />
+                                <Toggle checked={!!permissoes.Pode_Autorizar_Desconsiderar_Devolucao} onChange={() => toggleBool('Pode_Autorizar_Desconsiderar_Devolucao')}
+                                    label="Autorizar Desconsiderar Devolução" sublabel="A senha desta pessoa libera falta de devolução sem cobrança ao motorista" danger />
+
+                                {/* Tabela usada para cobrar faltas de devolução deste motorista */}
+                                <div className="px-2 mt-2">
+                                    <label className="text-sm font-medium text-gray-700 block mb-1">Tabela para cobrança de faltas de devolução</label>
+                                    <SelectBusca value={tabelaCobrancaFaltaId} onChange={(e) => setTabelaCobrancaFaltaId(e.target.value)} className="w-full">
+                                        <option value="">Padrão (À vista - Funcionário, automático)</option>
+                                        {todasCondicoes.map(c => (
+                                            <option key={c.id} value={c.id}>{c.nomeCondicao}</option>
+                                        ))}
+                                    </SelectBusca>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Quando falta mercadoria na conferência de devoluções, o valor cobrado deste motorista é calculado por esta tabela.
+                                    </p>
+                                </div>
                             </div>
                         )}
 

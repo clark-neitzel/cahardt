@@ -31,6 +31,8 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 - Reverter a conferência (admin: volta CONFERIDO → FECHADO)
 - Reabrir o caixa (admin: volta FECHADO → ABERTO)
 - Registrar devolução a partir de uma entrega do caixa
+- **Conferir devoluções fisicamente** (cartão "Conferência de Devoluções"): contar a mercadoria que voltou no caminhão, comparar com o que o motorista marcou como devolvido, registrar sobras e cobrar faltas do motorista
+- **Autorizar desconsiderar falta de devolução** com senha do responsável (ex.: produto que não foi carregado de manhã)
 
 ---
 
@@ -54,6 +56,7 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 ### Ver caixa de outro dia ou vendedor
 - **Outro dia:** use o seletor de data (só habilitado para `Pode_Ver_Historico_Caixa` ou `admin`; sem essa permissão, o campo fica bloqueado no dia atual)
 - **Outro vendedor:** só visível para `admin` ou `Pode_Editar_Caixa`; escolha no select de vendedor
+- O seletor mostra **só vendedores ativos**. Um vendedor inativo aparece apenas nos dias em que teve movimento de caixa (marcado como "inativo · teve caixa") — o histórico não se perde
 
 ### Registrar baixa no Conta Azul (individual)
 1. Na lista de entregas, localize a entrega com pagamento em Dinheiro, PIX ou Cartão
@@ -112,6 +115,30 @@ Observação: devoluções e baixas de dinheiro **não** entram nesse checklist 
 - Na linha de uma entrega, clique no botão de devolução (ícone de retorno)
 - O modal de devolução abre vinculado àquele pedido e àquele caixa
 
+### Conferir devoluções (mercadoria que voltou fisicamente)
+O cartão **Conferência de Devoluções** aparece automaticamente quando o dia tem alguma devolução registrada nas entregas. Ele lista cada produto que **deveria voltar** no caminhão, com o número do pedido e o cliente de origem.
+
+1. Quem tem a permissão `Pode_Conferir_Devolucao_Caixa` recebe a mercadoria e digita, produto por produto, **quanto voltou de verdade** (use 0 se nada voltou)
+2. O sistema compara:
+   - **Bateu** → linha verde "Confere ✓"
+   - **Voltou a mais** → sobra, fica só registrada (não gera valor nem mexe em estoque)
+   - **Voltou a menos** → falta: o sistema calcula o valor pela tabela de cobrança do motorista (configurada na aba Vendedores; padrão "À vista - Funcionário") e mostra "Cobrar X — R$ Y"
+3. Produto que voltou **sem devolução registrada**: use "+ Adicionar produto que voltou sem devolução" (sobra avulsa, só registro)
+4. Clique em **Confirmar conferência** — o total das faltas é **somado ao valor a prestar** do caixa como a linha "Faltas de devolução"
+5. Depois de confirmada, a conferência fica travada (só consulta); ela aparece também no relatório impresso do caixa
+6. **Importante:** se o dia teve devolução, o caixa **só fecha** depois da conferência confirmada
+7. A conferência **não movimenta estoque** — o estoque retorna quando o faturamento emite a nota de devolução (fluxo normal)
+
+### Desconsiderar falta com autorização (senha)
+Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de manhã):
+1. Na linha com falta, clique em **Desconsiderar (autorização)**
+2. Escolha **quantas unidades** desconsiderar (pode ser só parte; o restante continua cobrado)
+3. Escolha o motivo, o responsável (só aparecem pessoas com `Pode_Autorizar_Desconsiderar_Devolucao`) e digite a **senha do login do responsável** — funciona no celular dele
+4. Fica registrado quem autorizou, quando e o motivo (visível no caixa, no relatório impresso e no log de auditoria)
+
+### Reabrir conferência de devoluções
+- Com o caixa ABERTO, quem tem `Pode_Reverter_Caixa` ou `admin` pode clicar em **Reabrir conferência** para corrigir uma conferência confirmada (a cobrança é recalculada ao confirmar de novo)
+
 ---
 
 ## Permissões necessárias
@@ -128,6 +155,9 @@ Observação: devoluções e baixas de dinheiro **não** entram nesse checklist 
 | Conferir e reverter conferência | `Pode_Reverter_Caixa` ou `admin` (reverter); `admin` ou `Pode_Editar_Caixa` (conferir) |
 | Reabrir caixa fechado | `Pode_Reverter_Caixa` ou `admin` |
 | Registrar devolução | `Pode_Fazer_Devolucao` ou `admin` |
+| Digitar/confirmar a conferência de devoluções | `Pode_Conferir_Devolucao_Caixa` ou `admin` (demais usuários veem só consulta) |
+| Autorizar desconsiderar falta de devolução | senha de alguém com `Pode_Autorizar_Desconsiderar_Devolucao` ou `admin` |
+| Reabrir conferência de devoluções | `Pode_Reverter_Caixa` ou `admin` (com o caixa ABERTO) |
 
 ---
 
@@ -147,6 +177,7 @@ Observação: devoluções e baixas de dinheiro **não** entram nesse checklist 
 |---------|-------|
 | `frontend/src/pages/Caixa/CaixaDiarioPage.jsx` | Tela principal do caixa com todos os fluxos |
 | `frontend/src/pages/Caixa/NovaDespesaModal.jsx` | Modal de nova despesa |
+| `frontend/src/pages/Caixa/ConferenciaDevolucaoCard.jsx` | Cartão de conferência de devoluções + modal de autorização com senha |
 | `frontend/src/pages/Pedidos/ModalDevolucao.jsx` | Modal de devolução acessível pelo caixa |
 | `frontend/src/pages/Veiculos/VeiculoFicha.jsx` | Ficha do veículo embutida no caixa |
 | `frontend/src/services/caixaService.js` | Chamadas de API do caixa |

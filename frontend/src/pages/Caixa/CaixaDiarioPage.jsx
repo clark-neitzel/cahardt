@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import caixaService from '../../services/caixaService';
-import vendedorService from '../../services/vendedorService';
 import { Link, useNavigate } from 'react-router-dom';
 import {
     Wallet, Truck, Fuel, Package, CheckCircle, AlertTriangle,
@@ -13,6 +12,7 @@ import NovaDespesaModal from './NovaDespesaModal';
 import VeiculoFicha from '../Veiculos/VeiculoFicha';
 import ModalDevolucao from '../Pedidos/ModalDevolucao';
 import SelectBusca from '../../components/SelectBusca';
+import ConferenciaDevolucaoCard from './ConferenciaDevolucaoCard';
 
 const SESSION_KEY = '@CAHardt:CaixaFiltros';
 
@@ -83,11 +83,12 @@ const CaixaDiarioPage = () => {
         sessionStorage.setItem(SESSION_KEY, JSON.stringify({ data, vendedorId }));
     }, [data, vendedorId]);
 
+    // Seletor de vendedor: só ativos; inativo aparece apenas se teve movimento no dia escolhido
     useEffect(() => {
-        if (isAdmin) {
-            vendedorService.listar().then(res => setVendedores(res || [])).catch(() => { });
+        if (isAdmin && data) {
+            caixaService.getVendedoresDoDia(data).then(res => setVendedores(res || [])).catch(() => { });
         }
-    }, [isAdmin]);
+    }, [isAdmin, data]);
 
     useEffect(() => {
         if (vendedorId && data) fetchResumo();
@@ -304,7 +305,9 @@ const CaixaDiarioPage = () => {
                         >
                             <option value="">Selecione vendedor...</option>
                             {vendedores.map(v => (
-                                <option key={v.id} value={v.id}>{v.nome}</option>
+                                <option key={v.id} value={v.id}>
+                                    {v.ativo === false ? `${v.nome} (inativo · teve caixa)` : v.nome}
+                                </option>
                             ))}
                         </SelectBusca>
                     )}
@@ -769,6 +772,16 @@ const CaixaDiarioPage = () => {
                         )}
                     </div>
 
+                    {/* Card Conferência de Devoluções (aparece só quando o dia tem devolução) */}
+                    <ConferenciaDevolucaoCard
+                        key={`${data}-${vendedorId}-${resumo.conferenciaDevolucao?.status || ''}-${(resumo.entregas || []).reduce((s, e) => s + (e.itensDevolvidos?.length || 0), 0)}`}
+                        data={data}
+                        vendedorId={vendedorId}
+                        caixaStatus={caixa?.status}
+                        podeReverter={podeReverter}
+                        onChanged={fetchResumo}
+                    />
+
                     {/* Card Amostras */}
                     {(resumo.amostrasCount > 0) && (
                         <div className="bg-white rounded-lg shadow-sm border border-orange-200 p-4">
@@ -1008,6 +1021,14 @@ const CaixaDiarioPage = () => {
                                 </div>
                             ))}
 
+                            {/* Faltas de devolução cobradas do motorista */}
+                            {Number(resumo.faltasDevolucao || 0) > 0 && (
+                                <div className="flex justify-between text-orange-700">
+                                    <span>+ Faltas de devolução</span>
+                                    <span className="font-medium">R$ {Number(resumo.faltasDevolucao).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            )}
+
                             {/* Despesas */}
                             {Number(resumo.totalDespesas || 0) > 0 && (
                                 <div className="flex justify-between text-red-700">
@@ -1050,6 +1071,9 @@ const CaixaDiarioPage = () => {
                                 )}
                                 {resumo.pendencias.quitacoesNaoFeitas > 0 && (
                                     <li>• {resumo.pendencias.quitacoesNaoFeitas} baixa(s) de dinheiro não quitada(s)</li>
+                                )}
+                                {resumo.pendencias.conferenciaDevolucaoPendente && (
+                                    <li>• Conferência de devoluções pendente (conte a mercadoria que voltou)</li>
                                 )}
                             </ul>
                         </div>
