@@ -1663,6 +1663,115 @@ router.post('/contas-pagar-reconciliar', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/contas-pagar-conciliacao-suspeitas
+// Varre vínculos suspeitos com o CA (incidente do ICMS DESTDA, 07/2026):
+//  (a) parcelas com baixa vinda do CA cujo total pago EXCEDE o valor da parcela
+//      (indício de parcela mapeada no evento errado — a baixa era de outro título);
+//  (b) contas vinculadas a evento do CA cuja "nota" é texto livre (não numérica) —
+//      grupo de risco da conciliação antiga, que casava por texto sem conferir valor.
+router.get('/contas-pagar-conciliacao-suspeitas', async (req, res) => {
+    try {
+        const parcelas = await prisma.parcelaPagar.findMany({
+            where: { idParcelaCA: { not: null }, pagamentos: { some: { origem: 'CA', estornado: false } } },
+            include: {
+                pagamentos: { where: { estornado: false } },
+                contaPagar: {
+                    select: {
+                        id: true, descricao: true, numeroNota: true, idEventoCA: true, statusEnvioCA: true,
+                        fornecedor: { select: { razaoSocial: true } }
+                    }
+                }
+            }
+        });
+        const baixasDivergentes = [];
+        for (const p of parcelas) {
+            const pago = p.pagamentos.reduce((s, x) => s + Number(x.valorPago), 0);
+            const desconto = p.pagamentos.reduce((s, x) => s + Number(x.desconto || 0), 0);
+            if (pago > Number(p.valor) - desconto + 0.02) {
+                baixasDivergentes.push({
+                    contaId: p.contaPagar.id,
+                    descricao: p.contaPagar.descricao,
+                    fornecedor: p.contaPagar.fornecedor?.razaoSocial || null,
+                    numeroNota: p.contaPagar.numeroNota,
+                    idEventoCA: p.contaPagar.idEventoCA,
+                    parcelaId: p.id, numeroParcela: p.numeroParcela, status: p.status,
+                    vencimento: p.dataVencimento,
+                    valorParcela: Number(p.valor),
+                    totalPago: Math.round(pago * 100) / 100
+                });
+            }
+        }
+        const comEventoENota = await prisma.contaPagar.findMany({
+            where: { idEventoCA: { not: null }, numeroNota: { not: null } },
+            select: { id: true, descricao: true, numeroNota: true, idEventoCA: true, valorTotal: true, statusEnvioCA: true }
+        });
+        const notaTextoLivre = comEventoENota.filter(
+            (c) => !/^\d{3,}([-/.]\d{1,4})?$/.test(String(c.numeroNota).trim())
+        );
+        res.json({ ok: true, baixasDivergentes, contasNotaTextoLivreComEvento: notaTextoLivre });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/admin-exec/contas-pagar-desvincular/:contaId?reenviar=1
+// Desfaz um vínculo ERRADO com o CA: apaga as baixas importadas do CA (origem 'CA') das
+// parcelas da conta, zera idParcelaCA/baixadoViaCA/idEventoCA/protocoloCA, recalcula os
+// status e (com ?reenviar=1) re-enfileira o envio para criar a despesa certa no CA.
+// NÃO mexe em baixas registradas no app (origem != 'CA').
+router.post('/contas-pagar-desvincular/:contaId', async (req, res) => {
+    try {
+        const caSync = require('../services/contasPagarCaSyncService');
+        const { contaId } = req.params;
+        const reenviar = String(req.query.reenviar || '') === '1';
+        const conta = await prisma.contaPagar.findUnique({
+            where: { id: contaId },
+            include: { parcelas: true }
+        });
+        if (!conta) return res.status(404).json({ ok: false, error: 'Conta não encontrada.' });
+
+        const resumo = { contaId, descricao: conta.descricao, baixasApagadas: 0, parcelasDesvinculadas: 0 };
+        await prisma.$transaction(async (tx) => {
+            for (const p of conta.parcelas) {
+                const r = await tx.pagamentoParcelaPagar.deleteMany({
+                    where: { parcelaPagarId: p.id, origem: 'CA' }
+                });
+                resumo.baixasApagadas += r.count;
+                if (p.idParcelaCA || p.baixadoViaCA) {
+                    await tx.parcelaPagar.update({
+                        where: { id: p.id },
+                        data: { idParcelaCA: null, baixadoViaCA: false }
+                    });
+                    resumo.parcelasDesvinculadas++;
+                }
+            }
+            await tx.contaPagar.update({
+                where: { id: contaId },
+                data: {
+                    idEventoCA: null,
+                    protocoloCA: null,
+                    ...(reenviar ? { statusEnvioCA: 'ENVIAR', erroEnvioCA: null } : {})
+                }
+            });
+        }, { timeout: 20000, maxWait: 10000 });
+
+        // Recalcula status fora da transação (cada recálculo é idempotente e isolado)
+        for (const p of conta.parcelas) {
+            await caSync.recalcularParcelaEConta(prisma, p.id);
+        }
+        const depois = await prisma.contaPagar.findUnique({
+            where: { id: contaId },
+            select: {
+                status: true, statusEnvioCA: true, idEventoCA: true,
+                parcelas: { select: { numeroParcela: true, status: true, valorPago: true, idParcelaCA: true } }
+            }
+        });
+        res.json({ ok: true, ...resumo, reenviar, depois });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // ── Financeiro POR CONTA (banco/caixa) — diagnóstico e backfill ──
 
 // GET /api/admin-exec/financeiro-contas-diag — quanto de cada lado já tem a conta financeira preenchida

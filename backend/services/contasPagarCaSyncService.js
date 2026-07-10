@@ -536,16 +536,31 @@ async function _encontrarEventoPorReferencia(codigoReferencia, conta) {
 /**
  * CONCILIAÇÃO — localizar no CA uma despesa que o USUÁRIO já lançou MANUALMENTE,
  * casando pelo NÚMERO DA NOTA. A busca do CA não filtra por número da nota, então
- * procuramos o número dentro da descrição da despesa + o valor como reforço.
+ * procuramos o número dentro da descrição da despesa.
  * NÃO filtramos por fornecedor: o mesmo fornecedor pode ter cadastros diferentes no CA
  * (ex.: "Produpan ... Ltda EPP" vs "Produpan - ... Ltda") e isso descartaria a manual.
- * Só adota um evento que NÃO seja o nosso (codigo_referencia != id da nossa conta) e
- * cujo número da nota apareça no texto. Retorna evento_financeiro_id (uuid) ou null.
+ * Só adota um evento que NÃO seja o nosso (codigo_referencia != id da nossa conta),
+ * cujo número da nota apareça no texto E cujo VALOR bata com a conta (total ou uma
+ * parcela). Retorna evento_financeiro_id (uuid) ou null.
+ *
+ * ⚠️ Incidente 07/2026: despesa manual com "nota" de texto livre ("JULHO 2026") casou
+ * com "DIARIA ALIMENTACAO REF JULHO 2026" de OUTRO fornecedor e OUTRO valor — e a baixa
+ * do título errado foi importada. Por isso: (a) só conciliamos quando a nota parece um
+ * número de documento de verdade; (b) o valor passou de "reforço" a requisito.
  */
+const REGEX_NOTA_DOCUMENTO = /^\d{3,}([-/.]\d{1,4})?$/; // "858860", "858860-1"; recusa texto livre
+
 async function _encontrarEventoPorNumeroNota(conta) {
     const numero = String(conta?.numeroNota || '').trim();
     if (!numero) return null;
+    if (!REGEX_NOTA_DOCUMENTO.test(numero)) return null; // "nota" texto livre → não conciliar
     const valorConta = round2(Number(conta?.valorTotal || 0));
+    // Valores aceitáveis para o candidato (parcela na busca do CA): total da conta ou o
+    // valor de qualquer parcela nossa (nota parcelada lançada na mão no CA).
+    const valoresApp = new Set([valorConta]);
+    for (const p of (conta?.parcelas || [])) {
+        if (p.status !== 'CANCELADO') valoresApp.add(round2(Number(p.valor)));
+    }
 
     // Janela de vencimento ampla (a busca exige o filtro), em torno das datas conhecidas.
     const datas = (conta?.parcelas || [])
@@ -572,6 +587,8 @@ async function _encontrarEventoPorNumeroNota(conta) {
     // compra manual "Compra de produto 813 (NFe 858860-1)"). FRACOS = só o valor bate
     // (confirma o número no detalhe). Testamos os fortes primeiro — assim a manual tem
     // preferência sobre sobras genéricas ("Parcela (1/1)") de tentativas anteriores.
+    // Em TODOS os casos o valor precisa bater (total da conta ou uma parcela nossa) —
+    // número sozinho já adotou despesa errada (ver incidente no docblock).
     const fortes = [];
     const fracos = [];
     const vistos = new Set();
@@ -584,12 +601,14 @@ async function _encontrarEventoPorNumeroNota(conta) {
         const itens = resp.data?.itens || resp.data?.items || [];
         for (const it of itens) {
             if (!it?.id || vistos.has(it.id)) continue;
+            vistos.add(it.id);
             // SEM filtro de fornecedor (cadastros duplicados no CA descartariam a manual).
             const totalIt = round2(Number(it.total ?? it.nao_pago ?? 0));
             const descBateNum = regexNum.test(String(it.descricao || ''));
-            const valorBate = Math.abs(totalIt - valorConta) < 0.01;
-            if (descBateNum) { fortes.push(it.id); vistos.add(it.id); }
-            else if (valorBate) { fracos.push(it.id); vistos.add(it.id); }
+            const valorBate = valoresApp.has(totalIt);
+            if (!valorBate) continue; // valor é requisito — nunca adotar só pelo texto
+            if (descBateNum) fortes.push(it.id);
+            else fracos.push(it.id);
         }
         const totais = Number(resp.data?.itens_totais || 0);
         if (itens.length < 100) break;
@@ -910,13 +929,19 @@ async function _mapearParcelasCA(contaPagarId, eventoId) {
         const vencLocal = fmtDataCA(local.dataVencimento);
         const valorLocal = Number(local.valor);
 
-        // Match por (vencimento, valor); fallback por índice (indice na spec)
+        // Match por (vencimento, valor); fallback por índice (indice na spec) — mas o
+        // VALOR sempre precisa bater: já mapeamos parcela de R$47,55 numa de R$575 só
+        // pelo índice (evento errado adotado) e a baixa do outro título veio para cá.
+        const valorCABate = (p) =>
+            Math.abs(Number(p.valor_composicao?.valor_bruto ?? p.nao_pago ?? 0) - valorLocal) < 0.01;
         let caPar = parcelasCA.find((p) =>
             !usadas.has(p.id) &&
             String(p.data_vencimento || '').substring(0, 10) === vencLocal &&
-            Math.abs(Number(p.valor_composicao?.valor_bruto ?? p.nao_pago ?? 0) - valorLocal) < 0.01
+            valorCABate(p)
         );
-        if (!caPar) caPar = parcelasCA.find((p) => !usadas.has(p.id) && Number(p.indice) === Number(local.numeroParcela));
+        if (!caPar) caPar = parcelasCA.find((p) =>
+            !usadas.has(p.id) && Number(p.indice) === Number(local.numeroParcela) && valorCABate(p)
+        );
         if (!caPar) continue;
 
         usadas.add(caPar.id);
