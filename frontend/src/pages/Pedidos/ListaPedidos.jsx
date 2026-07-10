@@ -10,8 +10,21 @@ import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import ListaDevolucoes from './ListaDevolucoes';
+import asaasService from '../../services/asaasService';
+import BoletosAsaasModal from '../Financeiro/BoletosAsaasModal';
 
 const fmtNumero = (pedido) => pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
+
+// Marca do Asaas (a azul) para o botão de boleto no pedido
+const AsaasIcon = ({ className }) => (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+        <rect x="1" y="1" width="22" height="22" rx="6" fill="#0030b9" />
+        <path
+            d="M12 5.6c-3.8 0-6.4 2.9-6.4 6.4s2.6 6.4 6.4 6.4c1.5 0 2.8-.5 3.8-1.3l.5.9h2.1v-6c0-3.5-2.6-6.4-6.4-6.4Zm0 3.1c1.8 0 3.2 1.5 3.2 3.3 0 1.9-1.4 3.3-3.2 3.3s-3.2-1.4-3.2-3.3c0-1.8 1.4-3.3 3.2-3.3Z"
+            fill="#fff"
+        />
+    </svg>
+);
 
 const DateRangeField = ({ icon, label, de, ate, onDe, onAte }) => (
     <div>
@@ -109,6 +122,18 @@ const ListaPedidos = () => {
     const podeAprovarBonificacao = user?.permissoes?.Pode_Aprovar_Bonificacao || user?.permissoes?.admin;
     const podeReverterBonificacao = user?.permissoes?.Pode_Reverter_Bonificacao || user?.permissoes?.admin;
     const podeExcluirPedido = user?.permissoes?.Pode_Excluir_Pedido || user?.permissoes?.admin;
+
+    // Boletos Asaas direto do pedido (espelha o checkPodeCobrar do backend)
+    const podeBoletoAsaas = user?.permissoes?.admin || user?.permissoes?.Pode_Baixar_Contas_Receber
+        || user?.permissoes?.Pode_Executar_Entregas || user?.permissoes?.Pode_Ver_Todas_Entregas;
+    const [asaasDisponivel, setAsaasDisponivel] = useState(false);
+    const [boletosModal, setBoletosModal] = useState(null); // { pedidoId, clienteNome, pedidoNumero }
+    useEffect(() => {
+        if (!podeBoletoAsaas) return;
+        asaasService.status()
+            .then(s => setAsaasDisponivel(!!s.configurado))
+            .catch(() => setAsaasDisponivel(false));
+    }, [podeBoletoAsaas]);
     const podeExcluirEspecial = user?.permissoes?.Pode_Excluir_Especial || user?.permissoes?.admin;
     const podeExcluirBonificacao = user?.permissoes?.Pode_Excluir_Bonificacao || user?.permissoes?.admin;
     const podeExcluirAmostra = user?.permissoes?.Pode_Excluir_Amostra || user?.permissoes?.admin;
@@ -1138,6 +1163,15 @@ const ListaPedidos = () => {
                                                     )}
                                                 </div>
                                             )}
+                                            {asaasDisponivel && podeBoletoAsaas && !pedido.bonificacao && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setBoletosModal({ pedidoId: pedido.id, clienteNome: pedido.cliente?.NomeFantasia || pedido.cliente?.Nome, pedidoNumero: pedido.numero }); }}
+                                                    className="p-1 rounded hover:bg-gray-100"
+                                                    title="Gerar boleto (Asaas)"
+                                                >
+                                                    <AsaasIcon className="h-5 w-5" />
+                                                </button>
+                                            )}
                                             {pedido.situacaoCA === 'FATURADO' && (
                                                 <button onClick={(e) => { e.stopPropagation(); handlePrintPedido(pedido); }} className="p-1.5 text-gray-400 hover:text-purple-600 rounded hover:bg-gray-100" title="Imprimir Pedido"><Printer className="h-4 w-4" /></button>
                                             )}
@@ -1482,6 +1516,15 @@ const ListaPedidos = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Modal de boletos Asaas do pedido */}
+            {boletosModal && (
+                <BoletosAsaasModal
+                    conta={boletosModal}
+                    onClose={() => setBoletosModal(null)}
+                    onAtualizado={() => { }}
+                />
             )}
         </div>
 

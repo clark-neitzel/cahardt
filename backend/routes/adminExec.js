@@ -123,6 +123,27 @@ router.post('/asaas-reprocessar-baixas', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-nota-fiscal?idVenda=... — resposta crua da API de notas fiscais do CA
+// (investigação: a API devolve link de DANFE PDF/XML?)
+router.get('/diag-nota-fiscal', async (req, res) => {
+    try {
+        const { idVenda, numero } = req.query;
+        const params = new URLSearchParams({ pagina: '1', tamanho_pagina: '10' });
+        if (idVenda) params.set('id_venda', idVenda);
+        if (numero) params.set('numero_nota', numero);
+        // Range de data amplo (a API pode exigir)
+        const hoje = new Date();
+        const antes = new Date(hoje.getTime() - 90 * 24 * 3600 * 1000);
+        params.set('data_inicial', antes.toISOString().split('T')[0]);
+        params.set('data_final', hoje.toISOString().split('T')[0]);
+        const url = `https://api-v2.contaazul.com/v1/notas-fiscais?${params.toString()}`;
+        const response = await contaAzulService._axiosGet(url, 'NOTA_FISCAL_DIAG');
+        res.json({ url, data: response.data });
+    } catch (e) {
+        res.status(500).json({ error: e.message, detalhe: e.response?.data || null, status: e.response?.status || null });
+    }
+});
+
 // GET /api/admin-exec/asaas-cobrancas — últimas cobranças (diagnóstico)
 router.get('/asaas-cobrancas', async (req, res) => {
     try {

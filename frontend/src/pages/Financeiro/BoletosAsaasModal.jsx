@@ -11,9 +11,12 @@ const BoletosAsaasModal = ({ conta, onClose, onAtualizado }) => {
     const [loading, setLoading] = useState(true);
     const [agindo, setAgindo] = useState(null); // id da parcela/boleto em ação
 
+    // Abre por conta (Financeiro) ou por pedido (lista de Pedidos)
     const carregar = async () => {
         try {
-            const r = await asaasService.boletosDaConta(conta.id);
+            const r = conta.id
+                ? await asaasService.boletosDaConta(conta.id)
+                : await asaasService.boletosDoPedido(conta.pedidoId);
             setDados(r);
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao carregar boletos.');
@@ -22,7 +25,7 @@ const BoletosAsaasModal = ({ conta, onClose, onAtualizado }) => {
         }
     };
 
-    useEffect(() => { carregar(); }, [conta.id]);
+    useEffect(() => { carregar(); }, [conta.id, conta.pedidoId]);
 
     const emAberto = (dados?.parcelas || []).filter(p => ['PENDENTE', 'VENCIDO', 'PARCIAL'].includes(p.status));
     const semBoleto = emAberto.filter(p => !p.boleto || !['PENDENTE', 'RECEBIDO'].includes(p.boleto.status));
@@ -30,7 +33,7 @@ const BoletosAsaasModal = ({ conta, onClose, onAtualizado }) => {
     const handleEmitir = async (parcelaIds) => {
         setAgindo('emitir');
         try {
-            const r = await asaasService.emitirBoletos({ contaReceberId: conta.id, parcelaIds });
+            const r = await asaasService.emitirBoletos({ contaReceberId: conta.id || dados?.contaId, parcelaIds });
             toast.success(r.message);
             const comErro = (r.resultados || []).filter(x => !x.ok);
             comErro.forEach(x => toast.error(x.erro, { duration: 6000 }));

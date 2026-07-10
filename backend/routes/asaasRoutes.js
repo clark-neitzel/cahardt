@@ -23,7 +23,7 @@ const getPerms = async (userId) => {
 const checkPodeCobrar = async (req, res, next) => {
     try {
         const perms = await getPerms(req.user.id);
-        if (perms.admin || perms.Pode_Executar_Entregas || perms.Pode_Dar_Baixa || perms.Pode_Ver_Todas_Entregas) {
+        if (perms.admin || perms.Pode_Executar_Entregas || perms.Pode_Baixar_Contas_Receber || perms.Pode_Ver_Todas_Entregas) {
             return next();
         }
         return res.status(403).json({ error: 'Sem permissão para gerar cobrança PIX.' });
@@ -128,8 +128,25 @@ const mapBoleto = (c) => c && ({
     createdAt: c.createdAt
 });
 
+// ── GET /pedidos/:pedidoId/boletos — mesmo payload, resolvendo a conta pelo pedido ──
+// (usado pelo botão de boleto na lista de Pedidos)
+router.get('/pedidos/:pedidoId/boletos', verificarAuth, async (req, res) => {
+    try {
+        const conta = await prisma.contaReceber.findUnique({
+            where: { pedidoId: req.params.pedidoId },
+            select: { id: true }
+        });
+        if (!conta) return res.status(404).json({ error: 'Este pedido não tem conta a receber (ex.: bonificação).' });
+        req.params.contaReceberId = conta.id;
+        return listarBoletosConta(req, res);
+    } catch (e) {
+        console.error('[Asaas] Erro ao listar boletos do pedido:', e.message);
+        res.status(500).json({ error: 'Erro ao listar boletos.' });
+    }
+});
+
 // ── GET /contas/:contaReceberId/boletos — boletos de todas as parcelas da conta ──
-router.get('/contas/:contaReceberId/boletos', verificarAuth, async (req, res) => {
+const listarBoletosConta = async (req, res) => {
     try {
         const conta = await prisma.contaReceber.findUnique({
             where: { id: req.params.contaReceberId },
@@ -159,7 +176,8 @@ router.get('/contas/:contaReceberId/boletos', verificarAuth, async (req, res) =>
         console.error('[Asaas] Erro ao listar boletos da conta:', e.message);
         res.status(500).json({ error: 'Erro ao listar boletos.' });
     }
-});
+};
+router.get('/contas/:contaReceberId/boletos', verificarAuth, listarBoletosConta);
 
 // ── POST /boletos — emitir boletos (todas as parcelas em aberto da conta, ou parcelas específicas) ──
 router.post('/boletos', verificarAuth, checkPodeCobrar, async (req, res) => {

@@ -28,6 +28,10 @@ const asaasService = {
         const response = await api.get(`/asaas/contas/${contaReceberId}/boletos`);
         return response.data;
     },
+    boletosDoPedido: async (pedidoId) => {
+        const response = await api.get(`/asaas/pedidos/${pedidoId}/boletos`);
+        return response.data;
+    },
     emitirBoletos: async ({ contaReceberId, parcelaIds }) => {
         const response = await api.post('/asaas/boletos', { contaReceberId, parcelaIds });
         return response.data;
