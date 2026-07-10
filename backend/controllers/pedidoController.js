@@ -1096,6 +1096,83 @@ const pedidoController = {
         }
     },
 
+    // ── NF-e / DANFE ──────────────────────────────────────────────
+    // Localiza a NF-e da venda no CA varrendo janelas de 7 dias (a API exige
+    // range curto de datas; ranges longos devolvem 500). Cacheia a chave no
+    // pedido para as próximas consultas serem instantâneas.
+    _localizarNotaFiscal: async (pedido) => {
+        if (pedido.nfeChave) {
+            return { chave_acesso: pedido.nfeChave, numero_nota: pedido.nfeNumero, status: 'EMITIDA', cache: true };
+        }
+        if (!pedido.idVendaContaAzul) {
+            const e = new Error('Pedido sem venda no Conta Azul.');
+            e.statusCode = 400;
+            throw e;
+        }
+
+        const fmt = (d) => d.toISOString().split('T')[0];
+        const base = pedido.enviadoEm || pedido.dataVenda || pedido.createdAt || new Date();
+        let ini = new Date(base);
+        ini.setDate(ini.getDate() - 1);
+        const hoje = new Date();
+        let nota = null;
+        for (let i = 0; i < 12 && ini <= hoje && !nota; i++) {
+            const fim = new Date(Math.min(ini.getTime() + 6 * 24 * 3600 * 1000, hoje.getTime()));
+            const itens = await contaAzulService.listarNotasFiscais({
+                dataInicial: fmt(ini),
+                dataFinal: fmt(fim),
+                idVenda: pedido.idVendaContaAzul
+            });
+            nota = itens.find(n => ['EMITIDA', 'CORRIGIDA COM SUCESSO'].includes(n.status)) || itens[0] || null;
+            ini = new Date(fim.getTime() + 24 * 3600 * 1000);
+        }
+        if (!nota) {
+            const e = new Error('NF-e não encontrada no Conta Azul — a nota pode ainda não ter sido emitida.');
+            e.statusCode = 404;
+            throw e;
+        }
+        await prisma.pedido.update({
+            where: { id: pedido.id },
+            data: { nfeChave: nota.chave_acesso, nfeNumero: nota.numero_nota, nfeConsultadoEm: new Date() }
+        }).catch(() => { /* cache é melhor esforço */ });
+        return nota;
+    },
+
+    // GET /:id/nota-fiscal — número/chave da NF-e emitida no CA
+    buscarNotaFiscal: async (req, res) => {
+        try {
+            const pedido = await prisma.pedido.findUnique({ where: { id: req.params.id } });
+            if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
+            const nota = await pedidoController._localizarNotaFiscal(pedido);
+            res.json({
+                numero: nota.numero_nota,
+                chave: nota.chave_acesso,
+                status: nota.status || 'EMITIDA',
+                dataEmissao: nota.data_emissao || null
+            });
+        } catch (e) {
+            res.status(e.statusCode || 500).json({ error: e.message });
+        }
+    },
+
+    // GET /:id/danfe — PDF da DANFE gerado no app a partir do XML autorizado (API do CA)
+    baixarDanfe: async (req, res) => {
+        try {
+            const pedido = await prisma.pedido.findUnique({ where: { id: req.params.id } });
+            if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
+            const nota = await pedidoController._localizarNotaFiscal(pedido);
+            const xml = await contaAzulService.buscarXmlNotaFiscal(nota.chave_acesso);
+            const { gerarPDF } = require('@alexssmusica/node-pdf-nfe');
+            const doc = await gerarPDF(xml, {});
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `inline; filename="danfe-nf-${nota.numero_nota || pedido.numero || 'pedido'}.pdf"`);
+            doc.pipe(res);
+        } catch (e) {
+            console.error('Erro ao gerar DANFE:', e.message);
+            res.status(e.statusCode || 500).json({ error: e.message || 'Erro ao gerar a DANFE.' });
+        }
+    },
+
     buscarCobrancasCA: async (req, res) => {
         try {
             const id = req.params.id;

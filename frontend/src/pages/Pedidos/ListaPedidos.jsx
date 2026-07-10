@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck, CircleDollarSign } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
-import { API_URL } from '../../services/api';
+import api, { API_URL } from '../../services/api';
 import amostraService from '../../services/amostraService';
 import vendedorService from '../../services/vendedorService';
 import SelectBusca from '../../components/SelectBusca';
@@ -128,6 +128,24 @@ const ListaPedidos = () => {
         || user?.permissoes?.Pode_Executar_Entregas || user?.permissoes?.Pode_Ver_Todas_Entregas;
     const [asaasDisponivel, setAsaasDisponivel] = useState(false);
     const [boletosModal, setBoletosModal] = useState(null); // { pedidoId, clienteNome, pedidoNumero }
+    const [gerandoDanfe, setGerandoDanfe] = useState(null); // pedidoId com DANFE em geração
+
+    // DANFE (PDF da NF-e emitida no CA) — o backend baixa o XML autorizado e gera o PDF
+    const handleDanfe = async (pedido) => {
+        setGerandoDanfe(pedido.id);
+        try {
+            const resp = await api.get(`/pedidos/${pedido.id}/danfe`, { responseType: 'blob' });
+            const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
+            window.open(url, '_blank'); // visualização de documento (como link externo)
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (e) {
+            let msg = 'Erro ao gerar a DANFE.';
+            try { msg = JSON.parse(await e.response.data.text()).error || msg; } catch (_) { /* mantém genérica */ }
+            toast.error(msg);
+        } finally {
+            setGerandoDanfe(null);
+        }
+    };
     useEffect(() => {
         if (!podeBoletoAsaas) return;
         asaasService.status()
@@ -1163,13 +1181,23 @@ const ListaPedidos = () => {
                                                     )}
                                                 </div>
                                             )}
-                                            {asaasDisponivel && podeBoletoAsaas && !pedido.bonificacao && (
+                                            {asaasDisponivel && podeBoletoAsaas && !pedido.bonificacao && !pedido.especial && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setBoletosModal({ pedidoId: pedido.id, clienteNome: pedido.cliente?.NomeFantasia || pedido.cliente?.Nome, pedidoNumero: pedido.numero }); }}
                                                     className="p-1 rounded hover:bg-gray-100"
                                                     title="Gerar boleto (Asaas)"
                                                 >
                                                     <AsaasIcon className="h-5 w-5" />
+                                                </button>
+                                            )}
+                                            {pedido.situacaoCA === 'FATURADO' && !pedido.especial && !pedido.bonificacao && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDanfe(pedido); }}
+                                                    disabled={gerandoDanfe === pedido.id}
+                                                    className="p-1.5 text-gray-400 hover:text-teal-600 rounded hover:bg-gray-100 disabled:opacity-50"
+                                                    title="DANFE (PDF da NF-e)"
+                                                >
+                                                    {gerandoDanfe === pedido.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
                                                 </button>
                                             )}
                                             {pedido.situacaoCA === 'FATURADO' && (

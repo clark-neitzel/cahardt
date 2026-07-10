@@ -291,12 +291,23 @@ const asaasService = {
                 contaReceber: {
                     include: {
                         cliente: { select: { UUID: true, Nome: true } },
-                        pedido: { select: { id: true, numero: true } }
+                        pedido: { select: { id: true, numero: true, especial: true } }
                     }
                 }
             }
         });
         if (!parcela) throw new Error('Parcela não encontrada.');
+        // Regra do dono: pedido especial (sem nota) não emite boleto Asaas
+        if (parcela.contaReceber?.pedido?.especial) {
+            const err = new Error('Pedido especial não emite boleto pelo Asaas.');
+            err.statusCode = 400;
+            throw err;
+        }
+        if (parcela.contaReceber?.status === 'QUITADO' || parcela.contaReceber?.status === 'CANCELADO') {
+            const err = new Error(`Conta está ${parcela.contaReceber.status} — não dá para gerar cobrança.`);
+            err.statusCode = 400;
+            throw err;
+        }
         if (!['PENDENTE', 'VENCIDO', 'PARCIAL'].includes(parcela.status)) {
             const err = new Error(`Parcela está ${parcela.status} — não dá para emitir boleto.`);
             err.statusCode = 400;

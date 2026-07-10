@@ -71,4 +71,8 @@ router.post('/:id/consultar-ca', pedidoController.consultarCA);
 // Buscar links de cobrança (PIX/Boleto) do CA para um pedido
 router.get('/:id/cobrancas-ca', pedidoController.buscarCobrancasCA);
 
+// NF-e emitida no CA: dados (número/chave) e DANFE em PDF (gerada no app a partir do XML)
+router.get('/:id/nota-fiscal', pedidoController.buscarNotaFiscal);
+router.get('/:id/danfe', pedidoController.baixarDanfe);
+
 module.exports = router;

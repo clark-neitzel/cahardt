@@ -1892,6 +1892,34 @@ const contaAzulService = {
     },
 
     /**
+     * Listar NF-e emitidas no CA. A API EXIGE data_inicial/data_final e o range
+     * precisa ser curto (~1 semana; ranges de 30 dias devolvem 500). Aceita
+     * filtro por id_venda. tamanho_pagina só aceita 10/20/50/100.
+     */
+    listarNotasFiscais: async ({ dataInicial, dataFinal, idVenda }) => {
+        const params = new URLSearchParams({
+            pagina: '1',
+            tamanho_pagina: '10',
+            data_inicial: dataInicial,
+            data_final: dataFinal
+        });
+        if (idVenda) params.set('id_venda', idVenda);
+        const url = `https://api-v2.contaazul.com/v1/notas-fiscais?${params.toString()}`;
+        const response = await contaAzulService._axiosGet(url, 'NOTA_FISCAL_LISTA');
+        return response.data?.itens || [];
+    },
+
+    /**
+     * XML completo (nfeProc autorizado) de uma NF-e pela chave de acesso.
+     * GET /v1/notas-fiscais/{chave} devolve o XML como string.
+     */
+    buscarXmlNotaFiscal: async (chaveAcesso) => {
+        const url = `https://api-v2.contaazul.com/v1/notas-fiscais/${chaveAcesso}`;
+        const response = await contaAzulService._axiosGet(url, 'NOTA_FISCAL_XML');
+        return response.data;
+    },
+
+    /**
      * Saldo em tempo real de uma conta financeira (banco/caixa) no Conta Azul.
      * GET /v1/conta-financeira/{id}/saldo-atual. Retorna number ou null.
      */

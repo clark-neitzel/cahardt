@@ -134,9 +134,12 @@ router.get('/pedidos/:pedidoId/boletos', verificarAuth, async (req, res) => {
     try {
         const conta = await prisma.contaReceber.findUnique({
             where: { pedidoId: req.params.pedidoId },
-            select: { id: true }
+            select: { id: true, status: true, pedido: { select: { especial: true } } }
         });
         if (!conta) return res.status(404).json({ error: 'Este pedido não tem conta a receber (ex.: bonificação).' });
+        // Regra do dono: especial não gera cobrança Asaas; conta quitada também não
+        if (conta.pedido?.especial) return res.status(400).json({ error: 'Pedido especial não gera cobrança pelo Asaas.' });
+        if (conta.status === 'QUITADO') return res.status(400).json({ error: 'Este pedido já está quitado — nada a cobrar.' });
         req.params.contaReceberId = conta.id;
         return listarBoletosConta(req, res);
     } catch (e) {

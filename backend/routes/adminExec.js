@@ -144,6 +144,33 @@ router.get('/diag-nota-fiscal', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-danfe?numero=2028 — testa o fluxo completo da DANFE de um pedido
+router.get('/diag-danfe', async (req, res) => {
+    try {
+        const numero = parseInt(req.query.numero, 10);
+        if (!numero) return res.status(400).json({ error: 'Informe ?numero=' });
+        const pedido = await prisma.pedido.findFirst({ where: { numero, especial: false, bonificacao: false } });
+        if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+        const pedidoController = require('../controllers/pedidoController');
+        const nota = await pedidoController._localizarNotaFiscal(pedido);
+        const xml = await contaAzulService.buscarXmlNotaFiscal(nota.chave_acesso);
+        const { gerarPDF } = require('@alexssmusica/node-pdf-nfe');
+        const doc = await gerarPDF(xml, {});
+        const chunks = [];
+        doc.on('data', c => chunks.push(c));
+        doc.on('end', () => res.json({
+            ok: true,
+            numeroNota: nota.numero_nota,
+            chave: nota.chave_acesso,
+            cache: !!nota.cache,
+            xmlBytes: xml.length,
+            pdfBytes: Buffer.concat(chunks).length
+        }));
+    } catch (e) {
+        res.status(e.statusCode || 500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/asaas-cobrancas — últimas cobranças (diagnóstico)
 router.get('/asaas-cobrancas', async (req, res) => {
     try {

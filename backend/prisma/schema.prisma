@@ -237,10 +237,15 @@ model Pedido {
 
   // Status de Integração
   statusEnvio      String    @default("ABERTO") @map("status_envio") // ABERTO, ENVIAR, SINCRONIZANDO, RECEBIDO, ERRO
-  idVendaContaAzul String?   @map("id_venda_contaazul") // ID gerado na API 
+  idVendaContaAzul String?   @map("id_venda_contaazul") // ID gerado na API
   situacaoCA       String?   @map("situacao_ca") // APROVADO, FATURADO, EM_ABERTO (Conta Azul Oficial)
   erroEnvio        String?   @map("erro_envio") @db.Text
   enviadoEm        DateTime? @map("enviado_em")
+
+  // NF-e emitida no CA (cache da consulta — evita revasculhar a API a cada DANFE)
+  nfeChave        String?   @map("nfe_chave") // chave de acesso (44 dígitos)
+  nfeNumero       Int?      @map("nfe_numero")
+  nfeConsultadoEm DateTime? @map("nfe_consultado_em")
 
   // UX e Mobile
   flexTotal          Decimal   @default(0) @map("flex_total") @db.Decimal(12, 2)

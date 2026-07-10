@@ -27,6 +27,8 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - Aprovar ou reverter pedidos Especiais e Bonificações (quem tem permissão)
 - Consultar situação atualizada no Conta Azul (botão de sync individual)
 - Buscar links de cobrança (PIX/Boleto) gerados no Conta Azul
+- Gerar **boleto pelo Asaas** direto do pedido (ícone azul do Asaas no cartão) — abre a janela de boletos por parcela, com envio por WhatsApp; não disponível para pedidos especiais, bonificações nem pedidos quitados
+- Baixar a **DANFE (PDF da NF-e)** de pedido faturado (ícone de recibo) — o app busca o XML autorizado na API do Conta Azul e gera o PDF na hora, sem precisar entrar no CA
 - Reatribuir pedido para outro vendedor (quem tem permissão)
 - Excluir pedidos (quem tem permissão específica por tipo)
 - Avançar status de amostras (Solicitada → Preparação → Liberado)
