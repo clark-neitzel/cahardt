@@ -79,7 +79,8 @@ router.get('/asaas-status', async (req, res) => {
 router.post('/asaas-registrar-webhook', async (req, res) => {
     try {
         const asaasService = require('../services/asaasService');
-        const url = req.body?.url || 'https://cahardt-github.xrqvlq.easypanel.host/api/asaas/webhook';
+        // Atenção: o webhook precisa apontar para o domínio do BACKEND (o do frontend serve só o app)
+        const url = req.body?.url || 'https://cahardt-hardt-backend.xrqvlq.easypanel.host/api/asaas/webhook';
         const resultado = await asaasService.registrarWebhook(url);
         res.json({ ok: true, url, ...resultado });
     } catch (e) {
