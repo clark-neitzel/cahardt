@@ -224,14 +224,26 @@ const SidebarFavItem = ({ to, icon: Icon, label, onRemove }) => {
 const SidebarCat = ({ icon: Icon, label, items, twoCols, favoritos, onToggleFav }) => {
   const location = useLocation();
   const active = items.some(i => i.to !== '/' && location.pathname.startsWith(i.to));
+  // O submenu usa position:fixed (não é cortado pela rolagem da barra). Ancora no
+  // topo da linha; se a linha está na metade de baixo da tela, ancora por baixo
+  // e o submenu cresce para cima. 240px = largura da barra expandida (w-60).
+  const [flyPos, setFlyPos] = useState(null);
+  const posicionarFly = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    if (r.top > window.innerHeight / 2) {
+      setFlyPos({ bottom: window.innerHeight - r.bottom, left: 240 });
+    } else {
+      setFlyPos({ top: r.top, left: 240 });
+    }
+  };
   return (
-    <div className="relative group/cat">
+    <div className="relative group/cat" onMouseEnter={posicionarFly}>
       <div className={`flex items-center gap-3 mx-2 px-3 py-2 rounded-lg text-[13px] cursor-default overflow-hidden transition-colors ${active ? 'bg-primary/25 text-white font-semibold' : 'text-white/70 group-hover/cat:bg-white/10 group-hover/cat:text-white'}`}>
         <Icon className="h-5 w-5 shrink-0" />
         <span className="flex-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">{label}</span>
         <ChevronRight className="h-4 w-4 shrink-0 opacity-0 group-hover:opacity-50" />
       </div>
-      <div className={`absolute left-full top-0 bg-[#24413a] rounded-r-xl shadow-2xl p-2 z-[70] max-h-[85vh] overflow-y-auto invisible opacity-0 -translate-x-1 group-hover/cat:visible group-hover/cat:opacity-100 group-hover/cat:translate-x-0 transition-all duration-150 ${twoCols ? 'w-[430px]' : 'w-56'}`}>
+      <div style={flyPos || {}} className={`fixed bg-[#24413a] rounded-r-xl shadow-2xl p-2 z-[70] max-h-[85vh] overflow-y-auto invisible opacity-0 -translate-x-1 group-hover/cat:visible group-hover/cat:opacity-100 group-hover/cat:translate-x-0 transition-all duration-150 ${flyPos ? '' : 'hidden'} ${twoCols ? 'w-[430px]' : 'w-56'}`}>
         <div className="text-[10px] font-bold uppercase tracking-widest text-white/40 px-3 pt-1 pb-1.5">{label}</div>
         <div className={twoCols ? 'grid grid-cols-2 gap-0.5' : 'space-y-0.5'}>
           {items.map(i => <FlyItem key={i.to} {...i} favorito={favoritos?.includes(i.to)} onToggleFav={onToggleFav} />)}
@@ -393,7 +405,7 @@ const Layout = ({ children }) => {
         </div>
 
         {/* Nav — só as SEÇÕES (barra curta); cada uma abre o submenu à direita no hover */}
-        <nav className="flex-1 py-2 space-y-0.5">
+        <nav className="flex-1 py-2 space-y-0.5 overflow-y-auto">
           <SidebarItem to="/tarefas" icon={CalendarCheck} label="Tarefas" />
           <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" end />
           {itensFavoritos.length > 0 && (
