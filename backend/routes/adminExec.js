@@ -65,9 +65,12 @@ router.get('/asaas-status', async (req, res) => {
     try {
         const asaasService = require('../services/asaasService');
         const status = await asaasService.statusIntegracao();
+        // Diagnóstico seguro da chave (só prefixo + tamanho — detecta corte do "$" pelo EasyPanel)
+        const k = process.env.ASAAS_API_KEY || '';
         res.json({
             ...status,
-            webhookTokenConfigurado: !!process.env.ASAAS_WEBHOOK_TOKEN
+            webhookTokenConfigurado: !!process.env.ASAAS_WEBHOOK_TOKEN,
+            chaveDiag: k ? `${k.slice(0, 6)}... (${k.length} caracteres)` : null
         });
     } catch (e) {
         res.status(500).json({ error: e.message });
