@@ -2114,22 +2114,6 @@ router.post('/cobranca-executar', async (req, res) => {
     }
 });
 
-// POST /api/admin-exec/catalogo-liberar  body: { ids: [...] } — liga permite_catalogo_personalizado
-// nas condições informadas (correção pontual: saves perdidos na janela do deploy).
-router.post('/catalogo-liberar', async (req, res) => {
-    try {
-        const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(String) : null;
-        if (!ids || !ids.length) return res.status(400).json({ ok: false, error: 'Envie { ids: [...] }' });
-        const r = await prisma.tabelaPreco.updateMany({
-            where: { id: { in: ids } },
-            data: { permiteCatalogoPersonalizado: true }
-        });
-        res.json({ ok: true, atualizadas: r.count });
-    } catch (e) {
-        res.status(500).json({ ok: false, error: e.message });
-    }
-});
-
 // GET /api/admin-exec/diag-catalogo-condicoes — SOMENTE LEITURA
 // Mostra, por condição, se aparece no catálogo personalizado e se exige aprovação de crédito.
 router.get('/diag-catalogo-condicoes', async (req, res) => {
