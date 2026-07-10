@@ -86,7 +86,7 @@ const formatarConta = (c) => ({
     observacoes: c.observacoes,
     competencia: c.competencia,
     fornecedor: c.fornecedor
-        ? { id: c.fornecedor.id, razaoSocial: c.fornecedor.razaoSocial, nomeFantasia: c.fornecedor.nomeFantasia }
+        ? { id: c.fornecedor.id, razaoSocial: c.fornecedor.razaoSocial, nomeFantasia: c.fornecedor.nomeFantasia, cnpjCpf: c.fornecedor.cnpjCpf || null }
         : null,
     parcelas: (c.parcelas || []).map((p) => ({
         id: p.id,
@@ -227,7 +227,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         const contas = await prisma.contaPagar.findMany({
             where,
             include: {
-                fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true } },
+                fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjCpf: true } },
                 parcelas: {
                     orderBy: { numeroParcela: 'asc' },
                     include: { pagamentos: { orderBy: { dataPagamento: 'asc' } } }
@@ -505,7 +505,7 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
 
         const valorTotal = round2(parcelas.reduce((s, p) => s + Number(p.valor), 0));
         const includeConta = {
-            fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true } },
+            fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjCpf: true } },
             parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: true } }
         };
 
@@ -729,7 +729,7 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
                 const atualizada = await prisma.contaPagar.findUnique({
                     where: { id: conta.id },
                     include: {
-                        fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true } },
+                        fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjCpf: true } },
                         parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: { orderBy: { dataPagamento: 'asc' } } } }
                     }
                 });
@@ -777,7 +777,7 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
         const atualizada = await prisma.contaPagar.findUnique({
             where: { id: conta.id },
             include: {
-                fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true } },
+                fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjCpf: true } },
                 parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: { orderBy: { dataPagamento: 'asc' } } } }
             }
         });

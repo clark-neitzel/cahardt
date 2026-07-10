@@ -3,7 +3,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import contasPagarService from '../../services/contasPagarService';
 import fornecedorService from '../../services/fornecedorService';
 import {
-    Wallet, X, Trash2, FileText, RefreshCw, MoreVertical, Loader2, Undo2, Filter, Package, UploadCloud
+    Wallet, X, Trash2, FileText, RefreshCw, MoreVertical, Loader2, Undo2, Filter, Package, UploadCloud, Printer, Copy
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ImportarCaModal from './ImportarCaModal';
@@ -48,6 +48,146 @@ const STATUS_OPCOES = [
 
 // Nome do fornecedor com fallback seguro (nunca "undefined")
 const nomeFornecedor = (f) => f?.nomeFantasia || f?.razaoSocial || 'Sem fornecedor';
+
+// ── Recibo A4 ─────────────────────────────────────────────
+const EMPRESA = {
+    nome: 'HARDT DOCES E SALGADOS LTDA',
+    cnpj: '08.766.459/0001-02',
+    ie: '255372744',
+    endereco: 'R 15 DE OUTUBRO, 170, Joinville - SC',
+    cep: '89239-700',
+    cidadeUf: 'Joinville (SC)'
+};
+
+// Valor por extenso em pt-BR (até centenas de milhões), com centavos
+const extensoAte999 = (n) => {
+    const U = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+    const D = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+    const C = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+    if (n === 0) return '';
+    if (n === 100) return 'cem';
+    const c = Math.floor(n / 100), r = n % 100;
+    const dezenas = r < 20 ? U[r] : `${D[Math.floor(r / 10)]}${r % 10 ? ` e ${U[r % 10]}` : ''}`;
+    return [c ? C[c] : '', r ? dezenas : ''].filter(Boolean).join(' e ');
+};
+const valorPorExtenso = (valor) => {
+    const cents = Math.round(Number(valor || 0) * 100);
+    const inteiro = Math.floor(cents / 100);
+    const centavos = cents % 100;
+    const partes = [];
+    const milhoes = Math.floor(inteiro / 1000000);
+    const milhares = Math.floor((inteiro % 1000000) / 1000);
+    const resto = inteiro % 1000;
+    if (milhoes) partes.push(milhoes === 1 ? 'um milhão' : `${extensoAte999(milhoes)} milhões`);
+    if (milhares) partes.push(milhares === 1 ? 'mil' : `${extensoAte999(milhares)} mil`);
+    if (resto) partes.push(extensoAte999(resto));
+    const reais = inteiro > 0 ? `${partes.join(' e ')} ${inteiro === 1 ? 'real' : 'reais'}` : '';
+    const centTxt = centavos > 0 ? `${extensoAte999(centavos)} ${centavos === 1 ? 'centavo' : 'centavos'}` : '';
+    const texto = [reais, centTxt].filter(Boolean).join(' e ') || 'zero real';
+    return texto.charAt(0).toUpperCase() + texto.slice(1);
+};
+
+const escapeHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+// Imprime o recibo NA PRÓPRIA PÁGINA (@media print) — nunca window.open/iframe (regra do PWA/iPad)
+const imprimirRecibo = (conta, parcela, totalParcelas) => {
+    const pagamentos = (parcela.pagamentos || []).filter(pg => !pg.estornado);
+    const totalPago = pagamentos.reduce((s, pg) => s + Number(pg.valorPago || 0) + Number(pg.juros || 0) + Number(pg.multa || 0), 0);
+    const pago = totalPago > 0.009;
+    const valor = pago ? totalPago : Number(parcela.valor || 0);
+    const forn = conta.fornecedor || {};
+    const nomeForn = forn.razaoSocial || forn.nomeFantasia || 'FORNECEDOR';
+
+    // Referência: O QUE está sendo pago (descrição + nota + categoria + parcela)
+    const refPartes = [];
+    if (conta.descricao) refPartes.push(`"${conta.descricao}"`);
+    if (conta.numeroNota) refPartes.push(`nota ${conta.numeroNota}`);
+    if (conta.categoria) refPartes.push(conta.categoria);
+    const refTexto = refPartes.length ? refPartes.join(' · ') : 'despesa sem descrição';
+    const parcTexto = totalParcelas > 1 ? `da parcela ${parcela.numeroParcela}/${totalParcelas}` : 'da parcela única';
+    const vencTexto = parcela.dataVencimento ? `, com vencimento em ${fmtData(parcela.dataVencimento)}` : '';
+
+    const dataExtenso = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+
+    const corpoHtml = `
+        <div class="rc">
+            <div class="rc-rule"></div>
+            <div class="rc-header">
+                <img src="/logo-hardt.png" alt="Hardt" class="rc-logo" />
+                <div class="rc-emp">
+                    <div>${escapeHtml(EMPRESA.nome)}</div>
+                    <div>CNPJ/CPF: ${EMPRESA.cnpj} &nbsp;IE: ${EMPRESA.ie}</div>
+                    <div>${escapeHtml(EMPRESA.endereco)}</div>
+                    <div>CEP: ${EMPRESA.cep}</div>
+                </div>
+            </div>
+            <div class="rc-rule"></div>
+            <div class="rc-titulo">
+                <h1>Recibo</h1>
+                <div class="rc-valor"><span>R$</span>${fmt(valor)}</div>
+            </div>
+            <div class="rc-dash"></div>
+            <p class="rc-texto">
+                Recebi de <b>${escapeHtml(EMPRESA.nome)}</b> a importância de <b>${escapeHtml(valorPorExtenso(valor))}</b>
+                referente ao pagamento ${pago ? 'total ' : ''}${parcTexto} de ${escapeHtml(refTexto)}${vencTexto}.
+            </p>
+            <p class="rc-texto">
+                Para confirmar a veracidade deste documento e da quantia paga, assino neste documento
+                firmando o presente recibo nesta data.
+            </p>
+            <p class="rc-data">${EMPRESA.cidadeUf}, ${dataExtenso}</p>
+            <div class="rc-assinatura">
+                <div class="rc-linha"></div>
+                <div class="rc-nome">${escapeHtml(String(nomeForn).toUpperCase())}</div>
+                ${forn.cnpjCpf ? `<div class="rc-doc">CNPJ/CPF: ${escapeHtml(forn.cnpjCpf)}</div>` : ''}
+            </div>
+        </div>`;
+
+    const estilos = `
+        .rc { font-family: 'Manrope', -apple-system, sans-serif; color: rgba(0,0,0,0.87); max-width: 180mm; margin: 0 auto; padding-top: 6mm; }
+        .rc-rule { border-top: 2.5pt solid #111; margin: 6mm 0; }
+        .rc-header { display: flex; align-items: center; gap: 8mm; padding: 2mm 0; }
+        .rc-logo { height: 22mm; width: auto; }
+        .rc-emp { font-size: 11pt; color: #666; line-height: 1.65; }
+        .rc-titulo { display: flex; align-items: baseline; justify-content: space-between; margin: 4mm 0 2mm; }
+        .rc-titulo h1 { font-size: 26pt; font-weight: 800; margin: 0; color: #111; }
+        .rc-valor { font-size: 24pt; font-weight: 500; color: #777; }
+        .rc-valor span { font-size: 13pt; margin-right: 1mm; }
+        .rc-dash { border-top: 1.5pt dashed #999; margin: 3mm 0 10mm; }
+        .rc-texto { font-size: 12.5pt; line-height: 1.6; margin: 0 0 8mm; }
+        .rc-data { text-align: center; font-size: 12.5pt; margin: 14mm 0 18mm; }
+        .rc-assinatura { text-align: center; }
+        .rc-linha { border-top: 1pt solid #111; width: 70%; margin: 0 auto 3mm; }
+        .rc-nome { font-size: 12.5pt; letter-spacing: 0.03em; }
+        .rc-doc { font-size: 12pt; margin-top: 2mm; }`;
+
+    // Padrão do projeto: monta na página, esconde o app com display:none e limpa depois
+    document.getElementById('area-impressao')?.remove();
+    document.getElementById('estilo-impressao')?.remove();
+    const style = document.createElement('style');
+    style.id = 'estilo-impressao';
+    style.textContent = `
+        @page { size: A4 portrait; margin: 12mm; }
+        #area-impressao { display: none; }
+        @media print {
+            html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; }
+            body > *:not(#area-impressao) { display: none !important; }
+            #root { display: none !important; }
+            #area-impressao { display: block !important; }
+            #area-impressao * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            ${estilos}
+        }`;
+    document.head.appendChild(style);
+    const area = document.createElement('div');
+    area.id = 'area-impressao';
+    area.innerHTML = corpoHtml;
+    document.body.appendChild(area);
+    const limpar = () => { area.remove(); style.remove(); window.removeEventListener('afterprint', limpar); };
+    window.addEventListener('afterprint', limpar);
+    setTimeout(limpar, 60000);
+    void area.offsetHeight;
+    window.print(); // síncrono no clique (senão o iOS bloqueia)
+};
 
 // Parcela vencida e ainda em aberto?
 const parcelaVencida = (p) => {
@@ -238,6 +378,18 @@ const ContasPagarPage = () => {
             (c.parcelas || []).forEach(p => flat.push({ conta: c, parcela: p, totalParcelas }));
         });
         let rows = flat;
+        // Período por VENCIMENTO da parcela: o backend devolve a conta inteira se
+        // qualquer parcela cair no período — aqui filtramos as LINHAS para mostrar
+        // só as parcelas que vencem dentro dele (ex.: seguro 12x não inunda o mês).
+        if (filtros.dataDe || filtros.dataAte) {
+            rows = rows.filter(({ parcela }) => {
+                const v = toYMD(parcela.dataVencimento);
+                if (!v) return true;
+                if (filtros.dataDe && v < filtros.dataDe) return false;
+                if (filtros.dataAte && v > filtros.dataAte) return false;
+                return true;
+            });
+        }
         if (filtros.status) {
             rows = rows.filter(({ parcela }) => {
                 const s = parcela.status;
@@ -254,7 +406,7 @@ const ContasPagarPage = () => {
             });
         }
         return rows.sort((a, b) => String(a.parcela.dataVencimento || '').localeCompare(String(b.parcela.dataVencimento || '')));
-    }, [contas, filtros.status]);
+    }, [contas, filtros.status, filtros.dataDe, filtros.dataAte]);
 
     const abrirBaixa = (conta, parcela) => setBaixaModal({ conta, parcela });
 
@@ -579,6 +731,7 @@ const ContasPagarPage = () => {
             {despesaModal && (
                 <DespesaModal
                     conta={despesaModal.conta}
+                    base={despesaModal.base}
                     categorias={categorias}
                     categoriasErro={categoriasErro}
                     fornecedores={fornecedores}
@@ -615,6 +768,7 @@ const ContasPagarPage = () => {
                     podeBaixar={podeBaixar}
                     onClose={() => setDetalheConta(null)}
                     onEditar={(c) => setDespesaModal({ conta: c })}
+                    onDuplicar={(c) => { setDetalheConta(null); setDespesaModal({ conta: null, base: c }); }}
                     onBaixar={(c, p) => setBaixaModal({ conta: c, parcela: p })}
                     onChanged={() => { setDetalheConta(null); fetchData(); }}
                 />
@@ -626,17 +780,21 @@ const ContasPagarPage = () => {
 // ═══════════════════════════════════════════════════════════
 // MODAL NOVA / EDITAR DESPESA
 // ═══════════════════════════════════════════════════════════
-const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onFornecedoresChanged, onClose, onSuccess }) => {
+const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, onFornecedoresChanged, onClose, onSuccess }) => {
     const editando = !!conta;
+    // `base` = despesa usada como MOLDE ao Duplicar: cria uma NOVA já preenchida
+    // (fornecedor, descrição, categoria, observações e parcelas — sem nº de nota,
+    // sem ids e com todas as parcelas em aberto).
+    const molde = !editando && base ? base : null;
 
-    const [fornecedorId, setFornecedorId] = useState(conta?.fornecedor?.id || '');
-    const [descricao, setDescricao] = useState(conta?.descricao || '');
-    const [categoria, setCategoria] = useState(conta?.categoria || '');
+    const [fornecedorId, setFornecedorId] = useState(conta?.fornecedor?.id || molde?.fornecedor?.id || '');
+    const [descricao, setDescricao] = useState(conta?.descricao || molde?.descricao || '');
+    const [categoria, setCategoria] = useState(conta?.categoria || molde?.categoria || '');
     const [numeroNota, setNumeroNota] = useState(conta?.numeroNota || '');
     const [competencia, setCompetencia] = useState(conta?.competencia || '');
-    const [observacoes, setObservacoes] = useState(conta?.observacoes || '');
+    const [observacoes, setObservacoes] = useState(conta?.observacoes || molde?.observacoes || '');
     const [enviarCA, setEnviarCA] = useState(true);
-    const [valorTotal, setValorTotal] = useState(conta?.valorTotal != null ? fmt(conta.valorTotal) : '');
+    const [valorTotal, setValorTotal] = useState(conta?.valorTotal != null ? fmt(conta.valorTotal) : (molde?.valorTotal != null ? fmt(molde.valorTotal) : ''));
     const [salvando, setSalvando] = useState(false);
 
     // Condição de pagamento (forma + banco) — obrigatória ao enviar ao CA (só na criação).
@@ -676,6 +834,12 @@ const DespesaModal = ({ conta, categorias, categoriasErro, fornecedores, onForne
                 valor: fmt(p.valor),
                 paga: p.status === 'PAGO' || p.status === 'PARCIAL'
             }));
+        }
+        // Duplicando: copia datas e valores do molde, todas em aberto e sem ids
+        if (molde?.parcelas?.length) {
+            return molde.parcelas
+                .filter(p => p.status !== 'CANCELADO')
+                .map(p => ({ dataVencimento: toYMD(p.dataVencimento), valor: fmt(p.valor), paga: false }));
         }
         return [{ dataVencimento: hojeYMD(), valor: '', paga: false }];
     });
@@ -1490,7 +1654,7 @@ const BaixaLoteModal = ({ parcelaIds, valorTotal, onClose, onSuccess }) => {
 // ═══════════════════════════════════════════════════════════
 // MODAL DETALHES DA CONTA (cancelar / reenviar CA / estornar)
 // ═══════════════════════════════════════════════════════════
-const DetalheContaModal = ({ conta, podeBaixar, onClose, onEditar, onBaixar, onChanged }) => {
+const DetalheContaModal = ({ conta, podeBaixar, onClose, onEditar, onDuplicar, onBaixar, onChanged }) => {
     const [executando, setExecutando] = useState(null); // 'cancelar' | 'reenviar' | pagamentoId
 
     // Detalhe completo (nota fiscal + itens/produtos) — carregado sob demanda ao abrir
@@ -1668,6 +1832,13 @@ const DetalheContaModal = ({ conta, podeBaixar, onClose, onEditar, onBaixar, onC
                                         <div className="flex items-center gap-2">
                                             <span className="font-semibold text-gray-900 text-sm">R$ {fmt(p.valor)}</span>
                                             <BadgeStatusParcela parcela={p} />
+                                            <button
+                                                onClick={() => imprimirRecibo(conta, p, totalParcelas)}
+                                                title="Imprimir recibo desta parcela (folha A4)"
+                                                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-gray-600 border border-gray-300 rounded-full hover:bg-gray-50"
+                                            >
+                                                <Printer className="h-3 w-3" /> Recibo
+                                            </button>
                                         </div>
                                     </div>
                                     {(p.pagamentos || []).filter(pg => !pg.estornado).length > 0 && (
@@ -1718,6 +1889,13 @@ const DetalheContaModal = ({ conta, podeBaixar, onClose, onEditar, onBaixar, onC
                                 Editar
                             </button>
                         )}
+                        <button
+                            onClick={() => onDuplicar(conta)}
+                            title="Criar uma nova despesa já preenchida com os dados desta"
+                className="w-full md:w-auto px-4 py-2 min-h-[44px] md:min-h-0 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm inline-flex items-center justify-center gap-1.5"
+                        >
+                            <Copy className="h-4 w-4" /> Duplicar
+                        </button>
                         {statusEnvio === 'ERRO' && (
                             <button
                                 onClick={reenviarCA}
