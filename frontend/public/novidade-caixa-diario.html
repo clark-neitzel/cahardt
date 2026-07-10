@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Caixa Diário mais certo — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="💰 Novidade no Hardt App: Caixa Diário mais certo">
+<meta property="og:description" content="O valor a prestar só aparece quando o dia está completo (KM, entregas e atendimentos) + nova folha de impressão em 2 páginas para conferir o caixa.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock do checklist flutuando sobre o hero */
+  .mock {
+    max-width: 400px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: #fff7ed;
+    border-bottom: 1px solid #fed7aa;
+    color: #9a3412;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top .icone { font-size: 24px; }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: #c2410c;
+  }
+  .mock-top strong { font-size: 15px; line-height: 1.2; }
+  .mock-body { padding: 14px 18px 18px; }
+  .mock-item {
+    display: flex; align-items: center; gap: 10px;
+    border: 1px solid #fed7aa; border-radius: 12px;
+    padding: 10px 12px; margin-bottom: 8px;
+    font-size: 13px; font-weight: 600; color: #333;
+  }
+  .mock-item .em { font-size: 17px; }
+  .mock-nota { font-size: 12px; color: var(--ink-soft); margin: 10px 0 0; text-align: center; }
+
+  /* seções */
+  .sec {
+    background: #fff;
+    border: 1px solid #e4e1d8;
+    border-radius: 16px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .sec summary {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 18px;
+    font-weight: 800;
+    font-size: 15px;
+  }
+  .sec summary::-webkit-details-marker { display: none; }
+  .sec summary .em { font-size: 22px; }
+  .sec summary .seta { margin-left: auto; color: var(--ink-soft); transition: transform .2s; }
+  .sec[open] summary .seta { transform: rotate(90deg); }
+  .sec .conteudo { padding: 0 18px 18px; font-size: 14px; color: #3c463f; }
+  .sec .conteudo ul { padding-left: 20px; margin: 8px 0; }
+  .sec .conteudo li { margin-bottom: 6px; }
+  .sec .conteudo b { color: var(--ink); }
+  .destaque {
+    background: var(--mint);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13.5px;
+    color: var(--primary-dark);
+    font-weight: 600;
+    margin-top: 10px;
+  }
+
+  h2.titulo-bloco {
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--primary-dark);
+    margin: 30px 4px 12px;
+  }
+
+  /* passos */
+  .passos { counter-reset: passo; }
+  .passo {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: #fff; border: 1px solid #e4e1d8; border-radius: 16px;
+    padding: 14px 16px; margin-bottom: 10px;
+  }
+  .passo .num {
+    counter-increment: passo;
+    flex: 0 0 30px; height: 30px; border-radius: 999px;
+    background: var(--primary); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px;
+  }
+  .passo .num::before { content: counter(passo); }
+  .passo p { margin: 3px 0 0; font-size: 14px; color: #3c463f; }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    margin-top: 34px;
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade no app</span>
+    <h1>Caixa Diário:<br>o dia tem que fechar certo</h1>
+    <p>Agora o valor a prestar só aparece quando o dia está completo — e a folha impressa ficou nova, feita para conferir.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- Mock do checklist -->
+  <div class="mock">
+    <div class="mock-top">
+      <span class="icone">⚠️</span>
+      <div>
+        <small>Caixa Diário</small>
+        <strong>Falta para fechar o dia</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-item"><span class="em">🚚</span> Informar o KM final do veículo</div>
+      <div class="mock-item"><span class="em">📦</span> 3 entregas pendentes</div>
+      <div class="mock-item"><span class="em">📍</span> 2 clientes da rota sem atendimento</div>
+      <p class="mock-nota">O valor a prestar aparece assim que tudo for resolvido ✅</p>
+    </div>
+  </div>
+
+  <h2 class="titulo-bloco">O que mudou</h2>
+
+  <details class="sec" open>
+    <summary><span class="em">💰</span> O valor só aparece com o dia completo <span class="seta">›</span></summary>
+    <div class="conteudo">
+      <p>Antes, o <b>VALOR A PRESTAR</b> aparecia mesmo com coisas pendentes — e o dia fechava faltando informação. Agora, enquanto o dia não estiver certo, no lugar do valor aparece um <b>checklist do que falta fazer</b>:</p>
+      <ul>
+        <li><b>🚚 KM final</b> — quando o dia usou veículo e o KM final não foi digitado</li>
+        <li><b>📦 Entregas pendentes</b> — pedidos da carga ainda não marcados como entregues</li>
+        <li><b>📍 Clientes da rota sem atendimento</b> — clientes do dia sem visita, pedido ou entrega</li>
+      </ul>
+      <div class="destaque">Resolveu tudo? O valor volta a aparecer sozinho, na hora.</div>
+    </div>
+  </details>
+
+  <details class="sec">
+    <summary><span class="em">🖨️</span> Folha de impressão nova (2 páginas) <span class="seta">›</span></summary>
+    <div class="conteudo">
+      <p>A impressão do caixa foi redesenhada para caber em <b>2 folhas A4</b> e facilitar a conferência:</p>
+      <ul>
+        <li><b>Folha 1 — Conferência:</b> valor a prestar em destaque, campos para preencher à mão (<b>Contado, Diferença, Conferido por</b>), todas as entregas do dia com checkbox ✓ e a coluna <b>“Dinheiro”</b> somando o que deve estar no caixa, e as assinaturas.</li>
+        <li><b>Folha 2 — Apoio:</b> veículo e KM, a conta do valor a prestar, despesas, devoluções, amostras e os atendimentos do dia.</li>
+      </ul>
+      <div class="destaque">Cabem até ~52 entregas na primeira folha — mesmo os dias grandes saem em 2 páginas.</div>
+    </div>
+  </details>
+
+  <h2 class="titulo-bloco">Para o motorista — como deixar o dia certo</h2>
+  <div class="passos">
+    <div class="passo"><span class="num"></span><p>Termine as <b>entregas da carga</b> no app (entregue, parcial ou devolvido).</p></div>
+    <div class="passo"><span class="num"></span><p>Registre os <b>atendimentos</b> dos clientes da rota do dia — mesmo quando não sai pedido.</p></div>
+    <div class="passo"><span class="num"></span><p>Ao encerrar o dia, digite o <b>KM final</b> do veículo.</p></div>
+    <div class="passo"><span class="num"></span><p>Pronto: o <b>valor a prestar</b> aparece no Caixa e é só conferir e fechar. ✅</p></div>
+  </div>
+
+  <p class="rodape">Hardt App · Caixa Diário<br>Dúvidas? Clique no Clippy 📎 dentro do sistema.</p>
+</div>
+
+</body>
+</html>
