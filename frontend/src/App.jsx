@@ -98,9 +98,10 @@ import {
   PackageCheck, Truck, Wallet, Receipt, Search,
   Box, UserCog, Car, RefreshCw, FileText, ClipboardCheck,
   Settings, DollarSign, Building2, TrendingUp, FolderOpen, Warehouse,
-  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, PartyPopper, Snowflake, Clock, Fingerprint, Inbox, Landmark, CalendarCheck
+  Package, BookOpen as BookOpenIcon, Factory, Play, ClipboardList as ClipboardListIcon, Calendar as CalendarIcon, Lightbulb, BarChart3, BarChart2, History, Sparkles, BellRing, UserCheck, Tag, DatabaseZap, Percent, PartyPopper, Snowflake, Clock, Fingerprint, Inbox, Landmark, CalendarCheck, Star
 } from 'lucide-react';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
+import { useMenuFavoritos } from './hooks/useMenuFavoritos';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DiarioProvider } from './contexts/DiarioContext';
 import DiarioGateway from './components/Diario/DiarioGateway';
@@ -169,23 +170,58 @@ const SidebarSection = ({ label }) => (
   </div>
 );
 
-// Item dentro do submenu (flyout) do desktop
-const FlyItem = ({ to, icon: Icon, label, end }) => (
+// Item dentro do submenu (flyout) do desktop — com estrela para fixar no topo do menu
+const FlyItem = ({ to, icon: Icon, label, end, favorito, onToggleFav }) => (
   <NavLink
     to={to}
     end={end}
     title={label}
-    className={({ isActive }) => `flex items-center gap-2.5 px-3 h-9 rounded-lg text-sm whitespace-nowrap transition-colors ${isActive ? 'bg-primary text-white font-medium' : 'text-white/80 hover:bg-primary hover:text-white'}`}
+    className={({ isActive }) => `flex items-center gap-2.5 pl-3 pr-1.5 h-9 rounded-lg text-sm whitespace-nowrap transition-colors group/fly ${isActive ? 'bg-primary text-white font-medium' : 'text-white/80 hover:bg-primary hover:text-white'}`}
   >
     {Icon && <Icon className="h-4 w-4 shrink-0" />}
-    <span className="truncate">{label}</span>
+    <span className="truncate flex-1">{label}</span>
+    {onToggleFav && (
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggleFav(to); }}
+        title={favorito ? 'Remover dos favoritos' : 'Fixar no topo do menu'}
+        className="p-1.5 rounded-md hover:bg-white/20 shrink-0"
+      >
+        <Star className={`h-3.5 w-3.5 transition-colors ${favorito ? 'fill-yellow-400 text-yellow-400' : 'text-white/30 group-hover/fly:text-white/60'}`} />
+      </button>
+    )}
   </NavLink>
 );
+
+// Tela favoritada fixa na barra lateral (ícone visível mesmo com a barra recolhida)
+const SidebarFavItem = ({ to, icon: Icon, label, onRemove }) => {
+  const location = useLocation();
+  const isActive = location.pathname.startsWith(to);
+  return (
+    <NavLink
+      to={to}
+      title={label}
+      className={`flex items-center gap-3 mx-2 px-3 py-2 rounded-lg text-[13px] transition-colors ${isActive
+        ? 'bg-primary text-white font-semibold'
+        : 'text-white/70 hover:bg-white/10 hover:text-white'
+        }`}
+    >
+      <Icon className="h-5 w-5 shrink-0" />
+      <span className="flex-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap overflow-hidden">{label}</span>
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(to); }}
+        title="Remover dos favoritos"
+        className="p-1 rounded-md hover:bg-white/20 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+      >
+        <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+      </button>
+    </NavLink>
+  );
+};
 
 // Seção do menu desktop: linha na barra recolhida + submenu que abre à DIREITA no hover.
 // A barra fica estreita (só ícones); ao passar o mouse ela alarga (mostra os nomes) e,
 // sobre uma seção, o submenu daquela seção aparece ao lado.
-const SidebarCat = ({ icon: Icon, label, items, twoCols }) => {
+const SidebarCat = ({ icon: Icon, label, items, twoCols, favoritos, onToggleFav }) => {
   const location = useLocation();
   const active = items.some(i => i.to !== '/' && location.pathname.startsWith(i.to));
   return (
@@ -198,7 +234,7 @@ const SidebarCat = ({ icon: Icon, label, items, twoCols }) => {
       <div className={`absolute left-full top-0 bg-[#24413a] rounded-r-xl shadow-2xl p-2 z-[70] max-h-[85vh] overflow-y-auto invisible opacity-0 -translate-x-1 group-hover/cat:visible group-hover/cat:opacity-100 group-hover/cat:translate-x-0 transition-all duration-150 ${twoCols ? 'w-[430px]' : 'w-56'}`}>
         <div className="text-[10px] font-bold uppercase tracking-widest text-white/40 px-3 pt-1 pb-1.5">{label}</div>
         <div className={twoCols ? 'grid grid-cols-2 gap-0.5' : 'space-y-0.5'}>
-          {items.map(i => <FlyItem key={i.to} {...i} />)}
+          {items.map(i => <FlyItem key={i.to} {...i} favorito={favoritos?.includes(i.to)} onToggleFav={onToggleFav} />)}
         </div>
       </div>
     </div>
@@ -231,8 +267,15 @@ const Layout = ({ children }) => {
   const [visitorBar, setVisitorBar] = useState(true);
   const { user, logout, hasPermission, loading } = useAuth();
   const { updateAvailable } = useVersionCheck();
+  const { favoritos, toggle: toggleFavorito, limite: limiteFavoritos } = useMenuFavoritos(user?.id);
 
   if (!user || loading) return <>{children}</>;
+
+  const handleToggleFavorito = (to) => {
+    if (!toggleFavorito(to)) {
+      toast.error(`Limite de ${limiteFavoritos} favoritos — remova um para adicionar outro.`);
+    }
+  };
 
   const mobileLink = (isActive) =>
     isActive
@@ -241,13 +284,9 @@ const Layout = ({ children }) => {
 
   const closeMobile = () => setIsMobileMenuOpen(false);
 
-  const showLogistica = hasPermission('Pode_Acessar_Embarque') || hasPermission('Pode_Ver_Todas_Entregas');
-  const showFinanceiro = hasPermission('Pode_Acessar_Caixa') || hasPermission('Pode_Ver_Todas_Entregas') || hasPermission('Pode_Acessar_Contas_Receber') || hasPermission('Pode_Acessar_Notas_Recebidas') || hasPermission('Pode_Acessar_Financeiro_Gerencial') || hasPermission('Pode_Acessar_Cobranca') || hasPermission('Pode_Editar_Cobranca');
-  const showAdmin = hasPermission('produtos') || hasPermission('vendedores') || hasPermission('sync') || user?.permissoes?.admin;
   const showEstoque = user?.permissoes?.admin || (Array.isArray(user?.permissoes?.estoque) && user.permissoes.estoque.length > 0);
   const pcpPerms = user?.permissoes?.pcp || {};
   const isAdmin = !!user?.permissoes?.admin;
-  const showPcp = isAdmin || Object.values(pcpPerms).some(Boolean);
   const canPcp = (key) => isAdmin || !!pcpPerms[key];
   const showConfig = hasPermission('configuracoes');
   const showRH = isAdmin || hasPermission('Pode_Ver_RH') || hasPermission('Pode_Editar_RH');
@@ -332,6 +371,13 @@ const Layout = ({ children }) => {
     ] : []) },
   ].filter(s => s.items.length > 0);
 
+  // Favoritos válidos: só telas que o usuário ainda tem permissão de ver
+  // (perdeu a permissão → o atalho some sozinho, sem quebrar nada)
+  const todosItensMenu = desktopSections.flatMap(s => s.items);
+  const itensFavoritos = favoritos
+    .map(f => todosItensMenu.find(i => i.to === f))
+    .filter(Boolean);
+
   return (
     <div className="min-h-screen bg-secondary flex">
       {/* ═══════════════════════════════════════════ */}
@@ -350,8 +396,23 @@ const Layout = ({ children }) => {
         <nav className="flex-1 py-2 space-y-0.5">
           <SidebarItem to="/tarefas" icon={CalendarCheck} label="Tarefas" />
           <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" end />
+          {itensFavoritos.length > 0 && (
+            <>
+              <div className="mx-2 mt-4 mb-1 px-3">
+                <span className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-white/50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">
+                  <Star className="h-2.5 w-2.5 fill-yellow-400 text-yellow-400 shrink-0" />
+                  Favoritos {itensFavoritos.length}/{limiteFavoritos}
+                </span>
+                <div className="h-px bg-white/10 mt-1"></div>
+              </div>
+              {itensFavoritos.map(i => (
+                <SidebarFavItem key={i.to} to={i.to} icon={i.icon} label={i.label} onRemove={handleToggleFavorito} />
+              ))}
+              <div className="mx-2 mt-2 mb-1 px-3"><div className="h-px bg-white/10"></div></div>
+            </>
+          )}
           {desktopSections.map(s => (
-            <SidebarCat key={s.label} icon={s.icon} label={s.label} items={s.items} twoCols={s.twoCols} />
+            <SidebarCat key={s.label} icon={s.icon} label={s.label} items={s.items} twoCols={s.twoCols} favoritos={favoritos} onToggleFav={handleToggleFavorito} />
           ))}
         </nav>
 
@@ -451,110 +512,44 @@ const Layout = ({ children }) => {
               Dashboard
             </NavLink>
 
-            {/* Vendas */}
-            <MobileMenuSection label="Vendas" icon={ClipboardList} defaultOpen>
-              {hasPermission('catalogo') && <NavLink to="/catalogo" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Catálogo</NavLink>}
-              {hasPermission('pedidos') && <NavLink to="/pedidos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Pedidos</NavLink>}
-              {hasPermission('pedidos') && <NavLink to="/relatorios/pedidos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Rel. Pedidos</NavLink>}
-              {hasPermission('relatorioVendas') && <NavLink to="/relatorios/vendas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Rel. Vendas</NavLink>}
-              {hasPermission('pedidos') && <NavLink to="/relatorios/flex" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Análise Flex</NavLink>}
-              {hasPermission('delivery') && <NavLink to="/delivery" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Delivery</NavLink>}
-              {(isAdmin || hasPermission('kitFesta')) && <NavLink to="/kit-festa-admin" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Kit Festa</NavLink>}
-              {(isAdmin || hasPermission('kitFesta')) && <NavLink to="/site-admin" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Site</NavLink>}
-              {hasPermission('pedidos') && <NavLink to="/rota" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Rota</NavLink>}
-              {hasPermission('rota') && <NavLink to="/leads" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Leads</NavLink>}
-              {(isAdmin || hasPermission('Pode_Ver_Atendimentos')) && <NavLink to="/atendimentos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Atendimentos</NavLink>}
-              {(isAdmin || hasPermission('Pode_Ver_Analise_IA')) && <NavLink to="/analise-ia" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Análise IA</NavLink>}
-              {hasPermission('clientes') && <NavLink to="/clientes" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Clientes</NavLink>}
-            </MobileMenuSection>
-
-            {/* Logística */}
-            {showLogistica && (
-              <MobileMenuSection label="Logística" icon={Truck}>
-                {hasPermission('Pode_Acessar_Embarque') && <NavLink to="/admin/embarques" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Embarque</NavLink>}
-                {hasPermission('Pode_Ver_Todas_Entregas') && <NavLink to="/entregas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Entregas</NavLink>}
-              </MobileMenuSection>
+            {/* Favoritos — telas fixadas pelo usuário (máx. 10) */}
+            {itensFavoritos.length > 0 && (
+              <div>
+                <div className="flex items-center gap-1.5 px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                  <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                  Favoritos {itensFavoritos.length}/{limiteFavoritos}
+                </div>
+                {itensFavoritos.map(i => (
+                  <div key={i.to} className="flex items-center">
+                    <NavLink to={i.to} onClick={closeMobile} className={({ isActive }) => `flex-1 min-w-0 flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium ${isActive ? 'text-primary bg-primary-50/50' : 'text-gray-700 hover:bg-gray-50'}`}>
+                      <i.icon className="h-4 w-4 text-primary shrink-0" />
+                      <span className="truncate">{i.label}</span>
+                    </NavLink>
+                    <button onClick={() => handleToggleFavorito(i.to)} title="Remover dos favoritos" className="p-2.5 mr-1.5 rounded-full hover:bg-gray-100 shrink-0">
+                      <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
 
-            {/* Financeiro */}
-            {showFinanceiro && (
-              <MobileMenuSection label="Financeiro" icon={Wallet}>
-                {hasPermission('Pode_Acessar_Caixa') && <NavLink to="/caixa" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Caixa</NavLink>}
-                {hasPermission('Pode_Acessar_Caixa') && <NavLink to="/despesas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Despesas</NavLink>}
-                {hasPermission('Pode_Ver_Todas_Entregas') && <NavLink to="/admin/auditoria-entregas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Auditoria</NavLink>}
-                {hasPermission('Pode_Acessar_Contas_Receber') && <NavLink to="/financeiro/contas-receber/tabela" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Contas a Receber</NavLink>}
-                {(hasPermission('Pode_Acessar_Cobranca') || hasPermission('Pode_Editar_Cobranca')) && <NavLink to="/financeiro/cobranca" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Régua de Cobrança</NavLink>}
-                {hasPermission('Pode_Acessar_Contas_Pagar') && <NavLink to="/contas-pagar" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Contas a Pagar</NavLink>}
-                {hasPermission('Pode_Acessar_Notas_Recebidas') && <NavLink to="/notas-recebidas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Notas Recebidas</NavLink>}
-                {hasPermission('Pode_Acessar_Fornecedores') && <NavLink to="/fornecedores" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Fornecedores</NavLink>}
-                {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/dashboard" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Visão Geral</NavLink>}
-                {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/fluxo-caixa" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Fluxo de Caixa</NavLink>}
-                {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/por-conta" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Saldos por Conta</NavLink>}
-                {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/dre" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>DRE</NavLink>}
-                {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/margem-produtos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Margem por Produto</NavLink>}
-                {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/conciliacao" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Conciliação Bancária</NavLink>}
-                {hasPermission('Pode_Acessar_Financeiro_Gerencial') && <NavLink to="/financeiro/categorias-despesa" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Categorias de Despesa</NavLink>}
+            {/* Categorias — mesmas seções e permissões do menu desktop, com estrela para favoritar */}
+            {desktopSections.map(s => (
+              <MobileMenuSection key={s.label} label={s.label} icon={s.icon} defaultOpen={s.label === 'Vendas'}>
+                {s.items.map(i => (
+                  <div key={i.to} className="flex items-center">
+                    <NavLink to={i.to} onClick={closeMobile} className={({ isActive }) => `${mobileLink(isActive)} flex-1 min-w-0`}>{i.label}</NavLink>
+                    <button
+                      onClick={() => handleToggleFavorito(i.to)}
+                      title={favoritos.includes(i.to) ? 'Remover dos favoritos' : 'Fixar no topo do menu'}
+                      className="p-2.5 mr-1.5 rounded-full hover:bg-gray-100 shrink-0"
+                    >
+                      <Star className={`h-4 w-4 ${favoritos.includes(i.to) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                    </button>
+                  </div>
+                ))}
               </MobileMenuSection>
-            )}
-
-            {/* Admin */}
-            {showAdmin && (
-              <MobileMenuSection label="Administração" icon={UserCog}>
-                {hasPermission('produtos') && <NavLink to="/admin/produtos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Produtos</NavLink>}
-                {hasPermission('vendedores') && <NavLink to="/admin/vendedores" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Vendedores</NavLink>}
-                {isAdmin && <NavLink to="/admin/mensagens" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Mensagens Agendadas</NavLink>}
-                {(user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && <NavLink to="/admin/veiculos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Veículos</NavLink>}
-                {hasPermission('sync') && <NavLink to="/admin/sync" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Sincronizar</NavLink>}
-              </MobileMenuSection>
-            )}
-
-            {/* RH */}
-            {(showRH || showPonto) && (
-              <MobileMenuSection label="RH" icon={UserCheck}>
-                {showRH && <NavLink to="/rh/curriculos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Currículos</NavLink>}
-                {showPonto && <NavLink to="/rh/funcionarios" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Funcionários</NavLink>}
-                {showPonto && <NavLink to="/rh/ponto" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Ponto</NavLink>}
-              </MobileMenuSection>
-            )}
-
-            {/* PCP */}
-            {showPcp && (
-              <MobileMenuSection label="PCP" icon={Factory}>
-                {canPcp('itens') && <NavLink to="/pcp/itens" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Itens</NavLink>}
-                {canPcp('receitas') && <NavLink to="/pcp/receitas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Receitas</NavLink>}
-                {canPcp('ordens') && <NavLink to="/pcp/ordens" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Ordens</NavLink>}
-                {canPcp('ordens') && <NavLink to="/pcp/painel" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Painel</NavLink>}
-                {canPcp('agenda') && <NavLink to="/pcp/calendario" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Calendário</NavLink>}
-                {canPcp('estoque') && <NavLink to="/pcp/estoque" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Estoque PCP</NavLink>}
-                {canPcp('sugestoes') && <NavLink to="/pcp/sugestoes" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Sugestoes</NavLink>}
-                {canPcp('sugestoes') && <NavLink to="/pcp/dashboard" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Dashboard</NavLink>}
-                {canPcp('etiquetas') && <NavLink to="/pcp/etiquetas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Etiquetas</NavLink>}
-                {canPcp('etiquetas') && <NavLink to="/pcp/etiquetas/dados" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Dados Etiquetas</NavLink>}
-              </MobileMenuSection>
-            )}
-
-            {/* Produção / Estoque */}
-            {showEstoque && (
-              <MobileMenuSection label="Produção / Estoque" icon={Warehouse}>
-                <NavLink to="/estoque/posicao" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Posição</NavLink>
-                <NavLink to="/estoque" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Ajuste de Estoque</NavLink>
-                <NavLink to="/estoque/historico" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Histórico</NavLink>
-              </MobileMenuSection>
-            )}
-
-            {/* Configurações */}
-            {showConfig && (
-              <MobileMenuSection label="Configurações" icon={Settings}>
-                <NavLink to="/admin/config" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Gerais</NavLink>
-                <NavLink to="/config/tabela-precos" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Preços</NavLink>
-                <NavLink to="/config/contas-financeiras" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Bancos</NavLink>
-                <NavLink to="/config/metas" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Metas de Vendas</NavLink>
-                <NavLink to="/config/comissoes" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Comissões</NavLink>
-                <NavLink to="/config/categorias-produto" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Cat. Produtos</NavLink>
-                <NavLink to="/config/categorias-cliente" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Cat. Clientes</NavLink>
-                <NavLink to="/config/categorias-estoque" onClick={closeMobile} className={({ isActive }) => mobileLink(isActive)}>Cat. Estoque</NavLink>
-              </MobileMenuSection>
-            )}
+            ))}
           </div>
 
           {/* Drawer footer — fixo embaixo */}

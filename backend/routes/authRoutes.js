@@ -15,4 +15,8 @@ router.get('/debug', authController.debug);
 router.post('/app-login', loginRateLimit, appAuthController.login);
 router.get('/me', authMiddleware, appAuthController.me);
 
+// Telas favoritas do menu (fixadas pelo usuário, máx. 10)
+router.get('/menu-favoritos', authMiddleware, appAuthController.menuFavoritosGet);
+router.put('/menu-favoritos', authMiddleware, appAuthController.menuFavoritosSalvar);
+
 module.exports = router;

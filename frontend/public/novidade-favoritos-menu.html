@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Telas Favoritas no Menu — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="⭐ Novidade no Hardt App: Telas Favoritas no Menu">
+<meta property="og:description" content="Fixe suas 10 telas mais usadas no topo do menu com a estrelinha. Um clique e pronto — no computador e no celular.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --star: #facc15;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; margin: 0 auto; max-width: 480px; }
+
+  /* ── MOCK do menu ── */
+  .mock-card {
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 45px rgba(0,0,0,.18);
+    margin-top: -64px;
+    overflow: hidden;
+  }
+  .mock-head {
+    background: var(--house);
+    padding: 14px 18px;
+    display: flex; align-items: center; gap: 10px;
+    color: #fff; font-weight: 800;
+  }
+  .mock-head .logo {
+    width: 30px; height: 30px; background: var(--primary); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 900;
+  }
+  .mock-body { background: var(--house); padding: 6px 10px 16px; }
+  .mock-sec {
+    display: flex; align-items: center; gap: 6px;
+    color: rgba(255,255,255,.55);
+    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em;
+    padding: 12px 10px 6px;
+  }
+  .mock-sec .cnt { background: rgba(255,255,255,.14); border-radius: 999px; padding: 1px 8px; letter-spacing: 0; font-size: 10px; }
+  .mock-item {
+    display: flex; align-items: center; gap: 10px;
+    color: rgba(255,255,255,.85);
+    font-size: 14px; font-weight: 600;
+    padding: 9px 10px; border-radius: 10px;
+  }
+  .mock-item.on { background: var(--primary); color: #fff; }
+  .mock-item .star { margin-left: auto; }
+  .mock-item svg { width: 17px; height: 17px; flex-shrink: 0 }
+  .star svg { width: 15px; height: 15px; fill: var(--star); stroke: var(--star); }
+  .mock-foot {
+    background: #fff; padding: 14px 18px; font-size: 13px; color: var(--ink-soft); text-align: center;
+  }
+  .mock-foot b { color: var(--primary-dark); }
+
+  /* ── Seções ── */
+  h2 {
+    font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em;
+    color: var(--ink-soft); margin: 40px 0 14px; text-align: center;
+  }
+  .card {
+    background: #fff; border: 1px solid #e5e2da; border-radius: 16px;
+    padding: 18px; margin-bottom: 12px;
+    display: flex; gap: 14px; align-items: flex-start;
+  }
+  .card .ico {
+    width: 40px; height: 40px; border-radius: 12px; background: var(--mint);
+    display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0;
+  }
+  .card h3 { margin: 0 0 4px; font-size: 15.5px; font-weight: 800; }
+  .card p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+  .card p b { color: var(--ink); }
+
+  /* ── Passos ── */
+  .steps { counter-reset: passo; }
+  .step {
+    background: #fff; border: 1px solid #e5e2da; border-radius: 16px;
+    padding: 16px 18px 16px 60px; margin-bottom: 10px; position: relative;
+    font-size: 14.5px; color: var(--ink);
+  }
+  .step b { color: var(--primary-dark); }
+  .step::before {
+    counter-increment: passo; content: counter(passo);
+    position: absolute; left: 16px; top: 50%; transform: translateY(-50%);
+    width: 30px; height: 30px; border-radius: 999px;
+    background: var(--primary); color: #fff; font-weight: 800; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .note {
+    background: var(--mint); border-radius: 14px; padding: 14px 16px;
+    font-size: 13.5px; color: var(--primary-dark); margin-top: 18px;
+  }
+  .note b { font-weight: 800; }
+
+  footer { text-align: center; color: #a8a49b; font-size: 12px; margin-top: 44px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade no Hardt App</span>
+    <h1>⭐ Suas telas favoritas,<br>fixas no topo do menu</h1>
+    <p>Cansado de procurar a mesma tela toda hora? Agora cada tela do menu tem uma estrelinha — favorite e ela fica fixa no topo, a um clique.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- Mock do menu com favoritos -->
+  <div class="mock-card">
+    <div class="mock-head"><span class="logo">H</span> Hardt App</div>
+    <div class="mock-body">
+      <div class="mock-sec">
+        <svg viewBox="0 0 24 24" width="12" height="12" style="fill:var(--star);stroke:var(--star)"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Favoritos <span class="cnt">3/10</span>
+      </div>
+      <div class="mock-item on">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>
+        Pedidos
+        <span class="star"><svg viewBox="0 0 24 24" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      </div>
+      <div class="mock-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+        Caixa
+        <span class="star"><svg viewBox="0 0 24 24" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      </div>
+      <div class="mock-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        Contas a Receber
+        <span class="star"><svg viewBox="0 0 24 24" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+      </div>
+    </div>
+    <div class="mock-foot">Assim fica o menu: <b>seus atalhos primeiro</b>, e o resto das categorias logo abaixo, como sempre.</div>
+  </div>
+
+  <h2>Como funciona</h2>
+
+  <div class="card">
+    <div class="ico">⭐</div>
+    <div>
+      <h3>Estrelinha em cada tela do menu</h3>
+      <p>Abra uma categoria (Vendas, Financeiro, PCP…) e toque na <b>estrela</b> ao lado do nome da tela. Um toque favorita, outro desfavorita.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ico">📌</div>
+    <div>
+      <h3>Fica fixa no topo do menu</h3>
+      <p>A tela favoritada aparece na seção <b>"★ Favoritos"</b>, no topo. No computador o ícone fica visível <b>até com a barra fechada</b> — um clique direto.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ico">🔟</div>
+    <div>
+      <h3>Até 10 favoritos</h3>
+      <p>O contador <b>x/10</b> mostra quantos você já tem. Passou de 10? O app avisa para <b>remover um antes de adicionar outro</b>.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="ico">📱</div>
+    <div>
+      <h3>Vale em qualquer aparelho</h3>
+      <p>Os favoritos são <b>seus</b> (cada usuário tem os próprios) e ficam salvos na sua conta — aparecem iguais no computador, iPad e celular.</p>
+    </div>
+  </div>
+
+  <h2>Para começar a usar</h2>
+
+  <div class="steps">
+    <div class="step">Abra o menu e entre numa categoria — ex.: <b>Financeiro</b>.</div>
+    <div class="step">Toque na <b>⭐ estrelinha</b> ao lado da tela que você mais usa.</div>
+    <div class="step">Pronto! Ela aparece em <b>"★ Favoritos"</b> no topo do menu. Para tirar, toque na estrela de novo.</div>
+  </div>
+
+  <div class="note">
+    💡 <b>Dica:</b> favoritar não tira a tela do lugar — ela continua na categoria de sempre. O favorito é só um atalho a mais. E se aparecer o app antigo, toque no <b>ícone de atualizar (↻)</b> no menu.
+  </div>
+
+  <footer>Hardt Alimentos — Hardt App · Julho/2026</footer>
+</div>
+
+</body>
+</html>

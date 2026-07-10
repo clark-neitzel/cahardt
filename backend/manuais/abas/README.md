@@ -4,6 +4,14 @@
 
 ---
 
+## Geral
+
+| Aba | Rota | Descrição | Manual |
+|-----|------|-----------|--------|
+| Menu — Telas Favoritas | (menu do app) | Fixar até 10 telas como favoritas no topo do menu pela estrelinha de cada tela (por usuário, vale em qualquer aparelho) | [menu-favoritos.md](menu-favoritos.md) |
+
+---
+
 ## Equipe
 
 | Aba | Rota | Descrição | Manual |
