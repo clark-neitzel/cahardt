@@ -173,8 +173,8 @@ const RelatorioCaixaPrint = () => {
                 }
                 .rpt { font-family: Arial, Helvetica, sans-serif; max-width: 190mm; margin: 0 auto; color: #111; }
                 .rpt table { border-collapse: collapse; width: 100%; }
-                .rpt th { background: #f4f2ec; font-size: 8px; text-transform: uppercase; letter-spacing: .5px; color: #666; font-weight: 800; padding: 2.5px 5px; border-bottom: 1.5px solid #bbb; text-align: left; }
-                .rpt td { font-size: 9px; padding: 1.6px 5px; border-bottom: 1px solid #eceae4; }
+                .rpt th { background: #fff; font-size: 8px; text-transform: uppercase; letter-spacing: .5px; color: #666; font-weight: 800; padding: 2.5px 5px; border-bottom: 1.5px solid #bbb; text-align: left; }
+                .rpt td { font-size: 9px; padding: 1.6px 5px; border-bottom: 1px solid #e5e5e5; }
                 .rpt .r { text-align: right; }
                 .rpt .c { text-align: center; }
                 .rpt .dinheiro-col { background: #f3faf7; }
