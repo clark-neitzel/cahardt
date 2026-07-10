@@ -508,7 +508,7 @@ async function extratoPorConta(contaId, de, ate) {
             where: { status: 'PAGO', contaFinanceiraCaId: filtroConta, dataPagamento: { gte: ini, lte: fim } },
             select: {
                 id: true, numeroParcela: true, valorPago: true, dataPagamento: true, formaPagamento: true,
-                contaReceber: { select: { cliente: { select: { nome: true } }, pedido: { select: { numero: true } } } }
+                contaReceber: { select: { cliente: { select: { NomeFantasia: true, Nome: true } }, pedido: { select: { numero: true } } } }
             }
         }),
         prisma.pagamentoParcelaPagar.findMany({
@@ -526,7 +526,7 @@ async function extratoPorConta(contaId, de, ate) {
             tipo: 'ENTRADA',
             data: e.dataPagamento,
             valor: round2(num(e.valorPago)),
-            quem: e.contaReceber?.cliente?.nome || 'Cliente',
+            quem: e.contaReceber?.cliente?.NomeFantasia || e.contaReceber?.cliente?.Nome || 'Cliente',
             descricao: `Recebimento${e.contaReceber?.pedido?.numero ? ` · pedido ${e.contaReceber.pedido.numero}` : ''}${e.numeroParcela ? ` · parcela ${e.numeroParcela}` : ''}`,
             formaPagamento: e.formaPagamento || null
         })),
