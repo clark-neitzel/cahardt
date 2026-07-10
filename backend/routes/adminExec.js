@@ -2114,4 +2114,27 @@ router.post('/cobranca-executar', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-catalogo-condicoes — SOMENTE LEITURA
+// Mostra, por condição, se aparece no catálogo personalizado e se exige aprovação de crédito.
+router.get('/diag-catalogo-condicoes', async (req, res) => {
+    try {
+        const condicoes = await prisma.$queryRawUnsafe(`
+            SELECT id, nome_condicao, ativo,
+                   permite_catalogo_personalizado AS catalogo,
+                   exige_aprovacao_credito AS aprov_credito
+            FROM tabela_precos
+            ORDER BY id ASC
+        `);
+        res.json({
+            ok: true,
+            total: condicoes.length,
+            ativas: condicoes.filter(c => c.ativo).length,
+            no_catalogo: condicoes.filter(c => c.catalogo).length,
+            condicoes
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;

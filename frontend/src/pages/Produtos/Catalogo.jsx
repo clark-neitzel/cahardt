@@ -133,16 +133,18 @@ const Catalogo = () => {
 
     const entrarMontar = async () => {
         setMontarMode(true);
-        if (baseCarregada) return;
         try {
+            // Condições recarregam sempre (pega tags recém-marcadas em Preços e Condições);
+            // clientes só na primeira vez (lista grande).
             const [cli, cond] = await Promise.all([
-                clienteService.listar({ limit: 2000 }),
+                baseCarregada ? Promise.resolve(null) : clienteService.listar({ limit: 2000 }),
                 tabelaPrecoService.listar(true),
             ]);
-            const listaCli = (cli.data || cli || []).filter(c => c.Ativo);
-            setClientes(listaCli);
+            if (cli) {
+                setClientes((cli.data || cli || []).filter(c => c.Ativo));
+                setBaseCarregada(true);
+            }
             setCondicoes(Array.isArray(cond) ? cond : []);
-            setBaseCarregada(true);
         } catch (e) {
             console.error('Erro ao carregar clientes/condições do catálogo personalizado:', e);
         }
