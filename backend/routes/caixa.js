@@ -1805,6 +1805,12 @@ router.post('/quitar-ca', async (req, res) => {
                     grupos['OUTRO'].valor += Number(p.valor);
                     continue;
                 }
+                if (p.cobrancaAsaasId) {
+                    // PIX Asaas: o dinheiro já caiu na conta Asaas (não passa pela caixinha)
+                    if (!grupos['PIX_ASAAS']) grupos['PIX_ASAAS'] = { valor: 0, formaNome: 'PIX Asaas' };
+                    grupos['PIX_ASAAS'].valor += Number(p.valor);
+                    continue;
+                }
                 if (!isFormaElegivel(p.formaPagamentoNome)) continue;
                 const metodo = mapMetodoPagamentoCA(p.formaPagamentoNome);
                 if (!grupos[metodo]) grupos[metodo] = { valor: 0, formaNome: p.formaPagamentoNome };
@@ -2012,6 +2018,13 @@ router.post('/quitar-ca', async (req, res) => {
         }
 
         // ═══ NORMAIS → Baixa no Conta Azul via API ═══
+        // Conta financeira do Asaas no CA (config opcional) — onde entram os PIX Asaas
+        let contaAsaasCaId = null;
+        try {
+            const cfgAsaas = await prisma.appConfig.findUnique({ where: { key: 'asaas_conta_financeira_ca_id' } });
+            contaAsaasCaId = cfgAsaas?.value || null;
+        } catch (_) { /* sem config → cai na caixinha com observação */ }
+
         let contaCaixinha = null;
         if (normais.length > 0) {
             try {
@@ -2098,31 +2111,52 @@ router.post('/quitar-ca', async (req, res) => {
                     const acoes = [];
                     let valorBaixado = 0;
 
+                    // PIX Asaas tem baixa própria (o dinheiro está na conta Asaas, não na caixinha).
+                    // A devolução (desconto) entra UMA única vez: nas formas não-dinheiro comuns,
+                    // senão no PIX Asaas, senão no dinheiro — sempre na última baixa que fecha a parcela.
+                    const grupoAsaas = grupos['PIX_ASAAS'] || null;
+                    const formasCondicao = Object.entries(grupos).filter(([m]) => m !== 'DINHEIRO' && m !== 'PIX_ASAAS');
+                    const descontoNoAsaas = formasCondicao.length === 0 && grupoAsaas ? valorDevolvido : 0;
+                    const descontoNoDinheiro = formasCondicao.length === 0 && !grupoAsaas ? valorDevolvido : 0;
+
                     // 1. DINHEIRO → criar baixa no CA (caixinha)
                     if (grupos['DINHEIRO']) {
                         const valorDinheiro = Math.round(grupos['DINHEIRO'].valor * 100) / 100;
-                        const formasNaoDinheiro = Object.entries(grupos).filter(([m]) => m !== 'DINHEIRO');
-                        // Se não há outras formas de pagamento, incluir desconto de devolução aqui mesmo
-                        const descontoDinheiro = formasNaoDinheiro.length === 0 ? valorDevolvido : 0;
                         const baixaPayload = {
                             data_pagamento: dataPgto,
                             composicao_valor: {
                                 valor_bruto: valorDinheiro,
-                                multa: 0, juros: 0, desconto: descontoDinheiro, taxa: 0
+                                multa: 0, juros: 0, desconto: descontoNoDinheiro, taxa: 0
                             },
                             conta_financeira: contaCaixinha.id,
                             metodo_pagamento: 'DINHEIRO',
                             observacao: obsBase
                         };
                         await contaAzulService.criarBaixa(parcela.id, baixaPayload);
-                        acoes.push(`Baixa dinheiro: R$ ${valorDinheiro.toFixed(2)}${descontoDinheiro > 0 ? ` + Dev: R$ ${descontoDinheiro.toFixed(2)}` : ''}`);
-                        valorBaixado = valorDinheiro;
+                        acoes.push(`Baixa dinheiro: R$ ${valorDinheiro.toFixed(2)}${descontoNoDinheiro > 0 ? ` + Dev: R$ ${descontoNoDinheiro.toFixed(2)}` : ''}`);
+                        valorBaixado += valorDinheiro;
                     }
 
-                    // 2. Formas não-dinheiro (PIX, Cartão)
+                    // 1b. PIX ASAAS → criar baixa no CA na conta financeira do Asaas
+                    if (grupoAsaas) {
+                        const valorAsaas = Math.round(grupoAsaas.valor * 100) / 100;
+                        await contaAzulService.criarBaixa(parcela.id, {
+                            data_pagamento: dataPgto,
+                            composicao_valor: {
+                                valor_bruto: valorAsaas,
+                                multa: 0, juros: 0, desconto: descontoNoAsaas, taxa: 0
+                            },
+                            conta_financeira: contaAsaasCaId || contaCaixinha.id,
+                            metodo_pagamento: 'PIX_PAGAMENTO_INSTANTANEO',
+                            observacao: `PIX Asaas (recebido na conta Asaas)${contaAsaasCaId ? '' : ' — conta Asaas não configurada no app, lançado na Caixinha'} | ${obsBase}`
+                        });
+                        acoes.push(`Baixa PIX Asaas: R$ ${valorAsaas.toFixed(2)}${descontoNoAsaas > 0 ? ` + Dev: R$ ${descontoNoAsaas.toFixed(2)}` : ''}`);
+                        valorBaixado += valorAsaas;
+                    }
+
+                    // 2. Formas não-dinheiro comuns (PIX, Cartão)
                     // Com devolução → criar baixa com desconto para fechar a parcela residual
                     // Sem devolução → apenas alterar metodo_pagamento na parcela (sem baixar)
-                    const formasCondicao = Object.entries(grupos).filter(([m]) => m !== 'DINHEIRO');
                     if (formasCondicao.length > 0) {
                         const [metodoMaior, grupoMaior] = formasCondicao.reduce((a, b) => b[1].valor > a[1].valor ? b : a);
                         const valorNaoDinheiro = Math.round(formasCondicao.reduce((s, [, g]) => s + g.valor, 0) * 100) / 100;

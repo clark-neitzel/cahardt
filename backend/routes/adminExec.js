@@ -52,8 +52,54 @@ router.get('/ping', (req, res) => {
         jwtConfigurada: !!process.env.JWT_SECRET,          // termômetro: JWT_SECRET setado no ambiente?
         certEncKeyConfigurada: !!process.env.CERT_ENC_KEY, // idem para a chave do certificado A1
         caClientConfigurada: !!(process.env.CONTA_AZUL_CLIENT_ID && process.env.CONTA_AZUL_CLIENT_SECRET),
+        asaasConfigurada: !!process.env.ASAAS_API_KEY,
+        asaasWebhookTokenConfigurado: !!process.env.ASAAS_WEBHOOK_TOKEN,
         node: process.version,
     });
+});
+
+// ── Integração Asaas ──────────────────────────────────────────────
+
+// GET /api/admin-exec/asaas-status — chave configurada? conta responde? webhook token setado?
+router.get('/asaas-status', async (req, res) => {
+    try {
+        const asaasService = require('../services/asaasService');
+        const status = await asaasService.statusIntegracao();
+        res.json({
+            ...status,
+            webhookTokenConfigurado: !!process.env.ASAAS_WEBHOOK_TOKEN
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/admin-exec/asaas-registrar-webhook — cria/atualiza o webhook no painel do Asaas
+// Body opcional: { url } (padrão: URL pública do app + /api/asaas/webhook)
+router.post('/asaas-registrar-webhook', async (req, res) => {
+    try {
+        const asaasService = require('../services/asaasService');
+        const url = req.body?.url || 'https://cahardt-github.xrqvlq.easypanel.host/api/asaas/webhook';
+        const resultado = await asaasService.registrarWebhook(url);
+        res.json({ ok: true, url, ...resultado });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// GET /api/admin-exec/asaas-cobrancas — últimas cobranças (diagnóstico)
+router.get('/asaas-cobrancas', async (req, res) => {
+    try {
+        const cobrancas = await prisma.cobrancaAsaas.findMany({
+            orderBy: { createdAt: 'desc' },
+            take: 20,
+            include: { cliente: { select: { Nome: true } }, pedido: { select: { numero: true } } }
+        });
+        const eventos = await prisma.asaasWebhookEvento.findMany({ orderBy: { createdAt: 'desc' }, take: 10 });
+        res.json({ cobrancas, eventos });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // GET /api/admin-exec/diag-dashboard-vendas — confere as vendas do mês na regra do

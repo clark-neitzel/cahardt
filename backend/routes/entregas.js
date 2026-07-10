@@ -375,8 +375,39 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
                     formaPagamentoNome: pgto.formaPagamentoNome,
                     valor: Number(pgto.valor),
                     vendedorResponsavelId: pgto.vendedorResponsavelId || null,
-                    escritorioResponsavel: pgto.escritorioResponsavel || false
+                    escritorioResponsavel: pgto.escritorioResponsavel || false,
+                    cobrancaAsaasId: pgto.cobrancaAsaasId || null
                 });
+            }
+
+            // PIX Asaas: pagamento cujo dinheiro o banco JÁ confirmou (QR pago na frente do motorista).
+            // Valida que a cobrança é deste pedido, está RECEBIDA, bate o valor e nunca foi usada.
+            const idsCobrancaAsaas = operacoesPgto.map(p => p.cobrancaAsaasId).filter(Boolean);
+            if (idsCobrancaAsaas.length > 0) {
+                const cobrancas = await prisma.cobrancaAsaas.findMany({ where: { id: { in: idsCobrancaAsaas } } });
+                for (const op of operacoesPgto.filter(p => p.cobrancaAsaasId)) {
+                    const cob = cobrancas.find(c => c.id === op.cobrancaAsaasId);
+                    if (!cob || cob.pedidoId !== id) {
+                        return res.status(400).json({ error: 'Cobrança PIX não pertence a este pedido.' });
+                    }
+                    if (cob.status !== 'RECEBIDO') {
+                        return res.status(400).json({ error: 'O PIX ainda não foi confirmado como pago. Aguarde a confirmação ou remova a linha.' });
+                    }
+                    if (Math.abs(Number(cob.valorRecebido ?? cob.valor) - op.valor) > 0.05) {
+                        return res.status(400).json({ error: `Valor do pagamento PIX (R$ ${op.valor.toFixed(2)}) não bate com o PIX recebido (R$ ${Number(cob.valorRecebido ?? cob.valor).toFixed(2)}).` });
+                    }
+                    // Padroniza: dinheiro confirmado, sem responsável de dívida
+                    op.formaPagamentoNome = 'PIX Asaas';
+                    op.escritorioResponsavel = false;
+                    op.vendedorResponsavelId = null;
+                }
+                const jaUsada = await prisma.pedidoPagamentoReal.findFirst({
+                    where: { cobrancaAsaasId: { in: idsCobrancaAsaas } },
+                    select: { id: true }
+                });
+                if (jaUsada) {
+                    return res.status(400).json({ error: 'Este PIX já foi registrado em outra entrega.' });
+                }
             }
 
             // Validar formas de recebimento permitidas pela condição
@@ -391,6 +422,7 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
                 const nomesPermitidos = permitidas.map(p => mapaNomes[p]?.toLowerCase()).filter(Boolean);
 
                 for (const op of operacoesPgto) {
+                    if (op.cobrancaAsaasId) continue; // PIX Asaas confirmado pelo banco é sempre aceito
                     const nomeUsado = op.formaPagamentoNome?.toLowerCase();
                     const idPermitido = op.formaPagamentoEntregaId && permitidas.includes(op.formaPagamentoEntregaId);
                     if (!idPermitido && !nomesPermitidos.includes(nomeUsado)) {

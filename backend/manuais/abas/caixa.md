@@ -68,6 +68,8 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 2. A barra azul "Baixa CA" aparece no topo da lista com o total selecionado
 3. Clique em **Processar N selecionada(s)** — todas as baixas são enviadas ao CA de uma vez
 
+**Pagamentos "PIX Asaas":** quando o motorista cobrou via QR Code PIX na entrega (integração Asaas), esse valor entra na baixa do CA como uma baixa PIX separada, lançada na conta financeira do Asaas (configuração `asaas_conta_financeira_ca_id`; sem ela, cai na Caixinha com observação). O dinheiro desse PIX **não** fica com o motorista — não entra no valor a prestar.
+
 ### Registrar uma despesa
 1. Clique em **+ Despesa** (botão no topo ou no card do veículo)
 2. Escolha a categoria (combustível, pedágio, hotel, manutenção, outro)

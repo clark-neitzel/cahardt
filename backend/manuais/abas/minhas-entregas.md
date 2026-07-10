@@ -66,6 +66,16 @@ Escolha o que aconteceu na entrega:
 - Cada forma só pode aparecer uma vez; o total deve fechar exatamente (tolerância de R$ 0,05)
 - Marque o toggle de divergência se percebeu diferença em relação ao combinado
 
+**Receber com PIX (QR Code) — Etapa 3**
+- Se a integração Asaas estiver configurada no servidor, aparece o botão verde **Receber com PIX (QR Code)**
+- O motorista informa o valor (já vem sugerido com o saldo; pode ser menor se parte for em dinheiro ou houver devolução) e toca em **Gerar QR Code**
+- O cliente escaneia o QR na tela do celular do motorista (ou usa o botão **Copiar código PIX** para pagar pelo copia-e-cola)
+- A confirmação aparece na tela em poucos segundos, direto do banco — não precisa de comprovante de WhatsApp
+- O PIX confirmado entra como uma linha verde travada ("PIX Asaas — Confirmado pelo banco") na lista de pagamentos e abate automaticamente o valor das outras linhas
+- Combinações aceitas: só PIX, dinheiro + PIX, devolução + PIX, ou os três juntos — a conta precisa fechar como sempre
+- A linha do PIX confirmado não pode ser removida pelo motorista (estorno só pelo escritório, no painel do Asaas)
+- Se o motorista fechar o QR sem o cliente pagar, a cobrança é cancelada automaticamente
+
 **Etapa 4 — GPS e Conclusão**
 - Clique em **Capturar GPS** para registrar a localização no momento da entrega
 - O navegador pedirá permissão de localização
@@ -132,4 +142,7 @@ Cada card mostra:
 |---------|-------|
 | `frontend/src/pages/Motorista/Entregas/PainelMotorista.jsx` | Tela principal com sub-abas e cards de entrega |
 | `frontend/src/pages/Motorista/Entregas/CheckoutEntregaModal.jsx` | Modal de checkout em 4 etapas (status, devolução, caixa, GPS) |
+| `frontend/src/pages/Motorista/Entregas/PixAsaasModal.jsx` | Modal do QR Code PIX (Asaas) com confirmação automática |
 | `frontend/src/services/entregasService.js` | Chamadas de API para entregas do motorista |
+| `frontend/src/services/asaasService.js` | Chamadas de API da integração Asaas (PIX) |
+| `backend/services/asaasService.js` | Integração com a API do Asaas (cliente, cobrança, webhook) |

@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, CheckCircle, Package, ArrowRight, Save, Navigation, DollarSign, AlertCircle, Trash2, Plus, Mic, MicOff, MessageSquare } from 'lucide-react';
+import { X, CheckCircle, Package, ArrowRight, Save, Navigation, DollarSign, AlertCircle, Trash2, Plus, Mic, MicOff, MessageSquare, QrCode } from 'lucide-react';
 import toast from 'react-hot-toast';
 import entregasService from '../../../services/entregasService';
 import formasPagamentoService from '../../../services/formasPagamentoService';
 import tabelaPrecoService from '../../../services/tabelaPrecoService';
+import asaasService from '../../../services/asaasService';
 import { useAuth } from '../../../contexts/AuthContext';
 import AlertaGpsFaltante from '../../../components/AlertaGpsFaltante';
 import ClientePopup from '../../Rota/ClientePopup';
+import PixAsaasModal from './PixAsaasModal';
 
 const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     const { user } = useAuth();
@@ -35,6 +37,16 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
 
     // Diversos
     const [divergencia, setDivergencia] = useState(false);
+
+    // PIX na entrega (Asaas) — QR Code com confirmação bancária na hora
+    const [asaasDisponivel, setAsaasDisponivel] = useState(false);
+    const [showPixModal, setShowPixModal] = useState(false);
+
+    useEffect(() => {
+        asaasService.status()
+            .then(s => setAsaasDisponivel(!!s.configurado))
+            .catch(() => setAsaasDisponivel(false));
+    }, []);
 
     // Regras da condição de pagamento do pedido
     const [regrasCondicao, setRegrasCondicao] = useState({ permiteDevolucaoTotal: true, permiteDevolucaoParcial: true, formasRecebimentoPermitidas: [], debitaCaixa: true });
@@ -253,6 +265,34 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     const totalApontado = pagamentos.reduce((acc, pg) => acc + Number(pg.valor), 0);
     const saldoRestante = Number((saldoLiquidoDevedor - totalApontado).toFixed(2));
 
+    // PIX Asaas: quanto ainda dá pra cobrar por PIX (saldo líquido menos PIX já confirmados)
+    const totalPixConfirmado = pagamentos.filter(p => p._cobrancaAsaasId).reduce((a, p) => a + Number(p.valor), 0);
+    const pixSugerido = Number(Math.max(0, saldoLiquidoDevedor - totalPixConfirmado).toFixed(2));
+
+    // PIX confirmado entra como linha travada e abate as linhas comuns (a conta continua fechando)
+    const handlePixRecebido = (cobranca) => {
+        setShowPixModal(false);
+        const valorPix = Number(cobranca.valorRecebido ?? cobranca.valor);
+        setPagamentos(prev => {
+            let restanteADescontar = valorPix;
+            const ajustadas = [];
+            for (const p of prev) {
+                if (p._cobrancaAsaasId) { ajustadas.push(p); continue; }
+                const v = Number(p.valor) || 0;
+                const abate = Math.min(v, restanteADescontar);
+                restanteADescontar -= abate;
+                const novoValor = Number((v - abate).toFixed(2));
+                if (novoValor > 0.001) ajustadas.push({ ...p, valor: novoValor });
+            }
+            return [...ajustadas, {
+                idLocal: Date.now(),
+                _selectId: '_pix_asaas',
+                valor: valorPix,
+                _cobrancaAsaasId: cobranca.id
+            }];
+        });
+    };
+
     const handleAddPagamento = () => {
         if (formasDisp.length === 0) return toast.error('Nenhuma forma de pagamento configurada no painel web.');
         const defaultId = pagamentos.length === 0 ? getDefaultSelectId() : '';
@@ -291,8 +331,8 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
             return toast.error('Remova pagamentos com valor R$ 0,00. Cada linha precisa ter um valor real.');
         }
 
-        // Bloquear condição de pagamento duplicada
-        const selectIds = pagamentos.map(p => p._selectId);
+        // Bloquear condição de pagamento duplicada (linhas de PIX Asaas ficam de fora: pode haver mais de um QR pago)
+        const selectIds = pagamentos.filter(p => !p._cobrancaAsaasId).map(p => p._selectId);
         const duplicado = selectIds.find((id, i) => selectIds.indexOf(id) !== i);
         if (duplicado) {
             const nomeDuplicado = formasDisp.find(f => f._selectId === duplicado)?.nome || duplicado;
@@ -354,6 +394,17 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
 
             if (statusFinal !== 'DEVOLVIDO') {
                 payload.pagamentos = pagamentos.map(p => {
+                    // PIX Asaas confirmado pelo banco: vai com o vínculo da cobrança
+                    if (p._cobrancaAsaasId) {
+                        return {
+                            formaPagamentoEntregaId: null,
+                            formaPagamentoNome: 'PIX Asaas',
+                            valor: p.valor,
+                            vendedorResponsavelId: null,
+                            escritorioResponsavel: false,
+                            cobrancaAsaasId: p._cobrancaAsaasId
+                        };
+                    }
                     const formaConfig = formasDisp.find(f => f._selectId === p._selectId);
                     return {
                         formaPagamentoEntregaId: formaConfig?.formaPagamentoEntregaId || null,
@@ -405,6 +456,15 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                 cliente={pedido.cliente}
                 onClose={() => setShowClientePopupGps(false)}
                 onAtualizado={() => setShowClientePopupGps(false)}
+            />
+        )}
+        {showPixModal && (
+            <PixAsaasModal
+                pedido={pedido}
+                valorSugerido={pixSugerido}
+                valorMaximo={pixSugerido}
+                onRecebido={handlePixRecebido}
+                onClose={() => setShowPixModal(false)}
             />
         )}
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-95 p-2">
@@ -600,7 +660,19 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                         <p className="text-xs text-gray-400">Pressione + para apontar como ele pagou.</p>
                                     </div>
                                 ) : (
-                                    pagamentos.map((pg, index) => (
+                                    pagamentos.map((pg, index) => pg._cobrancaAsaasId ? (
+                                        /* PIX Asaas confirmado pelo banco — linha travada (estorno só pelo escritório) */
+                                        <div key={pg.idLocal} className="bg-green-50 p-4 rounded-xl border border-green-200 flex items-center justify-between">
+                                            <div className="flex items-center gap-3">
+                                                <CheckCircle className="h-7 w-7 text-green-600 shrink-0" />
+                                                <div>
+                                                    <p className="text-sm font-bold text-green-800">PIX Asaas</p>
+                                                    <p className="text-[10px] text-green-700 font-bold uppercase tracking-wide">Confirmado pelo banco</p>
+                                                </div>
+                                            </div>
+                                            <span className="text-xl font-black font-mono text-green-700">R$ {Number(pg.valor).toFixed(2)}</span>
+                                        </div>
+                                    ) : (
                                         <div key={pg.idLocal} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 relative">
                                             <button onClick={() => handleRemovePagamento(pg.idLocal)} className="absolute top-3 right-3 text-red-400 hover:text-red-600 transform active:scale-95">
                                                 <Trash2 className="h-5 w-5" />
@@ -644,6 +716,16 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                             </div>
                                         </div>
                                     ))
+                                )}
+
+                                {/* Cobrar via PIX com QR Code (Asaas) — confirmação bancária na hora */}
+                                {asaasDisponivel && pixSugerido > 0.01 && (
+                                    <button
+                                        onClick={() => setShowPixModal(true)}
+                                        className="w-full py-4 bg-primary hover:bg-primaryDark active:bg-primaryDark text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-md"
+                                    >
+                                        <QrCode className="h-5 w-5" /> Receber com PIX (QR Code)
+                                    </button>
                                 )}
 
                                 {saldoRestante > 0.01 && (

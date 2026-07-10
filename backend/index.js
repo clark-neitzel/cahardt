@@ -72,6 +72,7 @@ const catalogoPersonalizadoPublicRoutes = require('./routes/catalogoPersonalizad
 const visitorRoutes = require('./routes/visitorRoutes'); // Rastreio de visitantes online (ping público + stats admin)
 const pontoPublicRoutes = require('./routes/pontoPublicRoutes'); // RH: bater ponto por link público (sem login)
 const iaConsultaRoutes = require('./routes/iaConsultaRoutes'); // API de consulta somente-leitura p/ IA externa (ex.: bot WhatsApp)
+const asaasRoutes = require('./routes/asaasRoutes'); // Integração Asaas: PIX na entrega + webhook de pagamento
 const contasPagarRoutes = require('./routes/contasPagar'); // Financeiro: Contas a Pagar (Fase 1)
 const fornecedoresRoutes = require('./routes/fornecedores'); // Financeiro: Fornecedores
 const configNotasRoutes = require('./routes/configNotas'); // Configurações: Certificado Digital (notas)
@@ -134,6 +135,7 @@ app.use('/api/catalogo-personalizado-publico', catalogoPersonalizadoPublicRoutes
 app.use('/api/visitors', visitorRoutes); // ping público + stats protegida (auth interna na rota)
 app.use('/api/ponto-publico', pontoPublicRoutes); // RH: bater ponto por link público (token identifica o funcionário)
 app.use('/api/ia-consulta', iaConsultaRoutes); // API de consulta somente-leitura p/ IA externa (própria chave x-ia-api-key, não usa admin-secret)
+app.use('/api/asaas', asaasRoutes); // Integração Asaas: webhook público (token próprio) + PIX na entrega (auth interna)
 
 
 // (Protegidas)
