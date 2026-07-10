@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import caixaService from '../../services/caixaService';
 
@@ -164,19 +165,19 @@ const RelatorioCaixaPrint = () => {
         <>
             <style>{`
                 @page { margin: 8mm 10mm; size: A4; }
+                /* A folha (.rpt) é renderizada FORA do #root, direto no body (portal).
+                   Na impressão escondemos o #root inteiro — assim NENHUM elemento do
+                   app (barra "Site agora", sidebar, Clippy, etc.) pode vazar na folha. */
+                .rpt-print { min-height: 100vh; background: #e9e9e9; padding: 20px 0; }
                 @media print {
-                    html, body, #root, .bg-secondary { background: #fff !important; }
-                    body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                    /* O shell do app é flex com overflow — impede a quebra em várias páginas.
-                       Vira bloco fluido na impressão, senão a folha 2 sai em branco. */
-                    #root > div { display: block !important; min-height: 0 !important; height: auto !important; }
-                    #root > div > div { display: block !important; }
-                    aside { display: none !important; }
-                    main { display: block !important; overflow: visible !important; padding: 0 !important; margin: 0 !important; width: auto !important; }
-                    .no-print, nav, header { display: none !important; }
+                    html, body { background: #fff !important; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    #root { display: none !important; }
+                    .rpt-print { min-height: 0; background: #fff; padding: 0; }
+                    .no-print { display: none !important; }
                     .page-break { page-break-before: always; }
                 }
-                .rpt { font-family: Arial, Helvetica, sans-serif; max-width: 190mm; margin: 0 auto; color: #111; }
+                .rpt { font-family: Arial, Helvetica, sans-serif; max-width: 190mm; margin: 0 auto; color: #111; background: #fff; padding: 10mm; box-shadow: 0 2px 14px rgba(0,0,0,.18); }
+                @media print { .rpt { padding: 0; box-shadow: none; max-width: none; } }
                 .rpt table { border-collapse: collapse; width: 100%; }
                 .rpt th { background: #fff; font-size: 8px; text-transform: uppercase; letter-spacing: .5px; color: #666; font-weight: 800; padding: 2.5px 5px; border-bottom: 1.5px solid #bbb; text-align: left; }
                 .rpt td { font-size: 9px; padding: 1.6px 5px; border-bottom: 1px solid #e5e5e5; }
@@ -227,8 +228,10 @@ const RelatorioCaixaPrint = () => {
                 .rpt .dashed-line { border-bottom: 1px dashed #aaa; height: 18px; }
             `}</style>
 
+            {createPortal(
+            <div className="rpt-print">
             {/* Botões (não imprime) */}
-            <div className="no-print" style={{ textAlign: 'center', padding: '12px', background: '#f3f4f6', position: 'sticky', top: 0, zIndex: 10 }}>
+            <div className="no-print" style={{ textAlign: 'center', padding: '12px', marginBottom: '12px' }}>
                 <button onClick={() => window.print()} style={{ padding: '8px 24px', background: '#00754A', color: '#fff', border: 'none', borderRadius: '99px', fontWeight: 700, fontSize: '14px', cursor: 'pointer', marginRight: '10px' }}>
                     Imprimir
                 </button>
@@ -508,6 +511,9 @@ const RelatorioCaixaPrint = () => {
                     </div>
                 </div>
             </div>
+            </div>,
+            document.body
+            )}
         </>
     );
 };
