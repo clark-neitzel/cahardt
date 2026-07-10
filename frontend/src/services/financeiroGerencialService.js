@@ -33,6 +33,20 @@ const financeiroGerencialService = {
         const response = await api.get('/financeiro-gerencial/por-conta/extrato', { params: { contaId: contaId || 'sem', de, ate } });
         return response.data;
     },
+    // Move um lançamento para outra conta (banco/caixa). origem: RECEBER | PAGAR | AJUSTE
+    moverLancamentoBanco: async (origem, id, contaId) => {
+        const response = await api.put('/financeiro-gerencial/por-conta/lancamento-banco', { origem, id, contaId: contaId || 'sem' });
+        return response.data;
+    },
+    // Cria um ajuste manual de saldo. tipo: ENTRADA | SAIDA; valor > 0; data 'YYYY-MM-DD'
+    criarAjusteSaldo: async ({ contaId, tipo, valor, data, descricao }) => {
+        const response = await api.post('/financeiro-gerencial/por-conta/ajuste', { contaId: contaId || 'sem', tipo, valor, data, descricao });
+        return response.data;
+    },
+    excluirAjusteSaldo: async (id) => {
+        const response = await api.delete(`/financeiro-gerencial/por-conta/ajuste/${id}`);
+        return response.data;
+    },
     // Margem por produto: { de, ate, linhas:[{produtoId, nome, quantidade, receita, custoUnitario, fonteCusto, margem, margemPct}], totais }
     margemProdutos: async (de, ate) => {
         const response = await api.get('/financeiro-gerencial/margem-produtos', { params: { de, ate } });

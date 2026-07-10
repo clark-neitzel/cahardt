@@ -1,6 +1,8 @@
 /**
  * Financeiro Gerencial (Fase 5) — Fluxo de Caixa e DRE.
- * Relatórios SOMENTE LEITURA sobre contas a receber/pagar e pedidos.
+ * Relatórios sobre contas a receber/pagar e pedidos (leitura), mais as
+ * correções da tela Saldos por Conta: mover lançamento de banco e
+ * ajuste manual de saldo (escrita pontual, só nos campos de conta).
  *
  * Permissão: admin ou Pode_Acessar_Financeiro_Gerencial
  */
@@ -111,6 +113,83 @@ router.get('/por-conta/extrato', verificarAuth, checkAcesso, async (req, res) =>
     } catch (error) {
         console.error('Erro no extrato por conta:', error);
         res.status(500).json({ error: 'Erro ao montar o extrato da conta.' });
+    }
+});
+
+// Resolve o contaId vindo do frontend ('sem' | uuid) e valida que a conta existe.
+// Retorna { ok, contaId } ou { ok: false, erro }.
+const resolverContaId = async (bruto) => {
+    if (!bruto || bruto === 'sem') return { ok: true, contaId: null };
+    const conta = await prisma.contaFinanceira.findUnique({ where: { id: String(bruto) }, select: { id: true } });
+    if (!conta) return { ok: false, erro: 'Conta (banco/caixa) não encontrada.' };
+    return { ok: true, contaId: conta.id };
+};
+
+// ── PUT /por-conta/lancamento-banco — mover um lançamento para outra conta ──
+// body: { origem: 'RECEBER'|'PAGAR'|'AJUSTE', id, contaId: uuid|'sem' }
+// Corrige lançamentos que caíram em "Não informado" ou no banco errado.
+// Só muda o campo de conta financeira — valor, data e baixa ficam intactos.
+router.put('/por-conta/lancamento-banco', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const { origem, id } = req.body || {};
+        if (!id || !['RECEBER', 'PAGAR', 'AJUSTE'].includes(origem)) {
+            return res.status(400).json({ error: 'Informe origem (RECEBER, PAGAR ou AJUSTE) e id do lançamento.' });
+        }
+        const r = await resolverContaId(req.body?.contaId);
+        if (!r.ok) return res.status(400).json({ error: r.erro });
+
+        const data = { contaFinanceiraCaId: r.contaId };
+        if (origem === 'RECEBER') await prisma.parcela.update({ where: { id: String(id) }, data });
+        else if (origem === 'PAGAR') await prisma.pagamentoParcelaPagar.update({ where: { id: String(id) }, data });
+        else await prisma.ajusteSaldoConta.update({ where: { id: String(id) }, data });
+
+        res.json({ message: 'Lançamento movido de conta!' });
+    } catch (error) {
+        if (error.code === 'P2025') return res.status(404).json({ error: 'Lançamento não encontrado.' });
+        console.error('Erro ao mover lançamento de conta:', error);
+        res.status(500).json({ error: 'Erro ao mover o lançamento de conta.' });
+    }
+});
+
+// ── POST /por-conta/ajuste — criar um ajuste manual de saldo ──
+// body: { contaId: uuid|'sem', tipo: 'ENTRADA'|'SAIDA', valor > 0, data: 'YYYY-MM-DD', descricao }
+router.post('/por-conta/ajuste', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const { tipo, data, descricao } = req.body || {};
+        const valor = Math.round(Number(req.body?.valor) * 100) / 100;
+        if (!['ENTRADA', 'SAIDA'].includes(tipo)) return res.status(400).json({ error: 'Informe o tipo: ENTRADA ou SAIDA.' });
+        if (!Number.isFinite(valor) || valor <= 0) return res.status(400).json({ error: 'Informe um valor maior que zero.' });
+        if (!YMD.test(String(data))) return res.status(400).json({ error: 'Informe a data no formato YYYY-MM-DD.' });
+        if (!String(descricao || '').trim()) return res.status(400).json({ error: 'Descreva o motivo do ajuste.' });
+
+        const r = await resolverContaId(req.body?.contaId);
+        if (!r.ok) return res.status(400).json({ error: r.erro });
+
+        const ajuste = await prisma.ajusteSaldoConta.create({
+            data: {
+                contaFinanceiraCaId: r.contaId,
+                data: new Date(`${data}T12:00:00-03:00`),
+                valor: tipo === 'SAIDA' ? -valor : valor,
+                descricao: String(descricao).trim(),
+                criadoPorId: req.user.id
+            }
+        });
+        res.status(201).json({ message: 'Ajuste registrado!', id: ajuste.id });
+    } catch (error) {
+        console.error('Erro ao criar ajuste de saldo:', error);
+        res.status(500).json({ error: 'Erro ao registrar o ajuste.' });
+    }
+});
+
+// ── DELETE /por-conta/ajuste/:id — excluir um ajuste manual ──
+router.delete('/por-conta/ajuste/:id', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        await prisma.ajusteSaldoConta.delete({ where: { id: String(req.params.id) } });
+        res.json({ message: 'Ajuste excluído!' });
+    } catch (error) {
+        if (error.code === 'P2025') return res.status(404).json({ error: 'Ajuste não encontrado.' });
+        console.error('Erro ao excluir ajuste de saldo:', error);
+        res.status(500).json({ error: 'Erro ao excluir o ajuste.' });
     }
 });
 

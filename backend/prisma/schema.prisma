@@ -409,6 +409,7 @@ model Vendedor {
   pagamentosParcelaPagarRegistrados PagamentoParcelaPagar[] @relation("PagamentosParcelaPagarRegistrados")
   pagamentosParcelaPagarEstornados  PagamentoParcelaPagar[] @relation("PagamentosParcelaPagarEstornados")
   certificadosInstalados            CertificadoDigital[]    @relation("CertificadosInstalados")
+  ajustesSaldoCriados               AjusteSaldoConta[]      @relation("AjustesSaldoCriados")
 
   movimentacoesEstoque MovimentacaoEstoque[]
 
@@ -747,6 +748,24 @@ model ContaFinanceira {
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
   @@map("contas_financeiras")
+}
+
+// Ajuste manual de saldo por conta (banco/caixa) — lançamento avulso para acertar
+// o resultado de uma conta na tela Saldos por Conta. Valor positivo = entrada,
+// negativo = saída. Só existe no app (não vai ao Conta Azul).
+model AjusteSaldoConta {
+  id                  String    @id @default(uuid())
+  contaFinanceiraCaId String?   @map("conta_financeira_ca_id") // null = "Não informado"
+  data                DateTime
+  valor               Decimal   @db.Decimal(12, 2)
+  descricao           String
+  criadoPorId         String?   @map("criado_por_id")
+  criadoPor           Vendedor? @relation("AjustesSaldoCriados", fields: [criadoPorId], references: [id])
+  criadoEm            DateTime  @default(now()) @map("criado_em")
+
+  @@index([contaFinanceiraCaId])
+  @@index([data])
+  @@map("ajustes_saldo_conta")
 }
 
 // =============================================

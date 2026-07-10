@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import financeiroGerencialService from '../../services/financeiroGerencialService';
-import { Landmark, Loader2, RefreshCw, ArrowDownLeft, ArrowUpRight, X, ChevronRight } from 'lucide-react';
+import { Landmark, Loader2, RefreshCw, ArrowDownLeft, ArrowUpRight, X, ChevronRight, ArrowLeftRight, Trash2, SlidersHorizontal } from 'lucide-react';
+import SelectBusca from '../../components/SelectBusca';
 import toast from 'react-hot-toast';
 
 // ── Helpers ──
@@ -54,6 +55,12 @@ const ContasBancosPage = () => {
     const [extrato, setExtrato] = useState(null);
     const [loadingExtrato, setLoadingExtrato] = useState(false);
 
+    // Mover lançamento de conta / ajuste manual
+    const [movendoKey, setMovendoKey] = useState(null); // `${origem}-${id}` do lançamento com o seletor aberto
+    const [salvandoAcao, setSalvandoAcao] = useState(false);
+    const [showAjuste, setShowAjuste] = useState(false);
+    const [ajuste, setAjuste] = useState({ tipo: 'SAIDA', valor: '', data: hojeYMD(), descricao: '' });
+
     const carregar = useCallback(async (p, saldoCA) => {
         setLoading(true);
         try {
@@ -71,6 +78,9 @@ const ContasBancosPage = () => {
     const abrirExtrato = useCallback(async (conta) => {
         setContaSel(conta);
         setExtrato(null);
+        setMovendoKey(null);
+        setShowAjuste(false);
+        setAjuste({ tipo: 'SAIDA', valor: '', data: hojeYMD(), descricao: '' });
         setLoadingExtrato(true);
         try {
             const d = await financeiroGerencialService.extratoPorConta(conta.id, periodo.de, periodo.ate);
@@ -83,8 +93,79 @@ const ContasBancosPage = () => {
         }
     }, [periodo]);
 
+    // Recarrega o extrato aberto e o resumo da página (após mover/ajustar/excluir)
+    const recarregarTudo = useCallback(async (conta) => {
+        setLoadingExtrato(true);
+        try {
+            const [d] = await Promise.all([
+                financeiroGerencialService.extratoPorConta(conta.id, periodo.de, periodo.ate),
+                carregar(periodo, comSaldoCA)
+            ]);
+            setExtrato(d);
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao recarregar o extrato');
+        } finally {
+            setLoadingExtrato(false);
+        }
+    }, [periodo, comSaldoCA, carregar]);
+
+    const moverLancamento = useCallback(async (lanc, novaContaId) => {
+        const destinoAtual = contaSel?.id || 'sem';
+        if (novaContaId === destinoAtual) { setMovendoKey(null); return; }
+        setSalvandoAcao(true);
+        try {
+            await financeiroGerencialService.moverLancamentoBanco(lanc.origem, lanc.id, novaContaId);
+            toast.success('Lançamento movido de conta!');
+            setMovendoKey(null);
+            await recarregarTudo(contaSel);
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao mover o lançamento');
+        } finally {
+            setSalvandoAcao(false);
+        }
+    }, [contaSel, recarregarTudo]);
+
+    const salvarAjuste = useCallback(async () => {
+        const valor = Number(String(ajuste.valor).replace(',', '.'));
+        if (!Number.isFinite(valor) || valor <= 0) return toast.error('Informe um valor maior que zero.');
+        if (!ajuste.descricao.trim()) return toast.error('Descreva o motivo do ajuste.');
+        setSalvandoAcao(true);
+        try {
+            await financeiroGerencialService.criarAjusteSaldo({
+                contaId: contaSel?.id || 'sem',
+                tipo: ajuste.tipo,
+                valor,
+                data: ajuste.data,
+                descricao: ajuste.descricao.trim()
+            });
+            toast.success('Ajuste registrado!');
+            setShowAjuste(false);
+            setAjuste({ tipo: 'SAIDA', valor: '', data: hojeYMD(), descricao: '' });
+            await recarregarTudo(contaSel);
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao registrar o ajuste');
+        } finally {
+            setSalvandoAcao(false);
+        }
+    }, [ajuste, contaSel, recarregarTudo]);
+
+    const excluirAjuste = useCallback(async (lanc) => {
+        if (!window.confirm(`Excluir o ajuste "${lanc.descricao}" de R$ ${fmt(lanc.valor)}?`)) return;
+        setSalvandoAcao(true);
+        try {
+            await financeiroGerencialService.excluirAjusteSaldo(lanc.id);
+            toast.success('Ajuste excluído!');
+            await recarregarTudo(contaSel);
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao excluir o ajuste');
+        } finally {
+            setSalvandoAcao(false);
+        }
+    }, [contaSel, recarregarTudo]);
+
     const contas = dados?.contas || [];
     const totais = dados?.totais;
+    const contasCadastradas = dados?.contasCadastradas || [];
 
     return (
         <div className="max-w-full overflow-x-hidden -mx-4 sm:-mx-6 lg:-mx-8">
@@ -241,7 +322,7 @@ const ContasBancosPage = () => {
                     <span className="font-semibold">Como ler:</span>{' '}
                     <span className="font-semibold text-green-700">Entradas</span> = recebimentos e{' '}
                     <span className="font-semibold text-red-700">Saídas</span> = pagamentos, agrupados pela conta (banco/caixa) usada, no período.
-                    Lançamentos antigos importados podem aparecer em <span className="font-semibold">“Não informado”</span> (o Conta Azul não guardava o banco). Clique numa conta para ver o extrato.
+                    Lançamentos antigos importados podem aparecer em <span className="font-semibold">“Não informado”</span> (o Conta Azul não guardava o banco). Clique numa conta para ver o extrato — lá dá para <span className="font-semibold">mover um lançamento para a conta certa</span> (ícone de setas) e <span className="font-semibold">registrar ajuste manual de saldo</span>. Ajustes valem só aqui no app (não vão ao Conta Azul).
                 </div>
             </div>
 
@@ -249,15 +330,72 @@ const ContasBancosPage = () => {
             {contaSel && (
                 <div className="fixed inset-0 z-50 bg-black/40 flex items-end md:items-center justify-center p-0 md:p-4" onClick={() => setContaSel(null)}>
                     <div className="bg-white w-full md:max-w-2xl md:rounded-2xl rounded-t-2xl shadow-xl max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-between px-4 md:px-5 py-3.5 border-b border-gray-100">
+                        <div className="flex items-center justify-between gap-2 px-4 md:px-5 py-3.5 border-b border-gray-100">
                             <div className="min-w-0">
                                 <div className="text-xs font-bold uppercase tracking-widest text-gray-500">Extrato · {periodo.label}</div>
                                 <div className="text-base font-bold text-gray-900 truncate">{contaSel.nome}</div>
                             </div>
-                            <button onClick={() => setContaSel(null)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 shrink-0">
-                                <X className="h-5 w-5" />
-                            </button>
+                            <div className="flex items-center gap-2 shrink-0">
+                                <button
+                                    onClick={() => setShowAjuste(v => !v)}
+                                    className={`px-3 py-1.5 min-h-[36px] rounded-full text-xs font-medium border inline-flex items-center gap-1.5 ${
+                                        showAjuste ? 'bg-mint/50 border-primary text-primaryDark' : 'bg-white border-primary text-primary hover:bg-mint/40'
+                                    }`}
+                                >
+                                    <SlidersHorizontal className="h-3.5 w-3.5" /> Ajustar saldo
+                                </button>
+                                <button onClick={() => setContaSel(null)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
                         </div>
+
+                        {/* Formulário de ajuste manual */}
+                        {showAjuste && (
+                            <div className="px-4 md:px-5 py-3 border-b border-gray-100 bg-gray-50 space-y-2">
+                                <div className="text-xs font-bold uppercase tracking-widest text-gray-600">Ajuste manual em {contaSel.nome}</div>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                    <div className="flex rounded-full border border-gray-300 bg-white overflow-hidden text-xs font-semibold">
+                                        <button
+                                            onClick={() => setAjuste(a => ({ ...a, tipo: 'ENTRADA' }))}
+                                            className={`flex-1 px-2 py-2 min-h-[40px] ${ajuste.tipo === 'ENTRADA' ? 'bg-green-600 text-white' : 'text-gray-600'}`}
+                                        >+ Entrada</button>
+                                        <button
+                                            onClick={() => setAjuste(a => ({ ...a, tipo: 'SAIDA' }))}
+                                            className={`flex-1 px-2 py-2 min-h-[40px] ${ajuste.tipo === 'SAIDA' ? 'bg-red-600 text-white' : 'text-gray-600'}`}
+                                        >− Saída</button>
+                                    </div>
+                                    <input
+                                        type="number" inputMode="decimal" min="0.01" step="0.01" placeholder="Valor (R$)"
+                                        value={ajuste.valor}
+                                        onChange={e => setAjuste(a => ({ ...a, valor: e.target.value }))}
+                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                    />
+                                    <input
+                                        type="date"
+                                        value={ajuste.data}
+                                        onChange={e => setAjuste(a => ({ ...a, data: e.target.value }))}
+                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                    />
+                                    <input
+                                        type="text" placeholder="Motivo do ajuste"
+                                        value={ajuste.descricao}
+                                        onChange={e => setAjuste(a => ({ ...a, descricao: e.target.value }))}
+                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                    />
+                                </div>
+                                <div className="flex items-center justify-end gap-2">
+                                    <button onClick={() => setShowAjuste(false)} className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800">Cancelar</button>
+                                    <button
+                                        onClick={salvarAjuste}
+                                        disabled={salvandoAcao}
+                                        className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-xs disabled:opacity-50 inline-flex items-center gap-1.5"
+                                    >
+                                        {salvandoAcao && <Loader2 className="h-3.5 w-3.5 animate-spin" />} Salvar ajuste
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         {extrato && (
                             <div className="grid grid-cols-3 gap-2 px-4 md:px-5 py-3 border-b border-gray-100 text-center">
@@ -278,23 +416,68 @@ const ContasBancosPage = () => {
                             )}
                             {extrato && extrato.lancamentos.length > 0 && (
                                 <div className="divide-y divide-gray-100">
-                                    {extrato.lancamentos.map((l, i) => (
-                                        <div key={i} className="flex items-center gap-3 px-4 md:px-5 py-3">
-                                            <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${l.tipo === 'ENTRADA' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                {l.tipo === 'ENTRADA' ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
-                                            </div>
-                                            <div className="min-w-0 flex-1">
-                                                <div className="text-sm font-medium text-gray-900 truncate">{l.quem}</div>
-                                                <div className="text-xs text-gray-500 truncate">{l.descricao}{l.formaPagamento ? ` · ${l.formaPagamento}` : ''}</div>
-                                            </div>
-                                            <div className="text-right shrink-0">
-                                                <div className={`text-sm font-semibold ${l.tipo === 'ENTRADA' ? 'text-green-700' : 'text-red-700'}`}>
-                                                    {l.tipo === 'ENTRADA' ? '+' : '−'} {fmt(l.valor)}
+                                    {extrato.lancamentos.map((l) => {
+                                        const key = `${l.origem}-${l.id}`;
+                                        const ehAjuste = l.origem === 'AJUSTE';
+                                        return (
+                                            <div key={key} className="px-4 md:px-5 py-3">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${l.tipo === 'ENTRADA' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                        {l.tipo === 'ENTRADA' ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <div className="text-sm font-medium text-gray-900 truncate">
+                                                            {l.quem}
+                                                            {ehAjuste && <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-700">ajuste</span>}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500 truncate">{l.descricao}{l.formaPagamento ? ` · ${l.formaPagamento}` : ''}</div>
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        <div className={`text-sm font-semibold ${l.tipo === 'ENTRADA' ? 'text-green-700' : 'text-red-700'}`}>
+                                                            {l.tipo === 'ENTRADA' ? '+' : '−'} {fmt(l.valor)}
+                                                        </div>
+                                                        <div className="text-[11px] text-gray-400">{dataCurta(l.data)}</div>
+                                                    </div>
+                                                    <div className="flex items-center shrink-0 -mr-1">
+                                                        <button
+                                                            onClick={() => setMovendoKey(k => (k === key ? null : key))}
+                                                            title="Mover para outra conta"
+                                                            className={`p-2 rounded-full ${movendoKey === key ? 'text-primary bg-mint/50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                                                        >
+                                                            <ArrowLeftRight className="h-4 w-4" />
+                                                        </button>
+                                                        {ehAjuste && (
+                                                            <button
+                                                                onClick={() => excluirAjuste(l)}
+                                                                disabled={salvandoAcao}
+                                                                title="Excluir ajuste"
+                                                                className="p-2 rounded-full text-gray-400 hover:text-red-600 hover:bg-red-50 disabled:opacity-50"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                <div className="text-[11px] text-gray-400">{dataCurta(l.data)}</div>
+                                                {movendoKey === key && (
+                                                    <div className="mt-2 flex items-center gap-2 pl-11">
+                                                        <span className="text-xs text-gray-500 shrink-0">Mover para:</span>
+                                                        <SelectBusca
+                                                            value={contaSel.id || 'sem'}
+                                                            onChange={e => moverLancamento(l, e.target.value)}
+                                                            disabled={salvandoAcao}
+                                                            className="flex-1"
+                                                        >
+                                                            <option value="sem">Não informado (sem banco)</option>
+                                                            {contasCadastradas.map(c => (
+                                                                <option key={c.id} value={c.id}>{c.nome}</option>
+                                                            ))}
+                                                        </SelectBusca>
+                                                        {salvandoAcao && <Loader2 className="h-4 w-4 animate-spin text-gray-400 shrink-0" />}
+                                                    </div>
+                                                )}
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>

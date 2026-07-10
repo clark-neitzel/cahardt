@@ -434,7 +434,7 @@ async function mapaContasFinanceiras() {
 async function saldosPorConta(de, ate, comSaldoCA = false) {
     const ini = inicioDiaSP(de), fim = fimDiaSP(ate);
 
-    const [entradas, saidas, mapa] = await Promise.all([
+    const [entradas, saidas, ajustes, mapa] = await Promise.all([
         // Recebimentos: parcelas a receber PAGAS no período (por data de pagamento)
         prisma.parcela.groupBy({
             by: ['contaFinanceiraCaId'],
@@ -449,6 +449,11 @@ async function saldosPorConta(de, ate, comSaldoCA = false) {
             _sum: { valorPago: true, juros: true, multa: true },
             _count: { _all: true }
         }),
+        // Ajustes manuais de saldo no período (positivo = entrada, negativo = saída)
+        prisma.ajusteSaldoConta.findMany({
+            where: { data: { gte: ini, lte: fim } },
+            select: { contaFinanceiraCaId: true, valor: true }
+        }),
         mapaContasFinanceiras()
     ]);
 
@@ -460,6 +465,12 @@ async function saldosPorConta(de, ate, comSaldoCA = false) {
     };
     entradas.forEach((e) => { const l = get(e.contaFinanceiraCaId); l.entradas = round2(num(e._sum.valorPago)); l.qtdEnt = e._count._all; });
     saidas.forEach((s) => { const l = get(s.contaFinanceiraCaId); l.saidas = round2(num(s._sum.valorPago) + num(s._sum.juros) + num(s._sum.multa)); l.qtdSai = s._count._all; });
+    ajustes.forEach((a) => {
+        const l = get(a.contaFinanceiraCaId);
+        const v = num(a.valor);
+        if (v >= 0) { l.entradas = round2(l.entradas + v); l.qtdEnt += 1; }
+        else { l.saidas = round2(l.saidas + Math.abs(v)); l.qtdSai += 1; }
+    });
 
     let contas = [...linhas.values()].map((l) => {
         const info = l.id ? mapa.get(l.id) : null;
@@ -491,7 +502,14 @@ async function saldosPorConta(de, ate, comSaldoCA = false) {
         resultado: round2(t.resultado + c.resultado)
     }), { entradas: 0, saidas: 0, resultado: 0 });
 
-    return { de, ate, contas, totais };
+    // Todas as contas cadastradas (para os selects de "mover de banco" e "ajustar saldo",
+    // mesmo as sem movimento no período)
+    const contasCadastradas = [...mapa.entries()]
+        .filter(([, info]) => info.ativo !== false)
+        .map(([id, info]) => ({ id, nome: info.nome, tipo: info.tipo }))
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+
+    return { de, ate, contas, totais, contasCadastradas };
 }
 
 /**
@@ -503,7 +521,7 @@ async function extratoPorConta(contaId, de, ate) {
     const ini = inicioDiaSP(de), fim = fimDiaSP(ate);
     const filtroConta = contaId ? contaId : null;
 
-    const [ents, sais, mapa] = await Promise.all([
+    const [ents, sais, ajustes, mapa] = await Promise.all([
         prisma.parcela.findMany({
             where: { status: 'PAGO', contaFinanceiraCaId: filtroConta, dataPagamento: { gte: ini, lte: fim } },
             select: {
@@ -518,11 +536,17 @@ async function extratoPorConta(contaId, de, ate) {
                 parcelaPagar: { select: { numeroParcela: true, contaPagar: { select: { descricao: true, fornecedor: { select: { razaoSocial: true } } } } } }
             }
         }),
+        prisma.ajusteSaldoConta.findMany({
+            where: { contaFinanceiraCaId: filtroConta, data: { gte: ini, lte: fim } },
+            select: { id: true, data: true, valor: true, descricao: true, criadoPor: { select: { nome: true } } }
+        }),
         mapaContasFinanceiras()
     ]);
 
     const lancamentos = [
         ...ents.map((e) => ({
+            id: e.id,
+            origem: 'RECEBER',
             tipo: 'ENTRADA',
             data: e.dataPagamento,
             valor: round2(num(e.valorPago)),
@@ -531,12 +555,24 @@ async function extratoPorConta(contaId, de, ate) {
             formaPagamento: e.formaPagamento || null
         })),
         ...sais.map((s) => ({
+            id: s.id,
+            origem: 'PAGAR',
             tipo: 'SAIDA',
             data: s.dataPagamento,
             valor: round2(num(s.valorPago) + num(s.juros) + num(s.multa)),
             quem: s.parcelaPagar?.contaPagar?.fornecedor?.razaoSocial || 'Fornecedor',
             descricao: s.parcelaPagar?.contaPagar?.descricao || 'Pagamento',
             formaPagamento: s.formaPagamento || null
+        })),
+        ...ajustes.map((a) => ({
+            id: a.id,
+            origem: 'AJUSTE',
+            tipo: num(a.valor) >= 0 ? 'ENTRADA' : 'SAIDA',
+            data: a.data,
+            valor: round2(Math.abs(num(a.valor))),
+            quem: 'Ajuste manual',
+            descricao: `${a.descricao}${a.criadoPor?.nome ? ` · por ${a.criadoPor.nome}` : ''}`,
+            formaPagamento: null
         }))
     ].sort((a, b) => new Date(b.data) - new Date(a.data));
 
