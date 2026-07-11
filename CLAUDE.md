@@ -421,6 +421,7 @@ Ao **finalizar qualquer mudança visível para a equipe**, gerar por conta próp
 3. O link público fica em `https://cahardt-github.xrqvlq.easypanel.host/novidade-<slug>.html` (nginx serve arquivos reais de `public/` direto; funciona sem login).
 4. Entregar ao usuário: o link + **texto pronto para copiar/colar** no grupo (formatação do WhatsApp: `*negrito*`, emojis, curto).
 5. Páginas de anúncio antigas podem ser removidas quando a novidade deixar de ser nova (não acumular).
+6. **NÃO incluir botão/link "Abrir o app" (ou similar) na página** — a equipe usa o app pelo atalho instalado (PWA); um link abriria o sistema no navegador comum, fora do atalho. A página é só leitura do anúncio (pedido do usuário em 07/2026).
 
 ---
 
