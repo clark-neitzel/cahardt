@@ -356,6 +356,7 @@ const asaasService = {
         // calculada lá no faturamento — a parcela local pode estar defasada).
         // Se divergir, atualiza a parcela local junto.
         let vencOficial = parcela.dataVencimento || null;
+        let parcelaCaId = null; // parcela correspondente no CA (p/ apontar a conta ASAAS depois)
         if (conta.pedido?.idVendaContaAzul) {
             try {
                 const contaAzulService = require('./contaAzulService');
@@ -365,6 +366,7 @@ const asaasService = {
                 );
                 const caPar = (parcelasCA || []).find(p => (p.numero_parcela || 0) === parcela.numeroParcela)
                     || ((parcelasCA || []).length === 1 ? parcelasCA[0] : null);
+                parcelaCaId = caPar?.id || null;
                 if (caPar?.data_vencimento) {
                     const vencCA = new Date(caPar.data_vencimento + 'T12:00:00-03:00');
                     const localStr = vencOficial ? new Date(vencOficial).toISOString().split('T')[0] : null;
@@ -419,7 +421,7 @@ const asaasService = {
             linhaDigitavel = li.data?.identificationField || null;
         } catch (_) { /* boleto pode demorar alguns segundos para registrar */ }
 
-        return prisma.cobrancaAsaas.create({
+        const cobranca = await prisma.cobrancaAsaas.create({
             data: {
                 asaasPaymentId: payment.id,
                 tipo: 'BOLETO',
@@ -436,6 +438,31 @@ const asaasService = {
                 ambiente: AMBIENTE
             }
         });
+
+        // Boleto agora é do Asaas → aponta a parcela do CA para a conta financeira ASAAS
+        // (senão a venda fica marcada como banco "Conta Azul"). Melhor esforço: falha
+        // aqui não pode travar a emissão do boleto.
+        if (parcelaCaId) {
+            try {
+                const cfg = await prisma.appConfig.findUnique({ where: { key: 'asaas_conta_financeira_ca_id' } });
+                const contaAsaasCaId = cfg?.value || null;
+                if (contaAsaasCaId) {
+                    const contaAzulService = require('./contaAzulService');
+                    const det = await contaAzulService.buscarParcelaDetalhe(parcelaCaId);
+                    if (det?.conta_financeira?.id !== contaAsaasCaId) {
+                        await contaAzulService.atualizarParcela(parcelaCaId, {
+                            versao: det.versao,
+                            id_conta_financeira: contaAsaasCaId
+                        });
+                        console.log(`[Asaas] Parcela ${parcelaCaId} do CA apontada para a conta ASAAS.`);
+                    }
+                }
+            } catch (e) {
+                console.warn('[Asaas] Não consegui apontar a parcela do CA para a conta ASAAS (boleto emitido normalmente):', e.message);
+            }
+        }
+
+        return cobranca;
     },
 
     // ── Completar a linha digitável de um boleto salvo sem ela ──
