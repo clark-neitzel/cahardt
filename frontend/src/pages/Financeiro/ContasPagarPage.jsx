@@ -791,9 +791,7 @@ const ContasPagarPage = () => {
 // ═══════════════════════════════════════════════════════════
 const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, onFornecedoresChanged, onClose, onSuccess }) => {
     const editando = !!conta;
-    // `base` = despesa usada como MOLDE ao Duplicar: cria uma NOVA já preenchida
-    // (fornecedor, descrição, categoria, observações e parcelas — sem nº de nota,
-    // sem ids e com todas as parcelas em aberto).
+    // `base` = despesa usada como MOLDE ao Duplicar
     const molde = !editando && base ? base : null;
 
     const [fornecedorId, setFornecedorId] = useState(conta?.fornecedor?.id || molde?.fornecedor?.id || '');
@@ -805,6 +803,9 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
     const [enviarCA, setEnviarCA] = useState(true);
     const [valorTotal, setValorTotal] = useState(conta?.valorTotal != null ? fmt(conta.valorTotal) : (molde?.valorTotal != null ? fmt(molde.valorTotal) : ''));
     const [salvando, setSalvando] = useState(false);
+    // PDF opcional: arquivo selecionado pelo usuário será enviado após salvar a despesa
+    const [pdfArquivo, setPdfArquivo] = useState(null);
+    const pdfInputRef = useState(null);
 
     // Condição de pagamento (forma + banco) — obrigatória ao enviar ao CA (só na criação).
     // "Já paguei" (ex.: dinheiro do caixinha) marca a despesa como quitada no Conta Azul.
@@ -1015,16 +1016,25 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                     valorTotal: parseNum(it.valorTotal)
                 }));
             }
+            let contaId = conta?.id;
             if (editando) {
                 await contasPagarService.atualizar(conta.id, payload);
-                toast.success('Despesa atualizada!');
             } else {
                 const r = await contasPagarService.criar(payload);
+                contaId = r?.conta?.id || r?.id;
                 const entradas = Number(r?.estoque?.entradas || 0);
+                (r?.estoque?.avisos || []).forEach(a => toast(a, { icon: '⚠️', duration: 6000 }));
+                // Após criar, faz upload do PDF se o usuário selecionou um arquivo
+                if (pdfArquivo && contaId) {
+                    try { await contasPagarService.uploadPdf(contaId, pdfArquivo); } catch { /* não bloqueia */ }
+                }
                 toast.success(entradas > 0
                     ? `Despesa criada! ${entradas} produto(s) deram entrada no estoque.`
                     : 'Despesa criada!');
-                (r?.estoque?.avisos || []).forEach(a => toast(a, { icon: '⚠️', duration: 6000 }));
+            }
+            if (editando && pdfArquivo && contaId) {
+                try { await contasPagarService.uploadPdf(contaId, pdfArquivo); } catch { /* não bloqueia */ }
+                if (!toast.success) toast.success('PDF salvo!');
             }
             if (onFornecedoresChanged) onFornecedoresChanged();
             onSuccess();
@@ -1409,7 +1419,46 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                             )}
                         </div>
                     )}
+
+                    {/* Campo PDF opcional (nova despesa e edição) */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+                            <FileText className="h-4 w-4 text-gray-400" />Documento (PDF opcional)
+                        </label>
+                        {pdfArquivo ? (
+                            <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-2.5 gap-3">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <FileText className="h-4 w-4 text-red-500 shrink-0" />
+                                    <span className="text-sm font-medium text-gray-800 truncate">{pdfArquivo.name}</span>
+                                    <span className="text-xs text-gray-400 shrink-0">({(pdfArquivo.size / 1024 / 1024).toFixed(1)} MB)</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setPdfArquivo(null)}
+                                    className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-md text-xs font-medium"
+                                    title="Remover seleção"
+                                >
+                                    <Trash2 className="h-3.5 w-3.5" /> Remover
+                                </button>
+                            </div>
+                        ) : (
+                            <label className="flex items-center gap-3 border border-dashed border-gray-300 rounded-lg px-4 py-3 cursor-pointer hover:border-primary hover:bg-blue-50/40 transition-colors">
+                                <FileText className="h-5 w-5 text-gray-300 shrink-0" />
+                                <div className="min-w-0">
+                                    <p className="text-sm font-medium text-gray-500">Clique para selecionar PDF</p>
+                                    <p className="text-xs text-gray-400">Boleto, NF, contrato… Máx. 30 MB. O arquivo será salvo junto com a despesa.</p>
+                                </div>
+                                <input
+                                    type="file"
+                                    accept=".pdf,application/pdf"
+                                    className="hidden"
+                                    onChange={e => { const f = e.target.files?.[0]; if (f) setPdfArquivo(f); e.target.value = ''; }}
+                                />
+                            </label>
+                        )}
+                    </div>
                 </div>
+
 
                 <div className="px-5 py-4 border-t border-gray-100 flex gap-3 sticky bottom-0 bg-white">
                     <button onClick={onClose} className="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm">Cancelar</button>
@@ -1904,6 +1953,41 @@ const DetalheContaModal = ({ conta: contaInicial, podeBaixar, onClose, onEditar,
                                         title="Remover PDF"
                                     >
                                         <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            </div>
+                        ) : pdfArquivo ? (
+                            // Arquivo selecionado aguardando confirmação de envio
+                            <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 gap-3">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <FileText className="h-4 w-4 text-blue-500 shrink-0" />
+                                    <span className="text-sm font-medium text-gray-800 truncate">{pdfArquivo.name}</span>
+                                    <span className="text-xs text-gray-400 shrink-0">({(pdfArquivo.size / 1024 / 1024).toFixed(1)} MB)</span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <button
+                                        onClick={async () => {
+                                            setUploadandoPdf(true);
+                                            try {
+                                                const res = await contasPagarService.uploadPdf(conta.id, pdfArquivo);
+                                                setTemPdf(res.temPdf); setPdfNome(res.pdfNome); setPdfArquivo(null);
+                                                toast.success('PDF salvo!');
+                                            } catch (err) {
+                                                toast.error(err.response?.data?.error || 'Erro ao enviar o PDF.');
+                                            } finally { setUploadandoPdf(false); }
+                                        }}
+                                        disabled={uploadandoPdf}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-semibold disabled:opacity-50"
+                                    >
+                                        {uploadandoPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                                        {uploadandoPdf ? 'Salvando…' : 'Salvar PDF'}
+                                    </button>
+                                    <button
+                                        onClick={() => setPdfArquivo(null)}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 rounded-md text-xs"
+                                        title="Cancelar seleção"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
                                     </button>
                                 </div>
                             </div>
