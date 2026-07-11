@@ -62,6 +62,36 @@ const contasPagarService = {
     detalhe: async (id) => {
         const response = await api.get(`/contas-pagar/${id}/detalhe`);
         return response.data; // { origem, numeroNota, chaveNfe, nota, itens:[...] }
+    },
+
+    // ── PDF da despesa (boleto, NF, contrato…) ──
+    // Faz upload do arquivo PDF e retorna { temPdf, pdfNome }
+    uploadPdf: async (id, arquivo) => {
+        const form = new FormData();
+        form.append('arquivo', arquivo);
+        const response = await api.post(`/contas-pagar/${id}/pdf`, form, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        return response.data; // { message, temPdf, pdfNome }
+    },
+    // Abre o PDF em nova aba. Usa a URL da API com o token de autenticação via query param não é
+    // necessário aqui pois o header Authorization é enviado pelo axios automaticamente — porém
+    // window.open não envia headers. Solução: o backend usa verificarAuth que aceita token no cookie
+    // ou header. Para simplificar, usamos a rota autenticada via fetch+Blob no navegador.
+    abrirPdf: async (id) => {
+        const response = await api.get(`/contas-pagar/${id}/pdf`, { responseType: 'blob' });
+        const url = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+    },
+    // Remove o PDF da despesa
+    deletarPdf: async (id) => {
+        const response = await api.delete(`/contas-pagar/${id}/pdf`);
+        return response.data; // { message, temPdf, pdfNome }
     }
 };
 

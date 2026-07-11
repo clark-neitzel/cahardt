@@ -2649,6 +2649,7 @@ model ContaPagar {
   status        String      @default("ABERTO") // ABERTO | PARCIAL | QUITADO | CANCELADO
   competencia   DateTime?
   observacoes   String?     @db.Text
+  pdfPath       String?     @map("pdf_path") @db.Text // Caminho do PDF anexado (boleto, NF, contrato…)
 
   // Integração Conta Azul (POST contas-a-pagar é assíncrono: 202 + protocolo)
   idEventoCA    String? @unique @map("id_evento_ca")

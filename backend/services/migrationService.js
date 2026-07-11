@@ -957,7 +957,10 @@ const migrationService = {
 
             // Tags por condição p/ o catálogo personalizado: aparece no catálogo? exige aprovação de crédito?
             `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "permite_catalogo_personalizado" BOOLEAN NOT NULL DEFAULT true`,
-            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "exige_aprovacao_credito" BOOLEAN NOT NULL DEFAULT false`
+            `ALTER TABLE "tabela_precos" ADD COLUMN IF NOT EXISTS "exige_aprovacao_credito" BOOLEAN NOT NULL DEFAULT false`,
+
+            // Update 61: Campo pdf_path em contas_pagar — permite anexar boleto, NF ou contrato à despesa
+            `ALTER TABLE "contas_pagar" ADD COLUMN IF NOT EXISTS "pdf_path" TEXT`
         ];
 
         for (const [index, cmd] of commands.entries()) {

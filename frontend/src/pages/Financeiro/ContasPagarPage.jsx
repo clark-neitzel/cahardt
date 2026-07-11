@@ -697,6 +697,15 @@ const ContasPagarPage = () => {
                                                     Baixar
                                                 </button>
                                             )}
+                                            {/* Ícone PDF quando a conta tem documento anexado */}
+                                            {conta.temPdf && (
+                                                <span
+                                                    title={`PDF: ${conta.pdfNome}`}
+                                                    className="inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-green-50 border border-green-200 text-green-700 font-semibold"
+                                                >
+                                                    <FileText className="h-3 w-3" />PDF
+                                                </span>
+                                            )}
                                             <button
                                                 onClick={() => setDetalheConta(conta)}
                                                 title="Detalhes e ações"
@@ -1483,6 +1492,22 @@ const BaixaParcelaModal = ({ conta, parcela, onClose, onSuccess }) => {
                 </div>
 
                 <div className="p-5 space-y-4">
+                    {/* Botão "Ver documento" — aparece somente quando há PDF (caso de uso principal: ver o boleto na hora de pagar) */}
+                    {conta.temPdf && (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 text-sm text-amber-900 min-w-0">
+                                <FileText className="h-4 w-4 text-amber-600 shrink-0" />
+                                <span className="font-medium shrink-0">Documento:</span>
+                                <span className="text-amber-700 truncate text-xs">{conta.pdfNome}</span>
+                            </div>
+                            <button
+                                onClick={async () => { try { await contasPagarService.abrirPdf(conta.id); } catch { toast.error('Não foi possível abrir o PDF.'); } }}
+                                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] bg-amber-600 hover:bg-amber-700 text-white rounded-md text-xs font-semibold"
+                            >
+                                Ver documento
+                            </button>
+                        </div>
+                    )}
                     <div className="grid grid-cols-2 gap-3">
                         <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
                             <p className="text-xs text-gray-500 mb-1">Valor da parcela</p>
@@ -1654,8 +1679,43 @@ const BaixaLoteModal = ({ parcelaIds, valorTotal, onClose, onSuccess }) => {
 // ═══════════════════════════════════════════════════════════
 // MODAL DETALHES DA CONTA (cancelar / reenviar CA / estornar)
 // ═══════════════════════════════════════════════════════════
-const DetalheContaModal = ({ conta, podeBaixar, onClose, onEditar, onDuplicar, onBaixar, onChanged }) => {
+const DetalheContaModal = ({ conta: contaInicial, podeBaixar, onClose, onEditar, onDuplicar, onBaixar, onChanged }) => {
     const [executando, setExecutando] = useState(null); // 'cancelar' | 'reenviar' | pagamentoId
+    // Estado local do PDF — atualizado sem recarregar toda a lista
+    const [temPdf, setTemPdf] = useState(contaInicial.temPdf);
+    const [pdfNome, setPdfNome] = useState(contaInicial.pdfNome);
+    const [uploadandoPdf, setUploadandoPdf] = useState(false);
+    // Objeto conta local com pdf atualizado
+    const conta = { ...contaInicial, temPdf, pdfNome };
+
+    const handleUploadPdf = async (e) => {
+        const arquivo = e.target.files?.[0];
+        if (!arquivo) return;
+        setUploadandoPdf(true);
+        try {
+            const res = await contasPagarService.uploadPdf(conta.id, arquivo);
+            setTemPdf(res.temPdf);
+            setPdfNome(res.pdfNome);
+            toast.success('PDF anexado com sucesso!');
+        } catch (err) {
+            toast.error(err.response?.data?.error || 'Erro ao enviar o PDF.');
+        } finally {
+            setUploadandoPdf(false);
+            e.target.value = '';
+        }
+    };
+
+    const handleRemoverPdf = async () => {
+        if (!window.confirm('Remover o PDF anexado a esta despesa?')) return;
+        try {
+            const res = await contasPagarService.deletarPdf(conta.id);
+            setTemPdf(res.temPdf);
+            setPdfNome(res.pdfNome);
+            toast.success('PDF removido.');
+        } catch (err) {
+            toast.error(err.response?.data?.error || 'Erro ao remover o PDF.');
+        }
+    };
 
     // Detalhe completo (nota fiscal + itens/produtos) — carregado sob demanda ao abrir
     const [detalhe, setDetalhe] = useState(null);
@@ -1817,6 +1877,49 @@ const DetalheContaModal = ({ conta, podeBaixar, onClose, onEditar, onDuplicar, o
                             Despesa lançada manualmente — sem nota fiscal vinculada com itens.
                         </p>
                     )}
+
+                    {/* ── Seção PDF: upload ou visualização do documento ── */}
+                    <div>
+                        <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2 flex items-center gap-2">
+                            <FileText className="h-3.5 w-3.5 text-gray-400" />Documento (PDF)
+                        </div>
+                        {temPdf ? (
+                            <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-2.5 gap-3">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <div className="shrink-0 bg-red-100 rounded p-1.5">
+                                        <FileText className="h-4 w-4 text-red-600" />
+                                    </div>
+                                    <span className="text-sm font-medium text-gray-800 truncate">{pdfNome}</span>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <button
+                                        onClick={async () => { try { await contasPagarService.abrirPdf(conta.id); } catch { toast.error('Não foi possível abrir o PDF.'); } }}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-semibold"
+                                    >
+                                        Visualizar
+                                    </button>
+                                    <button
+                                        onClick={handleRemoverPdf}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-md text-xs font-medium"
+                                        title="Remover PDF"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-4 cursor-pointer transition-colors ${
+                                uploadandoPdf ? 'border-blue-300 bg-blue-50 cursor-not-allowed' : 'border-gray-300 hover:border-primary hover:bg-blue-50/40'
+                            }`}>
+                                {uploadandoPdf ? (
+                                    <><Loader2 className="h-6 w-6 text-blue-500 animate-spin mb-1" /><span className="text-sm text-blue-600">Enviando PDF…</span></>
+                                ) : (
+                                    <><FileText className="h-6 w-6 text-gray-300 mb-1" /><span className="text-sm font-medium text-gray-500">Clique para anexar PDF</span><span className="text-xs text-gray-400 mt-0.5">Boleto, NF, contrato… Máx. 30 MB</span></>
+                                )}
+                                <input type="file" accept=".pdf,application/pdf" className="hidden" disabled={uploadandoPdf} onChange={handleUploadPdf} />
+                            </label>
+                        )}
+                    </div>
 
                     {/* Parcelas + pagamentos */}
                     <div>

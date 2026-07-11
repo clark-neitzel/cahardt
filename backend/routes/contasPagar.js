@@ -9,6 +9,8 @@
 
 const express = require('express');
 const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const router = express.Router();
 const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
@@ -18,6 +20,22 @@ const contaAzulService = require('../services/contaAzulService');
 
 // CSV do Conta Azul fica em memória (máx 15 MB) — parse imediato, nada salvo em disco.
 const uploadCsv = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
+
+// PDF da despesa: salvo em disco na pasta uploads/contas-pagar/ (máx 30 MB, somente PDF).
+const PDF_DIR = path.join(__dirname, '../../uploads/contas-pagar');
+if (!fs.existsSync(PDF_DIR)) fs.mkdirSync(PDF_DIR, { recursive: true });
+
+const uploadPdf = multer({
+    storage: multer.diskStorage({
+        destination: (_req, _file, cb) => cb(null, PDF_DIR),
+        filename: (req, _file, cb) => cb(null, `${Date.now()}-${req.params.id}.pdf`)
+    }),
+    limits: { fileSize: 30 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+        if (file.mimetype === 'application/pdf') cb(null, true);
+        else cb(new Error('Somente arquivos PDF são aceitos.'));
+    }
+});
 
 /** Decodifica o buffer do CSV: UTF-8 (com BOM) e, se vier "sujo", tenta Latin1. */
 function decodificarCsv(buffer) {
@@ -85,6 +103,9 @@ const formatarConta = (c) => ({
     origem: c.origem,
     observacoes: c.observacoes,
     competencia: c.competencia,
+    // PDF: se tem arquivo, expõe true + nome do arquivo (sem o caminho completo)
+    temPdf: !!c.pdfPath,
+    pdfNome: c.pdfPath ? path.basename(c.pdfPath) : null,
     fornecedor: c.fornecedor
         ? { id: c.fornecedor.id, razaoSocial: c.fornecedor.razaoSocial, nomeFantasia: c.fornecedor.nomeFantasia, cnpjCpf: c.fornecedor.cnpjCpf || null }
         : null,
@@ -396,6 +417,79 @@ router.get('/:id/detalhe', verificarAuth, checkAcesso, async (req, res) => {
     } catch (error) {
         console.error('Erro ao carregar detalhe da conta a pagar:', error);
         res.status(500).json({ error: 'Erro ao carregar detalhe da despesa.' });
+    }
+});
+
+// ── POST /:id/pdf — fazer upload do PDF da despesa ──
+router.post('/:id/pdf', verificarAuth, checkEscrita, (req, res, next) => {
+    uploadPdf.single('arquivo')(req, res, (err) => {
+        if (err) return res.status(400).json({ error: err.message || 'Erro no upload do arquivo.' });
+        next();
+    });
+}, async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: 'Nenhum arquivo PDF enviado.' });
+
+        const conta = await prisma.contaPagar.findUnique({ where: { id: req.params.id } });
+        if (!conta) {
+            // Remove o arquivo órfão
+            fs.unlink(req.file.path, () => {});
+            return res.status(404).json({ error: 'Conta não encontrada.' });
+        }
+
+        // Remove PDF anterior se houver
+        if (conta.pdfPath && fs.existsSync(conta.pdfPath)) fs.unlink(conta.pdfPath, () => {});
+
+        await prisma.contaPagar.update({
+            where: { id: req.params.id },
+            data: { pdfPath: req.file.path }
+        });
+
+        res.json({
+            message: 'PDF anexado com sucesso!',
+            temPdf: true,
+            pdfNome: path.basename(req.file.path)
+        });
+    } catch (error) {
+        console.error('Erro ao fazer upload do PDF:', error);
+        if (req.file?.path && fs.existsSync(req.file.path)) fs.unlink(req.file.path, () => {});
+        res.status(500).json({ error: 'Erro ao salvar o PDF.' });
+    }
+});
+
+// ── GET /:id/pdf — baixar/visualizar o PDF da despesa ──
+router.get('/:id/pdf', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const conta = await prisma.contaPagar.findUnique({ where: { id: req.params.id }, select: { pdfPath: true, descricao: true } });
+        if (!conta) return res.status(404).json({ error: 'Conta não encontrada.' });
+        if (!conta.pdfPath) return res.status(404).json({ error: 'Nenhum PDF anexado a esta despesa.' });
+        if (!fs.existsSync(conta.pdfPath)) return res.status(404).json({ error: 'Arquivo PDF não encontrado no servidor.' });
+
+        const nome = path.basename(conta.pdfPath);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(nome)}"`);
+        fs.createReadStream(conta.pdfPath).pipe(res);
+    } catch (error) {
+        console.error('Erro ao servir PDF:', error);
+        res.status(500).json({ error: 'Erro ao carregar o PDF.' });
+    }
+});
+
+// ── DELETE /:id/pdf — remover o PDF da despesa ──
+router.delete('/:id/pdf', verificarAuth, checkEscrita, async (req, res) => {
+    try {
+        const conta = await prisma.contaPagar.findUnique({ where: { id: req.params.id }, select: { pdfPath: true } });
+        if (!conta) return res.status(404).json({ error: 'Conta não encontrada.' });
+        if (!conta.pdfPath) return res.status(404).json({ error: 'Nenhum PDF para remover.' });
+
+        if (fs.existsSync(conta.pdfPath)) fs.unlink(conta.pdfPath, () => {});
+
+        await prisma.contaPagar.update({ where: { id: req.params.id }, data: { pdfPath: null } });
+
+        res.json({ message: 'PDF removido com sucesso!', temPdf: false, pdfNome: null });
+    } catch (error) {
+        console.error('Erro ao remover PDF:', error);
+        res.status(500).json({ error: 'Erro ao remover o PDF.' });
     }
 });
 
