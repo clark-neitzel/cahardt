@@ -222,7 +222,7 @@ const asaasBaixaService = {
                 cliente: { select: { UUID: true, Nome: true, NomeFantasia: true } }
             }
         });
-        if (!cobranca || cobranca.status === 'ESTORNADO') return resultado;
+        if (!cobranca || cobranca.estornoOk) return resultado; // idempotente por estornoOk
 
         const forma = cobranca.tipo === 'BOLETO' ? 'Boleto Asaas' : 'PIX Asaas';
         await prisma.cobrancaAsaas.update({ where: { id: cobranca.id }, data: { status: 'ESTORNADO' } });
@@ -292,21 +292,67 @@ const asaasBaixaService = {
             }
         }
 
-        // ── 3) PIX usado numa entrega → marcar divergência no pedido ──
+        // ── 3) PIX usado numa ENTREGA (parcela baixada pelo fluxo da entrega/caixa,
+        //       SEM ledger) → reabrir a parcela e marcar divergência no pedido.
+        //       Só quando NÃO houve estorno via ledger (senão dupla contagem).
         try {
             const pagReal = await prisma.pedidoPagamentoReal.findFirst({ where: { cobrancaAsaasId: cobranca.id } });
             if (pagReal) {
                 await prisma.pedido.update({ where: { id: pagReal.pedidoId }, data: { divergenciaPagamento: true } });
+                // Renomeia o pagamento da entrega para deixar claro no histórico
+                await prisma.pedidoPagamentoReal.update({
+                    where: { id: pagReal.id },
+                    data: { formaPagamentoNome: 'PIX Asaas (ESTORNADO)' }
+                }).catch(() => { });
+
+                if (!cobranca.baixaAppOk) {
+                    const pixValor = Number(cobranca.valorRecebido ?? cobranca.valor);
+                    const conta = await prisma.contaReceber.findFirst({
+                        where: { pedidoId: pagReal.pedidoId },
+                        include: { parcelas: { orderBy: { numeroParcela: 'asc' } } }
+                    });
+                    if (conta) {
+                        await prisma.$transaction(async (tx) => {
+                            let restante = pixValor;
+                            for (const p of conta.parcelas) {
+                                if (restante <= 0.001) break;
+                                if (!['PAGO', 'PARCIAL'].includes(p.status)) continue;
+                                // baixa direta da entrega marca PAGO com valorPago cheio (sem ledger)
+                                const pagoAtual = Number(p.valorPago ?? p.valor);
+                                const reduz = Math.min(pagoAtual, restante);
+                                const novoPago = Math.round((pagoAtual - reduz) * 100) / 100;
+                                restante -= reduz;
+                                const novoStatus = calcularStatusParcela(p.valor, novoPago, p.valorDescontoTotal);
+                                await tx.parcela.update({
+                                    where: { id: p.id },
+                                    data: {
+                                        status: novoStatus,
+                                        valorPago: novoPago > 0 ? novoPago : null,
+                                        dataPagamento: novoStatus === 'PAGO' ? p.dataPagamento : null,
+                                        observacao: `PIX Asaas estornado — R$ ${reduz.toFixed(2)} removido da baixa (conferir cobrança do restante)`
+                                    }
+                                });
+                            }
+                            const todas = await tx.parcela.findMany({ where: { contaReceberId: conta.id } });
+                            await tx.contaReceber.update({ where: { id: conta.id }, data: { status: calcularStatusConta(todas) } });
+                        }, { timeout: 20000, maxWait: 10000 });
+                        resultado.estornoApp = true;
+                    }
+                }
             }
         } catch (e) {
-            resultado.erros.push(`divergência: ${e.message}`);
+            resultado.erros.push(`reabrir parcela da entrega: ${e.message}`);
         }
 
-        // ── 4) Registrar erro pendente + aviso no histórico do cliente ──
+        // ── 4) Registrar erro/sucesso + aviso no histórico do cliente ──
+        // estornoOk só quando não sobrou pendência (idempotência: re-run repete o que faltou)
         try {
             await prisma.cobrancaAsaas.update({
                 where: { id: cobranca.id },
-                data: { baixaErro: resultado.erros.length ? `ESTORNO: ${resultado.erros.join(' | ')}` : null }
+                data: {
+                    baixaErro: resultado.erros.length ? `ESTORNO: ${resultado.erros.join(' | ')}` : null,
+                    estornoOk: resultado.erros.length === 0
+                }
             });
         } catch (_) { /* não crítico */ }
         try {

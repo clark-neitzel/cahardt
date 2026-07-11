@@ -3220,6 +3220,7 @@ model CobrancaAsaas {
   valorRecebido Decimal?  @map("valor_recebido") @db.Decimal(12, 2)
   baixaAppOk    Boolean   @default(false) @map("baixa_app_ok") // baixa da parcela local registrada
   baixaCaOk     Boolean   @default(false) @map("baixa_ca_ok") // baixa registrada no Conta Azul
+  estornoOk     Boolean   @default(false) @map("estorno_ok") // devolução já processada (idempotência)
   baixaErro     String?   @map("baixa_erro") @db.Text
 
   criadoPorId String?   @map("criado_por_id")
