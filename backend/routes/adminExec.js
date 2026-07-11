@@ -244,6 +244,62 @@ router.post('/asaas-reprocessar-estorno', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-cobrancas-ca?limite=8 — varre pedidos de BOLETO faturados e
+// mostra as solicitações de cobrança do CA (url/tipo/status) + o content-type da URL
+// (para saber se o boleto do CA é PDF mergeável na impressão em lote).
+router.get('/diag-cobrancas-ca', async (req, res) => {
+    try {
+        const axios = require('axios');
+        const limite = Math.min(parseInt(req.query.limite, 10) || 8, 20);
+        const pedidos = await prisma.pedido.findMany({
+            where: {
+                especial: false, bonificacao: false,
+                tipoPagamento: 'BOLETO_BANCARIO',
+                idVendaContaAzul: { not: null },
+                situacaoCA: 'FATURADO'
+            },
+            orderBy: { createdAt: 'desc' },
+            take: limite,
+            include: { cliente: { select: { UUID: true, Nome: true } } }
+        });
+
+        const saida = [];
+        for (const p of pedidos) {
+            const dataVendaStr = new Date(p.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+            try {
+                const parcelas = await contaAzulService.encontrarParcelasDeVenda(p.cliente.UUID, p.idVendaContaAzul, dataVendaStr);
+                const cobs = [];
+                for (const par of (parcelas || [])) {
+                    for (const c of (par.solicitacoes_cobrancas || [])) {
+                        let contentType = null, bytes = null;
+                        if (c.url && req.query.testarUrl === '1') {
+                            try {
+                                const r = await axios.get(c.url, { responseType: 'arraybuffer', timeout: 20000, maxRedirects: 5 });
+                                contentType = r.headers['content-type'];
+                                bytes = r.data?.length || null;
+                            } catch (e) { contentType = `ERRO: ${e.message}`; }
+                        }
+                        cobs.push({
+                            parcela: par.numero_parcela, statusParcela: par.status,
+                            tipo: c.tipo_solicitacao_cobranca || c.tipo || null,
+                            status: c.status || null,
+                            url: c.url || null,
+                            _chaves: Object.keys(c || {}),
+                            contentType, bytes
+                        });
+                    }
+                }
+                saida.push({ numero: p.numero, parcelasCA: (parcelas || []).length, cobrancas: cobs });
+            } catch (e) {
+                saida.push({ numero: p.numero, erro: e.message });
+            }
+        }
+        res.json({ total: saida.length, pedidos: saida });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // POST /api/admin-exec/diag-parcela-patch — testa PATCH numa parcela CA (ex.: trocar conta financeira)
 // Body: { parcelaId, payload } — versao atual é buscada automaticamente
 router.post('/diag-parcela-patch', async (req, res) => {
