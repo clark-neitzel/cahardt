@@ -1165,7 +1165,11 @@ const pedidoController = {
             const nota = await pedidoController._localizarNotaFiscal(pedido);
             const xml = await contaAzulService.buscarXmlNotaFiscal(nota.chave_acesso);
             const { gerarPDF } = require('@alexssmusica/node-pdf-nfe');
-            const doc = await gerarPDF(xml, {});
+            // Logo da Hardt no quadro do emitente (permitido pelo MOC, item 3.1.3)
+            const path = require('path');
+            const fs = require('fs');
+            const pathLogo = path.join(__dirname, '../assets/logo-danfe.png');
+            const doc = await gerarPDF(xml, fs.existsSync(pathLogo) ? { pathLogo } : {});
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', `inline; filename="danfe-nf-${nota.numero_nota || pedido.numero || 'pedido'}.pdf"`);
             doc.pipe(res);

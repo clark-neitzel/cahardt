@@ -155,7 +155,16 @@ router.get('/diag-danfe', async (req, res) => {
         const nota = await pedidoController._localizarNotaFiscal(pedido);
         const xml = await contaAzulService.buscarXmlNotaFiscal(nota.chave_acesso);
         const { gerarPDF } = require('@alexssmusica/node-pdf-nfe');
-        const doc = await gerarPDF(xml, {});
+        const path = require('path');
+        const fs = require('fs');
+        const pathLogo = path.join(__dirname, '../assets/logo-danfe.png');
+        const doc = await gerarPDF(xml, fs.existsSync(pathLogo) ? { pathLogo } : {});
+        // ?pdf=1 → devolve o PDF em si (conferência visual); senão devolve o resumo JSON
+        if (req.query.pdf === '1') {
+            res.setHeader('Content-Type', 'application/pdf');
+            doc.pipe(res);
+            return;
+        }
         const chunks = [];
         doc.on('data', c => chunks.push(c));
         doc.on('end', () => res.json({
