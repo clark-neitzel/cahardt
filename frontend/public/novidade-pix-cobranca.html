@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Novidade: Boleto pelo app (Asaas) — Hardt App</title>
+<title>Novidade: Cobrança por PIX — Hardt App</title>
 <link rel="icon" href="/logo-192.png">
-<meta property="og:title" content="🧾 Novidade no Hardt App: boleto emitido direto do pedido">
-<meta property="og:description" content="Boleto bancário gerado pelo app via Asaas, com o vencimento certo da condição de pagamento, envio por WhatsApp e baixa automática ao pagar.">
+<meta property="og:title" content="💸 Novidade no Hardt App: cobrança por PIX com link de pagamento">
+<meta property="og:description" content="Gere o PIX do pedido em 2 toques, mande o link por WhatsApp e a baixa acontece sozinha — no app e no Conta Azul.">
 <meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
 <meta property="og:type" content="website">
 <style>
@@ -28,16 +28,15 @@
   .mock-top small { display:block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; color:rgba(255,255,255,.55); }
   .mock-top strong { font-size:16px; }
   .mock-body { padding:16px 18px 18px; }
-  .parc { display:flex; align-items:center; gap:10px; border:1px solid #e5e3dc; border-radius:12px;
-    padding:11px 12px; margin-bottom:8px; font-size:13px; }
-  .parc b { flex:1; }
-  .parc .st { font-size:11px; font-weight:800; padding:4px 10px; border-radius:999px; white-space:nowrap; }
-  .st.aberto { background:#dbeafe; color:#1d4ed8; }
-  .st.pago { background:#dcfce7; color:#166534; }
+  .chips { display:flex; gap:8px; margin:2px 0 12px; }
+  .chip { flex:1; text-align:center; padding:9px 4px; border-radius:999px; font-size:13px; font-weight:800;
+    border:1.5px solid #d6d3ca; color:#6b7280; }
+  .chip.on { background:var(--primary); border-color:var(--primary); color:#fff; }
   .btn-mock { display:flex; align-items:center; justify-content:center; gap:8px; padding:13px;
-    border-radius:999px; font-size:14px; font-weight:800; margin-top:10px; }
+    border-radius:999px; font-size:14px; font-weight:800; margin-top:8px; }
   .b1 { background:var(--primary); color:#fff; }
   .b2 { background:#16a34a; color:#fff; }
+  .b3 { border:1.5px solid var(--primary); color:var(--primary-dark); background:#fff; }
   .sec-label { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.16em;
     color:var(--primary-dark); margin:34px 4px 12px; }
   .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden;
@@ -71,66 +70,58 @@
 <header class="hero">
   <div class="hero-inner">
     <span class="eyebrow">✦ Novidade no Hardt App</span>
-    <h1>Boleto emitido<br>direto do pedido</h1>
-    <p>Sem entrar no banco: o app emite o boleto pelo Asaas com o vencimento certo da condição de pagamento, manda por WhatsApp e dá baixa sozinho quando o cliente paga.</p>
+    <h1>Cobrança por PIX,<br>com link de pagamento</h1>
+    <p>O escritório gera o PIX do pedido em 2 toques, escolhe até quando vale e manda o link pro cliente por WhatsApp. Pagou? A baixa acontece sozinha.</p>
   </div>
 </header>
 
 <div class="wrap">
   <!-- mock -->
   <div class="mock" aria-hidden="true">
-    <div class="mock-top"><small>Pedido #2041 · pílula Asaas</small><strong>Boletos do pedido</strong></div>
+    <div class="mock-top"><small>Aba Pedidos · pílula PIX</small><strong>Gerar PIX — Pedido #2052 · R$ 127,04</strong></div>
     <div class="mock-body">
-      <div class="parc"><b>Parcela 1/2 · R$ 320,50</b><span>venc. 20/07</span><span class="st aberto">Emitido</span></div>
-      <div class="parc"><b>Parcela 2/2 · R$ 320,50</b><span>venc. 20/08</span><span class="st pago">Pago ✓</span></div>
-      <div class="btn-mock b2">➤ Enviar boleto por WhatsApp</div>
-      <div class="btn-mock b1">⬇ Baixar PDF do boleto</div>
+      <p style="font-size:11px;font-weight:800;color:#8a938f;letter-spacing:.08em;margin:0 0 6px;">VALIDADE DA COBRANÇA</p>
+      <div class="chips"><span class="chip">Hoje</span><span class="chip on">Amanhã</span><span class="chip">3 dias</span><span class="chip">7 dias</span></div>
+      <div class="btn-mock b1">▦ Gerar PIX</div>
+      <div class="btn-mock b3">⧉ Copiar código PIX</div>
+      <div class="btn-mock b2">➤ Enviar link por WhatsApp</div>
     </div>
   </div>
 
   <p class="sec-label">O que mudou</p>
 
   <div class="acc aberto">
-    <button class="acc-head" aria-expanded="true"><span class="acc-ico">🧾</span><strong>Boleto em 1 toque, com o vencimento certo</strong><span class="acc-seta">▼</span></button>
+    <button class="acc-head" aria-expanded="true"><span class="acc-ico">💸</span><strong>PIX direto do pedido, sem sair do app</strong><span class="acc-seta">▼</span></button>
     <div class="acc-corpo">
-      <p>No pedido a prazo, a pílula <b>Asaas</b> gera o boleto de cada parcela — com o <b>vencimento oficial da condição de pagamento</b> (o mesmo do Conta Azul). Condição de 2 parcelas = 2 boletos, cada um na sua data.</p>
-      <p>O check ✓ na pílula mostra que o boleto já existe (cinza = já pago).</p>
+      <p>Nos pedidos <b>à vista</b> apareceu a pílula <b>PIX</b>. Toca nela, confere o valor (já vem preenchido) e pronto: QR Code na tela, código copia-e-cola e o <b>link de pagamento</b> pra mandar por WhatsApp — a mensagem já vai montada com valor e vencimento.</p>
     </div>
   </div>
 
   <div class="acc">
-    <button class="acc-head" aria-expanded="false"><span class="acc-ico">🔒</span><strong>Só com a nota fiscal emitida</strong><span class="acc-seta">▼</span></button>
+    <button class="acc-head" aria-expanded="false"><span class="acc-ico">⏳</span><strong>Você escolhe até quando o PIX vale</strong><span class="acc-seta">▼</span></button>
     <div class="acc-corpo">
-      <p>O app <b>só deixa emitir boleto se a nota fiscal do pedido já saiu</b> no Conta Azul. Cobrança sem nota não passa — proteção fiscal automática.</p>
-      <p>Pedido especial (ZZ#) e pedido já quitado também não geram boleto.</p>
+      <p><b>Hoje, amanhã, 3 ou 7 dias</b> — o QR e o link valem até o fim do dia escolhido. Venceu sem pagar? Gera outro em 2 toques.</p>
     </div>
   </div>
 
   <div class="acc">
-    <button class="acc-head" aria-expanded="false"><span class="acc-ico">✅</span><strong>Pagou = baixa automática nos dois sistemas</strong><span class="acc-seta">▼</span></button>
+    <button class="acc-head" aria-expanded="false"><span class="acc-ico">✅</span><strong>Pagou = baixa automática (app + Conta Azul)</strong><span class="acc-seta">▼</span></button>
     <div class="acc-corpo">
-      <p>Quando o boleto é pago, o banco avisa o app: a parcela é baixada <b>no Contas a Receber e no Conta Azul</b> (conta ASAAS), sem ninguém conferir extrato.</p>
-      <p>Os boletos emitidos <b>no próprio CA</b> continuam valendo — eles aparecem na pílula <b>CA</b> do pedido e entram juntos na impressão em lote.</p>
+      <p>Quando o cliente paga, o banco avisa o sistema em segundos: a parcela é <b>baixada sozinha</b> no Contas a Receber <b>e no Conta Azul</b> (na conta ASAAS). Ninguém precisa conferir extrato.</p>
+      <p>E se o PIX for <b>devolvido</b> depois? O app desfaz tudo sozinho e avisa o financeiro no histórico do cliente.</p>
     </div>
   </div>
 
-  <div class="acc">
-    <button class="acc-head" aria-expanded="false"><span class="acc-ico">📲</span><strong>WhatsApp pronto e impressão junto com a nota</strong><span class="acc-seta">▼</span></button>
-    <div class="acc-corpo">
-      <p>O boleto vai pro cliente por <b>WhatsApp</b> com mensagem montada (link + valor + vencimento), ou sai <b>impresso atrás da DANFE</b> na impressão em lote.</p>
-    </div>
-  </div>
-
-  <p class="sec-label">Como usar</p>
+  <p class="sec-label">Como usar (escritório)</p>
   <div class="passos">
-    <div class="passo"><span class="passo-n">1</span><div>Fature o pedido no CA e aguarde a <b>nota fiscal</b> (como sempre).</div></div>
-    <div class="passo"><span class="passo-n">2</span><div>No app, toque na pílula <b>Asaas</b> do pedido → <b>Gerar boletos</b>.</div></div>
-    <div class="passo"><span class="passo-n">3</span><div><b>Envie por WhatsApp</b> ou imprima junto com a nota no lote.</div></div>
-    <div class="passo"><span class="passo-n">4</span><div>Cliente pagou? <b>Baixa automática</b> no app e no Conta Azul. ✓</div></div>
+    <div class="passo"><span class="passo-n">1</span><div>Na aba <b>Pedidos</b>, toque na pílula <b>PIX</b> do pedido à vista.</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Escolha a <b>validade</b> e toque em <b>Gerar PIX</b>.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div><b>Envie o link por WhatsApp</b> (ou copie o código) para o cliente.</div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Pagou? O check ✓ aparece no pedido e a <b>baixa é automática</b>.</div></div>
   </div>
 
   <a class="abrir-app" href="https://cahardt-github.xrqvlq.easypanel.host/pedidos">Abrir o Hardt App →</a>
-  <p class="rodape">Dúvida? Pergunte ao <strong>Clippy</strong> no app: "como emito um boleto pelo pedido?"</p>
+  <p class="rodape">Dúvida? Pergunte ao <strong>Clippy</strong> no app: "como gero um PIX de um pedido?"</p>
 </div>
 
 <script>

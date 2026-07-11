@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Novidade: Boleto pelo app (Asaas) — Hardt App</title>
+<title>Novidade: Impressão em lote de notas e boletos — Hardt App</title>
 <link rel="icon" href="/logo-192.png">
-<meta property="og:title" content="🧾 Novidade no Hardt App: boleto emitido direto do pedido">
-<meta property="og:description" content="Boleto bancário gerado pelo app via Asaas, com o vencimento certo da condição de pagamento, envio por WhatsApp e baixa automática ao pagar.">
+<meta property="og:title" content="🖨️ Novidade no Hardt App: notas e boletos impressos juntos, num clique">
+<meta property="og:description" content="Selecione os pedidos e o app monta um PDF único: 2 vias de cada DANFE + os boletos (CA e Asaas) na sequência. Boleto pago não sai.">
 <meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
 <meta property="og:type" content="website">
 <style>
@@ -27,17 +27,17 @@
   .mock-top { background:var(--house); color:#fff; padding:14px 18px; }
   .mock-top small { display:block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; color:rgba(255,255,255,.55); }
   .mock-top strong { font-size:16px; }
-  .mock-body { padding:16px 18px 18px; }
-  .parc { display:flex; align-items:center; gap:10px; border:1px solid #e5e3dc; border-radius:12px;
-    padding:11px 12px; margin-bottom:8px; font-size:13px; }
-  .parc b { flex:1; }
-  .parc .st { font-size:11px; font-weight:800; padding:4px 10px; border-radius:999px; white-space:nowrap; }
-  .st.aberto { background:#dbeafe; color:#1d4ed8; }
-  .st.pago { background:#dcfce7; color:#166534; }
+  .mock-body { padding:14px 18px 18px; }
+  .linha-ped { display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px dashed #e5e3dc; font-size:13.5px; }
+  .linha-ped:last-of-type { border-bottom:none; }
+  .linha-ped .num { font-weight:800; }
+  .pill { margin-left:auto; display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:800;
+    padding:4px 10px; border-radius:999px; }
+  .pill.ca { background:var(--mint); color:var(--primary-dark); }
+  .pill.as { background:#e0f2fe; color:#0369a1; }
+  .ok { color:#16a34a; font-weight:900; }
   .btn-mock { display:flex; align-items:center; justify-content:center; gap:8px; padding:13px;
-    border-radius:999px; font-size:14px; font-weight:800; margin-top:10px; }
-  .b1 { background:var(--primary); color:#fff; }
-  .b2 { background:#16a34a; color:#fff; }
+    border-radius:999px; font-size:14px; font-weight:800; margin-top:12px; background:var(--primary); color:#fff; }
   .sec-label { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.16em;
     color:var(--primary-dark); margin:34px 4px 12px; }
   .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden;
@@ -71,66 +71,76 @@
 <header class="hero">
   <div class="hero-inner">
     <span class="eyebrow">✦ Novidade no Hardt App</span>
-    <h1>Boleto emitido<br>direto do pedido</h1>
-    <p>Sem entrar no banco: o app emite o boleto pelo Asaas com o vencimento certo da condição de pagamento, manda por WhatsApp e dá baixa sozinho quando o cliente paga.</p>
+    <h1>Notas e boletos<br>impressos juntos</h1>
+    <p>Selecione os pedidos do dia e o app monta um PDF único: 2 vias de cada nota + os boletos na sequência — do Conta Azul e do Asaas. Boleto pago não sai.</p>
   </div>
 </header>
 
 <div class="wrap">
   <!-- mock -->
   <div class="mock" aria-hidden="true">
-    <div class="mock-top"><small>Pedido #2041 · pílula Asaas</small><strong>Boletos do pedido</strong></div>
+    <div class="mock-top"><small>Aba Pedidos · Imprimir selecionados</small><strong>Conferindo boletos… 5/5 ✓</strong></div>
     <div class="mock-body">
-      <div class="parc"><b>Parcela 1/2 · R$ 320,50</b><span>venc. 20/07</span><span class="st aberto">Emitido</span></div>
-      <div class="parc"><b>Parcela 2/2 · R$ 320,50</b><span>venc. 20/08</span><span class="st pago">Pago ✓</span></div>
-      <div class="btn-mock b2">➤ Enviar boleto por WhatsApp</div>
-      <div class="btn-mock b1">⬇ Baixar PDF do boleto</div>
+      <div class="linha-ped"><span class="num">#2023</span> Mercado Central <span class="pill ca">CA <span class="ok">✓</span></span></div>
+      <div class="linha-ped"><span class="num">#2024</span> Padaria Trigal <span class="pill ca">CA <span class="ok">✓</span></span></div>
+      <div class="linha-ped"><span class="num">#2025</span> Café do Ponto <span class="pill as">Asaas <span class="ok">✓</span></span></div>
+      <div class="btn-mock">🖨 Gerar PDF (12 folhas)</div>
     </div>
   </div>
 
   <p class="sec-label">O que mudou</p>
 
   <div class="acc aberto">
-    <button class="acc-head" aria-expanded="true"><span class="acc-ico">🧾</span><strong>Boleto em 1 toque, com o vencimento certo</strong><span class="acc-seta">▼</span></button>
+    <button class="acc-head" aria-expanded="true"><span class="acc-ico">🖨️</span><strong>Um PDF só: 2 vias da nota + boletos na ordem</strong><span class="acc-seta">▼</span></button>
     <div class="acc-corpo">
-      <p>No pedido a prazo, a pílula <b>Asaas</b> gera o boleto de cada parcela — com o <b>vencimento oficial da condição de pagamento</b> (o mesmo do Conta Azul). Condição de 2 parcelas = 2 boletos, cada um na sua data.</p>
-      <p>O check ✓ na pílula mostra que o boleto já existe (cinza = já pago).</p>
+      <p>Marque os pedidos na lista e toque em <b>Imprimir</b>. O app monta um único PDF, pronto pra impressora: <b>2 vias da DANFE</b> de cada pedido e, logo atrás, os <b>boletos daquele pedido</b> — na ordem certa pra grampear.</p>
+      <p>Condição com 2 parcelas? Saem os <b>2 boletos em sequência</b>.</p>
     </div>
   </div>
 
   <div class="acc">
-    <button class="acc-head" aria-expanded="false"><span class="acc-ico">🔒</span><strong>Só com a nota fiscal emitida</strong><span class="acc-seta">▼</span></button>
+    <button class="acc-head" aria-expanded="false"><span class="acc-ico">🔍</span><strong>Antes de imprimir, ele confere um por um</strong><span class="acc-seta">▼</span></button>
     <div class="acc-corpo">
-      <p>O app <b>só deixa emitir boleto se a nota fiscal do pedido já saiu</b> no Conta Azul. Cobrança sem nota não passa — proteção fiscal automática.</p>
-      <p>Pedido especial (ZZ#) e pedido já quitado também não geram boleto.</p>
+      <p>Ao abrir a impressão, o app <b>consulta cada pedido ao vivo</b> na tela: tem boleto no <b>Conta Azul</b>? Tem no <b>Asaas</b>? Você vê o resultado pedido a pedido, com check verde em quem está ok.</p>
+      <ul>
+        <li><b>Faltou boleto?</b> Ele avisa e oferece <b>gerar na hora pelo Asaas</b> (boleto do CA continua sendo gerado lá no CA).</li>
+        <li><b>Boleto já pago?</b> Não imprime — se precisar, imprima pelo Contas a Receber.</li>
+        <li><b>Sem nota fiscal?</b> O pedido é destacado em vermelho e fica fora do lote.</li>
+      </ul>
+      <p>A conferência <b>fica salva</b>: o check aparece nas pílulas <b>CA</b> e <b>Asaas</b> do pedido e, se você reabrir logo depois, não consulta tudo de novo (botão <b>Reconsultar</b> força quando precisar).</p>
     </div>
   </div>
 
   <div class="acc">
-    <button class="acc-head" aria-expanded="false"><span class="acc-ico">✅</span><strong>Pagou = baixa automática nos dois sistemas</strong><span class="acc-seta">▼</span></button>
+    <button class="acc-head" aria-expanded="false"><span class="acc-ico">💊</span><strong>Pílulas novas no pedido: CA, Asaas e DANFE</strong><span class="acc-seta">▼</span></button>
     <div class="acc-corpo">
-      <p>Quando o boleto é pago, o banco avisa o app: a parcela é baixada <b>no Contas a Receber e no Conta Azul</b> (conta ASAAS), sem ninguém conferir extrato.</p>
-      <p>Os boletos emitidos <b>no próprio CA</b> continuam valendo — eles aparecem na pílula <b>CA</b> do pedido e entram juntos na impressão em lote.</p>
+      <ul>
+        <li><b>CA ✓</b> — tem boleto emitido no Conta Azul (✓ cinza = já pago).</li>
+        <li><b>Asaas ✓</b> — tem boleto emitido pelo app no Asaas.</li>
+        <li><b>PIX Asaas</b> — pedidos à vista, para gerar a cobrança PIX.</li>
+        <li><b>DANFE</b> — abre o PDF da nota fiscal emitida no CA, direto no app.</li>
+      </ul>
+      <p>O botão antigo <b>"Cobranças" saiu</b> — a pílula CA faz o mesmo papel, com mais informação.</p>
     </div>
   </div>
 
   <div class="acc">
-    <button class="acc-head" aria-expanded="false"><span class="acc-ico">📲</span><strong>WhatsApp pronto e impressão junto com a nota</strong><span class="acc-seta">▼</span></button>
+    <button class="acc-head" aria-expanded="false"><span class="acc-ico">🧾</span><strong>Especiais no lote saem como recibo</strong><span class="acc-seta">▼</span></button>
     <div class="acc-corpo">
-      <p>O boleto vai pro cliente por <b>WhatsApp</b> com mensagem montada (link + valor + vencimento), ou sai <b>impresso atrás da DANFE</b> na impressão em lote.</p>
+      <p>Pedido especial não tem nota — no lote ele sai como <b>Recibo de Conferência</b>, sem a marca Hardt, só com itens e total.</p>
     </div>
   </div>
 
   <p class="sec-label">Como usar</p>
   <div class="passos">
-    <div class="passo"><span class="passo-n">1</span><div>Fature o pedido no CA e aguarde a <b>nota fiscal</b> (como sempre).</div></div>
-    <div class="passo"><span class="passo-n">2</span><div>No app, toque na pílula <b>Asaas</b> do pedido → <b>Gerar boletos</b>.</div></div>
-    <div class="passo"><span class="passo-n">3</span><div><b>Envie por WhatsApp</b> ou imprima junto com a nota no lote.</div></div>
-    <div class="passo"><span class="passo-n">4</span><div>Cliente pagou? <b>Baixa automática</b> no app e no Conta Azul. ✓</div></div>
+    <div class="passo"><span class="passo-n">1</span><div>Na aba <b>Pedidos</b>, marque os pedidos do dia e toque em <b>Imprimir</b>.</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Acompanhe a <b>conferência ao vivo</b> — resolva os avisos (gerar boleto, faturar nota).</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Toque em <b>Gerar PDF</b> e depois em <b>"Abrir PDF para imprimir"</b>.</div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Mande pra impressora — nota e boletos já saem na ordem de grampear.</div></div>
   </div>
 
   <a class="abrir-app" href="https://cahardt-github.xrqvlq.easypanel.host/pedidos">Abrir o Hardt App →</a>
-  <p class="rodape">Dúvida? Pergunte ao <strong>Clippy</strong> no app: "como emito um boleto pelo pedido?"</p>
+  <p class="rodape">Dúvida? Pergunte ao <strong>Clippy</strong> no app: "como imprimo as notas e boletos juntos?"</p>
 </div>
 
 <script>

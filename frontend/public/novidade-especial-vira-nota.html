@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Novidade: Boleto pelo app (Asaas) — Hardt App</title>
+<title>Novidade: Pedido especial pago no PIX vira nota — Hardt App</title>
 <link rel="icon" href="/logo-192.png">
-<meta property="og:title" content="🧾 Novidade no Hardt App: boleto emitido direto do pedido">
-<meta property="og:description" content="Boleto bancário gerado pelo app via Asaas, com o vencimento certo da condição de pagamento, envio por WhatsApp e baixa automática ao pagar.">
+<meta property="og:title" content="🔄 Novidade no Hardt App: especial pago no PIX vira nota fiscal sozinho">
+<meta property="og:description" content="Recebeu PIX num pedido ZZ? Ele é convertido automaticamente em pedido normal, entra na fila do faturamento e o app avisa até a nota sair.">
 <meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
 <meta property="og:type" content="website">
 <style>
@@ -24,20 +24,14 @@
   .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
   .mock { max-width:400px; margin:-68px auto 30px; background:#fff; border-radius:20px;
     box-shadow:0 18px 44px rgba(20,40,34,.28); overflow:hidden; }
-  .mock-top { background:var(--house); color:#fff; padding:14px 18px; }
-  .mock-top small { display:block; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; color:rgba(255,255,255,.55); }
-  .mock-top strong { font-size:16px; }
-  .mock-body { padding:16px 18px 18px; }
-  .parc { display:flex; align-items:center; gap:10px; border:1px solid #e5e3dc; border-radius:12px;
-    padding:11px 12px; margin-bottom:8px; font-size:13px; }
-  .parc b { flex:1; }
-  .parc .st { font-size:11px; font-weight:800; padding:4px 10px; border-radius:999px; white-space:nowrap; }
-  .st.aberto { background:#dbeafe; color:#1d4ed8; }
-  .st.pago { background:#dcfce7; color:#166534; }
-  .btn-mock { display:flex; align-items:center; justify-content:center; gap:8px; padding:13px;
-    border-radius:999px; font-size:14px; font-weight:800; margin-top:10px; }
-  .b1 { background:var(--primary); color:#fff; }
-  .b2 { background:#16a34a; color:#fff; }
+  .mock-body { padding:18px; text-align:center; }
+  .tagzz { display:inline-block; background:#f3e8ff; color:#7e22ce; font-weight:800; font-size:14px;
+    padding:7px 16px; border-radius:999px; }
+  .tagnf { display:inline-block; background:#dcfce7; color:#166534; font-weight:800; font-size:14px;
+    padding:7px 16px; border-radius:999px; }
+  .seta-baixo { font-size:22px; color:var(--primary); margin:8px 0; }
+  .aviso-mock { background:#fef2f2; border:1.5px solid #fca5a5; border-radius:12px; padding:12px;
+    font-size:12.5px; color:#991b1b; text-align:left; margin-top:14px; font-weight:600; }
   .sec-label { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.16em;
     color:var(--primary-dark); margin:34px 4px 12px; }
   .acc { background:#fff; border:1px solid #e3e1da; border-radius:16px; margin-bottom:10px; overflow:hidden;
@@ -71,66 +65,65 @@
 <header class="hero">
   <div class="hero-inner">
     <span class="eyebrow">✦ Novidade no Hardt App</span>
-    <h1>Boleto emitido<br>direto do pedido</h1>
-    <p>Sem entrar no banco: o app emite o boleto pelo Asaas com o vencimento certo da condição de pagamento, manda por WhatsApp e dá baixa sozinho quando o cliente paga.</p>
+    <h1>Especial pago no PIX<br>vira nota fiscal sozinho</h1>
+    <p>Recebeu um PIX num pedido ZZ? O app converte ele em pedido normal na hora, entra na fila do faturamento e fica avisando na tela até a nota ser emitida.</p>
   </div>
 </header>
 
 <div class="wrap">
   <!-- mock -->
   <div class="mock" aria-hidden="true">
-    <div class="mock-top"><small>Pedido #2041 · pílula Asaas</small><strong>Boletos do pedido</strong></div>
     <div class="mock-body">
-      <div class="parc"><b>Parcela 1/2 · R$ 320,50</b><span>venc. 20/07</span><span class="st aberto">Emitido</span></div>
-      <div class="parc"><b>Parcela 2/2 · R$ 320,50</b><span>venc. 20/08</span><span class="st pago">Pago ✓</span></div>
-      <div class="btn-mock b2">➤ Enviar boleto por WhatsApp</div>
-      <div class="btn-mock b1">⬇ Baixar PDF do boleto</div>
+      <span class="tagzz">ZZ#564 · Pedido Especial</span>
+      <div class="seta-baixo">⬇ &nbsp;PIX pago ✓</div>
+      <span class="tagnf">Pedido #2058 · vai para nota fiscal</span>
+      <div class="aviso-mock">⚠️ <b>Atenção:</b> ao receber este PIX, o pedido especial será CONVERTIDO em pedido normal e precisará de NOTA FISCAL. Essa ação não pode ser desfeita.</div>
     </div>
   </div>
 
-  <p class="sec-label">O que mudou</p>
+  <p class="sec-label">Como funciona</p>
 
   <div class="acc aberto">
-    <button class="acc-head" aria-expanded="true"><span class="acc-ico">🧾</span><strong>Boleto em 1 toque, com o vencimento certo</strong><span class="acc-seta">▼</span></button>
+    <button class="acc-head" aria-expanded="true"><span class="acc-ico">🔄</span><strong>Pagou no PIX = vira pedido normal na hora</strong><span class="acc-seta">▼</span></button>
     <div class="acc-corpo">
-      <p>No pedido a prazo, a pílula <b>Asaas</b> gera o boleto de cada parcela — com o <b>vencimento oficial da condição de pagamento</b> (o mesmo do Conta Azul). Condição de 2 parcelas = 2 boletos, cada um na sua data.</p>
-      <p>O check ✓ na pílula mostra que o boleto já existe (cinza = já pago).</p>
+      <p>No momento em que o PIX de um pedido <b>especial (ZZ#)</b> é pago, o app converte ele sozinho: sai o número ZZ, entra um <b>número novo da sequência normal</b>, e o pedido entra na fila para ir ao Conta Azul e ter a <b>nota fiscal emitida</b>. Dinheiro na conta = nota na rua.</p>
+      <p>Datas, itens, preços e vendedor ficam exatamente como estavam — só muda o número e o tipo.</p>
     </div>
   </div>
 
   <div class="acc">
-    <button class="acc-head" aria-expanded="false"><span class="acc-ico">🔒</span><strong>Só com a nota fiscal emitida</strong><span class="acc-seta">▼</span></button>
+    <button class="acc-head" aria-expanded="false"><span class="acc-ico">🚨</span><strong>Aviso vermelho ANTES de gerar o PIX</strong><span class="acc-seta">▼</span></button>
     <div class="acc-corpo">
-      <p>O app <b>só deixa emitir boleto se a nota fiscal do pedido já saiu</b> no Conta Azul. Cobrança sem nota não passa — proteção fiscal automática.</p>
-      <p>Pedido especial (ZZ#) e pedido já quitado também não geram boleto.</p>
+      <p>Ninguém converte sem querer: ao gerar um PIX num pedido especial, aparece um <b>aviso vermelho bem destacado</b> explicando que o pedido vai virar nota fiscal se for pago — e é preciso <b>marcar "Entendi"</b> para continuar.</p>
+      <p>Se o cliente <b>não quer nota</b>, é só não cobrar por PIX (receba em dinheiro).</p>
     </div>
   </div>
 
   <div class="acc">
-    <button class="acc-head" aria-expanded="false"><span class="acc-ico">✅</span><strong>Pagou = baixa automática nos dois sistemas</strong><span class="acc-seta">▼</span></button>
+    <button class="acc-head" aria-expanded="false"><span class="acc-ico">🔔</span><strong>O faturamento é avisado a cada 5 minutos</strong><span class="acc-seta">▼</span></button>
     <div class="acc-corpo">
-      <p>Quando o boleto é pago, o banco avisa o app: a parcela é baixada <b>no Contas a Receber e no Conta Azul</b> (conta ASAAS), sem ninguém conferir extrato.</p>
-      <p>Os boletos emitidos <b>no próprio CA</b> continuam valendo — eles aparecem na pílula <b>CA</b> do pedido e entram juntos na impressão em lote.</p>
+      <p>Quando um especial é convertido, um <b>pop-up com bip</b> aparece na tela do pessoal do faturamento a cada 5 minutos, até alguém clicar em <b>"Ciente, vou faturar"</b>. Nenhuma conversão passa despercebida.</p>
+      <p>Quem recebe esse aviso é escolhido na aba <b>Vendedores</b> (ícone de setas circulares 🔁 em cada pessoa).</p>
     </div>
   </div>
 
   <div class="acc">
-    <button class="acc-head" aria-expanded="false"><span class="acc-ico">📲</span><strong>WhatsApp pronto e impressão junto com a nota</strong><span class="acc-seta">▼</span></button>
+    <button class="acc-head" aria-expanded="false"><span class="acc-ico">🧾</span><strong>Impressão do especial: recibo neutro</strong><span class="acc-seta">▼</span></button>
     <div class="acc-corpo">
-      <p>O boleto vai pro cliente por <b>WhatsApp</b> com mensagem montada (link + valor + vencimento), ou sai <b>impresso atrás da DANFE</b> na impressão em lote.</p>
+      <p>O pedido especial agora imprime como <b>"Recibo de Conferência"</b> — um documento limpo, <b>sem a marca Hardt</b>, só com os itens, quantidades e total para conferir a entrega.</p>
     </div>
   </div>
 
-  <p class="sec-label">Como usar</p>
+  <p class="sec-label">Resumo do fluxo</p>
   <div class="passos">
-    <div class="passo"><span class="passo-n">1</span><div>Fature o pedido no CA e aguarde a <b>nota fiscal</b> (como sempre).</div></div>
-    <div class="passo"><span class="passo-n">2</span><div>No app, toque na pílula <b>Asaas</b> do pedido → <b>Gerar boletos</b>.</div></div>
-    <div class="passo"><span class="passo-n">3</span><div><b>Envie por WhatsApp</b> ou imprima junto com a nota no lote.</div></div>
-    <div class="passo"><span class="passo-n">4</span><div>Cliente pagou? <b>Baixa automática</b> no app e no Conta Azul. ✓</div></div>
+    <div class="passo"><span class="passo-n">1</span><div>Alguém gera um <b>PIX</b> num pedido <b>ZZ#</b> (escritório ou motorista na entrega).</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>O app mostra o <b>aviso vermelho</b>: "vai virar nota fiscal" → confirmar.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Cliente paga → pedido é <b>convertido</b> (número novo da sequência).</div></div>
+    <div class="passo"><span class="passo-n">4</span><div><b>Pop-up avisa o faturamento</b> a cada 5 min até a equipe dar ciente e emitir a nota.</div></div>
   </div>
 
   <a class="abrir-app" href="https://cahardt-github.xrqvlq.easypanel.host/pedidos">Abrir o Hardt App →</a>
-  <p class="rodape">Dúvida? Pergunte ao <strong>Clippy</strong> no app: "como emito um boleto pelo pedido?"</p>
+  <p class="rodape">Dúvida? Pergunte ao <strong>Clippy</strong> no app: "o que acontece se receber PIX num pedido especial?"</p>
 </div>
 
 <script>

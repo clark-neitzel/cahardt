@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Motorista: como receber por PIX na entrega — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🚚 Motorista: como receber por PIX na entrega (passo a passo com telas)">
+<meta property="og:description" content="Guia visual, tela por tela: gerar o QR Code, cliente paga, aparece PIX Recebido ✓ e pronto. Sem conferir extrato, sem ligar pro escritório.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); line-height:1.5;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:480px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:38px 16px 46px; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800;
+    text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:16px; }
+  .hero h1 { font-size:clamp(26px,7vw,34px); font-weight:800; line-height:1.15; margin:0 0 10px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.75); font-size:15px; max-width:40ch; margin:0 auto; }
+
+  /* passo gigante com telefone */
+  .stepbar { display:flex; align-items:center; gap:12px; margin:36px 0 14px; }
+  .stepbar .n { width:44px; height:44px; flex-shrink:0; border-radius:50%; background:var(--primary); color:#fff;
+    font-weight:900; font-size:20px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 12px rgba(0,117,74,.35); }
+  .stepbar .t { font-size:17px; font-weight:800; line-height:1.25; }
+  .stepbar .t small { display:block; font-weight:600; font-size:13px; color:var(--ink-soft); margin-top:2px; }
+
+  .fone { background:#111; border-radius:30px; padding:10px; box-shadow:0 14px 34px rgba(20,40,34,.25); }
+  .tela { background:#f7f6f2; border-radius:22px; overflow:hidden; }
+  .tela-top { background:var(--house); color:#fff; font-size:12px; font-weight:800; padding:11px 14px;
+    display:flex; align-items:center; gap:8px; }
+  .tela-body { padding:14px; }
+  .card-m { background:#fff; border:1px solid #e5e3dc; border-radius:14px; padding:12px; margin-bottom:10px; }
+  .card-m .titulo { font-weight:800; font-size:14px; }
+  .card-m .sub { font-size:12px; color:var(--ink-soft); }
+  .btn-tela { display:flex; align-items:center; justify-content:center; gap:8px; padding:14px; border-radius:999px;
+    font-size:15px; font-weight:800; }
+  .btn-verde { background:var(--primary); color:#fff; }
+  .btn-claro { background:#fff; border:1.5px solid var(--primary); color:var(--primary-dark); }
+  .dedinho { text-align:right; font-size:26px; margin-top:-14px; margin-right:16px; position:relative; z-index:2; }
+  .valor-grande { text-align:center; font-size:30px; font-weight:900; color:var(--primary-dark); padding:6px 0 2px; }
+  .qr { width:150px; height:150px; margin:10px auto; background:
+    repeating-conic-gradient(#111 0% 25%, #fff 0% 50%) 0 0/22px 22px; border:8px solid #fff; border-radius:8px;
+    box-shadow:0 2px 8px rgba(0,0,0,.12); }
+  .aguarde { text-align:center; font-size:13px; color:var(--ink-soft); padding-bottom:6px; }
+  .recebido { background:#dcfce7; border:1.5px solid #86efac; color:#166534; text-align:center; font-size:17px;
+    font-weight:900; border-radius:14px; padding:16px; }
+  .recebido small { display:block; font-weight:600; font-size:12.5px; margin-top:4px; color:#15803d; }
+  .seta-fluxo { text-align:center; font-size:26px; color:var(--primary); margin:18px 0 0; }
+
+  .dica { display:flex; gap:10px; background:#fff; border:1px solid #e3e1da; border-radius:14px; padding:13px 14px;
+    margin-top:12px; font-size:13.5px; color:var(--ink-soft); }
+  .dica b { color:var(--ink); }
+  .dica .i { font-size:18px; flex-shrink:0; }
+
+  .divisor { margin:46px 0 8px; text-align:center; }
+  .divisor span { display:inline-block; background:#7e22ce; color:#fff; font-size:12px; font-weight:800;
+    text-transform:uppercase; letter-spacing:.12em; padding:7px 16px; border-radius:999px; }
+  .zz-head { font-size:20px; font-weight:800; text-align:center; margin:14px 0 6px; }
+  .zz-sub { font-size:14px; color:var(--ink-soft); text-align:center; max-width:38ch; margin:0 auto 18px; }
+  .aviso-vermelho { background:#fef2f2; border:2px solid #ef4444; border-radius:16px; padding:16px; }
+  .aviso-vermelho .top { display:flex; align-items:center; gap:8px; font-weight:900; color:#b91c1c; font-size:15px; margin-bottom:8px; }
+  .aviso-vermelho p { margin:0; font-size:13.5px; color:#7f1d1d; }
+  .regra-simples { display:flex; flex-direction:column; gap:10px; margin-top:16px; }
+  .regra { display:flex; align-items:center; gap:12px; background:#fff; border:1px solid #e3e1da;
+    border-radius:14px; padding:13px 14px; font-size:14px; font-weight:600; }
+  .regra .e { font-size:24px; flex-shrink:0; }
+  .abrir-app { display:block; text-align:center; margin:34px auto 0; background:var(--house);
+    color:#fff; text-decoration:none; font-size:15px; font-weight:800; padding:15px; border-radius:999px; }
+  .rodape { text-align:center; font-size:13px; color:var(--ink-soft); margin-top:36px; }
+</style>
+</head>
+<body>
+<header class="hero">
+  <span class="eyebrow">🚚 Guia do Motorista</span>
+  <h1>Receber por PIX<br>na entrega</h1>
+  <p>4 passos. O app avisa quando o dinheiro cair — não precisa conferir nada nem ligar pro escritório.</p>
+</header>
+
+<div class="wrap">
+
+  <!-- PASSO 1 -->
+  <div class="stepbar"><span class="n">1</span><span class="t">Abra a entrega<small>Minhas Entregas → toque no cliente</small></span></div>
+  <div class="fone"><div class="tela">
+    <div class="tela-top">📦 Minhas Entregas</div>
+    <div class="tela-body">
+      <div class="card-m">
+        <div class="titulo">Mercado Central</div>
+        <div class="sub">Pedido #2052 · R$ 127,04 · Dinheiro/PIX</div>
+      </div>
+      <div class="btn-tela btn-verde">Registrar entrega →</div>
+    </div>
+  </div></div>
+  <div class="dedinho">👆</div>
+
+  <!-- PASSO 2 -->
+  <div class="stepbar"><span class="n">2</span><span class="t">Toque em "Receber com PIX"<small>na parte do pagamento</small></span></div>
+  <div class="fone"><div class="tela">
+    <div class="tela-top">💰 Pagamento — Pedido #2052</div>
+    <div class="tela-body">
+      <div class="valor-grande">R$ 127,04</div>
+      <div class="btn-tela btn-verde">▦ &nbsp;Receber com PIX</div>
+      <div style="height:8px"></div>
+      <div class="btn-tela btn-claro">💵 &nbsp;Recebi em dinheiro</div>
+    </div>
+  </div></div>
+  <div class="dedinho">👆</div>
+  <div class="dica"><span class="i">💡</span><div><b>Cliente vai pagar uma parte em dinheiro?</b> Sem problema: registre o dinheiro e gere o PIX <b>só do resto</b> — o app já calcula o valor.</div></div>
+
+  <!-- PASSO 3 -->
+  <div class="stepbar"><span class="n">3</span><span class="t">Mostre o QR Code pro cliente<small>ele aponta a câmera do app do banco dele</small></span></div>
+  <div class="fone"><div class="tela">
+    <div class="tela-top">▦ PIX — R$ 127,04</div>
+    <div class="tela-body" style="text-align:center;">
+      <div class="qr"></div>
+      <div class="aguarde">Aguardando pagamento…</div>
+    </div>
+  </div></div>
+
+  <!-- PASSO 4 -->
+  <div class="stepbar"><span class="n">4</span><span class="t">Espere ficar VERDE ✓<small>aí pode ir embora — o resto é automático</small></span></div>
+  <div class="fone"><div class="tela">
+    <div class="tela-top">▦ PIX — R$ 127,04</div>
+    <div class="tela-body">
+      <div class="recebido">✅ PIX Recebido!<small>Baixa feita no sistema. Boa viagem! 🚚</small></div>
+    </div>
+  </div></div>
+  <div class="dica"><span class="i">⚠️</span><div><b>Só entregue depois do verde.</b> Se o cliente mostrar "comprovante" mas a tela não ficou verde, o dinheiro <b>não caiu</b>. A tela verde é a única prova que vale.</div></div>
+
+  <!-- ESPECIAL -->
+  <div class="divisor"><span>Pedido especial (ZZ#)</span></div>
+  <p class="zz-head">E se o pedido for ZZ# ?</p>
+  <p class="zz-sub">Pode receber por PIX também — mas o app vai mostrar este aviso antes:</p>
+
+  <div class="aviso-vermelho">
+    <div class="top">🚨 ATENÇÃO — pedido especial</div>
+    <p>Se o cliente pagar este PIX, o pedido ZZ# <b>vira pedido normal e SAI NOTA FISCAL</b>. Não dá pra desfazer depois.</p>
+  </div>
+
+  <div class="regra-simples">
+    <div class="regra"><span class="e">✅</span><div>Cliente <b>não se importa</b> com nota? → Pode gerar o PIX e confirmar o aviso.</div></div>
+    <div class="regra"><span class="e">💵</span><div>Cliente <b>não quer nota</b>? → Receba em <b>dinheiro</b>, não gere o PIX.</div></div>
+    <div class="regra"><span class="e">🤷</span><div>Ficou em dúvida? → Ligue pro escritório <b>antes</b> de gerar o PIX.</div></div>
+  </div>
+
+  <a class="abrir-app" href="https://cahardt-github.xrqvlq.easypanel.host/minhas-entregas">Abrir Minhas Entregas →</a>
+  <p class="rodape">Dúvida na rua? É só perguntar no grupo. 💚</p>
+</div>
+</body>
+</html>
