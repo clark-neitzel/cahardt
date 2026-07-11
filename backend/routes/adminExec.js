@@ -225,6 +225,25 @@ router.get('/diag-parcela-venda', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/asaas-reprocessar-estorno — força o tratamento de estorno de
+// uma cobrança (webhook antigo/perdido). Body: { paymentId } ou { cobrancaId }.
+// registrarEstorno é idempotente: se não há baixa, só normaliza o status + gera o aviso.
+router.post('/asaas-reprocessar-estorno', async (req, res) => {
+    try {
+        const { paymentId, cobrancaId } = req.body || {};
+        const cobranca = cobrancaId
+            ? await prisma.cobrancaAsaas.findUnique({ where: { id: cobrancaId } })
+            : await prisma.cobrancaAsaas.findUnique({ where: { asaasPaymentId: paymentId } });
+        if (!cobranca) return res.status(404).json({ error: 'Cobrança não encontrada.' });
+        const asaasBaixaService = require('../services/asaasBaixaService');
+        const resultado = await asaasBaixaService.registrarEstorno(cobranca.id);
+        const depois = await prisma.cobrancaAsaas.findUnique({ where: { id: cobranca.id } });
+        res.json({ ok: true, statusAntes: cobranca.status, statusDepois: depois.status, resultado });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // POST /api/admin-exec/diag-parcela-patch — testa PATCH numa parcela CA (ex.: trocar conta financeira)
 // Body: { parcelaId, payload } — versao atual é buscada automaticamente
 router.post('/diag-parcela-patch', async (req, res) => {
