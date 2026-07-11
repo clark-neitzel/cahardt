@@ -1789,6 +1789,17 @@ router.post('/quitar-ca', async (req, res) => {
             return nome.includes('dinheiro') || nome.includes('pix') || nome.includes('cartão') || nome.includes('cartao');
         };
 
+        // PIX Asaas devolvido/estornado NÃO conta como recebido (o dinheiro voltou ao cliente)
+        const idsCobrancas = pedidos.flatMap(p => (p.pagamentosReais || []).map(pg => pg.cobrancaAsaasId).filter(Boolean));
+        const cobrancasInvalidas = new Set();
+        if (idsCobrancas.length > 0) {
+            const cobs = await prisma.cobrancaAsaas.findMany({
+                where: { id: { in: idsCobrancas } },
+                select: { id: true, status: true }
+            });
+            cobs.filter(c => c.status !== 'RECEBIDO').forEach(c => cobrancasInvalidas.add(c.id));
+        }
+
         // Agrupa pagamentos elegíveis por tipo. Para pedidos CA (não-especiais),
         // Vendedor/Escritório responsável vão como grupo OUTRO (apenas alteram a
         // forma no CA, sem criar baixa). Pedidos especiais ignoram esses pagamentos.
@@ -1796,6 +1807,7 @@ router.post('/quitar-ca', async (req, res) => {
             const grupos = {};
             for (const p of pedido.pagamentosReais) {
                 if (Number(p.valor) <= 0) continue;
+                if (p.cobrancaAsaasId && cobrancasInvalidas.has(p.cobrancaAsaasId)) continue; // estornado no Asaas
                 if (p.escritorioResponsavel || p.vendedorResponsavelId) {
                     if (pedido.especial) continue; // especial: fiado local, sem ação no CA
                     const rotulo = p.vendedorResponsavelId

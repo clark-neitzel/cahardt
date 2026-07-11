@@ -92,6 +92,9 @@ const BoletosAsaasModal = ({ conta, onClose, onAtualizado }) => {
 
     const badgeBoleto = (p) => {
         const b = p.boleto;
+        if (b?.status === 'ESTORNADO') {
+            return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">Devolvido (estornado)</span>;
+        }
         if (!b || b.status === 'CANCELADO' || b.status === 'EXPIRADO') {
             return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Sem boleto</span>;
         }

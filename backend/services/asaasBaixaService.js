@@ -199,6 +199,131 @@ const asaasBaixaService = {
     },
 
     /**
+     * PIX/boleto DEVOLVIDO (estornado) no Asaas depois de recebido:
+     *   1) marca a cobrança como ESTORNADO
+     *   2) estorna a baixa local (ledger PagamentoParcela) e recalcula parcela/conta
+     *   3) exclui a baixa correspondente no Conta Azul (achada pela observação com o id da cobrança)
+     *   4) se o PIX foi usado numa entrega, marca divergência no pedido
+     *   5) registra Atendimento FINANCEIRO para o faturamento conferir
+     * Idempotente e nunca lança (erros ficam em baixaErro).
+     */
+    registrarEstorno: async (cobrancaId) => {
+        const resultado = { estornoApp: false, estornoCa: false, erros: [] };
+
+        const cobranca = await prisma.cobrancaAsaas.findUnique({
+            where: { id: cobrancaId },
+            include: {
+                parcela: { include: { contaReceber: true } },
+                pedido: { select: { id: true, numero: true, idVendaContaAzul: true, dataVenda: true, vendedorId: true } },
+                cliente: { select: { UUID: true, Nome: true, NomeFantasia: true } }
+            }
+        });
+        if (!cobranca || cobranca.status === 'ESTORNADO') return resultado;
+
+        const forma = cobranca.tipo === 'BOLETO' ? 'Boleto Asaas' : 'PIX Asaas';
+        await prisma.cobrancaAsaas.update({ where: { id: cobranca.id }, data: { status: 'ESTORNADO' } });
+
+        // ── 1) Estornar a baixa local (se houve) ──
+        if (cobranca.baixaAppOk && cobranca.parcelaId && cobranca.parcela) {
+            try {
+                const parcela = cobranca.parcela;
+                await prisma.$transaction(async (tx) => {
+                    await tx.pagamentoParcela.updateMany({
+                        where: {
+                            parcelaId: parcela.id,
+                            estornado: false,
+                            observacao: { contains: cobranca.asaasPaymentId }
+                        },
+                        data: { estornado: true, estornadoEm: new Date() }
+                    });
+                    const restantes = await tx.pagamentoParcela.findMany({ where: { parcelaId: parcela.id, estornado: false } });
+                    const novoValorPago = restantes.reduce((s, p) => s + Number(p.valorRecebido), 0);
+                    const novoDesconto = restantes.reduce((s, p) => s + Number(p.valorDesconto), 0);
+                    const novoStatusParcela = calcularStatusParcela(parcela.valor, novoValorPago, novoDesconto);
+                    await tx.parcela.update({
+                        where: { id: parcela.id },
+                        data: {
+                            status: novoStatusParcela,
+                            valorPago: novoValorPago || null,
+                            valorDescontoTotal: novoDesconto,
+                            dataPagamento: novoStatusParcela === 'PAGO' ? parcela.dataPagamento : null
+                        }
+                    });
+                    const todas = await tx.parcela.findMany({ where: { contaReceberId: parcela.contaReceberId } });
+                    const atualizadas = todas.map(p => p.id === parcela.id ? { ...p, status: novoStatusParcela } : p);
+                    await tx.contaReceber.update({
+                        where: { id: parcela.contaReceberId },
+                        data: { status: calcularStatusConta(atualizadas) }
+                    });
+                }, { timeout: 20000, maxWait: 10000 });
+                await prisma.cobrancaAsaas.update({ where: { id: cobranca.id }, data: { baixaAppOk: false } });
+                resultado.estornoApp = true;
+            } catch (e) {
+                console.error(`[Asaas estorno] Falha no estorno local de ${cobranca.asaasPaymentId}:`, e.message);
+                resultado.erros.push(`estorno local: ${e.message}`);
+            }
+        }
+
+        // ── 2) Excluir a baixa no Conta Azul (se houve) ──
+        if (cobranca.baixaCaOk && cobranca.pedido?.idVendaContaAzul && cobranca.parcela) {
+            try {
+                const dataVendaStr = new Date(cobranca.pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+                const parcelasCA = await contaAzulService.encontrarParcelasDeVenda(
+                    cobranca.cliente.UUID, cobranca.pedido.idVendaContaAzul, dataVendaStr
+                );
+                const vencLocal = cobranca.parcela.dataVencimento ? new Date(cobranca.parcela.dataVencimento).toISOString().split('T')[0] : null;
+                const caPar = (parcelasCA || []).find(p => (p.numero_parcela || 0) === cobranca.parcela.numeroParcela)
+                    || (parcelasCA || []).find(p => p.data_vencimento === vencLocal)
+                    || ((parcelasCA || []).length === 1 ? parcelasCA[0] : null);
+                if (!caPar) throw new Error('Parcela não encontrada no CA.');
+                const det = await contaAzulService.buscarParcelaDetalhe(caPar.id);
+                const baixaAsaas = (det?.baixas || []).find(b => (b?.observacao || '').includes(cobranca.asaasPaymentId));
+                if (!baixaAsaas?.id) throw new Error('Baixa correspondente não encontrada no CA (excluir manualmente).');
+                await contaAzulService.excluirBaixa(baixaAsaas.id);
+                await prisma.cobrancaAsaas.update({ where: { id: cobranca.id }, data: { baixaCaOk: false } });
+                resultado.estornoCa = true;
+            } catch (e) {
+                console.error(`[Asaas estorno] Falha ao excluir baixa CA de ${cobranca.asaasPaymentId}:`, e.message);
+                resultado.erros.push(`estorno CA: ${e.message}`);
+            }
+        }
+
+        // ── 3) PIX usado numa entrega → marcar divergência no pedido ──
+        try {
+            const pagReal = await prisma.pedidoPagamentoReal.findFirst({ where: { cobrancaAsaasId: cobranca.id } });
+            if (pagReal) {
+                await prisma.pedido.update({ where: { id: pagReal.pedidoId }, data: { divergenciaPagamento: true } });
+            }
+        } catch (e) {
+            resultado.erros.push(`divergência: ${e.message}`);
+        }
+
+        // ── 4) Registrar erro pendente + aviso no histórico do cliente ──
+        try {
+            await prisma.cobrancaAsaas.update({
+                where: { id: cobranca.id },
+                data: { baixaErro: resultado.erros.length ? `ESTORNO: ${resultado.erros.join(' | ')}` : null }
+            });
+        } catch (_) { /* não crítico */ }
+        try {
+            await prisma.atendimento.create({
+                data: {
+                    tipo: 'FINANCEIRO',
+                    observacao: `⚠️ ${forma} DEVOLVIDO no Asaas: R$ ${Number(cobranca.valorRecebido ?? cobranca.valor).toFixed(2)}${cobranca.pedido?.numero ? ` (pedido #${cobranca.pedido.numero})` : ''}. Baixas desfeitas automaticamente${resultado.erros.length ? ' COM PENDÊNCIA — conferir' : ''}. O valor voltou ao cliente — cobrar novamente se preciso.`,
+                    clienteId: cobranca.clienteId,
+                    idVendedor: cobranca.criadoPorId || cobranca.pedido?.vendedorId || null,
+                    pedidoId: cobranca.pedidoId || null
+                }
+            });
+        } catch (logErr) {
+            console.error('[Asaas estorno] Falha no aviso (estorno já efetivado):', logErr.message);
+        }
+
+        console.log(`↩️ [Asaas] Cobrança ${cobranca.asaasPaymentId} ESTORNADA (app: ${resultado.estornoApp}, CA: ${resultado.estornoCa})`);
+        return resultado;
+    },
+
+    /**
      * Reprocessa cobranças RECEBIDAS com baixa pendente (webhook falhou na hora).
      * Usado pelo admin-exec e pode ser chamado após deploy.
      */

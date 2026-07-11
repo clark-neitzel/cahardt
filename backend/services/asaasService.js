@@ -63,7 +63,8 @@ function hojeSP() {
 function mapearStatus(statusAsaas) {
     if (['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(statusAsaas)) return 'RECEBIDO';
     if (['OVERDUE'].includes(statusAsaas)) return 'EXPIRADO';
-    if (['REFUNDED', 'DELETED', 'CANCELLED'].includes(statusAsaas)) return 'CANCELADO';
+    if (['REFUNDED'].includes(statusAsaas)) return 'ESTORNADO';
+    if (['DELETED', 'CANCELLED'].includes(statusAsaas)) return 'CANCELADO';
     return 'PENDENTE';
 }
 
@@ -225,6 +226,11 @@ const asaasService = {
                 valorRecebido: payment.value,
                 recebidoEm: payment.paymentDate || payment.clientPaymentDate || null
             });
+        }
+        if (novoStatus === 'ESTORNADO') {
+            const asaasBaixaService = require('./asaasBaixaService');
+            await asaasBaixaService.registrarEstorno(cobranca.id);
+            return prisma.cobrancaAsaas.findUnique({ where: { id: cobranca.id } });
         }
         return prisma.cobrancaAsaas.update({
             where: { id: cobranca.id },
@@ -516,8 +522,13 @@ const asaasService = {
                     recebidoEm: payment.paymentDate || payment.clientPaymentDate || null
                 });
                 resultado = { ok: true, motivo: 'recebimento registrado' };
-            } else if (['PAYMENT_DELETED', 'PAYMENT_REFUNDED'].includes(evento)) {
-                if (cobranca.status !== 'RECEBIDO' || evento === 'PAYMENT_REFUNDED') {
+            } else if (evento === 'PAYMENT_REFUNDED') {
+                // Devolução depois de pago: desfaz as baixas (app + CA) e avisa o faturamento
+                const asaasBaixaService = require('./asaasBaixaService');
+                await asaasBaixaService.registrarEstorno(cobranca.id);
+                resultado = { ok: true, motivo: 'cobrança estornada (baixas desfeitas)' };
+            } else if (evento === 'PAYMENT_DELETED') {
+                if (cobranca.status !== 'RECEBIDO') {
                     await prisma.cobrancaAsaas.update({
                         where: { id: cobranca.id },
                         data: { status: 'CANCELADO' }
