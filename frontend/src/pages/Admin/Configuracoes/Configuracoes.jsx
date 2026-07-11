@@ -4,6 +4,7 @@ import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2
 import toast from 'react-hot-toast';
 import RotasAtivasPreview from './RotasAtivasPreview';
 import NotasCertificadoConfig from './NotasCertificadoConfig';
+import SecaoAsaas from './SecaoAsaas';
 import { useAuth } from '../../../contexts/AuthContext';
 import api from '../../../services/api';
 import caixaService from '../../../services/caixaService';
@@ -834,6 +835,9 @@ const Configuracoes = () => {
                     </div>
                 </div>
             )}
+
+            {/* ── Asaas (boleto e PIX) ── */}
+            {isAdmin && <SecaoAsaas />}
 
             {/* ── Notas & Certificado Digital ── */}
             {(user?.permissoes?.admin || user?.permissoes?.configuracoes?.edit) && <NotasCertificadoConfig />}

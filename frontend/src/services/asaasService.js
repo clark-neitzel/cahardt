@@ -7,6 +7,12 @@ const asaasService = {
         const response = await api.get('/asaas/status');
         return response.data;
     },
+    // Configuração da integração (validade padrão do PIX, multa/juros...).
+    // completo=true inclui o status da conta/webhook (só a tela de Configurações usa).
+    config: async (completo = false) => {
+        const response = await api.get('/asaas/config', { params: completo ? { completo: '1' } : {} });
+        return response.data;
+    },
     // Gera (ou reaproveita) um QR Code PIX para o pedido.
     // validadeDias: até quando o QR/link vale. vincularParcela: baixa automática ao pagar (financeiro).
     criarPix: async ({ pedidoId, valor, descricao, validadeDias, vincularParcela }) => {

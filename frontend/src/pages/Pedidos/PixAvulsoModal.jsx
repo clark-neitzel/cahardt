@@ -25,6 +25,18 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
     const [copiado, setCopiado] = useState(false);
     const pollRef = useRef(null);
 
+    // Validade pré-selecionada vem de Configurações → Asaas (padrão do sistema)
+    useEffect(() => {
+        (async () => {
+            try {
+                const { config } = await asaasService.config();
+                if ([0, 1, 3, 7].includes(Number(config?.pixValidadePadraoDias))) {
+                    setValidade(Number(config.pixValidadePadraoDias));
+                }
+            } catch (_) { /* mantém o padrão local */ }
+        })();
+    }, []);
+
     // Poll de status enquanto pendente (o backend confere direto no Asaas)
     useEffect(() => {
         if (!cobranca || cobranca.status !== 'PENDENTE') return undefined;

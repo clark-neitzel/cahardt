@@ -59,6 +59,40 @@ function hojeSP() {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 }
 
+// ── Configuração da integração (tela Configurações → Asaas) ─────────────────
+// app_configs.asaas_config — multa/juros do boleto, mensagens e validade padrão do PIX.
+const CONFIG_ASAAS_PADRAO = {
+    multaAtiva: false, multaPercent: 2,          // multa: única, após o vencimento (máx. legal 2%)
+    jurosAtivo: false, jurosMesPercent: 1,       // juros: ao mês, pro-rata dia (máx. legal 1%/mês)
+    msgBoleto: 'Pedido {pedido} - parcela {parcela} - Hardt Doces e Salgados',
+    pixValidadePadraoDias: 0,                    // 0=hoje, 1=amanhã, 3, 7 (pré-seleção da tela de PIX)
+    msgPix: 'Pedido {pedido} - Hardt Doces e Salgados',
+    avisosAsaas: false,                          // false = Asaas NÃO manda e-mail/SMS (quem avisa é o app)
+};
+
+async function obterConfigAsaas() {
+    try {
+        const cfg = await prisma.appConfig.findUnique({ where: { key: 'asaas_config' } });
+        if (cfg?.value && typeof cfg.value === 'object') return { ...CONFIG_ASAAS_PADRAO, ...cfg.value };
+        // chave antiga (só multa/juros), de antes da tela existir
+        const legado = await prisma.appConfig.findUnique({ where: { key: 'asaas_boleto_config' } });
+        const v = legado?.value || {};
+        const out = { ...CONFIG_ASAAS_PADRAO };
+        if (Number(v.multaPercent) > 0) { out.multaAtiva = true; out.multaPercent = Number(v.multaPercent); }
+        if (Number(v.jurosMesPercent) > 0) { out.jurosAtivo = true; out.jurosMesPercent = Number(v.jurosMesPercent); }
+        return out;
+    } catch (_) {
+        return { ...CONFIG_ASAAS_PADRAO };
+    }
+}
+
+// Preenche {pedido}, {parcela}, {cliente}, {vencimento} num modelo de mensagem.
+// Token sem valor vira vazio (nunca sobra "{cliente}" impresso no boleto).
+function preencherMsg(modelo, vars = {}) {
+    const out = String(modelo || '').replace(/\{(\w+)\}/g, (_, k) => (vars[k] != null ? String(vars[k]) : ''));
+    return out.replace(/\s{2,}/g, ' ').trim();
+}
+
 // Status do Asaas → status local da CobrancaAsaas
 function mapearStatus(statusAsaas) {
     if (['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(statusAsaas)) return 'RECEBIDO';
@@ -100,6 +134,7 @@ const asaasService = {
 
         if (!customerId) {
             const celular = soDigitos(cliente.Telefone_Celular || cliente.Telefone);
+            const cfgAvisos = await obterConfigAsaas();
             try {
                 const criado = await http.post('/customers', {
                     name: cliente.Nome,
@@ -107,7 +142,8 @@ const asaasService = {
                     email: cliente.Email || undefined,
                     mobilePhone: celular || undefined,
                     externalReference: clienteUuid,
-                    notificationDisabled: true // quem avisa o cliente é o nosso app, não o Asaas
+                    // padrão: quem avisa o cliente é o nosso app (WhatsApp/Régua), não o Asaas
+                    notificationDisabled: !cfgAvisos.avisosAsaas
                 });
                 customerId = criado.data.id;
             } catch (e) {
@@ -189,6 +225,13 @@ const asaasService = {
         const venc = new Date(Date.now() + dias * 24 * 3600 * 1000)
             .toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 
+        // Descrição do PIX: modelo configurável (Configurações → Asaas)
+        const cfgPix = await obterConfigAsaas();
+        const numeroExib = `${pedido.especial ? 'ZZ#' : '#'}${pedido.numero || 's/n'}`;
+        const descPix = descricao
+            || preencherMsg(cfgPix.msgPix, { pedido: numeroExib, cliente: pedido.cliente?.Nome || '' })
+            || `Pedido ${numeroExib} - Hardt`;
+
         let payment;
         try {
             const resp = await http.post('/payments', {
@@ -196,7 +239,7 @@ const asaasService = {
                 billingType: 'PIX',
                 value: valorNum,
                 dueDate: venc,
-                description: (descricao || `Pedido ${pedido.especial ? 'ZZ#' : '#'}${pedido.numero || 's/n'} - Hardt`).slice(0, 500),
+                description: descPix.slice(0, 500),
                 externalReference: pedidoId
             });
             payment = resp.data;
@@ -438,14 +481,11 @@ const asaasService = {
             : hoje;
         const dueDate = vencParcela < hoje ? hoje : vencParcela;
 
-        // Multa/juros opcionais via config (app_configs.asaas_boleto_config = { multaPercent, jurosMesPercent })
-        let multaJuros = {};
-        try {
-            const cfg = await prisma.appConfig.findUnique({ where: { key: 'asaas_boleto_config' } });
-            const v = cfg?.value || {};
-            if (Number(v.multaPercent) > 0) multaJuros.fine = { value: Number(v.multaPercent) };
-            if (Number(v.jurosMesPercent) > 0) multaJuros.interest = { value: Number(v.jurosMesPercent) };
-        } catch (_) { /* sem config → sem multa/juros */ }
+        // Multa/juros e mensagem do boleto (Configurações → Asaas)
+        const cfgBoleto = await obterConfigAsaas();
+        const multaJuros = {};
+        if (cfgBoleto.multaAtiva && Number(cfgBoleto.multaPercent) > 0) multaJuros.fine = { value: Number(cfgBoleto.multaPercent) };
+        if (cfgBoleto.jurosAtivo && Number(cfgBoleto.jurosMesPercent) > 0) multaJuros.interest = { value: Number(cfgBoleto.jurosMesPercent) };
 
         const numeroPedido = conta.pedido?.numero ? `#${conta.pedido.numero}` : 's/n';
         let payment;
@@ -455,7 +495,12 @@ const asaasService = {
                 billingType: 'BOLETO',
                 value: saldo,
                 dueDate,
-                description: `Pedido ${numeroPedido} - parcela ${parcela.numeroParcela} - Hardt`.slice(0, 500),
+                description: (preencherMsg(cfgBoleto.msgBoleto, {
+                    pedido: numeroPedido,
+                    parcela: String(parcela.numeroParcela ?? ''),
+                    cliente: conta.cliente?.Nome || '',
+                    vencimento: dueDate.split('-').reverse().join('/')
+                }) || `Pedido ${numeroPedido} - parcela ${parcela.numeroParcela} - Hardt`).slice(0, 500),
                 externalReference: parcelaId,
                 ...multaJuros
             });
@@ -651,6 +696,58 @@ const asaasService = {
         } catch (e) {
             return { configurado: true, ambiente: AMBIENTE, erro: e.response?.status === 401 ? 'Chave inválida' : e.message };
         }
+    },
+
+    // ── Configuração (tela Configurações → Asaas) ──
+    obterConfig: obterConfigAsaas,
+
+    salvarConfig: async (dados) => {
+        const atual = await obterConfigAsaas();
+        const num = (v, padrao) => (Number.isFinite(Number(v)) ? Number(v) : padrao);
+        const novo = {
+            multaAtiva: !!dados.multaAtiva,
+            multaPercent: Math.round(num(dados.multaPercent, atual.multaPercent) * 100) / 100,
+            jurosAtivo: !!dados.jurosAtivo,
+            jurosMesPercent: Math.round(num(dados.jurosMesPercent, atual.jurosMesPercent) * 100) / 100,
+            msgBoleto: String(dados.msgBoleto ?? atual.msgBoleto).trim().slice(0, 400),
+            pixValidadePadraoDias: [0, 1, 3, 7].includes(num(dados.pixValidadePadraoDias, atual.pixValidadePadraoDias))
+                ? num(dados.pixValidadePadraoDias, atual.pixValidadePadraoDias) : atual.pixValidadePadraoDias,
+            msgPix: String(dados.msgPix ?? atual.msgPix).trim().slice(0, 400),
+            avisosAsaas: !!dados.avisosAsaas,
+        };
+        // Tetos legais (Código de Defesa do Consumidor): multa 2%, juros 1% ao mês
+        if (novo.multaPercent < 0 || novo.multaPercent > 2) {
+            const err = new Error('Multa deve ficar entre 0% e 2% (máximo permitido por lei).');
+            err.statusCode = 400; throw err;
+        }
+        if (novo.jurosMesPercent < 0 || novo.jurosMesPercent > 1) {
+            const err = new Error('Juros devem ficar entre 0% e 1% ao mês (máximo permitido por lei).');
+            err.statusCode = 400; throw err;
+        }
+        await prisma.appConfig.upsert({
+            where: { key: 'asaas_config' },
+            create: { key: 'asaas_config', value: novo },
+            update: { value: novo }
+        });
+        return novo;
+    },
+
+    // Status completo para a tela de Configurações: chave + webhook + conta CA
+    statusCompleto: async () => {
+        const status = await asaasService.statusIntegracao();
+        let webhookAtivo = false;
+        if (status.configurado && !status.erro) {
+            try {
+                const lista = await http.get('/webhooks');
+                webhookAtivo = (lista.data?.data || []).some(w => w.enabled && (w.url || '').includes('/api/asaas/webhook'));
+            } catch (_) { /* sem acesso à lista → mostra como não confirmado */ }
+        }
+        let contaCaVinculada = false;
+        try {
+            const cfg = await prisma.appConfig.findUnique({ where: { key: 'asaas_conta_financeira_ca_id' } });
+            contaCaVinculada = !!cfg?.value;
+        } catch (_) { /* segue false */ }
+        return { ...status, webhookAtivo, contaCaVinculada };
     }
 };
 

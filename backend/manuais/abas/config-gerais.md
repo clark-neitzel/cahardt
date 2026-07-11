@@ -27,6 +27,7 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 - Configurar parâmetros do caixa diário
 - Configurar a mensagem padrão de WhatsApp para notificações
 - Instalar o **certificado digital A1** (.pfx/.p12) da empresa para o módulo de notas fiscais (seção Notas Fiscais / Certificado Digital)
+- Configurar a integração **Asaas — Boleto e PIX** (seção só para admin): multa e juros do boleto, mensagem impressa no boleto, validade padrão e descrição do PIX, avisos do Asaas ao cliente
 
 ---
 
@@ -63,6 +64,14 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 4. Se a SEFAZ bloquear por excesso de consultas (erro 656) ou o ambiente nacional pedir pausa (HTTP 429), o sistema pausa sozinho por 1h15 e informa até quando
 5. Desligar uma captura não apaga nada — só para de consultar
 6. **NFS-e**: só chegam notas de municípios já integrados ao sistema nacional da NFS-e (nfse.gov.br)
+
+### Configurar a integração Asaas (Boleto e PIX) — só admin
+1. Na seção **Asaas — Boleto e PIX**, o topo mostra o **status da integração**: chave da conta (produção/sandbox), webhook de pagamento (o Asaas avisa o app na hora do pagamento), conta "ASAAS" vinculada no Conta Azul e o vigia de segurança (reprocessa baixas pendentes a cada 10 min)
+2. **Boleto — multa e juros**: interruptor + porcentagem para multa por atraso (única, máx. legal 2%) e juros por atraso (por mês, proporcional aos dias, máx. legal 1% ao mês). O banco calcula e cobra sozinho; a baixa entra com o valor extra registrado
+3. **Mensagem impressa no boleto**: texto configurável com variáveis `{pedido}`, `{parcela}`, `{cliente}`, `{vencimento}` — o app troca pelo dado real de cada boleto
+4. **PIX**: validade padrão do QR Code (Hoje/Amanhã/3/7 dias — é a pré-seleção da tela de gerar PIX, dá pra mudar na hora) e descrição do PIX (aparece no comprovante do cliente; variáveis `{pedido}`, `{cliente}`). PIX não tem multa/juros — vencido, o QR para de funcionar
+5. **Avisos ao cliente**: interruptor para o Asaas mandar e-mail/SMS por conta própria (boleto emitido, lembrete, atraso). Recomendação: **desligado** — o WhatsApp do app + Régua de Cobrança já avisam; ligado = aviso em dobro. Vale para clientes cadastrados no Asaas a partir da mudança
+6. As mudanças valem para cobranças **emitidas depois de salvar** — boletos/PIX já emitidos não mudam
 
 ---
 

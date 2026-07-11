@@ -70,6 +70,34 @@ router.get('/status', verificarAuth, (req, res) => {
     res.json({ configurado: asaasService.configurado(), ambiente: asaasService.configurado() ? asaasService.AMBIENTE : null });
 });
 
+// ── Configuração da integração (Configurações → Asaas) ──
+// GET aberto a quem pode cobrar (a tela de PIX lê a validade padrão);
+// ?completo=1 inclui o status da integração (consulta o Asaas — usar só na tela de config).
+router.get('/config', verificarAuth, checkPodeCobrar, async (req, res) => {
+    try {
+        const config = await asaasService.obterConfig();
+        if (req.query.completo === '1') {
+            const status = await asaasService.statusCompleto();
+            return res.json({ config, status });
+        }
+        res.json({ config });
+    } catch (e) {
+        res.status(e.statusCode || 500).json({ error: e.message });
+    }
+});
+
+// Salvar: só admin (mexe em multa/juros cobrados do cliente)
+router.put('/config', verificarAuth, async (req, res) => {
+    try {
+        const perms = await getPerms(req.user.id);
+        if (!perms.admin) return res.status(403).json({ error: 'Somente administradores.' });
+        const config = await asaasService.salvarConfig(req.body || {});
+        res.json({ ok: true, config });
+    } catch (e) {
+        res.status(e.statusCode || 500).json({ error: e.message });
+    }
+});
+
 // ── POST /pix — gerar QR Code PIX para um pedido (entrega ou cobrança do financeiro) ──
 router.post('/pix', verificarAuth, checkPodeCobrar, async (req, res) => {
     try {
