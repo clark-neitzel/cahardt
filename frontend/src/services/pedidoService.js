@@ -134,6 +134,11 @@ const pedidoService = {
         const response = await api.post('/pedidos/imprimir-lote/checar', { pedidoIds });
         return response.data;
     },
+    // Checa UM pedido (o app chama em sequência, mostrando o progresso na tela)
+    imprimirLoteChecarPedido: async (pedidoId) => {
+        const response = await api.post('/pedidos/imprimir-lote/checar-pedido', { pedidoId });
+        return response.data;
+    },
     imprimirLote: async ({ pedidoIds, duasVias, incluirBoletos }) => {
         // devolve o response inteiro (blob + header X-Lote-Erros)
         return api.post('/pedidos/imprimir-lote', { pedidoIds, duasVias, incluirBoletos }, { responseType: 'blob' });

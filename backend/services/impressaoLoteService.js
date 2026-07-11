@@ -89,19 +89,40 @@ async function boletosCaDoPedido(pedido) {
     }
 }
 
-// Roda tarefas com concorrência limitada (a API do CA é lenta; sem isso um lote
-// grande demoraria demais, e com concorrência alta o CA começa a recusar).
-async function comConcorrencia(itens, limite, tarefa) {
-    const resultados = new Array(itens.length);
-    let i = 0;
-    const workers = Array.from({ length: Math.min(limite, itens.length) }, async () => {
-        while (i < itens.length) {
-            const idx = i++;
-            resultados[idx] = await tarefa(itens[idx], idx);
-        }
-    });
-    await Promise.all(workers);
-    return resultados;
+// Classifica UM pedido (com os boletos Asaas e do CA já em mãos).
+// boleto: OK (tem boleto não pago em algum sistema) | PAGO (só quitado) |
+//         SEM_BOLETO (conferido nos dois, não tem) | DESCONHECIDO (CA fora do ar) |
+//         NAO_SE_APLICA (especial/bonificação/à vista)
+function classificar(p, asaasDoPedido, caDoPedido, caErro) {
+    const aPrazo = A_PRAZO(p);
+    const asaasNaoPagos = asaasDoPedido.filter(c => c.status === 'PENDENTE');
+    const caNaoPagos = caDoPedido.filter(b => !b.pago);
+    const temAlgum = asaasDoPedido.length > 0 || caDoPedido.length > 0;
+
+    let boleto = 'NAO_SE_APLICA';
+    if (!p.especial && !p.bonificacao && aPrazo) {
+        if (asaasNaoPagos.length > 0 || caNaoPagos.length > 0) boleto = 'OK';
+        else if (temAlgum) boleto = 'PAGO'; // existe, mas quitado → não imprime
+        else if (caErro) boleto = 'DESCONHECIDO'; // não deu p/ consultar o CA
+        else boleto = 'SEM_BOLETO';
+    }
+
+    return {
+        id: p.id,
+        numero: p.numero,
+        cliente: p.cliente?.NomeFantasia || p.cliente?.Nome || '—',
+        especial: p.especial,
+        bonificacao: p.bonificacao,
+        aPrazo,
+        temNF: !!p.nfeChave || p.situacaoCA === 'FATURADO',
+        boleto,
+        boletosCA: caNaoPagos.length,
+        boletosAsaas: asaasNaoPagos.length,
+        caPago: caDoPedido.length > 0 && caNaoPagos.length === 0,
+        asaasPago: asaasDoPedido.length > 0 && asaasNaoPagos.length === 0,
+        caErro: caErro || null,
+        valorTotal: (p.itens || []).reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0) + Number(p.valorFrete || 0)
+    };
 }
 
 const impressaoLoteService = {
@@ -114,45 +135,25 @@ const impressaoLoteService = {
     checar: async (pedidoIds) => {
         const pedidos = await carregarPedidos(pedidoIds);
         const asaas = await boletosAsaasPorPedido(pedidoIds);
+        const saida = [];
+        // Sequencial de propósito: não martelar a API do CA com várias consultas de uma vez
+        for (const p of pedidos) {
+            const { boletos, erro } = await boletosCaDoPedido(p);
+            saida.push(classificar(p, asaas.get(p.id) || [], boletos, erro));
+        }
+        return saida;
+    },
 
-        // Consulta o CA de todos os pedidos em paralelo (limitado) — é aqui que o app
-        // "importa" a situação do boleto do Conta Azul.
-        const consultasCA = await comConcorrencia(pedidos, 4, (p) =>
-            (!p.especial && !p.bonificacao) ? boletosCaDoPedido(p) : Promise.resolve({ boletos: [], erro: null })
-        );
-
-        return pedidos.map((p, idx) => {
-            const aPrazo = A_PRAZO(p);
-            const asaasDoPedido = asaas.get(p.id) || [];
-            const { boletos: caDoPedido, erro: caErro } = consultasCA[idx];
-
-            const asaasNaoPagos = asaasDoPedido.filter(c => c.status === 'PENDENTE');
-            const caNaoPagos = caDoPedido.filter(b => !b.pago);
-            const temAlgum = asaasDoPedido.length > 0 || caDoPedido.length > 0;
-
-            let boleto = 'NAO_SE_APLICA';
-            if (!p.especial && !p.bonificacao && aPrazo) {
-                if (asaasNaoPagos.length > 0 || caNaoPagos.length > 0) boleto = 'OK';
-                else if (temAlgum) boleto = 'PAGO'; // existe, mas quitado → não imprime
-                else if (caErro) boleto = 'DESCONHECIDO'; // não deu p/ consultar o CA — NÃO afirmar "sem boleto"
-                else boleto = 'SEM_BOLETO';
-            }
-
-            return {
-                id: p.id,
-                numero: p.numero,
-                cliente: p.cliente?.NomeFantasia || p.cliente?.Nome || '—',
-                especial: p.especial,
-                bonificacao: p.bonificacao,
-                aPrazo,
-                temNF: !!p.nfeChave || p.situacaoCA === 'FATURADO',
-                boleto,
-                boletosCA: caNaoPagos.length,
-                boletosAsaas: asaasNaoPagos.length,
-                caErro: caErro || null,
-                valorTotal: (p.itens || []).reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0) + Number(p.valorFrete || 0)
-            };
-        });
+    /**
+     * Checagem de UM pedido — o app chama em sequência, um por vez, mostrando o
+     * progresso na tela (pedido do dono: consultar o CA de um em um, não em lote).
+     */
+    checarPedido: async (pedidoId) => {
+        const [pedido] = await carregarPedidos([pedidoId]);
+        if (!pedido) throw new Error('Pedido não encontrado.');
+        const asaas = await boletosAsaasPorPedido([pedidoId]);
+        const { boletos, erro } = await boletosCaDoPedido(pedido);
+        return classificar(pedido, asaas.get(pedidoId) || [], boletos, erro);
     },
 
     /**

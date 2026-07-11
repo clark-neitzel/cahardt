@@ -31,6 +31,7 @@ router.get('/', pedidoController.listar);
 
 // Impressão em lote (DANFEs 2 vias + boletos / recibo do especial)
 router.post('/imprimir-lote/checar', pedidoController.imprimirLoteChecar);
+router.post('/imprimir-lote/checar-pedido', pedidoController.imprimirLoteChecarPedido); // um por vez (ao vivo)
 router.post('/imprimir-lote', pedidoController.imprimirLote);
 
 // Avisos de pedido especial convertido (popup do faturamento a cada 5 min)
