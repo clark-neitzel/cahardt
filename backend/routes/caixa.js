@@ -42,6 +42,117 @@ const checkEditor = async (req, res, next) => {
 };
 
 router.use(verificarAuth);
+
+// ─────────────────────────────────────────────────────────────────────────
+// Rotas do RESPONSÁVEL que autoriza devoluções à distância.
+// Registradas ANTES do checkAcessoCaixa de propósito: quem só autoriza pode
+// não ter acesso ao Caixa Diário. A permissão é checada dentro de cada rota.
+// (Os helpers/constantes usados aqui são definidos mais abaixo no arquivo, o
+// que é seguro: só são lidos quando a requisição chega, com o módulo já carregado.)
+// ─────────────────────────────────────────────────────────────────────────
+
+// ── GET /autorizacoes-devolucao/pendentes — Pedidos aguardando ESTE usuário ──
+router.get('/autorizacoes-devolucao/pendentes', async (req, res) => {
+    try {
+        const perms = await getPerms(req.user.id);
+        if (!perms.admin && !perms[PERM_AUTORIZAR_DEV]) {
+            return res.json([]); // sem permissão de autorizar → nada a mostrar (poller do pop-up)
+        }
+        const pendentes = await prisma.autorizacaoDevolucao.findMany({
+            where: { autorizadorId: req.user.id, status: 'PENDENTE' },
+            orderBy: { createdAt: 'asc' }
+        });
+        if (pendentes.length === 0) return res.json([]);
+
+        // Nome do dono do caixa (motorista)
+        const vendedorIds = [...new Set(pendentes.map(p => p.vendedorId))];
+        const vendedores = await prisma.vendedor.findMany({
+            where: { id: { in: vendedorIds } },
+            select: { id: true, nome: true }
+        });
+        const nomePorId = Object.fromEntries(vendedores.map(v => [v.id, v.nome]));
+
+        res.json(pendentes.map(p => ({
+            id: p.id,
+            vendedorId: p.vendedorId,
+            vendedorNome: nomePorId[p.vendedorId] || 'Motorista',
+            dataReferencia: p.dataReferencia,
+            produtoNome: p.produtoNome,
+            quantidade: Number(p.quantidade),
+            motivo: p.motivo,
+            valorUnit: p.valorUnit != null ? Number(p.valorUnit) : null,
+            valorTotal: p.valorUnit != null ? Math.round(Number(p.valorUnit) * Number(p.quantidade) * 100) / 100 : null,
+            solicitanteNome: p.solicitanteNome,
+            criadoEm: p.createdAt
+        })));
+    } catch (error) {
+        console.error('Erro ao listar autorizações pendentes:', error);
+        res.status(500).json({ error: 'Erro ao listar autorizações pendentes.' });
+    }
+});
+
+// ── POST /autorizacoes-devolucao/:id/responder — Autoriza (com senha) ou rejeita ──
+router.post('/autorizacoes-devolucao/:id/responder', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { aprovar, senha, motivoRejeicao } = req.body;
+
+        const solic = await prisma.autorizacaoDevolucao.findUnique({ where: { id } });
+        if (!solic) return res.status(404).json({ error: 'Pedido não encontrado.' });
+        if (solic.status !== 'PENDENTE') return res.status(400).json({ error: 'Este pedido já foi respondido.' });
+        if (solic.autorizadorId !== req.user.id) {
+            return res.status(403).json({ error: 'Este pedido não é para você autorizar.' });
+        }
+
+        // Valida o próprio usuário: ativo + permissão de autorizar
+        const usuario = await prisma.vendedor.findUnique({ where: { id: req.user.id } });
+        if (!usuario || !usuario.ativo) return res.status(403).json({ error: 'Usuário inválido ou inativo.' });
+        const permsU = typeof usuario.permissoes === 'string' ? JSON.parse(usuario.permissoes) : (usuario.permissoes || {});
+        if (!permsU.admin && !permsU[PERM_AUTORIZAR_DEV]) {
+            return res.status(403).json({ error: 'Você não tem permissão para autorizar devoluções.' });
+        }
+
+        if (aprovar) {
+            // Autorizar exige a senha do próprio responsável
+            if (!senha) return res.status(400).json({ error: 'Digite sua senha para autorizar.' });
+            if (!usuario.senha) return res.status(403).json({ error: 'Sem senha configurada no app.' });
+            const senhaValida = await bcrypt.compare(senha, usuario.senha);
+            if (!senhaValida) return res.status(401).json({ error: 'Senha incorreta.' });
+
+            try {
+                await aplicarDesconsideracao({
+                    targetVendedor: solic.vendedorId,
+                    data: solic.dataReferencia,
+                    produtoId: solic.produtoId,
+                    quantidade: Number(solic.quantidade),
+                    motivo: solic.motivo,
+                    autorizador: { id: usuario.id, nome: usuario.nome },
+                    digitadoPor: solic.solicitanteId
+                });
+            } catch (e) {
+                if (e.status) return res.status(e.status).json({ error: e.message });
+                throw e;
+            }
+
+            await prisma.autorizacaoDevolucao.update({
+                where: { id: solic.id },
+                data: { status: 'AUTORIZADA', respondidoEm: new Date() }
+            });
+            return res.json({ ok: true, aprovado: true });
+        }
+
+        // Rejeitar (não precisa de senha)
+        await prisma.autorizacaoDevolucao.update({
+            where: { id: solic.id },
+            data: { status: 'REJEITADA', motivoRejeicao: (motivoRejeicao || '').trim() || null, respondidoEm: new Date() }
+        });
+        res.json({ ok: true, aprovado: false });
+    } catch (error) {
+        console.error('Erro ao responder autorização:', error);
+        res.status(500).json({ error: 'Erro ao responder autorização.' });
+    }
+});
+
 router.use(checkAcessoCaixa);
 
 // ── Cálculo de Média de Combustível (últimos 3 meses) ──
@@ -1013,6 +1124,57 @@ const getCaixaDoDia = (vendedorId, data) => prisma.caixaDiario.upsert({
     create: { vendedorId, dataReferencia: data }
 });
 
+// Grava a desconsideração de uma falta no item da conferência.
+// Usado tanto pela autorização inline ("autorizar eu mesmo") quanto pela
+// autorização à distância aprovada no pop-up do responsável.
+// `autorizador` = { id, nome } de quem de fato liberou (o dono da senha).
+const aplicarDesconsideracao = async ({ targetVendedor, data, produtoId, quantidade, motivo, autorizador, digitadoPor }) => {
+    const esperadas = await buscarDevolucoesEsperadas(targetVendedor, data);
+    const esperado = esperadas.find(e => e.produtoId === produtoId);
+    if (!esperado) { const e = new Error('Produto sem devolução registrada neste dia.'); e.status = 400; throw e; }
+
+    const qtdFinal = Math.min(round3(Number(quantidade)), esperado.qtdEsperada);
+
+    const caixa = await getCaixaDoDia(targetVendedor, data);
+    let conf = await prisma.caixaConferenciaDevolucao.findUnique({ where: { caixaDiarioId: caixa.id } });
+    if (conf?.status === 'CONFERIDA') { const e = new Error('Conferência já confirmada. Reabra a conferência para alterar.'); e.status = 400; throw e; }
+    if (!conf) conf = await prisma.caixaConferenciaDevolucao.create({ data: { caixaDiarioId: caixa.id } });
+
+    const dados = {
+        qtdEsperada: esperado.qtdEsperada,
+        qtdDesconsiderada: qtdFinal,
+        motivoDesconsiderar: (motivo || '').trim() || null,
+        autorizadoPorId: autorizador.id,
+        autorizadoPorNome: autorizador.nome,
+        autorizadoEm: new Date(),
+        pedidosOrigem: esperado.pedidosOrigem
+    };
+    await prisma.caixaConferenciaDevolucaoItem.upsert({
+        where: { conferenciaId_produtoId: { conferenciaId: conf.id, produtoId } },
+        update: dados,
+        create: { conferenciaId: conf.id, produtoId, produtoNome: esperado.produtoNome, ...dados }
+    });
+
+    // Log de auditoria FORA da operação principal — falha no log não desfaz a autorização
+    try {
+        await prisma.auditLog.create({
+            data: {
+                acao: 'AUTORIZAR_DESCONSIDERAR_DEVOLUCAO',
+                entidade: 'CaixaConferenciaDevolucao',
+                entidadeId: conf.id,
+                detalhes: JSON.stringify({
+                    vendedorId: targetVendedor, data, produto: esperado.produtoNome,
+                    quantidade: qtdFinal, motivo: dados.motivoDesconsiderar, digitadoPor: digitadoPor || autorizador.id
+                }),
+                usuarioId: autorizador.id, usuarioNome: autorizador.nome
+            }
+        });
+    } catch (logErr) {
+        console.error('[conferencia-devolucao] falha no audit log (autorização já gravada):', logErr.message);
+    }
+    return { qtdFinal, produtoNome: esperado.produtoNome };
+};
+
 // ── GET /conferencia-devolucao — Estado da conferência do dia ──
 router.get('/conferencia-devolucao', async (req, res) => {
     try {
@@ -1032,6 +1194,31 @@ router.get('/conferencia-devolucao', async (req, res) => {
         const conf = caixa?.conferenciaDevolucao || null;
         const tabela = await buscarTabelaCobranca(targetVendedor);
 
+        // Estado dos pedidos de autorização à distância (pendente/rejeitado) por produto
+        const solicitacoes = await prisma.autorizacaoDevolucao.findMany({
+            where: { vendedorId: targetVendedor, dataReferencia: data, status: { in: ['PENDENTE', 'REJEITADA'] } },
+            orderBy: { createdAt: 'desc' }
+        });
+        const solicPorProduto = new Map(); // produto → mais recente (PENDENTE tem prioridade)
+        for (const s of solicitacoes) {
+            const atual = solicPorProduto.get(s.produtoId);
+            if (!atual || (atual.status !== 'PENDENTE' && s.status === 'PENDENTE')) {
+                solicPorProduto.set(s.produtoId, s);
+            }
+        }
+        const solicInfo = (produtoId) => {
+            const s = solicPorProduto.get(produtoId);
+            if (!s) return null;
+            return {
+                id: s.id,
+                status: s.status,
+                autorizadorNome: s.autorizadorNome,
+                quantidade: Number(s.quantidade),
+                motivo: s.motivo,
+                motivoRejeicao: s.motivoRejeicao
+            };
+        };
+
         const itensSalvos = new Map((conf?.itens || []).map(i => [i.produtoId, i]));
         const itens = esperadas.map(e => {
             const s = itensSalvos.get(e.produtoId);
@@ -1049,6 +1236,7 @@ router.get('/conferencia-devolucao', async (req, res) => {
                 motivoDesconsiderar: s?.motivoDesconsiderar || null,
                 autorizadoPorNome: s?.autorizadoPorNome || null,
                 autorizadoEm: s?.autorizadoEm || null,
+                solicitacao: solicInfo(e.produtoId),
                 sobra: false
             };
         });
@@ -1097,7 +1285,9 @@ router.get('/conferencia-devolucao', async (req, res) => {
             tabelaCobranca: tabela ? { id: tabela.id, nome: tabela.nomeCondicao } : null,
             itens,
             autorizadores,
-            podeConferir: !!(req._perms.admin || req._perms[PERM_CONFERIR_DEV])
+            temSolicitacaoPendente: [...solicPorProduto.values()].some(s => s.status === 'PENDENTE'),
+            podeConferir: !!(req._perms.admin || req._perms[PERM_CONFERIR_DEV]),
+            podeAutorizarEuMesmo: !!(req._perms.admin || req._perms[PERM_AUTORIZAR_DEV])
         });
     } catch (error) {
         console.error('Erro ao buscar conferência de devoluções:', error);
@@ -1105,108 +1295,160 @@ router.get('/conferencia-devolucao', async (req, res) => {
     }
 });
 
-// ── POST /conferencia-devolucao/autorizar — Desconsiderar falta com senha ──
+// ── POST /conferencia-devolucao/autorizar — "Autorizar eu mesmo" ──
+// Só o PRÓPRIO usuário logado (que tem a permissão de autorizar) libera aqui,
+// digitando a própria senha. Para autorizar OUTRA pessoa, use o pedido de
+// autorização (/solicitar-autorizacao → pop-up no app do responsável).
 router.post('/conferencia-devolucao/autorizar', async (req, res) => {
     try {
-        if (!req._perms.admin && !req._perms[PERM_CONFERIR_DEV]) {
-            return res.status(403).json({ error: 'Sem permissão para conferir devoluções.' });
+        if (!req._perms.admin && !req._perms[PERM_CONFERIR_DEV] && !req._perms[PERM_AUTORIZAR_DEV]) {
+            return res.status(403).json({ error: 'Sem permissão para autorizar devoluções.' });
         }
 
         const { vendedorId, data, produtoId, quantidade, motivo, autorizadorId, senha } = req.body;
-        if (!data || !produtoId || !autorizadorId || !senha) {
-            return res.status(400).json({ error: 'Campos obrigatórios: data, produtoId, autorizadorId, senha.' });
+        if (!data || !produtoId || !senha) {
+            return res.status(400).json({ error: 'Campos obrigatórios: data, produtoId, senha.' });
+        }
+        // Autorização inline vale só para si mesmo
+        if (autorizadorId && autorizadorId !== req.user.id) {
+            return res.status(403).json({ error: 'Para autorizar outra pessoa, envie um pedido de autorização.' });
         }
         const qtd = Number(quantidade);
         if (!(qtd > 0)) return res.status(400).json({ error: 'Quantidade a desconsiderar deve ser maior que zero.' });
 
         const targetVendedor = vendedorId || req.user.id;
 
-        // Validar autorizador: ativo + permissão + senha do próprio login
-        const autorizador = await prisma.vendedor.findUnique({ where: { id: autorizadorId } });
+        // Valida o próprio usuário: ativo + permissão de autorizar + senha do próprio login
+        const autorizador = await prisma.vendedor.findUnique({ where: { id: req.user.id } });
         if (!autorizador || !autorizador.ativo) {
-            return res.status(403).json({ error: 'Autorizador inválido ou inativo.' });
+            return res.status(403).json({ error: 'Usuário inválido ou inativo.' });
         }
         const permsAut = typeof autorizador.permissoes === 'string'
             ? JSON.parse(autorizador.permissoes)
             : (autorizador.permissoes || {});
         if (!permsAut.admin && !permsAut[PERM_AUTORIZAR_DEV]) {
-            return res.status(403).json({ error: `${autorizador.nome} não tem permissão para autorizar desconsiderar devolução.` });
+            return res.status(403).json({ error: 'Você não tem permissão para autorizar desconsiderar devolução.' });
         }
         if (!autorizador.senha) {
-            return res.status(403).json({ error: 'Autorizador sem senha configurada no app.' });
+            return res.status(403).json({ error: 'Sem senha configurada no app.' });
         }
         const senhaValida = await bcrypt.compare(senha, autorizador.senha);
         if (!senhaValida) return res.status(401).json({ error: 'Senha incorreta.' });
+
+        const { qtdFinal } = await aplicarDesconsideracao({
+            targetVendedor, data, produtoId, quantidade: qtd, motivo,
+            autorizador: { id: autorizador.id, nome: autorizador.nome }, digitadoPor: req.user.id
+        });
+
+        res.json({ ok: true, produtoId, qtdDesconsiderada: qtdFinal, autorizadoPorNome: autorizador.nome });
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ error: error.message });
+        console.error('Erro ao autorizar desconsiderar devolução:', error);
+        res.status(500).json({ error: 'Erro ao autorizar desconsiderar devolução.' });
+    }
+});
+
+// ── POST /conferencia-devolucao/solicitar-autorizacao — Pedir autorização à distância ──
+router.post('/conferencia-devolucao/solicitar-autorizacao', async (req, res) => {
+    try {
+        if (!req._perms.admin && !req._perms[PERM_CONFERIR_DEV]) {
+            return res.status(403).json({ error: 'Sem permissão para conferir devoluções.' });
+        }
+
+        const { vendedorId, data, produtoId, quantidade, motivo, autorizadorId } = req.body;
+        if (!data || !produtoId || !autorizadorId) {
+            return res.status(400).json({ error: 'Campos obrigatórios: data, produtoId, autorizadorId.' });
+        }
+        const qtd = Number(quantidade);
+        if (!(qtd > 0)) return res.status(400).json({ error: 'Quantidade deve ser maior que zero.' });
+
+        const targetVendedor = vendedorId || req.user.id;
+
+        // Conferência já confirmada não aceita novo pedido
+        const caixa = await prisma.caixaDiario.findUnique({
+            where: { vendedorId_dataReferencia: { vendedorId: targetVendedor, dataReferencia: data } },
+            include: { conferenciaDevolucao: true }
+        });
+        if (caixa?.conferenciaDevolucao?.status === 'CONFERIDA') {
+            return res.status(400).json({ error: 'Conferência já confirmada. Reabra a conferência para alterar.' });
+        }
 
         // Produto precisa ter devolução registrada no dia
         const esperadas = await buscarDevolucoesEsperadas(targetVendedor, data);
         const esperado = esperadas.find(e => e.produtoId === produtoId);
         if (!esperado) return res.status(400).json({ error: 'Produto sem devolução registrada neste dia.' });
-
         const qtdFinal = Math.min(round3(qtd), esperado.qtdEsperada);
 
-        const caixa = await getCaixaDoDia(targetVendedor, data);
-        let conf = await prisma.caixaConferenciaDevolucao.findUnique({ where: { caixaDiarioId: caixa.id } });
-        if (conf?.status === 'CONFERIDA') {
-            return res.status(400).json({ error: 'Conferência já confirmada. Reabra a conferência para alterar.' });
+        // Autorizador: ativo + permissão de autorizar
+        const autorizador = await prisma.vendedor.findUnique({ where: { id: autorizadorId } });
+        if (!autorizador || !autorizador.ativo) {
+            return res.status(400).json({ error: 'Responsável inválido ou inativo.' });
         }
-        if (!conf) {
-            conf = await prisma.caixaConferenciaDevolucao.create({ data: { caixaDiarioId: caixa.id } });
+        const permsAut = typeof autorizador.permissoes === 'string'
+            ? JSON.parse(autorizador.permissoes)
+            : (autorizador.permissoes || {});
+        if (!permsAut.admin && !permsAut[PERM_AUTORIZAR_DEV]) {
+            return res.status(400).json({ error: `${autorizador.nome} não pode autorizar devoluções.` });
         }
 
-        const dadosAutorizacao = {
-            qtdEsperada: esperado.qtdEsperada,
-            qtdDesconsiderada: qtdFinal,
-            motivoDesconsiderar: (motivo || '').trim() || null,
-            autorizadoPorId: autorizador.id,
-            autorizadoPorNome: autorizador.nome,
-            autorizadoEm: new Date(),
-            pedidosOrigem: esperado.pedidosOrigem
-        };
-        const item = await prisma.caixaConferenciaDevolucaoItem.upsert({
-            where: { conferenciaId_produtoId: { conferenciaId: conf.id, produtoId } },
-            update: dadosAutorizacao,
-            create: {
-                conferenciaId: conf.id,
+        // Um pedido pendente por (vendedor, dia, produto)
+        const jaPendente = await prisma.autorizacaoDevolucao.findFirst({
+            where: { vendedorId: targetVendedor, dataReferencia: data, produtoId, status: 'PENDENTE' }
+        });
+        if (jaPendente) {
+            return res.status(400).json({ error: 'Já há um pedido de autorização pendente para este produto.' });
+        }
+
+        const tabela = await buscarTabelaCobranca(targetVendedor);
+        const solicitante = await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { nome: true } });
+
+        const solicitacao = await prisma.autorizacaoDevolucao.create({
+            data: {
+                vendedorId: targetVendedor,
+                dataReferencia: data,
                 produtoId,
                 produtoNome: esperado.produtoNome,
-                ...dadosAutorizacao
+                quantidade: qtdFinal,
+                motivo: (motivo || '').trim() || null,
+                valorUnit: precoNaTabela(esperado.valorVendaBase, tabela),
+                solicitanteId: req.user.id,
+                solicitanteNome: solicitante?.nome || 'Usuário',
+                autorizadorId: autorizador.id,
+                autorizadorNome: autorizador.nome,
+                status: 'PENDENTE'
             }
         });
 
-        // Log de auditoria FORA da operação principal — falha no log não desfaz a autorização
-        try {
-            await prisma.auditLog.create({
-                data: {
-                    acao: 'AUTORIZAR_DESCONSIDERAR_DEVOLUCAO',
-                    entidade: 'CaixaConferenciaDevolucao',
-                    entidadeId: conf.id,
-                    detalhes: JSON.stringify({
-                        vendedorId: targetVendedor,
-                        data,
-                        produto: esperado.produtoNome,
-                        quantidade: qtdFinal,
-                        motivo: dadosAutorizacao.motivoDesconsiderar,
-                        digitadoPor: req.user.id
-                    }),
-                    usuarioId: autorizador.id,
-                    usuarioNome: autorizador.nome
-                }
-            });
-        } catch (logErr) {
-            console.error('[conferencia-devolucao] falha no audit log (autorização já gravada):', logErr.message);
-        }
-
-        res.json({
-            ok: true,
-            produtoId,
-            qtdDesconsiderada: qtdFinal,
-            autorizadoPorNome: autorizador.nome,
-            autorizadoEm: item.autorizadoEm
-        });
+        res.json({ ok: true, id: solicitacao.id, autorizadorNome: autorizador.nome });
     } catch (error) {
-        console.error('Erro ao autorizar desconsiderar devolução:', error);
-        res.status(500).json({ error: 'Erro ao autorizar desconsiderar devolução.' });
+        console.error('Erro ao solicitar autorização de devolução:', error);
+        res.status(500).json({ error: 'Erro ao solicitar autorização.' });
+    }
+});
+
+// ── POST /conferencia-devolucao/cancelar-solicitacao — Cancela pedido pendente ──
+router.post('/conferencia-devolucao/cancelar-solicitacao', async (req, res) => {
+    try {
+        if (!req._perms.admin && !req._perms[PERM_CONFERIR_DEV]) {
+            return res.status(403).json({ error: 'Sem permissão para conferir devoluções.' });
+        }
+        const { id, vendedorId, data, produtoId } = req.body;
+
+        const where = id
+            ? { id }
+            : { vendedorId: vendedorId || req.user.id, dataReferencia: data, produtoId, status: 'PENDENTE' };
+        const solic = await prisma.autorizacaoDevolucao.findFirst({ where });
+        if (!solic) return res.status(404).json({ error: 'Pedido não encontrado.' });
+        if (solic.status !== 'PENDENTE') return res.status(400).json({ error: 'Pedido já respondido.' });
+
+        await prisma.autorizacaoDevolucao.update({
+            where: { id: solic.id },
+            data: { status: 'CANCELADA', respondidoEm: new Date() }
+        });
+        res.json({ ok: true });
+    } catch (error) {
+        console.error('Erro ao cancelar solicitação:', error);
+        res.status(500).json({ error: 'Erro ao cancelar solicitação.' });
     }
 });
 
@@ -1221,6 +1463,14 @@ router.post('/conferencia-devolucao/confirmar', async (req, res) => {
         if (!data) return res.status(400).json({ error: 'Campo "data" obrigatório.' });
 
         const targetVendedor = vendedorId || req.user.id;
+
+        // Não confirma no meio de um pedido de autorização em aberto
+        const pedidoPendente = await prisma.autorizacaoDevolucao.findFirst({
+            where: { vendedorId: targetVendedor, dataReferencia: data, status: 'PENDENTE' }
+        });
+        if (pedidoPendente) {
+            return res.status(400).json({ error: `Há um pedido de autorização aguardando ${pedidoPendente.autorizadorNome}. Espere a resposta ou cancele antes de confirmar.` });
+        }
 
         const esperadas = await buscarDevolucoesEsperadas(targetVendedor, data);
         const sobrasInformadas = (sobras || []).filter(s => Number(s.quantidade) > 0 && !esperadas.some(e => e.produtoId === s.produtoId));
@@ -1697,7 +1947,20 @@ router.get('/relatorio', async (req, res) => {
             } : null,
             faltasDevolucao: caixa?.conferenciaDevolucao?.status === 'CONFERIDA'
                 ? Number(caixa.conferenciaDevolucao.totalCobrado || 0)
-                : 0
+                : 0,
+            // Impressão só mostra o VALOR A PRESTAR quando o dia está pronto:
+            // conferência de devoluções feita + KM final + sem entregas pendentes.
+            valorLiberado: await (async () => {
+                const temDevRel = entregas.some(e => (e.itensDevolvidos?.length || 0) > 0);
+                if (temDevRel && caixa?.conferenciaDevolucao?.status !== 'CONFERIDA') return false;
+                const usouVeiculoRel = !!(diario && diario.modo === 'PRESENCIAL' && diario.veiculoId);
+                if (usouVeiculoRel && !diario.kmFinal) return false;
+                const entregasPendentesRel = await prisma.pedido.count({
+                    where: { statusEntrega: 'PENDENTE', embarque: { responsavelId: targetVendedor, dataSaida: { gte: inicioDia, lte: fimDia } } }
+                });
+                if (entregasPendentesRel > 0) return false;
+                return true;
+            })()
         });
     } catch (error) {
         console.error('Erro ao gerar relatório:', error);

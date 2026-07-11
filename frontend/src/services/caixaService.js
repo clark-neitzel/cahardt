@@ -75,8 +75,31 @@ const caixaService = {
         return response.data;
     },
 
+    // "Autorizar eu mesmo" — quem confere e tem a permissão libera com a própria senha
     autorizarDesconsiderarDevolucao: async (dados) => {
         const response = await api.post('/caixa/conferencia-devolucao/autorizar', dados);
+        return response.data;
+    },
+
+    // Autorização à distância: quem confere pede; o responsável autoriza no próprio app
+    solicitarAutorizacaoDevolucao: async (dados) => {
+        const response = await api.post('/caixa/conferencia-devolucao/solicitar-autorizacao', dados);
+        return response.data;
+    },
+
+    cancelarSolicitacaoDevolucao: async (dados) => {
+        const response = await api.post('/caixa/conferencia-devolucao/cancelar-solicitacao', dados);
+        return response.data;
+    },
+
+    // Pop-up global do responsável: pedidos aguardando ESTE usuário
+    getAutorizacoesDevolucaoPendentes: async () => {
+        const response = await api.get('/caixa/autorizacoes-devolucao/pendentes');
+        return response.data;
+    },
+
+    responderAutorizacaoDevolucao: async (id, dados) => {
+        const response = await api.post(`/caixa/autorizacoes-devolucao/${id}/responder`, dados);
         return response.data;
     },
 

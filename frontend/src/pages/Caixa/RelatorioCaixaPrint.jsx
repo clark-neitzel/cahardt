@@ -94,6 +94,9 @@ const RelatorioCaixaPrint = () => {
     const totalDesp = Number(relatorio.totalDespesas || 0);
     const faltasDevolucao = Number(relatorio.faltasDevolucao || 0);
     const valorAPrestar = relatorio.valorAPrestar ?? (adiantamento + recCaixa + faltasDevolucao - totalDesp);
+    // Enquanto o dia não está pronto (conferência de devoluções pendente, KM/entregas em aberto),
+    // a impressão NÃO revela o valor a prestar — evita imprimir sem conferir.
+    const valorLiberado = relatorio.valorLiberado !== false;
     const confDev = relatorio.conferenciaDevolucao;
     const confDevItens = confDev?.itens || [];
     const autorizacoesDev = confDevItens.filter(i => Number(i.qtdDesconsiderada) > 0);
@@ -254,7 +257,7 @@ const RelatorioCaixaPrint = () => {
                 <div className="band">
                     <div className="prestar">
                         <span className="plabel">Valor a<br />Prestar</span>
-                        <span className="pval">R$ {fmt(valorAPrestar)}</span>
+                        <span className="pval">{valorLiberado ? `R$ ${fmt(valorAPrestar)}` : 'CONFERIR'}</span>
                     </div>
                     <div className="confer">
                         <div className="linha">Contado: R$ <span className="traco"></span></div>
@@ -360,7 +363,7 @@ const RelatorioCaixaPrint = () => {
                                         <tr><td className="sinal">+</td><td>Faltas de devolução (cobradas)</td><td className="r">R$ {fmt(faltasDevolucao)}</td></tr>
                                     )}
                                     <tr><td className="sinal neg">−</td><td>Despesas do dia</td><td className="r">R$ {fmt(totalDesp)}</td></tr>
-                                    <tr className="tot"><td></td><td>VALOR A PRESTAR</td><td className="r">R$ {fmt(valorAPrestar)}</td></tr>
+                                    <tr className="tot"><td></td><td>VALOR A PRESTAR</td><td className="r">{valorLiberado ? `R$ ${fmt(valorAPrestar)}` : 'Conferir devoluções'}</td></tr>
                                 </tbody>
                             </table>
                             {formasNaoCaixa.length > 0 && (

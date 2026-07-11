@@ -272,6 +272,10 @@ const CaixaDiarioPage = () => {
     const caixa = resumo?.caixa;
     const statusBadge = caixa ? STATUS_BADGES[caixa.status] || STATUS_BADGES.ABERTO : null;
     const isAberto = caixa?.status === 'ABERTO';
+    // Dia "pronto" = KM/entregas/atendimentos OK + conferência de devoluções feita.
+    // Só então mostramos o VALOR A PRESTAR e liberamos a impressão (senão o pessoal
+    // imprimia sem conferir e o valor saía no papel).
+    const diaPronto = resumo && !resumo.finalizacaoDia?.precisaFinalizar && !resumo.pendencias?.conferenciaDevolucaoPendente;
 
     return (
         <div className="w-full px-4 py-6">
@@ -960,8 +964,8 @@ const CaixaDiarioPage = () => {
                         );
                     })()}
 
-                    {/* VALOR A PRESTAR — escondido enquanto o dia não estiver "certo" */}
-                    {resumo.finalizacaoDia?.precisaFinalizar ? (
+                    {/* VALOR A PRESTAR — escondido enquanto o dia não estiver "certo" (inclui conferir devoluções) */}
+                    {!diaPronto ? (
                         <div className="bg-orange-50 border-2 border-orange-300 rounded-lg p-6">
                             <div className="flex items-center justify-center gap-2 mb-3">
                                 <AlertTriangle className="h-5 w-5 text-orange-600" />
@@ -987,12 +991,18 @@ const CaixaDiarioPage = () => {
                                         </span>
                                     </li>
                                 )}
-                                {resumo.finalizacaoDia.atendimentosPendentes > 0 && (
+                                {resumo.finalizacaoDia?.atendimentosPendentes > 0 && (
                                     <li className="flex items-center gap-3 bg-white border border-orange-200 rounded-lg px-4 py-3">
                                         <MapPin className="h-5 w-5 text-orange-500 flex-shrink-0" />
                                         <span className="text-sm font-medium text-gray-800">
                                             {resumo.finalizacaoDia.atendimentosPendentes} cliente{resumo.finalizacaoDia.atendimentosPendentes > 1 ? 's' : ''} da rota sem atendimento
                                         </span>
+                                    </li>
+                                )}
+                                {resumo.pendencias?.conferenciaDevolucaoPendente && (
+                                    <li className="flex items-center gap-3 bg-white border border-orange-200 rounded-lg px-4 py-3">
+                                        <Package className="h-5 w-5 text-orange-500 flex-shrink-0" />
+                                        <span className="text-sm font-medium text-gray-800">Conferir a devolução (contar a mercadoria que voltou)</span>
                                     </li>
                                 )}
                             </ul>
@@ -1096,12 +1106,15 @@ const CaixaDiarioPage = () => {
                             </button>
                         )}
 
-                        <button
-                            onClick={() => navigate(`/caixa/impressao?data=${data}&vendedorId=${vendedorId}`)}
-                            className="inline-flex items-center justify-center px-6 py-3 bg-gray-600 text-white rounded-md font-medium hover:bg-gray-700"
-                        >
-                            <Printer className="h-5 w-5 mr-2" /> Imprimir
-                        </button>
+                        {/* Imprimir só quando o dia está pronto (conferência feita etc.) — senão o valor sairia no papel */}
+                        {diaPronto && (
+                            <button
+                                onClick={() => navigate(`/caixa/impressao?data=${data}&vendedorId=${vendedorId}`)}
+                                className="inline-flex items-center justify-center px-6 py-3 bg-gray-600 text-white rounded-md font-medium hover:bg-gray-700"
+                            >
+                                <Printer className="h-5 w-5 mr-2" /> Imprimir
+                            </button>
+                        )}
 
                         {isAdmin && caixa?.status === 'FECHADO' && (
                             <div className="flex flex-col sm:flex-row items-center gap-2">

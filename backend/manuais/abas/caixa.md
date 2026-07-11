@@ -95,6 +95,7 @@ Observação: devoluções e baixas de dinheiro **não** entram nesse checklist 
 3. Confirme — o status muda para FECHADO
 
 ### Imprimir relatório do caixa
+> **Atenção:** o botão **Imprimir** só aparece quando o dia está pronto — KM final informado, sem entregas pendentes e **conferência de devoluções confirmada**. Antes disso o botão fica escondido e a folha impressa não mostra o valor a prestar (evita imprimir sem conferir).
 1. Clique em **Imprimir** (disponível com o caixa FECHADO ou CONFERIDO)
 2. O sistema navega para `/caixa/impressao?data=...&vendedorId=...`
 3. A tela de impressão abre; imprima normalmente
@@ -134,13 +135,19 @@ O cartão **Conferência de Devoluções** aparece automaticamente quando o dia 
 5. Depois de confirmada, a conferência fica travada (só consulta); ela aparece também no relatório impresso do caixa
 6. **Importante:** se o dia teve devolução, o caixa **só fecha** depois da conferência confirmada
 7. A conferência **não movimenta estoque** — o estoque retorna quando o faturamento emite a nota de devolução (fluxo normal)
+8. Enquanto a conferência não estiver confirmada, o **VALOR A PRESTAR fica escondido** e o **botão Imprimir não aparece** (evita imprimir/prestar contas sem conferir)
 
-### Desconsiderar falta com autorização (senha)
-Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de manhã):
-1. Na linha com falta, clique em **Desconsiderar (autorização)**
-2. Escolha **quantas unidades** desconsiderar (pode ser só parte; o restante continua cobrado)
-3. Escolha o motivo, o responsável (só aparecem pessoas com `Pode_Autorizar_Desconsiderar_Devolucao`) e digite a **senha do login do responsável** — funciona no celular dele
-4. Fica registrado quem autorizou, quando e o motivo (visível no caixa, no relatório impresso e no log de auditoria)
+### Desconsiderar falta — pedido de autorização à distância
+Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de manhã), a falta pode ser desconsiderada, mas só com autorização de um responsável. O fluxo NÃO usa mais a senha digitada na hora por quem confere — quem confere **manda um pedido** e o responsável autoriza no próprio aparelho:
+
+1. Digite a contagem (quanto voltou). Na linha com falta, clique em **Pedir autorização**.
+2. Escolha **quantas unidades** desconsiderar (pode ser só parte; o restante continua cobrado), o **motivo** e **quem vai autorizar** (só aparecem pessoas com `Pode_Autorizar_Desconsiderar_Devolucao`). Clique em **Enviar pedido**.
+3. A linha fica **"Aguardando autorização de Fulano"** e a tela **atualiza sozinha a cada 10 segundos**. Dá para **Cancelar pedido**.
+4. O responsável, ao abrir o app em qualquer tela, recebe um **pop-up** com o produto, a quantidade, o motivo e quem pediu. Ele digita a **própria senha** e **Autoriza**, ou **Rejeita** (pode escrever o motivo). Funciona no celular dele — hoje o combinado é avisar a pessoa para olhar o sistema (aviso por WhatsApp fica para depois).
+5. Autorizado → a linha vira "X desconsiderada(s) · aut. Fulano ✓". Rejeitado → volta a ser cobrado, com opção **Pedir de novo**.
+6. **Autorizar eu mesmo:** se quem está conferindo também tem a permissão de autorizar, o modal mostra a opção "Prefiro autorizar eu mesmo agora" (digita a própria senha na hora, sem pedir a ninguém).
+7. Enquanto houver um pedido pendente, **não dá para confirmar a conferência** (espere a resposta ou cancele).
+8. Fica registrado quem autorizou, quando e o motivo (visível no caixa, no relatório impresso e no log de auditoria).
 
 ### Reabrir conferência de devoluções
 - Com o caixa ABERTO, quem tem `Pode_Reverter_Caixa` ou `admin` pode clicar em **Reabrir conferência** para corrigir uma conferência confirmada (a cobrança é recalculada ao confirmar de novo)
@@ -162,7 +169,8 @@ Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de 
 | Reabrir caixa fechado | `Pode_Reverter_Caixa` ou `admin` |
 | Registrar devolução | `Pode_Fazer_Devolucao` ou `admin` |
 | Digitar/confirmar a conferência de devoluções | `Pode_Conferir_Devolucao_Caixa` ou `admin` (demais usuários veem só consulta) |
-| Autorizar desconsiderar falta de devolução | senha de alguém com `Pode_Autorizar_Desconsiderar_Devolucao` ou `admin` |
+| Pedir autorização para desconsiderar falta | `Pode_Conferir_Devolucao_Caixa` ou `admin` (envia o pedido) |
+| Receber o pop-up e autorizar/rejeitar com senha | `Pode_Autorizar_Desconsiderar_Devolucao` ou `admin` (autoriza com a própria senha, no próprio app) |
 | Reabrir conferência de devoluções | `Pode_Reverter_Caixa` ou `admin` (com o caixa ABERTO) |
 
 ---

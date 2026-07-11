@@ -1261,6 +1261,37 @@ model CaixaConferenciaDevolucaoItem {
   @@map("caixa_conferencia_devolucao_itens")
 }
 
+// Pedido de autorização à distância para desconsiderar falta de devolução.
+// Quem confere o caixa envia; o responsável recebe um pop-up no próprio app e
+// autoriza (com a senha dele) ou rejeita. Sem FK para Vendedor de propósito —
+// guarda só os ids/nomes (snapshot), como outros pontos do schema.
+model AutorizacaoDevolucao {
+  id             String  @id @default(uuid())
+  vendedorId     String  @map("vendedor_id") // dono do caixa (motorista)
+  dataReferencia String  @map("data_referencia") // YYYY-MM-DD
+  produtoId      String  @map("produto_id")
+  produtoNome    String  @map("produto_nome") // snapshot
+  quantidade     Decimal @db.Decimal(12, 3)
+  motivo         String?
+  valorUnit      Decimal? @map("valor_unit") @db.Decimal(12, 2) // preço na tabela do motorista (p/ mostrar no pop-up)
+
+  solicitanteId   String @map("solicitante_id")
+  solicitanteNome String @map("solicitante_nome")
+  autorizadorId   String @map("autorizador_id")
+  autorizadorNome String @map("autorizador_nome")
+
+  status         String    @default("PENDENTE") // PENDENTE | AUTORIZADA | REJEITADA | CANCELADA
+  motivoRejeicao String?   @map("motivo_rejeicao")
+  respondidoEm   DateTime? @map("respondido_em")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([autorizadorId, status])
+  @@index([vendedorId, dataReferencia, status])
+  @@map("autorizacoes_devolucao")
+}
+
 // =============================================
 // LOG DE AUDITORIA (AÇÕES ADMINISTRATIVAS)
 // =============================================

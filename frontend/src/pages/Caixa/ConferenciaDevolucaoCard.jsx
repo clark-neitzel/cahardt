@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { PackageCheck, Lock, Plus, CheckCircle, Undo2, Loader2, X } from 'lucide-react';
+import { PackageCheck, Lock, Plus, CheckCircle, Undo2, Loader2, X, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import caixaService from '../../services/caixaService';
 import produtoService from '../../services/produtoService';
@@ -14,12 +14,13 @@ const MOTIVOS = [
     'Outro'
 ];
 
-// Modal de autorização com senha: desconsiderar (parte da) falta de um produto
-const ModalAutorizacao = ({ item, falta, data, vendedorId, autorizadores, onClose, onAutorizado }) => {
+// Modal para pedir autorização (ou, para quem pode, "autorizar eu mesmo" com senha).
+const ModalPedirAutorizacao = ({ item, falta, data, vendedorId, autorizadores, podeAutorizarEuMesmo, onClose, onDone }) => {
     const [quantidade, setQuantidade] = useState(String(falta));
     const [motivo, setMotivo] = useState(MOTIVOS[0]);
     const [motivoOutro, setMotivoOutro] = useState('');
     const [autorizadorId, setAutorizadorId] = useState('');
+    const [modoEuMesmo, setModoEuMesmo] = useState(false);
     const [senha, setSenha] = useState('');
     const [salvando, setSalvando] = useState(false);
 
@@ -27,25 +28,37 @@ const ModalAutorizacao = ({ item, falta, data, vendedorId, autorizadores, onClos
     const qtdValida = qtdNum > 0 && qtdNum <= falta;
     const restanteCobrado = Math.max(0, falta - qtdNum);
     const valorRestante = restanteCobrado * Number(item.valorUnitCobranca || 0);
+    const motivoFinal = () => (motivo === 'Outro' ? (motivoOutro.trim() || 'Outro') : motivo);
 
-    const handleAutorizar = async () => {
+    const handleEnviarPedido = async () => {
         if (!qtdValida) { toast.error('Quantidade inválida.'); return; }
-        if (!autorizadorId) { toast.error('Selecione o responsável.'); return; }
-        if (!senha) { toast.error('Digite a senha do responsável.'); return; }
-        const motivoFinal = motivo === 'Outro' ? (motivoOutro.trim() || 'Outro') : motivo;
+        if (!autorizadorId) { toast.error('Escolha quem vai autorizar.'); return; }
+        try {
+            setSalvando(true);
+            const res = await caixaService.solicitarAutorizacaoDevolucao({
+                vendedorId, data, produtoId: item.produtoId,
+                quantidade: qtdNum, motivo: motivoFinal(), autorizadorId
+            });
+            toast.success(`Pedido enviado para ${res.autorizadorNome}. Aguardando autorização.`);
+            onDone();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao enviar pedido.');
+        } finally {
+            setSalvando(false);
+        }
+    };
+
+    const handleAutorizarEuMesmo = async () => {
+        if (!qtdValida) { toast.error('Quantidade inválida.'); return; }
+        if (!senha) { toast.error('Digite sua senha.'); return; }
         try {
             setSalvando(true);
             const res = await caixaService.autorizarDesconsiderarDevolucao({
-                vendedorId,
-                data,
-                produtoId: item.produtoId,
-                quantidade: qtdNum,
-                motivo: motivoFinal,
-                autorizadorId,
-                senha
+                vendedorId, data, produtoId: item.produtoId,
+                quantidade: qtdNum, motivo: motivoFinal(), senha
             });
             toast.success(`Autorizado por ${res.autorizadoPorNome}.`);
-            onAutorizado();
+            onDone();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao autorizar.');
         } finally {
@@ -58,7 +71,7 @@ const ModalAutorizacao = ({ item, falta, data, vendedorId, autorizadores, onClos
             <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-md max-h-[92vh] overflow-y-auto">
                 <div className="flex items-center justify-between px-5 py-4 bg-house text-white rounded-t-2xl">
                     <div className="flex items-center gap-2 font-bold text-sm">
-                        <Lock className="h-4 w-4" /> Autorizar desconsiderar devolução
+                        {modoEuMesmo ? <><Lock className="h-4 w-4" /> Autorizar eu mesmo</> : <><Send className="h-4 w-4" /> Pedir autorização</>}
                     </div>
                     <button onClick={onClose} className="p-1.5 rounded-full hover:bg-white/10">
                         <X className="h-4 w-4" />
@@ -76,10 +89,7 @@ const ModalAutorizacao = ({ item, falta, data, vendedorId, autorizadores, onClos
                         <label className="text-sm font-medium text-gray-700 block mb-1">Quantas unidades desconsiderar?</label>
                         <div className="flex items-center gap-2">
                             <input
-                                type="number"
-                                min="0"
-                                max={falta}
-                                step="any"
+                                type="number" min="0" max={falta} step="any"
                                 value={quantidade}
                                 onChange={(e) => setQuantidade(e.target.value)}
                                 className="w-24 border border-gray-300 rounded px-3 py-2 text-sm text-center focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
@@ -100,8 +110,7 @@ const ModalAutorizacao = ({ item, falta, data, vendedorId, autorizadores, onClos
                         </SelectBusca>
                         {motivo === 'Outro' && (
                             <input
-                                type="text"
-                                value={motivoOutro}
+                                type="text" value={motivoOutro}
                                 onChange={(e) => setMotivoOutro(e.target.value)}
                                 placeholder="Descreva o motivo"
                                 className="mt-2 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
@@ -109,44 +118,62 @@ const ModalAutorizacao = ({ item, falta, data, vendedorId, autorizadores, onClos
                         )}
                     </div>
 
-                    <div>
-                        <label className="text-sm font-medium text-gray-700 block mb-1">Responsável</label>
-                        <SelectBusca value={autorizadorId} onChange={(e) => setAutorizadorId(e.target.value)} className="w-full">
-                            <option value="">Selecione...</option>
-                            {autorizadores.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
-                        </SelectBusca>
-                    </div>
-
-                    <div>
-                        <label className="text-sm font-medium text-gray-700 block mb-1">Senha do responsável</label>
-                        <input
-                            type="password"
-                            value={senha}
-                            onChange={(e) => setSenha(e.target.value)}
-                            autoComplete="off"
-                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                        />
-                    </div>
+                    {!modoEuMesmo ? (
+                        <>
+                            <div>
+                                <label className="text-sm font-medium text-gray-700 block mb-1">Quem vai autorizar?</label>
+                                <SelectBusca value={autorizadorId} onChange={(e) => setAutorizadorId(e.target.value)} className="w-full">
+                                    <option value="">Selecione o responsável...</option>
+                                    {autorizadores.map(a => <option key={a.id} value={a.id}>{a.nome}</option>)}
+                                </SelectBusca>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    O pedido vai para o app dessa pessoa. A senha é digitada por ela, no aparelho dela.
+                                </p>
+                            </div>
+                            <div className="flex flex-col gap-2 pt-1">
+                                <button
+                                    onClick={handleEnviarPedido}
+                                    disabled={salvando || !qtdValida}
+                                    className="w-full px-5 py-2.5 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2 min-h-[44px]"
+                                >
+                                    {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Enviar pedido
+                                </button>
+                                {podeAutorizarEuMesmo && (
+                                    <button onClick={() => setModoEuMesmo(true)} className="text-xs text-primary hover:underline text-center">
+                                        Prefiro autorizar eu mesmo agora
+                                    </button>
+                                )}
+                                <button onClick={onClose} className="text-xs text-gray-500 hover:underline text-center">Cancelar</button>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div>
+                                <label className="text-sm font-medium text-gray-700 block mb-1">Sua senha para autorizar</label>
+                                <input
+                                    type="password" value={senha} autoComplete="off"
+                                    onChange={(e) => setSenha(e.target.value)}
+                                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-2 pt-1">
+                                <button
+                                    onClick={handleAutorizarEuMesmo}
+                                    disabled={salvando || !qtdValida}
+                                    className="w-full px-5 py-2.5 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2 min-h-[44px]"
+                                >
+                                    {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Lock className="h-4 w-4" />} Autorizar eu mesmo
+                                </button>
+                                <button onClick={() => setModoEuMesmo(false)} className="text-xs text-primary hover:underline text-center">
+                                    Voltar para pedir a outra pessoa
+                                </button>
+                            </div>
+                        </>
+                    )}
 
                     <p className="text-xs text-gray-500">
                         Fica registrado: quem autorizou, quando, o motivo e as quantidades — visível no caixa e no relatório impresso.
                     </p>
-
-                    <div className="flex gap-3 justify-end pt-1">
-                        <button
-                            onClick={onClose}
-                            className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-full font-medium text-sm hover:bg-gray-50 min-h-[44px]"
-                        >
-                            Cancelar
-                        </button>
-                        <button
-                            onClick={handleAutorizar}
-                            disabled={salvando || !qtdValida}
-                            className="px-5 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 min-h-[44px] inline-flex items-center gap-2"
-                        >
-                            {salvando && <Loader2 className="h-4 w-4 animate-spin" />} Autorizar
-                        </button>
-                    </div>
                 </div>
             </div>
         </div>
@@ -159,35 +186,44 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
     const [loading, setLoading] = useState(true);
     const [recebidas, setRecebidas] = useState({}); // { produtoId: '2' }
     const [sobras, setSobras] = useState([]); // [{ produtoId, nome, quantidade }]
-    const [modalAutorizacao, setModalAutorizacao] = useState(null); // { item, falta }
+    const [modalPedir, setModalPedir] = useState(null); // { item, falta }
     const [addSobra, setAddSobra] = useState(false);
     const [sobraProdutoId, setSobraProdutoId] = useState('');
     const [sobraQtd, setSobraQtd] = useState('1');
     const [produtos, setProdutos] = useState([]);
     const [confirmando, setConfirmando] = useState(false);
 
-    const fetchConferencia = async () => {
+    // silent=true não mexe na contagem em digitação (usado pelo polling)
+    const fetchConferencia = async (silent = false) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const res = await caixaService.getConferenciaDevolucao(data, vendedorId);
             setConf(res);
-            // Pré-preenche a contagem com o que já foi salvo (conferência confirmada)
-            const iniciais = {};
-            (res.itens || []).forEach(i => {
-                if (i.qtdRecebida != null) iniciais[i.produtoId] = String(i.qtdRecebida);
-            });
-            setRecebidas(iniciais);
-            setSobras([]);
+            if (!silent) {
+                const iniciais = {};
+                (res.itens || []).forEach(i => {
+                    if (i.qtdRecebida != null) iniciais[i.produtoId] = String(i.qtdRecebida);
+                });
+                setRecebidas(iniciais);
+                setSobras([]);
+            }
         } catch (error) {
             console.error('Erro ao buscar conferência de devoluções:', error);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
     useEffect(() => {
-        if (data && vendedorId) fetchConferencia();
+        if (data && vendedorId) fetchConferencia(false);
     }, [data, vendedorId]);
+
+    // Enquanto houver pedido de autorização pendente, checa a cada 10s se já respondeu
+    useEffect(() => {
+        if (!conf?.temSolicitacaoPendente) return;
+        const t = setInterval(() => fetchConferencia(true), 10000);
+        return () => clearInterval(t);
+    }, [conf?.temSolicitacaoPendente, data, vendedorId]);
 
     // Lista de produtos só quando o usuário quer registrar sobra avulsa
     useEffect(() => {
@@ -236,7 +272,21 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
         setAddSobra(false);
     };
 
+    const handleCancelarSolic = async (id) => {
+        try {
+            await caixaService.cancelarSolicitacaoDevolucao({ id });
+            toast.success('Pedido de autorização cancelado.');
+            fetchConferencia(true);
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao cancelar pedido.');
+        }
+    };
+
     const handleConfirmar = async () => {
+        if (conf.temSolicitacaoPendente) {
+            toast.error('Há um pedido de autorização aguardando resposta. Espere ou cancele antes de confirmar.');
+            return;
+        }
         const semContagem = itensEsperados.filter(i => recebidas[i.produtoId] === undefined || recebidas[i.produtoId] === '');
         if (semContagem.length > 0) {
             toast.error(`Informe quanto voltou de: ${semContagem.map(i => i.produtoNome).join(', ')} (use 0 se nada voltou).`);
@@ -260,7 +310,7 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
             toast.success(res.totalCobrado > 0
                 ? `Conferência confirmada! R$ ${fmt(res.totalCobrado)} somado ao caixa.`
                 : 'Conferência confirmada!');
-            fetchConferencia();
+            fetchConferencia(false);
             onChanged?.();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao confirmar conferência.');
@@ -274,7 +324,7 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
         try {
             await caixaService.reabrirConferenciaDevolucao({ vendedorId, data });
             toast.success('Conferência reaberta.');
-            fetchConferencia();
+            fetchConferencia(false);
             onChanged?.();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao reabrir conferência.');
@@ -313,6 +363,52 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
             );
         }
         return badges;
+    };
+
+    // Estado do pedido de autorização por item (aguardando / rejeitado / botão pedir)
+    const autorizacaoUI = (item, faltaRestante, recebida) => {
+        const sol = item.solicitacao;
+        if (sol?.status === 'PENDENTE') {
+            return (
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 inline-flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Aguardando autorização de {sol.autorizadorNome}
+                    </span>
+                    {podeEditar && (
+                        <button
+                            onClick={() => handleCancelarSolic(sol.id)}
+                            className="inline-flex items-center px-3 py-1 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-full font-medium text-xs"
+                        >
+                            Cancelar pedido
+                        </button>
+                    )}
+                </div>
+            );
+        }
+        if (!podeEditar || item.sobra || recebida == null || faltaRestante <= 0) return null;
+        if (sol?.status === 'REJEITADA') {
+            return (
+                <div className="flex flex-wrap items-center gap-1.5">
+                    <span title={sol.motivoRejeicao || ''} className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">
+                        Rejeitado por {sol.autorizadorNome}
+                    </span>
+                    <button
+                        onClick={() => setModalPedir({ item, falta: faltaRestante })}
+                        className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-xs"
+                    >
+                        Pedir de novo
+                    </button>
+                </div>
+            );
+        }
+        return (
+            <button
+                onClick={() => setModalPedir({ item, falta: faltaRestante })}
+                className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-xs"
+            >
+                <Lock className="h-3 w-3" /> Pedir autorização
+            </button>
+        );
     };
 
     const pedidosOrigemInfo = (item) => (
@@ -379,9 +475,7 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
                                         <td className="px-4 py-3 text-center">
                                             {podeEditar && !item.sobra ? (
                                                 <input
-                                                    type="number"
-                                                    min="0"
-                                                    step="any"
+                                                    type="number" min="0" step="any"
                                                     value={recebidas[item.produtoId] ?? ''}
                                                     onChange={(e) => setRecebidas(prev => ({ ...prev, [item.produtoId]: e.target.value }))}
                                                     placeholder="0"
@@ -397,14 +491,7 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
                                         <td className="px-4 py-3">
                                             <div className="flex flex-wrap gap-1.5 items-center">
                                                 {badgeSituacao(item)}
-                                                {podeEditar && !item.sobra && faltaRestante > 0 && recebida != null && (
-                                                    <button
-                                                        onClick={() => setModalAutorizacao({ item, falta: faltaRestante })}
-                                                        className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-xs"
-                                                    >
-                                                        <Lock className="h-3 w-3" /> Desconsiderar (autorização)
-                                                    </button>
-                                                )}
+                                                {autorizacaoUI(item, faltaRestante, recebida)}
                                             </div>
                                         </td>
                                     </tr>
@@ -452,9 +539,7 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
                                         <div className="text-xs text-gray-500">Voltou</div>
                                         {podeEditar && !item.sobra ? (
                                             <input
-                                                type="number"
-                                                min="0"
-                                                step="any"
+                                                type="number" min="0" step="any"
                                                 value={recebidas[item.produtoId] ?? ''}
                                                 onChange={(e) => setRecebidas(prev => ({ ...prev, [item.produtoId]: e.target.value }))}
                                                 placeholder="0"
@@ -473,14 +558,7 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
                                 </div>
                                 <div className="flex flex-wrap gap-1.5 items-center mt-3">
                                     {badgeSituacao(item)}
-                                    {podeEditar && !item.sobra && faltaRestante > 0 && recebida != null && (
-                                        <button
-                                            onClick={() => setModalAutorizacao({ item, falta: faltaRestante })}
-                                            className="inline-flex items-center gap-1 px-3 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-xs min-h-[36px]"
-                                        >
-                                            <Lock className="h-3 w-3" /> Desconsiderar (autorização)
-                                        </button>
-                                    )}
+                                    {autorizacaoUI(item, faltaRestante, recebida)}
                                 </div>
                             </div>
                         );
@@ -510,9 +588,7 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
                                     {produtos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                                 </SelectBusca>
                                 <input
-                                    type="number"
-                                    min="0"
-                                    step="any"
+                                    type="number" min="0" step="any"
                                     value={sobraQtd}
                                     onChange={(e) => setSobraQtd(e.target.value)}
                                     className="w-full md:w-24 border border-gray-300 rounded px-3 py-2 text-sm text-center focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
@@ -549,6 +625,12 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
                     </div>
                 </div>
 
+                {conf.temSolicitacaoPendente && !confirmada && (
+                    <p className="mt-3 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 inline-flex items-center gap-1.5">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> Aguardando autorização — a tela atualiza sozinha quando o responsável responder.
+                    </p>
+                )}
+
                 {/* Ações */}
                 <div className="flex justify-end gap-3 mt-4">
                     {confirmada && podeReverter && caixaStatus === 'ABERTO' && (
@@ -562,8 +644,9 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
                     {podeEditar && (
                         <button
                             onClick={handleConfirmar}
-                            disabled={confirmando}
-                            className="inline-flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 min-h-[44px]"
+                            disabled={confirmando || conf.temSolicitacaoPendente}
+                            title={conf.temSolicitacaoPendente ? 'Aguarde a resposta do pedido de autorização' : ''}
+                            className="inline-flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
                         >
                             {confirmando ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                             Confirmar conferência
@@ -572,15 +655,16 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
                 </div>
             </div>
 
-            {modalAutorizacao && (
-                <ModalAutorizacao
-                    item={modalAutorizacao.item}
-                    falta={modalAutorizacao.falta}
+            {modalPedir && (
+                <ModalPedirAutorizacao
+                    item={modalPedir.item}
+                    falta={modalPedir.falta}
                     data={data}
                     vendedorId={vendedorId}
                     autorizadores={conf.autorizadores || []}
-                    onClose={() => setModalAutorizacao(null)}
-                    onAutorizado={() => { setModalAutorizacao(null); fetchConferencia(); }}
+                    podeAutorizarEuMesmo={conf.podeAutorizarEuMesmo}
+                    onClose={() => setModalPedir(null)}
+                    onDone={() => { setModalPedir(null); fetchConferencia(true); }}
                 />
             )}
         </div>

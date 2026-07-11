@@ -111,6 +111,7 @@ import AlertaFaturamento from './components/AlertaFaturamento';
 import AlertaPedidoConvertido from './components/AlertaPedidoConvertido';
 import AlertaTarefas from './components/AlertaTarefas';
 import AlertaPedidosSite from './components/AlertaPedidosSite';
+import AlertaAutorizacaoDevolucao from './components/AlertaAutorizacaoDevolucao';
 import Clippy from './components/Clippy/Clippy';
 import { useVersionCheck } from './hooks/useVersionCheck';
 
@@ -600,6 +601,9 @@ const Layout = ({ children }) => {
 
         {/* ALERTA DE TAREFAS DA EQUIPE (pop-up + som no horário; insiste a cada 5 min) */}
         <AlertaTarefas />
+
+        {/* PEDIDO DE AUTORIZAÇÃO DE DEVOLUÇÃO — pop-up p/ o responsável (checa a cada 10s) */}
+        <AlertaAutorizacaoDevolucao />
 
         {/* ALERTA DE PEDIDOS NOVOS DO SITE — Kit Festa + Congelados (popup a cada 15 min) */}
         {(isAdmin || hasPermission('kitFesta')) && <AlertaPedidosSite />}
