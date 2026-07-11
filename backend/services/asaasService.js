@@ -715,13 +715,15 @@ const asaasService = {
             msgPix: String(dados.msgPix ?? atual.msgPix).trim().slice(0, 400),
             avisosAsaas: !!dados.avisosAsaas,
         };
-        // Tetos legais (Código de Defesa do Consumidor): multa 2%, juros 1% ao mês
+        // Multa: o próprio Asaas trava em 2% (também é o teto legal).
+        // Juros: o Asaas aceita até 10% ao mês — acima de 1% a.m. pode ser
+        // contestado juridicamente, mas a escolha é comercial (decisão do dono, 07/2026: 3%).
         if (novo.multaPercent < 0 || novo.multaPercent > 2) {
-            const err = new Error('Multa deve ficar entre 0% e 2% (máximo permitido por lei).');
+            const err = new Error('Multa deve ficar entre 0% e 2% (máximo aceito pelo Asaas e pela lei).');
             err.statusCode = 400; throw err;
         }
-        if (novo.jurosMesPercent < 0 || novo.jurosMesPercent > 1) {
-            const err = new Error('Juros devem ficar entre 0% e 1% ao mês (máximo permitido por lei).');
+        if (novo.jurosMesPercent < 0 || novo.jurosMesPercent > 10) {
+            const err = new Error('Juros devem ficar entre 0% e 10% ao mês (máximo aceito pelo Asaas).');
             err.statusCode = 400; throw err;
         }
         await prisma.appConfig.upsert({

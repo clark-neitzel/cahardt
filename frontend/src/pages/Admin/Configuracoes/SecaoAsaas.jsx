@@ -144,11 +144,14 @@ const SecaoAsaas = () => {
                             <div className="flex items-start justify-between gap-4 p-3 rounded-lg border border-gray-200 bg-gray-50">
                                 <div className="min-w-0">
                                     <p className="text-sm font-semibold text-gray-700">Juros por atraso</p>
-                                    <p className="text-xs text-gray-500">Por mês de atraso, proporcional aos dias (1%/mês ≈ 0,033% por dia). Máximo por lei: 1% ao mês.</p>
+                                    <p className="text-xs text-gray-500">Por mês de atraso, proporcional aos dias (1%/mês ≈ 0,033% por dia). O Asaas aceita até 10% ao mês.</p>
+                                    {Number(config.jurosMesPercent) > 1 && config.jurosAtivo && (
+                                        <p className="text-xs text-amber-700 mt-1">⚠️ Acima de 1% ao mês supera a referência legal para juros de mora — se um cliente contestar na Justiça, o valor pode ser reduzido.</p>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-2 flex-shrink-0">
                                     <input
-                                        type="number" step="0.25" min="0" max="1"
+                                        type="number" step="0.25" min="0" max="10"
                                         value={config.jurosMesPercent}
                                         onChange={e => set('jurosMesPercent', e.target.value)}
                                         disabled={!config.jurosAtivo}
