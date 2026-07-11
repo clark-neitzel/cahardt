@@ -113,6 +113,8 @@ app.use((req, res, next) => {
 app.use('/uploads/certificado', (req, res) => res.status(403).json({ error: 'Acesso negado.' }));
 // XMLs de NF-e capturadas: só via rota autenticada /api/notas-entrada/:id/xml
 app.use('/uploads/notas-xml', (req, res) => res.status(403).json({ error: 'Acesso negado.' }));
+// Cache de DANFEs/boletos da impressão em lote — documentos de cliente, nunca públicos
+app.use('/uploads/cache-fiscal', (req, res) => res.status(403).json({ error: 'Acesso negado.' }));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Dados vivos NUNCA são cacheados. O Safari do iOS (app PWA instalado na tela

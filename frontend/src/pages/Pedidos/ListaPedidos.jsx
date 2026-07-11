@@ -1617,6 +1617,18 @@ const ListaPedidos = () => {
                 <ImprimirLoteModal
                     pedidoIds={loteModal}
                     onClose={() => setLoteModal(null)}
+                    onConferido={(itens) => {
+                        // pinta o check do CA nos cartões sem recarregar a lista inteira
+                        const mapa = {};
+                        (itens || []).forEach(i => {
+                            mapa[i.id] = i.caErro ? undefined
+                                : i.boletosCA > 0 ? 'PENDENTE'
+                                    : i.caPago ? 'PAGO' : 'SEM';
+                        });
+                        setPedidos(prev => prev.map(p => (
+                            mapa[p.id] !== undefined ? { ...p, caBoletoStatus: mapa[p.id] } : p
+                        )));
+                    }}
                 />
             )}
         </div>

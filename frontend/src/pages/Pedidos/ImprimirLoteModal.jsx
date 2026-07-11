@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Printer, Loader2, AlertTriangle, FileText, Check, Minus } from 'lucide-react';
+import { X, Printer, Loader2, AlertTriangle, FileText, Check, Minus, Download, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pedidoService from '../../services/pedidoService';
 import asaasService from '../../services/asaasService';
@@ -9,7 +9,7 @@ import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 // na sequência; especiais saem no recibo de conferência.
 // A checagem consulta o CA de UM PEDIDO POR VEZ, mostrando o progresso ao vivo
 // (pedido do dono: não mandar várias consultas de uma vez ao Conta Azul).
-const ImprimirLoteModal = ({ pedidoIds, onClose }) => {
+const ImprimirLoteModal = ({ pedidoIds, onClose, onConferido }) => {
     const [itens, setItens] = useState([]);           // já checados
     const [checandoIdx, setChecandoIdx] = useState(0); // quantos já foram
     const [checando, setChecando] = useState(true);
@@ -17,19 +17,21 @@ const ImprimirLoteModal = ({ pedidoIds, onClose }) => {
     const [incluirBoletos, setIncluirBoletos] = useFiltroSalvo('pedidos:loteBoletos', true);
     const [gerando, setGerando] = useState(false);
     const [gerandoBoletos, setGerandoBoletos] = useState(false);
+    const [pdfUrl, setPdfUrl] = useState(null); // PDF pronto, aguardando o clique p/ abrir
     const cancelado = useRef(false);
 
-    // Checa um por vez, em sequência
-    const checarTodos = async (ids) => {
+    // Checa um por vez, em sequência (não martelar o CA com várias consultas juntas)
+    const checarTodos = async (ids, forcar = false) => {
         setItens([]);
         setChecandoIdx(0);
         setChecando(true);
+        setPdfUrl(null);
         cancelado.current = false;
         const novos = [];
         for (let i = 0; i < ids.length; i++) {
             if (cancelado.current) return;
             try {
-                const item = await pedidoService.imprimirLoteChecarPedido(ids[i]);
+                const item = await pedidoService.imprimirLoteChecarPedido(ids[i], forcar);
                 novos.push(item);
             } catch (e) {
                 novos.push({ id: ids[i], numero: '?', cliente: '—', boleto: 'DESCONHECIDO', caErro: e.response?.data?.error || 'falha na consulta' });
@@ -39,11 +41,16 @@ const ImprimirLoteModal = ({ pedidoIds, onClose }) => {
             setChecandoIdx(i + 1);
         }
         setChecando(false);
+        // avisa a lista: os checks do CA já foram gravados nos pedidos
+        onConferido?.(novos);
     };
 
     useEffect(() => {
         checarTodos(pedidoIds);
-        return () => { cancelado.current = true; };
+        return () => {
+            cancelado.current = true;
+            if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+        };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const validos = itens.filter(i => !i.bonificacao);
@@ -70,6 +77,9 @@ const ImprimirLoteModal = ({ pedidoIds, onClose }) => {
         }
     };
 
+    // Gera o PDF e guarda o link. NÃO abre aqui: o navegador bloqueia janelas abertas
+    // depois de uma espera (pop-up blocker). A abertura acontece no clique seguinte
+    // do usuário — aí é um gesto real e o navegador deixa passar.
     const handleImprimir = async () => {
         setGerando(true);
         try {
@@ -83,9 +93,8 @@ const ImprimirLoteModal = ({ pedidoIds, onClose }) => {
                 erros.forEach(e => toast.error(`${e.numero}: ${e.erro}`, { duration: 8000 }));
             } catch (_) { /* sem erros */ }
             const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
-            window.open(url, '_blank'); // visualização do documento p/ imprimir
-            setTimeout(() => URL.revokeObjectURL(url), 60000);
-            onClose();
+            setPdfUrl(url);
+            toast.success('PDF pronto! Toque em "Abrir PDF para imprimir".');
         } catch (e) {
             let msg = 'Erro ao gerar o PDF.';
             try { msg = JSON.parse(await e.response.data.text()).error || msg; } catch (_) { /* genérica */ }
@@ -93,6 +102,11 @@ const ImprimirLoteModal = ({ pedidoIds, onClose }) => {
         } finally {
             setGerando(false);
         }
+    };
+
+    const handleAbrirPdf = () => {
+        const aba = window.open(pdfUrl, '_blank'); // clique direto do usuário → não é bloqueado
+        if (!aba) toast.error('Seu navegador bloqueou a janela. Use o botão "Baixar PDF".');
     };
 
     const folhasEstimadas = validos.length * (duasVias ? 2 : 1) + (incluirBoletos ? totalBoletos : 0);
@@ -150,9 +164,18 @@ const ImprimirLoteModal = ({ pedidoIds, onClose }) => {
                             <p className="text-[11px] font-bold uppercase tracking-wide text-gray-600">
                                 Conferindo boletos (CA e Asaas)
                             </p>
-                            <span className="text-[11px] font-bold text-gray-500">
-                                {checandoIdx}/{pedidoIds.length}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                {!checando && (
+                                    <button onClick={() => checarTodos(pedidoIds, true)}
+                                        className="flex items-center gap-1 text-[10.5px] font-bold text-primary hover:text-primaryDark"
+                                        title="Consultar o Conta Azul de novo (ignora a conferência recente)">
+                                        <RefreshCw className="h-3 w-3" /> Reconsultar
+                                    </button>
+                                )}
+                                <span className="text-[11px] font-bold text-gray-500">
+                                    {checandoIdx}/{pedidoIds.length}
+                                </span>
+                            </div>
                         </div>
                         <div className="space-y-1.5 max-h-56 overflow-y-auto">
                             {itens.map(i => (
@@ -258,14 +281,33 @@ const ImprimirLoteModal = ({ pedidoIds, onClose }) => {
                     )}
                 </div>
 
-                <div className="p-5 pt-0">
-                    <button onClick={handleImprimir} disabled={checando || gerando || validos.length === 0}
-                        className="w-full py-4 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-base flex items-center justify-center gap-2 disabled:opacity-50">
-                        {gerando ? <Loader2 className="h-5 w-5 animate-spin" /> : <Printer className="h-5 w-5" />}
-                        {checando ? 'Conferindo boletos...'
-                            : gerando ? 'Gerando PDF...'
-                                : `Gerar PDF para impressão (~${folhasEstimadas} folha${folhasEstimadas !== 1 ? 's' : ''})`}
-                    </button>
+                <div className="p-5 pt-0 space-y-2">
+                    {pdfUrl ? (
+                        <>
+                            <button onClick={handleAbrirPdf}
+                                className="w-full py-4 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-base flex items-center justify-center gap-2">
+                                <Printer className="h-5 w-5" /> Abrir PDF para imprimir
+                            </button>
+                            <div className="flex gap-2">
+                                <a href={pdfUrl} download={`impressao-lote-${validos.length}-pedidos.pdf`}
+                                    className="flex-1 py-2.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center justify-center gap-1.5">
+                                    <Download className="h-4 w-4" /> Baixar PDF
+                                </a>
+                                <button onClick={() => setPdfUrl(null)}
+                                    className="flex-1 py-2.5 bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-full font-medium text-sm">
+                                    Voltar
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <button onClick={handleImprimir} disabled={checando || gerando || validos.length === 0}
+                            className="w-full py-4 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-base flex items-center justify-center gap-2 disabled:opacity-50">
+                            {gerando ? <Loader2 className="h-5 w-5 animate-spin" /> : <Printer className="h-5 w-5" />}
+                            {checando ? 'Conferindo boletos...'
+                                : gerando ? 'Montando o PDF...'
+                                    : `Gerar PDF para impressão (~${folhasEstimadas} folha${folhasEstimadas !== 1 ? 's' : ''})`}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

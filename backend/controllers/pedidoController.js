@@ -94,10 +94,10 @@ const pedidoController = {
     // progresso na tela. Evita mandar várias consultas ao CA de uma vez.
     imprimirLoteChecarPedido: async (req, res) => {
         try {
-            const { pedidoId } = req.body || {};
+            const { pedidoId, forcar } = req.body || {};
             if (!pedidoId) return res.status(400).json({ error: 'Informe o pedido.' });
             const impressaoLoteService = require('../services/impressaoLoteService');
-            const item = await impressaoLoteService.checarPedido(pedidoId);
+            const item = await impressaoLoteService.checarPedido(pedidoId, { forcar: !!forcar });
             res.json(item);
         } catch (e) {
             console.error('Erro ao checar pedido do lote:', e.message);

@@ -134,9 +134,10 @@ const pedidoService = {
         const response = await api.post('/pedidos/imprimir-lote/checar', { pedidoIds });
         return response.data;
     },
-    // Checa UM pedido (o app chama em sequência, mostrando o progresso na tela)
-    imprimirLoteChecarPedido: async (pedidoId) => {
-        const response = await api.post('/pedidos/imprimir-lote/checar-pedido', { pedidoId });
+    // Checa UM pedido (o app chama em sequência, mostrando o progresso na tela).
+    // forcar: ignora a conferência recente e consulta o CA de novo.
+    imprimirLoteChecarPedido: async (pedidoId, forcar = false) => {
+        const response = await api.post('/pedidos/imprimir-lote/checar-pedido', { pedidoId, forcar });
         return response.data;
     },
     imprimirLote: async ({ pedidoIds, duasVias, incluirBoletos }) => {

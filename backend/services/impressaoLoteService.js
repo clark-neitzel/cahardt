@@ -7,12 +7,63 @@
 // =====================================================================
 const { PDFDocument } = require('pdf-lib');
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
 const { gerarReciboEspecial } = require('./reciboEspecialPdf');
 
 const A_PRAZO = (pedido) => (pedido.tipoPagamento === 'BOLETO_BANCARIO')
     || /boleto/i.test(pedido.nomeCondicaoPagamento || '');
+
+// Pasta de cache dos PDFs (boletos do CA e DANFEs). Fica em uploads/, mas o
+// acesso público a ela é BLOQUEADO no index.js (são documentos de cliente).
+// Boleto e DANFE não mudam depois de emitidos → cache permanente, reimpressão instantânea.
+const DIR_CACHE = path.join(__dirname, '../uploads/cache-fiscal');
+const CACHE_CHECAGEM_MIN = 30; // conferência do CA vale 30 min (depois reconsulta)
+
+function lerCache(nome) {
+    try {
+        const arq = path.join(DIR_CACHE, nome);
+        if (fs.existsSync(arq)) return fs.readFileSync(arq);
+    } catch (_) { /* cache é melhor esforço */ }
+    return null;
+}
+function gravarCache(nome, buffer) {
+    try {
+        fs.mkdirSync(DIR_CACHE, { recursive: true });
+        fs.writeFileSync(path.join(DIR_CACHE, nome), buffer);
+    } catch (e) {
+        console.warn('[Impressão] Não consegui gravar no cache:', e.message);
+    }
+}
+
+// PDF do boleto do CA — do cache se já baixamos antes
+async function pdfBoletoCA(idSolicitacao) {
+    const nome = `boleto-ca-${idSolicitacao}.pdf`;
+    const doCache = lerCache(nome);
+    if (doCache) return doCache;
+    const pdf = await contaAzulService.baixarBoletoPdfCA(idSolicitacao);
+    gravarCache(nome, pdf);
+    return pdf;
+}
+
+// PDF da DANFE — do cache se já geramos antes (a NF-e não muda)
+async function pdfDanfe(pedido) {
+    const pedidoController = require('../controllers/pedidoController');
+    const nota = await pedidoController._localizarNotaFiscal(pedido);
+    const nome = `danfe-${nota.chave_acesso}.pdf`;
+    const doCache = lerCache(nome);
+    if (doCache) return doCache;
+
+    const xml = await contaAzulService.buscarXmlNotaFiscal(nota.chave_acesso);
+    const { gerarPDF } = require('@alexssmusica/node-pdf-nfe');
+    const pathLogo = path.join(__dirname, '../assets/logo-danfe.png');
+    const doc = await gerarPDF(xml, fs.existsSync(pathLogo) ? { pathLogo } : {});
+    const buf = await docParaBuffer(doc);
+    gravarCache(nome, buf);
+    return buf;
+}
 
 // pdfkit doc → Buffer
 function docParaBuffer(doc) {
@@ -66,10 +117,19 @@ async function boletosAsaasPorPedido(pedidoIds, apenasNaoPagos = false) {
  * Nunca lança. Devolve { boletos, erro }: em caso de falha na API do CA,
  * `erro` vem preenchido — quem chama NÃO deve concluir "não tem boleto".
  */
-async function boletosCaDoPedido(pedido) {
+async function boletosCaDoPedido(pedido, { forcar = false } = {}) {
     if (!pedido?.idVendaContaAzul || pedido.especial || pedido.bonificacao) {
-        return { boletos: [], erro: null };
+        return { boletos: [], erro: null, doCache: false };
     }
+
+    // Conferência recente já serve (evita reconsultar o CA a cada impressão)
+    if (!forcar && pedido.caBoletoVerificado && Array.isArray(pedido.caBoletos)) {
+        const idadeMin = (Date.now() - new Date(pedido.caBoletoVerificado).getTime()) / 60000;
+        if (idadeMin < CACHE_CHECAGEM_MIN) {
+            return { boletos: pedido.caBoletos, erro: null, doCache: true };
+        }
+    }
+
     try {
         const dataVendaStr = new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
         const boletos = await contaAzulService.buscarBoletosDaVenda(
@@ -80,12 +140,16 @@ async function boletosCaDoPedido(pedido) {
             : (boletos.every(b => b.pago) ? 'PAGO' : 'PENDENTE');
         await prisma.pedido.update({
             where: { id: pedido.id },
-            data: { caBoletoStatus: status, caBoletoVerificado: new Date() }
+            data: { caBoletoStatus: status, caBoletoVerificado: new Date(), caBoletos: boletos }
         }).catch(() => { /* cache é melhor esforço */ });
-        return { boletos, erro: null };
+        return { boletos, erro: null, doCache: false };
     } catch (e) {
         console.warn(`[Impressão lote] Falha ao consultar boletos do CA (pedido #${pedido.numero}):`, e.message);
-        return { boletos: [], erro: e.message };
+        // Se temos uma conferência anterior, usamos ela em vez de dizer "sem boleto"
+        if (Array.isArray(pedido.caBoletos) && pedido.caBoletos.length > 0) {
+            return { boletos: pedido.caBoletos, erro: null, doCache: true };
+        }
+        return { boletos: [], erro: e.message, doCache: false };
     }
 }
 
@@ -93,7 +157,7 @@ async function boletosCaDoPedido(pedido) {
 // boleto: OK (tem boleto não pago em algum sistema) | PAGO (só quitado) |
 //         SEM_BOLETO (conferido nos dois, não tem) | DESCONHECIDO (CA fora do ar) |
 //         NAO_SE_APLICA (especial/bonificação/à vista)
-function classificar(p, asaasDoPedido, caDoPedido, caErro) {
+function classificar(p, asaasDoPedido, caDoPedido, caErro, doCache = false) {
     const aPrazo = A_PRAZO(p);
     const asaasNaoPagos = asaasDoPedido.filter(c => c.status === 'PENDENTE');
     const caNaoPagos = caDoPedido.filter(b => !b.pago);
@@ -121,6 +185,7 @@ function classificar(p, asaasDoPedido, caDoPedido, caErro) {
         caPago: caDoPedido.length > 0 && caNaoPagos.length === 0,
         asaasPago: asaasDoPedido.length > 0 && asaasNaoPagos.length === 0,
         caErro: caErro || null,
+        doCache, // conferência veio do cache (não bateu no CA agora)
         valorTotal: (p.itens || []).reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0) + Number(p.valorFrete || 0)
     };
 }
@@ -148,12 +213,12 @@ const impressaoLoteService = {
      * Checagem de UM pedido — o app chama em sequência, um por vez, mostrando o
      * progresso na tela (pedido do dono: consultar o CA de um em um, não em lote).
      */
-    checarPedido: async (pedidoId) => {
+    checarPedido: async (pedidoId, { forcar = false } = {}) => {
         const [pedido] = await carregarPedidos([pedidoId]);
         if (!pedido) throw new Error('Pedido não encontrado.');
         const asaas = await boletosAsaasPorPedido([pedidoId]);
-        const { boletos, erro } = await boletosCaDoPedido(pedido);
-        return classificar(pedido, asaas.get(pedidoId) || [], boletos, erro);
+        const { boletos, erro, doCache } = await boletosCaDoPedido(pedido, { forcar });
+        return classificar(pedido, asaas.get(pedidoId) || [], boletos, erro, doCache);
     },
 
     /**
@@ -187,16 +252,8 @@ const impressaoLoteService = {
                     continue;
                 }
 
-                // DANFE (require tardio: evita ciclo com o controller)
-                const pedidoController = require('../controllers/pedidoController');
-                const nota = await pedidoController._localizarNotaFiscal(pedido);
-                const xml = await contaAzulService.buscarXmlNotaFiscal(nota.chave_acesso);
-                const { gerarPDF } = require('@alexssmusica/node-pdf-nfe');
-                const path = require('path');
-                const fs = require('fs');
-                const pathLogo = path.join(__dirname, '../assets/logo-danfe.png');
-                const danfeDoc = await gerarPDF(xml, fs.existsSync(pathLogo) ? { pathLogo } : {});
-                const danfeBuf = await docParaBuffer(danfeDoc);
+                // DANFE (do cache em disco quando já gerada antes)
+                const danfeBuf = await pdfDanfe(pedido);
                 await anexar(danfeBuf, duasVias ? 2 : 1);
 
                 // Boleto(s) na sequência — CA primeiro, depois Asaas; sempre em ordem de parcela.
@@ -209,7 +266,7 @@ const impressaoLoteService = {
                     }
                     for (const b of boletosCA.filter(x => !x.pago)) {
                         try {
-                            const pdfCA = await contaAzulService.baixarBoletoPdfCA(b.id);
+                            const pdfCA = await pdfBoletoCA(b.id); // cache em disco
                             await anexar(pdfCA, 1);
                         } catch (e) {
                             erros.push({ numero: rotulo, erro: `boleto do CA não baixou (${e.message}) — imprima pelo Conta Azul` });
