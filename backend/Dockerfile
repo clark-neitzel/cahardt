@@ -4,6 +4,8 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY package*.json ./
+# patches/ precisa existir ANTES do npm install (o postinstall roda patch-package)
+COPY patches ./patches
 RUN npm install
 
 COPY . .
