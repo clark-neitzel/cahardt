@@ -31,6 +31,7 @@ const ImprimirLoteModal = ({ pedidoIds, onClose }) => {
     const semNF = normais.filter(i => !i.temNF);
     const semBoleto = validos.filter(i => i.boleto === 'SEM_BOLETO'); // nem CA nem Asaas
     const boletoPago = validos.filter(i => i.boleto === 'PAGO'); // existe, mas quitado → não imprime
+    const caIndisponivel = validos.filter(i => i.caErro); // não deu p/ consultar o CA
     const aVista = normais.filter(i => !i.aPrazo);
     const totalBoletos = validos.reduce((s, i) => s + (i.boletosCA || 0) + (i.boletosAsaas || 0), 0);
 
@@ -135,6 +136,16 @@ const ImprimirLoteModal = ({ pedidoIds, onClose }) => {
                                 <p className="text-xs text-gray-500">
                                     ℹ️ {boletoPago.length} boleto(s) já quitado(s) não serão impressos. Se precisar de um pago, imprima pelo Contas a Receber.
                                 </p>
+                            )}
+                            {incluirBoletos && caIndisponivel.length > 0 && (
+                                <div className="bg-red-50 border border-red-300 rounded-xl px-4 py-3">
+                                    <p className="flex items-center gap-2 text-sm font-bold text-red-800">
+                                        <AlertTriangle className="h-4 w-4 shrink-0" /> Não consegui consultar o Conta Azul em {caIndisponivel.length} pedido(s)
+                                    </p>
+                                    <p className="text-xs text-red-700 mt-1">
+                                        {caIndisponivel.map(i => `#${i.numero}`).join(', ')} — se houver boleto do CA nesses pedidos, ele <b>não sairá</b> nesta impressão. Tente de novo em instantes ou imprima esses pelo Conta Azul.
+                                    </p>
+                                </div>
                             )}
                             {incluirBoletos && semBoleto.length > 0 && (
                                 <div className="bg-amber-50 border border-amber-400 rounded-xl px-4 py-3">

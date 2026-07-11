@@ -300,6 +300,24 @@ router.get('/diag-cobrancas-ca', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/diag-checar-lote — roda a MESMA checagem da impressão em lote
+// (consulta o CA e classifica os boletos). Body: { numeros: [2027, 2025] }
+router.post('/diag-checar-lote', async (req, res) => {
+    try {
+        const numeros = (req.body?.numeros || []).map(n => parseInt(n, 10)).filter(Boolean);
+        if (!numeros.length) return res.status(400).json({ error: 'Informe numeros: [..]' });
+        const pedidos = await prisma.pedido.findMany({
+            where: { numero: { in: numeros }, especial: false, bonificacao: false },
+            select: { id: true, numero: true }
+        });
+        const impressaoLoteService = require('../services/impressaoLoteService');
+        const itens = await impressaoLoteService.checar(pedidos.map(p => p.id));
+        res.json({ itens });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // POST /api/admin-exec/diag-parcela-patch — testa PATCH numa parcela CA (ex.: trocar conta financeira)
 // Body: { parcelaId, payload } — versao atual é buscada automaticamente
 router.post('/diag-parcela-patch', async (req, res) => {

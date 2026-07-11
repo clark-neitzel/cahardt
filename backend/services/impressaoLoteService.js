@@ -63,10 +63,13 @@ async function boletosAsaasPorPedido(pedidoIds, apenasNaoPagos = false) {
 /**
  * Boletos do CONTA AZUL de um pedido (consulta ao vivo) + atualiza o cache
  * `caBoletoStatus` do pedido (alimenta o check da pílula CA na lista).
- * Nunca lança: sem venda no CA ou erro de API → devolve [].
+ * Nunca lança. Devolve { boletos, erro }: em caso de falha na API do CA,
+ * `erro` vem preenchido — quem chama NÃO deve concluir "não tem boleto".
  */
 async function boletosCaDoPedido(pedido) {
-    if (!pedido?.idVendaContaAzul || pedido.especial || pedido.bonificacao) return [];
+    if (!pedido?.idVendaContaAzul || pedido.especial || pedido.bonificacao) {
+        return { boletos: [], erro: null };
+    }
     try {
         const dataVendaStr = new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
         const boletos = await contaAzulService.buscarBoletosDaVenda(
@@ -79,11 +82,26 @@ async function boletosCaDoPedido(pedido) {
             where: { id: pedido.id },
             data: { caBoletoStatus: status, caBoletoVerificado: new Date() }
         }).catch(() => { /* cache é melhor esforço */ });
-        return boletos;
+        return { boletos, erro: null };
     } catch (e) {
         console.warn(`[Impressão lote] Falha ao consultar boletos do CA (pedido #${pedido.numero}):`, e.message);
-        return [];
+        return { boletos: [], erro: e.message };
     }
+}
+
+// Roda tarefas com concorrência limitada (a API do CA é lenta; sem isso um lote
+// grande demoraria demais, e com concorrência alta o CA começa a recusar).
+async function comConcorrencia(itens, limite, tarefa) {
+    const resultados = new Array(itens.length);
+    let i = 0;
+    const workers = Array.from({ length: Math.min(limite, itens.length) }, async () => {
+        while (i < itens.length) {
+            const idx = i++;
+            resultados[idx] = await tarefa(itens[idx], idx);
+        }
+    });
+    await Promise.all(workers);
+    return resultados;
 }
 
 const impressaoLoteService = {
@@ -96,12 +114,17 @@ const impressaoLoteService = {
     checar: async (pedidoIds) => {
         const pedidos = await carregarPedidos(pedidoIds);
         const asaas = await boletosAsaasPorPedido(pedidoIds);
-        const saida = [];
 
-        for (const p of pedidos) {
+        // Consulta o CA de todos os pedidos em paralelo (limitado) — é aqui que o app
+        // "importa" a situação do boleto do Conta Azul.
+        const consultasCA = await comConcorrencia(pedidos, 4, (p) =>
+            (!p.especial && !p.bonificacao) ? boletosCaDoPedido(p) : Promise.resolve({ boletos: [], erro: null })
+        );
+
+        return pedidos.map((p, idx) => {
             const aPrazo = A_PRAZO(p);
             const asaasDoPedido = asaas.get(p.id) || [];
-            const caDoPedido = (!p.especial && !p.bonificacao) ? await boletosCaDoPedido(p) : [];
+            const { boletos: caDoPedido, erro: caErro } = consultasCA[idx];
 
             const asaasNaoPagos = asaasDoPedido.filter(c => c.status === 'PENDENTE');
             const caNaoPagos = caDoPedido.filter(b => !b.pago);
@@ -111,10 +134,11 @@ const impressaoLoteService = {
             if (!p.especial && !p.bonificacao && aPrazo) {
                 if (asaasNaoPagos.length > 0 || caNaoPagos.length > 0) boleto = 'OK';
                 else if (temAlgum) boleto = 'PAGO'; // existe, mas quitado → não imprime
+                else if (caErro) boleto = 'DESCONHECIDO'; // não deu p/ consultar o CA — NÃO afirmar "sem boleto"
                 else boleto = 'SEM_BOLETO';
             }
 
-            saida.push({
+            return {
                 id: p.id,
                 numero: p.numero,
                 cliente: p.cliente?.NomeFantasia || p.cliente?.Nome || '—',
@@ -125,10 +149,10 @@ const impressaoLoteService = {
                 boleto,
                 boletosCA: caNaoPagos.length,
                 boletosAsaas: asaasNaoPagos.length,
+                caErro: caErro || null,
                 valorTotal: (p.itens || []).reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0) + Number(p.valorFrete || 0)
-            });
-        }
-        return saida;
+            };
+        });
     },
 
     /**
@@ -178,7 +202,10 @@ const impressaoLoteService = {
                 // Quitados ficam de fora (regra do dono).
                 if (incluirBoletos) {
                     // ── Boletos do Conta Azul (PDF público da fatura) ──
-                    const boletosCA = await boletosCaDoPedido(pedido);
+                    const { boletos: boletosCA, erro: caErro } = await boletosCaDoPedido(pedido);
+                    if (caErro) {
+                        erros.push({ numero: rotulo, erro: `não consegui consultar os boletos no Conta Azul (${caErro})` });
+                    }
                     for (const b of boletosCA.filter(x => !x.pago)) {
                         try {
                             const pdfCA = await contaAzulService.baixarBoletoPdfCA(b.id);

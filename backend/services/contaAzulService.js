@@ -1915,9 +1915,11 @@ const contaAzulService = {
      * `id` serve para baixar o PDF em baixarBoletoPdfCA().
      */
     buscarBoletosDaVenda: async (clienteCAId, idVendaCA, dataVendaStr) => {
+        // NÃO passar statusBusca customizado: a API do CA só aceita os valores do
+        // filtro padrão (EM_ABERTO/ATRASADO/RECEBIDO/RECEBIDO_PARCIAL) — mandar
+        // "PENDENTE" (que é status de RESPOSTA, não de filtro) faz a busca falhar.
         const parcelas = await contaAzulService.encontrarParcelasDeVenda(
-            clienteCAId, idVendaCA, dataVendaStr,
-            ['EM_ABERTO', 'ATRASADO', 'RECEBIDO', 'RECEBIDO_PARCIAL', 'PENDENTE']
+            clienteCAId, idVendaCA, dataVendaStr
         );
         const boletos = [];
         for (const par of (parcelas || [])) {
