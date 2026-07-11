@@ -291,7 +291,7 @@ const asaasService = {
                 contaReceber: {
                     include: {
                         cliente: { select: { UUID: true, Nome: true } },
-                        pedido: { select: { id: true, numero: true, especial: true } }
+                        pedido: { select: { id: true, numero: true, especial: true, idVendaContaAzul: true, dataVenda: true } }
                     }
                 }
             }
@@ -330,10 +330,37 @@ const asaasService = {
         const conta = parcela.contaReceber;
         const customerId = await asaasService.ensureCustomer(conta.cliente.UUID);
 
-        // Vencimento do boleto = vencimento da parcela (nunca no passado)
+        // Vencimento OFICIAL: o da parcela no Conta Azul (a condição de pagamento é
+        // calculada lá no faturamento — a parcela local pode estar defasada).
+        // Se divergir, atualiza a parcela local junto.
+        let vencOficial = parcela.dataVencimento || null;
+        if (conta.pedido?.idVendaContaAzul) {
+            try {
+                const contaAzulService = require('./contaAzulService');
+                const dataVendaStr = new Date(conta.pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+                const parcelasCA = await contaAzulService.encontrarParcelasDeVenda(
+                    conta.cliente.UUID, conta.pedido.idVendaContaAzul, dataVendaStr
+                );
+                const caPar = (parcelasCA || []).find(p => (p.numero_parcela || 0) === parcela.numeroParcela)
+                    || ((parcelasCA || []).length === 1 ? parcelasCA[0] : null);
+                if (caPar?.data_vencimento) {
+                    const vencCA = new Date(caPar.data_vencimento + 'T12:00:00-03:00');
+                    const localStr = vencOficial ? new Date(vencOficial).toISOString().split('T')[0] : null;
+                    if (caPar.data_vencimento !== localStr) {
+                        await prisma.parcela.update({ where: { id: parcelaId }, data: { dataVencimento: vencCA } })
+                            .catch(() => { /* melhor esforço */ });
+                    }
+                    vencOficial = vencCA;
+                }
+            } catch (e) {
+                console.warn('[Asaas] Não consegui conferir o vencimento no CA (uso o local):', e.message);
+            }
+        }
+
+        // Boleto nunca com vencimento no passado
         const hoje = hojeSP();
-        const vencParcela = parcela.dataVencimento
-            ? new Date(parcela.dataVencimento).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
+        const vencParcela = vencOficial
+            ? new Date(vencOficial).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })
             : hoje;
         const dueDate = vencParcela < hoje ? hoje : vencParcela;
 

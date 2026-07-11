@@ -171,6 +171,51 @@ router.get('/diag-danfe', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-parcela-venda?numero=2034 — parcela CA de uma VENDA (contas a receber):
+// mostra todos os campos do detalhe (nome do campo da conta financeira, versao, vencimento)
+// + dados locais do pedido/parcelas para comparar vencimentos.
+router.get('/diag-parcela-venda', async (req, res) => {
+    try {
+        const numero = parseInt(req.query.numero, 10);
+        if (!numero) return res.status(400).json({ error: 'Informe ?numero=' });
+        const pedido = await prisma.pedido.findFirst({
+            where: { numero, especial: false, bonificacao: false },
+            include: {
+                cliente: { select: { UUID: true, Nome: true } },
+                contaReceber: { include: { parcelas: { orderBy: { numeroParcela: 'asc' } } } }
+            }
+        });
+        if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+
+        const dataVendaStr = new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        let parcelasCA = [];
+        let detalhe = null;
+        if (pedido.idVendaContaAzul) {
+            parcelasCA = await contaAzulService.encontrarParcelasDeVenda(pedido.cliente.UUID, pedido.idVendaContaAzul, dataVendaStr);
+            if (parcelasCA[0]?.id) {
+                try { detalhe = await contaAzulService.buscarParcelaDetalhe(parcelasCA[0].id); } catch (e) { detalhe = { erro: e.message }; }
+            }
+        }
+        res.json({
+            pedidoLocal: {
+                numero: pedido.numero,
+                dataVenda: pedido.dataVenda,
+                nomeCondicaoPagamento: pedido.nomeCondicaoPagamento,
+                tipoPagamento: pedido.tipoPagamento,
+                primeiroVencimento: pedido.primeiroVencimento,
+                intervaloDias: pedido.intervaloDias,
+                idContaFinanceira: pedido.idContaFinanceira,
+                situacaoCA: pedido.situacaoCA
+            },
+            parcelasLocais: (pedido.contaReceber?.parcelas || []).map(p => ({ n: p.numeroParcela, venc: p.dataVencimento, status: p.status, valor: p.valor })),
+            parcelasCA: parcelasCA.map(p => ({ id: p.id, n: p.numero_parcela, venc: p.data_vencimento, status: p.status })),
+            detalheParcelaCA: detalhe
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message, detalhe: e.response?.data || null });
+    }
+});
+
 // GET /api/admin-exec/asaas-cobrancas — últimas cobranças (diagnóstico)
 router.get('/asaas-cobrancas', async (req, res) => {
     try {
