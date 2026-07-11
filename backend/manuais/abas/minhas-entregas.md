@@ -75,6 +75,7 @@ Escolha o que aconteceu na entrega:
 - Combinações aceitas: só PIX, dinheiro + PIX, devolução + PIX, ou os três juntos — a conta precisa fechar como sempre
 - A linha do PIX confirmado não pode ser removida pelo motorista (estorno só pelo escritório, no painel do Asaas)
 - Se o motorista fechar o QR sem o cliente pagar, a cobrança é cancelada automaticamente
+- **Pedido ESPECIAL + PIX = vira nota fiscal**: antes de gerar o QR aparece um aviso vermelho — ao receber o PIX, o pedido especial é convertido automaticamente em pedido normal (com NF-e). Se o cliente não quiser nota, receber em dinheiro
 
 **Etapa 4 — GPS e Conclusão**
 - Clique em **Capturar GPS** para registrar a localização no momento da entrega

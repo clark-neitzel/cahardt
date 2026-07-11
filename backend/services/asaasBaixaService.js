@@ -129,10 +129,14 @@ const asaasBaixaService = {
         if (!cobranca.baixaCaOk) {
             try {
                 const pedido = cobranca.pedido;
-                if (!pedido || !pedido.idVendaContaAzul) {
-                    // Pedido especial/sem venda no CA: não há o que baixar lá
+                if (!pedido || (pedido.especial && !pedido.idVendaContaAzul)) {
+                    // Pedido especial (sem espelho no CA): não há o que baixar lá
                     await prisma.cobrancaAsaas.update({ where: { id: cobranca.id }, data: { baixaCaOk: true } });
                     resultado.baixaCa = true;
+                } else if (!pedido.idVendaContaAzul) {
+                    // Pedido normal ainda sem venda no CA (ex.: especial recém-convertido) —
+                    // fica pendente; o worker de retentativa fecha depois que a venda existir.
+                    resultado.erros.push('baixa CA: aguardando a venda ser criada no Conta Azul (retentará sozinho)');
                 } else {
                     const dataVendaStr = pedido.dataVenda
                         ? new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })

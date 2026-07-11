@@ -7,9 +7,15 @@ const asaasService = {
         const response = await api.get('/asaas/status');
         return response.data;
     },
-    // Gera (ou reaproveita) um QR Code PIX para o pedido
-    criarPix: async ({ pedidoId, valor, descricao }) => {
-        const response = await api.post('/asaas/pix', { pedidoId, valor, descricao });
+    // Gera (ou reaproveita) um QR Code PIX para o pedido.
+    // validadeDias: até quando o QR/link vale. vincularParcela: baixa automática ao pagar (financeiro).
+    criarPix: async ({ pedidoId, valor, descricao, validadeDias, vincularParcela }) => {
+        const response = await api.post('/asaas/pix', { pedidoId, valor, descricao, validadeDias, vincularParcela });
+        return response.data;
+    },
+    // Envia o link/código PIX ao cliente via BotConversa
+    enviarPixWhatsapp: async (cobrancaId) => {
+        const response = await api.post(`/asaas/pix/${cobrancaId}/whatsapp`);
         return response.data;
     },
     // Poll de status — o backend confere direto no Asaas se ainda estiver pendente

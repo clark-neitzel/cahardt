@@ -79,6 +79,18 @@ function startSchedulers() {
     // Depois a cada 1 hora
     setInterval(_runSyncBaixas, 3600000); // 60 min
 
+    // === 4.1b. RETENTATIVA DE BAIXAS ASAAS ===
+    // Cobranças Asaas RECEBIDAS com baixa pendente (ex.: pedido especial convertido
+    // que ainda não tinha venda no CA na hora do webhook). Idempotente e barato.
+    console.log('⏰ Iniciando Retentativa de Baixas Asaas...');
+    const asaasBaixaService = require('../services/asaasBaixaService');
+    setTimeout(() => {
+        setInterval(() => {
+            asaasBaixaService.reprocessarPendentes()
+                .catch(err => console.error('⚠️ Worker Baixas Asaas Error:', err.message));
+        }, 600000); // 10 minutos
+    }, 240000); // primeira execução 4min após o start
+
     // === 4.2. CONTAS A PAGAR / FORNECEDORES ↔ CA ===
     // Workers 100% isolados: cada método já engole os próprios erros e, sem token
     // do CA configurado, pula silenciosamente. Nunca derrubam o servidor.

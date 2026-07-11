@@ -29,6 +29,14 @@ router.get('/relatorio-flex', pedidoController.relatorioFlex);
 // Listagem de Pedidos
 router.get('/', pedidoController.listar);
 
+// Impressão em lote (DANFEs 2 vias + boletos / recibo do especial)
+router.post('/imprimir-lote/checar', pedidoController.imprimirLoteChecar);
+router.post('/imprimir-lote', pedidoController.imprimirLote);
+
+// Avisos de pedido especial convertido (popup do faturamento a cada 5 min)
+router.get('/avisos-convertidos', pedidoController.avisosConvertidos);
+router.post('/avisos-convertidos/:avisoId/ciente', pedidoController.avisoConvertidoCiente);
+
 // Detalhes de um pedido
 router.get('/:id', pedidoController.detalhar);
 

@@ -124,24 +124,50 @@ const asaasService = {
         return customerId;
     },
 
-    // ── Criar cobrança PIX de um pedido (QR Code na entrega) ──
+    // ── Criar cobrança PIX de um pedido (QR na entrega ou cobrança do financeiro) ──
     // Idempotente por clique: se já existe PIX PENDENTE do mesmo pedido e valor
     // (e não expirado), devolve o existente em vez de criar outro.
-    criarPixPedido: async ({ pedidoId, valor, descricao, criadoPorId }) => {
+    // validadeDias: 0 = vale até o fim de hoje; N = fim do dia hoje+N.
+    // vincularParcela: true (financeiro) = amarra na 1ª parcela em aberto → baixa
+    // automática (app + CA) quando pagar. false (entrega) = baixa via fluxo do Caixa.
+    criarPixPedido: async ({ pedidoId, valor, descricao, criadoPorId, validadeDias = 0, vincularParcela = false }) => {
         exigirConfig();
 
-        const valorNum = Math.round(Number(valor) * 100) / 100;
-        if (!valorNum || valorNum <= 0) {
-            const err = new Error('Valor do PIX inválido.');
+        const pedido = await prisma.pedido.findUnique({
+            where: { id: pedidoId },
+            include: {
+                cliente: { select: { UUID: true, Nome: true } },
+                contaReceber: { include: { parcelas: { orderBy: { numeroParcela: 'asc' } } } }
+            }
+        });
+        if (!pedido) throw new Error('Pedido não encontrado.');
+        if (pedido.bonificacao) {
+            const err = new Error('Bonificação não gera cobrança.');
             err.statusCode = 400;
             throw err;
         }
 
-        const pedido = await prisma.pedido.findUnique({
-            where: { id: pedidoId },
-            include: { cliente: { select: { UUID: true, Nome: true } } }
-        });
-        if (!pedido) throw new Error('Pedido não encontrado.');
+        // Valor: informado, ou o saldo em aberto das parcelas
+        let valorNum = valor != null ? Math.round(Number(valor) * 100) / 100 : null;
+        const parcelasAbertas = (pedido.contaReceber?.parcelas || [])
+            .filter(p => ['PENDENTE', 'VENCIDO', 'PARCIAL'].includes(p.status));
+        if (valorNum == null) {
+            const saldo = parcelasAbertas.reduce(
+                (s, p) => s + Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0), 0);
+            valorNum = Math.round(saldo * 100) / 100;
+        }
+        if (!valorNum || valorNum <= 0) {
+            const err = new Error('Valor do PIX inválido (pedido sem saldo em aberto?).');
+            err.statusCode = 400;
+            throw err;
+        }
+
+        const parcelaId = vincularParcela ? (parcelasAbertas[0]?.id || null) : null;
+        if (vincularParcela && !parcelaId) {
+            const err = new Error('Pedido sem parcela em aberto para vincular a cobrança.');
+            err.statusCode = 400;
+            throw err;
+        }
 
         const existente = await prisma.cobrancaAsaas.findFirst({
             where: {
@@ -158,14 +184,19 @@ const asaasService = {
 
         const customerId = await asaasService.ensureCustomer(pedido.cliente.UUID);
 
+        // Vencimento = hoje + validadeDias (o QR/link vale até o fim desse dia)
+        const dias = Math.max(0, Math.min(30, parseInt(validadeDias, 10) || 0));
+        const venc = new Date(Date.now() + dias * 24 * 3600 * 1000)
+            .toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+
         let payment;
         try {
             const resp = await http.post('/payments', {
                 customer: customerId,
                 billingType: 'PIX',
                 value: valorNum,
-                dueDate: hojeSP(),
-                description: (descricao || `Pedido #${pedido.numero || 's/n'} - Hardt`).slice(0, 500),
+                dueDate: venc,
+                description: (descricao || `Pedido ${pedido.especial ? 'ZZ#' : '#'}${pedido.numero || 's/n'} - Hardt`).slice(0, 500),
                 externalReference: pedidoId
             });
             payment = resp.data;
@@ -192,6 +223,9 @@ const asaasService = {
                 descricao: descricao || null,
                 clienteId: pedido.cliente.UUID,
                 pedidoId,
+                parcelaId,
+                boletoUrl: payment.invoiceUrl || null, // link da fatura Asaas (dá p/ pagar pelo link)
+                vencimento: new Date(venc + 'T12:00:00-03:00'),
                 pixPayload: qr.payload || null,
                 pixQrCodeBase64: qr.encodedImage || null,
                 pixExpiraEm: qr.expirationDate ? new Date(qr.expirationDate) : null,
@@ -275,6 +309,16 @@ const asaasService = {
         const cobranca = await prisma.cobrancaAsaas.findUnique({ where: { id: cobrancaId } });
         if (count > 0) {
             console.log(`✅ [Asaas] Cobrança ${cobranca?.asaasPaymentId} recebida: R$ ${Number(cobranca?.valorRecebido || cobranca?.valor).toFixed(2)}`);
+        }
+        // Pedido ESPECIAL pago via PIX → converte em pedido normal (regra do dono).
+        // Roda ANTES da baixa, para a baixa já enxergar o pedido convertido.
+        if (count > 0 && cobranca?.pedidoId) {
+            try {
+                const pedidoConversaoService = require('./pedidoConversaoService');
+                await pedidoConversaoService.converterSeEspecial(cobranca);
+            } catch (e) {
+                console.error('[Asaas] Erro na conversão do especial (recebimento segue):', e.message);
+            }
         }
         // Cobrança com parcela vinculada (boleto/PIX do financeiro) → baixa automática app + CA.
         // PIX de entrega tem parcelaId nulo (baixa acontece no fluxo do Caixa).

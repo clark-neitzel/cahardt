@@ -43,6 +43,8 @@ const mapCobranca = (c) => c && ({
     pixPayload: c.pixPayload,
     pixQrCodeBase64: c.pixQrCodeBase64,
     pixExpiraEm: c.pixExpiraEm,
+    linkPagamento: c.boletoUrl || null, // fatura Asaas (PIX gerado p/ enviar ao cliente)
+    vencimento: c.vencimento,
     ambiente: c.ambiente,
     createdAt: c.createdAt
 });
@@ -68,22 +70,63 @@ router.get('/status', verificarAuth, (req, res) => {
     res.json({ configurado: asaasService.configurado(), ambiente: asaasService.configurado() ? asaasService.AMBIENTE : null });
 });
 
-// ── POST /pix — gerar QR Code PIX para um pedido (entrega) ──
+// ── POST /pix — gerar QR Code PIX para um pedido (entrega ou cobrança do financeiro) ──
 router.post('/pix', verificarAuth, checkPodeCobrar, async (req, res) => {
     try {
-        const { pedidoId, valor, descricao } = req.body;
+        const { pedidoId, valor, descricao, validadeDias, vincularParcela } = req.body;
         if (!pedidoId) return res.status(400).json({ error: 'Informe o pedido.' });
 
         const cobranca = await asaasService.criarPixPedido({
             pedidoId,
             valor,
             descricao,
+            validadeDias,
+            vincularParcela: !!vincularParcela,
             criadoPorId: req.user.id
         });
         res.json(mapCobranca(cobranca));
     } catch (e) {
         console.error('[Asaas] Erro ao criar PIX:', e.message);
         res.status(e.statusCode || 500).json({ error: e.message || 'Erro ao gerar PIX.' });
+    }
+});
+
+// ── POST /pix/:cobrancaId/whatsapp — enviar o link/código PIX ao cliente ──
+router.post('/pix/:cobrancaId/whatsapp', verificarAuth, checkPodeCobrar, async (req, res) => {
+    try {
+        const webhookService = require('../services/webhookService');
+        const cobranca = await prisma.cobrancaAsaas.findUnique({
+            where: { id: req.params.cobrancaId },
+            include: {
+                cliente: { select: { Nome: true, NomeFantasia: true, Telefone_Celular: true, Telefone: true } },
+                pedido: { select: { numero: true, especial: true } }
+            }
+        });
+        if (!cobranca) return res.status(404).json({ error: 'Cobrança não encontrada.' });
+        if (cobranca.status !== 'PENDENTE') return res.status(400).json({ error: `Cobrança está ${cobranca.status} — nada a enviar.` });
+
+        const nome = cobranca.cliente?.NomeFantasia || cobranca.cliente?.Nome || 'Cliente';
+        const telefone = cobranca.cliente?.Telefone_Celular || cobranca.cliente?.Telefone;
+        if (!telefone) return res.status(400).json({ error: 'Cliente sem telefone cadastrado.' });
+
+        const venc = cobranca.vencimento ? new Date(cobranca.vencimento) : new Date();
+        const vencStr = venc.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        const numeroPedido = cobranca.pedido?.numero ? `${cobranca.pedido.especial ? 'ZZ#' : '#'}${cobranca.pedido.numero}` : '';
+        const mensagem = `Olá, *${nome}*! 😊\n\nSegue o PIX${numeroPedido ? ` do pedido *${numeroPedido}*` : ''}:\n\n💰 Valor: *R$ ${Number(cobranca.valor).toFixed(2).replace('.', ',')}*\n📅 Válido até: *${vencStr}*${cobranca.boletoUrl ? `\n\n🔗 Link para pagar: ${cobranca.boletoUrl}` : ''}${cobranca.pixPayload ? `\n\n*PIX copia e cola:*\n${cobranca.pixPayload}` : ''}\n\nQualquer dúvida, estamos à disposição!\n_Hardt Doces e Salgados_`;
+
+        const r = await webhookService.enviarCobranca({
+            telefone,
+            nome,
+            mensagem,
+            total: Number(cobranca.valor),
+            dataVencimento: venc,
+            condicao: 'PIX'
+        });
+        if (!r.ok) return res.status(400).json({ error: `WhatsApp não enviado: ${r.motivo}` });
+        res.json({ ok: true, message: 'PIX enviado por WhatsApp!' });
+    } catch (e) {
+        console.error('[Asaas] Erro ao enviar PIX por WhatsApp:', e.message);
+        res.status(500).json({ error: 'Erro ao enviar por WhatsApp.' });
     }
 });
 
@@ -182,11 +225,22 @@ const listarBoletosConta = async (req, res) => {
 };
 router.get('/contas/:contaReceberId/boletos', verificarAuth, listarBoletosConta);
 
-// ── POST /boletos — emitir boletos (todas as parcelas em aberto da conta, ou parcelas específicas) ──
+// ── POST /boletos — emitir boletos (por conta, por parcelas, ou por PEDIDOS em lote) ──
 router.post('/boletos', verificarAuth, checkPodeCobrar, async (req, res) => {
     try {
-        const { contaReceberId, parcelaIds } = req.body;
+        const { contaReceberId, parcelaIds, pedidoIds } = req.body;
         let ids = Array.isArray(parcelaIds) ? parcelaIds : [];
+        if (!ids.length && Array.isArray(pedidoIds) && pedidoIds.length) {
+            const parcelas = await prisma.parcela.findMany({
+                where: {
+                    contaReceber: { pedidoId: { in: pedidoIds } },
+                    status: { in: ['PENDENTE', 'VENCIDO', 'PARCIAL'] }
+                },
+                orderBy: { numeroParcela: 'asc' },
+                select: { id: true }
+            });
+            ids = parcelas.map(p => p.id);
+        }
         if (!ids.length && contaReceberId) {
             const parcelas = await prisma.parcela.findMany({
                 where: { contaReceberId, status: { in: ['PENDENTE', 'VENCIDO', 'PARCIAL'] } },

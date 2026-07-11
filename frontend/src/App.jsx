@@ -108,6 +108,7 @@ import DiarioGateway from './components/Diario/DiarioGateway';
 import DiarioCheckout from './components/Diario/DiarioCheckout';
 import PendenciaRotaGateway from './components/PendenciaRotaGateway';
 import AlertaFaturamento from './components/AlertaFaturamento';
+import AlertaPedidoConvertido from './components/AlertaPedidoConvertido';
 import AlertaTarefas from './components/AlertaTarefas';
 import AlertaPedidosSite from './components/AlertaPedidosSite';
 import Clippy from './components/Clippy/Clippy';
@@ -593,6 +594,9 @@ const Layout = ({ children }) => {
 
         {/* ALERTA DE PEDIDOS PENDENTES DE FATURAMENTO (popup a cada 10 min) */}
         <AlertaFaturamento />
+
+        {/* ALERTA DE PEDIDO ESPECIAL CONVERTIDO EM NF (popup a cada 5 min p/ faturamento) */}
+        <AlertaPedidoConvertido />
 
         {/* ALERTA DE TAREFAS DA EQUIPE (pop-up + som no horário; insiste a cada 5 min) */}
         <AlertaTarefas />

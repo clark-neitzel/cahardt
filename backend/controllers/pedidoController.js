@@ -42,10 +42,124 @@ const pedidoController = {
             }
 
             const pedidos = await pedidoService.listar(filtros);
+
+            // Situação Asaas por pedido (check ✓ nos botões de boleto/PIX da lista)
+            try {
+                const lista = Array.isArray(pedidos) ? pedidos : (pedidos?.items || pedidos?.pedidos || []);
+                const ids = lista.map(p => p.id).filter(Boolean);
+                if (ids.length > 0) {
+                    const cobrancas = await prisma.cobrancaAsaas.findMany({
+                        where: { pedidoId: { in: ids }, status: { in: ['PENDENTE', 'RECEBIDO'] } },
+                        select: { pedidoId: true, tipo: true, status: true },
+                        orderBy: { createdAt: 'asc' }
+                    });
+                    const mapa = {};
+                    for (const c of cobrancas) {
+                        const m = mapa[c.pedidoId] || (mapa[c.pedidoId] = {});
+                        const chave = c.tipo === 'BOLETO' ? 'asaasBoleto' : 'asaasPix';
+                        // RECEBIDO tem prioridade sobre PENDENTE
+                        if (m[chave] !== 'RECEBIDO') m[chave] = c.status;
+                    }
+                    lista.forEach(p => Object.assign(p, mapa[p.id] || {}));
+                }
+            } catch (e) {
+                console.error('Falha ao anexar situação Asaas na listagem (segue sem):', e.message);
+            }
+
             res.json(pedidos);
         } catch (error) {
             console.error('Erro ao listar pedidos:', error);
             res.status(500).json({ error: 'Erro ao listar pedidos' });
+        }
+    },
+
+    // ── Impressão em lote (DANFEs 2 vias + boletos / recibo do especial) ──
+    imprimirLoteChecar: async (req, res) => {
+        try {
+            const { pedidoIds } = req.body || {};
+            if (!Array.isArray(pedidoIds) || !pedidoIds.length) {
+                return res.status(400).json({ error: 'Selecione ao menos um pedido.' });
+            }
+            const impressaoLoteService = require('../services/impressaoLoteService');
+            const itens = await impressaoLoteService.checar(pedidoIds.slice(0, 100));
+            res.json({ itens });
+        } catch (e) {
+            console.error('Erro ao checar lote de impressão:', e);
+            res.status(500).json({ error: 'Erro ao checar os pedidos.' });
+        }
+    },
+
+    imprimirLote: async (req, res) => {
+        try {
+            const { pedidoIds, duasVias, incluirBoletos } = req.body || {};
+            if (!Array.isArray(pedidoIds) || !pedidoIds.length) {
+                return res.status(400).json({ error: 'Selecione ao menos um pedido.' });
+            }
+            const impressaoLoteService = require('../services/impressaoLoteService');
+            const { pdf, erros, paginas } = await impressaoLoteService.gerar({
+                pedidoIds: pedidoIds.slice(0, 100),
+                duasVias: duasVias !== false,
+                incluirBoletos: incluirBoletos !== false
+            });
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `inline; filename="impressao-lote-${paginas}p.pdf"`);
+            res.setHeader('X-Lote-Erros', encodeURIComponent(JSON.stringify(erros)));
+            res.send(pdf);
+        } catch (e) {
+            console.error('Erro ao gerar lote de impressão:', e);
+            res.status(e.statusCode || 500).json({ error: e.message || 'Erro ao gerar o PDF do lote.' });
+        }
+    },
+
+    // ── Avisos de pedido especial convertido (popup do faturamento) ──
+    avisosConvertidos: async (req, res) => {
+        try {
+            const vendedor = await prisma.vendedor.findUnique({
+                where: { id: req.user.id },
+                select: { alertaPedidoConvertido: true }
+            });
+            if (!vendedor?.alertaPedidoConvertido) return res.json({ avisos: [] });
+
+            const avisos = await prisma.pedidoConvertidoAviso.findMany({
+                where: { cienteEm: null },
+                orderBy: { createdAt: 'asc' },
+                take: 10,
+                include: {
+                    pedido: {
+                        select: {
+                            id: true, numero: true, situacaoCA: true,
+                            cliente: { select: { Nome: true, NomeFantasia: true } }
+                        }
+                    }
+                }
+            });
+            res.json({
+                avisos: avisos.map(a => ({
+                    id: a.id,
+                    pedidoId: a.pedidoId,
+                    numeroAntigo: a.numeroAntigo,
+                    numeroNovo: a.numeroNovo ?? a.pedido?.numero,
+                    valorPago: a.valorPago != null ? Number(a.valorPago) : null,
+                    cliente: a.pedido?.cliente?.NomeFantasia || a.pedido?.cliente?.Nome || '—',
+                    situacaoCA: a.pedido?.situacaoCA || null,
+                    criadoEm: a.createdAt
+                }))
+            });
+        } catch (e) {
+            console.error('Erro ao listar avisos de conversão:', e);
+            res.status(500).json({ error: 'Erro ao listar avisos.' });
+        }
+    },
+
+    avisoConvertidoCiente: async (req, res) => {
+        try {
+            await prisma.pedidoConvertidoAviso.update({
+                where: { id: req.params.avisoId },
+                data: { cienteEm: new Date(), cientePorId: req.user.id }
+            });
+            res.json({ ok: true });
+        } catch (e) {
+            res.status(500).json({ error: 'Erro ao registrar ciência.' });
         }
     },
 

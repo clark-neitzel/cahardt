@@ -127,6 +127,26 @@ const pedidoService = {
     pendenteFaturamento: async () => {
         const response = await api.get('/pedidos/pendente-faturamento');
         return response.data;
+    },
+
+    // ── Impressão em lote (DANFEs 2 vias + boletos / recibo do especial) ──
+    imprimirLoteChecar: async (pedidoIds) => {
+        const response = await api.post('/pedidos/imprimir-lote/checar', { pedidoIds });
+        return response.data;
+    },
+    imprimirLote: async ({ pedidoIds, duasVias, incluirBoletos }) => {
+        // devolve o response inteiro (blob + header X-Lote-Erros)
+        return api.post('/pedidos/imprimir-lote', { pedidoIds, duasVias, incluirBoletos }, { responseType: 'blob' });
+    },
+
+    // ── Avisos de pedido especial convertido (popup do faturamento) ──
+    avisosConvertidos: async () => {
+        const response = await api.get('/pedidos/avisos-convertidos');
+        return response.data;
+    },
+    avisoConvertidoCiente: async (avisoId) => {
+        const response = await api.post(`/pedidos/avisos-convertidos/${avisoId}/ciente`);
+        return response.data;
     }
 };
 

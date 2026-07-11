@@ -65,9 +65,20 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - O painel no topo da lista mostra alertas coloridos: quantos pedidos estão em **Enviar**, **Aprovados** e **Erro**
 - Clique no alerta para ir direto àquele grupo
 
-### Imprimir pedidos
-- Para um pedido: clique no ícone de impressora ao lado do pedido → abre a tela de impressão
-- Para vários: marque os pedidos com status **FATURADO** usando o checkbox (ou clique "Selecionar faturados") → clique **Imprimir N**
+### Imprimir em lote (DANFEs + boletos / recibo do especial)
+1. Marque os pedidos pelos checkboxes (ou clique **"Selecionar faturados"**) → clique **Imprimir N**
+2. Na janela, escolha: **2 vias de cada documento** (uma p/ assinatura, outra p/ cliente) e **boleto logo após as vias** (sai na sequência, pronto p/ grampear)
+3. Avisos automáticos: pedidos **a prazo sem boleto gerado** aparecem em destaque com o botão **"Gerar boletos agora"**; pedidos **sem NF-e emitida** são pulados (emita a nota no CA primeiro); pedidos **à vista** saem sem boleto (não há o que cobrar)
+4. Pedido **ESPECIAL** sai no **recibo de conferência** (modelo sem a marca da Hardt, com itens, total e linha de assinatura) — especiais só imprimem pelo lote
+5. Sai **um único PDF** com as folhas na ordem certa; as opções ficam lembradas para a próxima
+- O botão de imprimir o pedido individual foi **removido** — a DANFE substitui; para mandar um pedido a alguém, use um print da tela
+
+### Gerar PIX de um pedido (cobrança à vista / link de pagamento)
+1. Na pílula **PIX** do pedido (aparece em pedidos à vista e especiais), escolha o valor e a **validade** (hoje / amanhã / 3 dias / 7 dias — o QR e o link valem até o fim do dia escolhido)
+2. Mostre o QR, **copie o código PIX** ou **envie o link por WhatsApp** ao cliente
+3. Quando pagar: **baixa automática** no app e no Conta Azul (conta ASAAS); check verde ✓ aparece na pílula
+4. **Pedido ESPECIAL + PIX = conversão**: antes de gerar aparece um aviso vermelho destacado — ao receber qualquer valor via PIX (parcial ou total), o pedido especial é **convertido automaticamente em pedido normal**: ganha número novo na sequência, vai ao Conta Azul e a **NF-e deve ser emitida** pelo faturamento
+5. Quem fatura recebe um **popup a cada 5 minutos** ("Pedido convertido — emitir NF-e") até dar ciência; quem recebe esse aviso é escolhido na aba **Usuários/Vendedores** (ícone de setas circulares laranja)
 
 ### Aprovar Pedido Especial ou Bonificação
 1. Vá para a sub-aba **Especiais** ou **Bonificação**

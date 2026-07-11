@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, QrCode, Copy, CheckCircle, Loader2, AlertCircle } from 'lucide-react';
+import { X, QrCode, Copy, CheckCircle, Loader2, AlertCircle, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import asaasService from '../../../services/asaasService';
 
@@ -103,6 +103,19 @@ const PixAsaasModal = ({ pedido, valorSugerido, valorMaximo, onRecebido, onClose
                     {/* Etapa 1: definir o valor */}
                     {!cobranca && (
                         <div className="space-y-4">
+                            {/* Pedido ESPECIAL: PIX converte em pedido com NF (regra do dono) */}
+                            {pedido.especial && (
+                                <div className="bg-red-50 border-2 border-red-600 rounded-xl p-3.5">
+                                    <p className="flex items-center gap-2 font-bold text-red-800 text-sm">
+                                        <AlertTriangle className="h-5 w-5 shrink-0" /> Este pedido vai virar NOTA FISCAL
+                                    </p>
+                                    <p className="text-xs text-red-900 mt-1.5">
+                                        Pedido ESPECIAL pago com PIX é <b>convertido automaticamente</b> em pedido
+                                        normal (ganha número novo e a NF-e será emitida pelo escritório).
+                                        Se o cliente não quiser nota, receba em dinheiro.
+                                    </p>
+                                </div>
+                            )}
                             <div>
                                 <label className="text-sm font-medium text-gray-700">Valor do PIX (R$)</label>
                                 <input

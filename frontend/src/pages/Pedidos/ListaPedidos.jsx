@@ -12,6 +12,8 @@ import toast from 'react-hot-toast';
 import ListaDevolucoes from './ListaDevolucoes';
 import asaasService from '../../services/asaasService';
 import BoletosAsaasModal from '../Financeiro/BoletosAsaasModal';
+import PixAvulsoModal from './PixAvulsoModal';
+import ImprimirLoteModal from './ImprimirLoteModal';
 
 const fmtNumero = (pedido) => pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
 
@@ -128,6 +130,8 @@ const ListaPedidos = () => {
         || user?.permissoes?.Pode_Executar_Entregas || user?.permissoes?.Pode_Ver_Todas_Entregas;
     const [asaasDisponivel, setAsaasDisponivel] = useState(false);
     const [boletosModal, setBoletosModal] = useState(null); // { pedidoId, clienteNome, pedidoNumero }
+    const [pixModal, setPixModal] = useState(null); // { id, numero, especial, clienteNome, valorSugerido }
+    const [loteModal, setLoteModal] = useState(null); // array de pedidoIds p/ impressão em lote
     const [gerandoDanfe, setGerandoDanfe] = useState(null); // pedidoId com DANFE em geração
 
     // DANFE (PDF da NF-e emitida no CA) — o backend baixa o XML autorizado e gera o PDF
@@ -560,6 +564,7 @@ const ListaPedidos = () => {
         navigate(`/pedidos/imprimir/${pedido.id}`);
     };
 
+    // Impressão em lote nova (DANFEs 2 vias + boletos / recibo do especial)
     const imprimirSelecionados = async () => {
         if (selecionados.size === 0) return;
         const idsArray = Array.from(selecionados);
@@ -570,8 +575,7 @@ const ListaPedidos = () => {
         } catch (error) {
             console.error('Erro ao registrar impressões em lote', error);
         }
-        const ids = idsArray.join(',');
-        navigate(`/pedidos/imprimir/lote?ids=${ids}`);
+        setLoteModal(idsArray);
     };
 
     // Padrão = tudo limpo (entrega inclusive). "Limpar" volta a este estado.
@@ -1184,14 +1188,39 @@ const ListaPedidos = () => {
                                                     )}
                                                 </div>
                                             )}
-                                            {asaasDisponivel && podeBoletoAsaas && !pedido.bonificacao && !pedido.especial && pedido.situacaoCA === 'FATURADO' && (
+                                            {/* Boleto Asaas (a prazo, faturado) — check verde = boleto já emitido */}
+                                            {asaasDisponivel && podeBoletoAsaas && !pedido.bonificacao && !pedido.especial
+                                                && pedido.situacaoCA === 'FATURADO' && pedido.tipoPagamento === 'BOLETO_BANCARIO' && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setBoletosModal({ pedidoId: pedido.id, clienteNome: pedido.cliente?.NomeFantasia || pedido.cliente?.Nome, pedidoNumero: pedido.numero }); }}
-                                                    className="flex items-center gap-1 px-2 lg:px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-[#eef1ff] text-[#0030b9] hover:bg-[#dee4ff] transition-colors"
-                                                    title="Gerar boleto (Asaas)"
+                                                    className="relative flex items-center gap-1 px-2 lg:px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-[#eef1ff] text-[#0030b9] hover:bg-[#dee4ff] transition-colors"
+                                                    title={pedido.asaasBoleto ? `Boleto ${pedido.asaasBoleto === 'RECEBIDO' ? 'PAGO' : 'já emitido'} (Asaas)` : 'Gerar boleto (Asaas)'}
                                                 >
                                                     <AsaasIcon className="h-4 w-4" />
                                                     <span className="hidden lg:inline">Boleto</span>
+                                                    {pedido.asaasBoleto && (
+                                                        <span className="absolute -top-1.5 -right-1 h-4 w-4 rounded-full bg-green-600 border-2 border-white flex items-center justify-center text-white text-[9px] font-black">✓</span>
+                                                    )}
+                                                </button>
+                                            )}
+                                            {/* PIX Asaas (à vista e especiais) — cobrança na hora / link de pagamento */}
+                                            {asaasDisponivel && podeBoletoAsaas && !pedido.bonificacao
+                                                && pedido.tipoPagamento !== 'BOLETO_BANCARIO'
+                                                && (pedido.especial || pedido.situacaoCA === 'FATURADO' || pedido.statusEnvio === 'RECEBIDO') && (
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const total = (pedido.itens?.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0) || 0) + Number(pedido.valorFrete || 0);
+                                                        setPixModal({ id: pedido.id, numero: pedido.numero, especial: pedido.especial, clienteNome: pedido.cliente?.NomeFantasia || pedido.cliente?.Nome, valorSugerido: total });
+                                                    }}
+                                                    className="relative flex items-center gap-1 px-2 lg:px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-[#eef1ff] text-[#0030b9] hover:bg-[#dee4ff] transition-colors"
+                                                    title={pedido.especial ? 'Gerar PIX (converte o especial em pedido com NF)' : 'Gerar PIX / link de pagamento (Asaas)'}
+                                                >
+                                                    <AsaasIcon className="h-4 w-4" />
+                                                    <span className="hidden lg:inline">PIX</span>
+                                                    {pedido.asaasPix === 'RECEBIDO' && (
+                                                        <span className="absolute -top-1.5 -right-1 h-4 w-4 rounded-full bg-green-600 border-2 border-white flex items-center justify-center text-white text-[9px] font-black">✓</span>
+                                                    )}
                                                 </button>
                                             )}
                                             {pedido.situacaoCA === 'FATURADO' && !pedido.especial && !pedido.bonificacao && (
@@ -1203,16 +1232,6 @@ const ListaPedidos = () => {
                                                 >
                                                     {gerandoDanfe === pedido.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileCheck className="h-3.5 w-3.5" />}
                                                     <span className="hidden lg:inline">DANFE</span>
-                                                </button>
-                                            )}
-                                            {pedido.situacaoCA === 'FATURADO' && (
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); handlePrintPedido(pedido); }}
-                                                    className="flex items-center gap-1 px-2 lg:px-2.5 py-1.5 rounded-full text-[10.5px] font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
-                                                    title="Imprimir Pedido"
-                                                >
-                                                    <Printer className="h-3.5 w-3.5" />
-                                                    <span className="hidden lg:inline">Imprimir</span>
                                                 </button>
                                             )}
                                             {(pedido.bonificacao ? podeExcluirBonificacao : pedido.especial ? podeExcluirEspecial : podeExcluirPedido) && (pedido.especial || (!pedido.embarqueId && (!pedido.statusEntrega || pedido.statusEntrega === 'PENDENTE'))) && !['FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA) && (
@@ -1555,9 +1574,6 @@ const ListaPedidos = () => {
                                         )}
                                     </div>
                                 )}
-                                {selectedPedido.situacaoCA === 'FATURADO' && (
-                                    <button onClick={() => handlePrintPedido(selectedPedido)} className="p-2 border border-purple-300 bg-purple-50 text-purple-700 rounded hover:bg-purple-100 flex items-center gap-1.5"><Printer className="h-5 w-5" /></button>
-                                )}
                                 <button onClick={() => setSelectedPedido(null)} className="px-6 py-2 bg-gray-900 text-white rounded font-bold text-sm">Fechar</button>
                             </div>
                         </div>
@@ -1570,7 +1586,23 @@ const ListaPedidos = () => {
                 <BoletosAsaasModal
                     conta={boletosModal}
                     onClose={() => setBoletosModal(null)}
-                    onAtualizado={() => { }}
+                    onAtualizado={() => setPedidos(prev => prev.map(p => p.id === boletosModal.pedidoId ? { ...p, asaasBoleto: p.asaasBoleto || 'PENDENTE' } : p))}
+                />
+            )}
+
+            {/* Modal de PIX (à vista / especial) */}
+            {pixModal && (
+                <PixAvulsoModal
+                    pedido={pixModal}
+                    onClose={() => setPixModal(null)}
+                />
+            )}
+
+            {/* Modal de impressão em lote */}
+            {loteModal && (
+                <ImprimirLoteModal
+                    pedidoIds={loteModal}
+                    onClose={() => setLoteModal(null)}
                 />
             )}
         </div>

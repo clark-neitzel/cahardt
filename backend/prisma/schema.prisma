@@ -298,6 +298,7 @@ model Pedido {
   kitFestaPedido   KitFestaPedido?
   congeladosPedido CongeladosPedido?
   cobrancasAsaas   CobrancaAsaas[] // PIX/boleto emitidos pelo app via Asaas
+  avisosConversao  PedidoConvertidoAviso[] // especial convertido em pedido com NF
 
   @@index([statusEnvio])
   @@index([vendedorId])
@@ -389,6 +390,9 @@ model Vendedor {
 
   // Alerta de pedidos não faturados (popup a cada 10 min)
   alertaFaturamento Boolean @default(true) @map("alerta_faturamento")
+
+  // Alerta de pedido especial convertido em pedido com NF (popup a cada 5 min p/ faturamento)
+  alertaPedidoConvertido Boolean @default(false) @map("alerta_pedido_convertido")
 
   // Caixa: tabela de preço usada para cobrar faltas na conferência de devoluções
   // (id ou idCondicao da TabelaPreco, sem FK — mesma flexibilidade de Cliente.Condicao_de_pagamento)
@@ -3199,6 +3203,23 @@ model CobrancaAsaas {
   @@index([clienteId])
   @@index([status])
   @@map("cobrancas_asaas")
+}
+
+// Pedido especial que virou pedido com NF (pago via PIX Asaas) — alimenta o
+// popup do faturamento (a cada 5 min até alguém dar ciência).
+model PedidoConvertidoAviso {
+  id           String    @id @default(uuid())
+  pedidoId     String    @map("pedido_id")
+  pedido       Pedido    @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  numeroAntigo Int?      @map("numero_antigo") // ZZ# antes da conversão
+  numeroNovo   Int?      @map("numero_novo") // # na sequência normal
+  valorPago    Decimal?  @map("valor_pago") @db.Decimal(12, 2)
+  cienteEm     DateTime? @map("ciente_em")
+  cientePorId  String?   @map("ciente_por_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@index([cienteEm])
+  @@map("pedidos_convertidos_avisos")
 }
 
 // Log bruto dos webhooks recebidos do Asaas (auditoria + idempotência)

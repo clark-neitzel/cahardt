@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Pencil, Save, X, Search, DollarSign, Mail, Shield, UserX, UserCheck, User, MessageCircle, Phone, Bell, BellOff } from 'lucide-react';
+import { Pencil, Save, X, Search, DollarSign, Mail, Shield, UserX, UserCheck, User, MessageCircle, Phone, Bell, BellOff, Repeat } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import PermissoesModal from './PermissoesModal';
 import toast from 'react-hot-toast';
@@ -49,6 +49,18 @@ const ListaVendedores = () => {
             toast.success(`${vendedor.nome}: alerta faturamento ${novoValor ? 'ativado' : 'desativado'}`);
         } catch {
             toast.error('Erro ao salvar alerta de faturamento');
+        }
+    };
+
+    // Aviso de pedido especial convertido em NF (popup a cada 5 min p/ faturamento)
+    const handleToggleAlertaConvertido = async (vendedor) => {
+        const novoValor = !vendedor.alertaPedidoConvertido;
+        try {
+            const updated = await vendedorService.atualizar(vendedor.id, { alertaPedidoConvertido: novoValor });
+            setVendedores(vendedores.map(v => v.id === vendedor.id ? { ...vendedor, ...updated } : v));
+            toast.success(`${vendedor.nome}: aviso de pedido convertido ${novoValor ? 'ativado' : 'desativado'}`);
+        } catch {
+            toast.error('Erro ao salvar aviso de pedido convertido');
         }
     };
 
@@ -236,6 +248,9 @@ const ListaVendedores = () => {
                                             <button onClick={() => handleToggleAlertaFaturamento(vendedor)} className={vendedor.alertaFaturamento !== false ? 'text-amber-500 hover:text-amber-700' : 'text-gray-300 hover:text-gray-500'} title={vendedor.alertaFaturamento !== false ? 'Alerta faturamento: ON' : 'Alerta faturamento: OFF'}>
                                                 {vendedor.alertaFaturamento !== false ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
                                             </button>
+                                            <button onClick={() => handleToggleAlertaConvertido(vendedor)} className={vendedor.alertaPedidoConvertido ? 'text-orange-600 hover:text-orange-800' : 'text-gray-300 hover:text-gray-500'} title={vendedor.alertaPedidoConvertido ? 'Aviso de pedido convertido: ON' : 'Aviso de pedido convertido: OFF'}>
+                                                <Repeat className="h-4 w-4" />
+                                            </button>
                                             <button onClick={() => setPermissionsModalVendedor(vendedor)} className="text-indigo-600 hover:text-indigo-900" title="Acessos e Permissões"><Shield className="h-4 w-4" /></button>
                                             <button onClick={() => handleEdit(vendedor)} className="text-primary hover:text-indigo-900" title="Editar"><Pencil className="h-4 w-4" /></button>
                                             <button onClick={() => handleToggleAtivo(vendedor)} className={vendedor.ativo === false ? 'text-green-600 hover:text-green-800' : 'text-red-500 hover:text-red-700'} title={vendedor.ativo === false ? 'Reativar' : 'Inativar'}>
@@ -271,6 +286,9 @@ const ListaVendedores = () => {
                                 <div className="flex gap-1.5">
                                     <button onClick={() => handleToggleAlertaFaturamento(vendedor)} className={`p-1.5 rounded-lg ${vendedor.alertaFaturamento !== false ? 'bg-amber-50 text-amber-500' : 'bg-gray-50 text-gray-300'}`} title={vendedor.alertaFaturamento !== false ? 'Alerta faturamento: ON' : 'Alerta faturamento: OFF'}>
                                         {vendedor.alertaFaturamento !== false ? <Bell className="h-4 w-4" /> : <BellOff className="h-4 w-4" />}
+                                    </button>
+                                    <button onClick={() => handleToggleAlertaConvertido(vendedor)} className={`p-1.5 rounded-lg ${vendedor.alertaPedidoConvertido ? 'bg-orange-50 text-orange-600' : 'bg-gray-50 text-gray-300'}`} title={vendedor.alertaPedidoConvertido ? 'Aviso de pedido convertido: ON' : 'Aviso de pedido convertido: OFF'}>
+                                        <Repeat className="h-4 w-4" />
                                     </button>
                                     <button onClick={() => setPermissionsModalVendedor(vendedor)} className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg"><Shield className="h-4 w-4" /></button>
                                     <button onClick={() => handleEdit(vendedor)} className="p-1.5 bg-blue-50 text-blue-600 rounded-lg"><Pencil className="h-4 w-4" /></button>
