@@ -216,6 +216,29 @@ router.get('/diag-parcela-venda', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/diag-parcela-patch — testa PATCH numa parcela CA (ex.: trocar conta financeira)
+// Body: { parcelaId, payload } — versao atual é buscada automaticamente
+router.post('/diag-parcela-patch', async (req, res) => {
+    try {
+        const { parcelaId, payload } = req.body || {};
+        if (!parcelaId || !payload) return res.status(400).json({ error: 'Informe parcelaId e payload.' });
+        const antes = await contaAzulService.buscarParcelaDetalhe(parcelaId);
+        const patch = { versao: antes.versao, ...payload };
+        await contaAzulService.atualizarParcela(parcelaId, patch);
+        const depois = await contaAzulService.buscarParcelaDetalhe(parcelaId);
+        res.json({
+            ok: true,
+            patchEnviado: patch,
+            contaAntes: antes.conta_financeira?.nome || null,
+            contaDepois: depois.conta_financeira?.nome || null,
+            metodoDepois: depois.metodo_pagamento,
+            vencimentoDepois: depois.data_vencimento
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message, detalhe: e.response?.data || null });
+    }
+});
+
 // GET /api/admin-exec/asaas-cobrancas — últimas cobranças (diagnóstico)
 router.get('/asaas-cobrancas', async (req, res) => {
     try {

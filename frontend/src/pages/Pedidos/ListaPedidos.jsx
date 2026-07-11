@@ -1097,23 +1097,25 @@ const ListaPedidos = () => {
                                                 </span>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-0.5 shrink-0">
+                                        <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleEnviarWhatsapp(pedido.id, 'pedido'); }}
                                                 disabled={getWsStatus(pedido.id) === 'enviando'}
-                                                className={`p-1.5 rounded hover:bg-gray-100 ${getWsStatus(pedido.id) === 'ok' ? 'text-green-500' : getWsStatus(pedido.id) === 'erro' ? 'text-red-500' : 'text-gray-400 hover:text-green-600'}`}
+                                                className={`flex items-center gap-1 px-2 lg:px-2.5 py-1.5 rounded-full text-[10.5px] font-bold transition-colors ${getWsStatus(pedido.id) === 'ok' ? 'bg-green-100 text-green-700' : getWsStatus(pedido.id) === 'erro' ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700 hover:bg-green-100'}`}
                                                 title={getWsTitle(pedido.id, pedido)}
                                             >
-                                                {getWsStatus(pedido.id) === 'enviando' ? <Loader2 className="h-4 w-4 animate-spin" /> : getWsStatus(pedido.id) === 'ok' ? <CheckCircle className="h-4 w-4" /> : getWsStatus(pedido.id) === 'erro' ? <XCircle className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
+                                                {getWsStatus(pedido.id) === 'enviando' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : getWsStatus(pedido.id) === 'ok' ? <CheckCircle className="h-3.5 w-3.5" /> : getWsStatus(pedido.id) === 'erro' ? <XCircle className="h-3.5 w-3.5" /> : <MessageCircle className="h-3.5 w-3.5" />}
+                                                <span className="hidden lg:inline">WhatsApp</span>
                                             </button>
                                             {pedido.idVendaContaAzul && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleConsultarCA(pedido); }}
                                                     disabled={consultandoCA.has(pedido.id)}
-                                                    className="p-1.5 text-gray-400 hover:text-blue-600 rounded hover:bg-gray-100 disabled:opacity-50"
+                                                    className="flex items-center gap-1 px-2 lg:px-2.5 py-1.5 rounded-full text-[10.5px] font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
                                                     title="Consultar situação no Conta Azul"
                                                 >
-                                                    {consultandoCA.has(pedido.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                                    {consultandoCA.has(pedido.id) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                                                    <span className="hidden lg:inline">Sync CA</span>
                                                 </button>
                                             )}
                                             {pedido.idVendaContaAzul && (
@@ -1121,10 +1123,11 @@ const ListaPedidos = () => {
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleBuscarCobrancasCA(pedido); }}
                                                         disabled={cobrancasCA[pedido.id]?.loading}
-                                                        className={`p-1.5 rounded hover:bg-gray-100 disabled:opacity-50 ${cobrancasCA[pedido.id]?.open ? 'text-indigo-600' : 'text-gray-400 hover:text-indigo-600'}`}
+                                                        className={`flex items-center gap-1 px-2 lg:px-2.5 py-1.5 rounded-full text-[10.5px] font-bold transition-colors disabled:opacity-50 ${cobrancasCA[pedido.id]?.open ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'}`}
                                                         title="Links de cobrança (PIX/Boleto) no CA"
                                                     >
-                                                        {cobrancasCA[pedido.id]?.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CircleDollarSign className="h-4 w-4" />}
+                                                        {cobrancasCA[pedido.id]?.loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CircleDollarSign className="h-3.5 w-3.5" />}
+                                                        <span className="hidden lg:inline">Cobranças</span>
                                                     </button>
                                                     {cobrancasCA[pedido.id]?.open && (
                                                         <div
@@ -1181,30 +1184,46 @@ const ListaPedidos = () => {
                                                     )}
                                                 </div>
                                             )}
-                                            {asaasDisponivel && podeBoletoAsaas && !pedido.bonificacao && !pedido.especial && (
+                                            {asaasDisponivel && podeBoletoAsaas && !pedido.bonificacao && !pedido.especial && pedido.situacaoCA === 'FATURADO' && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setBoletosModal({ pedidoId: pedido.id, clienteNome: pedido.cliente?.NomeFantasia || pedido.cliente?.Nome, pedidoNumero: pedido.numero }); }}
-                                                    className="p-1 rounded hover:bg-gray-100"
+                                                    className="flex items-center gap-1 px-2 lg:px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-[#eef1ff] text-[#0030b9] hover:bg-[#dee4ff] transition-colors"
                                                     title="Gerar boleto (Asaas)"
                                                 >
-                                                    <AsaasIcon className="h-5 w-5" />
+                                                    <AsaasIcon className="h-4 w-4" />
+                                                    <span className="hidden lg:inline">Boleto</span>
                                                 </button>
                                             )}
                                             {pedido.situacaoCA === 'FATURADO' && !pedido.especial && !pedido.bonificacao && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); handleDanfe(pedido); }}
                                                     disabled={gerandoDanfe === pedido.id}
-                                                    className="p-1.5 text-gray-400 hover:text-teal-600 rounded hover:bg-gray-100 disabled:opacity-50"
+                                                    className="flex items-center gap-1 px-2 lg:px-2.5 py-1.5 rounded-full text-[10.5px] font-bold bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors disabled:opacity-50"
                                                     title="DANFE (PDF da NF-e)"
                                                 >
-                                                    {gerandoDanfe === pedido.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
+                                                    {gerandoDanfe === pedido.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileCheck className="h-3.5 w-3.5" />}
+                                                    <span className="hidden lg:inline">DANFE</span>
                                                 </button>
                                             )}
                                             {pedido.situacaoCA === 'FATURADO' && (
-                                                <button onClick={(e) => { e.stopPropagation(); handlePrintPedido(pedido); }} className="p-1.5 text-gray-400 hover:text-purple-600 rounded hover:bg-gray-100" title="Imprimir Pedido"><Printer className="h-4 w-4" /></button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handlePrintPedido(pedido); }}
+                                                    className="flex items-center gap-1 px-2 lg:px-2.5 py-1.5 rounded-full text-[10.5px] font-bold bg-purple-50 text-purple-700 hover:bg-purple-100 transition-colors"
+                                                    title="Imprimir Pedido"
+                                                >
+                                                    <Printer className="h-3.5 w-3.5" />
+                                                    <span className="hidden lg:inline">Imprimir</span>
+                                                </button>
                                             )}
                                             {(pedido.bonificacao ? podeExcluirBonificacao : pedido.especial ? podeExcluirEspecial : podeExcluirPedido) && (pedido.especial || (!pedido.embarqueId && (!pedido.statusEntrega || pedido.statusEntrega === 'PENDENTE'))) && !['FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA) && (
-                                                <button onClick={(e) => { e.stopPropagation(); handleExcluirPedido(pedido); }} className="p-1.5 text-gray-300 hover:text-red-600 rounded hover:bg-gray-100" title="Excluir pedido"><Trash2 className="h-4 w-4" /></button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleExcluirPedido(pedido); }}
+                                                    className="flex items-center gap-1 px-2 lg:px-2.5 py-1.5 rounded-full text-[10.5px] font-bold bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                                                    title="Excluir pedido"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                    <span className="hidden lg:inline">Excluir</span>
+                                                </button>
                                             )}
                                             <button
                                                 onClick={() => {

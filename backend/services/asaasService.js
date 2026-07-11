@@ -291,7 +291,7 @@ const asaasService = {
                 contaReceber: {
                     include: {
                         cliente: { select: { UUID: true, Nome: true } },
-                        pedido: { select: { id: true, numero: true, especial: true, idVendaContaAzul: true, dataVenda: true } }
+                        pedido: { select: { id: true, numero: true, especial: true, idVendaContaAzul: true, dataVenda: true, situacaoCA: true, nfeChave: true } }
                     }
                 }
             }
@@ -307,6 +307,28 @@ const asaasService = {
             const err = new Error(`Conta está ${parcela.contaReceber.status} — não dá para gerar cobrança.`);
             err.statusCode = 400;
             throw err;
+        }
+        // Regra do dono: boleto só DEPOIS da NF-e emitida (faturado + XML confirmado no CA).
+        // Emitir boleto sem nota seria um problema fiscal sério.
+        if (parcela.contaReceber?.pedido) {
+            const ped = parcela.contaReceber.pedido;
+            if (ped.situacaoCA !== 'FATURADO') {
+                const err = new Error('O pedido ainda não está FATURADO no Conta Azul — emita a NF-e antes de gerar o boleto.');
+                err.statusCode = 400;
+                throw err;
+            }
+            if (!ped.nfeChave) {
+                // Confirma que a NF-e existe de verdade (XML autorizado) e cacheia a chave
+                const pedidoController = require('../controllers/pedidoController');
+                const pedidoFull = await prisma.pedido.findUnique({ where: { id: ped.id } });
+                try {
+                    await pedidoController._localizarNotaFiscal(pedidoFull);
+                } catch (e) {
+                    const err = new Error('NF-e do pedido não encontrada no Conta Azul — emita a nota antes de gerar o boleto.');
+                    err.statusCode = 400;
+                    throw err;
+                }
+            }
         }
         if (!['PENDENTE', 'VENCIDO', 'PARCIAL'].includes(parcela.status)) {
             const err = new Error(`Parcela está ${parcela.status} — não dá para emitir boleto.`);

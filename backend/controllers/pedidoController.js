@@ -1114,10 +1114,12 @@ const pedidoController = {
         const base = pedido.enviadoEm || pedido.dataVenda || pedido.createdAt || new Date();
         let ini = new Date(base);
         ini.setDate(ini.getDate() - 1);
-        const hoje = new Date();
+        // data_final da API se comporta como EXCLUSIVA (nota de hoje só aparece com
+        // data_final = amanhã) — por isso o limite vai um dia além de hoje.
+        const limite = new Date(Date.now() + 24 * 3600 * 1000);
         let nota = null;
-        for (let i = 0; i < 12 && ini <= hoje && !nota; i++) {
-            const fim = new Date(Math.min(ini.getTime() + 6 * 24 * 3600 * 1000, hoje.getTime()));
+        for (let i = 0; i < 12 && ini <= limite && !nota; i++) {
+            const fim = new Date(Math.min(ini.getTime() + 6 * 24 * 3600 * 1000, limite.getTime()));
             const itens = await contaAzulService.listarNotasFiscais({
                 dataInicial: fmt(ini),
                 dataFinal: fmt(fim),
