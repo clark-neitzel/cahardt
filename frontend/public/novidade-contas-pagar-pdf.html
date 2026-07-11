@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contas a Pagar: lançar despesa e anexar o PDF — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="📄 Hardt App: lançar despesa e anexar o PDF (boleto/NF)">
+<meta property="og:description" content="Passo a passo para lançar uma despesa no Contas a Pagar e guardar o boleto ou a nota em PDF — na hora de pagar, o documento está ali.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(27px, 6.6vw, 38px);
+    font-weight: 800;
+    line-height: 1.14;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* ── MOCK DO MODAL ── */
+  .mock {
+    max-width: 400px;
+    margin: -68px auto 30px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .campo { margin-bottom: 11px; }
+  .campo label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7671;
+    margin-bottom: 4px;
+  }
+  .campo .box {
+    border: 1px solid #dcdfdd;
+    border-radius: 8px;
+    padding: 9px 11px;
+    font-size: 13.5px;
+    background: #fff;
+    color: #2c3733;
+  }
+  .campo .box.vazio { color: #a6afab; }
+  .linha2 { display: flex; gap: 10px; }
+  .linha2 .campo { flex: 1; margin-bottom: 11px; }
+  .pdf-drop {
+    border: 1.5px dashed #c3cbc7;
+    border-radius: 11px;
+    padding: 13px;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    background: #fbfcfb;
+  }
+  .pdf-drop .ico { font-size: 20px; }
+  .pdf-drop b { display: block; font-size: 13px; color: #4a5551; }
+  .pdf-drop span { font-size: 11.5px; color: #96a09b; }
+  .mock-rodape { display: flex; gap: 8px; margin-top: 14px; }
+  .mock-rodape span {
+    flex: 1;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 11px 6px;
+    border-radius: 999px;
+  }
+  .b-cheio { background: var(--primary); color: #fff; }
+  .b-vazio { border: 1.5px solid #dcdfdd; color: #7c8783; }
+
+  /* ── SEÇÕES / PASSOS ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 8px 16px; }
+  .passo { display: flex; gap: 14px; padding: 13px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+  .passo em { font-style: normal; display: block; font-size: 12.5px; color: #8b948f; margin-top: 3px; }
+
+  /* ── ACCORDION ── */
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    vertical-align: 1px;
+  }
+  .tag.mint { background: var(--mint); color: var(--primary-dark); }
+  .tag.ambar { background: #fdf3e2; color: #8a6d2f; border: 1px solid var(--gold); }
+
+  /* faixa do documento (como aparece na baixa) */
+  .faixa-doc {
+    background: #fdf6e9;
+    border: 1px solid #e8d5a8;
+    border-radius: 12px;
+    padding: 11px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 10px 0 2px;
+  }
+  .faixa-doc .txt { font-size: 13px; color: #7a6222; min-width: 0; }
+  .faixa-doc .txt b { color: #5c4a17; }
+  .faixa-doc .btn {
+    background: #b8860b;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 12px;
+    border-radius: 8px;
+    white-space: nowrap;
+  }
+
+  .aviso {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-left: 4px solid var(--gold);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 14px;
+    color: var(--ink-soft);
+    margin-top: 12px;
+  }
+  .aviso b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Guia rápido · Financeiro</span>
+    <h1>Lançar uma despesa<br>e guardar o PDF junto</h1>
+    <p>Contas a Pagar aceita o boleto, a nota ou o contrato em PDF anexado na própria despesa. Na hora de pagar — ou meses depois, na conferência — o documento está ali, a um toque.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do modal Nova Despesa -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <small>Financeiro · Contas a Pagar</small>
+      <strong>Nova Despesa</strong>
+    </div>
+    <div class="mock-body">
+      <div class="campo">
+        <label>Fornecedor *</label>
+        <div class="box">Moinho Sul Brasil Ltda</div>
+      </div>
+      <div class="linha2">
+        <div class="campo">
+          <label>Descrição *</label>
+          <div class="box">Farinha de trigo</div>
+        </div>
+        <div class="campo">
+          <label>Categoria</label>
+          <div class="box">Matéria-prima</div>
+        </div>
+      </div>
+      <div class="linha2">
+        <div class="campo">
+          <label>Nº da nota</label>
+          <div class="box">NF-e 48.213</div>
+        </div>
+        <div class="campo">
+          <label>Vencimento</label>
+          <div class="box">20/07/2026</div>
+        </div>
+      </div>
+      <div class="campo">
+        <label>📄 Documento (PDF opcional)</label>
+        <div class="pdf-drop">
+          <span class="ico">📄</span>
+          <div>
+            <b>Clique para selecionar PDF</b>
+            <span>Boleto, NF, contrato… Máx. 30 MB</span>
+          </div>
+        </div>
+      </div>
+      <div class="mock-rodape">
+        <span class="b-vazio">Cancelar</span>
+        <span class="b-cheio">Criar despesa</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ PASSO A PASSO ══════════ -->
+  <div class="sec-label">Lançar a despesa — passo a passo</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div>No menu, abra <b>Financeiro → Contas a Pagar</b> e toque em <b>“+ Nova Despesa”</b>, no canto de cima.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Escolha o <b>Fornecedor</b> e escreva a <b>Descrição</b> — os dois são obrigatórios.
+        <em>Ex.: “Farinha de trigo”, “Energia elétrica”, “Aluguel galpão”.</em></div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Preencha a <b>Categoria</b> (é ela que joga a despesa no lugar certo da DRE) e, se tiver, o <b>número da nota</b> e a <b>competência</b> — o mês a que a despesa se refere.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Em <b>Parcelas</b>, informe <b>quantas</b>, o <b>valor de cada</b> e a <b>data da 1ª</b>, e toque em <b>Gerar parcelas</b>. Depois dá para ajustar valor e vencimento de cada uma na mão.
+        <em>À vista? É uma parcela só.</em></div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">5</span>
+      <div>Confira o <b>Valor total</b>: se a soma das parcelas não bater com ele, o app avisa em vermelho e não deixa salvar.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">6</span>
+      <div>Em <b>Documento (PDF opcional)</b>, toque na área tracejada e escolha o arquivo do boleto ou da nota. O nome dele aparece em verde, confirmando.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">7</span>
+      <div>Toque em <b>“Criar despesa”</b>. Pronto — a despesa entra na lista e o PDF sobe junto com ela.</div>
+    </div>
+  </div>
+
+  <!-- ══════════ DETALHES ══════════ -->
+  <div class="sec-label">Detalhes — toque para abrir</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📄</span>
+      <strong>Anexar o PDF (na criação ou depois)</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Você pode anexar o documento em <b>três momentos</b>, o que for mais prático:</p>
+      <ul>
+        <li><b>Ao criar a despesa</b> — campo “Documento (PDF opcional)” no fim do formulário.</li>
+        <li><b>Depois, na despesa já lançada</b> — abra a despesa na lista e use a seção <b>Documento (PDF)</b>: “Clique para anexar PDF”.</li>
+        <li><b>Ao editar</b> a despesa — mesmo campo do formulário; ele substitui o anexo anterior.</li>
+      </ul>
+      <p>Aceita <b>só PDF</b>, até <b>30 MB</b> por despesa. Vale boleto, nota, contrato, recibo, comprovante.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="false">
+      <span class="acc-ico">🔍</span>
+      <strong>Onde o PDF aparece depois</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Na <b>lista de Contas a Pagar</b>, a despesa ganha um selo <span class="tag mint">📄 PDF</span> — dá para ver de longe quem tem documento e quem não tem.</li>
+        <li>Ao <b>abrir a despesa</b>, a seção <b>Documento (PDF)</b> mostra o nome do arquivo, com os botões de <b>abrir</b> e de <b>remover</b>.</li>
+        <li>E o mais útil: <b>na hora de dar a baixa</b>, uma faixa âmbar aparece no topo do modal de pagamento com o botão <b>“Ver documento”</b>. Você confere o boleto e paga sem sair da tela.</li>
+      </ul>
+      <div class="faixa-doc" aria-hidden="true">
+        <span class="txt"><b>📄 Documento:</b> boleto-moinho-48213.pdf</span>
+        <span class="btn">Ver documento</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="false">
+      <span class="acc-ico">🔄</span>
+      <strong>Trocar ou remover o anexo</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Abriu a despesa e o PDF está errado? Na seção <b>Documento (PDF)</b>, toque em <b>remover</b> (a lixeira) e confirme — depois é só anexar o certo.</p>
+      <p>Cada despesa guarda <b>um</b> PDF. Anexar um novo <b>substitui</b> o anterior.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="false">
+      <span class="acc-ico">🏦</span>
+      <strong>Enviar a despesa para a Conta Azul</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Ao criar, marque <b>“Enviar para a Conta Azul”</b> e escolha a <b>forma de pagamento</b> e o <b>banco/caixa</b>. Depois diga como está a situação:</p>
+      <ul>
+        <li><b>Ainda vou pagar</b> — a despesa entra <b>em aberto</b> lá, já com forma e banco definidos.</li>
+        <li><b>Já paguei</b> — informe a data e ela entra <b>já quitada</b> (o app cria e dá a baixa).</li>
+      </ul>
+      <p>Se o fornecedor for novo, ele é criado na Conta Azul primeiro — pode levar alguns minutos até o envio concluir.</p>
+      <p><b>O PDF fica só aqui no app</b>, não vai para a Conta Azul. É o nosso arquivo de conferência.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="false">
+      <span class="acc-ico">📦</span>
+      <strong>Lançar os produtos da compra (opcional)</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Se a despesa for uma <b>compra de mercadoria</b>, toque em <b>“Lançar os produtos desta compra”</b> e liste os itens com quantidade e valor. Isso <b>dá entrada no estoque</b> e <b>atualiza o custo</b> do produto — não precisa lançar a entrada em outra tela.</p>
+      <p>Despesa de energia, aluguel, serviço? Pule esta parte.</p>
+    </div>
+  </div>
+
+  <div class="aviso">
+    <b>Dica de rotina:</b> chegou o boleto no e-mail ou no WhatsApp, salve o PDF no celular e já lance a despesa com ele anexado. Na semana do vencimento, quem for pagar abre a parcela, toca em “Ver documento” e paga — sem caçar boleto em conversa antiga.
+  </div>
+
+  <!-- ══════════ COMEÇAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra <b>Financeiro → Contas a Pagar</b>.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Lance a próxima despesa que chegar já com o <b>PDF anexado</b> — e veja o selo 📄 na lista.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele conhece a tela.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
