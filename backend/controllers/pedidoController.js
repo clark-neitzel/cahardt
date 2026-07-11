@@ -60,6 +60,7 @@ const pedidoController = {
                         // RECEBIDO tem prioridade sobre PENDENTE
                         if (m[chave] !== 'RECEBIDO') m[chave] = c.status;
                     }
+                    // caBoletoStatus já vem do pedido (cache) — o front usa nos dois checks
                     lista.forEach(p => Object.assign(p, mapa[p.id] || {}));
                 }
             } catch (e) {
@@ -1113,10 +1114,30 @@ const pedidoController = {
                 }
             }
 
+            // Atualiza o check da pílula CA (tem boleto no Conta Azul?) — melhor esforço
+            let caBoletoStatus = atualizado.caBoletoStatus;
+            if (situacaoNome === 'FATURADO' && !pedido.especial && !pedido.bonificacao) {
+                try {
+                    const cliente = await prisma.cliente.findUnique({
+                        where: { UUID: pedido.clienteId }, select: { UUID: true }
+                    });
+                    const dataVendaStr = new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+                    const boletos = await contaAzulService.buscarBoletosDaVenda(cliente.UUID, pedido.idVendaContaAzul, dataVendaStr);
+                    caBoletoStatus = boletos.length === 0 ? 'SEM' : (boletos.every(b => b.pago) ? 'PAGO' : 'PENDENTE');
+                    await prisma.pedido.update({
+                        where: { id },
+                        data: { caBoletoStatus, caBoletoVerificado: new Date() }
+                    });
+                } catch (e) {
+                    console.warn(`[consultarCA] Falha ao checar boleto do CA (pedido ${id}):`, e.message);
+                }
+            }
+
             res.json({
                 message: `Situação atualizada: ${situacaoNome || 'EXCLUIDO'}`,
                 situacaoCA: atualizado.situacaoCA,
                 statusEnvio: atualizado.statusEnvio,
+                caBoletoStatus,
             });
         } catch (error) {
             const status = error.response?.status;

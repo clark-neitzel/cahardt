@@ -37,10 +37,15 @@ async function carregarPedidos(pedidoIds) {
     return pedidoIds.map(id => mapa.get(id)).filter(Boolean);
 }
 
-// Boletos Asaas ativos (PENDENTE/RECEBIDO) por pedido, em ordem de parcela
-async function boletosAtivosPorPedido(pedidoIds) {
+// Boletos ASAAS por pedido, em ordem de parcela.
+// `apenasNaoPagos`: regra do dono — boleto quitado não entra na impressão.
+async function boletosAsaasPorPedido(pedidoIds, apenasNaoPagos = false) {
     const cobrancas = await prisma.cobrancaAsaas.findMany({
-        where: { pedidoId: { in: pedidoIds }, tipo: 'BOLETO', status: { in: ['PENDENTE', 'RECEBIDO'] } },
+        where: {
+            pedidoId: { in: pedidoIds },
+            tipo: 'BOLETO',
+            status: apenasNaoPagos ? 'PENDENTE' : { in: ['PENDENTE', 'RECEBIDO'] }
+        },
         include: { parcela: { select: { numeroParcela: true } } },
         orderBy: { createdAt: 'asc' }
     });
@@ -55,22 +60,61 @@ async function boletosAtivosPorPedido(pedidoIds) {
     return porPedido;
 }
 
+/**
+ * Boletos do CONTA AZUL de um pedido (consulta ao vivo) + atualiza o cache
+ * `caBoletoStatus` do pedido (alimenta o check da pílula CA na lista).
+ * Nunca lança: sem venda no CA ou erro de API → devolve [].
+ */
+async function boletosCaDoPedido(pedido) {
+    if (!pedido?.idVendaContaAzul || pedido.especial || pedido.bonificacao) return [];
+    try {
+        const dataVendaStr = new Date(pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const boletos = await contaAzulService.buscarBoletosDaVenda(
+            pedido.cliente.UUID, pedido.idVendaContaAzul, dataVendaStr
+        );
+        const status = boletos.length === 0
+            ? 'SEM'
+            : (boletos.every(b => b.pago) ? 'PAGO' : 'PENDENTE');
+        await prisma.pedido.update({
+            where: { id: pedido.id },
+            data: { caBoletoStatus: status, caBoletoVerificado: new Date() }
+        }).catch(() => { /* cache é melhor esforço */ });
+        return boletos;
+    } catch (e) {
+        console.warn(`[Impressão lote] Falha ao consultar boletos do CA (pedido #${pedido.numero}):`, e.message);
+        return [];
+    }
+}
+
 const impressaoLoteService = {
     /**
-     * Checagem prévia (alimenta a janela de opções no app):
-     * para cada pedido, diz se é especial, se está faturado com NF,
-     * e a situação do boleto (OK | SEM_BOLETO | NAO_SE_APLICA).
+     * Checagem prévia (alimenta a janela de opções no app). Aqui é o momento em que
+     * o app CONSULTA O CA (regra do dono: "ao imprimir fazer a importação") — descobre
+     * se há boleto no CA, grava o check no pedido e diz o que vai ser impresso.
+     * boleto: OK (tem no CA e/ou Asaas, não pago) | PAGO | SEM_BOLETO | NAO_SE_APLICA
      */
     checar: async (pedidoIds) => {
         const pedidos = await carregarPedidos(pedidoIds);
-        const boletos = await boletosAtivosPorPedido(pedidoIds);
-        return pedidos.map(p => {
+        const asaas = await boletosAsaasPorPedido(pedidoIds);
+        const saida = [];
+
+        for (const p of pedidos) {
             const aPrazo = A_PRAZO(p);
+            const asaasDoPedido = asaas.get(p.id) || [];
+            const caDoPedido = (!p.especial && !p.bonificacao) ? await boletosCaDoPedido(p) : [];
+
+            const asaasNaoPagos = asaasDoPedido.filter(c => c.status === 'PENDENTE');
+            const caNaoPagos = caDoPedido.filter(b => !b.pago);
+            const temAlgum = asaasDoPedido.length > 0 || caDoPedido.length > 0;
+
             let boleto = 'NAO_SE_APLICA';
             if (!p.especial && !p.bonificacao && aPrazo) {
-                boleto = (boletos.get(p.id) || []).length > 0 ? 'OK' : 'SEM_BOLETO';
+                if (asaasNaoPagos.length > 0 || caNaoPagos.length > 0) boleto = 'OK';
+                else if (temAlgum) boleto = 'PAGO'; // existe, mas quitado → não imprime
+                else boleto = 'SEM_BOLETO';
             }
-            return {
+
+            saida.push({
                 id: p.id,
                 numero: p.numero,
                 cliente: p.cliente?.NomeFantasia || p.cliente?.Nome || '—',
@@ -79,9 +123,12 @@ const impressaoLoteService = {
                 aPrazo,
                 temNF: !!p.nfeChave || p.situacaoCA === 'FATURADO',
                 boleto,
+                boletosCA: caNaoPagos.length,
+                boletosAsaas: asaasNaoPagos.length,
                 valorTotal: (p.itens || []).reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0) + Number(p.valorFrete || 0)
-            };
-        });
+            });
+        }
+        return saida;
     },
 
     /**
@@ -90,7 +137,8 @@ const impressaoLoteService = {
      */
     gerar: async ({ pedidoIds, duasVias = true, incluirBoletos = true }) => {
         const pedidos = await carregarPedidos(pedidoIds);
-        const boletos = incluirBoletos ? await boletosAtivosPorPedido(pedidoIds) : new Map();
+        // Só boletos NÃO pagos entram na impressão (regra do dono)
+        const boletos = incluirBoletos ? await boletosAsaasPorPedido(pedidoIds, true) : new Map();
         const saida = await PDFDocument.create();
         const erros = [];
 
@@ -126,15 +174,27 @@ const impressaoLoteService = {
                 const danfeBuf = await docParaBuffer(danfeDoc);
                 await anexar(danfeBuf, duasVias ? 2 : 1);
 
-                // Boleto(s) na sequência
+                // Boleto(s) na sequência — CA primeiro, depois Asaas; sempre em ordem de parcela.
+                // Quitados ficam de fora (regra do dono).
                 if (incluirBoletos) {
+                    // ── Boletos do Conta Azul (PDF público da fatura) ──
+                    const boletosCA = await boletosCaDoPedido(pedido);
+                    for (const b of boletosCA.filter(x => !x.pago)) {
+                        try {
+                            const pdfCA = await contaAzulService.baixarBoletoPdfCA(b.id);
+                            await anexar(pdfCA, 1);
+                        } catch (e) {
+                            erros.push({ numero: rotulo, erro: `boleto do CA não baixou (${e.message}) — imprima pelo Conta Azul` });
+                        }
+                    }
+                    // ── Boletos do Asaas ──
                     for (const cob of (boletos.get(pedido.id) || [])) {
                         if (!cob.boletoUrl) continue;
                         try {
                             const resp = await axios.get(cob.boletoUrl, { responseType: 'arraybuffer', timeout: 30000 });
                             await anexar(Buffer.from(resp.data), 1);
                         } catch (e) {
-                            erros.push({ numero: rotulo, erro: `boleto não baixou (${e.message}) — imprima pelo botão do pedido` });
+                            erros.push({ numero: rotulo, erro: `boleto Asaas não baixou (${e.message}) — imprima pelo botão do pedido` });
                         }
                     }
                 }

@@ -17,7 +17,7 @@ import ImprimirLoteModal from './ImprimirLoteModal';
 
 const fmtNumero = (pedido) => pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
 
-// Marca do Asaas (a azul) para o botão de boleto no pedido
+// Marca do Asaas (a azul) para os botões de boleto/PIX no pedido
 const AsaasIcon = ({ className }) => (
     <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
         <rect x="1" y="1" width="22" height="22" rx="6" fill="#0030b9" />
@@ -25,6 +25,15 @@ const AsaasIcon = ({ className }) => (
             d="M12 5.6c-3.8 0-6.4 2.9-6.4 6.4s2.6 6.4 6.4 6.4c1.5 0 2.8-.5 3.8-1.3l.5.9h2.1v-6c0-3.5-2.6-6.4-6.4-6.4Zm0 3.1c1.8 0 3.2 1.5 3.2 3.3 0 1.9-1.4 3.3-3.2 3.3s-3.2-1.4-3.2-3.3c0-1.8 1.4-3.3 3.2-3.3Z"
             fill="#fff"
         />
+    </svg>
+);
+
+// Marca do Conta Azul para o botão de cobrança/boleto do CA
+const CaIcon = ({ className }) => (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+        <rect x="1" y="1" width="22" height="22" rx="6" fill="#1466d6" />
+        <text x="12" y="16.4" textAnchor="middle" fontSize="10.5" fontWeight="800"
+            fontFamily="system-ui, sans-serif" fill="#fff" letterSpacing="-0.5">CA</text>
     </svg>
 );
 
@@ -1122,16 +1131,21 @@ const ListaPedidos = () => {
                                                     <span className="hidden lg:inline">Sync CA</span>
                                                 </button>
                                             )}
-                                            {pedido.idVendaContaAzul && (
+                                            {/* Pílula CA — boleto/cobrança no Conta Azul. Check ✓ = tem boleto lá
+                                                (o check vem do cache, atualizado ao imprimir em lote ou no Sync CA) */}
+                                            {pedido.idVendaContaAzul && !pedido.especial && pedido.tipoPagamento === 'BOLETO_BANCARIO' && (
                                                 <div className="relative">
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleBuscarCobrancasCA(pedido); }}
                                                         disabled={cobrancasCA[pedido.id]?.loading}
-                                                        className={`flex items-center gap-1 px-2 lg:px-2.5 py-1.5 rounded-full text-[10.5px] font-bold transition-colors disabled:opacity-50 ${cobrancasCA[pedido.id]?.open ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'}`}
-                                                        title="Links de cobrança (PIX/Boleto) no CA"
+                                                        className={`relative flex items-center gap-1 px-2 lg:px-2.5 py-1 rounded-full text-[10.5px] font-bold transition-colors disabled:opacity-50 ${cobrancasCA[pedido.id]?.open ? 'bg-[#d3e3fb] text-[#1466d6]' : 'bg-[#e7f0fd] text-[#1466d6] hover:bg-[#d3e3fb]'}`}
+                                                        title={pedido.caBoletoStatus === 'PENDENTE' ? 'Boleto emitido no Conta Azul' : pedido.caBoletoStatus === 'PAGO' ? 'Boleto do CA já pago' : 'Cobranças no Conta Azul'}
                                                     >
-                                                        {cobrancasCA[pedido.id]?.loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CircleDollarSign className="h-3.5 w-3.5" />}
-                                                        <span className="hidden lg:inline">Cobranças</span>
+                                                        {cobrancasCA[pedido.id]?.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CaIcon className="h-4 w-4" />}
+                                                        <span className="hidden lg:inline">CA</span>
+                                                        {(pedido.caBoletoStatus === 'PENDENTE' || pedido.caBoletoStatus === 'PAGO') && (
+                                                            <span className={`absolute -top-1.5 -right-1 h-4 w-4 rounded-full border-2 border-white flex items-center justify-center text-white text-[9px] font-black ${pedido.caBoletoStatus === 'PAGO' ? 'bg-gray-400' : 'bg-green-600'}`}>✓</span>
+                                                        )}
                                                     </button>
                                                     {cobrancasCA[pedido.id]?.open && (
                                                         <div
@@ -1197,9 +1211,9 @@ const ListaPedidos = () => {
                                                     title={pedido.asaasBoleto ? `Boleto ${pedido.asaasBoleto === 'RECEBIDO' ? 'PAGO' : 'já emitido'} (Asaas)` : 'Gerar boleto (Asaas)'}
                                                 >
                                                     <AsaasIcon className="h-4 w-4" />
-                                                    <span className="hidden lg:inline">Boleto</span>
+                                                    <span className="hidden lg:inline">Asaas</span>
                                                     {pedido.asaasBoleto && (
-                                                        <span className="absolute -top-1.5 -right-1 h-4 w-4 rounded-full bg-green-600 border-2 border-white flex items-center justify-center text-white text-[9px] font-black">✓</span>
+                                                        <span className={`absolute -top-1.5 -right-1 h-4 w-4 rounded-full border-2 border-white flex items-center justify-center text-white text-[9px] font-black ${pedido.asaasBoleto === 'RECEBIDO' ? 'bg-gray-400' : 'bg-green-600'}`}>✓</span>
                                                     )}
                                                 </button>
                                             )}

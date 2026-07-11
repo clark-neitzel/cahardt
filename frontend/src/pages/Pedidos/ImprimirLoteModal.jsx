@@ -29,8 +29,10 @@ const ImprimirLoteModal = ({ pedidoIds, onClose }) => {
     const especiais = validos.filter(i => i.especial);
     const normais = validos.filter(i => !i.especial);
     const semNF = normais.filter(i => !i.temNF);
-    const semBoleto = validos.filter(i => i.boleto === 'SEM_BOLETO');
+    const semBoleto = validos.filter(i => i.boleto === 'SEM_BOLETO'); // nem CA nem Asaas
+    const boletoPago = validos.filter(i => i.boleto === 'PAGO'); // existe, mas quitado → não imprime
     const aVista = normais.filter(i => !i.aPrazo);
+    const totalBoletos = validos.reduce((s, i) => s + (i.boletosCA || 0) + (i.boletosAsaas || 0), 0);
 
     const handleGerarBoletos = async () => {
         setGerandoBoletos(true);
@@ -72,9 +74,9 @@ const ImprimirLoteModal = ({ pedidoIds, onClose }) => {
         }
     };
 
-    // Estimativa de folhas: (DANFE/recibo × vias) + boletos ativos (≈1 folha cada)
+    // Estimativa de folhas: (DANFE/recibo × vias) + boletos não pagos (CA + Asaas)
     const folhasEstimadas = validos.length * (duasVias ? 2 : 1)
-        + (incluirBoletos ? validos.filter(i => i.boleto === 'OK').length : 0);
+        + (incluirBoletos ? totalBoletos : 0);
 
     return (
         <div className="fixed inset-0 z-[70] bg-black/60 flex items-end md:items-center justify-center" role="dialog">
@@ -113,7 +115,10 @@ const ImprimirLoteModal = ({ pedidoIds, onClose }) => {
                                     className="mt-0.5 h-5 w-5 text-primary rounded border-gray-300 focus:ring-primary" />
                                 <span>
                                     <span className="text-sm font-bold text-gray-900">Boleto logo após as vias</span>
-                                    <p className="text-xs text-gray-500 mt-0.5">Sai na sequência — quem fatura só junta e grampeia.</p>
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                        Sai na sequência (Conta Azul e Asaas) — quem fatura só junta e grampeia.
+                                        {totalBoletos > 0 && <b> {totalBoletos} boleto(s) neste lote.</b>}
+                                    </p>
                                 </span>
                             </label>
 
@@ -126,10 +131,15 @@ const ImprimirLoteModal = ({ pedidoIds, onClose }) => {
                                     <p className="text-xs text-red-700 mt-1">{semNF.map(i => `#${i.numero}`).join(', ')} — emita a nota no Conta Azul primeiro.</p>
                                 </div>
                             )}
+                            {incluirBoletos && boletoPago.length > 0 && (
+                                <p className="text-xs text-gray-500">
+                                    ℹ️ {boletoPago.length} boleto(s) já quitado(s) não serão impressos. Se precisar de um pago, imprima pelo Contas a Receber.
+                                </p>
+                            )}
                             {incluirBoletos && semBoleto.length > 0 && (
                                 <div className="bg-amber-50 border border-amber-400 rounded-xl px-4 py-3">
                                     <p className="flex items-center gap-2 text-sm font-bold text-amber-900">
-                                        <AlertTriangle className="h-4 w-4 shrink-0" /> {semBoleto.length} pedido(s) a prazo sem boleto gerado
+                                        <AlertTriangle className="h-4 w-4 shrink-0" /> {semBoleto.length} pedido(s) a prazo sem boleto (nem no CA, nem no Asaas)
                                     </p>
                                     <ul className="text-xs text-amber-800 mt-1 pl-5 list-disc">
                                         {semBoleto.slice(0, 6).map(i => (

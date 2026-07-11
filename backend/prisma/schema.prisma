@@ -247,6 +247,11 @@ model Pedido {
   nfeNumero       Int?      @map("nfe_numero")
   nfeConsultadoEm DateTime? @map("nfe_consultado_em")
 
+  // Boleto emitido no Conta Azul (cache — atualizado ao imprimir em lote / Sync CA).
+  // Alimenta o check da pílula "CA" na lista de pedidos.
+  caBoletoStatus     String?   @map("ca_boleto_status") // SEM | PENDENTE | PAGO
+  caBoletoVerificado DateTime? @map("ca_boleto_verificado")
+
   // UX e Mobile
   flexTotal          Decimal   @default(0) @map("flex_total") @db.Decimal(12, 2)
   valorFrete         Decimal?  @map("valor_frete") @db.Decimal(12, 2)

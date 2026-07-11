@@ -1910,6 +1910,54 @@ const contaAzulService = {
     },
 
     /**
+     * Boletos (solicitações de cobrança) de uma venda no CA.
+     * Retorna [{ id, numeroParcela, status, vencimento, dataQuitacao, valor, url, pago }].
+     * `id` serve para baixar o PDF em baixarBoletoPdfCA().
+     */
+    buscarBoletosDaVenda: async (clienteCAId, idVendaCA, dataVendaStr) => {
+        const parcelas = await contaAzulService.encontrarParcelasDeVenda(
+            clienteCAId, idVendaCA, dataVendaStr,
+            ['EM_ABERTO', 'ATRASADO', 'RECEBIDO', 'RECEBIDO_PARCIAL', 'PENDENTE']
+        );
+        const boletos = [];
+        for (const par of (parcelas || [])) {
+            for (const c of (par.solicitacoes_cobrancas || [])) {
+                const tipo = c.tipo_solicitacao_cobranca || c.tipo;
+                if (tipo !== 'BOLETO' || !c.id) continue;
+                const pago = !!c.data_quitacao
+                    || ['RECEBIDO', 'QUITADO', 'ACQUITTED', 'PAID'].includes(par.status);
+                boletos.push({
+                    id: c.id,
+                    numeroParcela: par.numero_parcela ?? null,
+                    status: c.status_solicitacao_cobranca || null,
+                    vencimento: c.data_vencimento || null,
+                    dataQuitacao: c.data_quitacao || null,
+                    valor: c.valor_composicao?.valor_bruto ?? null,
+                    url: c.url || null,
+                    pago
+                });
+            }
+        }
+        boletos.sort((a, b) => (a.numeroParcela || 0) - (b.numeroParcela || 0));
+        return boletos;
+    },
+
+    /**
+     * PDF do boleto do CA (mesmo arquivo que o cliente baixa pela fatura).
+     * Endpoint público (sem token) descoberto em 07/2026 — NÃO é documentado pela
+     * Conta Azul: se um dia mudar, quem chama deve avisar e seguir sem o boleto.
+     */
+    baixarBoletoPdfCA: async (idSolicitacaoCobranca) => {
+        const url = `https://public.contaazul.com/payments/billing/charge/file/${idSolicitacaoCobranca}`;
+        const resp = await axios.get(url, { responseType: 'arraybuffer', timeout: 30000, maxRedirects: 5 });
+        const tipo = String(resp.headers['content-type'] || '');
+        if (!tipo.includes('pdf')) {
+            throw new Error(`Boleto do CA não veio em PDF (${tipo || 'sem tipo'})`);
+        }
+        return Buffer.from(resp.data);
+    },
+
+    /**
      * XML completo (nfeProc autorizado) de uma NF-e pela chave de acesso.
      * GET /v1/notas-fiscais/{chave} devolve o XML como string.
      */

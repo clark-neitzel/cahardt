@@ -25,9 +25,10 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - Imprimir pedido individual ou vários ao mesmo tempo (seleção em lote)
 - Enviar comprovante do pedido via WhatsApp para o cliente
 - Aprovar ou reverter pedidos Especiais e Bonificações (quem tem permissão)
-- Consultar situação atualizada no Conta Azul (botão de sync individual)
-- Buscar links de cobrança (PIX/Boleto) gerados no Conta Azul
-- Gerar **boleto pelo Asaas** direto do pedido (ícone azul do Asaas no cartão) — abre a janela de boletos por parcela, com envio por WhatsApp; não disponível para pedidos especiais, bonificações nem pedidos quitados
+- Consultar situação atualizada no Conta Azul (pílula **Sync CA**) — também atualiza o check do boleto do CA
+- Pílula **CA** (ícone do Conta Azul): cobranças/boletos gerados no CA. **Check verde ✓** = tem boleto no CA (cinza = já pago). O boleto do CA só é gerado manualmente dentro do Conta Azul
+- Pílula **Asaas**: gerar/gerenciar **boleto pelo Asaas** (por parcela, com envio por WhatsApp). **Check verde ✓** = boleto emitido (cinza = pago). Só em pedido a prazo faturado; não aparece em especial, bonificação nem à vista
+- Pílula **PIX Asaas** (pedidos à vista e especiais): gerar cobrança PIX / link de pagamento
 - Baixar a **DANFE (PDF da NF-e)** de pedido faturado (ícone de recibo) — o app busca o XML autorizado na API do Conta Azul e gera o PDF na hora, sem precisar entrar no CA
 - Reatribuir pedido para outro vendedor (quem tem permissão)
 - Excluir pedidos (quem tem permissão específica por tipo)
@@ -68,7 +69,9 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 ### Imprimir em lote (DANFEs + boletos / recibo do especial)
 1. Marque os pedidos pelos checkboxes (ou clique **"Selecionar faturados"**) → clique **Imprimir N**
 2. Na janela, escolha: **2 vias de cada documento** (uma p/ assinatura, outra p/ cliente) e **boleto logo após as vias** (sai na sequência, pronto p/ grampear)
-3. Avisos automáticos: pedidos **a prazo sem boleto gerado** aparecem em destaque com o botão **"Gerar boletos agora"**; pedidos **sem NF-e emitida** são pulados (emita a nota no CA primeiro); pedidos **à vista** saem sem boleto (não há o que cobrar)
+3. **Imprime boleto do Conta Azul E do Asaas** — ao clicar em Imprimir, o app consulta o CA de cada pedido; se achar boleto lá, baixa o PDF e inclui na sequência (junto com os do Asaas). Condição com 2 parcelas = 2 boletos, na ordem
+4. **Boleto já quitado NÃO é impresso** (não faz sentido). Se precisar imprimir um boleto pago (p/ o cliente conferir), faça pelo **Contas a Receber**
+5. Avisos automáticos: pedidos **a prazo sem boleto (nem no CA, nem no Asaas)** aparecem em destaque com o botão **"Gerar boletos agora"** (gera no Asaas — o do CA só é gerado manualmente lá dentro); pedidos **sem NF-e emitida** são pulados (emita a nota no CA primeiro); pedidos **à vista** saem sem boleto (não há o que cobrar)
 4. Pedido **ESPECIAL** sai no **recibo de conferência** (modelo sem a marca da Hardt, com itens, total e linha de assinatura) — especiais só imprimem pelo lote
 5. Sai **um único PDF** com as folhas na ordem certa; as opções ficam lembradas para a próxima
 - O botão de imprimir o pedido individual foi **removido** — a DANFE substitui; para mandar um pedido a alguém, use um print da tela
