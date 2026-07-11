@@ -1,5 +1,5 @@
 diff --git a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js
-index df4f2b7..bf97018 100644
+index df4f2b7..d7a8b07 100644
 --- a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js
 +++ b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js
 @@ -7,9 +7,13 @@ const secao_1 = require("./secao");
@@ -14,7 +14,7 @@ index df4f2b7..bf97018 100644
 +        .trim();
      const textWidth = 386;
 -    const textOpts = { width: textWidth, lineGap: -1.5 };
-+    const textOpts = { width: textWidth, lineGap: 0.5 };
++    const textOpts = { width: textWidth, lineGap: -1.2 };
      const availableHeight = maxBottom - finalEspacoDet - 17.5;
      doc.font('normal').fillColor('black').fontSize(6);
      const fullHeight = doc.heightOfString(text, textOpts);
@@ -104,3 +104,34 @@ index 8e40dcd..2fa8f28 100644
              largura: identificacaoDoEmitenteLargura,
              alinhamento: 'center',
              tamanho: 6 + identificacaoDoEmitenteFonte,
+diff --git a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/load-fontes.js b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/load-fontes.js
+index d1a2d51..6aa2ea6 100644
+--- a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/load-fontes.js
++++ b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/load-fontes.js
+@@ -7,15 +7,17 @@ exports.loadFonts = loadFonts;
+ exports.loadFontsNFCe = loadFontsNFCe;
+ const path_1 = __importDefault(require("path"));
+ function loadFonts(doc) {
+-    const diretorioDeFontes = path_1.default.join(__dirname, './../fontes/times-new-roman');
+-    const timesNewRoman = path_1.default.join(diretorioDeFontes, 'times-new-roman.ttf');
+-    const timesNewRomanNegrito = path_1.default.join(diretorioDeFontes, 'times-new-roman-bold.ttf');
+-    const timesNewRomanItalico = path_1.default.join(diretorioDeFontes, 'times-new-roman-italic.ttf');
+-    const timesNewRomanNegritoItalico = path_1.default.join(diretorioDeFontes, 'times-new-roman-bold-italic.ttf');
+-    doc.registerFont('normal', timesNewRoman);
+-    doc.registerFont('negrito', timesNewRomanNegrito);
+-    doc.registerFont('italico', timesNewRomanItalico);
+-    doc.registerFont('negrito-italico', timesNewRomanNegritoItalico);
++    // PATCH CA-Hardt: DANFE em letra de bastão (Roboto Condensed, já embutida na lib) —
++    // visual limpo no padrão do CA; sans-serif é aceito na prática (dono confirmou).
++    const diretorioDeFontes = path_1.default.join(__dirname, './../fontes/roboto-condensed');
++    const fNormal = path_1.default.join(diretorioDeFontes, 'roboto-condensed-regular.ttf');
++    const fNegrito = path_1.default.join(diretorioDeFontes, 'roboto-condensed-bold.ttf');
++    const fItalico = path_1.default.join(diretorioDeFontes, 'roboto-condensed-italic.ttf');
++    const fNegritoItalico = path_1.default.join(diretorioDeFontes, 'roboto-condensed-bold-italic.ttf');
++    doc.registerFont('normal', fNormal);
++    doc.registerFont('negrito', fNegrito);
++    doc.registerFont('italico', fItalico);
++    doc.registerFont('negrito-italico', fNegritoItalico);
+ }
+ function loadFontsNFCe(doc) {
+     const diretorioDeFontes = path_1.default.join(__dirname, './../fontes/roboto-condensed');
