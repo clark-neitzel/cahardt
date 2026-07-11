@@ -4,6 +4,7 @@
   "description": "Backend para o sistema de vendas Hardt Salgados",
   "main": "index.js",
   "scripts": {
+    "postinstall": "patch-package",
     "start": "npx prisma generate && npx prisma db push && node index.js",
     "dev": "nodemon index.js",
     "migrate:deploy": "prisma migrate deploy",
@@ -32,6 +33,7 @@
     "node-mde": "^0.14.13",
     "nodemailer": "^9.0.3",
     "openai": "^6.34.0",
+    "patch-package": "^8.0.1",
     "pg": "^8.13.1"
   },
   "devDependencies": {

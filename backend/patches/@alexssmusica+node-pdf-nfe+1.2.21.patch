@@ -1,0 +1,106 @@
+diff --git a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js
+index df4f2b7..bf97018 100644
+--- a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js
++++ b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js
+@@ -7,9 +7,13 @@ const secao_1 = require("./secao");
+ const titulo_1 = require("./titulo");
+ function getDadosAdicionais({ doc, ajusteX, ajusteY, margemEsquerda, margemTopo, margemDireita, larguraDoFormulario, infAdic, finalEspacoDet, earlyClose, fecharAposConteudo }) {
+     const maxBottom = 821.8;
+-    const text = infAdic?.infCpl ?? '';
++    // PATCH CA-Hardt: inclui infAdFisco (MOC 3.1.8) e quebra o separador '#' em linhas
++    const text = ((infAdic?.infAdFisco ? infAdic.infAdFisco + '\n' : '') + (infAdic?.infCpl ?? ''))
++        .replace(/#+/g, '\n')
++        .replace(/\n{2,}/g, '\n')
++        .trim();
+     const textWidth = 386;
+-    const textOpts = { width: textWidth, lineGap: -1.5 };
++    const textOpts = { width: textWidth, lineGap: 0.5 };
+     const availableHeight = maxBottom - finalEspacoDet - 17.5;
+     doc.font('normal').fillColor('black').fontSize(6);
+     const fullHeight = doc.heightOfString(text, textOpts);
+@@ -54,7 +58,7 @@ function getDadosAdicionais({ doc, ajusteX, ajusteY, margemEsquerda, margemTopo,
+     const textX = margemEsquerda + ajusteX + 1;
+     const textY = margemTopo + ajusteY + finalEspacoDet + 17.5;
+     if (!hasOverflow) {
+-        doc.text(text, textX, textY, { ...textOpts, align: 'justify' });
++        doc.text(text, textX, textY, { ...textOpts, align: 'left' });
+         return '';
+     }
+     const heightForText = availableHeight - 9;
+@@ -73,7 +77,7 @@ function getDadosAdicionais({ doc, ajusteX, ajusteY, margemEsquerda, margemTopo,
+     const splitAt = lastSpace > 0 ? lastSpace : lo;
+     const page1Text = text.slice(0, splitAt).trimEnd();
+     const remainingText = text.slice(splitAt).trimStart();
+-    doc.text(page1Text, textX, textY, { ...textOpts, height: heightForText, align: 'justify' });
++    doc.text(page1Text, textX, textY, { ...textOpts, height: heightForText, align: 'left' });
+     doc
+         .font('normal')
+         .fillColor('black')
+diff --git a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-emitente.js b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-emitente.js
+index 8e40dcd..2fa8f28 100644
+--- a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-emitente.js
++++ b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-emitente.js
+@@ -44,23 +44,12 @@ async function getDadosEmitente({ y, doc, ajusteX, ajusteY, margemDireita, marge
+         margemEsquerda,
+         margemTopo
+     });
+-    (0, italico_1.italico)({
+-        doc,
+-        value: 'IDENTIFICAÇÃO DO EMITENTE',
+-        x: 1,
+-        y: y + 15.7,
+-        largura: 238,
+-        alinhamento: 'center',
+-        tamanho: 10,
+-        ajusteX,
+-        ajusteY,
+-        margemEsquerda,
+-        margemTopo
+-    });
+-    const identificacaoDoEmitenteY = pathLogo !== undefined ? y + 33.7 : y + 39.7;
++    // PATCH CA-Hardt: sem o título "IDENTIFICAÇÃO DO EMITENTE" (visual limpo, como o CA faz);
++    // bloco começa mais alto, com nome/endereço maiores e mais respiro entre linhas.
++    const identificacaoDoEmitenteY = pathLogo !== undefined ? y + 27 : y + 33;
+     const identificacaoDoEmitenteX = pathLogo !== undefined ? 67 : 1.5;
+     const identificacaoDoEmitenteLargura = pathLogo !== undefined ? 172 : 237;
+-    const identificacaoDoEmitenteFonte = pathLogo !== undefined ? 0 : 1.5;
++    const identificacaoDoEmitenteFonte = 1.5;
+     if (pathLogo !== undefined) {
+         if (folha === 0) {
+             doc.image(pathLogo, margemEsquerda + ajusteX + 4.5, margemTopo + ajusteY + default_1.DEFAULT_NFE.ajusteYDoLogotipo + 78, {
+@@ -90,7 +79,7 @@ async function getDadosEmitente({ y, doc, ajusteX, ajusteY, margemDireita, marge
+         doc,
+         value: `${emit.enderEmit.xLgr}, ${emit.enderEmit.nro} ${emit.enderEmit.xCpl ?? ''}`,
+         x: identificacaoDoEmitenteX,
+-        y: doc.y - margemTopo + 2,
++        y: doc.y - margemTopo + 5,
+         largura: identificacaoDoEmitenteLargura,
+         alinhamento: 'center',
+         tamanho: 6 + identificacaoDoEmitenteFonte,
+@@ -103,7 +92,7 @@ async function getDadosEmitente({ y, doc, ajusteX, ajusteY, margemDireita, marge
+         doc,
+         value: `${emit.enderEmit.xBairro}. ${emit.enderEmit.xMun}-${emit.enderEmit.UF}`,
+         x: identificacaoDoEmitenteX,
+-        y: doc.y - margemTopo,
++        y: doc.y - margemTopo + 3,
+         largura: identificacaoDoEmitenteLargura,
+         alinhamento: 'center',
+         tamanho: 6 + identificacaoDoEmitenteFonte,
+@@ -117,7 +106,7 @@ async function getDadosEmitente({ y, doc, ajusteX, ajusteY, margemDireita, marge
+             doc,
+             value: 'CEP: ' + (0, utils_1.formatPostalCode)(emit.enderEmit.CEP),
+             x: identificacaoDoEmitenteX,
+-            y: doc.y - margemTopo + 2,
++            y: doc.y - margemTopo + 3,
+             largura: identificacaoDoEmitenteLargura,
+             alinhamento: 'center',
+             tamanho: 6 + identificacaoDoEmitenteFonte,
+@@ -132,7 +121,7 @@ async function getDadosEmitente({ y, doc, ajusteX, ajusteY, margemDireita, marge
+             doc,
+             value: 'Telefone: ' + (0, utils_1.formatPhone)(emit.enderEmit.fone),
+             x: identificacaoDoEmitenteX,
+-            y: doc.y - margemTopo + 2,
++            y: doc.y - margemTopo + 3,
+             largura: identificacaoDoEmitenteLargura,
+             alinhamento: 'center',
+             tamanho: 6 + identificacaoDoEmitenteFonte,
