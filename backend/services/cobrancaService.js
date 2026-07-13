@@ -17,9 +17,12 @@ const smsService = require('./smsService');
  */
 
 const DIA_MS = 24 * 60 * 60 * 1000;
-// Fila de envio: intervalo entre uma mensagem e outra (protege o número de
-// WhatsApp de bloqueio por rajada de envios)
-const INTERVALO_ENTRE_ENVIOS_MS = 60 * 1000;
+// Fila de envio: intervalo entre uma mensagem e outra. O bot limita 30 envios/hora
+// NO TOTAL (pedidos, códigos e entregas contam junto) — decisão de segurança do
+// dono em 07/2026. 2,5 min entre cobranças ≈ 24/hora, sobrando folga pros outros
+// fluxos. Se mesmo assim der 429, a mensagem NÃO se perde: vai pra fila
+// (bot_whatsapp_envios) e o worker reenvia depois.
+const INTERVALO_ENTRE_ENVIOS_MS = 150 * 1000;
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 const TEMPLATE_PADRAO_1 = `Olá, *{nome}*! 😊
