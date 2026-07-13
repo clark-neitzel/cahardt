@@ -434,13 +434,23 @@ router.post('/diag-parcela-patch', async (req, res) => {
 // GET /api/admin-exec/asaas-cobrancas — últimas cobranças (diagnóstico)
 router.get('/asaas-cobrancas', async (req, res) => {
     try {
+        // ?pedidoNumero=2041 filtra por pedido; nesse caso devolve também a conta/parcelas
+        const numero = parseInt(req.query.pedidoNumero, 10) || null;
         const cobrancas = await prisma.cobrancaAsaas.findMany({
+            where: numero ? { pedido: { numero, especial: false, bonificacao: false } } : {},
             orderBy: { createdAt: 'desc' },
             take: 20,
             include: { cliente: { select: { Nome: true } }, pedido: { select: { numero: true } } }
         });
-        const eventos = await prisma.asaasWebhookEvento.findMany({ orderBy: { createdAt: 'desc' }, take: 10 });
-        res.json({ cobrancas, eventos });
+        let conta = null;
+        if (numero) {
+            conta = await prisma.contaReceber.findFirst({
+                where: { pedido: { numero, especial: false, bonificacao: false } },
+                include: { parcelas: true, pedido: { select: { numero: true, baixaCaRealizada: true, situacaoCA: true } } }
+            });
+        }
+        const eventos = numero ? [] : await prisma.asaasWebhookEvento.findMany({ orderBy: { createdAt: 'desc' }, take: 10 });
+        res.json({ cobrancas, conta, eventos });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
