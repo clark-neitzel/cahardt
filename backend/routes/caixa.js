@@ -385,12 +385,15 @@ router.get('/resumo', async (req, res) => {
                     if (e.contaReceber?.status === 'QUITADO' || e.contaReceber?.status === 'PARCIAL') return e.contaReceber.status;
                     // Normal (CA): verifica baixaCaRealizada
                     if (!e.baixaCaRealizada) return null;
-                    // Checar se teve dinheiro (baixa real) ou só alteração de condição
-                    const temDinheiro = pagamentos.some(p => !p.vendedorResponsavelId && !p.escritorioResponsavel && p.formaNome?.toLowerCase().includes('dinheiro'));
-                    const temOutraForma = pagamentos.some(p => !p.vendedorResponsavelId && !p.escritorioResponsavel && (p.formaNome?.toLowerCase().includes('pix') || p.formaNome?.toLowerCase().includes('cart')));
-                    if (temDinheiro && temOutraForma) return 'QUITADO'; // misto: baixou dinheiro + alterou condição
-                    if (temDinheiro) return 'QUITADO'; // só dinheiro
-                    return 'ALTERADO'; // só pix/cartão: condição alterada
+                    // Baixa REAL no CA: dinheiro (caixinha) ou PIX Asaas (conta Asaas —
+                    // dinheiro confirmado pelo banco; a Baixa CA do caixa baixa os dois).
+                    // PIX comum/cartão só ALTERA a condição no CA (não há baixa).
+                    const ehProprio = (p) => !p.vendedorResponsavelId && !p.escritorioResponsavel;
+                    const temBaixaReal = pagamentos.some(p => ehProprio(p) && (
+                        p.formaNome?.toLowerCase().includes('dinheiro') || p.formaNome?.toLowerCase() === 'pix asaas'
+                    ));
+                    if (temBaixaReal) return 'QUITADO';
+                    return 'ALTERADO'; // só pix comum/cartão: condição alterada
                 })(),
                 devolucaoFinalizada: e.devolucaoFinalizada || false,
                 idVendaContaAzul: e.idVendaContaAzul || null
