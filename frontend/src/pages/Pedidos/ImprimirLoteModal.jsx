@@ -6,10 +6,11 @@ import asaasService from '../../services/asaasService';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 // Impressão em lote (aprovada 07/2026): DANFE em 2 vias + boletos (Conta Azul e Asaas)
-// na sequência; especiais saem no recibo de conferência.
+// na sequência; especiais (ZZ#) e bonificações (BN#) saem no recibo de conferência;
+// amostras (AM#) saem no recibo sem valores.
 // A checagem consulta o CA de UM PEDIDO POR VEZ, mostrando o progresso ao vivo
 // (pedido do dono: não mandar várias consultas de uma vez ao Conta Azul).
-const ImprimirLoteModal = ({ pedidoIds, onClose, onConferido }) => {
+const ImprimirLoteModal = ({ pedidoIds = [], amostraIds = [], onClose, onConferido }) => {
     const [itens, setItens] = useState([]);           // já checados
     const [checandoIdx, setChecandoIdx] = useState(0); // quantos já foram
     const [checando, setChecando] = useState(true);
@@ -20,8 +21,10 @@ const ImprimirLoteModal = ({ pedidoIds, onClose, onConferido }) => {
     const [pdfUrl, setPdfUrl] = useState(null); // PDF pronto, aguardando o clique p/ abrir
     const cancelado = useRef(false);
 
-    // Checa um por vez, em sequência (não martelar o CA com várias consultas juntas)
+    // Checa um por vez, em sequência (não martelar o CA com várias consultas juntas).
+    // Amostras não passam pela conferência: não têm NF nem boleto, só recibo.
     const checarTodos = async (ids, forcar = false) => {
+        if (!ids.length) { setChecando(false); return; }
         setItens([]);
         setChecandoIdx(0);
         setChecando(true);
@@ -53,9 +56,9 @@ const ImprimirLoteModal = ({ pedidoIds, onClose, onConferido }) => {
         };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    const validos = itens.filter(i => !i.bonificacao);
-    const especiais = validos.filter(i => i.especial);
-    const normais = validos.filter(i => !i.especial);
+    const validos = itens; // bonificação também imprime (recibo BN#)
+    const recibos = validos.filter(i => i.especial || i.bonificacao);
+    const normais = validos.filter(i => !i.especial && !i.bonificacao);
     const semNF = normais.filter(i => !i.temNF);
     const semBoleto = validos.filter(i => i.boleto === 'SEM_BOLETO');       // conferido: não tem em lugar nenhum
     const boletoPago = validos.filter(i => i.boleto === 'PAGO');            // existe, mas quitado → não imprime
@@ -85,6 +88,7 @@ const ImprimirLoteModal = ({ pedidoIds, onClose, onConferido }) => {
         try {
             const resp = await pedidoService.imprimirLote({
                 pedidoIds: validos.map(i => i.id),
+                amostraIds,
                 duasVias,
                 incluirBoletos
             });
@@ -109,7 +113,8 @@ const ImprimirLoteModal = ({ pedidoIds, onClose, onConferido }) => {
         if (!aba) toast.error('Seu navegador bloqueou a janela. Use o botão "Baixar PDF".');
     };
 
-    const folhasEstimadas = validos.length * (duasVias ? 2 : 1) + (incluirBoletos ? totalBoletos : 0);
+    const folhasEstimadas = (validos.length + amostraIds.length) * (duasVias ? 2 : 1) + (incluirBoletos ? totalBoletos : 0);
+    const totalSelecionado = pedidoIds.length + amostraIds.length;
 
     // Indicador "tem boleto?" por sistema
     const Sinal = ({ estado, rotulo }) => {
@@ -149,7 +154,10 @@ const ImprimirLoteModal = ({ pedidoIds, onClose, onConferido }) => {
                         <div className="bg-mint p-2 rounded-lg"><Printer className="h-5 w-5 text-primary" /></div>
                         <div>
                             <h3 className="font-bold text-gray-900 leading-tight">Imprimir em lote</h3>
-                            <p className="text-xs text-gray-500">{pedidoIds.length} pedido{pedidoIds.length !== 1 ? 's' : ''} selecionado{pedidoIds.length !== 1 ? 's' : ''}</p>
+                            <p className="text-xs text-gray-500">
+                                {totalSelecionado} ite{totalSelecionado !== 1 ? 'ns' : 'm'} selecionado{totalSelecionado !== 1 ? 's' : ''}
+                                {amostraIds.length > 0 ? ` (${amostraIds.length} amostra${amostraIds.length !== 1 ? 's' : ''})` : ''}
+                            </p>
                         </div>
                     </div>
                     <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 min-h-[44px] min-w-[44px] flex items-center justify-center">
@@ -158,7 +166,8 @@ const ImprimirLoteModal = ({ pedidoIds, onClose, onConferido }) => {
                 </div>
 
                 <div className="p-5 flex-1 space-y-4">
-                    {/* Conferência ao vivo: um pedido por vez */}
+                    {/* Conferência ao vivo: um pedido por vez (amostras não precisam) */}
+                    {pedidoIds.length > 0 && (
                     <div className="bg-gray-50 border border-gray-200 rounded-xl p-3">
                         <div className="flex items-center justify-between mb-2">
                             <p className="text-[11px] font-bold uppercase tracking-wide text-gray-600">
@@ -181,10 +190,12 @@ const ImprimirLoteModal = ({ pedidoIds, onClose, onConferido }) => {
                             {itens.map(i => (
                                 <div key={i.id} className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-2.5 py-1.5">
                                     <span className="text-xs font-bold text-gray-700 shrink-0">
-                                        {i.especial ? 'ZZ#' : '#'}{i.numero}
+                                        {i.especial ? 'ZZ#' : i.bonificacao ? 'BN#' : '#'}{i.numero}
                                     </span>
                                     <span className="text-[11px] text-gray-500 truncate flex-1">{i.cliente}</span>
-                                    {i.especial || i.bonificacao || !i.aPrazo ? (
+                                    {i.especial || i.bonificacao ? (
+                                        <span className="text-[10px] text-gray-400 font-semibold shrink-0">recibo</span>
+                                    ) : !i.aPrazo ? (
                                         <span className="text-[10px] text-gray-400 font-semibold shrink-0">sem boleto</span>
                                     ) : (
                                         <span className="flex gap-1 shrink-0">
@@ -202,6 +213,7 @@ const ImprimirLoteModal = ({ pedidoIds, onClose, onConferido }) => {
                             )}
                         </div>
                     </div>
+                    )}
 
                     {!checando && (
                         <>
@@ -271,10 +283,11 @@ const ImprimirLoteModal = ({ pedidoIds, onClose, onConferido }) => {
                                     </div>
                                 </div>
                             )}
-                            {(aVista.length > 0 || especiais.length > 0) && (
+                            {(aVista.length > 0 || recibos.length > 0 || amostraIds.length > 0) && (
                                 <p className="text-xs text-gray-500">
                                     ℹ️ {aVista.length > 0 ? `${aVista.length} pedido(s) à vista saem sem boleto. ` : ''}
-                                    {especiais.length > 0 ? `${especiais.length} especial(is) saem no recibo de conferência.` : ''}
+                                    {recibos.length > 0 ? `${recibos.length} especial(is)/bonificação(ões) saem no recibo de conferência. ` : ''}
+                                    {amostraIds.length > 0 ? `${amostraIds.length} amostra(s) saem no recibo sem valores.` : ''}
                                 </p>
                             )}
                         </>
@@ -289,7 +302,7 @@ const ImprimirLoteModal = ({ pedidoIds, onClose, onConferido }) => {
                                 <Printer className="h-5 w-5" /> Abrir PDF para imprimir
                             </button>
                             <div className="flex gap-2">
-                                <a href={pdfUrl} download={`impressao-lote-${validos.length}-pedidos.pdf`}
+                                <a href={pdfUrl} download={`impressao-lote-${validos.length + amostraIds.length}-itens.pdf`}
                                     className="flex-1 py-2.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center justify-center gap-1.5">
                                     <Download className="h-4 w-4" /> Baixar PDF
                                 </a>
@@ -300,7 +313,7 @@ const ImprimirLoteModal = ({ pedidoIds, onClose, onConferido }) => {
                             </div>
                         </>
                     ) : (
-                        <button onClick={handleImprimir} disabled={checando || gerando || validos.length === 0}
+                        <button onClick={handleImprimir} disabled={checando || gerando || (validos.length === 0 && amostraIds.length === 0)}
                             className="w-full py-4 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-base flex items-center justify-center gap-2 disabled:opacity-50">
                             {gerando ? <Loader2 className="h-5 w-5 animate-spin" /> : <Printer className="h-5 w-5" />}
                             {checando ? 'Conferindo boletos...'

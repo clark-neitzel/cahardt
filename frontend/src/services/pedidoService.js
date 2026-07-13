@@ -140,9 +140,9 @@ const pedidoService = {
         const response = await api.post('/pedidos/imprimir-lote/checar-pedido', { pedidoId, forcar });
         return response.data;
     },
-    imprimirLote: async ({ pedidoIds, duasVias, incluirBoletos }) => {
+    imprimirLote: async ({ pedidoIds, amostraIds, duasVias, incluirBoletos }) => {
         // devolve o response inteiro (blob + header X-Lote-Erros)
-        return api.post('/pedidos/imprimir-lote', { pedidoIds, duasVias, incluirBoletos }, { responseType: 'blob' });
+        return api.post('/pedidos/imprimir-lote', { pedidoIds, amostraIds, duasVias, incluirBoletos }, { responseType: 'blob' });
     },
 
     // ── Avisos de pedido especial convertido (popup do faturamento) ──

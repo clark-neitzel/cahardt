@@ -140,7 +140,7 @@ const ListaPedidos = () => {
     const [asaasDisponivel, setAsaasDisponivel] = useState(false);
     const [boletosModal, setBoletosModal] = useState(null); // { pedidoId, clienteNome, pedidoNumero }
     const [pixModal, setPixModal] = useState(null); // { id, numero, especial, clienteNome, valorSugerido }
-    const [loteModal, setLoteModal] = useState(null); // array de pedidoIds p/ impressão em lote
+    const [loteModal, setLoteModal] = useState(null); // { pedidoIds } ou { amostraIds } p/ impressão em lote
     const [gerandoDanfe, setGerandoDanfe] = useState(null); // pedidoId com DANFE em geração
 
     // DANFE (PDF da NF-e emitida no CA) — o backend baixa o XML autorizado e gera o PDF
@@ -508,12 +508,17 @@ const ListaPedidos = () => {
     };
 
     const toggleTodosFiltrados = () => {
-        const pFaturados = pedidos.filter(p => p.situacaoCA === 'FATURADO');
-        const ids = pFaturados.map(p => p.id);
+        // Amostras: seleciona todas (menos canceladas); demais abas: só faturados
+        const ids = abaAtiva === 'amostras'
+            ? amostras.filter(a => a.status !== 'CANCELADA').map(a => a.id)
+            : pedidos.filter(p => p.situacaoCA === 'FATURADO').map(p => p.id);
         const todosJaSelecionados = ids.length > 0 && ids.every(id => selecionados.has(id));
         if (todosJaSelecionados) setSelecionados(new Set());
         else setSelecionados(new Set(ids));
     };
+
+    // Não misturar seleção de pedidos com amostras ao trocar de aba
+    useEffect(() => { setSelecionados(new Set()); }, [abaAtiva]);
 
     const [consultandoCA, setConsultandoCA] = useState(new Set());
     const [cobrancasCA, setCobrancasCA] = useState({});
@@ -577,6 +582,11 @@ const ListaPedidos = () => {
     const imprimirSelecionados = async () => {
         if (selecionados.size === 0) return;
         const idsArray = Array.from(selecionados);
+        if (abaAtiva === 'amostras') {
+            // Amostras: só o recibo (sem registro de impressão nem conferência de boleto)
+            setLoteModal({ amostraIds: idsArray });
+            return;
+        }
         try {
             await Promise.all(idsArray.map(id => pedidoService.registrarImpressao(id)));
             const now = new Date().toISOString();
@@ -584,7 +594,7 @@ const ListaPedidos = () => {
         } catch (error) {
             console.error('Erro ao registrar impressões em lote', error);
         }
-        setLoteModal(idsArray);
+        setLoteModal({ pedidoIds: idsArray });
     };
 
     // Padrão = tudo limpo (entrega inclusive). "Limpar" volta a este estado.
@@ -780,7 +790,16 @@ const ListaPedidos = () => {
                         </button>
                     )}
                 </div>
-                {!['amostras', 'bonificacao'].includes(abaAtiva) && pedidos.filter(p => p.situacaoCA === 'FATURADO').length > 0 && (
+                {abaAtiva === 'amostras' ? (
+                    amostras.filter(a => a.status !== 'CANCELADA').length > 0 && (
+                        <button
+                            onClick={toggleTodosFiltrados}
+                            className="mt-1 px-2 py-1 text-[10px] font-medium text-gray-500 hover:text-purple-600 transition-colors"
+                        >
+                            {amostras.filter(a => a.status !== 'CANCELADA').every(a => selecionados.has(a.id)) ? 'Desmarcar todas' : 'Selecionar todas'}
+                        </button>
+                    )
+                ) : pedidos.filter(p => p.situacaoCA === 'FATURADO').length > 0 && (
                     <button
                         onClick={toggleTodosFiltrados}
                         className="mt-1 px-2 py-1 text-[10px] font-medium text-gray-500 hover:text-purple-600 transition-colors"
@@ -885,7 +904,7 @@ const ListaPedidos = () => {
             )}
 
             {/* Barra de seleção em lote */}
-            {abaAtiva !== 'amostras' && selecionados.size > 0 && (
+            {selecionados.size > 0 && (
                 <div className="flex items-center justify-between bg-purple-50 border border-purple-200 rounded px-2 sm:px-3 py-2 mb-2">
                     <div className="flex items-center gap-1.5 text-xs sm:text-sm text-purple-700">
                         <CheckSquare className="h-4 w-4" />
@@ -935,6 +954,15 @@ const ListaPedidos = () => {
                                             <div className="flex justify-between items-start gap-2">
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center gap-1.5 mb-1">
+                                                        {amostra.status !== 'CANCELADA' && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); toggleSelecao(amostra.id); }}
+                                                                className="flex-shrink-0 text-gray-400 hover:text-primary transition-colors"
+                                                                title="Selecionar para imprimir o recibo"
+                                                            >
+                                                                {selecionados.has(amostra.id) ? <CheckSquare className="h-5 w-5 text-primary" /> : <Square className="h-5 w-5" />}
+                                                            </button>
+                                                        )}
                                                         <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border text-orange-700 bg-orange-50 border-orange-200 shadow-sm shrink-0">
                                                             AM#{amostra.numero}
                                                         </span>
@@ -1615,7 +1643,8 @@ const ListaPedidos = () => {
             {/* Modal de impressão em lote */}
             {loteModal && (
                 <ImprimirLoteModal
-                    pedidoIds={loteModal}
+                    pedidoIds={loteModal.pedidoIds || []}
+                    amostraIds={loteModal.amostraIds || []}
                     onClose={() => setLoteModal(null)}
                     onConferido={(itens) => {
                         // pinta o check do CA nos cartões sem recarregar a lista inteira

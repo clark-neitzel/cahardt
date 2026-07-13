@@ -2,8 +2,9 @@
 // Impressão em lote de pedidos (aprovada pelo dono 07/2026):
 //   - pedido normal FATURADO → DANFE (XML autorizado do CA) em 1 ou 2 vias,
 //     seguida do(s) boleto(s) Asaas (na ordem, p/ grampear)
-//   - pedido ESPECIAL → recibo de conferência (sem marca), 1 ou 2 vias
-// Tudo num ÚNICO PDF, na ordem dos pedidos selecionados.
+//   - pedido ESPECIAL (ZZ#) e BONIFICAÇÃO (BN#) → recibo de conferência (sem marca)
+//   - AMOSTRA (AM#) → recibo de conferência sem valores
+// Tudo num ÚNICO PDF, na ordem dos itens selecionados.
 // =====================================================================
 const { PDFDocument } = require('pdf-lib');
 const axios = require('axios');
@@ -11,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
-const { gerarReciboEspecial } = require('./reciboEspecialPdf');
+const { gerarReciboEspecial, gerarReciboAmostra } = require('./reciboEspecialPdf');
 
 const A_PRAZO = (pedido) => (pedido.tipoPagamento === 'BOLETO_BANCARIO')
     || /boleto/i.test(pedido.nomeCondicaoPagamento || '');
@@ -225,7 +226,7 @@ const impressaoLoteService = {
      * Gera o PDF do lote. Retorna { pdf: Buffer, erros: [{numero, erro}] }.
      * Pedido com problema (ex.: NF não encontrada) é PULADO e reportado.
      */
-    gerar: async ({ pedidoIds, duasVias = true, incluirBoletos = true }) => {
+    gerar: async ({ pedidoIds = [], amostraIds = [], duasVias = true, incluirBoletos = true }) => {
         const pedidos = await carregarPedidos(pedidoIds);
         // Só boletos NÃO pagos entram na impressão (regra do dono)
         const boletos = incluirBoletos ? await boletosAsaasPorPedido(pedidoIds, true) : new Map();
@@ -244,9 +245,9 @@ const impressaoLoteService = {
         for (const pedido of pedidos) {
             const rotulo = `${pedido.especial ? 'ZZ#' : '#'}${pedido.numero ?? '?'}`;
             try {
-                if (pedido.bonificacao) continue; // bonificação não imprime nada aqui
-
-                if (pedido.especial) {
+                // Especial e bonificação não têm NF — saem como recibo de conferência
+                // (mesmo layout aprovado, sem a marca Hardt; bonificação com prefixo BN#)
+                if (pedido.especial || pedido.bonificacao) {
                     const recibo = await gerarReciboEspecial(pedido);
                     await anexar(recibo, duasVias ? 2 : 1);
                     continue;
@@ -285,6 +286,30 @@ const impressaoLoteService = {
                 }
             } catch (e) {
                 erros.push({ numero: rotulo, erro: e.message });
+            }
+        }
+
+        // ── Amostras (AM#): recibo de conferência sem valores ──
+        if (amostraIds.length) {
+            const amostras = await prisma.amostra.findMany({
+                where: { id: { in: amostraIds } },
+                include: {
+                    cliente: { select: { Nome: true, NomeFantasia: true, Documento: true } },
+                    lead: { select: { nomeEstabelecimento: true } },
+                    solicitadoPor: { select: { nome: true } },
+                    itens: { include: { produto: { select: { nome: true } } } }
+                }
+            });
+            const mapaAm = new Map(amostras.map(a => [a.id, a]));
+            for (const id of amostraIds) {
+                const amostra = mapaAm.get(id);
+                if (!amostra) continue;
+                try {
+                    const recibo = await gerarReciboAmostra(amostra);
+                    await anexar(recibo, duasVias ? 2 : 1);
+                } catch (e) {
+                    erros.push({ numero: `AM#${amostra.numero}`, erro: e.message });
+                }
             }
         }
 

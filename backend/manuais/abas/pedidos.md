@@ -66,14 +66,15 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - O painel no topo da lista mostra alertas coloridos: quantos pedidos estão em **Enviar**, **Aprovados** e **Erro**
 - Clique no alerta para ir direto àquele grupo
 
-### Imprimir em lote (DANFEs + boletos / recibo do especial)
+### Imprimir em lote (DANFEs + boletos / recibos)
 1. Marque os pedidos pelos checkboxes (ou clique **"Selecionar faturados"**) → clique **Imprimir N**
 2. Na janela, escolha: **2 vias de cada documento** (uma p/ assinatura, outra p/ cliente) e **boleto logo após as vias** (sai na sequência, pronto p/ grampear)
 3. **Imprime boleto do Conta Azul E do Asaas** — ao clicar em Imprimir, o app consulta o CA de cada pedido; se achar boleto lá, baixa o PDF e inclui na sequência (junto com os do Asaas). Condição com 2 parcelas = 2 boletos, na ordem
 4. **Boleto já quitado NÃO é impresso** (não faz sentido). Se precisar imprimir um boleto pago (p/ o cliente conferir), faça pelo **Contas a Receber**
 5. Avisos automáticos: pedidos **a prazo sem boleto (nem no CA, nem no Asaas)** aparecem em destaque com o botão **"Gerar boletos agora"** (gera no Asaas — o do CA só é gerado manualmente lá dentro); pedidos **sem NF-e emitida** são pulados (emita a nota no CA primeiro); pedidos **à vista** saem sem boleto (não há o que cobrar)
-4. Pedido **ESPECIAL** sai no **recibo de conferência** (modelo sem a marca da Hardt, com itens, total e linha de assinatura) — especiais só imprimem pelo lote
-5. Sai **um único PDF** com as folhas na ordem certa; as opções ficam lembradas para a próxima
+6. Pedido **ESPECIAL (ZZ#)** e **BONIFICAÇÃO (BN#)** saem no **recibo de conferência** (modelo sem a marca da Hardt, com itens, total e linha de assinatura) — eles só imprimem pelo lote. Bonificação também é selecionável pelo checkbox quando faturada
+7. **AMOSTRAS (AM#)**: na aba Amostras também há checkboxes (e o "Selecionar todas") — saem no **recibo de conferência sem valores** (produto e quantidade + faixa "AMOSTRA — SEM VALOR COMERCIAL"); amostra não passa pela conferência de boletos
+8. Sai **um único PDF** com as folhas na ordem certa; as opções ficam lembradas para a próxima
 - O botão de imprimir o pedido individual foi **removido** — a DANFE substitui; para mandar um pedido a alguém, use um print da tela
 
 ### Gerar PIX de um pedido (cobrança à vista / link de pagamento)

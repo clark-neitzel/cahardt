@@ -107,13 +107,16 @@ const pedidoController = {
 
     imprimirLote: async (req, res) => {
         try {
-            const { pedidoIds, duasVias, incluirBoletos } = req.body || {};
-            if (!Array.isArray(pedidoIds) || !pedidoIds.length) {
-                return res.status(400).json({ error: 'Selecione ao menos um pedido.' });
+            const { pedidoIds, amostraIds, duasVias, incluirBoletos } = req.body || {};
+            const temPedidos = Array.isArray(pedidoIds) && pedidoIds.length > 0;
+            const temAmostras = Array.isArray(amostraIds) && amostraIds.length > 0;
+            if (!temPedidos && !temAmostras) {
+                return res.status(400).json({ error: 'Selecione ao menos um pedido ou amostra.' });
             }
             const impressaoLoteService = require('../services/impressaoLoteService');
             const { pdf, erros, paginas } = await impressaoLoteService.gerar({
-                pedidoIds: pedidoIds.slice(0, 100),
+                pedidoIds: temPedidos ? pedidoIds.slice(0, 100) : [],
+                amostraIds: temAmostras ? amostraIds.slice(0, 100) : [],
                 duasVias: duasVias !== false,
                 incluirBoletos: incluirBoletos !== false
             });

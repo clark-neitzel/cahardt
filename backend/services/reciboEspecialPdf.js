@@ -36,11 +36,11 @@ function gerarReciboEspecial(pedido) {
         doc.rect(x0, 36, largura, 62).fill(VERDE_ESCURO);
         doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(8)
             .text('RECIBO DE CONFERÊNCIA', x0 + 18, 52, { characterSpacing: 1.5 });
-        doc.font('Helvetica-Bold').fontSize(19).text('Pedido', x0 + 18, 64);
+        doc.font('Helvetica-Bold').fontSize(19).text(pedido.bonificacao ? 'Bonificação' : 'Pedido', x0 + 18, 64);
         doc.font('Helvetica').fontSize(8).fillColor('#b9c9c2')
             .text('Nº', x0 + largura - 150, 52, { width: 132, align: 'right', characterSpacing: 1.5 });
         doc.font('Helvetica-Bold').fontSize(19).fillColor('#ffffff')
-            .text(`ZZ#${pedido.numero ?? '—'}`, x0 + largura - 200, 64, { width: 182, align: 'right' });
+            .text(`${pedido.bonificacao ? 'BN#' : 'ZZ#'}${pedido.numero ?? '—'}`, x0 + largura - 200, 64, { width: 182, align: 'right' });
 
         // ── Grade de dados ──
         let y = 116;
@@ -110,7 +110,7 @@ function gerarReciboEspecial(pedido) {
         y += 6;
         doc.roundedRect(x0, y, largura, 34, 8).fill(MINT);
         doc.font('Helvetica-Bold').fontSize(7.5).fillColor(VERDE)
-            .text('TOTAL DO PEDIDO', x0 + 14, y + 13, { characterSpacing: 1.5 });
+            .text(pedido.bonificacao ? 'TOTAL DA BONIFICAÇÃO' : 'TOTAL DO PEDIDO', x0 + 14, y + 13, { characterSpacing: 1.5 });
         doc.font('Helvetica-Bold').fontSize(16).fillColor(VERDE)
             .text(`R$ ${fmtMoeda(total)}`, x0, y + 9, { width: largura - 14, align: 'right' });
         y += 48;
@@ -139,4 +139,108 @@ function gerarReciboEspecial(pedido) {
     });
 }
 
-module.exports = { gerarReciboEspecial };
+/**
+ * Recibo de AMOSTRA (mesmo layout, sem valores — amostra não tem preço).
+ * amostra: { numero, dataEntrega, observacao, cliente { Nome, NomeFantasia, Documento },
+ *            lead { nomeEstabelecimento }, solicitadoPor { nome }, itens [{ nomeProduto, quantidade }] }
+ */
+function gerarReciboAmostra(amostra) {
+    return new Promise((resolve, reject) => {
+        const doc = new PDFDocument({ size: 'A4', margins: { top: 36, bottom: 36, left: 42, right: 42 } });
+        const chunks = [];
+        doc.on('data', c => chunks.push(c));
+        doc.on('end', () => resolve(Buffer.concat(chunks)));
+        doc.on('error', reject);
+
+        const largura = doc.page.width - 84;
+        const x0 = 42;
+
+        // ── Faixa do cabeçalho (sem marca) ──
+        doc.rect(x0, 36, largura, 62).fill(VERDE_ESCURO);
+        doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(8)
+            .text('RECIBO DE CONFERÊNCIA', x0 + 18, 52, { characterSpacing: 1.5 });
+        doc.font('Helvetica-Bold').fontSize(19).text('Amostra', x0 + 18, 64);
+        doc.font('Helvetica').fontSize(8).fillColor('#b9c9c2')
+            .text('Nº', x0 + largura - 150, 52, { width: 132, align: 'right', characterSpacing: 1.5 });
+        doc.font('Helvetica-Bold').fontSize(19).fillColor('#ffffff')
+            .text(`AM#${amostra.numero ?? '—'}`, x0 + largura - 200, 64, { width: 182, align: 'right' });
+
+        // ── Grade de dados ──
+        let y = 116;
+        const col2 = x0 + largura / 2;
+        const campo = (x, yy, rotulo, valor, larg) => {
+            doc.font('Helvetica-Bold').fontSize(6.5).fillColor('#8a938f')
+                .text(rotulo.toUpperCase(), x, yy, { characterSpacing: 1, width: larg });
+            doc.font('Helvetica-Bold').fontSize(10.5).fillColor('#000000')
+                .text(valor || '—', x, yy + 9, { width: larg });
+        };
+        const nomeDestinatario = amostra.cliente?.NomeFantasia || amostra.cliente?.Nome
+            || amostra.lead?.nomeEstabelecimento || '—';
+        campo(x0, y, 'Destinatário', nomeDestinatario, largura / 2 - 10);
+        campo(col2, y, 'CNPJ / CPF', amostra.cliente?.Documento || '—', largura / 2);
+        y += 32;
+        campo(x0, y, 'Entrega', fmtData(amostra.dataEntrega), largura / 2 - 10);
+        campo(col2, y, 'Solicitado por', amostra.solicitadoPor?.nome || '—', largura / 2);
+        y += 32;
+        campo(x0, y, 'Emitido em', new Date().toLocaleString('pt-BR', {
+            timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        }), largura / 2 - 10);
+        y += 40;
+
+        // ── Tabela de itens (sem valores) ──
+        const colProduto = { x: x0, larg: largura - 90 };
+        const colQtd = { x: x0 + largura - 80, larg: 80 };
+        doc.font('Helvetica-Bold').fontSize(6.5).fillColor('#8a938f');
+        doc.text('PRODUTO', colProduto.x, y, { width: colProduto.larg, characterSpacing: 1 });
+        doc.text('QTD', colQtd.x, y, { width: colQtd.larg, align: 'right', characterSpacing: 1 });
+        y += 11;
+        doc.moveTo(x0, y).lineTo(x0 + largura, y).lineWidth(1.5).strokeColor(VERDE_ESCURO).stroke();
+        y += 7;
+
+        for (const item of (amostra.itens || [])) {
+            const qtd = Number(item.quantidade);
+            const nome = item.nomeProduto || item.produto?.nome || 'Item';
+            const altura = doc.font('Helvetica').fontSize(9.5).heightOfString(nome, { width: colProduto.larg });
+            if (y + altura > doc.page.height - 190) {
+                doc.addPage();
+                y = 48;
+            }
+            doc.font('Helvetica').fontSize(9.5).fillColor('#000000');
+            doc.text(nome, colProduto.x, y, { width: colProduto.larg });
+            doc.text(String(qtd % 1 === 0 ? qtd : qtd.toFixed(3)), colQtd.x, y, { width: colQtd.larg, align: 'right' });
+            y += Math.max(altura, 12) + 5;
+            doc.moveTo(x0, y - 3).lineTo(x0 + largura, y - 3).lineWidth(0.4).strokeColor(CINZA_CLARO).stroke();
+        }
+
+        // ── Faixa: amostra não tem valor comercial ──
+        y += 6;
+        doc.roundedRect(x0, y, largura, 34, 8).fill(MINT);
+        doc.font('Helvetica-Bold').fontSize(9).fillColor(VERDE)
+            .text('AMOSTRA — SEM VALOR COMERCIAL', x0, y + 12, { width: largura, align: 'center', characterSpacing: 1.5 });
+        y += 48;
+
+        // ── Observações ──
+        if (amostra.observacao) {
+            doc.font('Helvetica').fontSize(8.5).fillColor(CINZA)
+                .text(`Observações: ${amostra.observacao}`, x0, y, { width: largura });
+            y = doc.y + 10;
+        }
+
+        // ── Assinatura ──
+        y = Math.max(y + 40, doc.page.height - 150);
+        doc.moveTo(x0 + 40, y).lineTo(x0 + largura - 40, y).lineWidth(0.8)
+            .dash(3, { space: 3 }).strokeColor('#b9c2be').stroke().undash();
+        doc.font('Helvetica-Bold').fontSize(7).fillColor('#8a938f')
+            .text('ASSINATURA DO RECEBEDOR          ·          DATA ____ /____ /______', x0, y + 7, {
+                width: largura, align: 'center', characterSpacing: 1
+            });
+
+        // ── Rodapé ──
+        doc.font('Helvetica').fontSize(7.5).fillColor('#9aa5a0')
+            .text('Documento interno de conferência.', x0, doc.page.height - 60, { width: largura, align: 'center' });
+
+        doc.end();
+    });
+}
+
+module.exports = { gerarReciboEspecial, gerarReciboAmostra };
