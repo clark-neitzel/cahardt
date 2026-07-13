@@ -686,6 +686,43 @@ router.post('/kitfesta-reenviar-whatsapp/:numero', async (req, res) => {
 // SOMENTE LEITURA. Conta, por tabela, colunas vivas vs "fantasma" (dropped) que
 // ainda ocupam vaga no limite de 1600 do Postgres. Usado para diagnosticar o
 // estoque de colunas mortas (ex.: tabela "clientes" no teto).
+// ── POST /corrigir-tipo-condicao — corrige o tipo de pagamento de uma condição ──
+// A condição "À vista - Funcionário" estava cadastrada como BOLETO_BANCARIO (venda a
+// funcionário não é boleto — o pedido é especial e nem vai ao CA). Isso a fazia cair no filtro
+// "Cobrança = Boleto" de Contas a Receber. Corrige o cadastro (tabela_precos) e o tipo gravado
+// nos pedidos já feitos com essa condição.
+// Body: { condicaoId: "4000", tipoNovo: "DINHEIRO", aplicar: false }  (aplicar=false → só simula)
+router.post('/corrigir-tipo-condicao', async (req, res) => {
+    try {
+        const { condicaoId, tipoNovo, aplicar } = req.body || {};
+        if (!condicaoId || !tipoNovo) {
+            return res.status(400).json({ ok: false, error: 'Informe condicaoId e tipoNovo.' });
+        }
+        const condicao = await prisma.tabelaPreco.findUnique({ where: { id: String(condicaoId) } });
+        if (!condicao) return res.status(404).json({ ok: false, error: 'Condição não encontrada.' });
+
+        // `not` no Prisma exclui linhas null — daí o OR explícito para pegar também pedido sem tipo
+        const alvoPedidos = {
+            nomeCondicaoPagamento: condicao.nomeCondicao,
+            OR: [{ tipoPagamento: { not: tipoNovo } }, { tipoPagamento: null }]
+        };
+        const pedidosAfetados = await prisma.pedido.count({ where: alvoPedidos });
+
+        const resumo = {
+            condicao: { id: condicao.id, nome: condicao.nomeCondicao, tipoAtual: condicao.tipoPagamento, tipoNovo },
+            pedidosAfetados,
+            aplicado: false
+        };
+        if (!aplicar) return res.json({ ok: true, simulacao: true, ...resumo });
+
+        await prisma.tabelaPreco.update({ where: { id: condicao.id }, data: { tipoPagamento: tipoNovo } });
+        const upd = await prisma.pedido.updateMany({ where: alvoPedidos, data: { tipoPagamento: tipoNovo } });
+        res.json({ ok: true, simulacao: false, ...resumo, aplicado: true, pedidosAtualizados: upd.count });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 router.get('/diag-colunas', async (req, res) => {
     try {
         const linhas = await prisma.$queryRawUnsafe(`
