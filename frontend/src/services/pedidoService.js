@@ -93,7 +93,7 @@ const pedidoService = {
         return response.data;
     },
 
-    // Enviar pedido via WhatsApp (BotConversa)
+    // Enviar pedido via WhatsApp
     enviarWhatsapp: async (id) => {
         const response = await api.post(`/pedidos/${id}/enviar-whatsapp`);
         return response.data;

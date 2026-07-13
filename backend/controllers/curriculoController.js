@@ -136,7 +136,12 @@ async function solicitarAcesso(req, res) {
 
   const primeiroNome = (curriculo.nome || '').split(' ')[0] || 'Candidato';
   const msg = `Olá, *${primeiroNome}*! 🔐\n\nSeu código para acessar e editar seu currículo na *Hardt* é:\n\n*${codigo}*\n\nVálido por ${ACESSO_TTL_MIN} minutos. Se não foi você, ignore esta mensagem.`;
-  const r = await webhookService.enviarMensagemCustom(curriculo.whatsapp, primeiroNome, msg);
+  // referencia ÚNICA por código (senão o 2º pedido de código viria `duplicado`).
+  const r = await webhookService.enviarMensagemCustom(curriculo.whatsapp, primeiroNome, msg, {
+    tipo: 'verificacao',
+    origem: 'site-curriculo',
+    referencia: `verificacao-curriculo-${cpf}-${codigo}`,
+  });
   if (!r.ok) console.error('[curriculo] falha ao enviar código de acesso:', r.motivo);
 
   return res.json({ existe: true, enviado: !!r.ok, telefoneMascarado });
@@ -461,7 +466,7 @@ async function atualizar(req, res) {
   return res.json(atualizado);
 }
 
-// ─── RH: Enviar convite de entrevista via BotConversa ────────────────────
+// ─── RH: Enviar convite de entrevista pelo WhatsApp ──────────────────────
 async function linkWhatsapp(req, res) {
   const id = parseInt(req.params.id);
   if (isNaN(id)) return res.status(400).json({ erro: 'ID inválido' });
@@ -493,7 +498,11 @@ async function linkWhatsapp(req, res) {
     });
   }
 
-  const resultado = await webhookService.enviarMensagemCustom(curriculo.whatsapp, primeiroNome, mensagem);
+  const resultado = await webhookService.enviarMensagemCustom(curriculo.whatsapp, primeiroNome, mensagem, {
+    tipo: 'interno', // candidato a vaga (não é cliente) — ver §4 do contrato do bot
+    origem: 'curriculos',
+    referencia: `curriculo-${curriculo.id}-entrevista`,
+  });
   if (!resultado.ok) {
     return res.status(500).json({ erro: resultado.motivo || 'Erro ao enviar mensagem' });
   }

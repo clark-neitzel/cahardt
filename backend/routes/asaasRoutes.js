@@ -8,6 +8,7 @@ const router = express.Router();
 const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const asaasService = require('../services/asaasService');
+const botWhatsapp = require('../services/botWhatsappService');
 
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
@@ -142,13 +143,13 @@ router.post('/pix/:cobrancaId/whatsapp', verificarAuth, checkPodeCobrar, async (
         const numeroPedido = cobranca.pedido?.numero ? `${cobranca.pedido.especial ? 'ZZ#' : '#'}${cobranca.pedido.numero}` : '';
         const mensagem = `Olá, *${nome}*! 😊\n\nSegue o PIX${numeroPedido ? ` do pedido *${numeroPedido}*` : ''}:\n\n💰 Valor: *R$ ${Number(cobranca.valor).toFixed(2).replace('.', ',')}*\n📅 Válido até: *${vencStr}*${cobranca.boletoUrl ? `\n\n🔗 Link para pagar: ${cobranca.boletoUrl}` : ''}${cobranca.pixPayload ? `\n\n*PIX copia e cola:*\n${cobranca.pixPayload}` : ''}\n\nQualquer dúvida, estamos à disposição!\n_Hardt Doces e Salgados_`;
 
+        // Envio manual pelo botão: referência nova a cada clique, senão o bot
+        // devolveria `duplicado` e o reenvio pedido pelo usuário não sairia.
         const r = await webhookService.enviarCobranca({
             telefone,
             nome,
             mensagem,
-            total: Number(cobranca.valor),
-            dataVencimento: venc,
-            condicao: 'PIX'
+            referencia: botWhatsapp.referenciaUnica(`asaas-pix-${cobranca.id}`),
         });
         if (!r.ok) return res.status(400).json({ error: `WhatsApp não enviado: ${r.motivo}` });
         res.json({ ok: true, message: 'PIX enviado por WhatsApp!' });
@@ -334,7 +335,7 @@ router.delete('/boletos/:cobrancaId', verificarAuth, checkPodeCobrar, async (req
     }
 });
 
-// ── POST /boletos/:cobrancaId/whatsapp — enviar o boleto ao cliente via BotConversa ──
+// ── POST /boletos/:cobrancaId/whatsapp — enviar o boleto ao cliente pelo WhatsApp (bot) ──
 router.post('/boletos/:cobrancaId/whatsapp', verificarAuth, checkPodeCobrar, async (req, res) => {
     try {
         const webhookService = require('../services/webhookService');
@@ -366,9 +367,7 @@ router.post('/boletos/:cobrancaId/whatsapp', verificarAuth, checkPodeCobrar, asy
             telefone,
             nome,
             mensagem,
-            total: Number(cobranca.valor),
-            dataVencimento: venc,
-            condicao: 'Boleto'
+            referencia: botWhatsapp.referenciaUnica(`asaas-boleto-${cobranca.id}`),
         });
         if (!r.ok) return res.status(400).json({ error: `WhatsApp não enviado: ${r.motivo}` });
         res.json({ ok: true, message: 'Boleto enviado por WhatsApp!' });

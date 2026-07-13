@@ -363,6 +363,20 @@ function startSchedulers() {
         setTimeout(() => { _runCertAlerta(); scheduleCertAlerta(); }, target.getTime() - now.getTime());
     };
     scheduleCertAlerta();
+
+    // === 9. FILA DE WHATSAPP (bot da Ana) ===
+    // Reenvia o que falhou de forma reagendável: teto de 200/h do bot, Z-API fora
+    // do ar, ou o modo de emergência do bot ligado (§6 do contrato). Retry usa a
+    // MESMA `referencia` — a idempotência do bot garante que não duplique.
+    // Isolado: nunca derruba nada.
+    console.log('⏰ Iniciando Worker da fila de WhatsApp (bot)...');
+    const botWhatsappService = require('../services/botWhatsappService');
+    const _runFilaWhatsapp = () => {
+        botWhatsappService.processarFila()
+            .catch(err => console.error('⚠️ Fila WhatsApp Error:', err.message));
+    };
+    setTimeout(_runFilaWhatsapp, 180000);        // 3min após o start
+    setInterval(_runFilaWhatsapp, 5 * 60 * 1000); // a cada 5 minutos
 }
 
 module.exports = { startSchedulers };

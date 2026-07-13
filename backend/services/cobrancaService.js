@@ -10,7 +10,7 @@ const smsService = require('./smsService');
  *   pedido) na tabela cobranca_configs; a linha 'PADRAO' cobre o resto.
  * - O worker diário (scheduler) chama executarRegua() no horário configurado
  *   em app_configs 'cobranca_config' = { ativo, horaEnvio }.
- * - Envio por WhatsApp (BotConversa, payload completo), e-mail (SMTP) e SMS.
+ * - Envio por WhatsApp (bot da Ana), e-mail (SMTP) e SMS.
  * - Falha no WhatsApp (sem celular / bot recusou) gera TAREFA para o
  *   responsável definido na configuração da forma — enquanto o envio não
  *   funcionar e a tarefa anterior estiver concluída, gera de novo.
@@ -374,8 +374,8 @@ async function criarTarefaFalha(config, grupo, motivo, mensagem) {
                 `Motivo: ${motivo}\n\n` +
                 `O que fazer:\n` +
                 `1. Confira/cadastre o celular do cliente no cadastro.\n` +
-                `2. Inicie a conversa com o cliente pelo bot (BotConversa).\n` +
-                `3. Envie a mensagem de cobrança abaixo pelo bot.\n\n` +
+                `2. Cobre o cliente por outro meio (ligação ou WhatsApp pelo celular da equipe),\n` +
+                `   usando a mensagem abaixo.\n\n` +
                 `Valor em aberto: R$ ${fmtMoeda(total)} (${grupo.parcelasVencidas.length} parcela(s))\n\n` +
                 `Mensagem de cobrança:\n${mensagem}\n\n` +
                 `${marcadorTarefa(cliente.UUID)}`,
@@ -444,9 +444,9 @@ async function enviarCobrancaGrupo(grupo, { tipo = 'COBRANCA', numeroAviso = 1, 
                 telefone,
                 nome,
                 mensagem,
-                total,
-                dataVencimento: vencMaisAntigo,
-                condicao: grupo.forma === 'PADRAO' ? 'Cobrança' : grupo.forma
+                // Idempotência: se o job da régua rodar duas vezes, o bot recusa o
+                // 2º envio deste mesmo aviso (`duplicado`) — o cliente não é cobrado em dobro.
+                referencia: `cobranca-${cliente.UUID}-${tipo}-${numeroAviso}`,
             })
             : { ok: false, motivo: 'Cliente sem celular cadastrado' };
 

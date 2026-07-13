@@ -1575,6 +1575,32 @@ model DeliveryWebhookLog {
   @@map("delivery_webhook_logs")
 }
 
+/// Auditoria + fila de reenvio de TODO WhatsApp que o sistema manda pelo bot da Ana.
+/// PENDENTE = falhou de forma reagendável (teto de 200/h, modo de emergência do bot,
+/// Z-API fora do ar) e o worker vai tentar de novo com a MESMA `referencia` —
+/// é a idempotência do bot que garante que o retry não duplique a mensagem.
+model BotWhatsappEnvio {
+  id         String    @id @default(uuid())
+  telefone   String
+  texto      String    @db.Text
+  tipo       String // verificacao | pedido | entrega | cobranca | interno | outro
+  origem     String?
+  referencia String?
+  status     String    @default("PENDENTE") // PENDENTE | ENVIADO | DUPLICADO | ERRO
+  tentativas Int       @default(0)
+  proximaEm  DateTime? @map("proxima_em")
+  codigoErro String?   @map("codigo_erro")
+  ultimoErro String?   @map("ultimo_erro") @db.Text
+  enviadoEm  DateTime? @map("enviado_em")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@index([status, proximaEm])
+  @@index([tipo, createdAt])
+  @@index([referencia])
+  @@map("bot_whatsapp_envios")
+}
+
 model CategoriaCliente {
   id                String   @id @default(uuid())
   nome              String   @unique

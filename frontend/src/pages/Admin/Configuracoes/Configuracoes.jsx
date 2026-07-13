@@ -250,9 +250,8 @@ const Configuracoes = () => {
     const [resettingGroup, setResettingGroup] = useState(null);
     const podeResetar = user?.permissoes?.admin || user?.permissoes?.Pode_Resetar_Dados;
 
-    // Webhook BotConversa
-    const [webhookUrl, setWebhookUrl] = useState('');
-    const [savingWebhook, setSavingWebhook] = useState(false);
+    // Integração de WhatsApp (bot da Ana)
+    const [botStatus, setBotStatus] = useState(null);
     const [whatsappAtivo, setWhatsappAtivo] = useState(true);
     const [whatsappLoading, setWhatsappLoading] = useState(false);
 
@@ -288,8 +287,8 @@ const Configuracoes = () => {
             if (logs) setAuditLogs(logs);
             const vList = Array.isArray(vendedoresData) ? vendedoresData : vendedoresData?.vendedores || [];
             setVendedores(vList.filter(v => v.ativo !== false));
-            // Webhook
-            try { const wh = await configService.get('webhook_botconversa_url'); setWebhookUrl(wh || ''); } catch { }
+            // Integração de WhatsApp (bot da Ana) — health-check
+            try { const { data } = await api.get('/config/bot-whatsapp/status'); setBotStatus(data); } catch { setBotStatus(null); }
             // WhatsApp ativo/pausado
             try {
                 const wa = await configService.get('whatsapp_ativo');
@@ -772,22 +771,33 @@ const Configuracoes = () => {
                 </div>
             )}
 
-            {/* ── Webhook BotConversa ── */}
+            {/* ── Notificação WhatsApp (bot da Hardt) ── */}
             {isAdmin && (
-                <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-6 border-b border-gray-100 bg-green-50">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="p-6 border-b border-gray-100 bg-mint/40">
                         <h2 className="text-lg font-semibold text-gray-700 flex items-center gap-2">
-                            <MessageSquare className="h-5 w-5 text-green-600" />
-                            Notificação WhatsApp (BotConversa)
+                            <MessageSquare className="h-5 w-5 text-primary" />
+                            Notificação WhatsApp
                         </h2>
-                        <p className="text-sm text-gray-500 mt-0.5">Envia automaticamente o resumo do pedido ao cliente via WhatsApp ao salvar o pedido.</p>
+                        <p className="text-sm text-gray-500 mt-0.5">
+                            As mensagens saem pelo WhatsApp da Hardt (o mesmo número que a Ana atende): confirmação de
+                            pedido, código de verificação do site, status de entrega e cobrança.
+                        </p>
                     </div>
                     <div className="p-6 space-y-4">
                         {/* Toggle Ativar/Pausar WhatsApp */}
                         <div className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-gray-50">
                             <div>
-                                <p className="text-sm font-semibold text-gray-700">Envio de mensagens</p>
-                                <p className="text-xs text-gray-500">{whatsappAtivo ? 'Mensagens estão sendo enviadas aos clientes' : 'Envio de mensagens está pausado'}</p>
+                                <p className="text-sm font-semibold text-gray-700">Aviso de pedido ao cliente</p>
+                                <p className="text-xs text-gray-500">
+                                    {whatsappAtivo
+                                        ? 'Ligado — o cliente recebe o resumo ao salvar o pedido'
+                                        : 'Pausado — o cliente não recebe o resumo do pedido'}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                    Pausar aqui <strong>não</strong> afeta código de verificação, cobrança e Kit Festa
+                                    (são transacionais e sempre saem).
+                                </p>
                             </div>
                             <button
                                 onClick={async () => {
@@ -796,42 +806,50 @@ const Configuracoes = () => {
                                     try {
                                         await api.post('/config/whatsapp_ativo', { value: novo });
                                         setWhatsappAtivo(novo);
-                                        toast.success(novo ? 'WhatsApp ativado' : 'WhatsApp pausado');
+                                        toast.success(novo ? 'Aviso de pedido ativado' : 'Aviso de pedido pausado');
                                     } catch { toast.error('Erro ao alterar'); }
                                     finally { setWhatsappLoading(false); }
                                 }}
                                 disabled={whatsappLoading}
-                                className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors ${whatsappAtivo ? 'bg-green-500' : 'bg-gray-300'}`}
+                                className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${whatsappAtivo ? 'bg-primary' : 'bg-gray-300'}`}
                             >
                                 <span className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${whatsappAtivo ? 'translate-x-6' : 'translate-x-1'}`} />
                             </button>
                         </div>
-                        <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1">URL do Webhook</label>
-                            <input
-                                type="text"
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm font-mono focus:ring-2 focus:ring-green-400 focus:border-transparent outline-none"
-                                value={webhookUrl}
-                                onChange={e => setWebhookUrl(e.target.value)}
-                                placeholder="https://new-backend.botconversa.com.br/api/v1/webhooks-automation/catch/..."
-                            />
-                            <p className="text-xs text-gray-400 mt-1">Cole aqui a URL do webhook criado no BotConversa. Deixe vazio para desativar.</p>
+
+                        {/* Status da conexão com o bot */}
+                        <div className="p-3 rounded-lg border border-gray-200">
+                            <div className="flex items-center justify-between mb-2">
+                                <p className="text-sm font-semibold text-gray-700">Conexão com o bot</p>
+                                {botStatus?.bot?.ok ? (
+                                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Conectado</span>
+                                ) : (
+                                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">Sem conexão</span>
+                                )}
+                            </div>
+                            {botStatus?.bot?.ok ? (
+                                <div className="text-xs text-gray-500 space-y-0.5">
+                                    <p>Enviadas na última hora: <strong>{botStatus.bot.enviadasUltimaHora ?? 0}</strong> de {botStatus.bot.limitePorHora ?? '—'}</p>
+                                    {botStatus.bot.exigeConversaPrevia && (
+                                        <p className="text-amber-700 font-medium">
+                                            ⚠️ O bot está em modo de emergência: só entrega para quem já conversou com a Hardt.
+                                            As demais mensagens ficam na fila.
+                                        </p>
+                                    )}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-gray-500">
+                                    {botStatus?.bot?.motivo || 'Não foi possível falar com o bot.'}
+                                    {botStatus?.bot?.configurado === false && ' Configure BOT_WHATSAPP_URL e BOT_WHATSAPP_API_KEY no EasyPanel.'}
+                                </p>
+                            )}
+                            {!!botStatus?.fila && (botStatus.fila.pendentes > 0 || botStatus.fila.comErro24h > 0) && (
+                                <p className="text-xs text-gray-500 mt-2 pt-2 border-t border-gray-100">
+                                    Fila de reenvio: <strong>{botStatus.fila.pendentes}</strong> aguardando
+                                    {botStatus.fila.comErro24h > 0 && <> · <strong>{botStatus.fila.comErro24h}</strong> falharam nas últimas 24h</>}
+                                </p>
+                            )}
                         </div>
-                        <button
-                            onClick={async () => {
-                                setSavingWebhook(true);
-                                try {
-                                    await configService.set('webhook_botconversa_url', webhookUrl.trim());
-                                    setMessage({ type: 'success', text: 'Webhook salvo com sucesso!' });
-                                } catch { setMessage({ type: 'error', text: 'Erro ao salvar webhook.' }); }
-                                finally { setSavingWebhook(false); }
-                            }}
-                            disabled={savingWebhook}
-                            className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center gap-2"
-                        >
-                            {savingWebhook ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                            Salvar Webhook
-                        </button>
                     </div>
                 </div>
             )}

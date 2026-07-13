@@ -30,30 +30,46 @@ O app roda em produção 24h. Um import faltando (`ReferenceError: Can't find va
 
 ---
 
-## Integração WhatsApp / BotConversa (NÃO ESQUECER)
+## Integração WhatsApp — bot da Ana (NÃO ESQUECER)
 
-Todo envio de WhatsApp do sistema (pedido normal, especial, amostra, delivery e Kit Festa) passa por **um único webhook do BotConversa**, cuja URL fica no banco em `app_configs` chave `webhook_botconversa_url` (configurável em **Configurações → Notificação WhatsApp**). O código fica em `backend/services/webhookService.js`.
+**O BotConversa foi desligado em 07/2026.** Todo envio de WhatsApp do sistema (confirmação de pedido, amostra, Kit Festa, delivery, cobrança, boleto/PIX do Asaas, código de verificação do site, avisos internos) passa pelo **bot da Ana** — o mesmo número que atende os clientes, via Z-API.
 
-### O webhook RECUSA com HTTP 400 se faltar qualquer campo esperado
+- **Transporte:** `backend/services/botWhatsappService.js` (cliente HTTP + fila de reenvio).
+- **Montagem das mensagens:** `backend/services/webhookService.js` (nomes de função preservados da era BotConversa).
+- **Contrato completo:** `INTEGRACAO-ENVIO-BOT-WHATSAPP.md` na raiz (espelha o `integracao-envio-bot.md` v2.0.0 do repo do bot).
+- **Credenciais:** `BOT_WHATSAPP_URL` e `BOT_WHATSAPP_API_KEY` na **env do EasyPanel**. **Nunca no repositório, nunca no banco.** Sem elas, nenhuma mensagem sai (fica tudo na fila).
 
-A automação do BotConversa ("catch" webhook, painel **Automação → AppHardt**) captura uma estrutura fixa de campos. Se o `POST` não enviar **todos** eles, o BotConversa responde **HTTP 400 com corpo vazio** e a mensagem **não é enviada**.
+### Toda mensagem DEVE declarar `tipo` e `referencia`
 
-**Campos obrigatórios no payload (todos):**
 ```js
-{ phone, nome, mensagem, data_pedido, data_entrega, total, condicao }
+await bot.enviar({ telefone, texto, tipo, origem, referencia });
 ```
-- `phone`: só dígitos, **com DDI 55** (ex.: `5547999999999`).
-- `total`: string com ponto decimal (ex.: `"110.00"`), via `.toFixed(2)`.
-- `data_pedido` / `data_entrega`: via `formatDate()` → `DD.MM.YYYY`.
 
-**Regra:** qualquer função nova que dispare mensagem **deve mandar o conjunto completo** acima — espelhe o `notificarPedido` (envio que comprovadamente funciona). Omitir um campo (ex.: `data_pedido`) = 400 silencioso.
+- **`tipo`** — valores fechados: `verificacao` | `pedido` | `entrega` | `cobranca` | `interno` | `outro`. O bot **audita por tipo**: se um fluxo destoar do combinado, o dono corta só aquele. Valor inválido cai em `outro` (marcado como não-classificado lá).
+- **`referencia`** — única por mensagem. É a **idempotência**: repetir a mesma `origem`+`referencia` **não reenvia** (devolve `duplicado`). Daí duas regras opostas:
+  - **Retry usa a MESMA referencia** — é o que impede duplicar a cobrança.
+  - **Reenvio manual (botão) e 2º código de verificação precisam de referencia NOVA** (`bot.referenciaUnica(base)`) — senão o bot bloqueia como duplicata e o cliente **nunca recebe o segundo código**, ficando travado fora do site.
+- **Máx. 2000 caracteres.** Acima disso o bot recusa (`texto_longo`) e o cliente não recebe **nada** — por isso `botWhatsappService` corta antes de mandar.
+- O carimbo `🤖 *Mensagem automática*` é aplicado **pelo bot**. Não mandar.
+
+### ⛔ A regra que sustenta a integração
+
+O número já foi **banido uma vez** por automação em massa. O bot só liberou o primeiro contato (mandar pra quem nunca escreveu) porque o CA-Hardt se comprometeu, por escrito, a mandar **apenas mensagem transacional provocada por um ato concreto e recente do cliente**.
+
+**Nunca** usar esta integração para promoção, lembrete de recompra, boas-vindas em lote ou lista fria — nem como `outro`. Isso derruba o WhatsApp da empresa inteira. Se surgir necessidade de automação proativa, a saída é a API oficial (Meta Cloud), não contornar aqui.
+
+### Fila de reenvio (`bot_whatsapp_envios`)
+
+Falha reagendável (`429` do teto de 200/h, `502` da Z-API, rede, ou `403` do **modo de emergência** do bot) **não perde a mensagem**: ela entra na tabela como `PENDENTE` e o worker (`workers/scheduler.js`, a cada 5 min) reenvia com backoff (5min → 6h, até 6 tentativas). Nesses casos `enviar()` devolve `{ ok: false, reagendado: true }` — o chamador trata como "vai sair depois", não como erro.
 
 ### Diagnóstico quando "a mensagem não chega"
 
-1. Confira o toggle **Configurações → Notificação WhatsApp** (`whatsapp_ativo`). Pausado = pedido normal não envia e **não loga nada** (`webhookService.js` retorna cedo).
-2. Veja o motivo gravado no pedido (`whatsappErro`) ou os logs `[Webhook...]`.
-3. Para Kit Festa, reenviar um pedido: `POST /api/admin-exec/kitfesta-reenviar-whatsapp/:numero` (header `x-admin-secret`). A resposta traz `{ ok, motivo }` — `HTTP 400` = falta campo ou BotConversa recusando.
-4. O Kit Festa **não** depende do toggle `whatsapp_ativo` (confirmação transacional, sempre envia).
+1. **Configurações → Notificação WhatsApp** mostra o status da conexão com o bot, quantas saíram na última hora e o tamanho da fila.
+2. O toggle dessa tela (`whatsapp_ativo`) pausa **só o aviso de pedido**. Código de verificação, Kit Festa e cobrança são transacionais e **sempre saem**.
+3. Tabela `bot_whatsapp_envios`: `status` (`ENVIADO`/`DUPLICADO`/`PENDENTE`/`ERRO`), `codigoErro` e `ultimoErro` de cada tentativa. Logs no servidor: `[BotWhatsapp]`.
+4. `DUPLICADO` **não é falha** — significa que aquela mensagem já tinha saído (idempotência).
+5. Se `exigeConversaPrevia: true` no status, o dono ligou o **modo de emergência** no painel do bot: só entrega para quem já conversou; o resto fica na fila até religar.
+6. Kit Festa, reenviar: `POST /api/admin-exec/kitfesta-reenviar-whatsapp/:numero` (header `x-admin-secret`).
 
 ---
 

@@ -1,26 +1,18 @@
+/**
+ * Monta e dispara as mensagens de WhatsApp do sistema.
+ *
+ * O TRANSPORTE é o bot da Ana (botWhatsappService) — o BotConversa foi desligado
+ * em 07/2026. Aqui só se monta o texto; quem entrega (e faz fila/retry) é o
+ * botWhatsappService.
+ *
+ * Todo envio declara `tipo` (verificacao | pedido | entrega | cobranca | interno)
+ * e `referencia` única — é o que o bot audita e o que garante a idempotência.
+ * Ver backend/services/botWhatsappService.js e INTEGRACAO-ENVIO-BOT-WHATSAPP.md.
+ */
 const prisma = require('../config/database');
+const bot = require('./botWhatsappService');
 
-// Helpers compartilhados
-const getWebhookUrl = async () => {
-    const config = await prisma.appConfig.findUnique({ where: { key: 'webhook_botconversa_url' } });
-    const raw = config?.value;
-    return typeof raw === 'string' ? raw : (raw ? String(raw) : null);
-};
-
-const formatPhone = (cliente) => {
-    const telefoneRaw = cliente.Telefone_Celular;
-    if (!telefoneRaw) return null;
-    let phone = telefoneRaw.replace(/\D/g, '');
-    if (phone.length < 10) return null;
-    if (!phone.startsWith('55')) phone = '55' + phone;
-    return phone;
-};
-
-const formatDate = (d) => {
-    if (!d) return '-';
-    const dt = new Date(d);
-    return `${String(dt.getDate()).padStart(2, '0')}.${String(dt.getMonth() + 1).padStart(2, '0')}.${dt.getFullYear()}`;
-};
+const formatPhone = (cliente) => cliente?.Telefone_Celular || null;
 
 const formatDateMsg = (d) => {
     if (!d) return '-';
@@ -37,30 +29,17 @@ const formatDateOnly = (d) => {
     return `${day}/${m}/${y}`;
 };
 
-const enviarWebhook = async (webhookUrl, payload) => {
-    // Teto de 20s: se o BotConversa não responder, aborta em vez de pendurar o worker.
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 20000);
-    try {
-        const response = await fetch(webhookUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-            signal: ctrl.signal
-        });
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-        }
-        return true;
-    } finally {
-        clearTimeout(t);
-    }
+/** O toggle "Notificação WhatsApp" da tela de Configurações (pausa geral). */
+const whatsappPausado = async () => {
+    const cfg = await prisma.appConfig.findUnique({ where: { key: 'whatsapp_ativo' } });
+    const v = cfg?.value;
+    const desativado = v === false || (typeof v === 'object' && v?.value === false);
+    return !!cfg && desativado;
 };
 
 const webhookService = {
     /**
-     * Envia notificação de pedido para o BotConversa via webhook.
+     * Confirmação do pedido (normal/especial) para o cliente.
      * Retorna { ok: true } ou { ok: false, motivo: '...' }
      */
     notificarPedido: async (pedidoId, { forceManual = false } = {}) => {
@@ -74,18 +53,10 @@ const webhookService = {
         };
 
         try {
-            // Verificar se WhatsApp está ativo (pula verificação em envio manual pelo botão)
-            if (!forceManual) {
-                const whatsappConfig = await prisma.appConfig.findUnique({ where: { key: 'whatsapp_ativo' } });
-                const whatsappValue = whatsappConfig?.value;
-                const isDesativado = whatsappValue === false || (typeof whatsappValue === 'object' && whatsappValue?.value === false);
-                if (whatsappConfig && isDesativado) {
-                    return { ok: false, motivo: 'WhatsApp pausado pelo administrador' };
-                }
+            // Envio manual pelo botão pula a pausa geral (é o usuário pedindo na hora).
+            if (!forceManual && await whatsappPausado()) {
+                return { ok: false, motivo: 'WhatsApp pausado pelo administrador' };
             }
-
-            const webhookUrl = await getWebhookUrl();
-            if (!webhookUrl) { await salvarStatus(false, 'Webhook não configurado'); return { ok: false, motivo: 'URL do webhook não configurada' }; }
 
             const pedido = await prisma.pedido.findUnique({
                 where: { id: pedidoId },
@@ -99,7 +70,7 @@ const webhookService = {
             if (pedido.cliente.recebeAvisoPedido === false) { await salvarStatus(false, 'Cliente não recebe avisos'); return { ok: false, motivo: 'Cliente optou por não receber avisos' }; }
 
             const phone = formatPhone(pedido.cliente);
-            if (!phone) { await salvarStatus(false, 'Sem celular cadastrado'); return { ok: false, motivo: 'Cliente sem telefone celular válido' }; }
+            if (!bot.normalizarTelefone(phone)) { await salvarStatus(false, 'Sem celular cadastrado'); return { ok: false, motivo: 'Cliente sem telefone celular válido' }; }
 
             const nome = pedido.cliente.NomeFantasia || pedido.cliente.Nome;
 
@@ -115,71 +86,68 @@ const webhookService = {
             const condicao = pedido.nomeCondicaoPagamento || `${pedido.tipoPagamento || ''} ${pedido.opcaoCondicaoPagamento || ''}`.trim();
 
             const partes = [
-                `Ola, *${nome}*! \uD83D\uDC4B`,
+                `Ola, *${nome}*! 👋`,
                 '',
-                `Segue o resumo do seu pedido \uD83D\uDCCB`,
+                `Segue o resumo do seu pedido 📋`,
                 '',
-                `\uD83D\uDCC5 *Pedido:* ${formatDateMsg(pedido.createdAt)}`,
-                `\uD83D\uDE9A *Entrega:* ${formatDateMsg(pedido.dataVenda)}`,
+                `📅 *Pedido:* ${formatDateMsg(pedido.createdAt)}`,
+                `🚚 *Entrega:* ${formatDateMsg(pedido.dataVenda)}`,
                 '',
-                '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+                '────────────────────',
                 linhasItens,
-                '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+                '────────────────────',
                 '',
-                `\uD83D\uDCB0 *Total: R$ ${totalStr.replace('.', ',')}*`,
-                `\uD83D\uDCB3 *Condição:* ${condicao}`,
+                `💰 *Total: R$ ${totalStr.replace('.', ',')}*`,
+                `💳 *Condição:* ${condicao}`,
             ];
             if (pedido.observacoes) {
-                partes.push('', `\uD83D\uDCDD *Obs:* ${pedido.observacoes}`);
+                partes.push('', `📝 *Obs:* ${pedido.observacoes}`);
             }
-            partes.push('', 'Obrigado pela preferência! \uD83D\uDE4F');
+            partes.push('', 'Obrigado pela preferência! 🙏');
 
-            const mensagem = partes.join('\n');
+            const numero = pedido.numero || pedidoId.slice(0, 8);
+            // Reenvio manual precisa de referência NOVA — com a mesma, o bot
+            // devolveria `duplicado` e o cliente não receberia nada.
+            const referencia = forceManual
+                ? bot.referenciaUnica(`pedido-${numero}-reenvio`)
+                : `pedido-${numero}-confirmado`;
 
-            const payload = {
-                phone, nome, mensagem,
-                data_pedido: formatDate(pedido.createdAt),
-                data_entrega: formatDate(pedido.dataVenda),
-                total: totalStr, condicao
-            };
+            const r = await bot.enviar({
+                telefone: phone,
+                texto: partes.join('\n'),
+                tipo: 'pedido',
+                origem: 'app-vendedor',
+                referencia,
+            });
 
-            await enviarWebhook(webhookUrl, payload);
-            await salvarStatus(true, null);
-            console.log(`[Webhook] Pedido enviado para ${nome} (${phone}) - #${pedido.numero || pedidoId.substring(0, 8)}`);
-            return { ok: true };
+            // Reagendado = vai sair pelo worker; conta como sucesso pro usuário
+            // (senão o vendedor vê "falhou" numa mensagem que ainda vai sair).
+            if (r.ok || r.reagendado) {
+                await salvarStatus(true, null);
+                return { ok: true, reagendado: !!r.reagendado };
+            }
+            await salvarStatus(false, r.motivo);
+            return { ok: false, motivo: r.motivo };
         } catch (error) {
             console.error('[Webhook] Erro pedido:', error.message);
-            await salvarStatus(false, `Erro BotConversa: ${error.message}`);
+            await salvarStatus(false, `Erro no envio: ${error.message}`);
             return { ok: false, motivo: error.message };
         }
     },
 
     /**
-     * Envia notificação de amostra para o BotConversa via webhook.
+     * Amostra enviada ao cliente/lead.
      * Retorna { ok: true } ou { ok: false, motivo: '...' }
      */
     notificarAmostra: async (amostraId, { forceManual = false } = {}) => {
         try {
-            // Verificar se WhatsApp está ativo (pula verificação em envio manual pelo botão)
-            if (!forceManual) {
-                const whatsappConfig = await prisma.appConfig.findUnique({ where: { key: 'whatsapp_ativo' } });
-                const whatsappValue = whatsappConfig?.value;
-                const isDesativado = whatsappValue === false || (typeof whatsappValue === 'object' && whatsappValue?.value === false);
-                if (whatsappConfig && isDesativado) {
-                    return { ok: false, motivo: 'WhatsApp pausado pelo administrador' };
-                }
+            if (!forceManual && await whatsappPausado()) {
+                return { ok: false, motivo: 'WhatsApp pausado pelo administrador' };
             }
-
-            const webhookUrl = await getWebhookUrl();
-            if (!webhookUrl) return { ok: false, motivo: 'URL do webhook não configurada' };
 
             const amostra = await prisma.amostra.findUnique({
                 where: { id: amostraId },
-                include: {
-                    cliente: true,
-                    lead: true,
-                    itens: true
-                }
+                include: { cliente: true, lead: true, itens: true }
             });
 
             if (!amostra) return { ok: false, motivo: 'Amostra não encontrada' };
@@ -189,7 +157,7 @@ const webhookService = {
             if (cliente.recebeAvisoPedido === false) return { ok: false, motivo: 'Cliente optou por não receber avisos' };
 
             const phone = formatPhone(cliente);
-            if (!phone) return { ok: false, motivo: 'Cliente sem telefone celular válido' };
+            if (!bot.normalizarTelefone(phone)) return { ok: false, motivo: 'Cliente sem telefone celular válido' };
 
             const nome = cliente.NomeFantasia || cliente.Nome;
 
@@ -199,37 +167,38 @@ const webhookService = {
             }).join('\n\n');
 
             const partes = [
-                `Ola, *${nome}*! \uD83D\uDC4B`,
+                `Ola, *${nome}*! 👋`,
                 '',
-                `Segue sua *amostra* da Hardt Salgados \uD83C\uDF81`,
+                `Segue sua *amostra* da Hardt Salgados 🎁`,
                 '',
             ];
             if (amostra.dataEntrega) {
-                partes.push(`\uD83D\uDE9A *Entrega:* ${formatDateMsg(amostra.dataEntrega)}`, '');
+                partes.push(`🚚 *Entrega:* ${formatDateMsg(amostra.dataEntrega)}`, '');
             }
             partes.push(
-                '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+                '────────────────────',
                 linhasItens,
-                '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+                '────────────────────',
             );
             if (amostra.observacao) {
-                partes.push('', `\uD83D\uDCDD *Obs:* ${amostra.observacao}`);
+                partes.push('', `📝 *Obs:* ${amostra.observacao}`);
             }
-            partes.push('', 'Obrigado pela preferência! \uD83D\uDE4F');
+            partes.push('', 'Obrigado pela preferência! 🙏');
 
-            const mensagem = partes.join('\n');
+            const referencia = forceManual
+                ? bot.referenciaUnica(`amostra-${amostra.numero}-reenvio`)
+                : `amostra-${amostra.numero}`;
 
-            const payload = {
-                phone, nome, mensagem,
-                data_pedido: formatDate(amostra.createdAt),
-                data_entrega: formatDate(amostra.dataEntrega),
-                total: '0.00',
-                condicao: 'Amostra'
-            };
+            const r = await bot.enviar({
+                telefone: phone,
+                texto: partes.join('\n'),
+                tipo: 'pedido', // amostra é pedido do cliente (ele pediu a amostra)
+                origem: 'app-vendedor',
+                referencia,
+            });
 
-            await enviarWebhook(webhookUrl, payload);
-            console.log(`[Webhook] Amostra enviada para ${nome} (${phone}) - AM#${amostra.numero}`);
-            return { ok: true };
+            if (r.ok || r.reagendado) return { ok: true, reagendado: !!r.reagendado };
+            return { ok: false, motivo: r.motivo };
         } catch (error) {
             console.error('[Webhook] Erro amostra:', error.message);
             return { ok: false, motivo: error.message };
@@ -237,9 +206,8 @@ const webhookService = {
     },
 
     /**
-     * Envia ao CLIENTE do site Kit Festa, via BotConversa, a confirmação do
-     * pedido que ele acabou de finalizar (resumo + data/horário + total).
-     * Retorna { ok: true } ou { ok: false, motivo: '...' }
+     * Confirmação do pedido que o cliente acabou de fazer no site do Kit Festa.
+     * Não depende do toggle whatsapp_ativo (é transacional: ele acabou de comprar).
      */
     notificarPedidoKitFesta: async (pedidoId) => {
         const salvarStatus = async (ok) => {
@@ -252,19 +220,14 @@ const webhookService = {
         };
 
         try {
-            const webhookUrl = await getWebhookUrl();
-            if (!webhookUrl) return { ok: false, motivo: 'URL do webhook não configurada' };
-
             const pedido = await prisma.kitFestaPedido.findUnique({
                 where: { id: pedidoId },
                 include: { itens: true, bairro: true }
             });
             if (!pedido) return { ok: false, motivo: 'Pedido não encontrado' };
 
-            // Telefone do cliente (snapshot do pedido)
-            let phone = (pedido.telefoneCliente || '').replace(/\D/g, '');
-            if (phone.length < 10) { await salvarStatus(false); return { ok: false, motivo: 'Cliente sem telefone celular válido' }; }
-            if (!phone.startsWith('55')) phone = '55' + phone;
+            const phone = pedido.telefoneCliente;
+            if (!bot.normalizarTelefone(phone)) { await salvarStatus(false); return { ok: false, motivo: 'Cliente sem telefone celular válido' }; }
 
             const nome = (pedido.nomeCliente || '').split(' ')[0] || pedido.nomeCliente || 'Cliente';
 
@@ -308,22 +271,20 @@ const webhookService = {
             }
             partes.push('', 'Em breve confirmaremos seu pedido. Obrigado pela preferência! 🙏');
 
-            const mensagem = partes.join('\n');
+            const r = await bot.enviar({
+                telefone: phone,
+                texto: partes.join('\n'),
+                tipo: 'pedido',
+                origem: 'kit-festa',
+                referencia: `kitfesta-${pedido.numero}-confirmado`,
+            });
 
-            // O BotConversa espera EXATAMENTE estes campos (mesmos do pedido normal);
-            // se faltar algum (ex.: data_pedido), ele recusa com HTTP 400.
-            const payload = {
-                phone, nome, mensagem,
-                data_pedido: formatDate(pedido.createdAt),
-                data_entrega: formatDateOnly(pedido.data).replace(/\//g, '.'),
-                total: Number(pedido.total || 0).toFixed(2),
-                condicao: pedido.modo === 'retirada' ? 'Retirada' : 'Entrega'
-            };
-
-            await enviarWebhook(webhookUrl, payload);
-            await salvarStatus(true);
-            console.log(`[Webhook-KitFesta] Confirmação enviada para ${nome} (${phone}) - KF#${pedido.numero}`);
-            return { ok: true };
+            if (r.ok || r.reagendado) {
+                await salvarStatus(true);
+                return { ok: true, reagendado: !!r.reagendado };
+            }
+            await salvarStatus(false);
+            return { ok: false, motivo: r.motivo };
         } catch (error) {
             console.error('[Webhook-KitFesta] Erro:', error.message);
             await salvarStatus(false);
@@ -332,26 +293,18 @@ const webhookService = {
     },
 
     /**
-     * Notifica movimentação de etapa no Delivery (Kit Festa).
-     * Envia pro Bot interno (se configurado em delivery_bot_phone)
-     * e pro cliente via WhatsApp. Log salvo em delivery_webhook_logs.
+     * Mensagem avulsa (não é pedido). O chamador DEVE informar `tipo` e
+     * `referencia` — é o que o bot audita e o que evita duplicata.
+     *
+     * Usada por: código de verificação do site (tipo 'verificacao'), relatório
+     * de meta do vendedor / retorno de currículo / aviso de certificado
+     * (tipo 'interno').
      */
-    /**
-     * Envia mensagem customizada (não de pedido) via BotConversa.
-     * Usado para mensagens agendadas (ex: relatório de meta).
-     */
-    enviarMensagemCustom: async (phoneRaw, nome, mensagem) => {
+    enviarMensagemCustom: async (phoneRaw, nome, mensagem, { tipo = 'outro', origem = 'app', referencia = null } = {}) => {
         try {
-            const webhookUrl = await getWebhookUrl();
-            if (!webhookUrl) return { ok: false, motivo: 'URL do webhook não configurada' };
-
-            let phone = (phoneRaw || '').replace(/\D/g, '');
-            if (phone.length < 10) return { ok: false, motivo: 'Telefone inválido' };
-            if (!phone.startsWith('55')) phone = '55' + phone;
-
-            await enviarWebhook(webhookUrl, { phone, nome, mensagem });
-            console.log(`[Webhook] Mensagem custom enviada para ${nome} (${phone})`);
-            return { ok: true };
+            const r = await bot.enviar({ telefone: phoneRaw, texto: mensagem, tipo, origem, referencia });
+            if (r.ok || r.reagendado) return { ok: true, reagendado: !!r.reagendado };
+            return { ok: false, motivo: r.motivo };
         } catch (error) {
             console.error('[Webhook] Erro mensagem custom:', error.message);
             return { ok: false, motivo: error.message };
@@ -359,40 +312,34 @@ const webhookService = {
     },
 
     /**
-     * Envia mensagem de COBRANÇA via BotConversa com o payload COMPLETO
-     * (7 campos — o webhook recusa com 400 silencioso se faltar qualquer um).
-     * Não depende do toggle whatsapp_ativo: a régua de cobrança tem o próprio
-     * liga/desliga em cobranca_config.
-     * Retorna { ok: true } ou { ok: false, motivo }.
+     * Cobrança (régua + boleto/PIX do Asaas).
+     * Não depende do toggle whatsapp_ativo: a régua tem o próprio liga/desliga
+     * em cobranca_config.
+     *
+     * `referencia` é OBRIGATÓRIA na prática — é ela que impede a régua de
+     * cobrar o mesmo cliente duas vezes se o job rodar de novo.
      */
-    enviarCobranca: async ({ telefone, nome, mensagem, total, dataVencimento, condicao }) => {
+    enviarCobranca: async ({ telefone, nome, mensagem, referencia }) => {
         try {
-            const webhookUrl = await getWebhookUrl();
-            if (!webhookUrl) return { ok: false, motivo: 'URL do webhook não configurada' };
-
-            let phone = (telefone || '').replace(/\D/g, '');
-            if (phone.length < 10) return { ok: false, motivo: 'Cliente sem telefone celular válido' };
-            if (!phone.startsWith('55')) phone = '55' + phone;
-
-            const payload = {
-                phone,
-                nome: nome || 'Cliente',
-                mensagem,
-                data_pedido: formatDate(new Date()),
-                data_entrega: formatDate(dataVencimento || new Date()),
-                total: Number(total || 0).toFixed(2),
-                condicao: condicao || 'Cobrança'
-            };
-
-            await enviarWebhook(webhookUrl, payload);
-            console.log(`[Webhook-Cobranca] Enviada para ${payload.nome} (${phone})`);
-            return { ok: true };
+            const r = await bot.enviar({
+                telefone,
+                texto: mensagem,
+                tipo: 'cobranca',
+                origem: 'regua-cobranca',
+                referencia: referencia || bot.referenciaUnica('cobranca-avulsa'),
+            });
+            if (r.ok || r.reagendado) return { ok: true, reagendado: !!r.reagendado };
+            return { ok: false, motivo: r.motivo };
         } catch (error) {
             console.error('[Webhook-Cobranca] Erro:', error.message);
             return { ok: false, motivo: error.message };
         }
     },
 
+    /**
+     * Movimentação de etapa no Delivery: avisa o número interno da equipe
+     * (tipo 'interno') e o cliente (tipo 'entrega'). Log em delivery_webhook_logs.
+     */
     notificarDelivery: async (pedidoId, novaEtapa, opcoes = {}) => {
         const { skipWhatsapp = false } = opcoes;
         const ETAPAS_LABEL = {
@@ -411,9 +358,6 @@ const webhookService = {
         };
 
         try {
-            const webhookUrl = await getWebhookUrl();
-            if (!webhookUrl) return { ok: false, motivo: 'Webhook não configurado' };
-
             const pedido = await prisma.pedido.findUnique({
                 where: { id: pedidoId },
                 include: {
@@ -425,6 +369,7 @@ const webhookService = {
 
             const nome = pedido.cliente.NomeFantasia || pedido.cliente.Nome;
             const etapaLabel = ETAPAS_LABEL[novaEtapa] || novaEtapa;
+            const numeroPedido = pedido.numero || pedidoId.slice(0, 8);
 
             const linhasItens = pedido.itens.map(i => {
                 const nomeProd = i.produto?.nome || 'Produto';
@@ -436,78 +381,70 @@ const webhookService = {
             const totalStr = total.toFixed(2).replace('.', ',');
 
             const resumoPartes = [
-                `\uD83D\uDCC5 *Entrega:* ${formatDateMsg(pedido.dataVenda)}`,
+                `📅 *Entrega:* ${formatDateMsg(pedido.dataVenda)}`,
                 '',
-                '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+                '────────────────────',
                 linhasItens,
             ];
             if (Number(pedido.valorFrete || 0) > 0) {
                 resumoPartes.push(`\n\`Frete\`\nR$ ${Number(pedido.valorFrete).toFixed(2).replace('.', ',')}`);
             }
-            resumoPartes.push('\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
-            resumoPartes.push('', `\uD83D\uDCB0 *Total: R$ ${totalStr}*`);
+            resumoPartes.push('────────────────────');
+            resumoPartes.push('', `💰 *Total: R$ ${totalStr}*`);
             const resumo = resumoPartes.join('\n');
 
-            // ── BOT (interno) ──
-            // Resumo completo em PRODUCAO; só etapa nas demais.
+            // ── Número interno da equipe ──
+            // Resumo completo em PRODUCAO; só a etapa nas demais.
             const botConfig = await prisma.appConfig.findUnique({ where: { key: 'delivery_bot_phone' } });
             const botPhoneRaw = botConfig?.value;
-            const botPhone = typeof botPhoneRaw === 'string' ? botPhoneRaw.replace(/\D/g, '') : null;
+            const botPhone = typeof botPhoneRaw === 'string' ? botPhoneRaw : null;
 
-            if (botPhone) {
-                const cabecalhoBot = `\uD83D\uDE9A *DELIVERY — ${etapaLabel}*\nPedido #${pedido.numero || pedidoId.slice(0, 8)} — ${nome}`;
+            if (bot.normalizarTelefone(botPhone)) {
+                const cabecalhoBot = `🚚 *DELIVERY — ${etapaLabel}*\nPedido #${numeroPedido} — ${nome}`;
                 const mensagemBot = novaEtapa === 'PRODUCAO'
                     ? `${cabecalhoBot}\n\n${resumo}`
                     : cabecalhoBot;
-                try {
-                    await enviarWebhook(webhookUrl, {
-                        phone: botPhone,
-                        nome: 'Bot Delivery',
-                        mensagem: mensagemBot,
-                        total: totalStr
-                    });
-                    await registrarLog('BOT', 'OK', `Etapa ${novaEtapa}`);
-                } catch (e) {
-                    await registrarLog('BOT', 'ERRO', e.message);
-                }
+                const r = await bot.enviar({
+                    telefone: botPhone,
+                    texto: mensagemBot,
+                    tipo: 'interno',
+                    origem: 'delivery',
+                    referencia: `entrega-interno-${numeroPedido}-${novaEtapa}`,
+                });
+                await registrarLog('BOT', (r.ok || r.reagendado) ? 'OK' : 'ERRO', r.motivo || `Etapa ${novaEtapa}`);
             }
 
-            // ── CLIENTE ──
-            // PRODUCAO: mensagem com resumo + data entrega
-            // SAINDO / ENTREGUE: só numero do pedido + etapa
+            // ── Cliente ──
+            // PRODUCAO: resumo + data de entrega. SAINDO/ENTREGUE: só número + etapa.
             if (skipWhatsapp) {
                 await registrarLog('WHATSAPP', 'OK', `Etapa ${novaEtapa} — silenciado por configuração do card`);
             } else if (novaEtapa !== 'PEDIDO') {
                 const phone = formatPhone(pedido.cliente);
-                if (phone && pedido.cliente.recebeAvisoPedido !== false) {
-                    const numeroPedido = pedido.numero || pedidoId.slice(0, 8);
+                if (bot.normalizarTelefone(phone) && pedido.cliente.recebeAvisoPedido !== false) {
                     const mensagemCliente = novaEtapa === 'PRODUCAO'
                         ? [
-                            `Olá, *${nome}*! \uD83D\uDC4B`,
+                            `Olá, *${nome}*! 👋`,
                             '',
-                            `Seu pedido *#${numeroPedido}* está *${etapaLabel}* \u2728`,
+                            `Seu pedido *#${numeroPedido}* está *${etapaLabel}* ✨`,
                             '',
                             resumo,
                             '',
-                            'Obrigado pela preferência! \uD83D\uDE4F'
+                            'Obrigado pela preferência! 🙏'
                         ].join('\n')
                         : [
-                            `Olá, *${nome}*! \uD83D\uDC4B`,
+                            `Olá, *${nome}*! 👋`,
                             '',
-                            `Seu pedido *#${numeroPedido}* — *${etapaLabel}* \u2728`
+                            `Seu pedido *#${numeroPedido}* — *${etapaLabel}* ✨`
                         ].join('\n');
-                    try {
-                        await enviarWebhook(webhookUrl, {
-                            phone, nome,
-                            mensagem: mensagemCliente,
-                            data_entrega: formatDate(pedido.dataVenda),
-                            total: totalStr
-                        });
-                        await registrarLog('WHATSAPP', 'OK', `Etapa ${novaEtapa}`);
-                        console.log(`[Delivery-Webhook] Cliente ${nome} (${phone}) - ${novaEtapa}`);
-                    } catch (e) {
-                        await registrarLog('WHATSAPP', 'ERRO', e.message);
-                    }
+
+                    const r = await bot.enviar({
+                        telefone: phone,
+                        texto: mensagemCliente,
+                        tipo: 'entrega',
+                        origem: 'delivery',
+                        referencia: `entrega-${numeroPedido}-${novaEtapa}`,
+                    });
+                    await registrarLog('WHATSAPP', (r.ok || r.reagendado) ? 'OK' : 'ERRO', r.motivo || `Etapa ${novaEtapa}`);
                 }
             }
 

@@ -73,6 +73,15 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 5. **Avisos ao cliente**: interruptor para o Asaas mandar e-mail/SMS por conta própria (boleto emitido, lembrete, atraso). Recomendação: **desligado** — o WhatsApp do app + Régua de Cobrança já avisam; ligado = aviso em dobro. Vale para clientes cadastrados no Asaas a partir da mudança
 6. As mudanças valem para cobranças **emitidas depois de salvar** — boletos/PIX já emitidos não mudam
 
+### Notificação WhatsApp — só admin
+Desde 07/2026 **todas** as mensagens de WhatsApp do sistema saem pelo **WhatsApp da Hardt** (o mesmo número que a Ana atende): confirmação de pedido, amostra, Kit Festa, status de entrega, cobrança, boleto/PIX e o código de verificação do site. O BotConversa foi desligado.
+
+1. **Interruptor "Aviso de pedido ao cliente"**: liga/desliga só o resumo do pedido enviado ao cliente quando o vendedor salva. **Pausar aqui NÃO afeta** código de verificação, Kit Festa e cobrança — essas são transacionais (o cliente pediu) e saem sempre.
+2. **Conexão com o bot**: mostra se o app está falando com o bot, quantas mensagens saíram na última hora (e o teto), e o tamanho da **fila de reenvio**.
+3. **Fila de reenvio**: se o bot estiver fora do ar ou no limite de volume, a mensagem **não se perde** — fica na fila e o sistema tenta de novo sozinho a cada 5 minutos. Só é preciso agir se aparecer "falharam nas últimas 24h".
+4. Se aparecer o aviso de **modo de emergência**, o WhatsApp da empresa está sob risco de bloqueio e o bot passou a entregar só para quem já conversou com a gente — o resto fica na fila até o modo ser desligado no painel do bot.
+5. O domínio e a chave do bot **não ficam nesta tela** — são configurados no servidor (EasyPanel), por segurança. Se aparecer "Sem conexão", é aí que se resolve.
+
 ---
 
 ## Permissões necessárias

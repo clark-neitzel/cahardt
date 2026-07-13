@@ -65,7 +65,7 @@ router.put('/:id/reverter-bonificacao', pedidoController.reverterBonificacao);
 // Excluir Pedido Existente (Apenas Rascunho/ABERTO/ERRO)
 router.delete('/:id', pedidoController.excluir);
 
-// Enviar pedido via WhatsApp (BotConversa)
+// Enviar pedido via WhatsApp
 router.post('/:id/enviar-whatsapp', pedidoController.enviarWhatsapp);
 
 // Reatribuir vendedor de um pedido (ajuste somente no app, não envia ao CA)

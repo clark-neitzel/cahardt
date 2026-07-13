@@ -338,7 +338,8 @@ evolução natural do "modo assistido".
 - **Kit Festa — frete "a combinar":** `taxaEntrega` nasce `0` (a combinar), então o `total` **não inclui
   frete**. A Ana deve avisar isso na conversa (já está no prompt dela) — comportamento esperado, confirmado.
 - **Webhook de confirmação (Kit Festa) — evitar mensagem dobrada:** o site dispara um WhatsApp de
-  confirmação (via BotConversa, provavelmente outro número) ao criar o pedido. Para **pedidos vindos do
+  confirmação ao criar o pedido — e desde 07/2026 ele sai pelo **mesmo número** que a Ana atende (o
+  BotConversa foi desligado), o que torna a mensagem dobrada ainda mais visível. Para **pedidos vindos do
   bot esse envio nasce DESLIGADO por padrão** — quem confirma é a Ana, na própria conversa (Z-API). O
   corpo aceita `notificarCliente: true` só se algum dia quiser reativar o envio automático para um pedido
   específico. Assim o cliente nunca recebe duas mensagens.

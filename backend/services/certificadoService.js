@@ -233,7 +233,11 @@ async function alertarValidadeCertificado() {
     let enviados = 0;
     for (const a of admins) {
         try {
-            const r = await webhookService.enviarMensagemCustom(a.telefone, a.nome, msg);
+            const r = await webhookService.enviarMensagemCustom(a.telefone, a.nome, msg, {
+                tipo: 'interno', // admin da casa, não cliente
+                origem: 'certificado',
+                referencia: `certificado-${hojeStr}-${dias}d-${a.telefone}`,
+            });
             if (r.ok) enviados++;
         } catch (e) { console.error('[Cert] falha ao alertar', a.nome, e.message); }
     }

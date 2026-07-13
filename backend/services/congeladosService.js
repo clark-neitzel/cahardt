@@ -300,7 +300,13 @@ const congeladosService = {
         await prisma.congeladosCliente.update({ where: { documento }, data: { resetToken: codigo, resetTokenExp: new Date(Date.now() + 30 * 60 * 1000) } });
 
         const msg = `Olá, *${nome}*! 🔐\n\nSeu código para criar uma nova senha no site da Hardt é:\n\n*${codigo}*\n\nVálido por 30 minutos. Se não foi você, ignore esta mensagem.`;
-        await webhookService.enviarMensagemCustom(telefone, nome, msg).catch(e => console.error('[Congelados] envio código:', e.message));
+        // referencia ÚNICA por código: com a mesma, o bot devolveria `duplicado`
+        // e o cliente nunca receberia o 2º código (ficaria travado fora do site).
+        await webhookService.enviarMensagemCustom(telefone, nome, msg, {
+            tipo: 'verificacao',
+            origem: 'site-congelados',
+            referencia: `verificacao-congelados-${documento}-${codigo}`,
+        }).catch(e => console.error('[Congelados] envio código:', e.message));
 
         return { enviado: true, telefone: mascararTelefone(telefone) };
     },

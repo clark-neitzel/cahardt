@@ -301,7 +301,7 @@ const pedidoController = {
 
             const novoPedido = await pedidoService.criar(dadosPedido);
 
-            // Enviar notificação WhatsApp via BotConversa (não bloqueia resposta)
+            // Notificação de WhatsApp ao cliente (não bloqueia a resposta)
             if (novoPedido.statusEnvio === 'ENVIAR') {
                 const webhookService = require('../services/webhookService');
                 webhookService.notificarPedido(novoPedido.id).catch(err =>

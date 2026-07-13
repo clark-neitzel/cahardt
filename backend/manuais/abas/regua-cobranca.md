@@ -36,7 +36,7 @@ Um cartão por forma de recebimento (ex.: Boleto 28 dias, PIX à vista). A linha
 
 ## Aba Canais
 
-- **WhatsApp:** usa o mesmo bot dos avisos de pedido (BotConversa). Atenção: o bot só entrega para cliente com celular cadastrado e que já iniciou conversa com o bot — caso contrário a tarefa automática é gerada.
+- **WhatsApp:** sai pelo WhatsApp da Hardt (o mesmo número que a Ana atende), igual aos avisos de pedido. Entrega para qualquer cliente com celular cadastrado — **não** é preciso que ele já tenha conversado com a gente. Se o envio falhar por limite de volume ou instabilidade, a mensagem **não se perde**: entra numa fila e é reenviada sozinha (sem risco de cobrar o mesmo cliente duas vezes). A tarefa automática só é gerada quando o envio realmente não tem como acontecer (ex.: cliente sem celular cadastrado).
 - **E-mail (SMTP):** servidor, porta, usuário, senha e nome do remetente + botão **Testar conexão** (pode mandar um e-mail de teste). O e-mail sai com tabela das parcelas.
 - **SMS (Twilio):** exige contratar o provedor Twilio (paga por mensagem). Campos: Account SID, Auth Token e número remetente.
 

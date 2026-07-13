@@ -286,7 +286,11 @@ const mensagemAgendadaService = {
         }
         try {
             const mensagem = await gerarMensagemMeta(vendedor);
-            return await webhookService.enviarMensagemCustom(vendedor.telefone, vendedor.nome, mensagem);
+            return await webhookService.enviarMensagemCustom(vendedor.telefone, vendedor.nome, mensagem, {
+                tipo: 'interno', // vendedor da casa, não cliente
+                origem: 'mensagem-agendada',
+                referencia: `meta-${vendedor.id}-${new Date().toISOString().slice(0, 10)}`,
+            });
         } catch (err) {
             console.error(`[MensagemAgendada] Erro ao enviar meta para ${vendedor.nome}:`, err.message);
             return { ok: false, motivo: err.message };
@@ -300,7 +304,11 @@ const mensagemAgendadaService = {
         }
         try {
             const mensagem = await gerarMensagemAtendimento(vendedor);
-            return await webhookService.enviarMensagemCustom(vendedor.telefone, vendedor.nome, mensagem);
+            return await webhookService.enviarMensagemCustom(vendedor.telefone, vendedor.nome, mensagem, {
+                tipo: 'interno',
+                origem: 'mensagem-agendada',
+                referencia: `atendimento-${vendedor.id}-${new Date().toISOString().slice(0, 10)}`,
+            });
         } catch (err) {
             console.error(`[MensagemAgendada] Erro ao enviar atendimento para ${vendedor.nome}:`, err.message);
             return { ok: false, motivo: err.message };

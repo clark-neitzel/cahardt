@@ -94,7 +94,7 @@ Página aberta (sem login) onde o candidato envia ou atualiza o próprio curríc
 ## Depende de / Interfere em
 
 - Módulo isolado — não interfere diretamente em outras abas do sistema
-- O envio do código de verificação usa o **webhook do BotConversa** (mesmo canal das mensagens de WhatsApp)
+- O envio do código de verificação sai pelo **WhatsApp da Hardt** (mesmo canal de todas as mensagens do sistema). Cada pedido de código gera um código novo e é entregue mesmo que o candidato nunca tenha conversado com a gente
 
 ---
 

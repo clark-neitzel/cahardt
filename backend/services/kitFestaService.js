@@ -631,7 +631,7 @@ const kitFestaService = {
             }
         }
 
-        // Confirmação automática pelo nosso WhatsApp (BotConversa) para o CELULAR DO CLIENTE.
+        // Confirmação automática pelo WhatsApp da Hardt para o CELULAR DO CLIENTE.
         // Não bloqueia a resposta: se o webhook falhar, o pedido já está salvo.
         // Pedidos vindos do bot (WhatsApp IA) passam notificarCliente:false — quem confirma é a
         // própria Ana na conversa, para o cliente não receber DUAS mensagens.

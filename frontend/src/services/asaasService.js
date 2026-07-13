@@ -19,7 +19,7 @@ const asaasService = {
         const response = await api.post('/asaas/pix', { pedidoId, valor, descricao, validadeDias, vincularParcela });
         return response.data;
     },
-    // Envia o link/código PIX ao cliente via BotConversa
+    // Envia o link/código PIX ao cliente pelo WhatsApp
     enviarPixWhatsapp: async (cobrancaId) => {
         const response = await api.post(`/asaas/pix/${cobrancaId}/whatsapp`);
         return response.data;
