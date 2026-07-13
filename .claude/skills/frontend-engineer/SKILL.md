@@ -18,11 +18,17 @@ Você atua como engenheiro frontend sênior deste projeto. O usuário é leigo e
 
 ## Padrões inegociáveis do frontend
 
-### Design system (fonte: CLAUDE.md + design-system.html na raiz)
-- Cor primária `#005fcc` (classe `primary`), fundo `#f3f4f6`, cards brancos `rounded-xl border border-gray-200 shadow-sm` com header de seção (`text-xs font-bold uppercase tracking-widest text-gray-600`).
-- Botões, badges de status (verde/azul/cinza/amarelo/âmbar/vermelho/roxo), tabelas, inputs e tipografia: usar EXATAMENTE as classes definidas no CLAUDE.md — não inventar estilo novo.
-- Cada módulo tem sua cor de ícone na topbar (Pedidos azul, Clientes verde, Financeiro âmbar, PCP teal...).
+### Design system — TEMA STARBUCKS desde 07/2026 (fonte: CLAUDE.md + design-system.html na raiz)
+- Cor primária `#00754A` (classe `primary`), hover/títulos `#006241` (`primaryDark`), sidebar `#1E3932` (`house`), chips `#d4e9e2` (`mint`), fundo creme `#f2f0eb` (`secondary`). Fonte Manrope.
+- Botões SEMPRE em pílula (`rounded-full`). Código NOVO usa os tokens direto (`bg-primary hover:bg-primaryDark`), nunca os azuis legados (`bg-blue-600`) — a camada de remapeamento em `index.css` só existe para o código antigo.
+- Badges de status (verde/azul/cinza/amarelo/âmbar/vermelho/roxo), tabelas, inputs e tipografia: usar EXATAMENTE as classes definidas no CLAUDE.md — não inventar estilo novo. NUNCA mudar as cores semânticas dos badges.
+- Cada módulo tem sua cor de ícone na topbar (Pedidos azul, Clientes verde, Financeiro âmbar, PCP teal...); chips azuis usam `bg-mint` no lugar de `bg-blue-100`.
 - Legibilidade: evitar `text-gray-400` em texto informativo — usar `gray-500`+ (pedido do usuário).
+
+### Padrões de tela obrigatórios
+- Rota lazy nova no `App.jsx`: usar `lazyComRetry` de `frontend/src/utils/lazyComRetry.js`, NUNCA `React.lazy` — após deploy os chunks antigos somem e `lazy()` estoura tela vermelha ("Failed to fetch dynamically imported module").
+- Dropdown/menu suspenso: SEMPRE `SelectBusca` (`frontend/src/components/SelectBusca.jsx`, drop-in do `<select>`), nunca `<select>` nativo. Multi-seleção → `MultiSelect.jsx`.
+- Filtros de tela: SEMPRE `useFiltrosSalvos`/`useFiltroSalvo` (`frontend/src/hooks/useFiltrosSalvos.js`) em vez de `useState` — a escolha do usuário fica salva por tela. NÃO persistir busca livre, paginação nem data com padrão calculado.
 
 ### Responsividade mobile (obrigatório em TODA tela, ≥320px)
 - Mobile-first: layout base sem prefixo, desktop com `md:`/`lg:`. Nunca scroll horizontal.
