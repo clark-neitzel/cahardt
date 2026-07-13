@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: WhatsApp oficial — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="💬 Novidade no Hardt App: mensagens pelo WhatsApp oficial da Hardt">
+<meta property="og:description" content="Confirmação de pedido, cobrança e avisos agora chegam ao cliente pelo nosso número oficial — o mesmo que a Ana atende. Veja o que muda pra você.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock de conversa do WhatsApp flutuando sobre o hero */
+  .mock {
+    max-width: 400px;
+    margin: -68px auto 34px;
+    background: #e5ddd5;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .mock-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    color: rgba(255,255,255,.6);
+  }
+  .mock-top strong { font-size: 15px; line-height: 1.2; }
+  .mock-chat { padding: 16px 12px 18px; }
+  .balao {
+    background: #fff;
+    border-radius: 4px 14px 14px 14px;
+    padding: 10px 12px;
+    max-width: 88%;
+    font-size: 13.5px;
+    box-shadow: 0 1px 1px rgba(0,0,0,.08);
+  }
+  .balao .robo {
+    font-weight: 700;
+    font-style: italic;
+    color: var(--ink-soft);
+    display: block;
+    margin-bottom: 6px;
+  }
+  .balao b { color: var(--ink); }
+  .balao .hora {
+    display: block;
+    text-align: right;
+    font-size: 10.5px;
+    color: #9aa5a0;
+    margin-top: 4px;
+  }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>As mensagens agora saem<br>pelo WhatsApp oficial</h1>
+    <p>Confirmação de pedido, cobrança, boleto e avisos de entrega passam a chegar ao cliente pelo número oficial da Hardt — o mesmo que ele já usa pra falar com a gente.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock: como chega no cliente -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-avatar">🥐</span>
+      <div>
+        <strong>Hardt Salgados</strong>
+        <small>online</small>
+      </div>
+    </div>
+    <div class="mock-chat">
+      <div class="balao">
+        <span class="robo">🤖 Mensagem automática</span>
+        Ola, <b>Padaria da Maria</b>! 👋<br><br>
+        Segue o resumo do seu pedido 📋<br>
+        📅 <b>Pedido:</b> 13/07/2026<br>
+        🚚 <b>Entrega:</b> 15/07/2026<br><br>
+        💰 <b>Total: R$ 385,00</b><br>
+        💳 <b>Condição:</b> Boleto 28 dias<br><br>
+        Obrigado pela preferência! 🙏
+        <span class="hora">09:42</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDA ══════════ -->
+  <p class="sec-label">O que muda pra você</p>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)">
+      <span class="acc-ico">📱</span>
+      <strong>O cliente recebe do nosso número oficial</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Antes, as mensagens automáticas saíam de um número separado. Agora chegam pelo <b>WhatsApp oficial da Hardt</b> — o número que o cliente já conhece e tem salvo.</p>
+      <p>Toda mensagem automática vem com o carimbo <b>🤖 Mensagem automática</b> no começo, pra ninguém confundir com atendimento humano.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)">
+      <span class="acc-ico">💬</span>
+      <strong>Se o cliente responder, a Ana atende</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>A resposta do cliente cai na conversa normal do WhatsApp da Hardt, e a <b>Ana</b> (nossa assistente) responde na hora: informa, direciona e chama a equipe quando precisa.</p>
+      <p>Ou seja: a confirmação do pedido virou também uma <b>porta de conversa</b> — o cliente pode tirar dúvida respondendo a mensagem.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)">
+      <span class="acc-ico">🧾</span>
+      <strong>Tudo continua automático — nada muda no seu trabalho</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Pedido:</b> salvou, o cliente recebe o resumo. Igual antes.</li>
+        <li><b>Cobrança e boleto:</b> a régua e o financeiro seguem enviando sozinhos.</li>
+        <li><b>Entrega (delivery):</b> o cliente segue sabendo quando saiu e quando chegou.</li>
+        <li><b>Site:</b> o código de acesso do cliente chega pelo mesmo número.</li>
+      </ul>
+      <p style="margin-top:10px">Você não precisa mudar <b>nada</b> no jeito de lançar pedidos ou cobrar.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)">
+      <span class="acc-ico">🛟</span>
+      <strong>Mensagem não se perde mais</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Se o WhatsApp estiver instável na hora do envio, a mensagem <b>entra numa fila e sai sozinha</b> minutos depois — sem duplicar e sem sumir.</p>
+      <p>E pra proteger o número, os envios são <b>espaçados</b> (nunca em rajada). Uma cobrança pode levar alguns minutos a mais pra sair; é de propósito.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)">
+      <span class="acc-ico">⚠️</span>
+      <strong>Uma regra importante</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Esse canal é <b>só para mensagens do sistema</b> — coisas que o cliente pediu (pedido, cobrança, código).</p>
+      <p><b>Não é canal de propaganda.</b> Promoção, "faz tempo que você não compra" e disparo em lista podem <b>bloquear o WhatsApp da empresa inteira</b>. Precisa divulgar algo? Fala com o Clarkson primeiro.</p>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvida sobre alguma mensagem enviada? O painel em <strong>Configurações → Notificação WhatsApp</strong> mostra a conexão e a fila de envio.<br>— <strong>Hardt Salgados</strong> 🥐</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.closest('.acc');
+    document.querySelectorAll('.acc.aberto').forEach(a => { if (a !== acc) a.classList.remove('aberto'); });
+    acc.classList.toggle('aberto');
+  }
+</script>
+</body>
+</html>
