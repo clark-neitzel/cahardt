@@ -54,8 +54,47 @@ router.get('/ping', (req, res) => {
         caClientConfigurada: !!(process.env.CONTA_AZUL_CLIENT_ID && process.env.CONTA_AZUL_CLIENT_SECRET),
         asaasConfigurada: !!process.env.ASAAS_API_KEY,
         asaasWebhookTokenConfigurado: !!process.env.ASAAS_WEBHOOK_TOKEN,
+        botWhatsappConfigurado: !!(process.env.BOT_WHATSAPP_URL && process.env.BOT_WHATSAPP_API_KEY),
         node: process.version,
     });
+});
+
+// ── Integração de WhatsApp (bot da Ana) ───────────────────────────
+
+// GET /api/admin-exec/bot-whatsapp-status — a chave do EasyPanel é aceita? como está a fila?
+router.get('/bot-whatsapp-status', async (req, res) => {
+    try {
+        const botWhatsapp = require('../services/botWhatsappService');
+        const [bot, fila] = await Promise.all([
+            botWhatsapp.status(),
+            prisma.botWhatsappEnvio.groupBy({ by: ['status'], _count: true }),
+        ]);
+        res.json({ bot, fila: Object.fromEntries(fila.map(f => [f.status, f._count])) });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/admin-exec/bot-whatsapp-testar — manda uma mensagem de teste real.
+// Body: { telefone, texto? }. Sempre tipo 'interno' (é teste da equipe, não cliente)
+// e referência nova a cada chamada, para poder repetir sem cair na idempotência.
+router.post('/bot-whatsapp-testar', async (req, res) => {
+    try {
+        const botWhatsapp = require('../services/botWhatsappService');
+        const { telefone, texto } = req.body || {};
+        if (!telefone) return res.status(400).json({ error: 'Informe o telefone.' });
+
+        const r = await botWhatsapp.enviar({
+            telefone,
+            texto: texto || 'Teste da integração de WhatsApp do sistema Hardt. Se você recebeu isto, está tudo funcionando. ✅',
+            tipo: 'interno',
+            origem: 'teste-integracao',
+            referencia: botWhatsapp.referenciaUnica(`teste-${String(telefone).replace(/\D/g, '')}`),
+        });
+        res.json(r);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // ── Integração Asaas ──────────────────────────────────────────────
