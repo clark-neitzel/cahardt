@@ -9,12 +9,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <meta name="theme-color" content="#1E3932" />
     <link rel="manifest" href="/manifest.json" />
-    <!-- Fontes do site público (Oswald/Bitter/Kaushan) — garante carregamento -->
+    <!-- Fontes carregadas SEM bloquear a renderização (media="print" + onload).
+         Como stylesheet bloqueante, uma lentidão do fonts.googleapis.com segurava
+         o app em tela branca no 4G ruim dos vendedores em campo. -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Bitter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Kaushan+Script&display=swap" rel="stylesheet" />
+    <!-- Fontes do site público (Oswald/Bitter/Kaushan) -->
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Bitter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Kaushan+Script&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
     <!-- Fonte do app interno (tema Starbucks) — Manrope, substituta aberta da SoDoSans -->
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Bitter:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Kaushan+Script&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    </noscript>
     <title>HardtApp</title>
   </head>
   <body>

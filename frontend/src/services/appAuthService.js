@@ -6,8 +6,10 @@ const appAuthService = {
         return response.data; // { token, user: { id, nome, login, permissoes } }
     },
 
+    // Timeout curto: essa chamada trava a abertura do app. Sem ele, uma conexão
+    // pendurada (4G ruim) deixava o usuário no "Validando sessão..." para sempre.
     me: async () => {
-        const response = await api.get('/auth/me');
+        const response = await api.get('/auth/me', { timeout: 12000 });
         return response.data;
     }
 };

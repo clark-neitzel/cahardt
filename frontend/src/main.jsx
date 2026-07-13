@@ -43,6 +43,17 @@ window.onerror = function (message, source, lineno, colno, error) {
   </div>`;
 };
 
+// Service worker: no iPhone o app roda como atalho (standalone), sem barra de
+// endereço nem botão de recarregar. Sem ele, uma falha de rede na abertura deixa
+// o usuário preso no erro do Safari. Ver frontend/public/sw.js.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('Falha ao registrar o service worker:', err);
+    });
+  });
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <ErrorBoundary>

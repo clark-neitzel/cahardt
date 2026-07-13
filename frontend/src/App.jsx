@@ -113,11 +113,14 @@ import AlertaTarefas from './components/AlertaTarefas';
 import AlertaPedidosSite from './components/AlertaPedidosSite';
 import AlertaAutorizacaoDevolucao from './components/AlertaAutorizacaoDevolucao';
 import Clippy from './components/Clippy/Clippy';
+import TelaSemConexao from './components/TelaSemConexao';
 import { useVersionCheck } from './hooks/useVersionCheck';
 
 const PrivateRoute = ({ children, tab }) => {
-  const { signed, loading, hasPermission } = useAuth();
+  const { signed, loading, hasPermission, erroConexao } = useAuth();
   if (loading) return <div className="p-8 text-center text-gray-500">Validando sessão...</div>;
+  // Servidor não respondeu: mostrar "tentar novamente" em vez de jogar no login.
+  if (erroConexao) return <TelaSemConexao />;
   if (!signed) return <Navigate to="/login" replace />;
   const temAcesso = !tab || (Array.isArray(tab) ? tab.some(t => hasPermission(t, 'view')) : hasPermission(tab, 'view'));
   if (!temAcesso) return <div className="p-8 text-center text-red-600 font-bold">Acesso Negado a esta tela.</div>;
@@ -137,8 +140,10 @@ const HomeRedirect = () => {
 // Raiz do domínio: visitante (não logado) vê o site público de início;
 // funcionário logado é levado para o painel do sistema.
 const RootRoute = () => {
-  const { signed, loading } = useAuth();
+  const { signed, loading, erroConexao } = useAuth();
   if (loading) return <div className="p-8 text-center text-gray-500">Carregando...</div>;
+  // Funcionário com sessão salva e servidor fora do ar: não cair no site público.
+  if (erroConexao) return <TelaSemConexao />;
   if (!signed) return <HomeSite />;
   return <HomeRedirect />;
 };

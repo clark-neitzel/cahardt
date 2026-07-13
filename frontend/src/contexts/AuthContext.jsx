@@ -1,31 +1,74 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import appAuthService from '../services/appAuthService';
 import api from '../services/api';
 
 const AuthContext = createContext();
 
+const TENTATIVAS_SESSAO = 3;
+
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    // Havia token salvo, mas não conseguimos falar com o servidor para validá-lo.
+    // Diferente de "deslogado": o token continua guardado e é só tentar de novo.
+    const [erroConexao, setErroConexao] = useState(false);
 
-    useEffect(() => {
-        const loadUser = async () => {
-            const token = localStorage.getItem('@HardtApp:token');
-            if (token) {
-                api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-                try {
-                    const userData = await appAuthService.me();
-                    setUser(userData);
-                } catch (error) {
-                    console.error("Token inválido ou expirado:", error);
-                    logout();
+    const limparSessao = useCallback(() => {
+        localStorage.removeItem('@HardtApp:token');
+        delete api.defaults.headers.common['Authorization'];
+        setUser(null);
+    }, []);
+
+    // Valida a sessão salva ao abrir o app.
+    //
+    // CUIDADO: só apagar o token quando o servidor DISSER que ele não vale (401/403).
+    // Antes, qualquer erro caía em logout() — então um blip de rede, um 500 ou um
+    // deploy do backend em andamento apagavam o token e jogavam o usuário na tela
+    // de login. Era a causa de "o app me desloga sozinho toda hora".
+    const carregarUsuario = useCallback(async () => {
+        const token = localStorage.getItem('@HardtApp:token');
+        if (!token) {
+            setErroConexao(false);
+            setLoading(false);
+            return;
+        }
+
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setLoading(true);
+
+        for (let tentativa = 1; tentativa <= TENTATIVAS_SESSAO; tentativa++) {
+            try {
+                const userData = await appAuthService.me();
+                setUser(userData);
+                setErroConexao(false);
+                setLoading(false);
+                return;
+            } catch (error) {
+                const status = error.response?.status;
+
+                if (status === 401 || status === 403) {
+                    console.error('Sessão expirada ou inválida:', error);
+                    limparSessao();
+                    setErroConexao(false);
+                    setLoading(false);
+                    return;
+                }
+
+                console.warn(`Falha ao validar a sessão (tentativa ${tentativa}/${TENTATIVAS_SESSAO}):`, error?.message);
+                if (tentativa < TENTATIVAS_SESSAO) {
+                    await new Promise((r) => setTimeout(r, 1200 * tentativa));
                 }
             }
-            setLoading(false);
-        };
+        }
 
-        loadUser();
-    }, []);
+        // Rede/servidor fora: mantém o token e mostra a tela de "tentar novamente".
+        setErroConexao(true);
+        setLoading(false);
+    }, [limparSessao]);
+
+    useEffect(() => {
+        carregarUsuario();
+    }, [carregarUsuario]);
 
     const login = async (loginSTR, senhaSTR) => {
         try {
@@ -33,6 +76,7 @@ export const AuthProvider = ({ children }) => {
             localStorage.setItem('@HardtApp:token', token);
             api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             setUser(user);
+            setErroConexao(false);
             return { success: true };
         } catch (error) {
             console.error(error);
@@ -47,9 +91,8 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = () => {
-        localStorage.removeItem('@HardtApp:token');
-        delete api.defaults.headers.common['Authorization'];
-        setUser(null);
+        limparSessao();
+        setErroConexao(false);
     };
 
     const refreshUser = async () => {
@@ -80,7 +123,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ user, signed: !!user, loading, login, logout, hasPermission, refreshUser }}>
+        <AuthContext.Provider value={{ user, signed: !!user, loading, erroConexao, login, logout, hasPermission, refreshUser, tentarNovamente: carregarUsuario }}>
             {children}
         </AuthContext.Provider>
     );
