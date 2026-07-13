@@ -39,12 +39,16 @@ const TIMEOUT_MS = 30000; // folgado de propósito: o bot espaça os envios (5s)
 // Valores fechados do contrato (§4). Qualquer outro vira 'outro' no bot.
 const TIPOS = ['verificacao', 'pedido', 'entrega', 'cobranca', 'interno', 'outro'];
 
-// Erros que valem retry: teto/fila (429) e o modo de emergência do bot (403).
-// O 403 NÃO é o estado normal — se aparecer, o dono ligou o modo restrito (§6).
+// Erros que valem retry — a mensagem NÃO pode ser jogada fora por algo passageiro.
+// Inclui `sem_url`/`sem_chave` de propósito: se o deploy subir antes da env estar
+// configurada no EasyPanel, tudo fica na fila e sai sozinho quando a chave chegar,
+// em vez de perder pedido/código/cobrança em silêncio.
 const CODIGOS_REAGENDAR = [
+    'sem_url', 'sem_chave',                                            // env ainda não configurada
     'limite_por_hora', 'fila_cheia',                                   // 429
     'contato_sem_conversa', 'contato_nunca_escreveu', 'fora_da_janela', // 403 (modo de emergência)
     'zapi_falhou',                                                      // 502
+    'chave_invalida',                                                   // 401 (chave errada/rotacionada)
 ];
 
 const MAX_TENTATIVAS = 6;
