@@ -258,6 +258,7 @@ router.post('/boletos', verificarAuth, checkPodeCobrar, async (req, res) => {
     try {
         const { contaReceberId, parcelaIds, pedidoIds } = req.body;
         let ids = Array.isArray(parcelaIds) ? parcelaIds : [];
+        let semConta = []; // pedidos do lote sem conta a receber — reportar por número, não sumir calado
         if (!ids.length && Array.isArray(pedidoIds) && pedidoIds.length) {
             const parcelas = await prisma.parcela.findMany({
                 where: {
@@ -268,6 +269,11 @@ router.post('/boletos', verificarAuth, checkPodeCobrar, async (req, res) => {
                 select: { id: true }
             });
             ids = parcelas.map(p => p.id);
+            const pedidosSemConta = await prisma.pedido.findMany({
+                where: { id: { in: pedidoIds }, contaReceber: null },
+                select: { numero: true, especial: true }
+            });
+            semConta = pedidosSemConta.map(x => `${x.especial ? 'ZZ#' : '#'}${x.numero}`);
         }
         if (!ids.length && contaReceberId) {
             const parcelas = await prisma.parcela.findMany({
@@ -277,7 +283,13 @@ router.post('/boletos', verificarAuth, checkPodeCobrar, async (req, res) => {
             });
             ids = parcelas.map(p => p.id);
         }
-        if (!ids.length) return res.status(400).json({ error: 'Nenhuma parcela em aberto para emitir boleto.' });
+        if (!ids.length) {
+            return res.status(400).json({
+                error: semConta.length
+                    ? `Pedido(s) ${semConta.join(', ')} sem conta a receber no app — avise o suporte (a conta deveria ter sido criada ao enviar o pedido).`
+                    : 'Nenhuma parcela em aberto para emitir boleto.'
+            });
+        }
 
         const resultados = [];
         for (const parcelaId of ids) {
@@ -289,8 +301,9 @@ router.post('/boletos', verificarAuth, checkPodeCobrar, async (req, res) => {
             }
         }
         const okCount = resultados.filter(r => r.ok).length;
+        const avisoSemConta = semConta.length ? ` Atenção: ${semConta.join(', ')} sem conta a receber (não emitido).` : '';
         res.json({
-            message: `${okCount} boleto(s) emitido(s)${okCount < resultados.length ? `, ${resultados.length - okCount} com erro` : ''}.`,
+            message: `${okCount} boleto(s) emitido(s)${okCount < resultados.length ? `, ${resultados.length - okCount} com erro` : ''}.${avisoSemConta}`,
             resultados
         });
     } catch (e) {

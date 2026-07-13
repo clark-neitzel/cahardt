@@ -153,17 +153,28 @@ router.post('/backfill-contas-receber', async (req, res) => {
                 let parcelasData = null;
 
                 if (p.idVendaContaAzul && p.cliente?.UUID) {
-                    // Fonte oficial: parcelas da venda no CA
+                    // Fonte oficial: parcelas da venda no CA — espelha vencimento, valor E status
+                    // (parcela já RECEBIDA no CA entra como PAGO aqui; senão criaria inadimplência falsa)
                     const dataVendaStr = new Date(p.dataVenda).toISOString().split('T')[0];
                     const parcelasCA = await contaAzulService.encontrarParcelasDeVenda(p.cliente.UUID, p.idVendaContaAzul, dataVendaStr);
                     if (parcelasCA?.length) {
                         parcelasData = parcelasCA
                             .sort((a, b) => new Date(a.data_vencimento) - new Date(b.data_vencimento))
-                            .map((pc, i) => ({
-                                numeroParcela: i + 1,
-                                valor: Math.round(Number(pc.valor_composicao?.valor_bruto ?? pc.valor ?? 0) * 100) / 100,
-                                dataVencimento: new Date(pc.data_vencimento)
-                            }));
+                            .map((pc, i) => {
+                                const valor = Math.round(Number(pc.valor_composicao?.valor_bruto ?? pc.valor ?? 0) * 100) / 100;
+                                const pagaNoCA = pc.status === 'RECEBIDO';
+                                return {
+                                    numeroParcela: i + 1,
+                                    valor,
+                                    dataVencimento: new Date(pc.data_vencimento),
+                                    ...(pagaNoCA ? {
+                                        status: 'PAGO',
+                                        valorPago: valor,
+                                        dataPagamento: pc.data_quitacao ? new Date(pc.data_quitacao) : new Date(pc.data_vencimento),
+                                        observacao: 'Baixa espelhada do Conta Azul (backfill de conta a receber).'
+                                    } : {})
+                                };
+                            });
                     }
                 }
                 if (!parcelasData) {
@@ -172,8 +183,11 @@ router.post('/backfill-contas-receber', async (req, res) => {
                 }
 
                 const valorTotal = Math.round(parcelasData.reduce((s, x) => s + x.valor, 0) * 100) / 100;
-                item.parcelas = parcelasData.map(x => ({ valor: x.valor, venc: x.dataVencimento.toISOString().split('T')[0] }));
+                const pagas = parcelasData.filter(x => x.status === 'PAGO').length;
+                const statusConta = pagas === parcelasData.length ? 'QUITADO' : (pagas > 0 ? 'PARCIAL' : 'ABERTO');
+                item.parcelas = parcelasData.map(x => ({ valor: x.valor, venc: x.dataVencimento.toISOString().split('T')[0], status: x.status || 'PENDENTE' }));
                 item.valorTotal = valorTotal;
+                item.statusConta = statusConta;
 
                 if (!dryRun) {
                     await prisma.contaReceber.create({
@@ -182,7 +196,7 @@ router.post('/backfill-contas-receber', async (req, res) => {
                             clienteId: p.clienteId,
                             origem: p.especial ? 'ESPECIAL' : 'FATURADO_CA',
                             valorTotal,
-                            status: 'ABERTO',
+                            status: statusConta,
                             parcelas: { create: parcelasData }
                         }
                     });
