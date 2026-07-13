@@ -17,6 +17,11 @@ const contasReceberService = {
         const response = await api.get('/contas-receber/contas-financeiras');
         return response.data?.contasFinanceiras || [];
     },
+    // Tipos de cobrança (Boleto, Pix, Dinheiro, Cartão) — vêm das condições de pagamento
+    tiposCobranca: async () => {
+        const response = await api.get('/contas-receber/tipos-cobranca');
+        return response.data?.tipos || [];
+    },
     darBaixaLote: async (dados) => {
         const response = await api.post('/contas-receber/baixa-lote', dados);
         return response.data;

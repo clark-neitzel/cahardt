@@ -32,6 +32,53 @@ const checkBaixa = async (req, res, next) => {
     next();
 };
 
+// ── Cobrança (como o título é cobrado: Boleto, Pix, Dinheiro, Cartão) ──
+// Vem da CONDIÇÃO do pedido (tabela_precos.tipo_pagamento), não da baixa. É o único jeito de
+// filtrar boleto/pix numa conta AINDA EM ABERTO — parcela.formaPagamento só é preenchido na baixa.
+const LABEL_TIPO_COBRANCA = {
+    BOLETO_BANCARIO: 'Boleto',
+    PIX: 'Pix',
+    DINHEIRO: 'Dinheiro',
+    CARTAO: 'Cartão'
+};
+
+// Cláusula Prisma para filtrar contas por tipo de cobrança.
+// O pedido guarda o tipo em `tipoPagamento`, mas pedidos antigos podem ter só o nome da condição
+// (`nomeCondicaoPagamento`) — daí o OR com os nomes das condições daquele tipo.
+const filtroTipoCobranca = async (tipos) => {
+    const condicoes = await prisma.tabelaPreco.findMany({
+        where: { tipoPagamento: { in: tipos } },
+        select: { nomeCondicao: true }
+    });
+    const nomes = [...new Set(condicoes.map(c => c.nomeCondicao).filter(Boolean))];
+    return {
+        pedido: {
+            OR: [
+                { tipoPagamento: { in: tipos } },
+                { nomeCondicaoPagamento: { in: nomes } }
+            ]
+        }
+    };
+};
+
+// ── GET /tipos-cobranca — opções do filtro de cobrança (derivadas das condições cadastradas) ──
+router.get('/tipos-cobranca', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const rows = await prisma.tabelaPreco.findMany({
+            select: { tipoPagamento: true },
+            distinct: ['tipoPagamento']
+        });
+        const tipos = rows
+            .map(r => r.tipoPagamento)
+            .filter(Boolean)
+            .map(t => ({ valor: t, label: LABEL_TIPO_COBRANCA[t] || t }))
+            .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+        res.json({ tipos });
+    } catch (e) {
+        res.json({ tipos: [] });
+    }
+});
+
 // ── GET /contas-financeiras — bancos/caixas do CA para o seletor da baixa ──
 router.get('/contas-financeiras', verificarAuth, checkBaixa, async (req, res) => {
     try {
@@ -68,7 +115,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         const {
             status, clienteId, vencimentoDe, vencimentoAte, origem, busca, ordenarPor,
             vendedorId, condicaoPagamento, formaPagamento, statusParcela,
-            pagamentoDe, pagamentoAte, categoriaClienteId, formaPagamentoEntrega
+            pagamentoDe, pagamentoAte, categoriaClienteId, formaPagamentoEntrega, tipoCobranca
         } = req.query;
 
         const toList = (v) => (Array.isArray(v) ? v : String(v || '').split(',')).map(s => s.trim()).filter(Boolean);
@@ -121,6 +168,11 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                 const arr = toList(formaPagamentoEntrega);
                 where.pedido.pagamentosReais = { some: { formaPagamentoNome: arr.length > 1 ? { in: arr } : arr[0], valor: { gt: 0 } } };
             }
+        }
+
+        // Cobrança (Boleto/Pix/...) — vale para parcela em aberto, pois olha a condição do pedido
+        if (tipoCobranca) {
+            where.AND = [...(where.AND || []), await filtroTipoCobranca(toList(tipoCobranca))];
         }
 
         // Filtros que atuam no nível de parcela (precisam de "some")
@@ -313,7 +365,7 @@ router.get('/relatorio-itens', verificarAuth, checkAcesso, async (req, res) => {
         const {
             status, clienteId, vencimentoDe, vencimentoAte, origem, busca,
             vendedorId, condicaoPagamento, formaPagamento, statusParcela,
-            pagamentoDe, pagamentoAte, categoriaClienteId
+            pagamentoDe, pagamentoAte, categoriaClienteId, tipoCobranca
         } = req.query;
 
         const toList = (v) => (Array.isArray(v) ? v : String(v || '').split(',')).map(s => s.trim()).filter(Boolean);
@@ -339,6 +391,9 @@ router.get('/relatorio-itens', verificarAuth, checkAcesso, async (req, res) => {
             where.pedido = {};
             if (vendedorId) where.pedido.vendedorId = vendedorId;
             if (condicaoPagamento) { const arr = toList(condicaoPagamento); where.pedido.nomeCondicaoPagamento = arr.length > 1 ? { in: arr } : arr[0]; }
+        }
+        if (tipoCobranca) {
+            where.AND = [...(where.AND || []), await filtroTipoCobranca(toList(tipoCobranca))];
         }
         const parcelaSome = {};
         if (vencimentoDe || vencimentoAte) {

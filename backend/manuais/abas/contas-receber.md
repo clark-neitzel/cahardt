@@ -15,7 +15,7 @@ Gestão financeira de todas as contas a receber geradas pelos pedidos. Cada pedi
 ## O que dá pra fazer aqui
 
 - Ver todas as parcelas de contas a receber em formato de tabela
-- Filtrar por: busca (cliente/pedido), status da conta, status da parcela, origem, vendedor, categoria de cliente, condição de pagamento, forma de pagamento de entrega, forma de pagamento da baixa e período de vencimento/pagamento
+- Filtrar por: busca (cliente/pedido), status da conta, status da parcela, origem, vendedor, categoria de cliente, condição de pagamento, cobrança (boleto/pix/dinheiro/cartão), forma de pagamento de entrega, forma de pagamento da baixa e período de vencimento/pagamento
 - Ordenar por qualquer coluna (clique no cabeçalho)
 - Selecionar parcelas em lote e dar baixa coletiva (sempre pelo valor cheio de cada parcela)
 - Dar baixa em uma parcela individual — pode ser o valor total, um valor parcial (o restante fica pendente como PARCIAL) e/ou um desconto (em R$ ou %, incluindo 100% do saldo, sem precisar receber nada)
@@ -57,9 +57,10 @@ Gestão financeira de todas as contas a receber geradas pelos pedidos. Cada pedi
    - **Origem**: de onde a conta veio (ex: pedido normal, especial)
    - **Vendedor**: filtra contas dos clientes de um vendedor
    - **Categoria de cliente**: segmento do cliente
-   - **Condição de pagamento**: tipo de condição (ex: 30 dias, boleto)
+   - **Condição de pagamento**: a condição exata do pedido (ex: 14 dias - Boleto, À vista - Pix)
+   - **Cobrança**: como o título é cobrado — Boleto, Pix, Dinheiro ou Cartão. Vem da condição do pedido, então **funciona com contas ainda em aberto** (ex.: Status Conta = Aberto + Cobrança = Boleto lista tudo que está para receber em boleto, sem precisar marcar uma a uma as condições "7 dias - Boleto", "14 dias - Boleto"...)
    - **Forma de pagamento entrega**: forma registrada pelo motorista
-   - **Forma de pagamento da baixa**: como foi quitado
+   - **Forma Pgto (baixa)**: como a parcela foi quitada — só encontra parcela **já baixada** (parcela em aberto ainda não tem forma de pagamento). Para filtrar boleto em aberto, use o filtro **Cobrança**
    - **Período de vencimento / período de pagamento**
 3. Os filtros são salvos no localStorage por usuário
 

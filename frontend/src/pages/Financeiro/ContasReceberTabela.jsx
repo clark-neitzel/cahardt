@@ -57,6 +57,7 @@ const ContasReceberTabela = () => {
 
     const [vendedores, setVendedores] = useState([]);
     const [categorias, setCategorias] = useState([]);
+    const [tiposCobranca, setTiposCobranca] = useState([]); // [{ valor, label }] — Boleto, Pix, ...
 
     // Busca por texto livre — não persiste (useState normal)
     const [busca, setBusca] = useState('');
@@ -69,6 +70,7 @@ const ContasReceberTabela = () => {
         vendedorId: '',
         categoriaClienteId: '',
         condicaoPagamento: [],
+        tipoCobranca: [],
         formaPagamentoEntrega: [],
         formaPagamento: [],
         vencDe: '',
@@ -112,6 +114,7 @@ const ContasReceberTabela = () => {
     useEffect(() => {
         vendedorService.listarAtivos().then(setVendedores).catch(() => {});
         categoriaClienteService.listar().then(setCategorias).catch(() => {});
+        contasReceberService.tiposCobranca().then(setTiposCobranca).catch(() => {});
         contasReceberService.contasFinanceiras()
             .then(cf => {
                 setContasFinanceiras(cf);
@@ -157,6 +160,7 @@ const ContasReceberTabela = () => {
             if (filtros.vendedorId) params.vendedorId = filtros.vendedorId;
             if (filtros.categoriaClienteId) params.categoriaClienteId = filtros.categoriaClienteId;
             if (filtros.condicaoPagamento.length) params.condicaoPagamento = filtros.condicaoPagamento.join(',');
+            if (filtros.tipoCobranca.length) params.tipoCobranca = filtros.tipoCobranca.join(',');
             if (filtros.formaPagamentoEntrega.length) params.formaPagamentoEntrega = filtros.formaPagamentoEntrega.join(',');
             if (filtros.formaPagamento.length) params.formaPagamento = filtros.formaPagamento.join(',');
             if (filtros.vencDe) params.vencimentoDe = filtros.vencDe;
@@ -242,7 +246,8 @@ const ContasReceberTabela = () => {
     const filtrosKey = JSON.stringify({
         status: filtros.status, statusParcela: filtros.statusParcela, origem: filtros.origem,
         vendedorId: filtros.vendedorId, categoriaClienteId: filtros.categoriaClienteId,
-        condicaoPagamento: filtros.condicaoPagamento, formaPagamentoEntrega: filtros.formaPagamentoEntrega,
+        condicaoPagamento: filtros.condicaoPagamento, tipoCobranca: filtros.tipoCobranca,
+        formaPagamentoEntrega: filtros.formaPagamentoEntrega,
         formaPagamento: filtros.formaPagamento, vencDe: filtros.vencDe, vencAte: filtros.vencAte,
         pagDe: filtros.pagDe, pagAte: filtros.pagAte
     });
@@ -256,7 +261,8 @@ const ContasReceberTabela = () => {
         setBusca('');
         setFiltros({
             status: [], statusParcela: [], origem: '', vendedorId: '', categoriaClienteId: '',
-            condicaoPagamento: [], formaPagamentoEntrega: [], formaPagamento: [], vencDe: '', vencAte: '', pagDe: '', pagAte: ''
+            condicaoPagamento: [], tipoCobranca: [], formaPagamentoEntrega: [], formaPagamento: [],
+            vencDe: '', vencAte: '', pagDe: '', pagAte: ''
         });
         // fetchData é disparado pelo useEffect acima quando filtrosKey muda.
     };
@@ -451,6 +457,7 @@ const ContasReceberTabela = () => {
             if (filtros.origem) params.origem = filtros.origem;
             if (filtros.vendedorId) params.vendedorId = filtros.vendedorId;
             if (filtros.condicaoPagamento.length) params.condicaoPagamento = filtros.condicaoPagamento.join(',');
+            if (filtros.tipoCobranca.length) params.tipoCobranca = filtros.tipoCobranca.join(',');
             if (filtros.formaPagamentoEntrega.length) params.formaPagamentoEntrega = filtros.formaPagamentoEntrega.join(',');
             if (filtros.formaPagamento.length) params.formaPagamento = filtros.formaPagamento.join(',');
             if (filtros.pagDe) params.pagamentoDe = filtros.pagDe;
@@ -665,6 +672,7 @@ const ContasReceberTabela = () => {
         }
     };
 
+    // options: array de strings OU de { valor, label }
     const MultiSelect = ({ label, options, value, onChange }) => {
         const [open, setOpen] = useState(false);
         const ref = React.useRef(null);
@@ -673,10 +681,14 @@ const ContasReceberTabela = () => {
             document.addEventListener('mousedown', h);
             return () => document.removeEventListener('mousedown', h);
         }, []);
+        const val = (opt) => (typeof opt === 'string' ? opt : opt.valor);
+        const lab = (opt) => (typeof opt === 'string' ? opt : opt.label);
+        const labelDoValor = (v) => lab(options.find(o => val(o) === v) ?? v);
         const toggle = (opt) => {
-            onChange(value.includes(opt) ? value.filter(v => v !== opt) : [...value, opt]);
+            const v = val(opt);
+            onChange(value.includes(v) ? value.filter(x => x !== v) : [...value, v]);
         };
-        const summary = value.length === 0 ? label : value.length === 1 ? value[0] : `${value.length} selec.`;
+        const summary = value.length === 0 ? label : value.length === 1 ? labelDoValor(value[0]) : `${value.length} selec.`;
         return (
             <div className="relative" ref={ref}>
                 <button type="button" onClick={() => setOpen(v => !v)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-left flex items-center justify-between hover:bg-gray-50 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
@@ -690,9 +702,9 @@ const ContasReceberTabela = () => {
                         )}
                         {options.length === 0 && <div className="px-2 py-2 text-xs text-gray-400">Sem opções</div>}
                         {options.map(opt => (
-                            <label key={opt} className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-50 cursor-pointer">
-                                <input type="checkbox" checked={value.includes(opt)} onChange={() => toggle(opt)} className="cursor-pointer" />
-                                <span className="truncate">{opt}</span>
+                            <label key={val(opt)} className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-50 cursor-pointer">
+                                <input type="checkbox" checked={value.includes(val(opt))} onChange={() => toggle(opt)} className="cursor-pointer" />
+                                <span className="truncate">{lab(opt)}</span>
                             </label>
                         ))}
                     </div>
@@ -845,6 +857,15 @@ const ContasReceberTabela = () => {
                             options={condicoes}
                             value={filtros.condicaoPagamento}
                             onChange={(v) => setFiltros(f => ({ ...f, condicaoPagamento: v }))}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Cobrança</label>
+                        <MultiSelect
+                            label="Todas"
+                            options={tiposCobranca}
+                            value={filtros.tipoCobranca}
+                            onChange={(v) => setFiltros(f => ({ ...f, tipoCobranca: v }))}
                         />
                     </div>
                     <div>
