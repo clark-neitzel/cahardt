@@ -123,6 +123,82 @@ router.post('/asaas-reprocessar-baixas', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/backfill-contas-receber — cria a conta a receber de pedidos
+// enviados que ficaram sem (bug do fluxo ABERTO→ENVIAR, ex.: pedidos do Site Congelados).
+// Faturados no CA: parcelas espelham as do CA (vencimento/valor oficiais).
+// Especiais sem venda no CA: 1 parcela com o total, vencendo na data da venda.
+// Body opcional: { numeros: [2035, ...] } para limitar; { dryRun: true } só lista.
+router.post('/backfill-contas-receber', async (req, res) => {
+    try {
+        const numeros = (req.body?.numeros || []).map(n => parseInt(n, 10)).filter(Boolean);
+        const dryRun = !!req.body?.dryRun;
+        const pedidos = await prisma.pedido.findMany({
+            where: {
+                bonificacao: false,
+                statusEnvio: { in: ['ENVIAR', 'RECEBIDO', 'SINCRONIZANDO'] },
+                contaReceber: null,
+                ...(numeros.length ? { numero: { in: numeros } } : {})
+            },
+            include: {
+                cliente: { select: { UUID: true } },
+                itens: { select: { valor: true, quantidade: true } }
+            }
+        });
+
+        const resultados = [];
+        for (const p of pedidos) {
+            const item = { numero: p.numero, especial: p.especial, pedidoId: p.id };
+            try {
+                const totalItens = Math.round(p.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0) * 100) / 100;
+                let parcelasData = null;
+
+                if (p.idVendaContaAzul && p.cliente?.UUID) {
+                    // Fonte oficial: parcelas da venda no CA
+                    const dataVendaStr = new Date(p.dataVenda).toISOString().split('T')[0];
+                    const parcelasCA = await contaAzulService.encontrarParcelasDeVenda(p.cliente.UUID, p.idVendaContaAzul, dataVendaStr);
+                    if (parcelasCA?.length) {
+                        parcelasData = parcelasCA
+                            .sort((a, b) => new Date(a.data_vencimento) - new Date(b.data_vencimento))
+                            .map((pc, i) => ({
+                                numeroParcela: i + 1,
+                                valor: Math.round(Number(pc.valor_composicao?.valor_bruto ?? pc.valor ?? 0) * 100) / 100,
+                                dataVencimento: new Date(pc.data_vencimento)
+                            }));
+                    }
+                }
+                if (!parcelasData) {
+                    // Sem venda no CA (ex.: especial): 1 parcela com o total do pedido
+                    parcelasData = [{ numeroParcela: 1, valor: totalItens, dataVencimento: new Date(p.dataVenda) }];
+                }
+
+                const valorTotal = Math.round(parcelasData.reduce((s, x) => s + x.valor, 0) * 100) / 100;
+                item.parcelas = parcelasData.map(x => ({ valor: x.valor, venc: x.dataVencimento.toISOString().split('T')[0] }));
+                item.valorTotal = valorTotal;
+
+                if (!dryRun) {
+                    await prisma.contaReceber.create({
+                        data: {
+                            pedidoId: p.id,
+                            clienteId: p.clienteId,
+                            origem: p.especial ? 'ESPECIAL' : 'FATURADO_CA',
+                            valorTotal,
+                            status: 'ABERTO',
+                            parcelas: { create: parcelasData }
+                        }
+                    });
+                    item.criada = true;
+                }
+            } catch (e) {
+                item.erro = e.message;
+            }
+            resultados.push(item);
+        }
+        res.json({ ok: true, dryRun, total: resultados.length, resultados });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-nota-fiscal?idVenda=... — resposta crua da API de notas fiscais do CA
 // (investigação: a API devolve link de DANFE PDF/XML?)
 router.get('/diag-nota-fiscal', async (req, res) => {

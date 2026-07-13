@@ -562,7 +562,11 @@ const pedidoService = {
                     }
                 }
 
-                if (pedidoAntigo.statusEnvio === 'ENVIAR') {
+                // Cria/recria a conta a receber quando o pedido já estava enviado OU está
+                // sendo enviado agora (ABERTO→ENVIAR). Sem o segundo caso, pedido criado
+                // como rascunho/site (ex.: Site Congelados) ficava para sempre SEM conta
+                // a receber — e sem conta não dá baixa nem emite boleto/PIX Asaas.
+                if ((pedidoAntigo.statusEnvio === 'ENVIAR' || statusEnvio === 'ENVIAR') && !bonificacao) {
                     const crExistente = await tx.contaReceber.findUnique({
                         where: { pedidoId: id },
                         include: { parcelas: { select: { status: true } } }
