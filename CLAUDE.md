@@ -420,6 +420,19 @@ No iPhone o app roda como atalho standalone: **sem barra de endereço e sem bot�
 
 Ao mudar as estratégias, **subir a constante `VERSAO`** no topo do `sw.js` (é ela que limpa os caches antigos no `activate`).
 
+### Tela nova no `App.jsx` — usar `lazyComRetry`, nunca `React.lazy`
+
+As telas são carregadas sob demanda, em arquivos com hash no nome. Quando sai um deploy o servidor troca esses arquivos e **os antigos deixam de existir** — quem estava com a aba aberta (desktop) ou o app aberto no celular continua com o `index.html` velho e, ao trocar de tela, estoura `TypeError: Failed to fetch dynamically imported module` (tela vermelha "Algo deu errado").
+
+Por isso toda rota lazy usa `frontend/src/utils/lazyComRetry.js`, que tenta de novo e, persistindo, limpa o cache do service worker e recarrega a página **uma vez** (trava em `sessionStorage` evita laço):
+
+```jsx
+import { lazyComRetry } from './utils/lazyComRetry';
+const MinhaTela = lazyComRetry(() => import('./pages/Area/MinhaTela'));  // NÃO usar lazy() do React
+```
+
+`main.jsx` faz a mesma recuperação no `ErrorBoundary`, no `window.onerror` e no `unhandledrejection`, como rede de segurança para imports dinâmicos fora das rotas.
+
 **Nunca deslogar o usuário por erro de rede:** em `AuthContext.jsx`, o `/auth/me` da abertura só apaga o token em **401/403** (o servidor dizendo que o token não vale). Qualquer outra falha (rede, 500, backend reiniciando no deploy) mantém o token, tenta 3 vezes e cai na tela `TelaSemConexao` com botão "Tentar novamente". Antes, um blip de rede apagava o token e jogava o vendedor na tela de login — não reintroduzir um `logout()` genérico no `catch`.
 
 ---
