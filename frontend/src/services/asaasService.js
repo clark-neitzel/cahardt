@@ -44,8 +44,11 @@ const asaasService = {
         const response = await api.get(`/asaas/pedidos/${pedidoId}/boletos`);
         return response.data;
     },
-    emitirBoletos: async ({ contaReceberId, parcelaIds }) => {
-        const response = await api.post('/asaas/boletos', { contaReceberId, parcelaIds });
+    // Emite boletos por conta, por parcelas OU por pedidos em lote (janela de impressão).
+    // ATENÇÃO: repassar os três — o backend decide qual usar (pedidoIds era descartado
+    // aqui e o lote inteiro falhava com "nenhuma parcela em aberto").
+    emitirBoletos: async ({ contaReceberId, parcelaIds, pedidoIds }) => {
+        const response = await api.post('/asaas/boletos', { contaReceberId, parcelaIds, pedidoIds });
         return response.data;
     },
     consultarBoleto: async (cobrancaId) => {
