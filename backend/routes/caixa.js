@@ -441,7 +441,8 @@ router.get('/resumo', async (req, res) => {
         // Faltas de devolução cobradas do motorista (conferência confirmada) somam ao valor a prestar
         const confDev = caixa.conferenciaDevolucao;
         const faltasDevolucao = confDev?.status === 'CONFERIDA' ? Math.round(Number(confDev.totalCobrado) * 100) / 100 : 0;
-        const temDevolucoesDia = entregas.some(e => (e.itensDevolvidos?.length || 0) > 0);
+        // Parcial com itens devolvidos OU pedido devolvido inteiro (sem itens gravados no checkout)
+        const temDevolucoesDia = entregas.some(e => (e.itensDevolvidos?.length || 0) > 0 || e.statusEntrega === 'DEVOLVIDO');
 
         const valorAPrestar = Math.round((Number(caixa.adiantamento) + totalRecebidoCaixa + faltasDevolucao - totalDespesas) * 100) / 100;
 
@@ -726,7 +727,7 @@ router.post('/fechar', async (req, res) => {
             where: { vendedorId_dataReferencia: { vendedorId: targetVendedor, dataReferencia: data } },
             include: { conferenciaDevolucao: true }
         });
-        const temDevolucoesFechar = entregas.some(e => (e.itensDevolvidos?.length || 0) > 0);
+        const temDevolucoesFechar = entregas.some(e => (e.itensDevolvidos?.length || 0) > 0 || e.statusEntrega === 'DEVOLVIDO');
         const confDevFechar = caixaExistente?.conferenciaDevolucao;
         if (temDevolucoesFechar && confDevFechar?.status !== 'CONFERIDA') {
             pendencias.push('Conferência de devoluções pendente: confira a mercadoria que voltou antes de fechar o caixa.');
@@ -1049,49 +1050,70 @@ const PERM_AUTORIZAR_DEV = 'Pode_Autorizar_Desconsiderar_Devolucao';
 const round2 = (n) => Math.round(Number(n) * 100) / 100;
 const round3 = (n) => Math.round(Number(n) * 1000) / 1000;
 
-// Devoluções registradas nas entregas do dia do vendedor, agrupadas por produto
+// Devoluções esperadas nas entregas do dia do vendedor, agrupadas por produto.
+// Duas fontes:
+// - ENTREGUE_PARCIAL → itens que o motorista marcou como devolvidos (EntregaItemDevolvido)
+// - DEVOLVIDO (pedido inteiro) → o checkout NÃO grava itens; a devolução total
+//   significa que TODOS os itens do pedido têm que voltar no caminhão
 const buscarDevolucoesEsperadas = async (vendedorId, data) => {
     const inicioDia = new Date(data + 'T00:00:00.000Z');
     const fimDia = new Date(data + 'T23:59:59.999Z');
     const pedidos = await prisma.pedido.findMany({
         where: {
             dataEntrega: { gte: inicioDia, lte: fimDia },
-            statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL', 'DEVOLVIDO'] },
             embarque: { responsavelId: vendedorId },
-            itensDevolvidos: { some: {} }
+            OR: [
+                { statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL', 'DEVOLVIDO'] }, itensDevolvidos: { some: {} } },
+                { statusEntrega: 'DEVOLVIDO' }
+            ]
         },
         select: {
             id: true,
             numero: true,
+            statusEntrega: true,
             cliente: { select: { NomeFantasia: true, Nome: true } },
             itensDevolvidos: {
+                include: { produto: { select: { id: true, nome: true, unidade: true, valorVenda: true } } }
+            },
+            itens: {
                 include: { produto: { select: { id: true, nome: true, unidade: true, valorVenda: true } } }
             }
         }
     });
 
     const porProduto = new Map();
+    const acumular = (pedido, clienteNome, produtoId, produto, quantidade) => {
+        if (!porProduto.has(produtoId)) {
+            porProduto.set(produtoId, {
+                produtoId,
+                produtoNome: produto?.nome || 'Produto',
+                unidade: produto?.unidade || null,
+                valorVendaBase: Number(produto?.valorVenda || 0),
+                qtdEsperada: 0,
+                pedidosOrigem: []
+            });
+        }
+        const g = porProduto.get(produtoId);
+        g.qtdEsperada = round3(g.qtdEsperada + Number(quantidade));
+        g.pedidosOrigem.push({
+            pedidoId: pedido.id,
+            numero: pedido.numero,
+            cliente: clienteNome,
+            quantidade: Number(quantidade)
+        });
+    };
+
     for (const p of pedidos) {
         const clienteNome = p.cliente?.NomeFantasia || p.cliente?.Nome || 'N/A';
-        for (const item of p.itensDevolvidos) {
-            if (!porProduto.has(item.produtoId)) {
-                porProduto.set(item.produtoId, {
-                    produtoId: item.produtoId,
-                    produtoNome: item.produto?.nome || 'Produto',
-                    unidade: item.produto?.unidade || null,
-                    valorVendaBase: Number(item.produto?.valorVenda || 0),
-                    qtdEsperada: 0,
-                    pedidosOrigem: []
-                });
+        if (p.itensDevolvidos.length > 0) {
+            for (const item of p.itensDevolvidos) {
+                acumular(p, clienteNome, item.produtoId, item.produto, item.quantidade);
             }
-            const g = porProduto.get(item.produtoId);
-            g.qtdEsperada = round3(g.qtdEsperada + Number(item.quantidade));
-            g.pedidosOrigem.push({
-                pedidoId: p.id,
-                numero: p.numero,
-                cliente: clienteNome,
-                quantidade: Number(item.quantidade)
-            });
+        } else if (p.statusEntrega === 'DEVOLVIDO') {
+            // Devolução total sem itens gravados: tudo do pedido deveria voltar
+            for (const item of (p.itens || [])) {
+                acumular(p, clienteNome, item.produtoId, item.produto, item.quantidade);
+            }
         }
     }
     return [...porProduto.values()];
@@ -1951,15 +1973,10 @@ router.get('/relatorio', async (req, res) => {
             faltasDevolucao: caixa?.conferenciaDevolucao?.status === 'CONFERIDA'
                 ? Number(caixa.conferenciaDevolucao.totalCobrado || 0)
                 : 0,
-            // Impressão só mostra o VALOR A PRESTAR quando o dia está pronto: devoluções
-            // registradas + conferência feita + KM final + sem entregas pendentes.
+            // Impressão só mostra o VALOR A PRESTAR quando o dia está pronto:
+            // conferência de devoluções feita + KM final + sem entregas pendentes.
             valorLiberado: await (async () => {
-                // Entrega parcial/devolvida sem a devolução registrada
-                const devNaoRegistrada = entregas.some(e =>
-                    ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada
-                );
-                if (devNaoRegistrada) return false;
-                const temDevRel = entregas.some(e => (e.itensDevolvidos?.length || 0) > 0);
+                const temDevRel = entregas.some(e => (e.itensDevolvidos?.length || 0) > 0 || e.statusEntrega === 'DEVOLVIDO');
                 if (temDevRel && caixa?.conferenciaDevolucao?.status !== 'CONFERIDA') return false;
                 const usouVeiculoRel = !!(diario && diario.modo === 'PRESENCIAL' && diario.veiculoId);
                 if (usouVeiculoRel && !diario.kmFinal) return false;

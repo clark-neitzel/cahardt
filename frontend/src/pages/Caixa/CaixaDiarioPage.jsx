@@ -281,13 +281,13 @@ const CaixaDiarioPage = () => {
     const caixa = resumo?.caixa;
     const statusBadge = caixa ? STATUS_BADGES[caixa.status] || STATUS_BADGES.ABERTO : null;
     const isAberto = caixa?.status === 'ABERTO';
-    // Dia "pronto" = KM/entregas/atendimentos OK + devoluções registradas + conferência feita.
+    // Dia "pronto" = KM/entregas/atendimentos OK + conferência de devoluções feita.
     // Só então mostramos o VALOR A PRESTAR e liberamos a impressão (senão o pessoal
-    // pulava a conferência — ou nem registrava a devolução — e imprimia com o valor).
+    // pulava a conferência e imprimia com o valor). A nota de devolução do faturamento
+    // (devolucoesNaoFeitas) segue travando apenas o Fechar Caixa, como sempre foi.
     const diaPronto = resumo
         && !resumo.finalizacaoDia?.precisaFinalizar
-        && !resumo.pendencias?.conferenciaDevolucaoPendente
-        && !(resumo.pendencias?.devolucoesNaoFeitas > 0);
+        && !resumo.pendencias?.conferenciaDevolucaoPendente;
 
     return (
         <div className="w-full px-4 py-6">
