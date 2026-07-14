@@ -187,6 +187,182 @@ const GrupoModal = ({ lancamento, pendentes, contaId, periodo, onClose, onSucces
     );
 };
 
+// ── Modal: conciliar dando BAIXA numa conta a pagar em aberto ──
+// O boleto está lançado no app e foi pago pelo banco, mas ninguém deu baixa. Aqui a
+// conciliação faz a baixa (data e banco do extrato) e amarra a linha de uma vez só.
+// A baixa vai para o Conta Azul pela mesma fila do botão "Baixar" do Contas a Pagar.
+const BaixaModal = ({ lancamento, onClose, onSuccess }) => {
+    const [opcoes, setOpcoes] = useState(null);
+    const [parcelas, setParcelas] = useState(null); // null = carregando
+    const [busca, setBusca] = useState('');
+    const [sel, setSel] = useState(null); // parcela escolhida
+    const [salvando, setSalvando] = useState(false);
+    const [form, setForm] = useState({ metodoPagamento: 'BOLETO_BANCARIO', juros: '', multa: '', desconto: '' });
+    const set = (campo) => (e) => setForm(f => ({ ...f, [campo]: e.target.value }));
+
+    useEffect(() => {
+        conciliacaoService.opcoesDespesa().then(setOpcoes).catch(() => setOpcoes({ metodosPagamento: [] }));
+    }, []);
+
+    useEffect(() => {
+        let vivo = true;
+        setParcelas(null);
+        const t = setTimeout(() => {
+            conciliacaoService.parcelasPagarAbertas(lancamento.valor, busca)
+                .then(p => { if (vivo) setParcelas(p); })
+                .catch(() => { if (vivo) { toast.error('Não consegui carregar as contas em aberto.'); setParcelas([]); } });
+        }, busca ? 350 : 0); // debounce só na busca
+        return () => { vivo = false; clearTimeout(t); };
+    }, [lancamento.valor, busca]);
+
+    const total = Number(lancamento.valor || 0);
+    const n = (v) => Math.max(0, Number(String(v).replace(',', '.')) || 0);
+    const jur = n(form.juros), mul = n(form.multa), desc = n(form.desconto);
+    const valorPago = Math.round((total - jur - mul) * 100) / 100;
+    const saldo = sel ? Number(sel.saldo) : 0;
+    const sobra = sel ? Math.round((saldo - valorPago - desc) * 100) / 100 : 0;
+    const excede = sel && valorPago + desc > saldo + 0.01;
+    const podeSalvar = sel && valorPago > 0 && !excede && form.metodoPagamento && !salvando;
+
+    const salvar = async () => {
+        setSalvando(true);
+        try {
+            const r = await conciliacaoService.conciliarComBaixa(lancamento.id, {
+                parcelaPagarId: sel.id,
+                metodoPagamento: form.metodoPagamento,
+                juros: jur, multa: mul, desconto: desc
+            });
+            toast.success(r.message);
+            onSuccess();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao dar baixa');
+        } finally {
+            setSalvando(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
+            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-2xl w-full max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+                    <div className="min-w-0">
+                        <p className="text-xs text-gray-500">
+                            {fmtData(lancamento.data)} · <span className="font-semibold text-red-700">− R$ {fmt(total)}</span> · {lancamento.descricao || 'sem descrição'}
+                        </p>
+                        <h2 className="font-bold text-gray-900">Dar baixa numa conta em aberto</h2>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                </div>
+
+                <div className="p-5 space-y-4 overflow-y-auto">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <input
+                            value={busca}
+                            onChange={e => setBusca(e.target.value)}
+                            placeholder="Buscar por fornecedor, descrição ou nº da nota…"
+                            className="w-full border border-gray-300 rounded pl-9 pr-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                        />
+                    </div>
+
+                    {parcelas === null && (
+                        <div className="text-center text-gray-500 text-sm py-3 flex items-center justify-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Carregando contas em aberto…
+                        </div>
+                    )}
+                    {parcelas !== null && parcelas.length === 0 && (
+                        <p className="text-sm text-gray-500 py-2">
+                            Nenhuma conta a pagar em aberto encontrada. Se essa despesa nunca foi lançada,
+                            feche aqui e use <strong>"Criar despesa"</strong>.
+                        </p>
+                    )}
+                    <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                        {(parcelas || []).map(p => (
+                            <label
+                                key={p.id}
+                                className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer ${sel?.id === p.id ? 'border-primary bg-mint/30' : 'border-gray-200 hover:bg-gray-50'}`}
+                            >
+                                <input type="radio" name="parcela" checked={sel?.id === p.id} onChange={() => setSel(p)} className="mt-1 accent-[#00754A]" />
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-sm font-medium text-gray-900 truncate">{p.fornecedor || p.descricao || 'Despesa'}</span>
+                                        {p.bate && <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">valor bate</span>}
+                                        {p.status === 'PARCIAL' && <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Parcial</span>}
+                                    </div>
+                                    <div className="text-xs text-gray-500 truncate">
+                                        {p.descricao}{p.numeroNota ? ` · NF ${p.numeroNota}` : ''} · vence {fmtData(p.vencimento)}
+                                        {!p.vaiAoCA && ' · importada do CA (baixa não vai ao CA)'}
+                                    </div>
+                                </div>
+                                <span className="text-sm font-semibold whitespace-nowrap">R$ {fmt(p.saldo)}</span>
+                            </label>
+                        ))}
+                    </div>
+
+                    {sel && (
+                        <>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                <div className="col-span-2">
+                                    <label className="text-sm font-medium text-gray-700 block mb-1">Forma de pagamento *</label>
+                                    <SelectBusca value={form.metodoPagamento} onChange={set('metodoPagamento')} className="w-full">
+                                        {(opcoes?.metodosPagamento || []).map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                    </SelectBusca>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700 block mb-1">Juros (R$)</label>
+                                    <input inputMode="decimal" value={form.juros} onChange={set('juros')} placeholder="0,00"
+                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700 block mb-1">Multa (R$)</label>
+                                    <input inputMode="decimal" value={form.multa} onChange={set('multa')} placeholder="0,00"
+                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                </div>
+                            </div>
+                            {sobra > 0.01 && !excede && (
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700 block mb-1">Desconto (R$) — se o resto não vai ser pago</label>
+                                    <input inputMode="decimal" value={form.desconto} onChange={set('desconto')} placeholder="0,00"
+                                        className="w-full md:w-48 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                </div>
+                            )}
+
+                            <div className={`rounded-xl border p-3 text-sm ${excede ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
+                                {excede ? (
+                                    <span className="text-red-700">
+                                        Saiu R$ {fmt(valorPago + desc)} do banco, mas essa parcela só tem <strong>R$ {fmt(saldo)}</strong> em aberto.
+                                        Se o pagamento cobriu mais de uma conta, use <strong>"Várias…"</strong>.
+                                    </span>
+                                ) : (
+                                    <span className="text-gray-700">
+                                        Baixa de <strong>R$ {fmt(valorPago)}</strong>
+                                        {(jur > 0 || mul > 0) && <> + juros/multa <strong>R$ {fmt(jur + mul)}</strong></>}
+                                        {desc > 0 && <> + desconto <strong>R$ {fmt(desc)}</strong></>}
+                                        {' · '}
+                                        {sobra > 0.01
+                                            ? <span className="text-amber-700 font-semibold">baixa PARCIAL — sobram R$ {fmt(sobra)}</span>
+                                            : <span className="text-green-700 font-semibold">quita a parcela</span>}
+                                        {sel.vaiAoCA ? ' · vai ao Conta Azul' : ' · fica só no app (despesa importada do CA)'}
+                                    </span>
+                                )}
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex justify-end gap-2">
+                    <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
+                    <button onClick={salvar} disabled={!podeSalvar}
+                        className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-1.5 disabled:opacity-50">
+                        {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                        Dar baixa e conciliar
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ── Modal: criar a despesa que faltava, direto do extrato ──
 // O dinheiro já saiu do banco, então a despesa nasce PAGA: data, valor e banco vêm do
 // próprio lançamento (campos travados). Ao salvar, a baixa criada vira o candidato da
@@ -440,6 +616,7 @@ const ConciliacaoBancariaPage = () => {
     const [mostrarSoNoApp, setMostrarSoNoApp] = useState(false);
     const [grupoModal, setGrupoModal] = useState(null); // lançamento que abriu o modal de grupo
     const [despesaModal, setDespesaModal] = useState(null); // lançamento que abriu o modal de nova despesa
+    const [baixaModal, setBaixaModal] = useState(null); // lançamento que abriu o modal de dar baixa
     const inputArquivo = useRef(null);
 
     useEffect(() => {
@@ -582,13 +759,24 @@ const ConciliacaoBancariaPage = () => {
             <div className="flex flex-col gap-1.5">
                 <div className="text-xs text-gray-500">Sem baixa parecida no app</div>
                 <div className="flex flex-wrap gap-1.5">
-                    {/* Saída sem par = despesa que ninguém lançou. Cadastrar aqui é a ação principal. */}
+                    {/* Saída sem baixa: OU a conta está lançada e em aberto (dar baixa),
+                        OU nunca foi lançada (criar despesa). São os dois caminhos possíveis. */}
+                    {l.tipo === 'DEBITO' && (
+                        <button
+                            onClick={() => setBaixaModal(l)}
+                            disabled={agindo === l.id}
+                            className="px-3 py-1.5 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold inline-flex items-center gap-1 disabled:opacity-50"
+                            title="A conta já está lançada e em aberto: dar baixa nela (app + Conta Azul) e conciliar"
+                        >
+                            <Check className="h-3.5 w-3.5" /> Dar baixa…
+                        </button>
+                    )}
                     {l.tipo === 'DEBITO' && (
                         <button
                             onClick={() => setDespesaModal(l)}
                             disabled={agindo === l.id}
-                            className="px-3 py-1.5 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold inline-flex items-center gap-1 disabled:opacity-50"
-                            title="Lançar esta saída no Contas a Pagar (já paga) e depois conciliar"
+                            className="px-3 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-medium inline-flex items-center gap-1 disabled:opacity-50"
+                            title="A despesa nunca foi lançada: cadastrar aqui (já paga) e depois conciliar"
                         >
                             <Plus className="h-3.5 w-3.5" /> Criar despesa
                         </button>
@@ -616,18 +804,39 @@ const ConciliacaoBancariaPage = () => {
     // Descrição do banco + o que mais o OFX trouxe (beneficiário, nº do documento).
     // "DÉB.TIT.COMPE EFETIVADO" sozinho não diz nada — o beneficiário, quando o banco
     // manda, é a única pista de do que se trata.
-    const DescricaoBanco = ({ l }) => (
-        <div className="min-w-0">
-            <span className="line-clamp-2 text-gray-700">{l.descricao || '(sem descrição)'}</span>
-            {(l.detalhes?.nome || l.detalhes?.documento) && (
-                <div className="text-xs text-gray-500 mt-0.5 truncate">
-                    {l.detalhes.nome && <span className="text-gray-600 font-medium">{l.detalhes.nome}</span>}
-                    {l.detalhes.nome && l.detalhes.documento && ' · '}
-                    {l.detalhes.documento && <span>doc {l.detalhes.documento}</span>}
-                </div>
-            )}
-        </div>
-    );
+    const DescricaoBanco = ({ l }) => {
+        const p = l.pistas;
+        const abertas = p?.parcelasAbertas || [];
+        return (
+            <div className="min-w-0">
+                <span className="line-clamp-2 text-gray-700">{l.descricao || '(sem descrição)'}</span>
+                {(l.detalhes?.nome || l.detalhes?.documento) && (
+                    <div className="text-xs text-gray-500 mt-0.5 truncate">
+                        {l.detalhes.nome && <span className="text-gray-600 font-medium">{l.detalhes.nome}</span>}
+                        {l.detalhes.nome && l.detalhes.documento && ' · '}
+                        {l.detalhes.documento && <span>doc {l.detalhes.documento}</span>}
+                    </div>
+                )}
+                {/* Quem é? Fornecedor do CNPJ que veio no texto (PIX) */}
+                {p?.fornecedorDoDocumento && (
+                    <div className="text-xs mt-0.5 truncate">
+                        <span className="text-gray-500">CNPJ do texto: </span>
+                        <span className="font-semibold text-gray-700">{p.fornecedorDoDocumento}</span>
+                    </div>
+                )}
+                {!p?.fornecedorDoDocumento && p?.documento && (
+                    <div className="text-xs text-gray-500 mt-0.5 truncate">CNPJ/CPF {p.documento} (não cadastrado como fornecedor)</div>
+                )}
+                {/* Boleto sem beneficiário: a pista é o valor bater com uma conta em aberto */}
+                {abertas.length > 0 && (
+                    <div className="text-xs mt-0.5 text-amber-700 truncate" title={abertas.map(a => `${a.fornecedor || a.descricao} — vence ${fmtData(a.vencimento)}`).join(' · ')}>
+                        Mesmo valor de: <span className="font-semibold">{abertas[0].fornecedor || abertas[0].descricao}</span>
+                        {' '}(vence {fmtData(abertas[0].vencimento)}){abertas.length > 1 && ` +${abertas.length - 1}`}
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     const AcoesLinha = ({ l }) => {
         if (l.status === 'PENDENTE') return <AcoesPendente l={l} />;
@@ -880,6 +1089,15 @@ const ConciliacaoBancariaPage = () => {
                     periodo={periodo}
                     onClose={() => setGrupoModal(null)}
                     onSuccess={() => { setGrupoModal(null); carregar(); }}
+                />
+            )}
+
+            {/* Conta já lançada e em aberto: dar baixa nela (app + fila do CA) e conciliar de uma vez. */}
+            {baixaModal && (
+                <BaixaModal
+                    lancamento={baixaModal}
+                    onClose={() => setBaixaModal(null)}
+                    onSuccess={() => { setBaixaModal(null); carregar(); }}
                 />
             )}
 

@@ -348,6 +348,76 @@ async function importarOfx({ contaFinanceiraCaId, nomeArquivo, conteudo, criadoP
 // Listagem com sugestões + resumo
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * CNPJ/CPF escondido na descrição do banco.
+ * O Sicoob não manda o beneficiário do boleto, mas em PIX o documento vem no texto
+ * ("Pagamento Pix 02.118.562 0001-60"). Aceita com ou sem pontuação.
+ */
+function extrairDocumento(texto) {
+    if (!texto) return null;
+    const cnpj = String(texto).match(/(\d{2})[.\s]?(\d{3})[.\s]?(\d{3})[/\s]?(\d{4})[-\s]?(\d{2})/);
+    if (cnpj) return cnpj.slice(1).join('');
+    const cpf = String(texto).match(/(?<!\d)(\d{3})[.\s]?(\d{3})[.\s]?(\d{3})[-\s]?(\d{2})(?!\d)/);
+    if (cpf) return cpf.slice(1).join('');
+    return null;
+}
+
+/**
+ * "De quem é esse débito?" — quando o banco não diz (o boleto vem só como
+ * "DÉB.TIT.COMPE EFETIVADO"), as únicas pistas possíveis são:
+ *   1. o CNPJ/CPF que às vezes aparece no texto (PIX) → cruzado com o cadastro;
+ *   2. contas a pagar EM ABERTO com o mesmo valor → provavelmente é uma delas.
+ * Devolve Map(lancamentoId → { documento, fornecedorDoDocumento, parcelasAbertas }).
+ */
+async function pistasDeDebito(linhasDebito) {
+    const pistas = new Map();
+    if (linhasDebito.length === 0) return pistas;
+
+    const docs = [...new Set(linhasDebito.map((l) => extrairDocumento(l.descricao)).filter(Boolean))];
+    const [abertas, fornecedores] = await Promise.all([
+        prisma.parcelaPagar.findMany({
+            where: { status: { in: ['PENDENTE', 'PARCIAL'] } },
+            include: {
+                pagamentos: { where: { estornado: false }, select: { valorPago: true, desconto: true, estornado: true } },
+                contaPagar: { select: { descricao: true, fornecedor: { select: { razaoSocial: true, nomeFantasia: true } } } }
+            },
+            take: 1000
+        }),
+        docs.length > 0
+            ? prisma.fornecedor.findMany({ where: { cnpjCpf: { in: docs } }, select: { cnpjCpf: true, razaoSocial: true, nomeFantasia: true } })
+            : []
+    ]);
+
+    // Índice por saldo (em centavos) — casar valor do extrato com o que falta pagar.
+    const porSaldo = new Map();
+    for (const p of abertas) {
+        const saldo = saldoParcelaPagar(p);
+        if (saldo <= 0) continue;
+        const chave = Math.round(saldo * 100);
+        if (!porSaldo.has(chave)) porSaldo.set(chave, []);
+        porSaldo.get(chave).push({
+            fornecedor: p.contaPagar?.fornecedor?.nomeFantasia || p.contaPagar?.fornecedor?.razaoSocial || null,
+            descricao: p.contaPagar?.descricao || null,
+            vencimento: ymd(p.dataVencimento),
+            saldo
+        });
+    }
+    const porDoc = new Map(fornecedores.map((f) => [f.cnpjCpf, f.nomeFantasia || f.razaoSocial]));
+
+    for (const l of linhasDebito) {
+        const doc = extrairDocumento(l.descricao);
+        const centavos = Math.round(num(l.valor) * 100);
+        // ±R$ 0,01 (mesma tolerância do matching)
+        const candidatas = [centavos - 1, centavos, centavos + 1].flatMap((c) => porSaldo.get(c) || []);
+        pistas.set(l.id, {
+            documento: doc,
+            fornecedorDoDocumento: doc ? (porDoc.get(doc) || null) : null,
+            parcelasAbertas: candidatas.slice(0, 3)
+        });
+    }
+    return pistas;
+}
+
 async function listar({ contaFinanceiraCaId, de, ate, status }) {
     const where = {
         contaFinanceiraCaId,
@@ -356,7 +426,11 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
     };
     const linhas = await prisma.extratoLancamento.findMany({ where, orderBy: [{ data: 'desc' }, { valor: 'desc' }] });
 
-    const [pools, usados] = await Promise.all([carregarPools(contaFinanceiraCaId, de, ate), idsUsados(contaFinanceiraCaId)]);
+    const [pools, usados, pistas] = await Promise.all([
+        carregarPools(contaFinanceiraCaId, de, ate),
+        idsUsados(contaFinanceiraCaId),
+        pistasDeDebito(linhas.filter((l) => l.status === 'PENDENTE' && l.tipo === 'DEBITO'))
+    ]);
     const labelPorId = new Map([...pools.entradas, ...pools.saidas].map((p) => [p.id, p.label]));
 
     // Lançamentos conciliados via GRUPO (sem link 1↔1): montar o rótulo com as baixas do grupo
@@ -416,7 +490,9 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
         if (l.status === 'PENDENTE') {
             return {
                 ...base,
-                sugestoes: candidatosPara({ data: ymd(l.data), valor: num(l.valor), tipo: l.tipo }, pools, usados)
+                sugestoes: candidatosPara({ data: ymd(l.data), valor: num(l.valor), tipo: l.tipo }, pools, usados),
+                // "De quem é?" — CNPJ no texto e/ou contas a pagar em aberto com o mesmo valor
+                pistas: pistas.get(l.id) || null
             };
         }
         return base;
@@ -650,10 +726,175 @@ async function conciliarGrupo({ contaFinanceiraCaId, lancamentoIds, pagamentoIds
 }
 
 // ─────────────────────────────────────────────────────────────
-// Criar a despesa que faltava, direto do extrato
+// Conciliar dando baixa numa parcela EM ABERTO (saída)
 // ─────────────────────────────────────────────────────────────
 
 const erro = (msg, status = 400) => Object.assign(new Error(msg), { status });
+
+/** Saldo que falta pagar numa parcela a pagar (ledger não estornado: pago + desconto). */
+const saldoParcelaPagar = (p) => {
+    const quitado = (p.pagamentos || [])
+        .filter((pg) => !pg.estornado)
+        .reduce((s, pg) => s + num(pg.valorPago) + num(pg.desconto), 0);
+    return round2(Math.max(0, num(p.valor) - quitado));
+};
+
+/**
+ * Parcelas a pagar EM ABERTO, para conciliar uma saída do extrato dando baixa.
+ * As que fecham exatamente com o valor do extrato vêm primeiro (`bate`).
+ */
+async function parcelasPagarEmAberto({ valor, busca }) {
+    const termo = String(busca || '').trim();
+    const parcelas = await prisma.parcelaPagar.findMany({
+        where: {
+            status: { in: ['PENDENTE', 'PARCIAL'] },
+            ...(termo ? {
+                contaPagar: {
+                    OR: [
+                        { descricao: { contains: termo, mode: 'insensitive' } },
+                        { numeroNota: { contains: termo, mode: 'insensitive' } },
+                        { fornecedor: { razaoSocial: { contains: termo, mode: 'insensitive' } } },
+                        { fornecedor: { nomeFantasia: { contains: termo, mode: 'insensitive' } } }
+                    ]
+                }
+            } : {})
+        },
+        include: {
+            pagamentos: { where: { estornado: false }, select: { valorPago: true, desconto: true, estornado: true } },
+            contaPagar: {
+                select: {
+                    descricao: true, numeroNota: true, statusEnvioCA: true,
+                    fornecedor: { select: { razaoSocial: true, nomeFantasia: true } }
+                }
+            }
+        },
+        orderBy: { dataVencimento: 'desc' },
+        take: 500
+    });
+
+    const alvo = round2(num(valor));
+    return parcelas
+        .map((p) => {
+            const saldo = saldoParcelaPagar(p);
+            const cp = p.contaPagar;
+            return {
+                id: p.id,
+                saldo,
+                valorParcela: num(p.valor),
+                numeroParcela: p.numeroParcela,
+                vencimento: ymd(p.dataVencimento),
+                status: p.status,
+                fornecedor: cp?.fornecedor?.nomeFantasia || cp?.fornecedor?.razaoSocial || null,
+                descricao: cp?.descricao || null,
+                numeroNota: cp?.numeroNota || null,
+                // Despesa importada do CA (statusEnvioCA=NAO_ENVIAR) não tem para onde empurrar
+                // a baixa — ela fica só no app. A tela avisa antes de o usuário confirmar.
+                vaiAoCA: !!(cp?.statusEnvioCA && cp.statusEnvioCA !== 'NAO_ENVIAR'),
+                bate: Math.abs(saldo - alvo) <= 0.01
+            };
+        })
+        .filter((p) => p.saldo > 0)
+        .sort((a, b) => (b.bate - a.bate) || b.vencimento.localeCompare(a.vencimento))
+        .slice(0, 60);
+}
+
+/**
+ * Concilia uma SAÍDA do extrato dando BAIXA numa parcela a pagar em aberto.
+ *
+ * É o caso "o boleto está lançado no app, foi pago pelo banco, mas ninguém deu
+ * baixa": em vez de exigir que o usuário vá até o Contas a Pagar, baixar e voltar,
+ * a conciliação faz a baixa (com a data e o banco do próprio extrato) e já amarra
+ * a linha. A baixa entra na fila de envio ao CA como qualquer outra (o worker
+ * empurra), desde que a despesa esteja no CA — despesa importada do CA (sem
+ * idParcelaCA) fica só no app, e a resposta avisa.
+ *
+ * Diferença entre o que saiu do banco e o saldo da parcela:
+ *   saiu MAIS  → o excedente é juros/multa (informados pelo usuário);
+ *   saiu MENOS → ou é desconto (quita a parcela), ou é baixa PARCIAL (sobra saldo).
+ */
+async function conciliarComBaixa({
+    lancamentoId, parcelaPagarId, metodoPagamento, juros = 0, multa = 0, desconto = 0, observacao, userId
+}) {
+    const l = await prisma.extratoLancamento.findUnique({ where: { id: lancamentoId } });
+    if (!l) throw erro('Lançamento do extrato não encontrado.', 404);
+    if (l.tipo !== 'DEBITO') throw erro('Dar baixa pela conciliação só vale para SAÍDA (contas a pagar).');
+    if (l.status !== 'PENDENTE') throw erro('Este lançamento já foi conciliado ou ignorado.');
+
+    const metodo = String(metodoPagamento || '').toUpperCase();
+    if (!contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(metodo)) throw erro('Escolha a forma de pagamento.');
+
+    const parcela = await prisma.parcelaPagar.findUnique({
+        where: { id: parcelaPagarId },
+        include: {
+            pagamentos: { where: { estornado: false }, select: { valorPago: true, desconto: true, estornado: true } },
+            contaPagar: { select: { statusEnvioCA: true, descricao: true } }
+        }
+    });
+    if (!parcela) throw erro('Parcela a pagar não encontrada.', 404);
+    if (parcela.status === 'PAGO') throw erro('Essa parcela já está paga. Estorne antes de lançar outra baixa.');
+    if (parcela.status === 'CANCELADO') throw erro('Parcela cancelada.');
+
+    const total = round2(num(l.valor)); // o que efetivamente saiu do banco
+    const jur = round2(Math.max(0, num(juros)));
+    const mul = round2(Math.max(0, num(multa)));
+    const desc = round2(Math.max(0, num(desconto)));
+    const valorPago = round2(total - jur - mul);
+    if (valorPago <= 0) throw erro('Juros + multa não podem consumir todo o valor que saiu do banco.');
+
+    const saldo = saldoParcelaPagar(parcela);
+    if (valorPago + desc > saldo + 0.01) {
+        throw erro(`Saiu R$ ${valorPago.toFixed(2)}${desc ? ` + desconto R$ ${desc.toFixed(2)}` : ''}, mas a parcela só tem R$ ${saldo.toFixed(2)} em aberto. Se o pagamento cobriu mais de uma parcela, use "Várias…".`);
+    }
+
+    // Mesma regra do botão Baixar do Contas a Pagar: só empurra ao CA se a despesa está lá.
+    const naCA = !!(parcela.contaPagar.statusEnvioCA && parcela.contaPagar.statusEnvioCA !== 'NAO_ENVIAR');
+
+    await prisma.$transaction(async (tx) => {
+        const pag = await tx.pagamentoParcelaPagar.create({
+            data: {
+                parcelaPagarId: parcela.id,
+                valorPago,
+                juros: jur,
+                multa: mul,
+                desconto: desc,
+                dataPagamento: new Date(l.data),
+                formaPagamento: metodo,
+                contaFinanceiraCaId: l.contaFinanceiraCaId, // o banco do extrato é a verdade
+                statusEnvioCA: naCA ? 'ENVIAR' : 'NAO_ENVIAR',
+                origem: 'MANUAL',
+                observacao: observacao?.trim() || `Baixa dada pela conciliação bancária (${l.descricao || 'extrato'}).`,
+                registradoPorId: userId || null
+            }
+        });
+        await contasPagarCaSyncService.recalcularParcelaEConta(tx, parcela.id);
+
+        // Guarda contra duplo clique: só concilia se ainda estiver pendente.
+        const r = await tx.extratoLancamento.updateMany({
+            where: { id: lancamentoId, status: 'PENDENTE' },
+            data: {
+                status: 'CONCILIADO',
+                conciliadoAuto: false,
+                conciliadoPorId: userId || null,
+                conciliadoEm: new Date(),
+                pagamentoParcelaPagarId: pag.id
+            }
+        });
+        if (r.count === 0) throw erro('Esse lançamento deixou de estar pendente — recarregue a tela.');
+    }, { timeout: 20000, maxWait: 10000 });
+
+    const sobra = round2(saldo - valorPago - desc);
+    return {
+        message: sobra > 0.01
+            ? `Baixa parcial registrada e lançamento conciliado. Ainda faltam R$ ${sobra.toFixed(2)} nessa parcela.`
+            : `Parcela quitada e lançamento conciliado!${naCA ? ' A baixa vai para o Conta Azul em instantes.' : ' (Despesa importada do CA — a baixa fica só no app.)'}`,
+        quitada: sobra <= 0.01,
+        vaiAoCA: naCA
+    };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Criar a despesa que faltava, direto do extrato
+// ─────────────────────────────────────────────────────────────
 
 /**
  * Cria a despesa (conta a pagar) correspondente a um DÉBITO do extrato que não
@@ -805,6 +1046,8 @@ module.exports = {
     listarImportacoes,
     criarDespesaDoLancamento,
     opcoesDespesa,
+    parcelasPagarEmAberto,
+    conciliarComBaixa,
     // puras (testáveis offline)
     decodificarOfx,
     parseOfx,

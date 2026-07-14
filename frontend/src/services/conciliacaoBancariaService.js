@@ -56,6 +56,16 @@ const conciliacaoBancariaService = {
     criarDespesa: async (lancamentoId, dados) => {
         const response = await api.post(`/conciliacao-bancaria/${lancamentoId}/criar-despesa`, dados);
         return response.data;
+    },
+    // Contas a pagar EM ABERTO (as que fecham com o valor do extrato vêm primeiro)
+    parcelasPagarAbertas: async (valor, busca) => {
+        const response = await api.get('/conciliacao-bancaria/parcelas-pagar-abertas', { params: { valor, busca } });
+        return response.data;
+    },
+    // Dá baixa na parcela em aberto (app + fila do CA) e concilia o lançamento
+    conciliarComBaixa: async (lancamentoId, dados) => {
+        const response = await api.post(`/conciliacao-bancaria/${lancamentoId}/conciliar-com-baixa`, dados);
+        return response.data;
     }
 };
 

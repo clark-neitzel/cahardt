@@ -4,7 +4,11 @@
 
 Confere o **extrato do banco** contra o que o app registrou: cada entrada/saída do extrato deve ter uma baixa correspondente no app (contas a receber ou a pagar). É o que transforma o saldo de "fé" em fato conferido.
 
-> **Conciliar não dá baixa em nada.** Conciliar apenas *amarra* a linha do extrato a uma baixa **que já existe** no app — é um "confere, bateu". Não paga parcela, não cria despesa e não manda nada para o Conta Azul. Quem dá baixa é o Contas a Pagar/Receber (ou, para uma saída sem despesa lançada, o botão **"Criar despesa"** desta tela — ver abaixo).
+> **O botão "Conciliar" não dá baixa em nada** — ele apenas *amarra* a linha do extrato a uma baixa **que já existe** no app ("confere, bateu"). Para uma **saída** que ainda não tem baixa, a tela tem dois botões que resolvem sem sair daqui:
+> - **"Dar baixa…"** — a conta a pagar **já está lançada e em aberto**: baixa ela (no app e no Conta Azul) e concilia de uma vez.
+> - **"Criar despesa"** — a despesa **nunca foi lançada**: cadastra já paga e concilia em seguida.
+>
+> Do lado das **entradas** (contas a receber), a conciliação **nunca** dá baixa: recebimento de cliente continua sendo baixado no Contas a Receber / "Baixa CA" do Caixa (evita baixa em dobro no CA).
 
 ## Fluxo de uso
 
@@ -24,8 +28,24 @@ Confere o **extrato do banco** contra o que o app registrou: cada entrada/saída
 - **KPIs**: Pendentes (com valor a conferir), Conciliados (valor batido), Ignorados, e **"Só no app"** — baixas registradas no app nesta conta que não bateram com nenhum lançamento do extrato.
 - **Filtros**: conta (obrigatório), período (chips: este mês, 30/60/90 dias) e status.
 - **Lista do extrato**: data, descrição do banco, valor (verde = entrou, vermelho = saiu), status (Pendente amarelo / Conciliado verde / Ignorado cinza) e a coluna de conciliação com as sugestões. Conciliação automática aparece com 🪄.
-- **Detalhes do banco**: abaixo da descrição aparece o **beneficiário** e o **nº do documento**, quando o arquivo do banco trouxer. Descrições como "DÉB.TIT.COMPE EFETIVADO" são o texto padrão do banco para *boleto pago por compensação* e não dizem quem recebeu — quando o beneficiário não vem no arquivo, a única forma de saber do que se trata é pelo lançamento no app (valor + data). Reimportar o extrato **atualiza a descrição** das linhas já existentes (sem duplicar e sem desfazer conciliação).
+- **"De quem é esse lançamento?"** — abaixo da descrição a tela mostra tudo o que dá para saber:
+  - **Beneficiário e nº do documento**, quando o arquivo do banco traz (nem todo banco traz).
+  - **CNPJ/CPF achado no texto** (comum no PIX: "Pagamento Pix 02.118.562 0001-60") **cruzado com o cadastro de fornecedores** → aparece o nome da empresa. Se o documento não estiver cadastrado, mostra o número mesmo.
+  - **"Mesmo valor de: FORNECEDOR (vence dd/mm)"** — contas a pagar **em aberto** com o valor exato da saída. É a pista para o caso do boleto: "DÉB.TIT.COMPE EFETIVADO" é o texto padrão do banco para *boleto pago por compensação* e **não diz quem recebeu** — nenhum sistema consegue extrair o beneficiário se o banco não mandou. O que bate é o valor.
+- Reimportar o extrato **atualiza a descrição** das linhas já existentes (sem duplicar e sem desfazer conciliação).
 - **Card "Baixas do app sem par no extrato"** (expansível): lista as baixas órfãs — pode ser data/valor errado na baixa, conta errada escolhida na hora da baixa, ou extrato ainda não importado daquele período.
+
+## Botão "Dar baixa…" (a conta está lançada, mas em aberto)
+
+Aparece nas **saídas pendentes**. É o caso "o boleto está no app, foi pago pelo banco, mas ninguém deu baixa". Abre a lista das **contas a pagar em aberto** — as que fecham **exatamente com o valor do extrato** vêm primeiro, com a etiqueta verde **"valor bate"** — e tem busca por fornecedor, descrição ou nº da nota.
+
+Escolhida a conta, informa-se a forma de pagamento e, se houver, **juros/multa** (o extrato traz o total que saiu; o sistema separa) ou **desconto**. O rodapé avisa antes de confirmar se a baixa **quita** a parcela ou fica **parcial** (e quanto sobra).
+
+Ao confirmar: a baixa é criada com a **data e o banco do próprio extrato**, entra na fila de envio ao Conta Azul (igual ao botão "Baixar" do Contas a Pagar) e o lançamento **já fica conciliado** — não precisa clicar em "Conciliar" depois.
+
+**Exceção:** despesa **importada do CA** (que não foi criada pelo app) não tem para onde empurrar a baixa — ela fica **só no app**, e a tela avisa isso na linha e no rodapé antes de confirmar.
+
+**Entradas (crédito) não têm esse botão**: a baixa de recebimento continua no Contas a Receber / "Baixa CA" do Caixa, para não baixar duas vezes o mesmo dinheiro no Conta Azul.
 
 ## Botão "Criar despesa" (saída do extrato sem despesa lançada)
 

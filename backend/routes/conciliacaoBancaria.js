@@ -196,6 +196,41 @@ router.post('/:id/desfazer', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// ── GET /parcelas-pagar-abertas?valor=&busca= — contas a pagar EM ABERTO ──
+// Para conciliar uma saída dando baixa: as que fecham com o valor do extrato vêm primeiro.
+router.get('/parcelas-pagar-abertas', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        res.json(await conciliacaoService.parcelasPagarEmAberto({
+            valor: req.query.valor,
+            busca: req.query.busca
+        }));
+    } catch (error) {
+        console.error('Erro ao listar parcelas a pagar em aberto:', error);
+        res.status(500).json({ error: 'Erro ao listar as contas a pagar em aberto.' });
+    }
+});
+
+// ── POST /:id/conciliar-com-baixa — dá a BAIXA na parcela em aberto e concilia ──
+// Saída (contas a pagar) apenas. A baixa entra na fila de envio ao CA como qualquer outra.
+router.post('/:id/conciliar-com-baixa', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const r = await conciliacaoService.conciliarComBaixa({
+            lancamentoId: req.params.id,
+            parcelaPagarId: req.body.parcelaPagarId,
+            metodoPagamento: req.body.metodoPagamento,
+            juros: req.body.juros,
+            multa: req.body.multa,
+            desconto: req.body.desconto,
+            observacao: req.body.observacao,
+            userId: req.user.id
+        });
+        res.json(r);
+    } catch (error) {
+        console.error('Erro ao conciliar com baixa:', error);
+        res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao dar baixa.' });
+    }
+});
+
 // ── GET /opcoes-despesa — fornecedores + categorias + formas de pagamento ──
 // Serve o modal de "criar despesa" DA CONCILIAÇÃO. Fica aqui (e não em /contas-pagar)
 // de propósito: a permissão tem que ser a MESMA da tela onde o botão aparece, senão
