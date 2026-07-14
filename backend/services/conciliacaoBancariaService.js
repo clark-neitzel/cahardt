@@ -178,7 +178,8 @@ async function carregarPools(contaFinanceiraCaId, deYmd, ateYmd) {
                 parcela: {
                     select: {
                         numeroParcela: true, valor: true, dataVencimento: true,
-                        contaReceber: { select: { numeroNota: true, cliente: { select: { Nome: true, NomeFantasia: true } } } }
+                        // ContaReceber NÃO tem numeroNota (só ContaPagar) — não adicionar aqui
+                        contaReceber: { select: { pedido: { select: { numero: true } }, cliente: { select: { Nome: true, NomeFantasia: true } } } }
                     }
                 }
             }
@@ -208,7 +209,7 @@ async function carregarPools(contaFinanceiraCaId, deYmd, ateYmd) {
             // Dados para o usuário conferir "no que estou mexendo" antes de conciliar:
             detalhe: {
                 nome,
-                descricao: r.parcela?.contaReceber?.numeroNota ? `NF ${r.parcela.contaReceber.numeroNota}` : null,
+                descricao: r.parcela?.contaReceber?.pedido?.numero ? `Pedido ${r.parcela.contaReceber.pedido.numero}` : null,
                 parcela: r.parcela?.numeroParcela ?? null,
                 vencimento: r.parcela?.dataVencimento ? ymd(r.parcela.dataVencimento) : null,
                 valorParcela: num(r.parcela?.valor),
