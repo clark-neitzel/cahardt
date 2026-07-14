@@ -817,7 +817,7 @@ const ConciliacaoBancariaPage = () => {
                         {l.detalhes.documento && <span>doc {l.detalhes.documento}</span>}
                     </div>
                 )}
-                {/* Quem é? Fornecedor do CNPJ que veio no texto (PIX) */}
+                {/* Quem é? CNPJ/CPF que o banco escondeu no texto do PIX */}
                 {p?.fornecedorDoDocumento && (
                     <div className="text-xs mt-0.5 truncate">
                         <span className="text-gray-500">CNPJ do texto: </span>
@@ -826,6 +826,17 @@ const ConciliacaoBancariaPage = () => {
                 )}
                 {!p?.fornecedorDoDocumento && p?.documento && (
                     <div className="text-xs text-gray-500 mt-0.5 truncate">CNPJ/CPF {p.documento} (não cadastrado como fornecedor)</div>
+                )}
+                {/* CPF mascarado pelo banco (***.851.799-**): só o miolo vem, então é palpite */}
+                {p?.fornecedorProvavel && (
+                    <div className="text-xs mt-0.5 truncate">
+                        <span className="text-gray-500">Provavelmente </span>
+                        <span className="font-semibold text-gray-700">{p.fornecedorProvavel}</span>
+                        <span className="text-gray-500"> (CPF parcial)</span>
+                    </div>
+                )}
+                {!p?.fornecedorProvavel && p?.documentoParcial && (
+                    <div className="text-xs text-gray-500 mt-0.5 truncate">CPF ***.{p.documentoParcial.slice(0, 3)}.{p.documentoParcial.slice(3)}-** (sem correspondência no cadastro)</div>
                 )}
                 {/* Boleto sem beneficiário: a pista é o valor bater com uma conta em aberto */}
                 {abertas.length > 0 && (

@@ -349,18 +349,32 @@ async function importarOfx({ contaFinanceiraCaId, nomeArquivo, conteudo, criadoP
 // ─────────────────────────────────────────────────────────────
 
 /**
- * CNPJ/CPF escondido na descrição do banco.
- * O Sicoob não manda o beneficiário do boleto, mas em PIX o documento vem no texto
- * ("Pagamento Pix 02.118.562 0001-60"). Aceita com ou sem pontuação.
+ * CNPJ/CPF escondido no texto do banco (Sicoob confirmado no OFX real).
+ *
+ * O boleto ("DÉB.TIT.COMPE EFETIVADO") NÃO traz beneficiário — só CHECKNUM. Mas o
+ * PIX traz o documento na tag <NAME>, em duas formas:
+ *    <NAME>Pagamento Pix 02.118.562 0001-60      → CNPJ completo
+ *    <NAME>Pagamento Pix ***.851.799-**          → CPF MASCARADO (LGPD)
+ * Por isso o texto pesquisado é memo + name + payee, não só a descrição.
+ *
+ * @returns { completo: '02118562000160' } | { parcial: '851799' } | null
+ *          `parcial` são os 6 dígitos do meio do CPF — únicos que o banco revela.
  */
 function extrairDocumento(texto) {
     if (!texto) return null;
-    const cnpj = String(texto).match(/(\d{2})[.\s]?(\d{3})[.\s]?(\d{3})[/\s]?(\d{4})[-\s]?(\d{2})/);
-    if (cnpj) return cnpj.slice(1).join('');
-    const cpf = String(texto).match(/(?<!\d)(\d{3})[.\s]?(\d{3})[.\s]?(\d{3})[-\s]?(\d{2})(?!\d)/);
-    if (cpf) return cpf.slice(1).join('');
+    const s = String(texto);
+    const cnpj = s.match(/(\d{2})[.\s]?(\d{3})[.\s]?(\d{3})[/\s]?(\d{4})[-\s]?(\d{2})/);
+    if (cnpj) return { completo: cnpj.slice(1).join('') };
+    const cpf = s.match(/(?<!\d)(\d{3})[.\s]?(\d{3})[.\s]?(\d{3})[-\s]?(\d{2})(?!\d)/);
+    if (cpf) return { completo: cpf.slice(1).join('') };
+    // CPF mascarado: ***.851.799-**  (só o miolo vem)
+    const mascarado = s.match(/\*{2,3}[.\s]?(\d{3})[.\s]?(\d{3})[-\s]?\*{2,3}/);
+    if (mascarado) return { parcial: mascarado.slice(1).join('') };
     return null;
 }
+
+/** Todo o texto que o banco mandou nessa linha (o documento pode estar em qualquer tag). */
+const textoDoBanco = (l) => [l.descricao, l.memo, l.nome, l.payee].filter(Boolean).join(' | ');
 
 /**
  * "De quem é esse débito?" — quando o banco não diz (o boleto vem só como
@@ -373,8 +387,13 @@ async function pistasDeDebito(linhasDebito) {
     const pistas = new Map();
     if (linhasDebito.length === 0) return pistas;
 
-    const docs = [...new Set(linhasDebito.map((l) => extrairDocumento(l.descricao)).filter(Boolean))];
-    const [abertas, fornecedores] = await Promise.all([
+    const docsPorLinha = new Map(linhasDebito.map((l) => [l.id, extrairDocumento(textoDoBanco(l))]));
+    const docs = [...docsPorLinha.values()];
+    const completos = [...new Set(docs.filter((d) => d?.completo).map((d) => d.completo))];
+    const parciais = [...new Set(docs.filter((d) => d?.parcial).map((d) => d.parcial))];
+
+    const selFornecedor = { cnpjCpf: true, razaoSocial: true, nomeFantasia: true };
+    const [abertas, fornecedores, porParcial] = await Promise.all([
         prisma.parcelaPagar.findMany({
             where: { status: { in: ['PENDENTE', 'PARCIAL'] } },
             include: {
@@ -383,8 +402,16 @@ async function pistasDeDebito(linhasDebito) {
             },
             take: 1000
         }),
-        docs.length > 0
-            ? prisma.fornecedor.findMany({ where: { cnpjCpf: { in: docs } }, select: { cnpjCpf: true, razaoSocial: true, nomeFantasia: true } })
+        completos.length > 0
+            ? prisma.fornecedor.findMany({ where: { cnpjCpf: { in: completos } }, select: selFornecedor })
+            : [],
+        // CPF mascarado: o banco só revela o miolo (***.851.799-**). Buscamos por ele — pode
+        // dar mais de um acerto, então isso entra na tela como PROVÁVEL, nunca como certeza.
+        parciais.length > 0
+            ? prisma.fornecedor.findMany({
+                where: { OR: parciais.map((p) => ({ cnpjCpf: { contains: p } })) },
+                select: selFornecedor
+            })
             : []
     ]);
 
@@ -402,16 +429,34 @@ async function pistasDeDebito(linhasDebito) {
             saldo
         });
     }
-    const porDoc = new Map(fornecedores.map((f) => [f.cnpjCpf, f.nomeFantasia || f.razaoSocial]));
+    const nomeF = (f) => f.nomeFantasia || f.razaoSocial;
+    const porDoc = new Map(fornecedores.map((f) => [f.cnpjCpf, nomeF(f)]));
 
     for (const l of linhasDebito) {
-        const doc = extrairDocumento(l.descricao);
+        const doc = docsPorLinha.get(l.id);
         const centavos = Math.round(num(l.valor) * 100);
         // ±R$ 0,01 (mesma tolerância do matching)
         const candidatas = [centavos - 1, centavos, centavos + 1].flatMap((c) => porSaldo.get(c) || []);
+
+        // Só é "o fornecedor" quando o documento veio inteiro. No CPF mascarado, o
+        // acerto pelo miolo é palpite — e se casar com mais de um, não afirmamos nada.
+        let fornecedorDoDocumento = null;
+        let provavel = null;
+        if (doc?.completo) {
+            fornecedorDoDocumento = porDoc.get(doc.completo) || null;
+        } else if (doc?.parcial) {
+            const achados = porParcial.filter((f) => (f.cnpjCpf || '').includes(doc.parcial));
+            if (achados.length === 1) provavel = nomeF(achados[0]);
+        }
+
         pistas.set(l.id, {
-            documento: doc,
-            fornecedorDoDocumento: doc ? (porDoc.get(doc) || null) : null,
+            documento: doc?.completo || null,
+            documentoParcial: doc?.parcial || null,
+            fornecedorDoDocumento,
+            fornecedorProvavel: provavel,
+            // O que o banco escreveu de útil além do MEMO ("ITPU", "DARE ICMS DeSTDA",
+            // "MARIANA ... RESCISAO") — é nome de verdade, só não é do cadastro.
+            textoBeneficiario: l.nome || l.payee || null,
             parcelasAbertas: candidatas.slice(0, 3)
         });
     }
