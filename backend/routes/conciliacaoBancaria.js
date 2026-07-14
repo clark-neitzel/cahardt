@@ -55,13 +55,15 @@ router.post('/importar', verificarAuth, checkAcesso, uploadOfx.single('arquivo')
         const resultado = await conciliacaoService.importarOfx({
             contaFinanceiraCaId,
             nomeArquivo: req.file.originalname || 'extrato.ofx',
-            conteudo: req.file.buffer.toString('utf8'),
+            // OFX de banco brasileiro vem em Latin1 — decodificar às cegas em UTF-8
+            // corrompia os acentos ("D�B.TIT.COMPE").
+            conteudo: conciliacaoService.decodificarOfx(req.file.buffer),
             criadoPorId: req.user.id
         });
-        res.json({
-            message: `${resultado.novos} lançamento(s) novo(s) importado(s)${resultado.duplicados ? `, ${resultado.duplicados} já existiam` : ''}.`,
-            ...resultado
-        });
+        const partes = [`${resultado.novos} lançamento(s) novo(s) importado(s)`];
+        if (resultado.duplicados) partes.push(`${resultado.duplicados} já existiam`);
+        if (resultado.atualizados) partes.push(`${resultado.atualizados} tiveram a descrição corrigida`);
+        res.json({ message: `${partes.join(', ')}.`, ...resultado });
     } catch (error) {
         console.error('Erro ao importar OFX:', error);
         res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao importar o extrato.' });
@@ -191,6 +193,47 @@ router.post('/:id/desfazer', verificarAuth, checkAcesso, async (req, res) => {
     } catch (error) {
         console.error('Erro ao desfazer lançamento:', error);
         res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao desfazer.' });
+    }
+});
+
+// ── GET /opcoes-despesa — fornecedores + categorias + formas de pagamento ──
+// Serve o modal de "criar despesa" DA CONCILIAÇÃO. Fica aqui (e não em /contas-pagar)
+// de propósito: a permissão tem que ser a MESMA da tela onde o botão aparece, senão
+// quem concilia abriria um modal que não consegue salvar.
+router.get('/opcoes-despesa', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        res.json(await conciliacaoService.opcoesDespesa());
+    } catch (error) {
+        console.error('Erro ao carregar opções da despesa:', error);
+        res.status(500).json({ error: 'Erro ao carregar fornecedores/categorias.' });
+    }
+});
+
+// ── POST /:id/criar-despesa — lança no Contas a Pagar a despesa que faltava ──
+// Cria a conta JÁ PAGA (o dinheiro saiu do banco), com a data/valor/banco do próprio
+// lançamento. A baixa vira o candidato da linha — o usuário clica em "Conciliar" depois.
+router.post('/:id/criar-despesa', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const r = await conciliacaoService.criarDespesaDoLancamento({
+            lancamentoId: req.params.id,
+            fornecedorId: req.body.fornecedorId || null,
+            fornecedorNovo: req.body.fornecedorNovo || null,
+            descricao: req.body.descricao,
+            categoria: req.body.categoria,
+            categoriaCaId: req.body.categoriaCaId,
+            numeroNota: req.body.numeroNota,
+            competencia: req.body.competencia,
+            observacoes: req.body.observacoes,
+            metodoPagamento: req.body.metodoPagamento,
+            dataVencimento: req.body.dataVencimento,
+            juros: req.body.juros,
+            multa: req.body.multa,
+            userId: req.user.id
+        });
+        res.status(201).json(r);
+    } catch (error) {
+        console.error('Erro ao criar despesa pela conciliação:', error);
+        res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao criar a despesa.' });
     }
 });
 

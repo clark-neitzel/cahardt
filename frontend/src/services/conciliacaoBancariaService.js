@@ -46,6 +46,16 @@ const conciliacaoBancariaService = {
     importacoes: async (contaId) => {
         const response = await api.get('/conciliacao-bancaria/importacoes', { params: { contaId } });
         return response.data;
+    },
+    // Fornecedores + categorias + formas de pagamento (modal de criar despesa)
+    opcoesDespesa: async () => {
+        const response = await api.get('/conciliacao-bancaria/opcoes-despesa');
+        return response.data;
+    },
+    // Lança no Contas a Pagar a despesa que faltava, já paga com a data/valor/banco do extrato
+    criarDespesa: async (lancamentoId, dados) => {
+        const response = await api.post(`/conciliacao-bancaria/${lancamentoId}/criar-despesa`, dados);
+        return response.data;
     }
 };
 

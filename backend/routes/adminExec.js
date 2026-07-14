@@ -2139,6 +2139,83 @@ router.post('/contas-pagar-reconciliar', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-extrato-conciliado?contaId=&limite=20
+// Confere o que a conciliação bancária fez: cada lançamento CONCILIADO com a baixa a que
+// ficou preso (valor do extrato × valor da baixa, incluindo juros/multa) e se a baixa foi
+// ao CA. Serve para auditar as conciliações de teste — conciliar NÃO dá baixa em nada,
+// então aqui a gente confirma que os dois lados batem de verdade.
+router.get('/diag-extrato-conciliado', async (req, res) => {
+    try {
+        const where = { status: 'CONCILIADO' };
+        if (req.query.contaId) where.contaFinanceiraCaId = String(req.query.contaId);
+        const linhas = await prisma.extratoLancamento.findMany({
+            where,
+            orderBy: { conciliadoEm: 'desc' },
+            take: Math.min(Number(req.query.limite) || 20, 100)
+        });
+
+        const n = (v) => Number(v || 0);
+        const saida = [];
+        for (const l of linhas) {
+            const base = {
+                data: l.data.toISOString().slice(0, 10),
+                descricao: l.descricao,
+                beneficiarioNoBanco: l.nome || l.payee || null,
+                documento: l.checkNum || l.refNum || null,
+                tipo: l.tipo,
+                valorExtrato: n(l.valor),
+                auto: l.conciliadoAuto,
+                conciliadoEm: l.conciliadoEm
+            };
+            if (l.pagamentoParcelaPagarId) {
+                const p = await prisma.pagamentoParcelaPagar.findUnique({
+                    where: { id: l.pagamentoParcelaPagarId },
+                    include: { parcelaPagar: { include: { contaPagar: { include: { fornecedor: true } } } } }
+                });
+                const totalBaixa = p ? n(p.valorPago) + n(p.juros) + n(p.multa) : 0;
+                saida.push({
+                    ...base,
+                    baixa: p ? {
+                        despesa: p.parcelaPagar?.contaPagar?.descricao,
+                        fornecedor: p.parcelaPagar?.contaPagar?.fornecedor?.razaoSocial || null,
+                        valorPago: n(p.valorPago), juros: n(p.juros), multa: n(p.multa), total: totalBaixa,
+                        dataPagamento: p.dataPagamento?.toISOString().slice(0, 10),
+                        statusEnvioCA: p.statusEnvioCA,
+                        origem: p.origem,
+                        estornado: p.estornado
+                    } : null,
+                    confere: p ? Math.abs(totalBaixa - n(l.valor)) <= 0.01 : false
+                });
+            } else if (l.pagamentoParcelaId) {
+                const p = await prisma.pagamentoParcela.findUnique({
+                    where: { id: l.pagamentoParcelaId },
+                    include: { parcela: { include: { contaReceber: { include: { cliente: true } } } } }
+                });
+                saida.push({
+                    ...base,
+                    baixa: p ? {
+                        cliente: p.parcela?.contaReceber?.cliente?.Nome || null,
+                        valorRecebido: n(p.valorRecebido),
+                        dataPagamento: p.dataPagamento?.toISOString().slice(0, 10),
+                        estornado: p.estornado
+                    } : null,
+                    confere: p ? Math.abs(n(p.valorRecebido) - n(l.valor)) <= 0.01 : false
+                });
+            } else {
+                saida.push({ ...base, baixa: 'GRUPO (N↔M)', confere: null });
+            }
+        }
+        res.json({
+            total: saida.length,
+            divergentes: saida.filter((s) => s.confere === false).length,
+            lancamentos: saida
+        });
+    } catch (error) {
+        console.error('Erro no diag da conciliação bancária:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /api/admin-exec/contas-pagar-conciliacao-suspeitas
 // Varre vínculos suspeitos com o CA (incidente do ICMS DESTDA, 07/2026):
 //  (a) parcelas com baixa vinda do CA cujo total pago EXCEDE o valor da parcela

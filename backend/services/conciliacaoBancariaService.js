@@ -19,6 +19,7 @@
 
 const crypto = require('crypto');
 const prisma = require('../config/database');
+const contasPagarCaSyncService = require('./contasPagarCaSyncService');
 
 const TZ_OFFSET = '-03:00';
 const round2 = (v) => Math.round(Number(v) * 100) / 100;
@@ -35,10 +36,46 @@ const somaDias = (s, n) => {
 // Parser OFX (função PURA)
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * Decodifica o BUFFER do arquivo OFX respeitando o charset.
+ *
+ * Os bancos brasileiros exportam OFX em Latin1/Windows-1252 (o header traz
+ * `CHARSET:1252` ou `ENCODING:USASCII`). Ler como UTF-8 corrompe os acentos —
+ * era isso que fazia "DÉB.TIT.COMPE" virar "D�B.TIT.COMPE" na tela (o caractere
+ * inválido U+FFFD ia gravado no banco). Regra: obedecer o header; sem header
+ * confiável, tentar UTF-8 e cair para cp1252 se aparecer lixo.
+ */
+function decodificarOfx(buffer) {
+    if (!Buffer.isBuffer(buffer)) return String(buffer || '');
+    // O header do OFX 1.x é ASCII puro — ler os primeiros bytes é sempre seguro.
+    const header = buffer.slice(0, 512).toString('latin1').toUpperCase();
+    const declaraUtf8 = /CHARSET:\s*(UTF-?8)/.test(header) || /ENCODING:\s*UTF-?8/.test(header);
+    const declaraLatin = /CHARSET:\s*(1252|8859-1|LATIN1)/.test(header) || /ENCODING:\s*USASCII/.test(header);
+
+    const comoUtf8 = buffer.toString('utf8');
+    const sujo = comoUtf8.includes('�'); // byte inválido em UTF-8 → não era UTF-8
+
+    if (declaraUtf8 && !sujo) return comoUtf8;
+    if (declaraLatin || sujo) {
+        // 'latin1' no Node cobre cp1252 nos acentos (difere só em 0x80–0x9F, que não
+        // aparecem em descrição de extrato).
+        const comoLatin = buffer.toString('latin1');
+        if (!comoLatin.includes('�')) return comoLatin;
+    }
+    return comoUtf8;
+}
+
 /** Valor de uma tag OFX dentro de um bloco (SGML: fecha na quebra de linha ou na próxima tag). */
 function tagOfx(bloco, tag) {
     const m = bloco.match(new RegExp(`<${tag}>([^<\\r\\n]*)`, 'i'));
-    return m ? m[1].trim() : null;
+    const v = m ? m[1].trim() : null;
+    return v || null; // string vazia = ausente
+}
+
+/** Nome dentro do bloco <PAYEE> (alguns bancos põem o beneficiário só aí). */
+function payeeOfx(bloco) {
+    const m = bloco.match(/<PAYEE>([\s\S]*?)(?:<\/PAYEE>|<BANKACCTTO>|$)/i);
+    return m ? tagOfx(m[1], 'NAME') : null;
 }
 
 /**
@@ -70,7 +107,15 @@ function parseOfx(texto) {
         const valorAssinado = parseFloat(bruto);
         if (!Number.isFinite(valorAssinado) || valorAssinado === 0) { avisos.push(`Valor inválido "${amt}" — lançamento pulado.`); continue; }
 
-        const descricao = tagOfx(bloco, 'MEMO') || tagOfx(bloco, 'NAME') || null;
+        // Campos crus: o MEMO costuma ser genérico ("DÉB.TIT.COMPE EFETIVADO"); o beneficiário,
+        // quando o banco manda, vem no NAME ou no PAYEE. Guardamos todos.
+        const memo = tagOfx(bloco, 'MEMO');
+        const nome = tagOfx(bloco, 'NAME');
+        const payee = payeeOfx(bloco);
+        const checkNum = tagOfx(bloco, 'CHECKNUM');
+        const refNum = tagOfx(bloco, 'REFNUM');
+        const trnType = tagOfx(bloco, 'TRNTYPE');
+        const descricao = memo || nome || payee || null;
 
         // FITID: identidade no banco. Sem FITID → sintetiza um estável (hash de data+valor+descrição+ocorrência).
         let fitId = tagOfx(bloco, 'FITID');
@@ -86,7 +131,8 @@ function parseOfx(texto) {
             data,
             valor: round2(Math.abs(valorAssinado)),
             tipo: valorAssinado < 0 ? 'DEBITO' : 'CREDITO',
-            descricao
+            descricao,
+            memo, nome, payee, checkNum, refNum, trnType
         });
     }
 
@@ -220,10 +266,21 @@ async function importarOfx({ contaFinanceiraCaId, nomeArquivo, conteudo, criadoP
     const fitIds = lancamentos.map((l) => l.fitId);
     const existentes = await prisma.extratoLancamento.findMany({
         where: { contaFinanceiraCaId, fitId: { in: fitIds } },
-        select: { fitId: true }
+        select: { id: true, fitId: true, descricao: true, memo: true }
     });
-    const jaTem = new Set(existentes.map((e) => e.fitId));
-    const novos = lancamentos.filter((l) => !jaTem.has(l.fitId));
+    const porFitId = new Map(existentes.map((e) => [e.fitId, e]));
+    const novos = lancamentos.filter((l) => !porFitId.has(l.fitId));
+
+    // Reimportar o mesmo arquivo NÃO duplica (unique por FITID) — e aproveita para
+    // ATUALIZAR o texto das linhas que já estavam lá. É assim que a descrição de quem
+    // foi importado antes da correção de charset ("D�B.TIT.COMPE") se conserta, e que
+    // os campos novos (NAME/PAYEE/CHECKNUM) chegam ao histórico. Status e vínculo de
+    // conciliação NÃO são tocados.
+    const paraAtualizar = lancamentos.filter((l) => {
+        const atual = porFitId.get(l.fitId);
+        if (!atual) return false;
+        return atual.descricao !== l.descricao || atual.memo !== l.memo;
+    });
 
     const datas = lancamentos.map((l) => l.data).sort();
     let importacao;
@@ -249,18 +306,39 @@ async function importarOfx({ contaFinanceiraCaId, nomeArquivo, conteudo, criadoP
                     data: dataSP(l.data),
                     valor: l.valor,
                     tipo: l.tipo,
-                    descricao: l.descricao
+                    descricao: l.descricao,
+                    memo: l.memo,
+                    nome: l.nome,
+                    payee: l.payee,
+                    checkNum: l.checkNum,
+                    refNum: l.refNum,
+                    trnType: l.trnType
                 })),
                 skipDuplicates: true
             });
         }
-    }, { timeout: 20000, maxWait: 10000 });
+        for (const l of paraAtualizar) {
+            await tx.extratoLancamento.update({
+                where: { id: porFitId.get(l.fitId).id },
+                data: {
+                    descricao: l.descricao,
+                    memo: l.memo,
+                    nome: l.nome,
+                    payee: l.payee,
+                    checkNum: l.checkNum,
+                    refNum: l.refNum,
+                    trnType: l.trnType
+                }
+            });
+        }
+    }, { timeout: 30000, maxWait: 10000 });
 
     return {
         importacaoId: importacao.id,
         totalArquivo: lancamentos.length,
         novos: novos.length,
         duplicados: lancamentos.length - novos.length,
+        atualizados: paraAtualizar.length,
         periodo: { de: datas[0], ate: datas[datas.length - 1] },
         avisos
     };
@@ -315,7 +393,15 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
             descricao: l.descricao,
             status: l.status,
             obs: l.obs,
-            conciliadoAuto: l.conciliadoAuto
+            conciliadoAuto: l.conciliadoAuto,
+            // Detalhes crus do banco (o que existir): beneficiário, nº do documento, tipo.
+            // O MEMO só repete a descrição quando não há mais nada — some da tela nesse caso.
+            detalhes: {
+                nome: l.nome || l.payee || null,
+                documento: l.checkNum || l.refNum || null,
+                trnType: l.trnType || null,
+                memo: l.memo && l.memo !== l.descricao ? l.memo : null
+            }
         };
         if (l.status === 'CONCILIADO') {
             const pagId = l.pagamentoParcelaId || l.pagamentoParcelaPagarId;
@@ -563,6 +649,133 @@ async function conciliarGrupo({ contaFinanceiraCaId, lancamentoIds, pagamentoIds
     return { message: `Grupo conciliado: ${idsLanc.length} lançamento(s) do extrato ↔ ${idsPag.length} baixa(s) do app (R$ ${soma.somaExtrato.toFixed(2)}).` };
 }
 
+// ─────────────────────────────────────────────────────────────
+// Criar a despesa que faltava, direto do extrato
+// ─────────────────────────────────────────────────────────────
+
+const erro = (msg, status = 400) => Object.assign(new Error(msg), { status });
+
+/**
+ * Cria a despesa (conta a pagar) correspondente a um DÉBITO do extrato que não
+ * tem par no app — o caso "o boleto foi pago no banco, mas ninguém lançou".
+ *
+ * O dinheiro JÁ saiu do banco, então a despesa nasce **paga**: junto com a conta
+ * e a parcela, grava a baixa (PagamentoParcelaPagar) com a data, o valor e o
+ * banco do próprio lançamento do extrato. É essa baixa que vira o candidato da
+ * linha — o usuário volta para a lista e clica em "Conciliar".
+ *
+ * Juros/multa: o extrato traz o TOTAL que saiu. O valor da parcela (o boleto) é
+ * `valor do extrato − juros − multa`, e juros/multa vão nos campos próprios da
+ * baixa — que é exatamente como o matching soma (valorPago + juros + multa).
+ *
+ * A conta vai ao Conta Azul (statusEnvioCA=ENVIAR): o worker de contas a pagar
+ * empurra a despesa e depois a baixa. Nada de chamada externa aqui dentro.
+ */
+async function criarDespesaDoLancamento({
+    lancamentoId, fornecedorId, fornecedorNovo, descricao, categoria, categoriaCaId,
+    numeroNota, competencia, observacoes, metodoPagamento, dataVencimento,
+    juros = 0, multa = 0, userId
+}) {
+    const l = await prisma.extratoLancamento.findUnique({ where: { id: lancamentoId } });
+    if (!l) throw erro('Lançamento do extrato não encontrado.', 404);
+    if (l.tipo !== 'DEBITO') throw erro('Só dá para criar despesa a partir de uma SAÍDA do extrato.');
+    if (l.status !== 'PENDENTE') throw erro('Este lançamento já foi conciliado ou ignorado.');
+    if (!descricao?.trim()) throw erro('Informe a descrição da despesa.');
+
+    const metodo = String(metodoPagamento || '').toUpperCase();
+    if (!contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(metodo)) throw erro('Escolha a forma de pagamento.');
+
+    const nomeNovo = String(fornecedorNovo || '').trim();
+    if (!fornecedorId && !nomeNovo) throw erro('Informe o fornecedor (a despesa vai para o Conta Azul).');
+
+    // Rateio do que saiu do banco: total = boleto + juros + multa.
+    const total = round2(num(l.valor));
+    const jur = round2(Math.max(0, num(juros)));
+    const mul = round2(Math.max(0, num(multa)));
+    const valorParcela = round2(total - jur - mul);
+    if (valorParcela <= 0) throw erro('Juros + multa não podem ser maiores ou iguais ao valor que saiu do banco.');
+
+    const dataPagamento = new Date(l.data);
+    const venc = dataVencimento && /^\d{4}-\d{2}-\d{2}$/.test(String(dataVencimento))
+        ? dataSP(String(dataVencimento))
+        : dataPagamento;
+    const comp = competencia && /^\d{4}-\d{2}-\d{2}$/.test(String(competencia)) ? dataSP(String(competencia)) : null;
+
+    const labelMetodo = contasPagarCaSyncService.METODOS_PAGAMENTO_BAIXA.find((m) => m.value === metodo)?.label || metodo;
+
+    let conta;
+    let pagamentoId;
+    await prisma.$transaction(async (tx) => {
+        let idFornecedor = fornecedorId || null;
+        if (!idFornecedor) {
+            const novo = await tx.fornecedor.create({
+                data: { razaoSocial: nomeNovo, ativo: true, origem: 'APP', statusEnvioCA: 'ENVIAR' }
+            });
+            idFornecedor = novo.id;
+        }
+
+        conta = await tx.contaPagar.create({
+            data: {
+                fornecedorId: idFornecedor,
+                descricao: descricao.trim(),
+                categoria: categoria?.trim() || null,
+                categoriaCaId: categoriaCaId || null,
+                numeroNota: numeroNota?.trim() || null,
+                competencia: comp,
+                observacoes: [observacoes?.trim(), `Lançada pela conciliação bancária (extrato: ${l.descricao || 'sem descrição'}).`]
+                    .filter(Boolean).join(' · '),
+                origem: 'MANUAL',
+                valorTotal: valorParcela,
+                status: 'ABERTO',
+                statusEnvioCA: 'ENVIAR',
+                metodoPagamentoCA: metodo,
+                contaFinanceiraCaId: l.contaFinanceiraCaId,
+                criadoPorId: userId || null,
+                parcelas: { create: [{ numeroParcela: 1, valor: valorParcela, dataVencimento: venc }] }
+            },
+            include: { parcelas: true }
+        });
+
+        const parcela = conta.parcelas[0];
+        const pag = await tx.pagamentoParcelaPagar.create({
+            data: {
+                parcelaPagarId: parcela.id,
+                valorPago: valorParcela,
+                juros: jur,
+                multa: mul,
+                dataPagamento,
+                formaPagamento: metodo,
+                contaFinanceiraCaId: l.contaFinanceiraCaId,
+                statusEnvioCA: 'ENVIAR',
+                origem: 'MANUAL',
+                observacao: `Baixa criada pela conciliação bancária (${labelMetodo}).`,
+                registradoPorId: userId || null
+            }
+        });
+        pagamentoId = pag.id;
+        await contasPagarCaSyncService.recalcularParcelaEConta(tx, parcela.id);
+    }, { timeout: 20000, maxWait: 10000 });
+
+    return {
+        message: `Despesa criada e baixada (R$ ${total.toFixed(2)}). Agora é só clicar em Conciliar.`,
+        contaPagarId: conta.id,
+        pagamentoParcelaPagarId: pagamentoId
+    };
+}
+
+/** Fornecedores + categorias + formas de pagamento para o modal de "criar despesa". */
+async function opcoesDespesa() {
+    const [fornecedores, categorias] = await Promise.all([
+        prisma.fornecedor.findMany({
+            where: { ativo: true },
+            select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjCpf: true },
+            orderBy: { razaoSocial: 'asc' }
+        }),
+        contasPagarCaSyncService.listarCategoriasDespesaSeguro().catch(() => [])
+    ]);
+    return { fornecedores, categorias, metodosPagamento: contasPagarCaSyncService.METODOS_PAGAMENTO_BAIXA };
+}
+
 async function listarImportacoes(contaFinanceiraCaId) {
     const imps = await prisma.extratoImportacao.findMany({
         where: { contaFinanceiraCaId },
@@ -590,7 +803,10 @@ module.exports = {
     ignorar,
     desfazer,
     listarImportacoes,
+    criarDespesaDoLancamento,
+    opcoesDespesa,
     // puras (testáveis offline)
+    decodificarOfx,
     parseOfx,
     candidatosPara,
     validarSomaGrupo

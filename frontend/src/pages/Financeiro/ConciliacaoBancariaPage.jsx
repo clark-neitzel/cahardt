@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import conciliacaoService from '../../services/conciliacaoBancariaService';
 import contasReceberService from '../../services/contasReceberService';
 import SelectBusca from '../../components/SelectBusca';
-import { Landmark, Loader2, RefreshCw, Upload, Wand2, Check, X, Undo2, ChevronDown, ChevronUp, Layers, Search } from 'lucide-react';
+import { Landmark, Loader2, RefreshCw, Upload, Wand2, Check, X, Undo2, ChevronDown, ChevronUp, Layers, Search, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
@@ -187,6 +187,237 @@ const GrupoModal = ({ lancamento, pendentes, contaId, periodo, onClose, onSucces
     );
 };
 
+// ── Modal: criar a despesa que faltava, direto do extrato ──
+// O dinheiro já saiu do banco, então a despesa nasce PAGA: data, valor e banco vêm do
+// próprio lançamento (campos travados). Ao salvar, a baixa criada vira o candidato da
+// linha — o usuário volta para a lista e clica em "Conciliar".
+const DespesaModal = ({ lancamento, onClose, onSuccess }) => {
+    const [opcoes, setOpcoes] = useState(null); // { fornecedores, categorias, metodosPagamento }
+    const [salvando, setSalvando] = useState(false);
+    const [novoFornecedor, setNovoFornecedor] = useState(false);
+    const [form, setForm] = useState({
+        fornecedorId: '',
+        fornecedorNovo: '',
+        descricao: '',
+        categoriaCaId: '',
+        numeroNota: lancamento.detalhes?.documento || '',
+        dataVencimento: lancamento.data,
+        metodoPagamento: 'BOLETO_BANCARIO',
+        juros: '',
+        multa: '',
+        observacoes: ''
+    });
+    const set = (campo) => (e) => setForm(f => ({ ...f, [campo]: e.target.value }));
+
+    useEffect(() => {
+        conciliacaoService.opcoesDespesa()
+            .then(o => {
+                setOpcoes(o);
+                // Sugere a descrição a partir do que o banco mandou (beneficiário, quando existe)
+                setForm(f => ({
+                    ...f,
+                    descricao: f.descricao || lancamento.detalhes?.nome || lancamento.descricao || ''
+                }));
+            })
+            .catch(() => { toast.error('Não consegui carregar fornecedores/categorias.'); setOpcoes({ fornecedores: [], categorias: [], metodosPagamento: [] }); });
+    }, [lancamento]);
+
+    const total = Number(lancamento.valor || 0);
+    const jur = Math.max(0, Number(String(form.juros).replace(',', '.')) || 0);
+    const mul = Math.max(0, Number(String(form.multa).replace(',', '.')) || 0);
+    const valorBoleto = Math.round((total - jur - mul) * 100) / 100;
+    const valorValido = valorBoleto > 0;
+    const temFornecedor = novoFornecedor ? !!form.fornecedorNovo.trim() : !!form.fornecedorId;
+    const podeSalvar = temFornecedor && form.descricao.trim() && form.metodoPagamento && valorValido && !salvando;
+
+    const salvar = async () => {
+        setSalvando(true);
+        try {
+            const r = await conciliacaoService.criarDespesa(lancamento.id, {
+                fornecedorId: novoFornecedor ? null : form.fornecedorId,
+                fornecedorNovo: novoFornecedor ? form.fornecedorNovo.trim() : null,
+                descricao: form.descricao.trim(),
+                categoriaCaId: form.categoriaCaId || null,
+                categoria: opcoes?.categorias?.find(c => c.id === form.categoriaCaId)?.nome || null,
+                numeroNota: form.numeroNota.trim() || null,
+                dataVencimento: form.dataVencimento || null,
+                metodoPagamento: form.metodoPagamento,
+                juros: jur,
+                multa: mul,
+                observacoes: form.observacoes.trim() || null
+            });
+            toast.success(r.message);
+            onSuccess();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao criar a despesa');
+        } finally {
+            setSalvando(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
+            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-lg w-full max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+                    <div className="min-w-0">
+                        <p className="text-xs text-gray-500">Saída do banco sem despesa lançada</p>
+                        <h2 className="font-bold text-gray-900">Cadastrar a despesa</h2>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                </div>
+
+                <div className="p-5 space-y-4 overflow-y-auto">
+                    {/* O que o banco disse — tudo o que temos do lançamento */}
+                    <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 text-sm space-y-1">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-gray-600">{fmtData(lancamento.data)}</span>
+                            <span className="font-bold text-red-700">− R$ {fmt(total)}</span>
+                        </div>
+                        <div className="text-gray-800 break-words">{lancamento.descricao || '(sem descrição)'}</div>
+                        {lancamento.detalhes?.nome && <div className="text-gray-600 text-xs">Beneficiário no banco: <strong>{lancamento.detalhes.nome}</strong></div>}
+                        {lancamento.detalhes?.documento && <div className="text-gray-600 text-xs">Documento: {lancamento.detalhes.documento}</div>}
+                    </div>
+
+                    {opcoes === null ? (
+                        <div className="text-center text-gray-500 text-sm py-4 flex items-center justify-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
+                        </div>
+                    ) : (
+                        <>
+                            {/* Fornecedor */}
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-sm font-medium text-gray-700">Fornecedor *</label>
+                                    <button
+                                        type="button"
+                                        onClick={() => setNovoFornecedor(v => !v)}
+                                        className="text-xs font-medium text-primary hover:underline"
+                                    >
+                                        {novoFornecedor ? 'Escolher um já cadastrado' : '+ Cadastrar novo'}
+                                    </button>
+                                </div>
+                                {novoFornecedor ? (
+                                    <input
+                                        value={form.fornecedorNovo}
+                                        onChange={set('fornecedorNovo')}
+                                        placeholder="Nome / razão social do fornecedor"
+                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                    />
+                                ) : (
+                                    <SelectBusca value={form.fornecedorId} onChange={set('fornecedorId')} className="w-full">
+                                        <option value="">Escolha o fornecedor…</option>
+                                        {(opcoes.fornecedores || []).map(f => (
+                                            <option key={f.id} value={f.id}>{f.nomeFantasia || f.razaoSocial}</option>
+                                        ))}
+                                    </SelectBusca>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="text-sm font-medium text-gray-700 block mb-1">Descrição *</label>
+                                <input
+                                    value={form.descricao}
+                                    onChange={set('descricao')}
+                                    placeholder="Ex.: Energia elétrica — julho"
+                                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700 block mb-1">Categoria (DRE)</label>
+                                    <SelectBusca value={form.categoriaCaId} onChange={set('categoriaCaId')} className="w-full">
+                                        <option value="">Sem categoria</option>
+                                        {(opcoes.categorias || []).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                                    </SelectBusca>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700 block mb-1">Forma de pagamento *</label>
+                                    <SelectBusca value={form.metodoPagamento} onChange={set('metodoPagamento')} className="w-full">
+                                        {(opcoes.metodosPagamento || []).map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                    </SelectBusca>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700 block mb-1">Vencimento do boleto</label>
+                                    <input
+                                        type="date"
+                                        value={form.dataVencimento}
+                                        onChange={set('dataVencimento')}
+                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700 block mb-1">Nº da nota/documento</label>
+                                    <input
+                                        value={form.numeroNota}
+                                        onChange={set('numeroNota')}
+                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Juros/multa: o extrato traz o TOTAL que saiu; aqui a gente separa */}
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Pagou juros ou multa?</p>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 block mb-1">Juros (R$)</label>
+                                        <input
+                                            inputMode="decimal"
+                                            value={form.juros}
+                                            onChange={set('juros')}
+                                            placeholder="0,00"
+                                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-700 block mb-1">Multa (R$)</label>
+                                        <input
+                                            inputMode="decimal"
+                                            value={form.multa}
+                                            onChange={set('multa')}
+                                            placeholder="0,00"
+                                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+                                <div className={`mt-2 rounded-xl border p-3 text-sm ${valorValido ? 'border-gray-200 bg-gray-50' : 'border-red-200 bg-red-50'}`}>
+                                    {valorValido ? (
+                                        <span className="text-gray-700">
+                                            Valor da despesa <strong>R$ {fmt(valorBoleto)}</strong>
+                                            {(jur > 0 || mul > 0) && <> + juros/multa <strong>R$ {fmt(jur + mul)}</strong></>}
+                                            {' = '}<strong>R$ {fmt(total)}</strong> que saiu do banco.
+                                        </span>
+                                    ) : (
+                                        <span className="text-red-700">Juros + multa não podem chegar ao valor total que saiu do banco.</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <p className="text-xs text-gray-500">
+                                A despesa é criada <strong>já paga</strong> em {fmtData(lancamento.data)}, no banco deste extrato, e vai para o Conta Azul.
+                                Depois de salvar, a linha volta com a baixa como sugestão — aí é só clicar em <strong>Conciliar</strong>.
+                            </p>
+                        </>
+                    )}
+                </div>
+
+                <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex justify-end gap-2">
+                    <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
+                    <button
+                        onClick={salvar}
+                        disabled={!podeSalvar}
+                        className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                        {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                        Cadastrar despesa
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const ConciliacaoBancariaPage = () => {
     const opcoesPeriodo = useMemo(periodos, []);
     const [contas, setContas] = useState([]);
@@ -208,6 +439,7 @@ const ConciliacaoBancariaPage = () => {
     const [escolhas, setEscolhas] = useState({}); // lancamentoId → id do pagamento escolhido
     const [mostrarSoNoApp, setMostrarSoNoApp] = useState(false);
     const [grupoModal, setGrupoModal] = useState(null); // lançamento que abriu o modal de grupo
+    const [despesaModal, setDespesaModal] = useState(null); // lançamento que abriu o modal de nova despesa
     const inputArquivo = useRef(null);
 
     useEffect(() => {
@@ -327,6 +559,16 @@ const ConciliacaoBancariaPage = () => {
                     >
                         <Layers className="h-3.5 w-3.5" /> Várias…
                     </button>
+                    {l.tipo === 'DEBITO' && (
+                        <button
+                            onClick={() => setDespesaModal(l)}
+                            disabled={agindo === l.id}
+                            className="px-3 py-1.5 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-full text-xs font-medium inline-flex items-center gap-1 disabled:opacity-50"
+                            title="Nenhuma dessas serve? Cadastre a despesa deste pagamento"
+                        >
+                            <Plus className="h-3.5 w-3.5" /> Despesa
+                        </button>
+                    )}
                     <button
                         onClick={() => ignorarLinha(l)}
                         disabled={agindo === l.id}
@@ -340,6 +582,17 @@ const ConciliacaoBancariaPage = () => {
             <div className="flex flex-col gap-1.5">
                 <div className="text-xs text-gray-500">Sem baixa parecida no app</div>
                 <div className="flex flex-wrap gap-1.5">
+                    {/* Saída sem par = despesa que ninguém lançou. Cadastrar aqui é a ação principal. */}
+                    {l.tipo === 'DEBITO' && (
+                        <button
+                            onClick={() => setDespesaModal(l)}
+                            disabled={agindo === l.id}
+                            className="px-3 py-1.5 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold inline-flex items-center gap-1 disabled:opacity-50"
+                            title="Lançar esta saída no Contas a Pagar (já paga) e depois conciliar"
+                        >
+                            <Plus className="h-3.5 w-3.5" /> Criar despesa
+                        </button>
+                    )}
                     <button
                         onClick={() => setGrupoModal(l)}
                         disabled={agindo === l.id}
@@ -358,6 +611,22 @@ const ConciliacaoBancariaPage = () => {
                 </div>
             </div>
         )
+    );
+
+    // Descrição do banco + o que mais o OFX trouxe (beneficiário, nº do documento).
+    // "DÉB.TIT.COMPE EFETIVADO" sozinho não diz nada — o beneficiário, quando o banco
+    // manda, é a única pista de do que se trata.
+    const DescricaoBanco = ({ l }) => (
+        <div className="min-w-0">
+            <span className="line-clamp-2 text-gray-700">{l.descricao || '(sem descrição)'}</span>
+            {(l.detalhes?.nome || l.detalhes?.documento) && (
+                <div className="text-xs text-gray-500 mt-0.5 truncate">
+                    {l.detalhes.nome && <span className="text-gray-600 font-medium">{l.detalhes.nome}</span>}
+                    {l.detalhes.nome && l.detalhes.documento && ' · '}
+                    {l.detalhes.documento && <span>doc {l.detalhes.documento}</span>}
+                </div>
+            )}
+        </div>
     );
 
     const AcoesLinha = ({ l }) => {
@@ -517,8 +786,8 @@ const ConciliacaoBancariaPage = () => {
                                                 <span className="text-xs text-gray-500">{fmtData(l.data)}</span>
                                                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${STATUS_BADGE[l.status]}`}>{STATUS_LABEL[l.status]}</span>
                                             </div>
-                                            <div className="flex items-center justify-between gap-2 mb-2">
-                                                <span className="text-sm text-gray-900 truncate" title={l.descricao || ''}>{l.descricao || '(sem descrição)'}</span>
+                                            <div className="flex items-start justify-between gap-2 mb-2">
+                                                <div className="text-sm min-w-0"><DescricaoBanco l={l} /></div>
                                                 <ValorCell tipo={l.tipo} valor={l.valor} />
                                             </div>
                                             <AcoesLinha l={l} />
@@ -542,7 +811,7 @@ const ConciliacaoBancariaPage = () => {
                                             {lancamentos.map(l => (
                                                 <tr key={l.id} className="hover:bg-gray-50 align-top">
                                                     <td className="px-5 py-3 text-gray-900 whitespace-nowrap">{fmtData(l.data)}</td>
-                                                    <td className="px-5 py-3 text-gray-700 max-w-xs"><span className="line-clamp-2">{l.descricao || '(sem descrição)'}</span></td>
+                                                    <td className="px-5 py-3 max-w-xs"><DescricaoBanco l={l} /></td>
                                                     <td className="px-5 py-3 text-right whitespace-nowrap"><ValorCell tipo={l.tipo} valor={l.valor} /></td>
                                                     <td className="px-5 py-3"><span className={`px-2 py-1 text-xs font-semibold rounded-full ${STATUS_BADGE[l.status]}`}>{STATUS_LABEL[l.status]}</span></td>
                                                     <td className="px-5 py-3 w-96"><AcoesLinha l={l} /></td>
@@ -590,10 +859,13 @@ const ConciliacaoBancariaPage = () => {
                         )}
 
                         <p className="text-xs text-gray-500">
-                            Como funciona: exporte o extrato do banco em OFX e importe aqui (importar de novo não duplica).
-                            O sistema sugere a baixa do app com o mesmo valor e data próxima (±3 dias) na mesma conta;
-                            "Conciliar automático" fecha sozinho os casos sem ambiguidade. Um PIX que pagou várias notas
-                            (ou parte de uma nota registrada como baixa parcial) usa o botão <strong>"Várias…"</strong> —
+                            Como funciona: exporte o extrato do banco em OFX e importe aqui (importar de novo não duplica —
+                            só atualiza a descrição das linhas que já existiam). Conciliar <strong>não dá baixa</strong>: ela só
+                            confere que a saída/entrada do banco corresponde a uma baixa <em>já registrada</em> no app.
+                            O sistema sugere a baixa com o mesmo valor (juros e multa incluídos) e data próxima (±3 dias) na mesma conta;
+                            "Conciliar automático" fecha sozinho os casos sem ambiguidade. Saída sem par no app = despesa que ninguém
+                            lançou: use <strong>"Criar despesa"</strong> para cadastrá-la já paga (vai para o Conta Azul) e conciliar em seguida.
+                            Um PIX que pagou várias notas (ou parte de uma nota registrada como baixa parcial) usa o botão <strong>"Várias…"</strong> —
                             a soma dos dois lados precisa bater. Tarifas e transferências entre contas podem ser marcadas como ignoradas.
                         </p>
                     </>
@@ -608,6 +880,16 @@ const ConciliacaoBancariaPage = () => {
                     periodo={periodo}
                     onClose={() => setGrupoModal(null)}
                     onSuccess={() => { setGrupoModal(null); carregar(); }}
+                />
+            )}
+
+            {/* Cadastrar a despesa que faltava. Ao salvar, volta para a lista com a baixa
+                já sugerida na linha — o usuário confere e clica em "Conciliar". */}
+            {despesaModal && (
+                <DespesaModal
+                    lancamento={despesaModal}
+                    onClose={() => setDespesaModal(null)}
+                    onSuccess={() => { setDespesaModal(null); carregar(); }}
                 />
             )}
         </div>

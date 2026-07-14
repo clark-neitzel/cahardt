@@ -2991,7 +2991,17 @@ model ExtratoLancamento {
   data                DateTime
   valor               Decimal           @db.Decimal(12, 2) // sempre positivo; o sentido fica no tipo
   tipo                String // CREDITO (entrou) | DEBITO (saiu)
-  descricao           String?           @db.Text
+  descricao           String?           @db.Text // o que aparece na tela (MEMO, ou NAME quando não há MEMO)
+
+  // Campos crus do OFX. O banco manda mais coisa que o MEMO ("DÉB.TIT.COMPE EFETIVADO" não
+  // diz nada sozinho): dependendo do banco, o beneficiário vem no NAME ou no bloco PAYEE, e o
+  // nº do documento no CHECKNUM. Guardamos tudo para dar pistas de "do que se trata".
+  memo     String? @db.Text
+  nome     String? @db.Text // <NAME> — em vários bancos é o beneficiário/pagador
+  payee    String? @db.Text // bloco <PAYEE><NAME>
+  checkNum String? @map("check_num") // <CHECKNUM> — nº do documento/boleto
+  refNum   String? @map("ref_num") // <REFNUM>
+  trnType  String? @map("trn_type") // DEBIT | CREDIT | XFER | PAYMENT | FEE…
 
   status String @default("PENDENTE") // PENDENTE | CONCILIADO | IGNORADO
 
