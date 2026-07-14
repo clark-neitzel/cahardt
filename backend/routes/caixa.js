@@ -1951,9 +1951,14 @@ router.get('/relatorio', async (req, res) => {
             faltasDevolucao: caixa?.conferenciaDevolucao?.status === 'CONFERIDA'
                 ? Number(caixa.conferenciaDevolucao.totalCobrado || 0)
                 : 0,
-            // Impressão só mostra o VALOR A PRESTAR quando o dia está pronto:
-            // conferência de devoluções feita + KM final + sem entregas pendentes.
+            // Impressão só mostra o VALOR A PRESTAR quando o dia está pronto: devoluções
+            // registradas + conferência feita + KM final + sem entregas pendentes.
             valorLiberado: await (async () => {
+                // Entrega parcial/devolvida sem a devolução registrada
+                const devNaoRegistrada = entregas.some(e =>
+                    ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada
+                );
+                if (devNaoRegistrada) return false;
                 const temDevRel = entregas.some(e => (e.itensDevolvidos?.length || 0) > 0);
                 if (temDevRel && caixa?.conferenciaDevolucao?.status !== 'CONFERIDA') return false;
                 const usouVeiculoRel = !!(diario && diario.modo === 'PRESENCIAL' && diario.veiculoId);

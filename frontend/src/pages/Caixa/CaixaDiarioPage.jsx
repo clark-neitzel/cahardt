@@ -272,10 +272,13 @@ const CaixaDiarioPage = () => {
     const caixa = resumo?.caixa;
     const statusBadge = caixa ? STATUS_BADGES[caixa.status] || STATUS_BADGES.ABERTO : null;
     const isAberto = caixa?.status === 'ABERTO';
-    // Dia "pronto" = KM/entregas/atendimentos OK + conferência de devoluções feita.
+    // Dia "pronto" = KM/entregas/atendimentos OK + devoluções registradas + conferência feita.
     // Só então mostramos o VALOR A PRESTAR e liberamos a impressão (senão o pessoal
-    // imprimia sem conferir e o valor saía no papel).
-    const diaPronto = resumo && !resumo.finalizacaoDia?.precisaFinalizar && !resumo.pendencias?.conferenciaDevolucaoPendente;
+    // pulava a conferência — ou nem registrava a devolução — e imprimia com o valor).
+    const diaPronto = resumo
+        && !resumo.finalizacaoDia?.precisaFinalizar
+        && !resumo.pendencias?.conferenciaDevolucaoPendente
+        && !(resumo.pendencias?.devolucoesNaoFeitas > 0);
 
     return (
         <div className="w-full px-4 py-6">
@@ -996,6 +999,14 @@ const CaixaDiarioPage = () => {
                                         <MapPin className="h-5 w-5 text-orange-500 flex-shrink-0" />
                                         <span className="text-sm font-medium text-gray-800">
                                             {resumo.finalizacaoDia.atendimentosPendentes} cliente{resumo.finalizacaoDia.atendimentosPendentes > 1 ? 's' : ''} da rota sem atendimento
+                                        </span>
+                                    </li>
+                                )}
+                                {resumo.pendencias?.devolucoesNaoFeitas > 0 && (
+                                    <li className="flex items-center gap-3 bg-white border border-orange-200 rounded-lg px-4 py-3">
+                                        <Undo2 className="h-5 w-5 text-orange-500 flex-shrink-0" />
+                                        <span className="text-sm font-medium text-gray-800">
+                                            Registrar {resumo.pendencias.devolucoesNaoFeitas} devolução(ões) nas entregas
                                         </span>
                                     </li>
                                 )}
