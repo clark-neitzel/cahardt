@@ -139,8 +139,14 @@ router.get('/baixas-disponiveis', verificarAuth, checkAcesso, async (req, res) =
     }
 });
 
-// ── POST /conciliar-grupo — N lançamentos do extrato ↔ M baixas (soma exata) ──
-// body: { contaId, lancamentoIds: [], pagamentoIds: [] }
+// ── GET /motivos-diferenca — o que a diferença entre extrato e baixas pode ser ──
+router.get('/motivos-diferenca', verificarAuth, checkAcesso, (req, res) => {
+    res.json(conciliacaoService.MOTIVOS_DIFERENCA);
+});
+
+// ── POST /conciliar-grupo — N lançamentos do extrato ↔ M baixas ──
+// body: { contaId, lancamentoIds: [], pagamentoIds: [], motivoDiferenca?, obsDiferenca? }
+// Se os dois lados não fecham, motivoDiferenca é OBRIGATÓRIO (o backend recusa sem ele).
 router.post('/conciliar-grupo', verificarAuth, checkAcesso, async (req, res) => {
     try {
         const contaId = String(req.body.contaId || '').trim();
@@ -149,6 +155,8 @@ router.post('/conciliar-grupo', verificarAuth, checkAcesso, async (req, res) => 
             contaFinanceiraCaId: contaId,
             lancamentoIds: Array.isArray(req.body.lancamentoIds) ? req.body.lancamentoIds : [],
             pagamentoIds: Array.isArray(req.body.pagamentoIds) ? req.body.pagamentoIds : [],
+            motivoDiferenca: req.body.motivoDiferenca || null,
+            obsDiferenca: req.body.obsDiferenca || null,
             userId: req.user.id
         });
         res.json(r);

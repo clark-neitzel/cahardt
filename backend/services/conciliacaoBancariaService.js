@@ -177,8 +177,8 @@ async function carregarPools(contaFinanceiraCaId, deYmd, ateYmd) {
                 id: true, valorRecebido: true, dataPagamento: true, formaPagamento: true,
                 parcela: {
                     select: {
-                        numeroParcela: true,
-                        contaReceber: { select: { cliente: { select: { Nome: true, NomeFantasia: true } } } }
+                        numeroParcela: true, valor: true, dataVencimento: true,
+                        contaReceber: { select: { numeroNota: true, cliente: { select: { Nome: true, NomeFantasia: true } } } }
                     }
                 }
             }
@@ -186,11 +186,11 @@ async function carregarPools(contaFinanceiraCaId, deYmd, ateYmd) {
         prisma.pagamentoParcelaPagar.findMany({
             where: { estornado: false, contaFinanceiraCaId, dataPagamento: { gte, lte } },
             select: {
-                id: true, valorPago: true, juros: true, multa: true, dataPagamento: true, formaPagamento: true,
+                id: true, valorPago: true, juros: true, multa: true, desconto: true, dataPagamento: true, formaPagamento: true,
                 parcelaPagar: {
                     select: {
-                        numeroParcela: true,
-                        contaPagar: { select: { descricao: true, fornecedor: { select: { razaoSocial: true, nomeFantasia: true } } } }
+                        numeroParcela: true, valor: true, dataVencimento: true,
+                        contaPagar: { select: { descricao: true, numeroNota: true, fornecedor: { select: { razaoSocial: true, nomeFantasia: true } } } }
                     }
                 }
             }
@@ -199,23 +199,48 @@ async function carregarPools(contaFinanceiraCaId, deYmd, ateYmd) {
 
     const entradas = recebimentos.map((r) => {
         const cli = r.parcela?.contaReceber?.cliente;
+        const nome = cli?.NomeFantasia || cli?.Nome || 'Cliente';
         return {
             id: r.id,
             valor: round2(r.valorRecebido),
             data: ymd(r.dataPagamento),
-            label: `${cli?.NomeFantasia || cli?.Nome || 'Cliente'} — parcela ${r.parcela?.numeroParcela ?? '?'}${r.formaPagamento ? ` (${r.formaPagamento})` : ''}`
+            label: `${nome} — parcela ${r.parcela?.numeroParcela ?? '?'}${r.formaPagamento ? ` (${r.formaPagamento})` : ''}`,
+            // Dados para o usuário conferir "no que estou mexendo" antes de conciliar:
+            detalhe: {
+                nome,
+                descricao: r.parcela?.contaReceber?.numeroNota ? `NF ${r.parcela.contaReceber.numeroNota}` : null,
+                parcela: r.parcela?.numeroParcela ?? null,
+                vencimento: r.parcela?.dataVencimento ? ymd(r.parcela.dataVencimento) : null,
+                valorParcela: num(r.parcela?.valor),
+                formaPagamento: r.formaPagamento || null
+            }
         };
     });
     const saidas = pagamentos.map((p) => {
-        const cp = p.parcelaPagar?.contaPagar;
+        const pp = p.parcelaPagar;
+        const cp = pp?.contaPagar;
         const forn = cp?.fornecedor;
+        const nome = forn?.nomeFantasia || forn?.razaoSocial || cp?.descricao || 'Despesa';
         // O débito no banco inclui juros/multa quando houve — comparar pelo total que saiu.
         const total = round2(num(p.valorPago) + num(p.juros) + num(p.multa));
         return {
             id: p.id,
             valor: total,
             data: ymd(p.dataPagamento),
-            label: `${forn?.nomeFantasia || forn?.razaoSocial || cp?.descricao || 'Despesa'}${p.formaPagamento ? ` (${p.formaPagamento})` : ''}`
+            label: `${nome}${p.formaPagamento ? ` (${p.formaPagamento})` : ''}`,
+            detalhe: {
+                nome,
+                descricao: cp?.descricao || null,
+                numeroNota: cp?.numeroNota || null,
+                parcela: pp?.numeroParcela ?? null,
+                vencimento: pp?.dataVencimento ? ymd(pp.dataVencimento) : null,
+                valorParcela: num(pp?.valor),
+                valorPago: num(p.valorPago),
+                juros: num(p.juros),
+                multa: num(p.multa),
+                desconto: num(p.desconto),
+                formaPagamento: p.formaPagamento || null
+            }
         };
     });
     return { entradas, saidas };
@@ -487,9 +512,16 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
             select: { grupoId: true, extratoLancamentoId: true }
         });
         const grupoIds = [...new Set(itensLanc.map((i) => i.grupoId))];
-        const itensTodos = grupoIds.length > 0
-            ? await prisma.conciliacaoGrupoItem.findMany({ where: { grupoId: { in: grupoIds } } })
-            : [];
+        const [itensTodos, gruposInfo] = grupoIds.length > 0
+            ? await Promise.all([
+                prisma.conciliacaoGrupoItem.findMany({ where: { grupoId: { in: grupoIds } } }),
+                prisma.conciliacaoGrupo.findMany({
+                    where: { id: { in: grupoIds } },
+                    select: { id: true, diferenca: true, motivoDiferenca: true }
+                })
+            ])
+            : [[], []];
+        const infoPorGrupo = new Map(gruposInfo.map((g) => [g.id, g]));
         const baixasPorGrupo = new Map();
         for (const it of itensTodos) {
             const pagId = it.pagamentoParcelaId || it.pagamentoParcelaPagarId;
@@ -499,7 +531,13 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
         }
         for (const it of itensLanc) {
             const labels = baixasPorGrupo.get(it.grupoId) || [];
-            grupoDoLancamento.set(it.extratoLancamentoId, { qtd: labels.length, labels });
+            const info = infoPorGrupo.get(it.grupoId);
+            grupoDoLancamento.set(it.extratoLancamentoId, {
+                qtd: labels.length,
+                labels,
+                diferenca: num(info?.diferenca),
+                motivoDiferenca: info?.motivoDiferenca || null
+            });
         }
     }
 
@@ -529,7 +567,9 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
             return {
                 ...base,
                 conciliadoCom: grupo ? `Grupo: ${grupo.qtd} baixa(s)` : 'Grupo',
-                grupoBaixas: grupo?.labels || []
+                grupoBaixas: grupo?.labels || [],
+                grupoDiferenca: grupo?.diferenca || 0,
+                grupoMotivoDiferenca: grupo?.motivoDiferenca || null
             };
         }
         if (l.status === 'PENDENTE') {
@@ -705,7 +745,20 @@ async function baixasDisponiveis({ contaFinanceiraCaId, de, ate, tipo }) {
  * Concilia em GRUPO: N lançamentos do extrato ↔ M baixas do app, soma exata (±R$ 0,01).
  * Todos do mesmo tipo (crédito OU débito) e da mesma conta.
  */
-async function conciliarGrupo({ contaFinanceiraCaId, lancamentoIds, pagamentoIds, userId }) {
+// Motivos aceitos para uma diferença entre o extrato e as baixas do app.
+// Não é lista solta: o motivo é auditoria — depois dá para somar quanto foi tarifa,
+// quanto foi juros, quanto foi desconto no período.
+const MOTIVOS_DIFERENCA = [
+    { value: 'TARIFA_BANCARIA', label: 'Tarifa/taxa do banco' },
+    { value: 'JUROS_MULTA', label: 'Juros/multa pagos a mais' },
+    { value: 'DESCONTO', label: 'Desconto obtido' },
+    { value: 'ARREDONDAMENTO', label: 'Arredondamento' },
+    { value: 'ERRO_LANCAMENTO', label: 'Erro no lançamento do app' },
+    { value: 'OUTRO', label: 'Outro (descrever)' }
+];
+const MOTIVOS_VALIDOS = new Set(MOTIVOS_DIFERENCA.map((m) => m.value));
+
+async function conciliarGrupo({ contaFinanceiraCaId, lancamentoIds, pagamentoIds, motivoDiferenca, obsDiferenca, userId }) {
     const idsLanc = [...new Set(lancamentoIds || [])];
     const idsPag = [...new Set(pagamentoIds || [])];
     if (idsLanc.length === 0 || idsPag.length === 0) {
@@ -742,15 +795,41 @@ async function conciliarGrupo({ contaFinanceiraCaId, lancamentoIds, pagamentoIds
 
     const valoresBaixas = baixas.map((b) => tipo === 'CREDITO' ? num(b.valorRecebido) : round2(num(b.valorPago) + num(b.juros) + num(b.multa)));
     const soma = validarSomaGrupo(lancs.map((l) => num(l.valor)), valoresBaixas);
-    if (!soma.ok) {
-        const e = new Error(`A soma não bate: extrato R$ ${soma.somaExtrato.toFixed(2)} × baixas R$ ${soma.somaBaixas.toFixed(2)} (diferença R$ ${Math.abs(soma.diferenca).toFixed(2)}).`);
-        e.status = 400;
-        throw e;
+    if (soma.somaExtrato <= 0) { const e = new Error('A soma do extrato precisa ser maior que zero.'); e.status = 400; throw e; }
+
+    // Quando os dois lados NÃO fecham, o grupo ainda pode ser conciliado — mas o usuário
+    // é obrigado a dizer o que é a diferença (tarifa, juros, desconto…). Ela fica gravada
+    // no grupo e aparece na linha; nunca é engolida silenciosamente.
+    const temDiferenca = Math.abs(soma.diferenca) > 0.01;
+    const motivo = String(motivoDiferenca || '').toUpperCase();
+    const obs = String(obsDiferenca || '').trim();
+    if (temDiferenca) {
+        if (!MOTIVOS_VALIDOS.has(motivo)) {
+            const e = new Error(`Extrato R$ ${soma.somaExtrato.toFixed(2)} × baixas R$ ${soma.somaBaixas.toFixed(2)}: diga o que é a diferença de R$ ${Math.abs(soma.diferenca).toFixed(2)} para conciliar.`);
+            e.status = 400;
+            throw e;
+        }
+        if (motivo === 'OUTRO' && !obs) {
+            const e = new Error('Descreva a diferença (motivo "Outro").');
+            e.status = 400;
+            throw e;
+        }
     }
+    const rotuloMotivo = temDiferenca
+        ? [MOTIVOS_DIFERENCA.find((m) => m.value === motivo)?.label, obs].filter(Boolean).join(' — ')
+        : null;
 
     await prisma.$transaction(async (tx) => {
         const grupo = await tx.conciliacaoGrupo.create({
-            data: { contaFinanceiraCaId, tipo, valor: soma.somaExtrato, criadoPorId: userId || null }
+            data: {
+                contaFinanceiraCaId,
+                tipo,
+                valor: soma.somaExtrato,
+                valorBaixas: soma.somaBaixas,
+                diferenca: soma.diferenca,
+                motivoDiferenca: rotuloMotivo,
+                criadoPorId: userId || null
+            }
         });
         await tx.conciliacaoGrupoItem.createMany({
             data: [
@@ -767,7 +846,12 @@ async function conciliarGrupo({ contaFinanceiraCaId, lancamentoIds, pagamentoIds
         if (r.count !== idsLanc.length) throw new Error('Um dos lançamentos deixou de estar pendente — recarregue e tente de novo.');
     }, { timeout: 20000, maxWait: 10000 });
 
-    return { message: `Grupo conciliado: ${idsLanc.length} lançamento(s) do extrato ↔ ${idsPag.length} baixa(s) do app (R$ ${soma.somaExtrato.toFixed(2)}).` };
+    const base = `Grupo conciliado: ${idsLanc.length} lançamento(s) do extrato ↔ ${idsPag.length} baixa(s) do app (R$ ${soma.somaExtrato.toFixed(2)}).`;
+    return {
+        message: temDiferenca
+            ? `${base} Diferença de R$ ${Math.abs(soma.diferenca).toFixed(2)} registrada como: ${rotuloMotivo}.`
+            : base
+    };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1093,6 +1177,7 @@ module.exports = {
     opcoesDespesa,
     parcelasPagarEmAberto,
     conciliarComBaixa,
+    MOTIVOS_DIFERENCA,
     // puras (testáveis offline)
     decodificarOfx,
     parseOfx,

@@ -38,9 +38,17 @@ const conciliacaoBancariaService = {
         const response = await api.get('/conciliacao-bancaria/baixas-disponiveis', { params: { contaId, de, ate, tipo } });
         return response.data;
     },
-    // N lançamentos do extrato ↔ M baixas do app (soma exata)
-    conciliarGrupo: async (contaId, lancamentoIds, pagamentoIds) => {
-        const response = await api.post('/conciliacao-bancaria/conciliar-grupo', { contaId, lancamentoIds, pagamentoIds });
+    // N lançamentos do extrato ↔ M baixas do app. Se não fecha, exige motivoDiferenca.
+    conciliarGrupo: async (contaId, lancamentoIds, pagamentoIds, diferenca = {}) => {
+        const response = await api.post('/conciliacao-bancaria/conciliar-grupo', {
+            contaId, lancamentoIds, pagamentoIds,
+            motivoDiferenca: diferenca.motivo || null,
+            obsDiferenca: diferenca.obs || null
+        });
+        return response.data;
+    },
+    motivosDiferenca: async () => {
+        const response = await api.get('/conciliacao-bancaria/motivos-diferenca');
         return response.data;
     },
     importacoes: async (contaId) => {

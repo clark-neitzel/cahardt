@@ -51,14 +51,43 @@ const ValorCell = ({ tipo, valor }) => (
     </span>
 );
 
-// ── Modal de conciliação em GRUPO: N lançamentos do extrato ↔ M baixas (soma exata) ──
+// Linha de detalhe de uma baixa do app: de que boleto/nota se trata, quando venceu,
+// quanto era a parcela e como a baixa foi composta (juros/multa/desconto).
+// Usada em toda ação de conciliar — o usuário nunca confirma às cegas.
+const DetalheBaixa = ({ p }) => {
+    const d = p.detalhe;
+    if (!d) return null;
+    const partes = [];
+    if (d.descricao && d.descricao !== d.nome) partes.push(d.descricao);
+    if (d.numeroNota) partes.push(`NF ${d.numeroNota}`);
+    if (d.parcela != null) partes.push(`parcela ${d.parcela}`);
+    if (d.vencimento) partes.push(`venceu ${fmtData(d.vencimento)}`);
+    if (d.valorParcela > 0 && Math.abs(d.valorParcela - p.valor) > 0.01) partes.push(`parcela de R$ ${fmt(d.valorParcela)}`);
+    const comp = [];
+    if (d.juros > 0) comp.push(`juros R$ ${fmt(d.juros)}`);
+    if (d.multa > 0) comp.push(`multa R$ ${fmt(d.multa)}`);
+    if (d.desconto > 0) comp.push(`desconto R$ ${fmt(d.desconto)}`);
+    if (d.formaPagamento) comp.push(d.formaPagamento);
+    return (
+        <div className="text-xs text-gray-500 mt-0.5">
+            {partes.length > 0 && <div className="truncate">{partes.join(' · ')}</div>}
+            {comp.length > 0 && <div className="truncate">pago {fmtData(p.data)}{d.valorPago > 0 ? ` — R$ ${fmt(d.valorPago)}` : ''} ({comp.join(', ')})</div>}
+        </div>
+    );
+};
+
+// ── Modal de conciliação em GRUPO: N lançamentos do extrato ↔ M baixas ──
 // Cobre 1 PIX pagando várias notas, 2 PIX pagando uma baixa, e PIX parcial
 // (a parte da nota precisa estar registrada como baixa parcial no app).
+// Diferença entre os lados não bloqueia: o usuário declara o motivo e ela fica registrada.
 const GrupoModal = ({ lancamento, pendentes, contaId, periodo, onClose, onSuccess }) => {
     const [disponiveis, setDisponiveis] = useState(null); // null = carregando
+    const [motivos, setMotivos] = useState([]);
     const [selLanc, setSelLanc] = useState(new Set([lancamento.id]));
     const [selPag, setSelPag] = useState(new Set());
     const [busca, setBusca] = useState('');
+    const [motivo, setMotivo] = useState('');
+    const [obsMotivo, setObsMotivo] = useState('');
     const [salvando, setSalvando] = useState(false);
 
     const outrosPendentes = pendentes.filter(p => p.tipo === lancamento.tipo);
@@ -67,6 +96,7 @@ const GrupoModal = ({ lancamento, pendentes, contaId, periodo, onClose, onSucces
         conciliacaoService.baixasDisponiveis(contaId, periodo.de, periodo.ate, lancamento.tipo)
             .then(setDisponiveis)
             .catch(() => { toast.error('Não consegui carregar as baixas do app.'); setDisponiveis([]); });
+        conciliacaoService.motivosDiferenca().then(setMotivos).catch(() => setMotivos([]));
     }, [contaId, periodo, lancamento.tipo]);
 
     const alternar = (setFn, id) => setFn(prev => {
@@ -78,7 +108,12 @@ const GrupoModal = ({ lancamento, pendentes, contaId, periodo, onClose, onSucces
     const somaLanc = outrosPendentes.filter(p => selLanc.has(p.id)).reduce((s, p) => s + p.valor, 0);
     const somaPag = (disponiveis || []).filter(p => selPag.has(p.id)).reduce((s, p) => s + p.valor, 0);
     const diferenca = Math.round((somaLanc - somaPag) * 100) / 100;
-    const somaBate = Math.abs(diferenca) <= 0.01 && selLanc.size > 0 && selPag.size > 0;
+    const temSelecao = selLanc.size > 0 && selPag.size > 0;
+    const somaBate = Math.abs(diferenca) <= 0.01;
+    // Não bate mais é bloqueio: com diferença, o usuário DIZ o que é e concilia mesmo assim.
+    const temDiferenca = temSelecao && !somaBate;
+    const motivoOk = !temDiferenca || (motivo && (motivo !== 'OUTRO' || obsMotivo.trim()));
+    const podeConfirmar = temSelecao && motivoOk && !salvando;
 
     const listaBaixas = (disponiveis || []).filter(p =>
         !busca.trim() || p.label.toLowerCase().includes(busca.trim().toLowerCase())
@@ -87,7 +122,8 @@ const GrupoModal = ({ lancamento, pendentes, contaId, periodo, onClose, onSucces
     const confirmar = async () => {
         setSalvando(true);
         try {
-            const r = await conciliacaoService.conciliarGrupo(contaId, [...selLanc], [...selPag]);
+            const r = await conciliacaoService.conciliarGrupo(contaId, [...selLanc], [...selPag],
+                temDiferenca ? { motivo, obs: obsMotivo.trim() } : {});
             toast.success(r.message);
             onSuccess();
         } catch (e) {
@@ -103,7 +139,7 @@ const GrupoModal = ({ lancamento, pendentes, contaId, periodo, onClose, onSucces
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
                     <div>
                         <p className="text-xs text-gray-500">Conciliar em grupo — {lancamento.tipo === 'CREDITO' ? 'entrada' : 'saída'}</p>
-                        <h2 className="font-bold text-gray-900">A soma dos dois lados precisa bater</h2>
+                        <h2 className="font-bold text-gray-900">Marque os dois lados que se cobrem</h2>
                     </div>
                     <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
                 </div>
@@ -149,18 +185,23 @@ const GrupoModal = ({ lancamento, pendentes, contaId, periodo, onClose, onSucces
                         )}
                         <div className="space-y-1.5 max-h-56 overflow-y-auto">
                             {listaBaixas.map(p => (
-                                <label key={p.id} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer ${selPag.has(p.id) ? 'border-primary bg-mint/30' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                    <input type="checkbox" checked={selPag.has(p.id)} onChange={() => alternar(setSelPag, p.id)} className="accent-[#00754A]" />
-                                    <span className="text-xs text-gray-500 shrink-0">{fmtData(p.data)}</span>
-                                    <span className="text-sm text-gray-800 truncate flex-1">{p.label}</span>
-                                    <span className="text-sm font-semibold whitespace-nowrap">R$ {fmt(p.valor)}</span>
+                                <label key={p.id} className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer ${selPag.has(p.id) ? 'border-primary bg-mint/30' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                    <input type="checkbox" checked={selPag.has(p.id)} onChange={() => alternar(setSelPag, p.id)} className="mt-0.5 accent-[#00754A]" />
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-gray-900 truncate flex-1">{p.detalhe?.nome || p.label}</span>
+                                            <span className="text-sm font-semibold whitespace-nowrap">R$ {fmt(p.valor)}</span>
+                                        </div>
+                                        {/* Os dados do boleto/nota — o usuário precisa VER no que está mexendo */}
+                                        <DetalheBaixa p={p} />
+                                    </div>
                                 </label>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                {/* Rodapé com a soma ao vivo */}
+                {/* Rodapé com a soma ao vivo. Diferença não bloqueia — exige o motivo. */}
                 <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-2">
                     <div className={`rounded-xl border p-3 flex items-center justify-between text-sm ${somaBate ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}`}>
                         <span className={somaBate ? 'text-green-800' : 'text-amber-800'}>
@@ -170,11 +211,33 @@ const GrupoModal = ({ lancamento, pendentes, contaId, periodo, onClose, onSucces
                             {somaBate ? '✓ Soma bate' : `Diferença R$ ${fmt(Math.abs(diferenca))}`}
                         </span>
                     </div>
+                    {temDiferenca && (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
+                            <p className="text-xs font-semibold text-amber-800">
+                                O que é essa diferença de R$ {fmt(Math.abs(diferenca))}? (obrigatório para conciliar)
+                            </p>
+                            <SelectBusca value={motivo} onChange={e => setMotivo(e.target.value)} className="w-full">
+                                <option value="">Escolha o motivo…</option>
+                                {motivos.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                            </SelectBusca>
+                            {motivo === 'OUTRO' && (
+                                <input
+                                    value={obsMotivo}
+                                    onChange={e => setObsMotivo(e.target.value)}
+                                    placeholder="Descreva a diferença…"
+                                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                />
+                            )}
+                            <p className="text-xs text-amber-700">
+                                A diferença fica registrada no grupo e aparece na linha conciliada — não some.
+                            </p>
+                        </div>
+                    )}
                     <div className="flex justify-end gap-2">
                         <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
                         <button
                             onClick={confirmar}
-                            disabled={!somaBate || salvando}
+                            disabled={!podeConfirmar}
                             className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
                         >
                             {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
@@ -708,7 +771,9 @@ const ConciliacaoBancariaPage = () => {
     const totalSoNoApp = (soNoApp.entradas?.length || 0) + (soNoApp.saidas?.length || 0);
 
     // Painel de ação de uma linha pendente (compartilhado entre tabela e card)
-    const AcoesPendente = ({ l }) => (
+    const AcoesPendente = ({ l }) => {
+        const escolhido = (l.sugestoes || []).find(s => s.id === (escolhas[l.id] || l.sugestoes?.[0]?.id));
+        return (
         (l.sugestoes || []).length > 0 ? (
             <div className="flex flex-col gap-1.5 min-w-0">
                 {l.sugestoes.length > 1 ? (
@@ -720,6 +785,8 @@ const ConciliacaoBancariaPage = () => {
                         {fmtData(l.sugestoes[0].data)} — {l.sugestoes[0].label}
                     </div>
                 )}
+                {/* Os dados do boleto/nota da baixa escolhida — conferir ANTES de conciliar */}
+                {escolhido && <DetalheBaixa p={escolhido} />}
                 <div className="flex flex-wrap gap-1.5">
                     <button
                         onClick={() => conciliarLinha(l)}
@@ -799,7 +866,8 @@ const ConciliacaoBancariaPage = () => {
                 </div>
             </div>
         )
-    );
+        );
+    };
 
     // Descrição do banco + o que mais o OFX trouxe (beneficiário, nº do documento).
     // "DÉB.TIT.COMPE EFETIVADO" sozinho não diz nada — o beneficiário, quando o banco
@@ -860,6 +928,12 @@ const ConciliacaoBancariaPage = () => {
                     {(l.grupoBaixas || []).length > 0 && (
                         <span className="text-xs text-gray-500 truncate block" title={l.grupoBaixas.join(' · ')}>
                             {l.grupoBaixas.join(' · ')}
+                        </span>
+                    )}
+                    {/* Grupo fechado com diferença declarada: fica sempre visível, não some */}
+                    {Math.abs(l.grupoDiferenca || 0) > 0.01 && (
+                        <span className="text-xs text-amber-700 truncate block" title={l.grupoMotivoDiferenca || ''}>
+                            Diferença R$ {fmt(Math.abs(l.grupoDiferenca))}{l.grupoMotivoDiferenca ? ` — ${l.grupoMotivoDiferenca}` : ''}
                         </span>
                     )}
                 </div>

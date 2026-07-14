@@ -17,9 +17,10 @@ Confere o **extrato do banco** contra o que o app registrou: cada entrada/saída
    - Importar o mesmo arquivo (ou períodos sobrepostos) de novo **não duplica**: cada lançamento do banco tem uma identidade (FITID) e só entra uma vez.
 3. Clicar **"Conciliar automático"** — o sistema fecha sozinho todo lançamento que tem **exatamente uma** baixa do app com o mesmo valor (±R$ 0,01) e data próxima (±3 dias) na mesma conta.
 4. Revisar os **pendentes** restantes:
-   - Se houver sugestões, escolher a certa (quando há mais de uma, aparece um menu) e clicar **Conciliar**.
+   - Se houver sugestões, escolher a certa (quando há mais de uma, aparece um menu) e clicar **Conciliar**. Abaixo da sugestão aparecem os **dados do boleto/nota** da baixa escolhida (fornecedor, NF, parcela, vencimento, composição juros/multa) — conferir antes de confirmar.
    - **Saída sem baixa no app** (o boleto foi pago no banco, mas ninguém lançou a despesa): clicar **"Criar despesa"** — ver a seção abaixo.
-   - **Um PIX que pagou várias notas** (ou o contrário): clicar **"Várias…"** — abre o modal de **conciliação em grupo**, onde se marca os lançamentos do extrato de um lado e as baixas do app do outro; o rodapé mostra a soma dos dois lados ao vivo e o botão só libera quando **a soma bate** (±R$ 0,01). Funciona nos dois sentidos: 1 PIX ↔ 3 baixas, 2 PIX ↔ 1 baixa etc.
+   - **Um PIX que pagou várias notas** (ou o contrário): clicar **"Várias…"** — abre o modal de **conciliação em grupo**, onde se marca os lançamentos do extrato de um lado e as baixas do app do outro; o rodapé mostra a soma dos dois lados ao vivo. Cada baixa da lista mostra os **dados do boleto/nota** (fornecedor, NF, parcela, vencimento, valor e composição juros/multa/desconto) para conferir antes de marcar. Funciona nos dois sentidos: 1 PIX ↔ 3 baixas, 2 PIX ↔ 1 baixa etc.
+   - **Se a soma NÃO bater**, dá para conciliar mesmo assim — mas é **obrigatório dizer o que é a diferença** (tarifa do banco, juros/multa pagos a mais, desconto, arredondamento, erro de lançamento ou "outro" com descrição). A diferença e o motivo ficam **gravados no grupo** e aparecem na linha conciliada (em âmbar) — nunca somem.
    - Se for tarifa bancária, transferência entre contas etc. (coisas que não são baixa de conta), clicar **Ignorar** (pede o motivo).
 5. **Desfazer** (ícone de seta) volta qualquer conciliado/ignorado para pendente. Em um lançamento conciliado **em grupo**, o desfazer **dissolve o grupo inteiro** (todos os lançamentos do grupo voltam a pendente e as baixas ficam livres).
 
