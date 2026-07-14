@@ -2,78 +2,64 @@
 
 **Rota:** `/financeiro/conciliacao` · **Permissão:** `Pode_Acessar_Financeiro_Gerencial` (ou admin)
 
-Confere o **extrato do banco** contra o que o app registrou: cada entrada/saída do extrato deve ter uma baixa correspondente no app (contas a receber ou a pagar). É o que transforma o saldo de "fé" em fato conferido.
+Confere o **extrato do banco** contra o que o app registrou: cada entrada/saída do extrato deve corresponder a algo no sistema (boleto do Contas a Pagar, recebimento do Contas a Receber, tarifa…). É o que transforma o saldo de "fé" em fato conferido.
 
-> **O botão "Conciliar" não dá baixa em nada** — ele apenas *amarra* a linha do extrato a uma baixa **que já existe** no app ("confere, bateu"). Para uma **saída** que ainda não tem baixa, a tela tem dois botões que resolvem sem sair daqui:
-> - **"Dar baixa…"** — a conta a pagar **já está lançada e em aberto**: baixa ela (no app e no Conta Azul) e concilia de uma vez.
-> - **"Criar despesa"** — a despesa **nunca foi lançada**: cadastra já paga e concilia em seguida.
->
-> Do lado das **entradas** (contas a receber), a conciliação **nunca** dá baixa: recebimento de cliente continua sendo baixado no Contas a Receber / "Baixa CA" do Caixa (evita baixa em dobro no CA).
+A lógica da tela é uma pergunta só: **"este lançamento do banco é O QUÊ no sistema?"** Cada linha pendente tem no máximo **dois botões**:
+
+- **Conciliar** — aparece quando o sistema encontrou algo com **data E valor batendo exatos**: uma baixa já registrada (aí só amarra) **ou um boleto em aberto do Contas a Pagar** (aí a baixa é criada na hora, com a data e o banco do extrato, e vai para o Conta Azul). Os dados do boleto/nota (fornecedor, NF, parcela, vencimento) aparecem antes de confirmar.
+- **Buscar…** — para todo o resto. Abre a janela única de busca (ver abaixo).
+
+> **Entradas (crédito) nunca dão baixa por aqui**: recebimento de cliente continua sendo baixado no Contas a Receber / "Baixa CA" do Caixa (evita baixa em dobro no CA). Na conciliação, entrada só amarra com baixa já registrada.
 
 ## Fluxo de uso
 
-1. **Exportar o extrato do banco em OFX** — todo internet banking tem essa opção (às vezes chamada "Money/OFX" ou "Extensão .ofx"), geralmente em Extrato → Exportar/Salvar como.
-2. Na tela, **escolher o banco/caixa** (menu no topo — mesmas contas do Conta Azul usadas nas baixas) e clicar **Importar OFX**.
-   - Importar o mesmo arquivo (ou períodos sobrepostos) de novo **não duplica**: cada lançamento do banco tem uma identidade (FITID) e só entra uma vez.
-3. Clicar **"Conciliar automático"** — o sistema fecha sozinho todo lançamento que tem **exatamente uma** baixa do app com o mesmo valor (±R$ 0,01) e data próxima (±3 dias) na mesma conta.
-4. Revisar os **pendentes** restantes:
-   - Se houver sugestões, escolher a certa (quando há mais de uma, aparece um menu) e clicar **Conciliar**. Abaixo da sugestão aparecem os **dados do boleto/nota** da baixa escolhida (fornecedor, NF, parcela, vencimento, composição juros/multa) — conferir antes de confirmar.
-   - **Saída sem baixa no app** (o boleto foi pago no banco, mas ninguém lançou a despesa): clicar **"Criar despesa"** — ver a seção abaixo.
-   - **Um PIX que pagou várias notas** (ou o contrário): clicar **"Várias…"** — abre o modal de **conciliação em grupo**, onde se marca os lançamentos do extrato de um lado e as baixas do app do outro; o rodapé mostra a soma dos dois lados ao vivo. Cada baixa da lista mostra os **dados do boleto/nota** (fornecedor, NF, parcela, vencimento, valor e composição juros/multa/desconto) para conferir antes de marcar. Funciona nos dois sentidos: 1 PIX ↔ 3 baixas, 2 PIX ↔ 1 baixa etc.
-   - **Se a soma NÃO bater**, dá para conciliar mesmo assim — mas é **obrigatório dizer o que é a diferença** (tarifa do banco, juros/multa pagos a mais, desconto, arredondamento, erro de lançamento ou "outro" com descrição). A diferença e o motivo ficam **gravados no grupo** e aparecem na linha conciliada (em âmbar) — nunca somem.
-   - Se for tarifa bancária, transferência entre contas etc. (coisas que não são baixa de conta), clicar **Ignorar** (pede o motivo).
-5. **Desfazer** (ícone de seta) volta qualquer conciliado/ignorado para pendente. Em um lançamento conciliado **em grupo**, o desfazer **dissolve o grupo inteiro** (todos os lançamentos do grupo voltam a pendente e as baixas ficam livres).
+1. **Exportar o extrato do banco em OFX** — todo internet banking tem essa opção (às vezes "Money/OFX" ou "Extensão .ofx"), geralmente em Extrato → Exportar/Salvar como.
+2. Na tela, **escolher o banco/caixa** (mesmas contas do Conta Azul usadas nas baixas) e clicar **Importar OFX**.
+   - Importar o mesmo arquivo (ou períodos sobrepostos) de novo **não duplica** (identidade FITID); só **atualiza a descrição** das linhas que já existiam.
+3. Clicar **"Conciliar automático"** — fecha sozinho todo lançamento com **exatamente uma** baixa já registrada de mesmo valor (±R$ 0,01) e data próxima (±3 dias) na mesma conta. (O automático **não** cria baixa em boleto aberto — isso sempre pede um clique seu no Conciliar da linha.)
+4. Revisar os pendentes: **Conciliar** quando a sugestão está certa; **Buscar…** para escolher manualmente.
+5. **Desfazer** (ícone de seta) volta qualquer conciliado/ignorado para pendente. Num lançamento conciliado **em grupo**, o desfazer **dissolve o grupo inteiro** (a baixa criada na conciliação NÃO é estornada — se preciso, estorne no Contas a Pagar).
+
+## A janela "Buscar…" (o que é este lançamento?)
+
+Modelo do Conta Azul. Mostra, para o lançamento clicado:
+
+- **Janela de período**: boletos com vencimento até **±15 dias** da data do débito (padrão), ajustável para ±30, ±60 ou Tudo.
+- **Busca** por fornecedor, descrição ou nº da nota — vale para as duas listas.
+- **Boletos em aberto no Contas a Pagar** (só para saídas): TODOS os não conciliados do período, com fornecedor, NF, parcela, vencimento e saldo. Os que fecham com o valor do extrato ganham a etiqueta verde **"valor bate"** e vêm primeiro. Dá para marcar **um ou mais** (um débito pagando vários boletos).
+- **Pagamentos/recebimentos já baixados sem par no extrato**: baixas registradas que ainda não foram amarradas — para o caso de a baixa já existir com data/valor um pouco diferentes.
+- **"+ Somar outro lançamento do banco"**: o caso raro de 2 PIX pagarem 1 boleto — marca-se os dois lançamentos.
+- Ao marcar boleto em aberto: **forma de pagamento** (o sistema sugere pela descrição: PIX/TED/boleto) e campos de **juros, multa e desconto** — o extrato traz o total que saiu, o sistema separa. O rodapé mostra a conta fechando ao vivo: quita tudo, fica **parcial** no último boleto (mostra quanto sobra) ou aponta o que não fecha.
+- **Diferença de valor** (quando só há baixas registradas marcadas e não fecha): dá para conciliar mesmo assim, mas é **obrigatório dizer o que é** (tarifa do banco, juros pagos a mais, desconto, arredondamento, erro de lançamento, outro+descrição). A diferença e o motivo ficam gravados e aparecem em âmbar na linha conciliada — nunca somem.
+- No rodapé da janela: **"Cadastrar despesa"** (a saída nunca foi lançada no sistema — ver seção abaixo) e **"Ignorar"** (tarifa, transferência entre contas; pede o motivo).
+
+Ao confirmar com boleto em aberto marcado: a baixa é criada com a **data e o banco do próprio extrato**, entra na fila de envio ao Conta Azul (igual ao botão "Baixar" do Contas a Pagar) e o lançamento já fica conciliado. **Exceção:** despesa **importada do CA** não tem para onde empurrar a baixa — fica só no app (a tela avisa antes).
+
+## Cadastrar despesa (a saída nunca foi lançada)
+
+Acessível pelo rodapé da janela Buscar…. O pop-up vem preenchido com o que o banco mandou (data, valor, beneficiário quando houver, nº do documento) e pede: **fornecedor** (escolher ou cadastrar na hora), **descrição**, categoria da DRE, **forma de pagamento**, vencimento, nº da nota e **juros/multa** (o sistema separa do total). A despesa é criada **já paga** no banco do extrato e vai para o Conta Azul; a linha volta com a baixa como sugestão — é só clicar em Conciliar.
 
 ## O que a tela mostra
 
-- **KPIs**: Pendentes (com valor a conferir), Conciliados (valor batido), Ignorados, e **"Só no app"** — baixas registradas no app nesta conta que não bateram com nenhum lançamento do extrato.
+- **KPIs**: Pendentes (com valor a conferir), Conciliados (valor batido), Ignorados, e **"Só no app"** — baixas registradas nesta conta que não bateram com nenhum lançamento do extrato.
 - **Filtros**: conta (obrigatório), período (chips: este mês, 30/60/90 dias) e status.
-- **Lista do extrato**: data, descrição do banco, valor (verde = entrou, vermelho = saiu), status (Pendente amarelo / Conciliado verde / Ignorado cinza) e a coluna de conciliação com as sugestões. Conciliação automática aparece com 🪄.
-- **"De quem é esse lançamento?"** — abaixo da descrição a tela mostra tudo o que dá para saber:
+- **Lista do extrato**: data, descrição do banco, valor (verde = entrou, vermelho = saiu), status e a coluna de conciliação. Conciliação automática aparece com 🪄.
+- **"De quem é esse lançamento?"** — abaixo da descrição, tudo o que dá para saber:
   - **Beneficiário e nº do documento**, quando o arquivo do banco traz (nem todo banco traz).
-  - **CNPJ/CPF achado no texto** (comum no PIX: "Pagamento Pix 02.118.562 0001-60") **cruzado com o cadastro de fornecedores** → aparece o nome da empresa. Se o documento não estiver cadastrado, mostra o número mesmo.
-  - **"Mesmo valor de: FORNECEDOR (vence dd/mm)"** — contas a pagar **em aberto** com o valor exato da saída. É a pista para o caso do boleto: "DÉB.TIT.COMPE EFETIVADO" é o texto padrão do banco para *boleto pago por compensação* e **não diz quem recebeu** — nenhum sistema consegue extrair o beneficiário se o banco não mandou. O que bate é o valor.
-- Reimportar o extrato **atualiza a descrição** das linhas já existentes (sem duplicar e sem desfazer conciliação).
-- **Card "Baixas do app sem par no extrato"** (expansível): lista as baixas órfãs — pode ser data/valor errado na baixa, conta errada escolhida na hora da baixa, ou extrato ainda não importado daquele período.
-
-## Botão "Dar baixa…" (a conta está lançada, mas em aberto)
-
-Aparece nas **saídas pendentes**. É o caso "o boleto está no app, foi pago pelo banco, mas ninguém deu baixa". Abre a lista das **contas a pagar em aberto** — as que fecham **exatamente com o valor do extrato** vêm primeiro, com a etiqueta verde **"valor bate"** — e tem busca por fornecedor, descrição ou nº da nota.
-
-Escolhida a conta, informa-se a forma de pagamento e, se houver, **juros/multa** (o extrato traz o total que saiu; o sistema separa) ou **desconto**. O rodapé avisa antes de confirmar se a baixa **quita** a parcela ou fica **parcial** (e quanto sobra).
-
-Ao confirmar: a baixa é criada com a **data e o banco do próprio extrato**, entra na fila de envio ao Conta Azul (igual ao botão "Baixar" do Contas a Pagar) e o lançamento **já fica conciliado** — não precisa clicar em "Conciliar" depois.
-
-**Exceção:** despesa **importada do CA** (que não foi criada pelo app) não tem para onde empurrar a baixa — ela fica **só no app**, e a tela avisa isso na linha e no rodapé antes de confirmar.
-
-**Entradas (crédito) não têm esse botão**: a baixa de recebimento continua no Contas a Receber / "Baixa CA" do Caixa, para não baixar duas vezes o mesmo dinheiro no Conta Azul.
-
-## Botão "Criar despesa" (saída do extrato sem despesa lançada)
-
-Aparece nas linhas de **saída (débito) pendentes** — é a ação principal quando a linha diz "Sem baixa parecida no app". Serve para o caso mais comum dos pendentes: o boleto foi pago pelo banco, mas a despesa nunca foi lançada no sistema, então **não existe baixa nenhuma para conciliar**.
-
-O pop-up já vem preenchido com o que o banco mandou (data, valor, beneficiário quando disponível, nº do documento) e pede:
-
-- **Fornecedor** (obrigatório — dá para escolher um já cadastrado ou cadastrar um novo na hora, digitando o nome).
-- **Descrição** (obrigatória), **categoria da DRE**, **forma de pagamento** (obrigatória), **vencimento do boleto** e **nº da nota/documento**.
-- **Juros e multa** (opcionais): o extrato traz o **total que saiu do banco**. Informando juros/multa, o sistema separa: valor da despesa = total − juros − multa, e os juros/multa entram nos campos próprios da baixa. O rodapé do pop-up mostra a conta fechando ao vivo.
-
-Ao salvar, a despesa é criada **já paga**, com a data e o banco do próprio lançamento do extrato, e entra na fila de envio ao **Conta Azul** (a despesa e depois a baixa). O pop-up fecha, a tela continua na conciliação e a linha volta com a baixa recém-criada como sugestão — **é só clicar em "Conciliar"**.
-
-**Não** aparece em entradas (crédito): recebimento de cliente deve ser registrado no Contas a Receber.
+  - **CNPJ/CPF achado no texto** (comum no PIX) cruzado com o cadastro de fornecedores → nome da empresa. CPF mascarado pelo banco (***.851.799-**) vira "Provavelmente Fulano (CPF parcial)" quando bate um único cadastro.
+  - **"Mesmo valor de: FORNECEDOR (vence dd/mm)"** — boletos em aberto com o valor exato mas vencimento em OUTRA data (os com data E valor exatos já viram sugestão com botão Conciliar). "DÉB.TIT.COMPE EFETIVADO" é o texto padrão do banco para boleto pago por compensação e **não diz quem recebeu** — quando o banco não manda o beneficiário, a pista é o valor.
+- **Card "Baixas do app sem par no extrato"** (expansível): baixas órfãs — data/valor errado na baixa, conta errada, ou extrato ainda não importado.
 
 ## Regras do matching (como o sistema sugere)
 
-- Mesma conta financeira da baixa (`contaFinanceiraCaId` — por isso é importante escolher o banco certo na hora de dar baixa).
-- Entrada do extrato (crédito) ↔ recebimento de contas a receber; saída (débito) ↔ pagamento de contas a pagar (o valor comparado inclui juros/multa quando houve).
-- Valor igual (tolerância de R$ 0,01) e data até 3 dias de diferença.
+- **Baixa já registrada**: mesma conta financeira, valor igual (±R$ 0,01, juros e multa incluídos) e data até 3 dias de diferença.
+- **Boleto em aberto** (só saída): valor igual (±R$ 0,01) **e vencimento no MESMO dia** do débito — regra estrita de propósito; vencimento em outro dia não vira sugestão, vai para a janela Buscar….
 - Uma baixa do app só concilia com **um** lançamento do extrato (e vice-versa).
 
 ## Situações comuns
 
-- **Lançamento sem sugestão**: a baixa pode ter sido registrada em outra conta, com outro valor (desconto/juros), fora da janela de 3 dias — ou nem foi registrada. Se for uma **saída** que nunca foi lançada, use **"Criar despesa"** ali mesmo. Nos demais casos, corrija/registre a baixa no módulo certo e clique em Atualizar.
-- **Boleto pago com juros**: o extrato mostra o **total** que saiu (boleto + juros + multa). O matching já soma juros e multa da baixa, então concilia normal — **desde que a baixa tenha sido registrada com os juros**. Se a baixa foi lançada só com o valor do boleto, os valores não batem e a linha fica sem sugestão: estorne e refaça a baixa com juros/multa (ou lance pelo "Criar despesa", que tem os campos).
-- **Vários pagamentos num PIX só** (um lançamento no banco, várias baixas no app): usar **"Várias…"** (conciliação em grupo) e marcar todas as baixas que o PIX cobriu — a soma precisa bater.
-- **PIX que pagou só parte de uma nota**: primeiro registre a **baixa parcial** com esse valor em Contas a Receber/Pagar; depois concilie normal (1↔1 ou dentro de um grupo). A conciliação nunca "divide" uma baixa — ela espelha o que foi registrado.
-- **Um pagamento feito em 2 PIX**: no modal de grupo dá para marcar os **dois lançamentos do extrato** e a baixa única do app.
-- **Tarifas e rendimentos**: não são contas a pagar/receber do app — marcar como Ignorado (o motivo fica registrado).
+- **Boleto pago com juros**: o extrato mostra o total (boleto + juros + multa). Se a baixa já foi registrada com juros, concilia normal. Se o boleto está em aberto, use Buscar… → marque o boleto → informe os juros — a conta fecha e a baixa nasce certa.
+- **Um débito pagando vários boletos**: Buscar… → marcar os boletos (a soma aparece ao vivo). Todos menos o último precisam ser cobertos por inteiro; o último pode ficar parcial ou ser quitado com desconto.
+- **2 PIX pagando 1 boleto**: Buscar… → "+ Somar outro lançamento do banco".
+- **Tarifas e rendimentos**: não são contas do sistema — Buscar… → Ignorar (o motivo fica registrado).
+- **Nada aparece na janela**: aumente a janela de período (±30/±60/Tudo) ou confira se a despesa foi lançada; se nunca foi, "Cadastrar despesa" ali mesmo.

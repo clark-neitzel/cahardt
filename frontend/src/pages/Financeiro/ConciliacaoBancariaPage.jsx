@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import conciliacaoService from '../../services/conciliacaoBancariaService';
 import contasReceberService from '../../services/contasReceberService';
 import SelectBusca from '../../components/SelectBusca';
-import { Landmark, Loader2, RefreshCw, Upload, Wand2, Check, X, Undo2, ChevronDown, ChevronUp, Layers, Search, Plus } from 'lucide-react';
+import { Landmark, Loader2, RefreshCw, Upload, Wand2, Check, X, Undo2, ChevronDown, ChevronUp, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
@@ -76,28 +76,60 @@ const DetalheBaixa = ({ p }) => {
     );
 };
 
-// ── Modal de conciliação em GRUPO: N lançamentos do extrato ↔ M baixas ──
-// Cobre 1 PIX pagando várias notas, 2 PIX pagando uma baixa, e PIX parcial
-// (a parte da nota precisa estar registrada como baixa parcial no app).
-// Diferença entre os lados não bloqueia: o usuário declara o motivo e ela fica registrada.
-const GrupoModal = ({ lancamento, pendentes, contaId, periodo, onClose, onSuccess }) => {
-    const [disponiveis, setDisponiveis] = useState(null); // null = carregando
-    const [motivos, setMotivos] = useState([]);
-    const [selLanc, setSelLanc] = useState(new Set([lancamento.id]));
-    const [selPag, setSelPag] = useState(new Set());
+// ── Modal ÚNICO de busca: "este lançamento do banco é ISTO no sistema" ──
+// Modelo do Conta Azul (pedido do usuário): janela de ±15 dias da data do débito
+// (ajustável), listando TODOS os boletos em aberto do período + as baixas já
+// registradas sem par. O usuário marca um ou mais e concilia — boleto em aberto
+// ganha a baixa na hora (data e banco do extrato, fila do CA). Cadastrar despesa
+// nova e Ignorar também moram aqui, para a linha da tela ter só dois botões.
+const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCriarDespesa, onIgnorar }) => {
+    const ehSaida = lancamento.tipo === 'DEBITO';
+    const [janela, setJanela] = useState('15'); // dias p/ cada lado ('15'|'30'|'60'|'365')
     const [busca, setBusca] = useState('');
+    const [abertas, setAbertas] = useState(null);   // boletos em aberto (só saída)
+    const [baixas, setBaixas] = useState(null);     // baixas já registradas sem par
+    const [motivos, setMotivos] = useState([]);
+    const [metodos, setMetodos] = useState([]);
+    const [selParc, setSelParc] = useState(new Set());
+    const [selPag, setSelPag] = useState(new Set());
+    const [selLanc, setSelLanc] = useState(new Set([lancamento.id]));
+    const [mostrarExtras, setMostrarExtras] = useState(false);
+    const [metodoPagamento, setMetodoPagamento] = useState(
+        /pix/i.test(lancamento.descricao || '') ? 'PIX_PAGAMENTO_INSTANTANEO'
+            : /ted|transfer/i.test(lancamento.descricao || '') ? 'TRANSFERENCIA_BANCARIA'
+                : 'BOLETO_BANCARIO'
+    );
+    const [form, setForm] = useState({ juros: '', multa: '', desconto: '' });
     const [motivo, setMotivo] = useState('');
     const [obsMotivo, setObsMotivo] = useState('');
     const [salvando, setSalvando] = useState(false);
+    const set = (campo) => (e) => setForm(f => ({ ...f, [campo]: e.target.value }));
 
-    const outrosPendentes = pendentes.filter(p => p.tipo === lancamento.tipo);
+    const de = somaDiasYMD(lancamento.data, -Number(janela));
+    const ate = somaDiasYMD(lancamento.data, Number(janela));
 
     useEffect(() => {
-        conciliacaoService.baixasDisponiveis(contaId, periodo.de, periodo.ate, lancamento.tipo)
-            .then(setDisponiveis)
-            .catch(() => { toast.error('Não consegui carregar as baixas do app.'); setDisponiveis([]); });
         conciliacaoService.motivosDiferenca().then(setMotivos).catch(() => setMotivos([]));
-    }, [contaId, periodo, lancamento.tipo]);
+        conciliacaoService.opcoesDespesa().then(o => setMetodos(o.metodosPagamento || [])).catch(() => setMetodos([]));
+    }, []);
+
+    // Recarrega as duas listas quando a janela ou a busca mudam (busca com debounce)
+    useEffect(() => {
+        let vivo = true;
+        setAbertas(ehSaida ? null : []);
+        setBaixas(null);
+        const t = setTimeout(() => {
+            if (ehSaida) {
+                conciliacaoService.parcelasPagarAbertas(lancamento.valor, busca, de, ate)
+                    .then(p => { if (vivo) setAbertas(p); })
+                    .catch(() => { if (vivo) setAbertas([]); });
+            }
+            conciliacaoService.baixasDisponiveis(contaId, de, ate, lancamento.tipo)
+                .then(b => { if (vivo) setBaixas(b); })
+                .catch(() => { if (vivo) setBaixas([]); });
+        }, busca ? 350 : 0);
+        return () => { vivo = false; clearTimeout(t); };
+    }, [contaId, lancamento, busca, de, ate, ehSaida]);
 
     const alternar = (setFn, id) => setFn(prev => {
         const s = new Set(prev);
@@ -105,200 +137,75 @@ const GrupoModal = ({ lancamento, pendentes, contaId, periodo, onClose, onSucces
         return s;
     });
 
-    const somaLanc = outrosPendentes.filter(p => selLanc.has(p.id)).reduce((s, p) => s + p.valor, 0);
-    const somaPag = (disponiveis || []).filter(p => selPag.has(p.id)).reduce((s, p) => s + p.valor, 0);
-    const diferenca = Math.round((somaLanc - somaPag) * 100) / 100;
-    const temSelecao = selLanc.size > 0 && selPag.size > 0;
-    const somaBate = Math.abs(diferenca) <= 0.01;
-    // Não bate mais é bloqueio: com diferença, o usuário DIZ o que é e concilia mesmo assim.
-    const temDiferenca = temSelecao && !somaBate;
-    const motivoOk = !temDiferenca || (motivo && (motivo !== 'OUTRO' || obsMotivo.trim()));
-    const podeConfirmar = temSelecao && motivoOk && !salvando;
+    // Boletos ordenados: valor batendo primeiro, depois vencimento mais perto do débito
+    const dist = (v) => Math.abs((new Date(`${v}T12:00:00Z`) - new Date(`${lancamento.data}T12:00:00Z`)) / 86400000);
+    const listaAbertas = (abertas || []).slice().sort((a, b) => (b.bate - a.bate) || (dist(a.vencimento) - dist(b.vencimento)));
+    const listaBaixas = (baixas || []).filter(p => !busca.trim() || p.label.toLowerCase().includes(busca.trim().toLowerCase()));
+    const outrosPendentes = pendentes.filter(p => p.tipo === lancamento.tipo && p.id !== lancamento.id);
 
-    const listaBaixas = (disponiveis || []).filter(p =>
-        !busca.trim() || p.label.toLowerCase().includes(busca.trim().toLowerCase())
-    );
+    // ── A conta, ao vivo (espelha as regras do backend) ──
+    const n = (v) => Math.max(0, Number(String(v).replace(',', '.')) || 0);
+    const jur = n(form.juros), mul = n(form.multa), desc = n(form.desconto);
+    const r2 = (v) => Math.round(v * 100) / 100;
+    const somaExtrato = r2([lancamento, ...outrosPendentes.filter(p => selLanc.has(p.id))]
+        .filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i)
+        .reduce((s, p) => s + p.valor, 0));
+    const parcSel = listaAbertas.filter(p => selParc.has(p.id));
+    const somaExistentes = r2((baixas || []).filter(p => selPag.has(p.id)).reduce((s, p) => s + p.valor, 0));
+    const temSelecao = selParc.size > 0 || selPag.size > 0;
+
+    let statusConta = null; // { ok, texto, precisaMotivo }
+    if (temSelecao) {
+        if (parcSel.length > 0) {
+            const disponivel = r2(somaExtrato - somaExistentes - jur - mul);
+            const ordenadas = parcSel.slice().sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+            const somaAntes = r2(ordenadas.slice(0, -1).reduce((s, p) => s + p.saldo, 0));
+            const ultima = ordenadas[ordenadas.length - 1];
+            if (disponivel <= 0) {
+                statusConta = { ok: false, texto: 'Juros/multa e baixas marcadas consomem todo o valor do banco — não sobra nada para os boletos.' };
+            } else if (disponivel < somaAntes - 0.01) {
+                statusConta = { ok: false, texto: `O valor não alcança todos os boletos marcados (faltam R$ ${fmt(somaAntes - disponivel)}). Desmarque algum.` };
+            } else {
+                const pagoUltima = r2(disponivel - somaAntes);
+                const tetoUltima = r2(ultima.saldo - desc);
+                if (pagoUltima > tetoUltima + 0.01) {
+                    statusConta = { ok: false, texto: `Saiu R$ ${fmt(pagoUltima - tetoUltima)} a mais que os boletos devem. É juros ou multa? Informe nos campos.` };
+                } else {
+                    const sobra = r2(tetoUltima - pagoUltima);
+                    statusConta = {
+                        ok: true,
+                        texto: sobra > 0.01
+                            ? `Fecha com baixa PARCIAL no boleto de ${ultima.fornecedor || ultima.descricao} — ficam faltando R$ ${fmt(sobra)}.`
+                            : `Fecha certinho: ${parcSel.length} boleto(s) quitado(s)${selPag.size ? ` + ${selPag.size} baixa(s) amarrada(s)` : ''}.`
+                    };
+                }
+            }
+        } else {
+            const diferenca = r2(somaExtrato - somaExistentes);
+            statusConta = Math.abs(diferenca) <= 0.01
+                ? { ok: true, texto: 'Os valores batem.' }
+                : { ok: true, precisaMotivo: true, diferenca, texto: `Diferença de R$ ${fmt(Math.abs(diferenca))} — diga o que é para conciliar.` };
+        }
+    }
+    const motivoOk = !statusConta?.precisaMotivo || (motivo && (motivo !== 'OUTRO' || obsMotivo.trim()));
+    const podeConfirmar = temSelecao && statusConta?.ok && motivoOk && !salvando;
 
     const confirmar = async () => {
         setSalvando(true);
         try {
-            const r = await conciliacaoService.conciliarGrupo(contaId, [...selLanc], [...selPag],
-                temDiferenca ? { motivo, obs: obsMotivo.trim() } : {});
-            toast.success(r.message);
-            onSuccess();
-        } catch (e) {
-            toast.error(e.response?.data?.error || 'Erro ao conciliar o grupo');
-        } finally {
-            setSalvando(false);
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
-            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-2xl w-full max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
-                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
-                    <div>
-                        <p className="text-xs text-gray-500">Conciliar em grupo — {lancamento.tipo === 'CREDITO' ? 'entrada' : 'saída'}</p>
-                        <h2 className="font-bold text-gray-900">Marque os dois lados que se cobrem</h2>
-                    </div>
-                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
-                </div>
-
-                <div className="p-5 space-y-4 overflow-y-auto">
-                    {/* Lado do banco */}
-                    <div>
-                        <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Lançamentos do extrato</p>
-                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
-                            {outrosPendentes.map(p => (
-                                <label key={p.id} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer ${selLanc.has(p.id) ? 'border-primary bg-mint/30' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                    <input type="checkbox" checked={selLanc.has(p.id)} onChange={() => alternar(setSelLanc, p.id)} className="accent-[#00754A]" />
-                                    <span className="text-xs text-gray-500 shrink-0">{fmtData(p.data)}</span>
-                                    <span className="text-sm text-gray-800 truncate flex-1">{p.descricao || '(sem descrição)'}</span>
-                                    <span className="text-sm font-semibold whitespace-nowrap">R$ {fmt(p.valor)}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Lado do app */}
-                    <div>
-                        <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Baixas do app (marque as que este dinheiro cobre)</p>
-                        <div className="relative mb-2">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                            <input
-                                value={busca}
-                                onChange={e => setBusca(e.target.value)}
-                                placeholder="Buscar cliente/fornecedor..."
-                                className="w-full border border-gray-300 rounded pl-9 pr-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                            />
-                        </div>
-                        {disponiveis === null && (
-                            <div className="text-center text-gray-500 text-sm py-3 flex items-center justify-center gap-2">
-                                <Loader2 className="h-4 w-4 animate-spin" /> Carregando baixas…
-                            </div>
-                        )}
-                        {disponiveis !== null && listaBaixas.length === 0 && (
-                            <p className="text-sm text-gray-500 py-2">
-                                Nenhuma baixa livre encontrada no período. Se o pagamento cobriu parte de uma nota,
-                                registre primeiro a <strong>baixa parcial</strong> com esse valor em Contas a {lancamento.tipo === 'CREDITO' ? 'Receber' : 'Pagar'}.
-                            </p>
-                        )}
-                        <div className="space-y-1.5 max-h-56 overflow-y-auto">
-                            {listaBaixas.map(p => (
-                                <label key={p.id} className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer ${selPag.has(p.id) ? 'border-primary bg-mint/30' : 'border-gray-200 hover:bg-gray-50'}`}>
-                                    <input type="checkbox" checked={selPag.has(p.id)} onChange={() => alternar(setSelPag, p.id)} className="mt-0.5 accent-[#00754A]" />
-                                    <div className="min-w-0 flex-1">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-sm font-medium text-gray-900 truncate flex-1">{p.detalhe?.nome || p.label}</span>
-                                            <span className="text-sm font-semibold whitespace-nowrap">R$ {fmt(p.valor)}</span>
-                                        </div>
-                                        {/* Os dados do boleto/nota — o usuário precisa VER no que está mexendo */}
-                                        <DetalheBaixa p={p} />
-                                    </div>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Rodapé com a soma ao vivo. Diferença não bloqueia — exige o motivo. */}
-                <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-2">
-                    <div className={`rounded-xl border p-3 flex items-center justify-between text-sm ${somaBate ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}`}>
-                        <span className={somaBate ? 'text-green-800' : 'text-amber-800'}>
-                            Extrato R$ {fmt(somaLanc)} × Baixas R$ {fmt(somaPag)}
-                        </span>
-                        <span className={`font-bold ${somaBate ? 'text-green-800' : 'text-amber-800'}`}>
-                            {somaBate ? '✓ Soma bate' : `Diferença R$ ${fmt(Math.abs(diferenca))}`}
-                        </span>
-                    </div>
-                    {temDiferenca && (
-                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
-                            <p className="text-xs font-semibold text-amber-800">
-                                O que é essa diferença de R$ {fmt(Math.abs(diferenca))}? (obrigatório para conciliar)
-                            </p>
-                            <SelectBusca value={motivo} onChange={e => setMotivo(e.target.value)} className="w-full">
-                                <option value="">Escolha o motivo…</option>
-                                {motivos.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                            </SelectBusca>
-                            {motivo === 'OUTRO' && (
-                                <input
-                                    value={obsMotivo}
-                                    onChange={e => setObsMotivo(e.target.value)}
-                                    placeholder="Descreva a diferença…"
-                                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                                />
-                            )}
-                            <p className="text-xs text-amber-700">
-                                A diferença fica registrada no grupo e aparece na linha conciliada — não some.
-                            </p>
-                        </div>
-                    )}
-                    <div className="flex justify-end gap-2">
-                        <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
-                        <button
-                            onClick={confirmar}
-                            disabled={!podeConfirmar}
-                            className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
-                        >
-                            {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                            Conciliar grupo ({selLanc.size} ↔ {selPag.size})
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// ── Modal: conciliar dando BAIXA numa conta a pagar em aberto ──
-// O boleto está lançado no app e foi pago pelo banco, mas ninguém deu baixa. Aqui a
-// conciliação faz a baixa (data e banco do extrato) e amarra a linha de uma vez só.
-// A baixa vai para o Conta Azul pela mesma fila do botão "Baixar" do Contas a Pagar.
-const BaixaModal = ({ lancamento, onClose, onSuccess }) => {
-    const [opcoes, setOpcoes] = useState(null);
-    const [parcelas, setParcelas] = useState(null); // null = carregando
-    const [busca, setBusca] = useState('');
-    const [sel, setSel] = useState(null); // parcela escolhida
-    const [salvando, setSalvando] = useState(false);
-    const [form, setForm] = useState({ metodoPagamento: 'BOLETO_BANCARIO', juros: '', multa: '', desconto: '' });
-    const set = (campo) => (e) => setForm(f => ({ ...f, [campo]: e.target.value }));
-
-    useEffect(() => {
-        conciliacaoService.opcoesDespesa().then(setOpcoes).catch(() => setOpcoes({ metodosPagamento: [] }));
-    }, []);
-
-    useEffect(() => {
-        let vivo = true;
-        setParcelas(null);
-        const t = setTimeout(() => {
-            conciliacaoService.parcelasPagarAbertas(lancamento.valor, busca)
-                .then(p => { if (vivo) setParcelas(p); })
-                .catch(() => { if (vivo) { toast.error('Não consegui carregar as contas em aberto.'); setParcelas([]); } });
-        }, busca ? 350 : 0); // debounce só na busca
-        return () => { vivo = false; clearTimeout(t); };
-    }, [lancamento.valor, busca]);
-
-    const total = Number(lancamento.valor || 0);
-    const n = (v) => Math.max(0, Number(String(v).replace(',', '.')) || 0);
-    const jur = n(form.juros), mul = n(form.multa), desc = n(form.desconto);
-    const valorPago = Math.round((total - jur - mul) * 100) / 100;
-    const saldo = sel ? Number(sel.saldo) : 0;
-    const sobra = sel ? Math.round((saldo - valorPago - desc) * 100) / 100 : 0;
-    const excede = sel && valorPago + desc > saldo + 0.01;
-    const podeSalvar = sel && valorPago > 0 && !excede && form.metodoPagamento && !salvando;
-
-    const salvar = async () => {
-        setSalvando(true);
-        try {
-            const r = await conciliacaoService.conciliarComBaixa(lancamento.id, {
-                parcelaPagarId: sel.id,
-                metodoPagamento: form.metodoPagamento,
-                juros: jur, multa: mul, desconto: desc
+            const r = await conciliacaoService.conciliarUnificado({
+                lancamentoIds: [...selLanc],
+                parcelaPagarIds: [...selParc],
+                pagamentoIds: [...selPag],
+                metodoPagamento: selParc.size > 0 ? metodoPagamento : null,
+                juros: jur, multa: mul, desconto: desc,
+                motivoDiferenca: statusConta?.precisaMotivo ? motivo : null,
+                obsDiferenca: statusConta?.precisaMotivo ? obsMotivo.trim() : null
             });
             toast.success(r.message);
             onSuccess();
         } catch (e) {
-            toast.error(e.response?.data?.error || 'Erro ao dar baixa');
+            toast.error(e.response?.data?.error || 'Erro ao conciliar');
         } finally {
             setSalvando(false);
         }
@@ -310,116 +217,176 @@ const BaixaModal = ({ lancamento, onClose, onSuccess }) => {
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
                     <div className="min-w-0">
                         <p className="text-xs text-gray-500">
-                            {fmtData(lancamento.data)} · <span className="font-semibold text-red-700">− R$ {fmt(total)}</span> · {lancamento.descricao || 'sem descrição'}
+                            {fmtData(lancamento.data)} · <span className={`font-semibold ${ehSaida ? 'text-red-700' : 'text-green-700'}`}>{ehSaida ? '−' : '+'} R$ {fmt(lancamento.valor)}</span> · {lancamento.descricao || 'sem descrição'}
                         </p>
-                        <h2 className="font-bold text-gray-900">Dar baixa numa conta em aberto</h2>
+                        <h2 className="font-bold text-gray-900">O que é este lançamento no sistema?</h2>
                     </div>
                     <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
                 </div>
 
                 <div className="p-5 space-y-4 overflow-y-auto">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                        <input
-                            value={busca}
-                            onChange={e => setBusca(e.target.value)}
-                            placeholder="Buscar por fornecedor, descrição ou nº da nota…"
-                            className="w-full border border-gray-300 rounded pl-9 pr-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                        />
+                    {/* Janela de vencimento + busca — como no Conta Azul */}
+                    <div className="flex flex-col md:flex-row gap-2">
+                        <div className="flex gap-1.5 overflow-x-auto hide-scrollbar">
+                            {[['15', '±15 dias'], ['30', '±30 dias'], ['60', '±60 dias'], ['365', 'Tudo']].map(([v, label]) => (
+                                <button
+                                    key={v}
+                                    onClick={() => setJanela(v)}
+                                    className={`shrink-0 px-3 py-1.5 rounded-full text-xs transition-colors ${janela === v ? 'bg-primary text-white font-semibold' : 'bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50'}`}
+                                >
+                                    {label}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <input
+                                value={busca}
+                                onChange={e => setBusca(e.target.value)}
+                                placeholder="Buscar fornecedor, descrição ou nº da nota…"
+                                className="w-full border border-gray-300 rounded pl-9 pr-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                            />
+                        </div>
                     </div>
 
-                    {parcelas === null && (
-                        <div className="text-center text-gray-500 text-sm py-3 flex items-center justify-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" /> Carregando contas em aberto…
+                    {/* Boletos em aberto (só saída) */}
+                    {ehSaida && (
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Boletos em aberto no Contas a Pagar</p>
+                            {abertas === null && (
+                                <div className="text-center text-gray-500 text-sm py-2 flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Carregando…</div>
+                            )}
+                            {abertas !== null && listaAbertas.length === 0 && (
+                                <p className="text-sm text-gray-500 py-1">Nenhum boleto em aberto com vencimento nesse período{busca ? ' para essa busca' : ''} — aumente a janela ou ajuste a busca.</p>
+                            )}
+                            <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                                {listaAbertas.map(p => (
+                                    <label key={p.id} className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer ${selParc.has(p.id) ? 'border-primary bg-mint/30' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                        <input type="checkbox" checked={selParc.has(p.id)} onChange={() => alternar(setSelParc, p.id)} className="mt-1 accent-[#00754A]" />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-sm font-medium text-gray-900 truncate flex-1">{p.fornecedor || p.descricao || 'Despesa'}</span>
+                                                {p.bate && <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">valor bate</span>}
+                                                {p.status === 'PARCIAL' && <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Parcial</span>}
+                                                <span className="text-sm font-semibold whitespace-nowrap">R$ {fmt(p.saldo)}</span>
+                                            </div>
+                                            <div className="text-xs text-gray-500 truncate">
+                                                {p.descricao}{p.numeroNota ? ` · NF ${p.numeroNota}` : ''} · vence {fmtData(p.vencimento)}
+                                                {!p.vaiAoCA && ' · importada do CA (baixa fica só no app)'}
+                                            </div>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
                         </div>
                     )}
-                    {parcelas !== null && parcelas.length === 0 && (
-                        <p className="text-sm text-gray-500 py-2">
-                            Nenhuma conta a pagar em aberto encontrada. Se essa despesa nunca foi lançada,
-                            feche aqui e use <strong>"Criar despesa"</strong>.
+
+                    {/* Baixas já registradas sem par no extrato */}
+                    <div>
+                        <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">
+                            {ehSaida ? 'Pagamentos já baixados no app (sem par no extrato)' : 'Recebimentos já baixados no app (sem par no extrato)'}
                         </p>
-                    )}
-                    <div className="space-y-1.5 max-h-64 overflow-y-auto">
-                        {(parcelas || []).map(p => (
-                            <label
-                                key={p.id}
-                                className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer ${sel?.id === p.id ? 'border-primary bg-mint/30' : 'border-gray-200 hover:bg-gray-50'}`}
-                            >
-                                <input type="radio" name="parcela" checked={sel?.id === p.id} onChange={() => setSel(p)} className="mt-1 accent-[#00754A]" />
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="text-sm font-medium text-gray-900 truncate">{p.fornecedor || p.descricao || 'Despesa'}</span>
-                                        {p.bate && <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">valor bate</span>}
-                                        {p.status === 'PARCIAL' && <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Parcial</span>}
+                        {baixas === null && (
+                            <div className="text-center text-gray-500 text-sm py-2 flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Carregando…</div>
+                        )}
+                        {baixas !== null && listaBaixas.length === 0 && (
+                            <p className="text-sm text-gray-500 py-1">Nenhuma baixa livre nesse período.</p>
+                        )}
+                        <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                            {listaBaixas.map(p => (
+                                <label key={p.id} className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer ${selPag.has(p.id) ? 'border-primary bg-mint/30' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                    <input type="checkbox" checked={selPag.has(p.id)} onChange={() => alternar(setSelPag, p.id)} className="mt-0.5 accent-[#00754A]" />
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-gray-900 truncate flex-1">{p.detalhe?.nome || p.label}</span>
+                                            <span className="text-sm font-semibold whitespace-nowrap">R$ {fmt(p.valor)}</span>
+                                        </div>
+                                        <DetalheBaixa p={p} />
                                     </div>
-                                    <div className="text-xs text-gray-500 truncate">
-                                        {p.descricao}{p.numeroNota ? ` · NF ${p.numeroNota}` : ''} · vence {fmtData(p.vencimento)}
-                                        {!p.vaiAoCA && ' · importada do CA (baixa não vai ao CA)'}
-                                    </div>
-                                </div>
-                                <span className="text-sm font-semibold whitespace-nowrap">R$ {fmt(p.saldo)}</span>
-                            </label>
-                        ))}
+                                </label>
+                            ))}
+                        </div>
                     </div>
 
-                    {sel && (
-                        <>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                <div className="col-span-2">
-                                    <label className="text-sm font-medium text-gray-700 block mb-1">Forma de pagamento *</label>
-                                    <SelectBusca value={form.metodoPagamento} onChange={set('metodoPagamento')} className="w-full">
-                                        {(opcoes?.metodosPagamento || []).map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-                                    </SelectBusca>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-700 block mb-1">Juros (R$)</label>
-                                    <input inputMode="decimal" value={form.juros} onChange={set('juros')} placeholder="0,00"
-                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-700 block mb-1">Multa (R$)</label>
-                                    <input inputMode="decimal" value={form.multa} onChange={set('multa')} placeholder="0,00"
-                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
-                                </div>
-                            </div>
-                            {sobra > 0.01 && !excede && (
-                                <div>
-                                    <label className="text-sm font-medium text-gray-700 block mb-1">Desconto (R$) — se o resto não vai ser pago</label>
-                                    <input inputMode="decimal" value={form.desconto} onChange={set('desconto')} placeholder="0,00"
-                                        className="w-full md:w-48 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                    {/* Raro: 2 PIX pagando 1 boleto — somar outros lançamentos do banco */}
+                    {outrosPendentes.length > 0 && (
+                        <div>
+                            <button type="button" onClick={() => setMostrarExtras(v => !v)} className="text-xs font-medium text-primary hover:underline">
+                                {mostrarExtras ? '− Esconder outros lançamentos do banco' : '+ Somar outro lançamento do banco (ex.: 2 PIX pagando 1 boleto)'}
+                            </button>
+                            {mostrarExtras && (
+                                <div className="space-y-1.5 max-h-32 overflow-y-auto mt-2">
+                                    {outrosPendentes.map(p => (
+                                        <label key={p.id} className={`flex items-center gap-2 p-2 rounded-lg border cursor-pointer ${selLanc.has(p.id) ? 'border-primary bg-mint/30' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                            <input type="checkbox" checked={selLanc.has(p.id)} onChange={() => alternar(setSelLanc, p.id)} className="accent-[#00754A]" />
+                                            <span className="text-xs text-gray-500 shrink-0">{fmtData(p.data)}</span>
+                                            <span className="text-sm text-gray-800 truncate flex-1">{p.descricao || '(sem descrição)'}</span>
+                                            <span className="text-sm font-semibold whitespace-nowrap">R$ {fmt(p.valor)}</span>
+                                        </label>
+                                    ))}
                                 </div>
                             )}
+                        </div>
+                    )}
 
-                            <div className={`rounded-xl border p-3 text-sm ${excede ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
-                                {excede ? (
-                                    <span className="text-red-700">
-                                        Saiu R$ {fmt(valorPago + desc)} do banco, mas essa parcela só tem <strong>R$ {fmt(saldo)}</strong> em aberto.
-                                        Se o pagamento cobriu mais de uma conta, use <strong>"Várias…"</strong>.
-                                    </span>
-                                ) : (
-                                    <span className="text-gray-700">
-                                        Baixa de <strong>R$ {fmt(valorPago)}</strong>
-                                        {(jur > 0 || mul > 0) && <> + juros/multa <strong>R$ {fmt(jur + mul)}</strong></>}
-                                        {desc > 0 && <> + desconto <strong>R$ {fmt(desc)}</strong></>}
-                                        {' · '}
-                                        {sobra > 0.01
-                                            ? <span className="text-amber-700 font-semibold">baixa PARCIAL — sobram R$ {fmt(sobra)}</span>
-                                            : <span className="text-green-700 font-semibold">quita a parcela</span>}
-                                        {sel.vaiAoCA ? ' · vai ao Conta Azul' : ' · fica só no app (despesa importada do CA)'}
-                                    </span>
-                                )}
+                    {/* Forma de pagamento + juros/multa/desconto — só quando há boleto marcado */}
+                    {selParc.size > 0 && (
+                        <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                            <div className="col-span-3">
+                                <label className="text-sm font-medium text-gray-700 block mb-1">Forma de pagamento</label>
+                                <SelectBusca value={metodoPagamento} onChange={e => setMetodoPagamento(e.target.value)} className="w-full">
+                                    {metodos.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                </SelectBusca>
                             </div>
-                        </>
+                            {[['juros', 'Juros (R$)'], ['multa', 'Multa (R$)'], ['desconto', 'Desconto (R$)']].map(([campo, label]) => (
+                                <div key={campo}>
+                                    <label className="text-sm font-medium text-gray-700 block mb-1">{label}</label>
+                                    <input inputMode="decimal" value={form[campo]} onChange={set(campo)} placeholder="0,00"
+                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                </div>
+                            ))}
+                        </div>
                     )}
                 </div>
 
-                <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex justify-end gap-2">
-                    <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
-                    <button onClick={salvar} disabled={!podeSalvar}
-                        className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-1.5 disabled:opacity-50">
-                        {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                        Dar baixa e conciliar
-                    </button>
+                {/* Rodapé: a conta ao vivo + motivo quando não fecha + confirmar */}
+                <div className="px-5 py-4 border-t border-gray-100 shrink-0 space-y-2">
+                    {temSelecao && statusConta && (
+                        <div className={`rounded-xl border p-3 text-sm ${statusConta.ok && !statusConta.precisaMotivo ? 'border-green-200 bg-green-50 text-green-800' : statusConta.ok ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-red-200 bg-red-50 text-red-700'}`}>
+                            <div className="flex items-center justify-between gap-2">
+                                <span>Banco R$ {fmt(somaExtrato)} × Sistema R$ {fmt(somaExistentes + parcSel.reduce((s, p) => s + p.saldo, 0))}</span>
+                            </div>
+                            <div className="mt-0.5">{statusConta.texto}</div>
+                        </div>
+                    )}
+                    {statusConta?.precisaMotivo && (
+                        <div className="flex flex-col md:flex-row gap-2">
+                            <SelectBusca value={motivo} onChange={e => setMotivo(e.target.value)} className="w-full md:flex-1">
+                                <option value="">O que é a diferença?…</option>
+                                {motivos.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                            </SelectBusca>
+                            {motivo === 'OUTRO' && (
+                                <input value={obsMotivo} onChange={e => setObsMotivo(e.target.value)} placeholder="Descreva…"
+                                    className="w-full md:flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                            )}
+                        </div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <div className="text-xs text-gray-500">
+                            Não está no sistema?{' '}
+                            {ehSaida && <button type="button" onClick={onCriarDespesa} className="font-medium text-primary hover:underline">Cadastrar despesa</button>}
+                            {ehSaida && ' · '}
+                            <button type="button" onClick={onIgnorar} className="font-medium text-gray-600 hover:underline">Ignorar (tarifa, transferência…)</button>
+                        </div>
+                        <div className="ml-auto flex gap-2">
+                            <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
+                            <button onClick={confirmar} disabled={!podeConfirmar}
+                                className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-1.5 disabled:opacity-50">
+                                {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                Conciliar
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -677,9 +644,8 @@ const ConciliacaoBancariaPage = () => {
     const [autoRodando, setAutoRodando] = useState(false);
     const [escolhas, setEscolhas] = useState({}); // lancamentoId → id do pagamento escolhido
     const [mostrarSoNoApp, setMostrarSoNoApp] = useState(false);
-    const [grupoModal, setGrupoModal] = useState(null); // lançamento que abriu o modal de grupo
+    const [buscarModal, setBuscarModal] = useState(null); // lançamento que abriu a busca ("o que é isto?")
     const [despesaModal, setDespesaModal] = useState(null); // lançamento que abriu o modal de nova despesa
-    const [baixaModal, setBaixaModal] = useState(null); // lançamento que abriu o modal de dar baixa
     const inputArquivo = useRef(null);
 
     useEffect(() => {
@@ -752,9 +718,21 @@ const ConciliacaoBancariaPage = () => {
     };
 
     const conciliarLinha = (l) => {
-        const escolhido = escolhas[l.id] || l.sugestoes?.[0]?.id;
+        const escolhido = (l.sugestoes || []).find(s => s.id === (escolhas[l.id] || l.sugestoes?.[0]?.id));
         if (!escolhido) { toast.error('Nenhuma sugestão para conciliar.'); return; }
-        const payload = l.tipo === 'CREDITO' ? { pagamentoParcelaId: escolhido } : { pagamentoParcelaPagarId: escolhido };
+        if (escolhido.origem === 'ABERTO') {
+            // Boleto em aberto com data e valor batendo: a conciliação dá a baixa na hora
+            // (data e banco do extrato) e amarra a linha — tudo num clique.
+            const metodo = /pix/i.test(l.descricao || '') ? 'PIX_PAGAMENTO_INSTANTANEO' : 'BOLETO_BANCARIO';
+            agir(l.id, () => conciliacaoService.conciliarUnificado({
+                lancamentoIds: [l.id],
+                parcelaPagarIds: [escolhido.id],
+                pagamentoIds: [],
+                metodoPagamento: metodo
+            }), 'Baixado e conciliado!');
+            return;
+        }
+        const payload = l.tipo === 'CREDITO' ? { pagamentoParcelaId: escolhido.id } : { pagamentoParcelaPagarId: escolhido.id };
         agir(l.id, () => conciliacaoService.conciliar(l.id, payload), 'Conciliado!');
     };
 
@@ -770,102 +748,53 @@ const ConciliacaoBancariaPage = () => {
     const soNoApp = dados?.soNoApp || { entradas: [], saidas: [] };
     const totalSoNoApp = (soNoApp.entradas?.length || 0) + (soNoApp.saidas?.length || 0);
 
-    // Painel de ação de uma linha pendente (compartilhado entre tabela e card)
+    // Painel de ação de uma linha pendente — DOIS botões, sempre os mesmos:
+    //   Conciliar (quando há sugestão com data e valor batendo) e Buscar… (todo o resto:
+    //   escolher outro boleto, juntar vários, cadastrar despesa, ignorar).
     const AcoesPendente = ({ l }) => {
         const escolhido = (l.sugestoes || []).find(s => s.id === (escolhas[l.id] || l.sugestoes?.[0]?.id));
         return (
-        (l.sugestoes || []).length > 0 ? (
             <div className="flex flex-col gap-1.5 min-w-0">
-                {l.sugestoes.length > 1 ? (
-                    <SelectBusca value={escolhas[l.id] || l.sugestoes[0].id} onChange={e => setEscolhas(s => ({ ...s, [l.id]: e.target.value }))} className="w-full">
-                        {l.sugestoes.map(s => <option key={s.id} value={s.id}>{fmtData(s.data)} — {s.label}</option>)}
-                    </SelectBusca>
+                {escolhido ? (
+                    <>
+                        {l.sugestoes.length > 1 ? (
+                            <SelectBusca value={escolhas[l.id] || l.sugestoes[0].id} onChange={e => setEscolhas(s => ({ ...s, [l.id]: e.target.value }))} className="w-full">
+                                {l.sugestoes.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                            </SelectBusca>
+                        ) : (
+                            <div className="text-xs text-gray-700 truncate font-medium" title={escolhido.label}>
+                                {escolhido.label}
+                            </div>
+                        )}
+                        {/* Os dados do boleto/nota — conferir ANTES de conciliar */}
+                        <DetalheBaixa p={escolhido} />
+                        {escolhido.origem === 'ABERTO' && (
+                            <div className="text-xs text-amber-700">Conciliar dá a baixa neste boleto (data e banco do extrato){escolhido.detalhe?.vaiAoCA === false ? ' — fica só no app (importada do CA)' : ' e envia ao Conta Azul'}.</div>
+                        )}
+                    </>
                 ) : (
-                    <div className="text-xs text-gray-600 truncate" title={l.sugestoes[0].label}>
-                        {fmtData(l.sugestoes[0].data)} — {l.sugestoes[0].label}
-                    </div>
+                    <div className="text-xs text-gray-500">Nada com data e valor batendo — use a busca.</div>
                 )}
-                {/* Os dados do boleto/nota da baixa escolhida — conferir ANTES de conciliar */}
-                {escolhido && <DetalheBaixa p={escolhido} />}
                 <div className="flex flex-wrap gap-1.5">
-                    <button
-                        onClick={() => conciliarLinha(l)}
-                        disabled={agindo === l.id}
-                        className="px-3 py-1.5 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold inline-flex items-center gap-1 disabled:opacity-50"
-                    >
-                        <Check className="h-3.5 w-3.5" /> Conciliar
-                    </button>
-                    <button
-                        onClick={() => setGrupoModal(l)}
-                        disabled={agindo === l.id}
-                        className="px-3 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-medium inline-flex items-center gap-1 disabled:opacity-50"
-                        title="Um pagamento cobrindo várias baixas (ou o contrário)"
-                    >
-                        <Layers className="h-3.5 w-3.5" /> Várias…
-                    </button>
-                    {l.tipo === 'DEBITO' && (
+                    {escolhido && (
                         <button
-                            onClick={() => setDespesaModal(l)}
-                            disabled={agindo === l.id}
-                            className="px-3 py-1.5 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-full text-xs font-medium inline-flex items-center gap-1 disabled:opacity-50"
-                            title="Nenhuma dessas serve? Cadastre a despesa deste pagamento"
-                        >
-                            <Plus className="h-3.5 w-3.5" /> Despesa
-                        </button>
-                    )}
-                    <button
-                        onClick={() => ignorarLinha(l)}
-                        disabled={agindo === l.id}
-                        className="px-3 py-1.5 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-full text-xs font-medium inline-flex items-center gap-1 disabled:opacity-50"
-                    >
-                        <X className="h-3.5 w-3.5" /> Ignorar
-                    </button>
-                </div>
-            </div>
-        ) : (
-            <div className="flex flex-col gap-1.5">
-                <div className="text-xs text-gray-500">Sem baixa parecida no app</div>
-                <div className="flex flex-wrap gap-1.5">
-                    {/* Saída sem baixa: OU a conta está lançada e em aberto (dar baixa),
-                        OU nunca foi lançada (criar despesa). São os dois caminhos possíveis. */}
-                    {l.tipo === 'DEBITO' && (
-                        <button
-                            onClick={() => setBaixaModal(l)}
+                            onClick={() => conciliarLinha(l)}
                             disabled={agindo === l.id}
                             className="px-3 py-1.5 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold inline-flex items-center gap-1 disabled:opacity-50"
-                            title="A conta já está lançada e em aberto: dar baixa nela (app + Conta Azul) e conciliar"
                         >
-                            <Check className="h-3.5 w-3.5" /> Dar baixa…
-                        </button>
-                    )}
-                    {l.tipo === 'DEBITO' && (
-                        <button
-                            onClick={() => setDespesaModal(l)}
-                            disabled={agindo === l.id}
-                            className="px-3 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-medium inline-flex items-center gap-1 disabled:opacity-50"
-                            title="A despesa nunca foi lançada: cadastrar aqui (já paga) e depois conciliar"
-                        >
-                            <Plus className="h-3.5 w-3.5" /> Criar despesa
+                            <Check className="h-3.5 w-3.5" /> Conciliar
                         </button>
                     )}
                     <button
-                        onClick={() => setGrupoModal(l)}
+                        onClick={() => setBuscarModal(l)}
                         disabled={agindo === l.id}
-                        className="px-3 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-medium inline-flex items-center gap-1 disabled:opacity-50"
-                        title="Um pagamento cobrindo várias baixas (ou o contrário)"
+                        className={`px-3 py-1.5 rounded-full text-xs inline-flex items-center gap-1 disabled:opacity-50 ${escolhido ? 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium' : 'bg-white border border-primary text-primary hover:bg-mint/40 font-semibold'}`}
+                        title="Procurar o boleto/baixa certo, juntar vários, cadastrar despesa ou ignorar"
                     >
-                        <Layers className="h-3.5 w-3.5" /> Conciliar várias…
-                    </button>
-                    <button
-                        onClick={() => ignorarLinha(l)}
-                        disabled={agindo === l.id}
-                        className="px-3 py-1.5 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-full text-xs font-medium inline-flex items-center gap-1 disabled:opacity-50"
-                    >
-                        <X className="h-3.5 w-3.5" /> Ignorar
+                        <Search className="h-3.5 w-3.5" /> Buscar…
                     </button>
                 </div>
             </div>
-        )
         );
     };
 
@@ -1154,35 +1083,30 @@ const ConciliacaoBancariaPage = () => {
 
                         <p className="text-xs text-gray-500">
                             Como funciona: exporte o extrato do banco em OFX e importe aqui (importar de novo não duplica —
-                            só atualiza a descrição das linhas que já existiam). Conciliar <strong>não dá baixa</strong>: ela só
-                            confere que a saída/entrada do banco corresponde a uma baixa <em>já registrada</em> no app.
-                            O sistema sugere a baixa com o mesmo valor (juros e multa incluídos) e data próxima (±3 dias) na mesma conta;
-                            "Conciliar automático" fecha sozinho os casos sem ambiguidade. Saída sem par no app = despesa que ninguém
-                            lançou: use <strong>"Criar despesa"</strong> para cadastrá-la já paga (vai para o Conta Azul) e conciliar em seguida.
-                            Um PIX que pagou várias notas (ou parte de uma nota registrada como baixa parcial) usa o botão <strong>"Várias…"</strong> —
-                            a soma dos dois lados precisa bater. Tarifas e transferências entre contas podem ser marcadas como ignoradas.
+                            só atualiza a descrição das linhas que já existiam). O sistema <strong>sugere</strong> quando data e
+                            valor batem: com uma baixa já registrada (aí Conciliar só amarra) ou com um boleto em aberto do
+                            Contas a Pagar (aí Conciliar dá a baixa na hora, com a data e o banco do extrato, e envia ao Conta Azul).
+                            "Conciliar automático" fecha sozinho os casos sem ambiguidade. Para todo o resto, <strong>"Buscar…"</strong>:
+                            lista os boletos em aberto numa janela de ±15 dias (ajustável) e as baixas sem par, com busca por fornecedor —
+                            dá para marcar vários, registrar juros/multa/desconto, cadastrar uma despesa que nunca foi lançada ou
+                            ignorar (tarifa, transferência entre contas). Diferença de valor só passa declarando o motivo, que fica
+                            registrado na linha.
                         </p>
                     </>
                 )}
             </div>
 
-            {grupoModal && (
-                <GrupoModal
-                    lancamento={grupoModal}
+            {/* A busca única: "o que é este lançamento no sistema?" — boletos em aberto,
+                baixas registradas, cadastrar despesa e ignorar, tudo num lugar só. */}
+            {buscarModal && (
+                <BuscarModal
+                    lancamento={buscarModal}
                     pendentes={lancamentos.filter(x => x.status === 'PENDENTE')}
                     contaId={contaId}
-                    periodo={periodo}
-                    onClose={() => setGrupoModal(null)}
-                    onSuccess={() => { setGrupoModal(null); carregar(); }}
-                />
-            )}
-
-            {/* Conta já lançada e em aberto: dar baixa nela (app + fila do CA) e conciliar de uma vez. */}
-            {baixaModal && (
-                <BaixaModal
-                    lancamento={baixaModal}
-                    onClose={() => setBaixaModal(null)}
-                    onSuccess={() => { setBaixaModal(null); carregar(); }}
+                    onClose={() => setBuscarModal(null)}
+                    onSuccess={() => { setBuscarModal(null); carregar(); }}
+                    onCriarDespesa={() => { setDespesaModal(buscarModal); setBuscarModal(null); }}
+                    onIgnorar={() => { const l = buscarModal; setBuscarModal(null); ignorarLinha(l); }}
                 />
             )}
 

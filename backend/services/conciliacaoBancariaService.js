@@ -424,7 +424,7 @@ async function pistasDeDebito(linhasDebito) {
             where: { status: { in: ['PENDENTE', 'PARCIAL'] } },
             include: {
                 pagamentos: { where: { estornado: false }, select: { valorPago: true, desconto: true, estornado: true } },
-                contaPagar: { select: { descricao: true, fornecedor: { select: { razaoSocial: true, nomeFantasia: true } } } }
+                contaPagar: { select: { descricao: true, numeroNota: true, statusEnvioCA: true, fornecedor: { select: { razaoSocial: true, nomeFantasia: true } } } }
             },
             take: 1000
         }),
@@ -449,9 +449,14 @@ async function pistasDeDebito(linhasDebito) {
         const chave = Math.round(saldo * 100);
         if (!porSaldo.has(chave)) porSaldo.set(chave, []);
         porSaldo.get(chave).push({
+            id: p.id,
             fornecedor: p.contaPagar?.fornecedor?.nomeFantasia || p.contaPagar?.fornecedor?.razaoSocial || null,
             descricao: p.contaPagar?.descricao || null,
+            numeroNota: p.contaPagar?.numeroNota || null,
+            numeroParcela: p.numeroParcela,
             vencimento: ymd(p.dataVencimento),
+            valorParcela: num(p.valor),
+            vaiAoCA: !!(p.contaPagar?.statusEnvioCA && p.contaPagar.statusEnvioCA !== 'NAO_ENVIAR'),
             saldo
         });
     }
@@ -462,7 +467,12 @@ async function pistasDeDebito(linhasDebito) {
         const doc = docsPorLinha.get(l.id);
         const centavos = Math.round(num(l.valor) * 100);
         // ±R$ 0,01 (mesma tolerância do matching)
-        const candidatas = [centavos - 1, centavos, centavos + 1].flatMap((c) => porSaldo.get(c) || []);
+        const todas = [centavos - 1, centavos, centavos + 1].flatMap((c) => porSaldo.get(c) || []);
+        // Regra do usuário: boleto em aberto com VALOR e DATA batendo vira SUGESTÃO
+        // (um clique concilia dando a baixa); só o valor batendo fica como dica.
+        const dataLanc = ymd(l.data);
+        const abertasExatas = todas.filter((c) => c.vencimento === dataLanc);
+        const candidatas = todas.filter((c) => c.vencimento !== dataLanc);
 
         // Só é "o fornecedor" quando o documento veio inteiro. No CPF mascarado, o
         // acerto pelo miolo é palpite — e se casar com mais de um, não afirmamos nada.
@@ -483,6 +493,7 @@ async function pistasDeDebito(linhasDebito) {
             // O que o banco escreveu de útil além do MEMO ("ITPU", "DARE ICMS DeSTDA",
             // "MARIANA ... RESCISAO") — é nome de verdade, só não é do cadastro.
             textoBeneficiario: l.nome || l.payee || null,
+            abertasExatas: abertasExatas.slice(0, 5),
             parcelasAbertas: candidatas.slice(0, 3)
         });
     }
@@ -574,11 +585,34 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
             };
         }
         if (l.status === 'PENDENTE') {
+            const p = pistas.get(l.id) || null;
+            // Sugestões: baixas já registradas (valor ±0,01, data ±3d) E boletos em aberto
+            // com valor E vencimento EXATOS (regra do usuário: só o que bate dos dois lados
+            // vira sugestão; o resto ele escolhe na busca). Conciliar num item ABERTO dá a
+            // baixa na hora, com a data e o banco do extrato.
+            const sugBaixas = candidatosPara({ data: ymd(l.data), valor: num(l.valor), tipo: l.tipo }, pools, usados)
+                .map((s) => ({ ...s, origem: 'BAIXA' }));
+            const sugAbertas = (p?.abertasExatas || []).map((a) => ({
+                id: a.id,
+                origem: 'ABERTO',
+                valor: a.saldo,
+                data: a.vencimento,
+                label: `${a.fornecedor || a.descricao || 'Despesa'} — boleto em aberto`,
+                detalhe: {
+                    nome: a.fornecedor || a.descricao,
+                    descricao: a.descricao,
+                    numeroNota: a.numeroNota,
+                    parcela: a.numeroParcela,
+                    vencimento: a.vencimento,
+                    valorParcela: a.valorParcela,
+                    vaiAoCA: a.vaiAoCA
+                }
+            }));
             return {
                 ...base,
-                sugestoes: candidatosPara({ data: ymd(l.data), valor: num(l.valor), tipo: l.tipo }, pools, usados),
+                sugestoes: [...sugBaixas, ...sugAbertas],
                 // "De quem é?" — CNPJ no texto e/ou contas a pagar em aberto com o mesmo valor
-                pistas: pistas.get(l.id) || null
+                pistas: p
             };
         }
         return base;
@@ -759,102 +793,6 @@ const MOTIVOS_DIFERENCA = [
 ];
 const MOTIVOS_VALIDOS = new Set(MOTIVOS_DIFERENCA.map((m) => m.value));
 
-async function conciliarGrupo({ contaFinanceiraCaId, lancamentoIds, pagamentoIds, motivoDiferenca, obsDiferenca, userId }) {
-    const idsLanc = [...new Set(lancamentoIds || [])];
-    const idsPag = [...new Set(pagamentoIds || [])];
-    if (idsLanc.length === 0 || idsPag.length === 0) {
-        const e = new Error('Escolha ao menos um lançamento do extrato e uma baixa do app.');
-        e.status = 400;
-        throw e;
-    }
-
-    const lancs = await prisma.extratoLancamento.findMany({ where: { id: { in: idsLanc } } });
-    if (lancs.length !== idsLanc.length) { const e = new Error('Lançamento do extrato não encontrado.'); e.status = 404; throw e; }
-    if (lancs.some((l) => l.contaFinanceiraCaId !== contaFinanceiraCaId)) { const e = new Error('Todos os lançamentos precisam ser da mesma conta.'); e.status = 400; throw e; }
-    if (lancs.some((l) => l.status !== 'PENDENTE')) { const e = new Error('Só é possível agrupar lançamentos pendentes.'); e.status = 400; throw e; }
-    const tipo = lancs[0].tipo;
-    if (lancs.some((l) => l.tipo !== tipo)) { const e = new Error('Não misture entradas e saídas no mesmo grupo.'); e.status = 400; throw e; }
-
-    // Baixas: existem, não estornadas, mesma conta, e ainda livres?
-    const usados = await idsUsados(contaFinanceiraCaId);
-    let baixas;
-    if (tipo === 'CREDITO') {
-        baixas = await prisma.pagamentoParcela.findMany({
-            where: { id: { in: idsPag } },
-            select: { id: true, estornado: true, contaFinanceiraCaId: true, valorRecebido: true }
-        });
-    } else {
-        baixas = await prisma.pagamentoParcelaPagar.findMany({
-            where: { id: { in: idsPag } },
-            select: { id: true, estornado: true, contaFinanceiraCaId: true, valorPago: true, juros: true, multa: true }
-        });
-    }
-    if (baixas.length !== idsPag.length) { const e = new Error('Baixa do app não encontrada.'); e.status = 400; throw e; }
-    if (baixas.some((b) => b.estornado)) { const e = new Error('Uma das baixas escolhidas foi estornada.'); e.status = 400; throw e; }
-    if (baixas.some((b) => b.contaFinanceiraCaId !== contaFinanceiraCaId)) { const e = new Error('Todas as baixas precisam ser da mesma conta do extrato.'); e.status = 400; throw e; }
-    if (idsPag.some((id) => usados.has(id))) { const e = new Error('Uma das baixas já está conciliada com outro lançamento.'); e.status = 400; throw e; }
-
-    const valoresBaixas = baixas.map((b) => tipo === 'CREDITO' ? num(b.valorRecebido) : round2(num(b.valorPago) + num(b.juros) + num(b.multa)));
-    const soma = validarSomaGrupo(lancs.map((l) => num(l.valor)), valoresBaixas);
-    if (soma.somaExtrato <= 0) { const e = new Error('A soma do extrato precisa ser maior que zero.'); e.status = 400; throw e; }
-
-    // Quando os dois lados NÃO fecham, o grupo ainda pode ser conciliado — mas o usuário
-    // é obrigado a dizer o que é a diferença (tarifa, juros, desconto…). Ela fica gravada
-    // no grupo e aparece na linha; nunca é engolida silenciosamente.
-    const temDiferenca = Math.abs(soma.diferenca) > 0.01;
-    const motivo = String(motivoDiferenca || '').toUpperCase();
-    const obs = String(obsDiferenca || '').trim();
-    if (temDiferenca) {
-        if (!MOTIVOS_VALIDOS.has(motivo)) {
-            const e = new Error(`Extrato R$ ${soma.somaExtrato.toFixed(2)} × baixas R$ ${soma.somaBaixas.toFixed(2)}: diga o que é a diferença de R$ ${Math.abs(soma.diferenca).toFixed(2)} para conciliar.`);
-            e.status = 400;
-            throw e;
-        }
-        if (motivo === 'OUTRO' && !obs) {
-            const e = new Error('Descreva a diferença (motivo "Outro").');
-            e.status = 400;
-            throw e;
-        }
-    }
-    const rotuloMotivo = temDiferenca
-        ? [MOTIVOS_DIFERENCA.find((m) => m.value === motivo)?.label, obs].filter(Boolean).join(' — ')
-        : null;
-
-    await prisma.$transaction(async (tx) => {
-        const grupo = await tx.conciliacaoGrupo.create({
-            data: {
-                contaFinanceiraCaId,
-                tipo,
-                valor: soma.somaExtrato,
-                valorBaixas: soma.somaBaixas,
-                diferenca: soma.diferenca,
-                motivoDiferenca: rotuloMotivo,
-                criadoPorId: userId || null
-            }
-        });
-        await tx.conciliacaoGrupoItem.createMany({
-            data: [
-                ...idsLanc.map((id) => ({ grupoId: grupo.id, extratoLancamentoId: id })),
-                ...idsPag.map((id) => (tipo === 'CREDITO'
-                    ? { grupoId: grupo.id, pagamentoParcelaId: id }
-                    : { grupoId: grupo.id, pagamentoParcelaPagarId: id }))
-            ]
-        });
-        const r = await tx.extratoLancamento.updateMany({
-            where: { id: { in: idsLanc }, status: 'PENDENTE' }, // guarda contra corrida
-            data: { status: 'CONCILIADO', conciliadoAuto: false, conciliadoPorId: userId || null, conciliadoEm: new Date() }
-        });
-        if (r.count !== idsLanc.length) throw new Error('Um dos lançamentos deixou de estar pendente — recarregue e tente de novo.');
-    }, { timeout: 20000, maxWait: 10000 });
-
-    const base = `Grupo conciliado: ${idsLanc.length} lançamento(s) do extrato ↔ ${idsPag.length} baixa(s) do app (R$ ${soma.somaExtrato.toFixed(2)}).`;
-    return {
-        message: temDiferenca
-            ? `${base} Diferença de R$ ${Math.abs(soma.diferenca).toFixed(2)} registrada como: ${rotuloMotivo}.`
-            : base
-    };
-}
-
 // ─────────────────────────────────────────────────────────────
 // Conciliar dando baixa numa parcela EM ABERTO (saída)
 // ─────────────────────────────────────────────────────────────
@@ -871,13 +809,20 @@ const saldoParcelaPagar = (p) => {
 
 /**
  * Parcelas a pagar EM ABERTO, para conciliar uma saída do extrato dando baixa.
- * As que fecham exatamente com o valor do extrato vêm primeiro (`bate`).
+ *
+ * Modelo do Conta Azul (pedido do usuário): a janela padrão é o VENCIMENTO até
+ * ±15 dias da data do pagamento no banco (de/ate, ajustável na tela — pode ser
+ * "todo período" omitindo as datas), trazendo TODOS os boletos não conciliados
+ * do período, não só os que batem no valor. As que fecham exatamente com o valor
+ * do extrato ganham a etiqueta `bate` e vêm primeiro.
  */
-async function parcelasPagarEmAberto({ valor, busca }) {
+async function parcelasPagarEmAberto({ valor, busca, de, ate }) {
     const termo = String(busca || '').trim();
+    const temJanela = de && ate && /^\d{4}-\d{2}-\d{2}$/.test(String(de)) && /^\d{4}-\d{2}-\d{2}$/.test(String(ate));
     const parcelas = await prisma.parcelaPagar.findMany({
         where: {
             status: { in: ['PENDENTE', 'PARCIAL'] },
+            ...(temJanela ? { dataVencimento: { gte: dataSP(String(de)), lte: dataSP(String(ate)) } } : {}),
             ...(termo ? {
                 contaPagar: {
                     OR: [
@@ -929,97 +874,216 @@ async function parcelasPagarEmAberto({ valor, busca }) {
 }
 
 /**
- * Concilia uma SAÍDA do extrato dando BAIXA numa parcela a pagar em aberto.
+ * A AÇÃO ÚNICA da conciliação: "este(s) lançamento(s) do banco é(são) ISTO no sistema".
  *
- * É o caso "o boleto está lançado no app, foi pago pelo banco, mas ninguém deu
- * baixa": em vez de exigir que o usuário vá até o Contas a Pagar, baixar e voltar,
- * a conciliação faz a baixa (com a data e o banco do próprio extrato) e já amarra
- * a linha. A baixa entra na fila de envio ao CA como qualquer outra (o worker
- * empurra), desde que a despesa esteja no CA — despesa importada do CA (sem
- * idParcelaCA) fica só no app, e a resposta avisa.
+ * Aceita, em qualquer combinação:
+ *   - `parcelaPagarIds`: boletos EM ABERTO do Contas a Pagar (só saída) → a baixa é
+ *     criada aqui, com a data e o banco do extrato, e entra na fila do CA;
+ *   - `pagamentoIds`: baixas JÁ registradas no app → só são amarradas;
+ *   - `lancamentoIds`: um ou mais lançamentos do extrato (2 PIX pagando 1 boleto).
  *
- * Diferença entre o que saiu do banco e o saldo da parcela:
- *   saiu MAIS  → o excedente é juros/multa (informados pelo usuário);
- *   saiu MENOS → ou é desconto (quita a parcela), ou é baixa PARCIAL (sobra saldo).
+ * Regras de valor:
+ *   - disponível = extrato − baixas existentes − juros − multa;
+ *   - os boletos são pagos por ordem de vencimento; todos menos o último devem ser
+ *     cobertos por inteiro; o último pode ficar PARCIAL (sobra saldo) ou ser quitado
+ *     com `desconto`;
+ *   - sem boletos envolvidos, sobra/falta é `diferença` e exige motivo declarado
+ *     (tarifa, juros, desconto…) — gravado no grupo, exibido na linha.
+ *
+ * Vínculo: 1 lançamento ↔ 1 pagamento sem diferença usa o link direto; qualquer
+ * outra combinação vira ConciliacaoGrupo.
  */
-async function conciliarComBaixa({
-    lancamentoId, parcelaPagarId, metodoPagamento, juros = 0, multa = 0, desconto = 0, observacao, userId
+async function conciliarUnificado({
+    lancamentoIds, parcelaPagarIds, pagamentoIds, metodoPagamento,
+    juros = 0, multa = 0, desconto = 0, motivoDiferenca, obsDiferenca, userId
 }) {
-    const l = await prisma.extratoLancamento.findUnique({ where: { id: lancamentoId } });
-    if (!l) throw erro('Lançamento do extrato não encontrado.', 404);
-    if (l.tipo !== 'DEBITO') throw erro('Dar baixa pela conciliação só vale para SAÍDA (contas a pagar).');
-    if (l.status !== 'PENDENTE') throw erro('Este lançamento já foi conciliado ou ignorado.');
+    const idsLanc = [...new Set(lancamentoIds || [])];
+    const idsParc = [...new Set(parcelaPagarIds || [])];
+    const idsPag = [...new Set(pagamentoIds || [])];
+    if (idsLanc.length === 0) throw erro('Escolha ao menos um lançamento do extrato.');
+    if (idsParc.length === 0 && idsPag.length === 0) throw erro('Escolha ao menos um boleto em aberto ou uma baixa já registrada.');
 
-    const metodo = String(metodoPagamento || '').toUpperCase();
-    if (!contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(metodo)) throw erro('Escolha a forma de pagamento.');
+    const lancs = await prisma.extratoLancamento.findMany({ where: { id: { in: idsLanc } } });
+    if (lancs.length !== idsLanc.length) throw erro('Lançamento do extrato não encontrado.', 404);
+    const contaFinanceiraCaId = lancs[0].contaFinanceiraCaId;
+    const tipo = lancs[0].tipo;
+    if (lancs.some((l) => l.contaFinanceiraCaId !== contaFinanceiraCaId)) throw erro('Todos os lançamentos precisam ser da mesma conta.');
+    if (lancs.some((l) => l.status !== 'PENDENTE')) throw erro('Um dos lançamentos já foi conciliado ou ignorado — recarregue a tela.');
+    if (lancs.some((l) => l.tipo !== tipo)) throw erro('Não misture entradas e saídas na mesma conciliação.');
+    if (tipo === 'CREDITO' && idsParc.length > 0) throw erro('Entrada (recebimento) não dá baixa por aqui — registre no Contas a Receber.');
 
-    const parcela = await prisma.parcelaPagar.findUnique({
-        where: { id: parcelaPagarId },
-        include: {
-            pagamentos: { where: { estornado: false }, select: { valorPago: true, desconto: true, estornado: true } },
-            contaPagar: { select: { statusEnvioCA: true, descricao: true } }
-        }
-    });
-    if (!parcela) throw erro('Parcela a pagar não encontrada.', 404);
-    if (parcela.status === 'PAGO') throw erro('Essa parcela já está paga. Estorne antes de lançar outra baixa.');
-    if (parcela.status === 'CANCELADO') throw erro('Parcela cancelada.');
+    const somaExtrato = round2(lancs.reduce((s, l) => s + num(l.valor), 0));
+    if (somaExtrato <= 0) throw erro('A soma do extrato precisa ser maior que zero.');
 
-    const total = round2(num(l.valor)); // o que efetivamente saiu do banco
+    // ── Baixas JÁ registradas: existem, não estornadas, mesma conta, livres ──
+    const usados = await idsUsados(contaFinanceiraCaId);
+    let existentes = [];
+    if (idsPag.length > 0) {
+        existentes = tipo === 'CREDITO'
+            ? await prisma.pagamentoParcela.findMany({
+                where: { id: { in: idsPag } },
+                select: { id: true, estornado: true, contaFinanceiraCaId: true, valorRecebido: true }
+            })
+            : await prisma.pagamentoParcelaPagar.findMany({
+                where: { id: { in: idsPag } },
+                select: { id: true, estornado: true, contaFinanceiraCaId: true, valorPago: true, juros: true, multa: true }
+            });
+        if (existentes.length !== idsPag.length) throw erro('Baixa do app não encontrada.');
+        if (existentes.some((b) => b.estornado)) throw erro('Uma das baixas escolhidas foi estornada.');
+        if (existentes.some((b) => b.contaFinanceiraCaId !== contaFinanceiraCaId)) throw erro('Todas as baixas precisam ser da mesma conta do extrato.');
+        if (idsPag.some((id) => usados.has(id))) throw erro('Uma das baixas já está conciliada com outro lançamento.');
+    }
+    const somaExistentes = round2(existentes.reduce((s, b) =>
+        s + (tipo === 'CREDITO' ? num(b.valorRecebido) : num(b.valorPago) + num(b.juros) + num(b.multa)), 0));
+
+    // ── Boletos EM ABERTO: validação + rateio do dinheiro que saiu ──
     const jur = round2(Math.max(0, num(juros)));
     const mul = round2(Math.max(0, num(multa)));
     const desc = round2(Math.max(0, num(desconto)));
-    const valorPago = round2(total - jur - mul);
-    if (valorPago <= 0) throw erro('Juros + multa não podem consumir todo o valor que saiu do banco.');
+    let metodo = null;
+    let alocacoes = []; // { parcela, valorPago, juros, multa, desconto, naCA }
+    let sobraUltima = 0;
 
-    const saldo = saldoParcelaPagar(parcela);
-    if (valorPago + desc > saldo + 0.01) {
-        throw erro(`Saiu R$ ${valorPago.toFixed(2)}${desc ? ` + desconto R$ ${desc.toFixed(2)}` : ''}, mas a parcela só tem R$ ${saldo.toFixed(2)} em aberto. Se o pagamento cobriu mais de uma parcela, use "Várias…".`);
+    if (idsParc.length > 0) {
+        metodo = String(metodoPagamento || '').toUpperCase();
+        if (!contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(metodo)) throw erro('Escolha a forma de pagamento.');
+
+        const parcelas = await prisma.parcelaPagar.findMany({
+            where: { id: { in: idsParc } },
+            include: {
+                pagamentos: { where: { estornado: false }, select: { valorPago: true, desconto: true, estornado: true } },
+                contaPagar: { select: { statusEnvioCA: true, descricao: true } }
+            }
+        });
+        if (parcelas.length !== idsParc.length) throw erro('Boleto (parcela a pagar) não encontrado.', 404);
+        if (parcelas.some((p) => p.status === 'PAGO' || p.status === 'CANCELADO')) throw erro('Um dos boletos escolhidos já foi pago ou cancelado — recarregue a lista.');
+
+        const disponivel = round2(somaExtrato - somaExistentes - jur - mul);
+        if (disponivel <= 0) throw erro('O valor do extrato (menos juros/multa e baixas já marcadas) não sobra nada para pagar os boletos escolhidos.');
+
+        // Paga por ordem de vencimento; só o último pode ficar parcial.
+        const ordenadas = parcelas
+            .map((p) => ({ p, saldo: saldoParcelaPagar(p), venc: ymd(p.dataVencimento) }))
+            .sort((a, b) => a.venc.localeCompare(b.venc));
+        if (ordenadas.some((o) => o.saldo <= 0)) throw erro('Um dos boletos escolhidos já não tem saldo em aberto.');
+
+        let restante = disponivel;
+        ordenadas.forEach((o, i) => {
+            const ultima = i === ordenadas.length - 1;
+            const naCA = !!(o.p.contaPagar.statusEnvioCA && o.p.contaPagar.statusEnvioCA !== 'NAO_ENVIAR');
+            if (!ultima) {
+                if (restante < o.saldo - 0.01) {
+                    throw erro(`O valor não alcança todos os boletos marcados: depois de pagar os primeiros, sobram R$ ${restante.toFixed(2)} para um boleto de R$ ${o.saldo.toFixed(2)}. Desmarque algum.`);
+                }
+                alocacoes.push({ parcela: o.p, valorPago: o.saldo, juros: 0, multa: 0, desconto: 0, naCA });
+                restante = round2(restante - o.saldo);
+            } else {
+                if (restante > o.saldo - desc + 0.01) {
+                    throw erro(`Saiu mais dinheiro (R$ ${restante.toFixed(2)}) do que o último boleto tem em aberto (R$ ${round2(o.saldo - desc).toFixed(2)}). O excedente é juros/multa? Informe nos campos.`);
+                }
+                // juros/multa/desconto ficam no pagamento do último boleto (é onde o valor fecha)
+                alocacoes.push({ parcela: o.p, valorPago: restante, juros: jur, multa: mul, desconto: desc, naCA });
+                sobraUltima = round2(o.saldo - desc - restante);
+                restante = 0;
+            }
+        });
+    } else if (jur > 0 || mul > 0 || desc > 0) {
+        throw erro('Juros/multa/desconto só se aplicam quando há boleto em aberto sendo baixado.');
     }
 
-    // Mesma regra do botão Baixar do Contas a Pagar: só empurra ao CA se a despesa está lá.
-    const naCA = !!(parcela.contaPagar.statusEnvioCA && parcela.contaPagar.statusEnvioCA !== 'NAO_ENVIAR');
+    // ── Diferença (só existe no caso puro-existentes; com boletos o rateio fecha em 0) ──
+    const somaCriadas = round2(alocacoes.reduce((s, a) => s + a.valorPago + a.juros + a.multa, 0));
+    const diferenca = round2(somaExtrato - somaExistentes - somaCriadas);
+    const temDiferenca = Math.abs(diferenca) > 0.01;
+    const motivo = String(motivoDiferenca || '').toUpperCase();
+    const obs = String(obsDiferenca || '').trim();
+    if (temDiferenca) {
+        if (!MOTIVOS_VALIDOS.has(motivo)) {
+            throw erro(`Banco R$ ${somaExtrato.toFixed(2)} × sistema R$ ${round2(somaExistentes + somaCriadas).toFixed(2)}: diga o que é a diferença de R$ ${Math.abs(diferenca).toFixed(2)} para conciliar.`);
+        }
+        if (motivo === 'OUTRO' && !obs) throw erro('Descreva a diferença (motivo "Outro").');
+    }
+    const rotuloMotivo = temDiferenca
+        ? [MOTIVOS_DIFERENCA.find((m) => m.value === motivo)?.label, obs].filter(Boolean).join(' — ')
+        : null;
 
+    const dataPagamento = new Date(lancs[0].data); // com 2 lançamentos, vale a data do primeiro
+    let criadas = [];
     await prisma.$transaction(async (tx) => {
-        const pag = await tx.pagamentoParcelaPagar.create({
-            data: {
-                parcelaPagarId: parcela.id,
-                valorPago,
-                juros: jur,
-                multa: mul,
-                desconto: desc,
-                dataPagamento: new Date(l.data),
-                formaPagamento: metodo,
-                contaFinanceiraCaId: l.contaFinanceiraCaId, // o banco do extrato é a verdade
-                statusEnvioCA: naCA ? 'ENVIAR' : 'NAO_ENVIAR',
-                origem: 'MANUAL',
-                observacao: observacao?.trim() || `Baixa dada pela conciliação bancária (${l.descricao || 'extrato'}).`,
-                registradoPorId: userId || null
-            }
-        });
-        await contasPagarCaSyncService.recalcularParcelaEConta(tx, parcela.id);
+        for (const a of alocacoes) {
+            const pag = await tx.pagamentoParcelaPagar.create({
+                data: {
+                    parcelaPagarId: a.parcela.id,
+                    valorPago: a.valorPago,
+                    juros: a.juros,
+                    multa: a.multa,
+                    desconto: a.desconto,
+                    dataPagamento,
+                    formaPagamento: metodo,
+                    contaFinanceiraCaId, // o banco do extrato é a verdade
+                    statusEnvioCA: a.naCA ? 'ENVIAR' : 'NAO_ENVIAR',
+                    origem: 'MANUAL',
+                    observacao: `Baixa dada pela conciliação bancária (${lancs[0].descricao || 'extrato'}).`,
+                    registradoPorId: userId || null
+                }
+            });
+            criadas.push(pag.id);
+            await contasPagarCaSyncService.recalcularParcelaEConta(tx, a.parcela.id);
+        }
 
-        // Guarda contra duplo clique: só concilia se ainda estiver pendente.
-        const r = await tx.extratoLancamento.updateMany({
-            where: { id: lancamentoId, status: 'PENDENTE' },
-            data: {
-                status: 'CONCILIADO',
-                conciliadoAuto: false,
-                conciliadoPorId: userId || null,
-                conciliadoEm: new Date(),
-                pagamentoParcelaPagarId: pag.id
-            }
-        });
-        if (r.count === 0) throw erro('Esse lançamento deixou de estar pendente — recarregue a tela.');
-    }, { timeout: 20000, maxWait: 10000 });
+        const todosPagIds = [...idsPag, ...criadas];
+        if (idsLanc.length === 1 && todosPagIds.length === 1 && !temDiferenca) {
+            // Caso simples: link direto 1↔1 (guarda contra duplo clique)
+            const r = await tx.extratoLancamento.updateMany({
+                where: { id: idsLanc[0], status: 'PENDENTE' },
+                data: {
+                    status: 'CONCILIADO',
+                    conciliadoAuto: false,
+                    conciliadoPorId: userId || null,
+                    conciliadoEm: new Date(),
+                    ...(tipo === 'CREDITO' ? { pagamentoParcelaId: todosPagIds[0] } : { pagamentoParcelaPagarId: todosPagIds[0] })
+                }
+            });
+            if (r.count === 0) throw erro('O lançamento deixou de estar pendente — recarregue a tela.');
+        } else {
+            const grupo = await tx.conciliacaoGrupo.create({
+                data: {
+                    contaFinanceiraCaId,
+                    tipo,
+                    valor: somaExtrato,
+                    valorBaixas: round2(somaExistentes + somaCriadas),
+                    diferenca,
+                    motivoDiferenca: rotuloMotivo,
+                    criadoPorId: userId || null
+                }
+            });
+            await tx.conciliacaoGrupoItem.createMany({
+                data: [
+                    ...idsLanc.map((id) => ({ grupoId: grupo.id, extratoLancamentoId: id })),
+                    ...todosPagIds.map((id) => (tipo === 'CREDITO'
+                        ? { grupoId: grupo.id, pagamentoParcelaId: id }
+                        : { grupoId: grupo.id, pagamentoParcelaPagarId: id }))
+                ]
+            });
+            const r = await tx.extratoLancamento.updateMany({
+                where: { id: { in: idsLanc }, status: 'PENDENTE' },
+                data: { status: 'CONCILIADO', conciliadoAuto: false, conciliadoPorId: userId || null, conciliadoEm: new Date() }
+            });
+            if (r.count !== idsLanc.length) throw erro('Um dos lançamentos deixou de estar pendente — recarregue e tente de novo.');
+        }
+    }, { timeout: 30000, maxWait: 10000 });
 
-    const sobra = round2(saldo - valorPago - desc);
-    return {
-        message: sobra > 0.01
-            ? `Baixa parcial registrada e lançamento conciliado. Ainda faltam R$ ${sobra.toFixed(2)} nessa parcela.`
-            : `Parcela quitada e lançamento conciliado!${naCA ? ' A baixa vai para o Conta Azul em instantes.' : ' (Despesa importada do CA — a baixa fica só no app.)'}`,
-        quitada: sobra <= 0.01,
-        vaiAoCA: naCA
-    };
+    const partes = [];
+    if (alocacoes.length > 0) {
+        const quitadas = alocacoes.length - (sobraUltima > 0.01 ? 1 : 0);
+        if (quitadas > 0) partes.push(`${quitadas} boleto(s) baixado(s)`);
+        if (sobraUltima > 0.01) partes.push(`1 baixa parcial (faltam R$ ${sobraUltima.toFixed(2)})`);
+        if (alocacoes.some((a) => a.naCA)) partes.push('baixa vai ao Conta Azul');
+        if (alocacoes.some((a) => !a.naCA)) partes.push('despesa importada do CA fica só no app');
+    }
+    if (idsPag.length > 0) partes.push(`${idsPag.length} baixa(s) já registrada(s) amarrada(s)`);
+    if (temDiferenca) partes.push(`diferença de R$ ${Math.abs(diferenca).toFixed(2)} registrada: ${rotuloMotivo}`);
+    return { message: `Conciliado! ${partes.join(' · ')}.` };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -1169,7 +1233,6 @@ module.exports = {
     listar,
     conciliarAutomatico,
     conciliar,
-    conciliarGrupo,
     baixasDisponiveis,
     ignorar,
     desfazer,
@@ -1177,7 +1240,7 @@ module.exports = {
     criarDespesaDoLancamento,
     opcoesDespesa,
     parcelasPagarEmAberto,
-    conciliarComBaixa,
+    conciliarUnificado,
     MOTIVOS_DIFERENCA,
     // puras (testáveis offline)
     decodificarOfx,

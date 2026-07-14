@@ -38,13 +38,10 @@ const conciliacaoBancariaService = {
         const response = await api.get('/conciliacao-bancaria/baixas-disponiveis', { params: { contaId, de, ate, tipo } });
         return response.data;
     },
-    // N lançamentos do extrato ↔ M baixas do app. Se não fecha, exige motivoDiferenca.
-    conciliarGrupo: async (contaId, lancamentoIds, pagamentoIds, diferenca = {}) => {
-        const response = await api.post('/conciliacao-bancaria/conciliar-grupo', {
-            contaId, lancamentoIds, pagamentoIds,
-            motivoDiferenca: diferenca.motivo || null,
-            obsDiferenca: diferenca.obs || null
-        });
+    // A AÇÃO ÚNICA: "este(s) lançamento(s) do banco é(são) isto no sistema".
+    // parcelaPagarIds = boletos em aberto (cria a baixa); pagamentoIds = baixas já feitas (amarra).
+    conciliarUnificado: async (dados) => {
+        const response = await api.post('/conciliacao-bancaria/conciliar-unificado', dados);
         return response.data;
     },
     motivosDiferenca: async () => {
@@ -65,14 +62,9 @@ const conciliacaoBancariaService = {
         const response = await api.post(`/conciliacao-bancaria/${lancamentoId}/criar-despesa`, dados);
         return response.data;
     },
-    // Contas a pagar EM ABERTO (as que fecham com o valor do extrato vêm primeiro)
-    parcelasPagarAbertas: async (valor, busca) => {
-        const response = await api.get('/conciliacao-bancaria/parcelas-pagar-abertas', { params: { valor, busca } });
-        return response.data;
-    },
-    // Dá baixa na parcela em aberto (app + fila do CA) e concilia o lançamento
-    conciliarComBaixa: async (lancamentoId, dados) => {
-        const response = await api.post(`/conciliacao-bancaria/${lancamentoId}/conciliar-com-baixa`, dados);
+    // Boletos EM ABERTO, com janela de vencimento de/ate (±15 dias do débito por padrão)
+    parcelasPagarAbertas: async (valor, busca, de, ate) => {
+        const response = await api.get('/conciliacao-bancaria/parcelas-pagar-abertas', { params: { valor, busca, de, ate } });
         return response.data;
     }
 };

@@ -144,25 +144,28 @@ router.get('/motivos-diferenca', verificarAuth, checkAcesso, (req, res) => {
     res.json(conciliacaoService.MOTIVOS_DIFERENCA);
 });
 
-// ── POST /conciliar-grupo — N lançamentos do extrato ↔ M baixas ──
-// body: { contaId, lancamentoIds: [], pagamentoIds: [], motivoDiferenca?, obsDiferenca? }
-// Se os dois lados não fecham, motivoDiferenca é OBRIGATÓRIO (o backend recusa sem ele).
-router.post('/conciliar-grupo', verificarAuth, checkAcesso, async (req, res) => {
+// ── POST /conciliar-unificado — a AÇÃO ÚNICA: "este lançamento do banco é isto" ──
+// body: { lancamentoIds: [], parcelaPagarIds: [] (boletos em aberto → cria baixa),
+//         pagamentoIds: [] (baixas já registradas → só amarra), metodoPagamento,
+//         juros, multa, desconto, motivoDiferenca?, obsDiferenca? }
+router.post('/conciliar-unificado', verificarAuth, checkAcesso, async (req, res) => {
     try {
-        const contaId = String(req.body.contaId || '').trim();
-        if (!contaId) return res.status(400).json({ error: 'Escolha o banco/caixa.' });
-        const r = await conciliacaoService.conciliarGrupo({
-            contaFinanceiraCaId: contaId,
+        const r = await conciliacaoService.conciliarUnificado({
             lancamentoIds: Array.isArray(req.body.lancamentoIds) ? req.body.lancamentoIds : [],
+            parcelaPagarIds: Array.isArray(req.body.parcelaPagarIds) ? req.body.parcelaPagarIds : [],
             pagamentoIds: Array.isArray(req.body.pagamentoIds) ? req.body.pagamentoIds : [],
+            metodoPagamento: req.body.metodoPagamento || null,
+            juros: req.body.juros,
+            multa: req.body.multa,
+            desconto: req.body.desconto,
             motivoDiferenca: req.body.motivoDiferenca || null,
             obsDiferenca: req.body.obsDiferenca || null,
             userId: req.user.id
         });
         res.json(r);
     } catch (error) {
-        console.error('Erro ao conciliar grupo:', error);
-        res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao conciliar o grupo.' });
+        console.error('Erro ao conciliar:', error);
+        res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao conciliar.' });
     }
 });
 
@@ -204,38 +207,20 @@ router.post('/:id/desfazer', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
-// ── GET /parcelas-pagar-abertas?valor=&busca= — contas a pagar EM ABERTO ──
-// Para conciliar uma saída dando baixa: as que fecham com o valor do extrato vêm primeiro.
+// ── GET /parcelas-pagar-abertas?valor=&busca=&de=&ate= — boletos EM ABERTO ──
+// Janela de vencimento de/ate (padrão na tela: ±15 dias da data do débito, ajustável,
+// como no Conta Azul). As que fecham com o valor do extrato vêm primeiro.
 router.get('/parcelas-pagar-abertas', verificarAuth, checkAcesso, async (req, res) => {
     try {
         res.json(await conciliacaoService.parcelasPagarEmAberto({
             valor: req.query.valor,
-            busca: req.query.busca
+            busca: req.query.busca,
+            de: req.query.de,
+            ate: req.query.ate
         }));
     } catch (error) {
         console.error('Erro ao listar parcelas a pagar em aberto:', error);
         res.status(500).json({ error: 'Erro ao listar as contas a pagar em aberto.' });
-    }
-});
-
-// ── POST /:id/conciliar-com-baixa — dá a BAIXA na parcela em aberto e concilia ──
-// Saída (contas a pagar) apenas. A baixa entra na fila de envio ao CA como qualquer outra.
-router.post('/:id/conciliar-com-baixa', verificarAuth, checkAcesso, async (req, res) => {
-    try {
-        const r = await conciliacaoService.conciliarComBaixa({
-            lancamentoId: req.params.id,
-            parcelaPagarId: req.body.parcelaPagarId,
-            metodoPagamento: req.body.metodoPagamento,
-            juros: req.body.juros,
-            multa: req.body.multa,
-            desconto: req.body.desconto,
-            observacao: req.body.observacao,
-            userId: req.user.id
-        });
-        res.json(r);
-    } catch (error) {
-        console.error('Erro ao conciliar com baixa:', error);
-        res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao dar baixa.' });
     }
 });
 
