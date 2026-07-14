@@ -45,7 +45,8 @@ const VAZIO = new Set(['', '(em branco)', 'em branco']);
 /** Campo vazio do CA (inclui o literal "(em branco)"). */
 const ehVazio = (s) => VAZIO.has(normalizar(s));
 const limpo = (s) => (ehVazio(s) ? '' : String(s).trim());
-const soDigitos = (s) => String(s || '').replace(/\D/g, '');
+// CNPJ ALFANUMÉRICO: normaliza documento preservando letras (não usar replace(/\D/g,'')).
+const { normalizarDoc } = require('../utils/documento');
 
 // ─────────────────────────────────────────────────────────────
 // Parse de CSV (RFC 4180: aspas, vírgula e quebra de linha dentro de aspas)
@@ -186,7 +187,7 @@ function interpretarCsv(texto) {
         totalLinhas++;
         const descricao = limpo(val(row, 'descricao')) || 'Sem descrição';
         const fornecedorNome = limpo(val(row, 'fornecedor'));
-        const cnpjCpf = soDigitos(val(row, 'cnpjCpf'));
+        const cnpjCpf = normalizarDoc(val(row, 'cnpjCpf'));
         const categoria = limpo(val(row, 'categoria')) || 'Sem categoria';
         const aberto = parseValorBR(val(row, 'valorAberto'));   // ≤ 0 para o que ainda se deve
         const baixado = parseValorBR(val(row, 'valorBaixado')); // ≤ 0 pago; > 0 = desconto obtido

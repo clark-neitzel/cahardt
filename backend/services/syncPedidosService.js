@@ -1,6 +1,8 @@
 const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
 const estoqueService = require('./estoqueService');
+// CNPJ ALFANUMÉRICO: normalizar preservando letras (14 posições = CNPJ, mesmo com letras).
+const { normalizarDoc } = require('../utils/documento');
 
 const syncPedidosService = {
     // Flag to prevent overlapping executions if the sync takes longer than the interval
@@ -10,8 +12,8 @@ const syncPedidosService = {
 
     _resolverIndicadorIE: (cliente) => {
         const tipoPessoa = String(cliente?.Tipo_Pessoa || '').toUpperCase();
-        const documentoNumerico = String(cliente?.Documento || '').replace(/\D/g, '');
-        const ehCnpj = tipoPessoa.includes('JUR') || documentoNumerico.length === 14;
+        const documentoNorm = normalizarDoc(cliente?.Documento); // preserva letras do CNPJ alfanumérico
+        const ehCnpj = tipoPessoa.includes('JUR') || documentoNorm.length === 14;
         return ehCnpj ? 'CONTRIBUINTE' : 'NAO_CONTRIBUINTE';
     },
 

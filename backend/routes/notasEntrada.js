@@ -21,6 +21,8 @@ const nfseAdnService = require('../services/nfseAdnService');
 const { montarDanfeHtml } = require('../services/danfeHtmlService');
 const contasPagarCaSyncService = require('../services/contasPagarCaSyncService');
 const googleDriveService = require('../services/googleDriveService');
+// CNPJ ALFANUMÉRICO: documento/chave podem conter letras — normalizar preservando-as.
+const { normalizarDoc, normalizarChaveNFe } = require('../utils/documento');
 
 // Caminho absoluto do XML salvo da nota (uploads/notas-xml/{chave}.xml).
 const xmlAbsPath = (nota) => {
@@ -170,10 +172,10 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         if (busca?.trim()) {
             const b = busca.trim();
             where.OR = [
-                { chave: { contains: b.replace(/\D/g, '') || b } },
+                { chave: { contains: normalizarDoc(b) || b } },
                 { numero: { contains: b, mode: 'insensitive' } },
                 { fornecedorNome: { contains: b, mode: 'insensitive' } },
-                { fornecedorCnpj: { contains: b.replace(/\D/g, '') || b } },
+                { fornecedorCnpj: { contains: normalizarDoc(b) || b } },
                 // produtos da nota (itens só existem após o XML completo chegar)
                 {
                     itens: {
@@ -322,7 +324,7 @@ router.post('/importar-xml', verificarAuth, checkEscrita, bodyXml, async (req, r
             const cert = await prisma.certificadoDigital.findFirst({
                 where: { ativo: true }, orderBy: { instaladoEm: 'desc' }, select: { cnpj: true }
             });
-            cnpjNosso = cert?.cnpj ? String(cert.cnpj).replace(/\D/g, '') : null;
+            cnpjNosso = cert?.cnpj ? normalizarDoc(cert.cnpj) : null;
         } catch { /* sem certificado: segue sem a checagem de nota própria */ }
 
         const ehNfse = /infNFSe/i.test(xmlString) || /<\s*NFSe[\s>]/i.test(xmlString);
@@ -383,7 +385,7 @@ router.post('/lancar-manual', verificarAuth, checkEscrita, async (req, res) => {
         const body = req.body || {};
         const tipo = String(body.tipo || 'NFSE').toUpperCase() === 'NFE' ? 'NFE' : 'NFSE';
         const fornecedorNome = String(body.fornecedorNome || '').trim();
-        const cnpj = String(body.fornecedorCnpj || '').replace(/\D/g, '');
+        const cnpj = normalizarDoc(body.fornecedorCnpj); // preserva letras do CNPJ alfanumérico
         const numero = body.numero ? String(body.numero).trim() : null;
         const valor = Number(body.valorTotal);
         const emissao = body.emissao;
@@ -451,9 +453,9 @@ router.post('/lancar-manual', verificarAuth, checkEscrita, async (req, res) => {
 // Só NF-e (SEFAZ) e só onde a empresa é a destinatária.
 router.post('/buscar-chave', verificarAuth, checkEscrita, async (req, res) => {
     try {
-        const chave = String(req.body?.chave || '').replace(/\D/g, '');
-        if (chave.length !== 44) {
-            return res.status(400).json({ error: 'Informe a chave de acesso com 44 dígitos (está na DANFE, no boleto ou no e-mail da nota).' });
+        const chave = normalizarChaveNFe(req.body?.chave); // 44 posições, pode ser alfanumérica
+        if (!chave) {
+            return res.status(400).json({ error: 'Informe a chave de acesso com 44 posições (está na DANFE, no boleto ou no e-mail da nota).' });
         }
 
         const jaExistente = await prisma.notaEntrada.findUnique({ where: { chave } });
@@ -485,9 +487,9 @@ router.post('/buscar-chave', verificarAuth, checkEscrita, async (req, res) => {
 // O worker processa quando liberar e a nota aparece sozinha na lista.
 router.post('/buscar-chave/agendar', verificarAuth, checkEscrita, async (req, res) => {
     try {
-        const chave = String(req.body?.chave || '').replace(/\D/g, '');
-        if (chave.length !== 44) {
-            return res.status(400).json({ error: 'Informe a chave de acesso com 44 dígitos.' });
+        const chave = normalizarChaveNFe(req.body?.chave); // 44 posições, pode ser alfanumérica
+        if (!chave) {
+            return res.status(400).json({ error: 'Informe a chave de acesso com 44 posições.' });
         }
         // Se a nota já está na lista, não precisa agendar.
         const existente = await prisma.notaEntrada.findUnique({ where: { chave } });

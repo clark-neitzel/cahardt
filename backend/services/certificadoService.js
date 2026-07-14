@@ -15,6 +15,8 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const forge = require('node-forge');
+// CNPJ do certificado pode, em tese, ser alfanumérico — preservar letras (não usar replace(/\D/g,'')).
+const { normalizarDoc } = require('../utils/documento');
 
 const CERT_DIR = path.join(__dirname, '..', 'uploads', 'certificado');
 
@@ -76,7 +78,7 @@ function _procurarOidCnpj(node, contexto = { achouOid: false }) {
     }
     if (typeof node.value === 'string') {
         if (contexto.achouOid) {
-            const digitos = node.value.replace(/\D/g, '');
+            const digitos = normalizarDoc(node.value);
             if (digitos.length === 14) return digitos;
         }
         return null;
@@ -132,7 +134,7 @@ function lerCertificado(pfxBuffer, senha) {
     let cnpj = null;
     const partes = cnRaw.split(':');
     if (partes.length > 1) {
-        const possivel = partes[partes.length - 1].replace(/\D/g, '');
+        const possivel = normalizarDoc(partes[partes.length - 1]);
         if (possivel.length === 14) {
             cnpj = possivel;
             titular = partes.slice(0, -1).join(':').trim();
@@ -142,7 +144,7 @@ function lerCertificado(pfxBuffer, senha) {
     if (!cnpj) {
         // Último recurso: serialNumber do subject com 14 dígitos
         const serial = cert.subject.getField({ name: 'serialNumber' })?.value || '';
-        const digitos = String(serial).replace(/\D/g, '');
+        const digitos = normalizarDoc(serial);
         if (digitos.length === 14) cnpj = digitos;
     }
 

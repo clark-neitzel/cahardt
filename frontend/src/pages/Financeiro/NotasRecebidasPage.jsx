@@ -8,6 +8,8 @@ import toast from 'react-hot-toast';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
+// CPF/CNPJ (inclui CNPJ ALFANUMÉRICO) — módulo único do projeto.
+import { mascaraDoc, formatarDoc, normalizarDoc } from '../../utils/documento';
 
 // ── Helpers ──
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -44,9 +46,9 @@ const dividirValores = (n, total) => {
 };
 
 const fmtCnpj = (c) => {
-    const d = String(c || '').replace(/\D/g, '');
+    const d = normalizarDoc(c); // preserva letras do CNPJ alfanumérico
     if (d.length !== 14) return c || '';
-    return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    return formatarDoc(d);
 };
 
 const fimChave = (chave) => {
@@ -772,7 +774,7 @@ const ImportarXmlModal = ({ onClose, onChanged }) => {
             await notasEntradaService.lancarManual({
                 tipo: mTipo,
                 fornecedorNome: mNome.trim(),
-                fornecedorCnpj: mCnpj.replace(/\D/g, '') || undefined,
+                fornecedorCnpj: normalizarDoc(mCnpj) || undefined,
                 numero: mNumero.trim() || undefined,
                 emissao: mEmissao,
                 valorTotal: valorNum
@@ -931,7 +933,7 @@ const ImportarXmlModal = ({ onClose, onChanged }) => {
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
                                         <label className="text-xs font-medium text-gray-500">CNPJ (opcional)</label>
-                                        <input value={mCnpj} onChange={e => setMCnpj(e.target.value)} placeholder="00.000.000/0000-00" inputMode="numeric" className={inputCls} />
+                                        <input value={mCnpj} onChange={e => setMCnpj(mascaraDoc(e.target.value))} placeholder="CNPJ do fornecedor" autoCapitalize="characters" className={inputCls} />
                                     </div>
                                     <div>
                                         <label className="text-xs font-medium text-gray-500">Nº da nota</label>

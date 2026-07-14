@@ -10,6 +10,7 @@ import ImportarCaModal from './ImportarCaModal';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
+import { formatarDoc } from '../../utils/documento'; // CNPJ/CPF (inclui alfanumérico)
 
 const mesAtual = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
 // Período por DATA (YYYY-MM-DD). Default: do 1º ao último dia do mês corrente.
@@ -139,7 +140,7 @@ const imprimirRecibo = (conta, parcela, totalParcelas) => {
             <div class="rc-assinatura">
                 <div class="rc-linha"></div>
                 <div class="rc-nome">${escapeHtml(String(nomeForn).toUpperCase())}</div>
-                ${forn.cnpjCpf ? `<div class="rc-doc">CNPJ/CPF: ${escapeHtml(forn.cnpjCpf)}</div>` : ''}
+                ${forn.cnpjCpf ? `<div class="rc-doc">CNPJ/CPF: ${escapeHtml(formatarDoc(forn.cnpjCpf))}</div>` : ''}
             </div>
         </div>`;
 

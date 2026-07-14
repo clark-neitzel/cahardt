@@ -17,6 +17,7 @@ import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import ClientePopup from '../Rota/ClientePopup';
 import AlertaGpsFaltante from '../../components/AlertaGpsFaltante';
+import { normalizarDoc } from '../../utils/documento'; // busca por CPF/CNPJ (inclui alfanumérico)
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
 
@@ -910,11 +911,13 @@ const NovoPedido = () => {
 
     const clientesBusca = useMemo(() => {
         if (!showClienteModal) return [];
-        const lowerSearch = clienteSearchText.toLowerCase().trim();
+        const raw = clienteSearchText.trim();
+        const lowerSearch = raw.toLowerCase();
+        const docSearch = normalizarDoc(raw); // CPF/CNPJ digitado (com ou sem pontuação, inclui letras)
         return clientes.filter(c =>
-            !lowerSearch ||
+            !raw ||
             (c.NomeFantasia || c.Nome)?.toLowerCase().includes(lowerSearch) ||
-            (c.Documento || '').includes(lowerSearch)
+            (docSearch && normalizarDoc(c.Documento).includes(docSearch))
         );
     }, [clientes, clienteSearchText, showClienteModal]);
 
@@ -1388,7 +1391,7 @@ const NovoPedido = () => {
                             {clienteId && clienteSelecionado ? (
                                 <>
                                     <span className="text-[14px] font-bold text-gray-900 truncate tracking-tight leading-tight pt-0.5">
-                                        {clienteSelecionado.Documento ? `${clienteSelecionado.Documento.replace(/\D/g, '').slice(-6)} ` : ''}
+                                        {clienteSelecionado.Documento ? `${normalizarDoc(clienteSelecionado.Documento).slice(-6)} ` : ''}
                                         {clienteSelecionado.NomeFantasia || clienteSelecionado.Nome || clienteSearchText}
                                     </span>
                                 </>
@@ -1839,7 +1842,7 @@ const NovoPedido = () => {
                             <div className="min-w-0">
                                 <p className="text-sm font-bold text-gray-900 truncate">{clienteSelecionado?.NomeFantasia || clienteSelecionado?.Nome || ''}</p>
                                 {clienteSelecionado?.Documento && (
-                                    <p className="text-[11px] text-gray-400">Cód. {clienteSelecionado.Documento.replace(/\D/g, '').slice(-6)}</p>
+                                    <p className="text-[11px] text-gray-400">Cód. {normalizarDoc(clienteSelecionado.Documento).slice(-6)}</p>
                                 )}
                             </div>
                         </div>

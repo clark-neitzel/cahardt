@@ -4,16 +4,13 @@ import fornecedorService from '../../services/fornecedorService';
 import { Building2, X, Download, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SelectBusca from '../../components/SelectBusca';
+// CPF/CNPJ (inclui CNPJ ALFANUMÉRICO) — módulo único do projeto.
+import { mascaraDoc, formatarDoc, validarDoc, normalizarDoc } from '../../utils/documento';
 
 const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
-// CNPJ 14 dígitos → XX.XXX.XXX/XXXX-XX · CPF 11 dígitos → XXX.XXX.XXX-XX
-const fmtCnpjCpf = (v) => {
-    const d = String(v || '').replace(/\D/g, '');
-    if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-    if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-    return v || '—';
-};
+// CNPJ (num/alfanumérico) → XX.XXX.XXX/XXXX-XX · CPF → XXX.XXX.XXX-XX
+const fmtCnpjCpf = (v) => (normalizarDoc(v) ? formatarDoc(v) : '—');
 
 const BadgeCAFornecedor = ({ fornecedor }) => {
     const s = String(fornecedor?.statusEnvioCA || '').toUpperCase();
@@ -275,12 +272,14 @@ const FornecedorModal = ({ fornecedor, onClose, onSuccess }) => {
 
     const salvar = async () => {
         if (!form.razaoSocial.trim()) { toast.error('Informe a razão social.'); return; }
+        const docNorm = normalizarDoc(form.cnpjCpf);
+        if (docNorm && !validarDoc(docNorm)) { toast.error('CNPJ / CPF inválido — confira o número (o dígito verificador não bate).'); return; }
         setSalvando(true);
         try {
             const payload = {
                 razaoSocial: form.razaoSocial.trim(),
                 nomeFantasia: form.nomeFantasia.trim() || undefined,
-                cnpjCpf: form.cnpjCpf.trim() || undefined,
+                cnpjCpf: docNorm || undefined,
                 email: form.email.trim() || undefined,
                 telefone: form.telefone.trim() || undefined,
                 cidade: form.cidade.trim() || undefined,
@@ -324,7 +323,7 @@ const FornecedorModal = ({ fornecedor, onClose, onSuccess }) => {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">CNPJ / CPF</label>
-                            <input value={form.cnpjCpf} onChange={e => set('cnpjCpf', e.target.value)} placeholder="Somente números" className={inputCls} />
+                            <input value={form.cnpjCpf} onChange={e => set('cnpjCpf', mascaraDoc(e.target.value))} autoCapitalize="characters" placeholder="CNPJ ou CPF" className={inputCls} />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>

@@ -48,6 +48,9 @@ const _parser = new XMLParser({
 });
 
 const toArray = (v) => (v == null ? [] : (Array.isArray(v) ? v : [v]));
+// CNPJ ALFANUMÉRICO (NT 2026.004): CNPJ do emitente/destinatário e a CHAVE de 44 posições
+// podem conter letras. normalizarDoc preserva letras; soDigitos fica só p/ CEP e NSU (numéricos).
+const { normalizarDoc, normalizarChaveNFe } = require('../utils/documento');
 const soDigitos = (v) => String(v || '').replace(/\D/g, '');
 const numOuNull = (v) => {
     if (v == null || v === '') return null;
@@ -78,10 +81,11 @@ function parseProcNFe(xmlString) {
     if (!nfe?.infNFe) throw new Error('XML não contém infNFe (não é uma NF-e válida).');
     const inf = nfe.infNFe;
 
-    // Chave: preferir o protocolo; fallback: atributo Id ("NFe<44 dígitos>")
+    // Chave: preferir o protocolo; fallback: atributo Id ("NFe<44 posições>").
+    // A chave pode ser alfanumérica (emitente com CNPJ alfanumérico) — preservar letras.
     const chaveProt = raiz.protNFe?.infProt?.chNFe;
-    const chaveId = soDigitos(inf['@_Id']);
-    const chave = soDigitos(chaveProt) || chaveId;
+    const chaveId = normalizarChaveNFe(String(inf['@_Id'] || '').replace(/^NFe/i, ''));
+    const chave = normalizarChaveNFe(chaveProt) || chaveId;
 
     const ide = inf.ide || {};
     const emit = inf.emit || {};
@@ -129,7 +133,7 @@ function parseProcNFe(xmlString) {
         valorDesconto: numOuNull(total.vDesc),
         infComplementar: infCpl,
         emitente: {
-            cnpj: soDigitos(emit.CNPJ || emit.CPF),
+            cnpj: normalizarDoc(emit.CNPJ || emit.CPF),
             nome: String(emit.xNome ?? '').trim() || 'Emitente desconhecido',
             fantasia: emit.xFant ? String(emit.xFant).trim() : null,
             ie: emit.IE ? String(emit.IE) : null,
@@ -142,7 +146,7 @@ function parseProcNFe(xmlString) {
             telefone: ender.fone ? String(ender.fone).trim() : null
         },
         destinatario: {
-            cnpj: soDigitos(dest.CNPJ || dest.CPF) || null,
+            cnpj: normalizarDoc(dest.CNPJ || dest.CPF) || null,
             nome: dest.xNome ? String(dest.xNome).trim() : null,
             ie: dest.IE ? String(dest.IE) : null,
             uf: enderDest.UF || null,
@@ -152,7 +156,7 @@ function parseProcNFe(xmlString) {
             bairro: enderDest.xBairro ? String(enderDest.xBairro).trim() : null,
             cep: enderDest.CEP ? soDigitos(enderDest.CEP) : null
         },
-        destinatarioCnpj: soDigitos(dest.CNPJ || dest.CPF) || null,
+        destinatarioCnpj: normalizarDoc(dest.CNPJ || dest.CPF) || null,
         itens,
         duplicatas
     };
@@ -167,8 +171,8 @@ function parseResNFe(xmlString) {
     const res = doc.resNFe || doc;
     if (!res?.chNFe) throw new Error('XML não contém resNFe/chNFe.');
     return {
-        chave: soDigitos(res.chNFe),
-        emitenteCnpj: soDigitos(res.CNPJ || res.CPF),
+        chave: normalizarChaveNFe(res.chNFe),
+        emitenteCnpj: normalizarDoc(res.CNPJ || res.CPF),
         emitenteNome: String(res.xNome ?? '').trim() || 'Emitente desconhecido',
         emissao: dataOuNull(res.dhEmi),
         valorTotal: numOuNull(res.vNF),
@@ -190,7 +194,7 @@ function parseEvento(xmlString) {
         || doc.evento?.infEvento
         || null;
     if (!inf?.chNFe || inf?.tpEvento == null) return null;
-    return { tpEvento: String(inf.tpEvento), chNFe: soDigitos(inf.chNFe) };
+    return { tpEvento: String(inf.tpEvento), chNFe: normalizarChaveNFe(inf.chNFe) };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -450,7 +454,7 @@ async function manifestarCiencia(cert, pfx, senha) {
     const recepcao = new RecepcaoEvento({
         pfx,
         passphrase: senha,
-        cnpj: soDigitos(cert.cnpj),
+        cnpj: normalizarDoc(cert.cnpj),
         tpAmb: TP_AMB
     });
 
@@ -469,7 +473,7 @@ async function manifestarCiencia(cert, pfx, senha) {
             }
             const porChave = new Map(grupo.map((n) => [n.chave, n]));
             for (const ev of resultado.data?.infEvento || []) {
-                const nota = porChave.get(soDigitos(ev.chNFe));
+                const nota = porChave.get(normalizarChaveNFe(ev.chNFe));
                 if (!nota) continue;
                 // 135/136 = registrado; qualquer outro cStat é rejeição determinística —
                 // marcar como manifestada evita loop infinito de reenvio (fica logado).
@@ -502,7 +506,7 @@ async function executarCiclo({ manual = false } = {}) {
             return pre;
         }
         const { cert } = pre;
-        const cnpjNosso = soDigitos(cert.cnpj);
+        const cnpjNosso = normalizarDoc(cert.cnpj);
 
         let pfx, senha;
         try {
@@ -643,13 +647,13 @@ async function _salvarResultado(texto) {
  * A rota consulta a nota gravada pela própria chave.
  */
 async function buscarPorChave(chave) {
-    const ch = soDigitos(chave);
-    if (ch.length !== 44) return { ok: false, motivo: 'A chave de acesso precisa ter 44 dígitos.' };
+    const ch = normalizarChaveNFe(chave); // chave pode ser alfanumérica (emitente com CNPJ alfanumérico)
+    if (!ch) return { ok: false, motivo: 'A chave de acesso precisa ter 44 posições.' };
 
     const pre = await podeConsultar({ manual: true });
     if (!pre.ok) return { ok: false, motivo: pre.motivo, emEspera: pre.emEspera, proximaConsultaEm: pre.proximaConsultaEm };
     const { cert } = pre;
-    const cnpjNosso = soDigitos(cert.cnpj);
+    const cnpjNosso = normalizarDoc(cert.cnpj);
 
     let pfx, senha;
     try {
@@ -732,7 +736,7 @@ async function processarBuscasAgendadas() {
         return { processadas: 0 };
     }
 
-    const nota = await prisma.notaEntrada.findUnique({ where: { chave: soDigitos(item.chave) } });
+    const nota = await prisma.notaEntrada.findUnique({ where: { chave: normalizarChaveNFe(item.chave) } });
     await prisma.notaBuscaAgendada.update({
         where: { id: item.id },
         data: {

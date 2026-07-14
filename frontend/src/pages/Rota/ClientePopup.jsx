@@ -8,13 +8,12 @@ import clienteService from '../../services/clienteService';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import HistoricoModal from './HistoricoModal';
+import { formatarDoc, normalizarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
 
 const formatDoc = (doc) => {
     if (!doc) return null;
-    const d = doc.replace(/\D/g, '');
-    if (d.length === 11) return d.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-    if (d.length === 14) return d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-    return doc;
+    const d = normalizarDoc(doc);
+    return (d.length === 11 || d.length === 14) ? formatarDoc(d) : doc;
 };
 
 const DataRow = ({ label, value, icon: Icon }) => {

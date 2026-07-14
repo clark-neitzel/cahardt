@@ -40,7 +40,9 @@ const checkEscrita = async (req, res, next) => {
     next();
 };
 
-const soDigitos = (v) => (v ? String(v).replace(/\D/g, '') : null);
+// Documento preserva letras (CNPJ ALFANUMÉRICO) e valida DV — módulo único.
+const { normalizarDoc, validarDoc } = require('../utils/documento');
+const normDoc = (v) => normalizarDoc(v) || null;
 
 // ── GET /?busca= — listar ──
 router.get('/', verificarAuth, checkAcesso, async (req, res) => {
@@ -51,7 +53,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             where.OR = [
                 { razaoSocial: { contains: busca, mode: 'insensitive' } },
                 { nomeFantasia: { contains: busca, mode: 'insensitive' } },
-                { cnpjCpf: { contains: soDigitos(busca) || busca } }
+                { cnpjCpf: { contains: normDoc(busca) || busca } }
             ];
         }
         const fornecedores = await prisma.fornecedor.findMany({
@@ -75,9 +77,9 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
 
         if (!razaoSocial?.trim()) return res.status(400).json({ error: 'Informe a razão social.' });
 
-        const doc = soDigitos(cnpjCpf);
-        if (doc && doc.length !== 11 && doc.length !== 14) {
-            return res.status(400).json({ error: 'CNPJ/CPF inválido (informe 11 ou 14 dígitos).' });
+        const doc = normDoc(cnpjCpf);
+        if (doc && !validarDoc(doc)) {
+            return res.status(400).json({ error: 'CNPJ/CPF inválido — confira o número (o dígito verificador não bate).' });
         }
         if (doc) {
             const duplicado = await prisma.fornecedor.findFirst({ where: { cnpjCpf: doc } });
@@ -124,9 +126,9 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
             data.razaoSocial = razaoSocial.trim();
         }
         if (cnpjCpf !== undefined) {
-            const doc = soDigitos(cnpjCpf);
-            if (doc && doc.length !== 11 && doc.length !== 14) {
-                return res.status(400).json({ error: 'CNPJ/CPF inválido (informe 11 ou 14 dígitos).' });
+            const doc = normDoc(cnpjCpf);
+            if (doc && !validarDoc(doc)) {
+                return res.status(400).json({ error: 'CNPJ/CPF inválido — confira o número (o dígito verificador não bate).' });
             }
             if (doc && doc !== fornecedor.cnpjCpf) {
                 const duplicado = await prisma.fornecedor.findFirst({ where: { cnpjCpf: doc, id: { not: fornecedor.id } } });

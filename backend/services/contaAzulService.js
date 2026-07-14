@@ -1,5 +1,7 @@
 const axios = require('axios');
 const prisma = require('../config/database');
+// CNPJ ALFANUMÉRICO: comparar/enviar documento preservando letras (não usar replace(/\D/g,'')).
+const { normalizarDoc } = require('../utils/documento');
 
 const CLIENT_ID = process.env.CONTA_AZUL_CLIENT_ID || '6f6gpe5la4bvg6oehqjh2ugp97';
 const CLIENT_SECRET = process.env.CONTA_AZUL_CLIENT_SECRET || '1fvmga9ikj9dk4mkctoqvm2nfna7ht2t60p2qmg7kq04le0gb1ls';
@@ -1865,15 +1867,16 @@ const contaAzulService = {
     /**
      * Procurar um fornecedor JÁ existente no Conta Azul pelo CNPJ/CPF, para adotar o cadastro
      * em vez de criar um novo (evita fornecedor duplicado no CA). Retorna o UUID da pessoa ou null.
-     * Match confirmado comparando só os dígitos do documento (a CA pode devolver formatado).
+     * Match confirmado comparando o documento normalizado (a CA pode devolver formatado).
+     * normalizarDoc preserva letras — funciona para CNPJ numérico E alfanumérico.
      */
     buscarFornecedorPorDocumento: async (cnpjCpf) => {
-        const dig = String(cnpjCpf || '').replace(/\D/g, '');
+        const dig = normalizarDoc(cnpjCpf);
         if (!dig) return null;
         const url = `https://api-v2.contaazul.com/v1/pessoas?tipo_perfil=Fornecedor&documentos=${dig}&tamanho_pagina=50`;
         const response = await contaAzulService._axiosGet(url, 'PESSOA_BUSCA_DOC');
         const lista = response.data?.items || response.data?.itens || [];
-        const match = lista.find((p) => String(p?.documento || '').replace(/\D/g, '') === dig);
+        const match = lista.find((p) => normalizarDoc(p?.documento) === dig);
         return match?.id || null;
     },
 

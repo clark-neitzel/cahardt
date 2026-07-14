@@ -1,16 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import publicApi, { setToken } from './api';
+// CPF/CNPJ (inclui CNPJ ALFANUMÉRICO) — módulo único do projeto.
+import { mascaraDoc as mascara, validarDoc, normalizarDoc } from '../../utils/documento';
 
-const soDigitos = (s) => String(s || '').replace(/\D/g, '');
-// Máscara leve CPF/CNPJ conforme o tamanho
-function mascara(v) {
-  const d = soDigitos(v).slice(0, 14);
-  if (d.length <= 11) {
-    return d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-  }
-  return d.replace(/(\d{2})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1/$2').replace(/(\d{4})(\d{1,2})$/, '$1-$2');
-}
+const soDigitos = (s) => String(s || '').replace(/\D/g, ''); // só p/ telefone
 
 export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitante }) {
   const [etapa, setEtapa] = useState('doc'); // doc | senha | criar | visitante | reset
@@ -24,8 +18,8 @@ export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitant
   const [erro, setErro] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const docDigits = soDigitos(doc);
-  const docOk = docDigits.length === 11 || docDigits.length === 14;
+  const docDigits = normalizarDoc(doc); // preserva letras do CNPJ alfanumérico
+  const docOk = validarDoc(docDigits);  // valida o dígito verificador (CPF ou CNPJ)
 
   const handleErro = (e) => setErro(e?.response?.data?.error || e.message || 'Algo deu errado.');
 
@@ -110,7 +104,7 @@ export default function Login({ logo, whatsapp, titulo, sub, onLogin, onVisitant
             <form onSubmit={continuarDoc}>
               <div className="cg-field">
                 <label>CPF / CNPJ ou código</label>
-                <input className="cg-input" inputMode="numeric" value={doc} onChange={e => setDoc(mascara(e.target.value))} placeholder="000.000.000-00" autoFocus />
+                <input className="cg-input" autoCapitalize="characters" value={doc} onChange={e => setDoc(mascara(e.target.value))} placeholder="CPF ou CNPJ" autoFocus />
               </div>
               <button type="submit" className="btn btn-yellow btn-block" disabled={busy || !docOk} style={{ marginTop: 8 }}>
                 {busy ? 'Aguarde…' : 'Continuar'}

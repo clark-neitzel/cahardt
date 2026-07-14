@@ -37,7 +37,9 @@ const esc = (v) => String(v == null ? '' : v)
     .replace(/'/g, '&#39;');
 
 const toArray = (v) => (v == null ? [] : (Array.isArray(v) ? v : [v]));
-const soDigitos = (v) => String(v == null ? '' : v).replace(/\D/g, '');
+// CNPJ ALFANUMÉRICO: CNPJ e chave podem conter letras. normalizarDoc/formatarDoc preservam letras.
+const { normalizarDoc, normalizarChaveNFe, formatarDoc } = require('../utils/documento');
+const soDigitos = (v) => String(v == null ? '' : v).replace(/\D/g, ''); // CEP/telefone (numéricos)
 const S = (v) => (v == null ? '' : String(v).trim()); // string segura (nunca "undefined")
 
 // Moeda pt-BR (2 casas). Vazio vira ''.
@@ -64,12 +66,12 @@ const fmtPerc = (v) => {
     return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
-const fmtChave = (chave) => soDigitos(chave).replace(/(\d{4})(?=\d)/g, '$1 ').trim();
+// Agrupa a chave (44 posições, pode ser alfanumérica) de 4 em 4 para leitura.
+const fmtChave = (chave) => normalizarDoc(chave).replace(/(.{4})(?=.)/g, '$1 ').trim();
 
 const fmtCnpjCpf = (v) => {
-    const s = soDigitos(v);
-    if (s.length === 14) return s.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
-    if (s.length === 11) return s.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+    const s = normalizarDoc(v);
+    if (s.length === 14 || s.length === 11) return formatarDoc(s); // CNPJ (num/alfa) ou CPF
     return s || '';
 };
 
@@ -178,8 +180,11 @@ function code128cValues(digits) {
  * Lança se algo der errado — o chamador captura e cai no fallback textual.
  */
 function code128Barras(chave) {
-    const d = soDigitos(chave);
-    if (d.length !== 44) throw new Error('Chave deve ter 44 dígitos.');
+    const d = normalizarChaveNFe(chave);
+    if (d.length !== 44) throw new Error('Chave deve ter 44 posições.');
+    // Code128-C só codifica dígitos. Chave ALFANUMÉRICA (emitente com CNPJ alfanumérico)
+    // exigiria Code128-A/B (NT 2026.004) — por ora lança e o chamador cai no fallback textual.
+    if (!/^[0-9]{44}$/.test(d)) throw new Error('Chave alfanumérica: Code128-C não suporta (fallback textual).');
     const values = code128cValues(d);
     let barras = '';
     for (const v of values) {
@@ -225,7 +230,8 @@ function extrairNota(xmlString) {
     if (!inf) throw new Error('XML não contém infNFe (não é uma NF-e/NFC-e válida).');
 
     const prot = raiz.protNFe && raiz.protNFe.infProt ? raiz.protNFe.infProt : {};
-    const chave = soDigitos(prot.chNFe) || soDigitos(inf['@_Id']);
+    // Chave pode ser alfanumérica (emitente com CNPJ alfanumérico) — preserva letras; strip "NFe" do Id.
+    const chave = normalizarChaveNFe(prot.chNFe) || normalizarChaveNFe(String(inf['@_Id'] || '').replace(/^NFe/i, ''));
 
     return { doc, raiz, nfe, inf, prot, chave };
 }
@@ -641,7 +647,7 @@ function montarNfce(nota) {
     ${renderBarcode(chave)}
     <div class="chave-val">${esc(fmtChave(chave))}</div>
     ${protTxt ? `<div class="nfce-prot">Protocolo de autorização: ${esc(protTxt)}</div>` : ''}
-    ${S(dest.xNome) || soDigitos(dest.CNPJ || dest.CPF) ? `<div class="nfce-dest">CONSUMIDOR: ${esc(S(dest.xNome))} ${esc(fmtCnpjCpf(dest.CNPJ || dest.CPF))}</div>` : '<div class="nfce-dest">CONSUMIDOR NÃO IDENTIFICADO</div>'}
+    ${S(dest.xNome) || normalizarDoc(dest.CNPJ || dest.CPF) ? `<div class="nfce-dest">CONSUMIDOR: ${esc(S(dest.xNome))} ${esc(fmtCnpjCpf(dest.CNPJ || dest.CPF))}</div>` : '<div class="nfce-dest">CONSUMIDOR NÃO IDENTIFICADO</div>'}
     ${infCpl ? `<div class="nfce-obs">${esc(infCpl).replace(/\n/g, '<br>')}</div>` : ''}
   </div>
 </div>`;

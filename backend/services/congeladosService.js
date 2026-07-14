@@ -9,9 +9,11 @@ const JWT_SECRET = require('../config/jwtSecret');
 const money2 = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
 
 // ───────── Helpers ─────────
-const soDigitos = (s) => String(s || '').replace(/\D/g, '');
+// normalizarDoc preserva letras (CNPJ ALFANUMÉRICO); validarDoc confere DV de CPF/CNPJ.
+const { normalizarDoc, validarDoc } = require('../utils/documento');
+const soDigitos = (s) => String(s || '').replace(/\D/g, ''); // só p/ telefone/CEP — NÃO p/ documento
 const dec = (v) => (v == null ? 0 : Number(v));
-const docValido = (d) => d.length === 11 || d.length === 14; // CPF ou CNPJ
+const docValido = (d) => validarDoc(d); // CPF (11) ou CNPJ (14), agora com dígito verificador
 // Esconde o meio do telefone: (47) 9****-**76
 const mascararTelefone = (t) => {
     const d = soDigitos(t);
@@ -169,7 +171,7 @@ const congeladosService = {
     // Passo 1 do login: descobre o estado do documento (CPF/CNPJ).
     // A senha do Kit Festa serve para o site de congelados (mesma conta, por CPF).
     async checkDoc(docRaw) {
-        const documento = soDigitos(docRaw);
+        const documento = normalizarDoc(docRaw);
         if (!docValido(documento)) throw new Error('Informe um CPF ou CNPJ válido.');
 
         const auth = await prisma.congeladosCliente.findUnique({ where: { documento } });
@@ -199,7 +201,7 @@ const congeladosService = {
     },
 
     async criarSenha({ documento: docRaw, senha, nome, telefone, email }) {
-        const documento = soDigitos(docRaw);
+        const documento = normalizarDoc(docRaw);
         if (!docValido(documento)) throw new Error('Informe um CPF ou CNPJ válido.');
         if (!senha || senha.length < 4) throw new Error('A senha precisa ter ao menos 4 caracteres.');
 
@@ -243,7 +245,7 @@ const congeladosService = {
     },
 
     async login({ documento: docRaw, senha }) {
-        const documento = soDigitos(docRaw);
+        const documento = normalizarDoc(docRaw);
         let auth = await prisma.congeladosCliente.findUnique({ where: { documento } });
 
         // 1) Senha do próprio site de congelados
@@ -278,7 +280,7 @@ const congeladosService = {
 
     // Gera o código de recuperação e ENVIA por WhatsApp (não retorna o código pro front).
     async esqueciSenha(docRaw) {
-        const documento = soDigitos(docRaw);
+        const documento = normalizarDoc(docRaw);
         if (!docValido(documento)) throw new Error('Informe um CPF ou CNPJ válido.');
         let auth = await prisma.congeladosCliente.findUnique({ where: { documento } });
 
@@ -312,7 +314,7 @@ const congeladosService = {
     },
 
     async resetSenha({ documento: docRaw, codigo, novaSenha }) {
-        const documento = soDigitos(docRaw);
+        const documento = normalizarDoc(docRaw);
         if (!novaSenha || novaSenha.length < 4) throw new Error('A senha precisa ter ao menos 4 caracteres.');
         const auth = await prisma.congeladosCliente.findUnique({ where: { documento } });
         if (!auth || !auth.resetToken || auth.resetToken !== String(codigo || '').toUpperCase()) {
@@ -647,7 +649,7 @@ const congeladosService = {
             if (!auth) throw new Error('Cliente não encontrado.');
             semCadastro = !auth.clienteUuid;
         } else {
-            const documento = soDigitos(visitante?.documento);
+            const documento = normalizarDoc(visitante?.documento);
             if (!visitante?.nome || !docValido(documento)) throw new Error('Informe nome e CPF/CNPJ para pedido sem cadastro.');
             const existente = await prisma.congeladosCliente.findUnique({ where: { documento } });
             auth = existente || await prisma.congeladosCliente.create({
@@ -799,7 +801,7 @@ const congeladosService = {
             const cc = await this._congeladosClienteVinculado(cliente, telefone);
             pedido = await this.criarPedidoSite({ clienteId: cc.id, itens: itensMap, dataEntrega: data, modo, observacoes: obs, telefone, idempotencyKey });
         } else {
-            if (!visitante?.nome || !docValido(soDigitos(visitante?.cpf))) {
+            if (!visitante?.nome || !docValido(normalizarDoc(visitante?.cpf))) {
                 const e = new Error('Cliente novo (telefone não reconhecido): informe nome e CPF/CNPJ para criar o pedido.');
                 e.code = 'VISITANTE_SEM_CPF';
                 throw e;
@@ -817,7 +819,7 @@ const congeladosService = {
     async _congeladosClienteVinculado(cliente, telefoneRaw) {
         let cc = await prisma.congeladosCliente.findUnique({ where: { clienteUuid: cliente.UUID } }).catch(() => null);
         if (cc) return cc;
-        const documento = soDigitos(cliente.Documento);
+        const documento = normalizarDoc(cliente.Documento);
         if (!documento) throw new Error('Cadastro do cliente sem CPF/CNPJ — não é possível criar o pedido pelo bot.');
         const telefone = soDigitos(telefoneRaw) || null;
         cc = await prisma.congeladosCliente.findUnique({ where: { documento } }).catch(() => null);
@@ -943,7 +945,7 @@ const congeladosService = {
         const where = {};
         if (status) where.status = status;
         if (busca) {
-            const doc = soDigitos(busca);
+            const doc = normalizarDoc(busca); // preserva letras do CNPJ alfanumérico
             // Busca por nome, razão (Nome), fantasia, cidade, CPF/CNPJ e telefone.
             where.OR = [
                 { nomeCliente: { contains: busca, mode: 'insensitive' } },

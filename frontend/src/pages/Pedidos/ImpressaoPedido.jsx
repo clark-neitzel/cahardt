@@ -5,6 +5,7 @@ import pedidoService from '../../services/pedidoService';
 import amostraService from '../../services/amostraService';
 import toast from 'react-hot-toast';
 import qz from 'qz-tray';
+import { formatarDoc } from '../../utils/documento'; // CNPJ/CPF (inclui alfanumérico)
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
@@ -55,7 +56,7 @@ const PedidoA4 = ({ pedido }) => {
                             <div style={{ fontSize: '11px', color: '#555' }}>{pedido.cliente.Nome}</div>
                         )}
                         {pedido.cliente?.CpfCnpj && (
-                            <div style={{ fontSize: '11px', marginTop: '1px' }}>CNPJ/CPF: {pedido.cliente.CpfCnpj}</div>
+                            <div style={{ fontSize: '11px', marginTop: '1px' }}>CNPJ/CPF: {formatarDoc(pedido.cliente.CpfCnpj)}</div>
                         )}
                         {endereco && <div style={{ fontSize: '11px', marginTop: '2px' }}>{endereco}</div>}
                     </div>

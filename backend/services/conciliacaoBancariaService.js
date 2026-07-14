@@ -20,6 +20,8 @@
 const crypto = require('crypto');
 const prisma = require('../config/database');
 const contasPagarCaSyncService = require('./contasPagarCaSyncService');
+// CNPJ ALFANUMÉRICO: validar candidato extraído do extrato (evita falso-positivo em texto livre).
+const { validarCnpj } = require('../utils/documento');
 
 const TZ_OFFSET = '-03:00';
 const round2 = (v) => Math.round(Number(v) * 100) / 100;
@@ -391,6 +393,13 @@ function extrairDocumento(texto) {
     const s = String(texto);
     const cnpj = s.match(/(\d{2})[.\s]?(\d{3})[.\s]?(\d{3})[/\s]?(\d{4})[-\s]?(\d{2})/);
     if (cnpj) return { completo: cnpj.slice(1).join('') };
+    // CNPJ ALFANUMÉRICO (12 posições podem ter letras; DV numérico). Como o extrato é texto
+    // livre, só aceita se o dígito verificador bater — senão é falso-positivo (pega parte de palavra).
+    const cnpjAlfa = s.match(/(?<![0-9A-Za-z])([0-9A-Za-z]{2})[.\s]?([0-9A-Za-z]{3})[.\s]?([0-9A-Za-z]{3})[/\s]?([0-9A-Za-z]{4})[-\s]?(\d{2})(?![0-9A-Za-z])/);
+    if (cnpjAlfa) {
+        const cand = cnpjAlfa.slice(1).join('').toUpperCase();
+        if (validarCnpj(cand)) return { completo: cand };
+    }
     const cpf = s.match(/(?<!\d)(\d{3})[.\s]?(\d{3})[.\s]?(\d{3})[-\s]?(\d{2})(?!\d)/);
     if (cpf) return { completo: cpf.slice(1).join('') };
     // CPF mascarado: ***.851.799-**  (só o miolo vem)

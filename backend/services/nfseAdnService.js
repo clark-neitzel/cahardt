@@ -56,7 +56,12 @@ const _parser = new XMLParser({
     removeNSPrefix: true    // XML da NFS-e vem com namespace — ignora prefixos
 });
 
+// CNPJ ALFANUMÉRICO: CNPJ do prestador/tomador e a chave podem conter letras.
+// normalizarDoc preserva letras; soDigitos fica só p/ NSU/tpEvento (numéricos).
+const { normalizarDoc } = require('../utils/documento');
 const soDigitos = (v) => String(v || '').replace(/\D/g, '');
+// Chave da NFS-e nacional (o @_Id vem como "NFS<chave>"): remove o prefixo e preserva letras.
+const chaveNfse = (v) => normalizarDoc(String(v || '').replace(/^NFS[e]?/i, ''));
 const numOuNull = (v) => {
     if (v == null || v === '') return null;
     const n = Number(v);
@@ -117,7 +122,7 @@ function extrairLote(data) {
     return arr.map((doc) => {
         if (!doc || typeof doc !== 'object') return null;
         const nsu = numOuNull(campo(doc, 'NSU', 'nsu', 'NsuDistribuicao', 'numeroSequencial'));
-        const chave = soDigitos(campo(doc, 'ChaveAcesso', 'chave', 'chaveAcessoNFSe', 'chNFSe'));
+        const chave = chaveNfse(campo(doc, 'ChaveAcesso', 'chave', 'chaveAcessoNFSe', 'chNFSe'));
         const tipoDocumento = String(campo(doc, 'TipoDocumento', 'tipoDoc', 'tipo') || '').toUpperCase();
         const xml = decodificarArquivoXml(campo(doc, 'ArquivoXml', 'arquivo', 'xml', 'XmlGZipB64', 'dfeXmlGZipB64'));
         return { nsu, chave, tipoDocumento, xml };
@@ -134,8 +139,8 @@ function parseNfse(xmlString) {
     const inf = nfse?.infNFSe;
     if (!inf) throw new Error('XML não contém infNFSe (não é uma NFS-e válida).');
 
-    // Chave de acesso (50 dígitos): atributo Id ("NFS<50 dígitos>")
-    const chave = soDigitos(inf['@_Id']);
+    // Chave de acesso (50 posições): atributo Id ("NFS<50 posições>"), pode ser alfanumérica
+    const chave = chaveNfse(inf['@_Id']);
 
     const emit = inf.emit || {};                    // prestador (quem emitiu a NFS-e)
     const infDPS = inf.DPS?.infDPS || {};
@@ -167,7 +172,7 @@ function parseNfse(xmlString) {
         localEmissao: inf.xLocEmi ? String(inf.xLocEmi).trim() : null,
         localPrestacao: inf.xLocPrestacao ? String(inf.xLocPrestacao).trim() : null,
         prestador: {
-            cnpj: soDigitos(emit.CNPJ || emit.CPF),
+            cnpj: normalizarDoc(emit.CNPJ || emit.CPF),
             nome: String(emit.xNome ?? '').trim() || 'Prestador desconhecido',
             im: emit.IM ? String(emit.IM) : null,
             municipio: enderEmit.xMun ? String(enderEmit.xMun).trim() : null,
@@ -176,7 +181,7 @@ function parseNfse(xmlString) {
             email: emit.email ? String(emit.email) : null
         },
         tomador: {
-            cnpj: soDigitos(toma.CNPJ || toma.CPF) || null,
+            cnpj: normalizarDoc(toma.CNPJ || toma.CPF) || null,
             nome: toma.xNome ? String(toma.xNome).trim() : null
         }
     };
@@ -200,7 +205,7 @@ function parseEventoNfse(xmlString) {
     const inf = raiz?.infEvento || raiz?.infPedReg || null;
     if (!inf || typeof inf !== 'object') return null;
 
-    const chave = soDigitos(inf.chNFSe || inf.chDFe || inf['@_Id']);
+    const chave = chaveNfse(inf.chNFSe || inf.chDFe || inf['@_Id']);
     if (!chave || chave.length < 40) return null;
 
     const codigos = Object.keys(inf)
@@ -427,7 +432,7 @@ async function executarCiclo({ manual = false } = {}) {
         const pre = await podeConsultar({ manual });
         if (!pre.ok) return pre; // silencioso: sem certificado / desligada / em espera é situação normal
         const { cert } = pre;
-        const cnpjNosso = soDigitos(cert.cnpj);
+        const cnpjNosso = normalizarDoc(cert.cnpj);
 
         let pfx, senha;
         try {
@@ -561,9 +566,10 @@ async function _salvarResultado(texto) {
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const fmtBRL = (v) => (v == null ? '—' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2 }));
+const { formatarDoc } = require('../utils/documento');
 const fmtCnpjBr = (c) => {
-    const d = soDigitos(c);
-    return d.length === 14 ? d.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5') : (c || '—');
+    const s = normalizarDoc(c);
+    return (s.length === 14 || s.length === 11) ? formatarDoc(s) : (c || '—'); // aceita CNPJ alfanumérico
 };
 
 /** Monta o espelho (DANFSE simplificada) em HTML a partir do XML salvo. */

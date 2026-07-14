@@ -15,6 +15,7 @@ import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink, Truck, CreditCard, AlertTriangle } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
+import { normalizarDoc, formatarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
 
 // Toggle switch inline
 const Toggle = ({ checked, onChange }) => (
@@ -253,7 +254,7 @@ const DetalheCliente = () => {
     // Consulta da IE no Sintegra SC: a página não aceita CNPJ pela URL,
     // então copiamos o CNPJ para a área de transferência e abrimos a consulta (basta colar).
     const abrirSintegra = async () => {
-        const cnpj = (cliente?.Documento || '').replace(/\D/g, '');
+        const cnpj = normalizarDoc(cliente?.Documento); // preserva letras do CNPJ alfanumérico
         try {
             if (cnpj) await navigator.clipboard.writeText(cnpj);
         } catch { /* clipboard pode falhar sem HTTPS; segue abrindo */ }
@@ -331,7 +332,7 @@ const DetalheCliente = () => {
                         <p className="text-gray-500 text-sm mt-3">
                             <span className="font-medium text-gray-600">
                                 {String(cliente.Tipo_Pessoa).toUpperCase().includes('JUR') ? 'CNPJ' : 'CPF'}:
-                            </span> {cliente.Documento}
+                            </span> {formatarDoc(cliente.Documento)}
                         </p>
                     </div>
                     <span className={`px-3 py-1 rounded-full font-medium text-sm ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>

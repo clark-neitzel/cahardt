@@ -11,7 +11,7 @@ Módulo do **site público da Hardt** voltado à revenda de congelados (B2B), co
 > Observação: enquanto o domínio próprio não é migrado, a home pública fica em `/inicio` (a raiz `/` do app continua sendo o painel interno).
 
 ## Site público — área do cliente (`/congelados`)
-1. **Entrar:** o cliente informa **CPF ou CNPJ**. O sistema procura o cadastro:
+1. **Entrar:** o cliente informa **CPF ou CNPJ** (o site confere o dígito verificador — número inválido não passa — e aceita o **CNPJ alfanumérico novo**, com letras, que a Receita passa a emitir a partir de 07/2026). O sistema procura o cadastro:
    - Já tem senha → pede a senha e entra.
    - Existe no sistema mas sem senha → primeiro acesso, cria senha.
    - Não existe → pode fazer o pedido **sem cadastro** (a equipe vincula depois).

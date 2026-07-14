@@ -1,26 +1,8 @@
 import React, { useState } from 'react';
 import { User, Lock, ArrowRight, Loader2, ChevronLeft } from 'lucide-react';
 import publicApi, { setToken } from './api';
-
-// Máscara CPF (11) ou CNPJ (14) conforme a quantidade de dígitos digitada
-const maskDoc = (v) => {
-  const d = v.replace(/\D/g, '').slice(0, 14);
-  if (d.length <= 11) return d.replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-  return d.replace(/(\d{2})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1.$2').replace(/(\d{3})(\d)/, '$1/$2').replace(/(\d{4})(\d{1,2})$/, '$1-$2');
-};
-const cpfValido = (cpf) => {
-  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
-  let s = 0; for (let i = 0; i < 9; i++) s += +cpf[i] * (10 - i);
-  let d1 = (s * 10) % 11; if (d1 === 10) d1 = 0; if (d1 !== +cpf[9]) return false;
-  s = 0; for (let i = 0; i < 10; i++) s += +cpf[i] * (11 - i);
-  let d2 = (s * 10) % 11; if (d2 === 10) d2 = 0; return d2 === +cpf[10];
-};
-const cnpjValido = (cnpj) => {
-  if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
-  const calc = (base) => { let s = 0, pos = base.length - 7; for (let i = 0; i < base.length; i++) { s += +base[i] * pos--; if (pos < 2) pos = 9; } const r = s % 11; return r < 2 ? 0 : 11 - r; };
-  return calc(cnpj.slice(0, 12)) === +cnpj[12] && calc(cnpj.slice(0, 13)) === +cnpj[13];
-};
-const docValido = (d) => (d.length === 11 && cpfValido(d)) || (d.length === 14 && cnpjValido(d));
+// CPF/CNPJ (inclui CNPJ ALFANUMÉRICO) — módulo único do projeto.
+import { mascaraDoc, validarDoc, normalizarDoc } from '../../utils/documento';
 
 // Etapas: cpf -> login | criar | esqueci | reset | visitante
 export default function Login({ onLogin, onVisitante, logo }) {
@@ -35,12 +17,12 @@ export default function Login({ onLogin, onVisitante, logo }) {
   const [err, setErr] = useState('');
   const [load, setLoad] = useState(false);
 
-  const cpfDigits = cpf.replace(/\D/g, '');
+  const cpfDigits = normalizarDoc(cpf); // preserva letras do CNPJ alfanumérico
 
   const checar = async (e) => {
     e?.preventDefault();
     setErr('');
-    if (!docValido(cpfDigits)) return setErr('Digite um CPF ou CNPJ válido.');
+    if (!validarDoc(cpfDigits)) return setErr('Digite um CPF ou CNPJ válido.');
     setLoad(true);
     try {
       const r = await publicApi.checkCpf(cpf);
@@ -116,8 +98,8 @@ export default function Login({ onLogin, onVisitante, logo }) {
               <div className="field">
                 <label>CPF ou CNPJ</label>
                 <div className="ip"><User size={18} />
-                  <input inputMode="numeric" placeholder="CPF ou CNPJ" value={cpf} autoFocus
-                    onChange={e => setCpf(maskDoc(e.target.value))} /></div>
+                  <input autoCapitalize="characters" placeholder="CPF ou CNPJ" value={cpf} autoFocus
+                    onChange={e => setCpf(mascaraDoc(e.target.value))} /></div>
               </div>
               <button className="btn btn-green btn-block" onClick={checar} disabled={load}>
                 {load ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />} Continuar

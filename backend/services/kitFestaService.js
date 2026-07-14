@@ -4,6 +4,8 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const pedidoService = require('./pedidoService');
 const webhookService = require('./webhookService');
+// Validação de CPF/CNPJ (inclui CNPJ ALFANUMÉRICO) — módulo único do projeto.
+const { normalizarDoc, validarCpf, validarCnpj } = require('../utils/documento');
 
 const money2 = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
 
@@ -24,37 +26,14 @@ const JWT_SECRET = require('../config/jwtSecret');
 const soDigitos = (s) => String(s || '').replace(/\D/g, '');
 const dec = (v) => (v == null ? 0 : Number(v));
 
-// Valida dígitos verificadores de CPF (11) ou CNPJ (14).
-function cpfValido(cpf) {
-    if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
-    let s = 0;
-    for (let i = 0; i < 9; i++) s += +cpf[i] * (10 - i);
-    let d1 = (s * 10) % 11; if (d1 === 10) d1 = 0;
-    if (d1 !== +cpf[9]) return false;
-    s = 0;
-    for (let i = 0; i < 10; i++) s += +cpf[i] * (11 - i);
-    let d2 = (s * 10) % 11; if (d2 === 10) d2 = 0;
-    return d2 === +cpf[10];
-}
-function cnpjValido(cnpj) {
-    if (cnpj.length !== 14 || /^(\d)\1{13}$/.test(cnpj)) return false;
-    const calc = (base) => {
-        let s = 0, pos = base.length - 7;
-        for (let i = 0; i < base.length; i++) { s += +base[i] * pos--; if (pos < 2) pos = 9; }
-        const r = s % 11;
-        return r < 2 ? 0 : 11 - r;
-    };
-    const d1 = calc(cnpj.slice(0, 12));
-    if (d1 !== +cnpj[12]) return false;
-    const d2 = calc(cnpj.slice(0, 13));
-    return d2 === +cnpj[13];
-}
-// Aceita CPF ou CNPJ; retorna os dígitos válidos ou lança erro. Rótulo p/ mensagens.
+// Aceita CPF ou CNPJ (inclusive CNPJ ALFANUMÉRICO); retorna o documento normalizado
+// (dígitos p/ CPF; dígitos ou letras+dígitos p/ CNPJ) já validado, ou lança erro.
+// Usa normalizarDoc (NÃO soDigitos) para não apagar as letras do CNPJ alfanumérico.
 function normalizarDocumento(raw) {
-    const d = soDigitos(raw);
-    if (d.length === 11) { if (!cpfValido(d)) throw new Error('CPF inválido — confira os números.'); return d; }
-    if (d.length === 14) { if (!cnpjValido(d)) throw new Error('CNPJ inválido — confira os números.'); return d; }
-    throw new Error('Informe um CPF (11 dígitos) ou CNPJ (14 dígitos) válido.');
+    const d = normalizarDoc(raw);
+    if (d.length === 11) { if (!validarCpf(d)) throw new Error('CPF inválido — confira os números.'); return d; }
+    if (d.length === 14) { if (!validarCnpj(d)) throw new Error('CNPJ inválido — confira os dados.'); return d; }
+    throw new Error('Informe um CPF (11 dígitos) ou CNPJ (14 posições) válido.');
 }
 
 function gerarTokenCliente(c) {
@@ -178,7 +157,7 @@ const kitFestaService = {
     },
 
     async login({ cpf: cpfRaw, senha }) {
-        const cpf = soDigitos(cpfRaw);
+        const cpf = normalizarDoc(cpfRaw);
         const auth = await prisma.kitFestaCliente.findUnique({ where: { cpf } });
         if (!auth || !auth.senhaHash) throw new Error('CPF não cadastrado ou sem senha.');
         const ok = await bcrypt.compare(senha, auth.senhaHash);
@@ -189,7 +168,7 @@ const kitFestaService = {
 
     // Gera token de reset (o envio por WhatsApp é feito pela camada de rota/controller)
     async esqueciSenha(cpfRaw) {
-        const cpf = soDigitos(cpfRaw);
+        const cpf = normalizarDoc(cpfRaw);
         const auth = await prisma.kitFestaCliente.findUnique({ where: { cpf } });
         if (!auth) throw new Error('CPF não encontrado.');
         const token = crypto.randomBytes(4).toString('hex').toUpperCase(); // código curto p/ WhatsApp
@@ -201,7 +180,7 @@ const kitFestaService = {
     },
 
     async resetSenha({ cpf: cpfRaw, codigo, novaSenha }) {
-        const cpf = soDigitos(cpfRaw);
+        const cpf = normalizarDoc(cpfRaw);
         if (!novaSenha || novaSenha.length < 4) throw new Error('A senha precisa ter ao menos 4 caracteres.');
         const auth = await prisma.kitFestaCliente.findUnique({ where: { cpf } });
         if (!auth || !auth.resetToken || auth.resetToken !== String(codigo || '').toUpperCase()) {
@@ -1017,7 +996,7 @@ const kitFestaService = {
         if (status) where.status = status;
         if (data) where.data = new Date(data);
         if (busca) {
-            const cpf = soDigitos(busca);
+            const cpf = normalizarDoc(busca); // preserva letras do CNPJ alfanumérico
             // Busca por nome, razão (Nome), fantasia, cidade, CPF/CNPJ e telefone.
             where.OR = [
                 { nomeCliente: { contains: busca, mode: 'insensitive' } },

@@ -52,7 +52,9 @@ function erroAsaas(e, contexto) {
     return err;
 }
 
-const soDigitos = (s) => (s || '').replace(/\D/g, '');
+const soDigitos = (s) => (s || '').replace(/\D/g, ''); // só p/ telefone — NÃO p/ documento
+// CNPJ ALFANUMÉRICO: normaliza o documento preservando letras (o Asaas espera o CNPJ como texto).
+const { normalizarDoc } = require('../utils/documento');
 
 // Data de hoje no fuso de São Paulo, formato YYYY-MM-DD (dueDate do Asaas)
 function hojeSP() {
@@ -116,7 +118,7 @@ const asaasService = {
         const cliente = await prisma.cliente.findUnique({ where: { UUID: clienteUuid } });
         if (!cliente) throw new Error('Cliente não encontrado.');
 
-        const cpfCnpj = soDigitos(cliente.Documento);
+        const cpfCnpj = normalizarDoc(cliente.Documento); // preserva letras do CNPJ alfanumérico
         if (!cpfCnpj) {
             const err = new Error(`Cliente "${cliente.Nome}" está sem CPF/CNPJ no cadastro — obrigatório para gerar cobrança no Asaas.`);
             err.statusCode = 400;

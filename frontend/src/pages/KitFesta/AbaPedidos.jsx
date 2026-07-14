@@ -6,9 +6,10 @@ import clienteService from '../../services/clienteService';
 import vendedorService from '../../services/vendedorService';
 import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
+import { normalizarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
 
 const money = (n) => 'R$ ' + Number(n || 0).toFixed(2).replace('.', ',');
-const docLabel = (doc) => (String(doc || '').replace(/\D/g, '').length > 11 ? 'CNPJ' : 'CPF');
+const docLabel = (doc) => (normalizarDoc(doc).length === 14 ? 'CNPJ' : 'CPF');
 // Nome digitado no site quando difere do cadastro vinculado (mostrado como dica)
 const nomeDoSite = (nomeSite, nomeCadastro) => {
   const a = String(nomeSite || '').trim(), b = String(nomeCadastro || '').trim();

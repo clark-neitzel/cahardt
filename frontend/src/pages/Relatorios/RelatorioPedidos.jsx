@@ -8,6 +8,7 @@ import {
 import toast from 'react-hot-toast';
 import SelectBusca from '../../components/SelectBusca';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import { normalizarDoc } from '../../utils/documento'; // busca por CPF/CNPJ (inclui alfanumérico)
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 
@@ -79,10 +80,12 @@ const RelatorioPedidos = () => {
             let resultado = data.pedidos || [];
 
             if (buscaCliente.trim()) {
-                const termo = buscaCliente.trim().toLowerCase();
+                const raw = buscaCliente.trim();
+                const termo = raw.toLowerCase();
+                const docTermo = normalizarDoc(raw); // CPF/CNPJ com ou sem pontuação (inclui letras)
                 resultado = resultado.filter(p =>
                     p.clienteNome.toLowerCase().includes(termo) ||
-                    p.clienteDocumento.includes(termo)
+                    (docTermo && normalizarDoc(p.clienteDocumento).includes(docTermo))
                 );
             }
 

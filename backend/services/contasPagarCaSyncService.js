@@ -14,6 +14,8 @@
 
 const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
+// CNPJ ALFANUMÉRICO: normalizar documento preservando letras (nunca replace(/\D/g,'')).
+const { normalizarDoc } = require('../utils/documento');
 
 const BASE = 'https://api-v2.contaazul.com';
 
@@ -277,7 +279,7 @@ async function importarFornecedoresCA() {
 
         for (const p of lista) {
             if (!p?.id) continue;
-            const cnpjCpf = String(p.documento || '').replace(/\D/g, '') || null;
+            const cnpjCpf = normalizarDoc(p.documento) || null; // preserva letras (CNPJ alfanumérico)
             const dados = {
                 cnpjCpf,
                 razaoSocial: p.nome || cnpjCpf || 'Fornecedor sem nome',
@@ -347,14 +349,14 @@ async function processarFilaFornecedores() {
             try {
                 await prisma.fornecedor.update({ where: { id: f.id }, data: { statusEnvioCA: 'ENVIANDO' } });
 
-                const soDigitos = String(f.cnpjCpf || '').replace(/\D/g, '');
+                const docNorm = normalizarDoc(f.cnpjCpf); // dígitos p/ CPF; letras+dígitos p/ CNPJ alfanumérico
 
                 // ── Antes de criar, procura no CA pelo CNPJ/CPF (evita cadastro DUPLICADO de fornecedor).
                 // Se já existir lá, adota o cadastro existente. Se a busca falhar, NÃO cria às cegas.
-                if (soDigitos) {
+                if (docNorm) {
                     let existenteCaId = null;
                     try {
-                        existenteCaId = await contaAzulService.buscarFornecedorPorDocumento(soDigitos);
+                        existenteCaId = await contaAzulService.buscarFornecedorPorDocumento(docNorm);
                     } catch (buscaErr) {
                         console.warn(`[ContasPagar CA] ⚠️ Busca de fornecedor por documento falhou ("${f.razaoSocial}") — não cria neste ciclo (evita duplicar):`, erroCAtexto(buscaErr));
                         await prisma.fornecedor.update({ where: { id: f.id }, data: { statusEnvioCA: 'ENVIAR' } });
@@ -372,14 +374,16 @@ async function processarFilaFornecedores() {
                     }
                 }
 
-                const ehPF = soDigitos.length === 11;
+                // CPF = 11 dígitos numéricos; CNPJ = 14 posições (numérico OU alfanumérico).
+                const ehPF = docNorm.length === 11;
                 const payload = {
                     nome: f.razaoSocial,
                     tipo_pessoa: ehPF ? 'Física' : 'Jurídica', // com acento, exatamente assim (spec)
                     perfis: [{ tipo_perfil: 'Fornecedor' }]
                 };
-                if (soDigitos.length === 14) payload.cnpj = soDigitos;
-                if (soDigitos.length === 11) payload.cpf = soDigitos;
+                // Envia o CNPJ COM as letras (alfanumérico) — antes o strip deixava o payload sem documento.
+                if (docNorm.length === 14) payload.cnpj = docNorm;
+                if (docNorm.length === 11) payload.cpf = docNorm;
                 if (!ehPF && f.nomeFantasia) payload.nome_fantasia = f.nomeFantasia;
                 if (f.email) payload.email = f.email;
                 if (f.telefone) payload.telefone_comercial = String(f.telefone).replace(/\D/g, '');
