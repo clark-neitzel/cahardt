@@ -195,6 +195,15 @@ const CaixaDiarioPage = () => {
         }
     };
 
+    // Abre a lista de entregas e rola até ela (usado pelos avisos de pendência,
+    // para o usuário achar o botão "Devolução" sem procurar)
+    const irParaEntregas = () => {
+        setExpandedEntregas(true);
+        setTimeout(() => {
+            document.getElementById('card-entregas')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    };
+
     // Verifica se uma entrega é elegível para baixa/condição no CA:
     // - dinheiro/pix/cartão → cria baixa ou altera condição
     // - vendedor/escritório responsável (só para pedidos CA) → altera forma para OUTRO
@@ -497,7 +506,7 @@ const CaixaDiarioPage = () => {
                     </div>
 
                     {/* Card Entregas */}
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                    <div id="card-entregas" className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                         <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center space-x-2">
                                 <Package className="h-5 w-5 text-green-600" />
@@ -1003,11 +1012,18 @@ const CaixaDiarioPage = () => {
                                     </li>
                                 )}
                                 {resumo.pendencias?.devolucoesNaoFeitas > 0 && (
-                                    <li className="flex items-center gap-3 bg-white border border-orange-200 rounded-lg px-4 py-3">
-                                        <Undo2 className="h-5 w-5 text-orange-500 flex-shrink-0" />
-                                        <span className="text-sm font-medium text-gray-800">
-                                            Registrar {resumo.pendencias.devolucoesNaoFeitas} devolução(ões) nas entregas
-                                        </span>
+                                    <li>
+                                        <button
+                                            onClick={irParaEntregas}
+                                            className="w-full flex items-center gap-3 bg-white border border-orange-200 rounded-lg px-4 py-3 hover:bg-orange-100/60 hover:border-orange-300 text-left min-h-[44px]"
+                                        >
+                                            <Undo2 className="h-5 w-5 text-orange-500 flex-shrink-0" />
+                                            <span className="text-sm font-medium text-gray-800">
+                                                Registrar {resumo.pendencias.devolucoesNaoFeitas} devolução(ões) nas entregas
+                                                <span className="block text-xs font-normal text-orange-600 mt-0.5">Toque aqui — abre as entregas; use o botão vermelho "Devolução" na linha</span>
+                                            </span>
+                                            <ChevronDown className="h-4 w-4 text-orange-400 ml-auto flex-shrink-0" />
+                                        </button>
                                     </li>
                                 )}
                                 {resumo.pendencias?.conferenciaDevolucaoPendente && (
@@ -1086,15 +1102,23 @@ const CaixaDiarioPage = () => {
                     {isAberto && resumo?.pendencias && !resumo.pendencias.podeFechar && (
                         <div className="bg-amber-50 border border-amber-300 rounded-lg p-3 mb-2">
                             <p className="text-sm font-bold text-amber-800 mb-1">Pendências para fechar o caixa:</p>
-                            <ul className="text-xs text-amber-700 space-y-0.5">
+                            <ul className="text-xs text-amber-700 space-y-1">
                                 {resumo.pendencias.devolucoesNaoFeitas > 0 && (
-                                    <li>• {resumo.pendencias.devolucoesNaoFeitas} devolução(ões) não registrada(s)</li>
+                                    <li>
+                                        <button onClick={irParaEntregas} className="underline decoration-amber-400 underline-offset-2 hover:text-amber-900 text-left">
+                                            • {resumo.pendencias.devolucoesNaoFeitas} devolução(ões) não registrada(s) — toque para abrir as entregas
+                                        </button>
+                                    </li>
                                 )}
                                 {resumo.pendencias.quitacoesNaoFeitas > 0 && (
-                                    <li>• {resumo.pendencias.quitacoesNaoFeitas} baixa(s) de dinheiro não quitada(s)</li>
+                                    <li>
+                                        <button onClick={irParaEntregas} className="underline decoration-amber-400 underline-offset-2 hover:text-amber-900 text-left">
+                                            • {resumo.pendencias.quitacoesNaoFeitas} baixa(s) de dinheiro não quitada(s) — toque para abrir as entregas
+                                        </button>
+                                    </li>
                                 )}
                                 {resumo.pendencias.conferenciaDevolucaoPendente && (
-                                    <li>• Conferência de devoluções pendente (conte a mercadoria que voltou)</li>
+                                    <li>• Conferência de devoluções pendente (conte a mercadoria que voltou no cartão acima)</li>
                                 )}
                             </ul>
                         </div>
