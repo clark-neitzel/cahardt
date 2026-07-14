@@ -1481,10 +1481,14 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
 const BaixaParcelaModal = ({ conta, parcela, onClose, onSuccess }) => {
     const saldo = Math.max(0, Number(parcela.valor || 0) - Number(parcela.valorPago || 0));
     const [dataPagamento, setDataPagamento] = useState(hojeYMD());
+    // "Valor pago" = o total que saiu do banco (já com juros/multa, já com o desconto abatido).
+    // O backend espera o principal separado dos acréscimos — a conta é feita aqui embaixo.
     const [valorPago, setValorPago] = useState(saldo.toFixed(2).replace('.', ','));
     const [juros, setJuros] = useState('');
     const [multa, setMulta] = useState('');
     const [desconto, setDesconto] = useState('');
+    const [escolhaAcrescimo, setEscolhaAcrescimo] = useState(null); // 'juros' | 'multa'
+    const [escolhaFalta, setEscolhaFalta] = useState(null);         // 'desconto' | 'parcial'
     const [formaPagamento, setFormaPagamento] = useState('PIX');
     const [observacao, setObservacao] = useState('');
     const [salvando, setSalvando] = useState(false);
@@ -1492,6 +1496,32 @@ const BaixaParcelaModal = ({ conta, parcela, onClose, onSuccess }) => {
     const [contasFinanceiras, setContasFinanceiras] = useState([]);
     // Se a despesa vai ao Conta Azul, o banco é obrigatório (a baixa é empurrada nesse banco).
     const vaiAoCA = conta.statusEnvioCA && conta.statusEnvioCA !== 'NAO_ENVIAR';
+
+    const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
+    const total = parseNum(valorPago);
+    const vJuros = parseNum(juros);
+    const vMulta = parseNum(multa);
+    const vDesconto = parseNum(desconto);
+    const acrescimos = round2(vJuros + vMulta);
+    const principal = round2(total - acrescimos);            // o que realmente abate a parcela
+    const excedente = round2(total - saldo);                 // > 0 → pagou a mais que o saldo
+    const falta = round2(saldo - principal - vDesconto);     // > 0 → ainda sobra saldo aberto
+    const precisaClassificarExcedente = excedente > 0.005 && acrescimos <= 0;
+    const precisaClassificarFalta = !precisaClassificarExcedente && falta > 0.005 && !escolhaFalta && vDesconto <= 0;
+    const saldoApos = Math.max(0, falta);
+
+    // Quem escolheu "é juros/multa" ou "é desconto" tem o campo recalculado se mudar o valor pago.
+    useEffect(() => {
+        if (escolhaAcrescimo && excedente > 0) {
+            const v = excedente.toFixed(2).replace('.', ',');
+            if (escolhaAcrescimo === 'juros') setJuros(v); else setMulta(v);
+        }
+        if (escolhaFalta === 'desconto') {
+            const f = round2(saldo - round2(total - acrescimos));
+            setDesconto(f > 0 ? f.toFixed(2).replace('.', ',') : '');
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [valorPago, escolhaAcrescimo, escolhaFalta]);
 
     useEffect(() => {
         contasPagarService.opcoesBaixa()
@@ -1504,18 +1534,39 @@ const BaixaParcelaModal = ({ conta, parcela, onClose, onSuccess }) => {
             .catch(() => {});
     }, []);
 
+    const escolherAcrescimo = (tipo) => {
+        setEscolhaAcrescimo(tipo);
+        setEscolhaFalta(null);
+        const v = excedente.toFixed(2).replace('.', ',');
+        if (tipo === 'juros') { setJuros(v); setMulta(''); }
+        else { setMulta(v); setJuros(''); }
+    };
+
+    const escolherFalta = (tipo) => {
+        setEscolhaFalta(tipo);
+        setEscolhaAcrescimo(null);
+        if (tipo === 'desconto') {
+            const f = round2(saldo - principal);
+            setDesconto(f > 0 ? f.toFixed(2).replace('.', ',') : '');
+        } else {
+            setDesconto('');
+        }
+    };
+
     const confirmar = async () => {
-        const vp = parseNum(valorPago);
-        if (vp <= 0) { toast.error('Informe o valor pago.'); return; }
+        if (total <= 0 && vDesconto <= 0) { toast.error('Informe o valor pago.'); return; }
+        if (principal < -0.005) { toast.error('Juros + multa não podem ser maiores que o valor pago.'); return; }
+        if (precisaClassificarExcedente) { toast.error('Diga se o valor a mais é juros ou multa.'); return; }
+        if (precisaClassificarFalta) { toast.error('Diga se a diferença é desconto ou pagamento parcial.'); return; }
         if (vaiAoCA && !contaFinanceiraCaId) { toast.error('Escolha o banco/caixa de onde saiu o pagamento.'); return; }
         setSalvando(true);
         try {
             await contasPagarService.baixarParcela(conta.id, parcela.id, {
                 dataPagamento,
-                valorPago: vp,
-                juros: parseNum(juros),
-                multa: parseNum(multa),
-                desconto: parseNum(desconto),
+                valorPago: Math.max(0, principal),
+                juros: vJuros,
+                multa: vMulta,
+                desconto: vDesconto,
                 formaPagamento,
                 contaFinanceiraCaId: contaFinanceiraCaId || undefined,
                 observacao: observacao.trim() || undefined
@@ -1577,25 +1628,65 @@ const BaixaParcelaModal = ({ conta, parcela, onClose, onSuccess }) => {
                             <label className="block text-sm font-medium text-gray-700 mb-1">Valor pago</label>
                             <div className="flex items-center border border-gray-300 rounded overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary bg-white">
                                 <span className="px-3 py-2 bg-gray-50 border-r border-gray-300 text-sm text-gray-500">R$</span>
-                                <input value={valorPago} onChange={e => setValorPago(e.target.value)} className="flex-1 min-w-0 px-3 py-2 text-sm outline-none" />
+                                <input inputMode="decimal" value={valorPago} onChange={e => setValorPago(e.target.value)} className="flex-1 min-w-0 px-3 py-2 text-sm outline-none" />
                             </div>
+                            <p className="text-xs text-gray-400 mt-1">Total que saiu do banco.</p>
                         </div>
                     </div>
+
+                    {/* Pagou a MAIS que o saldo → o excedente é juros ou multa? */}
+                    {precisaClassificarExcedente && (
+                        <div className="rounded-xl border border-amber-300 bg-amber-50 p-3">
+                            <p className="text-sm text-amber-900">
+                                Você pagou <span className="font-bold">R$ {fmt(excedente)}</span> a mais que o saldo. O que é essa diferença?
+                            </p>
+                            <div className="flex gap-2 mt-2">
+                                <button onClick={() => escolherAcrescimo('juros')} className="flex-1 min-h-[44px] px-4 py-2 bg-white border border-amber-400 text-amber-800 hover:bg-amber-100 rounded-full font-semibold text-sm">Juros</button>
+                                <button onClick={() => escolherAcrescimo('multa')} className="flex-1 min-h-[44px] px-4 py-2 bg-white border border-amber-400 text-amber-800 hover:bg-amber-100 rounded-full font-semibold text-sm">Multa</button>
+                            </div>
+                            <p className="text-xs text-amber-700 mt-2">Precisa dividir entre os dois? Preencha os campos abaixo na mão.</p>
+                        </div>
+                    )}
+
+                    {/* Pagou a MENOS que o saldo → é desconto (quita) ou pagamento parcial (fica saldo)? */}
+                    {precisaClassificarFalta && (
+                        <div className="rounded-xl border border-blue-300 bg-blue-50 p-3">
+                            <p className="text-sm text-blue-900">
+                                Faltam <span className="font-bold">R$ {fmt(falta)}</span> para quitar a parcela. O que é essa diferença?
+                            </p>
+                            <div className="flex gap-2 mt-2">
+                                <button onClick={() => escolherFalta('desconto')} className="flex-1 min-h-[44px] px-4 py-2 bg-white border border-blue-400 text-blue-800 hover:bg-blue-100 rounded-full font-semibold text-sm">Desconto <span className="font-normal">(quita)</span></button>
+                                <button onClick={() => escolherFalta('parcial')} className="flex-1 min-h-[44px] px-4 py-2 bg-white border border-blue-400 text-blue-800 hover:bg-blue-100 rounded-full font-semibold text-sm">Pagamento parcial</button>
+                            </div>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-3 gap-3">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Juros</label>
-              <input value={juros} onChange={e => setJuros(e.target.value)} placeholder="0,00" className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+              <input inputMode="decimal" value={juros} onChange={e => { setJuros(e.target.value); setEscolhaAcrescimo(null); }} placeholder="0,00" className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Multa</label>
-              <input value={multa} onChange={e => setMulta(e.target.value)} placeholder="0,00" className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+              <input inputMode="decimal" value={multa} onChange={e => { setMulta(e.target.value); setEscolhaAcrescimo(null); }} placeholder="0,00" className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Desconto</label>
-              <input value={desconto} onChange={e => setDesconto(e.target.value)} placeholder="0,00" className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+              <input inputMode="decimal" value={desconto} onChange={e => { setDesconto(e.target.value); setEscolhaFalta(null); }} placeholder="0,00" className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                         </div>
                     </div>
+
+                    {/* Resumo: o que essa baixa faz com a parcela */}
+                    {total > 0 && !precisaClassificarExcedente && !precisaClassificarFalta && principal >= -0.005 && (
+                        <div className="rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs text-gray-600 space-y-0.5">
+                            <div>Abate da parcela: <span className="font-semibold text-gray-900">R$ {fmt(Math.max(0, principal))}</span>{acrescimos > 0 ? <> + acréscimos R$ {fmt(acrescimos)}</> : null}{vDesconto > 0 ? <> + desconto R$ {fmt(vDesconto)}</> : null}</div>
+                            <div>
+                                {saldoApos > 0.005
+                                    ? <>Fica <span className="font-semibold text-blue-700">parcial</span> — saldo restante R$ {fmt(saldoApos)}</>
+                                    : <>Parcela fica <span className="font-semibold text-green-700">quitada</span></>}
+                            </div>
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1953,41 +2044,6 @@ const DetalheContaModal = ({ conta: contaInicial, podeBaixar, onClose, onEditar,
                                         title="Remover PDF"
                                     >
                                         <Trash2 className="h-3.5 w-3.5" />
-                                    </button>
-                                </div>
-                            </div>
-                        ) : pdfArquivo ? (
-                            // Arquivo selecionado aguardando confirmação de envio
-                            <div className="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 gap-3">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <FileText className="h-4 w-4 text-blue-500 shrink-0" />
-                                    <span className="text-sm font-medium text-gray-800 truncate">{pdfArquivo.name}</span>
-                                    <span className="text-xs text-gray-400 shrink-0">({(pdfArquivo.size / 1024 / 1024).toFixed(1)} MB)</span>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <button
-                                        onClick={async () => {
-                                            setUploadandoPdf(true);
-                                            try {
-                                                const res = await contasPagarService.uploadPdf(conta.id, pdfArquivo);
-                                                setTemPdf(res.temPdf); setPdfNome(res.pdfNome); setPdfArquivo(null);
-                                                toast.success('PDF salvo!');
-                                            } catch (err) {
-                                                toast.error(err.response?.data?.error || 'Erro ao enviar o PDF.');
-                                            } finally { setUploadandoPdf(false); }
-                                        }}
-                                        disabled={uploadandoPdf}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-semibold disabled:opacity-50"
-                                    >
-                                        {uploadandoPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
-                                        {uploadandoPdf ? 'Salvando…' : 'Salvar PDF'}
-                                    </button>
-                                    <button
-                                        onClick={() => setPdfArquivo(null)}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 rounded-md text-xs"
-                                        title="Cancelar seleção"
-                                    >
-                                        <X className="h-3.5 w-3.5" />
                                     </button>
                                 </div>
                             </div>
