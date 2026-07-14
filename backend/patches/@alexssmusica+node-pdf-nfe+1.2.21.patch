@@ -1,5 +1,21 @@
+diff --git a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/cria-layout.js b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/cria-layout.js
+index 55abdc6..f6d982b 100644
+--- a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/cria-layout.js
++++ b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/cria-layout.js
+@@ -89,8 +89,9 @@ async function criaLayout({ pathLogo, nf, ajusteX, ajusteY, doc, margemEsquerda,
+             margemDireita,
+             margemEsquerda,
+             margemTopo,
+-            finalEspacoDet: y - margemTopo - ajusteY,
+-            earlyClose: true
++            finalEspacoDet: y - margemTopo - ajusteY
++            // PATCH CA-Hardt: sem earlyClose — a folha de continuação sai com a
++            // moldura de página inteira (quadro até o rodapé), não um toco solto
+         });
+         return '';
+     }
 diff --git a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js
-index df4f2b7..d7a8b07 100644
+index df4f2b7..1103836 100644
 --- a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js
 +++ b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-adicionais.js
 @@ -7,9 +7,13 @@ const secao_1 = require("./secao");
@@ -7,9 +23,9 @@ index df4f2b7..d7a8b07 100644
  function getDadosAdicionais({ doc, ajusteX, ajusteY, margemEsquerda, margemTopo, margemDireita, larguraDoFormulario, infAdic, finalEspacoDet, earlyClose, fecharAposConteudo }) {
      const maxBottom = 821.8;
 -    const text = infAdic?.infCpl ?? '';
-+    // PATCH CA-Hardt: inclui infAdFisco (MOC 3.1.8) e quebra o separador '#' em linhas
++    // PATCH CA-Hardt: inclui infAdFisco (MOC 3.1.8); o texto sai como vem no XML
++    // (sem quebrar '#' em linhas — quebrar estourava o quadro e gerava folha 2 quase vazia)
 +    const text = ((infAdic?.infAdFisco ? infAdic.infAdFisco + '\n' : '') + (infAdic?.infCpl ?? ''))
-+        .replace(/#+/g, '\n')
 +        .replace(/\n{2,}/g, '\n')
 +        .trim();
      const textWidth = 386;

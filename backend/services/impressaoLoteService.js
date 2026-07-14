@@ -62,8 +62,21 @@ async function pdfDanfe(pedido) {
     const pathLogo = path.join(__dirname, '../assets/logo-danfe.png');
     const doc = await gerarPDF(xml, fs.existsSync(pathLogo) ? { pathLogo } : {});
     const buf = await docParaBuffer(doc);
+    // Sentinela: DANFE em mais de 1 folha é exceção (dados adicionais muito longos).
+    // Se aparecer em série no log, alguma mudança estourou o layout de novo.
+    const paginas = contarPaginasPdf(buf);
+    if (paginas > 1) {
+        console.warn(`[DANFE] NF ${nota.numero_nota || '?'} (chave ${nota.chave_acesso}) gerada com ${paginas} folhas — conferir dados adicionais/layout.`);
+    }
     gravarCache(nome, buf);
     return buf;
+}
+
+// Conta as páginas de um PDF (objetos /Type /Page)
+function contarPaginasPdf(buf) {
+    try {
+        return (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+    } catch (_) { return 0; }
 }
 
 // pdfkit doc → Buffer

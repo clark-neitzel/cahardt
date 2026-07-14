@@ -309,6 +309,25 @@ router.get('/diag-danfe', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/danfe-limpar-cache — apaga as DANFEs do cache em disco para
+// serem regeradas com o layout atual na próxima impressão (a NF-e em si não muda).
+// Body opcional: { chave: '4226...' } limpa só uma; sem body limpa todas.
+router.post('/danfe-limpar-cache', async (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const dir = path.join(__dirname, '../uploads/cache-fiscal');
+        if (!fs.existsSync(dir)) return res.json({ ok: true, removidos: [] });
+        const chave = (req.body?.chave || '').replace(/\D/g, '');
+        const alvos = fs.readdirSync(dir).filter(n =>
+            chave ? n === `danfe-${chave}.pdf` : /^danfe-.*\.pdf$/.test(n));
+        for (const n of alvos) fs.unlinkSync(path.join(dir, n));
+        res.json({ ok: true, removidos: alvos });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-parcela-venda?numero=2034 — parcela CA de uma VENDA (contas a receber):
 // mostra todos os campos do detalhe (nome do campo da conta financeira, versao, vencimento)
 // + dados locais do pedido/parcelas para comparar vencimentos.
