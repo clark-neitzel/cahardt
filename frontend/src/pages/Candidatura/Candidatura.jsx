@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Camera, Upload, CheckCircle, User, ChevronRight, ChevronLeft, X, ShieldCheck, MessageCircle } from 'lucide-react';
 import { solicitarAcessoCurriculo, validarAcessoCurriculo, salvarCurriculo, uploadFotoCurriculo } from '../../services/curriculoService';
+import { API_URL } from '../../services/api';
 import SelectBusca from '../../components/SelectBusca';
 
 // WhatsApp público da empresa (para quem perdeu o número cadastrado)
@@ -115,7 +116,7 @@ export default function Candidatura() {
       empregosSemRegistro: c.empregosSemRegistro || '',
       outrasExperiencias: c.outrasExperiencias || '',
     });
-    if (c.foto) setFotoPreview(`${import.meta.env.VITE_API_URL || ''}/uploads/${c.foto}`);
+    if (c.foto) setFotoPreview(`${API_URL}/uploads/${c.foto}`);
     if (c.empregosRegistrados || c.empregosSemRegistro || c.outrasExperiencias) setTemExperiencia(true);
   }
 

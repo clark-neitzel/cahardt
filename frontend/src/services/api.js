@@ -1,6 +1,13 @@
 import axios from 'axios';
 
-export const API_URL = import.meta.env.VITE_API_URL || 'https://cahardt-hardt-backend.xrqvlq.easypanel.host';
+// Em produção a API é sempre a MESMA origem do app ('' = domínio atual): o nginx
+// do frontend repassa /api e /uploads ao backend. Assim o app funciona em qualquer
+// domínio (hardtsalgados.com.br ou easypanel.host) — em 07/2026 o DNS do
+// easypanel.host caiu no mundo todo e o endereço absoluto derrubou o app inteiro.
+// VITE_API_URL fica só para desenvolvimento local (.env.local → localhost:3000).
+export const API_URL = import.meta.env.DEV
+    ? (import.meta.env.VITE_API_URL || 'http://localhost:3000')
+    : '';
 
 const api = axios.create({
     baseURL: `${API_URL}/api`,
