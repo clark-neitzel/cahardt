@@ -737,6 +737,21 @@ const asaasService = {
     },
 
     // Status completo para a tela de Configurações: chave + webhook + conta CA
+    // ── Extrato financeiro da conta Asaas (créditos e débitos) ──
+    // UMA página do GET /financialTransactions. Quem pagina e grava é o
+    // asaasExtratoService (conciliação bancária).
+    extratoFinanceiro: async ({ startDate, finishDate, offset = 0, limit = 100 }) => {
+        exigirConfig();
+        try {
+            const r = await http.get('/financialTransactions', {
+                params: { startDate, finishDate, offset, limit, order: 'asc' }
+            });
+            return { itens: r.data?.data || [], temMais: !!r.data?.hasMore };
+        } catch (e) {
+            throw erroAsaas(e, 'extrato financeiro');
+        }
+    },
+
     statusCompleto: async () => {
         const status = await asaasService.statusIntegracao();
         let webhookAtivo = false;

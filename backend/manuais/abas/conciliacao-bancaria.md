@@ -11,7 +11,15 @@ A lógica da tela é uma pergunta só: **"este lançamento do banco é O QUÊ no
 
 > **Entradas (crédito) nunca dão baixa por aqui**: recebimento de cliente continua sendo baixado no Contas a Receber / "Baixa CA" do Caixa (evita baixa em dobro no CA). Na conciliação, entrada só amarra com baixa já registrada.
 
-## Fluxo de uso
+## Conta Asaas: o extrato entra SOZINHO (sem OFX)
+
+Para a conta do **Asaas** (onde caem os PIX da entrega e os boletos emitidos pelo app), **não é preciso importar arquivo nenhum**: o sistema busca o extrato direto no Asaas **a cada 30 minutos** (janela dos últimos 7 dias, sem duplicar) e **já roda a conciliação automática** em seguida. Ao selecionar essa conta na tela:
+
+- Aparece o botão **"Buscar do Asaas"** no topo (contorno verde) — busca o extrato na hora, para quem não quer esperar os 30 minutos. O aviso abaixo dos filtros mostra a data/hora da última busca.
+- O restante do fluxo é idêntico ao de qualquer banco (conciliar, buscar, ignorar).
+- Se o botão não aparece, a integração Asaas não está configurada no servidor ou a conta financeira do Asaas não foi vinculada (falar com o administrador).
+
+## Fluxo de uso (demais bancos — via arquivo OFX)
 
 1. **Exportar o extrato do banco em OFX** — todo internet banking tem essa opção (às vezes "Money/OFX" ou "Extensão .ofx"), geralmente em Extrato → Exportar/Salvar como.
 2. Na tela, **escolher o banco/caixa** (mesmas contas do Conta Azul usadas nas baixas) e clicar **Importar OFX**.

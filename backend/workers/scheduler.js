@@ -377,6 +377,24 @@ function startSchedulers() {
     };
     setTimeout(_runFilaWhatsapp, 180000);        // 3min após o start
     setInterval(_runFilaWhatsapp, 5 * 60 * 1000); // a cada 5 minutos
+
+    // === 10. EXTRATO ASAAS → CONCILIAÇÃO BANCÁRIA ===
+    // Busca os lançamentos da conta Asaas (janela de 7 dias, idempotente pelo id
+    // do Asaas) e já roda a conciliação automática. Sem ASAAS_API_KEY ou sem a
+    // conta vinculada, a rodada devolve ok:false sem chamar a API. Isolado.
+    console.log('⏰ Iniciando Worker do extrato Asaas (conciliação bancária)...');
+    const asaasExtratoService = require('../services/asaasExtratoService');
+    const _runExtratoAsaas = () => {
+        asaasExtratoService.sincronizar({ dias: 7 })
+            .then((r) => {
+                if (r.ok && (r.novos || r.conciliadosAuto)) {
+                    console.log(`[AsaasExtrato] ${r.novos} lançamento(s) novo(s), ${r.conciliadosAuto} conciliado(s) automaticamente.`);
+                }
+            })
+            .catch(err => console.error('⚠️ Extrato Asaas Error:', err.message));
+    };
+    setTimeout(_runExtratoAsaas, 240000);          // 4min após o start
+    setInterval(_runExtratoAsaas, 30 * 60 * 1000); // a cada 30 minutos
 }
 
 module.exports = { startSchedulers };

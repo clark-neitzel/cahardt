@@ -66,6 +66,16 @@ const conciliacaoBancariaService = {
     parcelasPagarAbertas: async (valor, busca, de, ate) => {
         const response = await api.get('/conciliacao-bancaria/parcelas-pagar-abertas', { params: { valor, busca, de, ate } });
         return response.data;
+    },
+    // Extrato automático do Asaas: { configurado, contaFinanceiraCaId, ultimaSync }
+    asaasInfo: async () => {
+        const response = await api.get('/conciliacao-bancaria/asaas-info');
+        return response.data;
+    },
+    // Busca o extrato no Asaas agora (o worker já faz sozinho a cada 30 min)
+    sincronizarAsaas: async (dias) => {
+        const response = await api.post('/conciliacao-bancaria/sincronizar-asaas', { dias });
+        return response.data;
     }
 };
 

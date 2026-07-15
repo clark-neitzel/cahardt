@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import conciliacaoService from '../../services/conciliacaoBancariaService';
 import contasReceberService from '../../services/contasReceberService';
 import SelectBusca from '../../components/SelectBusca';
-import { Landmark, Loader2, RefreshCw, Upload, Wand2, Check, X, Undo2, ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { Landmark, Loader2, RefreshCw, Upload, Wand2, Check, X, Undo2, ChevronDown, ChevronUp, Search, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
@@ -646,6 +646,8 @@ const ConciliacaoBancariaPage = () => {
     const [mostrarSoNoApp, setMostrarSoNoApp] = useState(false);
     const [buscarModal, setBuscarModal] = useState(null); // lançamento que abriu a busca ("o que é isto?")
     const [despesaModal, setDespesaModal] = useState(null); // lançamento que abriu o modal de nova despesa
+    const [asaasInfo, setAsaasInfo] = useState(null); // { configurado, contaFinanceiraCaId, ultimaSync }
+    const [syncAsaas, setSyncAsaas] = useState(false);
     const inputArquivo = useRef(null);
 
     useEffect(() => {
@@ -657,6 +659,8 @@ const ConciliacaoBancariaPage = () => {
                 setContaId(prev => (prev && cf.some(c => c.id === prev)) ? prev : (padrao ? padrao.id : ''));
             })
             .catch(() => toast.error('Não consegui carregar as contas (bancos/caixas).'));
+        // Extrato automático do Asaas: sem integração, o botão simplesmente não aparece
+        conciliacaoService.asaasInfo().then(setAsaasInfo).catch(() => {});
     }, []);
 
     const carregar = useCallback(async () => {
@@ -688,6 +692,21 @@ const ConciliacaoBancariaPage = () => {
         } finally {
             setImportando(false);
             if (inputArquivo.current) inputArquivo.current.value = '';
+        }
+    };
+
+    // Busca o extrato direto no Asaas (o robô já faz sozinho a cada 30 min)
+    const buscarAsaas = async () => {
+        setSyncAsaas(true);
+        try {
+            const r = await conciliacaoService.sincronizarAsaas(7);
+            toast.success(r.message);
+            conciliacaoService.asaasInfo().then(setAsaasInfo).catch(() => {});
+            carregar();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao buscar o extrato no Asaas');
+        } finally {
+            setSyncAsaas(false);
         }
     };
 
@@ -881,6 +900,9 @@ const ConciliacaoBancariaPage = () => {
         );
     };
 
+    // Conta do Asaas selecionada? Aí o extrato entra sozinho (worker) e há o botão de buscar agora.
+    const ehContaAsaas = !!(asaasInfo?.configurado && asaasInfo.contaFinanceiraCaId === contaId);
+
     return (
         <div className="max-w-full overflow-x-hidden -mx-4 sm:-mx-6 lg:-mx-8">
             {/* Topbar */}
@@ -893,6 +915,19 @@ const ConciliacaoBancariaPage = () => {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                     <input ref={inputArquivo} type="file" accept=".ofx,.OFX,.qfx" className="hidden" onChange={e => importar(e.target.files?.[0])} />
+                    {ehContaAsaas && (
+                        <button
+                            onClick={buscarAsaas}
+                            disabled={syncAsaas}
+                            className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs md:text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-50"
+                            title={asaasInfo?.ultimaSync?.em
+                                ? `O extrato do Asaas entra sozinho a cada 30 min. Última busca: ${new Date(asaasInfo.ultimaSync.em).toLocaleString('pt-BR')}`
+                                : 'O extrato do Asaas entra sozinho a cada 30 min'}
+                        >
+                            {syncAsaas ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                            Buscar do Asaas
+                        </button>
+                    )}
                     <button
                         onClick={() => contaId ? inputArquivo.current?.click() : toast.error('Escolha o banco/caixa primeiro.')}
                         disabled={importando}
@@ -950,6 +985,13 @@ const ConciliacaoBancariaPage = () => {
                     </div>
                 )}
 
+                {ehContaAsaas && (
+                    <p className="text-xs text-gray-500">
+                        Esta é a conta do Asaas: o extrato entra aqui <strong>sozinho, a cada 30 minutos</strong>, sem importar OFX
+                        {asaasInfo?.ultimaSync?.em ? ` (última busca ${new Date(asaasInfo.ultimaSync.em).toLocaleString('pt-BR')})` : ''}.
+                    </p>
+                )}
+
                 {contaId && (
                     <>
                         {/* KPIs */}
@@ -995,7 +1037,9 @@ const ConciliacaoBancariaPage = () => {
 
                         {!loading && lancamentos.length === 0 && (
                             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center text-sm text-gray-500">
-                                Nenhum lançamento do extrato neste período. Importe o arquivo OFX do banco (botão verde no topo).
+                                {ehContaAsaas
+                                    ? 'Nenhum lançamento do extrato neste período. O extrato do Asaas entra sozinho a cada 30 minutos — ou clique em "Buscar do Asaas" no topo.'
+                                    : 'Nenhum lançamento do extrato neste período. Importe o arquivo OFX do banco (botão verde no topo).'}
                             </div>
                         )}
 

@@ -151,6 +151,19 @@ router.post('/asaas-configurar-conta-ca', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/asaas-extrato-sync — dispara a busca do extrato do Asaas para a
+// conciliação bancária (o worker roda sozinho a cada 30 min; isto é para diagnóstico/backfill).
+// Body opcional: { dias } (padrão 7, máx 90 — usar 90 na primeira carga).
+router.post('/asaas-extrato-sync', async (req, res) => {
+    try {
+        const asaasExtratoService = require('../services/asaasExtratoService');
+        const r = await asaasExtratoService.sincronizar({ dias: Number(req.body?.dias) || 7 });
+        res.status(r.ok ? 200 : 400).json(r);
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // POST /api/admin-exec/asaas-reprocessar-baixas — cobranças RECEBIDAS com baixa pendente (app ou CA)
 router.post('/asaas-reprocessar-baixas', async (req, res) => {
     try {

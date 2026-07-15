@@ -9,6 +9,7 @@ const multer = require('multer');
 const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const conciliacaoService = require('../services/conciliacaoBancariaService');
+const asaasExtratoService = require('../services/asaasExtratoService');
 
 const uploadOfx = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
@@ -67,6 +68,34 @@ router.post('/importar', verificarAuth, checkAcesso, uploadOfx.single('arquivo')
     } catch (error) {
         console.error('Erro ao importar OFX:', error);
         res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao importar o extrato.' });
+    }
+});
+
+// ── Extrato AUTOMÁTICO do Asaas ─────────────────────────────────────────
+// O worker busca sozinho a cada 30 min; o botão da tela é para quem não quer
+// esperar. GET /asaas-info diz se a integração está de pé e qual conta é a do
+// Asaas (a tela só mostra o botão nessa conta).
+router.get('/asaas-info', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        res.json(await asaasExtratoService.info());
+    } catch (error) {
+        console.error('Erro no asaas-info:', error);
+        res.status(500).json({ error: 'Erro ao consultar a integração do extrato Asaas.' });
+    }
+});
+
+router.post('/sincronizar-asaas', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const r = await asaasExtratoService.sincronizar({ dias: Number(req.body?.dias) || 7 });
+        if (!r.ok) return res.status(400).json({ error: r.motivo });
+        const partes = [`${r.novos} lançamento(s) novo(s) do Asaas`];
+        if (r.duplicados) partes.push(`${r.duplicados} já estavam aqui`);
+        if (r.conciliadosAuto) partes.push(`${r.conciliadosAuto} conciliado(s) automaticamente`);
+        res.json({ message: `${partes.join(', ')}.`, ...r });
+    } catch (error) {
+        console.error('Erro ao sincronizar extrato Asaas:', error);
+        res.status(error.statusCode || error.status || 500)
+            .json({ error: error.message || 'Erro ao buscar o extrato no Asaas.' });
     }
 });
 
