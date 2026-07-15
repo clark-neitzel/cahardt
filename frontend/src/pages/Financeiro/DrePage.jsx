@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import financeiroGerencialService from '../../services/financeiroGerencialService';
-import { BarChart3, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { BarChart3, Loader2, RefreshCw, AlertTriangle, ChevronRight, Settings2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
@@ -34,6 +34,13 @@ const KpiCard = ({ titulo, valor, cor = 'text-gray-900' }) => (
     </div>
 );
 
+// Etiqueta de natureza da categoria (V = variável, F = fixa)
+const TagNatureza = ({ natureza }) => {
+    if (natureza === 'VARIAVEL') return <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-blue-100 text-blue-800 shrink-0" title="Variável: cresce junto com a venda">V</span>;
+    if (natureza === 'FIXA') return <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-mint text-primaryDark shrink-0" title="Fixa: paga vendendo ou não">F</span>;
+    return <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-amber-100 text-amber-700 shrink-0" title="Sem definição fixa/variável">?</span>;
+};
+
 const DrePage = () => {
     const opcoesPeriodo = useMemo(periodos, []);
     // Do período persiste só a CHAVE ('ANO' etc.) — os meses são recalculados a
@@ -47,6 +54,7 @@ const DrePage = () => {
     const [dados, setDados] = useState(null);
     const [loading, setLoading] = useState(false);
     const [mesMobile, setMesMobile] = useState(null); // 'YYYY-MM' selecionado na visão mobile
+    const [abertos, setAbertos] = useState(() => new Set()); // blocos expandidos (por id/nome)
 
     const carregar = useCallback(async (p) => {
         setLoading(true);
@@ -66,6 +74,24 @@ const DrePage = () => {
     const meses = dados?.meses || [];
     const iMobile = Math.max(0, meses.indexOf(mesMobile));
     const resultadoTotal = Number(dados?.resultado?.total || 0);
+    // Blocos vindos do backend; se a resposta for antiga (sem grupos), cai num bloco único
+    const grupos = useMemo(() => {
+        if (!dados) return [];
+        if (Array.isArray(dados.despesas?.grupos)) return dados.despesas.grupos;
+        return [{ id: null, nome: 'Despesas', categorias: dados.despesas?.categorias || [], valores: dados.despesas?.total?.valores || [], total: dados.despesas?.total?.total || 0 }];
+    }, [dados]);
+    const fv = dados?.fixoVariavel || null;
+    const temPendencia = !!dados?.temAClassificar
+        || grupos.some((g) => g.id === null && g.nome === 'Sem bloco')
+        || Number(fv?.indefinidas?.total || 0) !== 0;
+
+    const chaveGrupo = (g) => g.id || `__${g.nome}`;
+    const alternar = (g) => setAbertos((prev) => {
+        const novo = new Set(prev);
+        const k = chaveGrupo(g);
+        if (novo.has(k)) novo.delete(k); else novo.add(k);
+        return novo;
+    });
 
     // célula numérica da matriz
     const Cel = ({ v, className = '', prefixoSinal = false }) => (
@@ -84,13 +110,22 @@ const DrePage = () => {
                     </div>
                     <h1 className="text-base md:text-2xl font-bold text-gray-900 truncate">DRE — Resultado</h1>
                 </div>
-                <button
-                    onClick={() => carregar(periodo)}
-                    disabled={loading}
-                    className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-xs md:text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-50 shrink-0"
-                >
-                    <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Atualizar
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                    <Link
+                        to="/financeiro/categorias-despesa"
+                        className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs md:text-sm font-medium inline-flex items-center gap-1.5"
+                        title="Blocos da DRE e classificação fixa/variável"
+                    >
+                        <Settings2 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Blocos e categorias</span><span className="sm:hidden">Blocos</span>
+                    </Link>
+                    <button
+                        onClick={() => carregar(periodo)}
+                        disabled={loading}
+                        className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full text-xs md:text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                        <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> <span className="hidden sm:inline">Atualizar</span>
+                    </button>
+                </div>
             </div>
 
             <div className="p-3 md:p-6 space-y-4">
@@ -114,7 +149,11 @@ const DrePage = () => {
                 {/* KPIs do período */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <KpiCard titulo="Receita líquida" valor={`R$ ${fmt0(dados?.receita?.liquida?.total)}`} />
-                    <KpiCard titulo="Despesas" valor={`R$ ${fmt0(dados?.despesas?.total?.total)}`} cor="text-red-700" />
+                    <KpiCard
+                        titulo="Margem de contribuição"
+                        valor={fv ? `R$ ${fmt0(fv.margemContribuicao.total)}` : '—'}
+                        cor="text-primaryDark"
+                    />
                     <KpiCard
                         titulo="Resultado"
                         valor={`${resultadoTotal < 0 ? '−' : ''}R$ ${fmt0(Math.abs(resultadoTotal))}`}
@@ -136,8 +175,9 @@ const DrePage = () => {
                 {/* Matriz desktop */}
                 {dados && meses.length > 0 && (
                     <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-                        <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
+                        <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
                             <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Resultado mês a mês</span>
+                            <span className="text-xs text-gray-500">Clique num bloco para abrir as categorias</span>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200 text-sm">
@@ -171,13 +211,39 @@ const DrePage = () => {
                                         {dados.receita.liquida.valores.map((v, i) => <Cel key={i} v={v} />)}
                                         <Cel v={dados.receita.liquida.total} className="bg-blue-50" />
                                     </tr>
-                                    {dados.despesas.categorias.map(cat => (
-                                        <tr key={cat.nome}>
-                                            <td className="px-5 py-2.5 pl-8 text-gray-600 sticky left-0 bg-white whitespace-nowrap max-w-[260px] truncate" title={cat.nome}>{cat.nome}</td>
-                                            {cat.valores.map((v, i) => <Cel key={i} v={v} className="text-gray-600" />)}
-                                            <Cel v={cat.total} className="bg-gray-50" />
-                                        </tr>
-                                    ))}
+                                    {grupos.map((g) => {
+                                        const aberto = abertos.has(chaveGrupo(g));
+                                        return (
+                                            <React.Fragment key={chaveGrupo(g)}>
+                                                <tr
+                                                    className={`font-semibold cursor-pointer hover:bg-gray-100 ${g.id === null && g.nome === 'Sem bloco' ? 'bg-amber-50/60' : 'bg-gray-50'}`}
+                                                    onClick={() => alternar(g)}
+                                                >
+                                                    <td className={`px-5 py-2.5 text-gray-800 sticky left-0 whitespace-nowrap ${g.id === null && g.nome === 'Sem bloco' ? 'bg-amber-50/60' : 'bg-gray-50'}`}>
+                                                        <span className="inline-flex items-center gap-1.5">
+                                                            <ChevronRight className={`h-3.5 w-3.5 text-gray-400 transition-transform ${aberto ? 'rotate-90' : ''}`} />
+                                                            (−) {g.nome}
+                                                            <span className="text-xs font-normal text-gray-500">({g.categorias.length})</span>
+                                                        </span>
+                                                    </td>
+                                                    {g.valores.map((v, i) => <Cel key={i} v={v} className="text-gray-800" />)}
+                                                    <Cel v={g.total} className="bg-gray-100" />
+                                                </tr>
+                                                {aberto && g.categorias.map((cat) => (
+                                                    <tr key={cat.nome} className="bg-white">
+                                                        <td className="px-5 py-2 pl-12 text-gray-600 sticky left-0 bg-white whitespace-nowrap max-w-[280px]" title={cat.nome}>
+                                                            <span className="inline-flex items-center gap-1.5 max-w-full">
+                                                                <span className="truncate">{cat.nome}</span>
+                                                                <TagNatureza natureza={cat.natureza} />
+                                                            </span>
+                                                        </td>
+                                                        {cat.valores.map((v, i) => <Cel key={i} v={v} className="text-gray-600" />)}
+                                                        <Cel v={cat.total} className="bg-gray-50" />
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
+                                        );
+                                    })}
                                     <tr className="bg-red-50/40 font-semibold">
                                         <td className="px-5 py-2.5 text-gray-900 sticky left-0 bg-red-50/40 whitespace-nowrap">= Total de despesas</td>
                                         {dados.despesas.total.valores.map((v, i) => <Cel key={i} v={v} className="text-red-700" />)}
@@ -208,6 +274,78 @@ const DrePage = () => {
                                             <td className="px-4 py-2 text-right bg-gray-50 whitespace-nowrap">{fmt0(dados.foraDre.total)}</td>
                                         </tr>
                                     )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {/* Fixo × Variável (Margem de Contribuição) — desktop */}
+                {dados && meses.length > 0 && fv && (
+                    <div className="hidden md:block bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div className="px-5 py-3.5 border-b border-gray-100">
+                            <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Fixo × Variável — Margem de Contribuição</span>
+                            <p className="text-xs text-gray-500 mt-0.5">O que sobra da venda depois dos gastos que crescem com ela — é daí que a estrutura fixa é paga.</p>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide sticky left-0 bg-gray-50 z-10">&nbsp;</th>
+                                        {meses.map(m => (
+                                            <th key={m} className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase whitespace-nowrap">{labelMes(m)}</th>
+                                        ))}
+                                        <th className="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase bg-gray-100">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-100">
+                                    <tr>
+                                        <td className="px-5 py-2.5 text-gray-700 sticky left-0 bg-white whitespace-nowrap">Receita líquida</td>
+                                        {dados.receita.liquida.valores.map((v, i) => <Cel key={i} v={v} />)}
+                                        <Cel v={dados.receita.liquida.total} className="font-medium bg-gray-50" />
+                                    </tr>
+                                    <tr>
+                                        <td className="px-5 py-2.5 text-gray-600 sticky left-0 bg-white whitespace-nowrap">(−) Despesas variáveis</td>
+                                        {fv.variaveis.valores.map((v, i) => <Cel key={i} v={v} className="text-gray-600" />)}
+                                        <Cel v={fv.variaveis.total} className="bg-gray-50" />
+                                    </tr>
+                                    <tr className="bg-mint/40 font-semibold">
+                                        <td className="px-5 py-2.5 text-primaryDark sticky left-0 bg-mint/40 whitespace-nowrap">= Margem de contribuição</td>
+                                        {fv.margemContribuicao.valores.map((v, i) => (
+                                            <td key={i} className={`px-4 py-2.5 text-right whitespace-nowrap ${v < 0 ? 'text-red-700' : 'text-primaryDark'}`}>{fmt0(v)}</td>
+                                        ))}
+                                        <td className="px-4 py-2.5 text-right text-primaryDark bg-mint/60 whitespace-nowrap">{fmt0(fv.margemContribuicao.total)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="px-5 py-2 text-gray-500 text-xs sticky left-0 bg-white whitespace-nowrap">% da receita</td>
+                                        {fv.margemContribuicao.pctValores.map((v, i) => (
+                                            <td key={i} className="px-4 py-2 text-right text-xs text-gray-500 whitespace-nowrap">{fmtPct(v)}</td>
+                                        ))}
+                                        <td className="px-4 py-2 text-right text-xs font-medium text-gray-600 bg-gray-50 whitespace-nowrap">{fmtPct(fv.margemContribuicao.pctTotal)}</td>
+                                    </tr>
+                                    <tr>
+                                        <td className="px-5 py-2.5 text-gray-600 sticky left-0 bg-white whitespace-nowrap">(−) Despesas fixas</td>
+                                        {fv.fixas.valores.map((v, i) => <Cel key={i} v={v} className="text-gray-600" />)}
+                                        <Cel v={fv.fixas.total} className="bg-gray-50" />
+                                    </tr>
+                                    {Number(fv.indefinidas.total) !== 0 && (
+                                        <tr>
+                                            <td className="px-5 py-2.5 text-amber-700 sticky left-0 bg-white whitespace-nowrap">(−) Sem definição (fixa ou variável?)</td>
+                                            {fv.indefinidas.valores.map((v, i) => <Cel key={i} v={v} className="text-amber-700" />)}
+                                            <Cel v={fv.indefinidas.total} className="text-amber-700 bg-gray-50" />
+                                        </tr>
+                                    )}
+                                    <tr className="bg-green-50/60 font-bold">
+                                        <td className="px-5 py-3 text-gray-900 sticky left-0 bg-green-50/60 whitespace-nowrap">= Resultado</td>
+                                        {dados.resultado.valores.map((v, i) => (
+                                            <td key={i} className={`px-4 py-3 text-right whitespace-nowrap ${v < 0 ? 'text-red-700' : 'text-green-700'}`}>
+                                                {v < 0 ? '−' : '+'}{fmt0(Math.abs(v))}
+                                            </td>
+                                        ))}
+                                        <td className={`px-4 py-3 text-right whitespace-nowrap ${resultadoTotal < 0 ? 'text-red-700 bg-red-50' : 'text-green-700 bg-green-50'}`}>
+                                            {resultadoTotal < 0 ? '−' : '+'}{fmt0(Math.abs(resultadoTotal))}
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -249,16 +387,45 @@ const DrePage = () => {
                                 <span>= Receita líquida</span>
                                 <span>{fmt0(dados.receita.liquida.valores[iMobile])}</span>
                             </div>
-                            {dados.despesas.categorias.filter(c => c.valores[iMobile] > 0).map(cat => (
-                                <div key={cat.nome} className="flex justify-between px-4 py-2.5 text-sm gap-3">
-                                    <span className="text-gray-600 pl-3 truncate">{cat.nome}</span>
-                                    <span className="text-gray-600 shrink-0">{fmt0(cat.valores[iMobile])}</span>
-                                </div>
-                            ))}
+                            {grupos.filter((g) => g.valores[iMobile] !== 0).map((g) => {
+                                const aberto = abertos.has(chaveGrupo(g));
+                                return (
+                                    <React.Fragment key={chaveGrupo(g)}>
+                                        <button
+                                            onClick={() => alternar(g)}
+                                            className={`w-full flex justify-between items-center px-4 py-2.5 text-sm font-semibold text-left min-h-[44px] ${g.id === null && g.nome === 'Sem bloco' ? 'bg-amber-50/60' : 'bg-gray-50'}`}
+                                        >
+                                            <span className="inline-flex items-center gap-1.5 text-gray-800">
+                                                <ChevronRight className={`h-3.5 w-3.5 text-gray-400 transition-transform ${aberto ? 'rotate-90' : ''}`} />
+                                                (−) {g.nome}
+                                            </span>
+                                            <span className="text-gray-800">{fmt0(g.valores[iMobile])}</span>
+                                        </button>
+                                        {aberto && g.categorias.filter((c) => c.valores[iMobile] !== 0).map((cat) => (
+                                            <div key={cat.nome} className="flex justify-between px-4 py-2.5 text-sm gap-3">
+                                                <span className="text-gray-600 pl-6 truncate inline-flex items-center gap-1.5 min-w-0">
+                                                    <span className="truncate">{cat.nome}</span>
+                                                    <TagNatureza natureza={cat.natureza} />
+                                                </span>
+                                                <span className="text-gray-600 shrink-0">{fmt0(cat.valores[iMobile])}</span>
+                                            </div>
+                                        ))}
+                                    </React.Fragment>
+                                );
+                            })}
                             <div className="flex justify-between px-4 py-2.5 text-sm font-semibold bg-red-50/40">
                                 <span>= Total de despesas</span>
                                 <span className="text-red-700">{fmt0(dados.despesas.total.valores[iMobile])}</span>
                             </div>
+                            {fv && (
+                                <div className="flex justify-between px-4 py-2.5 text-sm font-semibold bg-mint/40">
+                                    <span className="text-primaryDark">Margem de contribuição</span>
+                                    <span className="text-primaryDark">
+                                        {fmt0(fv.margemContribuicao.valores[iMobile])}
+                                        {fv.margemContribuicao.pctValores[iMobile] != null ? ` (${fmtPct(fv.margemContribuicao.pctValores[iMobile])})` : ''}
+                                    </span>
+                                </div>
+                            )}
                             <div className="flex justify-between px-4 py-3 text-sm font-bold bg-green-50/60">
                                 <span>= Resultado</span>
                                 <span className={dados.resultado.valores[iMobile] < 0 ? 'text-red-700' : 'text-green-700'}>
@@ -276,11 +443,11 @@ const DrePage = () => {
                     </div>
                 )}
 
-                {dados?.temAClassificar && (
+                {temPendencia && (
                     <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
                         <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                         <span>
-                            Há categorias sem "balde" definido — estão contando como despesa de operação por enquanto.
+                            Há categorias sem bloco ou sem fixa/variável definidos — elas aparecem em "Sem bloco" e com a etiqueta "?".
                             Ajuste em <Link to="/financeiro/categorias-despesa" className="underline font-semibold">Categorias de Despesa</Link> para o resultado ficar certinho.
                         </span>
                     </div>
@@ -289,7 +456,7 @@ const DrePage = () => {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
                     <span className="font-semibold">De onde vêm os números:</span>{' '}
                     receita = pedidos <span className="font-semibold">faturados</span> + <span className="font-semibold">especiais</span> (mesma regra do Dashboard), menos devoluções;
-                    despesas = <span className="font-semibold">Contas a Pagar por competência</span>, separadas pelas categorias do Conta Azul (o rateio da nota divide sozinho).
+                    despesas = <span className="font-semibold">Contas a Pagar por competência</span>, agrupadas nos blocos que você define em Categorias de Despesa (o rateio da nota divide sozinho).
                     Despesa que ainda não está no app não aparece — quanto mais contas entrarem pelo app, mais completa fica a DRE.
                 </div>
             </div>

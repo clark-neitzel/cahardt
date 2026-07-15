@@ -15,6 +15,7 @@ const financeiroGerencialService = require('../services/financeiroGerencialServi
 const importacaoCaService = require('../services/importacaoCaService');
 
 const CLASSIFICACOES = ['OPERACIONAL', 'FINANCEIRO', 'FORA_DRE', 'A_CLASSIFICAR'];
+const NATUREZAS = ['FIXA', 'VARIAVEL', 'A_DEFINIR'];
 
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
@@ -253,14 +254,18 @@ router.get('/categorias-despesa', verificarAuth, checkAcesso, async (req, res) =
         rateios.forEach((r) => somar(r.categoria, r._sum.valor));
         contas.forEach((c) => somar(c.categoria, c._sum.valorTotal));
 
-        // Cria as que ainda não existem na tabela de classificação
+        // Cria as que ainda não existem na tabela de classificação + garante os
+        // blocos padrão da DRE e aplica o palpite de bloco/natureza nas novas
         await importacaoCaService.garantirCategorias([...totalPorNome.keys()]);
+        await importacaoCaService.garantirGruposDre();
 
         const linhas = await prisma.categoriaDespesa.findMany({ orderBy: { nome: 'asc' } });
         res.json(linhas.map((l) => ({
             id: l.id,
             nome: l.nome,
             classificacao: l.classificacao,
+            natureza: l.natureza,
+            grupoDreId: l.grupoDreId,
             total: totalPorNome.get(l.nome) || 0
         })));
     } catch (error) {
@@ -269,26 +274,122 @@ router.get('/categorias-despesa', verificarAuth, checkAcesso, async (req, res) =
     }
 });
 
-// ── PUT /categorias-despesa — salvar a classificação (baldes) ──
-// body: { categorias: [{ nome, classificacao }] }
+// ── PUT /categorias-despesa — salvar classificação, bloco e natureza ──
+// body: { categorias: [{ nome, classificacao, grupoDreId?, natureza? }] }
+// grupoDreId/natureza são opcionais (chamadas antigas seguem funcionando).
 router.put('/categorias-despesa', verificarAuth, checkAcesso, async (req, res) => {
     try {
         const lista = Array.isArray(req.body?.categorias) ? req.body.categorias : [];
         if (lista.length === 0) return res.status(400).json({ error: 'Nada para salvar.' });
+
+        const gruposValidos = new Set(
+            (await prisma.grupoDre.findMany({ select: { id: true } })).map((g) => g.id)
+        );
         for (const item of lista) {
             const nome = String(item?.nome || '').trim();
             const classificacao = String(item?.classificacao || '').toUpperCase();
             if (!nome || !CLASSIFICACOES.includes(classificacao)) continue;
+
+            const dados = { classificacao };
+            if ('grupoDreId' in (item || {})) {
+                dados.grupoDreId = item.grupoDreId && gruposValidos.has(String(item.grupoDreId))
+                    ? String(item.grupoDreId) : null;
+            }
+            if ('natureza' in (item || {})) {
+                const nat = String(item.natureza || '').toUpperCase();
+                dados.natureza = NATUREZAS.includes(nat) ? nat : 'A_DEFINIR';
+            }
+            // Fora da DRE não pertence a bloco nenhum
+            if (classificacao === 'FORA_DRE') dados.grupoDreId = null;
+
             await prisma.categoriaDespesa.upsert({
                 where: { nome },
-                update: { classificacao },
-                create: { nome, classificacao }
+                update: dados,
+                create: { nome, ...dados }
             });
         }
         res.json({ message: 'Classificação salva!' });
     } catch (error) {
         console.error('Erro ao salvar classificação de categorias:', error);
         res.status(500).json({ error: 'Erro ao salvar a classificação.' });
+    }
+});
+
+// ─────────────────────────────────────────────────────────────
+// Blocos da DRE (grupos) — o usuário cria, renomeia, reordena e apaga
+// ─────────────────────────────────────────────────────────────
+
+// ── GET /grupos-dre — lista os blocos (cria os padrão na primeira vez) ──
+router.get('/grupos-dre', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const grupos = await importacaoCaService.garantirGruposDre();
+        res.json(grupos.map((g) => ({ id: g.id, nome: g.nome, ordem: g.ordem })));
+    } catch (error) {
+        console.error('Erro ao listar blocos da DRE:', error);
+        res.status(500).json({ error: 'Erro ao listar os blocos da DRE.' });
+    }
+});
+
+// ── POST /grupos-dre — criar um bloco novo. body: { nome } ──
+router.post('/grupos-dre', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const nome = String(req.body?.nome || '').trim();
+        if (!nome) return res.status(400).json({ error: 'Dê um nome ao bloco.' });
+        if (nome.length > 60) return res.status(400).json({ error: 'Nome do bloco muito longo (máx. 60).' });
+        const max = await prisma.grupoDre.aggregate({ _max: { ordem: true } });
+        const grupo = await prisma.grupoDre.create({
+            data: { nome, ordem: (max._max.ordem ?? -1) + 1 }
+        });
+        res.status(201).json({ id: grupo.id, nome: grupo.nome, ordem: grupo.ordem });
+    } catch (error) {
+        if (error.code === 'P2002') return res.status(400).json({ error: 'Já existe um bloco com esse nome.' });
+        console.error('Erro ao criar bloco da DRE:', error);
+        res.status(500).json({ error: 'Erro ao criar o bloco.' });
+    }
+});
+
+// ── PUT /grupos-dre/ordem — reordenar. body: { ids: [id, id, ...] } na ordem nova ──
+router.put('/grupos-dre/ordem', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(String) : [];
+        if (ids.length === 0) return res.status(400).json({ error: 'Informe a ordem dos blocos.' });
+        for (let i = 0; i < ids.length; i++) {
+            await prisma.grupoDre.update({ where: { id: ids[i] }, data: { ordem: i } }).catch(() => {});
+        }
+        res.json({ message: 'Ordem salva!' });
+    } catch (error) {
+        console.error('Erro ao reordenar blocos da DRE:', error);
+        res.status(500).json({ error: 'Erro ao salvar a ordem.' });
+    }
+});
+
+// ── PUT /grupos-dre/:id — renomear. body: { nome } ──
+router.put('/grupos-dre/:id', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const nome = String(req.body?.nome || '').trim();
+        if (!nome) return res.status(400).json({ error: 'Dê um nome ao bloco.' });
+        if (nome.length > 60) return res.status(400).json({ error: 'Nome do bloco muito longo (máx. 60).' });
+        const grupo = await prisma.grupoDre.update({ where: { id: String(req.params.id) }, data: { nome } });
+        res.json({ id: grupo.id, nome: grupo.nome, ordem: grupo.ordem });
+    } catch (error) {
+        if (error.code === 'P2025') return res.status(404).json({ error: 'Bloco não encontrado.' });
+        if (error.code === 'P2002') return res.status(400).json({ error: 'Já existe um bloco com esse nome.' });
+        console.error('Erro ao renomear bloco da DRE:', error);
+        res.status(500).json({ error: 'Erro ao renomear o bloco.' });
+    }
+});
+
+// ── DELETE /grupos-dre/:id — apagar (as categorias do bloco voltam para "sem bloco") ──
+router.delete('/grupos-dre/:id', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const id = String(req.params.id);
+        await prisma.categoriaDespesa.updateMany({ where: { grupoDreId: id }, data: { grupoDreId: null } });
+        await prisma.grupoDre.delete({ where: { id } });
+        res.json({ message: 'Bloco excluído! As categorias dele ficaram sem bloco.' });
+    } catch (error) {
+        if (error.code === 'P2025') return res.status(404).json({ error: 'Bloco não encontrado.' });
+        console.error('Erro ao excluir bloco da DRE:', error);
+        res.status(500).json({ error: 'Erro ao excluir o bloco.' });
     }
 });
 

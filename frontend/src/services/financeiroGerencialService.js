@@ -12,15 +12,36 @@ const financeiroGerencialService = {
         const response = await api.get('/financeiro-gerencial/dre', { params: { de, ate } });
         return response.data;
     },
-    // Categorias de despesa com o "balde" (classificação) e o total gasto
-    // [{ id, nome, classificacao, total }]
+    // Categorias de despesa com o "balde" (classificação), bloco e natureza e o total gasto
+    // [{ id, nome, classificacao, natureza, grupoDreId, total }]
     categoriasDespesa: async () => {
         const response = await api.get('/financeiro-gerencial/categorias-despesa');
         return response.data;
     },
-    // Salvar classificação: [{ nome, classificacao }]
+    // Salvar classificação: [{ nome, classificacao, grupoDreId?, natureza? }]
     salvarCategoriasDespesa: async (categorias) => {
         const response = await api.put('/financeiro-gerencial/categorias-despesa', { categorias });
+        return response.data;
+    },
+    // Blocos da DRE (grupos): [{ id, nome, ordem }]
+    gruposDre: async () => {
+        const response = await api.get('/financeiro-gerencial/grupos-dre');
+        return response.data;
+    },
+    criarGrupoDre: async (nome) => {
+        const response = await api.post('/financeiro-gerencial/grupos-dre', { nome });
+        return response.data;
+    },
+    renomearGrupoDre: async (id, nome) => {
+        const response = await api.put(`/financeiro-gerencial/grupos-dre/${id}`, { nome });
+        return response.data;
+    },
+    reordenarGruposDre: async (ids) => {
+        const response = await api.put('/financeiro-gerencial/grupos-dre/ordem', { ids });
+        return response.data;
+    },
+    excluirGrupoDre: async (id) => {
+        const response = await api.delete(`/financeiro-gerencial/grupos-dre/${id}`);
         return response.data;
     },
     // Totais por conta financeira (banco/caixa) no período: { contas:[{id,nome,entradas,saidas,resultado,saldoCA}], totais }

@@ -2792,10 +2792,28 @@ model CategoriaDespesa {
   id            String   @id @default(uuid())
   nome          String   @unique // nome da categoria como vem do CA/CSV
   classificacao String   @default("A_CLASSIFICAR") // OPERACIONAL | FINANCEIRO | FORA_DRE | A_CLASSIFICAR
+  natureza      String   @default("A_DEFINIR") // FIXA | VARIAVEL | A_DEFINIR (fixo × variável na DRE)
+  grupoDreId    String?  @map("grupo_dre_id") // bloco da DRE onde a categoria aparece
   criadoEm      DateTime @default(now()) @map("criado_em")
   atualizadoEm  DateTime @updatedAt @map("atualizado_em")
 
+  grupoDre GrupoDre? @relation(fields: [grupoDreId], references: [id], onDelete: SetNull)
+
   @@map("categorias_despesa")
+}
+
+// Blocos configuráveis da DRE (Custos variáveis, Pessoal, Administrativas...).
+// O usuário cria, renomeia e ordena; as categorias de despesa apontam para eles.
+model GrupoDre {
+  id           String   @id @default(uuid())
+  nome         String   @unique
+  ordem        Int      @default(0)
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  categorias CategoriaDespesa[]
+
+  @@map("grupos_dre")
 }
 
 // Certificado digital A1 (.pfx) — arquivo salvo CRIPTOGRAFADO (AES-256-GCM) em

@@ -243,8 +243,13 @@ async function fluxoCaixa(de, ate, granularidade = 'dia') {
  * @param {Array} despesas               [{ mes, categoria, valor }]
  * @param {(nome:string)=>string} classif classificação da categoria (default: 'A_CLASSIFICAR')
  *   OPERACIONAL/FINANCEIRO/A_CLASSIFICAR entram no resultado; FORA_DRE fica à parte.
+ * @param {Object} opcoes
+ *   - grupos:        [{ id, nome, ordem }] — blocos da DRE, na ordem de exibição
+ *   - infoCategoria: (nome) => { grupoId, natureza } — bloco e FIXA/VARIAVEL/A_DEFINIR
  */
-function montarDre(meses, receitas, devolucoes, despesas, classif = () => 'A_CLASSIFICAR') {
+function montarDre(meses, receitas, devolucoes, despesas, classif = () => 'A_CLASSIFICAR', opcoes = {}) {
+    const gruposDef = Array.isArray(opcoes.grupos) ? opcoes.grupos : [];
+    const infoCategoria = typeof opcoes.infoCategoria === 'function' ? opcoes.infoCategoria : () => ({});
     const idx = new Map(meses.map((m, i) => [m, i]));
     const zeros = () => meses.map(() => 0);
 
@@ -278,12 +283,17 @@ function montarDre(meses, receitas, devolucoes, despesas, classif = () => 'A_CLA
         porCategoria.get(nome).valores[i] += num(d.valor);
     }
     const categorias = [...porCategoria.entries()]
-        .map(([nome, { valores, classificacao }]) => ({
-            nome,
-            classificacao,
-            valores: valores.map(round2),
-            total: round2(valores.reduce((a, b) => a + b, 0))
-        }))
+        .map(([nome, { valores, classificacao }]) => {
+            const info = infoCategoria(nome) || {};
+            return {
+                nome,
+                classificacao,
+                grupoId: info.grupoId || null,
+                natureza: info.natureza || 'A_DEFINIR',
+                valores: valores.map(round2),
+                total: round2(valores.reduce((a, b) => a + b, 0))
+            };
+        })
         .sort((a, b) => b.total - a.total);
 
     const receitaLiquida = meses.map((_, i) => round2(recFaturada[i] + recEspecial[i] - devol[i]));
@@ -292,6 +302,41 @@ function montarDre(meses, receitas, devolucoes, despesas, classif = () => 'A_CLA
     const margem = meses.map((_, i) => (receitaLiquida[i] > 0 ? round2((resultado[i] / receitaLiquida[i]) * 100) : null));
 
     const totalLinha = (arr) => round2(arr.reduce((a, b) => a + b, 0));
+
+    // ── Blocos (grupos): subtotal por bloco na ordem definida; sem bloco vai para o fim ──
+    const somaLinhas = (lista) => {
+        const valores = meses.map((_, i) => round2(lista.reduce((s, c) => s + c.valores[i], 0)));
+        return { valores, total: totalLinha(valores) };
+    };
+    const grupos = [];
+    for (const g of gruposDef) {
+        const doGrupo = categorias.filter((c) => c.grupoId === g.id);
+        if (doGrupo.length === 0) continue; // bloco vazio não aparece na DRE
+        grupos.push({ id: g.id, nome: g.nome, categorias: doGrupo, ...somaLinhas(doGrupo) });
+    }
+    const idsComGrupo = new Set(gruposDef.map((g) => g.id));
+    const semGrupo = categorias.filter((c) => !c.grupoId || !idsComGrupo.has(c.grupoId));
+    if (semGrupo.length > 0) {
+        grupos.push({ id: null, nome: 'Sem bloco', categorias: semGrupo, ...somaLinhas(semGrupo) });
+    }
+
+    // ── Fixo × Variável: margem de contribuição = receita líquida − despesas variáveis ──
+    const variaveis = somaLinhas(categorias.filter((c) => c.natureza === 'VARIAVEL'));
+    const fixas = somaLinhas(categorias.filter((c) => c.natureza === 'FIXA'));
+    const indefinidas = somaLinhas(categorias.filter((c) => c.natureza !== 'VARIAVEL' && c.natureza !== 'FIXA'));
+    const mcValores = meses.map((_, i) => round2(receitaLiquida[i] - variaveis.valores[i]));
+    const mcTotal = totalLinha(mcValores);
+    const fixoVariavel = {
+        variaveis,
+        fixas,
+        indefinidas,
+        margemContribuicao: {
+            valores: mcValores,
+            total: mcTotal,
+            pctValores: meses.map((_, i) => (receitaLiquida[i] > 0 ? round2((mcValores[i] / receitaLiquida[i]) * 100) : null)),
+            pctTotal: totalLinha(receitaLiquida) > 0 ? round2((mcTotal / totalLinha(receitaLiquida)) * 100) : null
+        }
+    };
     return {
         meses,
         receita: {
@@ -302,8 +347,10 @@ function montarDre(meses, receitas, devolucoes, despesas, classif = () => 'A_CLA
         },
         despesas: {
             categorias,
+            grupos,
             total: { valores: totalDespesas, total: totalLinha(totalDespesas) }
         },
+        fixoVariavel,
         // Saídas que NÃO são resultado (retirada de lucros, empréstimos, compra de bens).
         // Ficam fora do lucro/prejuízo — mostradas só para o caixa fechar.
         foraDre: { valores: foraDre.map(round2), total: totalLinha(foraDre) },
@@ -397,17 +444,26 @@ async function dre(deMes, ateMes) {
         }
     }
 
-    // Classificação das categorias (balde da DRE). Chave normalizada p/ tolerar acento/caixa.
-    const cats = await prisma.categoriaDespesa.findMany({ select: { nome: true, classificacao: true } });
-    const mapaClassif = new Map(cats.map((c) => [normalizar(c.nome), c.classificacao]));
-    const classif = (nome) => mapaClassif.get(normalizar(nome)) || 'A_CLASSIFICAR';
+    // Classificação das categorias (balde da DRE) + bloco e natureza (fixo/variável).
+    // Chave normalizada p/ tolerar acento/caixa.
+    const [cats, gruposDb] = await Promise.all([
+        prisma.categoriaDespesa.findMany({ select: { nome: true, classificacao: true, grupoDreId: true, natureza: true } }),
+        prisma.grupoDre.findMany({ orderBy: { ordem: 'asc' }, select: { id: true, nome: true, ordem: true } })
+    ]);
+    const mapaCat = new Map(cats.map((c) => [normalizar(c.nome), c]));
+    const classif = (nome) => mapaCat.get(normalizar(nome))?.classificacao || 'A_CLASSIFICAR';
+    const infoCategoria = (nome) => {
+        const c = mapaCat.get(normalizar(nome));
+        return { grupoId: c?.grupoDreId || null, natureza: c?.natureza || 'A_DEFINIR' };
+    };
 
     return montarDre(
         meses,
         receitasRaw.map((r) => ({ mes: r.mes, origem: r.origem, total: num(r.total) })),
         devolucoesRaw.map((d) => ({ mes: d.mes, total: num(d.total) })),
         despesas,
-        classif
+        classif,
+        { grupos: gruposDb, infoCategoria }
     );
 }
 

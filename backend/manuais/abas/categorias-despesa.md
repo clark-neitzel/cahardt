@@ -5,28 +5,54 @@
 
 ## Para que serve
 
-As despesas vêm com uma **categoria** do Conta Azul (Matéria Prima, Combustíveis, Salários, Antecipação de Lucros...). Mas o Conta Azul não diz se aquilo é uma **despesa de operação** ou não. Esta tela é onde o usuário coloca cada categoria num **"balde"**, e é isso que faz a **DRE** mostrar o lucro certo.
+As despesas vêm com uma **categoria** do Conta Azul (Matéria Prima, Combustíveis, Salários, Antecipação de Lucros...). Esta tela é onde o usuário faz as **duas escolhas** que montam a DRE:
 
-## Os três baldes
+1. **Bloco** — em qual grupo da DRE a categoria aparece (Custos variáveis, Pessoal, Administrativas...), ou **Fora da DRE** para o que não é resultado.
+2. **Fixa ou Variável** — a natureza da despesa, que calcula a **Margem de Contribuição** na DRE.
 
-- **Operação** (verde) — custo/despesa do dia a dia. **Entra na DRE.** Ex.: Matéria Prima, Salários, Energia, Combustível, Fretes.
-- **Financeiro** (azul) — juros e tarifas de banco. **Entra na DRE**, pensado como despesa financeira. Ex.: Tarifas Bancárias, Juros, Tarifas de Boletos.
-- **Fora da DRE** (cinza) — **não é resultado**, só saiu do caixa. Ex.: Antecipação de Lucros (retirada dos sócios), Empréstimos, Aplicações em cotas, compra de veículos/móveis/computadores (bens).
+## Blocos da DRE (o usuário cria e organiza)
 
-> Por que isso importa: se uma retirada de lucro ou uma parcela de empréstimo for contada como "despesa", a DRE mente dizendo que a empresa teve prejuízo. Colocando no balde certo, o resultado fica real.
+Card **"Blocos da DRE"** no topo da tela:
+
+- **Criar bloco**: campo de nome + botão "Criar bloco" (ex.: Marketing).
+- **Renomear**: ícone de lápis na linha do bloco.
+- **Reordenar**: setas ↑/↓ — a ordem daqui é a ordem em que os blocos aparecem na DRE.
+- **Excluir**: ícone de lixeira; as categorias do bloco excluído ficam "sem bloco" para reclassificar (nada é perdido).
+
+Na primeira vez, o sistema cria os blocos padrão: **Impostos sobre vendas, Custos variáveis, Pessoal, Veículos e entregas, Administrativas, Financeiras, Sócios** — podem ser renomeados, reordenados ou excluídos à vontade.
+
+## Bloco de cada categoria
+
+Cada linha tem um menu suspenso (com busca) para escolher:
+
+- Um dos **blocos** criados → a categoria entra na DRE dentro dele.
+- **🚫 Fora da DRE (não é resultado)** — só saiu do caixa. Ex.: Antecipação de Lucros (retirada dos sócios), Empréstimos, Aplicações em cotas, compra de veículos/móveis/computadores (bens).
+- **Sem bloco (a classificar)** — ainda conta na DRE, mas cai no grupo "Sem bloco" e fica sinalizada.
+
+> Por que isso importa: se uma retirada de lucro ou uma parcela de empréstimo for contada como "despesa", a DRE mente dizendo que a empresa teve prejuízo. Colocando no lugar certo, o resultado fica real.
+
+## Fixa ou Variável (natureza)
+
+A pergunta-chave: **"se eu vender o dobro, esse gasto dobra?"**
+
+- **Variável** (azul) — sim, cresce junto com a venda. Ex.: matéria-prima, embalagens, comissões, fretes, GLP.
+- **Fixa** (verde) — não, é o custo de existir. Ex.: salários, contador, IPTU, telefone.
+- Clicar de novo no chip ativo volta para "sem definição". Categorias Fora da DRE não pedem natureza.
+
+É essa marcação que gera o quadro **Fixo × Variável (Margem de Contribuição)** na DRE.
 
 ## Como usar
 
-1. Cada categoria aparece com o **total já gasto** (para priorizar as maiores) e o balde atual.
-2. As **sem balde definido** (ícone de atenção) aparecem no topo. Enquanto não forem classificadas, **contam na DRE como Operação**.
-3. Clique no balde desejado em cada linha e depois em **Salvar** (topo). A DRE passa a usar a nova divisão na hora.
+1. Cada categoria aparece com o **total já gasto** (para priorizar as maiores). As **pendentes** (sem bloco ou sem fixa/variável — ícone de atenção) vêm no topo.
+2. Escolha o bloco e marque Fixa/Variável em cada linha; depois **Salvar** (topo). A DRE usa a nova divisão na hora.
+3. Mudanças nos **blocos** (criar/renomear/reordenar/excluir) salvam sozinhas, sem precisar do botão Salvar.
 
 ## De onde vêm as categorias
 
 - São criadas sozinhas conforme as contas entram (lançamento manual, nota fiscal ou **Importar do Conta Azul**).
-- Toda categoria nova nasce com um **palpite** de classificação; categorias desconhecidas nascem como "a classificar" (sinalizadas) para o usuário revisar.
+- Toda categoria nova nasce com um **palpite** de bloco + natureza (para as categorias conhecidas); as desconhecidas nascem "a classificar" (sinalizadas) para o usuário revisar. O palpite **nunca sobrescreve** o que o usuário já escolheu.
 
 ## Relacionado
 
 - **Importar do Conta Azul** (dentro de *Contas a Pagar*): traz o histórico de despesas do CA por CSV.
-- **DRE — Resultado**: usa esta classificação; mostra à parte a linha *Fora da DRE* e avisa quando há categorias a classificar.
+- **DRE — Resultado**: usa blocos e natureza; mostra a matriz por blocos, o quadro Fixo × Variável e avisa quando há categorias a classificar.

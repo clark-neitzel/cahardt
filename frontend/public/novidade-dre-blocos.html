@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: DRE em Blocos — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="📊 Novidade no Hardt App: DRE em Blocos">
+<meta property="og:description" content="O resultado da empresa agora conta uma história: receita, custos variáveis, margem de contribuição e despesas fixas — em blocos que você mesmo organiza.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da DRE flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-head {
+    background: #fafaf8;
+    border-bottom: 1px solid #eee;
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b746f;
+  }
+  .mock-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid #f2f2ef;
+  }
+  .mock-row:last-child { border-bottom: 0; }
+  .mock-row.bloco { background: #f7f7f4; font-weight: 700; color: #333; }
+  .mock-row.bloco .chev { color: #a8b0ab; font-size: 12px; }
+  .mock-row.sub { color: #6b746f; padding-left: 34px; font-size: 13px; }
+  .mock-row.destaque { background: var(--mint); color: var(--primary-dark); font-weight: 800; }
+  .mock-row.resultado { background: #e8f5e9; color: #2e7d32; font-weight: 800; }
+  .tag {
+    font-size: 10px;
+    font-weight: 800;
+    border-radius: 999px;
+    padding: 2px 7px;
+  }
+  .tag.v { background: #dbeafe; color: #1e40af; }
+  .tag.f { background: var(--mint); color: var(--primary-dark); }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ── seções ── */
+  h2 {
+    font-size: 20px;
+    font-weight: 800;
+    margin: 34px 0 12px;
+    color: var(--house);
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #e6e4de;
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 12px;
+  }
+  .card b { color: var(--primary-dark); }
+
+  details {
+    background: #fff;
+    border: 1px solid #e6e4de;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 15px 18px;
+    font-weight: 700;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary .ico {
+    width: 34px; height: 34px;
+    border-radius: 10px;
+    background: var(--mint);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+  }
+  summary::after {
+    content: "›";
+    margin-left: auto;
+    color: #b6bdb8;
+    font-size: 20px;
+    transform: rotate(90deg);
+    transition: transform .2s;
+  }
+  details[open] summary::after { transform: rotate(-90deg); }
+  details .body {
+    padding: 0 18px 16px 62px;
+    color: var(--ink-soft);
+    font-size: 14.5px;
+  }
+  details .body p { margin: 0 0 10px; }
+
+  /* passos */
+  .passo {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    background: #fff;
+    border: 1px solid #e6e4de;
+    border-radius: 16px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+  }
+  .passo .n {
+    width: 30px; height: 30px;
+    border-radius: 999px;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .passo p { margin: 2px 0 0; color: var(--ink-soft); font-size: 14.5px; }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    color: #9aa39e;
+    font-size: 12.5px;
+    margin-top: 36px;
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade no app</span>
+    <h1>A DRE agora conta a história do resultado 📊</h1>
+    <p>Em vez de uma lista comprida de despesas, o resultado aparece em <b>blocos organizados</b> — e o app mostra quanto sobra de cada venda antes de pagar a estrutura.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- mock -->
+  <div class="mock">
+    <div class="mock-head">DRE — Resultado · Junho</div>
+    <div class="mock-row"><span>= Receita líquida</span><span class="num"><b>951.480</b></span></div>
+    <div class="mock-row bloco"><span><span class="chev">▶</span> (−) Custos variáveis</span><span class="num">312.940</span></div>
+    <div class="mock-row sub"><span>Matéria Prima <span class="tag v">V</span></span><span class="num">198.210</span></div>
+    <div class="mock-row sub"><span>Embalagens <span class="tag v">V</span></span><span class="num">54.630</span></div>
+    <div class="mock-row destaque"><span>= Margem de contribuição</span><span class="num">638.540 (67%)</span></div>
+    <div class="mock-row bloco"><span><span class="chev">▶</span> (−) Pessoal</span><span class="num">214.720</span></div>
+    <div class="mock-row sub"><span>Salários <span class="tag f">F</span></span><span class="num">142.500</span></div>
+    <div class="mock-row bloco"><span><span class="chev">▶</span> (−) Administrativas</span><span class="num">87.310</span></div>
+    <div class="mock-row resultado"><span>= Resultado</span><span class="num">+201.130</span></div>
+  </div>
+
+  <h2>O que mudou</h2>
+
+  <details open>
+    <summary><span class="ico">🧱</span> Despesas agrupadas em blocos</summary>
+    <div class="body">
+      <p>As despesas agora aparecem em blocos com subtotal: <b>Impostos sobre vendas, Custos variáveis, Pessoal, Veículos e entregas, Administrativas, Financeiras e Sócios</b>.</p>
+      <p>Clique (ou toque) no bloco para abrir e ver as categorias dentro dele. E dá para <b>criar blocos novos</b>, renomear, reordenar e excluir — a DRE fica do jeito da empresa.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="ico">⚖️</span> Cada despesa é Fixa ou Variável</summary>
+    <div class="body">
+      <p>A pergunta é simples: <b>"se eu vender o dobro, esse gasto dobra?"</b></p>
+      <p>Sim = <b>Variável</b> (matéria-prima, embalagem, comissão, frete). Não = <b>Fixa</b> (salário, contador, IPTU). Na DRE, cada categoria aparece com a etiqueta <span class="tag v">V</span> ou <span class="tag f">F</span>.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="ico">💡</span> Margem de contribuição — o número novo</summary>
+    <div class="body">
+      <p>Receita líquida menos as despesas variáveis = <b>o que sobra da venda para pagar a estrutura</b>. Esse é o número mais importante da fábrica, e agora ele aparece na DRE: como indicador no topo e num quadro próprio <b>Fixo × Variável</b>, mês a mês.</p>
+      <p>Se a margem de contribuição está boa e o resultado não, o problema é o tamanho da estrutura fixa — não o preço dos produtos.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="ico">🤖</span> O app já classificou quase tudo sozinho</summary>
+    <div class="body">
+      <p>As categorias conhecidas (Matéria Prima, Salários, Combustíveis…) já nasceram no bloco certo e marcadas como fixas ou variáveis. O que o app não reconheceu fica em <b>"Sem bloco"</b>, destacado em amarelo, esperando classificação — nada some da conta.</p>
+    </div>
+  </details>
+
+  <h2>Para organizar os blocos</h2>
+
+  <div class="passo">
+    <span class="n">1</span>
+    <p><b>Financeiro → DRE — Resultado</b> e toque no botão <b>"Blocos e categorias"</b> no topo (ou vá direto em Categorias de Despesa).</p>
+  </div>
+  <div class="passo">
+    <span class="n">2</span>
+    <p>No card <b>Blocos da DRE</b>: crie, renomeie ou mude a ordem dos blocos (a ordem de lá é a ordem da DRE).</p>
+  </div>
+  <div class="passo">
+    <span class="n">3</span>
+    <p>Em cada categoria, escolha o <b>bloco</b> e marque <b>Fixa</b> ou <b>Variável</b>. As pendentes aparecem primeiro, com as de maior valor no topo.</p>
+  </div>
+  <div class="passo">
+    <span class="n">4</span>
+    <p>Toque em <b>Salvar</b> — a DRE já mostra a nova organização na hora.</p>
+  </div>
+
+  <div class="card" style="margin-top:22px">
+    ⚠️ <b>Continua valendo:</b> retirada de lucros, empréstimos e compra de bens ficam <b>Fora da DRE</b> — saem do caixa, mas não são prejuízo. E a DRE só enxerga as despesas que estão dentro do app.
+  </div>
+
+  <p class="rodape">Hardt Alimentos · atualização de julho/2026<br>Dúvidas? Pergunte ao Clippy dentro do app 💬</p>
+</div>
+
+</body>
+</html>

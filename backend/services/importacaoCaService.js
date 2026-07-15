@@ -344,6 +344,123 @@ function classificacaoPadrao(nome) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// Blocos da DRE (grupos) — padrão de fábrica + palpite por categoria
+// ─────────────────────────────────────────────────────────────
+
+// Blocos criados na primeira vez (o usuário pode renomear, reordenar e criar mais).
+const GRUPOS_DRE_PADRAO = [
+    'Impostos sobre vendas',
+    'Custos variáveis',
+    'Pessoal',
+    'Veículos e entregas',
+    'Administrativas',
+    'Financeiras',
+    'Sócios'
+];
+
+// Palpite de bloco + natureza (FIXA/VARIAVEL) por categoria conhecida (chave normalizada).
+// Regra do palpite: "se eu vender o dobro, esse gasto dobra?" → VARIAVEL; senão FIXA.
+// Só vale para categoria que ainda não tem bloco NEM natureza — nunca sobrescreve escolha do usuário.
+const GRUPO_NATUREZA_PADRAO = {
+    // Impostos que incidem sobre a venda
+    'pis/cofins/csll': ['Impostos sobre vendas', 'VARIAVEL'],
+    'impostos retidos em vendas': ['Impostos sobre vendas', 'VARIAVEL'],
+    'icms st': ['Impostos sobre vendas', 'VARIAVEL'],
+    'simples nacional': ['Impostos sobre vendas', 'VARIAVEL'],
+    // Custos que crescem junto com a produção/venda
+    'materia prima': ['Custos variáveis', 'VARIAVEL'],
+    'embalagens': ['Custos variáveis', 'VARIAVEL'],
+    'materiais para revenda': ['Custos variáveis', 'VARIAVEL'],
+    'gas glp': ['Custos variáveis', 'VARIAVEL'],
+    'energia eletrica': ['Custos variáveis', 'VARIAVEL'],
+    'comissoes de vendedores': ['Custos variáveis', 'VARIAVEL'],
+    'fretes pagos': ['Custos variáveis', 'VARIAVEL'],
+    'despesa com vendas': ['Custos variáveis', 'VARIAVEL'],
+    'tarifas de boletos': ['Custos variáveis', 'VARIAVEL'],
+    // Pessoal (estrutura — paga vendendo ou não)
+    'salarios': ['Pessoal', 'FIXA'],
+    'adiantamento salarial': ['Pessoal', 'FIXA'],
+    'ferias': ['Pessoal', 'FIXA'],
+    'rescisoes': ['Pessoal', 'FIXA'],
+    'fgts': ['Pessoal', 'FIXA'],
+    'inss': ['Pessoal', 'FIXA'],
+    'inss sobre salarios - gps': ['Pessoal', 'FIXA'],
+    'irrf sobre salarios': ['Pessoal', 'FIXA'],
+    'beneficios aos funcionarios': ['Pessoal', 'FIXA'],
+    'vale-alimentacao': ['Pessoal', 'FIXA'],
+    'vale-transporte': ['Pessoal', 'FIXA'],
+    'exames medicos': ['Pessoal', 'FIXA'],
+    'servicos tercerizado': ['Pessoal', 'FIXA'],
+    // Veículos e entregas
+    'combustiveis': ['Veículos e entregas', 'VARIAVEL'],
+    'pedagios': ['Veículos e entregas', 'VARIAVEL'],
+    'manutencao de veiculos': ['Veículos e entregas', 'FIXA'],
+    'seguros de veiculos': ['Veículos e entregas', 'FIXA'],
+    'multas de transito': ['Veículos e entregas', 'FIXA'],
+    // Administrativas (custo de existir)
+    'honorarios contabeis': ['Administrativas', 'FIXA'],
+    'honorarios advocaticios': ['Administrativas', 'FIXA'],
+    'software / licenca de uso': ['Administrativas', 'FIXA'],
+    'telefonia e internet': ['Administrativas', 'FIXA'],
+    'telefonia movel': ['Administrativas', 'FIXA'],
+    'materiais de escritorio': ['Administrativas', 'FIXA'],
+    'materiais de limpeza e de higiene': ['Administrativas', 'FIXA'],
+    'copa e cozinha': ['Administrativas', 'FIXA'],
+    'alimentacao/outros': ['Administrativas', 'FIXA'],
+    'manutencao predial': ['Administrativas', 'FIXA'],
+    'manutencao de equipamentos': ['Administrativas', 'FIXA'],
+    'iptu': ['Administrativas', 'FIXA'],
+    'agua e saneamento': ['Administrativas', 'FIXA'],
+    'marketing': ['Administrativas', 'FIXA'],
+    'viagens e representacoes': ['Administrativas', 'FIXA'],
+    'confraternizacoes': ['Administrativas', 'FIXA'],
+    // Financeiras
+    'tarifas bancarias': ['Financeiras', 'FIXA'],
+    'juros conta garantida': ['Financeiras', 'FIXA'],
+    'juros': ['Financeiras', 'FIXA'],
+    'descontos incondicionais obtidos': ['Financeiras', 'FIXA'],
+    // Sócios
+    'pro-labore': ['Sócios', 'FIXA'],
+    'pro labore': ['Sócios', 'FIXA'],
+    'plano de saude socios': ['Sócios', 'FIXA']
+};
+
+/**
+ * Garante os blocos padrão da DRE (se ainda não existir NENHUM) e aplica o
+ * palpite de bloco+natureza nas categorias totalmente sem definição
+ * (sem bloco E natureza A_DEFINIR E que entram na DRE). Idempotente;
+ * nunca mexe no que o usuário já escolheu.
+ */
+async function garantirGruposDre() {
+    const qtd = await prisma.grupoDre.count();
+    if (qtd === 0) {
+        for (let i = 0; i < GRUPOS_DRE_PADRAO.length; i++) {
+            await prisma.grupoDre.create({ data: { nome: GRUPOS_DRE_PADRAO[i], ordem: i } })
+                .catch(() => {}); // corrida entre requisições: ignora duplicado
+        }
+    }
+    const grupos = await prisma.grupoDre.findMany({ orderBy: { ordem: 'asc' } });
+    const grupoPorNome = new Map(grupos.map((g) => [normalizar(g.nome), g.id]));
+
+    // Palpite só para quem está 100% sem definição
+    const pendentes = await prisma.categoriaDespesa.findMany({
+        where: { grupoDreId: null, natureza: 'A_DEFINIR', classificacao: { not: 'FORA_DRE' } },
+        select: { id: true, nome: true }
+    });
+    for (const cat of pendentes) {
+        const palpite = GRUPO_NATUREZA_PADRAO[normalizar(cat.nome)];
+        if (!palpite) continue;
+        const grupoId = grupoPorNome.get(normalizar(palpite[0]));
+        if (!grupoId) continue; // usuário renomeou/apagou o bloco padrão — respeita
+        await prisma.categoriaDespesa.update({
+            where: { id: cat.id },
+            data: { grupoDreId: grupoId, natureza: palpite[1] }
+        }).catch(() => {});
+    }
+    return grupos;
+}
+
+// ─────────────────────────────────────────────────────────────
 // Importação (escreve no banco)
 // ─────────────────────────────────────────────────────────────
 
@@ -558,5 +675,6 @@ module.exports = {
     classificacaoPadrao,
     normalizar,
     garantirCategorias,
+    garantirGruposDre,
     CLASSIF_PADRAO
 };
