@@ -113,6 +113,7 @@ async function sincronizarConta(contaId, opts = {}) {
     let aplicadas = 0;
     let vencimentosAtualizados = 0;
     const detalhes = [];
+    const logsAtendimento = []; // criados DEPOIS da transação (log lento não pode derrubar a baixa)
     const hoje = new Date();
 
     await prisma.$transaction(async (tx) => {
@@ -195,17 +196,43 @@ async function sincronizarConta(contaId, opts = {}) {
                 }
             });
 
+            // Ledger local espelhando as baixas do CA (uma linha por baixa, cada uma com o
+            // SEU banco/caixa). Sem ele, recebimento que nasce no CA (ex.: PIX Asaas baixado
+            // pelo fechamento do Caixa) fica invisível para a conciliação bancária e para o
+            // realizado do Fluxo de Caixa. Só cria quando a parcela não tem nenhum pagamento
+            // ativo — baixa manual do app já registra o próprio ledger (não duplicar).
+            const ledgerAtivo = await tx.pagamentoParcela.count({ where: { parcelaId: local.id, estornado: false } });
+            if (ledgerAtivo === 0) {
+                const baixasLedger = todasBaixas.length > 0 ? todasBaixas : [null];
+                for (const b of baixasLedger) {
+                    const valorB = b ? Math.round(Number(b?.valor_composicao?.valor_bruto || 0) * 100) / 100 : valorPagoArredondado;
+                    if (valorB <= 0) continue;
+                    const cfB = b ? (b.conta_financeira ?? caPar.conta_financeira ?? caPar.id_conta_financeira) : null;
+                    await tx.pagamentoParcela.create({
+                        data: {
+                            parcelaId: local.id,
+                            valorRecebido: valorB,
+                            valorDesconto: Math.round(Number(b?.valor_composicao?.valor_desconto || 0) * 100) / 100,
+                            formaPagamento: b ? (mapMetodoCA(b.metodo_pagamento) || forma) : forma,
+                            contaFinanceiraCaId: cfB ? (typeof cfB === 'string' ? cfB : cfB.id || null) : contaFinanceiraCaId,
+                            dataPagamento: b?.data_pagamento ? new Date(b.data_pagamento + 'T12:00:00-03:00') : dataPgto,
+                            observacao: `Baixa sincronizada do Conta Azul [${origem}]`,
+                            registradoPorId: baixadoPorId
+                        }
+                    });
+                }
+            }
+
             // Log no histórico do cliente. Pulado no backfill em massa (opts.semLog) para não
             // gerar milhares de atendimentos repetidos ao só preencher o banco retroativo.
+            // Fica para DEPOIS da transação (regra do projeto: log fora do $transaction).
             if (!opts.semLog) {
-                await tx.atendimento.create({
-                    data: {
-                        tipo: 'FINANCEIRO',
-                        observacao: `Sync CA [${origem}] - parcela ${local.numeroParcela} - R$ ${valorPagoArredondado.toFixed(2)} (${forma || 'N/I'}) em ${dataPgto.toISOString().split('T')[0]}`,
-                        clienteId: conta.clienteId,
-                        idVendedor: baixadoPorId,
-                        pedidoId: conta.pedidoId || null
-                    }
+                logsAtendimento.push({
+                    tipo: 'FINANCEIRO',
+                    observacao: `Sync CA [${origem}] - parcela ${local.numeroParcela} - R$ ${valorPagoArredondado.toFixed(2)} (${forma || 'N/I'}) em ${dataPgto.toISOString().split('T')[0]}`,
+                    clienteId: conta.clienteId,
+                    idVendedor: baixadoPorId,
+                    pedidoId: conta.pedidoId || null
                 });
             }
 
@@ -223,6 +250,12 @@ async function sincronizarConta(contaId, opts = {}) {
 
         await tx.contaReceber.update({ where: { id: conta.id }, data: { status: novoStatus } });
     }, { timeout: 20000, maxWait: 10000 }); // banco compartilhado é lento — nunca confiar no padrão de 5s
+
+    // Log de histórico fora da transação: falha aqui nunca desfaz a baixa já aplicada
+    for (const log of logsAtendimento) {
+        try { await prisma.atendimento.create({ data: log }); }
+        catch (logErr) { console.error('[Sync CA Baixas] Falha no log de histórico (baixa já efetivada):', logErr.message); }
+    }
 
     return { aplicadas, vencimentosAtualizados, verificadas: parcelasCA.length, pagasCA: pagasCA.length, detalhes, debug };
 }

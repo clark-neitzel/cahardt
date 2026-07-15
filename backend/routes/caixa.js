@@ -2048,6 +2048,40 @@ router.post('/quitar-ca', async (req, res) => {
             return res.status(400).json({ error: 'Nenhum pedido encontrado.' });
         }
 
+        // PIX registrado como "Pix" comum mas pago pelo QR do Asaas: se o pedido tem
+        // cobrança Asaas RECEBIDA sem parcela (PIX de entrega/avulso) ainda não vinculada
+        // a nenhum pagamento, e existe um pagamento Pix comum de MESMO valor, grava o
+        // vínculo antes de agrupar. Sem isso o caixa trata como Pix comum e só troca a
+        // forma no CA (sem criar baixa) — a parcela fica aberta com o dinheiro parado na
+        // conta Asaas (caso real: pedido #2041).
+        try {
+            const cobrancasLivres = await prisma.cobrancaAsaas.findMany({
+                where: { pedidoId: { in: pedidos.map(p => p.id) }, status: 'RECEBIDO', parcelaId: null },
+                select: { id: true, pedidoId: true, valor: true, valorRecebido: true }
+            });
+            if (cobrancasLivres.length > 0) {
+                const vinculadas = new Set(pedidos.flatMap(p => (p.pagamentosReais || []).map(pg => pg.cobrancaAsaasId).filter(Boolean)));
+                for (const pedido of pedidos) {
+                    for (const cob of cobrancasLivres.filter(c => c.pedidoId === pedido.id && !vinculadas.has(c.id))) {
+                        const valorCob = Number(cob.valorRecebido ?? cob.valor);
+                        const pg = (pedido.pagamentosReais || []).find(p =>
+                            !p.cobrancaAsaasId &&
+                            !p.escritorioResponsavel && !p.vendedorResponsavelId &&
+                            (p.formaPagamentoNome || '').toLowerCase().includes('pix') &&
+                            Math.abs(Number(p.valor) - valorCob) <= 0.01
+                        );
+                        if (!pg) continue;
+                        await prisma.pedidoPagamentoReal.update({ where: { id: pg.id }, data: { cobrancaAsaasId: cob.id } });
+                        pg.cobrancaAsaasId = cob.id; // o agrupamento abaixo passa a tratar como PIX Asaas
+                        vinculadas.add(cob.id);
+                        console.log(`[Caixa] Pedido #${pedido.numero}: Pix de R$ ${valorCob.toFixed(2)} identificado como PIX Asaas — baixa irá para a conta Asaas.`);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('[Caixa] Falha ao identificar PIX Asaas não vinculado (segue com o registro original):', e.message);
+        }
+
         // Buscar nome do usuário solicitante
         const solicitante = await prisma.vendedor.findUnique({
             where: { id: req.user.id },

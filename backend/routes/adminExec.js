@@ -164,6 +164,43 @@ router.post('/asaas-extrato-sync', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/asaas-corrigir-baixa-entrega — conserta o caso "PIX de entrega
+// recebido no Asaas mas parcela aberta" (Caixa só trocou a forma no CA, sem baixar).
+// Body: { paymentId } (ex.: pay_3x25fglydot6ist0). Vincula a cobrança à parcela aberta
+// de valor compatível e roda a baixa padrão (app: ledger na conta Asaas; CA: baixa na
+// conta Asaas, PIX). Idempotente — reprocessar não duplica (flags baixaAppOk/baixaCaOk).
+router.post('/asaas-corrigir-baixa-entrega', async (req, res) => {
+    try {
+        const paymentId = String(req.body?.paymentId || '').trim();
+        if (!paymentId) return res.status(400).json({ error: 'Informe paymentId.' });
+
+        const cobranca = await prisma.cobrancaAsaas.findUnique({ where: { asaasPaymentId: paymentId } });
+        if (!cobranca) return res.status(404).json({ error: 'Cobrança não encontrada no app.' });
+        if (cobranca.status !== 'RECEBIDO') return res.status(400).json({ error: `Cobrança está ${cobranca.status} — só corrijo cobrança RECEBIDA.` });
+        if (!cobranca.pedidoId) return res.status(400).json({ error: 'Cobrança sem pedido vinculado.' });
+
+        // Vincula a parcela aberta de valor compatível (se ainda não vinculada)
+        if (!cobranca.parcelaId) {
+            const conta = await prisma.contaReceber.findFirst({
+                where: { pedidoId: cobranca.pedidoId },
+                include: { parcelas: { orderBy: { numeroParcela: 'asc' } } }
+            });
+            if (!conta) return res.status(400).json({ error: 'Pedido sem conta a receber no app.' });
+            const valorCob = Number(cobranca.valorRecebido ?? cobranca.valor);
+            const abertas = conta.parcelas.filter(p => ['PENDENTE', 'VENCIDO', 'PARCIAL'].includes(p.status));
+            const alvo = abertas.find(p => Math.abs(Number(p.valor) - Number(p.valorPago || 0) - valorCob) <= 0.01) || (abertas.length === 1 ? abertas[0] : null);
+            if (!alvo) return res.status(400).json({ error: 'Nenhuma parcela aberta com valor compatível (ambíguo — corrigir à mão).', parcelas: conta.parcelas.map(p => ({ n: p.numeroParcela, valor: p.valor, status: p.status })) });
+            await prisma.cobrancaAsaas.update({ where: { id: cobranca.id }, data: { parcelaId: alvo.id } });
+        }
+
+        const asaasBaixaService = require('../services/asaasBaixaService');
+        const r = await asaasBaixaService.registrarBaixa(cobranca.id);
+        res.json({ ok: r.erros.length === 0, ...r });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // POST /api/admin-exec/asaas-reprocessar-baixas — cobranças RECEBIDAS com baixa pendente (app ou CA)
 router.post('/asaas-reprocessar-baixas', async (req, res) => {
     try {
