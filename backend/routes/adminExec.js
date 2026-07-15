@@ -527,6 +527,96 @@ router.get('/asaas-cobrancas', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-extrato-asaas-pendentes — SÓ LEITURA. Cruza os CRÉDITOS
+// pendentes do extrato Asaas (conciliação) com as cobranças/pedidos/parcelas do app
+// para achar descompasso: dinheiro que entrou no Asaas mas cuja parcela está aberta
+// ou foi baixada em outra conta (ex.: Caixa trocou a forma no CA e não criou a baixa).
+router.get('/diag-extrato-asaas-pendentes', async (req, res) => {
+    try {
+        const cfg = await prisma.appConfig.findUnique({ where: { key: 'asaas_conta_financeira_ca_id' } });
+        const contaAsaas = cfg?.value || null;
+        if (!contaAsaas) return res.status(400).json({ error: 'Conta Asaas não vinculada.' });
+
+        const creditos = await prisma.extratoLancamento.findMany({
+            where: { contaFinanceiraCaId: contaAsaas, tipo: 'CREDITO', status: 'PENDENTE' },
+            orderBy: { data: 'desc' },
+            take: 100
+        });
+
+        const relatorio = [];
+        for (const l of creditos) {
+            const item = {
+                data: l.data, valor: Number(l.valor), descricao: l.descricao,
+                paymentId: l.refNum || null, situacao: 'SEM_COBRANCA_NO_APP', detalhe: null
+            };
+            const cobranca = l.refNum
+                ? await prisma.cobrancaAsaas.findUnique({
+                    where: { asaasPaymentId: l.refNum },
+                    include: { pedido: { select: { id: true, numero: true, baixaCaRealizada: true, baixaCaEm: true } } }
+                })
+                : null;
+            if (cobranca) {
+                item.pedido = cobranca.pedido?.numero || null;
+                item.tipoCobranca = cobranca.tipo;
+                item.statusCobranca = cobranca.status;
+                item.baixaAppOk = cobranca.baixaAppOk;
+                item.parcelaVinculada = !!cobranca.parcelaId;
+
+                // Pagamentos registrados na entrega (o vínculo é o que separa PIX Asaas de Pix comum no Caixa)
+                if (cobranca.pedidoId) {
+                    const pagsReais = await prisma.pedidoPagamentoReal.findMany({
+                        where: { pedidoId: cobranca.pedidoId },
+                        select: { formaPagamentoNome: true, valor: true, cobrancaAsaasId: true }
+                    });
+                    item.pagamentosEntrega = pagsReais.map(p => ({
+                        forma: p.formaPagamentoNome, valor: Number(p.valor), vinculadoAsaas: !!p.cobrancaAsaasId
+                    }));
+                    const conta = await prisma.contaReceber.findFirst({
+                        where: { pedidoId: cobranca.pedidoId },
+                        include: {
+                            parcelas: {
+                                include: { pagamentos: { where: { estornado: false }, select: { valorRecebido: true, contaFinanceiraCaId: true, formaPagamento: true } } }
+                            }
+                        }
+                    });
+                    if (conta) {
+                        item.statusConta = conta.status;
+                        item.parcelas = conta.parcelas.map(p => ({
+                            numero: p.numeroParcela, valor: Number(p.valor), status: p.status,
+                            contaFinanceiraCaId: p.contaFinanceiraCaId,
+                            baixadaNaContaAsaas: p.contaFinanceiraCaId === contaAsaas,
+                            pagamentos: p.pagamentos.map(pg => ({ valor: Number(pg.valorRecebido), conta: pg.contaFinanceiraCaId, forma: pg.formaPagamento }))
+                        }));
+                        const temAberta = conta.parcelas.some(p => ['PENDENTE', 'PARCIAL'].includes(p.status));
+                        const pagaForaAsaas = conta.parcelas.some(p => p.status === 'PAGO' && p.contaFinanceiraCaId && p.contaFinanceiraCaId !== contaAsaas);
+                        if (temAberta) {
+                            item.situacao = 'DESCOMPASSO_PARCELA_ABERTA';
+                            item.detalhe = 'Dinheiro entrou no Asaas mas a parcela segue aberta no app (e provavelmente no CA).';
+                        } else if (pagaForaAsaas) {
+                            item.situacao = 'BAIXADA_EM_OUTRA_CONTA';
+                            item.detalhe = 'Parcela paga, mas registrada em outra conta financeira (não a do Asaas).';
+                        } else {
+                            item.situacao = 'PAGA_SEM_LEDGER_NA_CONTA';
+                            item.detalhe = 'Parcela paga; conferir por que a conciliação não achou a baixa (baixa sem ledger ou sem conta).';
+                        }
+                    } else {
+                        item.situacao = 'PEDIDO_SEM_CONTA_RECEBER';
+                    }
+                } else {
+                    item.situacao = 'COBRANCA_SEM_PEDIDO';
+                }
+            }
+            relatorio.push(item);
+        }
+
+        const resumo = {};
+        for (const r of relatorio) resumo[r.situacao] = (resumo[r.situacao] || 0) + 1;
+        res.json({ contaAsaas, totalCreditosPendentes: creditos.length, resumo, relatorio });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-dashboard-vendas — confere as vendas do mês na regra do
 // Dashboard Gerencial (FATURADO ou especial, sem bonificação) direto no banco de
 // produção: total do mês, últimos 7 dias por dia e o pedido mais recente.
