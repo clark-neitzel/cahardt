@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Preview — Filtro de Período padrão (estilo Conta Azul)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --bg: #f2f0eb; --gold: #cba258;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Manrope', -apple-system, sans-serif;
+    letter-spacing: -0.01em; font-variant-numeric: tabular-nums;
+    background: var(--bg); color: rgba(0,0,0,.87); padding: 16px; padding-bottom: 80px;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 22px; font-weight: 800; color: var(--house); margin: 18px 0 4px; }
+  .sub { font-size: 14px; color: #555; margin-bottom: 20px; }
+  .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,.05); margin-bottom:16px; }
+  .card-head { display:flex; align-items:center; gap:8px; padding:14px 20px; border-bottom:1px solid #f3f4f6;
+    font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#4b5563; }
+  .card-body { padding: 20px; }
+
+  /* ── Barra de filtros (contexto da tela) ─────────────────── */
+  .filtros { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .inp, .sel {
+    border:1px solid #d1d5db; border-radius:6px; padding:8px 12px; font:inherit; font-size:14px;
+    background:#fff; color:#374151; outline:none; height:40px;
+  }
+  .inp:focus, .sel:focus { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+  .inp { flex:1 1 200px; min-width:160px; }
+
+  /* ── COMPONENTE: FiltroPeriodo ───────────────────────────── */
+  .fp { position:relative; display:inline-flex; align-items:stretch; height:40px;
+    background:#fff; border:1px solid #d1d5db; border-radius:9999px; overflow:visible; }
+  .fp button { font:inherit; border:0; background:none; cursor:pointer; }
+  .fp-seta { width:38px; display:flex; align-items:center; justify-content:center;
+    color:var(--primary); border-radius:9999px 0 0 9999px; }
+  .fp-seta.dir { border-radius:0 9999px 9999px 0; }
+  .fp-seta:hover { background:var(--mint); }
+  .fp-seta:disabled { color:#c9ccd1; cursor:default; background:none; }
+  .fp-rotulo { display:flex; align-items:center; gap:8px; padding:0 10px; min-width:190px;
+    justify-content:center; border-left:1px solid #e5e7eb; border-right:1px solid #e5e7eb; }
+  .fp-rotulo:hover { background:#f9fafb; }
+  .fp-preset { font-size:13px; font-weight:700; color:var(--house); white-space:nowrap; }
+  .fp-datas { font-size:12px; color:#6b7280; white-space:nowrap; }
+  .fp-chev { color:#9ca3af; flex:none; }
+
+  .fp-menu { position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%);
+    background:#fff; border:1px solid #e5e7eb; border-radius:12px; width:250px;
+    box-shadow:0 10px 25px rgba(0,0,0,.12); padding:6px; z-index:50; display:none; }
+  .fp-menu.aberto { display:block; }
+  .fp-op { display:flex; align-items:center; justify-content:space-between; width:100%;
+    padding:9px 12px; border-radius:8px; font-size:14px; color:#374151; text-align:left; }
+  .fp-op:hover { background:#f3f4f6; }
+  .fp-op.ativo { background:var(--mint); color:var(--primary-dark); font-weight:700; }
+  .fp-op .check { color:var(--primary); font-weight:800; }
+  .fp-custom { border-top:1px solid #f3f4f6; margin-top:6px; padding:10px 8px 6px; display:none; }
+  .fp-custom.aberto { display:block; }
+  .fp-custom label { display:block; font-size:11px; font-weight:700; text-transform:uppercase;
+    letter-spacing:.08em; color:#6b7280; margin:6px 0 3px; }
+  .fp-custom input[type="date"] { width:100%; border:1px solid #d1d5db; border-radius:6px;
+    padding:7px 10px; font:inherit; font-size:14px; }
+  .fp-custom input:focus { border-color:var(--primary); outline:none; box-shadow:0 0 0 1px var(--primary); }
+  .fp-aplicar { margin-top:10px; width:100%; background:var(--primary); color:#fff;
+    border-radius:9999px; padding:9px 0; font-size:14px; font-weight:700; }
+  .fp-aplicar:hover { background:var(--primary-dark); }
+
+  /* ── Demonstração ────────────────────────────────────────── */
+  .estado { background:var(--house); color:#d4e9e2; border-radius:10px; padding:12px 16px;
+    font-size:13px; line-height:1.7; margin-top:16px; }
+  .estado b { color:#fff; }
+  .estado .salvo { color:var(--gold); }
+  ul.regras { padding-left:18px; font-size:14px; color:#444; line-height:1.9; }
+  ul.regras b { color:var(--house); }
+  .badge { display:inline-block; background:var(--mint); color:var(--primary-dark);
+    font-size:11px; font-weight:800; border-radius:9999px; padding:2px 10px; letter-spacing:.05em; }
+  @media (max-width:640px){
+    .fp { width:100%; }
+    .fp-rotulo { flex:1; min-width:0; }
+    .fp-datas { display:none; }               /* mobile: só o nome do preset */
+    .fp-rotulo .fp-preset { font-size:14px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Filtro de Período — novo padrão do sistema</h1>
+  <p class="sub">Estilo Conta Azul, no tema do app. Teste à vontade: presets, setas e período personalizado. <b>Nada disso está no sistema ainda — é só o preview.</b></p>
+
+  <div class="card">
+    <div class="card-head">Como fica na barra de filtros (ex.: Contas a Pagar)</div>
+    <div class="card-body">
+      <div class="filtros">
+        <input class="inp" placeholder="Buscar fornecedor ou descrição..." />
+        <select class="sel"><option>Status: Todos</option></select>
+        <select class="sel"><option>Categoria: Todas</option></select>
+
+        <!-- ══ O COMPONENTE ══ -->
+        <div class="fp" id="fp">
+          <button class="fp-seta" id="fpAnt" title="Período anterior">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 18l-6-6 6-6"/></svg>
+          </button>
+          <button class="fp-rotulo" id="fpRotulo">
+            <span class="fp-preset" id="fpPreset">Este mês</span>
+            <span class="fp-datas" id="fpDatas">01/07 – 31/07</span>
+            <svg class="fp-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+          </button>
+          <button class="fp-seta dir" id="fpProx" title="Próximo período">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>
+          </button>
+
+          <div class="fp-menu" id="fpMenu">
+            <button class="fp-op" data-preset="hoje">Hoje <span class="check"></span></button>
+            <button class="fp-op" data-preset="7d">Últimos 7 dias <span class="check"></span></button>
+            <button class="fp-op" data-preset="30d">Últimos 30 dias <span class="check"></span></button>
+            <button class="fp-op" data-preset="mes">Este mês <span class="check"></span></button>
+            <button class="fp-op" data-preset="ano">Este ano <span class="check"></span></button>
+            <button class="fp-op" data-preset="todo">Todo o período <span class="check"></span></button>
+            <button class="fp-op" data-preset="perso">Período personalizado <span class="check"></span></button>
+            <div class="fp-custom" id="fpCustom">
+              <label>De</label><input type="date" id="fpDe" />
+              <label>Até</label><input type="date" id="fpAte" />
+              <button class="fp-aplicar" id="fpAplicar">Aplicar</button>
+            </div>
+          </div>
+        </div>
+        <!-- ══ /COMPONENTE ══ -->
+      </div>
+
+      <div class="estado" id="estado"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">Comportamento combinado</div>
+    <div class="card-body">
+      <ul class="regras">
+        <li><b>Tudo num lugar só:</b> presets + datas dentro do mesmo controle, como no Conta Azul.</li>
+        <li><b>Setas ‹ ›</b> pulam o período inteiro: <b>Hoje</b> → dia a dia · <b>7/30 dias</b> → de 7 em 7 / 30 em 30 · <b>Este mês</b> → mês a mês (1º ao último dia) · <b>Este ano</b> → ano a ano · <b>Personalizado</b> → pula o tamanho do intervalo escolhido · <b>Todo o período</b> → setas desligadas.</li>
+        <li><b>Fica salvo por usuário</b> <span class="badge">CORRIGE O PROBLEMA</span> — o que é salvo é o <b>preset</b> (ex.: "Este mês"), recalculado a cada abertura. Assim ninguém fica preso numa data velha: quem deixou "Este mês" em julho abre "Este mês" em agosto. Só o <b>personalizado</b> salva as datas exatas. Status e categoria também continuam salvos.</li>
+        <li><b>Ao navegar com as setas</b>, o rótulo mostra o período concreto (ex.: "junho/2026") — e isso <b>não</b> fica salvo: na próxima abertura volta ao preset ("Este mês" = mês corrente).</li>
+        <li><b>Mobile:</b> o controle ocupa a largura toda e mostra só o nome do período (as datas aparecem no menu).</li>
+        <li><b>Adoção gradual:</b> entra primeiro em Contas a Pagar; a cada tela que formos mexendo, o filtro de data migra para este componente.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const hoje = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+  const ymd = d => d.toLocaleDateString('en-CA');
+  const dmy = d => d.toLocaleDateString('pt-BR');
+  const dm  = d => d.toLocaleDateString('pt-BR', { day:'2-digit', month:'2-digit' });
+  const addDias = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+  const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+
+  // estado do componente: preset + âncora de navegação (offset das setas)
+  let st = { preset: 'mes', off: 0, de: null, ate: null };
+
+  function intervalo() {
+    const h = hoje();
+    switch (st.preset) {
+      case 'hoje': { const d = addDias(h, st.off); return { de: d, ate: d }; }
+      case '7d':   { const fim = addDias(h, st.off*7);  return { de: addDias(fim,-6),  ate: fim }; }
+      case '30d':  { const fim = addDias(h, st.off*30); return { de: addDias(fim,-29), ate: fim }; }
+      case 'mes':  { const d = new Date(h.getFullYear(), h.getMonth()+st.off, 1);
+                     return { de: d, ate: new Date(d.getFullYear(), d.getMonth()+1, 0) }; }
+      case 'ano':  { const a = h.getFullYear()+st.off;
+                     return { de: new Date(a,0,1), ate: new Date(a,11,31) }; }
+      case 'todo': return { de: null, ate: null };
+      case 'perso':{ if (!st.de) return { de: null, ate: null };
+                     const len = Math.round((st.ate - st.de)/86400000) + 1;
+                     return { de: addDias(st.de, st.off*len), ate: addDias(st.ate, st.off*len) }; }
+    }
+  }
+
+  function rotulo() {
+    const { de, ate } = intervalo();
+    const h = hoje();
+    if (st.preset === 'todo') return { nome: 'Todo o período', datas: '' };
+    if (st.preset === 'hoje') return { nome: st.off === 0 ? 'Hoje' : dmy(de), datas: st.off === 0 ? dmy(de) : '' };
+    if (st.preset === 'mes') {
+      const nome = (st.off === 0) ? 'Este mês' : `${MESES[de.getMonth()]}/${de.getFullYear()}`;
+      return { nome, datas: `${dm(de)} – ${dm(ate)}` };
+    }
+    if (st.preset === 'ano') return { nome: st.off === 0 ? 'Este ano' : String(de.getFullYear()), datas: `${dm(de)} – ${dm(ate)}` };
+    if (st.preset === '7d')  return { nome: st.off === 0 ? 'Últimos 7 dias'  : `${dmy(de)} até ${dmy(ate)}`, datas: st.off === 0 ? `${dm(de)} – ${dm(ate)}` : '' };
+    if (st.preset === '30d') return { nome: st.off === 0 ? 'Últimos 30 dias' : `${dmy(de)} até ${dmy(ate)}`, datas: st.off === 0 ? `${dm(de)} – ${dm(ate)}` : '' };
+    return { nome: de ? `${dmy(de)} até ${dmy(ate)}` : 'Período personalizado', datas: '' };
+  }
+
+  const $ = id => document.getElementById(id);
+  function render() {
+    const r = rotulo();
+    $('fpPreset').textContent = r.nome;
+    $('fpDatas').textContent = r.datas;
+    $('fpDatas').style.display = r.datas ? '' : 'none';
+    const desl = st.preset === 'todo';
+    $('fpAnt').disabled = desl; $('fpProx').disabled = desl;
+    document.querySelectorAll('.fp-op').forEach(op => {
+      const ativo = op.dataset.preset === st.preset;
+      op.classList.toggle('ativo', ativo);
+      op.querySelector('.check').textContent = ativo ? '✓' : '';
+    });
+    $('fpCustom').classList.toggle('aberto', st.preset === 'perso');
+    const { de, ate } = intervalo();
+    const salvo = st.preset === 'perso'
+      ? `{ preset: "personalizado", de: "${de?ymd(de):''}", ate: "${ate?ymd(ate):''}" }`
+      : `{ preset: "${st.preset}" }`;
+    $('estado').innerHTML =
+      `O que a tela usa agora: <b>de ${de ? dmy(de) : '(sem início)'} até ${ate ? dmy(ate) : '(sem fim)'}</b><br>` +
+      `O que fica salvo para este usuário: <span class="salvo">${salvo}</span>` +
+      (st.off !== 0 ? `<br><i>Navegação com as setas (${st.off > 0 ? '+' : ''}${st.off}) não é salva — ao reabrir, volta ao preset.</i>` : '');
+  }
+
+  $('fpRotulo').addEventListener('click', () => $('fpMenu').classList.toggle('aberto'));
+  document.addEventListener('click', e => { if (!$('fp').contains(e.target)) $('fpMenu').classList.remove('aberto'); });
+  document.querySelectorAll('.fp-op').forEach(op => op.addEventListener('click', () => {
+    const p = op.dataset.preset;
+    if (p === 'perso') {
+      st.preset = 'perso'; st.off = 0;
+      const { de, ate } = { de: hoje(), ate: hoje() };
+      if (!st.de) { $('fpDe').value = ymd(new Date(de.getFullYear(), de.getMonth(), 1)); $('fpAte').value = ymd(new Date(de.getFullYear(), de.getMonth()+1, 0)); }
+      render(); return; // mantém o menu aberto p/ escolher as datas
+    }
+    st = { preset: p, off: 0, de: null, ate: null };
+    $('fpMenu').classList.remove('aberto');
+    render();
+  }));
+  $('fpAplicar').addEventListener('click', () => {
+    const de = $('fpDe').value, ate = $('fpAte').value;
+    if (!de || !ate || de > ate) { alert('Escolha um intervalo válido (De ≤ Até).'); return; }
+    st = { preset: 'perso', off: 0, de: new Date(de+'T00:00:00'), ate: new Date(ate+'T00:00:00') };
+    $('fpMenu').classList.remove('aberto');
+    render();
+  });
+  $('fpAnt').addEventListener('click', () => { st.off--; render(); });
+  $('fpProx').addEventListener('click', () => { st.off++; render(); });
+
+  render();
+})();
+</script>
+</body>
+</html>

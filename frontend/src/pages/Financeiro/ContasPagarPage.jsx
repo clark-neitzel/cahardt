@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import ImportarCaModal from './ImportarCaModal';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
+import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import { formatarDoc } from '../../utils/documento'; // CNPJ/CPF (inclui alfanumérico)
 
@@ -289,16 +290,17 @@ const ContasPagarPage = () => {
     const [categoriasErro, setCategoriasErro] = useState(false);
     const [fornecedores, setFornecedores] = useState([]);
 
-    // Só status/categoria persistem (por usuário/tela). Busca é texto livre e o
-    // período tem padrão calculado (mês corrente) — persistir prenderia o usuário
-    // num mês velho.
+    // Filtros persistem POR USUÁRIO (padrão do sistema): status/categoria salvos
+    // direto; o período pelo PRESET via usePeriodoSalvo ("Este mês" é recalculado
+    // a cada abertura — só o personalizado salva datas exatas). Busca não persiste.
     const [filtrosSalvos, setFiltrosSalvos] = useFiltrosSalvos('contas-pagar', { status: '', categoria: '' });
+    const [periodo, periodoCtl] = usePeriodoSalvo('contas-pagar'); // preset padrão: 'mes'
     const [filtros, setFiltros] = useState({
         busca: '',
         status: filtrosSalvos.status,
         categoria: filtrosSalvos.categoria,
-        dataDe: primeiroDiaMesAtual(), // '' = sem início (mais antigo)
-        dataAte: ultimoDiaMesAtual()   // '' = sem fim (mais novo). Ambos '' = todas as datas
+        dataDe: periodo.de,  // '' = sem início (mais antigo)
+        dataAte: periodo.ate // '' = sem fim (mais novo). Ambos '' = todas as datas
     });
     const [buscaInput, setBuscaInput] = useState('');
 
@@ -307,25 +309,31 @@ const ContasPagarPage = () => {
         setFiltrosSalvos({ status: filtros.status, categoria: filtros.categoria });
     }, [filtros.status, filtros.categoria]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // O período resolvido do FiltroPeriodo alimenta dataDe/dataAte — o resto da
+    // tela (fetch, linhas, rótulos) continua olhando só filtros.dataDe/dataAte.
+    useEffect(() => {
+        setFiltros(f => (f.dataDe === periodo.de && f.dataAte === periodo.ate
+            ? f : { ...f, dataDe: periodo.de, dataAte: periodo.ate }));
+    }, [periodo.de, periodo.ate]);
+
     // Quantos filtros estão ativos (para sinalizar na tela)
     const filtrosAtivos = useMemo(() => {
         let n = 0;
         if (filtros.busca) n++;
         if (filtros.status) n++;
         if (filtros.categoria) n++;
-        // período diferente do padrão (mês corrente: 1º ao último dia)
-        if (filtros.dataDe !== primeiroDiaMesAtual() || filtros.dataAte !== ultimoDiaMesAtual()) n++;
+        if (!periodo.padrao) n++; // período diferente do padrão ("Este mês")
         return n;
-    }, [filtros]);
+    }, [filtros, periodo.padrao]);
 
     // Rótulo curto do período para os KPIs ("Em aberto (…)")
     const kpiPeriodo = useMemo(() => {
         if (!filtros.dataDe && !filtros.dataAte) return 'total';
         return 'período';
     }, [filtros.dataDe, filtros.dataAte]);
-    const periodoAtivo = filtros.dataDe !== primeiroDiaMesAtual() || filtros.dataAte !== ultimoDiaMesAtual();
 
     const limparFiltros = () => {
+        periodoCtl.limpar();
         setFiltros({ busca: '', status: '', categoria: '', dataDe: primeiroDiaMesAtual(), dataAte: ultimoDiaMesAtual() });
         setBuscaInput('');
     };
@@ -516,26 +524,8 @@ const ContasPagarPage = () => {
                             <option value="">Categoria: Todas</option>
                             {categorias.map(c => <option key={c.id} value={c.nome}>{c.nome}</option>)}
                         </SelectBusca>
-                        {/* Período por vencimento: De (data) … Até (data) */}
-                        <div className="flex items-center gap-2 w-full md:w-auto">
-                            <input
-                                type="date"
-                                value={filtros.dataDe}
-                                max={filtros.dataAte || undefined}
-                                onChange={e => setFiltros(f => ({ ...f, dataDe: e.target.value }))}
-                                title="Data inicial (vencimento)"
-                                className={`flex-1 md:flex-none md:w-40 border rounded px-3 py-2 text-sm text-gray-700 focus:outline-none ${periodoAtivo ? '!border-primary bg-blue-50/60 font-medium' : 'border-gray-300 focus:border-primary'}`}
-                            />
-                            <span className="text-sm text-gray-500 shrink-0">até</span>
-                            <input
-                                type="date"
-                                value={filtros.dataAte}
-                                min={filtros.dataDe || undefined}
-                                onChange={e => setFiltros(f => ({ ...f, dataAte: e.target.value }))}
-                                title="Data final (vencimento)"
-                                className={`flex-1 md:flex-none md:w-40 border rounded px-3 py-2 text-sm text-gray-700 focus:outline-none ${periodoAtivo ? '!border-primary bg-blue-50/60 font-medium' : 'border-gray-300 focus:border-primary'}`}
-                            />
-                        </div>
+                        {/* Período por vencimento — FiltroPeriodo (padrão do sistema, estilo CA) */}
+                        <FiltroPeriodo periodo={periodo} controle={periodoCtl} className="w-full md:w-auto" />
                     </div>
                     {filtrosAtivos > 0 && (
                         <div className="flex items-center gap-2 pt-0.5">

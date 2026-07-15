@@ -150,8 +150,24 @@ const [soAtivos, setSoAtivos] = useFiltroSalvo('produtos:soAtivos', true);      
 ```
 
 - Chave = slug da tela (`'lista-pedidos'`) ou `'slug:campo'` para valor único. Objeto salvo é mesclado sobre o padrão — campo de filtro novo entra com o valor padrão sem quebrar o que já estava salvo.
-- **NÃO persistir:** busca por texto livre, paginação, dados carregados, estado de modal/loading, e filtros de data cujo padrão é calculado (hoje/mês corrente — senão o usuário fica preso numa data velha). Data com padrão vazio `''` pode persistir.
+- **NÃO persistir:** busca por texto livre, paginação, dados carregados, estado de modal/loading, e datas soltas cujo padrão é calculado (hoje/mês corrente — senão o usuário fica preso numa data velha). Filtro de DATA persiste pelo **preset** via `usePeriodoSalvo` (ver seção abaixo), nunca por datas absolutas.
 - Botão "limpar filtros" não precisa de tratamento especial (setar os padrões sobrescreve o salvo).
+
+### Filtro de DATA — SEMPRE usar `FiltroPeriodo` (padrão adotado em 07/2026, pedido do usuário)
+
+**Todo filtro de data/período (novo ou tela que estiver sendo mexida) usa `frontend/src/components/FiltroPeriodo.jsx`** — estilo Conta Azul: um controle só em pílula `[‹] [Este mês · 01/07 – 31/07 ▾] [›]` com presets (Hoje · Últimos 7 dias · Últimos 30 dias · Este mês · Este ano · Todo o período · Período personalizado com De/Até dentro do menu). NÃO criar mais pares de `<input type="date">` soltos; migrar os existentes conforme cada tela for tocada (primeira tela: Contas a Pagar).
+
+```jsx
+import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo'; // ajuste o caminho
+const [periodo, periodoCtl] = usePeriodoSalvo('contas-pagar');   // preset padrão: 'mes'
+// periodo.de / periodo.ate → 'YYYY-MM-DD' resolvidos ('' = sem limite); periodo.padrao → bool
+<FiltroPeriodo periodo={periodo} controle={periodoCtl} className="w-full md:w-auto" />
+```
+
+- **Setas pulam o período inteiro** (dia / 7d / 30d / mês / ano / tamanho do intervalo personalizado); em "Todo o período" ficam desligadas. A navegação pelas setas **não** é persistida.
+- **Persistência por usuário é do PRESET** (recalculado a cada abertura — "Este mês" salvo em julho abre agosto em agosto); só o personalizado salva datas exatas. Isso torna seguro persistir o filtro de data (a proibição acima é só para datas absolutas com padrão calculado).
+- Preset padrão da tela = 2º argumento de `usePeriodoSalvo(chave, presetPadrao)` (`'mes'` se omitido); "limpar filtros" chama `periodoCtl.limpar()`.
+- No botão "N filtros ativos", conte o período com `if (!periodo.padrao) n++`.
 
 ### Dropdowns/menus — usar SEMPRE `SelectBusca`, nunca `<select>` nativo
 O `<select>` nativo renderiza como um menu escuro do sistema (macOS/iOS), sem busca — ruim de usar em lista longa. **Todo menu suspenso novo deve usar `frontend/src/components/SelectBusca.jsx`** (menu branco no tema, com busca no topo quando há muitas opções; renderiza em portal, então não é cortado dentro de modais e abre para cima quando falta espaço). É drop-in do `<select>` — mesma API:

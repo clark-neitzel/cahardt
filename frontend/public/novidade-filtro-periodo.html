@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Filtro de Período — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="📅 Novidade no Hardt App: Filtro de Período">
+<meta property="og:description" content="Filtro de datas novo em Contas a Pagar: atalhos (Hoje, 7 dias, Este mês...), setas que pulam o mês inteiro e a sua escolha fica salva. Veja como funciona — tem demonstração!">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --cream: #f2f0eb; --gold: #cba258;
+    --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); line-height:1.55;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased; font-variant-numeric: tabular-nums; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background:linear-gradient(168deg, var(--house) 0%, #16302a 100%); color:#fff;
+    padding:40px 16px 96px; text-align:center; }
+  .hero .chip { display:inline-block; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);
+    color:#d4e9e2; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+    border-radius:999px; padding:6px 14px; margin-bottom:14px; }
+  .hero h1 { font-size:28px; margin:0 0 10px; font-weight:800; }
+  .hero p { color:#c8d6d0; max-width:460px; margin:0 auto; font-size:15.5px; }
+
+  .cartao { background:#fff; border:1px solid #e5e7eb; border-radius:16px;
+    box-shadow:0 8px 24px rgba(30,57,50,.10); padding:20px; margin-top:-64px; }
+  .cartao + .cartao, .sec { margin-top:16px; }
+  .sec-titulo { font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+
+  /* ── DEMO (o componente) ── */
+  .fp { position:relative; display:flex; align-items:stretch; height:44px;
+    background:#fff; border:1.5px solid #d1d5db; border-radius:9999px; }
+  .fp button { font:inherit; border:0; background:none; cursor:pointer; }
+  .fp-seta { width:44px; display:flex; align-items:center; justify-content:center; color:var(--primary); font-size:18px; font-weight:800; }
+  .fp-seta:first-child { border-radius:9999px 0 0 9999px; }
+  .fp-seta:last-of-type { border-radius:0 9999px 9999px 0; }
+  .fp-seta:active { background:var(--mint); }
+  .fp-seta:disabled { color:#c9ccd1; }
+  .fp-rotulo { flex:1; display:flex; align-items:center; justify-content:center; gap:8px;
+    border-left:1px solid #e5e7eb; border-right:1px solid #e5e7eb; min-width:0; }
+  .fp-preset { font-size:15px; font-weight:800; color:var(--house); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .fp-datas { font-size:12.5px; color:#6b7280; white-space:nowrap; }
+  .fp-chev { color:#9ca3af; font-size:11px; }
+  .fp-menu { position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%);
+    width:260px; max-width:calc(100vw - 40px); background:#fff; border:1px solid #e5e7eb; border-radius:14px;
+    box-shadow:0 12px 30px rgba(0,0,0,.15); padding:6px; z-index:20; display:none; }
+  .fp-menu.aberto { display:block; }
+  .fp-op { display:flex; justify-content:space-between; align-items:center; width:100%;
+    padding:11px 13px; border-radius:9px; font-size:15px; color:#374151; text-align:left; }
+  .fp-op:active, .fp-op:hover { background:#f3f4f6; }
+  .fp-op.ativo { background:var(--mint); color:var(--primary-dark); font-weight:800; }
+  .fp-custom { border-top:1px solid #f3f4f6; margin-top:6px; padding:10px 9px 6px; display:none; }
+  .fp-custom.aberto { display:block; }
+  .fp-custom label { display:block; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#6b7280; margin:7px 0 3px; }
+  .fp-custom input { width:100%; border:1px solid #d1d5db; border-radius:7px; padding:9px 10px; font:inherit; font-size:15px; }
+  .fp-aplicar { margin-top:11px; width:100%; background:var(--primary); color:#fff; border-radius:9999px; padding:11px 0; font-size:15px; font-weight:800; }
+  .demo-legenda { text-align:center; font-size:13px; color:var(--ink-soft); margin-top:12px; }
+  .demo-resultado { background:var(--house); color:#d4e9e2; border-radius:10px; padding:10px 14px; font-size:13.5px; margin-top:14px; line-height:1.7; }
+  .demo-resultado b { color:#fff; }
+  .demo-resultado .salvo { color:var(--gold); font-weight:700; }
+
+  /* ── ACCORDION ── */
+  details { background:#fff; border:1px solid #e5e7eb; border-radius:14px; margin-top:10px; overflow:hidden; }
+  summary { list-style:none; cursor:pointer; padding:15px 18px; font-weight:800; font-size:15px; color:var(--house);
+    display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  summary::-webkit-details-marker { display:none; }
+  summary .mais { color:var(--primary); font-size:20px; font-weight:800; transition:transform .2s; flex:none; }
+  details[open] summary .mais { transform:rotate(45deg); }
+  .det-corpo { padding:0 18px 16px; font-size:14.5px; color:#3f4a46; }
+  .det-corpo b { color:var(--house); }
+
+  /* ── PASSOS ── */
+  .passo { display:flex; gap:12px; margin-top:14px; }
+  .passo .num { flex:none; width:28px; height:28px; border-radius:999px; background:var(--primary); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+  .passo p { margin:3px 0 0; font-size:14.5px; color:#3f4a46; }
+  .passo b { color:var(--house); }
+  .rodape { text-align:center; color:var(--ink-soft); font-size:12.5px; margin-top:34px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="chip">✨ Novidade no app</span>
+  <h1>📅 Filtro de Período novo</h1>
+  <p>Escolher as datas ficou rápido: atalhos prontos, setas que pulam o mês inteiro e o app <b>lembra a sua escolha</b>. Já está no ar em <b>Contas a Pagar</b>.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao">
+    <p class="sec-titulo">🖐️ Experimente aqui (demonstração real)</p>
+
+    <div class="fp" id="fp">
+      <button class="fp-seta" id="fpAnt" title="Período anterior">‹</button>
+      <button class="fp-rotulo" id="fpRotulo">
+        <span class="fp-preset" id="fpPreset">Este mês</span>
+        <span class="fp-datas" id="fpDatas"></span>
+        <span class="fp-chev">▼</span>
+      </button>
+      <button class="fp-seta" id="fpProx" title="Próximo período">›</button>
+
+      <div class="fp-menu" id="fpMenu">
+        <button class="fp-op" data-preset="hoje">Hoje <span class="check"></span></button>
+        <button class="fp-op" data-preset="7d">Últimos 7 dias <span class="check"></span></button>
+        <button class="fp-op" data-preset="30d">Últimos 30 dias <span class="check"></span></button>
+        <button class="fp-op" data-preset="mes">Este mês <span class="check"></span></button>
+        <button class="fp-op" data-preset="ano">Este ano <span class="check"></span></button>
+        <button class="fp-op" data-preset="todo">Todo o período <span class="check"></span></button>
+        <button class="fp-op" data-preset="perso">Período personalizado <span class="check"></span></button>
+        <div class="fp-custom" id="fpCustom">
+          <label>De</label><input type="date" id="fpDe">
+          <label>Até</label><input type="date" id="fpAte">
+          <button class="fp-aplicar" id="fpAplicar">Aplicar</button>
+        </div>
+      </div>
+    </div>
+
+    <p class="demo-legenda">Toque no meio para abrir os atalhos · use as setas ‹ › para passear</p>
+    <div class="demo-resultado" id="estado"></div>
+  </div>
+
+  <div class="sec">
+    <details open>
+      <summary>O que mudou? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Antes eram dois campos de data soltos ("De" e "Até") que você tinha que digitar toda vez. Agora é <b>um controle só</b>, igual ao do Conta Azul: toca no meio e escolhe um atalho pronto — <b>Hoje, Últimos 7 dias, Últimos 30 dias, Este mês, Este ano, Todo o período</b> — ou monta um período personalizado.
+      </div>
+    </details>
+    <details>
+      <summary>As setas ‹ › pulam o período inteiro <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Está vendo <b>"Este mês"</b> e quer conferir junho? Toca na seta <b>‹</b> uma vez — o filtro vira <b>junho/2026</b> completinho (1º ao último dia). Em "Últimos 7 dias" as setas andam de 7 em 7; em "Hoje", dia a dia. Sem abrir calendário, sem digitar data.
+      </div>
+    </details>
+    <details>
+      <summary>O app lembra a sua escolha <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        O atalho que você deixar escolhido <b>fica salvo para você</b> (cada usuário tem o seu). E é esperto: quem deixa "Este mês" salvo <b>sempre abre no mês corrente</b> — em agosto a tela já abre em agosto, ninguém fica preso numa data velha. O status e a categoria também continuam salvos, como já era.
+      </div>
+    </details>
+    <details>
+      <summary>Vai chegar nas outras telas <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Esse formato virou o <b>padrão do sistema</b>. Começou por <b>Contas a Pagar</b> e, conforme formos mexendo em cada tela (Contas a Receber, Caixa, relatórios…), o filtro de data vai sendo trocado por este.
+      </div>
+    </details>
+  </div>
+
+  <div class="cartao sec">
+    <p class="sec-titulo">🚀 Para usar</p>
+    <div class="passo"><div class="num">1</div><p>Abra <b>Financeiro → Contas a Pagar</b>.</p></div>
+    <div class="passo"><div class="num">2</div><p>Toque no <b>período</b> (no meio do controle novo) e escolha um atalho — ou "Período personalizado" para datas livres.</p></div>
+    <div class="passo"><div class="num">3</div><p>Use as <b>setas ‹ ›</b> para voltar/avançar o período inteiro. Pronto — sua escolha fica guardada para a próxima vez.</p></div>
+  </div>
+
+  <p class="rodape">Hardt Alimentos · atualização de julho/2026<br>Dúvidas? É só falar com o escritório. 💚</p>
+</div>
+
+<script>
+(function(){
+  const hoje = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+  const dmy = d => d.toLocaleDateString('pt-BR');
+  const dm  = d => d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  const add = (d,n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
+  const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  const NOMES = { hoje:'Hoje', '7d':'Últimos 7 dias', '30d':'Últimos 30 dias', mes:'Este mês', ano:'Este ano', todo:'Todo o período', perso:'Período personalizado' };
+  let st = { preset:'mes', off:0, de:null, ate:null };
+
+  function intervalo(){
+    const h = hoje();
+    switch(st.preset){
+      case 'hoje': { const d = add(h, st.off); return { de:d, ate:d }; }
+      case '7d':  { const f = add(h, st.off*7);  return { de:add(f,-6),  ate:f }; }
+      case '30d': { const f = add(h, st.off*30); return { de:add(f,-29), ate:f }; }
+      case 'mes': { const d = new Date(h.getFullYear(), h.getMonth()+st.off, 1);
+                    return { de:d, ate:new Date(d.getFullYear(), d.getMonth()+1, 0) }; }
+      case 'ano': { const a = h.getFullYear()+st.off; return { de:new Date(a,0,1), ate:new Date(a,11,31) }; }
+      case 'todo': return { de:null, ate:null };
+      case 'perso': { if(!st.de) return { de:null, ate:null };
+                    const len = Math.round((st.ate-st.de)/864e5)+1;
+                    return { de:add(st.de, st.off*len), ate:add(st.ate, st.off*len) }; }
+    }
+  }
+  function rotulo(){
+    const { de, ate } = intervalo();
+    if (st.preset==='todo') return { nome:'Todo o período', datas:'' };
+    if (st.preset==='hoje') return st.off===0 ? { nome:'Hoje', datas:dmy(de) } : { nome:dmy(de), datas:'' };
+    if (st.preset==='mes'){ const nome = st.off===0 ? 'Este mês' : `${MESES[de.getMonth()]}/${de.getFullYear()}`;
+                            return { nome, datas:`${dm(de)} – ${dm(ate)}` }; }
+    if (st.preset==='ano') return { nome: st.off===0 ? 'Este ano' : String(de.getFullYear()), datas:`${dm(de)} – ${dm(ate)}` };
+    if (st.preset==='7d'||st.preset==='30d')
+      return st.off===0 ? { nome:NOMES[st.preset], datas:`${dm(de)} – ${dm(ate)}` } : { nome:`${dmy(de)} até ${dmy(ate)}`, datas:'' };
+    return { nome: de ? `${dmy(de)} até ${dmy(ate)}` : 'Período personalizado', datas:'' };
+  }
+  const $ = id => document.getElementById(id);
+  function render(){
+    const r = rotulo();
+    $('fpPreset').textContent = r.nome;
+    $('fpDatas').textContent = r.datas; $('fpDatas').style.display = r.datas ? '' : 'none';
+    const desl = st.preset==='todo';
+    $('fpAnt').disabled = desl; $('fpProx').disabled = desl;
+    document.querySelectorAll('.fp-op').forEach(op=>{
+      const ativo = op.dataset.preset===st.preset;
+      op.classList.toggle('ativo', ativo);
+      op.querySelector('.check').textContent = ativo ? '✓' : '';
+    });
+    $('fpCustom').classList.toggle('aberto', st.preset==='perso');
+    const { de, ate } = intervalo();
+    $('estado').innerHTML =
+      `A tela mostraria: <b>${de ? 'de '+dmy(de)+' até '+dmy(ate) : 'todas as datas'}</b><br>` +
+      `Fica salvo para você: <span class="salvo">${NOMES[st.preset]}</span>` +
+      (st.off!==0 ? ' <i>(o passeio com as setas não é salvo — ao reabrir, volta ao atalho)</i>' : '');
+  }
+  $('fpRotulo').addEventListener('click', ()=> $('fpMenu').classList.toggle('aberto'));
+  document.addEventListener('click', e => { if(!$('fp').contains(e.target)) $('fpMenu').classList.remove('aberto'); });
+  document.querySelectorAll('.fp-op').forEach(op => op.addEventListener('click', ()=>{
+    const p = op.dataset.preset;
+    if (p==='perso'){ st.preset='perso'; st.off=0;
+      const h = hoje();
+      if(!$('fpDe').value){ $('fpDe').value = new Date(h.getFullYear(),h.getMonth(),1).toLocaleDateString('en-CA');
+                            $('fpAte').value = new Date(h.getFullYear(),h.getMonth()+1,0).toLocaleDateString('en-CA'); }
+      render(); return;
+    }
+    st = { preset:p, off:0, de:null, ate:null };
+    $('fpMenu').classList.remove('aberto'); render();
+  }));
+  $('fpAplicar').addEventListener('click', ()=>{
+    const de = $('fpDe').value, ate = $('fpAte').value;
+    if(!de || !ate || de > ate){ alert('Escolha um intervalo válido (De ≤ Até).'); return; }
+    st = { preset:'perso', off:0, de:new Date(de+'T00:00:00'), ate:new Date(ate+'T00:00:00') };
+    $('fpMenu').classList.remove('aberto'); render();
+  });
+  $('fpAnt').addEventListener('click', ()=>{ st.off--; render(); });
+  $('fpProx').addEventListener('click', ()=>{ st.off++; render(); });
+  render();
+})();
+</script>
+</body>
+</html>
