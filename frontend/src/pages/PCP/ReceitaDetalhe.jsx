@@ -57,10 +57,13 @@ function imprimirConteudo(estilos, corpoHtml) {
         #${ID_AREA} { display: none; }
         @media print {
             html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; }
-            /* remove o app do LAYOUT (não só esconde) — senão sobra altura "fantasma" = páginas em branco */
-            body > *:not(#${ID_AREA}) { display: none !important; }
-            #root { display: none !important; }
+            /* iOS/iPad: 'display:none' no app às vezes é ignorado (imprime a tela do app).
+               Então escondemos por VISIBILITY (confiável no iOS) e, para não gerar página
+               em branco, tiramos o app do FLUXO colapsando a altura (position/height 0). */
+            body * { visibility: hidden !important; }
+            body > *:not(#${ID_AREA}) { position: absolute !important; top: 0; left: 0; width: 0 !important; height: 0 !important; overflow: hidden !important; }
             #${ID_AREA} { display: block !important; }
+            #${ID_AREA}, #${ID_AREA} * { visibility: visible !important; }
             #${ID_AREA} * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             ${estilosSemPage}
         }

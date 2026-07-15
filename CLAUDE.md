@@ -486,9 +486,12 @@ function imprimirConteudo(estilos, corpoHtml) {
         #area-impressao { display: none; }
         @media print {
             html, body { margin:0!important; padding:0!important; background:#fff!important; height:auto!important; }
-            body > *:not(#area-impressao) { display: none !important; }     /* remove o app do LAYOUT */
-            #root { display: none !important; }
+            /* iOS ignora display:none no print (imprime a tela do app). Esconder por VISIBILITY */
+            body * { visibility: hidden !important; }
+            /* e tirar o app do FLUXO (colapsar altura) p/ não gerar página em branco */
+            body > *:not(#area-impressao) { position:absolute!important; top:0; left:0; width:0!important; height:0!important; overflow:hidden!important; }
             #area-impressao { display: block !important; }
+            #area-impressao, #area-impressao * { visibility: visible !important; }
             #area-impressao * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             ${estilosSemPage}
         }`;
@@ -508,7 +511,7 @@ function imprimirConteudo(estilos, corpoHtml) {
 
 **Regras:**
 - Impressão (folha A4, etiqueta, comprovante, recibo) → sempre `@media print` na própria página. Referência: `frontend/src/pages/PCP/ReceitaDetalhe.jsx` (`imprimirConteudo` / `imprimirHtml`).
-- Esconder o app com **`display:none`** (`body > *:not(#area-impressao)` + `#root`) — **NÃO usar `visibility:hidden`**, pois ela mantém a altura do app no layout e gera **páginas em branco** extras. Também não pôr `#area-impressao` em `position:absolute` (deixe fluir, para a altura do documento ser só a da folha = 1 página).
+- Esconder o app com **`visibility:hidden`** (`body *`) — no **iOS/iPad** o `display:none` em `@media print` costuma ser ignorado e acaba imprimindo a **tela do app**. Para não sobrar **página em branco** (visibility mantém a altura), tirar o app do fluxo colapsando os irmãos do `#area-impressao` com `position:absolute;height:0;width:0;overflow:hidden`. O `#area-impressao` fica em fluxo normal (a altura do documento vira só a da folha = 1 página).
 - `print()` **síncrono no clique** (sem `setTimeout`) — senão o iOS bloqueia com "site proibido de imprimir automaticamente".
 - `@page` no **nível raiz**, fora do `@media` (iOS não lida bem com `@page` aninhado).
 - Incluir `print-color-adjust: exact` para imprimir fundos/cores (ex.: cabeçalhos pretos).
