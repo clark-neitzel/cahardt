@@ -511,7 +511,8 @@ export default function ReceitaDetalhe() {
                 )}
 
                 {/* Acoes */}
-                <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-gray-100">
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white" title="Versão da impressão (diagnóstico)">IMPR v4</span>
                     {receita.status !== 'inativa' && (
                         <button
                             onClick={() => navigate(`/pcp/receitas/${id}/editar`)}
