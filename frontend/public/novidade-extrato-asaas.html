@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Extrato do Asaas automático — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🏦 Novidade no Hardt App: extrato do Asaas entra sozinho">
+<meta property="og:description" content="A Conciliação Bancária agora busca o extrato do Asaas sozinha, a cada 30 minutos — sem baixar arquivo. E já concilia o que bate.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 30px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 13px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 15px; line-height: 1.2; }
+  .mock-sync { margin-left: auto; font-size: 11px; font-weight: 700; background: rgba(255,255,255,.14); padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+  .mock-linha {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 16px;
+    border-top: 1px solid #f0efe9;
+    font-size: 13px;
+  }
+  .mock-linha small { display: block; color: var(--ink-soft); font-size: 11.5px; }
+  .mock-linha .desc { flex: 1; min-width: 0; }
+  .mock-linha .desc b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+  .valor-in { color: var(--primary-dark); font-weight: 800; white-space: nowrap; }
+  .valor-out { color: #b3261e; font-weight: 800; white-space: nowrap; }
+  .chip {
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: #f1f3f2;
+    color: #444;
+    white-space: nowrap;
+  }
+  .chip.verde { background: var(--mint); color: var(--primary-dark); }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos "como acessar" */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>O extrato do Asaas<br>agora entra sozinho</h1>
+    <p>A Conciliação Bancária busca o extrato da conta Asaas automaticamente, a cada 30 minutos — sem exportar e importar arquivo. E o que bate em data e valor já é conciliado na hora.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock da tela -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <div>
+        <small>Conciliação Bancária</small>
+        <strong>Conta Asaas</strong>
+      </div>
+      <span class="mock-sync">🔄 atualizado há 12 min</span>
+    </div>
+    <div class="mock-linha">
+      <div class="desc">
+        <b>PIX recebido — Pedido 4821</b>
+        <small>hoje · entrou sozinho do Asaas</small>
+      </div>
+      <span class="chip verde">🪄 Conciliado</span>
+      <span class="valor-in">+ R$ 385,00</span>
+    </div>
+    <div class="mock-linha">
+      <div class="desc">
+        <b>Boleto recebido — parcela 2</b>
+        <small>hoje · entrou sozinho do Asaas</small>
+      </div>
+      <span class="chip verde">🪄 Conciliado</span>
+      <span class="valor-in">+ R$ 1.240,00</span>
+    </div>
+    <div class="mock-linha">
+      <div class="desc">
+        <b>Tarifa Asaas — boleto</b>
+        <small>hoje · pendente (é só ignorar)</small>
+      </div>
+      <span class="chip">Pendente</span>
+      <span class="valor-out">− R$ 1,99</span>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO FUNCIONA ══════════ -->
+  <div class="sec-label">Como funciona — toque para abrir</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔄</span>
+      <strong>Busca automática, de meia em meia hora</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>O sistema consulta o Asaas <b>a cada 30 minutos</b> e traz tudo o que entrou e saiu da conta: PIX das entregas, boletos recebidos, tarifas, transferências.</li>
+        <li><b>Nunca duplica</b>: cada lançamento do Asaas tem um código único — pode buscar mil vezes que ele só entra uma.</li>
+        <li>Acabou aquele ciclo de exportar OFX no banco e importar no app — <b>para a conta Asaas</b>, isso não existe mais.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="false">
+      <span class="acc-ico">🪄</span>
+      <strong>E já concilia o que bate</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Logo depois de buscar, o sistema roda a <b>conciliação automática</b>: todo lançamento que bate em <b>valor e data</b> com uma única baixa registrada no app já fica conciliado sozinho (marcado com 🪄).</p>
+      <p>Sobram para você só os casos que pedem uma decisão — tarifa para ignorar, diferença para explicar, baixa que faltou.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="false">
+      <span class="acc-ico">⚡</span>
+      <strong>Não quer esperar 30 minutos?</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Quando a conta selecionada é a do Asaas, aparece o botão <b>"Buscar do Asaas"</b> no topo da tela — ele busca o extrato na hora. A tela também mostra <b>quando foi a última busca</b> automática.</p>
+    </div>
+  </div>
+
+  <div class="acc">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="false">
+      <span class="acc-ico">🏦</span>
+      <strong>E os outros bancos?</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Sicoob e demais contas continuam funcionando como antes: exporta o extrato em <b>OFX</b> no internet banking e importa na tela (também sem risco de duplicar). A novidade automática, por enquanto, é para a <b>conta Asaas</b>.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO ACESSAR ══════════ -->
+  <div class="sec-label">Para ver funcionando</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra <b>Financeiro → Conciliação Bancária</b> e escolha a conta <b>Asaas</b>.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Pronto: o extrato já está lá (ou toque em <b>"Buscar do Asaas"</b> para trazer agora). 🪄</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a novidade.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
