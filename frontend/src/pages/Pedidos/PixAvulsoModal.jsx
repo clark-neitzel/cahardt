@@ -23,6 +23,7 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
     const [gerando, setGerando] = useState(false);
     const [enviando, setEnviando] = useState(false);
     const [copiado, setCopiado] = useState(false);
+    const [msgCopiada, setMsgCopiada] = useState(false);
     const pollRef = useRef(null);
 
     // Validade pré-selecionada vem de Configurações → Asaas (padrão do sistema)
@@ -93,6 +94,26 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
             toast.error(e.response?.data?.error || 'Erro ao enviar por WhatsApp.');
         } finally {
             setEnviando(false);
+        }
+    };
+
+    // Copia a MENSAGEM inteira (mesmo texto do envio automático) para colar
+    // em qualquer conversa — útil quando o telefone cadastrado não é o do contato.
+    const handleCopiarMensagem = async () => {
+        if (!cobranca) return;
+        const nome = pedido.clienteNome || 'Cliente';
+        const numeroPedido = `${pedido.especial ? 'ZZ#' : '#'}${pedido.numero || 's/n'}`;
+        const vencStr = cobranca.vencimento
+            ? new Date(cobranca.vencimento).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+            : '';
+        const msg = `Olá, *${nome}*! 😊\n\nSegue o PIX do pedido *${numeroPedido}*:\n\n💰 Valor: *R$ ${Number(cobranca.valor).toFixed(2).replace('.', ',')}*${vencStr ? `\n📅 Válido até: *${vencStr}*` : ''}${cobranca.linkPagamento ? `\n\n🔗 Link para pagar: ${cobranca.linkPagamento}` : ''}${cobranca.pixPayload ? `\n\n*PIX copia e cola:*\n${cobranca.pixPayload}` : ''}\n\nQualquer dúvida, estamos à disposição!\n_Hardt Doces e Salgados_`;
+        try {
+            await navigator.clipboard.writeText(msg);
+            setMsgCopiada(true);
+            toast.success('Mensagem copiada! É só colar no WhatsApp.');
+            setTimeout(() => setMsgCopiada(false), 3000);
+        } catch (_) {
+            toast.error('Não consegui copiar automaticamente.');
         }
     };
 
@@ -192,6 +213,11 @@ const PixAvulsoModal = ({ pedido, onClose }) => {
                                 className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-full font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-60">
                                 {enviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 Enviar link por WhatsApp
+                            </button>
+                            <button onClick={handleCopiarMensagem}
+                                className="w-full py-3 bg-white border border-green-600 text-green-700 hover:bg-green-50 rounded-full font-medium text-sm flex items-center justify-center gap-2">
+                                {msgCopiada ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                                {msgCopiada ? 'Mensagem copiada!' : 'Copiar mensagem (colar no WhatsApp)'}
                             </button>
                         </div>
                     )}
