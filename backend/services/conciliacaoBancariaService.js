@@ -846,11 +846,44 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
 // ─────────────────────────────────────────────────────────────
 
 /**
+ * Fornecedor "Conta Azul" + categoria "Tarifas de Boletos" para a despesa da tarifa.
+ * Resolvidos FORA da transação (categoria consulta a API do CA; regra do projeto:
+ * nada de rede dentro de $transaction). Cache de 1h.
+ */
+let _refTarifaCache = { em: 0, fornecedorId: null, categoria: null };
+async function _referenciasTarifaCA() {
+    if (_refTarifaCache.fornecedorId && Date.now() - _refTarifaCache.em < 3600000) return _refTarifaCache;
+    let fornecedor = await prisma.fornecedor.findFirst({
+        where: { razaoSocial: { contains: 'conta azul', mode: 'insensitive' } },
+        select: { id: true }
+    });
+    if (!fornecedor) {
+        fornecedor = await prisma.fornecedor.create({
+            data: { razaoSocial: 'Conta Azul (tarifas)', ativo: true, origem: 'APP', statusEnvioCA: 'NAO_ENVIAR' },
+            select: { id: true }
+        });
+    }
+    let categoria = null;
+    try {
+        const cats = await contasPagarCaSyncService.listarCategoriasDespesaSeguro();
+        categoria = (cats || []).find((c) => /tarifas?\s+de\s+boletos?/i.test(c.nome || '')) ||
+            (cats || []).find((c) => /tarifa/i.test(c.nome || '')) || null;
+    } catch (_) { /* sem categoria do CA — a despesa fica sem categoriaCaId */ }
+    _refTarifaCache = { em: Date.now(), fornecedorId: fornecedor.id, categoria };
+    return _refTarifaCache;
+}
+
+/**
  * Vincula um CRÉDITO a uma baixa que difere exatamente pela tarifa do boleto CA:
- * vira um GRUPO com a diferença registrada como "Tarifa/taxa do banco" (auditável,
- * igual ao fluxo manual com motivo). Guarda contra corrida no update do lançamento.
+ * vira um GRUPO com a diferença registrada como "Tarifa/taxa do banco" E gera a
+ * DESPESA da tarifa (R$ 1,50, fornecedor Conta Azul, categoria Tarifas de Boletos),
+ * já paga na conta do extrato — assim a DRE registra o custo e o saldo por conta
+ * fecha com o crédito líquido. A despesa fica SÓ NO APP (NAO_ENVIAR): no CA o
+ * crédito já entra líquido, empurrar a tarifa para lá subtrairia duas vezes.
+ * Desfazer a conciliação cancela a despesa junto (vínculo [tarifa-grupo:id] na observação).
  */
 async function _vincularComTarifaCA(lanc, pagamentoId, valorBaixa, userId, auto) {
+    const refs = await _referenciasTarifaCA(); // fora da transação (pode bater na API do CA)
     await prisma.$transaction(async (tx) => {
         const grupo = await tx.conciliacaoGrupo.create({
             data: {
@@ -874,6 +907,39 @@ async function _vincularComTarifaCA(lanc, pagamentoId, valorBaixa, userId, auto)
             data: { status: 'CONCILIADO', conciliadoAuto: !!auto, conciliadoPorId: userId || null, conciliadoEm: new Date() }
         });
         if (r.count === 0) throw erro('O lançamento deixou de estar pendente — recarregue a tela.');
+
+        // Despesa da tarifa, já paga na conta do extrato (só no app)
+        const conta = await tx.contaPagar.create({
+            data: {
+                fornecedorId: refs.fornecedorId,
+                descricao: `Tarifa de boleto Conta Azul — ${String(lanc.descricao || 'recebimento').slice(0, 180)}`,
+                categoria: refs.categoria?.nome || 'Tarifas de Boletos',
+                categoriaCaId: refs.categoria?.id || null,
+                origem: 'MANUAL',
+                valorTotal: TARIFA_BOLETO_CA,
+                status: 'ABERTO',
+                statusEnvioCA: 'NAO_ENVIAR', // no CA o crédito já entra líquido — não duplicar lá
+                contaFinanceiraCaId: lanc.contaFinanceiraCaId,
+                criadoPorId: userId || null,
+                observacoes: `Gerada na conciliação bancária (tarifa descontada do crédito). [tarifa-grupo:${grupo.id}]`,
+                parcelas: { create: [{ numeroParcela: 1, valor: TARIFA_BOLETO_CA, dataVencimento: lanc.data }] }
+            },
+            include: { parcelas: true }
+        });
+        await tx.pagamentoParcelaPagar.create({
+            data: {
+                parcelaPagarId: conta.parcelas[0].id,
+                valorPago: TARIFA_BOLETO_CA,
+                dataPagamento: lanc.data,
+                formaPagamento: 'OUTRO',
+                contaFinanceiraCaId: lanc.contaFinanceiraCaId,
+                statusEnvioCA: 'NAO_ENVIAR',
+                origem: 'MANUAL',
+                observacao: 'Tarifa do boleto Conta Azul (descontada do crédito no extrato).',
+                registradoPorId: userId || null
+            }
+        });
+        await contasPagarCaSyncService.recalcularParcelaEConta(tx, conta.parcelas[0].id);
     }, { timeout: 20000, maxWait: 10000 });
 }
 
@@ -949,7 +1015,7 @@ async function conciliar({ lancamentoId, pagamentoParcelaId, pagamentoParcelaPag
         !valorBate(num(pagamento.valorRecebido), num(l.valor)) &&
         valorBate(num(pagamento.valorRecebido), round2(num(l.valor) + TARIFA_BOLETO_CA))) {
         await _vincularComTarifaCA(l, pagId, num(pagamento.valorRecebido), userId, false);
-        return { message: `Conciliado! Tarifa de R$ ${TARIFA_BOLETO_CA.toFixed(2)} do boleto registrada.` };
+        return { message: `Conciliado! Tarifa de R$ ${TARIFA_BOLETO_CA.toFixed(2)} registrada e despesa da tarifa gerada (paga, só no app).` };
     }
 
     await prisma.extratoLancamento.update({
@@ -1036,14 +1102,30 @@ async function desfazer({ lancamentoId }) {
             select: { extratoLancamentoId: true }
         });
         const idsLanc = irmaos.map((i) => i.extratoLancamentoId);
+        // Grupo de tarifa do boleto CA gerou uma DESPESA da tarifa — cancela junto
+        const despesaTarifa = await prisma.contaPagar.findFirst({
+            where: { observacoes: { contains: `[tarifa-grupo:${item.grupoId}]` }, status: { not: 'CANCELADO' } },
+            select: { id: true, parcelas: { select: { id: true } } }
+        });
         await prisma.$transaction(async (tx) => {
             await tx.conciliacaoGrupo.delete({ where: { id: item.grupoId } }); // itens caem em cascata
             await tx.extratoLancamento.updateMany({
                 where: { id: { in: idsLanc } },
                 data: { status: 'PENDENTE', conciliadoAuto: false, conciliadoPorId: null, conciliadoEm: null, obs: null }
             });
+            if (despesaTarifa) {
+                const idsParc = despesaTarifa.parcelas.map((p) => p.id);
+                await tx.pagamentoParcelaPagar.updateMany({
+                    where: { parcelaPagarId: { in: idsParc }, estornado: false },
+                    data: { estornado: true, estornadoEm: new Date() }
+                });
+                await tx.parcelaPagar.updateMany({ where: { id: { in: idsParc } }, data: { status: 'CANCELADO' } });
+                await tx.contaPagar.update({ where: { id: despesaTarifa.id }, data: { status: 'CANCELADO' } });
+            }
         }, { timeout: 20000, maxWait: 10000 });
-        return { message: idsLanc.length > 1 ? `Grupo desfeito — ${idsLanc.length} lançamentos voltaram para pendente.` : 'Grupo desfeito — lançamento voltou para pendente.' };
+        const partes = [idsLanc.length > 1 ? `Grupo desfeito — ${idsLanc.length} lançamentos voltaram para pendente.` : 'Grupo desfeito — lançamento voltou para pendente.'];
+        if (despesaTarifa) partes.push('A despesa da tarifa foi cancelada junto.');
+        return { message: partes.join(' ') };
     }
 
     // Transferência entre contas: apaga o registro da transferência junto
