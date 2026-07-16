@@ -3146,6 +3146,25 @@ router.get('/diag-pdf-ultimo', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/backfill-banco-importadas?de=2026-06-01&ate=2026-07-31
+// Preenche o BANCO das baixas sem conta de despesas importadas do CA: acha o evento
+// no CA por nº da nota + valor (match único) e copia a conta financeira da baixa de lá.
+// Async em segundo plano; reconsultar devolve o progresso.
+router.post('/backfill-banco-importadas', async (req, res) => {
+    try {
+        const caSync = require('../services/contasPagarCaSyncService');
+        const de = String(req.query.de || '2026-06-01');
+        const ate = String(req.query.ate || '2026-07-31');
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(de) || !/^\d{4}-\d{2}-\d{2}$/.test(ate)) {
+            return res.status(400).json({ error: 'Datas em YYYY-MM-DD.' });
+        }
+        const r = await caSync.backfillBancoImportadas({ de, ate });
+        res.json(r);
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/compras-estoque-check
 // SOMENTE LEITURA. Para CADA nota CONFERIDA: quantos itens tinha, quantos estavam
 // vinculados a produto/insumo (de-para memorizado) e quantas entradas de estoque

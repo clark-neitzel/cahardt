@@ -1206,12 +1206,127 @@ async function backfillContasFinanceirasPagar(limiteParcelas = 300) {
     return { ok: true, parcelas: parcelas.length, atualizadas };
 }
 
+// ─────────────────────────────────────────────────────────────
+// Backfill do BANCO das baixas de despesas IMPORTADAS do CA
+// ─────────────────────────────────────────────────────────────
+
+let _bancoImportadas = { rodando: false, progresso: null };
+
+/**
+ * Despesas importadas do CA (sem idParcelaCA) pagas no app ficaram com a baixa
+ * SEM banco — mas no CA a despesa existe com a baixa e o banco CERTO (era lá que
+ * se conciliava). Este job localiza o evento no CA pela conciliação endurecida
+ * (nº da nota + valor, match único) e copia o banco da baixa de lá para o ledger
+ * local. NÃO muda status/valor/envio de nada — só preenche contaFinanceiraCaId
+ * onde está vazio. Roda em segundo plano com throttle (consulta o CA).
+ */
+async function backfillBancoImportadas({ de, ate }) {
+    if (_bancoImportadas.rodando) return { ok: true, jaRodando: true, progresso: _bancoImportadas.progresso };
+    const gte = new Date(`${de}T00:00:00-03:00`);
+    const lte = new Date(`${ate}T23:59:59-03:00`);
+
+    const pagamentos = await prisma.pagamentoParcelaPagar.findMany({
+        where: { estornado: false, contaFinanceiraCaId: null, dataPagamento: { gte, lte } },
+        select: {
+            id: true, valorPago: true, juros: true, multa: true,
+            parcelaPagar: { select: { id: true, numeroParcela: true, valor: true, dataVencimento: true, idParcelaCA: true, contaPagarId: true } }
+        }
+    });
+    if (pagamentos.length === 0) return { ok: true, iniciado: false, motivo: 'Nenhuma baixa sem banco no período.' };
+
+    // Agrupa por conta a pagar (uma busca de evento por despesa)
+    const porConta = new Map();
+    for (const pg of pagamentos) {
+        const cid = pg.parcelaPagar.contaPagarId;
+        if (!porConta.has(cid)) porConta.set(cid, []);
+        porConta.get(cid).push(pg);
+    }
+
+    _bancoImportadas.rodando = true;
+    _bancoImportadas.progresso = { despesas: porConta.size, baixasAlvo: pagamentos.length, processadas: 0, preenchidas: 0, semMatch: 0, iniciadoEm: new Date().toISOString() };
+    (async () => {
+        try {
+            for (const [contaId, pgs] of porConta) {
+                try {
+                    const conta = await prisma.contaPagar.findUnique({
+                        where: { id: contaId },
+                        include: { fornecedor: true, parcelas: { orderBy: { numeroParcela: 'asc' } } }
+                    });
+                    if (!conta) { _bancoImportadas.progresso.semMatch += pgs.length; continue; }
+
+                    // Detalhe da parcela no CA: direto (idParcelaCA) ou via evento por nº da nota
+                    const detalhesPorParcelaLocal = new Map(); // parcelaPagarId → det (com baixas)
+                    const comLink = conta.parcelas.filter((p) => p.idParcelaCA);
+                    if (comLink.length > 0) {
+                        for (const p of comLink) {
+                            try { detalhesPorParcelaLocal.set(p.id, await contaAzulService.buscarParcelaDetalhe(p.idParcelaCA)); }
+                            catch (_) { /* segue */ }
+                            await sleep(250);
+                        }
+                    } else {
+                        const eventoId = await _encontrarEventoPorNumeroNota(conta); // endurecida: nota numérica + valor
+                        if (!eventoId) { _bancoImportadas.progresso.semMatch += pgs.length; _bancoImportadas.progresso.processadas += pgs.length; continue; }
+                        const resp = await contaAzulService._axiosGet(
+                            `${BASE}/v1/financeiro/eventos-financeiros/${eventoId}/parcelas`, 'CONTA_PAGAR_PARCELAS'
+                        );
+                        const parcelasCA = Array.isArray(resp.data) ? resp.data : (resp.data?.itens || []);
+                        const usadas = new Set();
+                        for (const local of conta.parcelas) {
+                            const vencLocal = fmtDataCA(local.dataVencimento);
+                            const valorLocal = Number(local.valor);
+                            const bate = (p) => Math.abs(Number(p.valor_composicao?.valor_bruto ?? p.nao_pago ?? 0) - valorLocal) < 0.01;
+                            let caPar = parcelasCA.find((p) => !usadas.has(p.id) && String(p.data_vencimento || '').substring(0, 10) === vencLocal && bate(p));
+                            if (!caPar) caPar = parcelasCA.find((p) => !usadas.has(p.id) && Number(p.indice) === Number(local.numeroParcela) && bate(p));
+                            if (!caPar) continue;
+                            usadas.add(caPar.id);
+                            try { detalhesPorParcelaLocal.set(local.id, await contaAzulService.buscarParcelaDetalhe(caPar.id)); }
+                            catch (_) { /* segue */ }
+                            await sleep(250);
+                        }
+                    }
+
+                    // Casa cada baixa local sem banco com a baixa do CA pelo TOTAL pago (match único)
+                    for (const pg of pgs) {
+                        _bancoImportadas.progresso.processadas++;
+                        const det = detalhesPorParcelaLocal.get(pg.parcelaPagar.id);
+                        if (!det) { _bancoImportadas.progresso.semMatch++; continue; }
+                        const totalLocal = round2(Number(pg.valorPago) + Number(pg.juros || 0) + Number(pg.multa || 0));
+                        const candidatas = (det.baixas || []).filter((b) => {
+                            const comp = b?.valor_composicao || {};
+                            const totalCA = round2(Number(comp.valor_bruto || 0) + Number(comp.juros || 0) + Number(comp.multa || 0));
+                            return Math.abs(totalCA - totalLocal) < 0.01 && extrairContaFinanceiraId(b.conta_financeira);
+                        });
+                        if (candidatas.length !== 1) { _bancoImportadas.progresso.semMatch++; continue; }
+                        const contaFin = extrairContaFinanceiraId(candidatas[0].conta_financeira);
+                        await prisma.pagamentoParcelaPagar.update({
+                            where: { id: pg.id },
+                            data: { contaFinanceiraCaId: contaFin }
+                        });
+                        _bancoImportadas.progresso.preenchidas++;
+                    }
+                } catch (e) {
+                    _bancoImportadas.progresso.semMatch += pgs.length;
+                    console.warn(`[ContasPagar CA] Backfill banco importadas: falha na despesa ${contaId}:`, erroCAtexto(e));
+                }
+                await sleep(400);
+            }
+            console.log('[ContasPagar CA] Backfill banco importadas concluído:', _bancoImportadas.progresso);
+        } catch (e) {
+            console.error('[ContasPagar CA] Backfill banco importadas falhou:', e.message);
+        } finally {
+            _bancoImportadas.rodando = false;
+        }
+    })();
+    return { ok: true, iniciado: true, despesas: porConta.size, baixasAlvo: pagamentos.length, aviso: 'Rodando em segundo plano — reconsulte para o progresso.' };
+}
+
 module.exports = {
     processarFilaFornecedores,
     processarFilaDespesas,
     conferirBaixasCA,
     sincronizarContasFinanceiras,
     backfillContasFinanceirasPagar,
+    backfillBancoImportadas,
     extrairContaFinanceiraId,
     importarFornecedoresCA,
     listarCategoriasDespesaSeguro,
