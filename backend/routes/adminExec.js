@@ -3065,6 +3065,47 @@ router.get('/diag-pdf-extrato', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-ledger-receber?contaId=UUID&de=2026-07-01&ate=2026-07-31
+// SOMENTE LEITURA. Para a conciliação: quantas parcelas PAGAS no período têm (ou não)
+// o ledger individual (PagamentoParcela) — sem ledger, o crédito do extrato não acha par.
+router.get('/diag-ledger-receber', async (req, res) => {
+    try {
+        const contaId = String(req.query.contaId || '').trim() || null;
+        const de = new Date(`${req.query.de || '2026-07-01'}T00:00:00-03:00`);
+        const ate = new Date(`${req.query.ate || '2026-07-31'}T23:59:59-03:00`);
+
+        const pagas = await prisma.parcela.findMany({
+            where: {
+                status: 'PAGO',
+                dataPagamento: { gte: de, lte: ate },
+                ...(contaId ? { contaFinanceiraCaId: contaId } : {})
+            },
+            select: {
+                id: true, valorPago: true, dataPagamento: true, contaFinanceiraCaId: true,
+                pagamentos: { where: { estornado: false }, select: { id: true } },
+                contaReceber: { select: { pedido: { select: { numero: true, nfeNumero: true } } } }
+            }
+        });
+        const semLedger = pagas.filter((p) => p.pagamentos.length === 0);
+        const comLedger = pagas.length - semLedger.length;
+        res.json({
+            ok: true,
+            filtro: { contaId, de: req.query.de || '2026-07-01', ate: req.query.ate || '2026-07-31' },
+            parcelasPagasNoPeriodo: pagas.length,
+            comLedger,
+            semLedger: semLedger.length,
+            amostraSemLedger: semLedger.slice(0, 15).map((p) => ({
+                pedido: p.contaReceber?.pedido?.numero || null,
+                nfe: p.contaReceber?.pedido?.nfeNumero || null,
+                valorPago: Number(p.valorPago || 0),
+                dataPagamento: p.dataPagamento
+            }))
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-pdf-ultimo — SOMENTE LEITURA. Mostra as linhas de texto
 // que o servidor extraiu do ÚLTIMO PDF de extrato cuja leitura falhou (0 lançamentos)
 // — gravadas pelo parsePdfExtratoCA em app_configs.diag_pdf_extrato_ultimo.
