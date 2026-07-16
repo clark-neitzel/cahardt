@@ -89,6 +89,7 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 2. Localize o pedido com status **ABERTO**
 3. Clique em **Aprovar** (botão verde) — exige permissão `Pode_Aprovar_Especial` ou `Pode_Aprovar_Bonificacao`
 4. O status muda para RECEBIDO e é faturado no CA
+5. **A aprovação dá baixa no estoque automaticamente** (desde jul/2026) — os itens saem do estoque do sistema no momento da aprovação, igual acontece com pedidos normais no faturamento. Se a aprovação for **revertida**, os itens voltam ao estoque sozinhos. A baixa tem trava contra duplicidade: aprovar/faturar duas vezes o mesmo pedido não desconta em dobro.
 
 ### Consultar situação no Conta Azul
 - Clique no botão de reload ao lado do pedido que já tem `idVendaContaAzul`

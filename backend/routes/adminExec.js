@@ -1934,6 +1934,138 @@ router.get('/diag-estoque-produto', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/estoque-corrigir-retroativo
+// Corrige retroativamente o estoque de UM produto desde uma data:
+//  - pedido RECEBIDO sem baixa (bug do especial/bonificação) → registra a SAIDA que faltou
+//  - pedido com baixa em dobro → credita a diferença (ENTRADA AJUSTE_MANUAL)
+// Compara a quantidade do pedido com o saldo efetivamente baixado (saídas − estornos),
+// então é idempotente: rodar de novo encontra delta 0 e não mexe em nada.
+// Body: { produtoNome, desde='2026-05-21', executar=false } — executar=false só simula.
+router.post('/estoque-corrigir-retroativo', async (req, res) => {
+    try {
+        const { produtoNome, desde: desdeStr, executar = false } = req.body || {};
+        if (!produtoNome) return res.status(400).json({ error: 'Informe produtoNome.' });
+        const desde = new Date((desdeStr || '2026-05-21') + 'T00:00:00-03:00');
+
+        const produto = await prisma.produto.findFirst({
+            where: { nome: { contains: produtoNome, mode: 'insensitive' } },
+            select: { id: true, nome: true, estoqueTotal: true }
+        });
+        if (!produto) return res.status(404).json({ error: 'Produto não encontrado.' });
+
+        const pedidos = await prisma.pedido.findMany({
+            where: {
+                statusEnvio: 'RECEBIDO',
+                // situacaoCA null entra (pedido recém-sincronizado); CANCELADO fica de fora
+                OR: [{ situacaoCA: null }, { situacaoCA: { not: 'CANCELADO' } }],
+                AND: [{ OR: [{ dataVenda: { gte: desde } }, { createdAt: { gte: desde } }] }],
+                itens: { some: { produtoId: produto.id } }
+            },
+            orderBy: { createdAt: 'asc' },
+            select: {
+                id: true, numero: true, especial: true, bonificacao: true,
+                itens: { where: { produtoId: produto.id }, select: { quantidade: true } }
+            }
+        });
+
+        const movs = await prisma.movimentacaoEstoque.findMany({
+            where: { produtoId: produto.id, pedidoId: { in: pedidos.map(p => p.id) } },
+            select: { pedidoId: true, tipo: true, quantidade: true, motivo: true }
+        });
+        const MOTIVOS_BAIXA = ['FATURAMENTO', 'PEDIDO_ESPECIAL', 'PEDIDO_BONIFICACAO'];
+        const MOTIVOS_ESTORNO = ['CANCELAMENTO_CA', 'CANCELAMENTO', 'EXCLUSAO'];
+        const saldoPorPedido = {};
+        for (const mv of movs) {
+            const q = parseFloat(mv.quantidade || 0);
+            if (mv.tipo === 'SAIDA' && MOTIVOS_BAIXA.includes(mv.motivo)) {
+                saldoPorPedido[mv.pedidoId] = (saldoPorPedido[mv.pedidoId] || 0) + q;
+            } else if (mv.tipo === 'ENTRADA' && MOTIVOS_ESTORNO.includes(mv.motivo)) {
+                saldoPorPedido[mv.pedidoId] = (saldoPorPedido[mv.pedidoId] || 0) - q;
+            }
+        }
+
+        const correcoes = [];
+        for (const pe of pedidos) {
+            const qtdPedido = pe.itens.reduce((s, i) => s + parseFloat(i.quantidade || 0), 0);
+            const baixado = saldoPorPedido[pe.id] || 0;
+            const delta = qtdPedido - baixado;
+            if (Math.abs(delta) < 0.001) continue;
+            if (delta > 0) {
+                correcoes.push({
+                    pedidoId: pe.id, numero: pe.numero, tipo: 'SAIDA', quantidade: delta,
+                    motivo: pe.bonificacao ? 'PEDIDO_BONIFICACAO' : (pe.especial ? 'PEDIDO_ESPECIAL' : 'FATURAMENTO'),
+                    observacao: `Baixa retroativa pedido #${pe.numero || pe.id} — aprovado sem baixa de estoque (correção do bug, jul/2026)`
+                });
+            } else {
+                correcoes.push({
+                    pedidoId: pe.id, numero: pe.numero, tipo: 'ENTRADA', quantidade: -delta,
+                    motivo: 'AJUSTE_MANUAL',
+                    observacao: `Correção de baixa em dobro pedido #${pe.numero || pe.id} (bug corrigido, jul/2026)`
+                });
+            }
+        }
+
+        const totalSaidas = correcoes.filter(c => c.tipo === 'SAIDA').reduce((s, c) => s + c.quantidade, 0);
+        const totalEntradas = correcoes.filter(c => c.tipo === 'ENTRADA').reduce((s, c) => s + c.quantidade, 0);
+        const estoqueAtual = parseFloat(produto.estoqueTotal || 0);
+        const projetado = estoqueAtual - totalSaidas + totalEntradas;
+
+        if (!executar) {
+            return res.json({
+                simulacao: true, produto: produto.nome, desde,
+                pedidosVerificados: pedidos.length, correcoes: correcoes.length,
+                totalSaidasFaltantes: totalSaidas, totalCreditosDuplicidade: totalEntradas,
+                estoqueAtual, estoqueProjetado: projetado, detalhes: correcoes
+            });
+        }
+
+        // Execução: cada correção em transação própria (banco compartilhado lento);
+        // se parar no meio, rodar de novo continua de onde parou (delta já corrigido vira 0).
+        const aplicadas = [];
+        for (const c of correcoes) {
+            await prisma.$transaction(async (tx) => {
+                const atual = await tx.produto.findUnique({
+                    where: { id: produto.id },
+                    select: { estoqueTotal: true }
+                });
+                const antes = parseFloat(atual?.estoqueTotal || 0);
+                const depois = c.tipo === 'SAIDA' ? antes - c.quantidade : antes + c.quantidade;
+                await tx.produto.update({ where: { id: produto.id }, data: { estoqueTotal: depois } });
+                await tx.movimentacaoEstoque.create({
+                    data: {
+                        produtoId: produto.id,
+                        pedidoId: c.pedidoId,
+                        tipo: c.tipo,
+                        quantidade: c.quantidade,
+                        motivo: c.motivo,
+                        observacao: c.observacao,
+                        estoqueAntes: antes,
+                        estoqueDepois: depois,
+                        sincCA: false,
+                        erroCA: null
+                    }
+                });
+                aplicadas.push({ numero: c.numero, tipo: c.tipo, quantidade: c.quantidade, antes, depois });
+            }, { timeout: 20000, maxWait: 10000 });
+        }
+
+        const recalc = await estoqueService.recalcularEstoqueProduto(produto.id);
+        const produtoFinal = await prisma.produto.findUnique({
+            where: { id: produto.id },
+            select: { estoqueTotal: true, estoqueReservado: true, estoqueDisponivel: true }
+        });
+
+        res.json({
+            executado: true, produto: produto.nome,
+            correcoesAplicadas: aplicadas.length,
+            totalSaidasFaltantes: totalSaidas, totalCreditosDuplicidade: totalEntradas,
+            estoqueFinal: produtoFinal, recalc, detalhes: aplicadas
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // POST /api/admin-exec/estoque-ajuste-batch — aplica ajustes manuais em lote
 // Body: { ajustes: [{ nomeProduto, quantidade, tipo, observacao }] }
 router.post('/estoque-ajuste-batch', async (req, res) => {

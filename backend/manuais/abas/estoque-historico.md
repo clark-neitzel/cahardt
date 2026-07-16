@@ -26,13 +26,19 @@ Registro completo de todas as movimentações de estoque (entradas e saídas), c
 | Motivo | Quando ocorre |
 |--------|---------------|
 | AJUSTE_MANUAL | Ajuste feito manualmente na tela de Estoque |
-| PEDIDO_ESPECIAL | Baixa de estoque por pedido especial aprovado |
-| PEDIDO_BONIFICACAO | Baixa por bonificação |
+| PEDIDO_ESPECIAL | Baixa automática ao aprovar pedido especial (desde jul/2026) |
+| PEDIDO_BONIFICACAO | Baixa automática ao aprovar bonificação (desde jul/2026) |
 | FATURAMENTO | Baixa automática ao faturar pedido no CA |
+| PRODUCAO | Entrada de produto acabado vinda da produção (PCP) |
+| COMPRA | Entrada por nota de compra recebida |
+| ESTORNO_COMPRA | Saída quando uma entrada de compra é cancelada |
 | DEVOLUCAO | Entrada por devolução de cliente |
 | REVERSAO_DEVOLUCAO | Estorno de devolução |
-| CANCELAMENTO | Estoque liberado por cancelamento de pedido |
+| CANCELAMENTO | Estorno quando a aprovação de especial/bonificação é revertida |
+| CANCELAMENTO_CA | Estorno quando o pedido faturado é cancelado/excluído no Conta Azul |
 | EXCLUSAO | Estoque liberado por exclusão de pedido |
+
+**Trava contra duplicidade (jul/2026):** a baixa por pedido é idempotente — se duas rotinas tentarem faturar o mesmo pedido, a segunda não desconta de novo. Antes disso alguns pedidos baixavam em dobro; os casos antigos foram corrigidos com movimentações marcadas "Correção de baixa em dobro" / "Baixa retroativa".
 
 ---
 

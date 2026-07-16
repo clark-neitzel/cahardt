@@ -473,6 +473,14 @@ const pedidoController = {
                 return updated;
             }, { timeout: 20000, maxWait: 10000 });
 
+            // Baixa de estoque do pedido aprovado (idempotente — não duplica se já baixou).
+            // Fora da transação: falha aqui não desfaz a aprovação, só fica registrada no log.
+            try {
+                await estoqueService.faturarPedido(id, req.user?.id || null);
+            } catch (eEstoque) {
+                console.error(`[Especial] Falha ao baixar estoque do pedido ${id}:`, eEstoque.message);
+            }
+
             res.json({ message: 'Pedido especial aprovado com sucesso.', pedido: pedidoAprovado });
         } catch (error) {
             console.error('Erro ao aprovar pedido especial:', error);
@@ -514,6 +522,16 @@ const pedidoController = {
                     enviadoEm: null
                 }
             });
+
+            // Devolver ao estoque o que a aprovação baixou (idempotente — credita só o saldo baixado)
+            try {
+                await estoqueService.cancelarPedido(id, {
+                    motivo: 'CANCELAMENTO',
+                    observacao: 'Estorno por reversão da aprovação (pedido especial)'
+                });
+            } catch (eEstoque) {
+                console.error(`[Especial] Falha ao estornar estoque do pedido ${id}:`, eEstoque.message);
+            }
 
             // Se tinha conta a receber, cancelar parcelas pendentes e atualizar status
             if (conta) {
@@ -571,6 +589,13 @@ const pedidoController = {
                 }
             });
 
+            // Baixa de estoque da bonificação aprovada (idempotente — não duplica se já baixou)
+            try {
+                await estoqueService.faturarPedido(id, req.user?.id || null);
+            } catch (eEstoque) {
+                console.error(`[Bonificação] Falha ao baixar estoque do pedido ${id}:`, eEstoque.message);
+            }
+
             res.json({ message: 'Bonificação aprovada com sucesso.', pedido: pedidoAprovado });
         } catch (error) {
             console.error('Erro ao aprovar bonificação:', error);
@@ -603,6 +628,16 @@ const pedidoController = {
                     enviadoEm: null
                 }
             });
+
+            // Devolver ao estoque o que a aprovação baixou (idempotente — credita só o saldo baixado)
+            try {
+                await estoqueService.cancelarPedido(id, {
+                    motivo: 'CANCELAMENTO',
+                    observacao: 'Estorno por reversão da aprovação (bonificação)'
+                });
+            } catch (eEstoque) {
+                console.error(`[Bonificação] Falha ao estornar estoque do pedido ${id}:`, eEstoque.message);
+            }
 
             await prisma.auditLog.create({
                 data: {

@@ -59,10 +59,34 @@ async function recalcularEstoqueProduto(produtoId, tx) {
     return { estoqueTotal: total, estoqueReservado: reservado, estoqueDisponivel: disponivel };
 }
 
+// Saldo efetivamente baixado de cada produto de um pedido: SAIDAs de faturamento
+// menos ENTRADAs de estorno. É a base da idempotência de faturarPedido/cancelarPedido —
+// chamar duas vezes não baixa nem credita em dobro (3 rotinas faturavam o mesmo pedido
+// e produziam baixa dupla), e um pedido aprovado→revertido→aprovado baixa de novo correto.
+const MOTIVOS_BAIXA_PEDIDO = ['FATURAMENTO', 'PEDIDO_ESPECIAL', 'PEDIDO_BONIFICACAO'];
+const MOTIVOS_ESTORNO_PEDIDO = ['CANCELAMENTO_CA', 'CANCELAMENTO', 'EXCLUSAO'];
+async function saldoBaixadoPorProduto(pedidoId, db) {
+    const movs = await (db || prisma).movimentacaoEstoque.findMany({
+        where: { pedidoId },
+        select: { produtoId: true, tipo: true, quantidade: true, motivo: true }
+    });
+    const saldo = {};
+    for (const mv of movs) {
+        const q = parseFloat(mv.quantidade || 0);
+        if (mv.tipo === 'SAIDA' && MOTIVOS_BAIXA_PEDIDO.includes(mv.motivo)) {
+            saldo[mv.produtoId] = (saldo[mv.produtoId] || 0) + q;
+        } else if (mv.tipo === 'ENTRADA' && MOTIVOS_ESTORNO_PEDIDO.includes(mv.motivo)) {
+            saldo[mv.produtoId] = (saldo[mv.produtoId] || 0) - q;
+        }
+    }
+    return saldo;
+}
+
 const estoqueService = {
 
     recalcularEstoqueProduto,
     produtoControlaEstoque,
+    saldoBaixadoPorProduto,
 
     // Ajuste manual de estoque: afeta somente estoqueTotal, depois recalcula disponivel/reservado.
     // tipo: 'ENTRADA' | 'SAIDA'
@@ -140,6 +164,9 @@ const estoqueService = {
         const resultados = [];
 
         await prisma.$transaction(async (tx) => {
+            // Idempotência: o que este pedido já baixou (menos estornos) não baixa de novo.
+            const saldoBaixado = await saldoBaixadoPorProduto(pedidoId, tx);
+
             for (const item of pedido.itens) {
                 if (!item.produto) continue;
 
@@ -147,8 +174,18 @@ const estoqueService = {
                 if (!controla) continue;
 
                 const qtd = parseFloat(item.quantidade || 0);
-                const totalAntes = parseFloat(item.produto.estoqueTotal || 0);
-                const totalDepois = totalAntes - qtd;
+                const jaBaixado = saldoBaixado[item.produtoId] || 0;
+                const qtdBaixar = qtd - jaBaixado;
+                if (qtdBaixar <= 0) continue; // já baixado por outra rotina — não duplicar
+                saldoBaixado[item.produtoId] = jaBaixado + qtdBaixar;
+
+                // estoqueTotal lido dentro da transação (o include de fora pode estar defasado)
+                const prodAtual = await tx.produto.findUnique({
+                    where: { id: item.produtoId },
+                    select: { estoqueTotal: true }
+                });
+                const totalAntes = parseFloat(prodAtual?.estoqueTotal || 0);
+                const totalDepois = totalAntes - qtdBaixar;
 
                 await tx.produto.update({
                     where: { id: item.produtoId },
@@ -161,7 +198,7 @@ const estoqueService = {
                         vendedorId,
                         pedidoId,
                         tipo: 'SAIDA',
-                        quantidade: qtd,
+                        quantidade: qtdBaixar,
                         motivo,
                         observacao: `Faturamento pedido #${pedido.numero || pedidoId}`,
                         estoqueAntes: totalAntes,
@@ -183,14 +220,13 @@ const estoqueService = {
         return resultados;
     },
 
-    // Credita estoque de volta quando um pedido faturado é cancelado/excluído no CA.
-    // Idempotente: se já existe movimentação CANCELAMENTO_CA para este pedido, ignora.
-    cancelarPedido: async (pedidoId) => {
-        const jaCreditado = await prisma.movimentacaoEstoque.findFirst({
-            where: { pedidoId, motivo: 'CANCELAMENTO_CA' },
-            select: { id: true }
-        });
-        if (jaCreditado) return [];
+    // Credita estoque de volta quando um pedido faturado é cancelado/excluído no CA
+    // ou quando uma aprovação de especial/bonificação é revertida (opts.motivo).
+    // Idempotente por saldo: credita somente o que o pedido efetivamente baixou e ainda
+    // não foi estornado — chamar de novo credita 0, e pedido cancelado antes de faturar
+    // não gera crédito fantasma.
+    cancelarPedido: async (pedidoId, opts = {}) => {
+        const motivo = opts.motivo || 'CANCELAMENTO_CA';
 
         const pedido = await prisma.pedido.findUnique({
             where: { id: pedidoId },
@@ -204,14 +240,24 @@ const estoqueService = {
         const resultados = [];
 
         await prisma.$transaction(async (tx) => {
+            const saldoBaixado = await saldoBaixadoPorProduto(pedidoId, tx);
+
             for (const item of pedido.itens) {
                 if (!item.produto) continue;
                 const controla = await produtoControlaEstoque(item.produto, tx);
                 if (!controla) continue;
 
                 const qtd = parseFloat(item.quantidade || 0);
-                const totalAntes = parseFloat(item.produto.estoqueTotal || 0);
-                const totalDepois = totalAntes + qtd;
+                const creditar = Math.min(qtd, saldoBaixado[item.produtoId] || 0);
+                if (creditar <= 0) continue; // nada baixado (ou já estornado) — não credita
+                saldoBaixado[item.produtoId] -= creditar;
+
+                const prodAtual = await tx.produto.findUnique({
+                    where: { id: item.produtoId },
+                    select: { estoqueTotal: true }
+                });
+                const totalAntes = parseFloat(prodAtual?.estoqueTotal || 0);
+                const totalDepois = totalAntes + creditar;
 
                 await tx.produto.update({
                     where: { id: item.produtoId },
@@ -223,9 +269,9 @@ const estoqueService = {
                         produtoId: item.produtoId,
                         pedidoId,
                         tipo: 'ENTRADA',
-                        quantidade: qtd,
-                        motivo: 'CANCELAMENTO_CA',
-                        observacao: `Estorno por cancelamento pedido #${pedido.numero || pedidoId}`,
+                        quantidade: creditar,
+                        motivo,
+                        observacao: opts.observacao || `Estorno por cancelamento pedido #${pedido.numero || pedidoId}`,
                         estoqueAntes: totalAntes,
                         estoqueDepois: totalDepois,
                         sincCA: false,
