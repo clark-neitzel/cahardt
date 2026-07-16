@@ -1234,10 +1234,12 @@ const ConciliacaoBancariaPage = () => {
         }
     };
 
-    // Seleção em lote: só saídas PENDENTES podem virar despesa em massa (tarifas repetidas)
-    const selecionaveis = lancamentos.filter(l => l.status === 'PENDENTE' && l.tipo === 'DEBITO');
+    // Seleção em lote: TODO pendente pode ser selecionado (crédito ou débito).
+    // Ações por tipo: Ignorar (todos) · Conciliar sugeridas/identificadas (as que têm par)
+    // · Lançar despesas e conciliar (só as saídas — tarifas repetidas).
+    const selecionaveis = lancamentos.filter(l => l.status === 'PENDENTE');
     const idsSelecionaveis = selecionaveis.map(l => l.id);
-    const podeSelecionar = (l) => l.status === 'PENDENTE' && l.tipo === 'DEBITO';
+    const podeSelecionar = (l) => l.status === 'PENDENTE';
     const alternarSelecao = (id) => setSelecionados(prev => {
         const s = new Set(prev);
         if (s.has(id)) s.delete(id); else s.add(id);
@@ -1247,6 +1249,44 @@ const ConciliacaoBancariaPage = () => {
     const alternarTodos = () => setSelecionados(todosSelecionados ? new Set() : new Set(idsSelecionaveis));
     const lancamentosSelecionados = selecionaveis.filter(l => selecionados.has(l.id));
     const totalSelecionado = lancamentosSelecionados.reduce((s, l) => s + Number(l.valor || 0), 0);
+    // Recortes da seleção, por ação possível
+    const selDebitos = lancamentosSelecionados.filter(l => l.tipo === 'DEBITO');
+    const selConciliaveis = lancamentosSelecionados.filter(l =>
+        l.identificado?.fecha || (l.sugestoes || []).length >= 1);
+
+    // Ignorar em massa: um motivo só para todas, com o seu clique
+    const ignorarSelecionados = async () => {
+        const obs = window.prompt(`Ignorar ${lancamentosSelecionados.length} lançamento(s)? Informe o motivo (vale para todos):`) || '';
+        if (!obs.trim()) return;
+        setAutoRodando(true);
+        let ok = 0, falhas = 0;
+        for (const l of lancamentosSelecionados) {
+            try { await conciliacaoService.ignorar(l.id, obs.trim()); ok++; } catch (_) { falhas++; }
+        }
+        setAutoRodando(false);
+        toast[falhas ? 'error' : 'success'](`${ok} ignorado(s)${falhas ? `, ${falhas} falharam` : ''}.`);
+        carregar();
+    };
+
+    // Conciliar em massa os selecionados que têm par (identificado com certeza ou 1ª sugestão)
+    const conciliarSelecionados = async () => {
+        const alvo = selConciliaveis;
+        if (!alvo.length) return;
+        if (!window.confirm(`Conciliar ${alvo.length} lançamento(s) com o par indicado (identificado ou 1ª sugestão)?`)) return;
+        setAutoRodando(true);
+        let ok = 0, falhas = 0;
+        for (const l of alvo) {
+            try {
+                const pagId = l.identificado?.fecha ? l.identificado.pagamentoId : (escolhas[l.id] || l.sugestoes[0].id);
+                const payload = l.tipo === 'CREDITO' ? { pagamentoParcelaId: pagId } : { pagamentoParcelaPagarId: pagId };
+                await conciliacaoService.conciliar(l.id, payload);
+                ok++;
+            } catch (_) { falhas++; }
+        }
+        setAutoRodando(false);
+        toast[falhas ? 'error' : 'success'](`${ok} conciliado(s)${falhas ? `, ${falhas} falharam (veja as linhas)` : ''}.`);
+        carregar();
+    };
 
     // Painel de ação de uma linha pendente — DOIS botões, sempre os mesmos:
     //   Conciliar (quando há sugestão com data e valor batendo) e Buscar… (todo o resto:
@@ -1597,16 +1637,26 @@ const ConciliacaoBancariaPage = () => {
                             )}
                         </div>
 
-                        {/* Barra de seleção em lote — aparece ao marcar saídas pendentes (tarifas) */}
+                        {/* Barra de seleção em lote — qualquer pendente marcado */}
                         {selecionados.size > 0 && (
-                            <div className="sticky top-2 z-20 bg-primary text-white rounded-full px-4 py-2.5 flex items-center justify-between gap-3 shadow-md">
+                            <div className="sticky top-2 z-20 bg-primary text-white rounded-2xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-md">
                                 <span className="text-sm font-medium">
-                                    {selecionados.size} saída(s) selecionada(s) · R$ {fmt(totalSelecionado)}
+                                    {lancamentosSelecionados.length} selecionada(s) · R$ {fmt(totalSelecionado)}
                                 </span>
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                     <button onClick={() => setSelecionados(new Set())} className="text-xs px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25">Limpar</button>
-                                    <button onClick={() => setLoteModal(true)} className="text-xs font-semibold px-3 py-1.5 rounded-full bg-white text-primary hover:bg-gray-100 inline-flex items-center gap-1.5">
-                                        <Check className="h-3.5 w-3.5" /> Lançar despesas e conciliar
+                                    {selConciliaveis.length > 0 && (
+                                        <button onClick={conciliarSelecionados} disabled={autoRodando} className="text-xs font-semibold px-3 py-1.5 rounded-full bg-white text-primary hover:bg-gray-100 inline-flex items-center gap-1.5 disabled:opacity-50">
+                                            <Check className="h-3.5 w-3.5" /> Conciliar com o par ({selConciliaveis.length})
+                                        </button>
+                                    )}
+                                    {selDebitos.length > 0 && (
+                                        <button onClick={() => setLoteModal(true)} disabled={autoRodando} className="text-xs font-semibold px-3 py-1.5 rounded-full bg-white text-primary hover:bg-gray-100 inline-flex items-center gap-1.5 disabled:opacity-50">
+                                            <Check className="h-3.5 w-3.5" /> Lançar despesas ({selDebitos.length})
+                                        </button>
+                                    )}
+                                    <button onClick={ignorarSelecionados} disabled={autoRodando} className="text-xs font-semibold px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 inline-flex items-center gap-1.5 disabled:opacity-50">
+                                        Ignorar ({lancamentosSelecionados.length})
                                     </button>
                                 </div>
                             </div>
@@ -1632,7 +1682,7 @@ const ConciliacaoBancariaPage = () => {
                                 {selecionaveis.length > 0 && (
                                     <label className="flex items-center gap-2 px-1 text-xs text-gray-600 cursor-pointer select-none">
                                         <input type="checkbox" checked={todosSelecionados} onChange={alternarTodos} className="accent-[#00754A]" />
-                                        Selecionar as {selecionaveis.length} saída(s) pendente(s) para lançar em lote
+                                        Selecionar os {selecionaveis.length} pendente(s) — para conciliar, ignorar ou lançar despesas em lote
                                     </label>
                                 )}
 
@@ -1665,7 +1715,7 @@ const ConciliacaoBancariaPage = () => {
                                             <tr>
                                                 <th className="px-3 py-3 w-10">
                                                     {selecionaveis.length > 0 && (
-                                                        <input type="checkbox" checked={todosSelecionados} onChange={alternarTodos} className="accent-[#00754A]" title="Selecionar todas as saídas pendentes" />
+                                                        <input type="checkbox" checked={todosSelecionados} onChange={alternarTodos} className="accent-[#00754A]" title="Selecionar todos os pendentes" />
                                                     )}
                                                 </th>
                                                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
@@ -1789,7 +1839,7 @@ const ConciliacaoBancariaPage = () => {
             {/* Lançar VÁRIAS despesas de uma vez (tarifas) e já conciliar */}
             {loteModal && (
                 <DespesaLoteModal
-                    lancamentos={lancamentosSelecionados}
+                    lancamentos={selDebitos}
                     onClose={() => setLoteModal(false)}
                     onSuccess={() => { setLoteModal(false); carregar(); }}
                 />

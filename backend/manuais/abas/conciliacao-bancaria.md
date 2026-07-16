@@ -71,7 +71,7 @@ Se uma baixa foi lançada em **outra conta** (ex.: despesa baixada "no Sicoob" m
 
 Para **tarifas repetidas** — taxa de boleto, taxa de PIX do Asaas, cada uma com seu número de fatura — não precisa cadastrar uma por uma:
 
-- Cada saída **pendente** ganha uma **caixinha de seleção** (à esquerda). Marque as tarifas (há um **"selecionar todas as saídas pendentes"** no cabeçalho da tabela / acima da lista).
+- Todo lançamento **pendente** (entrada ou saída) tem uma **caixinha de seleção** (há um "selecionar todos" no cabeçalho). Com linhas marcadas, a barra verde oferece: **Conciliar com o par (N)** — fecha as que têm identificação ou sugestão; **Lançar despesas (N)** — só as saídas, vira despesa paga+conciliada (tarifas repetidas); **Ignorar (N)** — pede UM motivo e aplica em todas.
 - Aparece a barra **"N saída(s) selecionada(s)"** → botão **"Lançar despesas e conciliar"**.
 - No pop-up, escolha **uma vez só**: o **fornecedor** (ex.: Asaas), a **categoria da DRE** (ex.: Tarifas de Boletos) e a **forma de pagamento** (ex.: Depósito bancário). A prévia lista todas as linhas com valor e total.
 - Ao confirmar, **cada linha vira sua própria despesa** já **paga e conciliada**, no banco deste extrato — mantendo a descrição e o nº do documento do banco (cada tarifa fica identificável) — e vai para o Conta Azul. Não precisa clicar em "Conciliar" depois.
