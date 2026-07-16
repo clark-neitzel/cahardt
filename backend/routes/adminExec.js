@@ -3146,6 +3146,53 @@ router.get('/diag-pdf-ultimo', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-baixas-sem-banco?de=2026-06-01&ate=2026-07-31 — SOMENTE LEITURA.
+// Por que o backfill de banco não casou: agrupa as baixas sem conta do período pelo
+// perfil da despesa (nota numérica? importada? tem vínculo com o CA?) + amostra.
+router.get('/diag-baixas-sem-banco', async (req, res) => {
+    try {
+        const de = new Date(`${String(req.query.de || '2026-06-01')}T00:00:00-03:00`);
+        const ate = new Date(`${String(req.query.ate || '2026-07-31')}T23:59:59-03:00`);
+        const pags = await prisma.pagamentoParcelaPagar.findMany({
+            where: { estornado: false, contaFinanceiraCaId: null, dataPagamento: { gte: de, lte: ate } },
+            select: {
+                id: true, valorPago: true, dataPagamento: true, origem: true,
+                parcelaPagar: {
+                    select: {
+                        idParcelaCA: true,
+                        contaPagar: { select: { numeroNota: true, origem: true, statusEnvioCA: true, descricao: true, fornecedor: { select: { razaoSocial: true } } } }
+                    }
+                }
+            }
+        });
+        const REGEX_NOTA = /^\d{3,}([-/.]\d{1,4})?$/;
+        const grupos = { notaNumerica: 0, notaTextoLivre: 0, semNota: 0, comVinculoCA: 0 };
+        const amostra = [];
+        for (const p of pags) {
+            const cp = p.parcelaPagar?.contaPagar;
+            const nota = String(cp?.numeroNota || '').trim();
+            if (p.parcelaPagar?.idParcelaCA) grupos.comVinculoCA++;
+            else if (!nota) grupos.semNota++;
+            else if (REGEX_NOTA.test(nota)) grupos.notaNumerica++;
+            else grupos.notaTextoLivre++;
+            if (amostra.length < 20) {
+                amostra.push({
+                    fornecedor: cp?.fornecedor?.razaoSocial || null,
+                    descricao: (cp?.descricao || '').slice(0, 60),
+                    nota: nota || null,
+                    origemDespesa: cp?.origem || null,
+                    envioCA: cp?.statusEnvioCA || null,
+                    valor: Number(p.valorPago),
+                    pago: p.dataPagamento
+                });
+            }
+        }
+        res.json({ ok: true, total: pags.length, grupos, amostra });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // POST /api/admin-exec/backfill-banco-importadas?de=2026-06-01&ate=2026-07-31
 // Preenche o BANCO das baixas sem conta de despesas importadas do CA: acha o evento
 // no CA por nº da nota + valor (match único) e copia a conta financeira da baixa de lá.
