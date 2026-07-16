@@ -3018,7 +3018,34 @@ router.post('/sync-ledger-pedido/:numero', async (req, res) => {
         if (!conta) return res.status(404).json({ ok: false, error: `Pedido ${numero} sem conta a receber.` });
 
         const antes = await prisma.pagamentoParcela.count({ where: { parcela: { contaReceberId: conta.id }, estornado: false } });
-        const r = await receberSync.sincronizarConta(conta.id, { semLog: true, origem: 'FIX_LEDGER' });
+        let r = null;
+        try { r = await receberSync.sincronizarConta(conta.id, { semLog: true, origem: 'FIX_LEDGER' }); }
+        catch (syncErr) { r = { erro: syncErr.message }; }
+
+        // ?fallbackLocal=1 — o CA não devolveu as baixas (venda antiga/sem referência):
+        // espelha o ledger dos DADOS DA PRÓPRIA parcela (valorPago/conta/data já corretos).
+        // Só age em parcela PAGA e sem nenhum pagamento ativo (idempotente).
+        if (req.query.fallbackLocal === '1') {
+            const pagas = await prisma.parcela.findMany({
+                where: { contaReceberId: conta.id, status: 'PAGO', pagamentos: { none: { estornado: false } } },
+                select: { id: true, valorPago: true, contaFinanceiraCaId: true, dataPagamento: true, formaPagamento: true, baixadoPorId: true }
+            });
+            for (const p of pagas) {
+                if (!(Number(p.valorPago) > 0) || !p.baixadoPorId) continue;
+                await prisma.pagamentoParcela.create({
+                    data: {
+                        parcelaId: p.id,
+                        valorRecebido: p.valorPago,
+                        contaFinanceiraCaId: p.contaFinanceiraCaId,
+                        dataPagamento: p.dataPagamento || new Date(),
+                        formaPagamento: p.formaPagamento || null,
+                        observacao: 'Ledger criado a partir da própria parcela (CA sem baixas para espelhar) [fix admin]',
+                        registradoPorId: p.baixadoPorId
+                    }
+                });
+            }
+        }
+
         const ledger = await prisma.pagamentoParcela.findMany({
             where: { parcela: { contaReceberId: conta.id }, estornado: false },
             select: { valorRecebido: true, formaPagamento: true, contaFinanceiraCaId: true, dataPagamento: true }
