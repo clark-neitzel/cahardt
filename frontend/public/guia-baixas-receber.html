@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guia: Como dar baixa em Contas a Receber — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="💰 Guia: Como dar baixa em Contas a Receber">
+<meta property="og:description" content="As 3 formas de quitar uma conta a receber — no Caixa (entrega), no Contas a Receber (PIX/dinheiro no escritório) e na Conciliação Bancária. O que é do Caixa e o que não é.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --cream: #f2f0eb; --gold: #cba258;
+    --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66;
+    --sky: #0369a1; --sky-bg: #e0f2fe; --amber: #b45309; --amber-bg: #fef3c7;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); line-height:1.55;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased; font-variant-numeric: tabular-nums; }
+  .wrap { max-width:640px; margin:0 auto; padding:0 16px 56px; }
+
+  .hero { background:linear-gradient(168deg, var(--house) 0%, #16302a 100%); color:#fff;
+    padding:40px 16px 92px; text-align:center; }
+  .hero .chip { display:inline-block; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);
+    color:#d4e9e2; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+    border-radius:999px; padding:6px 14px; margin-bottom:14px; }
+  .hero h1 { font-size:27px; margin:0 0 10px; font-weight:800; }
+  .hero p { color:#c8d6d0; max-width:480px; margin:0 auto; font-size:15.5px; }
+
+  .cartao { background:#fff; border:1px solid #e5e7eb; border-radius:16px;
+    box-shadow:0 8px 24px rgba(30,57,50,.10); padding:20px; margin-top:-60px; }
+  .sec { margin-top:26px; }
+  .sec-titulo { font-size:12px; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--ink-soft); margin:0 0 12px; }
+
+  /* três lugares */
+  .lugar { border-radius:14px; padding:16px 16px 14px; border:1px solid #e5e7eb; background:#fff; }
+  .lugar + .lugar { margin-top:12px; }
+  .lugar h3 { margin:0 0 4px; font-size:17px; font-weight:800; color:var(--house); display:flex; align-items:center; gap:9px; }
+  .lugar .tag { font-size:11px; font-weight:800; border-radius:999px; padding:3px 9px; letter-spacing:.03em; }
+  .tag-auto { background:var(--mint); color:var(--primary-dark); }
+  .tag-manual { background:var(--sky-bg); color:var(--sky); }
+  .tag-confere { background:var(--amber-bg); color:var(--amber); }
+  .lugar p { margin:8px 0 0; font-size:14.5px; color:#3f4a46; }
+  .lugar b { color:var(--house); }
+  .quando { font-size:13px; color:var(--ink-soft); margin-top:8px; padding-top:8px; border-top:1px dashed #e5e7eb; }
+  .quando b { color:var(--house); }
+
+  /* decisor */
+  .dec { border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; }
+  .dec-linha { display:flex; gap:0; border-top:1px solid #eef0ef; }
+  .dec-linha:first-child { border-top:0; }
+  .dec-q { flex:1.3; padding:12px 14px; font-size:14px; color:#374151; background:#fafafa; }
+  .dec-a { flex:1; padding:12px 14px; font-size:13.5px; font-weight:700; color:var(--house); display:flex; align-items:center; }
+  .dec-q b { color:var(--house); }
+
+  details { background:#fff; border:1px solid #e5e7eb; border-radius:14px; margin-top:10px; overflow:hidden; }
+  summary { list-style:none; cursor:pointer; padding:15px 18px; font-weight:800; font-size:15px; color:var(--house);
+    display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  summary::-webkit-details-marker { display:none; }
+  summary .mais { color:var(--primary); font-size:20px; font-weight:800; transition:transform .2s; flex:none; }
+  details[open] summary .mais { transform:rotate(45deg); }
+  .det-corpo { padding:0 18px 16px; font-size:14.5px; color:#3f4a46; }
+  .det-corpo b { color:var(--house); }
+
+  .passo { display:flex; gap:12px; margin-top:13px; }
+  .passo .num { flex:none; width:26px; height:26px; border-radius:999px; background:var(--primary); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px; }
+  .passo p { margin:2px 0 0; font-size:14.5px; color:#3f4a46; }
+  .passo b { color:var(--house); }
+
+  .aviso { border-radius:12px; padding:13px 15px; font-size:14px; margin-top:12px; }
+  .aviso-amber { background:var(--amber-bg); color:#7c4a02; border:1px solid #fde68a; }
+  .aviso-amber b { color:#5b3600; }
+
+  ul.limpa { margin:8px 0 0; padding-left:18px; font-size:14.5px; color:#3f4a46; line-height:1.9; }
+  ul.limpa b { color:var(--house); }
+  .rodape { text-align:center; color:var(--ink-soft); font-size:12.5px; margin-top:36px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="chip">📘 Guia da equipe</span>
+  <h1>💰 Como dar baixa em Contas a Receber</h1>
+  <p>Existem <b>3 lugares</b> para quitar uma conta a receber. O segredo é saber <b>como o cliente pagou</b> — cada forma tem o seu lugar certo.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao">
+    <p class="sec-titulo">Os 3 lugares (e quando usar cada um)</p>
+
+    <div class="lugar">
+      <h3>🛒 No Caixa <span class="tag tag-auto">automático</span></h3>
+      <p>É a baixa da <b>entrega</b>. O cliente pagou o motorista na hora (dinheiro, PIX no QR do Asaas, cartão). Ao <b>"Baixar no CA"</b> no Caixa, cada entrega selecionada é quitada e cada forma vai para a conta certa: <b>dinheiro → Caixinha</b>, <b>PIX Asaas → conta Asaas</b>.</p>
+      <div class="quando"><b>Use quando:</b> o pagamento aconteceu na entrega. Você não precisa fazer nada no Contas a Receber — o Caixa já baixa.</div>
+    </div>
+
+    <div class="lugar">
+      <h3>📄 No Contas a Receber <span class="tag tag-manual">manual</span></h3>
+      <p>É onde você quita <b>tudo que NÃO passou pela entrega</b>: PIX ou transferência que caiu na conta da empresa, pagamento no escritório, dinheiro entregue depois, boleto, cheque. Na parcela, clique em <b>"Dar baixa"</b> e informe a <b>forma</b>, o <b>banco/caixa</b> que recebeu, a <b>data</b> e (se for o caso) o <b>desconto</b>.</p>
+      <div class="quando"><b>Use quando:</b> o dinheiro entrou fora da entrega — é aqui que a baixa de PIX/dinheiro do escritório de fato acontece.</div>
+    </div>
+
+    <div class="lugar">
+      <h3>🏦 Na Conciliação Bancária <span class="tag tag-auto">dá a baixa</span></h3>
+      <p>Quando o dinheiro <b>caiu no banco/Asaas</b> (PIX na chave da empresa, transferência, PIX gerado no escritório), ele aparece aqui como <b>crédito</b>. Clique em <b>"Buscar…"</b> na linha: a conciliação mostra as <b>contas a receber em aberto</b>. Escolha a do cliente e <b>Conciliar</b> — a baixa nasce ali mesmo, na conta do próprio extrato, já conciliada. Um passo só.</p>
+      <div class="quando"><b>Use quando:</b> o dinheiro entrou no banco/Asaas fora da entrega. Não precisa ir ao Contas a Receber antes — a conciliação já dá a baixa e concilia junto.</div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <p class="sec-titulo">Recebi assim… onde baixo?</p>
+    <div class="dec">
+      <div class="dec-linha"><div class="dec-q"><b>Dinheiro</b> na entrega (motorista)</div><div class="dec-a">🛒 Caixa (baixa sozinho)</div></div>
+      <div class="dec-linha"><div class="dec-q"><b>PIX no QR do Asaas</b> na entrega</div><div class="dec-a">🛒 Caixa (baixa sozinho)</div></div>
+      <div class="dec-linha"><div class="dec-q"><b>Cartão</b> na entrega</div><div class="dec-a">🛒 Caixa (baixa sozinho)</div></div>
+      <div class="dec-linha"><div class="dec-q"><b>PIX na chave da empresa</b> (escritório / cliente pagou depois)</div><div class="dec-a">🏦 Conciliação (dá a baixa)</div></div>
+      <div class="dec-linha"><div class="dec-q"><b>Transferência / TED</b> na conta da empresa</div><div class="dec-a">🏦 Conciliação (dá a baixa)</div></div>
+      <div class="dec-linha"><div class="dec-q"><b>Dinheiro no escritório</b> (fora da entrega)</div><div class="dec-a">📄 Contas a Receber</div></div>
+      <div class="dec-linha"><div class="dec-q"><b>Boleto / cheque</b></div><div class="dec-a">📄 Contas a Receber</div></div>
+    </div>
+    <div class="aviso aviso-amber">
+      <b>Caiu no banco/Asaas? Baixe pela Conciliação.</b> É o caminho mais curto: acha o crédito, escolhe a conta a receber em aberto e concilia — a baixa nasce na conta certa, num passo. <b>Dinheiro, boleto e cheque</b> (que não aparecem em extrato de banco) você baixa no <b>Contas a Receber</b>.
+    </div>
+  </div>
+
+  <div class="sec">
+    <p class="sec-titulo">Passo a passo</p>
+
+    <details open>
+      <summary>PIX na chave da empresa / pago no escritório (caiu no banco) <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        <div class="passo"><div class="num">1</div><p>Abra <b>Financeiro → Conciliação Bancária</b> e escolha o <b>banco/Asaas</b> onde o dinheiro caiu.</p></div>
+        <div class="passo"><div class="num">2</div><p>Ache o <b>crédito</b> (a entrada em verde) e clique em <b>"Buscar…"</b>.</p></div>
+        <div class="passo"><div class="num">3</div><p>Na lista de <b>contas a receber em aberto</b>, marque a do cliente (a que "valor bate" vem primeiro), confira a <b>forma</b> (Pix) e clique em <b>Conciliar</b>.</p></div>
+        <div class="passo"><div class="num">4</div><p>Pronto: a baixa é dada <b>na conta do banco/Asaas</b> e o crédito já fica conciliado — tudo num passo. Não precisa ir ao Contas a Receber.</p></div>
+      </div>
+    </details>
+
+    <details>
+      <summary>Pagou em dinheiro <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        <p><b>Foi na entrega?</b> Não precisa fazer nada no Contas a Receber — ao <b>"Baixar no CA"</b> no Caixa, o dinheiro entra na <b>Caixinha</b> e a parcela é quitada.</p>
+        <p style="margin-top:8px"><b>Foi no escritório / depois?</b> Vá em <b>Contas a Receber → "Dar baixa"</b>, forma <b>Dinheiro</b>, conta <b>Caixinha</b>, informe o valor e a data. (Dinheiro não aparece em extrato de banco, então não passa pela conciliação.)</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Recebeu só uma parte (baixa parcial) ou deu desconto <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        <p>No <b>"Dar baixa"</b>, informe só o <b>valor recebido</b> — a parcela fica <b>PARCIAL</b> e guarda o saldo que falta. Para <b>desconto</b>, preencha o campo de desconto e o <b>motivo</b> (precisa da permissão de desconto). O saldo restante continua aberto para uma próxima baixa.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Vários clientes pagaram do mesmo jeito (baixa em lote) <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        <p>Em <b>Contas a Receber</b>, use <b>"Baixar em lote"</b>: marque as parcelas, informe <b>uma vez</b> a forma, o banco/caixa e a data, e todas são quitadas juntas. Bom para um dia de vários PIX na conta da empresa.</p>
+      </div>
+    </details>
+
+    <details>
+      <summary>Já dei baixa no Conta Azul direto <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        <p>Se a baixa foi feita <b>no Conta Azul</b> (pela contadora, DDA, etc.), use <b>"Baixar parcelas do CA"</b> em Contas a Receber — o app verifica o CA e traz as baixas já pagas de lá, com o banco de cada uma.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="sec">
+    <p class="sec-titulo">O que é do Caixa × o que não é</p>
+    <ul class="limpa">
+      <li><b>É do Caixa</b> (baixa ao fechar/baixar o caixa): o que o cliente pagou <b>na entrega</b> — dinheiro, PIX no QR do Asaas, cartão.</li>
+      <li><b>Não é do Caixa</b> (baixa fora dele): PIX/transferência recebido depois na conta da empresa → pela <b>Conciliação</b>; dinheiro no escritório, boleto, cheque → pelo <b>Contas a Receber</b>.</li>
+      <li>Na <b>Conciliação</b>, o crédito do banco/Asaas mostra tanto as <b>baixas já feitas</b> quanto as <b>contas a receber em aberto</b> — se estiver aberta, você baixa e concilia no mesmo lugar.</li>
+    </ul>
+  </div>
+
+  <p class="rodape">Hardt Alimentos · guia de julho/2026<br>Dúvidas? É só falar com o escritório. 💚</p>
+</div>
+
+</body>
+</html>

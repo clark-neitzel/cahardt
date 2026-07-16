@@ -79,6 +79,11 @@ const conciliacaoBancariaService = {
         const response = await api.get('/conciliacao-bancaria/parcelas-pagar-abertas', { params: { valor, busca, de, ate } });
         return response.data;
     },
+    // Contas a RECEBER em aberto — para dar baixa numa entrada (PIX/transferência) direto na conciliação
+    parcelasReceberAbertas: async (valor, busca, de, ate) => {
+        const response = await api.get('/conciliacao-bancaria/parcelas-receber-abertas', { params: { valor, busca, de, ate } });
+        return response.data;
+    },
     // Extrato automático do Asaas: { configurado, contaFinanceiraCaId, ultimaSync }
     asaasInfo: async () => {
         const response = await api.get('/conciliacao-bancaria/asaas-info');

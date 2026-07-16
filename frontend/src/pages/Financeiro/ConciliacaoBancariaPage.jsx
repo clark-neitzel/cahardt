@@ -159,17 +159,20 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
     const [janela, setJanela] = useState('15'); // dias p/ cada lado ('15'|'30'|'60'|'365')
     const [busca, setBusca] = useState('');
     const [abertas, setAbertas] = useState(null);   // boletos em aberto (só saída)
+    const [abertasReceber, setAbertasReceber] = useState(null); // contas a receber em aberto (só entrada)
     const [baixas, setBaixas] = useState(null);     // baixas já registradas sem par
     const [motivos, setMotivos] = useState([]);
     const [metodos, setMetodos] = useState([]);
     const [selParc, setSelParc] = useState(new Set());
+    const [selParcReceber, setSelParcReceber] = useState(new Set());
     const [selPag, setSelPag] = useState(new Set());
     const [selLanc, setSelLanc] = useState(new Set([lancamento.id]));
     const [mostrarExtras, setMostrarExtras] = useState(false);
     const [metodoPagamento, setMetodoPagamento] = useState(
-        /pix/i.test(lancamento.descricao || '') ? 'PIX_PAGAMENTO_INSTANTANEO'
+        /pix|cobrança|cobranca/i.test(lancamento.descricao || '') ? 'PIX_PAGAMENTO_INSTANTANEO'
             : /ted|transfer/i.test(lancamento.descricao || '') ? 'TRANSFERENCIA_BANCARIA'
-                : 'BOLETO_BANCARIO'
+                : lancamento.tipo === 'CREDITO' ? 'PIX_PAGAMENTO_INSTANTANEO' // entrada no banco/Asaas: quase sempre PIX
+                    : 'BOLETO_BANCARIO'
     );
     const [form, setForm] = useState({ juros: '', multa: '', desconto: '' });
     const [motivo, setMotivo] = useState('');
@@ -185,16 +188,22 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
         conciliacaoService.opcoesDespesa().then(o => setMetodos(o.metodosPagamento || [])).catch(() => setMetodos([]));
     }, []);
 
-    // Recarrega as duas listas quando a janela ou a busca mudam (busca com debounce)
+    // Recarrega as listas quando a janela ou a busca mudam (busca com debounce).
+    // Saída → boletos a pagar em aberto; entrada → contas a receber em aberto.
     useEffect(() => {
         let vivo = true;
         setAbertas(ehSaida ? null : []);
+        setAbertasReceber(ehSaida ? [] : null);
         setBaixas(null);
         const t = setTimeout(() => {
             if (ehSaida) {
                 conciliacaoService.parcelasPagarAbertas(lancamento.valor, busca, de, ate)
                     .then(p => { if (vivo) setAbertas(p); })
                     .catch(() => { if (vivo) setAbertas([]); });
+            } else {
+                conciliacaoService.parcelasReceberAbertas(lancamento.valor, busca, de, ate)
+                    .then(p => { if (vivo) setAbertasReceber(p); })
+                    .catch(() => { if (vivo) setAbertasReceber([]); });
             }
             conciliacaoService.baixasDisponiveis(contaId, de, ate, lancamento.tipo)
                 .then(b => { if (vivo) setBaixas(b); })
@@ -209,9 +218,10 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
         return s;
     });
 
-    // Boletos ordenados: valor batendo primeiro, depois vencimento mais perto do débito
+    // Abertas ordenadas: valor batendo primeiro, depois vencimento mais perto do lançamento
     const dist = (v) => Math.abs((new Date(`${v}T12:00:00Z`) - new Date(`${lancamento.data}T12:00:00Z`)) / 86400000);
     const listaAbertas = (abertas || []).slice().sort((a, b) => (b.bate - a.bate) || (dist(a.vencimento) - dist(b.vencimento)));
+    const listaAbertasReceber = (abertasReceber || []).slice().sort((a, b) => (b.bate - a.bate) || (dist(a.vencimento) - dist(b.vencimento)));
     const listaBaixas = (baixas || []).filter(p => !busca.trim() || p.label.toLowerCase().includes(busca.trim().toLowerCase()));
     const outrosPendentes = pendentes.filter(p => p.tipo === lancamento.tipo && p.id !== lancamento.id);
 
@@ -223,12 +233,39 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
         .filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i)
         .reduce((s, p) => s + p.valor, 0));
     const parcSel = listaAbertas.filter(p => selParc.has(p.id));
+    const parcReceberSel = listaAbertasReceber.filter(p => selParcReceber.has(p.id));
     const somaExistentes = r2((baixas || []).filter(p => selPag.has(p.id)).reduce((s, p) => s + p.valor, 0));
-    const temSelecao = selParc.size > 0 || selPag.size > 0;
+    const temSelecao = selParc.size > 0 || selParcReceber.size > 0 || selPag.size > 0;
 
     let statusConta = null; // { ok, texto, precisaMotivo }
     if (temSelecao) {
-        if (parcSel.length > 0) {
+        if (parcReceberSel.length > 0) {
+            // ENTRADA dando baixa em conta(s) a receber: sem juros/multa/desconto
+            const disponivel = r2(somaExtrato - somaExistentes);
+            const ordenadas = parcReceberSel.slice().sort((a, b) => a.vencimento.localeCompare(b.vencimento));
+            const somaAntes = r2(ordenadas.slice(0, -1).reduce((s, p) => s + p.saldo, 0));
+            const ultima = ordenadas[ordenadas.length - 1];
+            if (disponivel <= 0) {
+                statusConta = { ok: false, texto: 'As baixas já marcadas consomem todo o valor do extrato — não sobra para as contas a receber.' };
+            } else if (disponivel < somaAntes - 0.01) {
+                statusConta = { ok: false, texto: `O valor não alcança todas as contas marcadas (faltam R$ ${fmt(somaAntes - disponivel)}). Desmarque alguma.` };
+            } else {
+                const recebidoUltima = r2(disponivel - somaAntes);
+                const sobra = r2(ultima.saldo - recebidoUltima);
+                if (sobra < -0.01) {
+                    // extrato maior que o total a receber → excesso vira diferença (precisa motivo)
+                    const diferenca = r2(disponivel - r2(ordenadas.reduce((s, p) => s + p.saldo, 0)));
+                    statusConta = { ok: true, precisaMotivo: true, diferenca, texto: `Sobra R$ ${fmt(diferenca)} além das contas marcadas — diga o que é para conciliar.` };
+                } else {
+                    statusConta = {
+                        ok: true,
+                        texto: sobra > 0.01
+                            ? `Fecha com baixa PARCIAL na conta de ${ultima.cliente} — ficam faltando R$ ${fmt(sobra)}.`
+                            : `Fecha certinho: ${parcReceberSel.length} conta(s) a receber baixada(s)${selPag.size ? ` + ${selPag.size} baixa(s) amarrada(s)` : ''}.`
+                    };
+                }
+            }
+        } else if (parcSel.length > 0) {
             const disponivel = r2(somaExtrato - somaExistentes - jur - mul);
             const ordenadas = parcSel.slice().sort((a, b) => a.vencimento.localeCompare(b.vencimento));
             const somaAntes = r2(ordenadas.slice(0, -1).reduce((s, p) => s + p.saldo, 0));
@@ -268,8 +305,9 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
             const r = await conciliacaoService.conciliarUnificado({
                 lancamentoIds: [...selLanc],
                 parcelaPagarIds: [...selParc],
+                parcelaReceberIds: [...selParcReceber],
                 pagamentoIds: [...selPag],
-                metodoPagamento: selParc.size > 0 ? metodoPagamento : null,
+                metodoPagamento: (selParc.size > 0 || selParcReceber.size > 0) ? metodoPagamento : null,
                 juros: jur, multa: mul, desconto: desc,
                 motivoDiferenca: statusConta?.precisaMotivo ? motivo : null,
                 obsDiferenca: statusConta?.precisaMotivo ? obsMotivo.trim() : null
@@ -315,11 +353,42 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                             <input
                                 value={busca}
                                 onChange={e => setBusca(e.target.value)}
-                                placeholder="Buscar fornecedor, descrição ou nº da nota…"
+                                placeholder={ehSaida ? 'Buscar fornecedor, descrição ou nº da nota…' : 'Buscar cliente ou nº do pedido…'}
                                 className="w-full border border-gray-300 rounded pl-9 pr-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                             />
                         </div>
                     </div>
+
+                    {/* Contas a receber em aberto (só entrada) — dar baixa aqui mesmo */}
+                    {!ehSaida && (
+                        <div>
+                            <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Contas a receber em aberto</p>
+                            {abertasReceber === null && (
+                                <div className="text-center text-gray-500 text-sm py-2 flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Carregando…</div>
+                            )}
+                            {abertasReceber !== null && listaAbertasReceber.length === 0 && (
+                                <p className="text-sm text-gray-500 py-1">Nenhuma conta a receber em aberto com vencimento nesse período{busca ? ' para essa busca' : ''} — aumente a janela ou ajuste a busca.</p>
+                            )}
+                            <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                                {listaAbertasReceber.map(p => (
+                                    <label key={p.id} className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer ${selParcReceber.has(p.id) ? 'border-primary bg-mint/30' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                        <input type="checkbox" checked={selParcReceber.has(p.id)} onChange={() => alternar(setSelParcReceber, p.id)} className="mt-1 accent-[#00754A]" />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-sm font-medium text-gray-900 truncate flex-1">{p.cliente}</span>
+                                                {p.bate && <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">valor bate</span>}
+                                                {p.status === 'PARCIAL' && <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Parcial</span>}
+                                                <span className="text-sm font-semibold whitespace-nowrap">R$ {fmt(p.saldo)}</span>
+                                            </div>
+                                            <div className="text-xs text-gray-500 truncate">
+                                                {p.pedido ? `Pedido ${p.pedido}` : 'Conta a receber'}{p.numeroParcela ? ` · parcela ${p.numeroParcela}` : ''} · vence {fmtData(p.vencimento)}
+                                            </div>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Boletos em aberto (só saída) */}
                     {ehSaida && (
@@ -401,7 +470,7 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                         </div>
                     )}
 
-                    {/* Forma de pagamento + juros/multa/desconto — só quando há boleto marcado */}
+                    {/* Forma de pagamento + juros/multa/desconto — só quando há boleto a pagar marcado */}
                     {selParc.size > 0 && (
                         <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
                             <div className="col-span-3">
@@ -419,6 +488,16 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                             ))}
                         </div>
                     )}
+
+                    {/* Forma de pagamento — quando há conta a RECEBER marcada (sem juros/multa/desconto) */}
+                    {selParcReceber.size > 0 && (
+                        <div>
+                            <label className="text-sm font-medium text-gray-700 block mb-1">Forma de pagamento</label>
+                            <SelectBusca value={metodoPagamento} onChange={e => setMetodoPagamento(e.target.value)} className="w-full md:w-1/2">
+                                {metodos.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                            </SelectBusca>
+                        </div>
+                    )}
                 </div>
 
                 {/* Rodapé: a conta ao vivo + motivo quando não fecha + confirmar */}
@@ -426,7 +505,7 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                     {temSelecao && statusConta && (
                         <div className={`rounded-xl border p-3 text-sm ${statusConta.ok && !statusConta.precisaMotivo ? 'border-green-200 bg-green-50 text-green-800' : statusConta.ok ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-red-200 bg-red-50 text-red-700'}`}>
                             <div className="flex items-center justify-between gap-2">
-                                <span>Banco R$ {fmt(somaExtrato)} × Sistema R$ {fmt(somaExistentes + parcSel.reduce((s, p) => s + p.saldo, 0))}</span>
+                                <span>Banco R$ {fmt(somaExtrato)} × Sistema R$ {fmt(somaExistentes + parcSel.reduce((s, p) => s + p.saldo, 0) + parcReceberSel.reduce((s, p) => s + p.saldo, 0))}</span>
                             </div>
                             <div className="mt-0.5">{statusConta.texto}</div>
                         </div>

@@ -182,6 +182,7 @@ router.post('/conciliar-unificado', verificarAuth, checkAcesso, async (req, res)
         const r = await conciliacaoService.conciliarUnificado({
             lancamentoIds: Array.isArray(req.body.lancamentoIds) ? req.body.lancamentoIds : [],
             parcelaPagarIds: Array.isArray(req.body.parcelaPagarIds) ? req.body.parcelaPagarIds : [],
+            parcelaReceberIds: Array.isArray(req.body.parcelaReceberIds) ? req.body.parcelaReceberIds : [],
             pagamentoIds: Array.isArray(req.body.pagamentoIds) ? req.body.pagamentoIds : [],
             metodoPagamento: req.body.metodoPagamento || null,
             juros: req.body.juros,
@@ -269,6 +270,23 @@ router.get('/parcelas-pagar-abertas', verificarAuth, checkAcesso, async (req, re
     } catch (error) {
         console.error('Erro ao listar parcelas a pagar em aberto:', error);
         res.status(500).json({ error: 'Erro ao listar as contas a pagar em aberto.' });
+    }
+});
+
+// ── GET /parcelas-receber-abertas?valor=&busca=&de=&ate= — contas a RECEBER em aberto ──
+// Espelho das a-pagar, para conciliar uma ENTRADA (PIX/transferência no banco/Asaas)
+// dando a baixa ali mesmo. Janela de vencimento de/ate; as que batem no valor vêm 1º.
+router.get('/parcelas-receber-abertas', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        res.json(await conciliacaoService.parcelasReceberEmAberto({
+            valor: req.query.valor,
+            busca: req.query.busca,
+            de: req.query.de,
+            ate: req.query.ate
+        }));
+    } catch (error) {
+        console.error('Erro ao listar contas a receber em aberto:', error);
+        res.status(500).json({ error: 'Erro ao listar as contas a receber em aberto.' });
     }
 });
 

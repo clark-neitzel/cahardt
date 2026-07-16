@@ -954,6 +954,110 @@ async function parcelasPagarEmAberto({ valor, busca, de, ate }) {
         .slice(0, 60);
 }
 
+// ─────────────────────────────────────────────────────────────
+// Conciliar dando baixa numa parcela EM ABERTO (entrada/recebimento)
+// ─────────────────────────────────────────────────────────────
+
+/** Saldo que falta receber numa parcela (usa os totais da própria parcela, como a baixa manual). */
+const saldoParcelaReceber = (p) =>
+    round2(Math.max(0, num(p.valor) - num(p.valorPago) - num(p.valorDescontoTotal)));
+
+// Espelho de backend/routes/contasReceber.js (status por recebido+desconto)
+const calcStatusParcelaReceber = (valor, valorPago, valorDescontoTotal) => {
+    const recebido = num(valorPago) + num(valorDescontoTotal);
+    if (recebido <= 0) return 'PENDENTE';
+    if (recebido >= num(valor) - 0.01) return 'PAGO';
+    return 'PARCIAL';
+};
+const calcStatusContaReceber = (parcelas) => {
+    const total = parcelas.length;
+    const pagas = parcelas.filter((p) => p.status === 'PAGO').length;
+    const parciais = parcelas.filter((p) => p.status === 'PARCIAL').length;
+    const canceladas = parcelas.filter((p) => p.status === 'CANCELADO').length;
+    if (pagas + canceladas >= total) return 'QUITADO';
+    if (pagas > 0 || parciais > 0) return 'PARCIAL';
+    return 'ABERTO';
+};
+
+/** Recalcula status da parcela a receber e da conta, dentro de uma transação. */
+async function recalcularParcelaReceber(tx, parcelaId) {
+    const p = await tx.parcela.findUnique({
+        where: { id: parcelaId },
+        include: { pagamentos: { where: { estornado: false }, select: { valorRecebido: true, valorDesconto: true } } }
+    });
+    if (!p) return;
+    const valorPago = round2(p.pagamentos.reduce((s, x) => s + num(x.valorRecebido), 0));
+    const valorDescontoTotal = round2(p.pagamentos.reduce((s, x) => s + num(x.valorDesconto), 0));
+    const status = p.status === 'CANCELADO' ? 'CANCELADO' : calcStatusParcelaReceber(p.valor, valorPago, valorDescontoTotal);
+    const ultimo = p.pagamentos.length > 0;
+    await tx.parcela.update({
+        where: { id: parcelaId },
+        data: {
+            status, valorPago, valorDescontoTotal,
+            dataPagamento: status === 'PAGO' ? new Date() : (status === 'PARCIAL' ? undefined : null)
+        }
+    });
+    const todas = await tx.parcela.findMany({ where: { contaReceberId: p.contaReceberId }, select: { id: true, status: true } });
+    const atualizadas = todas.map((x) => (x.id === parcelaId ? { ...x, status } : x));
+    await tx.contaReceber.update({ where: { id: p.contaReceberId }, data: { status: calcStatusContaReceber(atualizadas) } });
+}
+
+/**
+ * Contas a RECEBER em aberto, para conciliar uma ENTRADA do extrato (PIX/transferência
+ * que caiu no banco/Asaas) dando a baixa ali mesmo — espelho de parcelasPagarEmAberto.
+ * Janela de VENCIMENTO ±dias (ajustável na tela); as que fecham com o valor do extrato
+ * ganham `bate` e vêm primeiro.
+ */
+async function parcelasReceberEmAberto({ valor, busca, de, ate }) {
+    const termo = String(busca || '').trim();
+    const temJanela = de && ate && /^\d{4}-\d{2}-\d{2}$/.test(String(de)) && /^\d{4}-\d{2}-\d{2}$/.test(String(ate));
+    const parcelas = await prisma.parcela.findMany({
+        where: {
+            status: { in: ['PENDENTE', 'PARCIAL', 'ABERTO'] },
+            contaReceber: { status: { notIn: ['CANCELADO'] } },
+            ...(temJanela ? { dataVencimento: { gte: dataSP(String(de)), lte: dataSP(String(ate)) } } : {}),
+            ...(termo ? {
+                contaReceber: {
+                    status: { notIn: ['CANCELADO'] },
+                    OR: [
+                        { cliente: { Nome: { contains: termo, mode: 'insensitive' } } },
+                        { cliente: { NomeFantasia: { contains: termo, mode: 'insensitive' } } },
+                        { pedido: { numero: /^\d+$/.test(termo) ? Number(termo) : undefined } }
+                    ]
+                }
+            } : {})
+        },
+        select: {
+            id: true, numeroParcela: true, valor: true, valorPago: true, valorDescontoTotal: true,
+            status: true, dataVencimento: true,
+            contaReceber: { select: { cliente: { select: { Nome: true, NomeFantasia: true } }, pedido: { select: { numero: true } } } }
+        },
+        orderBy: { dataVencimento: 'desc' },
+        take: 500
+    });
+
+    const alvo = round2(num(valor));
+    return parcelas
+        .map((p) => {
+            const saldo = saldoParcelaReceber(p);
+            const cli = p.contaReceber?.cliente;
+            return {
+                id: p.id,
+                saldo,
+                valorParcela: num(p.valor),
+                numeroParcela: p.numeroParcela,
+                vencimento: ymd(p.dataVencimento),
+                status: p.status,
+                cliente: cli?.NomeFantasia || cli?.Nome || 'Cliente',
+                pedido: p.contaReceber?.pedido?.numero || null,
+                bate: Math.abs(saldo - alvo) <= 0.01
+            };
+        })
+        .filter((p) => p.saldo > 0)
+        .sort((a, b) => (b.bate - a.bate) || b.vencimento.localeCompare(a.vencimento))
+        .slice(0, 60);
+}
+
 /**
  * A AÇÃO ÚNICA da conciliação: "este(s) lançamento(s) do banco é(são) ISTO no sistema".
  *
@@ -975,14 +1079,14 @@ async function parcelasPagarEmAberto({ valor, busca, de, ate }) {
  * outra combinação vira ConciliacaoGrupo.
  */
 async function conciliarUnificado({
-    lancamentoIds, parcelaPagarIds, pagamentoIds, metodoPagamento,
+    lancamentoIds, parcelaPagarIds, parcelaReceberIds, pagamentoIds, metodoPagamento,
     juros = 0, multa = 0, desconto = 0, motivoDiferenca, obsDiferenca, userId
 }) {
     const idsLanc = [...new Set(lancamentoIds || [])];
-    const idsParc = [...new Set(parcelaPagarIds || [])];
+    const idsParcPagar = [...new Set(parcelaPagarIds || [])];
+    const idsParcReceber = [...new Set(parcelaReceberIds || [])];
     const idsPag = [...new Set(pagamentoIds || [])];
     if (idsLanc.length === 0) throw erro('Escolha ao menos um lançamento do extrato.');
-    if (idsParc.length === 0 && idsPag.length === 0) throw erro('Escolha ao menos um boleto em aberto ou uma baixa já registrada.');
 
     const lancs = await prisma.extratoLancamento.findMany({ where: { id: { in: idsLanc } } });
     if (lancs.length !== idsLanc.length) throw erro('Lançamento do extrato não encontrado.', 404);
@@ -991,7 +1095,12 @@ async function conciliarUnificado({
     if (lancs.some((l) => l.contaFinanceiraCaId !== contaFinanceiraCaId)) throw erro('Todos os lançamentos precisam ser da mesma conta.');
     if (lancs.some((l) => l.status !== 'PENDENTE')) throw erro('Um dos lançamentos já foi conciliado ou ignorado — recarregue a tela.');
     if (lancs.some((l) => l.tipo !== tipo)) throw erro('Não misture entradas e saídas na mesma conciliação.');
-    if (tipo === 'CREDITO' && idsParc.length > 0) throw erro('Entrada (recebimento) não dá baixa por aqui — registre no Contas a Receber.');
+    // Cada sentido só aceita a sua "conta em aberto": entrada → conta a receber; saída → boleto a pagar.
+    if (tipo === 'CREDITO' && idsParcPagar.length > 0) throw erro('Boleto a pagar não entra numa entrada do extrato.');
+    if (tipo === 'DEBITO' && idsParcReceber.length > 0) throw erro('Conta a receber não entra numa saída do extrato.');
+    // idsParc = as parcelas em aberto do sentido certo (a pagar p/ saída, a receber p/ entrada).
+    const idsParc = tipo === 'CREDITO' ? idsParcReceber : idsParcPagar;
+    if (idsParc.length === 0 && idsPag.length === 0) throw erro('Escolha ao menos uma conta em aberto ou uma baixa já registrada.');
 
     const somaExtrato = round2(lancs.reduce((s, l) => s + num(l.valor), 0));
     if (somaExtrato <= 0) throw erro('A soma do extrato precisa ser maior que zero.');
@@ -1022,10 +1131,50 @@ async function conciliarUnificado({
     const mul = round2(Math.max(0, num(multa)));
     const desc = round2(Math.max(0, num(desconto)));
     let metodo = null;
-    let alocacoes = []; // { parcela, valorPago, juros, multa, desconto, naCA }
+    let alocacoes = []; // A PAGAR: { parcela, valorPago, juros, multa, desconto, naCA }
+    let alocacoesReceber = []; // A RECEBER: { parcela, valorRecebido }
     let sobraUltima = 0;
 
-    if (idsParc.length > 0) {
+    // ── ENTRADA: dar baixa em conta(s) a RECEBER em aberto (espelho do a pagar) ──
+    if (idsParc.length > 0 && tipo === 'CREDITO') {
+        metodo = String(metodoPagamento || '').toUpperCase();
+        if (!contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(metodo)) throw erro('Escolha a forma de pagamento.');
+        if (jur > 0 || mul > 0 || desc > 0) throw erro('Juros/multa/desconto não se aplicam ao dar baixa num recebimento por aqui.');
+
+        const parcelas = await prisma.parcela.findMany({
+            where: { id: { in: idsParc } },
+            select: { id: true, status: true, valor: true, valorPago: true, valorDescontoTotal: true, dataVencimento: true }
+        });
+        if (parcelas.length !== idsParc.length) throw erro('Conta a receber não encontrada.', 404);
+        if (parcelas.some((p) => p.status === 'PAGO' || p.status === 'CANCELADO')) throw erro('Uma das contas escolhidas já foi paga ou cancelada — recarregue a lista.');
+
+        const disponivel = round2(somaExtrato - somaExistentes);
+        if (disponivel <= 0) throw erro('O valor do extrato (menos baixas já marcadas) não sobra nada para as contas escolhidas.');
+
+        // Recebe por ordem de vencimento; só a última pode ficar parcial; excesso vira diferença.
+        const ordenadas = parcelas
+            .map((p) => ({ p, saldo: saldoParcelaReceber(p), venc: ymd(p.dataVencimento) }))
+            .sort((a, b) => a.venc.localeCompare(b.venc));
+        if (ordenadas.some((o) => o.saldo <= 0)) throw erro('Uma das contas escolhidas já não tem saldo em aberto.');
+
+        let restante = disponivel;
+        ordenadas.forEach((o, i) => {
+            const ultima = i === ordenadas.length - 1;
+            if (!ultima) {
+                if (restante < o.saldo - 0.01) {
+                    throw erro(`O valor não alcança todas as contas marcadas: sobram R$ ${restante.toFixed(2)} para uma conta de R$ ${o.saldo.toFixed(2)}. Desmarque alguma.`);
+                }
+                alocacoesReceber.push({ parcela: o.p, valorRecebido: o.saldo });
+                restante = round2(restante - o.saldo);
+            } else {
+                const recebe = round2(Math.min(restante, o.saldo));
+                alocacoesReceber.push({ parcela: o.p, valorRecebido: recebe });
+                sobraUltima = round2(o.saldo - recebe);
+                restante = round2(restante - recebe);
+            }
+        });
+    } else if (idsParc.length > 0) {
+        // ── SAÍDA: dar baixa em boleto(s) a PAGAR em aberto ──
         metodo = String(metodoPagamento || '').toUpperCase();
         if (!contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(metodo)) throw erro('Escolha a forma de pagamento.');
 
@@ -1073,7 +1222,10 @@ async function conciliarUnificado({
     }
 
     // ── Diferença (só existe no caso puro-existentes; com boletos o rateio fecha em 0) ──
-    const somaCriadas = round2(alocacoes.reduce((s, a) => s + a.valorPago + a.juros + a.multa, 0));
+    const somaCriadas = round2(
+        alocacoes.reduce((s, a) => s + a.valorPago + a.juros + a.multa, 0) +
+        alocacoesReceber.reduce((s, a) => s + a.valorRecebido, 0)
+    );
     const diferenca = round2(somaExtrato - somaExistentes - somaCriadas);
     const temDiferenca = Math.abs(diferenca) > 0.01;
     const motivo = String(motivoDiferenca || '').toUpperCase();
@@ -1110,6 +1262,22 @@ async function conciliarUnificado({
             });
             criadas.push(pag.id);
             await contasPagarCaSyncService.recalcularParcelaEConta(tx, a.parcela.id);
+        }
+        for (const a of alocacoesReceber) {
+            const pag = await tx.pagamentoParcela.create({
+                data: {
+                    parcelaId: a.parcela.id,
+                    valorRecebido: a.valorRecebido,
+                    valorDesconto: 0,
+                    dataPagamento,
+                    formaPagamento: metodo,
+                    contaFinanceiraCaId, // o banco do extrato é a verdade
+                    observacao: `Baixa dada pela conciliação bancária (${lancs[0].descricao || 'extrato'}).`,
+                    registradoPorId: userId || null
+                }
+            });
+            criadas.push(pag.id);
+            await recalcularParcelaReceber(tx, a.parcela.id);
         }
 
         const todosPagIds = [...idsPag, ...criadas];
@@ -1161,6 +1329,11 @@ async function conciliarUnificado({
         if (sobraUltima > 0.01) partes.push(`1 baixa parcial (faltam R$ ${sobraUltima.toFixed(2)})`);
         if (alocacoes.some((a) => a.naCA)) partes.push('baixa vai ao Conta Azul');
         if (alocacoes.some((a) => !a.naCA)) partes.push('despesa importada do CA fica só no app');
+    }
+    if (alocacoesReceber.length > 0) {
+        const quitadas = alocacoesReceber.length - (sobraUltima > 0.01 ? 1 : 0);
+        if (quitadas > 0) partes.push(`${quitadas} conta(s) a receber baixada(s)`);
+        if (sobraUltima > 0.01) partes.push(`1 baixa parcial (faltam R$ ${sobraUltima.toFixed(2)})`);
     }
     if (idsPag.length > 0) partes.push(`${idsPag.length} baixa(s) já registrada(s) amarrada(s)`);
     if (temDiferenca) partes.push(`diferença de R$ ${Math.abs(diferenca).toFixed(2)} registrada: ${rotuloMotivo}`);
@@ -1445,6 +1618,7 @@ module.exports = {
     criarDespesasLoteEConciliar,
     opcoesDespesa,
     parcelasPagarEmAberto,
+    parcelasReceberEmAberto,
     conciliarUnificado,
     MOTIVOS_DIFERENCA,
     // puras (testáveis offline)
