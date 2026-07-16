@@ -413,9 +413,19 @@ async function parsePdfExtratoCA(buffer) {
         repeticoes.set(chave, n);
         const fitId = 'PDF' + crypto.createHash('sha1').update(`${chave}|${n}`).digest('hex').slice(0, 30);
 
+        // IDENTIFICAÇÃO DETERMINÍSTICA: "Venda 1557 - 1/1" na descrição = pedido 1557,
+        // parcela 1 no app (a numeração de vendas é COMPARTILHADA com o CA — o app pega
+        // o próximo número lá). Guardamos o nº da venda em checkNum e a parcela em
+        // refNum; o status da conciliação DO CA vai para memo (contexto na tela).
+        const mVenda = descricao.match(/Venda\s+(\d+)\s*-\s*(\d+)\/(\d+)/i);
+        const statusCa = mStatus ? (/n[ãa]o/i.test(mStatus[0]) ? 'Não conciliado no CA' : 'Conciliado no CA') : null;
+
         lancamentos.push({
             fitId, data, valor, tipo, descricao,
-            memo: null, nome: null, payee: null, checkNum: null, refNum: null, trnType: null
+            memo: statusCa, nome: null, payee: null,
+            checkNum: mVenda ? mVenda[1] : null,
+            refNum: mVenda ? `${mVenda[2]}/${mVenda[3]}` : null,
+            trnType: null
         });
     }
 
@@ -680,6 +690,75 @@ async function pistasDeDebito(linhasDebito) {
     return pistas;
 }
 
+/**
+ * Identificação DETERMINÍSTICA dos pendentes de CRÉDITO que trazem "Venda NNNN"
+ * (checkNum, vindo do PDF do CA): a numeração de vendas é compartilhada, então
+ * Venda NNNN = pedido NNNN do app. Não é sugestão por valor — é o próprio pedido.
+ * Devolve Map lancamentoId → { venda, parcela, cliente, statusCA, pagamentoId,
+ * valorBaixa, tarifa, fecha, motivo }.
+ */
+async function _identificarPendentes(linhas, usados) {
+    const alvo = linhas.filter((l) => l.status === 'PENDENTE' && l.tipo === 'CREDITO' && l.checkNum && /^\d+$/.test(String(l.checkNum)));
+    if (alvo.length === 0) return new Map();
+    const numeros = [...new Set(alvo.map((l) => Number(l.checkNum)))];
+    const pedidos = await prisma.pedido.findMany({
+        where: { numero: { in: numeros } },
+        select: {
+            numero: true,
+            cliente: { select: { Nome: true, NomeFantasia: true } },
+            contaReceber: {
+                select: {
+                    parcelas: {
+                        select: {
+                            id: true, numeroParcela: true, valor: true, status: true,
+                            pagamentos: { where: { estornado: false }, select: { id: true, valorRecebido: true, contaFinanceiraCaId: true } }
+                        }
+                    }
+                }
+            }
+        }
+    });
+    const porNumero = new Map(pedidos.map((p) => [p.numero, p]));
+    const mapa = new Map();
+    for (const l of alvo) {
+        const ped = porNumero.get(Number(l.checkNum));
+        if (!ped) continue; // venda do CA sem pedido no app (ex.: lançada direto lá) — segue como sugestão comum
+        const nParc = Number(String(l.refNum || '1/1').split('/')[0]) || 1;
+        const parcela = (ped.contaReceber?.parcelas || []).find((p) => p.numeroParcela === nParc) || null;
+        const ident = {
+            venda: Number(l.checkNum),
+            parcela: l.refNum || null,
+            cliente: ped.cliente?.NomeFantasia || ped.cliente?.Nome || 'Cliente',
+            statusCA: l.memo || null,
+            parcelaStatus: parcela?.status || null,
+            pagamentoId: null, valorBaixa: null, tarifa: false, fecha: false, motivo: null
+        };
+        if (!parcela) {
+            ident.motivo = 'parcela não encontrada no app';
+        } else {
+            const pg = parcela.pagamentos.find((x) => x.contaFinanceiraCaId === l.contaFinanceiraCaId && !usados.has(x.id));
+            if (!pg) {
+                ident.motivo = parcela.status === 'PAGO'
+                    ? 'baixa paga mas sem registro nesta conta (aguarde o backfill) ou já conciliada'
+                    : 'parcela em aberto no app';
+            } else {
+                ident.pagamentoId = pg.id;
+                ident.valorBaixa = round2(num(pg.valorRecebido));
+                if (valorBate(ident.valorBaixa, num(l.valor))) {
+                    ident.fecha = true;
+                } else if (valorBate(ident.valorBaixa, round2(num(l.valor) + TARIFA_BOLETO_CA))) {
+                    ident.fecha = true;
+                    ident.tarifa = true;
+                } else {
+                    ident.motivo = `valor não bate (baixa R$ ${ident.valorBaixa.toFixed(2)} × crédito R$ ${num(l.valor).toFixed(2)})`;
+                }
+            }
+        }
+        mapa.set(l.id, ident);
+    }
+    return mapa;
+}
+
 async function listar({ contaFinanceiraCaId, de, ate, status }) {
     const where = {
         contaFinanceiraCaId,
@@ -732,6 +811,9 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
             });
         }
     }
+
+    // Identificação determinística (Venda NNNN do PDF do CA = pedido NNNN)
+    const identMapa = await _identificarPendentes(linhas, usados);
 
     // Transferências entre contas (status TRANSFERENCIA): de/para qual conta foi
     const idsTransf = linhas.filter((l) => l.status === 'TRANSFERENCIA').map((l) => l.id);
@@ -811,6 +893,8 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
             return {
                 ...base,
                 sugestoes: [...sugBaixas, ...sugAbertas],
+                // Identificado com CERTEZA (Venda NNNN = pedido NNNN) — não é palpite
+                identificado: identMapa.get(l.id) || null,
                 // "De quem é?" — CNPJ no texto e/ou contas a pagar em aberto com o mesmo valor
                 pistas: p
             };
@@ -1030,6 +1114,51 @@ async function conciliar({ lancamentoId, pagamentoParcelaId, pagamentoParcelaPag
         }
     });
     return { message: 'Lançamento conciliado!' };
+}
+
+/**
+ * Confirma DE UMA VEZ os pendentes IDENTIFICADOS que fecham (Venda NNNN = pedido
+ * NNNN, valor exato ou exato+tarifa do boleto CA). Disparado pelo botão da tela —
+ * nada roda sozinho. Os que não fecham ficam para análise, com o motivo.
+ */
+async function confirmarIdentificadas({ contaFinanceiraCaId, de, ate, userId }) {
+    const linhas = await prisma.extratoLancamento.findMany({
+        where: {
+            contaFinanceiraCaId, status: 'PENDENTE', tipo: 'CREDITO',
+            checkNum: { not: null },
+            data: { gte: dataSP(de), lte: dataSP(ate) }
+        }
+    });
+    const usados = await idsUsados(contaFinanceiraCaId);
+    const mapa = await _identificarPendentes(linhas, usados);
+
+    let confirmadas = 0, comTarifa = 0;
+    const naoFecham = [];
+    for (const l of linhas) {
+        const ident = mapa.get(l.id);
+        if (!ident) continue;
+        if (!ident.fecha) { naoFecham.push({ venda: ident.venda, motivo: ident.motivo }); continue; }
+        if (ident.tarifa) {
+            try {
+                await _vincularComTarifaCA(l, ident.pagamentoId, ident.valorBaixa, userId, false);
+                usados.add(ident.pagamentoId); confirmadas++; comTarifa++;
+            } catch (_) { /* corrida — segue */ }
+        } else {
+            const r = await prisma.extratoLancamento.updateMany({
+                where: { id: l.id, status: 'PENDENTE' },
+                data: {
+                    status: 'CONCILIADO', conciliadoAuto: false,
+                    conciliadoPorId: userId || null, conciliadoEm: new Date(),
+                    pagamentoParcelaId: ident.pagamentoId
+                }
+            });
+            if (r.count > 0) { usados.add(ident.pagamentoId); confirmadas++; }
+        }
+    }
+    const partes = [`${confirmadas} identificada(s) confirmada(s)`];
+    if (comTarifa) partes.push(`${comTarifa} com tarifa de R$ ${TARIFA_BOLETO_CA.toFixed(2)} (despesas geradas)`);
+    if (naoFecham.length) partes.push(`${naoFecham.length} identificada(s) ficaram para análise`);
+    return { message: `${partes.join(' · ')}.`, confirmadas, comTarifa, naoFecham: naoFecham.slice(0, 20) };
 }
 
 async function ignorar({ lancamentoId, obs, userId }) {
@@ -1916,6 +2045,7 @@ module.exports = {
     baixasDisponiveis,
     ignorar,
     transferir,
+    confirmarIdentificadas,
     desfazer,
     listarImportacoes,
     criarDespesaDoLancamento,

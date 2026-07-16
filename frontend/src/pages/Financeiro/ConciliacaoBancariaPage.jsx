@@ -1084,10 +1084,30 @@ const ConciliacaoBancariaPage = () => {
 
     const desfazerLinha = (l) => agir(l.id, () => conciliacaoService.desfazer(l.id), 'Voltou para pendente.');
 
+    // Confirma de uma vez os créditos IDENTIFICADOS que fecham (com o seu clique — nada roda sozinho)
+    const confirmarIdentificadasLote = async () => {
+        const n = lancamentos.filter(x => x.status === 'PENDENTE' && x.identificado?.fecha).length;
+        if (!n) return;
+        if (!window.confirm(`Confirmar ${n} lançamento(s) identificado(s)?\n\nSão créditos cuja Venda do extrato é o próprio pedido do app, com valor fechando (exato ou com a tarifa de R$ 1,50 do boleto — nesses, a despesa da tarifa é gerada).`)) return;
+        setAutoRodando(true);
+        try {
+            const r = await conciliacaoService.confirmarIdentificadas(contaId, periodo.de, periodo.ate);
+            toast.success(r.message);
+            await carregar();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao confirmar as identificadas');
+        } finally {
+            setAutoRodando(false);
+        }
+    };
+
     const resumo = dados?.resumo;
     const lancamentos = dados?.lancamentos || [];
     const soNoApp = dados?.soNoApp || { entradas: [], saidas: [] };
     const totalSoNoApp = (soNoApp.entradas?.length || 0) + (soNoApp.saidas?.length || 0);
+
+    // Créditos identificados prontos para confirmar em lote (Venda = pedido, valor fechando)
+    const identificaveis = lancamentos.filter(l => l.status === 'PENDENTE' && l.identificado?.fecha).length;
 
     // Seleção em lote: só saídas PENDENTES podem virar despesa em massa (tarifas repetidas)
     const selecionaveis = lancamentos.filter(l => l.status === 'PENDENTE' && l.tipo === 'DEBITO');
@@ -1108,6 +1128,44 @@ const ConciliacaoBancariaPage = () => {
     //   escolher outro boleto, juntar vários, cadastrar despesa, ignorar).
     const AcoesPendente = ({ l }) => {
         const escolhido = (l.sugestoes || []).find(s => s.id === (escolhas[l.id] || l.sugestoes?.[0]?.id));
+        const ident = l.identificado;
+
+        // IDENTIFICADO (Venda NNNN = pedido NNNN do app) — certeza, não sugestão
+        if (ident) {
+            return (
+                <div className="flex flex-col gap-1.5 min-w-0">
+                    <div className={`rounded-lg border p-2 text-xs ${ident.fecha ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}`}>
+                        <div className={`font-semibold ${ident.fecha ? 'text-green-800' : 'text-amber-800'}`}>
+                            ✓ Venda {ident.venda}{ident.parcela ? ` · parcela ${ident.parcela}` : ''}{ident.statusCA ? ` · ${ident.statusCA}` : ''}
+                        </div>
+                        <div className="text-gray-700 mt-0.5">
+                            Pedido {ident.venda} · {ident.cliente}
+                            {ident.valorBaixa != null && <> · baixa R$ {fmt(ident.valorBaixa)}{ident.tarifa ? ' (tarifa R$ 1,50 — despesa gerada ao confirmar)' : ''}</>}
+                        </div>
+                        {!ident.fecha && <div className="text-amber-700 mt-0.5">{ident.motivo} — confira pelo Buscar antes de conciliar.</div>}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                        {ident.fecha && (
+                            <button
+                                onClick={() => agir(l.id, () => conciliacaoService.conciliar(l.id, { pagamentoParcelaId: ident.pagamentoId }), 'Confirmado!')}
+                                disabled={agindo === l.id}
+                                className="px-3 py-1.5 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold inline-flex items-center gap-1 disabled:opacity-50"
+                            >
+                                <Check className="h-3.5 w-3.5" /> Confirmar
+                            </button>
+                        )}
+                        <button
+                            onClick={() => setBuscarModal(l)}
+                            disabled={agindo === l.id}
+                            className="px-3 py-1.5 rounded-full text-xs inline-flex items-center gap-1 disabled:opacity-50 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium"
+                        >
+                            <Search className="h-3.5 w-3.5" /> Buscar…
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
         return (
             <div className="flex flex-col gap-1.5 min-w-0">
                 {escolhido ? (
@@ -1378,17 +1436,30 @@ const ConciliacaoBancariaPage = () => {
                             />
                         </div>
 
-                        {/* Ação em massa */}
-                        {Number(resumo?.pendentes) > 0 && (
-                            <button
-                                onClick={conciliarAuto}
-                                disabled={autoRodando || loading}
-                                className="px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
-                            >
-                                {autoRodando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-                                Conciliar automático (casos com 1 só candidato)
-                            </button>
-                        )}
+                        {/* Ações em massa */}
+                        <div className="flex flex-wrap gap-2">
+                            {identificaveis > 0 && (
+                                <button
+                                    onClick={confirmarIdentificadasLote}
+                                    disabled={autoRodando || loading}
+                                    className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
+                                    title="Créditos com Venda NNNN identificada (é o pedido NNNN do app) e valor fechando — exato ou com a tarifa de R$ 1,50 do boleto"
+                                >
+                                    {autoRodando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                    Confirmar identificadas ({identificaveis})
+                                </button>
+                            )}
+                            {Number(resumo?.pendentes) > 0 && (
+                                <button
+                                    onClick={conciliarAuto}
+                                    disabled={autoRodando || loading}
+                                    className="px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
+                                >
+                                    {autoRodando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+                                    Conciliar automático (casos com 1 só candidato)
+                                </button>
+                            )}
+                        </div>
 
                         {/* Barra de seleção em lote — aparece ao marcar saídas pendentes (tarifas) */}
                         {selecionados.size > 0 && (

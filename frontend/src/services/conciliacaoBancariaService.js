@@ -21,6 +21,11 @@ const conciliacaoBancariaService = {
         const response = await api.post('/conciliacao-bancaria/conciliar-auto', { contaId, de, ate });
         return response.data;
     },
+    // Confirma em lote os créditos IDENTIFICADOS (Venda NNNN = pedido NNNN, valor fechando)
+    confirmarIdentificadas: async (contaId, de, ate) => {
+        const response = await api.post('/conciliacao-bancaria/confirmar-identificadas', { contaId, de, ate });
+        return response.data;
+    },
     conciliar: async (lancamentoId, { pagamentoParcelaId, pagamentoParcelaPagarId }) => {
         const response = await api.post(`/conciliacao-bancaria/${lancamentoId}/conciliar`, { pagamentoParcelaId, pagamentoParcelaPagarId });
         return response.data;

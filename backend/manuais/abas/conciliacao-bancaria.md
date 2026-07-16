@@ -43,6 +43,18 @@ Modelo do Conta Azul. Mostra, para o lançamento clicado:
 - **Diferença de valor** (quando só há baixas registradas marcadas e não fecha): dá para conciliar mesmo assim, mas é **obrigatório dizer o que é** (tarifa do banco, juros pagos a mais, desconto, arredondamento, erro de lançamento, outro+descrição). A diferença e o motivo ficam gravados e aparecem em âmbar na linha conciliada — nunca somem.
 - No rodapé da janela: **"Cadastrar despesa"** (a saída nunca foi lançada no sistema — ver seção abaixo), **"Transferência entre contas"** (ver seção abaixo) e **"Ignorar"** (tarifa; pede o motivo).
 
+## Créditos IDENTIFICADOS (Venda NNNN = pedido NNNN) — certeza, não sugestão
+
+No extrato da Conta PJ do CA (PDF), as linhas "Recebimento de cobrança - **Venda 1557** - 1/1" trazem o número da venda — e a numeração é **compartilhada** com o app (Venda 1557 = pedido 1557). O sistema usa isso como **identificação com certeza**:
+
+- A linha mostra um painel **verde**: **"✓ Venda 1557 · parcela 1/1 · Conciliado no CA"** + pedido, cliente e a baixa correspondente. O botão vira **"Confirmar"** (não é palpite por valor).
+- Se a baixa é R$ 1,50 maior que o crédito, é o **boleto com tarifa**: ao confirmar, a diferença fica registrada e a **despesa da tarifa é gerada** automaticamente.
+- Se a venda foi identificada mas o **valor não fecha** (nem com a tarifa), o painel fica **âmbar** com o motivo — nada é conciliado sem conferência.
+- O selo **"Conciliado no CA" / "Não conciliado no CA"** é o status da conciliação DO Conta Azul (contexto: lá já estava pronto ou não).
+- Botão **"Confirmar identificadas (N)"** no topo: confirma de uma vez todas as identificadas que fecham (exato ou com tarifa) — um clique do usuário; as que não fecham ficam para análise. Nada roda sozinho.
+- Sem identificação (ex.: PIX de cliente, sem nº de venda), vale a **sugestão** por valor/data como sempre — claramente separada das identificadas.
+- Se os lançamentos foram importados antes desse recurso, **reimporte o mesmo PDF** (não duplica) — a identificação é preenchida nas linhas existentes.
+
 ## Lançar tarifas em lote (várias despesas de uma vez) e já conciliar
 
 Para **tarifas repetidas** — taxa de boleto, taxa de PIX do Asaas, cada uma com seu número de fatura — não precisa cadastrar uma por uma:

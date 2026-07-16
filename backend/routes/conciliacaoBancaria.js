@@ -235,6 +235,25 @@ router.post('/:id/ignorar', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// ── POST /confirmar-identificadas — confirma em lote os créditos IDENTIFICADOS ──
+// body: { contaId, de, ate }. Identificado = "Venda NNNN" do extrato (PDF do CA) que é
+// o pedido NNNN do app, com valor fechando exato ou exato+tarifa do boleto. Disparado
+// pelo botão da tela; os que não fecham ficam para análise (devolvidos com motivo).
+router.post('/confirmar-identificadas', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const r = await conciliacaoService.confirmarIdentificadas({
+            contaFinanceiraCaId: String(req.body.contaId || '').trim(),
+            de: req.body.de,
+            ate: req.body.ate,
+            userId: req.user.id
+        });
+        res.json(r);
+    } catch (error) {
+        console.error('Erro ao confirmar identificadas:', error);
+        res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao confirmar as identificadas.' });
+    }
+});
+
 // ── POST /:id/transferencia — dinheiro movido entre contas da própria empresa ──
 // body: { outraContaId?, obs? } — outraContaId vazio = conta fora do sistema.
 // Cria o registro TransferenciaConta (relatórios por conta) e marca o lançamento
