@@ -3009,6 +3009,36 @@ router.post('/sync-ledger-pedido/:numero', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-pdf-extrato — SOMENTE LEITURA, autocontido.
+// Gera em memória um PDF sintético no layout do extrato do Conta Azul e roda o
+// parsePdfExtratoCA NESTE servidor — prova se a leitura de PDF funciona em produção
+// (dependência instalada, Node compatível) sem precisar subir arquivo.
+router.get('/diag-pdf-extrato', async (req, res) => {
+    try {
+        const { PDFDocument, StandardFonts } = require('pdf-lib');
+        const conciliacaoService = require('../services/conciliacaoBancariaService');
+        const pdf = await PDFDocument.create();
+        const font = await pdf.embedFont(StandardFonts.Helvetica);
+        const page = pdf.addPage([842, 595]);
+        const draw = (x, y, t) => page.drawText(t, { x, y, size: 9, font });
+        let y = 540;
+        const linha = (data, desc, status, valor) => { draw(40, y, data); draw(120, y, desc); draw(480, y, status); draw(640, y, valor); y -= 22; };
+        draw(40, y, '01/07/2026'); draw(120, y, 'Saldo do dia'); draw(700, y, 'R$ 31.878,76'); y -= 22;
+        linha('01/07/2026', 'Recebimento de cobranca - Venda 1593 - 1/1', 'Conciliado', 'R$ 361,07');
+        linha('01/07/2026', 'Pagamento de Boleto para Nome nao encontrado', 'Conciliado', '- R$ 416,94');
+        const bytes = await pdf.save();
+        const r = await conciliacaoService.parsePdfExtratoCA(Buffer.from(bytes));
+        res.json({
+            ok: true,
+            lancamentos: r.lancamentos.length,
+            avisos: r.avisos,
+            amostra: r.lancamentos.map((l) => ({ data: l.data, tipo: l.tipo, valor: l.valor, descricao: l.descricao }))
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message, stack: (e.stack || '').split('\n').slice(0, 4) });
+    }
+});
+
 // GET /api/admin-exec/compras-estoque-check
 // SOMENTE LEITURA. Para CADA nota CONFERIDA: quantos itens tinha, quantos estavam
 // vinculados a produto/insumo (de-para memorizado) e quantas entradas de estoque
