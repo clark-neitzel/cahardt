@@ -45,8 +45,19 @@ const conciliacaoBancariaService = {
         return response.data;
     },
     // Baixas do app ainda livres, para o modal de grupo. tipo: CREDITO | DEBITO
-    baixasDisponiveis: async (contaId, de, ate, tipo) => {
-        const response = await api.get('/conciliacao-bancaria/baixas-disponiveis', { params: { contaId, de, ate, tipo } });
+    // Com busca, inclui baixas em OUTRAS contas (banco errado?), marcadas com outraConta.
+    baixasDisponiveis: async (contaId, de, ate, tipo, busca = '') => {
+        const response = await api.get('/conciliacao-bancaria/baixas-disponiveis', { params: { contaId, de, ate, tipo, busca } });
+        return response.data;
+    },
+    // Descobre no CA de quem é cada débito "Nome não encontrado" (roda em 2º plano)
+    identificarDebitosCA: async (contaId, de, ate) => {
+        const response = await api.post('/conciliacao-bancaria/identificar-debitos-ca', { contaId, de, ate });
+        return response.data;
+    },
+    // Move uma baixa lançada no banco errado para a conta certa (app e, se possível, CA)
+    corrigirContaBaixa: async (tipo, pagamentoId, contaId) => {
+        const response = await api.post('/conciliacao-bancaria/corrigir-conta-baixa', { tipo, pagamentoId, contaId });
         return response.data;
     },
     // A AÇÃO ÚNICA: "este(s) lançamento(s) do banco é(são) isto no sistema".

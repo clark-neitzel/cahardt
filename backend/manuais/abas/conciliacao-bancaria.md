@@ -55,6 +55,18 @@ No extrato da Conta PJ do CA (PDF), as linhas "Recebimento de cobrança - **Vend
 - Sem identificação (ex.: PIX de cliente, sem nº de venda), vale a **sugestão** por valor/data como sempre — claramente separada das identificadas.
 - Se os lançamentos foram importados antes desse recurso, **reimporte o mesmo PDF** (não duplica) — a identificação é preenchida nas linhas existentes.
 
+## Diferença composta (juros E tarifa juntos) — decompor
+
+Quando o crédito não fecha com a baixa por **mais de um motivo** (ex.: cliente pagou boleto com **juros de R$ 16,64** e o CA descontou a **tarifa de R$ 1,50** → diferença de R$ 15,14), use o quadro **"Decompor a diferença"** no Buscar…: campos **Tarifa / Juros-multa / Desconto**, com atalho **"+ Tarifa do boleto CA (R$ 1,50)"**. Ao digitar a tarifa, o app **recalcula o restante** e oferece **"usar R$ X como juros/multa"** com um clique. Fecha quando `banco = baixa + juros − tarifa − desconto`; a tarifa decomposta **gera a despesa automaticamente**. O motivo composto fica registrado na linha ("Juros/multa R$ 16,64 · Tarifa R$ 1,50"). Para diferença de motivo único, o seletor simples continua disponível.
+
+## Débitos "Nome não encontrado" — identificar no CA
+
+Os pagamentos de boleto na Conta PJ vêm sem nome ("Pagamento de Boleto para Nome não encontrado (Do…"). O botão **"Identificar débitos no CA (N)"** varre as contas a pagar do Conta Azul e descobre, pelo par exato **data + valor da baixa nesta conta**, de quem é cada débito — preenchendo **fornecedor, descrição da despesa e nº da nota** nas linhas (aí a busca por fornecedor funciona). Roda em segundo plano (~1–2 min; recarregue a tela). Só grava quando o match é **único** — ambíguo fica de fora, sem chute.
+
+## Baixa no banco errado — ver e corrigir sem ir ao CA
+
+Se uma baixa foi lançada em **outra conta** (ex.: despesa baixada "no Sicoob" mas o dinheiro saiu da Conta PJ), ela não aparece na conciliação da conta certa. Ao **buscar** no Buscar… (fornecedor, valor, pedido…), o app mostra a seção âmbar **"Achadas em OUTRAS contas (banco errado?)"** com o banco onde a baixa está. O botão **"Corrigir para esta conta (app + CA)"** move a baixa para a conta do extrato **no app e no Conta Azul** (quando a baixa tem vínculo lá — senão corrige só no app e avisa para conferir no CA). Depois é só marcar a baixa e Conciliar. Não precisa estornar na mão.
+
 ## Lançar tarifas em lote (várias despesas de uma vez) e já conciliar
 
 Para **tarifas repetidas** — taxa de boleto, taxa de PIX do Asaas, cada uma com seu número de fatura — não precisa cadastrar uma por uma:

@@ -2066,6 +2066,28 @@ const contaAzulService = {
     },
 
     /**
+     * Buscar UMA baixa pelo id (traz versao + valor_composicao, necessários no PATCH).
+     */
+    buscarBaixaFinanceira: async (baixaId) => {
+        const url = `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/parcelas/baixa/${baixaId}`;
+        const response = await contaAzulService._axiosGet(url, 'BAIXA_DETALHE');
+        return response.data;
+    },
+
+    /**
+     * Atualizar uma baixa existente (ex.: corrigir a CONTA FINANCEIRA de uma baixa
+     * lançada no banco errado). A spec exige `versao` e `composicao_valor.valor_bruto`.
+     */
+    atualizarBaixaFinanceira: async (baixaId, payload) => {
+        const url = `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/parcelas/baixa/${baixaId}`;
+        const response = await contaAzulService._axiosRequest('patch', url, payload, 'BAIXA_ATUALIZAR');
+        await contaAzulService._logStep('BAIXA_ATUALIZAR', 'SUCESSO', `Baixa ${baixaId} atualizada`, {
+            url, method: 'PATCH', status: response.status, body: payload
+        });
+        return response.data;
+    },
+
+    /**
      * Buscar detalhes completos de uma parcela (inclui evento.referencia).
      */
     buscarParcelaDetalhe: async (parcelaId) => {

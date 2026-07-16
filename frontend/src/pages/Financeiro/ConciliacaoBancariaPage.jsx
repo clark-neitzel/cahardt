@@ -177,8 +177,11 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
     const [form, setForm] = useState({ juros: '', multa: '', desconto: '' });
     const [motivo, setMotivo] = useState('');
     const [obsMotivo, setObsMotivo] = useState('');
+    // Decomposição da diferença (entrada): banco = sistema + juros/multa − tarifa − desconto
+    const [dif, setDif] = useState({ tarifa: '', juros: '', desconto: '' });
     const [salvando, setSalvando] = useState(false);
     const set = (campo) => (e) => setForm(f => ({ ...f, [campo]: e.target.value }));
+    const setD = (campo) => (e) => setDif(f => ({ ...f, [campo]: e.target.value }));
 
     const de = somaDiasYMD(lancamento.data, -Number(janela));
     const ate = somaDiasYMD(lancamento.data, Number(janela));
@@ -190,6 +193,7 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
 
     // Recarrega as listas quando a janela ou a busca mudam (busca com debounce).
     // Saída → boletos a pagar em aberto; entrada → contas a receber em aberto.
+    const [refreshListas, setRefreshListas] = useState(0);
     useEffect(() => {
         let vivo = true;
         setAbertas(ehSaida ? null : []);
@@ -205,12 +209,28 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                     .then(p => { if (vivo) setAbertasReceber(p); })
                     .catch(() => { if (vivo) setAbertasReceber([]); });
             }
-            conciliacaoService.baixasDisponiveis(contaId, de, ate, lancamento.tipo)
+            conciliacaoService.baixasDisponiveis(contaId, de, ate, lancamento.tipo, busca.trim())
                 .then(b => { if (vivo) setBaixas(b); })
                 .catch(() => { if (vivo) setBaixas([]); });
         }, busca ? 350 : 0);
         return () => { vivo = false; clearTimeout(t); };
-    }, [contaId, lancamento, busca, de, ate, ehSaida]);
+    }, [contaId, lancamento, busca, de, ate, ehSaida, refreshListas]);
+
+    // Baixa que está em OUTRA conta (banco errado): corrige (app + CA quando possível) e recarrega
+    const [corrigindo, setCorrigindo] = useState(null);
+    const corrigirConta = async (p) => {
+        if (!window.confirm(`Esta baixa está em "${p.outraConta.nome}". Mover para a conta deste extrato (no app e no Conta Azul, quando vinculada)?`)) return;
+        setCorrigindo(p.id);
+        try {
+            const r = await conciliacaoService.corrigirContaBaixa(p.outraConta.tipo, p.id, contaId);
+            toast.success(r.message);
+            setRefreshListas(v => v + 1); // a baixa agora aparece na lista desta conta — é só marcar e conciliar
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao corrigir a conta da baixa');
+        } finally {
+            setCorrigindo(null);
+        }
+    };
 
     const alternar = (setFn, id) => setFn(prev => {
         const s = new Set(prev);
@@ -224,7 +244,9 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
     const listaAbertasReceber = (abertasReceber || []).slice().sort((a, b) => (b.bate - a.bate) || (dist(a.vencimento) - dist(b.vencimento)));
     // Filtro das baixas já registradas: nome, pedido ("Pedido 1860"), NF, valor
     // ("330,10" ou "330.1"), vencimento/data ("09/07/2026") — tudo num campo só.
+    // As de OUTRAS contas (banco errado?) já vêm filtradas do servidor pela busca.
     const listaBaixas = (baixas || []).filter(p => {
+        if (p.outraConta) return false;
         const alvo = busca.trim().toLowerCase();
         if (!alvo) return true;
         const campos = [
@@ -235,6 +257,7 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
         ].filter(Boolean).join(' | ').toLowerCase();
         return campos.includes(alvo);
     });
+    const listaOutrasContas = (baixas || []).filter(p => p.outraConta);
     const outrosPendentes = pendentes.filter(p => p.tipo === lancamento.tipo && p.id !== lancamento.id);
 
     // ── A conta, ao vivo (espelha as regras do backend) ──
@@ -308,7 +331,15 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                 : { ok: true, precisaMotivo: true, diferenca, texto: `Diferença de R$ ${fmt(Math.abs(diferenca))} — diga o que é para conciliar.` };
         }
     }
-    const motivoOk = !statusConta?.precisaMotivo || (motivo && (motivo !== 'OUTRO' || obsMotivo.trim()));
+    // Decomposição (só entrada): fecha quando juros − tarifa − desconto = diferença
+    const dT = n(dif.tarifa), dJ = n(dif.juros), dD = n(dif.desconto);
+    const temDecomposicao = !ehSaida && (dT > 0 || dJ > 0 || dD > 0);
+    const decFecha = temDecomposicao && statusConta?.precisaMotivo &&
+        Math.abs(r2(dJ - dT - dD) - statusConta.diferenca) <= 0.01;
+    // O que falta para fechar assumindo que o resto é juros/multa (recalculado ao digitar a tarifa)
+    const jurosRecalculado = statusConta?.precisaMotivo ? r2(statusConta.diferenca + dT + dD) : 0;
+
+    const motivoOk = !statusConta?.precisaMotivo || decFecha || (!temDecomposicao && motivo && (motivo !== 'OUTRO' || obsMotivo.trim()));
     const podeConfirmar = temSelecao && statusConta?.ok && motivoOk && !salvando;
 
     const confirmar = async () => {
@@ -321,8 +352,12 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                 pagamentoIds: [...selPag],
                 metodoPagamento: (selParc.size > 0 || selParcReceber.size > 0) ? metodoPagamento : null,
                 juros: jur, multa: mul, desconto: desc,
-                motivoDiferenca: statusConta?.precisaMotivo ? motivo : null,
-                obsDiferenca: statusConta?.precisaMotivo ? obsMotivo.trim() : null
+                motivoDiferenca: statusConta?.precisaMotivo && !temDecomposicao ? motivo : null,
+                obsDiferenca: statusConta?.precisaMotivo && !temDecomposicao ? obsMotivo.trim() : null,
+                // Decomposição da diferença (entrada): tarifa gera a despesa automaticamente
+                difTarifa: temDecomposicao ? dT : 0,
+                difJuros: temDecomposicao ? dJ : 0,
+                difDesconto: temDecomposicao ? dD : 0
             });
             toast.success(r.message);
             onSuccess();
@@ -459,6 +494,37 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                                 </label>
                             ))}
                         </div>
+
+                        {/* Baixas achadas em OUTRAS contas — banco errado? Corrige e usa aqui */}
+                        {listaOutrasContas.length > 0 && (
+                            <div className="mt-3">
+                                <p className="text-xs font-bold uppercase tracking-widest text-amber-700 mb-2">Achadas em OUTRAS contas (banco errado?)</p>
+                                <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                                    {listaOutrasContas.map(p => (
+                                        <div key={p.id} className="flex items-start gap-2 p-2.5 rounded-lg border border-amber-200 bg-amber-50">
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-medium text-gray-900 truncate flex-1">{p.detalhe?.nome || p.label}</span>
+                                                    <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">baixada no {p.outraConta.nome}</span>
+                                                    <span className="text-sm font-semibold whitespace-nowrap">R$ {fmt(p.valor)}</span>
+                                                </div>
+                                                <DetalheBaixa p={p} />
+                                                <div className="mt-1.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => corrigirConta(p)}
+                                                        disabled={corrigindo === p.id}
+                                                        className="px-3 py-1 bg-white border border-amber-400 text-amber-800 hover:bg-amber-100 rounded-full text-xs font-semibold disabled:opacity-50"
+                                                    >
+                                                        {corrigindo === p.id ? 'Corrigindo…' : 'Corrigir para esta conta (app + CA)'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Raro: 2 PIX pagando 1 boleto — somar outros lançamentos do banco */}
@@ -522,10 +588,46 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                             <div className="mt-0.5">{statusConta.texto}</div>
                         </div>
                     )}
-                    {statusConta?.precisaMotivo && (
+                    {/* DECOMPOSIÇÃO (entrada): a diferença pode ser juros E tarifa juntos.
+                        Digitou a tarifa? O restante é recalculado e vira juros com um clique. */}
+                    {statusConta?.precisaMotivo && !ehSaida && (
+                        <div className="rounded-xl border border-gray-200 p-3 space-y-2">
+                            <div className="flex items-center justify-between gap-2">
+                                <p className="text-xs font-bold uppercase tracking-widest text-gray-600">Decompor a diferença</p>
+                                <button type="button" onClick={() => setDif(d => ({ ...d, tarifa: '1,50' }))} className="text-xs font-medium text-primary hover:underline">
+                                    + Tarifa do boleto CA (R$ 1,50)
+                                </button>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                                {[['tarifa', 'Tarifa (R$)'], ['juros', 'Juros/multa (R$)'], ['desconto', 'Desconto (R$)']].map(([campo, label]) => (
+                                    <div key={campo}>
+                                        <label className="text-sm font-medium text-gray-700 block mb-1">{label}</label>
+                                        <input inputMode="decimal" value={dif[campo]} onChange={setD(campo)} placeholder="0,00"
+                                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                    </div>
+                                ))}
+                            </div>
+                            {temDecomposicao && !decFecha && jurosRecalculado > 0 && Math.abs(jurosRecalculado - dJ) > 0.01 && (
+                                <div className="text-xs text-amber-700 flex items-center gap-2">
+                                    Faltam R$ {fmt(Math.abs(r2(jurosRecalculado - dJ)))} para fechar —
+                                    <button type="button" onClick={() => setDif(d => ({ ...d, juros: jurosRecalculado.toFixed(2).replace('.', ',') }))}
+                                        className="font-semibold text-primary hover:underline">
+                                        usar R$ {fmt(jurosRecalculado)} como juros/multa
+                                    </button>
+                                </div>
+                            )}
+                            {decFecha && (
+                                <div className="text-xs text-green-700">
+                                    Fecha certinho: banco = baixa{dJ > 0 ? ` + juros R$ ${fmt(dJ)}` : ''}{dT > 0 ? ` − tarifa R$ ${fmt(dT)}` : ''}{dD > 0 ? ` − desconto R$ ${fmt(dD)}` : ''}.
+                                    {dT > 0 ? ' A despesa da tarifa será gerada automaticamente.' : ''}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                    {statusConta?.precisaMotivo && !temDecomposicao && (
                         <div className="flex flex-col md:flex-row gap-2">
                             <SelectBusca value={motivo} onChange={e => setMotivo(e.target.value)} className="w-full md:flex-1">
-                                <option value="">O que é a diferença?…</option>
+                                <option value="">{ehSaida ? 'O que é a diferença?…' : 'Ou escolha um motivo único…'}</option>
                                 {motivos.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                             </SelectBusca>
                             {motivo === 'OUTRO' && (
@@ -1120,6 +1222,17 @@ const ConciliacaoBancariaPage = () => {
 
     // Créditos identificados prontos para confirmar em lote (Venda = pedido, valor fechando)
     const identificaveis = lancamentos.filter(l => l.status === 'PENDENTE' && l.identificado?.fecha).length;
+    // Débitos "Nome não encontrado" — dá para descobrir no CA de quem são
+    const debitosSemNome = lancamentos.filter(l => l.status === 'PENDENTE' && l.tipo === 'DEBITO' && !l.detalhes?.nome).length;
+
+    const identificarDebitos = async () => {
+        try {
+            const r = await conciliacaoService.identificarDebitosCA(contaId, periodo.de, periodo.ate);
+            toast.success(r.aviso || r.motivo || 'Identificação iniciada.');
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao identificar débitos');
+        }
+    };
 
     // Seleção em lote: só saídas PENDENTES podem virar despesa em massa (tarifas repetidas)
     const selecionaveis = lancamentos.filter(l => l.status === 'PENDENTE' && l.tipo === 'DEBITO');
@@ -1469,6 +1582,17 @@ const ConciliacaoBancariaPage = () => {
                                 >
                                     {autoRodando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
                                     Conciliar automático (casos com 1 só candidato)
+                                </button>
+                            )}
+                            {debitosSemNome > 0 && (
+                                <button
+                                    onClick={identificarDebitos}
+                                    disabled={autoRodando || loading}
+                                    className="px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
+                                    title='Descobre no Conta Azul de quem é cada "Pagamento de Boleto para Nome não encontrado" (fornecedor, despesa, nº da nota)'
+                                >
+                                    <Search className="h-4 w-4" />
+                                    Identificar débitos no CA ({debitosSemNome})
                                 </button>
                             )}
                         </div>

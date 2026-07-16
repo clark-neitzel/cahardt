@@ -20,6 +20,10 @@
 const crypto = require('crypto');
 const prisma = require('../config/database');
 const contasPagarCaSyncService = require('./contasPagarCaSyncService');
+const contaAzulService = require('./contaAzulService');
+
+const BASE = 'https://api-v2.contaazul.com';
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // CNPJ ALFANUMÉRICO: validar candidato extraído do extrato (evita falso-positivo em texto livre).
 const { validarCnpj } = require('../utils/documento');
 
@@ -994,38 +998,43 @@ async function _vincularComTarifaCA(lanc, pagamentoId, valorBaixa, userId, auto)
         if (r.count === 0) throw erro('O lançamento deixou de estar pendente — recarregue a tela.');
 
         // Despesa da tarifa, já paga na conta do extrato (só no app)
-        const conta = await tx.contaPagar.create({
-            data: {
-                fornecedorId: refs.fornecedorId,
-                descricao: `Tarifa de boleto Conta Azul — ${String(lanc.descricao || 'recebimento').slice(0, 180)}`,
-                categoria: refs.categoria?.nome || 'Tarifas de Boletos',
-                categoriaCaId: refs.categoria?.id || null,
-                origem: 'MANUAL',
-                valorTotal: TARIFA_BOLETO_CA,
-                status: 'ABERTO',
-                statusEnvioCA: 'NAO_ENVIAR', // no CA o crédito já entra líquido — não duplicar lá
-                contaFinanceiraCaId: lanc.contaFinanceiraCaId,
-                criadoPorId: userId || null,
-                observacoes: `Gerada na conciliação bancária (tarifa descontada do crédito). [tarifa-grupo:${grupo.id}]`,
-                parcelas: { create: [{ numeroParcela: 1, valor: TARIFA_BOLETO_CA, dataVencimento: lanc.data }] }
-            },
-            include: { parcelas: true }
-        });
-        await tx.pagamentoParcelaPagar.create({
-            data: {
-                parcelaPagarId: conta.parcelas[0].id,
-                valorPago: TARIFA_BOLETO_CA,
-                dataPagamento: lanc.data,
-                formaPagamento: 'OUTRO',
-                contaFinanceiraCaId: lanc.contaFinanceiraCaId,
-                statusEnvioCA: 'NAO_ENVIAR',
-                origem: 'MANUAL',
-                observacao: 'Tarifa do boleto Conta Azul (descontada do crédito no extrato).',
-                registradoPorId: userId || null
-            }
-        });
-        await contasPagarCaSyncService.recalcularParcelaEConta(tx, conta.parcelas[0].id);
+        await _criarDespesaTarifaTx(tx, lanc, TARIFA_BOLETO_CA, grupo.id, userId, refs);
     }, { timeout: 20000, maxWait: 10000 });
+}
+
+/** Cria a despesa da tarifa do boleto CA dentro de uma transação já aberta. */
+async function _criarDespesaTarifaTx(tx, lanc, valorTarifa, grupoId, userId, refs) {
+    const conta = await tx.contaPagar.create({
+        data: {
+            fornecedorId: refs.fornecedorId,
+            descricao: `Tarifa de boleto Conta Azul — ${String(lanc.descricao || 'recebimento').slice(0, 180)}`,
+            categoria: refs.categoria?.nome || 'Tarifas de Boletos',
+            categoriaCaId: refs.categoria?.id || null,
+            origem: 'MANUAL',
+            valorTotal: valorTarifa,
+            status: 'ABERTO',
+            statusEnvioCA: 'NAO_ENVIAR', // no CA o crédito já entra líquido — não duplicar lá
+            contaFinanceiraCaId: lanc.contaFinanceiraCaId,
+            criadoPorId: userId || null,
+            observacoes: `Gerada na conciliação bancária (tarifa descontada do crédito). [tarifa-grupo:${grupoId}]`,
+            parcelas: { create: [{ numeroParcela: 1, valor: valorTarifa, dataVencimento: lanc.data }] }
+        },
+        include: { parcelas: true }
+    });
+    await tx.pagamentoParcelaPagar.create({
+        data: {
+            parcelaPagarId: conta.parcelas[0].id,
+            valorPago: valorTarifa,
+            dataPagamento: lanc.data,
+            formaPagamento: 'OUTRO',
+            contaFinanceiraCaId: lanc.contaFinanceiraCaId,
+            statusEnvioCA: 'NAO_ENVIAR',
+            origem: 'MANUAL',
+            observacao: 'Tarifa do boleto Conta Azul (descontada do crédito no extrato).',
+            registradoPorId: userId || null
+        }
+    });
+    await contasPagarCaSyncService.recalcularParcelaEConta(tx, conta.parcelas[0].id);
 }
 
 /** Concilia sozinho os PENDENTES com exatamente 1 candidato (exato ou tarifa do boleto CA). */
@@ -1162,6 +1171,121 @@ async function confirmarIdentificadas({ contaFinanceiraCaId, de, ate, userId }) 
     return { message: `${partes.join(' · ')}.`, confirmadas, comTarifa, naoFecham: naoFecham.slice(0, 20) };
 }
 
+// ─────────────────────────────────────────────────────────────
+// Identificar DÉBITOS "sem nome" consultando o Conta Azul
+// ─────────────────────────────────────────────────────────────
+
+let _identDebitos = { rodando: false, progresso: null };
+
+/**
+ * Os débitos de boleto no extrato da Conta PJ vêm como "Pagamento de Boleto para
+ * Nome não encontrado (Do…" — sem NADA para buscar. Mas no CA esses pagamentos já
+ * estão conciliados com a despesa. Este job varre as parcelas de contas a pagar do
+ * CA no período, lê as baixas feitas NESTA conta e casa cada débito por
+ * (data do pagamento, valor total). No match, grava no lançamento: nome do
+ * FORNECEDOR (nome), descrição da despesa (payee), nº da nota (refNum) e
+ * memo 'Identificado via Conta Azul' — aí a busca por fornecedor/nota funciona.
+ * Ambíguo (dois candidatos no mesmo dia/valor) fica de fora, sem chute.
+ * Roda em segundo plano (consulta o CA parcela a parcela, com throttle).
+ */
+async function identificarDebitosViaCA({ contaFinanceiraCaId, de, ate }) {
+    if (_identDebitos.rodando) return { ok: true, jaRodando: true, progresso: _identDebitos.progresso };
+    const debitos = await prisma.extratoLancamento.findMany({
+        where: {
+            contaFinanceiraCaId, status: 'PENDENTE', tipo: 'DEBITO', nome: null,
+            data: { gte: dataSP(de), lte: dataSP(ate) }
+        },
+        select: { id: true, data: true, valor: true }
+    });
+    if (debitos.length === 0) return { ok: true, iniciado: false, motivo: 'Nenhum débito pendente sem nome no período.' };
+
+    _identDebitos.rodando = true;
+    _identDebitos.progresso = { totalDebitos: debitos.length, candidatasLidas: 0, identificados: 0, iniciadoEm: new Date().toISOString() };
+    (async () => {
+        try {
+            // Janela de VENCIMENTO ampla em torno do período dos débitos (boleto pago
+            // costuma vencer perto do pagamento; ±45 dias cobre atrasos e antecipações)
+            const datas = debitos.map((d) => ymd(d.data)).sort();
+            const deV = somaDias(datas[0], -45);
+            const ateV = somaDias(datas[datas.length - 1], 45);
+            const statusQS = ['RECEBIDO', 'EM_ABERTO', 'ATRASADO', 'RECEBIDO_PARCIAL', 'RENEGOCIADO', 'PERDIDO']
+                .map((s) => `&status=${s}`).join('');
+            const valoresAlvo = debitos.map((d) => round2(num(d.valor)));
+            const maxAlvo = Math.max(...valoresAlvo);
+
+            // 1) Varre a lista de parcelas de contas a pagar do CA na janela
+            const candidatas = [];
+            let pagina = 1;
+            while (pagina <= 15) {
+                const resp = await contaAzulService._axiosGet(
+                    `${BASE}/v1/financeiro/eventos-financeiros/contas-a-pagar/buscar?pagina=${pagina}&tamanho_pagina=100&data_vencimento_de=${deV}&data_vencimento_ate=${ateV}${statusQS}`,
+                    'CONTA_PAGAR_IDENT_DEBITO'
+                );
+                const itens = resp.data?.itens || resp.data?.items || [];
+                for (const it of itens) {
+                    if (!it?.id) continue;
+                    const total = round2(Number(it.total ?? 0));
+                    // pré-filtro: perto de ALGUM débito (juros/multa fazem o pago passar do total da parcela)
+                    if (valoresAlvo.some((v) => total <= v + 0.01 && total >= v - 300) || total <= maxAlvo + 0.01) {
+                        candidatas.push({ id: it.id, fornecedor: it.fornecedor?.nome || null, descricao: it.descricao || null });
+                    }
+                }
+                const totais = Number(resp.data?.itens_totais || 0);
+                if (itens.length < 100 || (totais && pagina * 100 >= totais)) break;
+                pagina++;
+                await sleep(300);
+            }
+
+            // 2) Lê o detalhe (baixas) de cada candidata e indexa por data|valor pago nesta conta
+            const porChave = new Map(); // 'YYYY-MM-DD|123.45' → [{fornecedor, descricao, nota}]
+            for (const c of candidatas) {
+                try {
+                    const det = await contaAzulService.buscarParcelaDetalhe(c.id);
+                    for (const b of (det?.baixas || [])) {
+                        const contaB = b?.conta_financeira?.id || b?.conta_financeira || null;
+                        if (contaB !== contaFinanceiraCaId) continue;
+                        const comp = b?.valor_composicao || {};
+                        const total = round2(num(comp.valor_bruto) + num(comp.juros) + num(comp.multa));
+                        const chave = `${String(b.data_pagamento || '').slice(0, 10)}|${total.toFixed(2)}`;
+                        if (!porChave.has(chave)) porChave.set(chave, []);
+                        porChave.get(chave).push({
+                            fornecedor: c.fornecedor || det?.evento?.descricao || null,
+                            descricao: det?.descricao || c.descricao || null,
+                            nota: det?.nota || null
+                        });
+                    }
+                } catch (_) { /* uma candidata que falha não derruba o job */ }
+                _identDebitos.progresso.candidatasLidas++;
+                await sleep(250);
+            }
+
+            // 3) Casa cada débito por (data, valor) — só quando o match é ÚNICO
+            for (const d of debitos) {
+                const chave = `${ymd(d.data)}|${round2(num(d.valor)).toFixed(2)}`;
+                const achados = porChave.get(chave) || [];
+                if (achados.length !== 1) continue; // 0 = não achou; 2+ = ambíguo, não chutar
+                const a = achados[0];
+                await prisma.extratoLancamento.update({
+                    where: { id: d.id },
+                    data: {
+                        nome: a.fornecedor ? String(a.fornecedor).slice(0, 200) : null,
+                        payee: a.descricao ? String(a.descricao).slice(0, 200) : null,
+                        refNum: a.nota ? String(a.nota).slice(0, 60) : null,
+                        memo: 'Identificado via Conta Azul'
+                    }
+                });
+                _identDebitos.progresso.identificados++;
+            }
+            console.log('[Conciliação] Identificação de débitos via CA concluída:', _identDebitos.progresso);
+        } catch (e) {
+            console.error('[Conciliação] Identificação de débitos via CA falhou:', e.message);
+        } finally {
+            _identDebitos.rodando = false;
+        }
+    })();
+    return { ok: true, iniciado: true, totalDebitos: debitos.length, aviso: 'Identificando no Conta Azul em segundo plano — recarregue a tela em 1–2 minutos.' };
+}
+
 async function ignorar({ lancamentoId, obs, userId }) {
     const r = await prisma.extratoLancamento.updateMany({
         where: { id: lancamentoId, status: 'PENDENTE' },
@@ -1280,13 +1404,189 @@ async function desfazer({ lancamentoId }) {
 /**
  * Baixas do app DISPONÍVEIS (não conciliadas) na conta/período, para o modal
  * de conciliação em grupo. tipo CREDITO → recebimentos; DEBITO → pagamentos.
+ *
+ * Com `busca`, procura TAMBÉM nas OUTRAS contas: uma baixa lançada no banco
+ * errado (ex.: despesa baixada "no Sicoob" mas o dinheiro saiu da Conta PJ)
+ * fica invisível na conta certa — aqui ela aparece marcada com o banco em que
+ * está (`outraConta`), para o usuário corrigir e conciliar.
  */
-async function baixasDisponiveis({ contaFinanceiraCaId, de, ate, tipo }) {
+async function baixasDisponiveis({ contaFinanceiraCaId, de, ate, tipo, busca }) {
     const [pools, usados] = await Promise.all([carregarPools(contaFinanceiraCaId, de, ate), idsUsados(contaFinanceiraCaId)]);
     const pool = tipo === 'CREDITO' ? pools.entradas : pools.saidas;
-    return pool
+    const daConta = pool
         .filter((p) => !usados.has(p.id))
         .sort((a, b) => b.data.localeCompare(a.data));
+
+    const termo = String(busca || '').trim();
+    if (!termo) return daConta;
+
+    // Busca nas outras contas (só com termo — não carrega o histórico todo)
+    const gte = dataSP(somaDias(de, -3));
+    const lte = dataSP(somaDias(ate, 3));
+    const q = _interpretarTermoBusca(termo, String(de || '').slice(0, 4));
+    const nomesContas = new Map((await prisma.contaFinanceira.findMany({ select: { id: true, nomeBanco: true } })).map((c) => [c.id, c.nomeBanco]));
+
+    let outras = [];
+    if (tipo === 'DEBITO') {
+        const orBusca = [
+            { parcelaPagar: { contaPagar: { descricao: { contains: termo, mode: 'insensitive' } } } },
+            { parcelaPagar: { contaPagar: { numeroNota: { contains: termo, mode: 'insensitive' } } } },
+            { parcelaPagar: { contaPagar: { fornecedor: { razaoSocial: { contains: termo, mode: 'insensitive' } } } } },
+            { parcelaPagar: { contaPagar: { fornecedor: { nomeFantasia: { contains: termo, mode: 'insensitive' } } } } }
+        ];
+        if (q.valor != null) orBusca.push({ valorPago: { gte: q.valor - 0.01, lte: q.valor + 0.01 } });
+        const regs = await prisma.pagamentoParcelaPagar.findMany({
+            where: {
+                estornado: false,
+                contaFinanceiraCaId: { not: contaFinanceiraCaId },
+                dataPagamento: { gte, lte },
+                OR: orBusca
+            },
+            select: {
+                id: true, valorPago: true, juros: true, multa: true, desconto: true, dataPagamento: true, formaPagamento: true, contaFinanceiraCaId: true,
+                parcelaPagar: {
+                    select: {
+                        numeroParcela: true, valor: true, dataVencimento: true,
+                        contaPagar: { select: { descricao: true, numeroNota: true, fornecedor: { select: { razaoSocial: true, nomeFantasia: true } } } }
+                    }
+                }
+            },
+            take: 30
+        });
+        outras = regs.map((p) => {
+            const cp = p.parcelaPagar?.contaPagar;
+            const nome = cp?.fornecedor?.nomeFantasia || cp?.fornecedor?.razaoSocial || cp?.descricao || 'Despesa';
+            return {
+                id: p.id,
+                valor: round2(num(p.valorPago) + num(p.juros) + num(p.multa)),
+                data: ymd(p.dataPagamento),
+                label: `${nome}${p.formaPagamento ? ` (${p.formaPagamento})` : ''}`,
+                outraConta: { id: p.contaFinanceiraCaId, nome: nomesContas.get(p.contaFinanceiraCaId) || 'sem conta', tipo: 'PAGAR' },
+                detalhe: {
+                    nome,
+                    descricao: cp?.descricao || null,
+                    numeroNota: cp?.numeroNota || null,
+                    parcela: p.parcelaPagar?.numeroParcela ?? null,
+                    vencimento: p.parcelaPagar?.dataVencimento ? ymd(p.parcelaPagar.dataVencimento) : null,
+                    valorParcela: num(p.parcelaPagar?.valor),
+                    formaPagamento: p.formaPagamento || null
+                }
+            };
+        });
+    } else {
+        const orBusca = [
+            { parcela: { contaReceber: { cliente: { Nome: { contains: termo, mode: 'insensitive' } } } } },
+            { parcela: { contaReceber: { cliente: { NomeFantasia: { contains: termo, mode: 'insensitive' } } } } }
+        ];
+        if (q.inteiro != null) orBusca.push({ parcela: { contaReceber: { pedido: { numero: q.inteiro } } } });
+        if (q.valor != null) orBusca.push({ valorRecebido: { gte: q.valor - 0.01, lte: q.valor + 0.01 } });
+        const regs = await prisma.pagamentoParcela.findMany({
+            where: {
+                estornado: false,
+                contaFinanceiraCaId: { not: contaFinanceiraCaId },
+                dataPagamento: { gte, lte },
+                OR: orBusca
+            },
+            select: {
+                id: true, valorRecebido: true, dataPagamento: true, formaPagamento: true, contaFinanceiraCaId: true,
+                parcela: {
+                    select: {
+                        numeroParcela: true, valor: true, dataVencimento: true,
+                        contaReceber: { select: { pedido: { select: { numero: true } }, cliente: { select: { Nome: true, NomeFantasia: true } } } }
+                    }
+                }
+            },
+            take: 30
+        });
+        outras = regs.map((r) => {
+            const cli = r.parcela?.contaReceber?.cliente;
+            const nome = cli?.NomeFantasia || cli?.Nome || 'Cliente';
+            return {
+                id: r.id,
+                valor: round2(num(r.valorRecebido)),
+                data: ymd(r.dataPagamento),
+                label: `${nome} — parcela ${r.parcela?.numeroParcela ?? '?'}${r.formaPagamento ? ` (${r.formaPagamento})` : ''}`,
+                outraConta: { id: r.contaFinanceiraCaId, nome: nomesContas.get(r.contaFinanceiraCaId) || 'sem conta', tipo: 'RECEBER' },
+                detalhe: {
+                    nome,
+                    descricao: r.parcela?.contaReceber?.pedido?.numero ? `Pedido ${r.parcela.contaReceber.pedido.numero}` : null,
+                    parcela: r.parcela?.numeroParcela ?? null,
+                    vencimento: r.parcela?.dataVencimento ? ymd(r.parcela.dataVencimento) : null,
+                    valorParcela: num(r.parcela?.valor),
+                    formaPagamento: r.formaPagamento || null
+                }
+            };
+        });
+    }
+    // Fora as que já estão conciliadas em QUALQUER conta — pelo link 1↔1 OU por grupo
+    const idsOutras = outras.map((o) => o.id);
+    const [usadasGeral, usadasGrupo] = await Promise.all([
+        prisma.extratoLancamento.findMany({
+            where: {
+                status: 'CONCILIADO',
+                ...(tipo === 'CREDITO'
+                    ? { pagamentoParcelaId: { in: idsOutras } }
+                    : { pagamentoParcelaPagarId: { in: idsOutras } })
+            },
+            select: { pagamentoParcelaId: true, pagamentoParcelaPagarId: true }
+        }),
+        prisma.conciliacaoGrupoItem.findMany({
+            where: tipo === 'CREDITO'
+                ? { pagamentoParcelaId: { in: idsOutras } }
+                : { pagamentoParcelaPagarId: { in: idsOutras } },
+            select: { pagamentoParcelaId: true, pagamentoParcelaPagarId: true }
+        })
+    ]);
+    const bloqueadas = new Set([...usadasGeral, ...usadasGrupo].map((u) => u.pagamentoParcelaId || u.pagamentoParcelaPagarId));
+    return [...daConta, ...outras.filter((o) => !bloqueadas.has(o.id))];
+}
+
+/**
+ * Corrige a CONTA FINANCEIRA de uma baixa lançada no banco errado (ex.: despesa
+ * baixada "no Sicoob" quando o dinheiro saiu da Conta PJ). Atualiza o app e,
+ * quando a baixa existe no CA (idBaixaCA), atualiza TAMBÉM lá via PATCH — sem
+ * precisar estornar na mão. Devolve aviso quando só o app pôde ser corrigido.
+ */
+async function corrigirContaBaixa({ tipo, pagamentoId, novaContaId, userId }) {
+    if (!novaContaId) throw erro('Informe a conta de destino.');
+    const conta = await prisma.contaFinanceira.findUnique({ where: { id: novaContaId }, select: { id: true, nomeBanco: true } });
+    if (!conta) throw erro('Conta de destino não encontrada.');
+
+    if (tipo === 'PAGAR') {
+        const pg = await prisma.pagamentoParcelaPagar.findUnique({
+            where: { id: pagamentoId },
+            select: { id: true, estornado: true, idBaixaCA: true, contaFinanceiraCaId: true }
+        });
+        if (!pg || pg.estornado) throw erro('Baixa não encontrada (ou estornada).');
+        let caOk = null;
+        if (pg.idBaixaCA) {
+            // CA primeiro: se falhar, nada muda (evita app e CA divergirem)
+            const baixaCA = await contaAzulService.buscarBaixaFinanceira(pg.idBaixaCA);
+            const comp = baixaCA?.valor_composicao || {};
+            await contaAzulService.atualizarBaixaFinanceira(pg.idBaixaCA, {
+                versao: baixaCA?.versao,
+                composicao_valor: { valor_bruto: num(comp.valor_bruto) },
+                conta_financeira: novaContaId
+            });
+            caOk = true;
+        }
+        await prisma.pagamentoParcelaPagar.update({ where: { id: pg.id }, data: { contaFinanceiraCaId: novaContaId } });
+        return {
+            message: caOk
+                ? `Baixa movida para ${conta.nomeBanco} (no app e no Conta Azul).`
+                : `Baixa movida para ${conta.nomeBanco} no app. Ela não tem vínculo com o CA — confira o banco da baixa lá.`,
+            caAtualizado: !!caOk
+        };
+    }
+
+    // RECEBER: o ledger não guarda o id da baixa no CA — corrige o app e avisa
+    const pg = await prisma.pagamentoParcela.findUnique({ where: { id: pagamentoId }, select: { id: true, estornado: true } });
+    if (!pg || pg.estornado) throw erro('Baixa não encontrada (ou estornada).');
+    await prisma.pagamentoParcela.update({ where: { id: pg.id }, data: { contaFinanceiraCaId: novaContaId } });
+    return {
+        message: `Baixa movida para ${conta.nomeBanco} no app. Confira o banco do recebimento no Conta Azul (o app não guarda o vínculo dessa baixa lá).`,
+        caAtualizado: false
+    };
 }
 
 /**
@@ -1543,7 +1843,8 @@ async function parcelasReceberEmAberto({ valor, busca, de, ate }) {
  */
 async function conciliarUnificado({
     lancamentoIds, parcelaPagarIds, parcelaReceberIds, pagamentoIds, metodoPagamento,
-    juros = 0, multa = 0, desconto = 0, motivoDiferenca, obsDiferenca, userId
+    juros = 0, multa = 0, desconto = 0, motivoDiferenca, obsDiferenca,
+    difTarifa = 0, difJuros = 0, difDesconto = 0, userId
 }) {
     const idsLanc = [...new Set(lancamentoIds || [])];
     const idsParcPagar = [...new Set(parcelaPagarIds || [])];
@@ -1693,15 +1994,37 @@ async function conciliarUnificado({
     const temDiferenca = Math.abs(diferenca) > 0.01;
     const motivo = String(motivoDiferenca || '').toUpperCase();
     const obs = String(obsDiferenca || '').trim();
-    if (temDiferenca) {
+
+    // DECOMPOSIÇÃO da diferença (só entrada): banco = sistema + juros/multa − tarifa − desconto.
+    // Cobre o caso real "boleto com juros E tarifa" (ex.: +16,64 de juros − 1,50 de tarifa
+    // = diferença de +15,14). A tarifa decomposta também GERA a despesa da tarifa.
+    const dec = {
+        tarifa: round2(Math.max(0, num(difTarifa))),
+        juros: round2(Math.max(0, num(difJuros))),
+        desconto: round2(Math.max(0, num(difDesconto)))
+    };
+    const temDecomposicao = tipo === 'CREDITO' && (dec.tarifa > 0 || dec.juros > 0 || dec.desconto > 0);
+    if (temDiferenca && temDecomposicao) {
+        if (Math.abs(round2(dec.juros - dec.tarifa - dec.desconto) - diferenca) > 0.01) {
+            throw erro(`A decomposição não fecha: juros R$ ${dec.juros.toFixed(2)} − tarifa R$ ${dec.tarifa.toFixed(2)} − desconto R$ ${dec.desconto.toFixed(2)} deveria dar a diferença de R$ ${diferenca.toFixed(2)}.`);
+        }
+    } else if (temDiferenca) {
         if (!MOTIVOS_VALIDOS.has(motivo)) {
             throw erro(`Banco R$ ${somaExtrato.toFixed(2)} × sistema R$ ${round2(somaExistentes + somaCriadas).toFixed(2)}: diga o que é a diferença de R$ ${Math.abs(diferenca).toFixed(2)} para conciliar.`);
         }
         if (motivo === 'OUTRO' && !obs) throw erro('Descreva a diferença (motivo "Outro").');
     }
     const rotuloMotivo = temDiferenca
-        ? [MOTIVOS_DIFERENCA.find((m) => m.value === motivo)?.label, obs].filter(Boolean).join(' — ')
+        ? (temDecomposicao
+            ? [
+                dec.juros > 0 ? `Juros/multa recebidos R$ ${dec.juros.toFixed(2)}` : null,
+                dec.tarifa > 0 ? `Tarifa boleto CA R$ ${dec.tarifa.toFixed(2)}` : null,
+                dec.desconto > 0 ? `Desconto R$ ${dec.desconto.toFixed(2)}` : null
+            ].filter(Boolean).join(' · ')
+            : [MOTIVOS_DIFERENCA.find((m) => m.value === motivo)?.label, obs].filter(Boolean).join(' — '))
         : null;
+    // Referências da despesa da tarifa (fora da transação — pode consultar a API do CA)
+    const refsTarifa = (temDiferenca && temDecomposicao && dec.tarifa > 0) ? await _referenciasTarifaCA() : null;
 
     const dataPagamento = new Date(lancs[0].data); // com 2 lançamentos, vale a data do primeiro
     let criadas = [];
@@ -1782,6 +2105,10 @@ async function conciliarUnificado({
                 data: { status: 'CONCILIADO', conciliadoAuto: false, conciliadoPorId: userId || null, conciliadoEm: new Date() }
             });
             if (r.count !== idsLanc.length) throw erro('Um dos lançamentos deixou de estar pendente — recarregue e tente de novo.');
+            // Tarifa vinda da DECOMPOSIÇÃO → gera a despesa da tarifa (cancelada se desfizer o grupo)
+            if (refsTarifa) {
+                await _criarDespesaTarifaTx(tx, lancs[0], dec.tarifa, grupo.id, userId, refsTarifa);
+            }
         }
     }, { timeout: 30000, maxWait: 10000 });
 
@@ -2078,6 +2405,8 @@ module.exports = {
     ignorar,
     transferir,
     confirmarIdentificadas,
+    identificarDebitosViaCA,
+    corrigirContaBaixa,
     desfazer,
     listarImportacoes,
     criarDespesaDoLancamento,

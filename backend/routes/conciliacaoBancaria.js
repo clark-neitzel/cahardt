@@ -154,6 +154,42 @@ router.post('/conciliar-auto', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// ── POST /identificar-debitos-ca — descobre no CA de quem é cada débito "sem nome" ──
+// body: { contaId, de, ate }. Roda em segundo plano: varre as contas a pagar do CA,
+// casa as baixas desta conta por (data, valor) e grava fornecedor/descrição/nota
+// nos lançamentos pendentes. Só match ÚNICO (ambíguo fica de fora).
+router.post('/identificar-debitos-ca', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const r = await conciliacaoService.identificarDebitosViaCA({
+            contaFinanceiraCaId: String(req.body.contaId || '').trim(),
+            de: req.body.de,
+            ate: req.body.ate
+        });
+        res.json(r);
+    } catch (error) {
+        console.error('Erro ao identificar débitos via CA:', error);
+        res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao identificar débitos.' });
+    }
+});
+
+// ── POST /corrigir-conta-baixa — move uma baixa lançada no banco errado ──
+// body: { tipo: 'PAGAR'|'RECEBER', pagamentoId, contaId }. Atualiza o app e, quando a
+// baixa tem vínculo com o CA (idBaixaCA), atualiza a conta financeira LÁ também.
+router.post('/corrigir-conta-baixa', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const r = await conciliacaoService.corrigirContaBaixa({
+            tipo: String(req.body.tipo || '').toUpperCase() === 'RECEBER' ? 'RECEBER' : 'PAGAR',
+            pagamentoId: String(req.body.pagamentoId || '').trim(),
+            novaContaId: String(req.body.contaId || '').trim(),
+            userId: req.user.id
+        });
+        res.json(r);
+    } catch (error) {
+        console.error('Erro ao corrigir conta da baixa:', error);
+        res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao corrigir a conta da baixa.' });
+    }
+});
+
 // ── GET /baixas-disponiveis?contaId&de&ate&tipo=CREDITO|DEBITO ──
 // Baixas do app ainda livres (para o modal de conciliação em grupo).
 router.get('/baixas-disponiveis', verificarAuth, checkAcesso, async (req, res) => {
@@ -168,7 +204,8 @@ router.get('/baixas-disponiveis', verificarAuth, checkAcesso, async (req, res) =
             contaFinanceiraCaId: contaId,
             de: periodo.de,
             ate: periodo.ate,
-            tipo
+            tipo,
+            busca: req.query.busca || ''
         });
         res.json(baixas);
     } catch (error) {
@@ -199,6 +236,9 @@ router.post('/conciliar-unificado', verificarAuth, checkAcesso, async (req, res)
             desconto: req.body.desconto,
             motivoDiferenca: req.body.motivoDiferenca || null,
             obsDiferenca: req.body.obsDiferenca || null,
+            difTarifa: req.body.difTarifa,
+            difJuros: req.body.difJuros,
+            difDesconto: req.body.difDesconto,
             userId: req.user.id
         });
         res.json(r);
