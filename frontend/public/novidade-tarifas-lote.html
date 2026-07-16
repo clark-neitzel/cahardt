@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Tarifas em Lote — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="⚡ Novidade no Hardt App: Tarifas em Lote">
+<meta property="og:description" content="Na Conciliação Bancária, marque as tarifas do Asaas, escolha fornecedor/categoria/forma uma vez só, e todas viram despesa já paga e conciliada de uma vez.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --cream: #f2f0eb; --gold: #cba258;
+    --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); line-height:1.55;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased; font-variant-numeric: tabular-nums; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+
+  .hero { background:linear-gradient(168deg, var(--house) 0%, #16302a 100%); color:#fff;
+    padding:40px 16px 96px; text-align:center; }
+  .hero .chip { display:inline-block; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);
+    color:#d4e9e2; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+    border-radius:999px; padding:6px 14px; margin-bottom:14px; }
+  .hero h1 { font-size:28px; margin:0 0 10px; font-weight:800; }
+  .hero p { color:#c8d6d0; max-width:470px; margin:0 auto; font-size:15.5px; }
+
+  .cartao { background:#fff; border:1px solid #e5e7eb; border-radius:16px;
+    box-shadow:0 8px 24px rgba(30,57,50,.10); padding:20px; margin-top:-64px; }
+  .sec { margin-top:16px; }
+  .sec-titulo { font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft); margin:0 0 12px; }
+
+  /* mock de linhas selecionáveis */
+  .linha { display:flex; align-items:center; gap:11px; border:1px solid #e5e7eb; border-radius:10px; padding:11px 13px; }
+  .linha + .linha { margin-top:8px; }
+  .linha.on { border-color:var(--primary); background:rgba(212,233,226,.35); }
+  .chk { width:18px; height:18px; border-radius:5px; border:2px solid var(--primary); flex:none;
+    display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:900; }
+  .chk.on { background:var(--primary); }
+  .l-txt { min-width:0; flex:1; }
+  .l-desc { font-size:13.5px; color:#374151; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .l-sub { font-size:12px; color:#8a938f; }
+  .l-valor { color:#b91c1c; font-weight:800; white-space:nowrap; font-size:13.5px; }
+  .barra { margin-top:12px; background:var(--primary); color:#fff; border-radius:999px; padding:10px 16px;
+    display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  .barra b { font-weight:800; }
+  .barra .cta { background:#fff; color:var(--primary); font-size:12.5px; font-weight:800; border-radius:999px; padding:6px 13px; }
+
+  details { background:#fff; border:1px solid #e5e7eb; border-radius:14px; margin-top:10px; overflow:hidden; }
+  summary { list-style:none; cursor:pointer; padding:15px 18px; font-weight:800; font-size:15px; color:var(--house);
+    display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  summary::-webkit-details-marker { display:none; }
+  summary .mais { color:var(--primary); font-size:20px; font-weight:800; transition:transform .2s; flex:none; }
+  details[open] summary .mais { transform:rotate(45deg); }
+  .det-corpo { padding:0 18px 16px; font-size:14.5px; color:#3f4a46; }
+  .det-corpo b { color:var(--house); }
+
+  .passo { display:flex; gap:12px; margin-top:14px; }
+  .passo .num { flex:none; width:28px; height:28px; border-radius:999px; background:var(--primary); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+  .passo p { margin:3px 0 0; font-size:14.5px; color:#3f4a46; }
+  .passo b { color:var(--house); }
+  .rodape { text-align:center; color:var(--ink-soft); font-size:12.5px; margin-top:34px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="chip">✨ Novidade no app</span>
+  <h1>⚡ Tarifas em Lote</h1>
+  <p>Aquela montoeira de "Taxa de boleto R$ 1,99" do Asaas? Agora você marca todas, escolhe o fornecedor, a categoria e a forma de pagamento <b>uma vez só</b> — e todas viram despesa <b>já paga e conciliada</b> num clique.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao">
+    <p class="sec-titulo">🖐️ Marque, clique, pronto</p>
+
+    <div class="linha on"><div class="chk on">✓</div><div class="l-txt"><div class="l-desc">Taxa de boleto - fatura 856699901</div><div class="l-sub">15/07 · PANIFICADORA CAMILA</div></div><span class="l-valor">− R$ 1,99</span></div>
+    <div class="linha on"><div class="chk on">✓</div><div class="l-txt"><div class="l-desc">Taxa de boleto - fatura 857721935</div><div class="l-sub">15/07 · POSTO MAIOCHI</div></div><span class="l-valor">− R$ 1,99</span></div>
+    <div class="linha on"><div class="chk on">✓</div><div class="l-txt"><div class="l-desc">Taxa do Pix - fatura 858203456</div><div class="l-sub">15/07 · AMELIA DE JESUS</div></div><span class="l-valor">− R$ 1,99</span></div>
+
+    <div class="barra"><span><b>3 saídas</b> selecionadas · R$ 5,97</span><span class="cta">✓ Lançar e conciliar</span></div>
+  </div>
+
+  <div class="sec">
+    <details open>
+      <summary>Como funciona <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Na <b>Conciliação Bancária</b>, cada saída pendente ganhou uma <b>caixinha</b>. Marque as tarifas (ou use "selecionar todas as saídas pendentes"), clique em <b>Lançar despesas e conciliar</b> e escolha <b>uma vez</b>: fornecedor (ex.: Asaas), categoria da DRE (ex.: Tarifas de Boletos) e forma de pagamento (ex.: Depósito bancário).
+      </div>
+    </details>
+    <details>
+      <summary>Cada tarifa continua identificável <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Cada linha vira <b>sua própria despesa</b>, mantendo a descrição e o <b>número da fatura/documento</b> do banco. Ou seja: some do trabalho manual, mas cada tarifa continua rastreável no Contas a Pagar e no Conta Azul.
+      </div>
+    </details>
+    <details>
+      <summary>Já sai conciliada <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        A despesa nasce <b>paga</b> (o dinheiro já saiu do banco) e <b>já conciliada</b> com o lançamento do extrato — não precisa clicar em "Conciliar" depois. Se alguma linha não puder ser lançada, as outras vão normalmente e o app mostra quais ficaram de fora.
+      </div>
+    </details>
+  </div>
+
+  <div class="cartao sec" style="margin-top:16px">
+    <p class="sec-titulo">🚀 Para usar</p>
+    <div class="passo"><div class="num">1</div><p>Abra <b>Financeiro → Conciliação Bancária</b> e escolha a conta do <b>Asaas</b>.</p></div>
+    <div class="passo"><div class="num">2</div><p>Marque as caixinhas das tarifas (ou "selecionar todas as saídas pendentes").</p></div>
+    <div class="passo"><div class="num">3</div><p>Clique em <b>Lançar despesas e conciliar</b>, escolha fornecedor + categoria + forma e confirme. 🎉</p></div>
+  </div>
+
+  <p class="rodape">Hardt Alimentos · atualização de julho/2026<br>Dúvidas? É só falar com o escritório. 💚</p>
+</div>
+
+</body>
+</html>

@@ -41,6 +41,17 @@ Modelo do Conta Azul. Mostra, para o lançamento clicado:
 - **Diferença de valor** (quando só há baixas registradas marcadas e não fecha): dá para conciliar mesmo assim, mas é **obrigatório dizer o que é** (tarifa do banco, juros pagos a mais, desconto, arredondamento, erro de lançamento, outro+descrição). A diferença e o motivo ficam gravados e aparecem em âmbar na linha conciliada — nunca somem.
 - No rodapé da janela: **"Cadastrar despesa"** (a saída nunca foi lançada no sistema — ver seção abaixo), **"Transferência entre contas"** (ver seção abaixo) e **"Ignorar"** (tarifa; pede o motivo).
 
+## Lançar tarifas em lote (várias despesas de uma vez) e já conciliar
+
+Para **tarifas repetidas** — taxa de boleto, taxa de PIX do Asaas, cada uma com seu número de fatura — não precisa cadastrar uma por uma:
+
+- Cada saída **pendente** ganha uma **caixinha de seleção** (à esquerda). Marque as tarifas (há um **"selecionar todas as saídas pendentes"** no cabeçalho da tabela / acima da lista).
+- Aparece a barra **"N saída(s) selecionada(s)"** → botão **"Lançar despesas e conciliar"**.
+- No pop-up, escolha **uma vez só**: o **fornecedor** (ex.: Asaas), a **categoria da DRE** (ex.: Tarifas de Boletos) e a **forma de pagamento** (ex.: Depósito bancário). A prévia lista todas as linhas com valor e total.
+- Ao confirmar, **cada linha vira sua própria despesa** já **paga e conciliada**, no banco deste extrato — mantendo a descrição e o nº do documento do banco (cada tarifa fica identificável) — e vai para o Conta Azul. Não precisa clicar em "Conciliar" depois.
+- Se alguma falhar (ex.: já tinha sido tratada), as demais são lançadas normalmente e o pop-up mostra a lista das que não deram certo. Máximo de 200 por vez.
+- Só **saídas pendentes** entram no lote (as entradas/"cobranças recebidas" não têm caixinha).
+
 ## Transferência entre contas (dinheiro movido entre os bancos da empresa)
 
 Para lançamentos que são dinheiro **da própria empresa trocando de conta** (ex.: "PIX RECEBIDO - OUTRA IF - MESMA TIT.", TED entre os bancos da casa) — **não é receita nem despesa** e não deve ser conciliado com boleto nenhum:

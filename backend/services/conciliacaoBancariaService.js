@@ -1279,6 +1279,128 @@ async function criarDespesaDoLancamento({
     };
 }
 
+/**
+ * LOTE — cria uma despesa (já paga) para CADA lançamento de SAÍDA selecionado e
+ * JÁ CONCILIA na hora. Feito para tarifas repetidas (boleto/PIX do Asaas), onde o
+ * usuário escolhe UMA vez o fornecedor, a categoria da DRE e a forma de pagamento,
+ * e cada linha vira sua própria despesa (mantém a descrição e o nº de documento do
+ * banco — cada tarifa tem seu identificador).
+ *
+ * Cada lançamento é atômico e independente: cria conta + parcela + baixa, recalcula
+ * e concilia o lançamento (1:1 com a baixa recém-criada), tudo numa transação sua.
+ * Se um falhar, os outros seguem — devolve o total criado e a lista de falhas.
+ * O envio ao CA (despesa + baixa) acontece depois, pelos workers, como no fluxo unitário.
+ */
+async function criarDespesasLoteEConciliar({
+    lancamentoIds, fornecedorId, fornecedorNovo, categoria, categoriaCaId, metodoPagamento, userId
+}) {
+    const ids = [...new Set((lancamentoIds || []).filter(Boolean))];
+    if (ids.length === 0) throw erro('Selecione ao menos um lançamento.');
+    if (ids.length > 200) throw erro('Máximo de 200 lançamentos por vez — faça em partes.');
+
+    const metodo = String(metodoPagamento || '').toUpperCase();
+    if (!contasPagarCaSyncService.METODOS_BAIXA_VALIDOS.has(metodo)) throw erro('Escolha a forma de pagamento.');
+
+    const nomeNovo = String(fornecedorNovo || '').trim();
+    if (!fornecedorId && !nomeNovo) throw erro('Informe o fornecedor (as despesas vão para o Conta Azul).');
+
+    // Resolve/cria o fornecedor UMA vez (fora do loop) — todas as tarifas usam o mesmo.
+    let idFornecedor = fornecedorId || null;
+    if (!idFornecedor) {
+        const novo = await prisma.fornecedor.create({
+            data: { razaoSocial: nomeNovo, ativo: true, origem: 'APP', statusEnvioCA: 'ENVIAR' }
+        });
+        idFornecedor = novo.id;
+    }
+
+    const labelMetodo = contasPagarCaSyncService.METODOS_PAGAMENTO_BAIXA.find((m) => m.value === metodo)?.label || metodo;
+
+    const lancamentos = await prisma.extratoLancamento.findMany({ where: { id: { in: ids } } });
+    const porId = new Map(lancamentos.map((l) => [l.id, l]));
+
+    let criadas = 0;
+    let totalValor = 0;
+    const falhas = [];
+
+    // Sequencial de propósito: cada item é uma transação curta; o banco compartilhado
+    // não gosta de 50 transações simultâneas. Falha de um não derruba os demais.
+    for (const id of ids) {
+        const l = porId.get(id);
+        try {
+            if (!l) throw erro('Lançamento não encontrado.');
+            if (l.tipo !== 'DEBITO') throw erro('Não é uma saída do banco — só saídas viram despesa.');
+            if (l.status !== 'PENDENTE') throw erro('Já conciliado, ignorado ou marcado como transferência.');
+            const valor = round2(num(l.valor));
+            if (valor <= 0) throw erro('Valor inválido.');
+
+            const descricao = String(l.descricao || 'Tarifa bancária').trim().substring(0, 255);
+            const numeroNota = String(l.checkNum || l.refNum || '').trim() || null;
+            const dataPagamento = new Date(l.data);
+
+            await prisma.$transaction(async (tx) => {
+                const conta = await tx.contaPagar.create({
+                    data: {
+                        fornecedorId: idFornecedor,
+                        descricao,
+                        categoria: categoria?.trim() || null,
+                        categoriaCaId: categoriaCaId || null,
+                        numeroNota,
+                        observacoes: `Lançada em lote pela conciliação bancária (extrato: ${l.descricao || 'sem descrição'}).`,
+                        origem: 'MANUAL',
+                        valorTotal: valor,
+                        status: 'ABERTO',
+                        statusEnvioCA: 'ENVIAR',
+                        metodoPagamentoCA: metodo,
+                        contaFinanceiraCaId: l.contaFinanceiraCaId,
+                        criadoPorId: userId || null,
+                        parcelas: { create: [{ numeroParcela: 1, valor, dataVencimento: dataPagamento }] }
+                    },
+                    include: { parcelas: true }
+                });
+                const parcela = conta.parcelas[0];
+                const pag = await tx.pagamentoParcelaPagar.create({
+                    data: {
+                        parcelaPagarId: parcela.id,
+                        valorPago: valor,
+                        juros: 0,
+                        multa: 0,
+                        dataPagamento,
+                        formaPagamento: metodo,
+                        contaFinanceiraCaId: l.contaFinanceiraCaId,
+                        statusEnvioCA: 'ENVIAR',
+                        origem: 'MANUAL',
+                        observacao: `Baixa em lote pela conciliação bancária (${labelMetodo}).`,
+                        registradoPorId: userId || null
+                    }
+                });
+                await contasPagarCaSyncService.recalcularParcelaEConta(tx, parcela.id);
+                // Concilia o lançamento na hora — a baixa recém-criada é o par 1:1.
+                const upd = await tx.extratoLancamento.updateMany({
+                    where: { id: l.id, status: 'PENDENTE' }, // guarda contra corrida
+                    data: {
+                        status: 'CONCILIADO',
+                        conciliadoAuto: false,
+                        conciliadoPorId: userId || null,
+                        conciliadoEm: new Date(),
+                        pagamentoParcelaPagarId: pag.id
+                    }
+                });
+                if (upd.count === 0) throw erro('O lançamento mudou de status durante o processo.');
+            }, { timeout: 20000, maxWait: 10000 });
+
+            criadas++;
+            totalValor = round2(totalValor + valor);
+        } catch (e) {
+            falhas.push({ id, descricao: l?.descricao || id, erro: e.message });
+        }
+    }
+
+    const msg = falhas.length === 0
+        ? `${criadas} despesa(s) lançada(s) e conciliada(s) — R$ ${totalValor.toFixed(2)}.`
+        : `${criadas} lançada(s) (R$ ${totalValor.toFixed(2)}); ${falhas.length} não deu(deram) certo.`;
+    return { message: msg, criadas, totalValor, falhas };
+}
+
 /** Fornecedores + categorias + formas de pagamento para o modal de "criar despesa". */
 async function opcoesDespesa() {
     const [fornecedores, categorias] = await Promise.all([
@@ -1320,6 +1442,7 @@ module.exports = {
     desfazer,
     listarImportacoes,
     criarDespesaDoLancamento,
+    criarDespesasLoteEConciliar,
     opcoesDespesa,
     parcelasPagarEmAberto,
     conciliarUnificado,

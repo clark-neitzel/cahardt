@@ -313,6 +313,28 @@ router.post('/:id/criar-despesa', verificarAuth, checkAcesso, async (req, res) =
     }
 });
 
+// ── POST /despesas-lote — lança em massa (tarifas repetidas) e já concilia ──
+// body: { lancamentoIds:[], fornecedorId|fornecedorNovo, categoria, categoriaCaId, metodoPagamento }
+// Cada saída selecionada vira sua própria despesa (mantém descrição + nº do doc do
+// banco), já paga e conciliada. Fornecedor/categoria/forma valem para todas.
+router.post('/despesas-lote', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const r = await conciliacaoService.criarDespesasLoteEConciliar({
+            lancamentoIds: req.body.lancamentoIds,
+            fornecedorId: req.body.fornecedorId || null,
+            fornecedorNovo: req.body.fornecedorNovo || null,
+            categoria: req.body.categoria,
+            categoriaCaId: req.body.categoriaCaId,
+            metodoPagamento: req.body.metodoPagamento,
+            userId: req.user.id
+        });
+        res.status(201).json(r);
+    } catch (error) {
+        console.error('Erro ao lançar despesas em lote:', error);
+        res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao lançar as despesas em lote.' });
+    }
+});
+
 // ── GET /importacoes?contaId — histórico de arquivos importados ──
 router.get('/importacoes', verificarAuth, checkAcesso, async (req, res) => {
     try {

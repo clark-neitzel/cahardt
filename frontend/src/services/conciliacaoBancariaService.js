@@ -68,6 +68,12 @@ const conciliacaoBancariaService = {
         const response = await api.post(`/conciliacao-bancaria/${lancamentoId}/criar-despesa`, dados);
         return response.data;
     },
+    // Lote: cria uma despesa por lançamento selecionado (tarifas repetidas) e já concilia.
+    // dados: { lancamentoIds, fornecedorId|fornecedorNovo, categoria, categoriaCaId, metodoPagamento }
+    criarDespesasLote: async (dados) => {
+        const response = await api.post('/conciliacao-bancaria/despesas-lote', dados);
+        return response.data;
+    },
     // Boletos EM ABERTO, com janela de vencimento de/ate (±15 dias do débito por padrão)
     parcelasPagarAbertas: async (valor, busca, de, ate) => {
         const response = await api.get('/conciliacao-bancaria/parcelas-pagar-abertas', { params: { valor, busca, de, ate } });

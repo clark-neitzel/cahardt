@@ -33,9 +33,10 @@ const periodos = () => {
 const STATUS_BADGE = {
     PENDENTE: 'bg-yellow-100 text-yellow-800',
     CONCILIADO: 'bg-green-100 text-green-800',
+    TRANSFERENCIA: 'bg-purple-100 text-purple-700',
     IGNORADO: 'bg-gray-100 text-gray-700'
 };
-const STATUS_LABEL = { PENDENTE: 'Pendente', CONCILIADO: 'Conciliado', IGNORADO: 'Ignorado' };
+const STATUS_LABEL = { PENDENTE: 'Pendente', CONCILIADO: 'Conciliado', TRANSFERENCIA: 'Transferência', IGNORADO: 'Ignorado' };
 
 const KpiCard = ({ titulo, valor, cor = 'text-gray-900', sub, subCor = 'text-gray-500' }) => (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
@@ -697,6 +698,171 @@ const DespesaModal = ({ lancamento, onClose, onSuccess }) => {
     );
 };
 
+// ── Modal: lançar VÁRIAS despesas de uma vez (tarifas repetidas) e já conciliar ──
+// Feito para as tarifas do Asaas (boleto/PIX): o usuário marca as linhas, escolhe UMA
+// vez o fornecedor, a categoria da DRE e a forma de pagamento; cada linha vira sua
+// própria despesa (mantém a descrição e o nº do documento do banco) já paga e conciliada.
+const DespesaLoteModal = ({ lancamentos, onClose, onSuccess }) => {
+    const [opcoes, setOpcoes] = useState(null); // { fornecedores, categorias, metodosPagamento }
+    const [salvando, setSalvando] = useState(false);
+    const [novoFornecedor, setNovoFornecedor] = useState(false);
+    const [resultado, setResultado] = useState(null); // { criadas, falhas } quando termina com falhas
+    const [form, setForm] = useState({ fornecedorId: '', fornecedorNovo: '', categoriaCaId: '', metodoPagamento: 'DEPOSITO_BANCARIO' });
+    const set = (campo) => (e) => setForm(f => ({ ...f, [campo]: e.target.value }));
+
+    useEffect(() => {
+        conciliacaoService.opcoesDespesa()
+            .then(setOpcoes)
+            .catch(() => { toast.error('Não consegui carregar fornecedores/categorias.'); setOpcoes({ fornecedores: [], categorias: [], metodosPagamento: [] }); });
+    }, []);
+
+    const total = lancamentos.reduce((s, l) => s + Number(l.valor || 0), 0);
+    const temFornecedor = novoFornecedor ? !!form.fornecedorNovo.trim() : !!form.fornecedorId;
+    const podeSalvar = temFornecedor && form.metodoPagamento && lancamentos.length > 0 && !salvando;
+
+    const salvar = async () => {
+        setSalvando(true);
+        try {
+            const r = await conciliacaoService.criarDespesasLote({
+                lancamentoIds: lancamentos.map(l => l.id),
+                fornecedorId: novoFornecedor ? null : form.fornecedorId,
+                fornecedorNovo: novoFornecedor ? form.fornecedorNovo.trim() : null,
+                categoriaCaId: form.categoriaCaId || null,
+                categoria: opcoes?.categorias?.find(c => c.id === form.categoriaCaId)?.nome || null,
+                metodoPagamento: form.metodoPagamento
+            });
+            if (r.falhas?.length > 0) {
+                setResultado(r); // mostra o que não deu certo, sem fechar
+                toast(r.message, { icon: '⚠️' });
+            } else {
+                toast.success(r.message);
+                onSuccess();
+            }
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao lançar as despesas em lote');
+        } finally {
+            setSalvando(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
+            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-lg w-full max-h-[92vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between shrink-0">
+                    <div className="min-w-0">
+                        <p className="text-xs text-gray-500">{lancamentos.length} saída(s) selecionada(s) · R$ {fmt(total)}</p>
+                        <h2 className="font-bold text-gray-900">Lançar despesas em lote e conciliar</h2>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                </div>
+
+                <div className="p-5 space-y-4 overflow-y-auto">
+                    {resultado ? (
+                        <div className="space-y-3">
+                            <div className="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-800">
+                                {resultado.criadas} despesa(s) lançada(s) e conciliada(s).
+                            </div>
+                            {resultado.falhas?.length > 0 && (
+                                <div className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm">
+                                    <p className="font-semibold text-red-700 mb-1">{resultado.falhas.length} não deu(deram) certo:</p>
+                                    <ul className="space-y-1 max-h-48 overflow-y-auto">
+                                        {resultado.falhas.map((f, i) => (
+                                            <li key={i} className="text-red-700 text-xs truncate" title={`${f.descricao} — ${f.erro}`}>
+                                                • {f.descricao} — {f.erro}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
+                    ) : opcoes === null ? (
+                        <div className="text-center text-gray-500 text-sm py-4 flex items-center justify-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
+                        </div>
+                    ) : (
+                        <>
+                            <p className="text-sm text-gray-600">
+                                O fornecedor, a categoria e a forma de pagamento abaixo valem para <strong>todas</strong>. Cada linha
+                                vira sua própria despesa (mantendo a descrição e o nº do documento do banco), já <strong>paga e
+                                conciliada</strong> no banco deste extrato — e vai para o Conta Azul.
+                            </p>
+
+                            {/* Fornecedor (uma vez para todas) */}
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-sm font-medium text-gray-700">Fornecedor *</label>
+                                    <button type="button" onClick={() => setNovoFornecedor(v => !v)} className="text-xs font-medium text-primary hover:underline">
+                                        {novoFornecedor ? 'Escolher um já cadastrado' : '+ Cadastrar novo'}
+                                    </button>
+                                </div>
+                                {novoFornecedor ? (
+                                    <input value={form.fornecedorNovo} onChange={set('fornecedorNovo')} placeholder="Nome / razão social (ex.: Asaas)"
+                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                                ) : (
+                                    <SelectBusca value={form.fornecedorId} onChange={set('fornecedorId')} className="w-full">
+                                        <option value="">Escolha o fornecedor…</option>
+                                        {(opcoes.fornecedores || []).map(f => <option key={f.id} value={f.id}>{f.nomeFantasia || f.razaoSocial}</option>)}
+                                    </SelectBusca>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700 block mb-1">Categoria (DRE)</label>
+                                    <SelectBusca value={form.categoriaCaId} onChange={set('categoriaCaId')} className="w-full">
+                                        <option value="">Sem categoria</option>
+                                        {(opcoes.categorias || []).map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                                    </SelectBusca>
+                                </div>
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700 block mb-1">Forma de pagamento *</label>
+                                    <SelectBusca value={form.metodoPagamento} onChange={set('metodoPagamento')} className="w-full">
+                                        {(opcoes.metodosPagamento || []).map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                    </SelectBusca>
+                                </div>
+                            </div>
+
+                            {/* Prévia das linhas selecionadas */}
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Lançamentos ({lancamentos.length})</p>
+                                <div className="rounded-xl border border-gray-200 divide-y divide-gray-100 max-h-56 overflow-y-auto">
+                                    {lancamentos.map(l => (
+                                        <div key={l.id} className="flex items-center justify-between gap-2 px-3 py-2">
+                                            <div className="min-w-0">
+                                                <div className="text-sm text-gray-800 truncate">{l.descricao || '(sem descrição)'}</div>
+                                                <div className="text-xs text-gray-400">{fmtData(l.data)}{l.detalhes?.documento ? ` · doc ${l.detalhes.documento}` : ''}</div>
+                                            </div>
+                                            <span className="text-sm font-semibold text-red-700 whitespace-nowrap">− R$ {fmt(l.valor)}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex justify-between mt-2 text-sm font-semibold text-gray-800">
+                                    <span>Total</span><span>R$ {fmt(total)}</span>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                <div className="px-5 py-4 border-t border-gray-100 shrink-0 flex justify-end gap-2">
+                    {resultado ? (
+                        <button onClick={onSuccess} className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm">Fechar</button>
+                    ) : (
+                        <>
+                            <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
+                            <button onClick={salvar} disabled={!podeSalvar}
+                                className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-1.5 disabled:opacity-50">
+                                {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                Lançar {lancamentos.length} e conciliar
+                            </button>
+                        </>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const ConciliacaoBancariaPage = () => {
     const opcoesPeriodo = useMemo(periodos, []);
     const [contas, setContas] = useState([]);
@@ -720,6 +886,8 @@ const ConciliacaoBancariaPage = () => {
     const [buscarModal, setBuscarModal] = useState(null); // lançamento que abriu a busca ("o que é isto?")
     const [transfModal, setTransfModal] = useState(null); // lançamento marcado como transferência entre contas
     const [despesaModal, setDespesaModal] = useState(null); // lançamento que abriu o modal de nova despesa
+    const [selecionados, setSelecionados] = useState(new Set()); // ids de saídas pendentes marcadas p/ lote
+    const [loteModal, setLoteModal] = useState(false); // modal de lançar despesas em lote
     const [asaasInfo, setAsaasInfo] = useState(null); // { configurado, contaFinanceiraCaId, ultimaSync }
     const [syncAsaas, setSyncAsaas] = useState(false);
     const inputArquivo = useRef(null);
@@ -744,6 +912,7 @@ const ConciliacaoBancariaPage = () => {
             const d = await conciliacaoService.lancamentos(contaId, periodo.de, periodo.ate, statusFiltro);
             setDados(d);
             setEscolhas({});
+            setSelecionados(new Set());
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao carregar o extrato');
         } finally {
@@ -840,6 +1009,20 @@ const ConciliacaoBancariaPage = () => {
     const lancamentos = dados?.lancamentos || [];
     const soNoApp = dados?.soNoApp || { entradas: [], saidas: [] };
     const totalSoNoApp = (soNoApp.entradas?.length || 0) + (soNoApp.saidas?.length || 0);
+
+    // Seleção em lote: só saídas PENDENTES podem virar despesa em massa (tarifas repetidas)
+    const selecionaveis = lancamentos.filter(l => l.status === 'PENDENTE' && l.tipo === 'DEBITO');
+    const idsSelecionaveis = selecionaveis.map(l => l.id);
+    const podeSelecionar = (l) => l.status === 'PENDENTE' && l.tipo === 'DEBITO';
+    const alternarSelecao = (id) => setSelecionados(prev => {
+        const s = new Set(prev);
+        if (s.has(id)) s.delete(id); else s.add(id);
+        return s;
+    });
+    const todosSelecionados = idsSelecionaveis.length > 0 && idsSelecionaveis.every(id => selecionados.has(id));
+    const alternarTodos = () => setSelecionados(todosSelecionados ? new Set() : new Set(idsSelecionaveis));
+    const lancamentosSelecionados = selecionaveis.filter(l => selecionados.has(l.id));
+    const totalSelecionado = lancamentosSelecionados.reduce((s, l) => s + Number(l.valor || 0), 0);
 
     // Painel de ação de uma linha pendente — DOIS botões, sempre os mesmos:
     //   Conciliar (quando há sugestão com data e valor batendo) e Buscar… (todo o resto:
@@ -1123,6 +1306,21 @@ const ConciliacaoBancariaPage = () => {
                             </button>
                         )}
 
+                        {/* Barra de seleção em lote — aparece ao marcar saídas pendentes (tarifas) */}
+                        {selecionados.size > 0 && (
+                            <div className="sticky top-2 z-20 bg-primary text-white rounded-full px-4 py-2.5 flex items-center justify-between gap-3 shadow-md">
+                                <span className="text-sm font-medium">
+                                    {selecionados.size} saída(s) selecionada(s) · R$ {fmt(totalSelecionado)}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => setSelecionados(new Set())} className="text-xs px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25">Limpar</button>
+                                    <button onClick={() => setLoteModal(true)} className="text-xs font-semibold px-3 py-1.5 rounded-full bg-white text-primary hover:bg-gray-100 inline-flex items-center gap-1.5">
+                                        <Check className="h-3.5 w-3.5" /> Lançar despesas e conciliar
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {loading && (
                             <div className="text-center text-gray-500 text-sm py-2 flex items-center justify-center gap-2">
                                 <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
@@ -1139,12 +1337,25 @@ const ConciliacaoBancariaPage = () => {
 
                         {lancamentos.length > 0 && (
                             <>
+                                {/* Selecionar todas as saídas pendentes (tarifas) — lote */}
+                                {selecionaveis.length > 0 && (
+                                    <label className="flex items-center gap-2 px-1 text-xs text-gray-600 cursor-pointer select-none">
+                                        <input type="checkbox" checked={todosSelecionados} onChange={alternarTodos} className="accent-[#00754A]" />
+                                        Selecionar as {selecionaveis.length} saída(s) pendente(s) para lançar em lote
+                                    </label>
+                                )}
+
                                 {/* Mobile: cards */}
                                 <div className="md:hidden space-y-3">
                                     {lancamentos.map(l => (
-                                        <div key={l.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="text-xs text-gray-500">{fmtData(l.data)}</span>
+                                        <div key={l.id} className={`bg-white rounded-xl border shadow-sm p-4 ${selecionados.has(l.id) ? 'border-primary ring-1 ring-primary/30' : 'border-gray-200'}`}>
+                                            <div className="flex items-center justify-between mb-1 gap-2">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    {podeSelecionar(l) && (
+                                                        <input type="checkbox" checked={selecionados.has(l.id)} onChange={() => alternarSelecao(l.id)} className="accent-[#00754A] shrink-0" />
+                                                    )}
+                                                    <span className="text-xs text-gray-500">{fmtData(l.data)}</span>
+                                                </div>
                                                 <span className={`px-2 py-1 text-xs font-semibold rounded-full ${STATUS_BADGE[l.status]}`}>{STATUS_LABEL[l.status]}</span>
                                             </div>
                                             <div className="flex items-start justify-between gap-2 mb-2">
@@ -1161,6 +1372,11 @@ const ConciliacaoBancariaPage = () => {
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-50">
                                             <tr>
+                                                <th className="px-3 py-3 w-10">
+                                                    {selecionaveis.length > 0 && (
+                                                        <input type="checkbox" checked={todosSelecionados} onChange={alternarTodos} className="accent-[#00754A]" title="Selecionar todas as saídas pendentes" />
+                                                    )}
+                                                </th>
                                                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
                                                 <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Descrição no banco</th>
                                                 <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor</th>
@@ -1170,7 +1386,12 @@ const ConciliacaoBancariaPage = () => {
                                         </thead>
                                         <tbody className="bg-white divide-y divide-gray-200 text-sm">
                                             {lancamentos.map(l => (
-                                                <tr key={l.id} className="hover:bg-gray-50 align-top">
+                                                <tr key={l.id} className={`align-top ${selecionados.has(l.id) ? 'bg-mint/30' : 'hover:bg-gray-50'}`}>
+                                                    <td className="px-3 py-3 text-center">
+                                                        {podeSelecionar(l) && (
+                                                            <input type="checkbox" checked={selecionados.has(l.id)} onChange={() => alternarSelecao(l.id)} className="accent-[#00754A]" />
+                                                        )}
+                                                    </td>
                                                     <td className="px-5 py-3 text-gray-900 whitespace-nowrap">{fmtData(l.data)}</td>
                                                     <td className="px-5 py-3 max-w-xs"><DescricaoBanco l={l} /></td>
                                                     <td className="px-5 py-3 text-right whitespace-nowrap"><ValorCell tipo={l.tipo} valor={l.valor} /></td>
@@ -1230,6 +1451,9 @@ const ConciliacaoBancariaPage = () => {
                             marcar <strong>transferência entre contas</strong> (dinheiro movido entre os bancos da empresa — não é
                             receita nem despesa; aparece em Saldos por Conta) ou ignorar (tarifa). Diferença de valor só passa
                             declarando o motivo, que fica registrado na linha.
+                            Para <strong>tarifas repetidas</strong> (boleto/PIX do Asaas): marque as caixinhas das saídas pendentes e
+                            clique em <strong>"Lançar despesas e conciliar"</strong> — escolhe fornecedor, categoria e forma de pagamento
+                            uma vez só, e cada linha vira uma despesa já paga e conciliada.
                         </p>
                     </>
                 )}
@@ -1268,6 +1492,15 @@ const ConciliacaoBancariaPage = () => {
                     lancamento={despesaModal}
                     onClose={() => setDespesaModal(null)}
                     onSuccess={() => { setDespesaModal(null); carregar(); }}
+                />
+            )}
+
+            {/* Lançar VÁRIAS despesas de uma vez (tarifas) e já conciliar */}
+            {loteModal && (
+                <DespesaLoteModal
+                    lancamentos={lancamentosSelecionados}
+                    onClose={() => setLoteModal(false)}
+                    onSuccess={() => { setLoteModal(false); carregar(); }}
                 />
             )}
         </div>
