@@ -16,6 +16,7 @@ const contaAzulService = require('../services/contaAzulService');
 
 // Estado do backfill assíncrono da conta financeira em Contas a Receber (varre em segundo plano)
 const _backfillReceber = { rodando: false, progresso: null };
+const _backfillLedger = { rodando: false, progresso: null };
 
 // Comparação em tempo constante (evita ataque de timing). Usa hash SHA-256 para
 // os buffers terem sempre o mesmo tamanho, sem vazar o comprimento do segredo.
@@ -2687,6 +2688,80 @@ router.post('/backfill-conta-receber', async (req, res) => {
             }
         }
         res.json({ ok: true, contasAlvo: contaIds.length, reSincronizadas, comAlgumBanco: preenchidas, detalhes });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/admin-exec/backfill-ledger-receber?limite=40  (ou ?async=1)
+// Re-sincroniza do CA as contas a RECEBER pagas cujas parcelas NÃO têm ledger individual
+// (baixas antigas, feitas antes do ledger existir). O sync (soLedger) cria uma linha de
+// PagamentoParcela por baixa do CA, com o banco de cada uma — assim a divisão por conta
+// (ex.: PIX Asaas + dinheiro Caixinha) passa a existir no app e a conciliação/saldo a
+// enxergam. NÃO mexe em status/valor da parcela. Cada conta bate no CA → capado/async.
+router.post('/backfill-ledger-receber', async (req, res) => {
+    try {
+        const receberSync = require('../services/contasReceberSyncService');
+        const caConfig = await prisma.contaAzulConfig.findFirst().catch(() => null);
+        if (!caConfig) return res.status(400).json({ ok: false, error: 'Conta Azul não conectada (sem token).' });
+
+        // Parcelas PAGAS, com pedido espelhado no CA, e SEM nenhum pagamento ativo no ledger.
+        const whereParcela = {
+            status: 'PAGO',
+            contaReceber: { pedido: { idVendaContaAzul: { not: null }, especial: false } },
+            pagamentos: { none: { estornado: false } }
+        };
+
+        if (req.query.async === '1' || req.query.async === 'true') {
+            if (_backfillLedger.rodando) return res.json({ ok: true, jaRodando: true, progresso: _backfillLedger.progresso });
+            _backfillLedger.rodando = true;
+            _backfillLedger.progresso = { processadas: 0, comLedger: 0, erros: 0, iniciadoEm: new Date().toISOString() };
+            (async () => {
+                try {
+                    // eslint-disable-next-line no-constant-condition
+                    while (true) {
+                        const parcelas = await prisma.parcela.findMany({ where: whereParcela, select: { contaReceberId: true }, take: 400 });
+                        const ids = [...new Set(parcelas.map((p) => p.contaReceberId))];
+                        if (ids.length === 0) break;
+                        let algum = false;
+                        for (const contaId of ids) {
+                            try {
+                                await receberSync.sincronizarConta(contaId, { semLog: true, origem: 'BACKFILL_LEDGER' });
+                                const comLedger = await prisma.pagamentoParcela.count({ where: { parcela: { contaReceberId: contaId }, estornado: false } });
+                                if (comLedger > 0) { algum = true; _backfillLedger.progresso.comLedger++; }
+                                _backfillLedger.progresso.processadas++;
+                            } catch (err) { _backfillLedger.progresso.erros++; }
+                        }
+                        if (!algum) break; // varredura inteira sem criar ledger → o resto não tem baixa no CA
+                    }
+                    console.log('[admin-exec] Backfill ledger (async) concluído:', _backfillLedger.progresso);
+                } catch (e) {
+                    console.error('[admin-exec] Backfill ledger (async) erro:', e.message);
+                } finally {
+                    _backfillLedger.rodando = false;
+                }
+            })();
+            return res.json({ ok: true, iniciado: true, aviso: 'Rodando em segundo plano; reconsulte esta rota (GET financeiro-contas-diag) para acompanhar.' });
+        }
+
+        const limite = Math.min(50, Math.max(1, parseInt(req.query.limite, 10) || 40));
+        const parcelas = await prisma.parcela.findMany({ where: whereParcela, select: { contaReceberId: true }, take: limite * 8 });
+        const contaIds = [...new Set(parcelas.map((p) => p.contaReceberId))].slice(0, limite);
+
+        let reSincronizadas = 0, comLedger = 0;
+        const detalhes = [];
+        for (const contaId of contaIds) {
+            try {
+                await receberSync.sincronizarConta(contaId, { semLog: true, origem: 'BACKFILL_LEDGER' });
+                reSincronizadas++;
+                const n = await prisma.pagamentoParcela.count({ where: { parcela: { contaReceberId: contaId }, estornado: false } });
+                if (n > 0) comLedger++;
+                detalhes.push({ contaId, linhasLedger: n });
+            } catch (err) {
+                detalhes.push({ contaId, erro: err.message });
+            }
+        }
+        res.json({ ok: true, progresso: _backfillLedger.progresso, contasAlvo: contaIds.length, reSincronizadas, comLedger, detalhes });
     } catch (e) {
         res.status(500).json({ ok: false, error: e.message });
     }

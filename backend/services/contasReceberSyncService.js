@@ -177,24 +177,38 @@ async function sincronizarConta(contaId, opts = {}) {
             const jaAtualizado = local.status === 'PAGO' &&
                 Math.abs((local.valorPago || 0) - valorPagoArredondado) < 0.01 &&
                 !faltaConta;
-            if (jaAtualizado) continue;
+
+            // Mesmo já-atualizada (status/valor/conta ok), pode FALTAR o ledger INDIVIDUAL
+            // por conta — baixa antiga, feita antes do ledger existir. Sem ele, quando o CA
+            // divide o pagamento em vários bancos (ex.: PIX Asaas + dinheiro Caixinha), o app
+            // não identifica cada parte: a conciliação bancária e o saldo por conta ficam sem
+            // o pedaço de cada banco. Nesse caso NÃO pula — cria só o ledger (backfill), sem
+            // mexer no status/valor/conta da parcela.
+            let soLedger = false;
+            if (jaAtualizado) {
+                const ledgerAtivo0 = await tx.pagamentoParcela.count({ where: { parcelaId: local.id, estornado: false } });
+                if (ledgerAtivo0 > 0 || todasBaixas.length === 0) continue; // já tem ledger, ou nada do CA p/ espelhar
+                soLedger = true;
+            }
 
             const obsSync = detalheBaixas
                 ? `CA: ${detalheBaixas}`
                 : `Baixa sincronizada do Conta Azul (${caPar.status}) [${origem}]`;
 
-            await tx.parcela.update({
-                where: { id: local.id },
-                data: {
-                    status: 'PAGO',
-                    valorPago: valorPagoArredondado,
-                    formaPagamento: forma,
-                    contaFinanceiraCaId,
-                    dataPagamento: dataPgto,
-                    baixadoPorId,
-                    observacao: obsSync
-                }
-            });
+            if (!soLedger) {
+                await tx.parcela.update({
+                    where: { id: local.id },
+                    data: {
+                        status: 'PAGO',
+                        valorPago: valorPagoArredondado,
+                        formaPagamento: forma,
+                        contaFinanceiraCaId,
+                        dataPagamento: dataPgto,
+                        baixadoPorId,
+                        observacao: obsSync
+                    }
+                });
+            }
 
             // Ledger local espelhando as baixas do CA (uma linha por baixa, cada uma com o
             // SEU banco/caixa). Sem ele, recebimento que nasce no CA (ex.: PIX Asaas baixado
@@ -225,8 +239,9 @@ async function sincronizarConta(contaId, opts = {}) {
 
             // Log no histórico do cliente. Pulado no backfill em massa (opts.semLog) para não
             // gerar milhares de atendimentos repetidos ao só preencher o banco retroativo.
-            // Fica para DEPOIS da transação (regra do projeto: log fora do $transaction).
-            if (!opts.semLog) {
+            // Também pulado no soLedger (só completou o ledger de uma baixa já registrada —
+            // nada mudou para o cliente). Fica DEPOIS da transação (regra: log fora do $transaction).
+            if (!opts.semLog && !soLedger) {
                 logsAtendimento.push({
                     tipo: 'FINANCEIRO',
                     observacao: `Sync CA [${origem}] - parcela ${local.numeroParcela} - R$ ${valorPagoArredondado.toFixed(2)} (${forma || 'N/I'}) em ${dataPgto.toISOString().split('T')[0]}`,
@@ -237,7 +252,7 @@ async function sincronizarConta(contaId, opts = {}) {
             }
 
             aplicadas++;
-            detalhes.push({ numeroParcela: local.numeroParcela, valor: valorPagoArredondado, forma, data: dataPgto });
+            detalhes.push({ numeroParcela: local.numeroParcela, valor: valorPagoArredondado, forma, data: dataPgto, soLedger });
         }
 
         const todas = await tx.parcela.findMany({ where: { contaReceberId: conta.id } });
