@@ -1438,9 +1438,12 @@ async function baixasDisponiveis({ contaFinanceiraCaId, de, ate, tipo, busca }) 
         const regs = await prisma.pagamentoParcelaPagar.findMany({
             where: {
                 estornado: false,
-                contaFinanceiraCaId: { not: contaFinanceiraCaId },
                 dataPagamento: { gte, lte },
-                OR: orBusca
+                // 'not' do Prisma EXCLUI null — baixa SEM banco precisa do OR explícito
+                AND: [
+                    { OR: [{ contaFinanceiraCaId: null }, { contaFinanceiraCaId: { not: contaFinanceiraCaId } }] },
+                    { OR: orBusca }
+                ]
             },
             select: {
                 id: true, valorPago: true, juros: true, multa: true, desconto: true, dataPagamento: true, formaPagamento: true, contaFinanceiraCaId: true,
@@ -1461,7 +1464,7 @@ async function baixasDisponiveis({ contaFinanceiraCaId, de, ate, tipo, busca }) 
                 valor: round2(num(p.valorPago) + num(p.juros) + num(p.multa)),
                 data: ymd(p.dataPagamento),
                 label: `${nome}${p.formaPagamento ? ` (${p.formaPagamento})` : ''}`,
-                outraConta: { id: p.contaFinanceiraCaId, nome: nomesContas.get(p.contaFinanceiraCaId) || 'sem conta', tipo: 'PAGAR' },
+                outraConta: { id: p.contaFinanceiraCaId, nome: p.contaFinanceiraCaId ? (nomesContas.get(p.contaFinanceiraCaId) || 'conta desconhecida') : 'SEM banco', tipo: 'PAGAR' },
                 detalhe: {
                     nome,
                     descricao: cp?.descricao || null,
@@ -1483,9 +1486,12 @@ async function baixasDisponiveis({ contaFinanceiraCaId, de, ate, tipo, busca }) 
         const regs = await prisma.pagamentoParcela.findMany({
             where: {
                 estornado: false,
-                contaFinanceiraCaId: { not: contaFinanceiraCaId },
                 dataPagamento: { gte, lte },
-                OR: orBusca
+                // 'not' do Prisma EXCLUI null — baixa SEM banco precisa do OR explícito
+                AND: [
+                    { OR: [{ contaFinanceiraCaId: null }, { contaFinanceiraCaId: { not: contaFinanceiraCaId } }] },
+                    { OR: orBusca }
+                ]
             },
             select: {
                 id: true, valorRecebido: true, dataPagamento: true, formaPagamento: true, contaFinanceiraCaId: true,
@@ -1506,7 +1512,7 @@ async function baixasDisponiveis({ contaFinanceiraCaId, de, ate, tipo, busca }) 
                 valor: round2(num(r.valorRecebido)),
                 data: ymd(r.dataPagamento),
                 label: `${nome} — parcela ${r.parcela?.numeroParcela ?? '?'}${r.formaPagamento ? ` (${r.formaPagamento})` : ''}`,
-                outraConta: { id: r.contaFinanceiraCaId, nome: nomesContas.get(r.contaFinanceiraCaId) || 'sem conta', tipo: 'RECEBER' },
+                outraConta: { id: r.contaFinanceiraCaId, nome: r.contaFinanceiraCaId ? (nomesContas.get(r.contaFinanceiraCaId) || 'conta desconhecida') : 'SEM banco', tipo: 'RECEBER' },
                 detalhe: {
                     nome,
                     descricao: r.parcela?.contaReceber?.pedido?.numero ? `Pedido ${r.parcela.contaReceber.pedido.numero}` : null,
