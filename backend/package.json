@@ -35,6 +35,7 @@
     "openai": "^6.34.0",
     "patch-package": "^8.0.1",
     "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^3.11.174",
     "pg": "^8.13.1"
   },
   "devDependencies": {

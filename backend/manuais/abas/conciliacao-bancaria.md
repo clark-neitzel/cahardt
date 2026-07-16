@@ -19,11 +19,12 @@ Para a conta do **Asaas** (onde caem os PIX da entrega e os boletos emitidos pel
 - O restante do fluxo é idêntico ao de qualquer banco (conciliar, buscar, ignorar).
 - Se o botão não aparece, a integração Asaas não está configurada no servidor ou a conta financeira do Asaas não foi vinculada (falar com o administrador).
 
-## Fluxo de uso (demais bancos — via arquivo OFX)
+## Fluxo de uso (demais bancos — via arquivo OFX ou PDF)
 
 1. **Exportar o extrato do banco em OFX** — todo internet banking tem essa opção (às vezes "Money/OFX" ou "Extensão .ofx"), geralmente em Extrato → Exportar/Salvar como.
-2. Na tela, **escolher o banco/caixa** (mesmas contas do Conta Azul usadas nas baixas) e clicar **Importar OFX**.
-   - Importar o mesmo arquivo (ou períodos sobrepostos) de novo **não duplica** (identidade FITID); só **atualiza a descrição** das linhas que já existiam.
+   - **Conta PJ do Conta Azul:** o CA **não gera OFX** e a API não expõe o extrato — exporte o **PDF do extrato** ("Extrato Conta Azul") e importe o PDF direto: o sistema lê as linhas (data, descrição, valor, entrada/saída) e ignora os "Saldo do dia". Vale para o **PDF original** exportado do CA (não um scan/foto). Descrições compridas podem vir truncadas ("NF 1/842…") — é como o CA imprime no PDF.
+2. Na tela, **escolher o banco/caixa** (mesmas contas do Conta Azul usadas nas baixas) e clicar **Importar OFX/PDF**.
+   - Importar o mesmo arquivo (ou períodos sobrepostos) de novo **não duplica** (identidade FITID; no PDF, uma identidade estável calculada de data+descrição+valor); só **atualiza a descrição** das linhas que já existiam.
 3. Clicar **"Conciliar automático"** — fecha sozinho todo lançamento com **exatamente uma** baixa já registrada de mesmo valor (±R$ 0,01) e data próxima (±3 dias) na mesma conta. (O automático **não** cria baixa em boleto aberto — isso sempre pede um clique seu no Conciliar da linha.)
 4. Revisar os pendentes: **Conciliar** quando a sugestão está certa; **Buscar…** para escolher manualmente.
 5. **Desfazer** (ícone de seta) volta qualquer conciliado/ignorado para pendente. Num lançamento conciliado **em grupo**, o desfazer **dissolve o grupo inteiro** (a baixa criada na conciliação NÃO é estornada — se preciso, estorne no Contas a Pagar).

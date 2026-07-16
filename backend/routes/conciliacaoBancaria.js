@@ -46,27 +46,36 @@ const validarPeriodo = (req, res) => {
     return { de: String(de), ate: String(ate) };
 };
 
-// ── POST /importar — sobe um arquivo OFX (campo "arquivo") para uma conta ──
+// ── POST /importar — sobe um extrato OFX ou PDF do Conta Azul (campo "arquivo") ──
+// O tipo é detectado pelos bytes do arquivo (PDF começa com "%PDF"), não pela extensão.
 router.post('/importar', verificarAuth, checkAcesso, uploadOfx.single('arquivo'), async (req, res) => {
     try {
         const contaFinanceiraCaId = String(req.body.contaFinanceiraCaId || '').trim();
         if (!contaFinanceiraCaId) return res.status(400).json({ error: 'Escolha o banco/caixa do extrato.' });
-        if (!req.file?.buffer) return res.status(400).json({ error: 'Envie o arquivo OFX do extrato.' });
+        if (!req.file?.buffer) return res.status(400).json({ error: 'Envie o arquivo OFX ou PDF do extrato.' });
 
-        const resultado = await conciliacaoService.importarOfx({
-            contaFinanceiraCaId,
-            nomeArquivo: req.file.originalname || 'extrato.ofx',
-            // OFX de banco brasileiro vem em Latin1 — decodificar às cegas em UTF-8
-            // corrompia os acentos ("D�B.TIT.COMPE").
-            conteudo: conciliacaoService.decodificarOfx(req.file.buffer),
-            criadoPorId: req.user.id
-        });
+        const ehPdf = req.file.buffer.slice(0, 5).toString('latin1').startsWith('%PDF');
+        const resultado = ehPdf
+            ? await conciliacaoService.importarPdf({
+                contaFinanceiraCaId,
+                nomeArquivo: req.file.originalname || 'extrato.pdf',
+                buffer: req.file.buffer,
+                criadoPorId: req.user.id
+            })
+            : await conciliacaoService.importarOfx({
+                contaFinanceiraCaId,
+                nomeArquivo: req.file.originalname || 'extrato.ofx',
+                // OFX de banco brasileiro vem em Latin1 — decodificar às cegas em UTF-8
+                // corrompia os acentos ("D�B.TIT.COMPE").
+                conteudo: conciliacaoService.decodificarOfx(req.file.buffer),
+                criadoPorId: req.user.id
+            });
         const partes = [`${resultado.novos} lançamento(s) novo(s) importado(s)`];
         if (resultado.duplicados) partes.push(`${resultado.duplicados} já existiam`);
         if (resultado.atualizados) partes.push(`${resultado.atualizados} tiveram a descrição corrigida`);
         res.json({ message: `${partes.join(', ')}.`, ...resultado });
     } catch (error) {
-        console.error('Erro ao importar OFX:', error);
+        console.error('Erro ao importar extrato:', error);
         res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao importar o extrato.' });
     }
 });

@@ -282,8 +282,121 @@ function validarSomaGrupo(valoresExtrato, valoresBaixas) {
 // Importação (idempotente por FITID)
 // ─────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────
+// Extrato em PDF do Conta Azul (a Conta PJ do CA não exporta OFX
+// e a API não expõe o extrato — confirmado em 07/2026, tudo 404).
+// Lê o texto do PDF com coordenadas (pdfjs), remonta as LINHAS da
+// tabela pela posição vertical e extrai data + descrição + valor.
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Parser do extrato em PDF gerado pelo Conta Azul ("Extrato Conta Azul…").
+ * Formato das linhas: `dd/mm/aaaa  DESCRIÇÃO  [Conciliado|Não conciliado]  [- ]R$ 9.999,99`.
+ * Linhas de "Saldo do dia/anterior/final", cabeçalhos e rodapés são ignorados.
+ *
+ * FITID sintético e ESTÁVEL: hash de (data|descrição|tipo|valor|nº da repetição).
+ * Reimportar o mesmo período não duplica (mesmas linhas → mesmos hashes); duas
+ * cobranças idênticas no mesmo dia ganham nº de repetição 1, 2… na ordem do PDF.
+ *
+ * Limitação: o PDF do CA trunca descrições compridas ("NF 1/842…") — a descrição
+ * fica como aparece no papel. O status "Conciliado" é a conciliação DO CA, não
+ * a nossa — é descartado.
+ */
+async function parsePdfExtratoCA(buffer) {
+    let pdfjsLib;
+    try {
+        pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
+    } catch (e) {
+        throw erro('Leitura de PDF indisponível no servidor (dependência pdfjs-dist não instalada).', 500);
+    }
+
+    const avisos = [];
+    let doc;
+    try {
+        doc = await pdfjsLib.getDocument({ data: new Uint8Array(buffer), isEvalSupported: false, useSystemFonts: true }).promise;
+    } catch (e) {
+        throw erro('Não consegui abrir o PDF — o arquivo está corrompido ou protegido por senha.');
+    }
+
+    // 1) Texto por LINHA visual: agrupa os pedaços pela posição vertical (tolerância
+    //    de 2.5pt) e ordena da esquerda para a direita.
+    const linhas = [];
+    for (let p = 1; p <= doc.numPages; p++) {
+        const page = await doc.getPage(p);
+        const tc = await page.getTextContent();
+        const itens = tc.items
+            .filter((it) => String(it.str || '').trim() !== '')
+            .map((it) => ({ x: it.transform[4], y: it.transform[5], str: String(it.str) }))
+            .sort((a, b) => (b.y - a.y) || (a.x - b.x));
+        let atual = null;
+        for (const it of itens) {
+            if (!atual || Math.abs(atual.y - it.y) > 2.5) {
+                if (atual) linhas.push(atual.pedacos.sort((a, b) => a.x - b.x).map((i) => i.str).join(' '));
+                atual = { y: it.y, pedacos: [] };
+            }
+            atual.pedacos.push(it);
+        }
+        if (atual) linhas.push(atual.pedacos.sort((a, b) => a.x - b.x).map((i) => i.str).join(' '));
+    }
+    try { await doc.destroy(); } catch (_) { /* liberar memória; falha aqui não importa */ }
+
+    // 2) Linha de movimento = começa com data e tem UM valor R$; resto é ruído.
+    const RE_DATA = /^(\d{2})\/(\d{2})\/(\d{4})\s+(.+)$/;
+    const RE_VALOR = /(-\s*)?R\$\s*([\d.]+,\d{2})/;
+    const RE_STATUS_CA = /\s*(Não\s+conciliado|Conciliado)\s*/i;
+    const lancamentos = [];
+    const repeticoes = new Map(); // chave data|desc|tipo|valor → nº da repetição
+
+    for (const bruta of linhas) {
+        const linha = bruta.replace(/\s+/g, ' ').trim();
+        const m = linha.match(RE_DATA);
+        if (!m) continue;
+        const resto = m[4];
+        if (/^Saldo\s+(do dia|anterior|final)/i.test(resto)) continue; // linha de saldo, não é movimento
+        if (/^a\s+\d{2}\/\d{2}\/\d{4}/.test(resto)) continue;          // "01/07/2026 a 31/07/2026" (período do cabeçalho)
+
+        const mv = resto.match(RE_VALOR);
+        if (!mv) continue; // linha com data mas sem valor — cabeçalho/ruído
+
+        const negativo = !!(mv[1] && mv[1].includes('-'));
+        const valor = round2(Number(mv[2].replace(/\./g, '').replace(',', '.')));
+        if (!(valor > 0)) continue;
+
+        const descricao = resto.slice(0, mv.index).replace(RE_STATUS_CA, ' ').replace(/\s+/g, ' ').trim();
+        if (!descricao) { avisos.push(`Linha sem descrição ignorada (${m[1]}/${m[2]}/${m[3]}, R$ ${mv[2]}).`); continue; }
+
+        const data = `${m[3]}-${m[2]}-${m[1]}`;
+        const tipo = negativo ? 'DEBITO' : 'CREDITO';
+        const chave = `${data}|${descricao}|${tipo}|${valor.toFixed(2)}`;
+        const n = (repeticoes.get(chave) || 0) + 1;
+        repeticoes.set(chave, n);
+        const fitId = 'PDF' + crypto.createHash('sha1').update(`${chave}|${n}`).digest('hex').slice(0, 30);
+
+        lancamentos.push({
+            fitId, data, valor, tipo, descricao,
+            memo: null, nome: null, payee: null, checkNum: null, refNum: null, trnType: null
+        });
+    }
+
+    if (lancamentos.length === 0) {
+        avisos.unshift('Nenhum lançamento reconhecido no PDF — confira se é o "Extrato Conta Azul" exportado do CA (não um scan/foto).');
+    }
+    return { lancamentos, avisos };
+}
+
 async function importarOfx({ contaFinanceiraCaId, nomeArquivo, conteudo, criadoPorId }) {
     const { lancamentos, avisos } = parseOfx(conteudo);
+    return _gravarImportacao({ contaFinanceiraCaId, nomeArquivo, criadoPorId, lancamentos, avisos });
+}
+
+/** Importa o extrato em PDF do Conta Azul (mesma persistência/idempotência do OFX). */
+async function importarPdf({ contaFinanceiraCaId, nomeArquivo, buffer, criadoPorId }) {
+    const { lancamentos, avisos } = await parsePdfExtratoCA(buffer);
+    return _gravarImportacao({ contaFinanceiraCaId, nomeArquivo, criadoPorId, lancamentos, avisos });
+}
+
+// Persistência comum (OFX e PDF): dedupe por fitId, atualização de descrição e registro da importação.
+async function _gravarImportacao({ contaFinanceiraCaId, nomeArquivo, criadoPorId, lancamentos, avisos }) {
     if (lancamentos.length === 0) {
         const motivo = avisos[0] || 'Nenhum lançamento encontrado no arquivo.';
         const err = new Error(motivo);
@@ -1606,6 +1719,8 @@ async function listarImportacoes(contaFinanceiraCaId) {
 
 module.exports = {
     importarOfx,
+    importarPdf,
+    parsePdfExtratoCA,
     listar,
     conciliarAutomatico,
     conciliar,

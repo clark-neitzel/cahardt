@@ -1265,7 +1265,7 @@ const ConciliacaoBancariaPage = () => {
                     <h1 className="text-base md:text-2xl font-bold text-gray-900 truncate">Conciliação Bancária</h1>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                    <input ref={inputArquivo} type="file" accept=".ofx,.OFX,.qfx" className="hidden" onChange={e => importar(e.target.files?.[0])} />
+                    <input ref={inputArquivo} type="file" accept=".ofx,.OFX,.qfx,.pdf,.PDF" className="hidden" onChange={e => importar(e.target.files?.[0])} />
                     {ehContaAsaas && (
                         <button
                             onClick={buscarAsaas}
@@ -1285,7 +1285,7 @@ const ConciliacaoBancariaPage = () => {
                         className="px-3 py-1.5 md:px-4 md:py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm text-xs md:text-sm font-semibold inline-flex items-center gap-1.5 disabled:opacity-50"
                     >
                         {importando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-                        Importar OFX
+                        Importar OFX/PDF
                     </button>
                     <button
                         onClick={carregar}
@@ -1410,7 +1410,7 @@ const ConciliacaoBancariaPage = () => {
                             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center text-sm text-gray-500">
                                 {ehContaAsaas
                                     ? 'Nenhum lançamento do extrato neste período. O extrato do Asaas entra sozinho a cada 30 minutos — ou clique em "Buscar do Asaas" no topo.'
-                                    : 'Nenhum lançamento do extrato neste período. Importe o arquivo OFX do banco (botão verde no topo).'}
+                                    : 'Nenhum lançamento do extrato neste período. Importe o arquivo OFX do banco — ou o PDF do extrato do Conta Azul — pelo botão verde no topo.'}
                             </div>
                         )}
 
@@ -1520,7 +1520,7 @@ const ConciliacaoBancariaPage = () => {
                         )}
 
                         <p className="text-xs text-gray-500">
-                            Como funciona: exporte o extrato do banco em OFX e importe aqui (importar de novo não duplica —
+                            Como funciona: exporte o extrato do banco em OFX — ou, na Conta PJ do Conta Azul (que não gera OFX), o próprio PDF do extrato — e importe aqui (importar de novo não duplica —
                             só atualiza a descrição das linhas que já existiam). O sistema <strong>sugere</strong> quando data e
                             valor batem: com uma baixa já registrada (aí Conciliar só amarra) ou com um boleto em aberto do
                             Contas a Pagar (aí Conciliar dá a baixa na hora, com a data e o banco do extrato, e envia ao Conta Azul).
