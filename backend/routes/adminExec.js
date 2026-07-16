@@ -2767,6 +2767,41 @@ router.post('/backfill-ledger-receber', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/sync-ledger-pedido/:numero — re-sincroniza UM pedido do CA.
+// Cria o ledger dividido por conta (soLedger) se a parcela estiver paga sem ledger —
+// para consertar um caso pontual (ex.: R$ 10 do PIX Asaas do pedido 2033). Read/write
+// de uma conta só. Devolve o ledger antes/depois para conferência.
+router.post('/sync-ledger-pedido/:numero', async (req, res) => {
+    try {
+        const receberSync = require('../services/contasReceberSyncService');
+        const numero = parseInt(req.params.numero, 10);
+        if (!numero) return res.status(400).json({ error: 'Informe o número do pedido.' });
+        const caConfig = await prisma.contaAzulConfig.findFirst().catch(() => null);
+        if (!caConfig) return res.status(400).json({ ok: false, error: 'Conta Azul não conectada (sem token).' });
+
+        const pedido = await prisma.pedido.findFirst({ where: { numero }, select: { id: true } });
+        if (!pedido) return res.status(404).json({ ok: false, error: `Pedido ${numero} não encontrado.` });
+        const conta = await prisma.contaReceber.findFirst({ where: { pedidoId: pedido.id }, select: { id: true } });
+        if (!conta) return res.status(404).json({ ok: false, error: `Pedido ${numero} sem conta a receber.` });
+
+        const antes = await prisma.pagamentoParcela.count({ where: { parcela: { contaReceberId: conta.id }, estornado: false } });
+        const r = await receberSync.sincronizarConta(conta.id, { semLog: true, origem: 'FIX_LEDGER' });
+        const ledger = await prisma.pagamentoParcela.findMany({
+            where: { parcela: { contaReceberId: conta.id }, estornado: false },
+            select: { valorRecebido: true, formaPagamento: true, contaFinanceiraCaId: true, dataPagamento: true }
+        });
+        const nomes = await prisma.contaFinanceira.findMany({ select: { id: true, nomeBanco: true } });
+        const nome = (id) => nomes.find((c) => c.id === id)?.nomeBanco || (id ? '(não cadastrada)' : '(sem conta)');
+        res.json({
+            ok: true, pedido: numero,
+            ledgerAntes: antes, ledgerDepois: ledger.length, aplicadas: r?.aplicadas ?? null,
+            ledger: ledger.map((l) => ({ valor: Number(l.valorRecebido), forma: l.formaPagamento, conta: nome(l.contaFinanceiraCaId) }))
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/compras-estoque-check
 // SOMENTE LEITURA. Para CADA nota CONFERIDA: quantos itens tinha, quantos estavam
 // vinculados a produto/insumo (de-para memorizado) e quantas entradas de estoque
