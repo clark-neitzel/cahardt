@@ -473,7 +473,7 @@ const MinhaTela = lazyComRetry(() => import('./pages/Area/MinhaTela'));  // NÃO
 
 Ao **finalizar qualquer mudança visível para a equipe**, gerar por conta própria uma página de anúncio para o dono mandar no grupo do WhatsApp:
 
-1. Criar `frontend/public/novidade-<slug>.html` — página estática, standalone (HTML completo com `<!DOCTYPE>`), mobile-first, no tema Starbucks do app. **Espelhar `frontend/public/novidade-tarefas.html`** (referência do padrão: hero verde-escuro, mock da funcionalidade, seções em accordion clicáveis, passos "para começar a usar", demo interativa quando fizer sentido).
+1. Criar `frontend/public/novidade-<slug>.html` — página estática, standalone (HTML completo com `<!DOCTYPE>`), mobile-first, no tema Starbucks do app. **Espelhar `frontend/public/novidade-tarefas.html`** (referência do padrão: hero verde-escuro, mock da funcionalidade, seções em accordion, passos "para começar a usar", demo interativa quando fizer sentido). **Accordions SEMPRE já abertos por padrão** (`class="acc aberto"` em todos) — a equipe não clica para expandir e perdia as informações (pedido do usuário em 07/2026); o clique só serve para recolher.
 2. Incluir as **meta tags Open Graph** (`og:title`, `og:description`, `og:image` com URL absoluta, ex.: a logo `https://cahardt-github.xrqvlq.easypanel.host/logo-512.png`) — é o que faz o link aparecer com cartão bonito no WhatsApp.
 3. O link público fica em `https://cahardt-github.xrqvlq.easypanel.host/novidade-<slug>.html` (nginx serve arquivos reais de `public/` direto; funciona sem login).
 4. Entregar ao usuário: o link + **texto pronto para copiar/colar** no grupo (formatação do WhatsApp: `*negrito*`, emojis, curto).
