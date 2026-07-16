@@ -1862,6 +1862,78 @@ router.get('/estoque-status', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-estoque-produto?nome=<parte do nome>&desde=YYYY-MM-DD
+// Pente fino READ-ONLY de UM produto: todas as movimentações do período (com vendedor
+// e pedido), pedidos que contêm o produto, devoluções de entrega e devoluções formais.
+// A análise/cruzamento é feita por quem consome — aqui só devolve os dados escopados.
+router.get('/diag-estoque-produto', async (req, res) => {
+    try {
+        const { nome } = req.query;
+        if (!nome) return res.status(400).json({ error: 'Informe ?nome= (parte do nome do produto).' });
+        const desde = new Date((req.query.desde || '2026-05-21') + 'T00:00:00-03:00');
+
+        const produto = await prisma.produto.findFirst({
+            where: { nome: { contains: nome, mode: 'insensitive' } },
+            select: {
+                id: true, nome: true, codigo: true, categoria: true, controlaEstoque: true,
+                estoqueTotal: true, estoqueReservado: true, estoqueDisponivel: true, updatedAt: true
+            }
+        });
+        if (!produto) return res.status(404).json({ error: 'Produto não encontrado.' });
+
+        const [movAnterior, movimentos, pedidos, devolvidosEntrega, devolucaoItens] = await Promise.all([
+            // última movimentação ANTES do período → saldo inicial
+            prisma.movimentacaoEstoque.findFirst({
+                where: { produtoId: produto.id, createdAt: { lt: desde } },
+                orderBy: { createdAt: 'desc' },
+                select: { createdAt: true, tipo: true, motivo: true, quantidade: true, estoqueAntes: true, estoqueDepois: true }
+            }),
+            prisma.movimentacaoEstoque.findMany({
+                where: { produtoId: produto.id, createdAt: { gte: desde } },
+                orderBy: { createdAt: 'asc' },
+                include: {
+                    vendedor: { select: { nome: true } },
+                    pedido: { select: { numero: true, statusEnvio: true, statusEntrega: true, especial: true, bonificacao: true } }
+                }
+            }),
+            prisma.pedido.findMany({
+                where: {
+                    itens: { some: { produtoId: produto.id } },
+                    OR: [{ dataVenda: { gte: desde } }, { createdAt: { gte: desde } }]
+                },
+                orderBy: { createdAt: 'asc' },
+                select: {
+                    id: true, numero: true, statusEnvio: true, situacaoCA: true, statusEntrega: true,
+                    especial: true, bonificacao: true, dataVenda: true, dataEntrega: true, createdAt: true,
+                    itens: { where: { produtoId: produto.id }, select: { quantidade: true } },
+                    cliente: { select: { Nome: true } },
+                    vendedor: { select: { nome: true } }
+                }
+            }),
+            prisma.entregaItemDevolvido.findMany({
+                where: { produtoId: produto.id, createdAt: { gte: desde } },
+                select: { pedidoId: true, quantidade: true, createdAt: true, pedido: { select: { numero: true } } }
+            }),
+            prisma.devolucaoItem.findMany({
+                where: { produtoId: produto.id, devolucao: { dataDevolucao: { gte: desde } } },
+                select: {
+                    quantidade: true,
+                    devolucao: {
+                        select: {
+                            numero: true, tipo: true, escopo: true, status: true, dataDevolucao: true,
+                            pedidoOriginalId: true, pedidoOriginal: { select: { numero: true } }
+                        }
+                    }
+                }
+            })
+        ]);
+
+        res.json({ desde, produto, movAnterior, movimentos, pedidos, devolvidosEntrega, devolucaoItens });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // POST /api/admin-exec/estoque-ajuste-batch — aplica ajustes manuais em lote
 // Body: { ajustes: [{ nomeProduto, quantidade, tipo, observacao }] }
 router.post('/estoque-ajuste-batch', async (req, res) => {
