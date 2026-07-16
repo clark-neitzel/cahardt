@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Estoque conta os Pedidos Especiais — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="📦 Novidade no Hardt App: estoque agora conta os pedidos especiais">
+<meta property="og:description" content="Achamos (e corrigimos) o motivo da contagem de estoque não bater: pedido especial não dava baixa. Veja o que mudou.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock de movimentação flutuando sobre o hero */
+  .mock {
+    max-width: 400px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 26px; }
+  .mock-body { padding: 14px 18px 18px; }
+  .mock-linha {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+    padding: 9px 0;
+    font-size: 13.5px;
+  }
+  .mock-linha + .mock-linha { border-top: 1px dashed #e3e1da; }
+  .mock-linha .neg { color: #b3261e; font-weight: 800; }
+  .mock-linha .pos { color: var(--primary-dark); font-weight: 800; }
+  .chip {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #f1f3f2;
+    color: #444;
+    white-space: nowrap;
+  }
+  .chip.verde { background: var(--mint); color: var(--primary-dark); }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade no sistema</span>
+    <h1>O estoque agora conta os pedidos especiais 📦</h1>
+    <p>Descobrimos por que a contagem não batia — e já corrigimos. Pedido especial (ZZ) e bonificação passam a dar baixa no estoque na hora da aprovação.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="mock" role="img" aria-label="Exemplo de movimentações no histórico de estoque">
+    <div class="mock-top">
+      <span class="mock-ico">📦</span>
+      <div>
+        <small>Estoque · Histórico</small>
+        <strong>1-GG-COXINHA FRANGO C/10</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-linha">
+        <span>Pedido ZZ#539 aprovado</span>
+        <span class="chip verde">ESPECIAL</span>
+        <span class="neg">−25</span>
+      </div>
+      <div class="mock-linha">
+        <span>Aprovação revertida</span>
+        <span class="chip">ESTORNO</span>
+        <span class="pos">+25</span>
+      </div>
+      <div class="mock-linha">
+        <span>Produção (SELADO)</span>
+        <span class="chip">ENTRADA</span>
+        <span class="pos">+48</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button">
+      <span class="acc-ico">✅</span>
+      <strong>Aprovar pedido especial baixa o estoque</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Antes, o pedido especial (ZZ) e a bonificação eram aprovados, faturados, entregues… mas <b>nunca saíam do estoque do sistema</b>. Por isso a contagem física dava sempre <b>menos</b> que o app.</p>
+      <ul>
+        <li>Agora, ao clicar em <b>Aprovar</b>, os itens saem do estoque na hora — igual pedido normal.</li>
+        <li>Se a aprovação for <b>revertida</b>, os itens voltam sozinhos.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button">
+      <span class="acc-ico">🔒</span>
+      <strong>Trava contra desconto em dobro</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Alguns pedidos normais estavam sendo descontados <b>duas vezes</b> do estoque (uma falha rara de sincronização). Agora existe uma trava: o mesmo pedido <b>nunca desconta em dobro</b>.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button">
+      <span class="acc-ico">🧹</span>
+      <strong>Histórico corrigido desde 21/05</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Fizemos um pente fino na <b>1-GG-Coxinha Frango C/10 170gr</b> (produto onde a diferença foi percebida): todos os pedidos especiais desde 21/05 tiveram a baixa lançada retroativamente, e os descontos em dobro foram devolvidos.</p>
+      <ul>
+        <li>As correções aparecem no <b>Histórico de Estoque</b> com a observação <b>"Baixa retroativa"</b> ou <b>"Correção de baixa em dobro"</b>.</li>
+        <li>Os demais produtos podem passar pelo mesmo pente fino — é rápido, basta pedir.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">O que a equipe do estoque precisa fazer</div>
+
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Contar fisicamente a Coxinha GG</b> (1-GG C/10 170gr) e comparar com o número do app. Depois da correção o número mudou bastante — é esperado.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Se a contagem não bater, <b>fazer o ajuste manual normal</b> na tela de Estoque anotando "contagem física" na observação. Daqui pra frente o número se mantém sozinho.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Continuar lançando <b>produção (entrada)</b> e <b>fritura (saída)</b> como sempre — isso não mudou nada.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Se outro produto parecer errado, avisar — rodamos o <b>mesmo pente fino</b> nele em minutos.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Hardt Alimentos · atualização de julho/2026<br>Dúvidas? Pergunte ao Clippy dentro do sistema 💬</p>
+</div>
+
+<script>
+  // Accordions começam abertos; o clique só recolhe/expande
+  document.querySelectorAll('.acc-head').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      btn.parentElement.classList.toggle('aberto');
+    });
+  });
+</script>
+</body>
+</html>
