@@ -192,7 +192,7 @@ async function carregarPools(contaFinanceiraCaId, deYmd, ateYmd) {
                     select: {
                         numeroParcela: true, valor: true, dataVencimento: true,
                         // ContaReceber NÃO tem numeroNota (só ContaPagar) — não adicionar aqui
-                        contaReceber: { select: { pedido: { select: { numero: true } }, cliente: { select: { Nome: true, NomeFantasia: true } } } }
+                        contaReceber: { select: { pedido: { select: { numero: true, nfeNumero: true } }, cliente: { select: { Nome: true, NomeFantasia: true } } } }
                     }
                 }
             }
@@ -223,6 +223,7 @@ async function carregarPools(contaFinanceiraCaId, deYmd, ateYmd) {
             detalhe: {
                 nome,
                 descricao: r.parcela?.contaReceber?.pedido?.numero ? `Pedido ${r.parcela.contaReceber.pedido.numero}` : null,
+                nf: r.parcela?.contaReceber?.pedido?.nfeNumero || null,
                 parcela: r.parcela?.numeroParcela ?? null,
                 vencimento: r.parcela?.dataVencimento ? ymd(r.parcela.dataVencimento) : null,
                 valorParcela: num(r.parcela?.valor),
@@ -1331,20 +1332,22 @@ const saldoParcelaPagar = (p) => {
 async function parcelasPagarEmAberto({ valor, busca, de, ate }) {
     const termo = String(busca || '').trim();
     const temJanela = de && ate && /^\d{4}-\d{2}-\d{2}$/.test(String(de)) && /^\d{4}-\d{2}-\d{2}$/.test(String(ate));
+    const q = _interpretarTermoBusca(termo, String(de || '').slice(0, 4));
+    const orBusca = [];
+    if (termo) {
+        orBusca.push({ contaPagar: { descricao: { contains: termo, mode: 'insensitive' } } });
+        orBusca.push({ contaPagar: { numeroNota: { contains: termo, mode: 'insensitive' } } });
+        orBusca.push({ contaPagar: { fornecedor: { razaoSocial: { contains: termo, mode: 'insensitive' } } } });
+        orBusca.push({ contaPagar: { fornecedor: { nomeFantasia: { contains: termo, mode: 'insensitive' } } } });
+        if (q.valor != null) orBusca.push({ valor: { gte: q.valor - 0.01, lte: q.valor + 0.01 } });
+        if (q.venc) orBusca.push({ dataVencimento: q.venc });
+    }
     const parcelas = await prisma.parcelaPagar.findMany({
         where: {
             status: { in: ['PENDENTE', 'PARCIAL'] },
-            ...(temJanela ? { dataVencimento: { gte: dataSP(String(de)), lte: dataSP(String(ate)) } } : {}),
-            ...(termo ? {
-                contaPagar: {
-                    OR: [
-                        { descricao: { contains: termo, mode: 'insensitive' } },
-                        { numeroNota: { contains: termo, mode: 'insensitive' } },
-                        { fornecedor: { razaoSocial: { contains: termo, mode: 'insensitive' } } },
-                        { fornecedor: { nomeFantasia: { contains: termo, mode: 'insensitive' } } }
-                    ]
-                }
-            } : {})
+            // Buscando por texto/nota/valor/venc, a janela não corta o resultado
+            ...(temJanela && !termo ? { dataVencimento: { gte: dataSP(String(de)), lte: dataSP(String(ate)) } } : {}),
+            ...(orBusca.length > 0 ? { OR: orBusca } : {})
         },
         include: {
             pagamentos: { where: { estornado: false }, select: { valorPago: true, desconto: true, estornado: true } },
@@ -1434,34 +1437,62 @@ async function recalcularParcelaReceber(tx, parcelaId) {
 }
 
 /**
+ * Interpreta o termo de busca dos modais: texto (nome), número inteiro (pedido/NF),
+ * valor em reais ("330,10" / "330.10" / "1.234,56") e data de vencimento
+ * ("09/07" ou "09/07/2026"). Devolve as formas possíveis do termo.
+ */
+function _interpretarTermoBusca(termo, anoRef) {
+    const t = String(termo || '').trim();
+    const out = { texto: t || null, inteiro: null, valor: null, venc: null };
+    if (!t) return out;
+    if (/^\d+$/.test(t)) out.inteiro = Number(t);
+    if (/^\d{1,3}(\.\d{3})*,\d{2}$/.test(t)) out.valor = Number(t.replace(/\./g, '').replace(',', '.'));
+    else if (/^\d+[.,]\d{1,2}$/.test(t)) out.valor = Number(t.replace(',', '.'));
+    const mData = t.match(/^(\d{2})\/(\d{2})(?:\/(\d{4}))?$/);
+    if (mData) {
+        const ano = mData[3] || String(anoRef || new Date().getFullYear());
+        const ymdStr = `${ano}-${mData[2]}-${mData[1]}`;
+        if (!isNaN(new Date(`${ymdStr}T12:00:00`).getTime())) {
+            out.venc = { gte: dataSP(ymdStr), lte: new Date(dataSP(ymdStr).getTime() + 24 * 3600 * 1000) };
+        }
+    }
+    return out;
+}
+
+/**
  * Contas a RECEBER em aberto, para conciliar uma ENTRADA do extrato (PIX/transferência
  * que caiu no banco/Asaas) dando a baixa ali mesmo — espelho de parcelasPagarEmAberto.
  * Janela de VENCIMENTO ±dias (ajustável na tela); as que fecham com o valor do extrato
- * ganham `bate` e vêm primeiro.
+ * ganham `bate` e vêm primeiro. Busca por: razão/fantasia do cliente, nº do PEDIDO,
+ * nº da NF-e, VALOR ("330,10") e DATA de vencimento ("09/07" ou "09/07/2026").
  */
 async function parcelasReceberEmAberto({ valor, busca, de, ate }) {
     const termo = String(busca || '').trim();
     const temJanela = de && ate && /^\d{4}-\d{2}-\d{2}$/.test(String(de)) && /^\d{4}-\d{2}-\d{2}$/.test(String(ate));
+    const q = _interpretarTermoBusca(termo, String(de || '').slice(0, 4));
+    const orBusca = [];
+    if (termo) {
+        orBusca.push({ contaReceber: { cliente: { Nome: { contains: termo, mode: 'insensitive' } } } });
+        orBusca.push({ contaReceber: { cliente: { NomeFantasia: { contains: termo, mode: 'insensitive' } } } });
+        if (q.inteiro != null) {
+            orBusca.push({ contaReceber: { pedido: { numero: q.inteiro } } });
+            orBusca.push({ contaReceber: { pedido: { nfeNumero: q.inteiro } } });
+        }
+        if (q.valor != null) orBusca.push({ valor: { gte: q.valor - 0.01, lte: q.valor + 0.01 } });
+        if (q.venc) orBusca.push({ dataVencimento: q.venc });
+    }
     const parcelas = await prisma.parcela.findMany({
         where: {
             status: { in: ['PENDENTE', 'PARCIAL', 'ABERTO'] },
             contaReceber: { status: { notIn: ['CANCELADO'] } },
-            ...(temJanela ? { dataVencimento: { gte: dataSP(String(de)), lte: dataSP(String(ate)) } } : {}),
-            ...(termo ? {
-                contaReceber: {
-                    status: { notIn: ['CANCELADO'] },
-                    OR: [
-                        { cliente: { Nome: { contains: termo, mode: 'insensitive' } } },
-                        { cliente: { NomeFantasia: { contains: termo, mode: 'insensitive' } } },
-                        { pedido: { numero: /^\d+$/.test(termo) ? Number(termo) : undefined } }
-                    ]
-                }
-            } : {})
+            // Com busca por pedido/NF/valor/venc o usuário quer ACHAR — a janela não corta
+            ...(temJanela && !termo ? { dataVencimento: { gte: dataSP(String(de)), lte: dataSP(String(ate)) } } : {}),
+            ...(orBusca.length > 0 ? { OR: orBusca } : {})
         },
         select: {
             id: true, numeroParcela: true, valor: true, valorPago: true, valorDescontoTotal: true,
             status: true, dataVencimento: true,
-            contaReceber: { select: { cliente: { select: { Nome: true, NomeFantasia: true } }, pedido: { select: { numero: true } } } }
+            contaReceber: { select: { cliente: { select: { Nome: true, NomeFantasia: true } }, pedido: { select: { numero: true, nfeNumero: true } } } }
         },
         orderBy: { dataVencimento: 'desc' },
         take: 500
@@ -1481,6 +1512,7 @@ async function parcelasReceberEmAberto({ valor, busca, de, ate }) {
                 status: p.status,
                 cliente: cli?.NomeFantasia || cli?.Nome || 'Cliente',
                 pedido: p.contaReceber?.pedido?.numero || null,
+                nf: p.contaReceber?.pedido?.nfeNumero || null,
                 bate: Math.abs(saldo - alvo) <= 0.01
             };
         })

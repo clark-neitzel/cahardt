@@ -222,7 +222,19 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
     const dist = (v) => Math.abs((new Date(`${v}T12:00:00Z`) - new Date(`${lancamento.data}T12:00:00Z`)) / 86400000);
     const listaAbertas = (abertas || []).slice().sort((a, b) => (b.bate - a.bate) || (dist(a.vencimento) - dist(b.vencimento)));
     const listaAbertasReceber = (abertasReceber || []).slice().sort((a, b) => (b.bate - a.bate) || (dist(a.vencimento) - dist(b.vencimento)));
-    const listaBaixas = (baixas || []).filter(p => !busca.trim() || p.label.toLowerCase().includes(busca.trim().toLowerCase()));
+    // Filtro das baixas já registradas: nome, pedido ("Pedido 1860"), NF, valor
+    // ("330,10" ou "330.1"), vencimento/data ("09/07/2026") — tudo num campo só.
+    const listaBaixas = (baixas || []).filter(p => {
+        const alvo = busca.trim().toLowerCase();
+        if (!alvo) return true;
+        const campos = [
+            p.label, p.detalhe?.nome, p.detalhe?.descricao, p.detalhe?.numeroNota, p.detalhe?.nf,
+            String(p.valor), fmt(p.valor),
+            p.data, p.data ? fmtData(p.data) : '',
+            p.detalhe?.vencimento, p.detalhe?.vencimento ? fmtData(p.detalhe.vencimento) : ''
+        ].filter(Boolean).join(' | ').toLowerCase();
+        return campos.includes(alvo);
+    });
     const outrosPendentes = pendentes.filter(p => p.tipo === lancamento.tipo && p.id !== lancamento.id);
 
     // ── A conta, ao vivo (espelha as regras do backend) ──
@@ -353,7 +365,7 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                             <input
                                 value={busca}
                                 onChange={e => setBusca(e.target.value)}
-                                placeholder={ehSaida ? 'Buscar fornecedor, descrição ou nº da nota…' : 'Buscar cliente ou nº do pedido…'}
+                                placeholder={ehSaida ? 'Buscar fornecedor, descrição, nº da nota, valor ou vencimento…' : 'Buscar cliente, pedido, NF, valor (330,10) ou vencimento (09/07)…'}
                                 className="w-full border border-gray-300 rounded pl-9 pr-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                             />
                         </div>
@@ -381,7 +393,7 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                                                 <span className="text-sm font-semibold whitespace-nowrap">R$ {fmt(p.saldo)}</span>
                                             </div>
                                             <div className="text-xs text-gray-500 truncate">
-                                                {p.pedido ? `Pedido ${p.pedido}` : 'Conta a receber'}{p.numeroParcela ? ` · parcela ${p.numeroParcela}` : ''} · vence {fmtData(p.vencimento)}
+                                                {p.pedido ? `Pedido ${p.pedido}` : 'Conta a receber'}{p.nf ? ` · NF ${p.nf}` : ''}{p.numeroParcela ? ` · parcela ${p.numeroParcela}` : ''} · vence {fmtData(p.vencimento)}
                                             </div>
                                         </div>
                                     </label>
