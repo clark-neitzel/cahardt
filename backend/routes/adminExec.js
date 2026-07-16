@@ -1191,6 +1191,84 @@ router.post('/recalcular-todos', async (req, res) => {
     });
 });
 
+// GET /api/admin-exec/diag-receber-conciliacao?pedido=2033  (SOMENTE LEITURA)
+// Mostra, para um pedido, o ledger de recebimentos (PagamentoParcela) com a conta
+// financeira de cada baixa, a conta Asaas, e os lançamentos do extrato pendentes
+// na conta Asaas — para diagnosticar por que um crédito do Asaas não acha par.
+router.get('/diag-receber-conciliacao', async (req, res) => {
+    try {
+        const numero = parseInt(req.query.pedido, 10);
+        if (!numero) return res.status(400).json({ error: 'Informe ?pedido=NUMERO' });
+        const ymd = (d) => d ? new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) : null;
+
+        const pedido = await prisma.pedido.findFirst({ where: { numero }, select: { id: true, numero: true } });
+        if (!pedido) return res.json({ ok: false, motivo: `Nenhum pedido ${numero}` });
+
+        const contas = await prisma.contaReceber.findMany({
+            where: { pedidoId: pedido.id },
+            select: {
+                id: true, status: true, valorTotal: true,
+                parcelas: {
+                    select: {
+                        id: true, numeroParcela: true, valor: true, valorPago: true, status: true,
+                        contaFinanceiraCaId: true, dataPagamento: true,
+                        pagamentos: {
+                            select: {
+                                id: true, valorRecebido: true, formaPagamento: true, contaFinanceiraCaId: true,
+                                dataPagamento: true, estornado: true, observacao: true
+                            },
+                            orderBy: { dataPagamento: 'asc' }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Conta Asaas (pela integração) + nome das contas envolvidas
+        const asaasCfg = await prisma.appConfig.findUnique({ where: { key: 'asaas_conta_financeira_ca_id' } }).catch(() => null);
+        const asaasContaId = (typeof asaasCfg?.value === 'string' && asaasCfg.value) ? asaasCfg.value : null;
+        const contasFin = await prisma.contaFinanceira.findMany({ select: { id: true, nomeBanco: true } });
+        const nomeConta = (id) => contasFin.find((c) => c.id === id)?.nomeBanco || (id ? '(conta não cadastrada)' : '(sem conta)');
+
+        const ledger = [];
+        for (const cr of contas) {
+            for (const p of cr.parcelas) {
+                for (const pg of p.pagamentos) {
+                    ledger.push({
+                        parcela: p.numeroParcela, valorRecebido: Number(pg.valorRecebido), forma: pg.formaPagamento,
+                        contaFinanceiraCaId: pg.contaFinanceiraCaId, conta: nomeConta(pg.contaFinanceiraCaId),
+                        ehAsaas: !!asaasContaId && pg.contaFinanceiraCaId === asaasContaId,
+                        data: ymd(pg.dataPagamento), estornado: pg.estornado
+                    });
+                }
+            }
+        }
+
+        // Lançamentos do extrato pendentes na conta Asaas com valor 10 (o crédito do exemplo)
+        const extratoAsaas = asaasContaId ? await prisma.extratoLancamento.findMany({
+            where: { contaFinanceiraCaId: asaasContaId, status: 'PENDENTE', tipo: 'CREDITO' },
+            select: { id: true, data: true, valor: true, descricao: true, status: true },
+            orderBy: { data: 'desc' }, take: 30
+        }) : [];
+
+        res.json({
+            ok: true,
+            pedido: numero,
+            asaasContaId, asaasContaNome: nomeConta(asaasContaId),
+            parcelas: contas.flatMap((c) => c.parcelas.map((p) => ({
+                numeroParcela: p.numeroParcela, valor: Number(p.valor), valorPago: Number(p.valorPago || 0),
+                status: p.status, contaFinanceiraCaId: p.contaFinanceiraCaId, conta: nomeConta(p.contaFinanceiraCaId)
+            }))),
+            ledgerRecebimentos: ledger,
+            temRecebimentoAsaas: ledger.some((l) => l.ehAsaas && !l.estornado),
+            extratoAsaasPendenteCredito: extratoAsaas.map((l) => ({ ...l, valor: Number(l.valor), data: ymd(l.data) }))
+        });
+    } catch (error) {
+        console.error('[admin-exec] Erro diag-receber-conciliacao:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /api/admin-exec/debug-contas-receber-abertas — diagnóstico de contas ABERTO/PARCIAL por status do pedido
 router.get('/debug-contas-receber-abertas', async (req, res) => {
     try {
