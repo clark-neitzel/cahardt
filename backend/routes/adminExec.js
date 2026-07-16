@@ -3065,6 +3065,19 @@ router.get('/diag-pdf-extrato', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-pdf-ultimo — SOMENTE LEITURA. Mostra as linhas de texto
+// que o servidor extraiu do ÚLTIMO PDF de extrato cuja leitura falhou (0 lançamentos)
+// — gravadas pelo parsePdfExtratoCA em app_configs.diag_pdf_extrato_ultimo.
+router.get('/diag-pdf-ultimo', async (req, res) => {
+    try {
+        const cfg = await prisma.appConfig.findUnique({ where: { key: 'diag_pdf_extrato_ultimo' } });
+        if (!cfg) return res.json({ ok: false, motivo: 'Nenhum diagnóstico gravado ainda (nenhuma importação de PDF falhou desde o deploy).' });
+        res.json({ ok: true, ...cfg.value });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/compras-estoque-check
 // SOMENTE LEITURA. Para CADA nota CONFERIDA: quantos itens tinha, quantos estavam
 // vinculados a produto/insumo (de-para memorizado) e quantas entradas de estoque

@@ -319,7 +319,8 @@ async function parsePdfExtratoCA(buffer) {
     }
 
     // 1) Texto por LINHA visual: agrupa os pedaços pela posição vertical (tolerância
-    //    de 2.5pt) e ordena da esquerda para a direita.
+    //    de 4pt — valor e descrição podem ter baselines um pouco diferentes) e
+    //    ordena da esquerda para a direita.
     const linhas = [];
     for (let p = 1; p <= doc.numPages; p++) {
         const page = await doc.getPage(p);
@@ -330,9 +331,11 @@ async function parsePdfExtratoCA(buffer) {
             .sort((a, b) => (b.y - a.y) || (a.x - b.x));
         let atual = null;
         for (const it of itens) {
-            if (!atual || Math.abs(atual.y - it.y) > 2.5) {
+            if (!atual || Math.abs(atual.y - it.y) > 4) {
                 if (atual) linhas.push(atual.pedacos.sort((a, b) => a.x - b.x).map((i) => i.str).join(' '));
                 atual = { y: it.y, pedacos: [] };
+            } else {
+                atual.y = (atual.y + it.y) / 2; // acompanha a média da linha
             }
             atual.pedacos.push(it);
         }
@@ -340,29 +343,39 @@ async function parsePdfExtratoCA(buffer) {
     }
     try { await doc.destroy(); } catch (_) { /* liberar memória; falha aqui não importa */ }
 
-    // 2) Linha de movimento = começa com data e tem UM valor R$; resto é ruído.
+    // 2) Linha de movimento = começa com data e tem UM valor; resto é ruído.
+    //    Valor: "R$ 1.234,56" com sinal opcional (hífen, en/em-dash ou U+2212) antes
+    //    do R$ — e tolera o "R$" faltando na extração (só o número decimal).
     const RE_DATA = /^(\d{2})\/(\d{2})\/(\d{4})\s+(.+)$/;
-    const RE_VALOR = /(-\s*)?R\$\s*([\d.]+,\d{2})/;
+    const RE_VALOR_RS = /([-−–—]\s*)?R\$\s*([\d.]+,\d{2})/;
+    const RE_VALOR_NU = /([-−–—]\s*)?((?:\d{1,3}(?:\.\d{3})*|\d+),\d{2})(?!\d)/;
     const RE_STATUS_CA = /\s*(Não\s+conciliado|Conciliado)\s*/i;
     const lancamentos = [];
     const repeticoes = new Map(); // chave data|desc|tipo|valor → nº da repetição
 
     for (const bruta of linhas) {
-        const linha = bruta.replace(/\s+/g, ' ').trim();
+        // \s cobre NBSP; normaliza também espaços estreitos que alguns PDFs usam
+        const linha = bruta.replace(/[   ]/g, ' ').replace(/\s+/g, ' ').trim();
         const m = linha.match(RE_DATA);
         if (!m) continue;
         const resto = m[4];
         if (/^Saldo\s+(do dia|anterior|final)/i.test(resto)) continue; // linha de saldo, não é movimento
         if (/^a\s+\d{2}\/\d{2}\/\d{4}/.test(resto)) continue;          // "01/07/2026 a 31/07/2026" (período do cabeçalho)
 
-        const mv = resto.match(RE_VALOR);
-        if (!mv) continue; // linha com data mas sem valor — cabeçalho/ruído
+        // Procura o valor DEPOIS do status do CA (a coluna Valor fica à direita);
+        // sem status na linha, procura no texto todo. Primeiro com R$, depois número puro.
+        const mStatus = resto.match(RE_STATUS_CA);
+        const cauda = mStatus ? resto.slice(mStatus.index + mStatus[0].length) : resto;
+        const baseIdx = mStatus ? mStatus.index + mStatus[0].length : 0;
+        let mv = cauda.match(RE_VALOR_RS);
+        if (!mv) mv = cauda.match(RE_VALOR_NU);
+        if (!mv) continue; // linha com data mas sem valor — cabeçalho/ruído (fica no diagnóstico)
 
-        const negativo = !!(mv[1] && mv[1].includes('-'));
+        const negativo = !!mv[1];
         const valor = round2(Number(mv[2].replace(/\./g, '').replace(',', '.')));
         if (!(valor > 0)) continue;
 
-        const descricao = resto.slice(0, mv.index).replace(RE_STATUS_CA, ' ').replace(/\s+/g, ' ').trim();
+        const descricao = resto.slice(0, baseIdx + mv.index).replace(RE_STATUS_CA, ' ').replace(/\s+/g, ' ').trim();
         if (!descricao) { avisos.push(`Linha sem descrição ignorada (${m[1]}/${m[2]}/${m[3]}, R$ ${mv[2]}).`); continue; }
 
         const data = `${m[3]}-${m[2]}-${m[1]}`;
@@ -380,6 +393,15 @@ async function parsePdfExtratoCA(buffer) {
 
     if (lancamentos.length === 0) {
         avisos.unshift('Nenhum lançamento reconhecido no PDF — confira se é o "Extrato Conta Azul" exportado do CA (não um scan/foto).');
+        // DIAGNÓSTICO: guarda o que o servidor extraiu (primeiras linhas) para inspecionar
+        // via admin-exec/diag-pdf-ultimo — sem isso, impossível saber o que veio do PDF real.
+        try {
+            await prisma.appConfig.upsert({
+                where: { key: 'diag_pdf_extrato_ultimo' },
+                update: { value: { em: new Date().toISOString(), totalLinhas: linhas.length, amostra: linhas.slice(0, 120) } },
+                create: { key: 'diag_pdf_extrato_ultimo', value: { em: new Date().toISOString(), totalLinhas: linhas.length, amostra: linhas.slice(0, 120) } }
+            });
+        } catch (_) { /* diagnóstico é melhor-esforço */ }
     }
     return { lancamentos, avisos };
 }
