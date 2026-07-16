@@ -9,7 +9,7 @@ A lógica da tela é uma pergunta só: **"este lançamento do banco é O QUÊ no
 - **Conciliar** — aparece quando o sistema encontrou algo com **data E valor batendo exatos**: uma baixa já registrada (aí só amarra) **ou um boleto em aberto do Contas a Pagar** (aí a baixa é criada na hora, com a data e o banco do extrato, e vai para o Conta Azul). Os dados do boleto/nota (fornecedor, NF, parcela, vencimento) aparecem antes de confirmar.
 - **Buscar…** — para todo o resto. Abre a janela única de busca (ver abaixo).
 
-> **Entradas (crédito) nunca dão baixa por aqui**: recebimento de cliente continua sendo baixado no Contas a Receber / "Baixa CA" do Caixa (evita baixa em dobro no CA). Na conciliação, entrada só amarra com baixa já registrada.
+> **Entradas (crédito) também dão baixa por aqui** desde 07/2026: o Buscar… de um crédito lista as **contas a receber em aberto** e a baixa é criada na conta do próprio extrato, já conciliada (ver seção da janela Buscar…). O que pagou na **entrega** continua baixando pelo Caixa ("Baixa CA"), como sempre.
 
 ## Conta Asaas: o extrato entra SOZINHO (sem OFX)
 
