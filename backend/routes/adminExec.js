@@ -1973,7 +1973,10 @@ router.post('/estoque-corrigir-retroativo', async (req, res) => {
             select: { pedidoId: true, tipo: true, quantidade: true, motivo: true }
         });
         const MOTIVOS_BAIXA = ['FATURAMENTO', 'PEDIDO_ESPECIAL', 'PEDIDO_BONIFICACAO'];
-        const MOTIVOS_ESTORNO = ['CANCELAMENTO_CA', 'CANCELAMENTO', 'EXCLUSAO'];
+        // AJUSTE_MANUAL entra como estorno AQUI porque os créditos de "baixa em dobro"
+        // desta própria rota são gravados assim (com pedidoId — ajuste da tela não tem
+        // pedidoId e nem passa neste filtro). Sem isso, rodar de novo creditaria em dobro.
+        const MOTIVOS_ESTORNO = ['CANCELAMENTO_CA', 'CANCELAMENTO', 'EXCLUSAO', 'AJUSTE_MANUAL'];
         const saldoPorPedido = {};
         for (const mv of movs) {
             const q = parseFloat(mv.quantidade || 0);
