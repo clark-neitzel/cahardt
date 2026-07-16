@@ -1934,21 +1934,47 @@ router.get('/diag-estoque-produto', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/estoque-produtos?categoria=Produto%20Acabado
+// Lista produtos de uma categoria com estoque atual e se controlam estoque
+// (base para rodar a correção retroativa produto a produto).
+router.get('/estoque-produtos', async (req, res) => {
+    try {
+        const categoria = req.query.categoria;
+        if (!categoria) return res.status(400).json({ error: 'Informe ?categoria=' });
+        const produtos = await prisma.produto.findMany({
+            where: { categoria },
+            orderBy: { nome: 'asc' },
+            select: {
+                id: true, nome: true, codigo: true, ativo: true, categoria: true,
+                controlaEstoque: true, estoqueTotal: true, estoqueReservado: true, estoqueDisponivel: true
+            }
+        });
+        const saida = [];
+        for (const p of produtos) {
+            const controla = await estoqueService.produtoControlaEstoque(p);
+            saida.push({ ...p, controla });
+        }
+        res.json({ categoria, total: saida.length, produtos: saida });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // POST /api/admin-exec/estoque-corrigir-retroativo
 // Corrige retroativamente o estoque de UM produto desde uma data:
 //  - pedido RECEBIDO sem baixa (bug do especial/bonificação) → registra a SAIDA que faltou
 //  - pedido com baixa em dobro → credita a diferença (ENTRADA AJUSTE_MANUAL)
 // Compara a quantidade do pedido com o saldo efetivamente baixado (saídas − estornos),
 // então é idempotente: rodar de novo encontra delta 0 e não mexe em nada.
-// Body: { produtoNome, desde='2026-05-21', executar=false } — executar=false só simula.
+// Body: { produtoId | produtoNome, desde='2026-05-21', executar=false } — executar=false só simula.
 router.post('/estoque-corrigir-retroativo', async (req, res) => {
     try {
-        const { produtoNome, desde: desdeStr, executar = false } = req.body || {};
-        if (!produtoNome) return res.status(400).json({ error: 'Informe produtoNome.' });
+        const { produtoId, produtoNome, desde: desdeStr, executar = false } = req.body || {};
+        if (!produtoId && !produtoNome) return res.status(400).json({ error: 'Informe produtoId ou produtoNome.' });
         const desde = new Date((desdeStr || '2026-05-21') + 'T00:00:00-03:00');
 
         const produto = await prisma.produto.findFirst({
-            where: { nome: { contains: produtoNome, mode: 'insensitive' } },
+            where: produtoId ? { id: produtoId } : { nome: { contains: produtoNome, mode: 'insensitive' } },
             select: { id: true, nome: true, estoqueTotal: true }
         });
         if (!produto) return res.status(404).json({ error: 'Produto não encontrado.' });
