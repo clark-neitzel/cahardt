@@ -147,11 +147,19 @@ function parseOfx(texto) {
 
 const valorBate = (a, b) => Math.abs(num(a) - num(b)) <= 0.01;
 
+// Tarifa fixa que o Conta Azul desconta do CRÉDITO de cada boleto recebido na
+// Conta PJ: a baixa no app é o valor cheio (ex.: R$ 789,99) e o crédito no
+// extrato vem líquido (R$ 788,49) — diferença SEMPRE de R$ 1,50 (conferido no
+// extrato real de 07/2026). O matching aceita essa diferença e a conciliação
+// registra a tarifa como motivo automaticamente.
+const TARIFA_BOLETO_CA = 1.5;
+
 /**
  * Candidatos do app para UM lançamento do extrato.
  * @param lanc   { data:'YYYY-MM-DD', valor, tipo }
  * @param pools  { entradas: [{id, valor, data, label}], saidas: [...] } — já na mesma conta
  * @param usados Set de ids de pagamentos já conciliados com outro lançamento
+ * @returns candidatos; os casados pela tarifa do boleto CA vêm com `tarifa: 1.5`.
  */
 function candidatosPara(lanc, pools, usados, janelaDias = 3) {
     const pool = lanc.tipo === 'CREDITO' ? pools.entradas : pools.saidas;
@@ -159,8 +167,11 @@ function candidatosPara(lanc, pools, usados, janelaDias = 3) {
     const ate = somaDias(lanc.data, janelaDias);
     const distDias = (d) => Math.abs((new Date(`${d}T12:00:00Z`) - new Date(`${lanc.data}T12:00:00Z`)) / 86400000);
     return pool
-        .filter((p) => !usados.has(p.id) && p.data >= de && p.data <= ate && valorBate(p.valor, lanc.valor))
-        .sort((a, b) => distDias(a.data) - distDias(b.data))
+        .filter((p) => !usados.has(p.id) && p.data >= de && p.data <= ate &&
+            (valorBate(p.valor, lanc.valor) ||
+                (lanc.tipo === 'CREDITO' && valorBate(p.valor, round2(lanc.valor + TARIFA_BOLETO_CA)))))
+        .map((p) => (valorBate(p.valor, lanc.valor) ? p : { ...p, tarifa: TARIFA_BOLETO_CA }))
+        .sort((a, b) => ((a.tarifa ? 1 : 0) - (b.tarifa ? 1 : 0)) || (distDias(a.data) - distDias(b.data)))
         .slice(0, 5);
 }
 
@@ -834,7 +845,39 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
 // Ações
 // ─────────────────────────────────────────────────────────────
 
-/** Concilia sozinho os PENDENTES com exatamente 1 candidato. */
+/**
+ * Vincula um CRÉDITO a uma baixa que difere exatamente pela tarifa do boleto CA:
+ * vira um GRUPO com a diferença registrada como "Tarifa/taxa do banco" (auditável,
+ * igual ao fluxo manual com motivo). Guarda contra corrida no update do lançamento.
+ */
+async function _vincularComTarifaCA(lanc, pagamentoId, valorBaixa, userId, auto) {
+    await prisma.$transaction(async (tx) => {
+        const grupo = await tx.conciliacaoGrupo.create({
+            data: {
+                contaFinanceiraCaId: lanc.contaFinanceiraCaId,
+                tipo: 'CREDITO',
+                valor: round2(num(lanc.valor)),
+                valorBaixas: round2(num(valorBaixa)),
+                diferenca: round2(num(lanc.valor) - num(valorBaixa)), // negativa: entrou menos que a baixa
+                motivoDiferenca: `Tarifa/taxa do banco — boleto Conta Azul (R$ ${TARIFA_BOLETO_CA.toFixed(2)})`,
+                criadoPorId: userId || null
+            }
+        });
+        await tx.conciliacaoGrupoItem.createMany({
+            data: [
+                { grupoId: grupo.id, extratoLancamentoId: lanc.id },
+                { grupoId: grupo.id, pagamentoParcelaId: pagamentoId }
+            ]
+        });
+        const r = await tx.extratoLancamento.updateMany({
+            where: { id: lanc.id, status: 'PENDENTE' },
+            data: { status: 'CONCILIADO', conciliadoAuto: !!auto, conciliadoPorId: userId || null, conciliadoEm: new Date() }
+        });
+        if (r.count === 0) throw erro('O lançamento deixou de estar pendente — recarregue a tela.');
+    }, { timeout: 20000, maxWait: 10000 });
+}
+
+/** Concilia sozinho os PENDENTES com exatamente 1 candidato (exato ou tarifa do boleto CA). */
 async function conciliarAutomatico({ contaFinanceiraCaId, de, ate, userId }) {
     const pendentes = await prisma.extratoLancamento.findMany({
         where: { contaFinanceiraCaId, status: 'PENDENTE', data: { gte: dataSP(de), lte: dataSP(ate) } }
@@ -848,6 +891,14 @@ async function conciliarAutomatico({ contaFinanceiraCaId, de, ate, userId }) {
         const cands = candidatosPara({ data: ymd(l.data), valor: num(l.valor), tipo: l.tipo }, pools, usados);
         if (cands.length !== 1) continue;
         const alvo = cands[0];
+        if (alvo.tarifa) {
+            // Boleto CA com tarifa: fecha como grupo com o motivo registrado
+            try {
+                await _vincularComTarifaCA(l, alvo.id, alvo.valor, userId, true);
+                usados.add(alvo.id); conciliados++;
+            } catch (_) { /* corrida/duplo clique — segue para o próximo */ }
+            continue;
+        }
         const r = await prisma.extratoLancamento.updateMany({
             where: { id: l.id, status: 'PENDENTE' }, // guarda contra corrida/duplo clique
             data: {
@@ -879,7 +930,7 @@ async function conciliar({ lancamentoId, pagamentoParcelaId, pagamentoParcelaPag
     // O pagamento existe e ainda não está vinculado a outro lançamento?
     const [pagamento, emUso] = await Promise.all([
         l.tipo === 'CREDITO'
-            ? prisma.pagamentoParcela.findUnique({ where: { id: pagId }, select: { id: true, estornado: true } })
+            ? prisma.pagamentoParcela.findUnique({ where: { id: pagId }, select: { id: true, estornado: true, valorRecebido: true } })
             : prisma.pagamentoParcelaPagar.findUnique({ where: { id: pagId }, select: { id: true, estornado: true } }),
         prisma.extratoLancamento.findFirst({
             where: {
@@ -891,6 +942,15 @@ async function conciliar({ lancamentoId, pagamentoParcelaId, pagamentoParcelaPag
     ]);
     if (!pagamento || pagamento.estornado) { const e = new Error('Baixa do app não encontrada (ou estornada).'); e.status = 400; throw e; }
     if (emUso) { const e = new Error('Essa baixa do app já está conciliada com outro lançamento do extrato.'); e.status = 400; throw e; }
+
+    // Boleto CA: a baixa é R$ 1,50 maior que o crédito (tarifa descontada na conta).
+    // Nesse caso o vínculo vira GRUPO com a tarifa registrada como motivo.
+    if (l.tipo === 'CREDITO' &&
+        !valorBate(num(pagamento.valorRecebido), num(l.valor)) &&
+        valorBate(num(pagamento.valorRecebido), round2(num(l.valor) + TARIFA_BOLETO_CA))) {
+        await _vincularComTarifaCA(l, pagId, num(pagamento.valorRecebido), userId, false);
+        return { message: `Conciliado! Tarifa de R$ ${TARIFA_BOLETO_CA.toFixed(2)} do boleto registrada.` };
+    }
 
     await prisma.extratoLancamento.update({
         where: { id: lancamentoId },

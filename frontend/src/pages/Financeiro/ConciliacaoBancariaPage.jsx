@@ -1126,6 +1126,11 @@ const ConciliacaoBancariaPage = () => {
                         {escolhido.origem === 'ABERTO' && (
                             <div className="text-xs text-amber-700">Conciliar dá a baixa neste boleto (data e banco do extrato){escolhido.detalhe?.vaiAoCA === false ? ' — fica só no app (importada do CA)' : ' e envia ao Conta Azul'}.</div>
                         )}
+                        {escolhido.tarifa > 0 && (
+                            <div className="text-xs text-amber-700">
+                                Boleto do Conta Azul: crédito líquido da tarifa de R$ {fmt(escolhido.tarifa)} — ao Conciliar, a tarifa fica registrada como motivo da diferença.
+                            </div>
+                        )}
                     </>
                 ) : /MESMA TIT|TRANSF/i.test(l.descricao || '') ? (
                     <div className="text-xs text-purple-700">Parece transferência entre contas da empresa — em "Buscar…" há o botão próprio.</div>
