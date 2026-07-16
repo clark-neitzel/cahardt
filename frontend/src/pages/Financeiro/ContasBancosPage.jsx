@@ -216,14 +216,20 @@ const ContasBancosPage = () => {
                 </div>
 
                 {/* KPIs */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <KpiCard titulo="Entradas" valor={`R$ ${fmt(totais?.entradas)}`} cor="text-green-700" sub="recebimentos no período" />
                     <KpiCard titulo="Saídas" valor={`R$ ${fmt(totais?.saidas)}`} cor="text-red-700" sub="pagamentos no período" />
+                    <KpiCard
+                        titulo="Transferências"
+                        valor={`R$ ${fmt(Math.max(totais?.transfEntrada || 0, totais?.transfSaida || 0))}`}
+                        cor="text-purple-700"
+                        sub="entre contas da empresa"
+                    />
                     <KpiCard
                         titulo="Resultado"
                         valor={`${Number(totais?.resultado) < 0 ? '−' : '+'} R$ ${fmt(Math.abs(totais?.resultado || 0))}`}
                         cor={Number(totais?.resultado) < 0 ? 'text-red-700' : 'text-green-700'}
-                        sub="entradas − saídas"
+                        sub="entradas − saídas ± transferências"
                     />
                 </div>
 
@@ -252,6 +258,7 @@ const ContasBancosPage = () => {
                                         <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Conta</th>
                                         <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Entradas</th>
                                         <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Saídas</th>
+                                        <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide" title="Transferências entre contas da empresa (não é receita nem despesa)">Transf. ±</th>
                                         <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Resultado</th>
                                         {comSaldoCA && <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Saldo atual (CA)</th>}
                                         <th className="px-5 py-3"></th>
@@ -267,6 +274,11 @@ const ContasBancosPage = () => {
                                             </td>
                                             <td className="px-5 py-3 text-right font-medium text-green-700">{c.entradas ? fmt(c.entradas) : <span className="text-gray-300 font-normal">—</span>}</td>
                                             <td className="px-5 py-3 text-right font-medium text-red-700">{c.saidas ? fmt(c.saidas) : <span className="text-gray-300 font-normal">—</span>}</td>
+                                            <td className="px-5 py-3 text-right font-medium text-purple-700">
+                                                {(c.transfEntrada || c.transfSaida)
+                                                    ? `${(c.transfEntrada - c.transfSaida) < 0 ? '−' : '+'}${fmt(Math.abs(c.transfEntrada - c.transfSaida))}`
+                                                    : <span className="text-gray-300 font-normal">—</span>}
+                                            </td>
                                             <td className={`px-5 py-3 text-right font-semibold ${c.resultado < 0 ? 'text-red-700' : 'text-gray-900'}`}>
                                                 {c.resultado < 0 ? '−' : '+'}{fmt(Math.abs(c.resultado))}
                                             </td>
@@ -307,6 +319,14 @@ const ContasBancosPage = () => {
                                         <div className={`font-semibold ${c.resultado < 0 ? 'text-red-700' : 'text-gray-900'}`}>{c.resultado < 0 ? '−' : '+'}{fmt(Math.abs(c.resultado))}</div>
                                     </div>
                                 </div>
+                                {(c.transfEntrada > 0 || c.transfSaida > 0) && (
+                                    <div className="mt-2 pt-2 border-t border-gray-100 text-sm flex items-center justify-between">
+                                        <span className="text-xs text-gray-500">Transferências entre contas</span>
+                                        <span className="font-semibold text-purple-700">
+                                            {(c.transfEntrada - c.transfSaida) < 0 ? '−' : '+'}{fmt(Math.abs(c.transfEntrada - c.transfSaida))}
+                                        </span>
+                                    </div>
+                                )}
                                 {comSaldoCA && (
                                     <div className="mt-2 pt-2 border-t border-gray-100 text-sm flex items-center justify-between">
                                         <span className="text-xs text-gray-500">Saldo atual no CA</span>
@@ -320,8 +340,10 @@ const ContasBancosPage = () => {
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
                     <span className="font-semibold">Como ler:</span>{' '}
-                    <span className="font-semibold text-green-700">Entradas</span> = recebimentos e{' '}
-                    <span className="font-semibold text-red-700">Saídas</span> = pagamentos, agrupados pela conta (banco/caixa) usada, no período.
+                    <span className="font-semibold text-green-700">Entradas</span> = recebimentos,{' '}
+                    <span className="font-semibold text-red-700">Saídas</span> = pagamentos e{' '}
+                    <span className="font-semibold text-purple-700">Transf. ±</span> = transferências entre as contas da empresa
+                    (marcadas na Conciliação Bancária — não são receita nem despesa), agrupados pela conta (banco/caixa) usada, no período.
                     Lançamentos antigos importados podem aparecer em <span className="font-semibold">“Não informado”</span> (o Conta Azul não guardava o banco). Clique numa conta para ver o extrato — lá dá para <span className="font-semibold">mover um lançamento para a conta certa</span> (ícone de setas) e <span className="font-semibold">registrar ajuste manual de saldo</span>. Ajustes valem só aqui no app (não vão ao Conta Azul).
                 </div>
             </div>
@@ -419,26 +441,30 @@ const ContasBancosPage = () => {
                                     {extrato.lancamentos.map((l) => {
                                         const key = `${l.origem}-${l.id}`;
                                         const ehAjuste = l.origem === 'AJUSTE';
+                                        const ehTransf = l.origem === 'TRANSFERENCIA';
                                         return (
                                             <div key={key} className="px-4 md:px-5 py-3">
                                                 <div className="flex items-center gap-3">
-                                                    <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${l.tipo === 'ENTRADA' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                        {l.tipo === 'ENTRADA' ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                                                    <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${ehTransf ? 'bg-purple-100 text-purple-700' : l.tipo === 'ENTRADA' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                        {ehTransf ? <ArrowLeftRight className="h-4 w-4" /> : l.tipo === 'ENTRADA' ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
                                                     </div>
                                                     <div className="min-w-0 flex-1">
                                                         <div className="text-sm font-medium text-gray-900 truncate">
                                                             {l.quem}
                                                             {ehAjuste && <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-700">ajuste</span>}
+                                                            {ehTransf && <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-purple-100 text-purple-700">transferência</span>}
                                                         </div>
                                                         <div className="text-xs text-gray-500 truncate">{l.descricao}{l.formaPagamento ? ` · ${l.formaPagamento}` : ''}</div>
                                                     </div>
                                                     <div className="text-right shrink-0">
-                                                        <div className={`text-sm font-semibold ${l.tipo === 'ENTRADA' ? 'text-green-700' : 'text-red-700'}`}>
+                                                        <div className={`text-sm font-semibold ${ehTransf ? 'text-purple-700' : l.tipo === 'ENTRADA' ? 'text-green-700' : 'text-red-700'}`}>
                                                             {l.tipo === 'ENTRADA' ? '+' : '−'} {fmt(l.valor)}
                                                         </div>
                                                         <div className="text-[11px] text-gray-400">{dataCurta(l.data)}</div>
                                                     </div>
                                                     <div className="flex items-center shrink-0 -mr-1">
+                                                        {/* Transferência não se move de conta aqui — desfaz-se na Conciliação Bancária */}
+                                                        {!ehTransf && (
                                                         <button
                                                             onClick={() => setMovendoKey(k => (k === key ? null : key))}
                                                             title="Mover para outra conta"
@@ -446,6 +472,7 @@ const ContasBancosPage = () => {
                                                         >
                                                             <ArrowLeftRight className="h-4 w-4" />
                                                         </button>
+                                                        )}
                                                         {ehAjuste && (
                                                             <button
                                                                 onClick={() => excluirAjuste(l)}

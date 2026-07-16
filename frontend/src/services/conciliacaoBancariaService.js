@@ -29,6 +29,12 @@ const conciliacaoBancariaService = {
         const response = await api.post(`/conciliacao-bancaria/${lancamentoId}/ignorar`, { obs });
         return response.data;
     },
+    // Dinheiro movido entre contas da própria empresa (não é receita/despesa).
+    // outraContaId vazio = conta fora do sistema.
+    transferir: async (lancamentoId, outraContaId, obs) => {
+        const response = await api.post(`/conciliacao-bancaria/${lancamentoId}/transferencia`, { outraContaId, obs });
+        return response.data;
+    },
     desfazer: async (lancamentoId) => {
         const response = await api.post(`/conciliacao-bancaria/${lancamentoId}/desfazer`);
         return response.data;

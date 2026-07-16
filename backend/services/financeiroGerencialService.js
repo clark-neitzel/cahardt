@@ -490,7 +490,7 @@ async function mapaContasFinanceiras() {
 async function saldosPorConta(de, ate, comSaldoCA = false) {
     const ini = inicioDiaSP(de), fim = fimDiaSP(ate);
 
-    const [entradas, saidas, ajustes, mapa] = await Promise.all([
+    const [entradas, saidas, ajustes, transferencias, mapa] = await Promise.all([
         // Recebimentos: parcelas a receber PAGAS no período (por data de pagamento)
         prisma.parcela.groupBy({
             by: ['contaFinanceiraCaId'],
@@ -510,13 +510,19 @@ async function saldosPorConta(de, ate, comSaldoCA = false) {
             where: { data: { gte: ini, lte: fim } },
             select: { contaFinanceiraCaId: true, valor: true }
         }),
+        // Transferências entre contas da empresa no período (saem da origem, entram no destino).
+        // Ficam em colunas próprias — não misturam com recebimento/pagamento.
+        prisma.transferenciaConta.findMany({
+            where: { data: { gte: ini, lte: fim } },
+            select: { contaOrigemId: true, contaDestinoId: true, valor: true }
+        }),
         mapaContasFinanceiras()
     ]);
 
-    const linhas = new Map(); // id|null → { entradas, saidas, qtdEnt, qtdSai }
+    const linhas = new Map(); // id|null → { entradas, saidas, qtdEnt, qtdSai, transfEntrada, transfSaida }
     const get = (id) => {
         const k = id || '__SEM__';
-        if (!linhas.has(k)) linhas.set(k, { id: id || null, entradas: 0, saidas: 0, qtdEnt: 0, qtdSai: 0 });
+        if (!linhas.has(k)) linhas.set(k, { id: id || null, entradas: 0, saidas: 0, qtdEnt: 0, qtdSai: 0, transfEntrada: 0, transfSaida: 0, qtdTransf: 0 });
         return linhas.get(k);
     };
     entradas.forEach((e) => { const l = get(e.contaFinanceiraCaId); l.entradas = round2(num(e._sum.valorPago)); l.qtdEnt = e._count._all; });
@@ -527,6 +533,12 @@ async function saldosPorConta(de, ate, comSaldoCA = false) {
         if (v >= 0) { l.entradas = round2(l.entradas + v); l.qtdEnt += 1; }
         else { l.saidas = round2(l.saidas + Math.abs(v)); l.qtdSai += 1; }
     });
+    transferencias.forEach((t) => {
+        const v = num(t.valor);
+        // Só credita/debita contas conhecidas (lado null = conta fora do sistema)
+        if (t.contaDestinoId) { const l = get(t.contaDestinoId); l.transfEntrada = round2(l.transfEntrada + v); l.qtdTransf += 1; }
+        if (t.contaOrigemId) { const l = get(t.contaOrigemId); l.transfSaida = round2(l.transfSaida + v); l.qtdTransf += 1; }
+    });
 
     let contas = [...linhas.values()].map((l) => {
         const info = l.id ? mapa.get(l.id) : null;
@@ -536,7 +548,11 @@ async function saldosPorConta(de, ate, comSaldoCA = false) {
             tipo: info?.tipo || null,
             entradas: l.entradas,
             saidas: l.saidas,
-            resultado: round2(l.entradas - l.saidas),
+            // Transferências entre contas da empresa (não é receita/despesa) — coluna própria
+            transfEntrada: l.transfEntrada,
+            transfSaida: l.transfSaida,
+            qtdTransferencias: l.qtdTransf,
+            resultado: round2(l.entradas - l.saidas + l.transfEntrada - l.transfSaida),
             qtdEntradas: l.qtdEnt,
             qtdSaidas: l.qtdSai,
             saldoCA: null
@@ -555,8 +571,10 @@ async function saldosPorConta(de, ate, comSaldoCA = false) {
     const totais = contas.reduce((t, c) => ({
         entradas: round2(t.entradas + c.entradas),
         saidas: round2(t.saidas + c.saidas),
+        transfEntrada: round2(t.transfEntrada + c.transfEntrada),
+        transfSaida: round2(t.transfSaida + c.transfSaida),
         resultado: round2(t.resultado + c.resultado)
-    }), { entradas: 0, saidas: 0, resultado: 0 });
+    }), { entradas: 0, saidas: 0, transfEntrada: 0, transfSaida: 0, resultado: 0 });
 
     // Todas as contas cadastradas (para os selects de "mover de banco" e "ajustar saldo",
     // mesmo as sem movimento no período)
@@ -577,7 +595,7 @@ async function extratoPorConta(contaId, de, ate) {
     const ini = inicioDiaSP(de), fim = fimDiaSP(ate);
     const filtroConta = contaId ? contaId : null;
 
-    const [ents, sais, ajustes, mapa] = await Promise.all([
+    const [ents, sais, ajustes, transfs, mapa] = await Promise.all([
         prisma.parcela.findMany({
             where: { status: 'PAGO', contaFinanceiraCaId: filtroConta, dataPagamento: { gte: ini, lte: fim } },
             select: {
@@ -596,6 +614,14 @@ async function extratoPorConta(contaId, de, ate) {
             where: { contaFinanceiraCaId: filtroConta, data: { gte: ini, lte: fim } },
             select: { id: true, data: true, valor: true, descricao: true, criadoPor: { select: { nome: true } } }
         }),
+        // Transferências onde esta conta é origem OU destino (conta null não participa)
+        contaId ? prisma.transferenciaConta.findMany({
+            where: {
+                data: { gte: ini, lte: fim },
+                OR: [{ contaOrigemId: contaId }, { contaDestinoId: contaId }]
+            },
+            select: { id: true, data: true, valor: true, descricao: true, contaOrigemId: true, contaDestinoId: true, criadoPor: { select: { nome: true } } }
+        }) : Promise.resolve([]),
         mapaContasFinanceiras()
     ]);
 
@@ -629,7 +655,22 @@ async function extratoPorConta(contaId, de, ate) {
             quem: 'Ajuste manual',
             descricao: `${a.descricao}${a.criadoPor?.nome ? ` · por ${a.criadoPor.nome}` : ''}`,
             formaPagamento: null
-        }))
+        })),
+        ...transfs.map((t) => {
+            const entrou = t.contaDestinoId === contaId; // senão, esta conta é a origem (saiu)
+            const outraId = entrou ? t.contaOrigemId : t.contaDestinoId;
+            const outra = outraId ? (mapa.get(outraId)?.nome || 'outra conta') : 'conta fora do sistema';
+            return {
+                id: t.id,
+                origem: 'TRANSFERENCIA',
+                tipo: entrou ? 'ENTRADA' : 'SAIDA',
+                data: t.data,
+                valor: round2(num(t.valor)),
+                quem: 'Transferência entre contas',
+                descricao: `${entrou ? `Veio de ${outra}` : `Foi para ${outra}`}${t.descricao ? ` · ${t.descricao}` : ''}`,
+                formaPagamento: null
+            };
+        })
     ].sort((a, b) => new Date(b.data) - new Date(a.data));
 
     const totalEntradas = round2(lancamentos.filter((l) => l.tipo === 'ENTRADA').reduce((s, l) => s + l.valor, 0));

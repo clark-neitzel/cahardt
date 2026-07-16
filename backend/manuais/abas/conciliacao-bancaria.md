@@ -39,7 +39,18 @@ Modelo do Conta Azul. Mostra, para o lançamento clicado:
 - **"+ Somar outro lançamento do banco"**: o caso raro de 2 PIX pagarem 1 boleto — marca-se os dois lançamentos.
 - Ao marcar boleto em aberto: **forma de pagamento** (o sistema sugere pela descrição: PIX/TED/boleto) e campos de **juros, multa e desconto** — o extrato traz o total que saiu, o sistema separa. O rodapé mostra a conta fechando ao vivo: quita tudo, fica **parcial** no último boleto (mostra quanto sobra) ou aponta o que não fecha.
 - **Diferença de valor** (quando só há baixas registradas marcadas e não fecha): dá para conciliar mesmo assim, mas é **obrigatório dizer o que é** (tarifa do banco, juros pagos a mais, desconto, arredondamento, erro de lançamento, outro+descrição). A diferença e o motivo ficam gravados e aparecem em âmbar na linha conciliada — nunca somem.
-- No rodapé da janela: **"Cadastrar despesa"** (a saída nunca foi lançada no sistema — ver seção abaixo) e **"Ignorar"** (tarifa, transferência entre contas; pede o motivo).
+- No rodapé da janela: **"Cadastrar despesa"** (a saída nunca foi lançada no sistema — ver seção abaixo), **"Transferência entre contas"** (ver seção abaixo) e **"Ignorar"** (tarifa; pede o motivo).
+
+## Transferência entre contas (dinheiro movido entre os bancos da empresa)
+
+Para lançamentos que são dinheiro **da própria empresa trocando de conta** (ex.: "PIX RECEBIDO - OUTRA IF - MESMA TIT.", TED entre os bancos da casa) — **não é receita nem despesa** e não deve ser conciliado com boleto nenhum:
+
+- **Buscar… → "Transferência entre contas"**: escolha **de qual conta veio** (se o dinheiro entrou) ou **para qual conta foi** (se saiu). Se a outra conta não estiver cadastrada, escolha **"Conta fora do sistema"**. Observação é opcional.
+- A linha sai dos pendentes com a etiqueta roxa **"Transferência"** (mostra de/para qual conta) e pode ser **desfeita** pela setinha — desfazer apaga a transferência junto.
+- A transferência aparece na tela **Saldos por Conta**: coluna própria **"Transf. ±"** por conta (entra no Resultado) e linha roxa **"transferência"** no extrato da conta — separada de recebimentos e pagamentos, do jeito que a contabilidade espera.
+- Linhas pendentes cujo texto do banco indica transferência ("MESMA TIT.", "TRANSF") mostram uma dica roxa apontando esse botão.
+- Filtro de status da tela tem a opção **"Transferências"**; o cartão do topo mostra **Ignorados / Transf.**
+- Nada disso é enviado ao Conta Azul — vale só para os relatórios do app.
 
 Ao confirmar com boleto em aberto marcado: a baixa é criada com a **data e o banco do próprio extrato**, entra na fila de envio ao Conta Azul (igual ao botão "Baixar" do Contas a Pagar) e o lançamento já fica conciliado. **Exceção:** despesa **importada do CA** não tem para onde empurrar a baixa — fica só no app (a tela avisa antes).
 
@@ -70,4 +81,5 @@ Acessível pelo rodapé da janela Buscar…. O pop-up vem preenchido com o que o
 - **Um débito pagando vários boletos**: Buscar… → marcar os boletos (a soma aparece ao vivo). Todos menos o último precisam ser cobertos por inteiro; o último pode ficar parcial ou ser quitado com desconto.
 - **2 PIX pagando 1 boleto**: Buscar… → "+ Somar outro lançamento do banco".
 - **Tarifas e rendimentos**: não são contas do sistema — Buscar… → Ignorar (o motivo fica registrado).
+- **Dinheiro movido entre as contas da empresa** (mesma titularidade): Buscar… → **Transferência entre contas** (não usar Ignorar — assim o movimento aparece em Saldos por Conta).
 - **Nada aparece na janela**: aumente a janela de período (±30/±60/Tudo) ou confira se a despesa foi lançada; se nunca foi, "Cadastrar despesa" ali mesmo.

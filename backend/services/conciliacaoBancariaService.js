@@ -562,6 +562,20 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
         }
     }
 
+    // Transferências entre contas (status TRANSFERENCIA): de/para qual conta foi
+    const idsTransf = linhas.filter((l) => l.status === 'TRANSFERENCIA').map((l) => l.id);
+    const [transfs, contasNomes] = idsTransf.length > 0
+        ? await Promise.all([
+            prisma.transferenciaConta.findMany({
+                where: { extratoLancamentoId: { in: idsTransf } },
+                select: { extratoLancamentoId: true, contaOrigemId: true, contaDestinoId: true }
+            }),
+            prisma.contaFinanceira.findMany({ select: { id: true, nomeBanco: true } })
+        ])
+        : [[], []];
+    const transferenciaPorLancamento = new Map(transfs.map((t) => [t.extratoLancamentoId, t]));
+    const nomeContaPorId = new Map(contasNomes.map((c) => [c.id, c.nomeBanco]));
+
     const lancamentos = linhas.map((l) => {
         const base = {
             id: l.id,
@@ -592,6 +606,12 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
                 grupoDiferenca: grupo?.diferenca || 0,
                 grupoMotivoDiferenca: grupo?.motivoDiferenca || null
             };
+        }
+        if (l.status === 'TRANSFERENCIA') {
+            const t = transferenciaPorLancamento.get(l.id);
+            const outraId = t ? (l.tipo === 'CREDITO' ? t.contaOrigemId : t.contaDestinoId) : null;
+            const outraNome = outraId ? (nomeContaPorId.get(outraId) || 'outra conta') : 'conta fora do sistema';
+            return { ...base, transferencia: { outraConta: outraNome, sentido: l.tipo === 'CREDITO' ? 'veio de' : 'foi para' } };
         }
         if (l.status === 'PENDENTE') {
             const p = pistas.get(l.id) || null;
@@ -641,6 +661,7 @@ async function listar({ contaFinanceiraCaId, de, ate, status }) {
         pendentes: conta((l) => l.status === 'PENDENTE'),
         conciliados: conta((l) => l.status === 'CONCILIADO'),
         ignorados: conta((l) => l.status === 'IGNORADO'),
+        transferencias: conta((l) => l.status === 'TRANSFERENCIA'),
         valorPendente: soma(lancamentos, (l) => l.status === 'PENDENTE'),
         valorConciliado: soma(lancamentos, (l) => l.status === 'CONCILIADO'),
         soNoApp: { entradas: soNoApp.entradas.length, saidas: soNoApp.saidas.length }
@@ -735,6 +756,54 @@ async function ignorar({ lancamentoId, obs, userId }) {
 }
 
 /**
+ * Marca um lançamento do extrato como TRANSFERÊNCIA entre contas da empresa
+ * (mesma titularidade — "PIX OUTRA IF - MESMA TIT.", TED entre os bancos da casa).
+ * Não é receita nem despesa: cria um registro TransferenciaConta (aparece nos
+ * relatórios por conta) e tira o lançamento dos pendentes.
+ *
+ * A conta do próprio extrato é um lado; `outraContaId` é o outro:
+ *   CRÉDITO (entrou aqui)  → origem = outraConta, destino = conta do extrato
+ *   DÉBITO  (saiu daqui)   → origem = conta do extrato, destino = outraConta
+ * `outraContaId` vazio = conta fora do sistema (ex.: banco pessoal não cadastrado).
+ */
+async function transferir({ lancamentoId, outraContaId, obs, userId }) {
+    const l = await prisma.extratoLancamento.findUnique({ where: { id: lancamentoId } });
+    if (!l) { const e = new Error('Lançamento do extrato não encontrado.'); e.status = 404; throw e; }
+    if (l.status !== 'PENDENTE') { const e = new Error('Só é possível marcar transferência num lançamento pendente.'); e.status = 400; throw e; }
+
+    const outra = String(outraContaId || '').trim() || null;
+    if (outra && outra === l.contaFinanceiraCaId) {
+        const e = new Error('A outra conta precisa ser diferente da conta do extrato.'); e.status = 400; throw e;
+    }
+    if (outra) {
+        const existe = await prisma.contaFinanceira.findUnique({ where: { id: outra }, select: { id: true } });
+        if (!existe) { const e = new Error('Conta de contrapartida não encontrada.'); e.status = 400; throw e; }
+    }
+
+    const ehCredito = l.tipo === 'CREDITO';
+    await prisma.$transaction(async (tx) => {
+        await tx.transferenciaConta.create({
+            data: {
+                data: l.data,
+                valor: l.valor,
+                contaOrigemId: ehCredito ? outra : l.contaFinanceiraCaId,
+                contaDestinoId: ehCredito ? l.contaFinanceiraCaId : outra,
+                descricao: obs?.trim() || l.descricao || 'Transferência entre contas',
+                extratoLancamentoId: l.id,
+                criadoPorId: userId || null
+            }
+        });
+        const r = await tx.extratoLancamento.updateMany({
+            where: { id: l.id, status: 'PENDENTE' }, // guarda contra corrida/duplo clique
+            data: { status: 'TRANSFERENCIA', obs: obs?.trim() || null, conciliadoPorId: userId || null, conciliadoEm: new Date() }
+        });
+        if (r.count === 0) { const e = new Error('Este lançamento acabou de ser tratado por outra pessoa.'); e.status = 400; throw e; }
+    }, { timeout: 20000, maxWait: 10000 });
+
+    return { message: 'Transferência entre contas registrada!' };
+}
+
+/**
  * Volta um lançamento (conciliado ou ignorado) para PENDENTE.
  * Se ele estiver num GRUPO, o grupo inteiro é dissolvido (todos os lançamentos
  * do grupo voltam a pendente e as baixas ficam livres de novo).
@@ -757,8 +826,11 @@ async function desfazer({ lancamentoId }) {
         return { message: idsLanc.length > 1 ? `Grupo desfeito — ${idsLanc.length} lançamentos voltaram para pendente.` : 'Grupo desfeito — lançamento voltou para pendente.' };
     }
 
+    // Transferência entre contas: apaga o registro da transferência junto
+    await prisma.transferenciaConta.deleteMany({ where: { extratoLancamentoId: lancamentoId } });
+
     const r = await prisma.extratoLancamento.updateMany({
-        where: { id: lancamentoId, status: { in: ['CONCILIADO', 'IGNORADO'] } },
+        where: { id: lancamentoId, status: { in: ['CONCILIADO', 'IGNORADO', 'TRANSFERENCIA'] } },
         data: {
             status: 'PENDENTE',
             pagamentoParcelaId: null,
@@ -1244,6 +1316,7 @@ module.exports = {
     conciliar,
     baixasDisponiveis,
     ignorar,
+    transferir,
     desfazer,
     listarImportacoes,
     criarDespesaDoLancamento,

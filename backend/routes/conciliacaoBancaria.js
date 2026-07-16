@@ -225,6 +225,25 @@ router.post('/:id/ignorar', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// ── POST /:id/transferencia — dinheiro movido entre contas da própria empresa ──
+// body: { outraContaId?, obs? } — outraContaId vazio = conta fora do sistema.
+// Cria o registro TransferenciaConta (relatórios por conta) e marca o lançamento
+// como TRANSFERENCIA (sai dos pendentes; "desfazer" apaga a transferência junto).
+router.post('/:id/transferencia', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const r = await conciliacaoService.transferir({
+            lancamentoId: req.params.id,
+            outraContaId: req.body.outraContaId,
+            obs: req.body.obs,
+            userId: req.user.id
+        });
+        res.json(r);
+    } catch (error) {
+        console.error('Erro ao registrar transferência:', error);
+        res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao registrar transferência.' });
+    }
+});
+
 // ── POST /:id/desfazer — volta para pendente ──
 router.post('/:id/desfazer', verificarAuth, checkAcesso, async (req, res) => {
     try {

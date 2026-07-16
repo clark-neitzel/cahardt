@@ -15,8 +15,8 @@ Visão gerencial de **por qual banco/caixa o dinheiro entrou e saiu**. Mostra, n
 ## O que dá pra fazer aqui
 
 - Escolher o período pelos chips: **Este mês**, **Últimos 30 dias**, **Últimos 90 dias**, **Este ano**
-- Ver os 3 indicadores do topo: **Entradas**, **Saídas** e **Resultado** do período (somando todas as contas)
-- Ver a **tabela por banco/caixa** (no celular, cards): entradas, saídas, resultado e — se ligar o botão **"Saldo atual no Conta Azul"** — o saldo em tempo real de cada conta
+- Ver os 4 indicadores do topo: **Entradas**, **Saídas**, **Transferências** (entre contas da empresa) e **Resultado** do período (somando todas as contas)
+- Ver a **tabela por banco/caixa** (no celular, cards): entradas, saídas, a coluna **"Transf. ±"** (transferências entre as contas da empresa — não são receita nem despesa, mas entram no Resultado da conta), resultado e — se ligar o botão **"Saldo atual no Conta Azul"** — o saldo em tempo real de cada conta
 - **Clicar numa conta** para abrir o **extrato**: a lista de todas as entradas e saídas daquela conta no período, com quem (cliente/fornecedor), a origem e a data
 - **Mover um lançamento para outra conta** (dentro do extrato): clique no ícone de **setas (⇄)** na linha do lançamento e escolha a conta certa — útil para corrigir lançamentos que caíram em "Não informado" ou no banco errado. Só muda a conta; valor, data e baixa ficam intactos (e nada muda no Conta Azul)
 - **Registrar um ajuste manual de saldo** (botão **"Ajustar saldo"** no topo do extrato): cria uma entrada ou saída avulsa na conta, com valor, data e motivo — para acertar diferenças (ex.: dinheiro contado na caixinha não bate). O ajuste aparece no extrato com a etiqueta **"ajuste"** e pode ser **excluído** pelo ícone de lixeira. Ajustes existem só no app — **não são enviados ao Conta Azul**
@@ -28,6 +28,7 @@ Visão gerencial de **por qual banco/caixa o dinheiro entrou e saiu**. Mostra, n
 | Entradas por conta | Recebimentos (parcelas de **Contas a Receber** pagas) agrupados pelo banco em que o dinheiro entrou |
 | Saídas por conta | Pagamentos (baixas de **Contas a Pagar**, não estornadas) agrupados pelo banco de onde o dinheiro saiu |
 | Ajustes manuais | Ajustes de saldo criados nesta tela: valor positivo soma nas entradas, negativo nas saídas da conta |
+| Transferências (Transf. ±) | Marcadas na **Conciliação Bancária** (Buscar… → "Transferência entre contas"): saem da conta de origem e entram na de destino; no extrato aparecem com etiqueta roxa **"transferência"** (quem desfaz é a Conciliação, não esta tela) |
 | Saldo atual (CA) | Consulta em tempo real do saldo da conta no Conta Azul (botão opcional; pode demorar alguns segundos) |
 
 A conta (banco/caixa) de cada baixa é capturada automaticamente:
@@ -54,5 +55,5 @@ A conta (banco/caixa) de cada baixa é capturada automaticamente:
 |---------|-------|
 | `backend/services/financeiroGerencialService.js` | Agregação por conta (saldosPorConta, extratoPorConta, inclui ajustes) |
 | `backend/routes/financeiroGerencial.js` | Rotas GET /por-conta e /por-conta/extrato; PUT lancamento-banco; POST/DELETE ajuste |
-| `backend/prisma/schema.prisma` | Modelo `AjusteSaldoConta` (tabela `ajustes_saldo_conta`) |
+| `backend/prisma/schema.prisma` | Modelos `AjusteSaldoConta` (tabela `ajustes_saldo_conta`) e `TransferenciaConta` (tabela `transferencias_conta`) |
 | `frontend/src/pages/Financeiro/ContasBancosPage.jsx` | Tela |

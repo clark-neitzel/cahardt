@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import conciliacaoService from '../../services/conciliacaoBancariaService';
 import contasReceberService from '../../services/contasReceberService';
 import SelectBusca from '../../components/SelectBusca';
-import { Landmark, Loader2, RefreshCw, Upload, Wand2, Check, X, Undo2, ChevronDown, ChevronUp, Search, Download } from 'lucide-react';
+import { Landmark, Loader2, RefreshCw, Upload, Wand2, Check, X, Undo2, ChevronDown, ChevronUp, Search, Download, ArrowLeftRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
@@ -82,7 +82,78 @@ const DetalheBaixa = ({ p }) => {
 // registradas sem par. O usuário marca um ou mais e concilia — boleto em aberto
 // ganha a baixa na hora (data e banco do extrato, fila do CA). Cadastrar despesa
 // nova e Ignorar também moram aqui, para a linha da tela ter só dois botões.
-const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCriarDespesa, onIgnorar }) => {
+// ── Modal: transferência entre contas da PRÓPRIA empresa ──
+// "PIX OUTRA IF - MESMA TIT.", TED entre os bancos da casa: não é receita nem
+// despesa. Registra o movimento (sai de uma conta, entra na outra) — aparece em
+// Saldos por Conta / extrato — e tira o lançamento dos pendentes.
+const TransferenciaModal = ({ lancamento, contas, contaId, onClose, onSuccess }) => {
+    const ehSaida = lancamento.tipo === 'DEBITO';
+    const [outraContaId, setOutraContaId] = useState('');
+    const [obs, setObs] = useState('');
+    const [salvando, setSalvando] = useState(false);
+    const contaAtual = contas.find(c => c.id === contaId);
+    const outras = contas.filter(c => c.id !== contaId);
+
+    const confirmar = async () => {
+        setSalvando(true);
+        try {
+            const r = await conciliacaoService.transferir(lancamento.id, outraContaId, obs.trim());
+            toast.success(r.message);
+            onSuccess();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao registrar transferência');
+        } finally {
+            setSalvando(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
+            <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-md w-full" onClick={e => e.stopPropagation()}>
+                <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                    <div className="min-w-0">
+                        <p className="text-xs text-gray-500">
+                            {fmtData(lancamento.data)} · <span className={`font-semibold ${ehSaida ? 'text-red-700' : 'text-green-700'}`}>{ehSaida ? '−' : '+'} R$ {fmt(lancamento.valor)}</span>
+                        </p>
+                        <h2 className="font-bold text-gray-900">Transferência entre contas</h2>
+                    </div>
+                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                </div>
+                <div className="p-5 space-y-3">
+                    <p className="text-sm text-gray-600">
+                        Este dinheiro {ehSaida ? 'saiu de' : 'entrou em'} <strong>{contaAtual?.nome || 'esta conta'}</strong> e{' '}
+                        {ehSaida ? 'foi para' : 'veio de'} outra conta da empresa. Não é receita nem despesa — vira um
+                        movimento próprio nos relatórios por conta.
+                    </p>
+                    <div>
+                        <label className="text-sm font-medium text-gray-700 block mb-1">
+                            {ehSaida ? 'Para qual conta foi?' : 'De qual conta veio?'}
+                        </label>
+                        <SelectBusca value={outraContaId} onChange={e => setOutraContaId(e.target.value)} className="w-full">
+                            <option value="">Conta fora do sistema / não sei</option>
+                            {outras.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
+                        </SelectBusca>
+                    </div>
+                    <div>
+                        <label className="text-sm font-medium text-gray-700 block mb-1">Observação (opcional)</label>
+                        <input value={obs} onChange={e => setObs(e.target.value)} placeholder="ex.: cobrir pagamentos da semana"
+                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                    </div>
+                </div>
+                <div className="px-5 py-4 border-t border-gray-100 flex justify-end gap-2">
+                    <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
+                    <button onClick={confirmar} disabled={salvando}
+                        className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-1.5 disabled:opacity-50">
+                        {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowLeftRight className="h-4 w-4" />}
+                        Registrar transferência
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCriarDespesa, onIgnorar, onTransferir }) => {
     const ehSaida = lancamento.tipo === 'DEBITO';
     const [janela, setJanela] = useState('15'); // dias p/ cada lado ('15'|'30'|'60'|'365')
     const [busca, setBusca] = useState('');
@@ -376,7 +447,9 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                             Não está no sistema?{' '}
                             {ehSaida && <button type="button" onClick={onCriarDespesa} className="font-medium text-primary hover:underline">Cadastrar despesa</button>}
                             {ehSaida && ' · '}
-                            <button type="button" onClick={onIgnorar} className="font-medium text-gray-600 hover:underline">Ignorar (tarifa, transferência…)</button>
+                            <button type="button" onClick={onTransferir} className="font-medium text-primary hover:underline">Transferência entre contas</button>
+                            {' · '}
+                            <button type="button" onClick={onIgnorar} className="font-medium text-gray-600 hover:underline">Ignorar (tarifa…)</button>
                         </div>
                         <div className="ml-auto flex gap-2">
                             <button onClick={onClose} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm">Cancelar</button>
@@ -645,6 +718,7 @@ const ConciliacaoBancariaPage = () => {
     const [escolhas, setEscolhas] = useState({}); // lancamentoId → id do pagamento escolhido
     const [mostrarSoNoApp, setMostrarSoNoApp] = useState(false);
     const [buscarModal, setBuscarModal] = useState(null); // lançamento que abriu a busca ("o que é isto?")
+    const [transfModal, setTransfModal] = useState(null); // lançamento marcado como transferência entre contas
     const [despesaModal, setDespesaModal] = useState(null); // lançamento que abriu o modal de nova despesa
     const [asaasInfo, setAsaasInfo] = useState(null); // { configurado, contaFinanceiraCaId, ultimaSync }
     const [syncAsaas, setSyncAsaas] = useState(false);
@@ -756,7 +830,7 @@ const ConciliacaoBancariaPage = () => {
     };
 
     const ignorarLinha = (l) => {
-        const obs = window.prompt('Por que ignorar? (ex.: tarifa bancária, transferência entre contas)') || '';
+        const obs = window.prompt('Por que ignorar? (ex.: tarifa bancária — transferência entre contas tem botão próprio no Buscar…)') || '';
         agir(l.id, () => conciliacaoService.ignorar(l.id, obs), 'Ignorado.');
     };
 
@@ -791,6 +865,8 @@ const ConciliacaoBancariaPage = () => {
                             <div className="text-xs text-amber-700">Conciliar dá a baixa neste boleto (data e banco do extrato){escolhido.detalhe?.vaiAoCA === false ? ' — fica só no app (importada do CA)' : ' e envia ao Conta Azul'}.</div>
                         )}
                     </>
+                ) : /MESMA TIT|TRANSF/i.test(l.descricao || '') ? (
+                    <div className="text-xs text-purple-700">Parece transferência entre contas da empresa — em "Buscar…" há o botão próprio.</div>
                 ) : (
                     <div className="text-xs text-gray-500">Nada com data e valor batendo — use a busca.</div>
                 )}
@@ -890,6 +966,19 @@ const ConciliacaoBancariaPage = () => {
                 </button>
             </div>
         );
+        if (l.status === 'TRANSFERENCIA') return (
+            <div className="flex items-center gap-2 min-w-0">
+                <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700 shrink-0">
+                    <ArrowLeftRight className="h-3 w-3" /> Transferência
+                </span>
+                <span className="text-xs text-gray-600 truncate">
+                    {l.transferencia ? `${l.transferencia.sentido} ${l.transferencia.outraConta}` : (l.obs || 'entre contas da empresa')}
+                </span>
+                <button onClick={() => desfazerLinha(l)} disabled={agindo === l.id} className="shrink-0 p-1.5 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100" title="Desfazer (apaga a transferência)">
+                    <Undo2 className="h-4 w-4" />
+                </button>
+            </div>
+        );
         return (
             <div className="flex items-center gap-2 min-w-0">
                 <span className="text-xs text-gray-500 truncate">{l.obs || 'Ignorado'}</span>
@@ -974,6 +1063,7 @@ const ConciliacaoBancariaPage = () => {
                             <option value="todos">Todos os status</option>
                             <option value="PENDENTE">Pendentes</option>
                             <option value="CONCILIADO">Conciliados</option>
+                            <option value="TRANSFERENCIA">Transferências</option>
                             <option value="IGNORADO">Ignorados</option>
                         </SelectBusca>
                     </div>
@@ -1008,7 +1098,11 @@ const ConciliacaoBancariaPage = () => {
                                 cor="text-green-700"
                                 sub={`R$ ${fmt(resumo?.valorConciliado)} batidos`}
                             />
-                            <KpiCard titulo="Ignorados" valor={String(resumo?.ignorados ?? '—')} sub="tarifas, transferências…" />
+                            <KpiCard
+                                titulo="Ignorados / Transf."
+                                valor={`${resumo?.ignorados ?? '—'} · ${resumo?.transferencias ?? '—'}`}
+                                sub="tarifas · transferências entre contas"
+                            />
                             <KpiCard
                                 titulo="Só no app"
                                 valor={String(totalSoNoApp)}
@@ -1132,9 +1226,10 @@ const ConciliacaoBancariaPage = () => {
                             Contas a Pagar (aí Conciliar dá a baixa na hora, com a data e o banco do extrato, e envia ao Conta Azul).
                             "Conciliar automático" fecha sozinho os casos sem ambiguidade. Para todo o resto, <strong>"Buscar…"</strong>:
                             lista os boletos em aberto numa janela de ±15 dias (ajustável) e as baixas sem par, com busca por fornecedor —
-                            dá para marcar vários, registrar juros/multa/desconto, cadastrar uma despesa que nunca foi lançada ou
-                            ignorar (tarifa, transferência entre contas). Diferença de valor só passa declarando o motivo, que fica
-                            registrado na linha.
+                            dá para marcar vários, registrar juros/multa/desconto, cadastrar uma despesa que nunca foi lançada,
+                            marcar <strong>transferência entre contas</strong> (dinheiro movido entre os bancos da empresa — não é
+                            receita nem despesa; aparece em Saldos por Conta) ou ignorar (tarifa). Diferença de valor só passa
+                            declarando o motivo, que fica registrado na linha.
                         </p>
                     </>
                 )}
@@ -1150,7 +1245,19 @@ const ConciliacaoBancariaPage = () => {
                     onClose={() => setBuscarModal(null)}
                     onSuccess={() => { setBuscarModal(null); carregar(); }}
                     onCriarDespesa={() => { setDespesaModal(buscarModal); setBuscarModal(null); }}
+                    onTransferir={() => { setTransfModal(buscarModal); setBuscarModal(null); }}
                     onIgnorar={() => { const l = buscarModal; setBuscarModal(null); ignorarLinha(l); }}
+                />
+            )}
+
+            {/* Dinheiro movido entre contas da própria empresa — nem receita nem despesa */}
+            {transfModal && (
+                <TransferenciaModal
+                    lancamento={transfModal}
+                    contas={contas}
+                    contaId={contaId}
+                    onClose={() => setTransfModal(null)}
+                    onSuccess={() => { setTransfModal(null); carregar(); }}
                 />
             )}
 

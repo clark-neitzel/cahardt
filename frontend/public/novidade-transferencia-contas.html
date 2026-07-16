@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Transferência entre Contas — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🔄 Novidade no Hardt App: Transferência entre Contas">
+<meta property="og:description" content="Na Conciliação Bancária, dinheiro movido entre as contas da empresa agora tem botão próprio — e aparece certinho no relatório Saldos por Conta.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --cream: #f2f0eb; --gold: #cba258;
+    --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66; --roxo: #7e22ce; --roxo-bg: #f3e8ff;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); line-height:1.55;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased; font-variant-numeric: tabular-nums; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+
+  .hero { background:linear-gradient(168deg, var(--house) 0%, #16302a 100%); color:#fff;
+    padding:40px 16px 96px; text-align:center; }
+  .hero .chip { display:inline-block; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);
+    color:#d4e9e2; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+    border-radius:999px; padding:6px 14px; margin-bottom:14px; }
+  .hero h1 { font-size:28px; margin:0 0 10px; font-weight:800; }
+  .hero p { color:#c8d6d0; max-width:470px; margin:0 auto; font-size:15.5px; }
+
+  .cartao { background:#fff; border:1px solid #e5e7eb; border-radius:16px;
+    box-shadow:0 8px 24px rgba(30,57,50,.10); padding:20px; margin-top:-64px; }
+  .sec { margin-top:16px; }
+  .sec-titulo { font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft); margin:0 0 12px; }
+
+  /* mock da linha da conciliação */
+  .linha { border:1px solid #e5e7eb; border-radius:12px; padding:12px 14px; }
+  .linha + .linha { margin-top:10px; }
+  .l-desc { font-size:13.5px; color:#374151; font-weight:600; }
+  .l-sub { font-size:12px; color:#8a938f; margin-top:2px; }
+  .l-valor { color:#15803d; font-weight:800; white-space:nowrap; }
+  .l-topo { display:flex; justify-content:space-between; gap:10px; align-items:baseline; }
+  .dica-roxa { font-size:12px; color:var(--roxo); margin-top:8px; }
+  .badge-transf { display:inline-flex; align-items:center; gap:5px; background:var(--roxo-bg); color:var(--roxo);
+    font-size:12px; font-weight:800; border-radius:999px; padding:4px 11px; margin-top:8px; }
+  .btn-mock { display:inline-block; border:1.5px solid var(--primary); color:var(--primary); font-size:12.5px;
+    font-weight:700; border-radius:999px; padding:6px 14px; margin-top:8px; }
+  .seta-fluxo { text-align:center; color:var(--ink-soft); font-size:20px; margin:6px 0; }
+
+  details { background:#fff; border:1px solid #e5e7eb; border-radius:14px; margin-top:10px; overflow:hidden; }
+  summary { list-style:none; cursor:pointer; padding:15px 18px; font-weight:800; font-size:15px; color:var(--house);
+    display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  summary::-webkit-details-marker { display:none; }
+  summary .mais { color:var(--primary); font-size:20px; font-weight:800; transition:transform .2s; flex:none; }
+  details[open] summary .mais { transform:rotate(45deg); }
+  .det-corpo { padding:0 18px 16px; font-size:14.5px; color:#3f4a46; }
+  .det-corpo b { color:var(--house); }
+
+  .passo { display:flex; gap:12px; margin-top:14px; }
+  .passo .num { flex:none; width:28px; height:28px; border-radius:999px; background:var(--primary); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+  .passo p { margin:3px 0 0; font-size:14.5px; color:#3f4a46; }
+  .passo b { color:var(--house); }
+  .rodape { text-align:center; color:var(--ink-soft); font-size:12.5px; margin-top:34px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="chip">✨ Novidade no app</span>
+  <h1>🔄 Transferência entre Contas</h1>
+  <p>Moveu dinheiro de um banco da empresa para outro? Agora a Conciliação Bancária tem um botão só para isso — e o movimento aparece certinho no relatório <b>Saldos por Conta</b>, separado de receita e despesa.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao">
+    <p class="sec-titulo">Como fica na Conciliação Bancária</p>
+
+    <div class="linha">
+      <div class="l-topo">
+        <div>
+          <div class="l-desc">PIX RECEBIDO - OUTRA IF - MESMA TIT.</div>
+          <div class="l-sub">Recebimento Pix HARDT DOCES E SA · 08/07/2026</div>
+        </div>
+        <div class="l-valor">+ R$ 50.000,00</div>
+      </div>
+      <div class="dica-roxa">Parece transferência entre contas da empresa — em "Buscar…" há o botão próprio.</div>
+      <span class="btn-mock">🔍 Buscar… → Transferência entre contas</span>
+    </div>
+
+    <div class="seta-fluxo">⬇️ vira ⬇️</div>
+
+    <div class="linha">
+      <div class="l-topo">
+        <div>
+          <div class="l-desc">PIX RECEBIDO - OUTRA IF - MESMA TIT.</div>
+          <div class="l-sub">Recebimento Pix HARDT DOCES E SA · 08/07/2026</div>
+        </div>
+        <div class="l-valor">+ R$ 50.000,00</div>
+      </div>
+      <span class="badge-transf">🔄 Transferência · veio de Sicoob</span>
+    </div>
+  </div>
+
+  <div class="sec">
+    <details open>
+      <summary>Por que não conciliar nem ignorar? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Dinheiro trocando de bolso <b>não é venda nem despesa</b> — se fosse conciliado com algum boleto, inflaria o financeiro. E "ignorar" escondia o movimento. Agora ele é registrado do jeito certo: <b>saiu da conta A, entrou na conta B</b>.
+      </div>
+    </details>
+    <details>
+      <summary>Aparece no relatório Saldos por Conta <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Em <b>Financeiro → Saldos por Conta</b>, cada banco ganhou a coluna <b>"Transf. ±"</b> (roxa): quanto entrou/saiu por transferência no período. No <b>extrato da conta</b>, a linha aparece com a etiqueta roxa <b>"transferência"</b>, dizendo de onde veio ou para onde foi — separada de recebimentos e pagamentos, do jeito que a contabilidade espera.
+      </div>
+    </details>
+    <details>
+      <summary>Errou? Desfaz <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Na Conciliação, a linha marcada tem a setinha de <b>desfazer</b> — ela volta para pendente e a transferência é apagada dos relatórios junto. Nada disso vai para o Conta Azul; vale só para os relatórios do app.
+      </div>
+    </details>
+  </div>
+
+  <div class="cartao sec" style="margin-top:16px">
+    <p class="sec-titulo">🚀 Para usar</p>
+    <div class="passo"><div class="num">1</div><p>Abra <b>Financeiro → Conciliação Bancária</b> e ache o lançamento da transferência (dica: o texto costuma dizer <b>"MESMA TIT."</b> — a tela até avisa em roxo).</p></div>
+    <div class="passo"><div class="num">2</div><p>Clique em <b>Buscar…</b> → <b>Transferência entre contas</b>.</p></div>
+    <div class="passo"><div class="num">3</div><p>Diga <b>de qual conta veio</b> (ou para qual foi) e confirme. Pronto — some dos pendentes e já aparece em Saldos por Conta.</p></div>
+  </div>
+
+  <p class="rodape">Hardt Alimentos · atualização de julho/2026<br>Dúvidas? É só falar com o escritório. 💚</p>
+</div>
+
+</body>
+</html>
