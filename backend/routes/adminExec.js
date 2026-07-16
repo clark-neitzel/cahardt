@@ -3193,10 +3193,22 @@ router.get('/diag-baixas-sem-banco', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/backfill-banco-importadas — progresso do job SEM iniciar nada
+router.get('/backfill-banco-importadas', (req, res) => {
+    try {
+        const caSync = require('../services/contasPagarCaSyncService');
+        res.json({ ok: true, ...caSync.statusBancoImportadas() });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // POST /api/admin-exec/backfill-banco-importadas?de=2026-06-01&ate=2026-07-31
-// Preenche o BANCO das baixas sem conta de despesas importadas do CA: acha o evento
-// no CA por nº da nota + valor (match único) e copia a conta financeira da baixa de lá.
-// Async em segundo plano; reconsultar devolve o progresso.
+// Preenche o BANCO das baixas sem conta de despesas importadas do CA: casa por
+// (descrição normalizada + dia do pagamento + total pago) numa varredura única do CA
+// — as importadas vieram do CSV do próprio CA, então a descrição é idêntica lá — e
+// copia a conta financeira da baixa quando o banco é inequívoco (parcela com
+// idParcelaCA usa o detalhe direto). Async em segundo plano; GET devolve o progresso.
 router.post('/backfill-banco-importadas', async (req, res) => {
     try {
         const caSync = require('../services/contasPagarCaSyncService');
