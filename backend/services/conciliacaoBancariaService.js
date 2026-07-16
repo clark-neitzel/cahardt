@@ -318,17 +318,34 @@ async function parsePdfExtratoCA(buffer) {
         throw erro('Não consegui abrir o PDF — o arquivo está corrompido ou protegido por senha.');
     }
 
-    // 1) Texto por LINHA visual: agrupa os pedaços pela posição vertical (tolerância
-    //    de 4pt — valor e descrição podem ter baselines um pouco diferentes) e
-    //    ordena da esquerda para a direita.
+    // 1) Texto por LINHA visual. O PDF do CA é gerado ROTACIONADO (as coordenadas
+    //    cruas agrupam por COLUNA: todas as datas juntas, todos os valores juntos —
+    //    visto no diag do arquivo real). Convertendo cada item para o espaço VISUAL
+    //    da página (viewport, que aplica a rotação), o y volta a ser a linha de
+    //    verdade. Agrupa por y visual (tolerância 4pt) e ordena da esquerda p/ direita.
     const linhas = [];
+    const debugPaginas = []; // p/ diagnóstico quando nada é reconhecido
     for (let p = 1; p <= doc.numPages; p++) {
         const page = await doc.getPage(p);
+        const viewport = page.getViewport({ scale: 1 });
         const tc = await page.getTextContent();
+        if (p === 1) {
+            debugPaginas.push({
+                rotate: page.rotate,
+                viewport: { w: Math.round(viewport.width), h: Math.round(viewport.height), transform: viewport.transform },
+                itens: tc.items
+                    .filter((it) => String(it.str || '').trim() !== '')
+                    .slice(0, 80)
+                    .map((it) => ({ str: String(it.str).slice(0, 40), t: (it.transform || []).map((v) => Math.round(v * 10) / 10) }))
+            });
+        }
         const itens = tc.items
             .filter((it) => String(it.str || '').trim() !== '')
-            .map((it) => ({ x: it.transform[4], y: it.transform[5], str: String(it.str) }))
-            .sort((a, b) => (b.y - a.y) || (a.x - b.x));
+            .map((it) => {
+                const t = pdfjsLib.Util.transform(viewport.transform, it.transform);
+                return { x: t[4], y: t[5], str: String(it.str) }; // y visual cresce para BAIXO
+            })
+            .sort((a, b) => (a.y - b.y) || (a.x - b.x));
         let atual = null;
         for (const it of itens) {
             if (!atual || Math.abs(atual.y - it.y) > 4) {
@@ -396,10 +413,18 @@ async function parsePdfExtratoCA(buffer) {
         // DIAGNÓSTICO: guarda o que o servidor extraiu (primeiras linhas) para inspecionar
         // via admin-exec/diag-pdf-ultimo — sem isso, impossível saber o que veio do PDF real.
         try {
+            const valor = {
+                em: new Date().toISOString(),
+                totalLinhas: linhas.length,
+                amostra: linhas.slice(0, 120),
+                // Dados CRUS da 1ª página (texto + matriz de posição de cada item):
+                // é o que permite descobrir a transformação certa do PDF real.
+                pagina1: debugPaginas[0] || null
+            };
             await prisma.appConfig.upsert({
                 where: { key: 'diag_pdf_extrato_ultimo' },
-                update: { value: { em: new Date().toISOString(), totalLinhas: linhas.length, amostra: linhas.slice(0, 120) } },
-                create: { key: 'diag_pdf_extrato_ultimo', value: { em: new Date().toISOString(), totalLinhas: linhas.length, amostra: linhas.slice(0, 120) } }
+                update: { value: valor },
+                create: { key: 'diag_pdf_extrato_ultimo', value: valor }
             });
         } catch (_) { /* diagnóstico é melhor-esforço */ }
     }
