@@ -146,12 +146,13 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
 
         const numProdutos = arrConsolidado.length;
 
-        // Separação: 2 colunas → ceil(n/2) linhas → fontes em pt
+        // Separação: coluna única — adaptive pt
+        // Fórmula: numProdutos × (sepQtyFont_px×1.4 + sepPadV×2) × 0.265mm ≤ 230mm
         const { sepQtyFont, sepProdFont, sepPadV } =
-            numProdutos <= 48 ? { sepQtyFont: '14pt', sepProdFont: '12pt', sepPadV: 3 } :
-            numProdutos <= 70 ? { sepQtyFont: '10pt', sepProdFont:  '8pt', sepPadV: 2 } :
-            numProdutos <= 90 ? { sepQtyFont:  '8pt', sepProdFont:  '7pt', sepPadV: 1 } :
-                                { sepQtyFont:  '7pt', sepProdFont:  '6pt', sepPadV: 1 };
+            numProdutos <= 28 ? { sepQtyFont: '12pt', sepProdFont: '10pt', sepPadV: 4 } :
+            numProdutos <= 40 ? { sepQtyFont: '10pt', sepProdFont:  '9pt', sepPadV: 3 } :
+            numProdutos <= 55 ? { sepQtyFont:  '8pt', sepProdFont:  '8pt', sepPadV: 2 } :
+                                { sepQtyFont:  '7pt', sepProdFont:  '7pt', sepPadV: 1 };
 
         // Conferência: coluna única — adaptive px
         const { qtyFont, prodFont, confPadV } =
@@ -212,14 +213,12 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             .print-container .pf-l { height: 1px; background: #9ca3af; margin-bottom: 2px; }
                             .print-container .pf-lbl { font-size: 6.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #6b7280 !important; }
 
-                            /* ── Separação: 2 colunas, Arial Black ── */
-                            .print-container .page-sep th { font-size: 8pt !important; padding: ${sepPadV}px 5px !important; }
-                            .print-container .page-sep td { padding: ${sepPadV}px 5px !important; border-bottom: 1px solid #e5e7eb; vertical-align: middle; line-height: 1; }
+                            /* ── Separação: coluna única, Arial Black ── */
+                            .print-container .page-sep th { font-size: 8pt !important; padding: ${sepPadV}px 6px !important; }
+                            .print-container .page-sep td { padding: ${sepPadV}px 6px !important; border-bottom: 1px solid #e5e7eb; vertical-align: middle; line-height: 1; }
                             .print-container .page-sep tbody tr:nth-child(even) td { background: #f0f7f4 !important; }
-                            .print-container .page-sep tbody tr:nth-child(even) td.sep-div { background: #fff !important; }
-                            .print-container .sep-qty { font-size: ${sepQtyFont} !important; font-weight: 900 !important; font-family: 'Arial Black', Arial, sans-serif !important; text-align: right !important; white-space: nowrap; line-height: 1 !important; color: #000 !important; width: 14mm; }
+                            .print-container .sep-qty { font-size: ${sepQtyFont} !important; font-weight: 900 !important; font-family: 'Arial Black', Arial, sans-serif !important; text-align: right !important; white-space: nowrap; line-height: 1 !important; color: #000 !important; }
                             .print-container .sep-prod { font-size: ${sepProdFont} !important; font-family: Arial, 'Helvetica Neue', sans-serif !important; font-weight: 700 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000 !important; max-width: 0; }
-                            .print-container .sep-div { border-left: 2px solid #9ca3af !important; background: transparent !important; width: 4mm !important; padding: 0 !important; border-bottom: none !important; }
 
                             /* ── Conferência: coluna única, adaptive px ── */
                             .print-container .page-conf th { font-size: 7.5px !important; padding: ${confPadV}px 6px !important; }
@@ -362,13 +361,9 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             );
                         })()}
 
-                        {/* Separação — 2 colunas, Arial Black 16pt */}
+                        {/* Separação — coluna única, Arial Black */}
                         {produtosPaginados.map((chunkProdutos, idx) => {
                             const thisPage = globalPageCount++;
-                            const metade = Math.ceil(chunkProdutos.length / 2);
-                            const esq = chunkProdutos.slice(0, metade);
-                            const dir = chunkProdutos.slice(metade);
-                            const linhas = esq.map((item, i) => [item, dir[i] || null]);
                             return (
                                 <React.Fragment key={`separacao-${idx}`}>
                                     <div className="print-page page-sep bg-white shadow-2xl w-full text-black mx-auto relative" style={{ width: '210mm', padding: '8mm 12mm' }}>
@@ -390,35 +385,21 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                         <table>
                                             <thead>
                                                 <tr>
-                                                    <th style={{ width: '14mm', textAlign: 'right' }}>Qtde</th>
-                                                    <th>Produto</th>
-                                                    <th style={{ width: '8mm', textAlign: 'center' }}>✓</th>
-                                                    <th style={{ width: '4mm' }}></th>
-                                                    <th style={{ width: '14mm', textAlign: 'right' }}>Qtde</th>
-                                                    <th>Produto</th>
-                                                    <th style={{ width: '8mm', textAlign: 'center' }}>✓</th>
+                                                    <th style={{ width: '14%', textAlign: 'right', paddingRight: '10px' }}>Qtde</th>
+                                                    <th style={{ width: '74%' }}>Produto</th>
+                                                    <th style={{ width: '12%', textAlign: 'center' }}>Conf.</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {linhas.map(([l, r], i) => (
-                                                    <tr key={i}>
-                                                        <td className="sep-qty">{Number(l[1].qtde).toFixed(l[1].qtde % 1 === 0 ? 0 : 2)}</td>
-                                                        <td className="sep-prod">{l[0]}</td>
+                                                {chunkProdutos.map(([nome, info]) => (
+                                                    <tr key={nome}>
+                                                        <td className="sep-qty">{Number(info.qtde).toFixed(info.qtde % 1 === 0 ? 0 : 2)}</td>
+                                                        <td className="sep-prod" style={{ maxWidth: 0 }}>{nome}</td>
                                                         <td></td>
-                                                        <td className="sep-div"></td>
-                                                        {r ? (
-                                                            <>
-                                                                <td className="sep-qty">{Number(r[1].qtde).toFixed(r[1].qtde % 1 === 0 ? 0 : 2)}</td>
-                                                                <td className="sep-prod">{r[0]}</td>
-                                                                <td></td>
-                                                            </>
-                                                        ) : (
-                                                            <><td></td><td></td><td></td></>
-                                                        )}
                                                     </tr>
                                                 ))}
                                                 {chunkProdutos.length === 0 && (
-                                                    <tr><td colSpan="7" style={{ textAlign: 'center' }}>Nenhum produto.</td></tr>
+                                                    <tr><td colSpan="3" style={{ textAlign: 'center' }}>Nenhum produto.</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
