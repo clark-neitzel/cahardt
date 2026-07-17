@@ -1,43 +1,49 @@
-# Margem por Produto
+# Margem & Custo dos Produtos
 
 **Rota:** `/financeiro/margem-produtos` · **Permissão:** `Pode_Acessar_Financeiro_Gerencial` (ou admin)
 
-Relatório gerencial que responde **"qual produto dá dinheiro e qual dá prejuízo"**: cruza o que foi vendido no período (quantidade e receita) com o custo de produção/compra de cada produto, mostrando a margem em R$ e em %.
+Tela para acompanhar a **rentabilidade de cada produto** — custo, preço, markup, margem —, com foco em **produção própria** (os que têm ficha técnica no PCP). Mostra também **como o custo variou ao longo do tempo** e a **composição do custo** (quais ingredientes mais pesam). Responde: "esse produto ainda dá a margem que eu quero? o custo dele está subindo?".
 
 ## O que a tela mostra
 
-### Chips de período
-Este mês · Últimos 30 dias · Últimos 90 dias · Este ano. Trocar o chip recarrega o relatório.
+### Filtros (no topo)
+- **Categoria** (menu com busca) — padrão **Produto Acabado**.
+- **Período** — últimos 3, 6 ou 12 meses (define a janela da variação de custo).
+- **Produção própria / Revenda / Todos** — porque o custo de um vem da ficha técnica e do outro da compra.
 
 ### Cartões (KPIs)
-- **Receita no período** — soma das vendas de todos os produtos listados
-- **Custo dos vendidos** — custo unitário × quantidade vendida, somando só os produtos com custo conhecido
-- **Margem bruta** — receita − custo (dos produtos com custo conhecido)
-- **Margem %** — margem ÷ receita; o rodapé avisa quantos produtos estão **sem custo**
-
-### Filtros
-- **Busca** por nome do produto
-- **Categoria** (menu com busca)
+- **Margem média** e **Markup médio** (preço ÷ custo) dos produtos filtrados.
+- **Produção própria** — quantos têm ficha técnica.
+- **Sem custo cadastrado** — não entram na margem (precisam de custo).
+- **Margem em queda** — produtos cujo custo subiu no período.
 
 ### Tabela (no celular vira cards)
-Colunas: Produto, Qtd vendida, Receita, Preço médio praticado, Custo unitário, **Fonte do custo**, Margem R$ e Margem %. Clique no título da coluna para ordenar. A Margem % é colorida: **vermelho** = negativa (prejuízo), **âmbar** = abaixo de 15%, **verde** = saudável.
+Colunas: Produto, **Origem** (própria/revenda/sem custo), **Custo unitário**, **Preço**, **Markup**, **Margem %** e **tendência do custo** (mini-linha dos últimos meses). A Margem % é colorida: verde ≥ 50%, amarelo 35–49%, vermelho abaixo de 35%. A tendência fica **vermelha quando o custo sobe** e verde quando cai.
 
-### Botão Exportar CSV
-Baixa a tabela filtrada (desktop).
+### Detalhe do produto (toque na linha)
+Abre no lugar, com:
+- **Gráfico preço praticado × custo** mês a mês — mostra na hora quando a margem está sendo espremida.
+- **Composição do custo** — os ingredientes que mais pesam, em R$ e %, vindos da ficha técnica ativa do PCP (só produção própria).
+- Alerta automático ("o custo subiu X%, a margem caiu Y pontos").
+
+### Destaques (embaixo)
+- **Margem espremida** — custo subindo e preço parado.
+- **Custo que mais subiu no período**.
 
 ## De onde vem cada número
 
-- **Vendas**: pedidos com venda no período (mesma regra da DRE — exclui bonificações e considera pedidos faturados no Conta Azul ou especiais). Devoluções **não** são descontadas por produto.
 - **Custo unitário**, por prioridade:
-  1. **Ficha técnica** (badge verde) — custo por unidade da receita ativa do item no PCP. Como as notas de compra atualizam o custo dos insumos automaticamente, esse custo acompanha a realidade sozinho.
-  2. **Compras** (badge azul) — média ponderada das notas de entrada do produto (produto revendido, sem receita).
-  3. **Conta Azul** (badge cinza) — custo médio sincronizado do CA.
-  4. **Sem custo** (badge âmbar) — nenhuma fonte disponível; o produto aparece na receita, mas fica fora dos totais de custo/margem.
+  1. **Ficha técnica** (produção própria) — custo por unidade da receita ativa do item no PCP; acompanha as compras de insumo sozinho.
+  2. **Compras** (revenda) — média das notas de entrada do produto.
+  3. **Conta Azul** — custo médio sincronizado do CA.
+  4. **Sem custo** — nenhuma fonte; fica fora da margem, marcado para cadastrar.
+- **Margem = (preço − custo) ÷ preço** · **Markup = preço ÷ custo**. Preço = preço de venda do cadastro.
+- **Preço praticado por mês** (no gráfico) vem das vendas reais (FATURADO ou especial, sem bonificação).
+
+## Variação de custo no tempo (importante)
+
+O sistema grava um **retrato do custo de cada produto todo mês**. Os meses **anteriores** ao início da captura aparecem com o custo atual (estimado) — a partir de agora, cada mês guarda o **custo real**, e o gráfico se enche sozinho com o tempo. O preço praticado do passado já é real desde o início.
 
 ## Como melhorar um produto "Sem custo"
-- Se ele é **produzido**: criar/ativar a receita dele em **PCP → Receitas** (e garantir que os insumos têm custo).
-- Se ele é **revendido**: dar entrada de uma nota de compra vinculando o item ao produto (Notas Recebidas), ou preencher o custo no cadastro do produto.
-
-## Dicas de leitura
-- Margem % **negativa** = o produto é vendido abaixo do custo — revisar preço ou receita.
-- Preço médio praticado menor que o preço de tabela indica desconto/Flex frequente naquele produto.
+- **Produzido**: criar/ativar a receita dele em **PCP → Receitas** (com os insumos custeados).
+- **Revendido**: dar entrada de nota de compra vinculando o item ao produto, ou preencher o custo no cadastro.

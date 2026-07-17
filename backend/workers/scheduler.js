@@ -252,6 +252,33 @@ function startSchedulers() {
     };
     scheduleIANoturna();
 
+    // === 6.1. SNAPSHOT MENSAL DE CUSTO DOS PRODUTOS ===
+    // Grava 1 ponto de custo/preço por produto por mês (tela Produtos · Margem).
+    // No boot: preenche os últimos 6 meses com o custo atual (só na 1ª vez, se a
+    // tabela estiver vazia). Depois, todo dia ~02:00, atualiza o mês corrente —
+    // meses passados ficam congelados e o histórico se acumula sozinho.
+    console.log('⏰ Agendando Snapshot de Custo dos Produtos...');
+    const produtoMargemService = require('../services/produtoMargemService');
+    setTimeout(() => {
+        produtoMargemService.backfillInicial(6)
+            .then((r) => { if (!r.pulou) console.log('[CustoHistorico] Backfill inicial concluído.'); })
+            .catch((e) => console.error('[CustoHistorico] Falha no backfill inicial:', e.message));
+    }, 30 * 1000); // 30s após o boot, sem travar a subida
+
+    const scheduleSnapshotCusto = () => {
+        const now = new Date();
+        const alvo = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 2, 0, 0); // 02:00
+        if (alvo <= now) alvo.setDate(alvo.getDate() + 1);
+        setTimeout(async () => {
+            try {
+                const r = await produtoMargemService.capturarMes();
+                console.log(`[CustoHistorico] Snapshot do mês ${r.mesRef}: ${r.produtos} produtos.`);
+            } catch (e) { console.error('[CustoHistorico] Falha no snapshot diário:', e.message); }
+            scheduleSnapshotCusto();
+        }, alvo.getTime() - now.getTime());
+    };
+    scheduleSnapshotCusto();
+
     // === 7. MENSAGENS AGENDADAS ===
     // Verifica a cada minuto se há mensagens para enviar (horário SP).
     console.log('⏰ Iniciando sistema de Mensagens Agendadas...');

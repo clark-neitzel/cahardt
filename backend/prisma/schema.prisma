@@ -79,7 +79,31 @@ model Produto {
   // continua recebendo custo e histórico de compras — só não movimenta quantidade.
   controlaEstoque Boolean? @map("controla_estoque")
 
+  custoHistorico ProdutoCustoHistorico[]
+
   @@map("produtos")
+}
+
+// Snapshot mensal do custo e preço de cada produto, para acompanhar a variação
+// no tempo (tela Produtos · Margem/Custo). Estratégia "simples" aprovada em 07/2026:
+// a partir de agora grava-se um ponto por mês; o passado é preenchido com o custo
+// atual e marcado como estimado. custoUnitario: ficha técnica ativa do PCP quando
+// existe (produção própria), senão custo de compra; null = sem custo cadastrado.
+model ProdutoCustoHistorico {
+  id            String   @id @default(uuid())
+  produtoId     String   @map("produto_id")
+  mesReferencia String   @map("mes_referencia") // 'YYYY-MM'
+  custoUnitario Decimal? @map("custo_unitario") @db.Decimal(12, 4)
+  fonteCusto    String?  @map("fonte_custo") // FICHA | COMPRA | CA | SEM_CUSTO
+  precoVenda    Decimal? @map("preco_venda") @db.Decimal(10, 2)
+  estimado      Boolean  @default(false) // true = ponto retroativo preenchido com o custo atual
+  capturadoEm   DateTime @default(now()) @map("capturado_em")
+
+  produto Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@unique([produtoId, mesReferencia])
+  @@index([mesReferencia])
+  @@map("produto_custo_historico")
 }
 
 model ProdutoImagem {

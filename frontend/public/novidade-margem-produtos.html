@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Margem & Custo dos Produtos — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="📊 Novidade no Hardt App: Margem & Custo dos Produtos">
+<meta property="og:description" content="Acompanhe custo, preço, markup e margem de cada produto — e veja o custo da produção própria subir ou descer ao longo do tempo, ingrediente por ingrediente.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root{ --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--cream);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:620px;margin:0 auto;padding:0 16px 56px}
+  .hero{background:linear-gradient(168deg,var(--house) 0%,#16302a 100%);color:#fff;padding:40px 16px 96px;text-align:center}
+  .hero .tag{display:inline-block;background:var(--gold);color:#3b2f14;font-weight:800;font-size:12px;letter-spacing:.08em;text-transform:uppercase;border-radius:999px;padding:6px 14px}
+  .hero h1{font-size:27px;line-height:1.2;margin:14px auto 8px;max-width:480px;font-weight:800}
+  .hero p{color:#bcd3c9;font-weight:600;font-size:15px;max-width:450px;margin:0 auto}
+
+  .mock{background:#fff;border-radius:18px;box-shadow:0 14px 36px rgba(0,0,0,.22);margin:-72px auto 24px;overflow:hidden;border:1px solid #e3e0d8}
+  .mock .mtop{padding:14px 16px;border-bottom:1px solid #efece6}
+  .mock .mt1{font-weight:800;font-size:16px}
+  .mock .mt2{font-size:12px;color:#8a8580;font-weight:600}
+  .mock table{width:100%;border-collapse:collapse;font-size:12.5px}
+  .mock th{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#8a8580;text-align:left;padding:8px 12px;background:#faf9f6}
+  .mock th.n,.mock td.n{text-align:right}
+  .mock td{padding:9px 12px;border-top:1px solid #efece6}
+  .mock .pn{font-weight:700}
+  .mock .bd{display:inline-block;font-size:10px;font-weight:800;border-radius:999px;padding:2px 8px;background:var(--mint);color:var(--primary-dark)}
+  .mock .mg{display:inline-block;font-size:11px;font-weight:800;border-radius:999px;padding:2px 8px}
+  .mg.ok{background:#dcfce7;color:#166534}.mg.bad{background:#fee2e2;color:#b91c1c}
+
+  h2.secao{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#5f6b66;font-weight:800;margin:30px 4px 12px}
+  details{background:#fff;border:1px solid #e3e0d8;border-radius:14px;margin-bottom:10px;overflow:hidden}
+  summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:15px 16px;font-weight:800;font-size:15px;min-height:44px}
+  summary::-webkit-details-marker{display:none}
+  summary .emoji{flex:none;width:36px;height:36px;border-radius:10px;background:var(--mint);display:flex;align-items:center;justify-content:center;font-size:17px}
+  summary .seta{margin-left:auto;color:#a8a29e;transition:transform .18s}
+  details[open] summary .seta{transform:rotate(180deg)}
+  .dbody{padding:0 16px 16px 62px;font-size:14px;color:#44403c}
+  .dbody ul{margin:6px 0 0;padding-left:18px}
+  .dbody li{margin-bottom:6px}
+  .dbody b{color:var(--ink)}
+
+  .passos{background:#fff;border:1px solid #e3e0d8;border-radius:14px;padding:18px 16px}
+  .passo{display:flex;gap:12px;margin-bottom:14px}
+  .passo:last-child{margin-bottom:0}
+  .passo .num{flex:none;width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
+  .passo p{margin:2px 0 0;font-size:14px}
+  .cta{display:block;text-align:center;background:var(--primary);color:#fff;text-decoration:none;font-weight:800;font-size:16px;border-radius:999px;padding:15px 20px;margin-top:24px}
+  .rodape{text-align:center;color:#8a8580;font-size:12.5px;font-weight:600;margin-top:28px}
+  @media(prefers-reduced-motion:reduce){summary .seta{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="tag">Novidade no Hardt App</span>
+  <h1>📊 Margem &amp; Custo dos Produtos</h1>
+  <p>Agora dá pra ver, produto por produto, quanto ele custa, quanto rende e se o custo está subindo — com foco na nossa produção própria.</p>
+</div>
+
+<div class="wrap">
+  <div class="mock">
+    <div class="mtop">
+      <div class="mt1">Produtos · Margem, Custo &amp; Markup</div>
+      <div class="mt2">🏭 Produção própria · últimos 6 meses</div>
+    </div>
+    <table>
+      <thead><tr><th>Produto</th><th class="n">Custo</th><th class="n">Preço</th><th class="n">Markup</th><th class="n">Margem</th></tr></thead>
+      <tbody>
+        <tr><td><span class="pn">Coxinha de Frango</span> <span class="bd">🏭 própria</span></td><td class="n">R$ 0,42</td><td class="n">R$ 1,00</td><td class="n">2,38×</td><td class="n"><span class="mg ok">58%</span></td></tr>
+        <tr><td><span class="pn">Risole de Carne</span></td><td class="n">R$ 0,58</td><td class="n">R$ 1,10</td><td class="n">1,90×</td><td class="n"><span class="mg ok">47%</span></td></tr>
+        <tr><td><span class="pn">Empada de Frango</span></td><td class="n">R$ 0,77</td><td class="n">R$ 1,00</td><td class="n">1,30×</td><td class="n"><span class="mg bad">23%</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 class="secao">O que dá pra fazer</h2>
+
+  <details open>
+    <summary><span class="emoji">💰</span> Custo, preço, markup e margem <span class="seta">▾</span></summary>
+    <div class="dbody">
+      <ul>
+        <li>De cada produto: <b>custo</b>, <b>preço</b>, <b>markup</b> (quantas vezes o custo) e <b>margem %</b>.</li>
+        <li>Filtre por <b>produção própria</b>, revenda ou todos — e por categoria.</li>
+        <li>Cores na margem: verde (boa), amarela (atenção), vermelha (apertada).</li>
+      </ul>
+    </div>
+  </details>
+
+  <details open>
+    <summary><span class="emoji">📈</span> O custo subindo ou descendo no tempo <span class="seta">▾</span></summary>
+    <div class="dbody">
+      <ul>
+        <li>Toque num produto e veja o gráfico de <b>preço praticado × custo</b> mês a mês.</li>
+        <li>Na hora você enxerga quando a margem está sendo <b>espremida</b> (custo sobe, preço parado).</li>
+        <li>O sistema passa a guardar o custo de cada mês — o histórico se enche sozinho.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details open>
+    <summary><span class="emoji">🧩</span> O que mais pesa no custo <span class="seta">▾</span></summary>
+    <div class="dbody">
+      <ul>
+        <li>Para produção própria, mostra a <b>composição do custo</b> — os ingredientes que mais pesam, em R$ e %.</li>
+        <li>Ex.: "o frango é 46% da coxinha; se subir 10%, tira quase 2 pontos da margem".</li>
+        <li>Vem direto da ficha técnica do PCP.</li>
+      </ul>
+    </div>
+  </details>
+
+  <h2 class="secao">Para começar a usar</h2>
+  <div class="passos">
+    <div class="passo"><span class="num">1</span><p>Menu <b>Financeiro → Margem &amp; Custo dos Produtos</b>.</p></div>
+    <div class="passo"><span class="num">2</span><p>Deixe em <b>Produção própria</b> e olhe a coluna <b>Margem</b>.</p></div>
+    <div class="passo"><span class="num">3</span><p>Toque num produto para ver o gráfico de custo e o que mais pesa nele.</p></div>
+  </div>
+
+  <p class="rodape">Hardt Salgados · qualquer dúvida, pergunte ao Clippy 📎 dentro do app</p>
+</div>
+</body>
+</html>

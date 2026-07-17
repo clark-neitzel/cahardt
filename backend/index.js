@@ -37,6 +37,7 @@ const adminResetRoutes = require('./routes/adminReset'); // Reset Transacional (
 const adminExecRoutes = require('./routes/adminExec');   // Admin Exec: diagnóstico e manutenção
 const adminDashboardRoutes = require('./routes/adminDashboard'); // Novo Dashboard Admin
 const dashboardsRoutes = require('./routes/dashboards'); // Dashboards 2026: geral (5 abas), vendedor e entregador
+const produtoMargemRoutes = require('./routes/produtoMargem'); // Produtos: margem, custo, markup e variação no tempo
 const roteirizacaoRoutes = require('./routes/roteirizacao'); // Roteirizador de Entregas
 const metaRoutes = require('./routes/metaRoutes'); // Gestão de Metas e Dashboard Vendas
 const categoriasProdutoRoutes = require('./routes/categoriasProduto'); // Inteligência Comercial
@@ -164,6 +165,7 @@ app.use('/api/admin', adminResetRoutes);         // Admin: Reset, Utilitários
 app.use('/api/admin-exec', adminExecRoutes);    // Admin Exec: diagnóstico protegido por ADMIN_SECRET
 app.use('/api/admin-dashboard', adminDashboardRoutes); // Dashboard Admin
 app.use('/api/dashboards', dashboardsRoutes); // Dashboards 2026: geral (5 abas), vendedor e entregador
+app.use('/api/produtos-margem', produtoMargemRoutes); // Produtos: margem, custo, markup e variação no tempo
 app.use('/api/roteirizar', roteirizacaoRoutes); // Roteirizador de Entregas (OSRM)
 app.use('/api/categorias-produto', authMiddleware, categoriasProdutoRoutes); // Inteligência Comercial
 app.use('/api/categorias-cliente', authMiddleware, categoriasClienteRoutes); // Inteligência Comercial

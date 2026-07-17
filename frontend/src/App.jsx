@@ -44,7 +44,7 @@ const NotasRecebidasPage = lazyComRetry(() => import('./pages/Financeiro/NotasRe
 const FluxoCaixaPage = lazyComRetry(() => import('./pages/Financeiro/FluxoCaixaPage'));
 const ContasBancosPage = lazyComRetry(() => import('./pages/Financeiro/ContasBancosPage'));
 const DrePage = lazyComRetry(() => import('./pages/Financeiro/DrePage'));
-const MargemProdutosPage = lazyComRetry(() => import('./pages/Financeiro/MargemProdutosPage'));
+const ProdutosMargemCusto = lazyComRetry(() => import('./pages/Produtos/ProdutosMargemCusto'));
 const ConciliacaoBancariaPage = lazyComRetry(() => import('./pages/Financeiro/ConciliacaoBancariaPage'));
 const DashboardFinanceiroPage = lazyComRetry(() => import('./pages/Financeiro/DashboardFinanceiroPage'));
 const CategoriasDespesaPage = lazyComRetry(() => import('./pages/Financeiro/CategoriasDespesaPage'));
@@ -348,7 +348,7 @@ const Layout = ({ children }) => {
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/fluxo-caixa', icon: TrendingUp, label: 'Fluxo de Caixa' },
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/por-conta', icon: Landmark, label: 'Saldos por Conta' },
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/dre', icon: BarChart3, label: 'DRE' },
-      hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/margem-produtos', icon: Percent, label: 'Margem por Produto' },
+      hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/margem-produtos', icon: Percent, label: 'Margem & Custo dos Produtos' },
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/conciliacao', icon: ClipboardCheck, label: 'Conciliação Bancária' },
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/categorias-despesa', icon: Tag, label: 'Categorias de Despesa' },
     ].filter(Boolean) },
@@ -712,7 +712,7 @@ function App() {
               <Route path="/notas-recebidas" element={<PrivateRoute tab="Pode_Acessar_Notas_Recebidas"><NotasRecebidasPage /></PrivateRoute>} />
               <Route path="/fornecedores" element={<PrivateRoute tab="Pode_Acessar_Fornecedores"><FornecedoresPage /></PrivateRoute>} />
               <Route path="/financeiro/fluxo-caixa" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><FluxoCaixaPage /></PrivateRoute>} />
-              <Route path="/financeiro/margem-produtos" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><MargemProdutosPage /></PrivateRoute>} />
+              <Route path="/financeiro/margem-produtos" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><ProdutosMargemCusto /></PrivateRoute>} />
               <Route path="/financeiro/conciliacao" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><ConciliacaoBancariaPage /></PrivateRoute>} />
               <Route path="/financeiro/dashboard" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><DashboardFinanceiroPage /></PrivateRoute>} />
               <Route path="/financeiro/por-conta" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><ContasBancosPage /></PrivateRoute>} />
