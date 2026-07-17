@@ -148,10 +148,10 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
 
         // Separação: 2 colunas → ceil(n/2) linhas → fontes em pt
         const { sepQtyFont, sepProdFont, sepPadV } =
-            numProdutos <= 48 ? { sepQtyFont: '16pt', sepProdFont: '14pt', sepPadV: 3 } :
-            numProdutos <= 70 ? { sepQtyFont: '11pt', sepProdFont:  '9pt', sepPadV: 2 } :
-            numProdutos <= 90 ? { sepQtyFont:  '9pt', sepProdFont:  '7pt', sepPadV: 1 } :
-                                { sepQtyFont:  '8pt', sepProdFont:  '6pt', sepPadV: 1 };
+            numProdutos <= 48 ? { sepQtyFont: '14pt', sepProdFont: '12pt', sepPadV: 3 } :
+            numProdutos <= 70 ? { sepQtyFont: '10pt', sepProdFont:  '8pt', sepPadV: 2 } :
+            numProdutos <= 90 ? { sepQtyFont:  '8pt', sepProdFont:  '7pt', sepPadV: 1 } :
+                                { sepQtyFont:  '7pt', sepProdFont:  '6pt', sepPadV: 1 };
 
         // Conferência: coluna única — adaptive px
         const { qtyFont, prodFont, confPadV } =
