@@ -738,6 +738,35 @@ router.get('/diag-dashboard-vendas', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-produto-custo — confere o histórico de custo dos produtos
+// (tabela produto_custo_historico) em produção: total de linhas, meses cobertos e
+// uma amostra. ?backfill=1 força o backfill inicial se a tabela estiver vazia.
+router.get('/diag-produto-custo', async (req, res) => {
+    try {
+        const produtoMargemService = require('../services/produtoMargemService');
+        if (req.query.backfill === '1') {
+            const r = await produtoMargemService.backfillInicial(6);
+            return res.json({ acao: 'backfill', resultado: r });
+        }
+        const total = await prisma.produtoCustoHistorico.count();
+        const porMes = await prisma.produtoCustoHistorico.groupBy({
+            by: ['mesReferencia'],
+            _count: { _all: true },
+            orderBy: { mesReferencia: 'asc' }
+        });
+        const amostra = await prisma.produtoCustoHistorico.findMany({
+            where: { fonteCusto: 'FICHA' },
+            take: 3,
+            orderBy: { mesReferencia: 'desc' },
+            select: { mesReferencia: true, custoUnitario: true, fonteCusto: true, estimado: true, produto: { select: { nome: true } } }
+        });
+        res.json({ total, porMes: porMes.map((m) => ({ mes: m.mesReferencia, produtos: m._count._all })), amostraFicha: amostra });
+    } catch (error) {
+        console.error('[admin-exec] diag-produto-custo:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /api/admin-exec/testar-alerta-certificado — roda o alerta de validade do A1 na hora.
 // Se faltar > 30 dias, só retorna { dias, alertado:false } (não envia WhatsApp) — seguro p/ testar.
 router.get('/testar-alerta-certificado', async (req, res) => {
