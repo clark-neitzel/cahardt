@@ -655,6 +655,35 @@ router.get('/diag-extrato-asaas-pendentes', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/asaas-emitir-boletos-pedido — emite os boletos Asaas das
+// parcelas em aberto de um pedido (mesmo caminho do botão do app; idempotente —
+// parcela que já tem boleto PENDENTE reaproveita). Body: { numero }
+router.post('/asaas-emitir-boletos-pedido', async (req, res) => {
+    try {
+        const numero = parseInt(req.body?.numero, 10);
+        if (!numero) return res.status(400).json({ error: 'Informe { numero }.' });
+        const pedido = await prisma.pedido.findFirst({
+            where: { numero, especial: false, bonificacao: false },
+            select: { id: true, contaReceber: { select: { id: true, parcelas: { where: { status: { in: ['PENDENTE', 'VENCIDO', 'PARCIAL'] } }, orderBy: { numeroParcela: 'asc' }, select: { id: true, numeroParcela: true } } } } }
+        });
+        if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+        if (!pedido.contaReceber) return res.status(400).json({ error: 'Pedido sem conta a receber.' });
+        const asaasService = require('../services/asaasService');
+        const resultados = [];
+        for (const parcela of pedido.contaReceber.parcelas) {
+            try {
+                const cob = await asaasService.criarBoletoParcela({ parcelaId: parcela.id, criadoPorId: null });
+                resultados.push({ parcela: parcela.numeroParcela, ok: true, status: cob.status, vencimento: cob.vencimento, url: cob.boletoUrl });
+            } catch (e) {
+                resultados.push({ parcela: parcela.numeroParcela, ok: false, erro: e.message });
+            }
+        }
+        res.json({ ok: true, numero, resultados });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-dashboard-vendas — confere as vendas do mês na regra do
 // Dashboard Gerencial (FATURADO ou especial, sem bonificação) direto no banco de
 // produção: total do mês, últimos 7 dias por dia e o pedido mais recente.
