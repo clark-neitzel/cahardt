@@ -144,16 +144,22 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
         const produtosPaginados = [arrConsolidado.length > 0 ? arrConsolidado : []];
         const rastreabilidadePaginada = [arrConsolidado.length > 0 ? arrConsolidado : []];
 
-        // Fonte adaptativa calibrada pelo qty-cell (elemento mais alto da linha)
-        // Fórmula: numProdutos × (qtyFont×1.4 + padV×2) × 0.265mm ≤ 230mm de budget
         const numProdutos = arrConsolidado.length;
-        const { qtyFont, prodFont, sepPadV } =
-            numProdutos <= 22 ? { qtyFont: 20, prodFont: 11, sepPadV: 5 } :
-            numProdutos <= 28 ? { qtyFont: 16, prodFont: 10, sepPadV: 4 } :
-            numProdutos <= 36 ? { qtyFont: 14, prodFont:  9, sepPadV: 3 } :
-            numProdutos <= 45 ? { qtyFont: 11, prodFont:  8, sepPadV: 2 } :
-            numProdutos <= 58 ? { qtyFont:  9, prodFont:  8, sepPadV: 1 } :
-                                { qtyFont:  8, prodFont:  7, sepPadV: 1 };
+
+        // Separação: 2 colunas → ceil(n/2) linhas → fontes em pt
+        const { sepQtyFont, sepProdFont, sepPadV } =
+            numProdutos <= 48 ? { sepQtyFont: '16pt', sepProdFont: '14pt', sepPadV: 3 } :
+            numProdutos <= 70 ? { sepQtyFont: '11pt', sepProdFont:  '9pt', sepPadV: 2 } :
+            numProdutos <= 90 ? { sepQtyFont:  '9pt', sepProdFont:  '7pt', sepPadV: 1 } :
+                                { sepQtyFont:  '8pt', sepProdFont:  '6pt', sepPadV: 1 };
+
+        // Conferência: coluna única — adaptive px
+        const { qtyFont, prodFont, confPadV } =
+            numProdutos <= 22 ? { qtyFont: 14, prodFont: 10, confPadV: 4 } :
+            numProdutos <= 32 ? { qtyFont: 12, prodFont:  9, confPadV: 3 } :
+            numProdutos <= 45 ? { qtyFont: 10, prodFont:  8, confPadV: 2 } :
+            numProdutos <= 60 ? { qtyFont:  9, prodFont:  7, confPadV: 2 } :
+                                { qtyFont:  8, prodFont:  7, confPadV: 1 };
         const confPedsFont = Math.max(6, prodFont - 1);
 
         const amostrasEmbarque = embarque?.amostras || [];
@@ -201,27 +207,38 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             .print-container .obs-cell { font-size: 7px; color: #92400e !important; font-style: italic; line-height: 1.3; }
                             .print-container .pg { font-size: 7px; font-weight: 700; white-space: nowrap; vertical-align: middle; }
                             .print-container .vl { font-size: 8px; font-weight: 800; text-align: right; white-space: nowrap; vertical-align: middle; }
-                            .print-container .page-produtos th { font-size: 7.5px !important; padding: ${sepPadV}px 6px !important; }
-                            .print-container .page-produtos td { font-size: ${prodFont}px !important; padding: ${sepPadV}px 6px !important; line-height: 1.4; }
-                            .print-container .qty-cell { font-size: ${qtyFont}px !important; font-weight: 900 !important; text-align: right !important; padding-right: 10px !important; white-space: nowrap; vertical-align: middle; }
-                            .print-container .prod-cell { font-family: 'Courier New', Courier, monospace !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                            .print-container .peds-cell { font-size: ${confPedsFont}px !important; line-height: 1.7; word-break: break-word; vertical-align: top; }
-                            .print-container .pk { display: inline; font-weight: 700; white-space: nowrap; }
-                            .print-container .dot { color: #9ca3af !important; margin: 0 2px; }
                             .print-container .pf { display: flex; gap: 12px; margin: 6px 0 8px; padding-top: 5px; border-top: 1px solid #d1d5db; }
                             .print-container .pf-f { flex: 1; }
                             .print-container .pf-l { height: 1px; background: #9ca3af; margin-bottom: 2px; }
                             .print-container .pf-lbl { font-size: 6.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #6b7280 !important; }
+
+                            /* ── Separação: 2 colunas, Arial Black ── */
+                            .print-container .page-sep th { font-size: 8pt !important; padding: ${sepPadV}px 5px !important; }
+                            .print-container .page-sep td { padding: ${sepPadV}px 5px !important; border-bottom: 1px solid #e5e7eb; vertical-align: middle; line-height: 1; }
+                            .print-container .page-sep tbody tr:nth-child(even) td { background: #f0f7f4 !important; }
+                            .print-container .page-sep tbody tr:nth-child(even) td.sep-div { background: #fff !important; }
+                            .print-container .sep-qty { font-size: ${sepQtyFont} !important; font-weight: 900 !important; font-family: 'Arial Black', Arial, sans-serif !important; text-align: right !important; white-space: nowrap; line-height: 1 !important; color: #000 !important; width: 14mm; }
+                            .print-container .sep-prod { font-size: ${sepProdFont} !important; font-family: Arial, 'Helvetica Neue', sans-serif !important; font-weight: 700 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #000 !important; max-width: 0; }
+                            .print-container .sep-div { border-left: 2px solid #9ca3af !important; background: transparent !important; width: 4mm !important; padding: 0 !important; border-bottom: none !important; }
+
+                            /* ── Conferência: coluna única, adaptive px ── */
+                            .print-container .page-conf th { font-size: 7.5px !important; padding: ${confPadV}px 6px !important; }
+                            .print-container .page-conf td { font-size: ${prodFont}px !important; padding: ${confPadV}px 6px !important; line-height: 1.4; }
+                            .print-container .qty-cell { font-size: ${qtyFont}px !important; font-weight: 900 !important; text-align: right !important; padding-right: 8px !important; white-space: nowrap; vertical-align: middle; }
+                            .print-container .prod-cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                            .print-container .peds-cell { font-size: ${confPedsFont}px !important; line-height: 1.7; word-break: break-word; vertical-align: top; }
+                            .print-container .pk { display: inline; font-weight: 700; white-space: nowrap; }
+                            .print-container .dot { color: #9ca3af !important; margin: 0 2px; }
+
                             @media print {
                                 @page { size: A4 portrait; margin: 8mm 5mm 5mm 5mm; }
-                                /* O overlay está no body via createPortal — ocultar o app inteiro */
                                 body > #root { display: none !important; }
                                 #print-root-overlay { position: static !important; background: white !important; overflow: visible !important; }
                                 .print-scroll-area { padding: 0 !important; margin: 0 !important; display: block !important; }
                                 * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                                 .print-container { transform: scale(1) !important; margin: 0 !important; gap: 0 !important; display: block !important; }
                                 .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; height: auto !important; padding: 0 10mm !important; page-break-after: always; break-after: always; }
-                                .print-page.page-produtos { padding: 6mm 12mm !important; }
+                                .print-page.page-sep, .print-page.page-conf { padding: 6mm 12mm !important; }
                                 .print-page:last-child { page-break-after: auto !important; break-after: auto !important; }
                             }
                         `}</style>
@@ -345,12 +362,16 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             );
                         })()}
 
-                        {/* Separação — qtde ANTES do produto */}
+                        {/* Separação — 2 colunas, Arial Black 16pt */}
                         {produtosPaginados.map((chunkProdutos, idx) => {
                             const thisPage = globalPageCount++;
+                            const metade = Math.ceil(chunkProdutos.length / 2);
+                            const esq = chunkProdutos.slice(0, metade);
+                            const dir = chunkProdutos.slice(metade);
+                            const linhas = esq.map((item, i) => [item, dir[i] || null]);
                             return (
                                 <React.Fragment key={`separacao-${idx}`}>
-                                    <div className="print-page page-produtos bg-white shadow-2xl w-full text-black mx-auto relative" style={{ width: '210mm', padding: '8mm 12mm' }}>
+                                    <div className="print-page page-sep bg-white shadow-2xl w-full text-black mx-auto relative" style={{ width: '210mm', padding: '8mm 12mm' }}>
                                         <div className="print:hidden absolute top-1 right-2 text-[7px] text-gray-400 font-bold">{thisPage}/{totalPages}</div>
                                         <div className="ph">
                                             <div>
@@ -369,21 +390,35 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                         <table>
                                             <thead>
                                                 <tr>
-                                                    <th style={{ width: '14%', textAlign: 'right', paddingRight: '10px' }}>Qtde</th>
-                                                    <th style={{ width: '74%' }}>Produto</th>
-                                                    <th style={{ width: '12%', textAlign: 'center' }}>Conf.</th>
+                                                    <th style={{ width: '14mm', textAlign: 'right' }}>Qtde</th>
+                                                    <th>Produto</th>
+                                                    <th style={{ width: '8mm', textAlign: 'center' }}>✓</th>
+                                                    <th style={{ width: '4mm' }}></th>
+                                                    <th style={{ width: '14mm', textAlign: 'right' }}>Qtde</th>
+                                                    <th>Produto</th>
+                                                    <th style={{ width: '8mm', textAlign: 'center' }}>✓</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {chunkProdutos.map(([nome, info]) => (
-                                                    <tr key={nome}>
-                                                        <td className="qty-cell">{Number(info.qtde).toFixed(info.qtde % 1 === 0 ? 0 : 2)}</td>
-                                                        <td className="prod-cell" style={{ maxWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{nome}</td>
+                                                {linhas.map(([l, r], i) => (
+                                                    <tr key={i}>
+                                                        <td className="sep-qty">{Number(l[1].qtde).toFixed(l[1].qtde % 1 === 0 ? 0 : 2)}</td>
+                                                        <td className="sep-prod">{l[0]}</td>
                                                         <td></td>
+                                                        <td className="sep-div"></td>
+                                                        {r ? (
+                                                            <>
+                                                                <td className="sep-qty">{Number(r[1].qtde).toFixed(r[1].qtde % 1 === 0 ? 0 : 2)}</td>
+                                                                <td className="sep-prod">{r[0]}</td>
+                                                                <td></td>
+                                                            </>
+                                                        ) : (
+                                                            <><td></td><td></td><td></td></>
+                                                        )}
                                                     </tr>
                                                 ))}
                                                 {chunkProdutos.length === 0 && (
-                                                    <tr><td colSpan="3" style={{ textAlign: 'center' }}>Nenhum produto.</td></tr>
+                                                    <tr><td colSpan="7" style={{ textAlign: 'center' }}>Nenhum produto.</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
@@ -403,7 +438,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             const isLastPage = idx === rastreabilidadePaginada.length - 1;
                             return (
                                 <React.Fragment key={`rastreio-${idx}`}>
-                                    <div className="print-page page-produtos bg-white shadow-2xl w-full text-black mx-auto relative" style={{ width: '210mm', padding: '8mm 12mm', ...(isLastPage ? { pageBreakAfter: 'auto', breakAfter: 'auto' } : {}) }}>
+                                    <div className="print-page page-conf bg-white shadow-2xl w-full text-black mx-auto relative" style={{ width: '210mm', padding: '8mm 12mm', ...(isLastPage ? { pageBreakAfter: 'auto', breakAfter: 'auto' } : {}) }}>
                                         <div className="print:hidden absolute top-1 right-2 text-[7px] text-gray-400 font-bold">{thisPage}/{totalPages}</div>
                                         <div className="ph">
                                             <div>
