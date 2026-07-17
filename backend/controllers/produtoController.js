@@ -304,6 +304,27 @@ const produtoController = {
         }
     },
 
+    // Zerar/restaurar o custo do Conta Azul.
+    // Zerado: custoMedio some e o app passa a valer o custoManual (que as entradas de
+    // compra atualizam por média ponderada); o sync do CA deixa de trazer o custo de volta.
+    // Restaurar: religa o sync e força a próxima rodada a rebuscar o produto no CA.
+    alterarCustoCa: async (req, res) => {
+        try {
+            const { id } = req.params;
+            const zerar = req.body?.zerar !== false;
+            const produto = await prisma.produto.update({
+                where: { id },
+                data: zerar
+                    ? { custoCaZerado: true, custoMedio: null }
+                    : { custoCaZerado: false, contaAzulUpdatedAt: null }
+            });
+            res.json(produto);
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Erro ao alterar o custo do CA' });
+        }
+    },
+
     // Upload de imagens
     uploadImagem: async (req, res) => {
         try {

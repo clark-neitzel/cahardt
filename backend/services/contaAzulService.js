@@ -316,13 +316,14 @@ const contaAzulService = {
             const produtosLocais = await prisma.produto.findMany({
                 select: {
                     contaAzulId: true,
-                    contaAzulUpdatedAt: true
+                    contaAzulUpdatedAt: true,
+                    custoCaZerado: true
                 }
             });
 
             // Criar mapa para lookup rápido
             const produtosLocaisMap = new Map(
-                produtosLocais.map(p => [p.contaAzulId, p.contaAzulUpdatedAt])
+                produtosLocais.map(p => [p.contaAzulId, p])
             );
 
             console.log(`📊 Produtos locais: ${produtosLocais.length}`);
@@ -330,7 +331,8 @@ const contaAzulService = {
 
             for (const itemList of produtosAPI) {
                 const ultimaAtualizacaoCA = itemList.ultima_atualizacao ? new Date(itemList.ultima_atualizacao) : null;
-                const ultimaAtualizacaoLocal = produtosLocaisMap.get(itemList.id);
+                const produtoLocal = produtosLocaisMap.get(itemList.id);
+                const ultimaAtualizacaoLocal = produtoLocal?.contaAzulUpdatedAt;
 
                 // DEBUG: Log first product comparison
                 if (countUpdated === 0 && countSkipped === 0 && countNew === 0) {
@@ -439,7 +441,8 @@ const contaAzulService = {
                         status: dadosProduto.status,
                         categoria: dadosProduto.categoria,
                         descricao: dadosProduto.descricao,
-                        custoMedio: dadosProduto.custoMedio,
+                        // Custo zerado no app: o dono descartou o custo do CA — nunca mais sobrescrever
+                        ...(produtoLocal?.custoCaZerado ? {} : { custoMedio: dadosProduto.custoMedio }),
                         pesoLiquido: dadosProduto.pesoLiquido,
                         ativo: dadosProduto.ativo,
                         contaAzulUpdatedAt: dadosProduto.contaAzulUpdatedAt,

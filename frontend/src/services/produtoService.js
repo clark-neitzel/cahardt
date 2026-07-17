@@ -21,6 +21,12 @@ const produtoService = {
         return response.data;
     },
 
+    // Zerar (ou restaurar) o custo vindo do Conta Azul — zerado, vale o custo manual/entradas
+    alterarCustoCa: async (id, zerar) => {
+        const response = await api.patch(`/produtos/${id}/custo-ca`, { zerar });
+        return response.data;
+    },
+
     // Fase 6: criar produto novo (nasce no Conta Azul primeiro)
     criar: async (data) => {
         const response = await api.post('/produtos', data);

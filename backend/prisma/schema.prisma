@@ -33,8 +33,9 @@ model Produto {
   ativo     Boolean @default(true) // Controle local do App
 
   // Custos e Pesos
-  custoMedio  Decimal? @map("custo_medio") @db.Decimal(12, 2)
-  custoManual Decimal? @map("custo_manual") @db.Decimal(12, 2) // custo digitado no app; usado só quando o CA não tem custoMedio
+  custoMedio    Decimal? @map("custo_medio") @db.Decimal(12, 2)
+  custoManual   Decimal? @map("custo_manual") @db.Decimal(12, 2) // custo digitado no app; usado só quando o CA não tem custoMedio
+  custoCaZerado Boolean  @default(false) @map("custo_ca_zerado") // custo do CA zerado no app: sync não traz mais o custoMedio; vale o custoManual (alimentado pelas entradas de compra)
   pesoLiquido Decimal? @map("peso_liquido") @db.Decimal(12, 3)
 
   // Timestamps

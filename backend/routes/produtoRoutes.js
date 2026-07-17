@@ -34,6 +34,7 @@ router.get('/:id', produtoController.detalhar);
 router.post('/', exigeAdmin, produtoController.criar);
 router.put('/:id', exigeAdmin, produtoController.atualizar);
 router.patch('/:id/status', exigeAdmin, produtoController.alterarStatus);
+router.patch('/:id/custo-ca', exigeAdmin, produtoController.alterarCustoCa);
 
 // Imagens (somente admin/produtos)
 router.post('/:id/imagens', exigeAdmin, upload.array('imagens', 5), produtoController.uploadImagem);

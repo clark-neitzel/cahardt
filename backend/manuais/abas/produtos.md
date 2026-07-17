@@ -47,6 +47,7 @@ Gestão completa do cadastro de produtos da empresa. Permite criar, editar, ativ
 - **Custo Médio CA**: vem do Conta Azul, somente leitura. Vale quando o produto **não tem receita ativa**. É também o custo usado dentro do cálculo das receitas do PCP (custo dos ingredientes).
 - **Custo Manual**: campo editável no app, usado como **reserva** — só entra no lugar do custo do CA **quando o CA ainda não tem custo** para aquele produto. Assim que o Conta Azul passar a ter um custo, ele assume automaticamente e o manual fica de reserva.
 - Use o Custo Manual para produtos que ainda não têm custo no CA, para que o custo das receitas que usam esse produto não fique incompleto.
+- **Zerar custo do CA (botão)**: no detalhe do produto, abaixo do campo Custo Manual, quando o produto **tem custo do CA e não tem receita ativa** aparece o botão **"Zerar custo do CA — usar o Custo Manual"**. Ele descarta o custo vindo do Conta Azul (útil quando o custo do CA está errado e não dá mais para corrigir lá): o app passa a valer o **Custo Manual**, que é atualizado automaticamente por média ponderada a cada **entrada de compra** conferida no app. A sincronização com o CA **não traz o custo antigo de volta**. O cartão de custo passa a mostrar "Custo (App)". Dá para desfazer pelo botão "Voltar a usar o custo do CA" (o custo do CA retorna no próximo sync). Produto com receita ativa não mostra o botão — o custo da receita já prevalece.
 
 ### Alterar a unidade de medida
 1. Abra o detalhe do produto

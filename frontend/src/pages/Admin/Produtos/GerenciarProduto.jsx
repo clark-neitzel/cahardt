@@ -711,6 +711,23 @@ const GerenciarProduto = () => {
         }
     };
 
+    const [alterandoCustoCa, setAlterandoCustoCa] = useState(false);
+    const handleCustoCa = async (zerar) => {
+        if (zerar && !window.confirm('Zerar o custo do Conta Azul deste produto?\n\nO app passa a usar o Custo Manual, e cada nova entrada de compra atualiza esse custo automaticamente. O sync do CA não traz o custo antigo de volta.')) return;
+        setAlterandoCustoCa(true);
+        try {
+            const atualizado = await produtoService.alterarCustoCa(id, zerar);
+            setProduto(p => ({ ...p, custoCaZerado: atualizado.custoCaZerado, custoMedio: atualizado.custoMedio }));
+            setFormData(f => ({ ...f, custoMedio: atualizado.custoMedio ? Number(atualizado.custoMedio).toFixed(2) : '0.00' }));
+            toast.success(zerar ? 'Custo do CA zerado — agora vale o Custo Manual.' : 'Custo do CA reativado — volta no próximo sync.');
+        } catch (error) {
+            console.error(error);
+            toast.error('Erro ao alterar o custo do CA.');
+        } finally {
+            setAlterandoCustoCa(false);
+        }
+    };
+
     const handleSaveComercial = async () => {
         setSalvandoComercial(true);
         try {
@@ -810,7 +827,29 @@ const GerenciarProduto = () => {
     const estoqueReservado = Math.max(0, (produto.estoqueTotal || 0) - (produto.estoqueDisponivel || 0));
     // Se o produto tem receita ativa no PCP, o custo dela substitui qualquer outro (CA/manual)
     const custoReceita = produto.custoReceita != null && Number(produto.custoReceita) > 0 ? Number(produto.custoReceita) : null;
-    const custoEfetivo = custoReceita ?? Number(formData.custoMedio);
+    // Custo do CA zerado: vale o custo manual (alimentado pelas entradas de compra)
+    const custoCaZerado = produto.custoCaZerado === true;
+    const custoEfetivo = custoReceita ?? (custoCaZerado ? Number(formData.custoManual || 0) : Number(formData.custoMedio));
+    const labelCusto = custoReceita ? 'Custo (Receita)' : custoCaZerado ? 'Custo (App)' : 'Custo (CA)';
+    const helperCustoManual = custoReceita
+        ? 'Produto tem receita — o custo da receita prevalece.'
+        : custoCaZerado
+            ? 'Custo do CA zerado — este custo é o que vale; cada nova entrada de compra o atualiza.'
+            : parseFloat(formData.custoMedio) > 0 ? 'CA já tem custo — este fica de reserva.' : 'Usado no cálculo de receitas.';
+    // Botão de transição: descartar o custo errado vindo do CA (some para produto com receita)
+    const botaoCustoCa = custoReceita ? null : custoCaZerado ? (
+        <button onClick={() => handleCustoCa(false)} disabled={alterandoCustoCa}
+            className="mt-2 text-xs font-bold rounded-full border disabled:opacity-50"
+            style={{ padding: '5px 12px', borderColor: '#E4E7F2', color: '#7A8094', background: '#fff' }}>
+            {alterandoCustoCa ? 'Alterando...' : 'Voltar a usar o custo do CA'}
+        </button>
+    ) : parseFloat(formData.custoMedio) > 0 ? (
+        <button onClick={() => handleCustoCa(true)} disabled={alterandoCustoCa}
+            className="mt-2 text-xs font-bold rounded-full border disabled:opacity-50"
+            style={{ padding: '5px 12px', borderColor: '#FECACA', color: '#DC2626', background: '#FEF2F2' }}>
+            {alterandoCustoCa ? 'Zerando...' : 'Zerar custo do CA — usar o Custo Manual'}
+        </button>
+    ) : null;
     const margem = custoEfetivo > 0 && Number(formData.valorVenda) > 0
         ? (((Number(formData.valorVenda) - custoEfetivo) / Number(formData.valorVenda)) * 100).toFixed(1)
         : null;
@@ -904,7 +943,7 @@ const GerenciarProduto = () => {
                   <div className="grid grid-cols-2 gap-2.5">
                     {[
                       { label: 'Valor de Venda', value: `R$ ${Number(formData.valorVenda||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`, color: '#16192B' },
-                      { label: custoReceita ? 'Custo (Receita)' : 'Custo (CA)', value: `R$ ${Number(custoEfetivo||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`, color: custoReceita ? '#7C3AED' : '#16192B' },
+                      { label: labelCusto, value: `R$ ${Number(custoEfetivo||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`, color: custoReceita ? '#7C3AED' : '#16192B' },
                       { label: 'Margem',          value: margem ? `${margem}%` : '—', color: '#15A05A', showIcon: !!margem },
                       { label: 'Disponível',      value: String(produto.estoqueDisponivel??0), color: '#15A05A' },
                       { label: 'Total',           value: String(produto.estoqueTotal??0), color: '#2563EB' },
@@ -1016,7 +1055,7 @@ const GerenciarProduto = () => {
                     </div>
                     <div className="px-4 py-4 flex flex-col gap-4">
                       {[
-                        { key: 'custoManual', label: 'Custo Manual (R$)', tag: 'EDITÁVEL', helper: custoReceita?'Produto tem receita — o custo da receita prevalece.':parseFloat(formData.custoMedio)>0?'CA já tem custo — este fica de reserva.':'Usado no cálculo de receitas.',
+                        { key: 'custoManual', label: 'Custo Manual (R$)', tag: 'EDITÁVEL', helper: helperCustoManual,
                           input: <div className="flex items-center gap-2.5 rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#D8C9FB',background:'#fff'}}>
                             <span className="text-sm font-medium" style={{color:'#3A3F52'}}>R$</span>
                             <input type="number" step="0.01" min="0" value={formData.custoManual} onChange={e=>setFormData({...formData,custoManual:e.target.value})} placeholder="0,00" className="flex-1 bg-transparent outline-none font-medium font-mono" style={{fontSize:15,color:'#16192B'}}/>
@@ -1039,6 +1078,7 @@ const GerenciarProduto = () => {
                           </div>
                           {f.input}
                           <div className="mt-1.5 text-xs" style={{color:'#9AA0B4'}}>{f.helper}</div>
+                          {f.key === 'custoManual' && botaoCustoCa}
                         </div>
                       ))}
                       <div>
@@ -1134,7 +1174,7 @@ const GerenciarProduto = () => {
                         <div className="bg-white rounded-2xl border flex" style={{ borderColor: '#E7E9F2', boxShadow: '0 1px 2px rgba(16,20,40,.04)' }}>
                             {[
                                 { label: 'Valor de Venda', value: `R$ ${Number(formData.valorVenda || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, color: '#16192B' },
-                                { label: custoReceita ? 'Custo (Receita)' : 'Custo (Conta Azul)', value: `R$ ${Number(custoEfetivo || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, color: custoReceita ? '#7C3AED' : '#16192B' },
+                                { label: custoReceita ? 'Custo (Receita)' : custoCaZerado ? 'Custo (App)' : 'Custo (Conta Azul)', value: `R$ ${Number(custoEfetivo || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, color: custoReceita ? '#7C3AED' : '#16192B' },
                                 { label: 'Margem', value: margem ? `${margem}%` : '—', color: '#15A05A', showIcon: !!margem },
                                 { label: 'Disponível', value: String(produto.estoqueDisponivel ?? 0), color: '#15A05A' },
                                 { label: 'Total', value: String(produto.estoqueTotal ?? 0), color: '#2563EB' },
@@ -1302,7 +1342,8 @@ const GerenciarProduto = () => {
                                                     className="flex-1 bg-transparent outline-none font-medium font-mono"
                                                     style={{ fontSize: 15, color: '#16192B' }} />
                                             </div>
-                                            <div className="mt-1.5 text-xs" style={{ color: '#9AA0B4' }}>{custoReceita ? 'Produto tem receita — o custo da receita prevalece.' : parseFloat(formData.custoMedio) > 0 ? 'CA já tem custo — este fica de reserva.' : 'Usado no cálculo de receitas.'}</div>
+                                            <div className="mt-1.5 text-xs" style={{ color: '#9AA0B4' }}>{helperCustoManual}</div>
+                                            {botaoCustoCa}
                                         </div>
                                         <div>
                                             <div className="flex items-center mb-2">
