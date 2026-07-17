@@ -41,6 +41,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Baixar_Caixa: false,
     Pode_Fechar_Caixa: false,
     Pode_Definir_Adiantamento: false,
+    Pode_Alterar_Adiantamento_Alheio: false,
     Pode_Ver_Historico_Caixa: false,
     Pode_Reverter_Caixa: false,
     Pode_Conferir_Devolucao_Caixa: false,
@@ -811,6 +812,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                     label="Fechar Caixa" sublabel="Fechar o caixa do dia com snapshot dos totais" />
                                 <Toggle checked={!!permissoes.Pode_Definir_Adiantamento} onChange={() => toggleBool('Pode_Definir_Adiantamento')}
                                     label="Definir Adiantamento" sublabel="Editar o valor de adiantamento do caixa diário" />
+                                <Toggle checked={!!permissoes.Pode_Alterar_Adiantamento_Alheio} onChange={() => toggleBool('Pode_Alterar_Adiantamento_Alheio')}
+                                    label="Alterar Adiantamento de Outros" sublabel="Pode mudar ou zerar um adiantamento lançado por outra pessoa" danger />
                                 <Toggle checked={!!permissoes.Pode_Ver_Historico_Caixa} onChange={() => toggleBool('Pode_Ver_Historico_Caixa')}
                                     label="Ver Caixas de Outros Dias" sublabel="Navegar por datas passadas ou futuras" />
                                 <Toggle checked={!!permissoes.Pode_Reverter_Caixa} onChange={() => toggleBool('Pode_Reverter_Caixa')}

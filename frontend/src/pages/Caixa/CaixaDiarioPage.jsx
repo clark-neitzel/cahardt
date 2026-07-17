@@ -109,13 +109,29 @@ const CaixaDiarioPage = () => {
     };
 
     const handleSaveAdiantamento = async () => {
+        const novoValor = parseFloat(adiantamento) || 0;
+        const valorAtual = Number(resumo?.caixa?.adiantamento || 0);
+
+        // Diminuir/zerar um adiantamento já lançado exige confirmação explícita
+        // (caso real: R$ 200 zerados sem querer no fechamento do dia 16/07)
+        if (valorAtual > 0 && novoValor < valorAtual) {
+            const quem = resumo?.caixa?.adiantamentoPorNome ? ` (lançado por ${resumo.caixa.adiantamentoPorNome})` : '';
+            const msg = novoValor === 0
+                ? `EXCLUIR o adiantamento de R$ ${valorAtual.toFixed(2)}${quem}?\n\nO motorista deixará de dever esse valor no caixa.`
+                : `O adiantamento atual é R$ ${valorAtual.toFixed(2)}${quem}.\n\nTem certeza que deseja DIMINUIR para R$ ${novoValor.toFixed(2)}?`;
+            if (!confirm(msg)) {
+                setAdiantamento(String(valorAtual));
+                return;
+            }
+        }
+
         try {
             setSavingAdiantamento(true);
-            await caixaService.setAdiantamento({ vendedorId, data, valor: parseFloat(adiantamento) || 0 });
+            await caixaService.setAdiantamento({ vendedorId, data, valor: novoValor });
             toast.success('Adiantamento atualizado!');
             fetchResumo();
         } catch (error) {
-            toast.error('Erro ao salvar adiantamento.');
+            toast.error(error.response?.data?.error || 'Erro ao salvar adiantamento.', { duration: 7000 });
         } finally {
             setSavingAdiantamento(false);
         }
@@ -435,6 +451,7 @@ const CaixaDiarioPage = () => {
                         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                             <h3 className="text-sm font-semibold text-gray-700 mb-2">Adiantamento (R$)</h3>
                             {podeDefinirAdiantamento ? (
+                                <>
                                 <div className="flex items-center space-x-2">
                                     <input
                                         type="number"
@@ -454,6 +471,13 @@ const CaixaDiarioPage = () => {
                                         </button>
                                     )}
                                 </div>
+                                {Number(resumo.caixa?.adiantamento || 0) > 0 && resumo.caixa?.adiantamentoPorNome && (
+                                    <p className="text-xs text-gray-500 mt-1.5">
+                                        Lançado por {resumo.caixa.adiantamentoPorNome}
+                                        {resumo.caixa.adiantamentoEm ? ` · ${new Date(resumo.caixa.adiantamentoEm).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às ${new Date(resumo.caixa.adiantamentoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                                    </p>
+                                )}
+                                </>
                             ) : (
                                 // Sem permissão: apenas exibe o valor, sem editar
                                 <div className="flex items-center space-x-2">

@@ -1167,6 +1167,10 @@ model CaixaDiario {
   dataReferencia String @map("data_referencia") // YYYY-MM-DD
 
   adiantamento Decimal @default(0) @db.Decimal(12, 2)
+  // Quem lançou o adiantamento (mudar/zerar exige ser o autor, admin ou permissão própria)
+  adiantamentoPorId   String?   @map("adiantamento_por_id")
+  adiantamentoPorNome String?   @map("adiantamento_por_nome")
+  adiantamentoEm      DateTime? @map("adiantamento_em")
   status       String  @default("ABERTO") // ABERTO | FECHADO | CONFERIDO
 
   // Snapshots ao fechar

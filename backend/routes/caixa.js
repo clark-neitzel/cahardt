@@ -549,6 +549,9 @@ router.get('/resumo', async (req, res) => {
                 id: caixa.id,
                 status: caixa.status,
                 adiantamento: Number(caixa.adiantamento),
+                adiantamentoPorId: caixa.adiantamentoPorId,
+                adiantamentoPorNome: caixa.adiantamentoPorNome,
+                adiantamentoEm: caixa.adiantamentoEm,
                 dataReferencia: caixa.dataReferencia,
                 conferidoPor: caixa.conferidoPor,
                 conferidoEm: caixa.conferidoEm,
@@ -643,13 +646,70 @@ router.patch('/adiantamento', async (req, res) => {
         const { vendedorId, data, valor } = req.body;
         if (!data || valor === undefined) return res.status(400).json({ error: 'Campos obrigatórios: data, valor.' });
 
-        const targetVendedor = vendedorId || req.user.id;
+        // Espelha a permissão que o frontend usa para mostrar o campo (antes o backend não checava nada)
+        const perms = req._perms || await getPerms(req.user.id);
+        if (!perms.admin && !perms.Pode_Editar_Caixa && !perms.Pode_Definir_Adiantamento) {
+            return res.status(403).json({ error: 'Sem permissão para definir adiantamento.' });
+        }
 
+        const targetVendedor = vendedorId || req.user.id;
+        const novoValor = Math.round((Number(valor) || 0) * 100) / 100;
+
+        const atual = await prisma.caixaDiario.findUnique({
+            where: { vendedorId_dataReferencia: { vendedorId: targetVendedor, dataReferencia: data } }
+        });
+        const valorAtual = Math.round(Number(atual?.adiantamento || 0) * 100) / 100;
+
+        // Nada mudou — não regrava nem loga
+        if (atual && novoValor === valorAtual) return res.json(atual);
+
+        // Caixa fechado/conferido não aceita mudança (espelha o campo desabilitado na tela)
+        if (atual && atual.status !== 'ABERTO') {
+            return res.status(400).json({ error: 'Caixa fechado — reabra o caixa para mudar o adiantamento.' });
+        }
+
+        // Alterar/zerar um adiantamento JÁ LANÇADO: só o autor, admin, ou quem tem a permissão própria.
+        // (Caso do dia 16/07: alguém zerou R$ 200 sem rastro — agora tem dono, trava e log.)
+        if (valorAtual > 0) {
+            const podeAlterar = perms.admin
+                || perms.Pode_Alterar_Adiantamento_Alheio
+                || !atual.adiantamentoPorId // legado, sem autor registrado
+                || atual.adiantamentoPorId === req.user.id;
+            if (!podeAlterar) {
+                return res.status(403).json({
+                    error: `Este adiantamento de R$ ${valorAtual.toFixed(2)} foi lançado por ${atual.adiantamentoPorNome || 'outra pessoa'}. Só quem lançou (ou quem tem a permissão "Alterar Adiantamento de Outros") pode mudar.`
+                });
+            }
+        }
+
+        const usuario = await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { nome: true } });
+        const dadosAutor = {
+            adiantamento: novoValor,
+            adiantamentoPorId: req.user.id,
+            adiantamentoPorNome: usuario?.nome || null,
+            adiantamentoEm: new Date()
+        };
         const caixa = await prisma.caixaDiario.upsert({
             where: { vendedorId_dataReferencia: { vendedorId: targetVendedor, dataReferencia: data } },
-            update: { adiantamento: valor },
-            create: { vendedorId: targetVendedor, dataReferencia: data, adiantamento: valor }
+            update: dadosAutor,
+            create: { vendedorId: targetVendedor, dataReferencia: data, ...dadosAutor }
         });
+
+        // Log FORA da operação principal — falha no log não desfaz a mudança
+        try {
+            await prisma.auditLog.create({
+                data: {
+                    acao: 'ALTERAR_ADIANTAMENTO',
+                    entidade: 'CaixaDiario',
+                    entidadeId: caixa.id,
+                    detalhes: JSON.stringify({ vendedorId: targetVendedor, data, de: valorAtual, para: novoValor }),
+                    usuarioId: req.user.id,
+                    usuarioNome: usuario?.nome || 'Usuário'
+                }
+            });
+        } catch (logErr) {
+            console.error('[adiantamento] falha no audit log (mudança já gravada):', logErr.message);
+        }
 
         res.json(caixa);
     } catch (error) {

@@ -78,8 +78,15 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 
 ### Definir adiantamento
 1. No card de resumo, localize o campo **Adiantamento (R$)**
-2. Digite o valor e clique em **Salvar** (visível para `Pode_Definir_Adiantamento` ou `admin`)
-3. O adiantamento é descontado do total a prestar de contas
+2. Digite o valor e clique em **Salvar** (visível para `Pode_Definir_Adiantamento`, `Pode_Editar_Caixa` ou `admin`)
+3. O adiantamento é **somado** ao valor a prestar (é dinheiro que o motorista recebeu adiantado e deve devolver)
+4. O caixa mostra **quem lançou e quando** ("Lançado por Fulano · dd/mm às hh:mm")
+
+**Proteções (desde 07/2026, após um adiantamento de R$ 200 sumir sem rastro):**
+- **Diminuir ou zerar** um adiantamento já lançado pede **confirmação** na tela ("Tem certeza que deseja EXCLUIR/DIMINUIR...?")
+- Só pode alterar um adiantamento já lançado: **quem lançou**, `admin`, ou quem tiver a permissão **`Pode_Alterar_Adiantamento_Alheio`** ("Alterar Adiantamento de Outros", na aba Vendedores) — para os demais o sistema recusa dizendo quem foi o autor
+- **Toda mudança fica no log de auditoria**: quem mudou, quando, de quanto → para quanto
+- Caixa fechado/conferido não aceita mudança de adiantamento (reabra antes)
 
 ### Ver o VALOR A PRESTAR (só aparece com o dia "certo")
 O valor a prestar de contas fica **escondido** enquanto o dia não estiver completo. No lugar do valor aparece um checklist laranja "Falta para fechar o dia" com o que ainda precisa ser feito. O valor volta a aparecer sozinho assim que tudo for resolvido. Escondem o valor (para todos, motorista e escritório):
