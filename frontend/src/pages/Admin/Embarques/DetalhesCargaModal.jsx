@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Printer, Plus, Trash2, MapPin, Package, Edit2, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
@@ -160,7 +161,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
         const totalPages = pedidosPaginados.length + produtosPaginados.length + rastreabilidadePaginada.length + (hasAmostras ? 1 : 0);
         let globalPageCount = 1;
 
-        return (
+        return createPortal(
             <div id="print-root-overlay" className="fixed inset-0 z-[9999] bg-gray-800 overflow-y-auto flex flex-col print:bg-white print:overflow-visible text-gray-900 font-sans">
                 {/* ActionBar Fixa */}
                 <div className="sticky top-0 z-10 w-full bg-gray-900 border-b border-gray-700 px-6 py-4 flex items-center justify-between shadow-2xl print:hidden flex-shrink-0">
@@ -213,9 +214,9 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             .print-container .pf-lbl { font-size: 6.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: #6b7280 !important; }
                             @media print {
                                 @page { size: A4 portrait; margin: 8mm 5mm 5mm 5mm; }
-                                body * { visibility: hidden; }
-                                #print-root-overlay, #print-root-overlay .print-scroll-area, #print-root-overlay .print-scroll-area * { visibility: visible; }
-                                #print-root-overlay { position: absolute !important; top: 0; left: 0; right: auto !important; bottom: auto !important; width: 100% !important; height: auto !important; background: white !important; overflow: visible !important; }
+                                /* O overlay está no body via createPortal — ocultar o app inteiro */
+                                body > #root { display: none !important; }
+                                #print-root-overlay { position: static !important; background: white !important; overflow: visible !important; }
                                 .print-scroll-area { padding: 0 !important; margin: 0 !important; display: block !important; }
                                 * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                                 .print-container { transform: scale(1) !important; margin: 0 !important; gap: 0 !important; display: block !important; }
@@ -459,7 +460,8 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                         })}
                     </div>
                 </div>
-            </div>
+            </div>,
+            document.body
         );
     }
 
