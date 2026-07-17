@@ -317,13 +317,17 @@ router.get('/resumo', async (req, res) => {
 
             const pagamentos = e.pagamentosReais.map(p => {
                 // Classificar debitaCaixa pelo PAGAMENTO REAL (formaPagamentoNome)
+                // 0. PIX Asaas confirmado pelo banco: dinheiro caiu direto na conta Asaas,
+                //    nunca passou pela mão do motorista → NÃO debita (vai para "Outros")
                 // 1. Escritório responsável: NÃO debita
                 // 2. Vendedor responsável: DEBITA
                 // 3. Condição da TabelaPreco: buscar pelo nome do pagamento real
                 // 4. Fallback: condição original do pedido
                 let debitaCaixa;
                 let labelCondicao = p.formaPagamentoNome || nomeCondicao;
-                if (p.escritorioResponsavel) {
+                if (p.formaPagamentoNome === 'PIX Asaas' && p.cobrancaAsaasId) {
+                    debitaCaixa = false;
+                } else if (p.escritorioResponsavel) {
                     debitaCaixa = false;
                 } else if (p.vendedorResponsavelId) {
                     debitaCaixa = true;
@@ -763,7 +767,9 @@ router.post('/fechar', async (req, res) => {
             e.pagamentosReais.forEach(p => {
                 const val = Number(p.valor);
                 let debita;
-                if (p.escritorioResponsavel) debita = false;
+                // PIX Asaas confirmado pelo banco não passa pela mão do motorista
+                if (p.formaPagamentoNome === 'PIX Asaas' && p.cobrancaAsaasId) debita = false;
+                else if (p.escritorioResponsavel) debita = false;
                 else if (p.vendedorResponsavelId) debita = true;
                 else if (mapaDebitaPorNome[p.formaPagamentoNome] !== undefined) debita = mapaDebitaPorNome[p.formaPagamentoNome];
                 else debita = mapaDebitaPorOpcao[e.opcaoCondicaoPagamento] || false;
@@ -1918,7 +1924,9 @@ router.get('/relatorio', async (req, res) => {
                     status: e.statusEntrega,
                     pagamentos: e.pagamentosReais.map(p => {
                         let debita;
-                        if (p.escritorioResponsavel) debita = false;
+                        // PIX Asaas confirmado pelo banco não passa pela mão do motorista
+                        if (p.formaPagamentoNome === 'PIX Asaas' && p.cobrancaAsaasId) debita = false;
+                        else if (p.escritorioResponsavel) debita = false;
                         else if (p.vendedorResponsavelId) debita = true;
                         else if (mapaDebitaPorNomeRel[p.formaPagamentoNome] !== undefined) debita = mapaDebitaPorNomeRel[p.formaPagamentoNome];
                         else debita = condicaoDebitaCaixa;
