@@ -1,6 +1,7 @@
 const prisma = require('../config/database');
 const fs = require('fs');
 const path = require('path');
+const pcpReceitaService = require('../services/pcpReceitaService');
 
 const produtoController = {
     // Listar produtos com paginação e filtros
@@ -88,7 +89,38 @@ const produtoController = {
 
             if (!produto) return res.status(404).json({ error: 'Produto não encontrado' });
 
-            res.json(produto);
+            // Custo pela receita do PCP: se o produto tem receita ativa, ela manda no custo
+            // (substitui o custo do CA e o manual na tela). Falha aqui não derruba o detalhe.
+            let custoReceita = null;
+            try {
+                const itemPcp = await prisma.itemPcp.findFirst({
+                    where: { produtoId: id },
+                    select: { id: true }
+                });
+                if (itemPcp) {
+                    const agora = new Date();
+                    const receitaAtiva = await prisma.receita.findFirst({
+                        where: {
+                            itemPcpId: itemPcp.id,
+                            status: 'ativa',
+                            dataInicioVigencia: { lte: agora },
+                            OR: [{ dataFimVigencia: null }, { dataFimVigencia: { gte: agora } }]
+                        },
+                        orderBy: { versao: 'desc' },
+                        select: { id: true }
+                    });
+                    if (receitaAtiva) {
+                        const c = await pcpReceitaService.calcularCusto(receitaAtiva.id);
+                        if (c && Number(c.custoPorUnidade) > 0) {
+                            custoReceita = Math.round(Number(c.custoPorUnidade) * 100) / 100;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error('Custo por receita indisponível (segue sem):', e.message);
+            }
+
+            res.json({ ...produto, custoReceita });
         } catch (error) {
             console.error(error);
             res.status(500).json({ error: 'Erro ao buscar produto' });

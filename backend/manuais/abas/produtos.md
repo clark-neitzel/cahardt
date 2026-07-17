@@ -42,8 +42,9 @@ Gestão completa do cadastro de produtos da empresa. Permite criar, editar, ativ
 4. Campos editáveis no app: **unidade de medida**, **custo manual**, categoria comercial, produto substituto, prioridade de recomendação, permitir sugestão e imagens
 5. Clique em **Salvar** (botão da seção roxa "Inteligência Comercial") para gravar as alterações
 
-### Custo do produto (Custo Médio CA × Custo Manual)
-- **Custo Médio CA**: vem do Conta Azul, somente leitura. É o custo usado oficialmente (inclusive no cálculo de custo das receitas do PCP).
+### Custo do produto (Receita × Custo Médio CA × Custo Manual)
+- **Custo pela Receita (PCP)**: se o produto está vinculado a um item do PCP com **receita ativa**, o custo exibido no detalhe do produto é o **custo calculado pela receita** (ingredientes + perda ÷ rendimento) — ele **substitui qualquer outro custo** na tela e é o usado no cálculo da margem. O cartão de custo passa a mostrar "Custo (Receita)".
+- **Custo Médio CA**: vem do Conta Azul, somente leitura. Vale quando o produto **não tem receita ativa**. É também o custo usado dentro do cálculo das receitas do PCP (custo dos ingredientes).
 - **Custo Manual**: campo editável no app, usado como **reserva** — só entra no lugar do custo do CA **quando o CA ainda não tem custo** para aquele produto. Assim que o Conta Azul passar a ter um custo, ele assume automaticamente e o manual fica de reserva.
 - Use o Custo Manual para produtos que ainda não têm custo no CA, para que o custo das receitas que usam esse produto não fique incompleto.
 

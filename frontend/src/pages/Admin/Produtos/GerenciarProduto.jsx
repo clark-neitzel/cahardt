@@ -808,8 +808,11 @@ const GerenciarProduto = () => {
 
     const imagensExibir = imagensLocal.length > 0 ? imagensLocal : [{ url: null }];
     const estoqueReservado = Math.max(0, (produto.estoqueTotal || 0) - (produto.estoqueDisponivel || 0));
-    const margem = Number(formData.custoMedio) > 0 && Number(formData.valorVenda) > 0
-        ? (((Number(formData.valorVenda) - Number(formData.custoMedio)) / Number(formData.valorVenda)) * 100).toFixed(1)
+    // Se o produto tem receita ativa no PCP, o custo dela substitui qualquer outro (CA/manual)
+    const custoReceita = produto.custoReceita != null && Number(produto.custoReceita) > 0 ? Number(produto.custoReceita) : null;
+    const custoEfetivo = custoReceita ?? Number(formData.custoMedio);
+    const margem = custoEfetivo > 0 && Number(formData.valorVenda) > 0
+        ? (((Number(formData.valorVenda) - custoEfetivo) / Number(formData.valorVenda)) * 100).toFixed(1)
         : null;
 
     return (
@@ -901,7 +904,7 @@ const GerenciarProduto = () => {
                   <div className="grid grid-cols-2 gap-2.5">
                     {[
                       { label: 'Valor de Venda', value: `R$ ${Number(formData.valorVenda||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`, color: '#16192B' },
-                      { label: 'Custo (CA)',      value: `R$ ${Number(formData.custoMedio||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`, color: '#16192B' },
+                      { label: custoReceita ? 'Custo (Receita)' : 'Custo (CA)', value: `R$ ${Number(custoEfetivo||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`, color: custoReceita ? '#7C3AED' : '#16192B' },
                       { label: 'Margem',          value: margem ? `${margem}%` : '—', color: '#15A05A', showIcon: !!margem },
                       { label: 'Disponível',      value: String(produto.estoqueDisponivel??0), color: '#15A05A' },
                       { label: 'Total',           value: String(produto.estoqueTotal??0), color: '#2563EB' },
@@ -1013,7 +1016,7 @@ const GerenciarProduto = () => {
                     </div>
                     <div className="px-4 py-4 flex flex-col gap-4">
                       {[
-                        { key: 'custoManual', label: 'Custo Manual (R$)', tag: 'EDITÁVEL', helper: parseFloat(formData.custoMedio)>0?'CA já tem custo — este fica de reserva.':'Usado no cálculo de receitas.',
+                        { key: 'custoManual', label: 'Custo Manual (R$)', tag: 'EDITÁVEL', helper: custoReceita?'Produto tem receita — o custo da receita prevalece.':parseFloat(formData.custoMedio)>0?'CA já tem custo — este fica de reserva.':'Usado no cálculo de receitas.',
                           input: <div className="flex items-center gap-2.5 rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#D8C9FB',background:'#fff'}}>
                             <span className="text-sm font-medium" style={{color:'#3A3F52'}}>R$</span>
                             <input type="number" step="0.01" min="0" value={formData.custoManual} onChange={e=>setFormData({...formData,custoManual:e.target.value})} placeholder="0,00" className="flex-1 bg-transparent outline-none font-medium font-mono" style={{fontSize:15,color:'#16192B'}}/>
@@ -1131,7 +1134,7 @@ const GerenciarProduto = () => {
                         <div className="bg-white rounded-2xl border flex" style={{ borderColor: '#E7E9F2', boxShadow: '0 1px 2px rgba(16,20,40,.04)' }}>
                             {[
                                 { label: 'Valor de Venda', value: `R$ ${Number(formData.valorVenda || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, color: '#16192B' },
-                                { label: 'Custo (Conta Azul)', value: `R$ ${Number(formData.custoMedio || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, color: '#16192B' },
+                                { label: custoReceita ? 'Custo (Receita)' : 'Custo (Conta Azul)', value: `R$ ${Number(custoEfetivo || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, color: custoReceita ? '#7C3AED' : '#16192B' },
                                 { label: 'Margem', value: margem ? `${margem}%` : '—', color: '#15A05A', showIcon: !!margem },
                                 { label: 'Disponível', value: String(produto.estoqueDisponivel ?? 0), color: '#15A05A' },
                                 { label: 'Total', value: String(produto.estoqueTotal ?? 0), color: '#2563EB' },
@@ -1299,7 +1302,7 @@ const GerenciarProduto = () => {
                                                     className="flex-1 bg-transparent outline-none font-medium font-mono"
                                                     style={{ fontSize: 15, color: '#16192B' }} />
                                             </div>
-                                            <div className="mt-1.5 text-xs" style={{ color: '#9AA0B4' }}>{parseFloat(formData.custoMedio) > 0 ? 'CA já tem custo — este fica de reserva.' : 'Usado no cálculo de receitas.'}</div>
+                                            <div className="mt-1.5 text-xs" style={{ color: '#9AA0B4' }}>{custoReceita ? 'Produto tem receita — o custo da receita prevalece.' : parseFloat(formData.custoMedio) > 0 ? 'CA já tem custo — este fica de reserva.' : 'Usado no cálculo de receitas.'}</div>
                                         </div>
                                         <div>
                                             <div className="flex items-center mb-2">
