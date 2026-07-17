@@ -148,6 +148,13 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
         // Rastreabilidade: produto -> qtde -> pedidos vinculados
         const rastreabilidadePaginada = [arrConsolidado.length > 0 ? arrConsolidado : []];
 
+        // Fonte adaptativa: reduz conforme cresce o número de produtos para caber em 1 folha
+        const numProdutos = arrConsolidado.length;
+        const sepFont = numProdutos <= 28 ? 13 : numProdutos <= 38 ? 11 : numProdutos <= 50 ? 10 : 9;
+        const sepPadV = numProdutos <= 28 ? 5  : numProdutos <= 38 ? 4  : 2;
+        const sepPadH = numProdutos <= 28 ? 7  : 5;
+        const qtyFont = sepFont + 3;
+
         const amostrasEmbarque = embarque?.amostras || [];
         const hasAmostras = amostrasEmbarque.length > 0;
         const totalPages = pedidosPaginados.length + produtosPaginados.length + rastreabilidadePaginada.length + (hasAmostras ? 1 : 0);
@@ -179,10 +186,10 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             .print-container, .print-container * { font-family: 'Courier Prime', 'Courier New', Courier, monospace !important; }
                             .print-container table { width: 100%; border-collapse: collapse; margin-top: 5px; }
                             .print-container th, .print-container td { border: 1px solid #000; padding: 2px 4px; text-align: left; font-size: 8px; line-height: 1.1; color: #000; }
-                            .print-container .page-produtos th { font-size: 13px; line-height: 1.4; padding: 5px 7px; font-weight: bold; white-space: nowrap; }
-                            .print-container .page-produtos td { font-size: 13px; line-height: 1.4; padding: 5px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                            .print-container .page-produtos td.wrap-cell { white-space: normal; word-break: break-word; font-size: 11px; }
-                            .print-container .page-produtos td.qty-cell { font-size: 16px; font-weight: 900; text-align: center; vertical-align: middle; }
+                            .print-container .page-produtos th { font-size: ${sepFont}px; line-height: 1.4; padding: ${sepPadV}px ${sepPadH}px; font-weight: bold; white-space: nowrap; }
+                            .print-container .page-produtos td { font-size: ${sepFont}px; line-height: 1.4; padding: ${sepPadV}px ${sepPadH}px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                            .print-container .page-produtos td.wrap-cell { white-space: normal; word-break: break-word; font-size: ${sepFont - 2}px; }
+                            .print-container .page-produtos td.qty-cell { font-size: ${qtyFont}px; font-weight: 900; text-align: center; vertical-align: middle; }
                             .print-container th { background-color: #f3f4f6; color: #000; font-weight: bold; }
                             .print-container h1 { font-size: 14px; font-weight: bold; margin-bottom: 2px; color: #000; text-transform: uppercase; }
                             .print-container h2 { font-size: 11px; font-weight: bold; margin-top: 10px; margin-bottom: 5px; border-bottom: 1px solid #000; padding-bottom: 2px; color: #000; }
@@ -190,15 +197,15 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                 @page { size: A4 portrait; margin: 8mm 5mm 5mm 5mm; }
                                 body * { visibility: hidden; }
                                 #print-root-overlay, #print-root-overlay .print-scroll-area, #print-root-overlay .print-scroll-area * { visibility: visible; }
-                                #print-root-overlay { position: absolute !important; top: 0; left: 0; width: 100% !important; background: white !important; overflow: visible !important; }
+                                #print-root-overlay { position: absolute !important; top: 0; left: 0; right: auto !important; bottom: auto !important; width: 100% !important; height: auto !important; background: white !important; overflow: visible !important; }
                                 .print-scroll-area { padding: 0 !important; margin: 0 !important; display: block !important; }
                                 * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color: #000 !important; }
                                 .print-container { transform: scale(1) !important; margin: 0 !important; gap: 0 !important; display: block !important; font-family: 'Courier Prime', 'Courier New', Courier, monospace !important; }
                                 .print-container th, .print-container td { font-size: 8px !important; padding: 2px 3px !important; line-height: 1.1 !important; color: #000 !important; border: 1px solid #000 !important; font-family: 'Courier Prime', 'Courier New', Courier, monospace !important; }
-                                .print-container .page-produtos th { font-size: 13px !important; padding: 5px 7px !important; line-height: 1.4 !important; white-space: nowrap !important; }
-                                .print-container .page-produtos td { font-size: 13px !important; padding: 5px 7px !important; line-height: 1.4 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
-                                .print-container .page-produtos td.wrap-cell { white-space: normal !important; word-break: break-word !important; font-size: 11px !important; }
-                                .print-container .page-produtos td.qty-cell { font-size: 16px !important; font-weight: 900 !important; text-align: center !important; }
+                                .print-container .page-produtos th { font-size: ${sepFont}px !important; padding: ${sepPadV}px ${sepPadH}px !important; line-height: 1.4 !important; white-space: nowrap !important; }
+                                .print-container .page-produtos td { font-size: ${sepFont}px !important; padding: ${sepPadV}px ${sepPadH}px !important; line-height: 1.4 !important; white-space: nowrap !important; overflow: hidden !important; text-overflow: ellipsis !important; }
+                                .print-container .page-produtos td.wrap-cell { white-space: normal !important; word-break: break-word !important; font-size: ${sepFont - 2}px !important; }
+                                .print-container .page-produtos td.qty-cell { font-size: ${qtyFont}px !important; font-weight: 900 !important; text-align: center !important; }
                                 .print-container td.wrap-text { white-space: normal !important; word-wrap: break-word !important; }
                                 .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; min-height: 0 !important; height: auto !important; padding: 0 8mm !important; page-break-after: always; break-after: always; }
                                 .print-page.page-produtos { padding: 6mm 12mm !important; }
