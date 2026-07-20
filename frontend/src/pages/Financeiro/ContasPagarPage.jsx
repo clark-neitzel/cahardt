@@ -1894,7 +1894,11 @@ const DetalheContaModal = ({ conta: contaInicial, podeBaixar, onClose, onEditar,
     };
 
     const estornar = async (parcela, pagamento) => {
-        if (!window.confirm('Estornar este pagamento? A parcela volta a ficar em aberto.')) return;
+        const veioDoCA = String(pagamento.origem || '').toUpperCase() === 'CA';
+        const msg = veioDoCA
+            ? 'Esta baixa veio do Conta Azul (DDA). Estornar aqui EXCLUI a baixa também lá no CA e a parcela volta a ficar em aberto nos dois. Continuar?'
+            : 'Estornar este pagamento? A parcela volta a ficar em aberto.';
+        if (!window.confirm(msg)) return;
         setExecutando(pagamento.id);
         try {
             await contasPagarService.estornarPagamento(conta.id, parcela.id, pagamento.id);
@@ -1907,11 +1911,13 @@ const DetalheContaModal = ({ conta: contaInicial, podeBaixar, onClose, onEditar,
         }
     };
 
-    // Só baixa manual pode ser estornada aqui (baixa via CA/DDA é conferida lá)
+    // Baixa manual estorna direto; baixa vinda do CA/DDA estorna quando tem o vínculo
+    // (idBaixaCA) — o backend exclui a baixa lá no CA primeiro e só então estorna aqui.
     const podeEstornarPag = (p) => {
         if (p.estornado) return false;
         const origem = String(p.origem || '').toUpperCase();
-        return origem !== 'CA' && origem !== 'DDA' && origem !== 'CONTA_AZUL';
+        if (origem === 'CA' || origem === 'DDA' || origem === 'CONTA_AZUL') return !!p.temBaixaCA;
+        return true;
     };
 
     return (

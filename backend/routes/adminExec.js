@@ -3345,6 +3345,107 @@ router.get('/diag-baixas-sem-banco', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-pagamentos-pagar?busca=kontisa — SOMENTE LEITURA.
+// Lista as baixas (ledger) das despesas cujo fornecedor/descrição bate a busca.
+router.get('/diag-pagamentos-pagar', async (req, res) => {
+    try {
+        const busca = String(req.query.busca || '').trim();
+        if (busca.length < 3) return res.status(400).json({ error: 'busca com 3+ letras' });
+        const contas = await prisma.contaPagar.findMany({
+            where: {
+                OR: [
+                    { descricao: { contains: busca, mode: 'insensitive' } },
+                    { fornecedor: { razaoSocial: { contains: busca, mode: 'insensitive' } } },
+                    { fornecedor: { nomeFantasia: { contains: busca, mode: 'insensitive' } } }
+                ]
+            },
+            include: {
+                fornecedor: { select: { razaoSocial: true } },
+                parcelas: { include: { pagamentos: true }, orderBy: { numeroParcela: 'asc' } }
+            },
+            orderBy: { criadoEm: 'desc' },
+            take: 10
+        });
+        res.json({
+            ok: true,
+            contas: contas.map((c) => ({
+                contaId: c.id, fornecedor: c.fornecedor?.razaoSocial, descricao: c.descricao,
+                nota: c.numeroNota, status: c.status, envioCA: c.statusEnvioCA, valorTotal: Number(c.valorTotal),
+                parcelas: c.parcelas.map((p) => ({
+                    parcelaId: p.id, numero: p.numeroParcela, status: p.status, idParcelaCA: p.idParcelaCA,
+                    pagamentos: p.pagamentos.map((pg) => ({
+                        pagamentoId: pg.id, valorPago: Number(pg.valorPago), data: pg.dataPagamento,
+                        origem: pg.origem, idBaixaCA: pg.idBaixaCA, estornado: pg.estornado,
+                        contaFinanceiraCaId: pg.contaFinanceiraCaId
+                    }))
+                }))
+            }))
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/admin-exec/estornar-baixa-pagar/:pagamentoId?cancelarConta=1
+// Mesmo fluxo do estorno da tela: baixa vinda do CA → exclui a baixa LÁ primeiro
+// (404 = já não existe), depois estorna no ledger local e recalcula parcela/conta.
+// Com cancelarConta=1, cancela a despesa em seguida (se não sobrar pagamento ativo).
+router.post('/estornar-baixa-pagar/:pagamentoId', async (req, res) => {
+    try {
+        const contaAzulService = require('../services/contaAzulService');
+        const caSync = require('../services/contasPagarCaSyncService');
+        const pagamento = await prisma.pagamentoParcelaPagar.findUnique({
+            where: { id: req.params.pagamentoId },
+            include: { parcelaPagar: true }
+        });
+        if (!pagamento) return res.status(404).json({ error: 'Pagamento não encontrado.' });
+        if (pagamento.estornado) return res.status(400).json({ error: 'Já estornado.' });
+
+        let caExclusao = 'nao-precisou';
+        if (pagamento.origem === 'CA') {
+            if (!pagamento.idBaixaCA) return res.status(400).json({ error: 'Baixa do CA sem idBaixaCA.' });
+            try {
+                await contaAzulService.excluirBaixaFinanceira(pagamento.idBaixaCA);
+                caExclusao = 'excluida';
+            } catch (e) {
+                if (e?.response?.status !== 404) {
+                    return res.status(400).json({ ok: false, error: 'CA recusou excluir a baixa', status: e?.response?.status, detalhe: e?.response?.data || e.message });
+                }
+                caExclusao = 'ja-nao-existia';
+            }
+        }
+
+        let resultado;
+        await prisma.$transaction(async (tx) => {
+            await tx.pagamentoParcelaPagar.update({
+                where: { id: pagamento.id },
+                data: { estornado: true, estornadoEm: new Date() }
+            });
+            resultado = await caSync.recalcularParcelaEConta(tx, pagamento.parcelaPagarId);
+        }, { timeout: 20000, maxWait: 10000 });
+
+        let cancelamento = null;
+        if (String(req.query.cancelarConta || '') === '1') {
+            const contaId = pagamento.parcelaPagar.contaPagarId;
+            const ativos = await prisma.pagamentoParcelaPagar.count({
+                where: { estornado: false, parcelaPagar: { contaPagarId: contaId } }
+            });
+            if (ativos > 0) {
+                cancelamento = { ok: false, motivo: `${ativos} pagamento(s) ativo(s) — não cancelada` };
+            } else {
+                await prisma.$transaction([
+                    prisma.parcelaPagar.updateMany({ where: { contaPagarId: contaId, status: { not: 'PAGO' } }, data: { status: 'CANCELADO' } }),
+                    prisma.contaPagar.update({ where: { id: contaId }, data: { status: 'CANCELADO' } })
+                ]);
+                cancelamento = { ok: true };
+            }
+        }
+        res.json({ ok: true, caExclusao, novoStatusParcela: resultado?.statusParcela, novoStatusConta: resultado?.statusConta, cancelamento });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/backfill-banco-importadas — progresso do job SEM iniciar nada
 router.get('/backfill-banco-importadas', (req, res) => {
     try {

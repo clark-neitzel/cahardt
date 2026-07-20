@@ -108,6 +108,7 @@ const formatarPagamento = (pg) => ({
     formaPagamento: pg.formaPagamento,
     dataPagamento: pg.dataPagamento,
     origem: pg.origem,
+    temBaixaCA: !!pg.idBaixaCA,
     estornado: pg.estornado
 });
 
@@ -1133,12 +1134,26 @@ router.post('/:id/parcelas/:parcelaId/estorno', verificarAuth, checkEscrita, asy
             return res.status(404).json({ error: 'Pagamento não encontrado.' });
         }
         if (pagamento.estornado) return res.status(400).json({ error: 'Este pagamento já foi estornado.' });
-        if (pagamento.origem === 'CA') {
-            return res.status(400).json({ error: 'Esta baixa veio do Conta Azul. Exclua a baixa lá no CA (o app não estorna baixas do CA para não divergir do ERP).' });
-        }
 
         const parcela = await prisma.parcelaPagar.findUnique({ where: { id: parcelaId } });
         if (!parcela || parcela.contaPagarId !== id) return res.status(404).json({ error: 'Parcela não encontrada.' });
+
+        // Baixa que veio do Conta Azul (DDA/conferência): excluir a baixa LÁ primeiro —
+        // senão o robô de conferência (30 min) recria o pagamento aqui no ciclo seguinte.
+        // Só estorna localmente depois que o CA confirmar a exclusão (404 = já não existe lá).
+        if (pagamento.origem === 'CA') {
+            if (!pagamento.idBaixaCA) {
+                return res.status(400).json({ error: 'Esta baixa veio do Conta Azul sem vínculo rastreável. Exclua a baixa lá no CA e me avise para ajustar aqui.' });
+            }
+            try {
+                await contaAzulService.excluirBaixaFinanceira(pagamento.idBaixaCA);
+            } catch (e) {
+                if (e?.response?.status !== 404) {
+                    console.error('[ContasPagar] Falha ao excluir baixa no CA:', e?.response?.status, e?.response?.data || e.message);
+                    return res.status(400).json({ error: 'O Conta Azul não deixou excluir a baixa (ela pode estar conciliada com o extrato lá). Desfaça a conciliação no CA e tente de novo.' });
+                }
+            }
+        }
 
         let resultado;
         await prisma.$transaction(async (tx) => {

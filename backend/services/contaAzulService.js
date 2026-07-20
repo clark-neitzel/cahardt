@@ -2078,6 +2078,26 @@ const contaAzulService = {
     },
 
     /**
+     * Excluir uma baixa pelo endpoint de eventos financeiros (funciona para baixas de
+     * contas a pagar, ex.: reabrir parcela baixada via DDA). Se o endpoint novo não
+     * aceitar (404/405), tenta o legado /v1/financeiro/baixas/{id} (o do Asaas).
+     */
+    excluirBaixaFinanceira: async (baixaId) => {
+        const urlNova = `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/parcelas/baixa/${baixaId}`;
+        try {
+            const response = await contaAzulService._axiosRequest('delete', urlNova, null, 'BAIXA_EXCLUIR');
+            await contaAzulService._logStep('BAIXA_EXCLUIR', 'SUCESSO', `Baixa ${baixaId} excluída`, {
+                url: urlNova, method: 'DELETE', status: response.status
+            });
+            return response.data;
+        } catch (e) {
+            const st = e?.response?.status;
+            if (st !== 404 && st !== 405) throw e;
+            return contaAzulService.excluirBaixa(baixaId);
+        }
+    },
+
+    /**
      * Atualizar uma baixa existente (ex.: corrigir a CONTA FINANCEIRA de uma baixa
      * lançada no banco errado). A spec exige `versao` e `composicao_valor.valor_bruto`.
      */
