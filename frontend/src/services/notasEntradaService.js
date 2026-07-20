@@ -21,6 +21,27 @@ const notasEntradaService = {
         const response = await api.post(`/notas-entrada/${id}/gerar-conta`, dados);
         return response.data;
     },
+    // Parcelas do Contas a Pagar candidatas a receber esta nota (mesmo fornecedor por padrão,
+    // incluindo as JÁ PAGAS; `busca` procura em qualquer fornecedor).
+    // → { notaValor, jaVinculadoTotal, parcelas: [...] }
+    parcelasCompativeis: async (id, busca = '') => {
+        const response = await api.get(`/notas-entrada/${id}/parcelas-compativeis`, {
+            params: busca ? { busca } : {}
+        });
+        return response.data;
+    },
+    // Anexa a nota a parcela(s) JÁ lançada(s) — não cria despesa nova.
+    // payload: { vinculos: [{ parcelaPagarId, valorVinculado }], acaoDiferenca, observacao }
+    vincularParcelas: async (id, payload) => {
+        const response = await api.post(`/notas-entrada/${id}/vincular-parcelas`, payload);
+        return response.data;
+    },
+    // Desfaz o vínculo — sem `parcelaPagarId` desfaz todos.
+    desvincularParcelas: async (id, parcelaPagarId) => {
+        const response = await api.post(`/notas-entrada/${id}/desvincular-parcelas`,
+            parcelaPagarId ? { parcelaPagarId } : {});
+        return response.data;
+    },
     ignorar: async (id) => {
         const response = await api.post(`/notas-entrada/${id}/ignorar`);
         return response.data;

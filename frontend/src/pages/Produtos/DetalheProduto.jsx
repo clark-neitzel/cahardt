@@ -55,7 +55,9 @@ const DetalheProduto = () => {
                     nome: data.nome || '',
                     codigo: data.codigo || '',
                     valorVenda: data.valorVenda ? Number(data.valorVenda).toFixed(2) : '0.00',
-                    custoMedio: data.custoMedio ? Number(data.custoMedio).toFixed(2) : '0.00',
+                    // Custo efetivo: receita ativa do PCP > média das compras (CA não é mais usado)
+                    custoMedio: Number(data.custoReceita) > 0 ? Number(data.custoReceita).toFixed(2)
+                        : Number(data.custoManual) > 0 ? Number(data.custoManual).toFixed(2) : '0.00',
                     unidade: data.unidade || '',
                     categoria: data.categoria || '',
                     ean: data.ean || '',
@@ -258,14 +260,14 @@ const DetalheProduto = () => {
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-medium text-gray-500 mb-1">Custo Médio</label>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">Custo</label>
                                         <div className="relative">
                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">R$</span>
                                             <input
                                                 type="text"
                                                 value={formData.custoMedio}
                                                 readOnly
-                                                title="Sincronizado do Conta Azul"
+                                                title="Receita ativa do PCP ou média das compras"
                                                 className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 pl-8 pr-3 text-sm text-gray-500 cursor-default"
                                             />
                                         </div>

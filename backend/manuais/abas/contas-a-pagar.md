@@ -93,6 +93,17 @@ A conta fica ABERTO / PARCIAL / QUITADO / CANCELADO conforme o conjunto das parc
 
 ---
 
+## Nota fiscal vinculada a uma parcela
+
+Uma parcela **já lançada aqui** pode ter **uma ou mais notas fiscais vinculadas** — é o caminho usado quando a despesa foi lançada primeiro (ex.: contrato de serviço parcelado) e a **NF só chegou depois**, às vezes depois do pagamento. O vínculo é feito lá em **Notas Recebidas** ("vincular a parcela já lançada"), **não** cria despesa nova aqui e **não mexe na baixa** da parcela.
+
+- Uma nota pode ser dividida entre **várias parcelas** (com valor vinculado em cada uma) e uma parcela pode receber **mais de uma nota**, até o limite do valor dela.
+- Se, ao vincular, for escolhida a ação **"ajustar a parcela"**, o **valor das parcelas ainda não pagas** passa a ser o valor vinculado, e o **total e o status da despesa são recalculados** automaticamente. Parcela **já paga nunca é alterada**.
+- Esse ajuste vale **só no app** — nada é refletido na Conta Azul.
+- Desvincular a nota **não desfaz** um ajuste de valor já aplicado: se precisar voltar, edite a parcela aqui.
+
+---
+
 ## Permissões necessárias
 
 | Permissão | Efeito |
@@ -107,7 +118,7 @@ A conta fica ABERTO / PARCIAL / QUITADO / CANCELADO conforme o conjunto das parc
 
 - **Fornecedores** — toda conta enviada ao CA precisa de um fornecedor cadastrado (e sincronizado com o CA)
 - **Conta Azul** — categorias de despesa e conta financeira padrão vêm do CA; sem o CA conectado, as contas só funcionam localmente
-- **Notas Recebidas** — a captura automática de NF-e na SEFAZ (com o certificado digital instalado nas Configurações) gera contas a pagar com origem NFE a partir das notas dos fornecedores
+- **Notas Recebidas** — a captura automática de NF-e na SEFAZ (com o certificado digital instalado nas Configurações) gera contas a pagar com origem NFE a partir das notas dos fornecedores; e uma nota que chega **depois** pode ser **vinculada a uma parcela que já existe aqui** (sem criar despesa nova)
 
 ---
 

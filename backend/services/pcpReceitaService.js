@@ -468,8 +468,8 @@ const pcpReceitaService = {
     },
 
     // Calcula o custo de uma receita (recursivo para subprodutos).
-    // Fonte do custo de cada ingrediente:
-    //  - MP/EMB/PA: custoMedio do produto (Conta Azul); se não houver, custoManual do produto; senão custoUnitario do item PCP.
+    // Fonte do custo de cada ingrediente (custo do CA NÃO é mais usado — decisão de 07/2026):
+    //  - MP/EMB/PA: custoManual do produto (média ponderada das compras/notas); senão custoUnitario do item PCP.
     //  - SUB: custo por unidade da receita ATIVA do subproduto (custoTotal ÷ rendimento líquido), calculado recursivamente.
     // Custo por unidade da receita = custoTotal ÷ (rendimentoBase já descontada a perda %).
     calcularCusto: async (receitaId, _visitados = new Set()) => {
@@ -490,7 +490,7 @@ const pcpReceitaService = {
                             select: {
                                 id: true, nome: true, codigo: true, tipo: true, unidade: true,
                                 custoUnitario: true, produtoId: true,
-                                produto: { select: { custoMedio: true, custoManual: true } }
+                                produto: { select: { custoManual: true } }
                             }
                         }
                     },
@@ -532,14 +532,13 @@ const pcpReceitaService = {
                     temCustoFaltando = true; // SUB sem receita ativa e sem custo manual
                 }
             } else {
-                const ca = ip?.produto?.custoMedio != null ? parseFloat(ip.produto.custoMedio) : 0;
-                if (ca > 0) {
-                    custoUnitario = ca;
-                    origem = 'ca';
+                const compraProd = ip?.produto?.custoManual != null ? parseFloat(ip.produto.custoManual) : 0;
+                const manualItem = ip?.custoUnitario != null ? parseFloat(ip.custoUnitario) : 0;
+                if (compraProd > 0) {
+                    custoUnitario = compraProd;
+                    origem = 'compra';
                 } else {
-                    const manualProd = ip?.produto?.custoManual != null ? parseFloat(ip.produto.custoManual) : 0;
-                    const manualItem = ip?.custoUnitario != null ? parseFloat(ip.custoUnitario) : 0;
-                    custoUnitario = manualProd > 0 ? manualProd : manualItem;
+                    custoUnitario = manualItem;
                     origem = 'manual';
                     if (!(custoUnitario > 0)) temCustoFaltando = true;
                 }
@@ -576,18 +575,16 @@ const pcpReceitaService = {
 
     // Mapa de custo unitário de TODOS os itens, para o formulário calcular o custo ao vivo.
     // - itensPcp[id]  → custo por unidade do item PCP (SUB calculado pela receita ativa)
-    // - produtos[id]  → custo por unidade do produto (custoMedio do CA ou, na falta, custoManual)
+    // - produtos[id]  → custo por unidade do produto (custoManual = média ponderada das compras; CA não é mais usado)
     custosUnitarios: async () => {
         const [itens, produtos] = await Promise.all([
             prisma.itemPcp.findMany({
-                select: { id: true, tipo: true, custoUnitario: true, produto: { select: { custoMedio: true, custoManual: true } } }
+                select: { id: true, tipo: true, custoUnitario: true, produto: { select: { custoManual: true } } }
             }),
-            prisma.produto.findMany({ select: { id: true, custoMedio: true, custoManual: true } })
+            prisma.produto.findMany({ select: { id: true, custoManual: true } })
         ]);
 
         const custoProduto = (p) => {
-            const ca = p?.custoMedio != null ? parseFloat(p.custoMedio) : 0;
-            if (ca > 0) return ca;
             const man = p?.custoManual != null ? parseFloat(p.custoManual) : 0;
             return man > 0 ? man : 0;
         };

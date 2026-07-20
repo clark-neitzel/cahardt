@@ -950,7 +950,7 @@ const pedidoController = {
             // Custo de produção por produto — usa a MESMA função oficial do PCP
             // (pcpReceitaService.calcularCusto), garantindo que o relatório bate com a tela
             // da receita. Ela resolve SUB recursivamente, pega o custo da MP em
-            // Produto.custoMedio → custoManual → ItemPcp.custoUnitario, e aplica a perda
+            // Produto.custoManual (compras) → ItemPcp.custoUnitario, e aplica a perda
             // (custoPorUnidade = custoTotal / (rendimentoBase × (1 - perda%))).
             const produtoIds = [...new Set(
                 pedidos.flatMap(p => p.itens.map(i => i.produto?.id).filter(Boolean))

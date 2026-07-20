@@ -139,6 +139,13 @@ const formatarConta = (c) => ({
         dataPagamento: p.dataPagamento,
         valorPago: num(p.valorPago),
         baixadoViaCA: p.baixadoViaCA,
+        // NF(s) vinculadas a ESTA parcela (nota que chegou depois de a despesa já estar lançada)
+        notasVinculadas: (p.notasVinculadas || []).map((v) => ({
+            notaEntradaId: v.notaEntradaId,
+            numero: v.notaEntrada?.numero || null,
+            chave: v.notaEntrada?.chave || null,
+            valorVinculado: num(v.valorVinculado)
+        })),
         pagamentos: (p.pagamentos || []).map(formatarPagamento)
     }))
 });
@@ -272,7 +279,13 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                 fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjCpf: true } },
                 parcelas: {
                     orderBy: { numeroParcela: 'asc' },
-                    include: { pagamentos: { orderBy: { dataPagamento: 'asc' } } }
+                    include: {
+                        pagamentos: { orderBy: { dataPagamento: 'asc' } },
+                        // NF que chegou depois e foi vinculada a esta parcela
+                        notasVinculadas: {
+                            include: { notaEntrada: { select: { numero: true, chave: true } } }
+                        }
+                    }
                 }
             },
             orderBy: { criadoEm: 'desc' }

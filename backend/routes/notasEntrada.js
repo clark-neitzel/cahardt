@@ -124,6 +124,28 @@ const calcularRateio = (vNF, itens, padrao = {}) => {
     });
 };
 
+/**
+ * Saldo ainda "vinculável" de uma parcela, considerando o que OUTRAS notas já ocupam.
+ * PURA e testável. Nunca negativo.
+ * @param {number} valorParcela
+ * @param {Array}  vinculos          [{ notaEntradaId, valorVinculado }] já gravados na parcela
+ * @param {string|null} ignorarNotaId nota que está sendo (re)vinculada agora
+ */
+const calcularSaldoDisponivel = (valorParcela, vinculos = [], ignorarNotaId = null) => {
+    const ocupado = (vinculos || [])
+        .filter((v) => !ignorarNotaId || v.notaEntradaId !== ignorarNotaId)
+        .reduce((s, v) => s + (Number(v.valorVinculado) || 0), 0);
+    return Math.max(0, round2(Number(valorParcela || 0) - ocupado));
+};
+
+// Ação escolhida no app quando a soma vinculada ≠ valor da nota → tipoDiferenca gravado.
+const ACOES_DIFERENCA = ['NENHUMA', 'AJUSTAR_PARCELA', 'DESCONTO', 'ACRESCIMO'];
+const tipoDiferencaDaAcao = (acao) => (acao === 'AJUSTAR_PARCELA' ? 'AJUSTE' : acao);
+
+// Parcela "paga" para efeito do ajuste de valor: status PAGO ou com pagamento não estornado.
+const parcelaEstaPaga = (parcela) =>
+    parcela.status === 'PAGO' || (parcela.pagamentos || []).some((p) => !p.estornado);
+
 const parseVencimento = (v) => {
     const s = String(v);
     return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T12:00:00-03:00`) : new Date(s);
@@ -153,6 +175,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         const chipUp = String(chip || '').toUpperCase();
         if (chipUp === 'NOVAS') where.status = { in: ['NOVA', 'AGUARDANDO_XML'] };
         else if (chipUp === 'GERADAS') where.status = 'CONFERIDA';
+        else if (chipUp === 'VINCULADAS') where.status = 'VINCULADA'; // anexadas a parcela já lançada
         else if (chipUp === 'IGNORADAS') where.status = 'IGNORADA';
         else if (chipUp === 'TODAS') { /* sem filtro de situação */ }
         else if (status) where.status = status;
@@ -517,10 +540,41 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
             include: {
                 fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true, contaAzulId: true } },
                 itens: { orderBy: { numeroItem: 'asc' } },
-                duplicatas: { orderBy: { vencimento: 'asc' } }
+                duplicatas: { orderBy: { vencimento: 'asc' } },
+                parcelasVinculadas: {
+                    orderBy: { criadoEm: 'asc' },
+                    include: {
+                        parcelaPagar: {
+                            include: { contaPagar: { select: { id: true, descricao: true } } }
+                        }
+                    }
+                }
             }
         });
         if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
+
+        // Parcelas já lançadas às quais esta nota foi vinculada (caminho "NF chegou depois").
+        const contasVinculadas = [...new Set(nota.parcelasVinculadas.map((v) => v.parcelaPagar.contaPagarId))];
+        const totaisPorConta = new Map();
+        for (const contaId of contasVinculadas) {
+            totaisPorConta.set(contaId, await prisma.parcelaPagar.count({
+                where: { contaPagarId: contaId, status: { not: 'CANCELADO' } }
+            }));
+        }
+        const parcelasVinculadas = nota.parcelasVinculadas.map((v) => ({
+            parcelaPagarId: v.parcelaPagarId,
+            contaPagarId: v.parcelaPagar.contaPagarId,
+            descricao: v.parcelaPagar.contaPagar?.descricao || null,
+            numeroParcela: v.parcelaPagar.numeroParcela,
+            totalParcelas: totaisPorConta.get(v.parcelaPagar.contaPagarId) || null,
+            dataVencimento: v.parcelaPagar.dataVencimento,
+            valorParcela: num(v.parcelaPagar.valor),
+            valorVinculado: num(v.valorVinculado),
+            statusParcela: v.parcelaPagar.status,
+            tipoDiferenca: v.tipoDiferenca,
+            observacao: v.observacao
+        }));
+        const somaVinculada = round2(parcelasVinculadas.reduce((s, v) => s + (v.valorVinculado || 0), 0));
 
         // De-para lembrado: match por (fornecedorCnpj + codigoFornecedor), fallback EAN
         const vinculos = nota.fornecedorCnpj
@@ -609,7 +663,9 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
                 numero: d.numero,
                 vencimento: d.vencimento,
                 valor: num(d.valor)
-            }))
+            })),
+            parcelasVinculadas,
+            somaVinculada
         });
     } catch (error) {
         console.error('Erro ao detalhar nota recebida:', error);
@@ -667,6 +723,317 @@ router.get('/:id/danfe', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// =============================================================
+// VINCULAR NOTA A PARCELA(S) JÁ LANÇADA(S)
+// Caminho alternativo ao "gerar despesa nova": o contrato/serviço já foi lançado
+// (às vezes já pago) e a NF só chega depois. Vincular NÃO cria conta a pagar.
+// =============================================================
+
+// ── GET /:id/parcelas-compativeis — parcelas candidatas para vincular ──
+// Padrão: parcelas do MESMO fornecedor da nota (inclusive PAGAS).
+// Com ?busca= procura em QUALQUER fornecedor (fallback quando o CNPJ não bate).
+router.get('/:id/parcelas-compativeis', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const nota = await prisma.notaEntrada.findUnique({ where: { id: req.params.id } });
+        if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
+
+        const busca = String(req.query.busca || '').trim();
+
+        const whereParcela = {
+            status: { not: 'CANCELADO' },
+            contaPagar: { status: { not: 'CANCELADO' } }
+        };
+
+        if (busca) {
+            // Busca livre: qualquer fornecedor (descrição da conta, nº da nota, nome do fornecedor)
+            whereParcela.contaPagar = {
+                status: { not: 'CANCELADO' },
+                OR: [
+                    { descricao: { contains: busca, mode: 'insensitive' } },
+                    { numeroNota: { contains: busca, mode: 'insensitive' } },
+                    { fornecedor: { razaoSocial: { contains: busca, mode: 'insensitive' } } },
+                    { fornecedor: { nomeFantasia: { contains: busca, mode: 'insensitive' } } }
+                ]
+            };
+        } else {
+            // Padrão: só o fornecedor da nota (por fornecedorId ou por CNPJ normalizado)
+            const ids = new Set();
+            if (nota.fornecedorId) ids.add(nota.fornecedorId);
+            const cnpj = normalizarDoc(nota.fornecedorCnpj);
+            if (cnpj) {
+                const forns = await prisma.fornecedor.findMany({ where: { cnpjCpf: cnpj }, select: { id: true } });
+                forns.forEach((f) => ids.add(f.id));
+            }
+            if (ids.size === 0) {
+                return res.json({ notaValor: num(nota.valorTotal), jaVinculadoTotal: 0, parcelas: [] });
+            }
+            whereParcela.contaPagar = { status: { not: 'CANCELADO' }, fornecedorId: { in: [...ids] } };
+        }
+
+        const parcelas = await prisma.parcelaPagar.findMany({
+            where: whereParcela,
+            orderBy: { dataVencimento: 'asc' },
+            take: 300,
+            include: {
+                contaPagar: {
+                    select: {
+                        id: true, descricao: true, categoria: true,
+                        fornecedor: { select: { razaoSocial: true, nomeFantasia: true } }
+                    }
+                },
+                notasVinculadas: { include: { notaEntrada: { select: { id: true, numero: true } } } }
+            }
+        });
+
+        // Quantas parcelas (não canceladas) cada conta tem — para exibir "2/12"
+        const contaIds = [...new Set(parcelas.map((p) => p.contaPagarId))];
+        const totais = contaIds.length
+            ? await prisma.parcelaPagar.groupBy({
+                by: ['contaPagarId'],
+                where: { contaPagarId: { in: contaIds }, status: { not: 'CANCELADO' } },
+                _count: { _all: true }
+            })
+            : [];
+        const totalPorConta = new Map(totais.map((t) => [t.contaPagarId, t._count._all]));
+
+        const jaVinculadoTotal = round2(
+            parcelas.reduce((s, p) => s + p.notasVinculadas
+                .filter((v) => v.notaEntradaId === nota.id)
+                .reduce((s2, v) => s2 + Number(v.valorVinculado), 0), 0)
+        );
+
+        res.json({
+            notaValor: num(nota.valorTotal),
+            jaVinculadoTotal,
+            parcelas: parcelas.map((p) => ({
+                parcelaPagarId: p.id,
+                contaPagarId: p.contaPagarId,
+                descricao: p.contaPagar?.descricao || null,
+                categoria: p.contaPagar?.categoria || null,
+                numeroParcela: p.numeroParcela,
+                totalParcelas: totalPorConta.get(p.contaPagarId) || null,
+                dataVencimento: p.dataVencimento,
+                valor: num(p.valor),
+                status: p.status,
+                fornecedorNome: p.contaPagar?.fornecedor?.razaoSocial || p.contaPagar?.fornecedor?.nomeFantasia || null,
+                saldoDisponivel: calcularSaldoDisponivel(p.valor, p.notasVinculadas, nota.id),
+                notasVinculadas: p.notasVinculadas.map((v) => ({
+                    notaEntradaId: v.notaEntradaId,
+                    numero: v.notaEntrada?.numero || null,
+                    valorVinculado: num(v.valorVinculado)
+                }))
+            }))
+        });
+    } catch (error) {
+        console.error('Erro ao listar parcelas compatíveis:', error);
+        res.status(500).json({ error: 'Erro ao listar as parcelas compatíveis.' });
+    }
+});
+
+// ── POST /:id/vincular-parcelas — anexa a nota a parcela(s) já existente(s) ──
+// Body: { vinculos:[{ parcelaPagarId, valorVinculado }], acaoDiferenca, observacao? }
+router.post('/:id/vincular-parcelas', verificarAuth, checkEscrita, async (req, res) => {
+    try {
+        const { vinculos, acaoDiferenca, observacao } = req.body || {};
+
+        const nota = await prisma.notaEntrada.findUnique({ where: { id: req.params.id } });
+        if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
+        if (!['NOVA', 'VINCULADA'].includes(nota.status)) {
+            return res.status(400).json({ error: `Só é possível vincular nota com status NOVA ou VINCULADA (status atual: ${nota.status}).` });
+        }
+
+        if (!Array.isArray(vinculos) || vinculos.length === 0) {
+            return res.status(400).json({ error: 'Selecione ao menos uma parcela para vincular.' });
+        }
+        const acao = String(acaoDiferenca || 'NENHUMA').toUpperCase();
+        if (!ACOES_DIFERENCA.includes(acao)) {
+            return res.status(400).json({ error: 'Ação para a diferença inválida (use NENHUMA, AJUSTAR_PARCELA, DESCONTO ou ACRESCIMO).' });
+        }
+
+        // Normaliza e valida os valores
+        const pedidos = [];
+        const vistos = new Set();
+        for (const v of vinculos) {
+            const parcelaPagarId = String(v?.parcelaPagarId || '');
+            const valorVinculado = round2(Number(v?.valorVinculado));
+            if (!parcelaPagarId) return res.status(400).json({ error: 'Vínculo sem parcela informada.' });
+            if (vistos.has(parcelaPagarId)) return res.status(400).json({ error: 'A mesma parcela foi enviada duas vezes.' });
+            vistos.add(parcelaPagarId);
+            if (!Number.isFinite(valorVinculado) || valorVinculado <= 0) {
+                return res.status(400).json({ error: 'Todo vínculo precisa de um valor maior que zero.' });
+            }
+            pedidos.push({ parcelaPagarId, valorVinculado });
+        }
+
+        const parcelas = await prisma.parcelaPagar.findMany({
+            where: { id: { in: pedidos.map((p) => p.parcelaPagarId) } },
+            include: {
+                contaPagar: { select: { id: true, status: true } },
+                pagamentos: { where: { estornado: false } },
+                notasVinculadas: true
+            }
+        });
+        const porId = new Map(parcelas.map((p) => [p.id, p]));
+
+        for (const pedido of pedidos) {
+            const parcela = porId.get(pedido.parcelaPagarId);
+            if (!parcela) return res.status(400).json({ error: 'Uma das parcelas selecionadas não existe mais.' });
+            if (parcela.status === 'CANCELADO') {
+                return res.status(400).json({ error: `A parcela ${parcela.numeroParcela} está cancelada e não pode receber nota.` });
+            }
+            if (parcela.contaPagar?.status === 'CANCELADO') {
+                return res.status(400).json({ error: `A despesa da parcela ${parcela.numeroParcela} está cancelada e não pode receber nota.` });
+            }
+            const saldo = calcularSaldoDisponivel(parcela.valor, parcela.notasVinculadas, nota.id);
+            if (pedido.valorVinculado > saldo + 0.01) {
+                return res.status(400).json({
+                    error: `O valor vinculado à parcela ${parcela.numeroParcela} (R$ ${pedido.valorVinculado.toFixed(2)}) passa do que ainda está livre nela (R$ ${saldo.toFixed(2)}) — outra nota já ocupa parte dessa parcela.`
+                });
+            }
+        }
+
+        const somaVinculada = round2(pedidos.reduce((s, p) => s + p.valorVinculado, 0));
+        const valorNota = nota.valorTotal != null ? round2(Number(nota.valorTotal)) : null;
+        if (valorNota != null && somaVinculada > valorNota + 0.01) {
+            return res.status(400).json({
+                error: `A soma vinculada (R$ ${somaVinculada.toFixed(2)}) não pode passar do valor da nota (R$ ${valorNota.toFixed(2)}).`
+            });
+        }
+
+        const tipoDiferenca = tipoDiferencaDaAcao(acao);
+        const obs = observacao?.trim() || null;
+        const avisos = [];
+
+        // Parcelas que o ajuste NÃO pode tocar (já pagas) — só avisamos.
+        const pagasIgnoradas = acao === 'AJUSTAR_PARCELA'
+            ? pedidos.map((p) => porId.get(p.parcelaPagarId)).filter(parcelaEstaPaga)
+            : [];
+        if (pagasIgnoradas.length > 0) {
+            avisos.push(`Parcela(s) já paga(s) não tiveram o valor ajustado: ${pagasIgnoradas.map((p) => `nº ${p.numeroParcela}`).join(', ')}.`);
+        }
+
+        await prisma.$transaction(async (tx) => {
+            const contasAfetadas = new Set();
+
+            for (const pedido of pedidos) {
+                const parcela = porId.get(pedido.parcelaPagarId);
+                await tx.notaEntradaParcela.upsert({
+                    where: {
+                        notaEntradaId_parcelaPagarId: {
+                            notaEntradaId: nota.id,
+                            parcelaPagarId: pedido.parcelaPagarId
+                        }
+                    },
+                    update: { valorVinculado: pedido.valorVinculado, tipoDiferenca, observacao: obs },
+                    create: {
+                        notaEntradaId: nota.id,
+                        parcelaPagarId: pedido.parcelaPagarId,
+                        valorVinculado: pedido.valorVinculado,
+                        tipoDiferenca,
+                        observacao: obs
+                    }
+                });
+
+                // Ajuste do valor da parcela — só nas NÃO pagas.
+                if (acao === 'AJUSTAR_PARCELA' && !parcelaEstaPaga(parcela)) {
+                    await tx.parcelaPagar.update({
+                        where: { id: parcela.id },
+                        data: { valor: pedido.valorVinculado }
+                    });
+                    contasAfetadas.add(parcela.contaPagarId);
+                }
+            }
+
+            // Recalcula total e status das contas cujas parcelas mudaram de valor.
+            for (const contaId of contasAfetadas) {
+                const todas = await tx.parcelaPagar.findMany({
+                    where: { contaPagarId: contaId, status: { not: 'CANCELADO' } }
+                });
+                const novoTotal = round2(todas.reduce((s, p) => s + Number(p.valor), 0));
+                const novoStatus = contasPagarCaSyncService.calcularStatusContaPagar(todas);
+                const conta = await tx.contaPagar.findUnique({ where: { id: contaId }, select: { status: true } });
+                await tx.contaPagar.update({
+                    where: { id: contaId },
+                    data: {
+                        valorTotal: novoTotal,
+                        ...(conta && conta.status !== 'CANCELADO' ? { status: novoStatus } : {})
+                    }
+                });
+            }
+
+            // A nota vira VINCULADA. contaPagarId NÃO é tocado (é do fluxo "gerou despesa nova").
+            await tx.notaEntrada.update({ where: { id: nota.id }, data: { status: 'VINCULADA' } });
+        }, { timeout: 20000, maxWait: 10000 });
+
+        // Total vinculado a esta nota DEPOIS da operação (pode incluir vínculos anteriores).
+        const todosVinculos = await prisma.notaEntradaParcela.findMany({ where: { notaEntradaId: nota.id } });
+        const totalVinculado = round2(todosVinculos.reduce((s, v) => s + Number(v.valorVinculado), 0));
+        const diferenca = valorNota != null ? round2(valorNota - totalVinculado) : null;
+
+        if (diferenca != null && Math.abs(diferenca) > 0.01 && acao === 'NENHUMA') {
+            avisos.push(`Sobrou diferença de R$ ${diferenca.toFixed(2)} entre o valor da nota e o que foi vinculado (registrada, sem alterar as parcelas).`);
+        }
+
+        // Log/side-effect fora da transação (nunca derruba a operação principal).
+        googleDriveService.salvarXmlNota(nota, xmlAbsPath(nota))
+            .catch((err) => console.error('[NotasEntrada] Drive (vincular-parcelas):', err?.message || err));
+
+        res.json({
+            ok: true,
+            message: 'Nota vinculada à(s) parcela(s) existente(s). Nenhuma despesa nova foi criada.',
+            vinculadas: pedidos.length,
+            somaVinculada: totalVinculado,
+            valorNota,
+            diferenca,
+            avisos
+        });
+    } catch (error) {
+        console.error('Erro ao vincular nota a parcelas:', error);
+        res.status(500).json({ error: 'Erro ao vincular a nota às parcelas.' });
+    }
+});
+
+// ── POST /:id/desvincular-parcelas — remove um vínculo (ou todos) ──
+// Body opcional: { parcelaPagarId }. NÃO desfaz ajustes de valor já aplicados.
+router.post('/:id/desvincular-parcelas', verificarAuth, checkEscrita, async (req, res) => {
+    try {
+        const nota = await prisma.notaEntrada.findUnique({ where: { id: req.params.id } });
+        if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
+
+        const parcelaPagarId = req.body?.parcelaPagarId ? String(req.body.parcelaPagarId) : null;
+        const where = { notaEntradaId: nota.id, ...(parcelaPagarId ? { parcelaPagarId } : {}) };
+
+        const existentes = await prisma.notaEntradaParcela.findMany({ where });
+        if (existentes.length === 0) {
+            return res.status(400).json({ error: 'Não há vínculo para remover nesta nota.' });
+        }
+
+        let restantes = 0;
+        await prisma.$transaction(async (tx) => {
+            await tx.notaEntradaParcela.deleteMany({ where });
+            restantes = await tx.notaEntradaParcela.count({ where: { notaEntradaId: nota.id } });
+            if (restantes === 0) {
+                await tx.notaEntrada.update({
+                    where: { id: nota.id },
+                    data: { status: nota.xmlPath ? 'NOVA' : 'AGUARDANDO_XML' }
+                });
+            }
+        }, { timeout: 20000, maxWait: 10000 });
+
+        res.json({
+            ok: true,
+            message: parcelaPagarId ? 'Vínculo removido.' : 'Todos os vínculos foram removidos.',
+            removidos: existentes.length,
+            restantes,
+            status: restantes === 0 ? (nota.xmlPath ? 'NOVA' : 'AGUARDANDO_XML') : 'VINCULADA',
+            aviso: 'Se o valor de alguma parcela tinha sido ajustado no vínculo, ele NÃO volta sozinho — confira em Contas a Pagar.'
+        });
+    } catch (error) {
+        console.error('Erro ao desvincular nota de parcelas:', error);
+        res.status(500).json({ error: 'Erro ao remover o vínculo da nota.' });
+    }
+});
+
 // ── Gera o próximo código sequencial de item PCP por tipo (ex.: MP-001) ──
 const proximoCodigoItemPcp = async (tx, tipo) => {
     const prefixo = `${tipo}-`;
@@ -703,6 +1070,11 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
         });
         if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
         if (nota.contaPagarId) return res.status(400).json({ error: 'Esta nota já tem uma conta a pagar gerada.' });
+        // Nota já anexada a parcela(s) existente(s): gerar despesa nova duplicaria a dívida.
+        const jaVinculada = await prisma.notaEntradaParcela.count({ where: { notaEntradaId: nota.id } });
+        if (jaVinculada > 0) {
+            return res.status(400).json({ error: 'Esta nota já está vinculada a parcela(s) existente(s). Desvincule antes de gerar uma despesa nova.' });
+        }
         if (nota.status !== 'NOVA') {
             return res.status(400).json({ error: `Só é possível gerar conta de nota com status NOVA (status atual: ${nota.status}).` });
         }
@@ -1111,5 +1483,7 @@ router.post('/:id/cancelar-conferencia', verificarAuth, checkEscrita, async (req
 
 // Exposto para testes offline (função pura, sem efeitos)
 router._calcularRateio = calcularRateio;
+router._calcularSaldoDisponivel = calcularSaldoDisponivel;
+router._tipoDiferencaDaAcao = tipoDiferencaDaAcao;
 
 module.exports = router;

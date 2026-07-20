@@ -571,8 +571,8 @@ const NovoPedido = () => {
             if (regraCategoria) {
                 acrescimo = Number(regraCategoria.acrescimo) || 0;
                 if (regraCategoria.precoBase === 'custoMedio') {
-                    // custoManual cobre produto com custo do CA zerado (entradas do app)
-                    precoBaseInicial = Number(produto.custoMedio) || Number(produto.custoManual) || Number(produto.valorVenda) || 0;
+                    // custo do produto = custoManual (média das compras; CA não é mais usado)
+                    precoBaseInicial = Number(produto.custoManual) || Number(produto.valorVenda) || 0;
                 } else {
                     precoBaseInicial = Number(produto.valorVenda) || 0;
                 }
@@ -608,7 +608,7 @@ const NovoPedido = () => {
             }
 
             // Flag: preço abaixo do custo médio (para detecção de fraude em especiais)
-            const custoMedio = Number(produto.custoMedio) || Number(produto.custoManual) || 0;
+            const custoMedio = Number(produto.custoManual) || 0;
             const abaixoCustoMedio = especial && custoMedio > 0 && novoValorUnitario < custoMedio;
 
             novoMapa.set(pid, {
@@ -1135,7 +1135,7 @@ const NovoPedido = () => {
                                         const regraCategoria = especial && produto.categoria ? regras.find(r => r.categoria === produto.categoria) : null;
                                         let precoExibido;
                                         if (regraCategoria) {
-                                            const base = regraCategoria.precoBase === 'custoMedio' ? (Number(produto.custoMedio) || Number(produto.custoManual) || Number(produto.valorVenda) || 0) : (Number(produto.valorVenda) || 0);
+                                            const base = regraCategoria.precoBase === 'custoMedio' ? (Number(produto.custoManual) || Number(produto.valorVenda) || 0) : (Number(produto.valorVenda) || 0);
                                             precoExibido = base * (1 + (Number(regraCategoria.acrescimo) || 0) / 100);
                                         } else {
                                             precoExibido = Number(produto.valorVenda || 0) * (1 + acrescimoTabela / 100);

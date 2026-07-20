@@ -51,6 +51,21 @@ const STATUS_OPCOES = [
 // Nome do fornecedor com fallback seguro (nunca "undefined")
 const nomeFornecedor = (f) => f?.nomeFantasia || f?.razaoSocial || 'Sem fornecedor';
 
+// Números das notas ANEXADAS a esta parcela em Notas Recebidas ("vincular NF a parcela já lançada").
+// O backend pode ainda não mandar esse campo na listagem — nesse caso volta [] e nada muda na tela.
+const notasVinculadasDaParcela = (parcela) => (Array.isArray(parcela?.notasVinculadas) ? parcela.notasVinculadas : [])
+    .map(n => String(n?.numero || '').trim())
+    .filter(Boolean);
+
+// Texto da coluna/linha NOTA: número do lançamento + notas vinculadas depois (sem repetir).
+const textoNota = (conta, parcela) => {
+    const nums = [];
+    const doLancamento = String(conta?.numeroNota || '').trim();
+    if (doLancamento) nums.push(doLancamento);
+    for (const n of notasVinculadasDaParcela(parcela)) if (!nums.includes(n)) nums.push(n);
+    return nums.join(' · ');
+};
+
 // ── Recibo A4 ─────────────────────────────────────────────
 const EMPRESA = {
     nome: 'HARDT DOCES E SALGADOS LTDA',
@@ -589,7 +604,7 @@ const ContasPagarPage = () => {
                             </div>
                             <div className="text-sm text-gray-500 truncate">
                                 {conta.descricao || 'Sem descrição'}
-                                {conta.numeroNota ? ` · Nota ${conta.numeroNota}` : ''}
+                                {textoNota(conta, parcela) ? ` · Nota ${textoNota(conta, parcela)}` : ''}
                                 {` · parc. ${parcela.numeroParcela}/${totalParcelas}`}
                             </div>
                             <div className="flex items-center justify-between mt-2">
@@ -671,7 +686,7 @@ const ContasPagarPage = () => {
                                             {conta.descricao || '—'}
                                             {conta.categoria ? <span className="text-gray-500"> · {conta.categoria}</span> : null}
                                         </td>
-                                        <td className="px-5 py-3 text-gray-600">{conta.numeroNota || <span className="text-gray-500">—</span>}</td>
+                                        <td className="px-5 py-3 text-gray-600">{textoNota(conta, parcela) || <span className="text-gray-500">—</span>}</td>
                                         <td className="px-5 py-3 text-gray-600">{parcela.numeroParcela}/{totalParcelas}</td>
                                         <td className={`px-5 py-3 ${parcelaVencida(parcela) ? 'text-red-600 font-medium' : 'text-gray-600'}`}>
                                             {fmtData(parcela.dataVencimento)}

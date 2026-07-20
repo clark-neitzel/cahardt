@@ -436,7 +436,7 @@ const ListaProdutos = () => {
                                                         Venda: R$ {Number(produto.valorVenda || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                     </span>
                                                     <span className="text-xs text-gray-500">
-                                                        Custo: R$ {Number(produto.custoMedio || produto.custoManual || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                        Custo: R$ {Number(produto.custoManual || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                                                     </span>
                                                 </div>
                                             </td>

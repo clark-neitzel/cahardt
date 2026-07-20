@@ -11,9 +11,10 @@
  *      (Produto → custoManual, campo local que o sync do CA não sobrescreve;
  *       ItemPcp → custoUnitario, usado nas receitas do PCP).
  *
- * Cancelar a conferência ESTORNA: saída de estoque (motivo ESTORNO_COMPRA) e a
- * linha do histórico é marcada estornado=true (nunca apagada). O custo NÃO é
- * revertido (média já incorporada — corrija manualmente se necessário).
+ * Cancelar a conferência ESTORNA: saída de estoque (motivo ESTORNO_COMPRA), a
+ * linha do histórico é marcada estornado=true (nunca apagada) e o CUSTO é
+ * RECALCULADO pela média ponderada das compras válidas restantes — corrigir o
+ * lançamento corrige o custo sozinho (decisão de 07/2026).
  *
  * Roda DEPOIS da transação da conta a pagar: falha aqui não desfaz a conta —
  * loga, devolve avisos e o estoque pode ser acertado manualmente.
@@ -95,7 +96,7 @@ async function registrarCompras(origem, entradas, criadoPorId) {
             if (produtoId) {
                 const p = await prisma.produto.findUnique({
                     where: { id: produtoId },
-                    select: { nome: true, unidade: true, estoqueTotal: true, custoManual: true, custoMedio: true, categoria: true, controlaEstoque: true }
+                    select: { nome: true, unidade: true, estoqueTotal: true, custoManual: true, categoria: true, controlaEstoque: true }
                 });
                 if (!p) { avisos.push(`Produto do item "${e.descricao}" não encontrado.`); continue; }
                 unidadeNossa = p.unidade || unidadeNossa;
@@ -138,7 +139,8 @@ async function registrarCompras(origem, entradas, criadoPorId) {
 
                 // Custo: SEMPRE atualizado. Com controle de estoque, média ponderada com o
                 // saldo anterior; sem controle, o custo passa a ser o da última compra.
-                const custoAtual = num(p.custoManual) > 0 ? num(p.custoManual) : num(p.custoMedio);
+                // (custo do CA não entra mais na conta — decisão de 07/2026)
+                const custoAtual = num(p.custoManual);
                 const novoCusto = controla
                     ? custoMedioPonderado(num(p.estoqueTotal), custoAtual, quantidade, custoUnitario)
                     : custoUnitario;
@@ -341,7 +343,70 @@ async function estornarCompras(compras, criadoPorId) {
         }
     }
 
+    // Recalcula o custo dos alvos afetados pelas compras válidas restantes — assim,
+    // cancelar uma conferência errada corrige o custo sozinho (decisão de 07/2026).
+    const produtoIds = [...new Set(compras.map((c) => c.produtoId).filter(Boolean))];
+    const itemPcpIds = [...new Set(compras.map((c) => c.itemPcpId).filter(Boolean))];
+    for (const produtoId of produtoIds) {
+        try {
+            const novo = await recalcularCustoPelasCompras({ produtoId });
+            if (novo != null) avisos.push(`Custo do produto recalculado pelas compras válidas: R$ ${novo.toFixed(2)}.`);
+        } catch (err) {
+            console.error(`[CompraEstoque] Falha ao recalcular custo do produto ${produtoId}:`, err.message);
+            avisos.push('Não foi possível recalcular o custo do produto — confira o campo Custo Manual.');
+        }
+    }
+    for (const itemPcpId of itemPcpIds) {
+        try {
+            await recalcularCustoPelasCompras({ itemPcpId });
+        } catch (err) {
+            console.error(`[CompraEstoque] Falha ao recalcular custo do insumo ${itemPcpId}:`, err.message);
+            avisos.push('Não foi possível recalcular o custo do insumo — confira o custo unitário no PCP.');
+        }
+    }
+
     return { estornadas, avisos };
+}
+
+/**
+ * Recalcula o custo de um produto/insumo reaplicando a média ponderada sobre o
+ * histórico de compras VÁLIDAS (não estornadas), em ordem cronológica.
+ * Usado após um estorno, para o lançamento cancelado sair da média.
+ * Sem nenhuma compra válida restante, o custo atual é mantido (não zera —
+ * pode ter sido digitado à mão) e a função devolve null.
+ * @returns {number|null} novo custo aplicado, ou null se nada mudou
+ */
+async function recalcularCustoPelasCompras({ produtoId, itemPcpId }) {
+    const where = { estornado: false };
+    if (produtoId) where.produtoId = produtoId;
+    else if (itemPcpId) where.itemPcpId = itemPcpId;
+    else return null;
+
+    const compras = await prisma.compraItem.findMany({
+        where,
+        orderBy: [{ dataCompra: 'asc' }, { criadoEm: 'asc' }],
+        select: { quantidade: true, custoUnitario: true }
+    });
+    if (compras.length === 0) return null;
+
+    let est = 0;
+    let custo = 0;
+    for (const c of compras) {
+        const qtd = num(c.quantidade);
+        if (qtd <= 0) continue;
+        custo = custoMedioPonderado(est, custo, qtd, num(c.custoUnitario));
+        est += qtd;
+    }
+    if (!(custo > 0)) return null;
+
+    if (produtoId) {
+        const novo = round(custo, 2);
+        await prisma.produto.update({ where: { id: produtoId }, data: { custoManual: novo } });
+        return novo;
+    }
+    const novo = round(custo, 4);
+    await prisma.itemPcp.update({ where: { id: itemPcpId }, data: { custoUnitario: novo } });
+    return novo;
 }
 
 /** Histórico de compras de um produto do catálogo OU insumo PCP (mais recentes primeiro). */
@@ -378,6 +443,7 @@ module.exports = {
     estornarEntradasNota,
     estornarEntradasConta,
     historicoCompras,
+    recalcularCustoPelasCompras,
     // pura (testável offline)
     custoMedioPonderado
 };

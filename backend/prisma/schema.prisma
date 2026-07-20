@@ -36,7 +36,7 @@ model Produto {
   custoMedio    Decimal? @map("custo_medio") @db.Decimal(12, 2)
   custoManual   Decimal? @map("custo_manual") @db.Decimal(12, 2) // custo digitado no app; usado só quando o CA não tem custoMedio
   custoCaZerado Boolean  @default(false) @map("custo_ca_zerado") // custo do CA zerado no app: sync não traz mais o custoMedio; vale o custoManual (alimentado pelas entradas de compra)
-  pesoLiquido Decimal? @map("peso_liquido") @db.Decimal(12, 3)
+  pesoLiquido   Decimal? @map("peso_liquido") @db.Decimal(12, 3)
 
   // Timestamps
   contaAzulUpdatedAt DateTime? @map("conta_azul_updated_at") // Última atualização no Conta Azul
@@ -189,13 +189,13 @@ model Cliente {
   idVendedor String?   @map("id_vendedor")
   vendedor   Vendedor? @relation(fields: [idVendedor], references: [id])
 
-  arquivos      ClienteArquivo[]
-  pedidos       Pedido[]
-  leads         Lead[]
-  amostras      Amostra[]
-  contasReceber ContaReceber[]
-  devolucoes    Devolucao[]
-  atendimentos  Atendimento[]
+  arquivos       ClienteArquivo[]
+  pedidos        Pedido[]
+  leads          Lead[]
+  amostras       Amostra[]
+  contasReceber  ContaReceber[]
+  devolucoes     Devolucao[]
+  atendimentos   Atendimento[]
   cobrancaEnvios CobrancaEnvio[]
 
   // Indicação (auto-referência: quem indicou este cliente)
@@ -754,33 +754,33 @@ model FuncionarioAvaliacao {
 }
 
 model TabelaPreco {
-  id                          String   @id // id-Pgto (Ex: "1000")
-  idCondicao                  String   @map("id_condicao") // ID_CONDICAO (Ex: "AVISTA_DIN")
-  nomeCondicao                String   @map("nome_condicao") // NOME_CONDICAO
-  tipoPagamento               String?  @map("tipo_pagamento") // TIPO_PAGAMENTO
-  opcaoCondicao               String?  @map("opcao_condicao") // opcao_condicao_pagamento
-  qtdParcelas                 Int      @default(1) @map("qtd_parcelas")
-  parcelasDias                Int      @default(0) @map("parcelas_dias")
-  acrescimoPreco              Decimal  @default(0) @map("acrescimo_preco") @db.Decimal(10, 2)
-  parcelasPercentuais         Decimal  @default(100) @map("parcelas_percentuais") @db.Decimal(10, 2)
-  valorMinimo                 Decimal? @default(0) @map("valor_minimo") @db.Decimal(12, 2)
-  exigeBanco                  Boolean  @default(false) @map("exige_banco")
-  bancoPadrao                 String?  @map("banco_padrao")
-  debitaCaixa                 Boolean  @default(false) @map("debita_caixa")
-  ativo                       Boolean  @default(true)
-  permiteEspecial             Boolean  @default(false) @map("permite_especial") // Condição disponível para pedidos especiais
-  permitePedido               Boolean  @default(true) @map("permite_pedido") // Condição disponível para pedidos comuns
-  permiteBonificacao          Boolean  @default(false) @map("permite_bonificacao") // Condição disponível para pedidos bonificação
-  permiteCatalogoPersonalizado Boolean @default(true) @map("permite_catalogo_personalizado") // Aparece no seletor de condição do catálogo personalizado
-  exigeAprovacaoCredito       Boolean  @default(false) @map("exige_aprovacao_credito") // Condição sujeita a aprovação de crédito (ex.: boleto) — marca a lista como "mediante aprovação de crédito" quando não aprovada
-  obs                         String?
-  formasRecebimentoPermitidas Json?    @map("formas_recebimento_permitidas") // IDs das formas de recebimento permitidas na entrega: ["tabela_1000", "uuid-forma"]
-  permiteDevolucaoTotal       Boolean  @default(true) @map("permite_devolucao_total")
-  permiteDevolucaoParcial     Boolean  @default(true) @map("permite_devolucao_parcial")
-  regrasCategoria             Json?    @map("regras_categoria") // Regras de preço por categoria CA para especiais: [{ categoria, precoBase, acrescimo }]
-  categoriasEspecial          Json?    @map("categorias_especial") // Categorias de produto visíveis em pedidos especiais: ["cat1", "cat2"]
-  createdAt                   DateTime @default(now()) @map("created_at")
-  updatedAt                   DateTime @updatedAt @map("updated_at")
+  id                           String   @id // id-Pgto (Ex: "1000")
+  idCondicao                   String   @map("id_condicao") // ID_CONDICAO (Ex: "AVISTA_DIN")
+  nomeCondicao                 String   @map("nome_condicao") // NOME_CONDICAO
+  tipoPagamento                String?  @map("tipo_pagamento") // TIPO_PAGAMENTO
+  opcaoCondicao                String?  @map("opcao_condicao") // opcao_condicao_pagamento
+  qtdParcelas                  Int      @default(1) @map("qtd_parcelas")
+  parcelasDias                 Int      @default(0) @map("parcelas_dias")
+  acrescimoPreco               Decimal  @default(0) @map("acrescimo_preco") @db.Decimal(10, 2)
+  parcelasPercentuais          Decimal  @default(100) @map("parcelas_percentuais") @db.Decimal(10, 2)
+  valorMinimo                  Decimal? @default(0) @map("valor_minimo") @db.Decimal(12, 2)
+  exigeBanco                   Boolean  @default(false) @map("exige_banco")
+  bancoPadrao                  String?  @map("banco_padrao")
+  debitaCaixa                  Boolean  @default(false) @map("debita_caixa")
+  ativo                        Boolean  @default(true)
+  permiteEspecial              Boolean  @default(false) @map("permite_especial") // Condição disponível para pedidos especiais
+  permitePedido                Boolean  @default(true) @map("permite_pedido") // Condição disponível para pedidos comuns
+  permiteBonificacao           Boolean  @default(false) @map("permite_bonificacao") // Condição disponível para pedidos bonificação
+  permiteCatalogoPersonalizado Boolean  @default(true) @map("permite_catalogo_personalizado") // Aparece no seletor de condição do catálogo personalizado
+  exigeAprovacaoCredito        Boolean  @default(false) @map("exige_aprovacao_credito") // Condição sujeita a aprovação de crédito (ex.: boleto) — marca a lista como "mediante aprovação de crédito" quando não aprovada
+  obs                          String?
+  formasRecebimentoPermitidas  Json?    @map("formas_recebimento_permitidas") // IDs das formas de recebimento permitidas na entrega: ["tabela_1000", "uuid-forma"]
+  permiteDevolucaoTotal        Boolean  @default(true) @map("permite_devolucao_total")
+  permiteDevolucaoParcial      Boolean  @default(true) @map("permite_devolucao_parcial")
+  regrasCategoria              Json?    @map("regras_categoria") // Regras de preço por categoria CA para especiais: [{ categoria, precoBase, acrescimo }]
+  categoriasEspecial           Json?    @map("categorias_especial") // Categorias de produto visíveis em pedidos especiais: ["cat1", "cat2"]
+  createdAt                    DateTime @default(now()) @map("created_at")
+  updatedAt                    DateTime @updatedAt @map("updated_at")
 
   @@map("tabela_precos")
 }
@@ -1191,12 +1191,12 @@ model CaixaDiario {
   vendedorId     String @map("vendedor_id")
   dataReferencia String @map("data_referencia") // YYYY-MM-DD
 
-  adiantamento Decimal @default(0) @db.Decimal(12, 2)
+  adiantamento        Decimal   @default(0) @db.Decimal(12, 2)
   // Quem lançou o adiantamento (mudar/zerar exige ser o autor, admin ou permissão própria)
   adiantamentoPorId   String?   @map("adiantamento_por_id")
   adiantamentoPorNome String?   @map("adiantamento_por_nome")
   adiantamentoEm      DateTime? @map("adiantamento_em")
-  status       String  @default("ABERTO") // ABERTO | FECHADO | CONFERIDO
+  status              String    @default("ABERTO") // ABERTO | FECHADO | CONFERIDO
 
   // Snapshots ao fechar
   totalDespesas       Decimal? @map("total_despesas") @db.Decimal(12, 2)
@@ -1248,14 +1248,14 @@ model CaixaConferenciaDevolucao {
   id            String @id @default(uuid())
   caixaDiarioId String @unique @map("caixa_diario_id")
 
-  status            String    @default("PENDENTE") // PENDENTE | CONFERIDA
-  conferidoPorId    String?   @map("conferido_por_id")
-  conferidoPorNome  String?   @map("conferido_por_nome")
-  conferidoEm       DateTime? @map("conferido_em")
-  totalCobrado      Decimal   @default(0) @map("total_cobrado") @db.Decimal(12, 2)
+  status             String    @default("PENDENTE") // PENDENTE | CONFERIDA
+  conferidoPorId     String?   @map("conferido_por_id")
+  conferidoPorNome   String?   @map("conferido_por_nome")
+  conferidoEm        DateTime? @map("conferido_em")
+  totalCobrado       Decimal   @default(0) @map("total_cobrado") @db.Decimal(12, 2)
   // Snapshot da tabela de preço usada na cobrança (não muda se a config do vendedor mudar depois)
-  tabelaCobrancaId   String? @map("tabela_cobranca_id")
-  tabelaCobrancaNome String? @map("tabela_cobranca_nome")
+  tabelaCobrancaId   String?   @map("tabela_cobranca_id")
+  tabelaCobrancaNome String?   @map("tabela_cobranca_nome")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1303,12 +1303,12 @@ model CaixaConferenciaDevolucaoItem {
 // autoriza (com a senha dele) ou rejeita. Sem FK para Vendedor de propósito —
 // guarda só os ids/nomes (snapshot), como outros pontos do schema.
 model AutorizacaoDevolucao {
-  id             String  @id @default(uuid())
-  vendedorId     String  @map("vendedor_id") // dono do caixa (motorista)
-  dataReferencia String  @map("data_referencia") // YYYY-MM-DD
-  produtoId      String  @map("produto_id")
-  produtoNome    String  @map("produto_nome") // snapshot
-  quantidade     Decimal @db.Decimal(12, 3)
+  id             String   @id @default(uuid())
+  vendedorId     String   @map("vendedor_id") // dono do caixa (motorista)
+  dataReferencia String   @map("data_referencia") // YYYY-MM-DD
+  produtoId      String   @map("produto_id")
+  produtoNome    String   @map("produto_nome") // snapshot
+  quantidade     Decimal  @db.Decimal(12, 3)
   motivo         String?
   valorUnit      Decimal? @map("valor_unit") @db.Decimal(12, 2) // preço na tabela do motorista (p/ mostrar no pop-up)
 
@@ -1680,15 +1680,15 @@ model Parcela {
   dataVencimento DateTime     @map("data_vencimento")
 
   // Baixa
-  dataPagamento      DateTime? @map("data_pagamento")
-  valorPago          Decimal?  @map("valor_pago") @db.Decimal(12, 2)
-  valorDescontoTotal Decimal   @default(0) @map("valor_desconto_total") @db.Decimal(12, 2)
-  formaPagamento     String?   @map("forma_pagamento")
-  contaFinanceiraCaId String?  @map("conta_financeira_ca_id") // UUID do banco/caixa no CA em que o dinheiro ENTROU (vem da baixa sincronizada do CA)
-  baixadoPorId       String?   @map("baixado_por_id")
-  baixadoPor         Vendedor? @relation("BaixasRealizadas", fields: [baixadoPorId], references: [id])
-  status             String    @default("PENDENTE") // PENDENTE | PARCIAL | PAGO | VENCIDO | CANCELADO
-  observacao         String?   @db.Text
+  dataPagamento       DateTime? @map("data_pagamento")
+  valorPago           Decimal?  @map("valor_pago") @db.Decimal(12, 2)
+  valorDescontoTotal  Decimal   @default(0) @map("valor_desconto_total") @db.Decimal(12, 2)
+  formaPagamento      String?   @map("forma_pagamento")
+  contaFinanceiraCaId String?   @map("conta_financeira_ca_id") // UUID do banco/caixa no CA em que o dinheiro ENTROU (vem da baixa sincronizada do CA)
+  baixadoPorId        String?   @map("baixado_por_id")
+  baixadoPor          Vendedor? @relation("BaixasRealizadas", fields: [baixadoPorId], references: [id])
+  status              String    @default("PENDENTE") // PENDENTE | PARCIAL | PAGO | VENCIDO | CANCELADO
+  observacao          String?   @db.Text
 
   pagamentos     PagamentoParcela[]
   cobrancasAsaas CobrancaAsaas[] // PIX/boleto emitidos pelo app via Asaas
@@ -1705,16 +1705,16 @@ model Parcela {
 // Histórico (ledger) de cada pagamento/desconto recebido numa parcela —
 // permite baixa parcial (várias linhas até quitar) e estorno individual de cada linha.
 model PagamentoParcela {
-  id             String   @id @default(uuid())
-  parcelaId      String   @map("parcela_id")
-  parcela        Parcela  @relation(fields: [parcelaId], references: [id], onDelete: Cascade)
-  valorRecebido  Decimal  @default(0) @map("valor_recebido") @db.Decimal(12, 2)
-  valorDesconto  Decimal  @default(0) @map("valor_desconto") @db.Decimal(12, 2)
-  motivoDesconto String?  @map("motivo_desconto")
-  formaPagamento String?  @map("forma_pagamento")
-  contaFinanceiraCaId String? @map("conta_financeira_ca_id") // UUID do banco/caixa no CA em que o dinheiro entrou
-  dataPagamento  DateTime @map("data_pagamento")
-  observacao     String?  @db.Text
+  id                  String   @id @default(uuid())
+  parcelaId           String   @map("parcela_id")
+  parcela             Parcela  @relation(fields: [parcelaId], references: [id], onDelete: Cascade)
+  valorRecebido       Decimal  @default(0) @map("valor_recebido") @db.Decimal(12, 2)
+  valorDesconto       Decimal  @default(0) @map("valor_desconto") @db.Decimal(12, 2)
+  motivoDesconto      String?  @map("motivo_desconto")
+  formaPagamento      String?  @map("forma_pagamento")
+  contaFinanceiraCaId String?  @map("conta_financeira_ca_id") // UUID do banco/caixa no CA em que o dinheiro entrou
+  dataPagamento       DateTime @map("data_pagamento")
+  observacao          String?  @db.Text
 
   registradoPorId String   @map("registrado_por_id")
   registradoPor   Vendedor @relation("PagamentosParcelaRegistrados", fields: [registradoPorId], references: [id])
@@ -2686,26 +2686,26 @@ model Fornecedor {
 }
 
 model ContaPagar {
-  id            String      @id @default(uuid())
-  fornecedorId  String?     @map("fornecedor_id")
-  fornecedor    Fornecedor? @relation(fields: [fornecedorId], references: [id])
-  descricao     String
-  categoria     String? // nome da categoria de despesa (CA)
-  categoriaCaId String?     @map("categoria_ca_id") // UUID da categoria no CA (rateio)
-  numeroNota    String?     @map("numero_nota")
-  chaveNfe      String?     @map("chave_nfe")
-  origem        String      @default("MANUAL") // MANUAL | NFE | NFSE | IMPORTADO_CA
+  id             String      @id @default(uuid())
+  fornecedorId   String?     @map("fornecedor_id")
+  fornecedor     Fornecedor? @relation(fields: [fornecedorId], references: [id])
+  descricao      String
+  categoria      String? // nome da categoria de despesa (CA)
+  categoriaCaId  String?     @map("categoria_ca_id") // UUID da categoria no CA (rateio)
+  numeroNota     String?     @map("numero_nota")
+  chaveNfe       String?     @map("chave_nfe")
+  origem         String      @default("MANUAL") // MANUAL | NFE | NFSE | IMPORTADO_CA
   // Importação do relatório "Contas a pagar" do Conta Azul (CSV). Chave natural
   // (vencimento|cnpj/nome|descrição) para não duplicar ao reimportar o mesmo mês.
   // Índice NÃO único de propósito: `prisma db push` (deploy) recusa criar UNIQUE em
   // tabela com dados sem --accept-data-loss. A dedup é feita no código (consulta o
   // hash antes de criar) — ver importacaoCaService.importar.
-  hashImportacao String?    @map("hash_importacao")
-  valorTotal    Decimal     @map("valor_total") @db.Decimal(12, 2)
-  status        String      @default("ABERTO") // ABERTO | PARCIAL | QUITADO | CANCELADO
-  competencia   DateTime?
-  observacoes   String?     @db.Text
-  pdfPath       String?     @map("pdf_path") @db.Text // Caminho do PDF anexado (boleto, NF, contrato…)
+  hashImportacao String?     @map("hash_importacao")
+  valorTotal     Decimal     @map("valor_total") @db.Decimal(12, 2)
+  status         String      @default("ABERTO") // ABERTO | PARCIAL | QUITADO | CANCELADO
+  competencia    DateTime?
+  observacoes    String?     @db.Text
+  pdfPath        String?     @map("pdf_path") @db.Text // Caminho do PDF anexado (boleto, NF, contrato…)
 
   // Integração Conta Azul (POST contas-a-pagar é assíncrono: 202 + protocolo)
   idEventoCA    String? @unique @map("id_evento_ca")
@@ -2715,7 +2715,7 @@ model ContaPagar {
 
   // Condição de pagamento escolhida na entrada da nota (vai no payload da despesa ao CA:
   // metodo_pagamento + conta_financeira de cada parcela). Nulo = usa a conta padrão do CA.
-  metodoPagamentoCA   String? @map("metodo_pagamento_ca")   // enum de metodo_pagamento do CA
+  metodoPagamentoCA   String? @map("metodo_pagamento_ca") // enum de metodo_pagamento do CA
   contaFinanceiraCaId String? @map("conta_financeira_ca_id") // UUID do banco/caixa no CA
 
   criadoPorId String?   @map("criado_por_id")
@@ -2765,7 +2765,10 @@ model ParcelaPagar {
   idParcelaCA    String?   @unique @map("id_parcela_ca")
   baixadoViaCA   Boolean   @default(false) @map("baixado_via_ca")
 
-  pagamentos PagamentoParcelaPagar[]
+  pagamentos      PagamentoParcelaPagar[]
+  // Notas fiscais recebidas vinculadas a ESTA parcela (a NF chegou depois do lançamento).
+  // Vincular NÃO cria despesa nova — só anexa o documento fiscal à parcela existente.
+  notasVinculadas NotaEntradaParcela[]
 
   criadoEm     DateTime @default(now()) @map("criado_em")
   atualizadoEm DateTime @updatedAt @map("atualizado_em")
@@ -2796,7 +2799,7 @@ model PagamentoParcelaPagar {
   // Pagamento MANUAL comum fica NAO_ENVIAR (comportamento legado: sync é só CA→local).
   contaFinanceiraCaId String? @map("conta_financeira_ca_id") // UUID do banco/caixa no CA (de onde saiu o pgto)
   statusEnvioCA       String  @default("NAO_ENVIAR") @map("status_envio_ca") // NAO_ENVIAR | ENVIAR | ENVIADO
-  erroEnvioCA         String? @db.Text @map("erro_envio_ca")
+  erroEnvioCA         String? @map("erro_envio_ca") @db.Text
 
   registradoPorId String?   @map("registrado_por_id")
   registradoPor   Vendedor? @relation("PagamentosParcelaPagarRegistrados", fields: [registradoPorId], references: [id])
@@ -2870,7 +2873,8 @@ model CertificadoDigital {
 
 // Nota fiscal emitida CONTRA o nosso CNPJ, capturada automaticamente na SEFAZ.
 // Fluxo de status: AGUARDANDO_XML (só resumo/resNFe) → NOVA (XML completo baixado)
-//                  → CONFERIDA (virou conta a pagar) | IGNORADA | CANCELADA_EMITENTE
+//                  → CONFERIDA (virou conta a pagar) | VINCULADA (anexada a parcela(s)
+//                    já lançada(s), SEM criar despesa nova) | IGNORADA | CANCELADA_EMITENTE
 model NotaEntrada {
   id              String      @id @default(uuid())
   tipo            String      @default("NFE") // NFE (NFS-e = fase futura)
@@ -2884,7 +2888,7 @@ model NotaEntrada {
   fornecedor      Fornecedor? @relation(fields: [fornecedorId], references: [id])
   emissao         DateTime?
   valorTotal      Decimal?    @map("valor_total") @db.Decimal(12, 2)
-  status          String      @default("AGUARDANDO_XML") // AGUARDANDO_XML | NOVA | CONFERIDA | IGNORADA | CANCELADA_EMITENTE
+  status          String      @default("AGUARDANDO_XML") // AGUARDANDO_XML | NOVA | CONFERIDA | VINCULADA | IGNORADA | CANCELADA_EMITENTE
   manifestada     Boolean     @default(false) // Ciência da Operação (210210) já enviada?
   infComplementar String?     @map("inf_complementar") @db.Text // infAdic/infCpl do XML (observações da nota)
   xmlPath         String?     @map("xml_path") // uploads/notas-xml/{chave}.xml
@@ -2894,13 +2898,40 @@ model NotaEntrada {
   criadoEm        DateTime    @default(now()) @map("criado_em")
   atualizadoEm    DateTime    @updatedAt @map("atualizado_em")
 
-  itens      NotaEntradaItem[]
-  duplicatas NotaEntradaDuplicata[]
-  compras    CompraItem[] // Fase 6: entradas de estoque/custo geradas na conferência
+  itens              NotaEntradaItem[]
+  duplicatas         NotaEntradaDuplicata[]
+  compras            CompraItem[] // Fase 6: entradas de estoque/custo geradas na conferência
+  // Parcelas JÁ LANÇADAS às quais esta nota foi vinculada (caminho alternativo ao
+  // "gerar despesa nova": a NF chegou depois do lançamento/pagamento).
+  parcelasVinculadas NotaEntradaParcela[]
 
   @@index([status])
   @@index([fornecedorCnpj])
   @@map("notas_entrada")
+}
+
+// Vínculo N:N entre uma nota recebida e parcelas de contas a pagar JÁ existentes.
+// Caso de uso: contrato de serviço com parcelas lançadas na mão; a NF de cada mês
+// chega depois (às vezes depois do pagamento). Vincular anexa o documento fiscal
+// à parcela — NUNCA cria despesa nova (evita duplicar a dívida).
+// Uma nota pode cobrir VÁRIAS parcelas, com valor vinculado por parcela.
+model NotaEntradaParcela {
+  id             String       @id @default(uuid())
+  notaEntradaId  String       @map("nota_entrada_id")
+  notaEntrada    NotaEntrada  @relation(fields: [notaEntradaId], references: [id], onDelete: Cascade)
+  parcelaPagarId String       @map("parcela_pagar_id")
+  parcelaPagar   ParcelaPagar @relation(fields: [parcelaPagarId], references: [id], onDelete: Cascade)
+  valorVinculado Decimal      @map("valor_vinculado") @db.Decimal(12, 2)
+  // NENHUMA | AJUSTE | DESCONTO | ACRESCIMO — natureza da diferença entre o valor da
+  // nota e a soma vinculada (o app pergunta ao usuário; aqui só registramos a escolha).
+  tipoDiferenca  String?      @map("tipo_diferenca")
+  observacao     String?      @db.Text
+  criadoEm       DateTime     @default(now()) @map("criado_em")
+
+  @@unique([notaEntradaId, parcelaPagarId])
+  @@index([notaEntradaId])
+  @@index([parcelaPagarId])
+  @@map("nota_entrada_parcelas")
 }
 
 model NotaEntradaItem {
@@ -3074,10 +3105,10 @@ model ExtratoLancamento {
 // (baixa parcial no app + saldo em outro grupo). O caso simples 1↔1 continua
 // nos campos pagamentoParcelaId/pagamentoParcelaPagarId do ExtratoLancamento.
 model ConciliacaoGrupo {
-  id                  String   @id @default(uuid())
-  contaFinanceiraCaId String   @map("conta_financeira_ca_id")
+  id                  String  @id @default(uuid())
+  contaFinanceiraCaId String  @map("conta_financeira_ca_id")
   tipo                String // CREDITO | DEBITO (um grupo não mistura sentidos)
-  valor               Decimal  @db.Decimal(12, 2) // soma do lado do EXTRATO (legado: antes, os dois lados eram iguais)
+  valor               Decimal @db.Decimal(12, 2) // soma do lado do EXTRATO (legado: antes, os dois lados eram iguais)
 
   // Os dois lados podem NÃO fechar (tarifa do banco, juros pagos a mais, desconto…).
   // Nesse caso o grupo só é aceito com o motivo declarado — a diferença fica registrada,
@@ -3153,9 +3184,9 @@ model CobrancaConfig {
   diasLembrete      Int     @default(3) @map("dias_lembrete") // quantos dias antes do vencimento
 
   // Horário próprio de disparo (HH:MM, São Paulo); null = usa o horário geral
-  horaEnvio          String? @map("hora_envio")
+  horaEnvio         String? @map("hora_envio")
   // 'YYYY-MM-DD' do último disparo automático (evita rodar 2x no mesmo dia)
-  ultimaExecucaoDia  String? @map("ultima_execucao_dia")
+  ultimaExecucaoDia String? @map("ultima_execucao_dia")
 
   // Canais de envio
   canalWhatsapp Boolean @default(true) @map("canal_whatsapp")
@@ -3244,29 +3275,29 @@ model NotaBuscaAgendada {
 // Condicao_de_pagamento), então não altera os models Cliente/Produto.
 // =============================================
 model CatalogoPersonalizado {
-  id               String    @id @default(uuid())
-  token            String    @unique // token curto p/ a URL pública: /lista/<token>
-  titulo           String? // opcional (ex.: "Lista de agosto")
-  clienteUuid      String?   @map("cliente_uuid") // null = destinatário avulso (não-cliente); sem FK (snapshot)
-  clienteNome      String    @map("cliente_nome") // nome do cliente OU do destinatário avulso
-  clienteTelefone  String?   @map("cliente_telefone")
-  clienteCidade    String?   @map("cliente_cidade")
-  condicaoId       String    @map("condicao_id") // TabelaPreco.id no momento
-  condicaoNome     String    @map("condicao_nome")
-  medianteAprovacao Boolean  @default(false) @map("mediante_aprovacao") // condição c/ prazo não aprovada p/ o destinatário
-  acrescimoPreco   Decimal   @default(0) @map("acrescimo_preco") @db.Decimal(10, 2)
-  valorMinimo      Decimal?  @default(0) @map("valor_minimo") @db.Decimal(12, 2)
-  total            Decimal   @default(0) @db.Decimal(12, 2) // soma dos precoFinal (snapshot)
-  validadeEm       DateTime? @map("validade_em") // null = sem validade
-  observacoes      String?   @db.Text
-  status           String    @default("ATIVO") // ATIVO | REMOVIDO
-  vendedorId       String?   @map("vendedor_id")
-  vendedorNome     String?   @map("vendedor_nome")
-  vendedorTelefone String?   @map("vendedor_telefone")
-  visualizacoes    Int       @default(0)
-  ultimaVisita     DateTime? @map("ultima_visita")
-  createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  id                String    @id @default(uuid())
+  token             String    @unique // token curto p/ a URL pública: /lista/<token>
+  titulo            String? // opcional (ex.: "Lista de agosto")
+  clienteUuid       String?   @map("cliente_uuid") // null = destinatário avulso (não-cliente); sem FK (snapshot)
+  clienteNome       String    @map("cliente_nome") // nome do cliente OU do destinatário avulso
+  clienteTelefone   String?   @map("cliente_telefone")
+  clienteCidade     String?   @map("cliente_cidade")
+  condicaoId        String    @map("condicao_id") // TabelaPreco.id no momento
+  condicaoNome      String    @map("condicao_nome")
+  medianteAprovacao Boolean   @default(false) @map("mediante_aprovacao") // condição c/ prazo não aprovada p/ o destinatário
+  acrescimoPreco    Decimal   @default(0) @map("acrescimo_preco") @db.Decimal(10, 2)
+  valorMinimo       Decimal?  @default(0) @map("valor_minimo") @db.Decimal(12, 2)
+  total             Decimal   @default(0) @db.Decimal(12, 2) // soma dos precoFinal (snapshot)
+  validadeEm        DateTime? @map("validade_em") // null = sem validade
+  observacoes       String?   @db.Text
+  status            String    @default("ATIVO") // ATIVO | REMOVIDO
+  vendedorId        String?   @map("vendedor_id")
+  vendedorNome      String?   @map("vendedor_nome")
+  vendedorTelefone  String?   @map("vendedor_telefone")
+  visualizacoes     Int       @default(0)
+  ultimaVisita      DateTime? @map("ultima_visita")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   itens CatalogoPersonalizadoItem[]
 

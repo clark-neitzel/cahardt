@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mockup — PDF nas Contas a Pagar</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          primary: '#1976d2'
+        }
+      }
+    }
+  }
+</script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; }
+  .modal-overlay { background: rgba(0,0,0,0.45); }
+  .upload-area { border: 2px dashed #d1d5db; border-radius: 10px; padding: 24px; text-align: center; cursor: pointer; transition: all .2s; }
+  .upload-area:hover { border-color: #1976d2; background: #eff6ff; }
+  .toast { position: fixed; top: 18px; right: 18px; background: #1e293b; color: #fff; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; z-index: 9999; display: none; }
+  .toast.show { display: block; }
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<!-- PAINEL PRINCIPAL -->
+<div class="max-w-6xl mx-auto p-6">
+
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-3">
+      <div class="bg-amber-100 p-2 rounded-lg">
+        <svg class="h-5 w-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+      </div>
+      <h1 class="text-2xl font-bold text-gray-900">Contas a Pagar</h1>
+      <span class="text-xs text-gray-400 font-medium px-2 py-1 bg-gray-100 rounded-full">Mockup feature PDF</span>
+    </div>
+    <div class="flex items-center gap-2">
+      <button class="flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-sm font-medium">
+        Importar do CA
+      </button>
+      <button class="px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm text-sm font-semibold">+ Nova Despesa</button>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="grid grid-cols-4 gap-3 mb-4">
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+      <div class="text-xs font-semibold text-red-600 uppercase tracking-wide">Vencidas</div>
+      <div class="text-2xl font-bold text-red-600 mt-1">R$ 3.840,00</div>
+      <div class="text-xs text-gray-500">4 parcela(s)</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Proximos 7 dias</div>
+      <div class="text-2xl font-bold text-gray-900 mt-1">R$ 1.250,00</div>
+      <div class="text-xs text-gray-500">2 parcela(s)</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+      <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Em aberto (periodo)</div>
+      <div class="text-2xl font-bold text-gray-900 mt-1">R$ 8.720,50</div>
+      <div class="text-xs text-gray-500">11 parcela(s)</div>
+    </div>
+    <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+      <div class="text-xs font-semibold text-green-600 uppercase tracking-wide">Pago no mes</div>
+      <div class="text-2xl font-bold text-green-600 mt-1">R$ 5.120,00</div>
+      <div class="text-xs text-gray-500">6 parcela(s)</div>
+    </div>
+  </div>
+
+  <!-- Tabela -->
+  <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+    <div class="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
+      <span class="text-xs font-bold uppercase tracking-widest text-gray-600">DESPESAS - JULHO/2026</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="pl-5 pr-1 py-3 w-8"></th>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Fornecedor</th>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Descricao</th>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Nota</th>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Parcela</th>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Vencimento</th>
+            <th class="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor</th>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
+            <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Conta Azul</th>
+            <th class="px-5 py-3"></th>
+          </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+
+          <!-- Linha 1: COM PDF -->
+          <tr class="hover:bg-gray-50 cursor-pointer" onclick="abrirDetalheComPdf()">
+            <td class="pl-5 pr-1 py-3 w-8" onclick="event.stopPropagation()"><input type="checkbox" class="rounded h-4 w-4"></td>
+            <td class="px-5 py-3 text-gray-900 font-medium">Distribuidora Brasil</td>
+            <td class="px-5 py-3 text-gray-600">Aluguel galpao - Aluguel</td>
+            <td class="px-5 py-3 text-gray-600">--</td>
+            <td class="px-5 py-3 text-gray-600">1/1</td>
+            <td class="px-5 py-3 text-red-600 font-medium">05/07/2026</td>
+            <td class="px-5 py-3 text-right font-semibold text-gray-900">R$ 2.400,00</td>
+            <td class="px-5 py-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">Vencido</span></td>
+            <td class="px-5 py-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Enviado</span></td>
+            <td class="px-5 py-3 text-right whitespace-nowrap" onclick="event.stopPropagation()">
+              <!-- NOVO: badge PDF na linha -->
+              <button onclick="abrirDetalheComPdf()" title="PDF anexado" class="mr-1 inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 font-semibold">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                PDF
+              </button>
+              <button onclick="abrirBaixaComPdf()" class="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-xs">Baixar</button>
+              <button onclick="abrirDetalheComPdf()" class="ml-1 p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100">...</button>
+            </td>
+          </tr>
+
+          <!-- Linha 2: SEM PDF -->
+          <tr class="hover:bg-gray-50 cursor-pointer" onclick="abrirDetalheSemPdf()">
+            <td class="pl-5 pr-1 py-3 w-8" onclick="event.stopPropagation()"><input type="checkbox" class="rounded h-4 w-4"></td>
+            <td class="px-5 py-3 text-gray-900 font-medium">Energia Eletrica</td>
+            <td class="px-5 py-3 text-gray-600">Conta de luz - Utilidades</td>
+            <td class="px-5 py-3 text-gray-600">--</td>
+            <td class="px-5 py-3 text-gray-600">1/1</td>
+            <td class="px-5 py-3 text-gray-600">15/07/2026</td>
+            <td class="px-5 py-3 text-right font-semibold text-gray-900">R$ 1.250,00</td>
+            <td class="px-5 py-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Aberto</span></td>
+            <td class="px-5 py-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Enviado</span></td>
+            <td class="px-5 py-3 text-right whitespace-nowrap" onclick="event.stopPropagation()">
+              <!-- Sem PDF: sem badge -->
+              <button onclick="abrirBaixaSemPdf()" class="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-xs">Baixar</button>
+              <button onclick="abrirDetalheSemPdf()" class="ml-1 p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100">...</button>
+            </td>
+          </tr>
+
+          <!-- Linha 3: PAGO, COM PDF -->
+          <tr class="bg-green-50/40 hover:bg-green-50 cursor-pointer">
+            <td class="pl-5 pr-1 py-3 w-8"></td>
+            <td class="px-5 py-3 text-gray-900 font-medium">Fornecedora ABC</td>
+            <td class="px-5 py-3 text-gray-600">Materia-prima - Insumos</td>
+            <td class="px-5 py-3 text-gray-600">NF-4521</td>
+            <td class="px-5 py-3 text-gray-600">1/3</td>
+            <td class="px-5 py-3 text-gray-600">02/07/2026</td>
+            <td class="px-5 py-3 text-right font-semibold text-gray-900">R$ 1.200,00</td>
+            <td class="px-5 py-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Pago</span></td>
+            <td class="px-5 py-3"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Baixado via DDA</span></td>
+            <td class="px-5 py-3 text-right whitespace-nowrap" onclick="event.stopPropagation()">
+              <button title="PDF anexado" class="mr-1 inline-flex items-center gap-1 px-2 py-1 text-xs rounded bg-green-50 border border-green-200 text-green-700 hover:bg-green-100 font-semibold">
+                <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                PDF
+              </button>
+              <button class="ml-1 p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100">...</button>
+            </td>
+          </tr>
+
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
+    <span class="font-semibold">Interativo:</span>
+    Clique na <strong>Linha 1</strong> (Distribuidora Brasil) para ver o modal de detalhes com PDF. Clique em <strong>Baixar</strong> para ver o modal de pagamento com o botao "Ver documento". Clique na <strong>Linha 2</strong> para ver o modal sem PDF (upload).
+  </div>
+</div>
+
+
+<!-- MODAL DETALHE COM PDF -->
+<div id="modal-detalhe-com-pdf" class="fixed inset-0 z-50 hidden">
+  <div class="modal-overlay absolute inset-0" onclick="fecharModal('modal-detalhe-com-pdf')"></div>
+  <div class="relative flex items-center justify-center min-h-screen p-4">
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between p-5 border-b border-gray-100">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Aluguel galpao</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Distribuidora Brasil - Aluguel</p>
+        </div>
+        <button onclick="fecharModal('modal-detalhe-com-pdf')" class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">X</button>
+      </div>
+      <div class="p-5 space-y-4">
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div><span class="text-gray-500">Valor Total</span><div class="font-semibold text-gray-900 mt-0.5">R$ 2.400,00</div></div>
+          <div><span class="text-gray-500">Status</span><div class="mt-0.5"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">Vencido</span></div></div>
+          <div><span class="text-gray-500">Parcela</span><div class="font-semibold text-gray-900 mt-0.5">1/1 - R$ 2.400,00</div></div>
+          <div><span class="text-gray-500">Vencimento</span><div class="font-semibold text-red-600 mt-0.5">05/07/2026</div></div>
+        </div>
+        <hr class="border-gray-100">
+
+        <!-- SECAO PDF - COM ARQUIVO -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+            <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Documento (PDF)
+          </h3>
+          <div class="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+            <div class="flex items-center gap-3">
+              <div class="flex-shrink-0 bg-red-100 rounded-lg p-2">
+                <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              </div>
+              <div>
+                <div class="text-sm font-semibold text-gray-800">boleto-julho-2026.pdf</div>
+                <div class="text-xs text-gray-500">Enviado em 08/07/2026</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="showToast('Abrindo PDF em nova aba...')" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-semibold">
+                Ver
+              </button>
+              <button onclick="showToast('PDF removido.'); fecharModal('modal-detalhe-com-pdf')" class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-md text-xs font-medium">
+                Remover
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <hr class="border-gray-100">
+        <div class="flex gap-2 pt-1">
+          <button onclick="abrirBaixaComPdf(); fecharModal('modal-detalhe-com-pdf')" class="flex-1 py-2.5 bg-primary hover:bg-blue-700 text-white rounded-lg font-semibold text-sm">Registrar Pagamento</button>
+          <button onclick="fecharModal('modal-detalhe-com-pdf')" class="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL DETALHE SEM PDF -->
+<div id="modal-detalhe-sem-pdf" class="fixed inset-0 z-50 hidden">
+  <div class="modal-overlay absolute inset-0" onclick="fecharModal('modal-detalhe-sem-pdf')"></div>
+  <div class="relative flex items-center justify-center min-h-screen p-4">
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between p-5 border-b border-gray-100">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Conta de luz</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Energia Eletrica - Utilidades</p>
+        </div>
+        <button onclick="fecharModal('modal-detalhe-sem-pdf')" class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">X</button>
+      </div>
+      <div class="p-5 space-y-4">
+        <div class="grid grid-cols-2 gap-3 text-sm">
+          <div><span class="text-gray-500">Valor Total</span><div class="font-semibold text-gray-900 mt-0.5">R$ 1.250,00</div></div>
+          <div><span class="text-gray-500">Status</span><div class="mt-0.5"><span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Aberto</span></div></div>
+          <div><span class="text-gray-500">Parcela</span><div class="font-semibold text-gray-900 mt-0.5">1/1 - R$ 1.250,00</div></div>
+          <div><span class="text-gray-500">Vencimento</span><div class="font-semibold text-gray-900 mt-0.5">15/07/2026</div></div>
+        </div>
+        <hr class="border-gray-100">
+
+        <!-- SECAO PDF - SEM ARQUIVO (upload) -->
+        <div>
+          <h3 class="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+            <svg class="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            Documento (PDF)
+          </h3>
+          <div id="upload-label-2" class="upload-area" onclick="simularUpload()">
+            <svg class="mx-auto h-10 w-10 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <p class="text-sm font-medium text-gray-600">Clique para anexar PDF</p>
+            <p class="text-xs text-gray-400 mt-1">Boleto, NF, contrato... Max 30 MB</p>
+          </div>
+          <div id="upload-progress-2" class="hidden">
+            <div class="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+              <svg class="h-5 w-5 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+              <span class="text-sm text-blue-700 font-medium">Enviando PDF...</span>
+            </div>
+          </div>
+          <div id="upload-done-2" class="hidden">
+            <div class="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg px-4 py-3">
+              <div class="flex items-center gap-3">
+                <div class="flex-shrink-0 bg-red-100 rounded-lg p-2">
+                  <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <div>
+                  <div class="text-sm font-semibold text-gray-800">conta-luz-julho.pdf</div>
+                  <div class="text-xs text-green-600 font-medium">Enviado agora</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <button onclick="showToast('Abrindo PDF...')" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary hover:bg-blue-700 text-white rounded-md text-xs font-semibold">Ver</button>
+                <button onclick="removerPdfModal2()" class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white border border-red-200 text-red-600 hover:bg-red-50 rounded-md text-xs font-medium">Remover</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <hr class="border-gray-100">
+        <div class="flex gap-2 pt-1">
+          <button onclick="abrirBaixaSemPdf(); fecharModal('modal-detalhe-sem-pdf')" class="flex-1 py-2.5 bg-primary hover:bg-blue-700 text-white rounded-lg font-semibold text-sm">Registrar Pagamento</button>
+          <button onclick="fecharModal('modal-detalhe-sem-pdf')" class="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm font-medium">Fechar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL BAIXA COM PDF -->
+<div id="modal-baixa-com-pdf" class="fixed inset-0 z-50 hidden">
+  <div class="modal-overlay absolute inset-0" onclick="fecharModal('modal-baixa-com-pdf')"></div>
+  <div class="relative flex items-center justify-center min-h-screen p-4">
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between p-5 border-b border-gray-100">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Registrar Pagamento</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Aluguel galpao - Parcela 1/1</p>
+        </div>
+        <button onclick="fecharModal('modal-baixa-com-pdf')" class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">X</button>
+      </div>
+      <div class="p-5 space-y-4">
+
+        <!-- DESTAQUE: Botao VER DOCUMENTO no topo do modal de baixa -->
+        <div class="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-2 text-sm text-amber-900">
+            <svg class="h-4 w-4 text-amber-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+            <span><span class="font-semibold">Documento:</span> boleto-julho-2026.pdf</span>
+          </div>
+          <button onclick="showToast('Abrindo PDF em nova aba...')" class="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] bg-amber-600 hover:bg-amber-700 text-white rounded-md text-xs font-semibold whitespace-nowrap">
+            <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            Ver documento
+          </button>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Valor a pagar</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">R$</span>
+            <input type="text" value="2.400,00" class="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-1 focus:ring-primary focus:border-primary">
+          </div>
+          <p class="text-xs text-gray-400 mt-1">Vencimento: 05/07/2026 - Saldo: R$ 2.400,00</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Data do pagamento</label>
+          <input type="date" value="2026-07-11" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-1 focus:ring-primary">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
+          <select class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-1 focus:ring-primary">
+            <option>PIX</option><option>Boleto</option><option>Transferencia</option><option>Dinheiro</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Conta financeira</label>
+          <select class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 focus:ring-1 focus:ring-primary">
+            <option>Conta Corrente PJ</option><option>Caixinha</option>
+          </select>
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button onclick="showToast('Pagamento registrado!'); fecharModal('modal-baixa-com-pdf')" class="flex-1 py-2.5 bg-primary hover:bg-blue-700 text-white rounded-lg font-semibold text-sm">Confirmar Pagamento</button>
+          <button onclick="fecharModal('modal-baixa-com-pdf')" class="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- MODAL BAIXA SEM PDF -->
+<div id="modal-baixa-sem-pdf" class="fixed inset-0 z-50 hidden">
+  <div class="modal-overlay absolute inset-0" onclick="fecharModal('modal-baixa-sem-pdf')"></div>
+  <div class="relative flex items-center justify-center min-h-screen p-4">
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between p-5 border-b border-gray-100">
+        <div>
+          <h2 class="text-lg font-bold text-gray-900">Registrar Pagamento</h2>
+          <p class="text-sm text-gray-500 mt-0.5">Conta de luz - Parcela 1/1</p>
+        </div>
+        <button onclick="fecharModal('modal-baixa-sem-pdf')" class="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">X</button>
+      </div>
+      <div class="p-5 space-y-4">
+        <!-- SEM banner de PDF -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Valor a pagar</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm font-medium">R$</span>
+            <input type="text" value="1.250,00" class="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900">
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Data do pagamento</label>
+          <input type="date" value="2026-07-11" class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900">
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
+          <select class="w-full px-3 py-2.5 border border-gray-300 rounded-lg text-sm bg-white text-gray-900">
+            <option>PIX</option><option>Boleto</option>
+          </select>
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button onclick="showToast('Pagamento registrado!'); fecharModal('modal-baixa-sem-pdf')" class="flex-1 py-2.5 bg-primary hover:bg-blue-700 text-white rounded-lg font-semibold text-sm">Confirmar Pagamento</button>
+          <button onclick="fecharModal('modal-baixa-sem-pdf')" class="px-4 py-2.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-lg text-sm">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  function abrirDetalheComPdf() { document.getElementById('modal-detalhe-com-pdf').classList.remove('hidden'); }
+  function abrirDetalheSemPdf() { document.getElementById('modal-detalhe-sem-pdf').classList.remove('hidden'); }
+  function abrirBaixaComPdf()   { document.getElementById('modal-baixa-com-pdf').classList.remove('hidden'); }
+  function abrirBaixaSemPdf()   { document.getElementById('modal-baixa-sem-pdf').classList.remove('hidden'); }
+  function fecharModal(id)      { document.getElementById(id).classList.add('hidden'); }
+
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  function simularUpload() {
+    document.getElementById('upload-label-2').classList.add('hidden');
+    document.getElementById('upload-progress-2').classList.remove('hidden');
+    setTimeout(() => {
+      document.getElementById('upload-progress-2').classList.add('hidden');
+      document.getElementById('upload-done-2').classList.remove('hidden');
+      showToast('PDF anexado com sucesso!');
+    }, 1500);
+  }
+
+  function removerPdfModal2() {
+    document.getElementById('upload-done-2').classList.add('hidden');
+    document.getElementById('upload-label-2').classList.remove('hidden');
+    showToast('PDF removido.');
+  }
+</script>
+</body>
+</html>

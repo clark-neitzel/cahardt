@@ -99,7 +99,7 @@ const pcpItemService = {
                 unidade: produto.unidade || 'UN',
                 descricao: produto.descricao || null,
                 produtoId: produto.id,
-                custoUnitario: produto.custoMedio ? parseFloat(produto.custoMedio) : null,
+                custoUnitario: produto.custoManual ? parseFloat(produto.custoManual) : null,
                 estoqueMinimo: 0
             },
             include: { produto: { select: { id: true, nome: true, codigo: true } } }

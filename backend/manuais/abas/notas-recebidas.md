@@ -47,6 +47,7 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 | AGUARDANDO_XML | (só NF-e) Só o resumo chegou; o XML completo vem na próxima consulta (após a ciência) |
 | NOVA | XML completo baixado — pronta para conferir e gerar a conta a pagar (NFS-e já nasce NOVA) |
 | CONFERIDA | Já virou conta a pagar (fica vinculada à conta) |
+| VINCULADA | Foi **anexada a parcela(s) de despesa que já existiam** (a nota chegou depois do lançamento) — **não** criou despesa nova |
 | IGNORADA | Marcada para ignorar (ex.: nota que não gera conta) — dá para reativar |
 | CANCELADA_EMITENTE | O fornecedor/prestador cancelou a nota |
 
@@ -95,6 +96,40 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 
 ---
 
+## Quando a nota chega DEPOIS da despesa já lançada (Vincular a parcela existente)
+
+Caso típico: um **contrato de serviço** (advogado, contador, manutenção) com **várias parcelas já lançadas na mão** em Contas a Pagar. A nota fiscal de cada mês só chega **depois** — às vezes depois de a parcela já ter sido paga. Se você "gerar a despesa" dessa nota, a dívida fica **duplicada**.
+
+Para esse caso existe o caminho **"Vincular a parcela já lançada"** (em vez de "Gerar conta a pagar"):
+
+- Você diz **de qual parcela** aquela nota é, e o sistema **anexa os dados fiscais NAQUELA parcela**. **Nenhuma despesa nova é criada** e o pagamento/baixa **não é mexido**.
+- **Dá para vincular em parcela já PAGA** — é exatamente o caso de a nota chegar depois do pagamento.
+- **Uma nota pode cobrir VÁRIAS parcelas**: você escolhe as parcelas e informa **quanto daquela nota vai em cada uma** (valor vinculado por parcela).
+- A tela sugere as parcelas **do mesmo fornecedor da nota** (inclusive as pagas). Se o CNPJ não bater (fornecedor cadastrado diferente), use a **busca** — ela procura parcelas de **qualquer fornecedor** por descrição da despesa, número da nota ou nome do fornecedor.
+- Cada parcela mostra o **saldo ainda disponível**: se outra nota já foi vinculada nela, só sobra a diferença. Não é possível vincular mais do que esse saldo, nem somar mais do que o valor da nota (vincular **menos** é permitido — vínculo parcial).
+- A nota fica com status **VINCULADA** e continua sendo **documento fiscal completo** (XML, chave, valores) para o relatório de notas da contabilidade — nada é perdido nem escondido.
+
+### Quando o valor não fecha (nota ≠ soma das parcelas)
+
+O sistema **pergunta o que fazer** e só registra a sua escolha:
+
+| Escolha | O que acontece |
+|---------|----------------|
+| **Nenhuma ação** | Só anexa a nota; a diferença fica **registrada** no vínculo, sem mexer em nada |
+| **Ajustar a parcela** | O valor das parcelas **ainda não pagas** passa a ser o valor vinculado que você informou; o total da despesa e o status dela são recalculados. **Parcela já paga não é alterada** — o sistema avisa quais ficaram de fora |
+| **Desconto** / **Acréscimo** | Só registra a **natureza** da diferença (mais a observação que você escrever), sem alterar valores |
+
+> **Nada disso vai para a Conta Azul.** O vínculo e o eventual ajuste valem **só dentro do app**.
+
+### Desvincular
+
+Dá para **remover o vínculo** de uma parcela específica ou de todas. Removendo todas, a nota volta para **NOVA** (ou AGUARDANDO XML, se o XML ainda não tiver chegado) e pode seguir por qualquer caminho de novo.
+**Atenção:** desvincular **não desfaz** o ajuste de valor que já tiver sido aplicado numa parcela — se precisar, corrija a parcela em **Contas a Pagar**.
+
+> Enquanto a nota estiver vinculada a alguma parcela, o botão de **gerar despesa nova fica bloqueado** (é justamente o que evitaria a duplicidade). Desvincule antes, se for o caso.
+
+---
+
 ## Salvamento automático do XML na Contabilidade (Google Drive)
 
 Ao **dar entrada** numa nota (gerar a conta a pagar) ou ao **ignorá-la**, o sistema **salva o XML sozinho no Google Drive**, na pasta da contabilidade organizada por mês — sem precisar baixar e arrastar nada. Vale para **NF-e e NFS-e**.
@@ -134,7 +169,7 @@ Envio Contabilidade
 | Permissão | Efeito |
 |-----------|--------|
 | `Pode_Acessar_Notas_Recebidas` | Ver a caixa de entrada, detalhes e XML |
-| `Pode_Baixar_Contas_Pagar` | Gerar conta, ignorar/reativar, cancelar entrada e "Consultar agora" |
+| `Pode_Baixar_Contas_Pagar` | Gerar conta, **vincular/desvincular a parcela já lançada**, ignorar/reativar, cancelar entrada e "Consultar agora" |
 | `configuracoes.edit` | Ligar/desligar as capturas e instalar o certificado |
 | `admin` | Tudo acima |
 
@@ -155,7 +190,7 @@ Envio Contabilidade
 |---------|-------|
 | `backend/services/sefazDfeService.js` | Robô de captura de NF-e na SEFAZ (Distribuição DF-e + manifestação 210210) + busca pontual por chave de acesso (`buscarPorChave`) |
 | `backend/services/nfseAdnService.js` | Robô de captura de NFS-e no Ambiente de Dados Nacional (ADN) + espelho DANFSE |
-| `backend/routes/notasEntrada.js` | Rotas da API (listar com filtro de tipo/período, detalhar, XML, DANFE/DANFSE, gerar conta com categoria por item + rateio, ignorar, consultar agora, **importar-xml** e **lancar-manual**) — dispara o salvamento do XML no Drive ao dar entrada/ignorar |
+| `backend/routes/notasEntrada.js` | Rotas da API (listar com filtro de tipo/período, detalhar, XML, DANFE/DANFSE, gerar conta com categoria por item + rateio, **parcelas-compativeis / vincular-parcelas / desvincular-parcelas**, ignorar, consultar agora, **importar-xml** e **lancar-manual**) — dispara o salvamento do XML no Drive ao dar entrada/ignorar |
 | `backend/services/googleDriveService.js` | Salva o XML da nota no Google Drive da Contabilidade (pasta do mês por emissão; subpasta "Ignoradas"); credenciais OAuth em `app_configs.gdrive_config` |
 | `backend/services/danfeHtmlService.js` | Monta o HTML da DANFE simplificada (função pura) a partir do XML da NF-e |
 | `backend/routes/configNotas.js` | Certificado digital + liga/desliga das capturas (NF-e e NFS-e) |

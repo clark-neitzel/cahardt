@@ -1,0 +1,1196 @@
+<title>Clark-Teck — 8 meses, uma empresa inteira</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  /* ============ TOKENS — tema Porsche ============ */
+  :root {
+    --preto: #010205;
+    --branco: #FBFCFF;
+    --vermelho: #D5001C;
+
+    --ground: #FBFCFF;
+    --ground-band: #010205;
+    --ink: #010205;
+    --ink-soft: rgba(1, 2, 5, 0.62);
+    --ink-faint: rgba(1, 2, 5, 0.40);
+    --line: rgba(1, 2, 5, 0.12);
+    --ghost: rgba(1, 2, 5, 0.07);
+    --card: #ffffff;
+    --band-ink: #FBFCFF;
+    --band-ink-soft: rgba(251, 252, 255, 0.60);
+    --band-line: rgba(251, 252, 255, 0.14);
+    --phone-shadow: 0 30px 70px rgba(1, 2, 5, 0.28), 0 6px 18px rgba(1, 2, 5, 0.16);
+    --mock-shadow: 0 18px 44px rgba(1, 2, 5, 0.16), 0 3px 10px rgba(1, 2, 5, 0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0a0c0e;
+      --ink: #FBFCFF;
+      --ink-soft: rgba(251, 252, 255, 0.64);
+      --ink-faint: rgba(251, 252, 255, 0.42);
+      --line: rgba(251, 252, 255, 0.13);
+      --ghost: rgba(251, 252, 255, 0.07);
+      --card: #16191c;
+      --phone-shadow: 0 30px 70px rgba(0, 0, 0, 0.65), 0 6px 18px rgba(0, 0, 0, 0.45);
+      --mock-shadow: 0 18px 44px rgba(0, 0, 0, 0.5), 0 3px 10px rgba(0, 0, 0, 0.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #FBFCFF; --ink: #010205;
+    --ink-soft: rgba(1,2,5,0.62); --ink-faint: rgba(1,2,5,0.40);
+    --line: rgba(1,2,5,0.12); --ghost: rgba(1,2,5,0.07); --card: #ffffff;
+    --phone-shadow: 0 30px 70px rgba(1,2,5,0.28), 0 6px 18px rgba(1,2,5,0.16);
+    --mock-shadow: 0 18px 44px rgba(1,2,5,0.16), 0 3px 10px rgba(1,2,5,0.10);
+  }
+  :root[data-theme="dark"] {
+    --ground: #0a0c0e; --ink: #FBFCFF;
+    --ink-soft: rgba(251,252,255,0.64); --ink-faint: rgba(251,252,255,0.42);
+    --line: rgba(251,252,255,0.13); --ghost: rgba(251,252,255,0.07); --card: #16191c;
+    --phone-shadow: 0 30px 70px rgba(0,0,0,0.65), 0 6px 18px rgba(0,0,0,0.45);
+    --mock-shadow: 0 18px 44px rgba(0,0,0,0.5), 0 3px 10px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Helvetica Neue", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    * { animation: none !important; transition: none !important; }
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 22px; }
+
+  .label {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .label.rubro { color: var(--vermelho); }
+  .tique {
+    display: inline-block; width: 18px; height: 2px;
+    background: var(--vermelho); vertical-align: middle; margin-right: 10px;
+  }
+
+  /* ============ TOPO ============ */
+  .topo {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 0 20px; border-bottom: 1px solid var(--line);
+  }
+  .marca {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.34em;
+    text-transform: uppercase; color: var(--ink);
+  }
+  .marca em { font-style: normal; color: var(--vermelho); }
+  @media (max-width: 560px) { .topo .label { display: none; } }
+
+  /* ============ HERO ============ */
+  .hero { padding: 84px 0 64px; position: relative; overflow: hidden; }
+  .hero h1 {
+    margin: 22px 0 20px;
+    font-size: clamp(38px, 6.4vw, 72px);
+    line-height: 1.02;
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    text-wrap: balance;
+    max-width: 18ch;
+  }
+  .hero h1 .oito { color: var(--vermelho); }
+  .hero p.lead { max-width: 60ch; font-size: 17px; color: var(--ink-soft); margin: 0 0 14px; }
+  .hero .risco { margin-top: 44px; height: 1px; background: var(--line); position: relative; }
+  .hero .risco::after {
+    content: ""; position: absolute; left: 0; top: -1px;
+    width: 120px; height: 3px; background: var(--vermelho);
+  }
+  @media (max-width: 780px) { .hero { padding: 54px 0 44px; } }
+
+  /* ============ EVOLUÇÃO ============ */
+  .evolucao { padding: 64px 0 12px; }
+  .evolucao .cab { margin-bottom: 16px; }
+  .evolucao h2, .secao-cab h2 {
+    margin: 12px 0 0;
+    font-size: clamp(26px, 3.6vw, 40px);
+    font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; text-wrap: balance;
+  }
+  .evolucao p.historia {
+    max-width: 62ch; color: var(--ink-soft); font-size: 15.5px; margin: 14px 0 40px;
+  }
+  .evolucao p.historia b { color: var(--ink); }
+  .etapas {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+    border-top: 1px solid var(--line);
+  }
+  .etapa { padding: 26px 22px 34px 0; border-right: 1px solid var(--line); position: relative; }
+  .etapa:last-child { border-right: 0; }
+  .etapa::before {
+    content: ""; position: absolute; top: -1px; left: 0; width: 44px; height: 2px;
+    background: var(--ink);
+  }
+  .etapa:last-child::before { background: var(--vermelho); width: 64px; }
+  .etapa .idx {
+    font-size: 12px; font-weight: 700; letter-spacing: 0.2em;
+    color: var(--ink-faint); font-variant-numeric: tabular-nums; text-transform: uppercase;
+  }
+  .etapa h3 { margin: 10px 0 8px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+  .etapa p { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+  @media (max-width: 900px) {
+    .etapas { grid-template-columns: 1fr 1fr; }
+    .etapa { border-right: 0; border-bottom: 1px solid var(--line); padding-right: 0; }
+    .etapa:nth-child(odd) { padding-right: 22px; border-right: 1px solid var(--line); }
+    .etapa:nth-child(even) { padding-left: 22px; }
+    .etapa:nth-child(3), .etapa:nth-child(4) { border-bottom: 0; }
+  }
+  @media (max-width: 520px) {
+    .etapas { grid-template-columns: 1fr; }
+    .etapa, .etapa:nth-child(odd) { border-right: 0; border-bottom: 1px solid var(--line); padding: 22px 0 26px; }
+    .etapa:nth-child(4) { border-bottom: 0; }
+  }
+
+  /* ============ BANDA DE NÚMEROS ============ */
+  .banda {
+    background: var(--ground-band); color: var(--band-ink);
+    margin: 72px 0; padding: 58px 0;
+  }
+  .banda .grade { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
+  .banda .n b {
+    display: block; font-size: clamp(34px, 5vw, 56px); font-weight: 700;
+    letter-spacing: -0.03em; font-variant-numeric: tabular-nums; line-height: 1;
+  }
+  .banda .n span {
+    display: block; margin-top: 10px; font-size: 11px; font-weight: 700;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--band-ink-soft);
+  }
+  .banda .n { border-left: 1px solid var(--band-line); padding-left: 20px; }
+  .banda .n:first-child { border-left: 2px solid var(--vermelho); }
+  @media (max-width: 720px) {
+    .banda { padding: 44px 0; margin: 56px 0; }
+    .banda .grade { grid-template-columns: 1fr 1fr; gap: 34px 20px; }
+  }
+
+  /* ============ JORNADA — 5 telas ============ */
+  .secao-cab { margin: 0 0 10px; }
+  .secao-cab p.sub { max-width: 60ch; color: var(--ink-soft); font-size: 15.5px; margin: 14px 0 0; }
+
+  .passo {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 44px; align-items: center;
+    padding: 78px 0; position: relative;
+  }
+  .passo + .passo { border-top: 1px solid var(--line); }
+  .passo:nth-child(even) .fone-col { order: -1; }
+  .passo .fantasma {
+    position: absolute; top: 26px; right: -8px; z-index: 0;
+    font-size: clamp(120px, 18vw, 220px); font-weight: 700; line-height: 1;
+    letter-spacing: -0.04em; color: transparent;
+    -webkit-text-stroke: 1.5px var(--ghost);
+    font-variant-numeric: tabular-nums;
+    user-select: none; pointer-events: none;
+  }
+  .passo:nth-child(even) .fantasma { right: auto; left: -8px; }
+  .passo .texto { position: relative; z-index: 1; }
+  .passo h3 {
+    margin: 14px 0 12px; font-size: clamp(22px, 3vw, 32px);
+    font-weight: 700; letter-spacing: -0.03em; line-height: 1.12; text-wrap: balance;
+  }
+  .passo p.txt { margin: 0; font-size: 15.5px; color: var(--ink-soft); max-width: 46ch; }
+  .passo p.txt b { color: var(--ink); font-weight: 700; }
+  .setor {
+    display: inline-block; margin-bottom: 12px;
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.24em; text-transform: uppercase;
+    color: var(--ink); border: 1px solid var(--line); padding: 5px 12px;
+  }
+  .fone-col { display: flex; justify-content: center; position: relative; z-index: 1; }
+  .legenda-fone {
+    text-align: center; font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-faint); margin-top: 18px;
+  }
+  @media (max-width: 780px) {
+    .passo { grid-template-columns: 1fr; gap: 30px; padding: 54px 0; }
+    .passo:nth-child(even) .fone-col { order: 0; }
+    .passo .fantasma { top: 6px; right: -4px; font-size: 96px; }
+    .passo:nth-child(even) .fantasma { left: auto; right: -4px; }
+  }
+
+  /* ============ CELULAR ============ */
+  .fone {
+    width: 305px; max-width: 100%;
+    border-radius: 42px; background: #0c0f0e; padding: 10px;
+    box-shadow: var(--phone-shadow); position: relative;
+  }
+  .fone .tela {
+    border-radius: 33px; overflow: hidden; background: #f6f5f1;
+    height: 596px; position: relative;
+    display: flex; flex-direction: column;
+    color: rgba(0,0,0,0.87); font-size: 11px; line-height: 1.4;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    letter-spacing: -0.01em;
+  }
+  .fone .notch {
+    position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+    width: 86px; height: 22px; border-radius: 999px; background: #0c0f0e; z-index: 40;
+  }
+  .statusbar {
+    height: 34px; flex: none; display: flex; align-items: flex-end;
+    justify-content: space-between; padding: 0 20px 2px;
+    font-size: 10px; font-weight: 700; color: rgba(0,0,0,0.75);
+  }
+  .statusbar.claro { color: rgba(255,255,255,0.9); }
+
+  /* --- primitivos do app (fiéis ao design system real) --- */
+  .appbar {
+    flex: none; background: #fff; border-bottom: 1px solid #eee;
+    padding: 8px 12px; display: flex; align-items: center; gap: 8px;
+  }
+  .appbar .volta { font-size: 16px; color: rgba(0,0,0,0.45); font-weight: 600; }
+  .appbar b { font-size: 13px; font-weight: 800; }
+  .btn-mini {
+    margin-left: auto; font-size: 10px; font-weight: 700;
+    border: 1.3px solid #00754A; color: #00754A;
+    padding: 3px 10px; border-radius: 999px; background: #fff;
+  }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 9px; font-weight: 700; }
+  .pill.verde { background: #dcfce7; color: #166534; }
+  .pill.azul { background: #dbeafe; color: #1e40af; }
+  .pill.amarelo { background: #fef9c3; color: #854d0e; }
+  .pill.ambar { background: #fef3c7; color: #b45309; }
+  .pill.verm { background: #fee2e2; color: #b91c1c; }
+  .pill.cinza { background: #f3f4f6; color: #374151; }
+  .pill.roxo { background: #f3e8ff; color: #7e22ce; }
+  .pill.ceu { background: #e0f2fe; color: #0369a1; }
+  .cartao {
+    background: #fff; border: 1px solid #e5e7eb; border-radius: 12px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .corpo { flex: 1; overflow: hidden; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+  .money { font-variant-numeric: tabular-nums; }
+  .cta {
+    background: #00754A; color: #fff; font-weight: 700;
+    border-radius: 999px; text-align: center; padding: 9px 12px; font-size: 11.5px;
+  }
+  .cta.out { background: #fff; color: #00754A; border: 1.3px solid #00754A; }
+  .cta.amarela { background: #f59e0b; color: #fff; }
+  .rotulo { font-size: 8.5px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: #6b7280; }
+
+  .flexbar {
+    flex: none; background: #00754A; color: #fff;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 12px; font-size: 10px; font-weight: 700;
+  }
+  .prod { display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
+  .prod + .prod { border-top: 1px solid #f3f4f6; }
+  .prod .foto {
+    width: 34px; height: 34px; border-radius: 8px; flex: none;
+    background: linear-gradient(135deg, #d4e9e2, #a8cfc2);
+    display: flex; align-items: center; justify-content: center; font-size: 15px;
+  }
+  .prod .nome { font-weight: 700; font-size: 10.5px; line-height: 1.25; }
+  .prod .sub { font-size: 9px; color: #6b7280; }
+  .qtd { margin-left: auto; display: flex; align-items: center; gap: 6px; flex: none; }
+  .qtd span {
+    width: 20px; height: 20px; border-radius: 999px; background: #f3f4f6;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 12px; color: #374151;
+  }
+  .qtd b { font-size: 12px; font-variant-numeric: tabular-nums; }
+  .rodape-fone {
+    flex: none; background: #fff; border-top: 1px solid #e5e7eb; padding: 10px 12px;
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .linha-total { display: flex; justify-content: space-between; font-size: 11px; }
+  .linha-total.forte { font-size: 13px; font-weight: 800; }
+
+  .barra-house {
+    flex: none; background: #1E3932; color: #fff; padding: 10px 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .barra-house b { font-size: 13px; font-weight: 800; }
+  .abas { flex: none; background: #fff; display: flex; border-bottom: 1px solid #e5e7eb; }
+  .abas div { flex: 1; text-align: center; padding: 8px 0; font-size: 10.5px; font-weight: 700; color: #9ca3af; }
+  .abas .ativa { color: #00754A; border-bottom: 2px solid #00754A; }
+  .parada-num {
+    width: 22px; height: 22px; border-radius: 999px; background: #fef3c7; color: #b45309;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 11px; flex: none;
+  }
+
+  .fundo-esc { position: absolute; inset: 0; background: rgba(17, 24, 22, 0.55); z-index: 10; }
+  .sheet {
+    position: absolute; left: 0; right: 0; bottom: 0; z-index: 20;
+    background: #fff; border-radius: 20px 20px 0 0; padding: 14px 14px 12px;
+    display: flex; flex-direction: column; gap: 9px; align-items: center;
+  }
+  .qr-box {
+    width: 168px; height: 168px; border-radius: 12px; border: 1px solid #e5e7eb;
+    padding: 10px; background: #fff;
+  }
+  .qr-box canvas { width: 100%; height: 100%; image-rendering: pixelated; }
+  .pulsa { width: 7px; height: 7px; border-radius: 999px; background: #f59e0b; animation: pulsa 1.4s ease-in-out infinite; flex: none; }
+  @keyframes pulsa { 50% { opacity: 0.25; } }
+  .toast-pago {
+    position: absolute; z-index: 30; left: 12px; right: 12px; bottom: 14px;
+    background: #ecfdf5; border: 1.4px solid #10b981; border-radius: 14px;
+    padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 10px 26px rgba(4, 60, 40, 0.28);
+  }
+  .check-verde {
+    width: 30px; height: 30px; border-radius: 999px; background: #10b981; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 800; flex: none;
+  }
+
+  .conf-linha { display: flex; align-items: center; gap: 7px; padding: 7px 10px; font-size: 10px; }
+  .conf-linha + .conf-linha { border-top: 1px solid #f3f4f6; }
+  .conf-linha .doc { font-weight: 800; font-variant-numeric: tabular-nums; flex: none; }
+  .sinal { font-size: 8.5px; font-weight: 800; padding: 2px 6px; border-radius: 999px; flex: none; }
+  .sinal.ok { background: #dcfce7; color: #166534; }
+  .sinal.neutro { background: #f3f4f6; color: #6b7280; }
+  .checkline { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; font-size: 10px; }
+  .checkline .cx {
+    width: 14px; height: 14px; border-radius: 4px; background: #00754A; color: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 10px; font-weight: 800; flex: none; margin-top: 1px;
+  }
+
+  .kpi4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .kpi4 .cartao { padding: 7px 4px; text-align: center; }
+  .kpi4 b { display: block; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .kpi4 span { font-size: 8px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.04em; }
+  .prestar {
+    background: #fffbeb; border: 1.4px solid #f59e0b; border-radius: 12px;
+    padding: 10px 12px; text-align: center;
+  }
+  .prestar b { display: block; font-size: 22px; font-weight: 800; color: #b45309; font-variant-numeric: tabular-nums; }
+
+  /* ============ GALERIA DE MÓDULOS ============ */
+  .galeria-sec { padding: 78px 0 10px; }
+  .galeria {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 44px;
+  }
+  .modulo { display: flex; flex-direction: column; }
+  .mock {
+    border-radius: 16px; overflow: hidden;
+    background: #f3f4f6; border: 1px solid rgba(1,2,5,0.10);
+    box-shadow: var(--mock-shadow);
+    color: rgba(0,0,0,0.87); font-size: 11px; line-height: 1.4;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    letter-spacing: -0.01em;
+    flex: 1;
+  }
+  .mock .chrome {
+    background: #14171a; padding: 8px 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .mock .chrome i {
+    width: 8px; height: 8px; border-radius: 999px; background: #3a4046; display: inline-block;
+  }
+  .mock .chrome span {
+    margin-left: 8px; font-size: 9px; color: rgba(255,255,255,0.45);
+    font-weight: 600; letter-spacing: 0.04em;
+  }
+  .mock .miolo { padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .mod-cab { margin-top: 18px; }
+  .mod-cab .label { letter-spacing: 0.2em; }
+  .mod-cab h4 { margin: 6px 0 4px; font-size: 18px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); }
+  .mod-cab p { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+  @media (max-width: 860px) { .galeria { grid-template-columns: 1fr; gap: 40px; } }
+
+  /* dashboard gauge */
+  .gauge {
+    width: 74px; height: 74px; border-radius: 999px; flex: none;
+    background: conic-gradient(#00754A 0 78%, #e5e7eb 78% 100%);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .gauge > div {
+    width: 54px; height: 54px; border-radius: 999px; background: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .gauge b { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .gauge span { font-size: 7px; color: #6b7280; font-weight: 700; text-transform: uppercase; }
+
+  .tab-pills { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tab-pills span {
+    font-size: 8.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+    background: #fff; border: 1px solid #e5e7eb; color: #6b7280;
+  }
+  .tab-pills .on { background: #00754A; border-color: #00754A; color: #fff; }
+
+  /* barras de meta */
+  .bmeta { height: 7px; border-radius: 999px; background: #e5e7eb; overflow: hidden; }
+  .bmeta i { display: block; height: 100%; border-radius: 999px; }
+  .meta-linha { display: flex; align-items: center; gap: 8px; font-size: 10px; }
+  .meta-linha .nome { width: 64px; font-weight: 700; flex: none; }
+  .meta-linha .pct { width: 34px; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; flex: none; }
+  .meta-linha .bmeta { flex: 1; }
+
+  /* etiqueta */
+  .etiq-fundo {
+    display: flex; align-items: center; justify-content: center;
+    padding: 22px 12px; background: repeating-linear-gradient(45deg, #e8eae7 0 10px, #e3e5e2 10px 20px);
+  }
+  .etiq {
+    width: 218px; background: #fff; border: 1.6px solid #111;
+    font-family: Arial, sans-serif; font-size: 7.5px; line-height: 1.35;
+    color: #111; padding: 7px;
+  }
+  .etiq .nome-prod {
+    background: #111; color: #fff; font-weight: 800; font-size: 10px;
+    text-align: center; padding: 3px 4px; letter-spacing: 0.02em;
+  }
+  .etiq .linha-cod { display: flex; justify-content: space-between; font-weight: 700; padding: 3px 1px; }
+  .etiq table { width: 100%; border-collapse: collapse; margin: 2px 0; }
+  .etiq th, .etiq td { border: 0.8px solid #111; padding: 1.5px 3px; text-align: left; font-size: 6.8px; }
+  .etiq th { font-weight: 800; }
+  .etiq .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .etiq .tit-tab { font-weight: 800; text-align: center; border: 0.8px solid #111; border-bottom: 0; padding: 2px; font-size: 7.5px; }
+  .etiq .alerg { font-weight: 800; text-transform: uppercase; margin: 3px 0 2px; }
+  .etiq .barcode {
+    height: 30px; margin: 5px 8px 2px;
+    background: repeating-linear-gradient(90deg,
+      #111 0 2px, #fff 2px 3px, #111 3px 4px, #fff 4px 7px,
+      #111 7px 10px, #fff 10px 11px, #111 11px 12px, #fff 12px 15px,
+      #111 15px 16px, #fff 16px 19px);
+  }
+  .etiq .ean { text-align: center; font-size: 7px; letter-spacing: 0.18em; font-variant-numeric: tabular-nums; }
+  .etiq .rod {
+    background: #111; color: #fff; font-weight: 800; text-align: center;
+    padding: 2.5px 3px; margin-top: 4px; font-size: 7.2px;
+  }
+
+  /* kanban delivery */
+  .kanban-rolo { overflow-x: auto; }
+  .kanban { display: grid; grid-template-columns: repeat(4, minmax(104px, 1fr)); gap: 6px; min-width: 440px; }
+  .kcol { border-radius: 10px; border: 1px solid; padding: 5px; display: flex; flex-direction: column; gap: 5px; }
+  .kcol h6 { margin: 0; font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; display: flex; justify-content: space-between; }
+  .kcard { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 5px 6px; font-size: 8.5px; }
+  .kcard b { display: block; font-size: 9px; }
+  .kcard .sub { color: #6b7280; font-size: 8px; }
+
+  /* site kit festa (mini) */
+  .kf-hero {
+    background: linear-gradient(135deg, #1E3932, #00754A); color: #fff;
+    padding: 14px 12px; text-align: center;
+  }
+  .kf-hero b { font-size: 14px; display: block; }
+  .kf-hero span { font-size: 9px; opacity: 0.85; }
+  .kf-fab {
+    background: #f59e0b; color: #fff; font-weight: 800; font-size: 10px;
+    border-radius: 999px; padding: 8px 12px; text-align: center;
+    box-shadow: 0 6px 16px rgba(180, 120, 0, 0.35);
+  }
+
+  /* ============ FECHO ============ */
+  .fecho {
+    background: var(--ground-band); color: var(--band-ink);
+    margin-top: 84px; padding: 76px 0 34px;
+  }
+  .fecho h4 {
+    font-size: clamp(26px, 4.2vw, 46px); font-weight: 700;
+    letter-spacing: -0.03em; line-height: 1.08; margin: 16px 0 18px;
+    max-width: 22ch; text-wrap: balance;
+  }
+  .fecho p { max-width: 56ch; color: var(--band-ink-soft); font-size: 15.5px; margin: 0; }
+  .fecho .base {
+    margin-top: 60px; padding-top: 22px; border-top: 1px solid var(--band-line);
+    display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center; justify-content: space-between;
+    font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--band-ink-soft); font-weight: 700;
+  }
+  .fecho .base .marca { color: var(--band-ink); font-size: 11px; }
+  @media (max-width: 780px) { .fecho { padding: 56px 0 28px; margin-top: 60px; } }
+
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.7s ease, transform 0.7s ease; }
+  .reveal.on { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; } }
+</style>
+
+<div class="wrap">
+  <header class="topo">
+    <span class="marca">clark<em>—</em>teck</span>
+    <span class="label">Estudo de produto · 2026</span>
+  </header>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap">
+    <span class="label rubro"><span class="tique"></span>Uma evolução, contada em telas</span>
+    <h1>Em <span class="oito">8 meses</span>, de uma planilha a uma empresa inteira rodando num sistema.</h1>
+    <p class="lead">
+      Oito meses atrás, os pedidos eram anotados no papel e cada setor vivia numa planilha.
+      Hoje, a operação completa de uma indústria de alimentos — vendas, faturamento, logística,
+      delivery, financeiro, metas, etiquetas e até o site do cliente — roda 24h num sistema que
+      eu construí sozinho, tela por tela. Esta página conta essa evolução com telas reais do app
+      e dados fictícios.
+    </p>
+    <div class="risco"></div>
+  </div>
+</section>
+
+<!-- EVOLUÇÃO -->
+<section class="evolucao">
+  <div class="wrap">
+    <div class="cab">
+      <span class="label">A história</span>
+      <h2>Oito meses, quatro fases</h2>
+      <p class="historia">
+        Não comecei com um plano de fazer um sistema completo. Comecei com <b>uma dor</b>: o
+        pedido do vendedor era digitado três vezes até virar nota. Resolvi essa. Aí a dor
+        seguinte ficou óbvia — e a seguinte, e a seguinte. Oito meses depois, quando olhei pra
+        trás, a corrente estava completa: <b>não sobrou nenhum pedaço da operação fora do sistema</b>.
+      </p>
+    </div>
+    <div class="etapas reveal">
+      <div class="etapa">
+        <span class="idx">Mês 1</span>
+        <h3>O ponto de partida</h3>
+        <p>Pedido no papel, planilha em cada setor, o mesmo dado digitado três vezes — e cada erro custando dinheiro.</p>
+      </div>
+      <div class="etapa">
+        <span class="idx">Meses 2–3</span>
+        <h3>As primeiras telas</h3>
+        <p>O pedido passou a nascer digital, no celular do vendedor, com preço e estoque certos na fonte.</p>
+      </div>
+      <div class="etapa">
+        <span class="idx">Meses 4–6</span>
+        <h3>A corrente completa</h3>
+        <p>Rota do motorista, PIX na entrega, notas e boletos em lote, fechamento de caixa — o pedido atravessa a empresa sozinho.</p>
+      </div>
+      <div class="etapa">
+        <span class="idx">Meses 7–8 · Hoje</span>
+        <h3>A empresa inteira dentro</h3>
+        <p>Financeiro completo com DRE, metas por vendedor, dashboards de gestão, etiquetas de produção, delivery e site do cliente.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BANDA DE NÚMEROS -->
+<section class="banda">
+  <div class="wrap">
+    <div class="grade reveal">
+      <div class="n"><b>8</b><span>meses de construção</span></div>
+      <div class="n"><b>136</b><span>telas no app</span></div>
+      <div class="n"><b>67</b><span>módulos de API</span></div>
+      <div class="n"><b>1</b><span>pessoa construindo</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- JORNADA -->
+<main>
+  <div class="wrap">
+    <div class="secao-cab">
+      <span class="label">A espinha dorsal</span>
+      <h2>A jornada de um pedido, do começo ao fim</h2>
+      <p class="sub">
+        Siga um pedido de verdade pelo caminho que ele percorre no sistema. Cada tela abaixo é
+        uma etapa da mesma jornada — e cada uma nasceu de uma dor real da operação.
+      </p>
+    </div>
+
+    <!-- PASSO 1 — VENDAS -->
+    <section class="passo reveal">
+      <span class="fantasma">01</span>
+      <div class="texto">
+        <span class="setor">Vendas</span><br>
+        <span class="label rubro"><span class="tique"></span>A dor: pedido anotado no papel, redigitado no escritório</span>
+        <h3>O vendedor fecha o pedido na rua, com uma mão</h3>
+        <p class="txt">
+          Cliente, condição de pagamento, data de entrega e produtos — com preço, promoção e
+          estoque na tela. O pedido já nasce <b>dentro do sistema</b> e segue sozinho para o
+          faturamento. Ninguém digita de novo, ninguém erra preço.
+        </p>
+      </div>
+      <div class="fone-col">
+        <div>
+          <div class="fone">
+            <div class="notch"></div>
+            <div class="tela">
+              <div class="statusbar"><span>9:41</span><span>▮▮▮ 📶</span></div>
+              <div class="appbar"><span class="volta">‹</span><b>Novo Pedido</b><span class="btn-mini">Salvar</span></div>
+              <div class="flexbar"><span>Flex: +12,50</span><span class="money">3 itens · Total: R$ 645,00</span></div>
+              <div class="corpo">
+                <div class="cartao" style="padding:8px 10px; display:flex; align-items:center; gap:8px;">
+                  <div style="width:30px;height:30px;border-radius:999px;background:#d4e9e2;color:#006241;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;flex:none;">PS</div>
+                  <div>
+                    <div style="font-weight:800;font-size:11px;">Padaria Pão da Serra</div>
+                    <div style="font-size:9px;color:#6b7280;">Cód. 4821 · Dias do cliente: SEG, QUA, SEX</div>
+                  </div>
+                  <span class="pill verde" style="margin-left:auto;">Pedido</span>
+                </div>
+                <div class="cartao" style="padding:8px 10px;">
+                  <div class="rotulo">Condição de pagamento</div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">
+                    <span style="font-weight:700;">Boleto 28 dias</span><span style="color:#00754A;font-weight:800;">✓</span>
+                  </div>
+                </div>
+                <div class="cartao" style="padding:8px 10px; display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <div class="rotulo">Data de entrega</div>
+                    <div style="font-weight:700;margin-top:3px;">Qua, 16/07</div>
+                  </div>
+                  <span class="pill azul">Sugestão do sistema</span>
+                </div>
+                <div class="cartao">
+                  <div style="padding:7px 10px;border-bottom:1px solid #f3f4f6;" class="rotulo">Itens do pedido · 3</div>
+                  <div class="prod">
+                    <div class="foto">🥟</div>
+                    <div>
+                      <div class="nome">Coxinha de Frango 25g <span class="pill verde">Promo</span></div>
+                      <div class="sub money">cx 100 un · R$ 89,00 · Est: 42</div>
+                    </div>
+                    <div class="qtd"><span>−</span><b>3</b><span>+</span></div>
+                  </div>
+                  <div class="prod">
+                    <div class="foto">🧀</div>
+                    <div>
+                      <div class="nome">Bolinha de Queijo 25g</div>
+                      <div class="sub money">cx 100 un · R$ 94,00 · Est: 18</div>
+                    </div>
+                    <div class="qtd"><span>−</span><b>2</b><span>+</span></div>
+                  </div>
+                  <div class="prod">
+                    <div class="foto">🥖</div>
+                    <div>
+                      <div class="nome">Enroladinho de Salsicha</div>
+                      <div class="sub money">cx 50 un · R$ 95,00 · Est: 26</div>
+                    </div>
+                    <div class="qtd"><span>−</span><b>2</b><span>+</span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="rodape-fone">
+                <div class="linha-total"><span>Subtotal</span><span class="money">R$ 645,00</span></div>
+                <div class="linha-total forte"><span>Total</span><span class="money">R$ 645,00</span></div>
+                <div class="cta">Fechar pedido</div>
+              </div>
+            </div>
+          </div>
+          <div class="legenda-fone">Vendas · Novo Pedido</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PASSO 2 — LOGÍSTICA -->
+    <section class="passo reveal">
+      <span class="fantasma">02</span>
+      <div class="texto">
+        <span class="setor">Logística</span><br>
+        <span class="label rubro"><span class="tique"></span>A dor: rota montada no olho, motorista perdido</span>
+        <h3>A entrega vira um roteiro pronto no celular do motorista</h3>
+        <p class="txt">
+          O sistema ordena as paradas do dia e o motorista só segue a lista: um toque abre o
+          <b>Google Maps</b> no endereço, outro faz o <b>check-in da entrega</b> — registrando na
+          hora o que foi entregue, parcial ou devolvido.
+        </p>
+      </div>
+      <div class="fone-col">
+        <div>
+          <div class="fone">
+            <div class="notch"></div>
+            <div class="tela" style="background:#f3f4f6;">
+              <div class="statusbar claro" style="background:#1E3932;"><span>7:20</span><span>▮▮▮ 📶</span></div>
+              <div class="barra-house">🚚 <b>Meu Roteiro</b><span class="pill ambar" style="margin-left:auto;">★ 2 prioridades</span><span class="pill" style="background:rgba(255,255,255,0.16);color:#fff;">6 restantes</span></div>
+              <div class="abas"><div class="ativa">A Entregar</div><div>Já Finalizadas</div></div>
+              <div class="corpo">
+                <div class="cartao" style="padding:9px 10px;">
+                  <div style="display:flex;align-items:flex-start;gap:8px;">
+                    <span class="parada-num">1</span>
+                    <div>
+                      <div style="font-weight:800;font-size:11.5px;">Mercado Bom Preço</div>
+                      <div style="font-size:9.5px;color:#6b7280;">📍 Av. das Araucárias, 1240 – Centro (Lapa)</div>
+                    </div>
+                    <span class="pill cinza money" style="margin-left:auto;">Embarque #42</span>
+                  </div>
+                  <div style="display:flex;gap:6px;margin-top:8px;">
+                    <div class="cta out" style="flex:none;padding:7px 12px;font-size:10px;">Maps</div>
+                    <div class="cta" style="flex:1;font-size:10px;padding:7px 8px;">✓ Fazer Check-in (Entregar)</div>
+                  </div>
+                </div>
+                <div class="cartao" style="padding:9px 10px;">
+                  <div style="display:flex;align-items:flex-start;gap:8px;">
+                    <span class="parada-num">2</span>
+                    <div>
+                      <div style="font-weight:800;font-size:11.5px;">Lanchonete da Vila</div>
+                      <div style="font-size:9.5px;color:#6b7280;">📍 R. XV de Novembro, 88 – São José</div>
+                    </div>
+                    <span class="pill cinza money" style="margin-left:auto;">Embarque #43</span>
+                  </div>
+                  <div style="display:flex;gap:6px;margin-top:8px;">
+                    <div class="cta out" style="flex:none;padding:7px 12px;font-size:10px;">Maps</div>
+                    <div class="cta" style="flex:1;font-size:10px;padding:7px 8px;">✓ Fazer Check-in (Entregar)</div>
+                  </div>
+                </div>
+                <div class="cartao" style="padding:9px 10px;opacity:0.75;">
+                  <div style="display:flex;align-items:flex-start;gap:8px;">
+                    <span class="parada-num" style="background:#f3f4f6;color:#6b7280;">3</span>
+                    <div>
+                      <div style="font-weight:800;font-size:11.5px;">Padaria Pão da Serra</div>
+                      <div style="font-size:9.5px;color:#6b7280;">📍 R. das Hortênsias, 402 – Jardim Iguaçu</div>
+                    </div>
+                    <span class="pill cinza money" style="margin-left:auto;">Embarque #44</span>
+                  </div>
+                </div>
+                <div class="cartao" style="padding:8px 10px;display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-size:10px;color:#6b7280;font-weight:600;">Finalizadas hoje</span>
+                  <span class="pill verde">3 ENTREGUES</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="legenda-fone">Logística · Meu Roteiro</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PASSO 3 — RECEBIMENTO -->
+    <section class="passo reveal">
+      <span class="fantasma">03</span>
+      <div class="texto">
+        <span class="setor">Recebimento na entrega</span><br>
+        <span class="label rubro"><span class="tique"></span>A dor: motorista volta sem saber se o pagamento caiu</span>
+        <h3>PIX na porta do cliente, confirmado pelo banco na hora</h3>
+        <p class="txt">
+          Na entrega, o motorista gera o <b>QR Code do PIX</b> dentro do app. O cliente paga,
+          e em segundos a confirmação chega <b>direto do banco</b> na mesma tela. Ninguém entrega
+          fiado por engano, ninguém confere comprovante print por print.
+        </p>
+      </div>
+      <div class="fone-col">
+        <div>
+          <div class="fone">
+            <div class="notch"></div>
+            <div class="tela" style="background:#e8eae7;">
+              <div class="statusbar"><span>10:52</span><span>▮▮▮ 📶</span></div>
+              <div class="fundo-esc"></div>
+              <div class="sheet" style="bottom:74px;">
+                <div style="display:flex;align-items:center;gap:8px;align-self:stretch;">
+                  <div style="width:30px;height:30px;border-radius:8px;background:#d4e9e2;display:flex;align-items:center;justify-content:center;font-size:14px;">▦</div>
+                  <div>
+                    <div style="font-weight:800;font-size:12px;">Receber com PIX</div>
+                    <div style="font-size:9.5px;color:#6b7280;">Pedido #1284 · Mercado Bom Preço</div>
+                  </div>
+                </div>
+                <div class="money" style="font-size:24px;font-weight:800;">R$ 645,00</div>
+                <div class="qr-box"><canvas id="qr" width="29" height="29"></canvas></div>
+                <div style="display:flex;align-items:center;gap:7px;font-size:10px;color:#6b7280;font-weight:600;">
+                  <span class="pulsa"></span> Aguardando pagamento… a confirmação aparece aqui em segundos.
+                </div>
+                <div class="cta out" style="align-self:stretch;font-size:10.5px;">Copiar código PIX (copia e cola)</div>
+              </div>
+              <div class="toast-pago">
+                <div class="check-verde">✓</div>
+                <div>
+                  <div style="font-weight:800;font-size:12px;color:#065f46;">PIX Recebido!</div>
+                  <div style="font-size:9.5px;color:#047857;">Pagamento confirmado pelo banco. Pode entregar tranquilo.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="legenda-fone">Entrega · Receber com PIX</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PASSO 4 — FATURAMENTO -->
+    <section class="passo reveal">
+      <span class="fantasma">04</span>
+      <div class="texto">
+        <span class="setor">Faturamento</span><br>
+        <span class="label rubro"><span class="tique"></span>A dor: imprimir nota por nota, boleto por boleto</span>
+        <h3>Notas e boletos do dia saem em lote, num clique</h3>
+        <p class="txt">
+          O sistema confere sozinho quais pedidos têm nota e boleto, avisa o que está faltando —
+          e monta <b>um único PDF</b> com tudo na ordem certa: via de assinatura, via do cliente,
+          boleto na sequência. Quem fatura só junta e grampeia.
+        </p>
+      </div>
+      <div class="fone-col">
+        <div>
+          <div class="fone">
+            <div class="notch"></div>
+            <div class="tela" style="background:#e8eae7;">
+              <div class="statusbar"><span>16:05</span><span>▮▮▮ 📶</span></div>
+              <div class="fundo-esc"></div>
+              <div class="sheet" style="gap:8px; align-items:stretch;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <div style="width:30px;height:30px;border-radius:8px;background:#d4e9e2;display:flex;align-items:center;justify-content:center;font-size:14px;">🖨</div>
+                  <div>
+                    <div style="font-weight:800;font-size:12px;">Imprimir em lote</div>
+                    <div style="font-size:9.5px;color:#6b7280;">5 itens selecionados</div>
+                  </div>
+                </div>
+                <div class="cartao">
+                  <div style="padding:6px 10px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;" class="rotulo"><span>Conferindo boletos (CA e Asaas)</span><span>5/5 ✓</span></div>
+                  <div class="conf-linha"><span class="doc">#1284</span><span style="flex:1;">Mercado Bom Preço</span><span class="sinal ok">CA ✓</span><span class="sinal ok">Asaas ✓</span></div>
+                  <div class="conf-linha"><span class="doc">#1285</span><span style="flex:1;">Padaria Pão da Serra</span><span class="sinal ok">CA ✓</span><span class="sinal neutro">—</span></div>
+                  <div class="conf-linha"><span class="doc">ZZ#312</span><span style="flex:1;">Rest. Sabor Caseiro</span><span class="sinal neutro">recibo</span><span class="sinal neutro">—</span></div>
+                  <div class="conf-linha"><span class="doc">#1286</span><span style="flex:1;">Lanchonete da Vila</span><span class="sinal ok">CA ✓</span><span class="sinal ok">Asaas ✓</span></div>
+                  <div class="conf-linha"><span class="doc">#1287</span><span style="flex:1;">Mercearia 3 Irmãos</span><span class="sinal ok">CA ✓</span><span class="sinal neutro">pago</span></div>
+                </div>
+                <div class="cartao">
+                  <div class="checkline"><span class="cx">✓</span><span><b>2 vias de cada documento</b><br><span style="color:#6b7280;">Uma via colhe assinatura, a outra fica com o cliente.</span></span></div>
+                  <div class="checkline" style="border-top:1px solid #f3f4f6;"><span class="cx">✓</span><span><b>Boleto logo após as vias</b><br><span style="color:#6b7280;">Sai na sequência — 3 boletos neste lote.</span></span></div>
+                </div>
+                <div class="cta" style="font-size:11px;">Gerar PDF para impressão (~8 folhas)</div>
+              </div>
+            </div>
+          </div>
+          <div class="legenda-fone">Faturamento · Imprimir em lote</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PASSO 5 — CAIXA -->
+    <section class="passo reveal">
+      <span class="fantasma">05</span>
+      <div class="texto">
+        <span class="setor">Caixa</span><br>
+        <span class="label rubro"><span class="tique"></span>A dor: fechamento no caderno, diferença descoberta dias depois</span>
+        <h3>O dia fecha no caixa — e a conta bate sozinha</h3>
+        <p class="txt">
+          Tudo que aconteceu no dia desemboca aqui: entregas, recebimentos em dinheiro e PIX,
+          despesas, devoluções. O sistema calcula o <b>valor a prestar</b> do motorista e não
+          deixa fechar com pendência — a diferença aparece <b>no mesmo dia</b>, não no fim do mês.
+        </p>
+      </div>
+      <div class="fone-col">
+        <div>
+          <div class="fone">
+            <div class="notch"></div>
+            <div class="tela" style="background:#f3f4f6;">
+              <div class="statusbar"><span>18:30</span><span>▮▮▮ 📶</span></div>
+              <div class="appbar"><b>💼 Caixa Diário</b><span class="pill verde" style="margin-left:auto;">Aberto</span><span class="pill cinza">14/07</span></div>
+              <div class="corpo">
+                <div>
+                  <div class="rotulo" style="margin-bottom:5px;">Entregas do dia</div>
+                  <div class="kpi4">
+                    <div class="cartao"><b>12</b><span>Total</span></div>
+                    <div class="cartao"><b style="color:#166534;">10</b><span>Entregues</span></div>
+                    <div class="cartao"><b style="color:#b45309;">1</b><span>Parcial</span></div>
+                    <div class="cartao"><b style="color:#b91c1c;">1</b><span>Devolvido</span></div>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                  <div class="cartao" style="padding:8px 10px;">
+                    <div class="rotulo">Recebido (Caixa)</div>
+                    <div class="money" style="font-weight:800;font-size:14px;color:#166534;">R$ 1.845,00</div>
+                  </div>
+                  <div class="cartao" style="padding:8px 10px;">
+                    <div class="rotulo">Recebido (Outros)</div>
+                    <div class="money" style="font-weight:800;font-size:14px;color:#1e40af;">R$ 2.310,00</div>
+                  </div>
+                </div>
+                <div class="cartao" style="padding:8px 10px;display:flex;justify-content:space-between;align-items:center;">
+                  <div>
+                    <div class="rotulo">Despesas do dia</div>
+                    <div style="font-size:9px;color:#6b7280;">3 lançamentos</div>
+                  </div>
+                  <div class="money" style="font-weight:800;color:#b91c1c;">− R$ 250,00</div>
+                </div>
+                <div class="cartao" style="padding:7px 10px;display:flex;justify-content:space-between;align-items:center;">
+                  <span style="font-size:10px;font-weight:700;">Conferência de devoluções</span>
+                  <span class="pill verde">CONFERIDO ✓</span>
+                </div>
+                <div class="prestar">
+                  <div class="rotulo" style="color:#b45309;">Valor a prestar</div>
+                  <b>R$ 1.926,40</b>
+                  <div style="font-size:8.5px;color:#92400e;">+ adiantamento · − despesas · + faltas de devolução</div>
+                </div>
+              </div>
+              <div class="rodape-fone" style="flex-direction:row;">
+                <div class="cta out" style="flex:1;font-size:10.5px;">Imprimir</div>
+                <div class="cta amarela" style="flex:1.4;font-size:10.5px;">🔒 Fechar Caixa</div>
+              </div>
+            </div>
+          </div>
+          <div class="legenda-fone">Caixa · Fechamento do dia</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ GALERIA ============ -->
+    <section class="galeria-sec">
+      <div class="secao-cab">
+        <span class="label">Muito além da jornada</span>
+        <h2>Todos os setores, um sistema só</h2>
+        <p class="sub">
+          A jornada do pedido é a espinha dorsal — mas em volta dela cresceu um sistema para
+          cada setor da empresa. Uma amostra do que roda todos os dias:
+        </p>
+      </div>
+
+      <div class="galeria">
+
+        <!-- DASHBOARD -->
+        <div class="modulo reveal">
+          <div class="mock">
+            <div class="chrome"><i></i><i></i><i></i><span>app · Dashboard Gerencial</span></div>
+            <div class="miolo">
+              <div class="tab-pills">
+                <span class="on">Visão Geral</span><span>Vendas &amp; Pedidos</span><span>Recorrência</span><span>Atendimentos</span><span>Resultado &amp; Margem</span>
+              </div>
+              <div class="cartao" style="padding:10px;display:flex;gap:12px;align-items:center;">
+                <div class="gauge"><div><b>78%</b><span>da meta</span></div></div>
+                <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;">
+                  <div><div class="rotulo">Vendas líquidas</div><div class="money" style="font-weight:800;font-size:13px;">R$ 214.380</div></div>
+                  <div><div class="rotulo">Meta do mês</div><div class="money" style="font-weight:800;font-size:13px;">R$ 275.000</div></div>
+                  <div><div class="rotulo">Projeção</div><div class="money" style="font-weight:800;font-size:13px;color:#166534;">R$ 281.400 ✓</div></div>
+                  <div><div class="rotulo">Ticket médio</div><div class="money" style="font-weight:800;font-size:13px;">R$ 512</div></div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div class="cartao" style="padding:8px 10px;">
+                  <div class="rotulo" style="margin-bottom:5px;">⚠ Precisa de atenção</div>
+                  <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                    <span class="pill verm">3 recompra crítica</span>
+                    <span class="pill ambar">5 retornos vencidos</span>
+                    <span class="pill ambar">7 parc. vencidas</span>
+                  </div>
+                </div>
+                <div class="cartao" style="padding:8px 10px;">
+                  <div class="rotulo" style="margin-bottom:5px;">Saúde do caixa</div>
+                  <div style="display:flex;justify-content:space-between;font-size:10px;"><span>A receber vencido</span><b class="money" style="color:#b91c1c;">R$ 8.340</b></div>
+                  <div style="display:flex;justify-content:space-between;font-size:10px;"><span>Saldo previsto 30d</span><b class="money" style="color:#166534;">R$ 46.200</b></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="mod-cab">
+            <span class="label">Gestão</span>
+            <h4>Dashboard por perfil</h4>
+            <p>O dono abre e vê o mês inteiro: meta, projeção, o que precisa de atenção e a saúde do caixa — em 5 abas. Vendedor e entregador têm o dashboard deles.</p>
+          </div>
+        </div>
+
+        <!-- FINANCEIRO -->
+        <div class="modulo reveal">
+          <div class="mock">
+            <div class="chrome"><i></i><i></i><i></i><span>app · Financeiro › Contas a Receber</span></div>
+            <div class="miolo">
+              <div class="kpi4">
+                <div class="cartao"><b class="money">R$ 38,4k</b><span>Em aberto</span></div>
+                <div class="cartao"><b class="money" style="color:#b91c1c;">R$ 8,3k</b><span>Vencidas</span></div>
+                <div class="cartao"><b class="money" style="color:#b45309;">R$ 12,1k</b><span>Vence em 7d</span></div>
+                <div class="cartao"><b class="money" style="color:#166534;">R$ 96,7k</b><span>Quitadas/mês</span></div>
+              </div>
+              <div class="cartao">
+                <div class="conf-linha"><span class="doc">#1264</span><span style="flex:1;">Mercado Bom Preço</span><span class="pill azul">Aberto</span><b class="money">R$ 645,00</b></div>
+                <div class="conf-linha"><span class="doc">ZZ#298</span><span style="flex:1;">Rest. Sabor Caseiro <span class="pill roxo">ESPECIAL</span></span><span class="pill verde">Quitado</span><b class="money">R$ 1.240,00</b></div>
+                <div class="conf-linha"><span class="doc">#1201</span><span style="flex:1;">Mercearia 3 Irmãos</span><span class="pill verm">Vencido</span><b class="money">R$ 380,00</b></div>
+                <div class="conf-linha"><span class="doc">#1233</span><span style="flex:1;">Lanchonete da Vila</span><span class="pill amarelo">Parcial</span><b class="money">R$ 512,00</b></div>
+              </div>
+              <div style="background:#00754A;color:#fff;border-radius:10px;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:700;">
+                <span>4 parcelas selecionadas · <span class="money">R$ 2.777,00</span></span>
+                <span style="background:#fff;color:#00754A;border-radius:999px;padding:3px 10px;">Dar Baixa</span>
+              </div>
+            </div>
+          </div>
+          <div class="mod-cab">
+            <span class="label">Financeiro</span>
+            <h4>Contas a receber, pagar e DRE</h4>
+            <p>Baixa em lote, boleto e PIX integrados, estorno com histórico — e no fim do mês a DRE monta sozinha o resultado, mês a mês, sem planilha.</p>
+          </div>
+        </div>
+
+        <!-- METAS -->
+        <div class="modulo reveal">
+          <div class="mock">
+            <div class="chrome"><i></i><i></i><i></i><span>app · Dashboard › Vendedores × meta do mês</span></div>
+            <div class="miolo">
+              <div class="cartao" style="padding:10px;display:flex;flex-direction:column;gap:8px;">
+                <div class="rotulo">Vendedores × meta do mês</div>
+                <div class="meta-linha"><span class="nome">Marcos</span><div class="bmeta"><i style="width:100%;background:#22c55e;"></i></div><span class="pct">104%</span><span class="pill verde">acima da meta</span></div>
+                <div class="meta-linha"><span class="nome">Juliana</span><div class="bmeta"><i style="width:88%;background:#facc15;"></i></div><span class="pct">88%</span><span class="pill amarelo">quase lá</span></div>
+                <div class="meta-linha"><span class="nome">Rafael</span><div class="bmeta"><i style="width:64%;background:#3b82f6;"></i></div><span class="pct">64%</span><span class="pill azul">no ritmo</span></div>
+                <div class="meta-linha"><span class="nome">Débora</span><div class="bmeta"><i style="width:43%;background:#ef4444;"></i></div><span class="pct">43%</span><span class="pill verm">precisa reagir</span></div>
+              </div>
+              <div style="background:#d4e9e2;border-radius:10px;padding:8px 12px;font-size:10px;color:#006241;font-weight:600;">
+                🎯 Para bater a meta: vender <b class="money">R$ 1.180/dia</b> nos 10 dias úteis restantes.
+              </div>
+              <div class="cartao" style="padding:8px 10px;display:flex;justify-content:space-between;align-items:center;">
+                <span style="font-size:10px;font-weight:700;">🏆 Ranking da semana</span>
+                <span class="pill" style="background:#d4e9e2;color:#006241;">Você está em 2º lugar — faltam R$ 1.420 para o 1º</span>
+              </div>
+            </div>
+          </div>
+          <div class="mod-cab">
+            <span class="label">Metas</span>
+            <h4>Meta viva, não número na parede</h4>
+            <p>Cada vendedor abre o app e vê quanto falta, quanto precisa vender por dia e sua posição no ranking. O gestor vê todo mundo numa tela, com projeção.</p>
+          </div>
+        </div>
+
+        <!-- ETIQUETAS -->
+        <div class="modulo reveal">
+          <div class="mock">
+            <div class="chrome"><i></i><i></i><i></i><span>app · PCP › Etiquetas</span></div>
+            <div class="etiq-fundo">
+              <div class="etiq">
+                <div class="nome-prod">COXINHA DE FRANGO CONGELADA</div>
+                <div class="linha-cod"><span>CÓD. 10245</span><span>PESO LÍQUIDO 2,5 kg</span></div>
+                <div class="tit-tab">INFORMAÇÃO NUTRICIONAL</div>
+                <table>
+                  <tr><th></th><th class="num">100 g</th><th class="num">25 g</th><th class="num">%VD*</th></tr>
+                  <tr><td>Valor Energético (kcal)</td><td class="num">248</td><td class="num">62</td><td class="num">3</td></tr>
+                  <tr><td>Carboidratos totais (g)</td><td class="num">28</td><td class="num">7,0</td><td class="num">2</td></tr>
+                  <tr><td>Proteínas (g)</td><td class="num">9,4</td><td class="num">2,4</td><td class="num">5</td></tr>
+                  <tr><td>Gorduras totais (g)</td><td class="num">11</td><td class="num">2,8</td><td class="num">4</td></tr>
+                  <tr><td>Sódio (mg)</td><td class="num">412</td><td class="num">103</td><td class="num">5</td></tr>
+                </table>
+                <div><b>INGREDIENTES:</b> farinha de trigo, peito de frango, leite, margarina, sal, temperos naturais.</div>
+                <div class="alerg">Contém glúten · Contém lactose · Alérgicos: contém trigo, leite e ovos.</div>
+                <div>❄ Conservação em FREEZER (−12°C ou mais frio). Uma vez descongelado, não recongelar.</div>
+                <div class="barcode"></div>
+                <div class="ean">7 891234 567895</div>
+                <div class="rod">Fabricação/Lote — 14/07/26 &nbsp;·&nbsp; Validade — 14/10/26</div>
+              </div>
+            </div>
+          </div>
+          <div class="mod-cab">
+            <span class="label">Produção</span>
+            <h4>Etiquetas prontas para a legislação</h4>
+            <p>Tabela nutricional, alérgicos, lote, validade e código de barras — a etiqueta sai do sistema direto para a impressora, no tamanho certo, sem gráfica.</p>
+          </div>
+        </div>
+
+        <!-- SITE -->
+        <div class="modulo reveal">
+          <div class="mock">
+            <div class="chrome"><i></i><i></i><i></i><span>site público · Kit Festa</span></div>
+            <div class="miolo" style="padding:0;">
+              <div class="kf-hero">
+                <b>Monte o Kit Festa perfeito 🎉</b>
+                <span>Salgados congelados direto da fábrica · mínimo 4 caixas</span>
+              </div>
+              <div style="padding:10px;display:flex;flex-direction:column;gap:8px;">
+                <div class="rotulo">⭐ Mais pedidos — os campeões das nossas festas</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                  <div class="cartao" style="padding:8px;">
+                    <div style="height:44px;border-radius:8px;background:linear-gradient(135deg,#d4e9e2,#a8cfc2);display:flex;align-items:center;justify-content:center;font-size:20px;">🥟</div>
+                    <div style="font-weight:700;font-size:10px;margin-top:5px;">Coxinha de Frango</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">
+                      <b class="money" style="font-size:10.5px;">R$ 89,00<span style="font-weight:600;color:#6b7280;">/cx</span></b>
+                      <span class="qtd"><span>−</span><b>2</b><span>+</span></span>
+                    </div>
+                  </div>
+                  <div class="cartao" style="padding:8px;">
+                    <div style="height:44px;border-radius:8px;background:linear-gradient(135deg,#f5e5c8,#e2c391);display:flex;align-items:center;justify-content:center;font-size:20px;">🧀</div>
+                    <div style="font-weight:700;font-size:10px;margin-top:5px;">Bolinha de Queijo</div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">
+                      <b class="money" style="font-size:10.5px;">R$ 94,00<span style="font-weight:600;color:#6b7280;">/cx</span></b>
+                      <span class="qtd"><span>−</span><b>2</b><span>+</span></span>
+                    </div>
+                  </div>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:9.5px;color:#6b7280;">
+                  <span>★★★★★ "Chegou tudo certinho pra festa!" — Ana, aniversário</span>
+                </div>
+                <div class="kf-fab">🛒 4 caixas · R$ 366,00 — Fechar pedido</div>
+              </div>
+            </div>
+          </div>
+          <div class="mod-cab">
+            <span class="label">Site do cliente</span>
+            <h4>O cliente monta o pedido sozinho</h4>
+            <p>Site público com carrinho, cupom e login por WhatsApp: o pedido do Kit Festa cai direto no sistema — e o cliente recebe a confirmação no zap, sem ninguém digitar.</p>
+          </div>
+        </div>
+
+        <!-- DELIVERY -->
+        <div class="modulo reveal">
+          <div class="mock">
+            <div class="chrome"><i></i><i></i><i></i><span>app · Delivery (atualiza sozinho a cada 30s)</span></div>
+            <div class="miolo">
+              <div class="kanban-rolo">
+                <div class="kanban">
+                  <div class="kcol" style="border-color:#93c5fd;background:#eff6ff;">
+                    <h6 style="color:#1e40af;">Pedido <span>3</span></h6>
+                    <div class="kcard"><b>Fernanda M.</b><span class="sub">Pedido #1291</span><br><span class="pill" style="background:#ffedd5;color:#c2410c;">Hoje</span> <span class="pill verm">ABERTO</span></div>
+                    <div class="kcard"><b>Buffet Alegria</b><span class="sub">Pedido #1292</span><br><span class="pill azul">Amanhã</span> <span class="pill verde">QUITADO</span></div>
+                  </div>
+                  <div class="kcol" style="border-color:#fcd34d;background:#fffbeb;">
+                    <h6 style="color:#b45309;">Em Produção <span>2</span></h6>
+                    <div class="kcard"><b>Carla S.</b><span class="sub">Pedido #1288</span><br><span class="pill" style="background:#ffedd5;color:#c2410c;">Hoje</span> <span class="pill verde">QUITADO</span></div>
+                  </div>
+                  <div class="kcol" style="border-color:#d8b4fe;background:#faf5ff;">
+                    <h6 style="color:#7e22ce;">Saindo Entrega <span>1</span></h6>
+                    <div class="kcard"><b>Igreja Batista</b><span class="sub">Pedido #1285</span><br><span class="pill ambar">PARCIAL</span> 💬</div>
+                  </div>
+                  <div class="kcol" style="border-color:#86efac;background:#f0fdf4;">
+                    <h6 style="color:#166534;">Entregue <span>5</span></h6>
+                    <div class="kcard"><b>Escola Crescer</b><span class="sub">Pedido #1279</span><br><span class="pill verde">QUITADO</span></div>
+                  </div>
+                </div>
+              </div>
+              <div style="font-size:9.5px;color:#6b7280;">💬 A cada etapa, o cliente recebe aviso automático no WhatsApp — "seu pedido saiu para entrega".</div>
+            </div>
+          </div>
+          <div class="mod-cab">
+            <span class="label">Delivery</span>
+            <h4>O pedido anda no quadro — e avisa o cliente</h4>
+            <p>Kanban de 4 etapas: Pedido → Em Produção → Saindo → Entregue. Cada movimentação pode disparar a mensagem certa no WhatsApp do cliente, sozinha.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+</main>
+
+<!-- FECHO -->
+<footer class="fecho">
+  <div class="wrap">
+    <span class="label rubro"><span class="tique"></span>O resultado</span>
+    <h4>8 meses. Uma empresa inteira. Zero redigitação.</h4>
+    <p>
+      Cada tela desta página nasceu de um problema real — e hoje roda todos os dias, do vendedor
+      na rua ao fechamento do caixa, da etiqueta na produção ao site onde o cliente pede sozinho.
+      Se você tem um negócio que vende e entrega, e alguma dessas dores te lembrou de algo,
+      me chama pra conversar.
+    </p>
+    <div class="base">
+      <span class="marca">clark<em style="font-style:normal;color:var(--vermelho);">—</em>teck</span>
+      <span>Dados, nomes e valores fictícios · 2026</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // QR decorativo (padrão determinístico, não é um PIX real)
+  (function () {
+    var cv = document.getElementById('qr');
+    if (!cv) return;
+    var ctx = cv.getContext('2d');
+    var N = 29, seed = 987654321;
+    function rnd() { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, N, N);
+    ctx.fillStyle = '#111827';
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) {
+      var inFinder = (x < 8 && y < 8) || (x >= N - 8 && y < 8) || (x < 8 && y >= N - 8);
+      if (!inFinder && rnd() < 0.46) ctx.fillRect(x, y, 1, 1);
+    }
+    function finder(fx, fy) {
+      ctx.fillStyle = '#111827'; ctx.fillRect(fx, fy, 7, 7);
+      ctx.fillStyle = '#fff'; ctx.fillRect(fx + 1, fy + 1, 5, 5);
+      ctx.fillStyle = '#111827'; ctx.fillRect(fx + 2, fy + 2, 3, 3);
+    }
+    finder(0, 0); finder(N - 7, 0); finder(0, N - 7);
+  })();
+
+  // revelação suave ao rolar
+  (function () {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      document.querySelectorAll('.reveal').forEach(function (el) { el.classList.add('on'); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('on'); io.unobserve(e.target); } });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+  })();
+</script>

@@ -854,7 +854,7 @@ const TabelaPrecos = () => {
                                                     }}
                                                 >
                                                     <option value="valorVenda">Preço Venda</option>
-                                                    <option value="custoMedio">Custo Médio</option>
+                                                    <option value="custoMedio">Custo</option>
                                                 </SelectBusca>
                                                 <div className="relative w-20">
                                                     <input

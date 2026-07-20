@@ -689,18 +689,17 @@ async function extratoPorConta(contaId, de, ate) {
 // MARGEM POR PRODUTO (Fase 3) — custo × preço × vendas
 // Vendas com a MESMA regra de receita da DRE (bonificacao=false,
 // FATURADO ou especial, por data_venda) para os números baterem.
-// Custo unitário por prioridade:
+// Custo unitário por prioridade (custo do CA não é mais usado — decisão de 07/2026):
 //   1. FICHA   — custo por unidade da receita ATIVA do item PCP (tipo PA)
 //                vinculado ao produto (ficha técnica, se atualiza com as compras)
 //   2. COMPRA  — Produto.custoManual (média ponderada das notas de entrada)
-//   3. CA      — Produto.custoMedio (sincronizado do Conta Azul)
-//   4. SEM_CUSTO — nenhum dos três; a linha é sinalizada e fica fora dos totais de custo/margem
+//   3. SEM_CUSTO — nenhum dos dois; a linha é sinalizada e fica fora dos totais de custo/margem
 // ─────────────────────────────────────────────────────────────
 
 /**
  * Monta as linhas e totais da margem. Função PURA (testável offline).
  * @param {Array} vendas   [{ produtoId, quantidade, receita }]
- * @param {Map}   produtos produtoId → { nome, categoria, unidade, valorVenda, custoManual, custoMedio }
+ * @param {Map}   produtos produtoId → { nome, categoria, unidade, valorVenda, custoManual }
  * @param {Map}   custosFicha produtoId → custoPorUnidade (receita ativa)
  */
 function montarMargemProdutos(vendas, produtos, custosFicha) {
@@ -714,12 +713,10 @@ function montarMargemProdutos(vendas, produtos, custosFicha) {
 
         const ficha = num(custosFicha.get(v.produtoId));
         const compra = num(p.custoManual);
-        const ca = num(p.custoMedio);
         let custoUnitario = 0;
         let fonteCusto = 'SEM_CUSTO';
         if (ficha > 0) { custoUnitario = ficha; fonteCusto = 'FICHA'; }
         else if (compra > 0) { custoUnitario = compra; fonteCusto = 'COMPRA'; }
-        else if (ca > 0) { custoUnitario = ca; fonteCusto = 'CA'; }
 
         const custoTotal = round2(custoUnitario * qtd);
         const margem = fonteCusto === 'SEM_CUSTO' ? null : round2(receita - custoTotal);
@@ -787,7 +784,7 @@ async function margemProdutos(de, ate) {
     // 2. Dados dos produtos vendidos
     const produtosDb = await prisma.produto.findMany({
         where: { id: { in: ids } },
-        select: { id: true, nome: true, categoria: true, unidade: true, valorVenda: true, custoManual: true, custoMedio: true }
+        select: { id: true, nome: true, categoria: true, unidade: true, valorVenda: true, custoManual: true }
     });
     const produtos = new Map(produtosDb.map((p) => [p.id, p]));
 

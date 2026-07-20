@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import notasEntradaService from '../../services/notasEntradaService';
 import contasPagarService from '../../services/contasPagarService';
-import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search, Upload, Calendar, FilePlus, UploadCloud, Clock } from 'lucide-react';
+import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search, Upload, Calendar, FilePlus, UploadCloud, Clock, Link2, Unlink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
@@ -68,6 +68,10 @@ const STATUS_NOTA = {
     },
     NOVA: { label: 'Nova', cls: 'bg-blue-100 text-blue-800' },
     CONFERIDA: { label: 'Despesa gerada ✓', cls: 'bg-green-100 text-green-800' },
+    VINCULADA: {
+        label: 'Vinculada ✓', cls: 'bg-green-100 text-green-800',
+        title: 'Anexada a despesa(s) que já estavam lançadas — não gerou despesa nova'
+    },
     IGNORADA: { label: 'Ignorada', cls: 'bg-gray-100 text-gray-700' },
     CANCELADA_EMITENTE: { label: 'Cancelada pelo emitente', cls: 'bg-red-100 text-red-700' }
 };
@@ -94,13 +98,13 @@ const tipoItemLabel = (t) => TIPOS_ITEM_PCP.find(x => x.value === t)?.label || t
 
 const CHIPS = [
     { key: 'NOVAS', label: (n) => `Novas${n != null ? ` (${n})` : ''}` },
-    { key: 'GERADAS', label: () => 'Despesa gerada' },
+    { key: 'GERADAS', label: () => 'Despesa gerada / vinculada' },
     { key: 'IGNORADAS', label: () => 'Ignoradas' },
     { key: 'TODAS', label: () => 'Todas' }
 ];
 
 const notaPassaChip = (nota, chip) => {
-    if (chip === 'GERADAS') return nota.status === 'CONFERIDA';
+    if (chip === 'GERADAS') return nota.status === 'CONFERIDA' || nota.status === 'VINCULADA';
     if (chip === 'IGNORADAS') return nota.status === 'IGNORADA';
     if (chip === 'TODAS') return true;
     // NOVAS: novas + resumos aguardando o XML completo
@@ -578,7 +582,7 @@ const NotasRecebidasPage = () => {
 const NotaCard = ({ nota, podeOperar, onAbrir }) => {
     const aguardandoXml = nota.status === 'AGUARDANDO_XML';
     const conferivel = nota.status === 'NOVA' && podeOperar;
-    const finalizada = nota.status === 'CONFERIDA' || nota.status === 'IGNORADA';
+    const finalizada = nota.status === 'CONFERIDA' || nota.status === 'IGNORADA' || nota.status === 'VINCULADA';
 
     return (
         <div className={`bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${finalizada ? 'opacity-75' : ''}`}>
@@ -601,6 +605,7 @@ const NotaCard = ({ nota, podeOperar, onAbrir }) => {
                     </span>
                     {nota.fornecedorCnpj && <span className="text-xs text-gray-500">CNPJ {fmtCnpj(nota.fornecedorCnpj)}</span>}
                     {nota.status === 'CONFERIDA' && nota.contaPagarId && <span className="text-xs text-gray-500">· despesa gerada em Contas a Pagar</span>}
+                    {nota.status === 'VINCULADA' && <span className="text-xs text-gray-500">· anexada a despesa já lançada</span>}
                 </div>
             </div>
             <div className="flex items-center justify-between md:justify-end gap-4 shrink-0">
@@ -1101,6 +1106,354 @@ const calcularRateio = (itensCat, valorNota, categoriaPadrao) => {
 };
 
 // ═══════════════════════════════════════════════════════════
+// VÍNCULO COM DESPESA JÁ LANÇADA (contrato de serviço: NF chega DEPOIS do pagamento)
+// Anexa os dados fiscais na(s) parcela(s) existente(s) — NÃO cria despesa nova, não vai ao CA.
+// ═══════════════════════════════════════════════════════════
+const STATUS_PARCELA_PAGAR = {
+    ABERTO: { label: 'Aberto', cls: 'bg-blue-100 text-blue-800' },
+    PAGO: { label: 'Pago', cls: 'bg-green-100 text-green-800' },
+    PARCIAL: { label: 'Parcial', cls: 'bg-yellow-100 text-yellow-800' },
+    VENCIDO: { label: 'Vencido', cls: 'bg-red-100 text-red-700' },
+    CANCELADO: { label: 'Cancelado', cls: 'bg-red-100 text-red-700' }
+};
+
+const BadgeStatusParcelaPagar = ({ status }) => {
+    const cfg = STATUS_PARCELA_PAGAR[String(status || '').toUpperCase()]
+        || { label: status || '—', cls: 'bg-gray-100 text-gray-700' };
+    return <span className={`px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${cfg.cls}`}>{cfg.label}</span>;
+};
+
+const ACOES_DIFERENCA = [
+    { value: 'NENHUMA', label: 'Deixar como está (vínculo parcial)', ajuda: 'A nota fica anexada e a diferença fica registrada. Use quando a nota cobre só parte da parcela (ex.: parte serviço, parte peça).' },
+    { value: 'AJUSTAR_PARCELA', label: 'Ajustar o valor da parcela', ajuda: 'O valor das parcelas ainda NÃO pagas é ajustado para bater com a nota. Parcelas já pagas não são alteradas.' },
+    { value: 'DESCONTO', label: 'Registrar como desconto', ajuda: 'A diferença é registrada como desconto concedido pelo fornecedor.' },
+    { value: 'ACRESCIMO', label: 'Registrar como acréscimo', ajuda: 'A diferença é registrada como acréscimo (juros, multa, serviço extra).' }
+];
+
+const PainelVincularParcelas = ({ nota, onCancelar, onChanged }) => {
+    const notaValorProp = Number(nota.valorTotal || 0);
+
+    const [busca, setBusca] = useState('');
+    const [buscaAplicada, setBuscaAplicada] = useState('');
+    useEffect(() => {
+        const t = setTimeout(() => setBuscaAplicada(busca.trim()), 400);
+        return () => clearTimeout(t);
+    }, [busca]);
+
+    const [dados, setDados] = useState(null);
+    const [carregando, setCarregando] = useState(true);
+    const [erro, setErro] = useState('');
+    // { [parcelaPagarId]: valorDigitado } — presença da chave = selecionada
+    const [selecao, setSelecao] = useState({});
+    const [acaoDiferenca, setAcaoDiferenca] = useState('NENHUMA');
+    const [observacao, setObservacao] = useState('');
+    const [salvando, setSalvando] = useState(false);
+
+    useEffect(() => {
+        let vivo = true;
+        setCarregando(true);
+        setErro('');
+        notasEntradaService.parcelasCompativeis(nota.id, buscaAplicada)
+            .then(d => { if (vivo) setDados(d || null); })
+            .catch(e => { if (vivo) setErro(e.response?.data?.error || 'Não foi possível carregar as despesas já lançadas.'); })
+            .finally(() => { if (vivo) setCarregando(false); });
+        return () => { vivo = false; };
+    }, [nota.id, buscaAplicada]);
+
+    const parcelas = Array.isArray(dados?.parcelas) ? dados.parcelas : [];
+    const notaValor = dados?.notaValor != null ? Number(dados.notaValor) : notaValorProp;
+    const jaVinculadoTotal = Number(dados?.jaVinculadoTotal || 0);
+    // Quanto da nota ainda pode ser distribuído (descontando o que já foi vinculado antes)
+    const restanteDaNota = round2(Math.max(0, notaValor - jaVinculadoTotal));
+
+    const idsSelecionados = Object.keys(selecao);
+    const somaVinculada = idsSelecionados.reduce((s, id) => s + parseNum(selecao[id]), 0);
+    const diferenca = round2(restanteDaNota - somaVinculada);
+    const diferencaZero = Math.abs(diferenca) < 0.01;
+
+    const saldoDe = (p) => {
+        const s = p.saldoDisponivel != null ? Number(p.saldoDisponivel) : Number(p.valor || 0);
+        return round2(Math.max(0, s));
+    };
+
+    const alternar = (p) => {
+        const id = String(p.parcelaPagarId);
+        setSelecao(prev => {
+            if (Object.prototype.hasOwnProperty.call(prev, id)) {
+                const { [id]: _fora, ...resto } = prev;
+                return resto;
+            }
+            // pré-preenche com o menor entre o saldo da parcela e o que falta da nota
+            const jaUsado = Object.keys(prev).reduce((s, k) => s + parseNum(prev[k]), 0);
+            const falta = round2(Math.max(0, restanteDaNota - jaUsado));
+            const sugerido = round2(Math.min(saldoDe(p), falta || saldoDe(p)));
+            return { ...prev, [id]: fmt(sugerido) };
+        });
+    };
+
+    const setValor = (id, v) => setSelecao(prev => ({ ...prev, [String(id)]: v }));
+
+    // Motivo de bloqueio do botão (mensagem clara em cada caso)
+    const motivoBloqueio = useMemo(() => {
+        if (idsSelecionados.length === 0) return 'Escolha ao menos uma parcela para receber esta nota.';
+        for (const id of idsSelecionados) {
+            const p = parcelas.find(x => String(x.parcelaPagarId) === String(id));
+            const v = parseNum(selecao[id]);
+            const rotulo = p ? `"${p.descricao || 'parcela'}"` : 'a parcela selecionada';
+            if (v <= 0) return `Informe um valor maior que zero para ${rotulo}.`;
+            if (p && v > saldoDe(p) + 0.01) {
+                return `O valor de ${rotulo} (R$ ${fmt(v)}) passa do saldo disponível dessa parcela (R$ ${fmt(saldoDe(p))}).`;
+            }
+        }
+        if (somaVinculada > restanteDaNota + 0.01) {
+            return `A soma vinculada (R$ ${fmt(somaVinculada)}) passa do valor da nota (R$ ${fmt(restanteDaNota)}).`;
+        }
+        return '';
+    }, [idsSelecionados, selecao, parcelas, somaVinculada, restanteDaNota]);
+
+    const vincular = async () => {
+        if (motivoBloqueio) { toast.error(motivoBloqueio); return; }
+        setSalvando(true);
+        try {
+            const resp = await notasEntradaService.vincularParcelas(nota.id, {
+                vinculos: idsSelecionados.map(id => ({
+                    parcelaPagarId: id,
+                    valorVinculado: parseNum(selecao[id])
+                })),
+                acaoDiferenca: diferencaZero ? 'NENHUMA' : acaoDiferenca,
+                observacao: observacao.trim() || undefined
+            });
+            toast.success(
+                <span>
+                    {resp?.message || 'Nota vinculada à despesa já lançada!'}{' '}
+                    <a href="/contas-pagar" className="font-semibold underline">Abrir Contas a Pagar</a>
+                </span>,
+                { duration: 8000 }
+            );
+            for (const aviso of resp?.avisos || []) toast(aviso, { icon: '⚠️', duration: 9000 });
+            onChanged();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Não foi possível vincular a nota.');
+        } finally {
+            setSalvando(false);
+        }
+    };
+
+    const acaoAtual = ACOES_DIFERENCA.find(a => a.value === acaoDiferenca);
+
+    return (
+        <div className="border-2 border-primary rounded-xl overflow-hidden bg-white">
+            {/* Cabeçalho */}
+            <div className="px-4 md:px-5 py-3.5 border-b border-gray-100 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                        <Link2 className="h-4 w-4 text-primary shrink-0" />
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Vincular a despesa já lançada</span>
+                    </div>
+                    <div className="text-sm text-gray-700 mt-1 break-words">
+                        {tipoNotaLabel(nota.tipo)}{nota.numero ? ` ${nota.numero}` : ''} · <span className="font-semibold">R$ {fmt(notaValor)}</span>
+                        {nota.fornecedorNome ? ` · ${nota.fornecedorNome}` : ''}
+                    </div>
+                </div>
+                <button onClick={onCancelar} title="Fechar" className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 shrink-0">
+                    <X className="h-4 w-4" />
+                </button>
+            </div>
+
+            <div className="p-4 md:p-5 space-y-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900 leading-relaxed">
+                    Use quando a despesa <b>já está lançada</b> no Contas a Pagar (ex.: contrato parcelado) e a nota chegou depois.
+                    A nota é <b>anexada</b> à(s) parcela(s) — <b>não gera despesa nova</b> e <b>nada é enviado à Conta Azul</b>.
+                </div>
+
+                {/* Busca de parcelas */}
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                    <input
+                        type="text"
+                        value={busca}
+                        onChange={e => setBusca(e.target.value)}
+                        placeholder="Buscar por descrição, fornecedor ou valor…"
+                        className="w-full min-h-[44px] bg-white border border-gray-300 rounded-full pl-9 pr-9 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                    />
+                    {busca && (
+                        <button
+                            onClick={() => setBusca('')}
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100"
+                            title="Limpar busca"
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                        Sem busca, aparecem as parcelas do <span className="font-medium text-gray-700">mesmo fornecedor</span> (inclusive as já pagas). Busque para achar de outro fornecedor.
+                    </p>
+                </div>
+
+                {/* Lista de parcelas candidatas */}
+                {carregando ? (
+                    <div className="text-center text-gray-400 text-sm py-4 flex items-center justify-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Carregando despesas…
+                    </div>
+                ) : erro ? (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">{erro}</div>
+                ) : parcelas.length === 0 ? (
+                    <div className="border border-gray-200 rounded-lg p-4 text-center text-sm text-gray-500">
+                        {buscaAplicada
+                            ? <>Nenhuma parcela encontrada para <span className="font-semibold text-gray-600">"{buscaAplicada}"</span>.</>
+                            : <>Nenhuma despesa já lançada deste fornecedor. Use a busca para procurar em outro fornecedor.</>}
+                    </div>
+                ) : (
+                    <div className="space-y-2">
+                        {parcelas.map(p => {
+                            const id = String(p.parcelaPagarId);
+                            const marcada = Object.prototype.hasOwnProperty.call(selecao, id);
+                            const saldo = saldoDe(p);
+                            const confere = Math.abs(Number(p.valor || 0) - notaValor) < 0.01;
+                            const vinculadas = Array.isArray(p.notasVinculadas) ? p.notasVinculadas : [];
+                            const totalParc = Number(p.totalParcelas || 0);
+                            const valorDigitado = parseNum(selecao[id]);
+                            const excede = marcada && valorDigitado > saldo + 0.01;
+                            return (
+                                <div
+                                    key={id}
+                                    className={`rounded-lg border p-3 ${marcada ? 'border-primary bg-mint/20' : 'border-gray-200 hover:bg-gray-50'}`}
+                                >
+                                    <label className="flex items-start gap-3 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={marcada}
+                                            onChange={() => alternar(p)}
+                                            className="rounded h-4 w-4 mt-1 shrink-0"
+                                        />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-sm font-semibold text-gray-900 break-words">
+                                                    {p.descricao || 'Despesa sem descrição'}
+                                                </span>
+                                                <BadgeStatusParcelaPagar status={p.status} />
+                                                {confere && (
+                                                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 whitespace-nowrap">
+                                                        valor confere
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="text-xs text-gray-500 mt-0.5 break-words">
+                                                {p.fornecedorNome ? `${p.fornecedorNome} · ` : ''}
+                                                {p.categoria ? `${p.categoria} · ` : ''}
+                                                {p.numeroParcela != null ? `parcela ${p.numeroParcela}${totalParc ? `/${totalParc}` : ''} · ` : ''}
+                                                vence {fmtData(p.dataVencimento)}
+                                            </div>
+                                            <div className="text-sm text-gray-900 font-semibold mt-0.5">
+                                                R$ {fmt(p.valor)}
+                                                <span className="text-xs font-normal text-gray-500 ml-2">
+                                                    saldo p/ vincular R$ {fmt(saldo)}
+                                                </span>
+                                            </div>
+                                            {vinculadas.length > 0 && (
+                                                <div className="text-xs text-gray-400 mt-0.5">
+                                                    já tem {vinculadas.map((v, i) => (
+                                                        <span key={v.notaEntradaId || i}>
+                                                            {i > 0 ? ', ' : ''}NF {v.numero || '—'} · R$ {fmt(v.valorVinculado)}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </label>
+
+                                    {marcada && (
+                                        <div className="mt-3 ml-7 flex flex-wrap items-center gap-2">
+                                            <label className="text-xs font-medium text-gray-500">Valor desta nota nesta parcela</label>
+                                            <div className="flex items-center gap-1">
+                                                <span className="text-sm text-gray-500">R$</span>
+                                                <input
+                                                    value={selecao[id]}
+                                                    onChange={e => setValor(id, e.target.value)}
+                                                    placeholder="0,00"
+                                                    inputMode="decimal"
+                                                    className={`w-28 border rounded px-2 py-2 text-sm text-right bg-white focus:ring-1 focus:ring-primary focus:outline-none ${excede || valorDigitado <= 0 ? 'border-red-300 focus:border-red-400' : 'border-gray-300 focus:border-primary'}`}
+                                                />
+                                            </div>
+                                            {excede && (
+                                                <span className="text-xs text-red-600">passa do saldo (R$ {fmt(saldo)})</span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* Resumo ao vivo */}
+                <div className={`text-sm rounded-lg px-3 py-2.5 border ${
+                    diferencaZero ? 'bg-green-50 border-green-200 text-green-800' : 'bg-amber-50 border-amber-200 text-amber-800'
+                }`}>
+                    <span className="font-medium">Valor da nota R$ {fmt(notaValor)}</span>
+                    {jaVinculadoTotal > 0 && <span> · já vinculado antes R$ {fmt(jaVinculadoTotal)}</span>}
+                    <span> · Vinculado agora <span className="font-semibold">R$ {fmt(somaVinculada)}</span></span>
+                    <span> · Diferença <span className="font-semibold">R$ {fmt(diferenca)}</span></span>
+                    {diferencaZero && <span className="font-semibold"> ✓</span>}
+                </div>
+
+                {/* O que fazer com a diferença (só quando houver) */}
+                {!diferencaZero && idsSelecionados.length > 0 && (
+                    <div className="border border-gray-200 rounded-lg p-3 space-y-2">
+                        <label className="text-sm font-medium text-gray-700">O que fazer com a diferença?</label>
+                        <SelectBusca value={acaoDiferenca} onChange={e => setAcaoDiferenca(e.target.value)} className="w-full md:max-w-md">
+                            {ACOES_DIFERENCA.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                        </SelectBusca>
+                        {acaoAtual?.ajuda && <p className="text-xs text-gray-500">{acaoAtual.ajuda}</p>}
+                        {acaoDiferenca === 'AJUSTAR_PARCELA' && (
+                            <p className="text-xs text-amber-700">
+                                Atenção: parcelas <span className="font-semibold">já pagas não são ajustadas</span> — só as que ainda estão em aberto.
+                            </p>
+                        )}
+                        <div>
+                            <label className="text-sm font-medium text-gray-700">Observação (opcional)</label>
+                            <textarea
+                                rows={2}
+                                value={observacao}
+                                onChange={e => setObservacao(e.target.value)}
+                                placeholder="Ex.: nota cobre só a mão de obra; a peça veio em outra NF."
+                                className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                            />
+                        </div>
+                    </div>
+                )}
+
+                {motivoBloqueio && idsSelecionados.length > 0 && (
+                    <div className="text-xs text-red-600">{motivoBloqueio}</div>
+                )}
+
+                {/* Ações */}
+                <div className="flex flex-col md:flex-row gap-3">
+                    <button
+                        onClick={vincular}
+                        disabled={salvando || !!motivoBloqueio}
+                        title={motivoBloqueio || undefined}
+                        className="w-full md:w-auto px-4 py-3 md:py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                    >
+                        {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                        {salvando
+                            ? 'Vinculando…'
+                            : `Vincular (${idsSelecionados.length} parcela${idsSelecionados.length !== 1 ? 's' : ''})`}
+                    </button>
+                    <button
+                        onClick={onCancelar}
+                        disabled={salvando}
+                        className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm disabled:opacity-50"
+                    >
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ═══════════════════════════════════════════════════════════
 // CONFERÊNCIA (nota NOVA, com permissão)
 // ═══════════════════════════════════════════════════════════
 const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged }) => {
@@ -1139,6 +1492,8 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     const [enviarCA, setEnviarCA] = useState(true);
     const [gerando, setGerando] = useState(false);
     const [ignorando, setIgnorando] = useState(false);
+    // Caminho alternativo: a despesa JÁ está lançada — só anexar a nota nela (não gera despesa)
+    const [vincularAberto, setVincularAberto] = useState(false);
 
     // Condição de pagamento (forma + banco) — obrigatória ao enviar ao CA.
     // "Já paguei" (compra à vista) marca a despesa como QUITADA no Conta Azul.
@@ -1350,6 +1705,19 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
             setIgnorando(false);
         }
     };
+
+    // Caminho 2: a despesa já existe no Contas a Pagar — o painel substitui a conferência.
+    if (vincularAberto) {
+        return (
+            <div className="p-4 md:p-5">
+                <PainelVincularParcelas
+                    nota={nota}
+                    onCancelar={() => setVincularAberto(false)}
+                    onChanged={onChanged}
+                />
+            </div>
+        );
+    }
 
     return (
         <div className="p-4 md:p-5 space-y-4">
@@ -1732,6 +2100,13 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                     {gerando && <Loader2 className="h-4 w-4 animate-spin" />}
                     {gerando ? 'Gerando…' : `${pago ? 'Gerar Conta PAGA' : 'Gerar Conta a Pagar'} (${parcelas.length} parcela${parcelas.length !== 1 ? 's' : ''})`}
                 </button>
+                <button
+                    onClick={() => setVincularAberto(true)}
+                    title="A despesa já está lançada no Contas a Pagar? Anexe esta nota nela, sem gerar despesa nova."
+                    className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm inline-flex items-center justify-center gap-1.5"
+                >
+                    <Link2 className="h-4 w-4" /> Vincular a despesa já lançada
+                </button>
                 <BotaoImprimirDanfe id={nota.id} rotulo={ehServico ? 'Imprimir DANFSE' : 'Imprimir DANFE'} />
                 <button
                     onClick={() => baixarXmlNota(nota)}
@@ -1757,7 +2132,32 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
 const DetalheNota = ({ nota, podeOperar, onChanged }) => {
     const [reativando, setReativando] = useState(false);
     const [cancelando, setCancelando] = useState(false);
+    const [desvinculando, setDesvinculando] = useState(''); // '' | 'TODAS' | id da parcela
     const itensNota = Array.isArray(nota.itens) ? nota.itens : [];
+    const parcelasVinculadas = Array.isArray(nota.parcelasVinculadas) ? nota.parcelasVinculadas : [];
+    const somaVinculada = nota.somaVinculada != null
+        ? Number(nota.somaVinculada)
+        : parcelasVinculadas.reduce((s, p) => s + Number(p.valorVinculado || 0), 0);
+
+    const desvincular = async (parcelaPagarId) => {
+        const tudo = !parcelaPagarId;
+        const msg = tudo
+            ? 'Desfazer o vínculo desta nota com TODAS as parcelas? Os dados fiscais saem das despesas e a nota volta para conferência.'
+            : 'Desfazer o vínculo desta nota com esta parcela?';
+        if (!window.confirm(msg)) return;
+        setDesvinculando(tudo ? 'TODAS' : String(parcelaPagarId));
+        try {
+            const r = await notasEntradaService.desvincularParcelas(nota.id, parcelaPagarId);
+            toast.success(r?.message || 'Vínculo desfeito.');
+            if (r?.aviso) toast(r.aviso, { icon: '⚠️', duration: 9000 });
+            onChanged();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Não foi possível desfazer o vínculo.');
+        } finally {
+            setDesvinculando('');
+        }
+    };
+
     const duplicatas = Array.isArray(nota.duplicatas) ? nota.duplicatas : [];
     const ehServico = String(nota.tipo || '').toUpperCase().includes('NFS');
 
@@ -1803,6 +2203,12 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
                     <Link to="/contas-pagar" className="font-semibold underline">Ver em Contas a Pagar</Link>
                 </div>
             )}
+            {nota.status === 'VINCULADA' && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
+                    Nota anexada a despesa(s) que já estavam lançadas — <span className="font-semibold">não gerou despesa nova</span>.{' '}
+                    <Link to="/contas-pagar" className="font-semibold underline">Ver em Contas a Pagar</Link>
+                </div>
+            )}
             {nota.status === 'CANCELADA_EMITENTE' && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
                     O emitente cancelou esta nota na SEFAZ — ela não deve gerar despesa.
@@ -1811,6 +2217,80 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
 
             {/* Observações da nota (infCpl) */}
             <ObservacoesNota observacoes={nota.observacoes} />
+
+            {/* Despesas já lançadas que receberam esta nota */}
+            {parcelasVinculadas.length > 0 && (
+                <div>
+                    <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+                        <div className="text-xs font-bold uppercase tracking-widest text-gray-600">Vinculada a</div>
+                        {podeOperar && parcelasVinculadas.length > 1 && (
+                            <button
+                                onClick={() => desvincular()}
+                                disabled={!!desvinculando}
+                                className="px-3 py-2 min-h-[44px] md:min-h-0 md:py-1.5 bg-white border border-red-300 text-red-700 hover:bg-red-50 rounded-full font-medium text-xs inline-flex items-center gap-1.5 disabled:opacity-50"
+                            >
+                                <Unlink className="h-3.5 w-3.5" />
+                                {desvinculando === 'TODAS' ? 'Desvinculando…' : 'Desvincular tudo'}
+                            </button>
+                        )}
+                    </div>
+                    <div className="space-y-2">
+                        {parcelasVinculadas.map((p, idx) => {
+                            const id = String(p.parcelaPagarId ?? idx);
+                            const totalParc = Number(p.totalParcelas || 0);
+                            return (
+                                <div key={id} className="border border-gray-200 rounded-lg p-3">
+                                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="text-sm font-medium text-gray-900 break-words">
+                                                    {p.descricao || 'Despesa sem descrição'}
+                                                </span>
+                                                <BadgeStatusParcelaPagar status={p.statusParcela} />
+                                            </div>
+                                            <div className="text-xs text-gray-500 mt-0.5">
+                                                {p.numeroParcela != null ? `parcela ${p.numeroParcela}${totalParc ? `/${totalParc}` : ''} · ` : ''}
+                                                vence {fmtData(p.dataVencimento)} · parcela de R$ {fmt(p.valorParcela)}
+                                            </div>
+                                            <div className="text-sm text-gray-900 mt-0.5">
+                                                Valor desta nota nesta parcela: <span className="font-semibold">R$ {fmt(p.valorVinculado)}</span>
+                                            </div>
+                                            {p.tipoDiferenca && p.tipoDiferenca !== 'NENHUMA' && (
+                                                <div className="text-xs text-amber-700 mt-0.5">
+                                                    diferença tratada como{' '}
+                                                    <span className="font-semibold">
+                                                        {ACOES_DIFERENCA.find(a => a.value === p.tipoDiferenca)?.label || p.tipoDiferenca}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            {String(p.observacao || '').trim() && (
+                                                <div className="text-xs text-gray-500 mt-0.5 whitespace-pre-wrap break-words">
+                                                    obs.: {String(p.observacao).trim()}
+                                                </div>
+                                            )}
+                                        </div>
+                                        {podeOperar && p.parcelaPagarId != null && (
+                                            <button
+                                                onClick={() => desvincular(p.parcelaPagarId)}
+                                                disabled={!!desvinculando}
+                                                className="shrink-0 px-3 py-2 min-h-[44px] md:min-h-0 md:py-1.5 bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-full font-medium text-xs inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                                            >
+                                                <Unlink className="h-3.5 w-3.5" />
+                                                {desvinculando === id ? 'Desvinculando…' : 'Desvincular'}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                        Total vinculado: <span className="font-semibold text-gray-700">R$ {fmt(somaVinculada)}</span>
+                        {' '}de R$ {fmt(nota.valorTotal)} da nota.{' '}
+                        <Link to="/contas-pagar" className="font-semibold underline">Abrir Contas a Pagar</Link>
+                    </div>
+                </div>
+            )}
 
             {/* Itens */}
             <div>

@@ -912,7 +912,7 @@ router.get('/', verificarAuth, async (req, res) => {
             where: { pedido: { ...baseWherePedido, dataVenda: { gte: start30d } } },
             select: {
                 produtoId: true, quantidade: true, valor: true,
-                produto: { select: { nome: true, codigo: true, custoMedio: true, estoqueDisponivel: true, estoqueMinimo: true } },
+                produto: { select: { nome: true, codigo: true, custoManual: true, estoqueDisponivel: true, estoqueMinimo: true } },
             },
         });
         const devItens30 = await prisma.devolucaoItem.findMany({
@@ -926,7 +926,7 @@ router.get('/', verificarAuth, async (req, res) => {
             const q = num(it.quantidade);
             cur.qtd += q;
             cur.valorBruto += num(it.valor) * q;
-            cur.custoTotal += num(it.produto?.custoMedio) * q;
+            cur.custoTotal += num(it.produto?.custoManual) * q;
             prodMap.set(k, cur);
         }
         for (const d of devItens30) {
