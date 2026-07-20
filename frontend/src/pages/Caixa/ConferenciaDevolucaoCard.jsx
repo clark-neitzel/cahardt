@@ -3,6 +3,7 @@ import { PackageCheck, Lock, Plus, CheckCircle, Undo2, Loader2, X, Send } from '
 import toast from 'react-hot-toast';
 import caixaService from '../../services/caixaService';
 import produtoService from '../../services/produtoService';
+import configService from '../../services/configService';
 import SelectBusca from '../../components/SelectBusca';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -226,12 +227,22 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
     }, [conf?.temSolicitacaoPendente, data, vendedorId]);
 
     // Lista de produtos só quando o usuário quer registrar sobra avulsa.
+    // MESMO filtro da tela Catálogo: só produtos ativos das categorias de venda
+    // configuradas (senão apareciam os 448 itens do banco, com peça de caminhão etc.).
     // A rota /produtos devolve { data, meta } paginado — pedir limite alto e ler .data
     useEffect(() => {
         if (addSobra && produtos.length === 0) {
-            produtoService.listar({ ativo: 'true', limit: 1000 })
-                .then(res => setProdutos(Array.isArray(res) ? res : (res?.data || res?.produtos || [])))
-                .catch(() => toast.error('Erro ao carregar produtos.'));
+            (async () => {
+                try {
+                    const cats = await configService.getCategorias().catch(() => []);
+                    const params = { ativo: 'true', limit: 1000 };
+                    if (Array.isArray(cats) && cats.length > 0) params.categorias = cats.join(',');
+                    const res = await produtoService.listar(params);
+                    setProdutos(Array.isArray(res) ? res : (res?.data || res?.produtos || []));
+                } catch {
+                    toast.error('Erro ao carregar produtos.');
+                }
+            })();
         }
     }, [addSobra]);
 
