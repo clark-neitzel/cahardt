@@ -830,6 +830,37 @@ router.get('/diag-contas-pagar-pdf', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-uploads-persistencia — prova que a pasta de upload sobrevive ao deploy.
+// ?gravar=1 escreve um arquivo carimbado em backend/uploads/contas-pagar; chamando de novo DEPOIS
+// de uma publicação, o arquivo tem que continuar lá. ?apagar=1 remove os arquivos de teste.
+router.get('/diag-uploads-persistencia', async (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const DIR = path.join(__dirname, '../uploads/contas-pagar');
+        if (!fs.existsSync(DIR)) fs.mkdirSync(DIR, { recursive: true });
+
+        if (req.query.gravar === '1') {
+            const nome = `_teste-persistencia-${Date.now()}.pdf`;
+            fs.writeFileSync(path.join(DIR, nome), '%PDF-1.4\n% teste de persistencia do volume\n%%EOF\n');
+        }
+        if (req.query.apagar === '1') {
+            for (const f of fs.readdirSync(DIR)) {
+                if (f.startsWith('_teste-persistencia-')) fs.unlinkSync(path.join(DIR, f));
+            }
+        }
+
+        const arquivos = fs.readdirSync(DIR).map((f) => {
+            const st = fs.statSync(path.join(DIR, f));
+            return { nome: f, bytes: st.size, criadoEm: st.mtime.toISOString() };
+        });
+        res.json({ dir: DIR, total: arquivos.length, testes: arquivos.filter((a) => a.nome.startsWith('_teste-persistencia-')), arquivos: arquivos.slice(0, 30) });
+    } catch (error) {
+        console.error('[admin-exec] diag-uploads-persistencia:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /api/admin-exec/testar-alerta-certificado — roda o alerta de validade do A1 na hora.
 // Se faltar > 30 dias, só retorna { dias, alertado:false } (não envia WhatsApp) — seguro p/ testar.
 router.get('/testar-alerta-certificado', async (req, res) => {
