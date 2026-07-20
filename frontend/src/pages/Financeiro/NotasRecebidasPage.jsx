@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
+import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 // CPF/CNPJ (inclui CNPJ ALFANUMÉRICO) — módulo único do projeto.
 import { mascaraDoc, formatarDoc, normalizarDoc } from '../../utils/documento';
 
@@ -113,23 +114,8 @@ const TIPOS_NOTA = [
     { key: 'NFSE', label: 'NFS-e (serviço)' }
 ];
 
-// Atalhos de período (dias para trás a partir de hoje; 'all' = sem filtro de data)
-const PERIODO_PRESETS = [
-    { key: '7', label: '7 dias', dias: 7 },
-    { key: '15', label: '15 dias', dias: 15 },
-    { key: '30', label: '30 dias', dias: 30 },
-    { key: 'all', label: 'Tudo', dias: null }
-];
-
 // Nota criada pela opção "Lançar manualmente" (chave sintética, sem XML fiscal)
 const ehNotaManual = (nota) => String(nota?.chave || '').startsWith('MANUAL-');
-
-// Data N dias atrás, em YYYY-MM-DD (fuso de São Paulo)
-const ymdDiasAtras = (dias) => {
-    const d = new Date();
-    d.setDate(d.getDate() - dias);
-    return d.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
-};
 
 // Baixa o XML autenticado e dispara o download (sem window.open — PWA/iPad)
 const baixarXmlNota = async (nota) => {
@@ -229,28 +215,19 @@ const NotasRecebidasPage = () => {
     }, [busca]);
 
     // Filtros LEMBRADOS por usuário (padrão do sistema — useFiltrosSalvos):
-    // situação (chip), tipo de nota e período de emissão.
-    const FILTROS_PADRAO = { chip: 'NOVAS', tipo: 'TODAS', periodoPreset: 'all', dataInicio: '', dataFim: '' };
+    // situação (chip) e tipo de nota; período de emissão via FiltroPeriodo (persiste o preset).
+    const FILTROS_PADRAO = { chip: 'NOVAS', tipo: 'TODAS' };
     const [filtros, setFiltros] = useFiltrosSalvos('notas-recebidas', FILTROS_PADRAO);
-    const { chip, tipo: tipoNota, periodoPreset } = filtros;
+    const { chip, tipo: tipoNota } = filtros;
+    const [periodo, periodoCtl] = usePeriodoSalvo('notas-recebidas', 'todo');
+    const dataInicio = periodo.de;
+    const dataFim = periodo.ate;
     const [importarAberto, setImportarAberto] = useState(false);
-
-    // Datas EFETIVAS do período: atalhos relativos (7/15/30 dias) recalculam a partir de HOJE
-    // (não guardamos data fixa — senão o usuário abriria preso numa data velha); 'custom' usa o que foi digitado.
-    const { dataInicio, dataFim } = useMemo(() => {
-        const p = PERIODO_PRESETS.find(x => x.key === periodoPreset);
-        if (p && p.dias != null) return { dataInicio: ymdDiasAtras(p.dias), dataFim: hojeYMD() };
-        if (periodoPreset === 'custom') return { dataInicio: filtros.dataInicio || '', dataFim: filtros.dataFim || '' };
-        return { dataInicio: '', dataFim: '' }; // 'all'
-    }, [periodoPreset, filtros.dataInicio, filtros.dataFim]);
 
     const setChip = (v) => setFiltros(f => ({ ...f, chip: v }));
     const setTipoNota = (v) => setFiltros(f => ({ ...f, tipo: v }));
-    const aplicarPreset = (p) => setFiltros(f => ({ ...f, periodoPreset: p.key }));
-    const setDataInicio = (v) => setFiltros(f => ({ ...f, periodoPreset: 'custom', dataInicio: v }));
-    const setDataFim = (v) => setFiltros(f => ({ ...f, periodoPreset: 'custom', dataFim: v }));
-    const limparFiltros = () => { setFiltros(FILTROS_PADRAO); setBusca(''); };
-    const filtrosAtivos = tipoNota !== 'TODAS' || periodoPreset !== 'all' || !!buscaAplicada;
+    const limparFiltros = () => { setFiltros(FILTROS_PADRAO); periodoCtl.limpar(); setBusca(''); };
+    const filtrosAtivos = tipoNota !== 'TODAS' || !periodo.padrao || !!buscaAplicada;
 
     const [expandedId, setExpandedId] = useState(null);
     const [detalhe, setDetalhe] = useState(null);
@@ -485,36 +462,7 @@ const NotasRecebidasPage = () => {
 
                     <div>
                         <div className="text-[11px] font-bold uppercase tracking-widest text-gray-500 mb-1.5">Período de emissão</div>
-                        <div className="flex flex-wrap items-center gap-2">
-                            <input
-                                type="date"
-                                value={dataInicio}
-                                onChange={e => setDataInicio(e.target.value)}
-                                className="border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                            />
-                            <span className="text-xs text-gray-400">até</span>
-                            <input
-                                type="date"
-                                value={dataFim}
-                                onChange={e => setDataFim(e.target.value)}
-                                className="border border-gray-300 rounded px-2 py-1.5 text-sm text-gray-700 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
-                            />
-                            <div className="flex flex-wrap gap-1.5">
-                                {PERIODO_PRESETS.map(p => (
-                                    <button
-                                        key={p.key}
-                                        onClick={() => { aplicarPreset(p); fecharNota(); }}
-                                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                                            periodoPreset === p.key
-                                                ? 'bg-mint border-primary text-primaryDark'
-                                                : 'bg-white border-gray-300 text-gray-600 hover:border-primary hover:text-primary'
-                                        }`}
-                                    >
-                                        {p.label}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                        <FiltroPeriodo periodo={periodo} controle={periodoCtl} className="w-full md:w-auto" />
                     </div>
 
                     {filtrosAtivos && (
