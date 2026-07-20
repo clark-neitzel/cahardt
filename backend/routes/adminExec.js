@@ -767,6 +767,69 @@ router.get('/diag-produto-custo', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-contas-pagar-pdf — onde estão (ou não) os PDFs anexados às despesas.
+// ?limpar=1 zera o pdfPath das despesas cujo arquivo sumiu (tira o selo "PDF" da lista).
+router.get('/diag-contas-pagar-pdf', async (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const DIR_NOVO = path.join(__dirname, '../uploads/contas-pagar');
+        const DIR_LEGADO = path.join(__dirname, '../../uploads/contas-pagar');
+
+        const listar = (dir) => {
+            try { return fs.readdirSync(dir); } catch { return null; } // null = pasta não existe
+        };
+        const pastas = {
+            novo: { caminho: DIR_NOVO, arquivos: listar(DIR_NOVO) },
+            legado: { caminho: DIR_LEGADO, arquivos: listar(DIR_LEGADO) },
+            // referência: pastas que sabidamente sobrevivem a deploy
+            certificado: { caminho: path.join(__dirname, '../uploads/certificado'), arquivos: listar(path.join(__dirname, '../uploads/certificado')) },
+            tarefas: { caminho: path.join(__dirname, '../uploads/tarefas'), arquivos: listar(path.join(__dirname, '../uploads/tarefas')) }
+        };
+        for (const k of Object.keys(pastas)) {
+            pastas[k].qtd = pastas[k].arquivos ? pastas[k].arquivos.length : null;
+            pastas[k].arquivos = pastas[k].arquivos ? pastas[k].arquivos.slice(0, 10) : null;
+        }
+
+        const contas = await prisma.contaPagar.findMany({
+            where: { NOT: { pdfPath: null } },
+            select: { id: true, descricao: true, pdfPath: true }
+        });
+        const achar = (p) => {
+            if (!p) return null;
+            if (fs.existsSync(p)) return p;
+            const nome = path.basename(p);
+            for (const d of [DIR_NOVO, DIR_LEGADO]) {
+                const alt = path.join(d, nome);
+                if (fs.existsSync(alt)) return alt;
+            }
+            return null;
+        };
+        const detalhe = contas.map((c) => ({ id: c.id, descricao: c.descricao, pdfPath: c.pdfPath, encontrado: achar(c.pdfPath) }));
+        const perdidos = detalhe.filter((d) => !d.encontrado);
+
+        let limpos = 0;
+        if (req.query.limpar === '1' && perdidos.length) {
+            const r = await prisma.contaPagar.updateMany({ where: { id: { in: perdidos.map((p) => p.id) } }, data: { pdfPath: null } });
+            limpos = r.count;
+        }
+
+        res.json({
+            cwd: process.cwd(),
+            dirnameRota: __dirname,
+            pastas,
+            totalComPdfNoBanco: contas.length,
+            ok: detalhe.length - perdidos.length,
+            perdidos: perdidos.length,
+            listaPerdidos: perdidos.slice(0, 20).map((p) => ({ id: p.id, descricao: p.descricao, pdfPath: p.pdfPath })),
+            limpos
+        });
+    } catch (error) {
+        console.error('[admin-exec] diag-contas-pagar-pdf:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /api/admin-exec/testar-alerta-certificado — roda o alerta de validade do A1 na hora.
 // Se faltar > 30 dias, só retorna { dias, alertado:false } (não envia WhatsApp) — seguro p/ testar.
 router.get('/testar-alerta-certificado', async (req, res) => {

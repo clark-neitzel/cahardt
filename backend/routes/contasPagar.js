@@ -21,9 +21,29 @@ const contaAzulService = require('../services/contaAzulService');
 // CSV do Conta Azul fica em memória (máx 15 MB) — parse imediato, nada salvo em disco.
 const uploadCsv = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
 
-// PDF da despesa: salvo em disco na pasta uploads/contas-pagar/ (máx 30 MB, somente PDF).
-const PDF_DIR = path.join(__dirname, '../../uploads/contas-pagar');
+// PDF da despesa: salvo em disco na pasta backend/uploads/contas-pagar/ (máx 30 MB, somente PDF).
+// ATENÇÃO: tem que ser '../uploads' (backend/uploads) — é a pasta persistida entre deploys, a mesma
+// do certificado/XMLs/tarefas. Até 07/2026 estava '../../uploads', que no container resolve para
+// /uploads (fora do app): o upload funcionava, mas o arquivo sumia no deploy seguinte e o
+// "Visualizar" devolvia "Arquivo PDF não encontrado no servidor".
+const PDF_DIR = path.join(__dirname, '../uploads/contas-pagar');
+const PDF_DIR_LEGADO = path.join(__dirname, '../../uploads/contas-pagar');
 if (!fs.existsSync(PDF_DIR)) fs.mkdirSync(PDF_DIR, { recursive: true });
+
+/**
+ * Resolve onde o PDF está de fato: caminho gravado no banco, pasta nova ou pasta legada
+ * (despesas anexadas antes da correção guardaram o caminho antigo). Devolve null se sumiu.
+ */
+function localizarPdf(pdfPath) {
+    if (!pdfPath) return null;
+    if (fs.existsSync(pdfPath)) return pdfPath;
+    const nome = path.basename(pdfPath);
+    for (const dir of [PDF_DIR, PDF_DIR_LEGADO]) {
+        const alt = path.join(dir, nome);
+        if (fs.existsSync(alt)) return alt;
+    }
+    return null;
+}
 
 const uploadPdf = multer({
     storage: multer.diskStorage({
@@ -437,8 +457,9 @@ router.post('/:id/pdf', verificarAuth, checkEscrita, (req, res, next) => {
             return res.status(404).json({ error: 'Conta não encontrada.' });
         }
 
-        // Remove PDF anterior se houver
-        if (conta.pdfPath && fs.existsSync(conta.pdfPath)) fs.unlink(conta.pdfPath, () => {});
+        // Remove PDF anterior se houver (inclusive o que ficou na pasta legada)
+        const anterior = localizarPdf(conta.pdfPath);
+        if (anterior) fs.unlink(anterior, () => {});
 
         await prisma.contaPagar.update({
             where: { id: req.params.id },
@@ -463,12 +484,18 @@ router.get('/:id/pdf', verificarAuth, checkAcesso, async (req, res) => {
         const conta = await prisma.contaPagar.findUnique({ where: { id: req.params.id }, select: { pdfPath: true, descricao: true } });
         if (!conta) return res.status(404).json({ error: 'Conta não encontrada.' });
         if (!conta.pdfPath) return res.status(404).json({ error: 'Nenhum PDF anexado a esta despesa.' });
-        if (!fs.existsSync(conta.pdfPath)) return res.status(404).json({ error: 'Arquivo PDF não encontrado no servidor.' });
 
-        const nome = path.basename(conta.pdfPath);
+        const arquivo = localizarPdf(conta.pdfPath);
+        if (!arquivo) {
+            return res.status(404).json({
+                error: 'O arquivo deste PDF não está mais no servidor (anexo antigo, perdido numa atualização). Anexe o documento novamente.'
+            });
+        }
+
+        const nome = path.basename(arquivo);
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(nome)}"`);
-        fs.createReadStream(conta.pdfPath).pipe(res);
+        fs.createReadStream(arquivo).pipe(res);
     } catch (error) {
         console.error('Erro ao servir PDF:', error);
         res.status(500).json({ error: 'Erro ao carregar o PDF.' });
@@ -482,7 +509,8 @@ router.delete('/:id/pdf', verificarAuth, checkEscrita, async (req, res) => {
         if (!conta) return res.status(404).json({ error: 'Conta não encontrada.' });
         if (!conta.pdfPath) return res.status(404).json({ error: 'Nenhum PDF para remover.' });
 
-        if (fs.existsSync(conta.pdfPath)) fs.unlink(conta.pdfPath, () => {});
+        const arquivo = localizarPdf(conta.pdfPath);
+        if (arquivo) fs.unlink(arquivo, () => {});
 
         await prisma.contaPagar.update({ where: { id: req.params.id }, data: { pdfPath: null } });
 
