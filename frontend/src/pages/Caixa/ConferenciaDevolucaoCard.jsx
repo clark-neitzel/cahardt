@@ -225,11 +225,12 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
         return () => clearInterval(t);
     }, [conf?.temSolicitacaoPendente, data, vendedorId]);
 
-    // Lista de produtos só quando o usuário quer registrar sobra avulsa
+    // Lista de produtos só quando o usuário quer registrar sobra avulsa.
+    // A rota /produtos devolve { data, meta } paginado — pedir limite alto e ler .data
     useEffect(() => {
         if (addSobra && produtos.length === 0) {
-            produtoService.listar({ ativo: true })
-                .then(res => setProdutos(Array.isArray(res) ? res : (res?.produtos || [])))
+            produtoService.listar({ ativo: 'true', limit: 1000 })
+                .then(res => setProdutos(Array.isArray(res) ? res : (res?.data || res?.produtos || [])))
                 .catch(() => toast.error('Erro ao carregar produtos.'));
         }
     }, [addSobra]);
