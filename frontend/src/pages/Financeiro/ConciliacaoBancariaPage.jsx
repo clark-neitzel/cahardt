@@ -5,29 +5,14 @@ import SelectBusca from '../../components/SelectBusca';
 import { Landmark, Loader2, RefreshCw, Upload, Wand2, Check, X, Undo2, ChevronDown, ChevronUp, Search, Download, ArrowLeftRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (ymd) => `${ymd.slice(8)}/${ymd.slice(5, 7)}/${ymd.slice(0, 4)}`;
-const hojeYMD = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 const somaDiasYMD = (ymd, n) => {
     const d = new Date(`${ymd}T12:00:00Z`);
     d.setUTCDate(d.getUTCDate() + n);
     return d.toISOString().slice(0, 10);
-};
-const fimDoMes = (ym) => {
-    const [a, m] = ym.split('-').map(Number);
-    const prox = m === 12 ? `${a + 1}-01` : `${a}-${String(m + 1).padStart(2, '0')}`;
-    return somaDiasYMD(`${prox}-01`, -1);
-};
-const periodos = () => {
-    const hoje = hojeYMD();
-    const mes = hoje.slice(0, 7);
-    return [
-        { key: 'MES', label: 'Este mês', de: `${mes}-01`, ate: fimDoMes(mes) },
-        { key: 'ULT30', label: 'Últimos 30 dias', de: somaDiasYMD(hoje, -29), ate: hoje },
-        { key: 'ULT60', label: 'Últimos 60 dias', de: somaDiasYMD(hoje, -59), ate: hoje },
-        { key: 'ULT90', label: 'Últimos 90 dias', de: somaDiasYMD(hoje, -89), ate: hoje }
-    ];
 };
 
 const STATUS_BADGE = {
@@ -1057,17 +1042,11 @@ const DespesaLoteModal = ({ lancamentos, onClose, onSuccess }) => {
 };
 
 const ConciliacaoBancariaPage = () => {
-    const opcoesPeriodo = useMemo(periodos, []);
     const [contas, setContas] = useState([]);
-    // Filtros persistidos por usuário/tela. Do período salvamos só a CHAVE
-    // ('ULT30' etc.) — as datas são recalculadas a partir de hoje a cada visita.
+    // Filtros persistidos por usuário/tela; o período segue o padrão FiltroPeriodo
+    // (persiste o PRESET — as datas são recalculadas a partir de hoje a cada visita).
     const [contaId, setContaId] = useFiltroSalvo('conciliacao-bancaria:contaId', '');
-    const [periodoKey, setPeriodoKey] = useFiltroSalvo('conciliacao-bancaria:periodoKey', 'ULT30'); // últimos 30 dias
-    const periodo = useMemo(
-        () => opcoesPeriodo.find(p => p.key === periodoKey) || opcoesPeriodo[1],
-        [opcoesPeriodo, periodoKey]
-    );
-    const setPeriodo = (p) => setPeriodoKey(p.key);
+    const [periodo, periodoCtl] = usePeriodoSalvo('conciliacao-bancaria', '30d');
     const [statusFiltro, setStatusFiltro] = useFiltroSalvo('conciliacao-bancaria:statusFiltro', 'todos');
     const [dados, setDados] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -1099,7 +1078,7 @@ const ConciliacaoBancariaPage = () => {
     }, []);
 
     const carregar = useCallback(async () => {
-        if (!contaId) return;
+        if (!contaId || !periodo.de) return; // backend exige o intervalo de datas
         setLoading(true);
         try {
             const d = await conciliacaoService.lancamentos(contaId, periodo.de, periodo.ate, statusFiltro);
@@ -1533,21 +1512,8 @@ const ConciliacaoBancariaPage = () => {
                         <option value="" disabled>Escolha o banco/caixa…</option>
                         {contas.map(c => <option key={c.id} value={c.id}>{c.nome}{c.padrao ? ' (padrão)' : ''}</option>)}
                     </SelectBusca>
-                    <div className="flex gap-2 overflow-x-auto hide-scrollbar">
-                        {opcoesPeriodo.map(p => (
-                            <button
-                                key={p.key}
-                                onClick={() => setPeriodo(p)}
-                                className={`shrink-0 px-3 py-1.5 min-h-[36px] rounded-full text-xs transition-colors ${
-                                    periodo.key === p.key
-                                        ? 'bg-primary text-white font-semibold'
-                                        : 'bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50'
-                                }`}
-                            >
-                                {p.label}
-                            </button>
-                        ))}
-                    </div>
+                    {/* Backend da conciliação exige de/até — sem "Todo o período" */}
+                    <FiltroPeriodo periodo={periodo} controle={periodoCtl} ocultarPresets={['todo']} className="w-full md:w-auto" />
                     <div className="md:ml-auto">
                         <SelectBusca value={statusFiltro} onChange={e => setStatusFiltro(e.target.value)} className="w-full md:w-44">
                             <option value="todos">Todos os status</option>

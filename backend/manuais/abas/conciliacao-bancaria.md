@@ -98,7 +98,7 @@ Acessível pelo rodapé da janela Buscar…. O pop-up vem preenchido com o que o
 ## O que a tela mostra
 
 - **KPIs**: Pendentes (com valor a conferir), Conciliados (valor batido), Ignorados, e **"Só no app"** — baixas registradas nesta conta que não bateram com nenhum lançamento do extrato.
-- **Filtros**: conta (obrigatório), período (chips: este mês, 30/60/90 dias) e status.
+- **Filtros**: conta (obrigatório), período e status. O período usa o seletor único em pílula padrão do sistema (estilo Conta Azul), com presets **Hoje · Últimos 7 dias · Últimos 30 dias · Este mês · Este ano · Período personalizado** (De/Até dentro do menu) e **setas ‹ ›** que pulam o período inteiro. Aqui **não existe "Todo o período"** (o extrato sempre precisa de um intervalo de datas). Fica lembrado por usuário o **preset** escolhido (recalculado a partir de hoje a cada abertura); padrão: Últimos 30 dias.
 - **Lista do extrato**: data, descrição do banco, valor (verde = entrou, vermelho = saiu), status e a coluna de conciliação. Conciliação automática aparece com 🪄.
 - **"De quem é esse lançamento?"** — abaixo da descrição, tudo o que dá para saber:
   - **Beneficiário e nº do documento**, quando o arquivo do banco traz (nem todo banco traz).

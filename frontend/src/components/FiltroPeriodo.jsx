@@ -122,7 +122,9 @@ export function usePeriodoSalvo(chave, presetPadrao = 'mes') {
     return [periodo, controle];
 }
 
-const FiltroPeriodo = ({ periodo, controle, rotulo, className = '' }) => {
+// `ocultarPresets`: ids de PRESETS_PERIODO a esconder do menu (ex.: ['todo'] quando
+// o backend da tela exige um intervalo de datas obrigatório).
+const FiltroPeriodo = ({ periodo, controle, rotulo, className = '', ocultarPresets = [] }) => {
     const [aberto, setAberto] = useState(false);
     const [de, setDe] = useState('');
     const [ate, setAte] = useState('');
@@ -190,7 +192,7 @@ const FiltroPeriodo = ({ periodo, controle, rotulo, className = '' }) => {
 
             {aberto && (
                 <div className="absolute top-[calc(100%+6px)] left-1/2 -translate-x-1/2 w-[250px] max-w-[calc(100vw-24px)] bg-white border border-gray-200 rounded-xl shadow-lg p-1.5 z-50">
-                    {PRESETS_PERIODO.map(p => {
+                    {PRESETS_PERIODO.filter(p => !ocultarPresets.includes(p.id)).map(p => {
                         const ativo = periodo.preset === p.id;
                         return (
                             <button
