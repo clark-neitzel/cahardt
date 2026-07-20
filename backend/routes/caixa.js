@@ -1354,27 +1354,6 @@ router.get('/conferencia-devolucao', async (req, res) => {
             });
         }
 
-        // Produtos que estavam no caminhão do dia (pedidos das entregas) — é a lista
-        // do seletor de sobra avulsa: só pode "voltar a mais" o que saiu para entrega
-        const pedidosDoDia = await prisma.pedido.findMany({
-            where: {
-                dataEntrega: { gte: new Date(data + 'T00:00:00.000Z'), lte: new Date(data + 'T23:59:59.999Z') },
-                statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL', 'DEVOLVIDO'] },
-                embarque: { responsavelId: targetVendedor }
-            },
-            select: { itens: { select: { produtoId: true, produto: { select: { nome: true } } } } }
-        });
-        const vistosDia = new Set();
-        const produtosDia = [];
-        for (const ped of pedidosDoDia) {
-            for (const it of ped.itens) {
-                if (vistosDia.has(it.produtoId)) continue;
-                vistosDia.add(it.produtoId);
-                produtosDia.push({ id: it.produtoId, nome: it.produto?.nome || 'Produto' });
-            }
-        }
-        produtosDia.sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
-
         // Quem pode autorizar desconsiderar (lista do modal de autorização)
         const vendedoresAtivos = await prisma.vendedor.findMany({
             where: { ativo: true },
@@ -1397,7 +1376,6 @@ router.get('/conferencia-devolucao', async (req, res) => {
             tabelaCobranca: tabela ? { id: tabela.id, nome: tabela.nomeCondicao } : null,
             itens,
             autorizadores,
-            produtosDia,
             temSolicitacaoPendente: [...solicPorProduto.values()].some(s => s.status === 'PENDENTE'),
             podeConferir: !!(req._perms.admin || req._perms[PERM_CONFERIR_DEV]),
             podeAutorizarEuMesmo: !!(req._perms.admin || req._perms[PERM_AUTORIZAR_DEV])

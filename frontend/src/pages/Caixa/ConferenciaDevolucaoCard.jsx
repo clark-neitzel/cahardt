@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { PackageCheck, Lock, Plus, CheckCircle, Undo2, Loader2, X, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import caixaService from '../../services/caixaService';
+import produtoService from '../../services/produtoService';
 import SelectBusca from '../../components/SelectBusca';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -189,6 +190,7 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
     const [addSobra, setAddSobra] = useState(false);
     const [sobraProdutoId, setSobraProdutoId] = useState('');
     const [sobraQtd, setSobraQtd] = useState('1');
+    const [produtos, setProdutos] = useState([]);
     const [confirmando, setConfirmando] = useState(false);
 
     // silent=true não mexe na contagem em digitação (usado pelo polling)
@@ -223,9 +225,15 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
         return () => clearInterval(t);
     }, [conf?.temSolicitacaoPendente, data, vendedorId]);
 
-    // Seletor da sobra avulsa: só os produtos que estavam no caminhão do dia
-    // (vem do backend em conf.produtosDia) — não o catálogo inteiro.
-    const produtosDia = conf?.produtosDia || [];
+    // Lista de produtos só quando o usuário quer registrar sobra avulsa.
+    // A rota /produtos devolve { data, meta } paginado — pedir limite alto e ler .data
+    useEffect(() => {
+        if (addSobra && produtos.length === 0) {
+            produtoService.listar({ ativo: 'true', limit: 1000 })
+                .then(res => setProdutos(Array.isArray(res) ? res : (res?.data || res?.produtos || [])))
+                .catch(() => toast.error('Erro ao carregar produtos.'));
+        }
+    }, [addSobra]);
 
     if (loading || !conf || !conf.temDevolucoes) return null;
 
@@ -258,7 +266,7 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
             toast.error('Este produto já está na lista — informe a quantidade na linha dele.');
             return;
         }
-        const p = produtosDia.find(pr => pr.id === sobraProdutoId);
+        const p = produtos.find(pr => pr.id === sobraProdutoId);
         setSobras(prev => [...prev, { produtoId: sobraProdutoId, nome: p?.nome || 'Produto', quantidade: Number(sobraQtd) }]);
         setSobraProdutoId('');
         setSobraQtd('1');
@@ -578,7 +586,7 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
                             <div className="flex flex-col md:flex-row gap-2 md:items-center bg-gray-50 rounded-lg p-3">
                                 <SelectBusca value={sobraProdutoId} onChange={(e) => setSobraProdutoId(e.target.value)} className="w-full md:flex-1">
                                     <option value="">Escolha o produto que voltou...</option>
-                                    {produtosDia.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
+                                    {produtos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                                 </SelectBusca>
                                 <input
                                     type="number" min="0" step="any"
