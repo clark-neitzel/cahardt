@@ -366,6 +366,60 @@ Campos do backend podem chegar `null` ou `undefined`. Interpolar diretamente pro
 
 ---
 
+## Regras de UPLOAD DE ARQUIVO (o arquivo TEM que sobreviver ao deploy)
+
+Todo arquivo que o usuário anexa (PDF de boleto/NF, foto, XML, certificado) é gravado em disco no
+container do backend. **Só `backend/uploads/` é persistido entre deploys.** Qualquer outro caminho
+é apagado na próxima publicação — e o pior: **sem erro nenhum na hora**. O upload responde
+"anexado com sucesso", o nome do arquivo aparece na tela, o banco guarda o caminho; o arquivo só
+some depois, e o usuário descobre ao tentar abrir. Foi exatamente o que aconteceu com o PDF do
+Contas a Pagar em 07/2026 — **14 documentos perdidos**, sem recuperação.
+
+**Certo — sempre `../uploads` a partir de `backend/routes/` ou `backend/services/`:**
+```js
+const DIR = path.join(__dirname, '../uploads/contas-pagar');   // → /app/uploads/... (volume) ✅
+```
+
+**Errado — um nível a mais sai do app:**
+```js
+const DIR = path.join(__dirname, '../../uploads/contas-pagar'); // → /uploads/... (efêmero) ❌
+```
+
+No container o `WORKDIR` é `/app` e recebe o conteúdo de `backend/` — então `backend/routes/x.js`
+vira `/app/routes/x.js`, e `../../uploads` cai em `/uploads`, **fora** do volume.
+
+**Regras:**
+1. Todo destino de upload usa `path.join(__dirname, '../uploads/<pasta>')`. Conferir contando os
+   níveis a partir do arquivo onde a constante está declarada.
+2. Ao criar upload novo, **grepar os destinos já existentes** (`grep -rn "uploads/" backend --include=*.js`)
+   e seguir o mesmo padrão dos que já funcionam (`certificado`, `tarefas`, `notas-xml`).
+3. Ao ler o arquivo, **nunca** confiar só no caminho gravado no banco: se não existir, devolver
+   mensagem que explique ("o arquivo se perdeu, anexe novamente") em vez de um erro genérico.
+4. **Testar DEPOIS de um deploy, não só localmente** (ver regra abaixo).
+
+---
+
+## REGRA — funcionalidade que grava no servidor só é "pronta" depois de testada EM PRODUÇÃO
+
+Build passando e teste local **não provam** que uma função que grava arquivo, cria pasta ou depende
+do ambiente do container funciona de verdade. Local roda fora do Docker, com outra árvore de
+diretórios — o bug do PDF do Contas a Pagar **funcionava perfeitamente na máquina local** e só
+falhava no servidor, no deploy seguinte.
+
+**Antes de dizer ao usuário que está pronto**, para qualquer coisa que grave arquivo/pasta no
+servidor ou dependa de caminho, env var ou volume:
+1. Publicar (esperar o deploy concluir de fato — conferir que a versão nova está no ar, ex.: rota
+   de diagnóstico respondendo, não 404).
+2. Exercitar o fluxo completo **em produção**: gravar → **publicar de novo / reiniciar** → ler.
+   O ciclo tem que incluir um deploy no meio, senão o teste não prova persistência.
+3. Só então avisar que está pronto. Se não der para testar assim, **dizer isso ao usuário**
+   explicitamente em vez de afirmar que está funcionando.
+
+Vale o mesmo espírito da regra do build do frontend: não subir sem testar — aqui, "testar" quer
+dizer **no servidor, atravessando um deploy**.
+
+---
+
 ## Regras de Schema Prisma (NUNCA QUEBRAR O DEPLOY)
 
 ### Nunca remover campos do schema.prisma que já existem no banco
