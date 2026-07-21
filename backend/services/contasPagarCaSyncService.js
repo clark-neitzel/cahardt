@@ -1026,6 +1026,20 @@ async function _empurrarBaixasPendentes() {
             console.log(`[ContasPagar CA] 💸 Baixa "já paguei" empurrada ao CA (parcela ${parcelaCA}, R$ ${round2(valorBaixa)}).`);
         } catch (error) {
             const msg = erroCAtexto(error);
+
+            // Recusa DEFINITIVA: parcela vinculada à Conta Digital do CA — o próprio CA dá
+            // (ou já deu) a baixa quando o pagamento é efetivado por lá, e bloqueia baixa
+            // manual via API para sempre. Retentar é inútil; a parcela aqui já está paga.
+            const contaDigital = error?.response?.status === 400 && /conta digital/i.test(msg);
+            if (contaDigital) {
+                await prisma.pagamentoParcelaPagar.update({
+                    where: { id: pg.id },
+                    data: { statusEnvioCA: 'ENVIADO', erroEnvioCA: null }
+                }).catch(() => {});
+                console.log(`[ContasPagar CA] ↷ Parcela ${parcelaCA} é da Conta Digital do CA — baixa é automática lá; parando de reenviar.`);
+                continue;
+            }
+
             console.error(`[ContasPagar CA] ❌ Falha ao empurrar baixa da parcela ${parcelaCA}:`, msg);
             // Mantém ENVIAR (tenta no próximo ciclo); grava o último erro para diagnóstico.
             await prisma.pagamentoParcelaPagar.update({ where: { id: pg.id }, data: { erroEnvioCA: msg } }).catch(() => {});
