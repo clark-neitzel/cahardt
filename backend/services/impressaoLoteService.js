@@ -111,9 +111,22 @@ async function boletosAsaasPorPedido(pedidoIds, apenasNaoPagos = false) {
             tipo: 'BOLETO',
             status: apenasNaoPagos ? 'PENDENTE' : { in: ['PENDENTE', 'RECEBIDO'] }
         },
-        include: { parcela: { select: { numeroParcela: true } } },
+        include: { parcela: { select: { numeroParcela: true, dataVencimento: true } } },
         orderBy: { createdAt: 'asc' }
     });
+    // Parcela mudou de vencimento depois da emissão (ex.: adiada no CA)? Realinha o
+    // boleto no Asaas ANTES de imprimir — senão o PDF sai com a data velha.
+    const diaSP = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    for (let i = 0; i < cobrancas.length; i++) {
+        const c = cobrancas[i];
+        if (c.status !== 'PENDENTE' || !c.parcela?.dataVencimento || !c.vencimento) continue;
+        if (diaSP(c.vencimento) === diaSP(c.parcela.dataVencimento)) continue;
+        try {
+            const asaasService = require('./asaasService');
+            const nova = await asaasService.sincronizarVencimentoBoleto(c.id);
+            cobrancas[i] = { ...c, ...nova, parcela: c.parcela };
+        } catch (_) { /* melhor esforço: imprime como está */ }
+    }
     const porPedido = new Map();
     for (const c of cobrancas) {
         if (!porPedido.has(c.pedidoId)) porPedido.set(c.pedidoId, []);

@@ -565,6 +565,36 @@ router.get('/asaas-cobrancas', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/asaas-sincronizar-vencimentos?pedidoNumero=2090
+// Realinha o vencimento dos boletos PENDENTES de um pedido ao vencimento atual das
+// parcelas (caso a parcela tenha sido adiada DEPOIS da emissão do boleto).
+router.post('/asaas-sincronizar-vencimentos', async (req, res) => {
+    try {
+        const numero = parseInt(req.query.pedidoNumero, 10) || null;
+        if (!numero) return res.status(400).json({ error: 'Informe ?pedidoNumero=' });
+        const asaasService = require('../services/asaasService');
+        const cobrancas = await prisma.cobrancaAsaas.findMany({
+            where: { pedido: { numero, especial: false, bonificacao: false }, tipo: 'BOLETO', status: 'PENDENTE' },
+            include: { parcela: { select: { numeroParcela: true, dataVencimento: true } } }
+        });
+        const resultados = [];
+        for (const c of cobrancas) {
+            const nova = await asaasService.sincronizarVencimentoBoleto(c.id);
+            resultados.push({
+                parcela: c.parcela?.numeroParcela,
+                vencimentoParcela: c.parcela?.dataVencimento,
+                boletoAntes: c.vencimento,
+                boletoDepois: nova.vencimento,
+                mudou: String(c.vencimento) !== String(nova.vencimento),
+                linhaDigitavel: nova.linhaDigitavel
+            });
+        }
+        res.json({ pedido: numero, resultados });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-extrato-asaas-pendentes — SÓ LEITURA. Cruza os CRÉDITOS
 // pendentes do extrato Asaas (conciliação) com as cobranças/pedidos/parcelas do app
 // para achar descompasso: dinheiro que entrou no Asaas mas cuja parcela está aberta

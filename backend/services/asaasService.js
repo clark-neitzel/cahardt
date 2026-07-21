@@ -435,7 +435,8 @@ const asaasService = {
             where: { parcelaId, tipo: 'BOLETO', status: 'PENDENTE', ambiente: AMBIENTE },
             orderBy: { createdAt: 'desc' }
         });
-        if (existente) return existente;
+        // Já tem boleto pendente → reaproveita, realinhando o vencimento se a parcela mudou
+        if (existente) return asaasService.sincronizarVencimentoBoleto(existente.id);
 
         const saldo = Math.round((Number(parcela.valor) - Number(parcela.valorPago || 0) - Number(parcela.valorDescontoTotal || 0)) * 100) / 100;
         if (saldo <= 0) {
@@ -560,6 +561,50 @@ const asaasService = {
         }
 
         return cobranca;
+    },
+
+    // ── Parcela adiada DEPOIS da emissão? Atualiza o boleto no Asaas ──
+    // O boleto não acompanha sozinho a mudança de vencimento da parcela (no CA ou no
+    // app): ele fica com a data antiga e sai errado na impressão/WhatsApp. Aqui o
+    // vencimento do boleto é realinhado ao da parcela (nunca para o passado); o PDF
+    // e a linha digitável mudam junto. Melhor esforço: em falha, devolve como está.
+    sincronizarVencimentoBoleto: async (cobrancaId) => {
+        const cobranca = await prisma.cobrancaAsaas.findUnique({
+            where: { id: cobrancaId },
+            include: { parcela: { select: { dataVencimento: true } } }
+        });
+        if (!cobranca || cobranca.tipo !== 'BOLETO' || cobranca.status !== 'PENDENTE'
+            || !cobranca.parcela?.dataVencimento || !configurado()) return cobranca;
+
+        const diaSP = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const hoje = hojeSP();
+        const vencParcela = diaSP(cobranca.parcela.dataVencimento);
+        const dueDate = vencParcela < hoje ? hoje : vencParcela; // boleto nunca com vencimento no passado
+        if (cobranca.vencimento && diaSP(cobranca.vencimento) === dueDate) return cobranca;
+
+        try {
+            const resp = await http.put(`/payments/${cobranca.asaasPaymentId}`, { dueDate });
+            // A linha digitável muda com o vencimento — buscar a nova (se demorar, o app completa depois)
+            let linhaDigitavel = null;
+            try {
+                const li = await http.get(`/payments/${cobranca.asaasPaymentId}/identificationField`);
+                linhaDigitavel = li.data?.identificationField || null;
+            } catch (_) { /* completarLinhaDigitavel pega depois */ }
+            const atualizada = await prisma.cobrancaAsaas.update({
+                where: { id: cobranca.id },
+                data: {
+                    vencimento: new Date(dueDate + 'T12:00:00-03:00'),
+                    boletoUrl: resp.data?.bankSlipUrl || resp.data?.invoiceUrl || cobranca.boletoUrl,
+                    linhaDigitavel
+                }
+            });
+            console.log(`[Asaas] Boleto ${cobranca.asaasPaymentId} realinhado ao vencimento da parcela: ${dueDate}.`);
+            return atualizada;
+        } catch (e) {
+            console.warn(`[Asaas] Não consegui atualizar o vencimento do boleto ${cobranca.asaasPaymentId}:`,
+                e.response?.data?.errors?.map(x => x.description).join('; ') || e.message);
+            return cobranca;
+        }
     },
 
     // ── Completar a linha digitável de um boleto salvo sem ela ──

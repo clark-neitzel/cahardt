@@ -233,10 +233,16 @@ const listarBoletosConta = async (req, res) => {
             where: { parcelaId: { in: conta.parcelas.map(p => p.id) }, tipo: 'BOLETO' },
             orderBy: { createdAt: 'desc' }
         });
-        const parcelas = conta.parcelas.map(p => {
+        const parcelas = [];
+        for (const p of conta.parcelas) {
             const doBoleto = cobrancas.filter(c => c.parcelaId === p.id);
-            const ativo = doBoleto.find(c => ['PENDENTE', 'RECEBIDO'].includes(c.status)) || doBoleto[0] || null;
-            return {
+            let ativo = doBoleto.find(c => ['PENDENTE', 'RECEBIDO'].includes(c.status)) || doBoleto[0] || null;
+            // Parcela mudou de vencimento depois da emissão? Realinha o boleto no Asaas
+            // (melhor esforço — sem mudança é um no-op barato)
+            if (ativo?.status === 'PENDENTE') {
+                try { ativo = await asaasService.sincronizarVencimentoBoleto(ativo.id); } catch (_) { /* mostra como está */ }
+            }
+            parcelas.push({
                 id: p.id,
                 numeroParcela: p.numeroParcela,
                 valor: Number(p.valor),
@@ -244,8 +250,8 @@ const listarBoletosConta = async (req, res) => {
                 dataVencimento: p.dataVencimento,
                 status: p.status,
                 boleto: mapBoleto(ativo)
-            };
-        });
+            });
+        }
         res.json({ contaId: conta.id, parcelas });
     } catch (e) {
         console.error('[Asaas] Erro ao listar boletos da conta:', e.message);

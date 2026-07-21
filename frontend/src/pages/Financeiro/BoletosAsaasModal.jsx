@@ -90,6 +90,8 @@ const BoletosAsaasModal = ({ conta, onClose, onAtualizado }) => {
         }
     };
 
+    const fmtData = (d) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
     const badgeBoleto = (p) => {
         const b = p.boleto;
         if (b?.status === 'ESTORNADO') {
@@ -168,6 +170,18 @@ const BoletosAsaasModal = ({ conta, onClose, onAtualizado }) => {
                                                 Pago em {p.boleto.recebidoEm ? new Date(p.boleto.recebidoEm).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—'}
                                                 {' · '}baixa no app {p.boleto.baixaAppOk ? 'OK' : 'pendente'}
                                                 {' · '}baixa no CA {p.boleto.baixaCaOk ? 'OK' : 'pendente'}
+                                            </span>
+                                        </div>
+                                    )}
+                                    {/* Boleto ficou com vencimento diferente da parcela (parcela adiada e o
+                                        ajuste automático no Asaas falhou) — avisar antes de mandar ao cliente */}
+                                    {p.boleto?.status === 'PENDENTE' && p.boleto.vencimento && p.dataVencimento
+                                        && fmtData(p.boleto.vencimento) !== fmtData(p.dataVencimento) && (
+                                        <div className="flex items-center gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
+                                            <AlertCircle className="h-4 w-4 shrink-0" />
+                                            <span>
+                                                O boleto está com vencimento {fmtData(p.boleto.vencimento)}, diferente da parcela ({fmtData(p.dataVencimento)}).
+                                                Cancele e emita de novo antes de enviar ao cliente.
                                             </span>
                                         </div>
                                     )}
