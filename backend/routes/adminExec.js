@@ -3928,4 +3928,112 @@ router.get('/diag-catalogo-condicoes', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-pedido-site-condicao?numero=2213 — SOMENTE LEITURA
+// Investiga por que um pedido vindo do Site Congelados saiu com determinada condição
+// de pagamento e de onde veio o preço de cada item (base + acréscimo vs. último preço pago).
+router.get('/diag-pedido-site-condicao', async (req, res) => {
+    try {
+        const numero = parseInt(req.query.numero, 10);
+        if (!numero) return res.status(400).json({ error: 'Informe ?numero=' });
+
+        const pedido = await prisma.pedido.findFirst({
+            where: { numero },
+            include: {
+                cliente: { select: { UUID: true, Nome: true, NomeFantasia: true, Condicao_de_pagamento: true, condicoes_pagamento_permitidas: true } },
+                itens: { include: { produto: { select: { id: true, nome: true, valorVenda: true } } } },
+                congeladosPedido: { include: { itens: true } },
+            },
+        });
+        if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+
+        const condCliente = pedido.cliente?.Condicao_de_pagamento
+            ? await prisma.tabelaPreco.findUnique({ where: { id: pedido.cliente.Condicao_de_pagamento } }).catch(() => null)
+            : null;
+
+        const cp = pedido.congeladosPedido;
+        const condSite = cp?.tabelaPrecoId
+            ? await prisma.tabelaPreco.findUnique({ where: { id: cp.tabelaPrecoId } }).catch(() => null)
+            : null;
+
+        // De onde veio o preço: último preço pago pelo cliente em cada produto ANTES deste pedido
+        const produtoIds = pedido.itens.map(i => i.produtoId);
+        const anteriores = await prisma.pedidoItem.findMany({
+            where: {
+                produtoId: { in: produtoIds },
+                pedido: {
+                    clienteId: pedido.clienteId,
+                    statusEnvio: { not: 'EXCLUIDO' },
+                    createdAt: { lt: pedido.createdAt },
+                },
+            },
+            select: {
+                produtoId: true, valor: true,
+                pedido: { select: { numero: true, createdAt: true, nomeCondicaoPagamento: true, canalOrigem: true } },
+            },
+            orderBy: { pedido: { createdAt: 'desc' } },
+        });
+        const ultimoAnterior = {};
+        for (const it of anteriores) {
+            if (!ultimoAnterior[it.produtoId]) ultimoAnterior[it.produtoId] = {
+                valor: Number(it.valor),
+                pedidoNumero: it.pedido?.numero,
+                data: it.pedido?.createdAt,
+                condicao: it.pedido?.nomeCondicaoPagamento,
+                canal: it.pedido?.canalOrigem,
+            };
+        }
+
+        // Preço de tabela do site para os mesmos produtos (precoCongelados ?? valorVenda)
+        const cprods = await prisma.congeladosProduto.findMany({
+            where: { produtoId: { in: produtoIds } },
+            select: { produtoId: true, precoCongelados: true },
+        });
+        const precoSiteMap = {};
+        cprods.forEach(c => { precoSiteMap[c.produtoId] = c.precoCongelados != null ? Number(c.precoCongelados) : null; });
+
+        res.json({
+            pedido: {
+                numero: pedido.numero,
+                createdAt: pedido.createdAt,
+                dataVenda: pedido.dataVenda,
+                canalOrigem: pedido.canalOrigem,
+                observacoes: pedido.observacoes,
+                nomeCondicaoPagamento: pedido.nomeCondicaoPagamento,
+                tipoPagamento: pedido.tipoPagamento,
+                opcaoCondicaoPagamento: pedido.opcaoCondicaoPagamento,
+                especial: pedido.especial,
+                total: pedido.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0),
+            },
+            cliente: {
+                nome: pedido.cliente?.Nome,
+                condicaoCadastrada: pedido.cliente?.Condicao_de_pagamento,
+                condicaoCadastradaNome: condCliente?.nomeCondicao || null,
+                acrescimoCondicao: condCliente ? Number(condCliente.acrescimoPreco) : null,
+                condicoesPermitidas: pedido.cliente?.condicoes_pagamento_permitidas,
+            },
+            pedidoSite: cp ? {
+                numero: cp.numero,
+                createdAt: cp.createdAt,
+                tabelaPrecoId: cp.tabelaPrecoId,
+                condicaoNome: cp.condicaoNome,
+                condicaoNomeAtual: condSite?.nomeCondicao || null,
+                encaixe: cp.encaixe,
+                total: Number(cp.total),
+                itens: cp.itens.map(i => ({ nome: i.nomeProduto, qtd: i.quantidade, precoUnitario: Number(i.precoUnitario) })),
+            } : null,
+            itens: pedido.itens.map(i => ({
+                produto: i.produto?.nome,
+                quantidade: Number(i.quantidade),
+                valorCobrado: Number(i.valor),
+                valorBase: Number(i.valorBase),
+                precoTabelaSite: precoSiteMap[i.produtoId] ?? null,
+                valorVendaProduto: i.produto ? Number(i.produto.valorVenda) : null,
+                ultimaCompraAnterior: ultimoAnterior[i.produtoId] || null,
+            })),
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 module.exports = router;
