@@ -54,6 +54,8 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 4. O sistema abre `/pedidos/novo?clienteId=...` (tela `NovoPedido`)
 5. Escolha o **tipo** (Pedido Normal, Especial ou Bonificação)
 6. Selecione a **condição de pagamento** e a **data de entrega**
+   - Só aparecem (e só são aceitas) as condições **liberadas para o cliente** — a lista "Condições de pagamento permitidas" do cadastro do cliente (ou, se vazia, apenas a condição padrão dele). O backend também valida: escolher condição fora da lista dá erro "condição não liberada para este cliente". Para liberar outra condição, ajuste o cadastro do cliente
+   - Ao **editar** um pedido cuja condição atual não está liberada (ex.: pedido vindo do Site Congelados com a condição "Site"), a tela pede para escolher uma condição liberada antes de salvar
 7. Adicione os produtos e quantidades
 8. Clique em **Salvar** — o pedido é criado com status **ABERTO**
 
