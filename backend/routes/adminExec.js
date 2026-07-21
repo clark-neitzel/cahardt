@@ -3386,6 +3386,58 @@ router.get('/diag-pagamentos-pagar', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-baixas-pendentes-pagar[?parcelaCa=UUID]
+// SOMENTE LEITURA: baixas "já paguei" aguardando envio ao CA (statusEnvioCA=ENVIAR),
+// com fornecedor/descrição — para identificar qual conta está falhando no worker.
+router.get('/diag-baixas-pendentes-pagar', async (req, res) => {
+    try {
+        const parcelaCa = String(req.query.parcelaCa || '').trim();
+        const where = parcelaCa
+            ? { parcelaPagar: { idParcelaCA: parcelaCa } }
+            : { statusEnvioCA: 'ENVIAR', estornado: false };
+        const pendentes = await prisma.pagamentoParcelaPagar.findMany({
+            where,
+            take: 30,
+            orderBy: { dataPagamento: 'desc' },
+            include: {
+                parcelaPagar: {
+                    include: {
+                        contaPagar: {
+                            select: {
+                                id: true, descricao: true, numeroNota: true, status: true,
+                                valorTotal: true, origem: true,
+                                fornecedor: { select: { razaoSocial: true, nomeFantasia: true } }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        res.json({
+            ok: true,
+            total: pendentes.length,
+            baixas: pendentes.map((pg) => ({
+                pagamentoId: pg.id,
+                statusEnvioCA: pg.statusEnvioCA,
+                erroEnvioCA: pg.erroEnvioCA,
+                valorPago: Number(pg.valorPago),
+                dataPagamento: pg.dataPagamento,
+                formaPagamento: pg.formaPagamento,
+                fornecedor: pg.parcelaPagar?.contaPagar?.fornecedor?.razaoSocial
+                    || pg.parcelaPagar?.contaPagar?.fornecedor?.nomeFantasia || null,
+                descricao: pg.parcelaPagar?.contaPagar?.descricao,
+                numeroNota: pg.parcelaPagar?.contaPagar?.numeroNota,
+                numeroParcela: pg.parcelaPagar?.numeroParcela,
+                vencimento: pg.parcelaPagar?.dataVencimento,
+                idParcelaCA: pg.parcelaPagar?.idParcelaCA,
+                contaPagarId: pg.parcelaPagar?.contaPagar?.id
+            }))
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // POST /api/admin-exec/estornar-baixa-pagar/:pagamentoId?cancelarConta=1
 // Mesmo fluxo do estorno da tela: baixa vinda do CA → exclui a baixa LÁ primeiro
 // (404 = já não existe), depois estorna no ledger local e recalcula parcela/conta.
