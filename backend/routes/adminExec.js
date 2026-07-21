@@ -3386,6 +3386,31 @@ router.get('/diag-pagamentos-pagar', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-parcela-ca-baixas?parcela=UUID
+// SOMENTE LEITURA: detalhe cru de UMA parcela no CA + as baixas que já existem nela.
+// Para investigar erros tipo "soma das baixas excede o valor nominal da parcela".
+router.get('/diag-parcela-ca-baixas', async (req, res) => {
+    try {
+        const parcelaId = String(req.query.parcela || '').trim();
+        if (!parcelaId) return res.status(400).json({ error: 'Informe ?parcela=UUID' });
+
+        let detalhe = null, baixas = null;
+        try { detalhe = await contaAzulService.buscarParcelaDetalhe(parcelaId); }
+        catch (e) { detalhe = { erro: e.response?.data || e.message }; }
+        try {
+            const resp = await contaAzulService._axiosGet(
+                `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/parcelas/${parcelaId}/baixa`,
+                'PARCELA_BAIXAS_DIAG'
+            );
+            baixas = Array.isArray(resp.data) ? resp.data : (resp.data?.itens || resp.data);
+        } catch (e) { baixas = { erro: e.response?.data || e.message }; }
+
+        res.json({ ok: true, parcelaId, detalhe, baixas });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-baixas-pendentes-pagar[?parcelaCa=UUID]
 // SOMENTE LEITURA: baixas "já paguei" aguardando envio ao CA (statusEnvioCA=ENVIAR),
 // com fornecedor/descrição — para identificar qual conta está falhando no worker.
