@@ -20,6 +20,60 @@ const checkAcessoEmbarque = async (req, res, next) => {
 };
 
 // ==========================================
+// VERSIONAMENTO DA CARGA (best-effort)
+// Toda alteração sobe a versão e grava no histórico (embarque_versao_log).
+// Falha aqui NUNCA derruba a operação principal — a carga continua salvando igual sempre.
+// ==========================================
+const nomeUsuario = async (userId) => {
+    if (!userId) return null;
+    const u = await prisma.vendedor.findUnique({ where: { id: userId }, select: { nome: true } });
+    return u?.nome || null;
+};
+
+// Sobe a versão do embarque e grava a entrada no histórico.
+const registrarVersaoEmbarque = async (embarqueId, acao, alteracoes, userId) => {
+    try {
+        const nome = await nomeUsuario(userId);
+        const atualizado = await prisma.embarque.update({
+            where: { id: embarqueId },
+            data: { versao: { increment: 1 } },
+            select: { versao: true }
+        });
+        await prisma.embarqueVersaoLog.create({
+            data: {
+                embarqueId,
+                versao: atualizado.versao,
+                acao,
+                alteracoes: alteracoes || {},
+                alteradoPorId: userId || null,
+                alteradoPorNome: nome
+            }
+        });
+    } catch (e) {
+        console.error(`[EmbarqueVersao] Falha ao registrar versão (${acao}) — operação principal NÃO afetada:`, e.message);
+    }
+};
+
+// Grava entrada no histórico SEM subir a versão (criação = v1, impressão não muda a carga).
+const registrarLogEmbarque = async (embarqueId, versao, acao, alteracoes, userId) => {
+    try {
+        const nome = await nomeUsuario(userId);
+        await prisma.embarqueVersaoLog.create({
+            data: {
+                embarqueId,
+                versao,
+                acao,
+                alteracoes: alteracoes || {},
+                alteradoPorId: userId || null,
+                alteradoPorNome: nome
+            }
+        });
+    } catch (e) {
+        console.error(`[EmbarqueVersao] Falha ao registrar log (${acao}) — operação principal NÃO afetada:`, e.message);
+    }
+};
+
+// ==========================================
 // 1. LISTAGEM DE EMBARQUES
 // ==========================================
 router.get('/', verificarAuth, checkAcessoEmbarque, async (req, res) => {
@@ -141,7 +195,8 @@ router.get('/:id', verificarAuth, checkAcessoEmbarque, async (req, res) => {
                         lead: { select: { nomeEstabelecimento: true, numero: true } },
                         cliente: { select: { NomeFantasia: true, Nome: true, End_Cidade: true } },
                     }
-                }
+                },
+                versoes: { orderBy: { criadoEm: 'desc' } }
             }
         });
 
@@ -203,11 +258,34 @@ router.patch('/:id', verificarAuth, async (req, res) => {
         if (dataSaida) data.dataSaida = new Date(`${dataSaida}T12:00:00-03:00`);
         if (responsavelId) data.responsavelId = responsavelId;
 
+        // Estado anterior (para o histórico de versões — não interfere na atualização)
+        const antes = await prisma.embarque.findUnique({
+            where: { id: req.params.id },
+            select: { dataSaida: true, responsavelId: true, responsavel: { select: { nome: true } } }
+        });
+
         const embarque = await prisma.embarque.update({
             where: { id: req.params.id },
             data,
             include: { responsavel: { select: { id: true, nome: true } } }
         });
+
+        // Versionamento: registra só o que de fato mudou (best-effort, não bloqueia a resposta)
+        try {
+            const alteracoes = {};
+            const fmt = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—';
+            if (dataSaida && antes && fmt(antes.dataSaida) !== fmt(embarque.dataSaida)) {
+                alteracoes.dataSaida = { de: fmt(antes.dataSaida), para: fmt(embarque.dataSaida) };
+            }
+            if (responsavelId && antes && antes.responsavelId !== embarque.responsavelId) {
+                alteracoes.motorista = { de: antes.responsavel?.nome || '—', para: embarque.responsavel?.nome || '—' };
+            }
+            if (Object.keys(alteracoes).length > 0) {
+                await registrarVersaoEmbarque(req.params.id, 'EDITADA', alteracoes, req.user.id);
+            }
+        } catch (e) {
+            console.error('[EmbarqueVersao] Erro no registro pós-edição (ignorado):', e.message);
+        }
 
         res.json(embarque);
     } catch (error) {
@@ -248,6 +326,12 @@ router.post('/', verificarAuth, checkAcessoEmbarque, async (req, res) => {
                 data: { statusEntrega: 'PENDENTE' }
             });
         }
+
+        // Histórico: nasce como versão 1 (best-effort)
+        await registrarLogEmbarque(embarque.id, 1, 'CRIADA', {
+            motorista: embarque.responsavel?.nome || null,
+            pedidos: pedidosIds?.length || 0
+        }, req.user.id);
 
         res.status(201).json(embarque);
     } catch (error) {
@@ -298,6 +382,22 @@ router.post('/:id/pedidos', verificarAuth, checkAcessoEmbarque, async (req, res)
             }
         });
 
+        // Versionamento (best-effort): registra quais pedidos entraram
+        try {
+            const adicionados = await prisma.pedido.findMany({
+                where: { id: { in: pedidosIds } },
+                select: { numero: true, especial: true, bonificacao: true, cliente: { select: { NomeFantasia: true, Nome: true } } }
+            });
+            await registrarVersaoEmbarque(embarqueId, 'PEDIDOS_ADICIONADOS', {
+                pedidos: adicionados.map(p => ({
+                    numero: `${p.bonificacao ? 'BN#' : p.especial ? 'ZZ#' : ''}${p.numero}`,
+                    cliente: p.cliente?.NomeFantasia || p.cliente?.Nome || null
+                }))
+            }, req.user.id);
+        } catch (e) {
+            console.error('[EmbarqueVersao] Erro no registro pós-inclusão de pedidos (ignorado):', e.message);
+        }
+
         res.json({ message: `${pedidosIds.length} pedidos atrelados com sucesso ao Embarque.` });
     } catch (error) {
         console.error('Erro ao adicionar pedidos na carga:', error);
@@ -315,7 +415,7 @@ router.delete('/:id/pedidos/:pedidoId', verificarAuth, checkAcessoEmbarque, asyn
         // Regra de Ouro: Só sai do embarque se estiver PENDENTE. Se o motorista já visitou/devolveu, FICA BLOQUEADO pra sempre na carga.
         const pedido = await prisma.pedido.findUnique({
             where: { id: pedidoId },
-            select: { statusEntrega: true, embarqueId: true, numero: true }
+            select: { statusEntrega: true, embarqueId: true, numero: true, especial: true, bonificacao: true, cliente: { select: { NomeFantasia: true, Nome: true } } }
         });
 
         if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
@@ -334,6 +434,14 @@ router.delete('/:id/pedidos/:pedidoId', verificarAuth, checkAcessoEmbarque, asyn
                 embarqueId: null
             }
         });
+
+        // Versionamento (best-effort)
+        await registrarVersaoEmbarque(id, 'PEDIDO_REMOVIDO', {
+            pedidos: [{
+                numero: `${pedido.bonificacao ? 'BN#' : pedido.especial ? 'ZZ#' : ''}${pedido.numero}`,
+                cliente: pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || null
+            }]
+        }, req.user.id);
 
         res.status(204).send();
     } catch (error) {
@@ -377,6 +485,22 @@ router.post('/:id/amostras', verificarAuth, checkAcessoEmbarque, async (req, res
             data: { embarqueId }
         });
 
+        // Versionamento (best-effort)
+        try {
+            const adicionadas = await prisma.amostra.findMany({
+                where: { id: { in: amostrasIds } },
+                select: { numero: true, cliente: { select: { NomeFantasia: true, Nome: true } }, lead: { select: { nomeEstabelecimento: true } } }
+            });
+            await registrarVersaoEmbarque(embarqueId, 'AMOSTRAS_ADICIONADAS', {
+                amostras: adicionadas.map(a => ({
+                    numero: `AM#${a.numero}`,
+                    destinatario: a.cliente?.NomeFantasia || a.cliente?.Nome || a.lead?.nomeEstabelecimento || null
+                }))
+            }, req.user.id);
+        } catch (e) {
+            console.error('[EmbarqueVersao] Erro no registro pós-inclusão de amostras (ignorado):', e.message);
+        }
+
         res.json({ message: `${amostrasIds.length} amostras atreladas ao embarque.` });
     } catch (error) {
         console.error('Erro ao adicionar amostras na carga:', error);
@@ -393,7 +517,7 @@ router.delete('/:id/amostras/:amostraId', verificarAuth, checkAcessoEmbarque, as
 
         const amostra = await prisma.amostra.findUnique({
             where: { id: amostraId },
-            select: { embarqueId: true, numero: true }
+            select: { embarqueId: true, numero: true, cliente: { select: { NomeFantasia: true, Nome: true } }, lead: { select: { nomeEstabelecimento: true } } }
         });
 
         if (!amostra) return res.status(404).json({ error: 'Amostra não encontrada.' });
@@ -404,10 +528,46 @@ router.delete('/:id/amostras/:amostraId', verificarAuth, checkAcessoEmbarque, as
             data: { embarqueId: null }
         });
 
+        // Versionamento (best-effort)
+        await registrarVersaoEmbarque(id, 'AMOSTRA_REMOVIDA', {
+            amostras: [{
+                numero: `AM#${amostra.numero}`,
+                destinatario: amostra.cliente?.NomeFantasia || amostra.cliente?.Nome || amostra.lead?.nomeEstabelecimento || null
+            }]
+        }, req.user.id);
+
         res.status(204).send();
     } catch (error) {
         console.error('Erro ao remover amostra:', error);
         res.status(500).json({ error: 'Erro ao desvincular amostra.' });
+    }
+});
+
+// ==========================================
+// 9. REGISTRAR IMPRESSÃO DA FOLHA
+// Carimba qual versão foi impressa (para o aviso "reimprimir" e a conferência do motorista).
+// NÃO sobe a versão — imprimir não muda a carga.
+// ==========================================
+router.post('/:id/impressao', verificarAuth, checkAcessoEmbarque, async (req, res) => {
+    try {
+        const atual = await prisma.embarque.findUnique({
+            where: { id: req.params.id },
+            select: { versao: true }
+        });
+        if (!atual) return res.status(404).json({ error: 'Embarque não encontrado.' });
+
+        const embarque = await prisma.embarque.update({
+            where: { id: req.params.id },
+            data: { ultimaImpressaoVersao: atual.versao, ultimaImpressaoEm: new Date() },
+            select: { versao: true, ultimaImpressaoVersao: true, ultimaImpressaoEm: true }
+        });
+
+        await registrarLogEmbarque(req.params.id, atual.versao, 'IMPRESSA', {}, req.user.id);
+
+        res.json(embarque);
+    } catch (error) {
+        console.error('Erro ao registrar impressão do embarque:', error);
+        res.status(500).json({ error: 'Erro ao registrar a impressão.' });
     }
 });
 

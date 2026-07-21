@@ -1049,10 +1049,34 @@ model Embarque {
   pedidos  Pedido[]
   amostras Amostra[]
 
+  // Versionamento da carga: sobe a cada alteração (data, motorista, pedidos, amostras).
+  // A folha impressa carimba a versão + QR; o motorista confere pelo app se a folha ainda vale.
+  versao                Int       @default(1)
+  ultimaImpressaoVersao Int?      @map("ultima_impressao_versao")
+  ultimaImpressaoEm     DateTime? @map("ultima_impressao_em")
+  versoes               EmbarqueVersaoLog[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("embarques")
+}
+
+// Histórico de versões do embarque (molde: ReceitaVersaoLog).
+// Registro é best-effort: falha aqui NUNCA derruba a operação principal.
+model EmbarqueVersaoLog {
+  id              String   @id @default(uuid())
+  embarqueId      String   @map("embarque_id")
+  embarque        Embarque @relation(fields: [embarqueId], references: [id], onDelete: Cascade)
+  versao          Int
+  acao            String // CRIADA | EDITADA | PEDIDOS_ADICIONADOS | PEDIDO_REMOVIDO | AMOSTRAS_ADICIONADAS | AMOSTRA_REMOVIDA | IMPRESSA
+  alteracoes      Json?
+  alteradoPorId   String?  @map("alterado_por_id")
+  alteradoPorNome String?  @map("alterado_por_nome")
+  criadoEm        DateTime @default(now()) @map("criado_em")
+
+  @@index([embarqueId])
+  @@map("embarque_versao_log")
 }
 
 model ClienteInsight {

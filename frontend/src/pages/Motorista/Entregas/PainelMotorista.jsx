@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Truck, MapPin, CheckCircle, Clock, Navigation, Star, X } from 'lucide-react';
+import { Truck, MapPin, CheckCircle, Clock, Navigation, Star, X, QrCode } from 'lucide-react';
 import toast from 'react-hot-toast';
 import entregasService from '../../../services/entregasService';
 import CheckoutEntregaModal from './CheckoutEntregaModal';
+import ConferirFolhaModal from './ConferirFolhaModal';
 
 const PainelMotorista = () => {
     const [abaAtiva, setAbaAtiva] = useState('pendentes'); // 'pendentes' | 'concluidas'
     const [entregas, setEntregas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [entregaAtivaParaCheckout, setEntregaAtivaParaCheckout] = useState(null);
+    const [conferirFolhaAberto, setConferirFolhaAberto] = useState(false);
 
     const fetchEntregas = async () => {
         try {
@@ -82,6 +84,13 @@ const PainelMotorista = () => {
                     <div className="text-xs font-semibold bg-white/15 px-2 py-1 rounded">
                         {entregas.length} {abaAtiva === 'pendentes' ? 'Restantes' : 'Feitas'}
                     </div>
+                    <button
+                        onClick={() => setConferirFolhaAberto(true)}
+                        className="text-xs font-bold bg-primary px-2.5 py-1.5 rounded-full flex items-center gap-1 active:bg-primaryDark min-h-[32px]"
+                        title="Conferir folha impressa (QR)"
+                    >
+                        <QrCode className="h-4 w-4" /> Folha
+                    </button>
                 </div>
             </div>
 
@@ -205,6 +214,11 @@ const PainelMotorista = () => {
                     ))
                 )}
             </div>
+
+            {/* Conferência da folha impressa (QR) */}
+            {conferirFolhaAberto && (
+                <ConferirFolhaModal onClose={() => setConferirFolhaAberto(false)} />
+            )}
 
             {/* Modal Fullscreen do Checkout (Carrinho Reverso) */}
             {entregaAtivaParaCheckout && (

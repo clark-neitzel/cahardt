@@ -50,6 +50,66 @@ const checkAjustador = async (req, res, next) => {
 };
 
 // ==========================================
+// 0. MOTORISTA: CONFERIR FOLHA IMPRESSA (QR da folha × versão atual da carga)
+// O app do motorista lê o QR do romaneio (HARDT-CARGA|id|numero|versao) e chama aqui
+// para saber se aquela impressão ainda corresponde à carga atual.
+// ==========================================
+router.post('/conferir-folha', verificarAuth, checkAcessoEntregador, async (req, res) => {
+    try {
+        const { embarqueId, versaoFolha } = req.body;
+        const vFolha = parseInt(versaoFolha, 10);
+
+        if (!embarqueId || !Number.isFinite(vFolha) || vFolha < 1) {
+            return res.status(400).json({ error: 'QR inválido: não foi possível ler a carga/versão da folha.' });
+        }
+
+        const embarque = await prisma.embarque.findUnique({
+            where: { id: embarqueId },
+            include: {
+                responsavel: { select: { id: true, nome: true } },
+                _count: { select: { pedidos: true, amostras: true } }
+            }
+        });
+
+        if (!embarque) {
+            return res.status(404).json({ error: 'Carga não encontrada. Esta folha pode ser de uma carga excluída.' });
+        }
+
+        const minha = embarque.responsavelId === req.user.id;
+        const atualizada = vFolha >= embarque.versao;
+
+        // O que mudou depois da versão impressa (impressões não contam como mudança)
+        let mudancas = [];
+        if (!atualizada) {
+            mudancas = await prisma.embarqueVersaoLog.findMany({
+                where: {
+                    embarqueId,
+                    versao: { gt: vFolha },
+                    acao: { not: 'IMPRESSA' }
+                },
+                orderBy: { criadoEm: 'asc' },
+                select: { versao: true, acao: true, alteracoes: true, alteradoPorNome: true, criadoEm: true }
+            });
+        }
+
+        res.json({
+            numero: embarque.numero,
+            dataSaida: embarque.dataSaida,
+            motorista: embarque.responsavel?.nome || null,
+            minha,
+            versaoFolha: vFolha,
+            versaoAtual: embarque.versao,
+            atualizada,
+            mudancas,
+            totais: { pedidos: embarque._count.pedidos, amostras: embarque._count.amostras }
+        });
+    } catch (error) {
+        console.error('Erro ao conferir folha do embarque:', error);
+        res.status(500).json({ error: 'Erro ao conferir a folha. Tente novamente.' });
+    }
+});
+
+// ==========================================
 // 1. MOTORISTA: MINHAS ATIVAS (PENDENTES)
 // ==========================================
 router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) => {

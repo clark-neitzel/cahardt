@@ -40,6 +40,10 @@ const embarqueService = {
     editar: async (id, dados) => {
         const response = await api.patch(`/embarques/${id}`, dados);
         return response.data;
+    },
+    registrarImpressao: async (id) => {
+        const response = await api.post(`/embarques/${id}/impressao`);
+        return response.data;
     }
 };
 

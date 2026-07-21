@@ -1,11 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Printer, Plus, Trash2, MapPin, Package, Edit2, Check } from 'lucide-react';
+import { X, Printer, Plus, Trash2, MapPin, Package, Edit2, Check, History, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
 import AdicionarPedidosModal from './AdicionarPedidosModal';
 import { useAuth } from '../../../contexts/AuthContext';
 import SelectBusca from '../../../components/SelectBusca';
+
+// Rótulos das ações do histórico de versões da carga
+const ACAO_VERSAO_LABELS = {
+    CRIADA: 'Carga criada',
+    EDITADA: 'Dados da carga alterados',
+    PEDIDOS_ADICIONADOS: 'Pedidos adicionados',
+    PEDIDO_REMOVIDO: 'Pedido removido',
+    AMOSTRAS_ADICIONADAS: 'Amostras adicionadas',
+    AMOSTRA_REMOVIDA: 'Amostra removida',
+    IMPRESSA: 'Folha impressa'
+};
+
+// Transforma o JSON de alterações de um log em linhas legíveis
+const descreverAlteracoes = (log) => {
+    const alt = log.alteracoes || {};
+    const linhas = [];
+    if (alt.dataSaida) linhas.push(`Saída: ${alt.dataSaida.de} → ${alt.dataSaida.para}`);
+    if (alt.motorista && alt.motorista.de) linhas.push(`Motorista: ${alt.motorista.de} → ${alt.motorista.para}`);
+    const sinal = log.acao === 'PEDIDO_REMOVIDO' || log.acao === 'AMOSTRA_REMOVIDA' ? '−' : '+';
+    if (Array.isArray(alt.pedidos)) {
+        alt.pedidos.forEach(p => linhas.push(`${sinal} Pedido ${p.numero}${p.cliente ? ` — ${p.cliente}` : ''}`));
+    }
+    if (Array.isArray(alt.amostras)) {
+        alt.amostras.forEach(a => linhas.push(`${sinal} ${a.numero}${a.destinatario ? ` — ${a.destinatario}` : ''}`));
+    }
+    if (log.acao === 'CRIADA' && typeof alt.pedidos === 'number') {
+        linhas.push(`${alt.pedidos} pedido(s) na criação${alt.motorista ? ` · Motorista: ${alt.motorista}` : ''}`);
+    }
+    return linhas;
+};
 
 const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] }) => {
     const { user } = useAuth();
@@ -17,6 +47,8 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
     const [editando, setEditando] = useState(false);
     const [editData, setEditData] = useState({ dataSaida: '', responsavelId: '' });
     const [salvando, setSalvando] = useState(false);
+    const [qrDataUrl, setQrDataUrl] = useState(null);
+    const [historicoAberto, setHistoricoAberto] = useState(false);
 
     const podeEditarEmbarque = !!(user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Embarque);
 
@@ -39,6 +71,21 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
     useEffect(() => {
         fetchDetalhes();
     }, [embarqueId]);
+
+    // QR da folha: identifica a carga + a versão do momento da impressão.
+    // Só o leitor de dentro do app (tela do motorista) interpreta este conteúdo.
+    useEffect(() => {
+        if (!embarque?.id) return;
+        let ativo = true;
+        import('qrcode')
+            .then(QRCode => QRCode.toDataURL(
+                `HARDT-CARGA|${embarque.id}|${embarque.numero}|${embarque.versao || 1}`,
+                { margin: 0, width: 160, errorCorrectionLevel: 'M' }
+            ))
+            .then(url => { if (ativo) setQrDataUrl(url); })
+            .catch(() => { /* sem QR a folha continua saindo normalmente */ });
+        return () => { ativo = false; };
+    }, [embarque?.id, embarque?.versao, embarque?.numero]);
 
     const handleRemover = async (pedido) => {
         const statusLabels = {
@@ -115,6 +162,10 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
     };
 
     const handlePrint = () => {
+        // Carimba no servidor qual versão foi impressa (best-effort, não atrasa o print)
+        embarqueService.registrarImpressao(embarqueId)
+            .then(d => setEmbarque(prev => (prev ? { ...prev, ...d } : prev)))
+            .catch(() => { /* registro falhou; impressão segue normal */ });
         window.print();
     };
 
@@ -196,6 +247,10 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             .print-container .ph-sub { font-size: 7px; color: #d4e9e2 !important; letter-spacing: .07em; text-transform: uppercase; margin-top: 2px; }
                             .print-container .ph-num { font-size: 17px; font-weight: 800; color: #fff !important; text-align: right; line-height: 1; }
                             .print-container .ph-numlbl { font-size: 6.5px; color: #d4e9e2 !important; letter-spacing: .08em; text-transform: uppercase; text-align: right; }
+                            .print-container .ph-right { display: flex; align-items: center; gap: 10px; }
+                            .print-container .ph-qr { background: #fff; padding: 3px 3px 1px; border-radius: 3px; text-align: center; }
+                            .print-container .ph-qr img { width: 46px; height: 46px; display: block; }
+                            .print-container .ph-qr-lbl { font-size: 6px; font-weight: 800; color: #1E3932 !important; letter-spacing: .04em; line-height: 1.4; }
                             .print-container .pi { border-bottom: 1.5px solid #1E3932; padding: 4px 0; display: flex; gap: 16px; font-size: 8px; color: #111 !important; }
                             .print-container .pi strong { font-weight: 700; }
                             .print-container table { width: 100%; border-collapse: collapse; margin-top: 5px; }
@@ -254,15 +309,24 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                                 <div className="ph-title">Romaneio de Entrega{pedidosPaginados.length > 1 ? ` — Pt. ${idx + 1}` : ''}</div>
                                                 <div className="ph-sub">Hardt Salgados &amp; Congelados</div>
                                             </div>
-                                            <div>
-                                                <div className="ph-num">#{embarque?.numero || '000'}</div>
-                                                <div className="ph-numlbl">Carga</div>
+                                            <div className="ph-right">
+                                                <div>
+                                                    <div className="ph-num">#{embarque?.numero || '000'}</div>
+                                                    <div className="ph-numlbl">Carga</div>
+                                                </div>
+                                                {qrDataUrl && (
+                                                    <div className="ph-qr">
+                                                        <img src={qrDataUrl} alt="QR da carga" />
+                                                        <div className="ph-qr-lbl">v{embarque?.versao || 1}</div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                         <div className="pi">
                                             <span><strong>Motorista:</strong> {embarque?.responsavel?.nome}</span>
                                             <span><strong>Saída:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString('pt-BR') : '—'}</span>
                                             <span><strong>NFs:</strong> {embarque?.pedidos?.length || 0}</span>
+                                            <span><strong>Versão:</strong> v{embarque?.versao || 1} · confira o QR pelo app antes de sair</span>
                                         </div>
                                         <table>
                                             <thead>
@@ -492,6 +556,11 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                         <h3 className="text-sm font-bold text-gray-900">
                             Gerenciamento da Carga #{embarque?.numero || '…'}
                         </h3>
+                        {embarque?.versao && (
+                            <span className="px-2 py-0.5 text-[11px] font-bold rounded-full bg-mint text-primaryDark" title="Versão atual da carga">
+                                v{embarque.versao}
+                            </span>
+                        )}
                     </div>
                     <div className="flex items-center gap-2">
                         <button onClick={() => setShowPreview(true)} disabled={!embarque} className="flex items-center gap-2 px-3 py-2 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 rounded-xl transition-colors font-semibold text-xs shadow-sm disabled:opacity-50">
@@ -515,6 +584,17 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                         </div>
                     ) : (
                         <div>
+                            {embarque.ultimaImpressaoVersao != null && embarque.versao > embarque.ultimaImpressaoVersao && (
+                                <div className="mb-4 flex items-start gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 text-sm">
+                                    <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <span className="font-bold">A folha impressa ficou para trás.</span>{' '}
+                                        Última impressão foi da <span className="font-bold">v{embarque.ultimaImpressaoVersao}</span>
+                                        {embarque.ultimaImpressaoEm ? ` (${new Date(embarque.ultimaImpressaoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })})` : ''} e a carga já está na{' '}
+                                        <span className="font-bold">v{embarque.versao}</span> — reimprima o romaneio antes de o motorista sair.
+                                    </div>
+                                </div>
+                            )}
                             <div className="flex justify-between items-start mb-6 gap-4">
                                 <div className="flex-1">
                                     {editando ? (
@@ -697,6 +777,54 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                             </tbody>
                                         </table>
                                     </div>
+                                </div>
+                            )}
+
+                            {/* Histórico de versões da carga */}
+                            {embarque.versoes && embarque.versoes.length > 0 && (
+                                <div className="mt-6">
+                                    <button
+                                        onClick={() => setHistoricoAberto(v => !v)}
+                                        className="w-full flex items-center gap-2 text-left text-sm font-bold text-gray-600 uppercase tracking-wide hover:text-gray-800"
+                                    >
+                                        <History className="h-4 w-4" />
+                                        Histórico da carga ({embarque.versoes.length})
+                                        <span className="ml-auto text-xs font-medium normal-case text-gray-400">
+                                            {historicoAberto ? 'ocultar' : 'ver tudo'}
+                                        </span>
+                                    </button>
+                                    {historicoAberto && (
+                                        <div className="mt-3 border border-gray-200 rounded-xl divide-y divide-gray-100">
+                                            {embarque.versoes.map(log => {
+                                                const linhas = descreverAlteracoes(log);
+                                                const ehImpressao = log.acao === 'IMPRESSA';
+                                                return (
+                                                    <div key={log.id} className="px-4 py-3 flex items-start gap-3">
+                                                        <span className={`flex-shrink-0 mt-0.5 inline-flex items-center justify-center h-7 w-9 rounded-full text-[11px] font-bold ${ehImpressao ? 'bg-gray-100 text-gray-500' : 'bg-mint text-primaryDark'}`}>
+                                                            v{log.versao}
+                                                        </span>
+                                                        <div className="min-w-0 flex-1">
+                                                            <div className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                                                                {ehImpressao && <Printer className="h-3.5 w-3.5 text-gray-400" />}
+                                                                {ACAO_VERSAO_LABELS[log.acao] || log.acao}
+                                                            </div>
+                                                            <div className="text-xs text-gray-500">
+                                                                {new Date(log.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                                {log.alteradoPorNome ? ` · por ${log.alteradoPorNome}` : ''}
+                                                            </div>
+                                                            {linhas.length > 0 && (
+                                                                <div className="mt-1.5 flex flex-col gap-1">
+                                                                    {linhas.map((l, i) => (
+                                                                        <div key={i} className="text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-1.5">{l}</div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
