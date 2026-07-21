@@ -262,7 +262,10 @@ const NovoPedido = () => {
                         if (pd.dataVenda) setDataEntrega(pd.dataVenda.split('T')[0]);
                         if (pd.valorFrete != null) setValorFrete(String(pd.valorFrete));
                         if (pd.canalOrigem) setCanalOrigem(pd.canalOrigem);
-                        const cond = condicoesData.find(c => c.tipoPagamento === pd.tipoPagamento && c.opcaoCondicao === pd.opcaoCondicaoPagamento);
+                        // Reencontrar a condição pelo NOME gravado (tipo+opção não são únicos:
+                        // um pedido do site "Site" abria como "À vista - Funcionário", ambos DINHEIRO/1x)
+                        const cond = condicoesData.find(c => c.nomeCondicao === pd.nomeCondicaoPagamento)
+                            || condicoesData.find(c => c.tipoPagamento === pd.tipoPagamento && c.opcaoCondicao === pd.opcaoCondicaoPagamento);
                         if (cond) setTimeout(() => setCondicaoPagamentoId(cond.idCondicao), 500);
 
                         if (pd.itens && pd.itens.length > 0) {
@@ -494,7 +497,10 @@ const NovoPedido = () => {
     };
 
     useEffect(() => {
-        const cond = todasCondicoes.find(c => c.idCondicao === condicaoPagamentoId);
+        // Resolver SÓ entre as condições liberadas para o cliente (a mesma lista do dropdown).
+        // Resolver em todasCondicoes deixava o pedido assumir uma tabela não liberada
+        // (ex.: "À vista - Funcionário") sem ninguém ter escolhido.
+        const cond = condicoesPermitidas.find(c => c.idCondicao === condicaoPagamentoId);
         setCondicaoSelecionada(cond || null);
         if (cond) {
             const catsEspecial = Array.isArray(cond.categoriasEspecial) ? cond.categoriasEspecial : [];
@@ -526,7 +532,7 @@ const NovoPedido = () => {
                 recalcularItens(cond);
             }
         }
-    }, [condicaoPagamentoId]);
+    }, [condicaoPagamentoId, condicoesPermitidas]);
 
     const checkPromoLiberada = useCallback((promo, mapRef) => {
         if (!promo) return false;
@@ -828,7 +834,7 @@ const NovoPedido = () => {
 
         if (!clienteId || itensMap.size === 0) { toast.error("Preencha cliente e adicione itens.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (!tipoPedido) { toast.error("Selecione o tipo de pedido (Pedido, Especial ou Bonificação).", { duration: 6000, style: { maxWidth: "600px" } }); return; }
-        if (!condicaoPagamentoId) { toast.error("Selecione uma condição de pagamento.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
+        if (!condicaoPagamentoId || !condicaoSelecionada) { toast.error("Selecione uma condição de pagamento (entre as liberadas para este cliente).", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (!dataEntrega) { toast.error("Selecione a data de entrega.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
 
         const erroHorario = validarHorarioEntrega(dataEntrega);

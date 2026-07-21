@@ -5,6 +5,38 @@ const contaAzulService = require('../services/contaAzulService');
 const estoqueService = require('../services/estoqueService');
 const pcpReceitaService = require('../services/pcpReceitaService');
 
+// Condição de pagamento precisa estar liberada para o cliente (mesma regra da tela:
+// lista `condicoes_pagamento_permitidas` do cadastro, ou a condição padrão quando a lista
+// está vazia). Manter a condição já gravada no pedido é sempre permitido — pedidos
+// legados e os vindos do site carregam condições fora da lista (ex.: "Site").
+async function validarCondicaoLiberada({ clienteId, nomeCondicao, especial, bonificacao, nomeAtual }) {
+    if (!nomeCondicao || !clienteId) return null;
+    if (nomeAtual && nomeCondicao === nomeAtual) return null;
+    if (nomeCondicao === 'Especial' || nomeCondicao === 'Bonificação') return null;
+
+    const cliente = await prisma.cliente.findUnique({
+        where: { UUID: clienteId },
+        select: { Condicao_de_pagamento: true, condicoes_pagamento_permitidas: true }
+    });
+    if (!cliente) return null;
+
+    const todas = await prisma.tabelaPreco.findMany({ where: { ativo: true } });
+    const ids = Array.isArray(cliente.condicoes_pagamento_permitidas)
+        ? cliente.condicoes_pagamento_permitidas.filter(Boolean) : [];
+    let doCliente = ids.length > 0
+        ? todas.filter(c => ids.includes(c.idCondicao) || ids.includes(c.id))
+        : todas.filter(c => c.id === cliente.Condicao_de_pagamento || c.idCondicao === cliente.Condicao_de_pagamento);
+    if (especial) doCliente = doCliente.filter(c => c.permiteEspecial === true);
+    else if (bonificacao) doCliente = doCliente.filter(c => c.permiteBonificacao === true);
+    else doCliente = doCliente.filter(c => c.permitePedido !== false && c.permiteBonificacao !== true);
+
+    if (!doCliente.some(c => c.nomeCondicao === nomeCondicao)) {
+        const nomes = doCliente.map(c => c.nomeCondicao).join(', ') || 'nenhuma';
+        return `A condição "${nomeCondicao}" não está liberada para este cliente (liberadas: ${nomes}). Ajuste as condições permitidas no cadastro do cliente se necessário.`;
+    }
+    return null;
+}
+
 const pedidoController = {
     resumoPendencias: async (req, res) => {
         try {
@@ -299,6 +331,14 @@ const pedidoController = {
                 }
             }
 
+            const erroCondicao = await validarCondicaoLiberada({
+                clienteId: dadosPedido.clienteId,
+                nomeCondicao: dadosPedido.nomeCondicaoPagamento,
+                especial: !!dadosPedido.especial,
+                bonificacao: !!dadosPedido.bonificacao,
+            });
+            if (erroCondicao) return res.status(400).json({ error: erroCondicao });
+
             const novoPedido = await pedidoService.criar(dadosPedido);
 
             // Notificação de WhatsApp ao cliente (não bloqueia a resposta)
@@ -330,7 +370,7 @@ const pedidoController = {
             // 🔒 Bloqueio: pedidos recebidos pelo CA não podem ser editados aqui
             const pedidoAtual = await prisma.pedido.findUnique({
                 where: { id },
-                select: { statusEnvio: true, situacaoCA: true }
+                select: { statusEnvio: true, situacaoCA: true, clienteId: true, especial: true, bonificacao: true, nomeCondicaoPagamento: true }
             });
             if (!pedidoAtual) return res.status(404).json({ error: 'Pedido não encontrado.' });
 
@@ -342,6 +382,15 @@ const pedidoController = {
             }
 
             const dadosPedido = req.body;
+
+            const erroCondicao = await validarCondicaoLiberada({
+                clienteId: dadosPedido.clienteId || pedidoAtual.clienteId,
+                nomeCondicao: dadosPedido.nomeCondicaoPagamento,
+                especial: dadosPedido.especial !== undefined ? !!dadosPedido.especial : pedidoAtual.especial,
+                bonificacao: dadosPedido.bonificacao !== undefined ? !!dadosPedido.bonificacao : pedidoAtual.bonificacao,
+                nomeAtual: pedidoAtual.nomeCondicaoPagamento,
+            });
+            if (erroCondicao) return res.status(400).json({ error: erroCondicao });
             const pedidoAtualizado = await pedidoService.editar(id, dadosPedido);
             res.json(pedidoAtualizado);
         } catch (error) {

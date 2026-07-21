@@ -4054,4 +4054,67 @@ router.get('/diag-pedido-site-condicao', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/corrigir-condicao-pedido — corrige a condição de pagamento de um pedido
+// gravada errada (ex.: tela de edição auto-selecionou "À vista - Funcionário" num pedido do site).
+// Body: { numero, tabelaId, aplicar }. Sem `aplicar: true` só simula (mostra antes/depois).
+// Restaura valorBase = valor cobrado (como a conversão do site grava) e zera o flex.
+router.post('/corrigir-condicao-pedido', async (req, res) => {
+    try {
+        const { numero, tabelaId, aplicar } = req.body || {};
+        if (!numero || !tabelaId) return res.status(400).json({ ok: false, error: 'Informe numero e tabelaId.' });
+
+        const pedido = await prisma.pedido.findFirst({
+            where: { numero: parseInt(numero, 10), especial: false, bonificacao: false },
+            include: { itens: true },
+        });
+        if (!pedido) return res.status(404).json({ ok: false, error: 'Pedido não encontrado.' });
+
+        const tabela = await prisma.tabelaPreco.findUnique({ where: { id: String(tabelaId) } });
+        if (!tabela) return res.status(404).json({ ok: false, error: 'Tabela de preço não encontrada.' });
+
+        const resumo = {
+            pedido: { numero: pedido.numero, statusEnvio: pedido.statusEnvio, situacaoCA: pedido.situacaoCA },
+            antes: {
+                nomeCondicaoPagamento: pedido.nomeCondicaoPagamento,
+                tipoPagamento: pedido.tipoPagamento,
+                opcaoCondicaoPagamento: pedido.opcaoCondicaoPagamento,
+                flexTotal: Number(pedido.flexTotal),
+                itens: pedido.itens.map(i => ({ valor: Number(i.valor), valorBase: Number(i.valorBase), flexGerado: Number(i.flexGerado) })),
+            },
+            depois: {
+                nomeCondicaoPagamento: tabela.nomeCondicao,
+                tipoPagamento: tabela.tipoPagamento,
+                opcaoCondicaoPagamento: tabela.opcaoCondicao,
+                qtdParcelas: tabela.qtdParcelas || 1,
+                intervaloDias: tabela.parcelasDias || 0,
+                flexTotal: 0,
+                itens: pedido.itens.map(i => ({ valor: Number(i.valor), valorBase: Number(i.valor), flexGerado: 0 })),
+            },
+            aplicado: false,
+        };
+        if (!aplicar) return res.json({ ok: true, simulacao: true, ...resumo });
+
+        await prisma.$transaction(async (tx) => {
+            await tx.pedido.update({
+                where: { id: pedido.id },
+                data: {
+                    nomeCondicaoPagamento: tabela.nomeCondicao,
+                    tipoPagamento: tabela.tipoPagamento,
+                    opcaoCondicaoPagamento: tabela.opcaoCondicao,
+                    qtdParcelas: tabela.qtdParcelas || 1,
+                    intervaloDias: tabela.parcelasDias || 0,
+                    flexTotal: 0,
+                },
+            });
+            for (const it of pedido.itens) {
+                await tx.pedidoItem.update({ where: { id: it.id }, data: { valorBase: it.valor, flexGerado: 0 } });
+            }
+        }, { timeout: 20000, maxWait: 10000 });
+
+        res.json({ ok: true, simulacao: false, ...resumo, aplicado: true });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;
