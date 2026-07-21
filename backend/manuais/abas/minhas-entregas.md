@@ -21,6 +21,7 @@ Tela exclusiva do motorista, usada no celular. Mostra o roteiro de entrega do di
 - Marcar prioridade de entrega com estrela (ordena a sequência de visitas)
 - Abrir o endereço do cliente no Google Maps (usa GPS cadastrado ou o endereço completo)
 - Dar baixa na entrega via modal de checkout (informar status físico e pagamento recebido)
+- **Conferir a folha impressa** (botão **Folha** no header): escaneia o QR do romaneio e o app diz se aquela impressão ainda é a versão atual da carga
 
 ---
 
@@ -81,6 +82,16 @@ Escolha o que aconteceu na entrega:
 - Clique em **Capturar GPS** para registrar a localização no momento da entrega
 - O navegador pedirá permissão de localização
 - Clique em **Finalizar** para confirmar — a entrega é salva, o caixa é atualizado e a entrega some da lista de pendentes
+
+### Conferir a folha impressa (QR code)
+1. Antes de carregar o caminhão, toque no botão **Folha** (ícone de QR, no header verde da tela)
+2. A câmera abre dentro do próprio app — aponte para o **QR no cabeçalho do romaneio impresso**
+3. O app compara a versão da folha com a versão atual da carga no sistema:
+   - **Verde — "Folha confere!"**: a folha é a versão atual, pode carregar e sair
+   - **Amarelo — "Folha desatualizada!"**: alguém mexeu na carga depois da impressão; a tela mostra exatamente o que mudou (pedido que entrou/saiu, data/motorista alterado). Peça a folha nova na expedição — o que vale é o que está no app
+   - **Cinza — "Esta folha não é sua!"**: a folha escaneada é de outra carga/motorista (útil quando saem várias cargas juntas)
+4. Se o motorista tem duas cargas no dia, escaneia uma folha de cada vez ("Escanear outra folha")
+5. Se a câmera não abrir, libere o acesso à câmera para o app nas configurações do celular
 
 ### Ver entregas já concluídas
 1. Clique na sub-aba **Já Finalizadas**

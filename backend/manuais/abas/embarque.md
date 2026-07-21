@@ -23,6 +23,8 @@ Painel de expedição logística. Aqui são criados os "embarques" (cargas), que
   - Editar data e motorista do embarque (quem tem `Pode_Editar_Embarque`)
   - Ver o status de entrega de cada pedido (PENDENTE, ENTREGUE, ENTREGUE_PARCIAL, DEVOLVIDO)
   - Imprimir o romaneio completo (roteiro de entrega + consolidado de produtos + rastreabilidade)
+  - Ver a **versão atual da carga** (badge `vN` no cabeçalho do modal) e o **Histórico da carga** (toda alteração registrada: quem fez, quando e o quê)
+  - Ver o aviso amarelo **"A folha impressa ficou para trás"** quando a carga mudou depois da última impressão — sinal de reimprimir o romaneio
 
 ---
 
@@ -65,6 +67,13 @@ Painel de expedição logística. Aqui são criados os "embarques" (cargas), que
    - **Consolidado de Produtos**: quantidade total de cada produto somado de todos os pedidos
    - **Rastreabilidade**: produto → quantidade → quais pedidos o contém
 5. Clique em **Imprimir** para enviar para impressora
+6. A folha do Roteiro sai com um **QR code no cabeçalho** e o carimbo da versão (ex.: `v3`). Ao clicar em Imprimir, o sistema registra qual versão foi impressa — é essa marca que dispara o aviso de "reimprimir" se alguém mexer na carga depois
+
+### Versões da carga e conferência pelo motorista (como funciona)
+1. Toda carga nasce na **versão 1**. Qualquer alteração (mudar data, trocar motorista, adicionar/remover pedido ou amostra) **sobe a versão** e entra no **Histórico da carga** (parte de baixo do modal de detalhes), com quem fez, quando e o quê
+2. A folha impressa carrega o QR com a versão daquele momento. Se a carga mudar depois, o modal mostra o aviso amarelo pedindo para **reimprimir**
+3. Antes de sair, o motorista escaneia o QR da folha pelo botão **Folha** na tela Minhas Entregas: o app compara a versão da folha com a atual — verde se confere, amarelo mostrando o que mudou, e aviso se a folha for de outro motorista
+4. Registrar a versão nunca trava a operação: se o histórico falhar, o salvamento da carga acontece normalmente
 
 ---
 

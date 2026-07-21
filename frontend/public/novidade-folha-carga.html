@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: QR na Folha da Carga — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="📦 Novidade no Hardt App: QR na Folha da Carga">
+<meta property="og:description" content="Mexeu na carga? O sistema avisa para reimprimir. E o motorista escaneia o QR da folha pelo app para saber se ela ainda vale.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock do resultado do scan flutuando sobre o hero */
+  .mock {
+    max-width: 400px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--primary);
+    color: #fff;
+    padding: 16px 18px;
+    text-align: center;
+  }
+  .mock-top .icone { font-size: 30px; display: block; margin-bottom: 4px; }
+  .mock-top strong { font-size: 17px; }
+  .mock-top small { display: block; font-size: 12px; color: rgba(255,255,255,.85); margin-top: 2px; }
+  .mock-body { padding: 14px 18px 18px; }
+  .mock-linha { display: flex; justify-content: space-between; font-size: 13.5px; padding: 5px 0; border-bottom: 1px solid #f1f3f2; }
+  .mock-linha:last-of-type { border-bottom: 0; }
+  .mock-linha span:first-child { color: var(--ink-soft); }
+  .mock-linha span:last-child { font-weight: 700; }
+  .mock-ok {
+    margin-top: 10px;
+    background: var(--mint);
+    color: var(--primary-dark);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul, .acc-corpo ol { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .cor {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 999px;
+    margin-right: 4px;
+  }
+  .cor.verde { background: #dcfce7; color: #166534; }
+  .cor.amarela { background: #fef3c7; color: #92400e; }
+  .cor.cinza { background: #f1f3f2; color: #444; }
+
+  .rodape {
+    text-align: center;
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade no app</span>
+    <h1>📦 A folha da carga agora tem QR code</h1>
+    <p>Mexeu na carga depois de imprimir? O sistema avisa para reimprimir — e o motorista confere pelo celular se a folha na mão dele ainda vale.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- Mock do resultado -->
+  <div class="mock" role="img" aria-label="Exemplo da tela de conferência da folha no celular">
+    <div class="mock-top">
+      <span class="icone">✅</span>
+      <strong>Folha confere!</strong>
+      <small>Carga #347 · esta folha é a versão atual (v3)</small>
+    </div>
+    <div class="mock-body">
+      <div class="mock-linha"><span>Folha escaneada</span><span>v3</span></div>
+      <div class="mock-linha"><span>No sistema</span><span>v3 (igual) ✅</span></div>
+      <div class="mock-linha"><span>Pedidos / Amostras</span><span>14 / 2</span></div>
+      <div class="mock-ok">Pode carregar e sair — a folha na sua mão é a mesma coisa que o app mostra.</div>
+    </div>
+  </div>
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🖨️</span>
+      <strong>A folha impressa sai com QR e número de versão</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O romaneio continua igualzinho — só ganhou um <b>QR code no cabeçalho</b> com a versão da carga (ex.: <b>v3</b>) carimbada embaixo.</p>
+      <p>Toda vez que alguém mexe na carga (muda a data, troca o motorista, adiciona ou tira pedido/amostra), a versão sobe. A folha antiga fica "para trás".</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⚠️</span>
+      <strong>O sistema avisa quando é hora de reimprimir</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Na tela de <b>Embarque</b>, ao abrir a carga, aparece um aviso amarelo quando a última impressão ficou desatualizada: <i>"A folha impressa ficou para trás — reimprima o romaneio antes de o motorista sair."</i></p>
+      <p>Também dá para ver o <b>Histórico da carga</b>: quem mexeu, quando e o quê, versão por versão.</p>
+    </div>
+  </div>
+
+  <div class="sec-label">Para o motorista</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📱</span>
+      <strong>Conferir a folha antes de sair (botão "Folha")</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ol>
+        <li>Abra <b>Minhas Entregas</b> no app</li>
+        <li>Toque no botão <b>Folha</b> (ícone de QR, no topo verde)</li>
+        <li>Aponte a câmera para o QR no cabeçalho da folha impressa</li>
+        <li>Pronto — o app responde na hora se a folha vale ou não</li>
+      </ol>
+      <p>Tem duas cargas hoje? Escaneie uma folha de cada vez com <b>"Escanear outra folha"</b>.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚦</span>
+      <strong>O que cada resposta significa</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><span class="cor verde">VERDE</span> <b>Folha confere</b> — é a versão atual, pode carregar e sair</li>
+        <li><span class="cor amarela">AMARELO</span> <b>Folha desatualizada</b> — a carga mudou depois da impressão; a tela mostra <b>o que mudou</b> (pedido que entrou, que saiu, data alterada). Peça a folha nova na expedição</li>
+        <li><span class="cor cinza">CINZA</span> <b>Folha de outro motorista</b> — você pegou a folha errada; confira o número da carga</li>
+      </ul>
+      <p><b>Regra de ouro:</b> deu amarelo, não sai com a folha velha — o que vale é o que está no app.</p>
+    </div>
+  </div>
+
+  <div class="sec-label">Perguntas rápidas</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">❓</span>
+      <strong>E se a câmera não abrir?</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Libere o acesso à câmera para o app nas configurações do celular e toque em <b>Tentar novamente</b>. O QR só funciona pelo leitor de dentro do app — escanear com a câmera comum do celular não abre nada (de propósito, por segurança).</p>
+    </div>
+  </div>
+
+  <p class="rodape">Hardt Salgados &amp; Congelados — atualização de 21/07/2026</p>
+</div>
+
+<script>
+  function alternar(botao) {
+    var acc = botao.parentElement;
+    var aberto = acc.classList.toggle('aberto');
+    botao.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
