@@ -3955,6 +3955,11 @@ router.get('/diag-pedido-site-condicao', async (req, res) => {
             ? await prisma.tabelaPreco.findUnique({ where: { id: cp.tabelaPrecoId } }).catch(() => null)
             : null;
 
+        // Tabela cujo nome bate com a condição gravada no pedido (para ver o acréscimo aplicado)
+        const condDoPedido = pedido.nomeCondicaoPagamento
+            ? await prisma.tabelaPreco.findFirst({ where: { nomeCondicao: pedido.nomeCondicaoPagamento } }).catch(() => null)
+            : null;
+
         // De onde veio o preço: último preço pago pelo cliente em cada produto ANTES deste pedido
         const produtoIds = pedido.itens.map(i => i.produtoId);
         const anteriores = await prisma.pedidoItem.findMany({
@@ -3995,6 +4000,7 @@ router.get('/diag-pedido-site-condicao', async (req, res) => {
             pedido: {
                 numero: pedido.numero,
                 createdAt: pedido.createdAt,
+                updatedAt: pedido.updatedAt,
                 dataVenda: pedido.dataVenda,
                 canalOrigem: pedido.canalOrigem,
                 observacoes: pedido.observacoes,
@@ -4002,6 +4008,11 @@ router.get('/diag-pedido-site-condicao', async (req, res) => {
                 tipoPagamento: pedido.tipoPagamento,
                 opcaoCondicaoPagamento: pedido.opcaoCondicaoPagamento,
                 especial: pedido.especial,
+                condicaoDoPedidoTabela: condDoPedido ? { id: condDoPedido.id, acrescimo: Number(condDoPedido.acrescimoPreco), tipoPagamento: condDoPedido.tipoPagamento } : null,
+                acrescimoCondicaoSite: condSite ? Number(condSite.acrescimoPreco) : null,
+                flexTotal: Number(pedido.flexTotal),
+                usuarioLancamentoId: pedido.usuarioLancamentoId,
+                vendedorId: pedido.vendedorId,
                 total: pedido.itens.reduce((s, i) => s + Number(i.valor) * Number(i.quantidade), 0),
             },
             cliente: {
@@ -4018,6 +4029,12 @@ router.get('/diag-pedido-site-condicao', async (req, res) => {
                 condicaoNome: cp.condicaoNome,
                 condicaoNomeAtual: condSite?.nomeCondicao || null,
                 encaixe: cp.encaixe,
+                tipoConversao: cp.tipoConversao,
+                aprovadoPorId: cp.aprovadoPorId,
+                aprovadoPorNome: cp.aprovadoPorId
+                    ? (await prisma.vendedor.findUnique({ where: { id: cp.aprovadoPorId }, select: { nome: true } }).catch(() => null))?.nome || null
+                    : null,
+                aprovadoEm: cp.aprovadoEm,
                 total: Number(cp.total),
                 itens: cp.itens.map(i => ({ nome: i.nomeProduto, qtd: i.quantidade, precoUnitario: Number(i.precoUnitario) })),
             } : null,
@@ -4026,6 +4043,7 @@ router.get('/diag-pedido-site-condicao', async (req, res) => {
                 quantidade: Number(i.quantidade),
                 valorCobrado: Number(i.valor),
                 valorBase: Number(i.valorBase),
+                flexGerado: Number(i.flexGerado),
                 precoTabelaSite: precoSiteMap[i.produtoId] ?? null,
                 valorVendaProduto: i.produto ? Number(i.produto.valorVenda) : null,
                 ultimaCompraAnterior: ultimoAnterior[i.produtoId] || null,
