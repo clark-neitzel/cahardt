@@ -87,9 +87,9 @@ Escolha o que aconteceu na entrega:
 1. Antes de carregar o caminhão, toque no botão **Folha** (ícone de QR, no header verde da tela)
 2. A câmera abre dentro do próprio app — aponte para o **QR no cabeçalho do romaneio impresso**
 3. O app compara a versão da folha com a versão atual da carga no sistema:
-   - **Verde — "Folha confere!"**: a folha é a versão atual, pode carregar e sair
+   - **Verde — "Folha confere!"**: a folha é a versão atual (pode carregar/separar/conferir com ela)
    - **Amarelo — "Folha desatualizada!"**: alguém mexeu na carga depois da impressão; a tela mostra exatamente o que mudou (pedido que entrou/saiu, data/motorista alterado). Peça a folha nova na expedição — o que vale é o que está no app
-   - **Cinza — "Esta folha não é sua!"**: a folha escaneada é de outra carga/motorista (útil quando saem várias cargas juntas)
+   - O veredito verde/amarelo aparece para **qualquer pessoa** que escaneie (motorista, separação, conferência). Se a carga for de outro motorista, aparece um **aviso complementar** ("Esta carga é do motorista X") — útil para não sair com a folha trocada quando várias cargas saem juntas
 4. Se o motorista tem duas cargas no dia, escaneia uma folha de cada vez ("Escanear outra folha")
 5. Se a câmera não abrir, libere o acesso à câmera para o app nas configurações do celular
 
