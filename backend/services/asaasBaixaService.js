@@ -155,14 +155,35 @@ const asaasBaixaService = {
                     const jaPagaCA = ['RECEBIDO', 'QUITADO', 'ACQUITTED', 'PAID'].includes(caPar.status);
                     if (!jaPagaCA) {
                         if (!contaCaId) throw new Error('Conta financeira do Asaas não configurada (asaas_conta_financeira_ca_id).');
-                        const valorBaixaCa = Number(cobranca.valorRecebido ?? cobranca.valor);
-                        await contaAzulService.criarBaixa(caPar.id, {
-                            data_pagamento: new Date(dataPgto).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }),
-                            composicao_valor: { valor_bruto: valorBaixaCa, multa: 0, juros: 0, desconto: 0, taxa: 0 },
-                            conta_financeira: contaCaId,
-                            metodo_pagamento: cobranca.tipo === 'BOLETO' ? 'BOLETO_BANCARIO' : 'PIX_PAGAMENTO_INSTANTANEO',
-                            observacao: `${forma} ${cobranca.asaasPaymentId} — baixa automática (webhook Asaas)`
-                        });
+                        const valorPagoAsaas = Number(cobranca.valorRecebido ?? cobranca.valor);
+
+                        // O CA recusa baixa cujo valor_bruto exceda o saldo nominal da parcela
+                        // ("A soma do Valor nominal das Baixas não deve exceder o valor nominal
+                        // da Parcela") — acontece com boleto pago com juros/multa de atraso e
+                        // com diferença de centavo entre a parcela local e a do CA. Buscar o
+                        // saldo real e mandar o excedente como juros.
+                        let saldoCA = valorPagoAsaas;
+                        try {
+                            const detCA = await contaAzulService.buscarParcelaDetalhe(caPar.id);
+                            const nominalCA = Number(detCA?.valor_composicao?.valor_bruto);
+                            const pagoCA = Number(detCA?.valor_pago || 0);
+                            if (Number.isFinite(nominalCA) && nominalCA > 0) {
+                                saldoCA = Math.round((nominalCA - pagoCA) * 100) / 100;
+                            }
+                        } catch (_) { /* sem detalhe: segue com o valor cheio */ }
+
+                        if (saldoCA > 0) {
+                            const valorBruto = Math.round(Math.min(valorPagoAsaas, saldoCA) * 100) / 100;
+                            const juros = Math.round(Math.max(0, valorPagoAsaas - valorBruto) * 100) / 100;
+                            await contaAzulService.criarBaixa(caPar.id, {
+                                data_pagamento: new Date(dataPgto).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }),
+                                composicao_valor: { valor_bruto: valorBruto, multa: 0, juros, desconto: 0, taxa: 0 },
+                                conta_financeira: contaCaId,
+                                metodo_pagamento: cobranca.tipo === 'BOLETO' ? 'BOLETO_BANCARIO' : 'PIX_PAGAMENTO_INSTANTANEO',
+                                observacao: `${forma} ${cobranca.asaasPaymentId} — baixa automática (webhook Asaas)`
+                            });
+                        }
+                        // saldoCA <= 0: parcela já quitada no CA (baixa manual de lá) — nada a criar
                     }
                     await prisma.cobrancaAsaas.update({ where: { id: cobranca.id }, data: { baixaCaOk: true } });
                     resultado.baixaCa = true;
