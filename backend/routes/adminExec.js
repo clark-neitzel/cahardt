@@ -379,6 +379,63 @@ router.post('/danfe-limpar-cache', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/asaas-verificar-vencidos-ca — para cada boleto Asaas VENCIDO
+// e ainda PENDENTE, confere a parcela correspondente no Conta Azul. Se estiver
+// quitada lá e body { aplicar: true }, roda o sync da conta (aplica a baixa local
+// e cancela o boleto no Asaas na sequência). Sequencial — não martela o CA.
+router.post('/asaas-verificar-vencidos-ca', async (req, res) => {
+    try {
+        const aplicar = !!req.body?.aplicar;
+        const hoje = new Date();
+        const cobs = await prisma.cobrancaAsaas.findMany({
+            where: { tipo: 'BOLETO', status: 'PENDENTE', vencimento: { lt: hoje }, parcelaId: { not: null } },
+            include: {
+                parcela: { select: { id: true, numeroParcela: true, status: true, contaReceberId: true } },
+                pedido: { select: { numero: true, idVendaContaAzul: true, dataVenda: true } },
+                cliente: { select: { UUID: true, Nome: true } }
+            },
+            orderBy: { vencimento: 'asc' }
+        });
+        const PAGO_CA = ['RECEBIDO', 'RECEBIDO_PARCIAL', 'QUITADO', 'QUITADO_PARCIAL', 'ACQUITTED', 'PAID'];
+        const contasReceberSyncService = require('../services/contasReceberSyncService');
+        const resultados = [];
+        for (const cob of cobs) {
+            const item = {
+                pedido: cob.pedido?.numero || null,
+                cliente: cob.cliente?.Nome || null,
+                parcela: cob.parcela?.numeroParcela,
+                valor: Number(cob.valor),
+                vencimento: cob.vencimento?.toISOString?.().split('T')[0],
+                statusLocal: cob.parcela?.status
+            };
+            try {
+                if (!cob.pedido?.idVendaContaAzul) {
+                    item.statusCA = 'SEM_VENDA_CA';
+                } else {
+                    const dataVendaStr = new Date(cob.pedido.dataVenda).toISOString().split('T')[0];
+                    const parcelasCA = await contaAzulService.encontrarParcelasDeVenda(cob.cliente.UUID, cob.pedido.idVendaContaAzul, dataVendaStr);
+                    const caPar = (parcelasCA || []).find(p => (p.numero_parcela || 1) === (cob.parcela?.numeroParcela || 1)) || (parcelasCA || [])[0];
+                    item.statusCA = caPar?.status || 'NAO_ENCONTRADA';
+                    item.quitadaNoCA = PAGO_CA.includes(caPar?.status);
+                    if (item.quitadaNoCA && aplicar && cob.parcela?.contaReceberId) {
+                        const r = await contasReceberSyncService.sincronizarConta(cob.parcela.contaReceberId);
+                        item.baixasAplicadas = r.aplicadas;
+                        const depois = await prisma.cobrancaAsaas.findUnique({ where: { id: cob.id }, select: { status: true } });
+                        item.boletoAgora = depois?.status;
+                    }
+                }
+            } catch (e) {
+                item.erro = e.message;
+            }
+            resultados.push(item);
+        }
+        const quitadasCA = resultados.filter(r => r.quitadaNoCA).length;
+        res.json({ ok: true, aplicar, total: resultados.length, quitadasNoCA: quitadasCA, resultados });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // POST /api/admin-exec/asaas-cancelar-boletos-quitados — cancela no Asaas os boletos
 // PENDENTES cuja parcela já está PAGA/CANCELADA no app (cliente pagou por outro meio,
 // ex.: boleto antigo do CA). Body: { dryRun: true } só lista, sem cancelar.
