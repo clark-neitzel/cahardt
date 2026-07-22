@@ -410,6 +410,9 @@ const asaasBaixaService = {
         });
         const resultados = [];
         for (const c of pendentes) {
+            // Uma de cada vez, com pausa: cada baixa faz 2-3 chamadas ao CA e a API
+            // tem spike arrest (~10 req/s) — em sequência seca o lote toma 429.
+            if (resultados.length > 0) await new Promise(r => setTimeout(r, 3000));
             const r = await asaasBaixaService.registrarBaixa(c.id);
             resultados.push({ asaasPaymentId: c.asaasPaymentId, ...r });
         }
