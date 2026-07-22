@@ -114,6 +114,7 @@ async function sincronizarConta(contaId, opts = {}) {
     let vencimentosAtualizados = 0;
     const detalhes = [];
     const logsAtendimento = []; // criados DEPOIS da transação (log lento não pode derrubar a baixa)
+    const parcelasQuitadas = []; // ids quitados agora — p/ cancelar boleto Asaas pendente (fora da transação)
     const hoje = new Date();
 
     await prisma.$transaction(async (tx) => {
@@ -208,6 +209,7 @@ async function sincronizarConta(contaId, opts = {}) {
                         observacao: obsSync
                     }
                 });
+                parcelasQuitadas.push(local.id);
             }
 
             // Ledger local espelhando as baixas do CA (uma linha por baixa, cada uma com o
@@ -270,6 +272,17 @@ async function sincronizarConta(contaId, opts = {}) {
     for (const log of logsAtendimento) {
         try { await prisma.atendimento.create({ data: log }); }
         catch (logErr) { console.error('[Sync CA Baixas] Falha no log de histórico (baixa já efetivada):', logErr.message); }
+    }
+
+    // Parcela quitada pelo CA → cancela boleto/PIX Asaas pendente dela (senão o
+    // cliente ainda pode pagar o boleto antigo = pagamento em dobro). Fora da
+    // transação (chamada de rede) e melhor esforço — falha nunca desfaz a baixa.
+    if (parcelasQuitadas.length) {
+        const asaasService = require('./asaasService');
+        for (const pid of parcelasQuitadas) {
+            try { await asaasService.cancelarCobrancasDaParcela(pid, 'baixa veio do Conta Azul'); }
+            catch (e) { console.error('[Sync CA Baixas] Falha ao cancelar cobrança Asaas (baixa já efetivada):', e.message); }
+        }
     }
 
     return { aplicadas, vencimentosAtualizados, verificadas: parcelasCA.length, pagasCA: pagasCA.length, detalhes, debug };

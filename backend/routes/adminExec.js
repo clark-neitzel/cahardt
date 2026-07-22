@@ -379,6 +379,49 @@ router.post('/danfe-limpar-cache', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/asaas-cancelar-boletos-quitados — cancela no Asaas os boletos
+// PENDENTES cuja parcela já está PAGA/CANCELADA no app (cliente pagou por outro meio,
+// ex.: boleto antigo do CA). Body: { dryRun: true } só lista, sem cancelar.
+router.post('/asaas-cancelar-boletos-quitados', async (req, res) => {
+    try {
+        const dryRun = !!req.body?.dryRun;
+        const orfas = await prisma.cobrancaAsaas.findMany({
+            where: {
+                status: 'PENDENTE',
+                parcelaId: { not: null },
+                parcela: { status: { in: ['PAGO', 'CANCELADO'] } }
+            },
+            include: {
+                parcela: { select: { status: true, numeroParcela: true, valorPago: true } },
+                pedido: { select: { numero: true } },
+                cliente: { select: { Nome: true } }
+            }
+        });
+        const asaasService = require('../services/asaasService');
+        const resultados = [];
+        for (const cob of orfas) {
+            const item = {
+                pedido: cob.pedido?.numero || null,
+                cliente: cob.cliente?.Nome || null,
+                tipo: cob.tipo,
+                valor: Number(cob.valor),
+                parcela: cob.parcela?.numeroParcela,
+                statusParcela: cob.parcela?.status,
+                paymentId: cob.asaasPaymentId
+            };
+            if (!dryRun) {
+                const r = await asaasService.cancelarCobrancasDaParcela(cob.parcelaId, 'faxina: parcela já quitada no app/CA');
+                item.cancelada = r.canceladas > 0;
+                if (r.erros?.length) item.erro = r.erros.map(x => x.erro).join('; ');
+            }
+            resultados.push(item);
+        }
+        res.json({ ok: true, dryRun, total: resultados.length, resultados });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-parcela-venda?numero=2034 — parcela CA de uma VENDA (contas a receber):
 // mostra todos os campos do detalhe (nome do campo da conta financeira, versao, vencimento)
 // + dados locais do pedido/parcelas para comparar vencimentos.

@@ -318,6 +318,36 @@ const asaasService = {
     },
 
     // ── Cancelar cobrança pendente (motorista desistiu / valor errado) ──
+    // Cancela no Asaas as cobranças PENDENTES de uma parcela quitada POR FORA
+    // (baixa manual no app ou baixa vinda do CA). Sem isso o boleto antigo continua
+    // vivo e o cliente pode pagar em dobro. Melhor esforço: se o Asaas recusar
+    // (ex.: acabou de ser pago lá), NÃO marca cancelado local — o webhook resolve.
+    cancelarCobrancasDaParcela: async (parcelaId, motivo = 'parcela quitada fora do Asaas') => {
+        if (!configurado() || !parcelaId) return { canceladas: 0, erros: [] };
+        const abertas = await prisma.cobrancaAsaas.findMany({
+            where: { parcelaId, status: 'PENDENTE', ambiente: AMBIENTE }
+        });
+        let canceladas = 0;
+        const erros = [];
+        for (const cob of abertas) {
+            try {
+                try {
+                    await http.delete(`/payments/${cob.asaasPaymentId}`);
+                } catch (e) {
+                    if (e.response?.status !== 404) throw e; // 404 = já não existe lá, cancela local
+                }
+                await prisma.cobrancaAsaas.update({ where: { id: cob.id }, data: { status: 'CANCELADO' } });
+                canceladas++;
+                console.log(`[Asaas] Cobrança ${cob.asaasPaymentId} (${cob.tipo}) cancelada — ${motivo}.`);
+            } catch (e) {
+                const desc = e.response?.data?.errors?.map(x => x.description).join('; ') || e.message;
+                erros.push({ paymentId: cob.asaasPaymentId, erro: desc });
+                console.error(`[Asaas] Não cancelou ${cob.asaasPaymentId} (${motivo}):`, desc);
+            }
+        }
+        return { canceladas, erros };
+    },
+
     cancelarCobranca: async (cobrancaId) => {
         exigirConfig();
         const cobranca = await prisma.cobrancaAsaas.findUnique({ where: { id: cobrancaId } });

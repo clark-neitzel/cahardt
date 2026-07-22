@@ -702,6 +702,15 @@ router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => 
             console.error('Falha ao registrar histórico da baixa (baixa já efetivada):', logErr);
         }
 
+        // Parcela quitada na mão → cancela boleto/PIX Asaas pendente dela (senão o
+        // cliente ainda pode pagar o boleto antigo = pagamento em dobro). Melhor
+        // esforço, fora da resposta: falha aqui nunca desfaz a baixa.
+        if (novoStatusParcela === 'PAGO') {
+            const asaasService = require('../services/asaasService');
+            asaasService.cancelarCobrancasDaParcela(parcelaId, 'baixa manual no app')
+                .catch(e => console.error('[Baixa] Falha ao cancelar cobrança Asaas (baixa já efetivada):', e.message));
+        }
+
         res.json({
             message: novoStatusParcela === 'PAGO' ? 'Parcela quitada com sucesso!' : 'Baixa parcial registrada com sucesso!',
             novoStatusParcela,
