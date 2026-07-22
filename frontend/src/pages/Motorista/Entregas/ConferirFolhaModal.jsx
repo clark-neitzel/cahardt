@@ -171,25 +171,11 @@ const ConferirFolhaModal = ({ onClose }) => {
                 </div>
             )}
 
-            {/* Resultado */}
+            {/* Resultado — o veredito da versão aparece SEMPRE (quem separa/confere também escaneia);
+                a dona da carga é informação complementar logo abaixo */}
             {fase === 'resultado' && resultado && (
                 <div className="flex-1 bg-secondary overflow-y-auto">
-                    {!resultado.minha ? (
-                        <>
-                            <div className="bg-gray-700 text-white p-6 text-center">
-                                <Truck className="h-10 w-10 mx-auto mb-2 opacity-80" />
-                                <h3 className="text-lg font-bold">Esta folha não é sua!</h3>
-                                <p className="text-sm opacity-85 mt-1">
-                                    A Carga #{resultado.numero} é do motorista {resultado.motorista || '—'}.
-                                </p>
-                            </div>
-                            <div className="p-4">
-                                <div className="bg-white rounded-xl border border-gray-200 p-4 text-sm text-gray-600">
-                                    Confira se você pegou a folha certa — a sua carga tem outro número no cabeçalho.
-                                </div>
-                            </div>
-                        </>
-                    ) : resultado.atualizada ? (
+                    {resultado.atualizada ? (
                         <>
                             <div className="bg-primary text-white p-6 text-center">
                                 <CheckCircle className="h-12 w-12 mx-auto mb-2" />
@@ -202,10 +188,19 @@ const ConferirFolhaModal = ({ onClose }) => {
                                 <div className="bg-white rounded-xl border border-gray-200 p-4 text-sm">
                                     <div className="flex justify-between py-1"><span className="text-gray-500">Folha escaneada</span><span className="font-bold">v{resultado.versaoFolha}</span></div>
                                     <div className="flex justify-between py-1"><span className="text-gray-500">No sistema</span><span className="font-bold">v{resultado.versaoAtual} (igual) ✅</span></div>
+                                    <div className="flex justify-between py-1"><span className="text-gray-500">Motorista</span><span className="font-bold">{resultado.motorista || '—'}</span></div>
                                     <div className="flex justify-between py-1"><span className="text-gray-500">Pedidos / Amostras</span><span className="font-bold">{resultado.totais?.pedidos ?? '—'} / {resultado.totais?.amostras ?? 0}</span></div>
                                 </div>
+                                {!resultado.minha && (
+                                    <div className="bg-gray-700 text-white rounded-xl p-4 text-sm flex items-start gap-2.5">
+                                        <Truck className="h-5 w-5 flex-shrink-0 mt-0.5 opacity-80" />
+                                        <span>Esta carga é do motorista <b>{resultado.motorista || '—'}</b>. Se você é o motorista, confira se pegou a folha certa — a sua carga tem outro número.</span>
+                                    </div>
+                                )}
                                 <div className="bg-mint rounded-xl p-4 text-sm font-semibold text-primaryDark">
-                                    Pode carregar e sair — a folha na sua mão é a mesma coisa que o app mostra.
+                                    {resultado.minha
+                                        ? 'Pode carregar e sair — a folha na sua mão é a mesma coisa que o app mostra.'
+                                        : 'Folha válida para separar e conferir — é a versão atual da carga.'}
                                 </div>
                             </div>
                         </>
@@ -237,8 +232,16 @@ const ConferirFolhaModal = ({ onClose }) => {
                                         </div>
                                     </div>
                                 )}
+                                {!resultado.minha && (
+                                    <div className="bg-gray-700 text-white rounded-xl p-4 text-sm flex items-start gap-2.5">
+                                        <Truck className="h-5 w-5 flex-shrink-0 mt-0.5 opacity-80" />
+                                        <span>Esta carga é do motorista <b>{resultado.motorista || '—'}</b>.</span>
+                                    </div>
+                                )}
                                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm font-semibold text-amber-800">
-                                    Peça a folha nova na expedição antes de sair. O que vale é o que está no app.
+                                    {resultado.minha
+                                        ? 'Peça a folha nova na expedição antes de sair. O que vale é o que está no app.'
+                                        : 'Não use esta folha para separar ou conferir — reimprima o romaneio no sistema.'}
                                 </div>
                             </div>
                         </>
