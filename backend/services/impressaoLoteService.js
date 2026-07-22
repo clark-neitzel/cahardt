@@ -109,7 +109,9 @@ async function boletosAsaasPorPedido(pedidoIds, apenasNaoPagos = false) {
         where: {
             pedidoId: { in: pedidoIds },
             tipo: 'BOLETO',
-            status: apenasNaoPagos ? 'PENDENTE' : { in: ['PENDENTE', 'RECEBIDO'] }
+            // EXPIRADO = boleto VENCIDO, que continua ativo e pagável no Asaas —
+            // não é "sem boleto" (senão a impressão em lote emitiria uma 2ª via duplicada)
+            status: apenasNaoPagos ? { in: ['PENDENTE', 'EXPIRADO'] } : { in: ['PENDENTE', 'EXPIRADO', 'RECEBIDO'] }
         },
         include: { parcela: { select: { numeroParcela: true, dataVencimento: true } } },
         orderBy: { createdAt: 'asc' }
@@ -186,7 +188,7 @@ async function boletosCaDoPedido(pedido, { forcar = false } = {}) {
 //         NAO_SE_APLICA (especial/bonificação/à vista)
 function classificar(p, asaasDoPedido, caDoPedido, caErro, doCache = false) {
     const aPrazo = A_PRAZO(p);
-    const asaasNaoPagos = asaasDoPedido.filter(c => c.status === 'PENDENTE');
+    const asaasNaoPagos = asaasDoPedido.filter(c => ['PENDENTE', 'EXPIRADO'].includes(c.status));
     const caNaoPagos = caDoPedido.filter(b => !b.pago);
     const temAlgum = asaasDoPedido.length > 0 || caDoPedido.length > 0;
 

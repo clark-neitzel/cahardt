@@ -28,7 +28,9 @@ const BoletosAsaasModal = ({ conta, onClose, onAtualizado }) => {
     useEffect(() => { carregar(); }, [conta.id, conta.pedidoId]);
 
     const emAberto = (dados?.parcelas || []).filter(p => ['PENDENTE', 'VENCIDO', 'PARCIAL'].includes(p.status));
-    const semBoleto = emAberto.filter(p => !p.boleto || !['PENDENTE', 'RECEBIDO'].includes(p.boleto.status));
+    // EXPIRADO = boleto vencido, que CONTINUA pagável no Asaas — não é "sem boleto"
+    // (emitir outro criaria duas cobranças vivas e o cliente poderia pagar em dobro)
+    const semBoleto = emAberto.filter(p => !p.boleto || !['PENDENTE', 'RECEBIDO', 'EXPIRADO'].includes(p.boleto.status));
 
     const handleEmitir = async (parcelaIds) => {
         setAgindo('emitir');
@@ -97,7 +99,10 @@ const BoletosAsaasModal = ({ conta, onClose, onAtualizado }) => {
         if (b?.status === 'ESTORNADO') {
             return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">Devolvido (estornado)</span>;
         }
-        if (!b || b.status === 'CANCELADO' || b.status === 'EXPIRADO') {
+        if (b?.status === 'EXPIRADO') {
+            return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">Boleto vencido</span>;
+        }
+        if (!b || b.status === 'CANCELADO') {
             return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Sem boleto</span>;
         }
         if (b.status === 'RECEBIDO') {
@@ -185,6 +190,15 @@ const BoletosAsaasModal = ({ conta, onClose, onAtualizado }) => {
                                             </span>
                                         </div>
                                     )}
+                                    {p.boleto?.status === 'EXPIRADO' && (
+                                        <div className="flex items-center gap-2 text-xs text-red-800 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mt-2">
+                                            <AlertCircle className="h-4 w-4 shrink-0" />
+                                            <span>
+                                                Este boleto venceu, mas <b>continua pagável</b> no banco do cliente (com juros/multa, se configurados).
+                                                Para gerar um boleto com vencimento novo, cancele este primeiro — senão o cliente pode pagar em dobro.
+                                            </span>
+                                        </div>
+                                    )}
                                     {p.boleto?.baixaErro && (
                                         <div className="flex items-center gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-2">
                                             <AlertCircle className="h-4 w-4 shrink-0" />
@@ -194,7 +208,7 @@ const BoletosAsaasModal = ({ conta, onClose, onAtualizado }) => {
 
                                     {/* Ações */}
                                     <div className="flex items-center gap-2 mt-3 flex-wrap">
-                                        {['PENDENTE', 'VENCIDO', 'PARCIAL'].includes(p.status) && (!p.boleto || !['PENDENTE', 'RECEBIDO'].includes(p.boleto.status)) && (
+                                        {['PENDENTE', 'VENCIDO', 'PARCIAL'].includes(p.status) && (!p.boleto || !['PENDENTE', 'RECEBIDO', 'EXPIRADO'].includes(p.boleto.status)) && (
                                             <button
                                                 onClick={() => handleEmitir([p.id])}
                                                 disabled={agindo === 'emitir'}
@@ -203,7 +217,7 @@ const BoletosAsaasModal = ({ conta, onClose, onAtualizado }) => {
                                                 Emitir boleto
                                             </button>
                                         )}
-                                        {p.boleto?.status === 'PENDENTE' && (
+                                        {['PENDENTE', 'EXPIRADO'].includes(p.boleto?.status) && (
                                             <>
                                                 {p.boleto.boletoUrl && (
                                                     <a

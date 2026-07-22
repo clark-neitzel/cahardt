@@ -236,7 +236,9 @@ const listarBoletosConta = async (req, res) => {
         const parcelas = [];
         for (const p of conta.parcelas) {
             const doBoleto = cobrancas.filter(c => c.parcelaId === p.id);
-            let ativo = doBoleto.find(c => ['PENDENTE', 'RECEBIDO'].includes(c.status)) || doBoleto[0] || null;
+            let ativo = doBoleto.find(c => ['PENDENTE', 'RECEBIDO'].includes(c.status))
+                || doBoleto.find(c => c.status === 'EXPIRADO') // vencido: continua pagável no Asaas
+                || doBoleto[0] || null;
             // Parcela mudou de vencimento depois da emissão? Realinha o boleto no Asaas
             // (melhor esforço — sem mudança é um no-op barato)
             if (ativo?.status === 'PENDENTE') {

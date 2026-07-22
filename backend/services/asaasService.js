@@ -318,14 +318,15 @@ const asaasService = {
     },
 
     // ── Cancelar cobrança pendente (motorista desistiu / valor errado) ──
-    // Cancela no Asaas as cobranças PENDENTES de uma parcela quitada POR FORA
-    // (baixa manual no app ou baixa vinda do CA). Sem isso o boleto antigo continua
-    // vivo e o cliente pode pagar em dobro. Melhor esforço: se o Asaas recusar
-    // (ex.: acabou de ser pago lá), NÃO marca cancelado local — o webhook resolve.
+    // Cancela no Asaas as cobranças ABERTAS (pendentes ou vencidas) de uma parcela
+    // quitada POR FORA (baixa manual no app ou baixa vinda do CA). Boleto vencido
+    // (EXPIRADO) continua pagável no Asaas — sem cancelar, o cliente pode pagar em
+    // dobro. Melhor esforço: se o Asaas recusar (ex.: acabou de ser pago lá), NÃO
+    // marca cancelado local — o webhook resolve.
     cancelarCobrancasDaParcela: async (parcelaId, motivo = 'parcela quitada fora do Asaas') => {
         if (!configurado() || !parcelaId) return { canceladas: 0, erros: [] };
         const abertas = await prisma.cobrancaAsaas.findMany({
-            where: { parcelaId, status: 'PENDENTE', ambiente: AMBIENTE }
+            where: { parcelaId, status: { in: ['PENDENTE', 'EXPIRADO'] }, ambiente: AMBIENTE }
         });
         let canceladas = 0;
         const erros = [];
@@ -357,7 +358,8 @@ const asaasService = {
             err.statusCode = 400;
             throw err;
         }
-        if (cobranca.status !== 'PENDENTE') return cobranca;
+        // EXPIRADO (boleto vencido) ainda está vivo no Asaas — também cancela lá
+        if (!['PENDENTE', 'EXPIRADO'].includes(cobranca.status)) return cobranca;
 
         try {
             await http.delete(`/payments/${cobranca.asaasPaymentId}`);
@@ -461,12 +463,20 @@ const asaasService = {
             throw err;
         }
 
+        // EXPIRADO entra na checagem: boleto VENCIDO continua ativo e pagável no Asaas
+        // (aparece no banco do cliente via DDA) — emitir outro criaria DUAS cobranças
+        // vivas da mesma parcela e o cliente poderia pagar em dobro.
         const existente = await prisma.cobrancaAsaas.findFirst({
-            where: { parcelaId, tipo: 'BOLETO', status: 'PENDENTE', ambiente: AMBIENTE },
+            where: { parcelaId, tipo: 'BOLETO', status: { in: ['PENDENTE', 'EXPIRADO'] }, ambiente: AMBIENTE },
             orderBy: { createdAt: 'desc' }
         });
-        // Já tem boleto pendente → reaproveita, realinhando o vencimento se a parcela mudou
-        if (existente) return asaasService.sincronizarVencimentoBoleto(existente.id);
+        // Já tem boleto vivo → reaproveita. Pendente: realinha o vencimento se a parcela
+        // mudou. Vencido: devolve como está (mexer no vencimento zeraria juros/multa;
+        // para gerar novo vencimento, cancele o boleto e emita outro).
+        if (existente) {
+            if (existente.status === 'PENDENTE') return asaasService.sincronizarVencimentoBoleto(existente.id);
+            return existente;
+        }
 
         const saldo = Math.round((Number(parcela.valor) - Number(parcela.valorPago || 0) - Number(parcela.valorDescontoTotal || 0)) * 100) / 100;
         if (saldo <= 0) {

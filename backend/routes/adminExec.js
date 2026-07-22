@@ -444,7 +444,7 @@ router.post('/asaas-cancelar-boletos-quitados', async (req, res) => {
         const dryRun = !!req.body?.dryRun;
         const orfas = await prisma.cobrancaAsaas.findMany({
             where: {
-                status: 'PENDENTE',
+                status: { in: ['PENDENTE', 'EXPIRADO'] }, // EXPIRADO = boleto vencido, ainda pagável no Asaas
                 parcelaId: { not: null },
                 parcela: { status: { in: ['PAGO', 'CANCELADO'] } }
             },
@@ -662,6 +662,106 @@ router.get('/asaas-cobrancas', async (req, res) => {
         res.json({ cobrancas, conta, eventos });
     } catch (e) {
         res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/admin-exec/diag-asaas-cliente?nome=CLARA — compara as cobranças de um
+// cliente no ASAAS com as registradas no app. Aponta órfãs (existem só no Asaas —
+// ex.: 2ª via emitida em duplicidade) e o estado das parcelas locais.
+router.get('/diag-asaas-cliente', async (req, res) => {
+    try {
+        const nome = (req.query.nome || '').trim();
+        if (!nome) return res.status(400).json({ error: 'Informe ?nome=' });
+        const asaasService = require('../services/asaasService');
+        const axios = require('axios');
+        let key = process.env.ASAAS_API_KEY || '';
+        if (key.startsWith('aact_')) key = '$' + key;
+        const asaasHttp = axios.create({
+            baseURL: key.includes('hmlg') ? 'https://api-sandbox.asaas.com/v3' : 'https://api.asaas.com/v3',
+            timeout: 20000,
+            headers: { access_token: key, 'User-Agent': 'CA-Hardt-App' }
+        });
+
+        const clientes = await prisma.cliente.findMany({
+            where: { OR: [{ Nome: { contains: nome, mode: 'insensitive' } }, { NomeFantasia: { contains: nome, mode: 'insensitive' } }] },
+            select: { UUID: true, Nome: true },
+            take: 3
+        });
+        const saida = [];
+        for (const cli of clientes) {
+            const item = { cliente: cli.Nome, clienteUuid: cli.UUID };
+            const locais = await prisma.cobrancaAsaas.findMany({
+                where: { clienteId: cli.UUID },
+                orderBy: { createdAt: 'desc' },
+                take: 30,
+                include: {
+                    pedido: { select: { numero: true } },
+                    parcela: { select: { numeroParcela: true, status: true, valor: true, valorPago: true, dataVencimento: true } }
+                }
+            });
+            item.cobrancasApp = locais.map(c => ({
+                paymentId: c.asaasPaymentId, tipo: c.tipo, status: c.status,
+                valor: Number(c.valor), vencimento: c.vencimento?.toISOString?.().split('T')[0] || null,
+                criadaEm: c.createdAt, pedido: c.pedido?.numero || null,
+                parcelaId: c.parcelaId,
+                parcela: c.parcela ? { n: c.parcela.numeroParcela, status: c.parcela.status, valor: Number(c.parcela.valor), pago: Number(c.parcela.valorPago || 0), venc: c.parcela.dataVencimento?.toISOString?.().split('T')[0] } : null
+            }));
+            const vinculo = await prisma.clienteAsaas.findUnique({ where: { clienteUuid: cli.UUID } });
+            item.asaasCustomerId = vinculo?.asaasCustomerId || null;
+            if (vinculo?.asaasCustomerId && key) {
+                try {
+                    const r = await asaasHttp.get('/payments', { params: { customer: vinculo.asaasCustomerId, limit: 50 } });
+                    const idsLocais = new Set(locais.map(c => c.asaasPaymentId));
+                    item.cobrancasAsaas = (r.data?.data || []).map(p => ({
+                        paymentId: p.id, status: p.status, tipo: p.billingType,
+                        valor: p.value, vencimento: p.dueDate, criadaEm: p.dateCreated,
+                        descricao: (p.description || '').slice(0, 60),
+                        deletado: !!p.deleted,
+                        externalReference: p.externalReference || null,
+                        noApp: idsLocais.has(p.id) // false = ÓRFÃ (só no Asaas)
+                    }));
+                    item.orfas = item.cobrancasAsaas.filter(p => !p.noApp && !p.deleted).length;
+                } catch (e) {
+                    item.erroAsaas = e.response?.data?.errors?.[0]?.description || e.message;
+                }
+            }
+            saida.push(item);
+        }
+        res.json({ ambiente: asaasService.AMBIENTE, clientes: saida });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/admin-exec/asaas-cancelar-payment?paymentId=pay_xxx — cancela UMA cobrança
+// direto no Asaas (mesmo órfã, sem registro local). Recusa se já paga. ?confirmar=1 aplica.
+router.post('/asaas-cancelar-payment', async (req, res) => {
+    try {
+        const paymentId = (req.query.paymentId || '').trim();
+        if (!paymentId.startsWith('pay_')) return res.status(400).json({ error: 'Informe ?paymentId=pay_...' });
+        const axios = require('axios');
+        let key = process.env.ASAAS_API_KEY || '';
+        if (key.startsWith('aact_')) key = '$' + key;
+        if (!key) return res.status(503).json({ error: 'ASAAS_API_KEY não configurada.' });
+        const asaasHttp = axios.create({
+            baseURL: key.includes('hmlg') ? 'https://api-sandbox.asaas.com/v3' : 'https://api.asaas.com/v3',
+            timeout: 20000,
+            headers: { access_token: key, 'User-Agent': 'CA-Hardt-App' }
+        });
+        const { data: p } = await asaasHttp.get(`/payments/${paymentId}`);
+        const resumo = { paymentId: p.id, status: p.status, valor: p.value, vencimento: p.dueDate, descricao: p.description, deletado: !!p.deleted };
+        if (['RECEIVED', 'CONFIRMED', 'RECEIVED_IN_CASH'].includes(p.status)) {
+            return res.status(400).json({ error: 'Cobrança já foi PAGA — não cancelo.', cobranca: resumo });
+        }
+        if (p.deleted) return res.json({ ok: true, jaEstavaCancelada: true, cobranca: resumo });
+        if (req.query.confirmar !== '1') {
+            return res.json({ ok: true, dryRun: true, aviso: 'Adicione ?confirmar=1 para cancelar de verdade.', cobranca: resumo });
+        }
+        await asaasHttp.delete(`/payments/${paymentId}`);
+        await prisma.cobrancaAsaas.updateMany({ where: { asaasPaymentId: paymentId }, data: { status: 'CANCELADO' } });
+        res.json({ ok: true, cancelada: true, cobranca: resumo });
+    } catch (e) {
+        res.status(e.response?.status === 404 ? 404 : 500).json({ error: e.response?.data?.errors?.[0]?.description || e.message });
     }
 });
 
