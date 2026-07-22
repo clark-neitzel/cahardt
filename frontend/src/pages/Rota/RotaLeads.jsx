@@ -5,7 +5,7 @@ import {
     Clock, Calendar, Tag, CheckCircle, ClipboardList, Star,
     Package, X, Navigation, Loader, Search, Truck, Edit3,
     DollarSign, Trash2, Save, ChevronDown, ChevronUp, Route, Bell,
-    ArrowLeftRight, Check, Sparkles, AlertCircle
+    ArrowLeftRight, Check, Sparkles, AlertCircle, QrCode
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import leadService from '../../services/leadService';
@@ -20,6 +20,7 @@ import ModalAtendimento from './ModalAtendimento';
 import ModalAmostra from '../Pedidos/ModalAmostra';
 import ModalNovoLead from './ModalNovoLead';
 import CheckoutEntregaModal from '../Motorista/Entregas/CheckoutEntregaModal';
+import ConferirFolhaModal from '../Motorista/Entregas/ConferirFolhaModal';
 import ClientePopup from './ClientePopup';
 import roteirizacaoService from '../../services/roteirizacaoService';
 import api from '../../services/api';
@@ -1496,6 +1497,7 @@ const RotaLeads = () => {
     const [entregasPendentes, setEntregasPendentes] = useState([]);
     const [entregasConcluidas, setEntregasConcluidas] = useState([]);
     const [loadingEntregas, setLoadingEntregas] = useState(false);
+    const [conferirFolhaAberto, setConferirFolhaAberto] = useState(false);
     const [checkoutPedido, setCheckoutPedido] = useState(null);
 
     // Alertas visuais
@@ -2365,13 +2367,21 @@ const RotaLeads = () => {
                                 {/* Botão Organizar Rota + Modal de Configuração */}
                                 <div className="mb-3">
                                     {!showOrganizarRota ? (
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 flex-wrap">
                                             <button
                                                 onClick={() => setShowOrganizarRota(true)}
                                                 className="flex items-center gap-1.5 px-3 py-2 bg-sky-600 hover:bg-sky-700 text-white text-[12px] font-bold rounded-lg shadow-sm transition-colors"
                                             >
                                                 <Route className="h-4 w-4" />
                                                 Organizar Rota
+                                            </button>
+                                            <button
+                                                onClick={() => setConferirFolhaAberto(true)}
+                                                className="flex items-center gap-1.5 px-3 py-2 bg-primary hover:bg-primaryDark text-white text-[12px] font-bold rounded-lg shadow-sm transition-colors"
+                                                title="Escanear o QR da folha impressa e conferir se ela é a versão atual da carga"
+                                            >
+                                                <QrCode className="h-4 w-4" />
+                                                Conferir Folha
                                             </button>
                                             {rotaOrganizada ? (
                                                 <div className="flex items-center gap-2">
@@ -2599,6 +2609,11 @@ const RotaLeads = () => {
                     onSalvo={handleNovoLeadSalvo}
                     user={user}
                 />
+            )}
+
+            {/* Conferência da folha impressa da carga (QR) */}
+            {conferirFolhaAberto && (
+                <ConferirFolhaModal onClose={() => setConferirFolhaAberto(false)} />
             )}
 
             {/* Modal Checkout Entrega (Motorista) */}

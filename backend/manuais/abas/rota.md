@@ -111,6 +111,8 @@ Lista de pedidos faturados em embarques que ainda precisam ser entregues fisicam
 
 Para organizar a sequência de entrega, há o botão **Organizar Rota** (roteirizador por GPS).
 
+Ao lado dele fica o botão verde **Conferir Folha** (ícone de QR): abre a câmera dentro do app para escanear o QR no cabeçalho do romaneio impresso e conferir se aquela folha ainda é a versão atual da carga — verde = confere; amarelo = a carga mudou depois da impressão (a tela mostra o que mudou; pedir folha nova na expedição); cinza = a folha é de outro motorista. Se o motorista tem duas cargas, escaneia uma folha de cada vez.
+
 ### Entregues (concluídas pelo motorista)
 Visível apenas para usuários com `Pode_Executar_Entregas` ou `admin`.
 
