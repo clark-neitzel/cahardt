@@ -87,6 +87,7 @@ Gestão financeira de todas as contas a receber geradas pelos pedidos. Cada pedi
 5. O cliente precisa ter **CPF/CNPJ no cadastro** (exigência do boleto registrado); sem isso a emissão avisa o erro
 6. A nota fiscal continua sendo emitida no Conta Azul, como sempre — o Asaas cuida só da cobrança
 7. **Se o vencimento da parcela mudar depois do boleto emitido** (ex.: adiado no Conta Azul), o sistema **atualiza o boleto no Asaas sozinho** — ao abrir o modal de boletos ou ao imprimir — e o PDF e a linha digitável passam a valer a data nova. Se esse ajuste automático falhar, o modal mostra um aviso amarelo ("boleto com vencimento diferente da parcela"); nesse caso, cancele o boleto e emita de novo antes de enviar ao cliente
+8. **Boleto que passou do vencimento** aparece com o badge vermelho **"Boleto vencido"** — ele **continua pagável** no banco do cliente (com juros/multa, se configurados), então o sistema **não emite outro sozinho** (evita duas cobranças vivas e pagamento em dobro). As ações (PDF, linha digitável, WhatsApp, cancelar) continuam disponíveis. Para gerar um boleto com vencimento novo, **cancele o vencido primeiro** e depois emita outro
 
 ### Sincronizar com o Conta Azul
 - Clique no ícone de atualização (reload) em uma conta específica para atualizar só aquela
