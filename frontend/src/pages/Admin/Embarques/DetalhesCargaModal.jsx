@@ -291,7 +291,10 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                 .print-scroll-area { padding: 0 !important; margin: 0 !important; display: block !important; }
                                 * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                                 .print-container { transform: scale(1) !important; margin: 0 !important; gap: 0 !important; display: block !important; }
-                                .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; height: auto !important; padding: 0 10mm !important; page-break-after: always; break-after: always; }
+                                /* min-height: 0 é essencial: o minHeight de 297mm (tela) somado à área útil menor
+                                   da folha (margens da @page) estoura a página e gera FOLHA EM BRANCO no meio.
+                                   A quebra entre folhas já é garantida pelo page-break-after. */
+                                .print-page { box-shadow: none !important; border: none !important; margin: 0 !important; width: 100% !important; height: auto !important; min-height: 0 !important; padding: 0 10mm !important; page-break-after: always; break-after: always; }
                                 .print-page.page-sep, .print-page.page-conf { padding: 6mm 12mm !important; }
                                 .print-page:last-child { page-break-after: auto !important; break-after: auto !important; }
                             }
