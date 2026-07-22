@@ -399,6 +399,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                             <span><strong>Motorista:</strong> {embarque?.responsavel?.nome}</span>
                                             <span><strong>Saída:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString('pt-BR') : '—'}</span>
                                             <span><strong>Amostras:</strong> {amostrasEmbarque.length}</span>
+                                            <span><strong>Versão:</strong> v{embarque?.versao || 1}</span>
                                         </div>
                                         <table>
                                             <thead>
@@ -448,6 +449,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                         <div className="pi">
                                             <span><strong>Motorista:</strong> {embarque?.responsavel?.nome}</span>
                                             <span><strong>Saída:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString('pt-BR') : '—'}</span>
+                                            <span><strong>Versão:</strong> v{embarque?.versao || 1}</span>
                                         </div>
                                         <table>
                                             <thead>
@@ -501,6 +503,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                         <div className="pi">
                                             <span><strong>Motorista:</strong> {embarque?.responsavel?.nome}</span>
                                             <span><strong>Saída:</strong> {embarque?.dataSaida ? new Date(embarque.dataSaida).toLocaleDateString('pt-BR') : '—'}</span>
+                                            <span><strong>Versão:</strong> v{embarque?.versao || 1}</span>
                                         </div>
                                         <table>
                                             <thead>
