@@ -436,6 +436,88 @@ router.post('/asaas-verificar-vencidos-ca', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/asaas-quitar-residuo-ca — acha parcelas no CA que ficaram com
+// resíduo de CENTAVOS "Em Aberto" após a baixa automática do Asaas (boleto de 341,20
+// contra parcela de 341,21 — arredondamento diferente na divisão das parcelas) e,
+// com body { aplicar: true }, quita o resíduo lá com uma baixa de desconto.
+// Sem aplicar = só lista (dry-run). Sequencial com pausa — não martela o CA.
+router.post('/asaas-quitar-residuo-ca', async (req, res) => {
+    try {
+        const aplicar = !!req.body?.aplicar;
+        const dias = Number(req.body?.dias) || 90;
+        const desde = new Date(); desde.setDate(desde.getDate() - dias);
+        const cobs = await prisma.cobrancaAsaas.findMany({
+            where: {
+                status: 'RECEBIDO',
+                baixaCaOk: true,
+                parcelaId: { not: null },
+                recebidoEm: { gte: desde },
+                ...(req.body?.pedido ? { pedido: { numero: String(req.body.pedido) } } : {})
+            },
+            include: {
+                parcela: { select: { numeroParcela: true, dataVencimento: true } },
+                pedido: { select: { numero: true, idVendaContaAzul: true, dataVenda: true } },
+                cliente: { select: { UUID: true, Nome: true } }
+            },
+            orderBy: { recebidoEm: 'desc' },
+            take: 60
+        });
+        const cfg = await prisma.appConfig.findUnique({ where: { key: 'asaas_conta_financeira_ca_id' } });
+        const contaCaId = cfg?.value || null;
+        const resultados = [];
+        for (const cob of cobs) {
+            if (!cob.pedido?.idVendaContaAzul || !cob.cliente?.UUID) continue;
+            if (resultados.length > 0) await new Promise(r => setTimeout(r, 2000));
+            const item = {
+                pedido: cob.pedido.numero,
+                cliente: cob.cliente.Nome,
+                parcela: cob.parcela?.numeroParcela,
+                valorBoleto: Number(cob.valorRecebido ?? cob.valor),
+                paymentId: cob.asaasPaymentId
+            };
+            try {
+                const dataVendaStr = new Date(cob.pedido.dataVenda).toISOString().split('T')[0];
+                const parcelasCA = await contaAzulService.encontrarParcelasDeVenda(
+                    cob.cliente.UUID, cob.pedido.idVendaContaAzul, dataVendaStr
+                );
+                const vencLocal = cob.parcela?.dataVencimento ? new Date(cob.parcela.dataVencimento).toISOString().split('T')[0] : null;
+                const caPar = (parcelasCA || []).find(p => (p.numero_parcela || 0) === cob.parcela?.numeroParcela)
+                    || (parcelasCA || []).find(p => p.data_vencimento === vencLocal)
+                    || ((parcelasCA || []).length === 1 ? parcelasCA[0] : null);
+                if (!caPar) { item.resultado = 'PARCELA_CA_NAO_ENCONTRADA'; resultados.push(item); continue; }
+
+                const nominalCA = Number(caPar?.valor_composicao?.valor_bruto || 0);
+                const pagoCA = Number(caPar?.valor_pago || 0);
+                const residuo = Math.round((nominalCA - pagoCA) * 100) / 100;
+                item.nominalCA = nominalCA; item.pagoCA = pagoCA; item.residuo = residuo;
+
+                if (!(pagoCA > 0 && residuo > 0 && residuo <= 0.05)) {
+                    item.resultado = residuo <= 0 ? 'OK_QUITADA' : 'RESIDUO_GRANDE_NAO_MEXER';
+                    resultados.push(item); continue;
+                }
+                if (!aplicar) { item.resultado = 'RESIDUO_ENCONTRADO (dry-run)'; resultados.push(item); continue; }
+                if (!contaCaId) throw new Error('asaas_conta_financeira_ca_id não configurada');
+
+                await contaAzulService.criarBaixa(caPar.id, {
+                    data_pagamento: new Date(cob.recebidoEm || Date.now()).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }),
+                    composicao_valor: { valor_bruto: residuo, multa: 0, juros: 0, desconto: residuo, taxa: 0 },
+                    conta_financeira: contaCaId,
+                    metodo_pagamento: cob.tipo === 'BOLETO' ? 'BOLETO_BANCARIO' : 'PIX_PAGAMENTO_INSTANTANEO',
+                    observacao: `Resíduo de arredondamento quitado como desconto (${cob.asaasPaymentId})`
+                });
+                item.resultado = 'RESIDUO_QUITADO';
+            } catch (e) {
+                item.erro = e.response?.data ? JSON.stringify(e.response.data) : e.message;
+            }
+            resultados.push(item);
+        }
+        const comResiduo = resultados.filter(r => (r.resultado || '').startsWith('RESIDUO')).length;
+        res.json({ ok: true, aplicar, analisadas: resultados.length, comResiduo, resultados });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // POST /api/admin-exec/asaas-cancelar-boletos-quitados — cancela no Asaas os boletos
 // PENDENTES cuja parcela já está PAGA/CANCELADA no app (cliente pagou por outro meio,
 // ex.: boleto antigo do CA). Body: { dryRun: true } só lista, sem cancelar.

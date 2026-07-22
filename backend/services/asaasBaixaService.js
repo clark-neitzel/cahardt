@@ -173,11 +173,18 @@ const asaasBaixaService = {
                         } catch (_) { /* sem detalhe: segue com o valor cheio */ }
 
                         if (saldoCA > 0) {
-                            const valorBruto = Math.round(Math.min(valorPagoAsaas, saldoCA) * 100) / 100;
+                            // Centavos de arredondamento entre o boleto e a parcela do CA
+                            // (a divisão do total em parcelas arredonda diferente lá):
+                            // pago a MAIS vira juros; pago a MENOS em até R$ 0,05 vira
+                            // desconto — senão sobra "0,01 Em Aberto" eterno no CA.
+                            const residuo = Math.round((saldoCA - valorPagoAsaas) * 100) / 100;
+                            const quitaResiduo = residuo > 0 && residuo <= 0.05;
+                            const valorBruto = quitaResiduo ? saldoCA : Math.round(Math.min(valorPagoAsaas, saldoCA) * 100) / 100;
+                            const desconto = quitaResiduo ? residuo : 0;
                             const juros = Math.round(Math.max(0, valorPagoAsaas - valorBruto) * 100) / 100;
                             await contaAzulService.criarBaixa(caPar.id, {
                                 data_pagamento: new Date(dataPgto).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }),
-                                composicao_valor: { valor_bruto: valorBruto, multa: 0, juros, desconto: 0, taxa: 0 },
+                                composicao_valor: { valor_bruto: valorBruto, multa: 0, juros, desconto, taxa: 0 },
                                 conta_financeira: contaCaId,
                                 metodo_pagamento: cobranca.tipo === 'BOLETO' ? 'BOLETO_BANCARIO' : 'PIX_PAGAMENTO_INSTANTANEO',
                                 observacao: `${forma} ${cobranca.asaasPaymentId} — baixa automática (webhook Asaas)`
