@@ -5058,4 +5058,46 @@ router.post('/corrigir-condicao-pedido', async (req, res) => {
     }
 });
 
+// ── Importação COMPLETA do contas a receber do CA → app (23/07/2026) ─────────
+// POST /api/admin-exec/ca-receber-importar        — dispara em background
+//   body opcional: { de: 'YYYY-MM-DD', ate: 'YYYY-MM-DD', comDetalhe: true }
+// GET  /api/admin-exec/ca-receber-importar-status — progresso/resumo ao vivo
+// GET  /api/admin-exec/ca-receber-importado-resumo — números da tabela arquivo
+router.post('/ca-receber-importar', async (req, res) => {
+    try {
+        const caReceberImport = require('../services/caReceberImportService');
+        const opts = req.body || {};
+        // fire-and-forget: a varredura leva vários minutos (2 chamadas CA por parcela)
+        caReceberImport.importarTudo(opts)
+            .then(r => console.log('[CA Import Receber] Concluído:', JSON.stringify({ ...r, erros: r.erros.length })))
+            .catch(e => console.error('[CA Import Receber] Falhou:', e.message));
+        res.status(202).json({ ok: true, mensagem: 'Importação iniciada em background. Acompanhe em ca-receber-importar-status.' });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+router.get('/ca-receber-importar-status', (req, res) => {
+    const caReceberImport = require('../services/caReceberImportService');
+    res.json({ ok: true, ...caReceberImport.resumo() });
+});
+
+router.get('/ca-receber-importado-resumo', async (req, res) => {
+    try {
+        const [total, porStatus, comPedido, operacionais] = await Promise.all([
+            prisma.caReceberImportado.count(),
+            prisma.caReceberImportado.groupBy({ by: ['status'], _count: { _all: true }, _sum: { valorTotal: true } }),
+            prisma.caReceberImportado.count({ where: { temPedidoApp: true } }),
+            prisma.caReceberImportado.count({ where: { contaReceberId: { not: null } } }),
+        ]);
+        res.json({
+            ok: true, totalParcelasArquivadas: total, comPedidoNoApp: comPedido,
+            contasOperacionaisCriadas: operacionais,
+            porStatus: porStatus.map(s => ({ status: s.status, qtd: s._count._all, valor: Number(s._sum.valorTotal || 0) }))
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;

@@ -219,21 +219,28 @@ const produtoController = {
                 return res.status(400).json({ error: `Já existe um produto chamado "${jaExiste.nome}".` });
             }
 
-            // 1) Cria no Conta Azul (fonte da verdade do catálogo)
+            // 1) Cria no Conta Azul (era a fonte do catálogo até 23/07/2026).
+            // CA somente leitura: o produto nasce SÓ no app, com um id local no
+            // lugar do contaAzulId (coluna obrigatória/única — vínculo legado).
+            const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
             const contaAzulService = require('../services/contaAzulService');
             let criadoCA;
-            try {
-                criadoCA = await contaAzulService.criarProdutoCA({
-                    nome,
-                    codigoSku: codigo,
-                    codigoEan: ean,
-                    valorVenda: valor,
-                    categoriaNome: categoria,
-                    descricao
-                });
-            } catch (e) {
-                console.error('[Produtos] Falha ao criar produto no CA:', e.message);
-                return res.status(502).json({ error: `Não consegui criar o produto na Conta Azul: ${e.message}` });
+            if (CA_SOMENTE_LEITURA) {
+                criadoCA = { id: `app-${require('crypto').randomUUID()}` };
+            } else {
+                try {
+                    criadoCA = await contaAzulService.criarProdutoCA({
+                        nome,
+                        codigoSku: codigo,
+                        codigoEan: ean,
+                        valorVenda: valor,
+                        categoriaNome: categoria,
+                        descricao
+                    });
+                } catch (e) {
+                    console.error('[Produtos] Falha ao criar produto no CA:', e.message);
+                    return res.status(502).json({ error: `Não consegui criar o produto na Conta Azul: ${e.message}` });
+                }
             }
 
             // 2) Salva local com o vínculo (origem APP)
@@ -253,7 +260,7 @@ const produtoController = {
                 }
             });
 
-            res.status(201).json({ ...produto, message: 'Produto criado no app e na Conta Azul!' });
+            res.status(201).json({ ...produto, message: CA_SOMENTE_LEITURA ? 'Produto criado no app!' : 'Produto criado no app e na Conta Azul!' });
         } catch (error) {
             console.error('Erro ao criar produto:', error);
             res.status(500).json({ error: 'Erro ao criar o produto.' });

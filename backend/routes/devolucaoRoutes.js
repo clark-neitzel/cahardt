@@ -4,6 +4,84 @@ const devolucaoService = require('../services/devolucaoService');
 const contaAzulService = require('../services/contaAzulService');
 const prisma = require('../config/database');
 const uploadDevolucao = require('../middlewares/uploadDevolucaoMiddleware');
+const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
+
+/**
+ * CA somente leitura (23/07/2026): a devolução deixa de ajustar a parcela no Conta
+ * Azul e passa a ser aplicada como DESCONTO nas parcelas locais do pedido (ledger
+ * PagamentoParcela), fechando a conta no próprio app. TOTAL ou PARCIAL: o valor da
+ * devolução vira desconto distribuído nas parcelas em aberto.
+ */
+const aplicarDevolucaoLocalApp = async (devolucao, pedido) => {
+    const round2 = (v) => Math.round(Number(v) * 100) / 100;
+    const conta = await prisma.contaReceber.findFirst({
+        where: { pedidoId: pedido.id },
+        include: { parcelas: { orderBy: { numeroParcela: 'asc' } } }
+    });
+    if (!conta) {
+        return { ok: false, status: 'ERRO', mensagem: 'Pedido sem conta a receber no app — registre/ajuste manualmente em Contas a Receber.' };
+    }
+    const abertas = conta.parcelas.filter(p => ['PENDENTE', 'VENCIDO', 'PARCIAL'].includes(p.status));
+    if (abertas.length === 0) {
+        return {
+            ok: false, status: 'PARCELA_PAGA',
+            mensagem: 'As parcelas deste pedido já estão pagas no app. A devolução foi registrada, mas o acerto financeiro precisa ser manual.',
+            sugestao: 'Na tela Contas a Receber, estorne o pagamento da parcela e aplique o desconto da devolução, ou registre o crédito ao cliente.'
+        };
+    }
+
+    let restante = round2(devolucao.valorTotal);
+    let aplicado = 0;
+    await prisma.$transaction(async (tx) => {
+        for (const parcela of abertas) {
+            if (restante <= 0.001) break;
+            const saldo = round2(Number(parcela.valor) - Number(parcela.valorPago || 0) - Number(parcela.valorDescontoTotal || 0));
+            if (saldo <= 0) continue;
+            const desconto = round2(Math.min(saldo, restante));
+            await tx.pagamentoParcela.create({
+                data: {
+                    parcelaId: parcela.id,
+                    valorRecebido: 0,
+                    valorDesconto: desconto,
+                    motivoDesconto: `Devolução ${devolucao.escopo} #${devolucao.numero}`,
+                    dataPagamento: new Date(),
+                    observacao: (devolucao.motivo || '').substring(0, 200) || null,
+                    registradoPorId: devolucao.registradoPorId
+                }
+            });
+            const novoDesc = round2(Number(parcela.valorDescontoTotal || 0) + desconto);
+            const quitada = (Number(parcela.valorPago || 0) + novoDesc) >= Number(parcela.valor) - 0.01;
+            await tx.parcela.update({
+                where: { id: parcela.id },
+                data: {
+                    status: quitada ? 'PAGO' : 'PARCIAL',
+                    valorDescontoTotal: novoDesc,
+                    dataPagamento: quitada ? new Date() : parcela.dataPagamento,
+                    observacao: `Devolução ${devolucao.escopo} #${devolucao.numero} — desconto R$ ${desconto.toFixed(2)}`
+                }
+            });
+            restante = round2(restante - desconto);
+            aplicado = round2(aplicado + desconto);
+        }
+        const todas = await tx.parcela.findMany({ where: { contaReceberId: conta.id } });
+        const pagas = todas.filter(p => p.status === 'PAGO').length;
+        const canceladas = todas.filter(p => p.status === 'CANCELADO').length;
+        const parciais = todas.filter(p => p.status === 'PARCIAL').length;
+        const novoStatus = (pagas + canceladas >= todas.length) ? 'QUITADO'
+            : (pagas > 0 || parciais > 0) ? 'PARCIAL' : 'ABERTO';
+        await tx.contaReceber.update({ where: { id: conta.id }, data: { status: novoStatus } });
+        await tx.devolucao.update({
+            where: { id: devolucao.id },
+            data: { processadoCA: true, wizardEtapa: 'concluido' }
+        });
+    }, { timeout: 20000, maxWait: 10000 });
+
+    const sobra = restante > 0.01 ? ` Atenção: R$ ${restante.toFixed(2)} da devolução não coube nas parcelas em aberto (já estavam pagas) — confira em Contas a Receber.` : '';
+    return {
+        ok: true, status: 'PROCESSADO',
+        mensagem: `Devolução aplicada como desconto de R$ ${aplicado.toFixed(2)} nas parcelas do app.${sobra}`
+    };
+};
 
 // Helper: verificar permissão
 const checkPermissao = (permissao) => (req, res, next) => {
@@ -46,6 +124,13 @@ const processarDevolucaoCAAutomatico = async (devolucaoId) => {
             return { ok: true, status: 'PROCESSADO', mensagem: 'Devolução já estava processada no CA.' };
         }
         const pedido = devolucao.pedidoOriginal;
+
+        // CA somente leitura: acerto financeiro é feito nas parcelas LOCAIS do app
+        if (CA_SOMENTE_LEITURA) {
+            console.log(`[Devolução] Aplicando devolução #${devolucao.numero} (${devolucao.escopo}) nas parcelas locais (CA somente leitura).`);
+            return await aplicarDevolucaoLocalApp(devolucao, pedido);
+        }
+
         if (!pedido?.idVendaContaAzul) {
             console.warn(`[Auto-CA] Devolução ${devolucao.numero} sem idVendaContaAzul, pulando.`);
             return { ok: false, status: 'ERRO', mensagem: 'Pedido não possui venda vinculada ao Conta Azul.' };
@@ -327,6 +412,15 @@ router.post('/:id/processar-ca', checkPermissao('Pode_Fazer_Devolucao'), async (
         if (devolucao.processadoCA) return res.status(400).json({ error: 'Devolução já foi processada no CA.' });
 
         const pedido = devolucao.pedidoOriginal;
+
+        // CA somente leitura: qualquer etapa do wizard resolve aplicando a devolução
+        // como desconto nas parcelas locais do app (não se mexe mais no Conta Azul).
+        if (CA_SOMENTE_LEITURA) {
+            const r = await aplicarDevolucaoLocalApp(devolucao, pedido);
+            if (!r.ok) return res.status(409).json({ error: r.mensagem, sugestao: r.sugestao || null, parcelaPaga: r.status === 'PARCELA_PAGA' });
+            return res.json({ etapa: 'concluido', resultado: { baixaRealizada: true, local: true, mensagem: r.mensagem } });
+        }
+
         if (!pedido.idVendaContaAzul) return res.status(400).json({ error: 'Pedido não possui venda vinculada ao Conta Azul.' });
 
         // ── Etapa: buscar-parcela ──

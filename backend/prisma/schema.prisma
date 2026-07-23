@@ -3512,3 +3512,39 @@ model AsaasWebhookEvento {
   @@index([paymentId])
   @@map("asaas_webhook_eventos")
 }
+
+// ============================================================================
+// ARQUIVO das contas a receber importadas do Conta Azul (23/07/2026 — o app
+// virou o dono do financeiro; o CA é somente leitura e pode sumir a qualquer
+// momento). Uma linha POR PARCELA do CA, com os JSONs crus completos (busca +
+// detalhe com evento/baixas) para nunca perder informação. A camada operacional
+// (ContaReceber/Parcela) é criada à parte pelo importador quando a conta está
+// em aberto e não existe no app.
+// ============================================================================
+model CaReceberImportado {
+  id              String    @id @default(uuid())
+  idParcelaCA     String    @unique @map("id_parcela_ca")
+  idEventoCA      String?   @map("id_evento_ca")
+  clienteCaId     String?   @map("cliente_ca_id")
+  clienteNome     String?   @map("cliente_nome")
+  descricao       String?
+  numeroVendaCA   Int?      @map("numero_venda_ca") // evento.codigo_referencia → casa com pedido.numero
+  origemEventoCA  String?   @map("origem_evento_ca") // VENDA | AVULSA | ...
+  status          String?   // status_traduzido do CA (RECEBIDO/PENDENTE/ATRASADO...)
+  dataVencimento  DateTime? @map("data_vencimento")
+  dataCompetencia DateTime? @map("data_competencia")
+  valorTotal      Decimal?  @map("valor_total") @db.Decimal(12, 2)
+  valorPago       Decimal?  @map("valor_pago") @db.Decimal(12, 2)
+  temPedidoApp    Boolean   @default(false) @map("tem_pedido_app")
+  contaReceberId  String?   @map("conta_receber_id") // ContaReceber operacional criada p/ esta parcela (quando aberta e sem pedido)
+  parcelaLocalId  String?   @map("parcela_local_id")
+  dadosBusca      Json?     @map("dados_busca")   // item cru do /contas-a-receber/buscar
+  dadosDetalhe    Json?     @map("dados_detalhe") // detalhe cru da parcela (evento, baixas, conta financeira...)
+  importadoEm     DateTime  @default(now()) @map("importado_em")
+  atualizadoEm    DateTime  @updatedAt @map("atualizado_em")
+
+  @@index([numeroVendaCA])
+  @@index([status])
+  @@index([clienteCaId])
+  @@map("ca_receber_importado")
+}
