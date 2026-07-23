@@ -10,6 +10,8 @@ permissao: admin
 
 Painel de controle da integração com o Conta Azul. Aqui você conecta (ou reconecta) o app ao CA, dispara as sincronizações manualmente e acompanha o histórico de execuções. A sincronização automática ocorre em background, mas esta tela permite acionar manualmente quando necessário.
 
+**Desde 23/07/2026 o Conta Azul é SOMENTE LEITURA**: o app não envia mais nada para lá (nem vendas, nem baixas, nem produtos, nem clientes). O que resta da integração é só importação/consulta: puxar baixas de contas antigas, XML de notas da era CA e o arquivo completo do contas a receber importado. Os pedidos faturam localmente (número gerado pelo app) e a NF-e sai pela aba Notas Fiscais (Focus NFe).
+
 ---
 
 ## O que dá pra fazer aqui

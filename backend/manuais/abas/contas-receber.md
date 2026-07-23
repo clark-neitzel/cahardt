@@ -8,7 +8,9 @@ permissao: Pode_Acessar_Contas_Receber
 
 ## O que é
 
-Gestão financeira de todas as contas a receber geradas pelos pedidos. Cada pedido faturado no Conta Azul gera uma conta com parcelas. Esta tela mostra o estado de cada parcela (pendente, parcial, pago, vencido), permite dar baixa manual — total, parcial ou com desconto (inclusive 100%) —, sincronizar situação com o CA e gerar relatórios de inadimplência.
+Gestão financeira de todas as contas a receber. **Desde 23/07/2026 o app é o dono do financeiro** (o Conta Azul virou somente leitura): cada pedido finalizado gera a conta com parcelas aqui mesmo, e as baixas acontecem só no app. Esta tela mostra o estado de cada parcela (pendente, parcial, pago, vencido), permite dar baixa manual — total, parcial ou com desconto (inclusive 100%) — e gerar relatórios de inadimplência.
+
+Também existem **contas importadas do Conta Azul** (origem IMPORTADO_CA): são cobranças antigas que viviam lá e foram trazidas para cá na migração — aparecem sem pedido vinculado, com a descrição original do CA.
 
 ---
 
@@ -83,15 +85,16 @@ Gestão financeira de todas as contas a receber geradas pelos pedidos. Cada pedi
 1. Na visão resumo (acordeão), expanda a conta e clique em **Boletos Asaas** (aparece só se a integração Asaas estiver configurada no servidor)
 2. No modal, emita o boleto de uma parcela específica ou de **todas as parcelas em aberto** de uma vez — o vencimento e o valor (saldo) vêm do nosso Contas a Receber
 3. Para cada boleto emitido dá para: **Abrir o PDF**, **copiar a linha digitável**, **enviar por WhatsApp** ao cliente (mensagem pronta com link e linha digitável) e **cancelar** o boleto
-4. Quando o cliente pagar, o Asaas avisa o sistema e a **baixa acontece sozinha** — na parcela local E no Conta Azul (lançada na conta financeira ASAAS). O modal mostra "Pago via Asaas" com o status das duas baixas
+4. Quando o cliente pagar, o Asaas avisa o sistema e a **baixa acontece sozinha** na parcela (lançada na conta financeira ASAAS). O modal mostra "Pago via Asaas"
 5. O cliente precisa ter **CPF/CNPJ no cadastro** (exigência do boleto registrado); sem isso a emissão avisa o erro
-6. A nota fiscal continua sendo emitida no Conta Azul, como sempre — o Asaas cuida só da cobrança
-7. **Se o vencimento da parcela mudar depois do boleto emitido** (ex.: adiado no Conta Azul), o sistema **atualiza o boleto no Asaas sozinho** — ao abrir o modal de boletos ou ao imprimir — e o PDF e a linha digitável passam a valer a data nova. Se esse ajuste automático falhar, o modal mostra um aviso amarelo ("boleto com vencimento diferente da parcela"); nesse caso, cancele o boleto e emita de novo antes de enviar ao cliente
+6. A nota fiscal é emitida **pelo próprio app** (aba Notas Fiscais, via Focus NFe) — o Asaas cuida só da cobrança
+7. **Se o vencimento da parcela mudar depois do boleto emitido**, o sistema **atualiza o boleto no Asaas sozinho** — ao abrir o modal de boletos ou ao imprimir — e o PDF e a linha digitável passam a valer a data nova. Se esse ajuste automático falhar, o modal mostra um aviso amarelo ("boleto com vencimento diferente da parcela"); nesse caso, cancele o boleto e emita de novo antes de enviar ao cliente
 8. **Boleto que passou do vencimento** aparece com o badge vermelho **"Boleto vencido"** — ele **continua pagável** no banco do cliente (com juros/multa, se configurados), então o sistema **não emite outro sozinho** (evita duas cobranças vivas e pagamento em dobro). As ações (PDF, linha digitável, WhatsApp, cancelar) continuam disponíveis. Para gerar um boleto com vencimento novo, **cancele o vencido primeiro** e depois emita outro
 
-### Sincronizar com o Conta Azul
-- Clique no ícone de atualização (reload) em uma conta específica para atualizar só aquela
-- Ou clique em **Sync Todas** para atualizar todas as contas — o sistema exibe um log de progresso em tempo real mostrando quantas foram processadas e quais alterações foram aplicadas
+### Sincronizar com o Conta Azul (transição — só contas antigas)
+- O Conta Azul é **somente leitura** desde 23/07/2026: o app não registra mais nada lá
+- O sync continua existindo apenas para **puxar** baixas de contas antigas (da era CA) que ainda sejam registradas por lá — pedidos novos não têm nada no CA
+- Clique no ícone de atualização (reload) em uma conta específica, ou em **Sync Todas**
 
 ### Gerar relatório de inadimplência
 1. Clique no botão **Relatório** (no topo)
@@ -120,8 +123,9 @@ Gestão financeira de todas as contas a receber geradas pelos pedidos. Cada pedi
 
 ## Depende de / Interfere em
 
-- **Pedidos** — cada pedido faturado no CA gera uma conta aqui
-- **Conta Azul** — a situação das parcelas é sincronizada com o CA (baixas, cancelamentos)
+- **Pedidos** — cada pedido finalizado gera a conta com parcelas aqui (tudo no app; nada vai ao CA)
+- **Conta Azul (legado)** — contas antigas da era CA foram importadas para cá (origem IMPORTADO_CA); o sync só puxa baixas de contas antigas
+- **Notas Fiscais** — a NF-e do pedido é emitida pelo app (Focus NFe)
 - **Caixa Diário** — baixas feitas pelo motorista na entrega também atualizam as parcelas aqui
 - **Clientes** — a inadimplência exibida na Rota e no detalhe do cliente vem dos dados desta tela
 

@@ -8,7 +8,7 @@ permissao: pedidos (view)
 
 ## O que é
 
-Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aqui você vê, filtra, imprime e acompanha o ciclo de vida de cada pedido — desde que foi criado até o faturamento no Conta Azul.
+Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aqui você vê, filtra, imprime e acompanha o ciclo de vida de cada pedido — desde que foi criado até o faturamento. **Desde 23/07/2026 o faturamento é feito pelo próprio app** (numeração da venda, conta a receber, estoque e NF-e via Focus NFe) — nada mais é enviado ao Conta Azul.
 
 > **Atenção:** criar um pedido novo **não começa aqui**. Começa na aba **Rota**, no card do cliente, clicando em "Novo Pedido". Esta tela é de gestão, não de criação.
 
@@ -21,7 +21,7 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - Buscar por cliente, cidade, vendedor, documento ou número do pedido
 - Filtrar rapidamente por status (Aberto, Enviar, Sincronizando, Aprovado, Faturado, Erro)
 - Carregar a lista aos poucos: mostra os 50 primeiros e um botão **Carregar mais** (deixa a tela leve e rápida)
-- Ver pendências de envio ao Conta Azul em tempo real
+- Ver pendências de faturamento em tempo real
 - Imprimir pedido individual ou vários ao mesmo tempo (seleção em lote)
 - Enviar comprovante do pedido via WhatsApp para o cliente
 - Aprovar ou reverter pedidos Especiais e Bonificações (quem tem permissão)
@@ -59,10 +59,10 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 7. Adicione os produtos e quantidades
 8. Clique em **Salvar** — o pedido é criado com status **ABERTO**
 
-### Enviar pedido ao Conta Azul
-- Pedidos com status **ABERTO** precisam ser marcados como **ENVIAR** (ou isso ocorre automaticamente via sincronização)
-- Ao sincronizar (`/admin/sync`), pedidos com status ENVIAR são enviados ao CA
-- Após o envio, o status muda para **RECEBIDO**
+### Faturar pedido (antes: "enviar ao Conta Azul")
+- Pedidos com status **ABERTO** precisam ser marcados como **ENVIAR** (fluxo igual ao de sempre)
+- O worker fatura sozinho em até ~1 minuto: gera o **número da venda no próprio app** (continua a sequência), muda o status para **RECEBIDO** e baixa o estoque — nada é enviado ao Conta Azul (somente leitura desde 23/07/2026)
+- A NF-e é emitida pelo app na aba **Notas Fiscais**
 
 ### Acompanhar pedidos pendentes
 - O painel no topo da lista mostra alertas coloridos: quantos pedidos estão em **Enviar**, **Aprovados** e **Erro**
@@ -82,15 +82,15 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 ### Gerar PIX de um pedido (cobrança à vista / link de pagamento)
 1. Na pílula **PIX** do pedido (aparece em pedidos à vista e especiais), escolha o valor e a **validade** (hoje / amanhã / 3 dias / 7 dias — o QR e o link valem até o fim do dia escolhido)
 2. Mostre o QR, **copie o código PIX** ou **envie o link por WhatsApp** ao cliente
-3. Quando pagar: **baixa automática** no app e no Conta Azul (conta ASAAS); check verde ✓ aparece na pílula
-4. **Pedido ESPECIAL + PIX = conversão**: antes de gerar aparece um aviso vermelho destacado — ao receber qualquer valor via PIX (parcial ou total), o pedido especial é **convertido automaticamente em pedido normal**: ganha número novo na sequência, vai ao Conta Azul e a **NF-e deve ser emitida** pelo faturamento
+3. Quando pagar: **baixa automática** na parcela do app (conta financeira ASAAS); check verde ✓ aparece na pílula
+4. **Pedido ESPECIAL + PIX = conversão**: antes de gerar aparece um aviso vermelho destacado — ao receber qualquer valor via PIX (parcial ou total), o pedido especial é **convertido automaticamente em pedido normal**: ganha número novo na sequência e a **NF-e deve ser emitida** pelo faturamento (aba Notas Fiscais do app)
 5. Quem fatura recebe um **popup a cada 5 minutos** ("Pedido convertido — emitir NF-e") até dar ciência; quem recebe esse aviso é escolhido na aba **Usuários/Vendedores** (ícone de setas circulares laranja)
 
 ### Aprovar Pedido Especial ou Bonificação
 1. Vá para a sub-aba **Especiais** ou **Bonificação**
 2. Localize o pedido com status **ABERTO**
 3. Clique em **Aprovar** (botão verde) — exige permissão `Pode_Aprovar_Especial` ou `Pode_Aprovar_Bonificacao`
-4. O status muda para RECEBIDO e é faturado no CA
+4. O status muda para RECEBIDO e o pedido é faturado
 5. **A aprovação dá baixa no estoque automaticamente** (desde jul/2026) — os itens saem do estoque do sistema no momento da aprovação, igual acontece com pedidos normais no faturamento. Se a aprovação for **revertida**, os itens voltam ao estoque sozinhos. A baixa tem trava contra duplicidade: aprovar/faturar duas vezes o mesmo pedido não desconta em dobro.
 
 ### Consultar situação no Conta Azul
@@ -141,6 +141,8 @@ Visível apenas para quem tem `Pode_Fazer_Devolucao` ou `admin`. Renderiza o com
 
 Mostra todas as devoluções registradas (parciais ou totais) com motivo, motorista, data, valor e status (ATIVA ou REVERTIDA).
 
+Desde 23/07/2026 o acerto financeiro da devolução acontece **nas parcelas do próprio app**: o valor devolvido vira **desconto** nas parcelas em aberto do pedido (histórico "Devolução TOTAL/PARCIAL #N") — nada é ajustado no Conta Azul. Se as parcelas já estiverem pagas, o app avisa que o acerto precisa ser manual em Contas a Receber (estorno + desconto).
+
 ---
 
 ## Tipos de pedido
@@ -163,7 +165,7 @@ Mostra todas as devoluções registradas (parciais ou totais) com motivo, motori
 | ABERTO | Criado, ainda não enviado ao CA |
 | ENVIAR | Marcado para envio na próxima sincronização |
 | SINCRONIZANDO | Sendo processado pelo worker de sync |
-| RECEBIDO | Enviado e aceito pelo CA |
+| RECEBIDO | Faturado — número de venda gerado pelo app (até 23/07/2026 significava "aceito pelo CA") |
 | ERRO | Falha no envio; o motivo aparece em vermelho |
 | FATURADO | Confirmado/faturado pelo CA |
 
@@ -191,11 +193,11 @@ Mostra todas as devoluções registradas (parciais ou totais) com motivo, motori
 ## Depende de / Interfere em
 
 - **Rota** — é onde pedidos novos são criados (botão "Novo Pedido" no card do cliente)
-- **Conta Azul** — pedidos são enviados ao CA via sincronização; a situação volta para o app (`FATURADO`, `APROVADO`)
+- **Conta Azul (legado)** — pedidos antigos (era CA) ainda têm venda lá; pedidos novos são 100% do app. A NF-e do app é quem marca FATURADO
 - **Embarque** — pedidos faturados são adicionados a embarques na aba Embarque
 - **Entregas** — após o embarque, o status de entrega aparece no card do pedido
 - **Contas a Receber** — faturamento no CA gera contas a receber; reverter especial cancela a conta no CA
-- **Sincronizar** (`/admin/sync`) — executa o envio em lote dos pedidos ao CA
+- **Sincronizar** (`/admin/sync`) — histórico de execuções dos robôs (o envio de pedidos ao CA foi desligado em 23/07/2026)
 
 ---
 

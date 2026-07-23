@@ -58,17 +58,20 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 - **Outro vendedor:** só visível para `admin` ou `Pode_Editar_Caixa`; escolha no select de vendedor
 - O seletor mostra **só vendedores ativos**. Um vendedor inativo aparece apenas nos dias em que teve movimento de caixa (marcado como "inativo · teve caixa") — o histórico não se perde
 
-### Registrar baixa no Conta Azul (individual)
+### Registrar baixa dos recebimentos (individual)
+> Desde 23/07/2026 a baixa é registrada **nas parcelas do próprio app** (o Conta Azul virou somente leitura). O botão continua o mesmo.
 1. Na lista de entregas, localize a entrega com pagamento em Dinheiro, PIX ou Cartão
 2. Marque o checkbox na coluna "CA" daquela entrega
-3. Clique em **Processar selecionada(s)** — o sistema registra o recebimento no Conta Azul
+3. Clique em **Processar selecionada(s)** — o sistema registra o recebimento nas parcelas do pedido em Contas a Receber (com histórico de pagamento por forma: dinheiro, PIX, cartão)
 
 ### Registrar baixa em lote
 1. Marque os checkboxes de várias entregas de uma vez
 2. A barra azul "Baixa CA" aparece no topo da lista com o total selecionado
-3. Clique em **Processar N selecionada(s)** — todas as baixas são enviadas ao CA de uma vez
+3. Clique em **Processar N selecionada(s)** — todas as baixas são registradas de uma vez
 
-**Pagamentos "PIX Asaas":** quando o motorista cobrou via QR Code PIX na entrega (integração Asaas), esse valor entra na baixa do CA como uma baixa PIX separada, lançada na conta financeira do Asaas (configuração `asaas_conta_financeira_ca_id`; sem ela, cai na Caixinha com observação). O dinheiro desse PIX **não** fica com o motorista — não entra no valor a prestar.
+**Como a baixa local funciona:** dinheiro entra na conta "Caixinha", PIX Asaas entra na conta financeira do Asaas (alimenta o relatório Saldos por Conta). Se o valor acertado na entrega for menor que a parcela por causa de devolução de mercadoria, a diferença fecha como **desconto** ("Devolução de mercadoria — conferência do caixa"). Valores marcados como "Vendedor responsável"/"Escritório responsável" **não baixam** — a parcela fica em aberto para essa parte.
+
+**Pagamentos "PIX Asaas":** o dinheiro desse PIX **não** fica com o motorista — não entra no valor a prestar.
 
 ### Registrar uma despesa
 1. Clique em **+ Despesa** (botão no topo ou no card do veículo)
@@ -186,8 +189,7 @@ Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de 
 
 - **Embarque / Entregas** — as entregas do caixa vêm dos embarques criados para aquele motorista
 - **Despesas** — são acessíveis também pela aba própria (`/despesas`)
-- **Contas a Receber** — a baixa CA registra o recebimento na parcela correspondente no Conta Azul
-- **Conta Azul** — a baixa é enviada diretamente para o CA via API
+- **Contas a Receber** — a baixa registra o recebimento na parcela correspondente do app (dinheiro → Caixinha, PIX Asaas → conta Asaas; nada vai mais ao Conta Azul desde 23/07/2026)
 - **Veículos** — o KM inicial e a ficha do veículo do dia são acessíveis dentro do caixa
 
 ---

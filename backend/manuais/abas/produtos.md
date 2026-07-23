@@ -20,7 +20,7 @@ Gestão completa do cadastro de produtos da empresa. Permite criar, editar, ativ
 - Ver imagem do produto
 - Ativar ou desativar um produto
 - Navegar para a tela de Sincronização para importar produtos do Conta Azul
-- **(Fase 6) Criar produto novo** pelo botão "Novo produto": ele é criado **na Conta Azul e no app ao mesmo tempo** (nome, código SKU, EAN, unidade, valor de venda e categoria) — se o CA estiver fora do ar, nada é criado e o app avisa
+- **(Fase 6) Criar produto novo** pelo botão "Novo produto" (nome, código SKU, EAN, unidade, valor de venda e categoria) — desde 23/07/2026 o produto nasce **só no app** (o Conta Azul virou somente leitura e não recebe mais cadastros)
 - **(Fase 6) Aba "Compras"** no detalhe do produto: histórico de compras vindo das Notas Recebidas (data, fornecedor, nota, quantidade na nota × entrada convertida, custo unitário e total). O **custo manual** do produto é atualizado por média ponderada a cada compra conferida
 - **(Fase 6) Controle de estoque por produto**: no detalhe do produto (campo "Controle de estoque") escolha entre **Seguir a categoria** (padrão — vale a configuração de Categorias de Estoque), **Controlar SEMPRE** ou **NÃO controlar**. Produto que não controla estoque **continua recebendo custo e histórico de preços a cada compra** — só não movimenta quantidade (ex.: combustível, gás)
 - **O estoque não é mais importado do Conta Azul**: produto novo que chega pelo sync entra com estoque zerado; o saldo é formado pelas compras conferidas, ajustes manuais e saídas de faturamento — tudo dentro do app
