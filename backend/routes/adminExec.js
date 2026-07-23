@@ -4562,7 +4562,15 @@ router.get('/diag-ca-pix-conciliacao', async (req, res) => {
                 motivo = pgs === 0
                     ? 'parcela local existe mas SEM baixa no app (baixa feita só no CA — nada importa baixas de conta IMPORTADO_CA)'
                     : 'parcela local tem baixa mas em outra conta/valor (conferir contaFinanceiraCaId do pagamento)';
-            } else motivo = 'parcela já estava PAGA no CA quando importada — só arquivada, sem movimento no app';
+            } else {
+                const baixasArq = arch.dadosDetalhe?.baixas;
+                const temBaixasArq = Array.isArray(baixasArq) && baixasArq.length > 0;
+                motivo = temBaixasArq
+                    ? 'arquivada COM baixas no JSON — 4ª fonte do extrato deveria cobrir (investigar filtro/dedup)'
+                    : 'arquivada SEM detalhe de baixas (dadosDetalhe incompleto) — aguarda re-busca';
+                faltando.push({ ...b, motivo, temDetalheArq: !!arch.dadosDetalhe, temBaixasArq });
+                continue;
+            }
             faltando.push({ ...b, motivo });
         }
 
