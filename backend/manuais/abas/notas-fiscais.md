@@ -39,10 +39,18 @@ Quando a nota é **autorizada**, o pedido correspondente vira **FATURADO** na ab
 - **"IE do destinatário não informada"** → cliente PJ contribuinte sem inscrição estadual no cadastro; preencher a IE do cliente (ou rodar o sync do CA que puxa a IE) e reemitir.
 - **Nota presa em "Processando"** por mais de alguns minutos → botão "Atualizar"; persistindo, avisar o suporte.
 
+## XMLs para a contabilidade
+
+Botão **"XMLs (contabilidade)"** na barra de filtros da fila: baixa um **ZIP com todos os XMLs do período** filtrado (notas de venda e devolução emitidas pelo app + notas antigas do CA disponíveis), com nomes amigáveis (`nfe-84844-venda-pedido-2269.xml`). Requer período com início e fim (ex.: "Este mês"). Se algum XML não puder ser incluído, vai um `_avisos.txt` dentro do ZIP explicando.
+
 ## Notas antigas (era Conta Azul)
 
 Continuam disponíveis: a DANFE sai pela aba Pedidos (botão DANFE) como sempre. Os XMLs estão sendo copiados para dentro do app em segundo plano — impressão não depende mais do CA depois disso.
 
-## Devolução de venda
+## NF-e de DEVOLUÇÃO de venda
 
-Em breve a NF-e de devolução será emitida direto na conferência de devoluções do Caixa. Até lá, avisar o escritório para providenciar a nota de devolução manualmente.
+Na aba **Pedidos → Devoluções**, ao expandir uma devolução de pedido **com nota** (tipo Conta Azul/normal), aparece o bloco verde da NF de devolução:
+- Botão **"Emitir NF de devolução"** (permissão `Pode_Emitir_NF`) — o app monta tudo sozinho: itens e valores da devolução registrada, cliente, e a **referência à NF-e original da venda** (exigência da SEFAZ). CFOP 1201 (produção própria) / 1202 (revenda), sem pagamento.
+- Status igual ao da venda: Processando → ✓ Autorizada (com botão **DANFE**) ou ✕ Rejeitada (motivo + "Emitir novamente").
+- **Devolução de pedido ESPECIAL não gera nota** (pedido sem nota) — o botão nem aparece; o fluxo especial segue como sempre.
+- Devolução que já teve nota emitida pelo CA (campo "Nota Devolução" preenchido) também não emite de novo.
