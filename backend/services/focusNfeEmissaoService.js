@@ -292,6 +292,21 @@ async function sincronizarEventos() {
             console.error(`[FocusNFe] Falha ao processar evento ${ev.id}:`, e.message);
         }
     }
+    // Reconciliação (auto-cura): nota de PRODUÇÃO autorizada cujo pedido não está FATURADO
+    // (ex.: evento consumido por réplica com código antigo durante um deploy) — corrige aqui.
+    // `not` do Prisma exclui null — por isso o OR explícito.
+    try {
+        const desalinhadas = await prisma.notaFiscalApp.findMany({
+            where: {
+                status: 'AUTORIZADO',
+                ambiente: 'producao',
+                pedido: { OR: [{ situacaoCA: null }, { situacaoCA: { not: 'FATURADO' } }] },
+            },
+        });
+        for (const n of desalinhadas) await marcarPedidoFaturado(n);
+    } catch (e) {
+        console.error('[FocusNFe] Falha na reconciliação de faturados:', e.message);
+    }
     return eventos.length;
 }
 
