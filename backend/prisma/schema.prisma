@@ -38,6 +38,10 @@ model Produto {
   custoCaZerado Boolean  @default(false) @map("custo_ca_zerado") // custo do CA zerado no app: sync não traz mais o custoMedio; vale o custoManual (alimentado pelas entradas de compra)
   pesoLiquido   Decimal? @map("peso_liquido") @db.Decimal(12, 3)
 
+  // Emissão de NF-e pelo app (Focus NFe): produto de REVENDA sai com CFOP 5102 (+CEST)
+  nfeRevenda Boolean @default(false) @map("nfe_revenda")
+  nfeCest    String? @map("nfe_cest")
+
   // Timestamps
   contaAzulUpdatedAt DateTime? @map("conta_azul_updated_at") // Última atualização no Conta Azul
   createdAt          DateTime  @default(now()) @map("created_at")
@@ -331,6 +335,7 @@ model Pedido {
   congeladosPedido CongeladosPedido?
   cobrancasAsaas   CobrancaAsaas[] // PIX/boleto emitidos pelo app via Asaas
   avisosConversao  PedidoConvertidoAviso[] // especial convertido em pedido com NF
+  notasFiscaisApp  NotaFiscalApp[] // NF-e emitidas pelo próprio app (Focus NFe)
 
   @@index([statusEnvio])
   @@index([vendedorId])
@@ -585,6 +590,34 @@ model MovimentacaoEstoque {
   @@index([pedidoId])
   @@index([createdAt])
   @@map("movimentacoes_estoque")
+}
+
+// NF-e emitida pelo próprio app via Focus NFe (substitui a emissão no Conta Azul,
+// que bloqueou o acesso em 07/2026). `ref` é a idempotência na Focus: rejeitada
+// reenvia com a MESMA ref; autorizada prende a ref para sempre.
+model NotaFiscalApp {
+  id            String  @id @default(uuid())
+  ref           String  @unique
+  ambiente      String // homologacao | producao
+  tipo          String  @default("VENDA") // VENDA | DEVOLUCAO
+  status        String  @default("PROCESSANDO") // PROCESSANDO | AUTORIZADO | ERRO | CANCELADO | DENEGADO
+  numero        Int?
+  serie         Int?
+  chave         String?
+  mensagemSefaz String? @map("mensagem_sefaz") @db.Text
+  caminhoXml    String? @map("caminho_xml")
+  caminhoDanfe  String? @map("caminho_danfe")
+  payloadEnviado Json?  @map("payload_enviado") // JSON mandado à Focus (auditoria/reemissão)
+
+  pedidoId String @map("pedido_id")
+  pedido   Pedido @relation(fields: [pedidoId], references: [id])
+
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@index([pedidoId])
+  @@index([status])
+  @@map("notas_fiscais_app")
 }
 
 model AppConfig {

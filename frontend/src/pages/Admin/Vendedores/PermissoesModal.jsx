@@ -91,6 +91,9 @@ const DEFAULT_PERMISSIONS = {
     Pode_Acessar_Financeiro_Gerencial: false,
     Pode_Acessar_Cobranca: false,
     Pode_Editar_Cobranca: false,
+    Pode_Acessar_Notas_Fiscais: false,
+    Pode_Emitir_NF: false,
+    Pode_Configurar_NF: false,
     // Devoluções
     Pode_Fazer_Devolucao: false,
     Pode_Reverter_Devolucao: false,
@@ -348,7 +351,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
         permissoes.Pode_Acessar_Caixa, permissoes.Pode_Acessar_Contas_Receber,
         permissoes.Pode_Acessar_Contas_Pagar, permissoes.Pode_Acessar_Notas_Recebidas,
         permissoes.Pode_Acessar_Fornecedores, permissoes.Pode_Acessar_Financeiro_Gerencial,
-        permissoes.Pode_Acessar_Cobranca
+        permissoes.Pode_Acessar_Cobranca, permissoes.Pode_Acessar_Notas_Fiscais
     ].filter(Boolean).length;
     const countAdmin = [
         permissoes.produtos?.view, permissoes.vendedores?.view, permissoes.sync?.view, permissoes.Pode_Acessar_Veiculos
@@ -790,6 +793,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         <MenuToggle icon={BellRing} label="Régua de Cobrança" checked={!!permissoes.Pode_Acessar_Cobranca} onChange={toggleAcessoCobranca} />
                         <MenuToggle icon={Wallet} label="Contas a Pagar" checked={!!permissoes.Pode_Acessar_Contas_Pagar} onChange={() => toggleBool('Pode_Acessar_Contas_Pagar')} />
                         <MenuToggle icon={Inbox} label="Notas Recebidas" checked={!!permissoes.Pode_Acessar_Notas_Recebidas} onChange={() => toggleBool('Pode_Acessar_Notas_Recebidas')} />
+                        <MenuToggle icon={FileText} label="Notas Fiscais (emissão)" checked={!!permissoes.Pode_Acessar_Notas_Fiscais} onChange={() => toggleBool('Pode_Acessar_Notas_Fiscais')} />
                         <MenuToggle icon={Building2} label="Fornecedores" checked={!!permissoes.Pode_Acessar_Fornecedores} onChange={() => toggleBool('Pode_Acessar_Fornecedores')} />
                         <MenuToggle icon={BarChart3} label="Fluxo de Caixa e DRE (gerencial)" checked={!!permissoes.Pode_Acessar_Financeiro_Gerencial} onChange={() => toggleBool('Pode_Acessar_Financeiro_Gerencial')} />
 
@@ -836,6 +840,16 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                                         Quando falta mercadoria na conferência de devoluções, o valor cobrado deste motorista é calculado por esta tabela.
                                     </p>
                                 </div>
+                            </div>
+                        )}
+
+                        {permissoes.Pode_Acessar_Notas_Fiscais && (
+                            <div className="border-t mt-3 pt-3">
+                                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Permissões de Notas Fiscais</p>
+                                <Toggle checked={!!permissoes.Pode_Emitir_NF} onChange={() => toggleBool('Pode_Emitir_NF')}
+                                    label="Pode emitir notas" sublabel="Emitir NF-e dos pedidos da fila (individual ou 'Emitir todas'). Desligado = só visualiza a fila." />
+                                <Toggle checked={!!permissoes.Pode_Configurar_NF} onChange={() => toggleBool('Pode_Configurar_NF')}
+                                    label="Pode configurar emissão" sublabel="Alterar as configurações da emissão de NF-e (ambiente, certificado, série)" danger />
                             </div>
                         )}
 

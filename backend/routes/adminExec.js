@@ -324,6 +324,46 @@ router.post('/focus-nfe-homolog-numeracao', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/focus-nfe-emitir-pedido — emite a NF-e de um pedido REAL pelo fluxo
+// oficial (focusNfeEmissaoService), para teste sem login de usuário. Body: { numero: 2268 }.
+// Só roda em homologação (produção é pela tela, com permissão).
+router.post('/focus-nfe-emitir-pedido', async (req, res) => {
+    try {
+        const focusNfeSvc = require('../services/focusNfeService');
+        if (focusNfeSvc.ambiente() !== 'homologacao') {
+            return res.status(400).json({ error: 'Rota de teste: só em FOCUS_NFE_AMBIENTE=homologacao.' });
+        }
+        const numero = parseInt(req.body?.numero, 10);
+        if (!numero) return res.status(400).json({ error: 'Informe { numero } do pedido.' });
+        const pedido = await prisma.pedido.findFirst({ where: { numero, especial: false, bonificacao: false } });
+        if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+        const emissao = require('../services/focusNfeEmissaoService');
+        const nota = await emissao.emitirVenda(pedido.id);
+        res.json({ ok: true, nota });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+// POST /api/admin-exec/focus-nfe-marcar-revenda — marca os produtos de REVENDA confirmados
+// pelo dono (espetinho frango c/ bacon → CEST 1707900; bolinho de carne). CFOP 5102 na emissão.
+router.post('/focus-nfe-marcar-revenda', async (req, res) => {
+    try {
+        const espetinho = await prisma.produto.updateMany({
+            where: { nome: { contains: 'ESPETINHO', mode: 'insensitive' }, AND: { nome: { contains: 'BAC', mode: 'insensitive' } } },
+            data: { nfeRevenda: true, nfeCest: '1707900' },
+        });
+        const bolinho = await prisma.produto.updateMany({
+            where: { nome: { contains: 'BOLINHO DE CARNE', mode: 'insensitive' } },
+            data: { nfeRevenda: true },
+        });
+        const marcados = await prisma.produto.findMany({ where: { nfeRevenda: true }, select: { nome: true, nfeCest: true } });
+        res.json({ espetinho: espetinho.count, bolinho: bolinho.count, marcados });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // GET /api/admin-exec/focus-nfe-consultar?ref=...&completa=1 — status de uma emissão na Focus.
 router.get('/focus-nfe-consultar', async (req, res) => {
     try {

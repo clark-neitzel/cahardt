@@ -75,6 +75,7 @@ const pontoPublicRoutes = require('./routes/pontoPublicRoutes'); // RH: bater po
 const iaConsultaRoutes = require('./routes/iaConsultaRoutes'); // API de consulta somente-leitura p/ IA externa (ex.: bot WhatsApp)
 const asaasRoutes = require('./routes/asaasRoutes'); // Integração Asaas: PIX na entrega + webhook de pagamento
 const focusNfeWebhookRoutes = require('./routes/focusNfeWebhookRoutes'); // Focus NFe: webhook público (segredo próprio no header x-focus-secret)
+const notasFiscaisRoutes = require('./routes/notasFiscaisRoutes'); // Focus NFe: emissão de NF-e pelo app (fila/emitir/DANFE)
 const contasPagarRoutes = require('./routes/contasPagar'); // Financeiro: Contas a Pagar (Fase 1)
 const fornecedoresRoutes = require('./routes/fornecedores'); // Financeiro: Fornecedores
 const configNotasRoutes = require('./routes/configNotas'); // Configurações: Certificado Digital (notas)
@@ -144,6 +145,7 @@ app.use('/api/webhooks', focusNfeWebhookRoutes); // Focus NFe: webhook público 
 
 
 // (Protegidas)
+app.use('/api/notas-fiscais', authMiddleware, notasFiscaisRoutes); // NF-e emitida pelo app (Focus NFe)
 app.use('/api/produtos', authMiddleware, produtoRoutes);
 app.use('/api/clientes', authMiddleware, clienteRoutes);
 app.use('/api/vendedores', authMiddleware, vendedorRoutes);

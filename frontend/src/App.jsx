@@ -49,6 +49,7 @@ const ConciliacaoBancariaPage = lazyComRetry(() => import('./pages/Financeiro/Co
 const DashboardFinanceiroPage = lazyComRetry(() => import('./pages/Financeiro/DashboardFinanceiroPage'));
 const CategoriasDespesaPage = lazyComRetry(() => import('./pages/Financeiro/CategoriasDespesaPage'));
 const ReguaCobrancaPage = lazyComRetry(() => import('./pages/Financeiro/ReguaCobrancaPage'));
+const NotasFiscais = lazyComRetry(() => import('./pages/Financeiro/NotasFiscais'));
 const RelatorioPedidos = lazyComRetry(() => import('./pages/Relatorios/RelatorioPedidos'));
 const RelatorioVendas = lazyComRetry(() => import('./pages/Relatorios/RelatorioVendas'));
 const RelatorioFlex = lazyComRetry(() => import('./pages/Relatorios/RelatorioFlex'));
@@ -343,6 +344,7 @@ const Layout = ({ children }) => {
       (hasPermission('Pode_Acessar_Cobranca') || hasPermission('Pode_Editar_Cobranca')) && { to: '/financeiro/cobranca', icon: BellRing, label: 'Régua de Cobrança' },
       hasPermission('Pode_Acessar_Contas_Pagar') && { to: '/contas-pagar', icon: Wallet, label: 'Contas a Pagar' },
       hasPermission('Pode_Acessar_Notas_Recebidas') && { to: '/notas-recebidas', icon: Inbox, label: 'Notas Recebidas' },
+      hasPermission('Pode_Acessar_Notas_Fiscais') && { to: '/notas-fiscais', icon: FileText, label: 'Notas Fiscais' },
       hasPermission('Pode_Acessar_Fornecedores') && { to: '/fornecedores', icon: Building2, label: 'Fornecedores' },
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/dashboard', icon: Wallet, label: 'Visão Geral' },
       hasPermission('Pode_Acessar_Financeiro_Gerencial') && { to: '/financeiro/fluxo-caixa', icon: TrendingUp, label: 'Fluxo de Caixa' },
@@ -710,6 +712,7 @@ function App() {
               <Route path="/financeiro/cobranca" element={<PrivateRoute tab={['Pode_Acessar_Cobranca', 'Pode_Editar_Cobranca']}><ReguaCobrancaPage /></PrivateRoute>} />
               <Route path="/contas-pagar" element={<PrivateRoute tab="Pode_Acessar_Contas_Pagar"><ContasPagarPage /></PrivateRoute>} />
               <Route path="/notas-recebidas" element={<PrivateRoute tab="Pode_Acessar_Notas_Recebidas"><NotasRecebidasPage /></PrivateRoute>} />
+              <Route path="/notas-fiscais" element={<PrivateRoute tab="Pode_Acessar_Notas_Fiscais"><NotasFiscais /></PrivateRoute>} />
               <Route path="/fornecedores" element={<PrivateRoute tab="Pode_Acessar_Fornecedores"><FornecedoresPage /></PrivateRoute>} />
               <Route path="/financeiro/fluxo-caixa" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><FluxoCaixaPage /></PrivateRoute>} />
               <Route path="/financeiro/margem-produtos" element={<PrivateRoute tab="Pode_Acessar_Financeiro_Gerencial"><ProdutosMargemCusto /></PrivateRoute>} />
