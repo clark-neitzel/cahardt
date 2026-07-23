@@ -26,6 +26,17 @@ const clienteService = {
         return response.data;
     },
 
+    criar: async (dados) => {
+        const response = await api.post('/clientes', dados);
+        return response.data;
+    },
+
+    // Consulta dados públicos do CNPJ (Receita) + IE (SEFAZ) p/ pré-preencher o cadastro
+    consultarCnpj: async (cnpj) => {
+        const response = await api.get(`/clientes/consulta-cnpj/${encodeURIComponent(cnpj)}`);
+        return response.data;
+    },
+
     atualizarLote: async (payload) => {
         const response = await api.put('/clientes/lote', payload);
         return response.data;

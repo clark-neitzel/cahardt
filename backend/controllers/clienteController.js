@@ -1,5 +1,17 @@
+const crypto = require('crypto');
 const prisma = require('../config/database');
-const contaAzulService = require('../services/contaAzulService');
+const consultaCnpjService = require('../services/consultaCnpjService');
+const { normalizarDoc, validarDoc, ehCnpj } = require('../utils/documento');
+
+// IE varia por UF; em SC são 9 dígitos. Devolve mensagem de erro ou null se ok.
+function validarIe(ie, uf) {
+    if (!ie) return null;
+    if (!/^\d{2,14}$/.test(ie)) return 'Inscrição Estadual deve ter só números (2 a 14 dígitos)';
+    if (String(uf || '').toUpperCase() === 'SC' && ie.length !== 9) {
+        return 'Inscrição Estadual de SC deve ter 9 dígitos';
+    }
+    return null;
+}
 
 const clienteController = {
     // Listar clientes com paginação e busca
@@ -203,14 +215,6 @@ const clienteController = {
         try {
             const { uuid } = req.params;
 
-            // Sincroniza apenas este cadastro com o Conta Azul antes de exibir (best-effort).
-            // Se o CA estiver indisponível, segue com os dados locais sem travar a tela.
-            try {
-                await contaAzulService.sincronizarClienteUnico(uuid);
-            } catch (syncErr) {
-                console.warn(`[detalhar] Falha ao sincronizar cliente ${uuid} com o CA: ${syncErr.message}`);
-            }
-
             const cliente = await prisma.cliente.findUnique({
                 where: { UUID: uuid },
                 include: {
@@ -236,7 +240,107 @@ const clienteController = {
         }
     },
 
-    // Edição manual de dados complementares (do App)
+    // Consulta dados públicos de um CNPJ (Receita) + IE (SEFAZ, via certificado A1)
+    // para pré-preencher o cadastro. Não grava nada.
+    consultarCnpj: async (req, res) => {
+        try {
+            const resultado = await consultaCnpjService.consultarCnpj(req.params.cnpj);
+            res.json(resultado);
+        } catch (error) {
+            console.error('Erro na consulta de CNPJ:', error);
+            res.status(500).json({ encontrado: false, erro: 'Erro interno na consulta do CNPJ' });
+        }
+    },
+
+    // Criar cliente novo (cadastro 100% pelo app — clientes não vêm mais do Conta Azul)
+    criar: async (req, res) => {
+        try {
+            const perms = typeof req.user.permissoes === 'string'
+                ? JSON.parse(req.user.permissoes)
+                : (req.user.permissoes || {});
+            if (!(perms.admin || perms.clientes?.edit)) {
+                return res.status(403).json({ error: 'Sem permissão para cadastrar clientes' });
+            }
+
+            const b = req.body || {};
+            const soDigitos = (v) => String(v ?? '').replace(/\D/g, '');
+            const docNorm = normalizarDoc(b.Documento);
+            const nome = String(b.Nome || '').trim();
+            const ufNorm = String(b.End_Estado || '').trim().toUpperCase();
+
+            const erros = [];
+            if (!nome) erros.push('Razão social / nome é obrigatório');
+            if (!docNorm) erros.push('CNPJ/CPF é obrigatório');
+            else if (!validarDoc(docNorm)) erros.push('CNPJ/CPF inválido (confira os dígitos)');
+            const emailNorm = String(b.Email || '').trim();
+            if (emailNorm && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm)) erros.push('E-mail inválido');
+            const celularNorm = soDigitos(b.Telefone_Celular);
+            if (celularNorm && (celularNorm.length < 10 || celularNorm.length > 11)) {
+                erros.push('Celular deve ter 10 ou 11 dígitos (com DDD)');
+            }
+            const ieNorm = soDigitos(b.Inscricao_Estadual);
+            const erroIe = validarIe(ieNorm, ufNorm);
+            if (erroIe) erros.push(erroIe);
+            if (erros.length) return res.status(400).json({ error: erros.join('; ') });
+
+            const jaExiste = await prisma.cliente.findUnique({ where: { Documento: docNorm } });
+            if (jaExiste) {
+                return res.status(409).json({
+                    error: `Já existe um cliente com este documento: ${jaExiste.Nome}`,
+                    clienteExistente: { UUID: jaExiste.UUID, Nome: jaExiste.Nome }
+                });
+            }
+
+            // Próximo código sequencial (continua a numeração vinda do Conta Azul)
+            const [{ max }] = await prisma.$queryRaw`
+                SELECT COALESCE(MAX(NULLIF(regexp_replace("Codigo", '[^0-9]', '', 'g'), '')::bigint), 0) AS max
+                FROM clientes`;
+            const proximoCodigo = String(Number(max) + 1);
+
+            const cliente = await prisma.cliente.create({
+                data: {
+                    UUID: crypto.randomUUID(),
+                    Codigo: proximoCodigo,
+                    Nome: nome,
+                    NomeFantasia: String(b.NomeFantasia || '').trim() || null,
+                    Documento: docNorm,
+                    Tipo_Pessoa: ehCnpj(docNorm) ? 'JURIDICA' : 'FISICA',
+                    Email: emailNorm || null,
+                    Telefone: soDigitos(b.Telefone) || null,
+                    Telefone_Celular: celularNorm || null,
+                    End_Logradouro: String(b.End_Logradouro || '').trim() || null,
+                    End_Numero: String(b.End_Numero || '').trim() || null,
+                    End_Complemento: String(b.End_Complemento || '').trim() || null,
+                    End_Bairro: String(b.End_Bairro || '').trim() || null,
+                    End_Cidade: String(b.End_Cidade || '').trim() || null,
+                    End_Estado: ufNorm || null,
+                    End_CEP: soDigitos(b.End_CEP) || null,
+                    End_Pais: 'Brasil',
+                    Indicador_Inscricao_Estadual: b.Indicador_Inscricao_Estadual || (ieNorm ? 'CONTRIBUINTE' : null),
+                    Ativo: true,
+                    Perfis: JSON.stringify([{ perfil: 'CLIENTE' }]),
+                    Perfil_Filtro: 'PADRAO',
+                    Data_Criacao: new Date(),
+                    idVendedor: b.idVendedor || req.user.id || null,
+                    Observacoes_Gerais: String(b.Observacoes_Gerais || '').trim() || null
+                }
+            });
+
+            if (ieNorm) {
+                await prisma.clienteFiscal.create({
+                    data: { clienteUuid: cliente.UUID, inscricaoEstadual: ieNorm }
+                });
+            }
+
+            cliente.Inscricao_Estadual = ieNorm || null;
+            res.status(201).json(cliente);
+        } catch (error) {
+            console.error('Erro ao criar cliente:', error);
+            res.status(500).json({ error: 'Erro ao criar cliente' });
+        }
+    },
+
+    // Edição do cadastro (100% pelo app — nada é enviado ao Conta Azul)
     atualizar: async (req, res) => {
         try {
             const { uuid } = req.params;
@@ -258,11 +362,24 @@ const clienteController = {
                 observacaoComercialFixa,
                 // WhatsApp
                 recebeAvisoPedido,
-                // Cadastro Conta Azul (sincronizado)
+                // Cadastro (contato/fiscal)
                 Email,
                 Telefone_Celular,
                 Inscricao_Estadual,
-                Indicador_Inscricao_Estadual
+                Indicador_Inscricao_Estadual,
+                // Cadastro (identificação/endereço)
+                Nome,
+                NomeFantasia,
+                Documento,
+                Telefone,
+                Ativo,
+                End_Logradouro,
+                End_Numero,
+                End_Complemento,
+                End_Bairro,
+                End_Cidade,
+                End_Estado,
+                End_CEP
             } = req.body;
 
             // Verificar permissão para editar GPS
@@ -270,13 +387,19 @@ const clienteController = {
                 ? JSON.parse(req.user.permissoes)
                 : (req.user.permissoes || {});
             const podeEditarGPS = perms.admin || perms.Pode_Editar_GPS || perms.clientes?.edit || perms.Pode_Executar_Entregas;
-            // Gate para editar o cadastro que é sincronizado com o Conta Azul (espelhado no frontend)
-            const podeEditarCadastroCA = perms.admin || perms.clientes?.edit || perms.Pode_Editar_GPS;
+            // Gate para editar o cadastro em si (identificação, contato, fiscal, endereço)
+            const podeEditarCadastro = perms.admin || perms.clientes?.edit || perms.Pode_Editar_GPS;
 
-            // ---- Validação + normalização dos campos do Conta Azul ----
+            const atual = await prisma.cliente.findUnique({
+                where: { UUID: uuid },
+                select: { Documento: true, End_Estado: true, fiscal: { select: { inscricaoEstadual: true } } }
+            });
+            if (!atual) return res.status(404).json({ error: 'Cliente não encontrado' });
+
+            // ---- Validação + normalização ----
             const soDigitos = (v) => String(v ?? '').replace(/\D/g, '');
             const erros = [];
-            let emailNorm, celularNorm, ieNorm;
+            let emailNorm, celularNorm, ieNorm, telefoneNorm, docNorm, nomeNorm;
 
             if (Email !== undefined) {
                 emailNorm = String(Email ?? '').trim();
@@ -288,44 +411,46 @@ const clienteController = {
                     erros.push('Celular deve ter 10 ou 11 dígitos (com DDD)');
                 }
             }
+            if (Telefone !== undefined) telefoneNorm = soDigitos(Telefone);
+            if (Nome !== undefined) {
+                nomeNorm = String(Nome ?? '').trim();
+                if (!nomeNorm) erros.push('Razão social / nome não pode ficar vazio');
+            }
+            if (Documento !== undefined) {
+                docNorm = normalizarDoc(Documento);
+                if (!docNorm) erros.push('CNPJ/CPF não pode ficar vazio');
+                else if (!validarDoc(docNorm)) erros.push('CNPJ/CPF inválido (confira os dígitos)');
+                else if (docNorm !== atual.Documento) {
+                    const outro = await prisma.cliente.findUnique({ where: { Documento: docNorm } });
+                    if (outro && outro.UUID !== uuid) erros.push(`Documento já usado pelo cliente ${outro.Nome}`);
+                }
+            }
+            const ufFinal = End_Estado !== undefined ? String(End_Estado || '').trim().toUpperCase() : atual.End_Estado;
             if (Inscricao_Estadual !== undefined) {
                 ieNorm = soDigitos(Inscricao_Estadual);
-                if (ieNorm && ieNorm.length !== 9) erros.push('Inscrição Estadual (SC) deve ter 9 dígitos');
+                const erroIe = validarIe(ieNorm, ufFinal);
+                if (erroIe) erros.push(erroIe);
             }
             if (erros.length) return res.status(400).json({ error: erros.join('; ') });
 
-            // ---- Detectar quais campos do CA mudaram (para só enviar o necessário) ----
-            const atual = await prisma.cliente.findUnique({
-                where: { UUID: uuid },
-                select: {
-                    Email: true, Telefone_Celular: true, Observacoes_Gerais: true,
-                    Indicador_Inscricao_Estadual: true,
-                    fiscal: { select: { inscricaoEstadual: true } }
-                }
-            });
-            if (!atual) return res.status(404).json({ error: 'Cliente não encontrado' });
-
-            const camposCA = {};
-            if (podeEditarCadastroCA) {
-                if (emailNorm !== undefined && emailNorm !== (atual.Email || '')) camposCA.Email = emailNorm;
-                if (celularNorm !== undefined && celularNorm !== (atual.Telefone_Celular || '')) camposCA.Telefone_Celular = celularNorm;
-                if (Observacoes_Gerais !== undefined && (Observacoes_Gerais || '') !== (atual.Observacoes_Gerais || '')) {
-                    camposCA.Observacoes_Gerais = Observacoes_Gerais || '';
-                }
-                if (ieNorm !== undefined && ieNorm !== (atual.fiscal?.inscricaoEstadual || '')) camposCA.Inscricao_Estadual = ieNorm;
-                if (Indicador_Inscricao_Estadual !== undefined && (Indicador_Inscricao_Estadual || '') !== (atual.Indicador_Inscricao_Estadual || '')) {
-                    camposCA.Indicador_Inscricao_Estadual = Indicador_Inscricao_Estadual || null;
-                }
-            }
-
-            // ---- Enviar ao Conta Azul ANTES de gravar local (evita divergência app↔CA) ----
-            if (Object.keys(camposCA).length > 0) {
-                try {
-                    await contaAzulService.atualizarDadosClienteCA(uuid, camposCA);
-                } catch (caErr) {
-                    return res.status(502).json({ error: 'Falha ao enviar ao Conta Azul: ' + caErr.message });
-                }
-            }
+            const cadastro = podeEditarCadastro ? {
+                Email: emailNorm !== undefined ? (emailNorm || null) : undefined,
+                Telefone_Celular: celularNorm !== undefined ? (celularNorm || null) : undefined,
+                Indicador_Inscricao_Estadual: Indicador_Inscricao_Estadual !== undefined ? (Indicador_Inscricao_Estadual || null) : undefined,
+                Nome: nomeNorm,
+                NomeFantasia: NomeFantasia !== undefined ? (String(NomeFantasia || '').trim() || null) : undefined,
+                Documento: docNorm,
+                Tipo_Pessoa: docNorm !== undefined ? (ehCnpj(docNorm) ? 'JURIDICA' : 'FISICA') : undefined,
+                Telefone: telefoneNorm !== undefined ? (telefoneNorm || null) : undefined,
+                Ativo: Ativo !== undefined ? !!Ativo : undefined,
+                End_Logradouro: End_Logradouro !== undefined ? (String(End_Logradouro || '').trim() || null) : undefined,
+                End_Numero: End_Numero !== undefined ? (String(End_Numero || '').trim() || null) : undefined,
+                End_Complemento: End_Complemento !== undefined ? (String(End_Complemento || '').trim() || null) : undefined,
+                End_Bairro: End_Bairro !== undefined ? (String(End_Bairro || '').trim() || null) : undefined,
+                End_Cidade: End_Cidade !== undefined ? (String(End_Cidade || '').trim() || null) : undefined,
+                End_Estado: End_Estado !== undefined ? (ufFinal || null) : undefined,
+                End_CEP: End_CEP !== undefined ? (soDigitos(End_CEP) || null) : undefined
+            } : {};
 
             const cliente = await prisma.cliente.update({
                 where: { UUID: uuid },
@@ -348,15 +473,12 @@ const clienteController = {
                     insightAtivo: insightAtivo !== undefined ? insightAtivo : true,
                     observacaoComercialFixa: observacaoComercialFixa || null,
                     recebeAvisoPedido: recebeAvisoPedido !== undefined ? recebeAvisoPedido : undefined,
-                    // Cadastro CA (só grava se tem permissão; reflete o que foi enviado)
-                    Email: (podeEditarCadastroCA && emailNorm !== undefined) ? (emailNorm || null) : undefined,
-                    Telefone_Celular: (podeEditarCadastroCA && celularNorm !== undefined) ? (celularNorm || null) : undefined,
-                    Indicador_Inscricao_Estadual: (podeEditarCadastroCA && Indicador_Inscricao_Estadual !== undefined) ? (Indicador_Inscricao_Estadual || null) : undefined
+                    ...cadastro
                 }
             });
 
             // Número da IE em tabela separada (cliente_fiscal), fora da tabela clientes
-            if (podeEditarCadastroCA && ieNorm !== undefined) {
+            if (podeEditarCadastro && ieNorm !== undefined) {
                 await prisma.clienteFiscal.upsert({
                     where: { clienteUuid: uuid },
                     create: { clienteUuid: uuid, inscricaoEstadual: ieNorm || null },
@@ -365,7 +487,7 @@ const clienteController = {
             }
 
             // Reflete a IE achatada na resposta
-            cliente.Inscricao_Estadual = (podeEditarCadastroCA && ieNorm !== undefined)
+            cliente.Inscricao_Estadual = (podeEditarCadastro && ieNorm !== undefined)
                 ? (ieNorm || null)
                 : (atual.fiscal?.inscricaoEstadual ?? null);
 
@@ -376,15 +498,14 @@ const clienteController = {
         }
     },
 
-    // Sincronizar com Conta Azul (Mock)
+    // Sync de clientes com o Conta Azul — DESATIVADO em 07/2026: o cadastro agora é 100% do app.
+    // A rota continua existindo para versões antigas do frontend não quebrarem.
     sincronizar: async (req, res) => {
-        try {
-            const resultado = await contaAzulService.syncClientes();
-            res.json(resultado);
-        } catch (error) {
-            console.error('Erro no sync de clientes:', error);
-            res.status(500).json({ error: 'Erro ao sincronizar clientes' });
-        }
+        res.json({
+            success: false,
+            desativado: true,
+            message: 'Sincronização de clientes com o Conta Azul foi desativada — o cadastro agora é feito e mantido pelo próprio app.'
+        });
     },
 
     // Retornar status de inadimplência + contas a receber em aberto de um cliente

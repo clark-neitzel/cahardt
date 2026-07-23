@@ -23,14 +23,15 @@ function startSchedulers() {
     }, 2700000); // 45 minutos
 
     // === 2. AUTO-SYNC SYSTEM (Dados) ===
-    // Sincroniza produtos e clientes automaticamente a cada 1 Hora
+    // Sincroniza produtos automaticamente a cada 1 Hora.
+    // Clientes NÃO sincronizam mais (07/2026): o cadastro é 100% do app — um sync
+    // do CA sobrescreveria as edições feitas aqui.
     console.log('⏰ Iniciando sistema de Auto-Sync (Dados)...');
     setInterval(async () => {
         console.log('🔄 Auto-Sync: Buscando novidades na Conta Azul...');
         try {
             // Delta Sync automático
             await contaAzulService.syncProdutos();
-            await contaAzulService.syncClientes();
             console.log('✅ Auto-Sync finalizado com sucesso.');
         } catch (error) {
             console.error('⚠️ Auto-Sync Error:', error.message);

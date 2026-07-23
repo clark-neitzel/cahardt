@@ -16,7 +16,7 @@ Painel de controle da integração com o Conta Azul. Aqui você conecta (ou reco
 
 - Ver o status da conexão com o Conta Azul (Conectado / Desconectado)
 - Conectar ou reconectar ao CA via OAuth (redireciona para a tela de login do CA)
-- Disparar **Sync Geral**: importa produtos, clientes e situação de pedidos do CA para o sistema
+- Disparar **Sync Geral**: importa produtos, vendedores e situação de pedidos do CA para o sistema (clientes NÃO — desde 07/2026 o cadastro de clientes é 100% do app e não sincroniza mais com o CA)
 - Disparar **Sync Pedidos**: verifica pedidos que foram modificados no CA e atualiza o status no sistema
 - Ver o histórico de execuções com: data, tipo, status (SUCESSO/ERRO), mensagem e quantidade de registros processados
 - Inspecionar o JSON completo de qualquer execução (botão "Ver")
@@ -27,7 +27,7 @@ Painel de controle da integração com o Conta Azul. Aqui você conecta (ou reco
 
 | Tipo | O que faz |
 |------|-----------|
-| Sync Geral | Importa/atualiza produtos, clientes e situação de pedidos do CA |
+| Sync Geral | Importa/atualiza produtos, vendedores e situação de pedidos do CA (clientes não — cadastro é do app desde 07/2026) |
 | Sync Pedidos | Rastreia pedidos modificados no CA (aparece flag laranja na lista de Pedidos) |
 
 ---
@@ -66,7 +66,7 @@ Painel de controle da integração com o Conta Azul. Aqui você conecta (ou reco
 
 - **Pedidos** — o Sync Geral atualiza a situação (FATURADO, APROVADO) dos pedidos enviados
 - **Produtos** — o Sync Geral importa novos produtos ou atualiza preços do CA
-- **Clientes** — o Sync Geral pode atualizar dados de clientes sincronizados
+- **Clientes** — NÃO sincroniza mais (07/2026): o cadastro de clientes é feito e mantido só pelo app (aba Clientes → Novo Cliente / edição)
 - **Contas a Receber** — a situação das parcelas também pode ser atualizada pelo sync
 
 ---

@@ -10,12 +10,10 @@ const syncController = {
         res.status(202).json({ message: 'Sincronização de Produtos iniciada em background.' });
     },
 
-    // Disparar sincronização manual de Clientes
+    // Sync de clientes DESATIVADO (07/2026) — o cadastro agora é 100% do app.
+    // Um sync do CA sobrescreveria as edições feitas aqui.
     sincronizarClientes: async (req, res) => {
-        // Fire and Forget
-        contaAzulService.syncClientes().catch(err => console.error("Erro background syncClientes:", err));
-
-        res.status(202).json({ message: 'Sincronização de Clientes iniciada em background.' });
+        res.status(200).json({ message: 'Sincronização de clientes foi desativada — o cadastro de clientes agora é feito e mantido pelo próprio app.' });
     },
 
     // Buscar Vendas Modificadas no Conta Azul
@@ -32,7 +30,7 @@ const syncController = {
         (async () => {
             try {
                 await contaAzulService.syncProdutos();
-                await contaAzulService.syncClientes();
+                // syncClientes desativado (07/2026) — cadastro de clientes é 100% do app
                 await contaAzulService.syncVendedores();
             } catch (err) {
                 console.error("Erro background syncTudo:", err);

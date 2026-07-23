@@ -8,18 +8,18 @@ permissao: clientes (view)
 
 ## O que é
 
-Cadastro completo de clientes da empresa. Permite consultar, filtrar, editar dados de cada cliente e realizar ações em lote como reatribuir vendedor, mudar dia de entrega ou dia de venda. É também por aqui que se acessa o detalhe do cliente com todas as informações comerciais, fiscais e de contato.
+Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app** (desde 07/2026 os dados de cliente NÃO vêm mais do Conta Azul nem são enviados para lá). Permite cadastrar cliente novo com busca automática de dados pelo CNPJ, consultar, filtrar, editar todos os dados de cada cliente e realizar ações em lote como reatribuir vendedor, mudar dia de entrega ou dia de venda.
 
 ---
 
 ## O que dá pra fazer aqui
 
+- **Cadastrar cliente novo** (botão "Novo Cliente" no topo da lista): digitando o CNPJ, o app busca automaticamente razão social, nome fantasia, endereço, telefone e e-mail na Receita Federal e a **Inscrição Estadual na SEFAZ** (via certificado digital do app). Tudo pode ser conferido/editado antes de salvar
 - Listar clientes com filtros de busca (nome, CNPJ, cidade), dia de entrega, dia de venda, vendedor, condição de pagamento e condição permitida
 - Alternar entre clientes Ativos e Inativos
 - Selecionar clientes em lote e atualizar: vendedor, dia de entrega, dia de venda e formas de atendimento
 - Abrir o popup de inadimplência do cliente (valores vencidos, parcelas em aberto)
-- Entrar no detalhe do cliente para editar o cadastro completo
-- Sincronizar dados do cliente com o Conta Azul
+- Entrar no detalhe do cliente para editar o cadastro completo (inclusive razão social, CNPJ e endereço)
 
 ---
 
@@ -35,11 +35,19 @@ Cadastro completo de clientes da empresa. Permite consultar, filtrar, editar dad
 2. Clique no ícone de alerta (triângulo vermelho) na linha do cliente
 3. O modal abre com total vencido, parcelas e detalhes de cada nota
 
+### Cadastrar um cliente novo
+1. Na lista de clientes, clique em **Novo Cliente** (botão verde no topo — precisa da permissão `clientes.edit` ou admin)
+2. Digite o CNPJ. Assim que ele fica completo e válido, o app consulta a Receita Federal e a SEFAZ e preenche razão social, fantasia, endereço, telefone, e-mail e Inscrição Estadual automaticamente
+3. Confira/edite os campos (todos são editáveis). Endereço completo é obrigatório para emitir NF-e depois
+4. Clique em **Cadastrar Cliente**. O código sequencial é gerado automaticamente e a tela abre no detalhe do cliente
+5. Também funciona com CPF (pessoa física), mas aí não há busca automática — preencha manualmente
+6. Se o CNPJ já existir, o app avisa e oferece abrir o cadastro existente
+
 ### Editar um cliente
 1. Clique na linha do cliente para abrir o detalhe (`/clientes/:uuid`)
 2. Navegue pelas sub-abas: Cadastro, Admin ou Histórico
-3. Edite os campos desejados e clique em **Salvar Alterações**
-4. Os dados são gravados e, se o cadastro tiver campos do Conta Azul (email, celular, IE), são sincronizados com o CA
+3. Edite os campos desejados e clique em **Salvar Alterações** — tudo fica gravado só no app (nada vai para o Conta Azul)
+4. No card "Informações do Cadastro" há o botão **Atualizar pela Receita/SEFAZ**: re-consulta o CNPJ e preenche o formulário com os dados atuais (endereço novo, IE etc.) — nada é salvo até clicar em Salvar
 
 ### Alterar dados em lote
 1. Marque o checkbox de um ou mais clientes
@@ -91,20 +99,22 @@ Aba padrão ao abrir o detalhe. Contém tudo que é editável pelo time comercia
 - Toggle: Insights Ativos (sugerir produtos na venda)
 - Toggle: Recebe aviso de pedido via WhatsApp
 
-**Contato / Fiscal** (campos sincronizados com o Conta Azul ao salvar)
+**Contato / Fiscal**
 - E-mail
 - Celular (com DDD, só números)
-- Inscrição Estadual (9 dígitos SC) + link para consultar Sintegra SC
+- Inscrição Estadual (em SC: 9 dígitos) + link para consultar Sintegra SC
 - Indicador de IE (Contribuinte, Não Contribuinte, Isento)
-- Telefone fixo (somente leitura, vem do CA)
+- Telefone fixo (editável)
 
 **Observações Gerais**
 - Campo de texto livre com anotações sobre o cliente
 
-**Informações do Cadastro** (somente leitura — vêm do Conta Azul)
-- Tipo de pessoa, código, perfis
-- Endereço completo (logradouro, bairro, cidade, estado, CEP)
-- Financeiro: atrasos de pagamento e recebimento, pagamentos e recebimentos do mês atual
+**Informações do Cadastro** (editável por quem tem `clientes.edit`/`Pode_Editar_GPS`/admin)
+- Razão social, nome fantasia e CNPJ/CPF (editáveis)
+- Endereço completo editável (logradouro, número, complemento, bairro, cidade, UF, CEP) — obrigatório para emitir NF-e
+- Botão **Atualizar pela Receita/SEFAZ** (re-consulta o CNPJ e preenche o formulário; salva só ao clicar em Salvar)
+- Tipo de pessoa, código e perfis (somente leitura)
+- Financeiro: atrasos de pagamento e recebimento (histórico da época do Conta Azul)
 - Auditoria: data de criação, última alteração e UUID
 
 A barra de ações fica fixada no rodapé com os botões **Descartar** e **Salvar Alterações**.
@@ -141,7 +151,8 @@ Exibe os leads que foram associados a este cliente — geralmente leads converti
 | Ação | Permissão necessária |
 |------|----------------------|
 | Ver a tela | `clientes` (view) |
-| Editar cadastro (campos CA) | `clientes.edit` ou `Pode_Editar_GPS` ou `admin` |
+| Cadastrar cliente novo | `clientes.edit` ou `admin` |
+| Editar cadastro (identificação, contato, fiscal, endereço) | `clientes.edit` ou `Pode_Editar_GPS` ou `admin` |
 | Filtrar por vendedor (lote e lista) | `pedidos.clientes = "todos"` ou `admin` |
 | Ver e editar todos os clientes | `admin` |
 
@@ -151,9 +162,11 @@ Exibe os leads que foram associados a este cliente — geralmente leads converti
 
 - **Rota** — os clientes desta lista aparecem nos cards da Rota com base no vendedor e dias de venda
 - **Pedidos** — condição de pagamento padrão pré-preenche o formulário de pedido
-- **Conta Azul** — email, celular e inscrição estadual são sincronizados com o CA ao salvar
+- **Emissão de NF-e (Focus NFe)** — a nota usa a Inscrição Estadual e o endereço do cadastro do cliente; IE errada/faltando é a causa da rejeição "IE do destinatário não informada"
 - **Config: Categorias de Cliente** — as categorias definem ciclo padrão e regras de flex/desconto
 - **Análise IA** — os insights do cliente são recalculados automaticamente e exibidos na sub-aba Admin
+
+> **Conta Azul:** a sincronização de clientes com o CA foi **desativada em 07/2026**. Nada é puxado nem enviado — o app é a fonte única do cadastro de clientes.
 
 ---
 

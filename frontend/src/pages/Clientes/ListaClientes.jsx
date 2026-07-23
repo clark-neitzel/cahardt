@@ -4,14 +4,18 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import clienteService from '../../services/clienteService';
 import vendedorService from '../../services/vendedorService';
 import tabelaPrecoService from '../../services/tabelaPrecoService';
-import { Search, MapPin, Phone, User, Filter, Settings, X, Save, AlertTriangle, MessageCircle, AlertCircle } from 'lucide-react';
+import { Search, MapPin, Phone, User, Filter, Settings, X, Save, AlertTriangle, MessageCircle, AlertCircle, UserPlus } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
+import { useAuth } from '../../contexts/AuthContext';
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
 
 const ListaClientes = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
+    const permsUser = user?.permissoes || {};
+    const podeCadastrar = permsUser.admin || permsUser.clientes?.edit;
 
     const getSaved = (key, defaultVal) => {
         const saved = localStorage.getItem(`clientesFiltro_${key}`);
@@ -240,6 +244,16 @@ const ListaClientes = () => {
                             </span>
                         )}
                     </button>
+                    {podeCadastrar && (
+                        <button
+                            onClick={() => navigate('/clientes/novo')}
+                            className="shrink-0 px-3 py-2 md:px-4 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm flex items-center gap-1.5 min-h-[38px]"
+                        >
+                            <UserPlus className="h-4 w-4" />
+                            <span className="hidden sm:inline">Novo Cliente</span>
+                            <span className="sm:hidden">Novo</span>
+                        </button>
+                    )}
                 </div>
 
                 {/* Grid de Filtros */}

@@ -11,6 +11,7 @@ const GerenciarProduto = lazyComRetry(() => import('./pages/Admin/Produtos/Geren
 const PainelSync = lazyComRetry(() => import('./pages/Admin/Sync/PainelSync'));
 const ListaClientes = lazyComRetry(() => import('./pages/Clientes/ListaClientes'));
 const DetalheCliente = lazyComRetry(() => import('./pages/Clientes/DetalheCliente'));
+const NovoCliente = lazyComRetry(() => import('./pages/Clientes/NovoCliente'));
 const ListaVendedores = lazyComRetry(() => import('./pages/Admin/Vendedores/ListaVendedores'));
 const Configuracoes = lazyComRetry(() => import('./pages/Admin/Configuracoes/Configuracoes'));
 const TabelaPrecos = lazyComRetry(() => import('./pages/Configuracoes/TabelaPrecos'));
@@ -698,6 +699,7 @@ function App() {
 
               {/* Clientes */}
               <Route path="/clientes" element={<PrivateRoute tab="clientes"><ListaClientes /></PrivateRoute>} />
+              <Route path="/clientes/novo" element={<PrivateRoute tab="clientes"><NovoCliente /></PrivateRoute>} />
               <Route path="/clientes/:uuid" element={<PrivateRoute tab="clientes"><DetalheCliente /></PrivateRoute>} />
 
               {/* LISTA GERENCIAL DE ENTREGAS */}

@@ -15,7 +15,7 @@ import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink, Truck, CreditCard, AlertTriangle } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
-import { normalizarDoc, formatarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
+import { normalizarDoc, formatarDoc, mascaraDoc, validarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
 
 // Toggle switch inline
 const Toggle = ({ checked, onChange }) => (
@@ -117,12 +117,25 @@ const DetalheCliente = () => {
         insightAtivo: true,
         observacaoComercialFixa: '',
         recebeAvisoPedido: true,
-        // Cadastro Conta Azul (sincronizado)
+        // Cadastro (contato/fiscal)
         Email: '',
         Telefone_Celular: '',
         Inscricao_Estadual: '',
-        Indicador_Inscricao_Estadual: ''
+        Indicador_Inscricao_Estadual: '',
+        // Cadastro (identificação/endereço) — editável 100% pelo app
+        Nome: '',
+        NomeFantasia: '',
+        Documento: '',
+        Telefone: '',
+        End_Logradouro: '',
+        End_Numero: '',
+        End_Complemento: '',
+        End_Bairro: '',
+        End_Cidade: '',
+        End_Estado: '',
+        End_CEP: ''
     });
+    const [consultandoCnpj, setConsultandoCnpj] = useState(false);
 
     // Indicação (busca de cliente)
     const [indicacaoSearch, setIndicacaoSearch] = useState('');
@@ -204,7 +217,18 @@ const DetalheCliente = () => {
                 Email: clienteData.Email || '',
                 Telefone_Celular: clienteData.Telefone_Celular || '',
                 Inscricao_Estadual: clienteData.Inscricao_Estadual || '',
-                Indicador_Inscricao_Estadual: clienteData.Indicador_Inscricao_Estadual || ''
+                Indicador_Inscricao_Estadual: clienteData.Indicador_Inscricao_Estadual || '',
+                Nome: clienteData.Nome || '',
+                NomeFantasia: clienteData.NomeFantasia || '',
+                Documento: clienteData.Documento || '',
+                Telefone: clienteData.Telefone || '',
+                End_Logradouro: clienteData.End_Logradouro || '',
+                End_Numero: clienteData.End_Numero || '',
+                End_Complemento: clienteData.End_Complemento || '',
+                End_Bairro: clienteData.End_Bairro || '',
+                End_Cidade: clienteData.End_Cidade || '',
+                End_Estado: clienteData.End_Estado || '',
+                End_CEP: clienteData.End_CEP || ''
             });
 
             // Setar nome da indicação se existir
@@ -262,23 +286,78 @@ const DetalheCliente = () => {
         if (cnpj) alert('CNPJ copiado! Cole no campo do Sintegra SC e clique em Buscar.');
     };
 
+    // Re-consulta o CNPJ na Receita/SEFAZ e preenche o formulário (nada é salvo até clicar em Salvar)
+    const handleAtualizarPeloCnpj = async () => {
+        const cnpj = normalizarDoc(formData.Documento);
+        if (cnpj.length !== 14) {
+            alert('A busca automática só funciona com CNPJ (14 posições).');
+            return;
+        }
+        setConsultandoCnpj(true);
+        try {
+            const r = await clienteService.consultarCnpj(cnpj);
+            if (!r.encontrado) {
+                alert(r.erro || 'CNPJ não encontrado nas bases públicas.');
+                return;
+            }
+            setFormData(f => ({
+                ...f,
+                Nome: r.razaoSocial || f.Nome,
+                NomeFantasia: r.nomeFantasia || f.NomeFantasia,
+                Inscricao_Estadual: r.inscricaoEstadual || f.Inscricao_Estadual,
+                Indicador_Inscricao_Estadual: r.indicadorIeSugerido || f.Indicador_Inscricao_Estadual,
+                End_Logradouro: r.endereco?.logradouro || f.End_Logradouro,
+                End_Numero: r.endereco?.numero || f.End_Numero,
+                End_Complemento: r.endereco?.complemento || f.End_Complemento,
+                End_Bairro: r.endereco?.bairro || f.End_Bairro,
+                End_Cidade: r.endereco?.cidade || f.End_Cidade,
+                End_Estado: r.endereco?.uf || f.End_Estado,
+                End_CEP: r.endereco?.cep || f.End_CEP
+            }));
+            const ieMsg = r.inscricaoEstadual
+                ? `IE encontrada na SEFAZ: ${r.inscricaoEstadual}`
+                : (r.ieConsulta?.ok ? 'SEFAZ: sem IE (não contribuinte).' : 'IE não consultada automaticamente — confira manualmente.');
+            alert(`Dados atualizados a partir da ${r.fonte} (situação: ${r.situacao || '?'}).\n${ieMsg}\n\nConfira os campos e clique em Salvar para gravar.`);
+        } catch (e) {
+            alert('Falha na consulta: ' + (e.response?.data?.erro || e.message));
+        } finally {
+            setConsultandoCnpj(false);
+        }
+    };
+
     const handleSave = async () => {
-        // Validação dos campos sincronizados com o CA (espelha o backend)
+        // Validação do cadastro (espelha o backend)
         const email = (formData.Email || '').trim();
         const celular = (formData.Telefone_Celular || '').replace(/\D/g, '');
+        const telefone = (formData.Telefone || '').replace(/\D/g, '');
         const ie = (formData.Inscricao_Estadual || '').replace(/\D/g, '');
+        const doc = normalizarDoc(formData.Documento);
+        const uf = (formData.End_Estado || '').trim().toUpperCase();
         const erros = [];
+        if (podeEditarCadastroCA) {
+            if (!formData.Nome.trim()) erros.push('Razão social / nome não pode ficar vazio');
+            if (!doc) erros.push('CNPJ/CPF não pode ficar vazio');
+            else if (!validarDoc(doc)) erros.push('CNPJ/CPF inválido (confira os dígitos)');
+        }
         if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) erros.push('E-mail inválido');
         if (celular && (celular.length < 10 || celular.length > 11)) erros.push('Celular deve ter 10 ou 11 dígitos (com DDD)');
-        if (ie && ie.length !== 9) erros.push('Inscrição Estadual (SC) deve ter 9 dígitos');
+        if (ie && uf === 'SC' && ie.length !== 9) erros.push('Inscrição Estadual de SC deve ter 9 dígitos');
         if (erros.length) {
             alert('Corrija antes de salvar:\n• ' + erros.join('\n• '));
             return;
         }
 
         try {
-            // Envia já normalizado (celular/IE só dígitos)
-            await clienteService.atualizar(uuid, { ...formData, Email: email, Telefone_Celular: celular, Inscricao_Estadual: ie });
+            // Envia já normalizado (celular/telefone/IE só dígitos; documento sem pontuação)
+            await clienteService.atualizar(uuid, {
+                ...formData,
+                Email: email,
+                Telefone_Celular: celular,
+                Telefone: telefone,
+                Inscricao_Estadual: ie,
+                Documento: doc,
+                End_Estado: uf
+            });
             alert('Dados atualizados com sucesso!');
             navigate('/clientes');
         } catch (error) {
@@ -999,9 +1078,7 @@ const DetalheCliente = () => {
                 </SectionCard>
 
                 {/* ─── CARD: CONTATO / FISCAL ─── */}
-                <SectionCard icon={Mail} title="Contato / Fiscal"
-                    badge={<span className="flex items-center gap-1 text-xs text-blue-400 font-normal"><RefreshCw className="h-3 w-3" /> sincroniza com o Conta Azul ao salvar</span>}
-                >
+                <SectionCard icon={Mail} title="Contato / Fiscal">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">E-mail</label>
@@ -1024,9 +1101,9 @@ const DetalheCliente = () => {
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Inscrição Estadual</label>
-                            <input type="text" inputMode="numeric" maxLength={9}
+                            <input type="text" inputMode="numeric" maxLength={14}
                                 className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                placeholder="9 dígitos (SC)"
+                                placeholder={(formData.End_Estado || '').toUpperCase() === 'SC' ? '9 dígitos (SC)' : 'Só números'}
                                 value={formData.Inscricao_Estadual}
                                 onChange={(e) => setFormData({ ...formData, Inscricao_Estadual: e.target.value.replace(/\D/g, '') })}
                             />
@@ -1049,13 +1126,18 @@ const DetalheCliente = () => {
                             </SelectBusca>
                         </div>
                     </div>
-                    {/* Telefone fixo (CA, somente leitura) */}
-                    {cliente.Telefone && (
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                            <span className="text-xs text-gray-400 uppercase tracking-wide">Telefone fixo (Conta Azul)</span>
-                            <p className="text-sm text-gray-700 mt-0.5">{cliente.Telefone}</p>
+                    {/* Telefone fixo */}
+                    <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Telefone Fixo</label>
+                            <input type="tel" inputMode="numeric" maxLength={10}
+                                className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                placeholder="4733334444"
+                                value={formData.Telefone}
+                                onChange={(e) => setFormData({ ...formData, Telefone: e.target.value.replace(/\D/g, '') })}
+                            />
                         </div>
-                    )}
+                    </div>
                 </SectionCard>
 
                 {/* ─── CARD: OBSERVAÇÕES ─── */}
@@ -1069,10 +1151,46 @@ const DetalheCliente = () => {
                     />
                 </SectionCard>
 
-                {/* ─── CARD: INFORMAÇÕES DO CADASTRO (CA, somente leitura) ─── */}
-                <SectionCard icon={Building} title="Informações do Cadastro">
+                {/* ─── CARD: INFORMAÇÕES DO CADASTRO (editável 100% pelo app) ─── */}
+                <SectionCard icon={Building} title="Informações do Cadastro"
+                    badge={podeEditarCadastroCA && normalizarDoc(formData.Documento).length === 14 ? (
+                        <button type="button" onClick={handleAtualizarPeloCnpj} disabled={consultandoCnpj}
+                            className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 font-medium disabled:opacity-50">
+                            <RefreshCw className={`h-3 w-3 ${consultandoCnpj ? 'animate-spin' : ''}`} />
+                            {consultandoCnpj ? 'Consultando...' : 'Atualizar pela Receita/SEFAZ'}
+                        </button>
+                    ) : null}
+                >
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-5 text-sm">
-                        {/* Tipo + Código + Perfis */}
+                        {/* Identificação — editável */}
+                        {podeEditarCadastroCA ? (
+                            <>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Razão Social / Nome</label>
+                                    <input type="text"
+                                        className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        value={formData.Nome}
+                                        onChange={(e) => setFormData({ ...formData, Nome: e.target.value })}
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Nome Fantasia</label>
+                                    <input type="text"
+                                        className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        value={formData.NomeFantasia}
+                                        onChange={(e) => setFormData({ ...formData, NomeFantasia: e.target.value })}
+                                    />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">CNPJ / CPF</label>
+                                    <input type="text"
+                                        className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        value={mascaraDoc(formData.Documento)}
+                                        onChange={(e) => setFormData({ ...formData, Documento: normalizarDoc(e.target.value) })}
+                                    />
+                                </div>
+                            </>
+                        ) : null}
                         <div>
                             <span className="block text-xs text-gray-400 uppercase tracking-wide mb-1">Tipo Pessoa</span>
                             <span className="font-medium text-gray-900">{cliente.Tipo_Pessoa || '-'}</span>
@@ -1088,30 +1206,72 @@ const DetalheCliente = () => {
                                     let perfis = [];
                                     try { perfis = JSON.parse(cliente.Perfis || '[]'); } catch { perfis = cliente.Perfis ? [cliente.Perfis] : []; }
                                     if (!Array.isArray(perfis) || perfis.length === 0) return <span className="text-gray-500">-</span>;
-                                    return perfis.map((p, i) => <span key={i} className="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-100">{p}</span>);
+                                    return perfis.map((p, i) => <span key={i} className="px-2.5 py-0.5 bg-blue-50 text-blue-700 text-xs font-medium rounded-full border border-blue-100">{typeof p === 'object' ? (p.perfil || JSON.stringify(p)) : p}</span>);
                                 })()}
                             </div>
                         </div>
 
                         {/* Endereço — full width */}
                         <div className="col-span-2 sm:col-span-3 lg:col-span-4 pt-4 border-t border-gray-100">
-                            <span className="block text-xs text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1"><MapPin className="h-3 w-3" /> Endereço</span>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                <div>
-                                    <span className="block text-xs text-gray-400 mb-0.5">Logradouro</span>
-                                    <span className="text-gray-900">{[cliente.End_Logradouro, cliente.End_Numero].filter(Boolean).join(', ') || '-'}</span>
-                                    {cliente.End_Complemento && <p className="text-gray-600 text-xs">{cliente.End_Complemento}</p>}
+                            <span className="block text-xs text-gray-400 uppercase tracking-wide mb-1.5 flex items-center gap-1"><MapPin className="h-3 w-3" /> Endereço <span className="normal-case font-normal">(obrigatório p/ emitir NF-e)</span></span>
+                            {podeEditarCadastroCA ? (
+                                <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+                                    <div className="col-span-2 md:col-span-4">
+                                        <label className="block text-xs text-gray-400 mb-0.5">Logradouro</label>
+                                        <input type="text" className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            value={formData.End_Logradouro} onChange={(e) => setFormData({ ...formData, End_Logradouro: e.target.value })} />
+                                    </div>
+                                    <div className="col-span-2 md:col-span-2">
+                                        <label className="block text-xs text-gray-400 mb-0.5">Número</label>
+                                        <input type="text" className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            value={formData.End_Numero} onChange={(e) => setFormData({ ...formData, End_Numero: e.target.value })} />
+                                    </div>
+                                    <div className="col-span-2 md:col-span-3">
+                                        <label className="block text-xs text-gray-400 mb-0.5">Complemento</label>
+                                        <input type="text" className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            value={formData.End_Complemento} onChange={(e) => setFormData({ ...formData, End_Complemento: e.target.value })} />
+                                    </div>
+                                    <div className="col-span-2 md:col-span-3">
+                                        <label className="block text-xs text-gray-400 mb-0.5">Bairro</label>
+                                        <input type="text" className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            value={formData.End_Bairro} onChange={(e) => setFormData({ ...formData, End_Bairro: e.target.value })} />
+                                    </div>
+                                    <div className="col-span-2 md:col-span-3">
+                                        <label className="block text-xs text-gray-400 mb-0.5">Cidade</label>
+                                        <input type="text" className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            value={formData.End_Cidade} onChange={(e) => setFormData({ ...formData, End_Cidade: e.target.value })} />
+                                    </div>
+                                    <div className="col-span-1">
+                                        <label className="block text-xs text-gray-400 mb-0.5">UF</label>
+                                        <SelectBusca className="w-full" value={formData.End_Estado} onChange={(e) => setFormData({ ...formData, End_Estado: e.target.value })}>
+                                            <option value="">—</option>
+                                            {['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'].map(uf => <option key={uf} value={uf}>{uf}</option>)}
+                                        </SelectBusca>
+                                    </div>
+                                    <div className="col-span-1 md:col-span-2">
+                                        <label className="block text-xs text-gray-400 mb-0.5">CEP</label>
+                                        <input type="text" inputMode="numeric" maxLength={8} className="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                            value={formData.End_CEP} onChange={(e) => setFormData({ ...formData, End_CEP: e.target.value.replace(/\D/g, '') })} />
+                                    </div>
                                 </div>
-                                <div>
-                                    <span className="block text-xs text-gray-400 mb-0.5">Bairro / Cidade</span>
-                                    <span className="text-gray-900">{[cliente.End_Bairro, cliente.End_Cidade].filter(Boolean).join(' · ') || '-'}</span>
-                                    {cliente.End_Estado && <p className="text-gray-600 text-xs">{cliente.End_Estado}</p>}
+                            ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    <div>
+                                        <span className="block text-xs text-gray-400 mb-0.5">Logradouro</span>
+                                        <span className="text-gray-900">{[cliente.End_Logradouro, cliente.End_Numero].filter(Boolean).join(', ') || '-'}</span>
+                                        {cliente.End_Complemento && <p className="text-gray-600 text-xs">{cliente.End_Complemento}</p>}
+                                    </div>
+                                    <div>
+                                        <span className="block text-xs text-gray-400 mb-0.5">Bairro / Cidade</span>
+                                        <span className="text-gray-900">{[cliente.End_Bairro, cliente.End_Cidade].filter(Boolean).join(' · ') || '-'}</span>
+                                        {cliente.End_Estado && <p className="text-gray-600 text-xs">{cliente.End_Estado}</p>}
+                                    </div>
+                                    <div>
+                                        <span className="block text-xs text-gray-400 mb-0.5">CEP</span>
+                                        <span className="text-gray-900">{cliente.End_CEP || '-'}</span>
+                                    </div>
                                 </div>
-                                <div>
-                                    <span className="block text-xs text-gray-400 mb-0.5">CEP</span>
-                                    <span className="text-gray-900">{cliente.End_CEP || '-'}</span>
-                                </div>
-                            </div>
+                            )}
                         </div>
 
                         {/* Financeiro */}
