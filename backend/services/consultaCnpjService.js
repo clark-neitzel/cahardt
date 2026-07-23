@@ -184,9 +184,10 @@ async function consultarIeSefaz(cnpj, uf) {
             razaoSocial: habilitado.razaoSocial
         };
     } catch (e) {
-        const status = e.response?.status ? ` (HTTP ${e.response.status})` : '';
-        console.warn(`[ConsultaCNPJ] SEFAZ ${ufNorm} falhou${status}: ${e.message}`);
-        return { ok: false, motivo: `SEFAZ ${ufNorm} indisponível${status}` };
+        const status = e.response?.status ? ` HTTP ${e.response.status}` : '';
+        const corpo = e.response?.data ? String(e.response.data).replace(/\s+/g, ' ').slice(0, 200) : '';
+        console.warn(`[ConsultaCNPJ] SEFAZ ${ufNorm} falhou${status}: ${e.message} ${corpo}`);
+        return { ok: false, motivo: `SEFAZ ${ufNorm}:${status} ${e.message}${corpo ? ' — ' + corpo : ''}`.slice(0, 300) };
     }
 }
 
