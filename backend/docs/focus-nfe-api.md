@@ -523,8 +523,83 @@ Rate limit: **não documentado nas páginas baixadas** — ver doc online se nec
 6. **Homologação primeiro**, ponta a ponta (emitir → webhook → DANFE → cancelar → CCe), testado
    **em produção do nosso app** atravessando um deploy (regra do projeto), antes de trocar para
    `producao`.
-7. **⚠️ Antes de produção: matriz tributária com o contador** — CFOP, NCM, CEST, CSOSN/CST de
-   ICMS, PIS e COFINS por produto (salgados congelados podem ter ST de ICMS em SC), campos novos no
-   cadastro de Produtos. Sem isso, nota rejeitada ou — pior — autorizada com imposto errado.
+7. **Matriz tributária: RESOLVIDA — ver seção 12.** As regras são iguais para todos os produtos
+   (confirmado nos XMLs reais das notas do Conta Azul). Não precisa de campo fiscal por produto —
+   só NCM, que é o mesmo para todos.
 8. XML autorizado → salvar também no Google Drive da contabilidade (fluxo já existente das notas de
    entrada) e disponibilizar DANFE na tela do pedido.
+
+---
+
+## 12. Perfil fiscal REAL da Hardt (extraído dos XMLs das notas do Conta Azul)
+
+> Extraído em 23/07/2026 das NF-e **84843, 84838 e 84835** (emitidas 22/07/2026 pelo CA), via
+> `GET /v1/notas-fiscais/{chave}` da API do CA (`diag-nota-fiscal`). As três notas têm o MESMO
+> perfil tributário em todos os itens — confirma que a regra é única para todos os produtos.
+
+### Emitente (para o `POST /v2/empresas` da Focus)
+
+| Campo Focus | Valor real (do XML) |
+|---|---|
+| `nome` | HARDT DOCES E SALGADOS LTDA |
+| `nome_fantasia` | HARDT DOCES E SALGADOS LTDA |
+| `cnpj` | 08766459000102 |
+| `inscricao_estadual` | 255372744 |
+| `inscricao_municipal` | 255372744 |
+| `regime_tributario` | **1 (Simples Nacional)** — CRT=1 no XML |
+| `logradouro` / `numero` | R 15 DE OUTUBRO, 170 |
+| `bairro` | RIO BONITO (é o que consta no XML; o site diz Pirabeiraba — usar o do XML/cartão CNPJ) |
+| `municipio` / `uf` / `cep` | Joinville / SC / 89239700 |
+| `telefone` | 47988548476 |
+| CNAE (informativo) | 1096100 (fabricação de alimentos e pratos prontos) |
+| Série / numeração | **série 1**; último número emitido em 23/07 = **84843** → conferir o último no dia da virada e setar `serie_nfe_producao: 1` e `proximo_numero_nfe_producao` |
+
+### Cabeçalho da nota (igual em todas)
+
+| Campo XML | Valor | Campo Focus correspondente |
+|---|---|---|
+| `natOp` | `Venda de Mercadorias / Produtos` | `natureza_operacao` |
+| `mod` / `serie` | 55 / 1 | (série na config da empresa) |
+| `tpNF` | 1 (saída) | `tipo_documento: 1` |
+| `finNFe` | 1 (normal) | `finalidade_emissao: 1` |
+| `idDest` | 1 (operação interna SC) | `local_destino: 1` |
+| `indFinal` | 0 (não é consumidor final) | `consumidor_final: 0` |
+| `indPres` | 1 (presencial) | `presenca_comprador: 1` |
+| `dhSaiEnt` | = data de emissão | `data_entrada_saida` |
+| `modFrete` | 0 (por conta do emitente) | `modalidade_frete: 0` |
+| `indPag`/`tPag` | 1 (a prazo); `tPag` varia: 01=dinheiro, 15=boleto | `formas_pagamento` (ver campos.focusnfe) |
+| destinatário | sempre PJ com IE (indIEDest=1) | `indicador_inscricao_estadual_destinatario: 1` |
+
+### Impostos por item (IGUAL para TODOS os produtos)
+
+| Tributo | Valor real | Campo Focus |
+|---|---|---|
+| NCM | **19022000** (todos: massas alimentícias recheadas) | `codigo_ncm` |
+| CEST | não informado | (omitir) |
+| CFOP | **5101** (venda de produção própria, dentro de SC) | `cfop` |
+| ICMS | **CSOSN 101** (Simples c/ permissão de crédito), origem **0** | `icms_situacao_tributaria: "101"`, `icms_origem: 0` |
+| Crédito Simples | **`pCredSN` = 3,82%** + `vCredICMSSN` = 3,82% do valor do item | `icms_aliquota_credito_simples: 3.82` + `icms_valor_credito_simples` (calcular) |
+| IPI | CST **99**, tudo zero | (informar `ipi_situacao_tributaria: "99"` ou omitir — conferir na doc de campos) |
+| PIS | CST **49** (outras operações de saída), tudo zero | `pis_situacao_tributaria: "49"` |
+| COFINS | CST **49**, tudo zero | `cofins_situacao_tributaria: "49"` |
+| Totais de imposto | vICMS/vST/vIPI/vPIS/vCOFINS todos 0,00 (Simples) | (Focus calcula os totais) |
+
+**Sem substituição tributária** em nenhuma das notas analisadas (vBCST/vST = 0).
+
+### Informações adicionais (`infAdic/infCpl`) — reproduzir o mesmo texto
+
+```
+Referente ao pedido #<numero>#DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.#NAO GERA DIREITO A CREDITO FISCAL DE IPI.#PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ <vCred total>, CORRESPONDENTE A#ALIQUOTA DE 3,82%, NOS TERMOS DO ART. 23 DA LC 123/2006.
+```
+
+### ⚠️ Pontos de atenção (únicos que podem variar)
+
+1. **A alíquota de crédito do Simples (3,82%)** depende da faixa de faturamento da empresa — pode
+   mudar de mês. Confirmar com o contador se é fixa ou se precisa ser configurável
+   (`app_configs`), e o valor vigente na virada.
+2. As notas analisadas são todas **venda dentro de SC para PJ com IE**. Se um dia houver venda
+   interestadual (CFOP 6101) ou para consumidor final/pessoa física (CFOP 5102, `indFinal=1`,
+   destinatário com CPF e `indIEDest=9`), o montador do JSON precisa tratar esses casos — hoje não
+   acontecem.
+3. `tPag` por forma de recebimento do app: dinheiro=01, boleto=15, PIX=17, cartão=03/04 (tabela
+   completa na doc de campos da Focus).
