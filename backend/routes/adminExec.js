@@ -1521,6 +1521,117 @@ router.get('/diag-extrato-asaas-pendentes', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-conciliacao-asaas-causas — SOMENTE LEITURA: para cada
+// crédito PENDENTE da conta Asaas, roda o matching REAL (candidatosPara) e localiza
+// a baixa "ideal" pelo pay_ do extrato (refNum → cobrança → parcela), explicando a
+// CAUSA de não ter conciliado sozinho: juros/multa no valor, ambiguidade (2+
+// candidatos), baixa já usada em outro lançamento, data fora da janela, etc.
+router.get('/diag-conciliacao-asaas-causas', async (req, res) => {
+    try {
+        const conciliacaoService = require('../services/conciliacaoBancariaService');
+        const cfg = await prisma.appConfig.findUnique({ where: { key: 'asaas_conta_financeira_ca_id' } });
+        const contaAsaas = cfg?.value || null;
+        if (!contaAsaas) return res.status(400).json({ error: 'Conta Asaas não vinculada.' });
+
+        const ymd = (d) => new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const round2 = (v) => Math.round(Number(v) * 100) / 100;
+
+        const pendentes = await prisma.extratoLancamento.findMany({
+            where: { contaFinanceiraCaId: contaAsaas, tipo: 'CREDITO', status: 'PENDENTE' },
+            orderBy: { data: 'desc' },
+            take: 100
+        });
+        if (pendentes.length === 0) return res.json({ contaAsaas, pendentes: 0, relatorio: [] });
+
+        // Pool de entradas (baixas de recebimento na conta Asaas) na janela dos pendentes ±3d
+        const datas = pendentes.map((l) => l.data.getTime());
+        const gte = new Date(Math.min(...datas) - 4 * 86400000);
+        const lte = new Date(Math.max(...datas) + 4 * 86400000);
+        const baixas = await prisma.pagamentoParcela.findMany({
+            where: { estornado: false, contaFinanceiraCaId: contaAsaas, dataPagamento: { gte, lte } },
+            select: { id: true, valorRecebido: true, dataPagamento: true, formaPagamento: true, parcelaId: true }
+        });
+        const entradas = baixas.map((b) => ({ id: b.id, valor: round2(b.valorRecebido), data: ymd(b.dataPagamento) }));
+
+        // Baixas já vinculadas a algum lançamento conciliado (ou grupo) — ficam fora do matching
+        const [diretos, grupos] = await Promise.all([
+            prisma.extratoLancamento.findMany({
+                where: { contaFinanceiraCaId: contaAsaas, status: 'CONCILIADO', pagamentoParcelaId: { not: null } },
+                select: { pagamentoParcelaId: true, data: true, valor: true }
+            }),
+            prisma.conciliacaoGrupo.findMany({
+                where: { contaFinanceiraCaId: contaAsaas },
+                select: { itens: { select: { pagamentoParcelaId: true } } }
+            })
+        ]);
+        const usados = new Set([
+            ...diretos.map((u) => u.pagamentoParcelaId),
+            ...grupos.flatMap((g) => g.itens.map((i) => i.pagamentoParcelaId))
+        ].filter(Boolean));
+        const ondeUsada = new Map(diretos.filter((u) => u.pagamentoParcelaId)
+            .map((u) => [u.pagamentoParcelaId, `lançamento de ${ymd(u.data)} R$ ${round2(u.valor).toFixed(2)}`]));
+
+        const relatorio = [];
+        for (const l of pendentes) {
+            const item = { data: ymd(l.data), valor: round2(l.valor), descricao: l.descricao, paymentId: l.refNum || null };
+
+            const cands = conciliacaoService.candidatosPara(
+                { data: ymd(l.data), valor: round2(l.valor), tipo: 'CREDITO' },
+                { entradas, saidas: [] }, usados
+            );
+            item.candidatosMatching = cands.map((c) => ({ valor: c.valor, data: c.data, tarifa: c.tarifa || null }));
+
+            // Baixa "ideal": segue o pay_ do extrato até a parcela e suas baixas no app
+            let ideais = [];
+            const cobranca = l.refNum
+                ? await prisma.cobrancaAsaas.findUnique({ where: { asaasPaymentId: l.refNum }, select: { parcelaId: true, pedidoId: true, status: true, tipo: true } })
+                : null;
+            if (cobranca) {
+                item.cobranca = { tipo: cobranca.tipo, status: cobranca.status };
+                let parcelaIds = cobranca.parcelaId ? [cobranca.parcelaId] : [];
+                if (parcelaIds.length === 0 && cobranca.pedidoId) {
+                    const conta = await prisma.contaReceber.findFirst({
+                        where: { pedidoId: cobranca.pedidoId }, select: { parcelas: { select: { id: true } } }
+                    });
+                    parcelaIds = (conta?.parcelas || []).map((p) => p.id);
+                }
+                if (parcelaIds.length > 0) {
+                    ideais = await prisma.pagamentoParcela.findMany({
+                        where: { estornado: false, parcelaId: { in: parcelaIds } },
+                        select: { id: true, valorRecebido: true, dataPagamento: true, formaPagamento: true, contaFinanceiraCaId: true }
+                    });
+                }
+            }
+            item.baixasDaCobranca = ideais.map((b) => ({
+                valorRecebido: round2(b.valorRecebido),
+                dataPagamento: ymd(b.dataPagamento),
+                forma: b.formaPagamento,
+                naContaAsaas: b.contaFinanceiraCaId === contaAsaas,
+                jaConciliadaCom: ondeUsada.get(b.id) || (usados.has(b.id) ? 'grupo' : null),
+                diferencaVsExtrato: round2(round2(l.valor) - round2(b.valorRecebido))
+            }));
+
+            // Classificação da causa
+            const livre = item.baixasDaCobranca.find((b) => b.naContaAsaas && !b.jaConciliadaCom);
+            if (cands.length > 1) item.causa = 'AMBIGUO_MAIS_DE_UM_CANDIDATO';
+            else if (cands.length === 1) item.causa = 'TEM_1_CANDIDATO_DEVE_FECHAR_NA_PROXIMA_SYNC';
+            else if (!cobranca) item.causa = 'SEM_COBRANCA_NO_APP';
+            else if (ideais.length === 0) item.causa = 'COBRANCA_SEM_BAIXA_NO_APP';
+            else if (!item.baixasDaCobranca.some((b) => b.naContaAsaas)) item.causa = 'BAIXA_EM_OUTRA_CONTA';
+            else if (!livre) item.causa = 'BAIXA_JA_CONCILIADA_COM_OUTRO_LANCAMENTO';
+            else if (Math.abs(livre.diferencaVsExtrato) > 0.01) item.causa = 'VALOR_NAO_BATE_JUROS_MULTA';
+            else item.causa = 'DATA_FORA_DA_JANELA_3_DIAS';
+            relatorio.push(item);
+        }
+
+        const resumo = {};
+        for (const r of relatorio) resumo[r.causa] = (resumo[r.causa] || 0) + 1;
+        res.json({ contaAsaas, pendentes: pendentes.length, resumo, relatorio });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // POST /api/admin-exec/asaas-emitir-boletos-pedido — emite os boletos Asaas das
 // parcelas em aberto de um pedido (mesmo caminho do botão do app; idempotente —
 // parcela que já tem boleto PENDENTE reaproveita). Body: { numero }
