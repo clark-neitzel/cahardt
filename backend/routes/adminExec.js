@@ -3698,6 +3698,25 @@ router.get('/diag-pagamentos-pagar', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-ca-get?path=/v1/...
+// SOMENTE LEITURA: repassa um GET cru à API v2 do Conta Azul (com o token OAuth
+// de produção). Para sondar endpoints não documentados (ex.: extrato de conta
+// financeira). Restrito a paths /v1/ — nunca faz escrita.
+router.get('/diag-ca-get', async (req, res) => {
+    try {
+        const p = String(req.query.path || '').trim();
+        if (!p.startsWith('/v1/')) return res.status(400).json({ error: 'Informe ?path=/v1/...' });
+        try {
+            const resp = await contaAzulService._axiosGet(`https://api-v2.contaazul.com${p}`, 'DIAG_CA_GET');
+            res.json({ ok: true, path: p, status: resp.status, data: resp.data });
+        } catch (e) {
+            res.json({ ok: false, path: p, status: e.response?.status || null, data: e.response?.data || e.message });
+        }
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-parcela-ca-baixas?parcela=UUID
 // SOMENTE LEITURA: detalhe cru de UMA parcela no CA + as baixas que já existem nela.
 // Para investigar erros tipo "soma das baixas excede o valor nominal da parcela".
