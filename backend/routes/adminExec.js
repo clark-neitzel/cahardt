@@ -334,17 +334,30 @@ router.get('/focus-nfe-consultar', async (req, res) => {
     }
 });
 
-// GET /api/admin-exec/focus-nfe-arquivo?ref=...&qual=danfe|xml — baixa a DANFE (PDF) ou o XML
-// de uma nota emitida, direto da Focus (para conferência).
+// GET /api/admin-exec/focus-nfe-arquivo?ref=...&qual=danfe|xml|danfe-app — baixa a DANFE (PDF)
+// ou o XML de uma nota emitida. `danfe-app` gera a DANFE com o NOSSO gerador (o mesmo layout
+// que o app usa hoje para as notas do CA) a partir do XML da Focus.
 router.get('/focus-nfe-arquivo', async (req, res) => {
     try {
         const focusNfe = require('../services/focusNfeService');
         if (!req.query.ref) return res.status(400).json({ error: 'Informe ?ref=' });
         const { data } = await focusNfe.consultar(String(req.query.ref));
-        const caminho = req.query.qual === 'xml' ? data.caminho_xml_nota_fiscal : data.caminho_danfe;
+        const qual = req.query.qual;
+        const caminho = qual === 'danfe' ? data.caminho_danfe : data.caminho_xml_nota_fiscal;
         if (!caminho) return res.status(404).json({ error: 'Arquivo ainda não disponível.', statusNota: data.status, data });
+        if (qual === 'danfe-app') {
+            const xml = (await focusNfe.baixarArquivo(caminho)).toString('utf8');
+            const { gerarPDF } = require('@alexssmusica/node-pdf-nfe');
+            const path = require('path');
+            const fs = require('fs');
+            const pathLogo = path.join(__dirname, '../assets/logo-danfe.png');
+            const doc = await gerarPDF(xml, fs.existsSync(pathLogo) ? { pathLogo } : {});
+            res.setHeader('Content-Type', 'application/pdf');
+            doc.pipe(res);
+            return;
+        }
         const buf = await focusNfe.baixarArquivo(caminho);
-        res.setHeader('Content-Type', req.query.qual === 'xml' ? 'application/xml' : 'application/pdf');
+        res.setHeader('Content-Type', qual === 'xml' ? 'application/xml' : 'application/pdf');
         res.send(buf);
     } catch (e) {
         res.status(500).json({ error: e.message });
