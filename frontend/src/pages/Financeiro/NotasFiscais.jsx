@@ -62,6 +62,7 @@ const NotasFiscais = () => {
     const [consultando, setConsultando] = useState(null); // notaId em consulta
     const [baixando, setBaixando] = useState(null);       // `${notaId}:danfe|xml`
     const [progressoLote, setProgressoLote] = useState(null); // { atual, total }
+    const [selecionados, setSelecionados] = useState(() => new Set()); // pedidoIds marcados p/ emitir
     const loteAtivoRef = useRef(false);
 
     const carregar = useCallback(async (silencioso = false) => {
@@ -107,6 +108,24 @@ const NotasFiscais = () => {
         return pedidos.filter(p => !p.notaCA && (!p.nota || ['ERRO', 'PROCESSANDO'].includes(p.nota.status)));
     }, [pedidos, filtroStatus]);
 
+    // Seleção por checkbox: só pedidos elegíveis (sem nota ou com erro) podem ser marcados
+    const elegivel = (p) => !p.notaCA && (!p.nota || p.nota.status === 'ERRO');
+    const visiveisElegiveis = useMemo(() => pedidosVisiveis.filter(elegivel), [pedidosVisiveis]);
+    const selecionadosValidos = useMemo(
+        () => visiveisElegiveis.filter(p => selecionados.has(p.id)),
+        [visiveisElegiveis, selecionados]
+    );
+    const alternarSelecao = (id) => setSelecionados(prev => {
+        const novo = new Set(prev);
+        if (novo.has(id)) novo.delete(id); else novo.add(id);
+        return novo;
+    });
+    const alternarTodos = () => setSelecionados(prev =>
+        selecionadosValidos.length === visiveisElegiveis.length && visiveisElegiveis.length > 0
+            ? new Set()
+            : new Set(visiveisElegiveis.map(p => p.id))
+    );
+
     const temProcessando = useMemo(
         () => pedidos.some(p => p.nota?.status === 'PROCESSANDO'),
         [pedidos]
@@ -136,7 +155,8 @@ const NotasFiscais = () => {
     };
 
     const emitirTodas = async () => {
-        const fila = pedidosSemNota;
+        // Com checkboxes marcados emite SÓ os selecionados; sem marcação, todas as elegíveis
+        const fila = selecionadosValidos.length > 0 ? selecionadosValidos : pedidosSemNota;
         if (fila.length === 0) return;
         loteAtivoRef.current = true;
         let erros = 0;
@@ -159,6 +179,7 @@ const NotasFiscais = () => {
         }
         if (erros === 0) toast.success(`${fila.length} nota(s) enviada(s) para emissão.`);
         else toast(`${fila.length - erros} enviada(s), ${erros} com erro.`, { icon: '⚠️' });
+        setSelecionados(new Set());
         await carregar(true);
     };
 
@@ -270,7 +291,7 @@ const NotasFiscais = () => {
                     </div>
                     <h1 className="text-base md:text-2xl font-bold text-gray-900 truncate">Notas Fiscais</h1>
                 </div>
-                {podeEmitir && pedidosSemNota.length > 0 && (
+                {podeEmitir && (pedidosSemNota.length > 0 || selecionadosValidos.length > 0) && (
                     <button
                         onClick={emitirTodas}
                         disabled={progressoLote != null || emitindo != null}
@@ -278,7 +299,9 @@ const NotasFiscais = () => {
                     >
                         {progressoLote != null
                             ? (<><Loader2 className="h-4 w-4 animate-spin" /> {progressoLote.atual}/{progressoLote.total}…</>)
-                            : (<><Send className="h-4 w-4" /> Emitir todas ({pedidosSemNota.length})</>)}
+                            : selecionadosValidos.length > 0
+                                ? (<><Send className="h-4 w-4" /> Emitir selecionadas ({selecionadosValidos.length})</>)
+                                : (<><Send className="h-4 w-4" /> Emitir todas ({pedidosSemNota.length})</>)}
                     </button>
                 )}
             </div>
@@ -361,7 +384,17 @@ const NotasFiscais = () => {
                                 {pedidosVisiveis.map(p => (
                                     <div key={p.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
                                         <div className="flex items-center justify-between gap-2 mb-2">
-                                            <span className="font-semibold text-gray-900">Pedido {p.numero != null ? p.numero : '—'}</span>
+                                            <span className="flex items-center gap-2 font-semibold text-gray-900">
+                                                {podeEmitir && elegivel(p) && (
+                                                    <input
+                                                        type="checkbox"
+                                                        className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
+                                                        checked={selecionados.has(p.id)}
+                                                        onChange={() => alternarSelecao(p.id)}
+                                                    />
+                                                )}
+                                                Pedido {p.numero != null ? p.numero : '—'}
+                                            </span>
                                             <BadgeNota pedido={p} />
                                         </div>
                                         <div className="text-sm text-gray-900">{p.cliente?.nome || '—'}</div>
@@ -389,6 +422,17 @@ const NotasFiscais = () => {
                                 <table className="min-w-full divide-y divide-gray-200">
                                     <thead className="bg-gray-50">
                                         <tr>
+                                            {podeEmitir && (
+                                                <th className="pl-4 pr-1 py-3 w-8">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                                        checked={visiveisElegiveis.length > 0 && selecionadosValidos.length === visiveisElegiveis.length}
+                                                        onChange={alternarTodos}
+                                                        title="Marcar/desmarcar todas"
+                                                    />
+                                                </th>
+                                            )}
                                             <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Pedido #</th>
                                             <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Cliente</th>
                                             <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor (R$)</th>
@@ -399,6 +443,18 @@ const NotasFiscais = () => {
                                     <tbody className="bg-white divide-y divide-gray-200 text-sm">
                                         {pedidosVisiveis.map(p => (
                                             <tr key={p.id} className="hover:bg-gray-50">
+                                                {podeEmitir && (
+                                                    <td className="pl-4 pr-1 py-3 w-8">
+                                                        {elegivel(p) && (
+                                                            <input
+                                                                type="checkbox"
+                                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+                                                                checked={selecionados.has(p.id)}
+                                                                onChange={() => alternarSelecao(p.id)}
+                                                            />
+                                                        )}
+                                                    </td>
+                                                )}
                                                 <td className="px-5 py-3 text-gray-900">
                                                     <div className="font-semibold">{p.numero != null ? p.numero : '—'}</div>
                                                     <div className="text-xs text-gray-500">
