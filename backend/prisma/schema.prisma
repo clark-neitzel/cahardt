@@ -3166,12 +3166,19 @@ model TransferenciaConta {
   // Lançamento do extrato que originou (conciliação); null = lançada à mão
   extratoLancamentoId String? @unique @map("extrato_lancamento_id")
 
+  // Transferência importada do Conta Azul (id dela lá) — idempotência do sync
+  // (conferida no código; SEM @unique de propósito: constraint nova travaria o
+  // `prisma db push` do deploy pedindo --accept-data-loss).
+  // null = lançada à mão no app ou via conciliação
+  idTransferenciaCA String? @map("id_transferencia_ca")
+
   criadoPorId String?   @map("criado_por_id")
   criadoPor   Vendedor? @relation("TransferenciasContaCriadas", fields: [criadoPorId], references: [id])
   criadoEm    DateTime  @default(now()) @map("criado_em")
 
   @@index([contaOrigemId, data])
   @@index([contaDestinoId, data])
+  @@index([idTransferenciaCA])
   @@map("transferencias_conta")
 }
 

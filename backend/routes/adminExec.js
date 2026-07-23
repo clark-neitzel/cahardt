@@ -3698,6 +3698,24 @@ router.get('/diag-pagamentos-pagar', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/ca-extrato-transferencias-sync — importa as transferências
+// entre contas feitas no Conta Azul para a tabela TransferenciaConta (Saldos por
+// Conta). Body: { dias: 30 } ou { de: 'YYYY-MM-DD', ate: 'YYYY-MM-DD' } p/ backfill.
+// Idempotente (id da transferência no CA) — repetir não duplica.
+router.post('/ca-extrato-transferencias-sync', async (req, res) => {
+    try {
+        const caExtratoService = require('../services/caExtratoService');
+        const r = await caExtratoService.sincronizarTransferencias({
+            dias: Number(req.body?.dias) || 30,
+            de: req.body?.de || null,
+            ate: req.body?.ate || null
+        });
+        res.json(r);
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.response?.data || e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-ca-get?path=/v1/...
 // SOMENTE LEITURA: repassa um GET cru à API v2 do Conta Azul (com o token OAuth
 // de produção). Para sondar endpoints não documentados (ex.: extrato de conta

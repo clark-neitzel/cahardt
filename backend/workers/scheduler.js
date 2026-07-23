@@ -422,6 +422,18 @@ function startSchedulers() {
     };
     setTimeout(_runExtratoAsaas, 240000);          // 4min após o start
     setInterval(_runExtratoAsaas, 30 * 60 * 1000); // a cada 30 minutos
+
+    // === 11. TRANSFERÊNCIAS DO CONTA AZUL → SALDOS POR CONTA ===
+    // Transferência entre contas feita no CA passa a aparecer sozinha no app
+    // (janela de 30 dias, idempotente pelo id da transferência no CA). Isolado.
+    console.log('⏰ Iniciando Worker de transferências do Conta Azul (extrato CA)...');
+    const caExtratoService = require('../services/caExtratoService');
+    const _runExtratoCA = () => {
+        caExtratoService.sincronizarTransferencias({ dias: 30 })
+            .catch(err => console.error('⚠️ Extrato CA (transferências) Error:', err.message));
+    };
+    setTimeout(_runExtratoCA, 300000);            // 5min após o start
+    setInterval(_runExtratoCA, 3 * 3600000);      // a cada 3 horas
 }
 
 module.exports = { startSchedulers };
