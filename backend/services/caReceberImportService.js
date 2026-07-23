@@ -53,6 +53,43 @@ async function importarTudo(opts = {}) {
     });
 
     try {
+        // Modo cirúrgico: só completa o detalhe das parcelas já arquivadas que ficaram
+        // sem ele (falha 429 ou restart do servidor no meio da varredura completa).
+        if (opts.apenasSemDetalhe) {
+            const { Prisma } = require('@prisma/client');
+            estado.fase = 'completando-detalhes';
+            const faltantes = await prisma.caReceberImportado.findMany({
+                where: { OR: [{ dadosDetalhe: { equals: Prisma.DbNull } }, { dadosDetalhe: { equals: Prisma.JsonNull } }] },
+                select: { idParcelaCA: true }
+            });
+            estado.parcelasVistas = faltantes.length;
+            for (const f of faltantes) {
+                try {
+                    const det = await contaAzulService.buscarParcelaDetalhe(f.idParcelaCA);
+                    estado.detalhesBuscados++;
+                    const evento = det?.evento || null;
+                    const numeroVenda = evento?.codigo_referencia ? parseInt(evento.codigo_referencia, 10) : null;
+                    await prisma.caReceberImportado.update({
+                        where: { idParcelaCA: f.idParcelaCA },
+                        data: {
+                            dadosDetalhe: det,
+                            idEventoCA: evento?.id || null,
+                            numeroVendaCA: Number.isFinite(numeroVenda) ? numeroVenda : null,
+                            origemEventoCA: evento?.referencia?.origem || null,
+                        }
+                    });
+                    estado.arquivadas++;
+                    await pausa(300);
+                } catch (e) {
+                    estado.detalhesFalha++;
+                    estado.ultimoErro = `${f.idParcelaCA}: ${e.message}`;
+                    if (e.response?.status === 429) await pausa(5000);
+                }
+            }
+            estado.fase = 'concluido';
+            return resumo();
+        }
+
         const de = opts.de || '2000-01-01';
         const ate = opts.ate || '2035-12-31';
         const tamanhoPagina = 100;
