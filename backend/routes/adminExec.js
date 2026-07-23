@@ -345,6 +345,41 @@ router.post('/focus-nfe-emitir-pedido', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/focus-nfe-sync-ie-clientes — para cada pedido do período sem nota
+// cujo cliente PJ está SEM inscrição estadual no app, re-sincroniza o cliente do Conta Azul
+// (o sync traz a IE p/ cliente_fiscal). Body opcional: { dias: 3 }.
+router.post('/focus-nfe-sync-ie-clientes', async (req, res) => {
+    try {
+        const dias = parseInt(req.body?.dias, 10) || 3;
+        const desde = new Date(Date.now() - dias * 24 * 3600 * 1000);
+        const pedidos = await prisma.pedido.findMany({
+            where: { especial: false, bonificacao: false, numero: { not: null }, dataVenda: { gte: desde } },
+            include: { cliente: { include: { fiscal: true } } },
+        });
+        const semIE = [...new Map(
+            pedidos
+                .filter(p => {
+                    const doc = String(p.cliente?.Documento || '').replace(/[^0-9A-Za-z]/g, '');
+                    return doc && !/^\d{11}$/.test(doc) && !p.cliente?.fiscal?.inscricaoEstadual;
+                })
+                .map(p => [p.cliente.UUID, p.cliente])
+        ).values()];
+        const resultados = [];
+        for (const c of semIE) {
+            try {
+                await contaAzulService.sincronizarClienteUnico(c.UUID);
+                const fiscal = await prisma.clienteFiscal.findUnique({ where: { clienteUuid: c.UUID } });
+                resultados.push({ cliente: c.Nome, ieAgora: fiscal?.inscricaoEstadual || null });
+            } catch (e) {
+                resultados.push({ cliente: c.Nome, erro: e.message });
+            }
+        }
+        res.json({ clientesSemIE: semIE.length, resultados });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // POST /api/admin-exec/focus-nfe-marcar-revenda — marca os produtos de REVENDA confirmados
 // pelo dono (espetinho frango c/ bacon → CEST 1707900; bolinho de carne). CFOP 5102 na emissão.
 router.post('/focus-nfe-marcar-revenda', async (req, res) => {
