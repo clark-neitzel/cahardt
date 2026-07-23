@@ -4338,6 +4338,115 @@ router.post('/ca-extrato-conciliacao-limpar', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-ca-pix-conciliacao?dias=8&limite=200
+// SOMENTE LEITURA: lista os recebimentos (baixas) registrados no CA que caíram
+// na conta do Conta Azul e cruza com o extrato derivado da Conciliação Bancária
+// do app. Mostra quais estão lá e quais faltam (com o motivo). Janela = parcelas
+// ALTERADAS no CA nos últimos `dias`.
+router.get('/diag-ca-pix-conciliacao', async (req, res) => {
+    try {
+        const dias = Math.max(1, Number(req.query.dias) || 8);
+        const limite = Math.min(Number(req.query.limite) || 200, 400);
+        const round2 = (v) => Math.round(Number(v) * 100) / 100;
+        const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const somaDias = (s, n) => { const d = new Date(`${s}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+        const ini = somaDias(hoje, -dias);
+
+        // Conta alvo: a do Conta Azul (mesma regra do caExtratoService)
+        let contaAlvo = String(req.query.conta || '');
+        if (!contaAlvo) {
+            const c = await prisma.contaFinanceira.findFirst({
+                where: { nomeBanco: { contains: 'conta azul', mode: 'insensitive' }, ativo: true }, select: { id: true }
+            });
+            contaAlvo = c?.id || '';
+        }
+        if (!contaAlvo) return res.status(400).json({ ok: false, error: 'Conta do Conta Azul não encontrada.' });
+
+        // 1) Parcelas de receber ALTERADAS na janela (paginado)
+        const itens = [];
+        for (let pagina = 1; pagina <= 5; pagina++) {
+            const url = `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/contas-a-receber/buscar` +
+                `?pagina=${pagina}&tamanho_pagina=100&data_vencimento_de=${somaDias(hoje, -730)}&data_vencimento_ate=${somaDias(hoje, 365)}` +
+                `&data_alteracao_de=${encodeURIComponent(ini + 'T00:00:00')}&data_alteracao_ate=${encodeURIComponent(hoje + 'T23:59:59')}`;
+            const resp = await contaAzulService._axiosGet(url, 'DIAG_PIX_CONC');
+            const pag = resp.data?.itens || [];
+            itens.push(...pag);
+            if (itens.length >= Number(resp.data?.itens_totais || 0) || pag.length === 0) break;
+            await new Promise(r => setTimeout(r, 300));
+        }
+        const PAGAS = ['RECEBIDO', 'RECEBIDO_PARCIAL', 'QUITADO', 'QUITADO_PARCIAL', 'ACQUITTED', 'PAID'];
+        const recebidas = itens.filter(i => PAGAS.includes(String(i.status_traduzido || i.status || '').toUpperCase())).slice(0, limite);
+
+        // 2) Detalhe de cada parcela → baixas na conta alvo
+        const baixasAlvo = [];
+        let detalhesFalha = 0;
+        for (const item of recebidas) {
+            try {
+                const det = await contaAzulService.buscarParcelaDetalhe(item.id);
+                for (const b of (det?.baixas || [])) {
+                    const cfRaw = b?.conta_financeira ?? det?.conta_financeira;
+                    const cfId = cfRaw ? (typeof cfRaw === 'string' ? cfRaw : cfRaw.id || null) : null;
+                    if (cfId !== contaAlvo) continue;
+                    const valor = round2(b?.valor_composicao?.valor_bruto || 0);
+                    if (valor <= 0) continue;
+                    baixasAlvo.push({
+                        idParcelaCA: item.id,
+                        cliente: item.cliente?.nome || null,
+                        descricao: item.descricao || null,
+                        metodo: b?.metodo_pagamento || null,
+                        data: String(b?.data_pagamento || '').slice(0, 10),
+                        valor
+                    });
+                }
+                await new Promise(r => setTimeout(r, 250));
+            } catch (e) { detalhesFalha++; if (e.response?.status === 429) await new Promise(r => setTimeout(r, 5000)); }
+        }
+
+        // 3) Extrato da conciliação na conta alvo (janela + margem) → pool de CRÉDITOS
+        const margIni = new Date(new Date(`${ini}T00:00:00-03:00`).getTime() - 5 * 86400000);
+        const extrato = await prisma.extratoLancamento.findMany({
+            where: { contaFinanceiraCaId: contaAlvo, tipo: 'CREDITO', data: { gte: margIni } },
+            select: { id: true, fitId: true, data: true, valor: true, descricao: true, status: true }
+        });
+        const pool = extrato.map(l => ({ t: new Date(l.data).getTime(), valor: round2(l.valor), fitId: l.fitId, usada: false }));
+        const casa = (b) => {
+            const t = new Date(`${b.data}T12:00:00-03:00`).getTime();
+            const p = pool.find(x => !x.usada && Math.abs(x.valor - b.valor) <= 0.01 && Math.abs(x.t - t) <= 2 * 86400000);
+            if (p) { p.usada = true; return p.fitId; }
+            return null;
+        };
+
+        // 4) Cruzar e explicar as que faltam
+        const ok = [], faltando = [];
+        for (const b of baixasAlvo) {
+            const fitId = casa(b);
+            if (fitId) { ok.push({ ...b, fitId }); continue; }
+            let motivo = 'desconhecido';
+            const arch = await prisma.caReceberImportado.findUnique({ where: { idParcelaCA: b.idParcelaCA } }).catch(() => null);
+            if (!arch) motivo = 'parcela não está no arquivo ca_receber_importado (importador não viu essa parcela)';
+            else if (arch.temPedidoApp) motivo = 'parcela de pedido do app — sync de baixas não espelhou (conta já fechada no app? conferir)';
+            else if (arch.parcelaLocalId) {
+                const pgs = await prisma.pagamentoParcela.count({ where: { parcelaId: arch.parcelaLocalId, estornado: false } });
+                motivo = pgs === 0
+                    ? 'parcela local existe mas SEM baixa no app (baixa feita só no CA — nada importa baixas de conta IMPORTADO_CA)'
+                    : 'parcela local tem baixa mas em outra conta/valor (conferir contaFinanceiraCaId do pagamento)';
+            } else motivo = 'parcela já estava PAGA no CA quando importada — só arquivada, sem movimento no app';
+            faltando.push({ ...b, motivo });
+        }
+
+        const porMotivo = {};
+        for (const f of faltando) porMotivo[f.motivo] = (porMotivo[f.motivo] || 0) + 1;
+        res.json({
+            ok: true, contaAlvo, janelaAlteracao: { de: ini, ate: hoje },
+            parcelasAlteradas: itens.length, recebidasVerificadas: recebidas.length, detalhesFalha,
+            baixasNaContaCA: baixasAlvo.length, naConciliacao: ok.length,
+            faltandoTotal: faltando.length, porMotivo, faltando
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.response?.data || e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-ca-get?path=/v1/...
 // SOMENTE LEITURA: repassa um GET cru à API v2 do Conta Azul (com o token OAuth
 // de produção). Para sondar endpoints não documentados (ex.: extrato de conta
@@ -5080,6 +5189,37 @@ router.post('/ca-receber-importar', async (req, res) => {
 router.get('/ca-receber-importar-status', (req, res) => {
     const caReceberImport = require('../services/caReceberImportService');
     res.json({ ok: true, ...caReceberImport.resumo() });
+});
+
+// GET /api/admin-exec/diag-faturamento-local — SOMENTE LEITURA: confere o fluxo
+// "CA somente leitura": pedidos faturados localmente (RECEBIDO sem idVendaContaAzul),
+// fila ENVIAR atual e último número de venda gerado.
+router.get('/diag-faturamento-local', async (req, res) => {
+    try {
+        const [faturadosLocais, filaEnviar, maxNumero, ultimos] = await Promise.all([
+            prisma.pedido.count({ where: { statusEnvio: 'RECEBIDO', idVendaContaAzul: null, especial: false, bonificacao: false } }),
+            prisma.pedido.count({ where: { statusEnvio: { in: ['ENVIAR', 'SINCRONIZANDO'] }, especial: false, bonificacao: false } }),
+            prisma.pedido.aggregate({ _max: { numero: true } }),
+            prisma.pedido.findMany({
+                where: { statusEnvio: 'RECEBIDO', idVendaContaAzul: null, especial: false, bonificacao: false },
+                orderBy: { updatedAt: 'desc' }, take: 5,
+                select: { numero: true, updatedAt: true, cliente: { select: { Nome: true, NomeFantasia: true } }, contaReceber: { select: { id: true, status: true } } }
+            })
+        ]);
+        res.json({
+            ok: true,
+            pedidosFaturadosLocalmente: faturadosLocais,
+            aguardandoFaturar: filaEnviar,
+            ultimoNumeroVenda: maxNumero._max.numero,
+            exemplos: ultimos.map(p => ({
+                numero: p.numero, quando: p.updatedAt,
+                cliente: p.cliente?.NomeFantasia || p.cliente?.Nome,
+                contaReceber: p.contaReceber ? p.contaReceber.status : 'SEM CONTA'
+            }))
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
 });
 
 router.get('/ca-receber-importado-resumo', async (req, res) => {
