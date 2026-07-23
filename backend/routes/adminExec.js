@@ -3736,6 +3736,23 @@ router.post('/ca-extrato-despesas-sync', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/ca-extrato-conciliacao-sync — gera as linhas de extrato da
+// Conciliação Bancária para as contas do Conta Azul (padrão: conta com "conta azul"
+// no nome) a partir dos movimentos do app. Body: { dias } ou { de, ate }. Idempotente.
+router.post('/ca-extrato-conciliacao-sync', async (req, res) => {
+    try {
+        const caExtratoService = require('../services/caExtratoService');
+        const r = await caExtratoService.sincronizarExtratoConciliacao({
+            dias: Number(req.body?.dias) || 30,
+            de: req.body?.de || null,
+            ate: req.body?.ate || null
+        });
+        res.json(r);
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-ca-get?path=/v1/...
 // SOMENTE LEITURA: repassa um GET cru à API v2 do Conta Azul (com o token OAuth
 // de produção). Para sondar endpoints não documentados (ex.: extrato de conta

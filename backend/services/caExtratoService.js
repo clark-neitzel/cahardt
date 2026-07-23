@@ -21,6 +21,7 @@ const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
 
 const round2 = (v) => Math.round(Number(v) * 100) / 100;
+const num = (v) => Number(v || 0);
 const hojeSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 const dataSP = (ymd) => new Date(`${ymd}T12:00:00-03:00`); // meio-dia SP: imune a fuso
 const somaDias = (s, n) => {
@@ -342,4 +343,183 @@ async function sincronizarDespesas({ dias = 2, de = null, ate = null, limite = 4
     return resumo;
 }
 
-module.exports = { sincronizarTransferencias, sincronizarDespesas };
+// ─────────────────────────────────────────────────────────────
+// EXTRATO na CONCILIAÇÃO BANCÁRIA para contas do Conta Azul
+//
+// A Conciliação Bancária mostra o extrato importado por OFX (Sicoob etc.)
+// ou pela API do Asaas. A conta "Conta PJ Conta Azul IP" não tem OFX nem
+// API de extrato — então a tela ficava vazia para ela. Como TODO movimento
+// dessa conta agora chega ao app (baixas de receber/pagar sincronizadas +
+// transferências e despesas importadas do CA), o extrato é gerado a partir
+// desses movimentos, nas MESMAS tabelas do OFX (ExtratoLancamento):
+//   - recebimento  → CRÉDITO, já vinculado à baixa (nasce CONCILIADO)
+//   - pagamento    → DÉBITO, idem
+//   - transferência→ CRÉDITO/DÉBITO com etiqueta TRANSFERENCIA
+// Idempotente pelo fitId (id do movimento no app). Só gera para contas SEM
+// outra fonte de extrato: por padrão a conta com "conta azul" no nome;
+// dá para mudar pela config ca_extrato_conciliacao_contas (array de UUIDs).
+// ─────────────────────────────────────────────────────────────
+
+/** Contas-alvo do extrato derivado (nunca a do Asaas, que tem API própria). */
+async function contasAlvoConciliacao() {
+    try {
+        const cfg = await prisma.appConfig.findUnique({ where: { key: 'ca_extrato_conciliacao_contas' } });
+        if (Array.isArray(cfg?.value) && cfg.value.length) return cfg.value;
+    } catch (_) { /* usa o padrão */ }
+    const contas = await prisma.contaFinanceira.findMany({
+        where: { nomeBanco: { contains: 'conta azul', mode: 'insensitive' }, ativo: true },
+        select: { id: true }
+    });
+    return contas.map(c => c.id);
+}
+
+/**
+ * Gera as linhas de extrato (conciliação bancária) das contas do CA no
+ * período [hoje − dias, hoje]. Idempotente por (conta, fitId).
+ */
+async function sincronizarExtratoConciliacao({ dias = 30, de = null, ate = null } = {}) {
+    const contas = await contasAlvoConciliacao();
+    if (!contas.length) return { ok: false, motivo: 'Nenhuma conta do Conta Azul encontrada (config ca_extrato_conciliacao_contas).' };
+
+    const fim = ate || hojeSP();
+    const ini = de || somaDias(fim, -Math.max(1, dias));
+    const iniDt = new Date(`${ini}T00:00:00-03:00`);
+    const fimDt = new Date(`${fim}T23:59:59.999-03:00`);
+    const resultados = [];
+
+    for (const conta of contas) {
+        const [recs, pags, transfs] = await Promise.all([
+            prisma.pagamentoParcela.findMany({
+                where: { contaFinanceiraCaId: conta, estornado: false, dataPagamento: { gte: iniDt, lte: fimDt } },
+                include: {
+                    parcela: {
+                        select: {
+                            numeroParcela: true,
+                            contaReceber: { select: { cliente: { select: { Nome: true, NomeFantasia: true } }, pedido: { select: { numero: true } } } }
+                        }
+                    }
+                }
+            }),
+            prisma.pagamentoParcelaPagar.findMany({
+                where: { contaFinanceiraCaId: conta, estornado: false, dataPagamento: { gte: iniDt, lte: fimDt } },
+                include: {
+                    parcelaPagar: {
+                        select: {
+                            numeroParcela: true,
+                            contaPagar: { select: { descricao: true, fornecedor: { select: { razaoSocial: true } } } }
+                        }
+                    }
+                }
+            }),
+            prisma.transferenciaConta.findMany({
+                where: { data: { gte: iniDt, lte: fimDt }, OR: [{ contaOrigemId: conta }, { contaDestinoId: conta }] }
+            })
+        ]);
+
+        const linhas = [];
+        for (const r of recs) {
+            const valor = round2(r.valorRecebido);
+            if (valor <= 0) continue;
+            const cli = r.parcela?.contaReceber?.cliente;
+            const ped = r.parcela?.contaReceber?.pedido?.numero;
+            linhas.push({
+                fitId: `ca-rec-${r.id}`,
+                data: r.dataPagamento,
+                valor,
+                tipo: 'CREDITO',
+                descricao: `Recebimento ${cli?.NomeFantasia || cli?.Nome || 'cliente'}${ped ? ` · pedido ${ped}` : ''}`,
+                trnType: 'CREDIT',
+                pagamentoParcelaId: r.id
+            });
+        }
+        for (const p of pags) {
+            const valor = round2(num(p.valorPago) + num(p.juros) + num(p.multa));
+            if (valor <= 0) continue;
+            const cp = p.parcelaPagar?.contaPagar;
+            linhas.push({
+                fitId: `ca-pag-${p.id}`,
+                data: p.dataPagamento,
+                valor,
+                tipo: 'DEBITO',
+                descricao: `Pagamento ${cp?.fornecedor?.razaoSocial || ''} · ${cp?.descricao || 'despesa'}`.trim(),
+                trnType: 'DEBIT',
+                pagamentoParcelaPagarId: p.id
+            });
+        }
+        for (const t of transfs) {
+            const entrou = t.contaDestinoId === conta;
+            linhas.push({
+                fitId: `ca-tr-${t.id}`,
+                data: t.data,
+                valor: round2(t.valor),
+                tipo: entrou ? 'CREDITO' : 'DEBITO',
+                descricao: t.descricao || 'Transferência entre contas',
+                trnType: 'XFER',
+                transferencia: t
+            });
+        }
+
+        let novos = 0;
+        if (linhas.length) {
+            const existentes = await prisma.extratoLancamento.findMany({
+                where: { contaFinanceiraCaId: conta, fitId: { in: linhas.map(l => l.fitId) } },
+                select: { fitId: true }
+            });
+            const jaTem = new Set(existentes.map(e => e.fitId));
+            const inserir = linhas.filter(l => !jaTem.has(l.fitId));
+
+            if (inserir.length) {
+                const datas = inserir.map(l => new Date(l.data).getTime()).sort((a, b) => a - b);
+                await prisma.$transaction(async (tx) => {
+                    const importacao = await tx.extratoImportacao.create({
+                        data: {
+                            contaFinanceiraCaId: conta,
+                            nomeArquivo: 'Conta Azul (automático)',
+                            dataInicio: new Date(datas[0]),
+                            dataFim: new Date(datas[datas.length - 1]),
+                            totalArquivo: linhas.length,
+                            novos: inserir.length,
+                            duplicados: linhas.length - inserir.length
+                        }
+                    });
+                    for (const l of inserir) {
+                        const criado = await tx.extratoLancamento.create({
+                            data: {
+                                importacaoId: importacao.id,
+                                contaFinanceiraCaId: conta,
+                                fitId: l.fitId,
+                                data: l.data,
+                                valor: l.valor,
+                                tipo: l.tipo,
+                                descricao: l.descricao,
+                                trnType: l.trnType,
+                                // Extrato derivado dos próprios movimentos → já nasce fechado
+                                status: l.transferencia ? 'TRANSFERENCIA' : 'CONCILIADO',
+                                conciliadoAuto: true,
+                                conciliadoEm: new Date(),
+                                pagamentoParcelaId: l.pagamentoParcelaId || null,
+                                pagamentoParcelaPagarId: l.pagamentoParcelaPagarId || null,
+                                obs: 'Gerado do Conta Azul (extrato automático)'
+                            }
+                        });
+                        // Liga a transferência à sua linha (para o "desfazer" da tela funcionar)
+                        if (l.transferencia && !l.transferencia.extratoLancamentoId) {
+                            await tx.transferenciaConta.update({
+                                where: { id: l.transferencia.id },
+                                data: { extratoLancamentoId: criado.id }
+                            }).catch(() => { });
+                        }
+                    }
+                }, { timeout: 20000, maxWait: 10000 });
+                novos = inserir.length;
+            }
+        }
+        resultados.push({ conta, linhas: linhas.length, novos, jaExistiam: linhas.length - novos });
+    }
+
+    const totalNovos = resultados.reduce((s, r) => s + r.novos, 0);
+    if (totalNovos) console.log(`🏦 [Extrato CA] Conciliação: ${totalNovos} linha(s) de extrato gerada(s) (${ini} → ${fim})`);
+    return { ok: true, periodo: { de: ini, ate: fim }, contas: resultados };
+}
+
+module.exports = { sincronizarTransferencias, sincronizarDespesas, sincronizarExtratoConciliacao };
