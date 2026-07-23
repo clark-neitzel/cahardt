@@ -124,7 +124,7 @@ Também existem **contas importadas do Conta Azul** (origem IMPORTADO_CA): são 
 ## Depende de / Interfere em
 
 - **Pedidos** — cada pedido finalizado gera a conta com parcelas aqui (tudo no app; nada vai ao CA)
-- **Conta Azul (legado)** — contas antigas da era CA foram importadas para cá (origem IMPORTADO_CA); o sync só puxa baixas de contas antigas
+- **Conta Azul (legado)** — contas antigas da era CA foram importadas para cá (origem IMPORTADO_CA). Baixa dada **no Conta Azul** numa dessas contas importadas é espelhada no app sozinha (a cada 3 horas): a parcela é quitada com o banco/forma de lá e o crédito aparece na Conciliação Bancária e nos Saldos por Conta
 - **Notas Fiscais** — a NF-e do pedido é emitida pelo app (Focus NFe)
 - **Caixa Diário** — baixas feitas pelo motorista na entrega também atualizam as parcelas aqui
 - **Clientes** — a inadimplência exibida na Rota e no detalhe do cliente vem dos dados desta tela

@@ -411,9 +411,13 @@ async function sincronizarRecebimentos({ dias = 2, de = null, ate = null, limite
             // Parcela de pedido do app: o sync de pedidos (contasReceberSyncService) cuida dela.
             if (arch?.temPedidoApp) { resumo.puladas++; continue; }
 
-            // Sem parcela local para espelhar E arquivo já diz "pago" → nada a fazer.
+            // Sem parcela local para espelhar E arquivo já diz "pago" COM as baixas
+            // arquivadas → nada a fazer. Se o arquivo está sem o detalhe (falha 429
+            // na importação), segue para re-buscar — sem as baixas no JSON a 4ª fonte
+            // do extrato não consegue gerar a linha da conciliação.
             const jaArquivadaPaga = arch && STATUS_PAGO_CA_EXTRATO.includes(String(arch.status || '').toUpperCase());
-            if (!arch?.parcelaLocalId && jaArquivadaPaga) { resumo.puladas++; continue; }
+            const temBaixasArquivadas = !!(arch?.dadosDetalhe && Array.isArray(arch.dadosDetalhe.baixas) && arch.dadosDetalhe.baixas.length);
+            if (!arch?.parcelaLocalId && jaArquivadaPaga && temBaixasArquivadas) { resumo.puladas++; continue; }
 
             if (processadas >= limite) { resumo.erros.push(`limite de ${limite} por rodada atingido — rode de novo para continuar`); break; }
             processadas++;
