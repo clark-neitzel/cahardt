@@ -454,13 +454,22 @@ router.get('/diag-consulta-cnpj', async (req, res) => {
 
 // POST /api/admin-exec/clientes-preencher-ie-sefaz — consulta a IE na SEFAZ (certificado A1)
 // para clientes PJ ATIVOS sem inscrição estadual e grava em cliente_fiscal.
-// Body opcional: { limite: 30, somenteComPedidoRecenteDias: null }
+// Só grava IE HABILITADA (IE baixada/não habilitada na nota causa rejeição — o certo é isento).
+// Quem a SEFAZ diz não ser contribuinte fica marcado NAO_CONTRIBUINTE e sai das próximas rodadas.
+// Body opcional: { limite: 30 }
 router.post('/clientes-preencher-ie-sefaz', async (req, res) => {
     try {
         const consultaCnpjService = require('../services/consultaCnpjService');
         const limite = Math.min(parseInt(req.body?.limite, 10) || 30, 100);
         const clientes = await prisma.cliente.findMany({
-            where: { Ativo: true, Tipo_Pessoa: 'JURIDICA', OR: [{ fiscal: null }, { fiscal: { inscricaoEstadual: null } }] },
+            where: {
+                Ativo: true,
+                Tipo_Pessoa: 'JURIDICA',
+                AND: [
+                    { OR: [{ fiscal: null }, { fiscal: { inscricaoEstadual: null } }] },
+                    { OR: [{ Indicador_Inscricao_Estadual: null }, { Indicador_Inscricao_Estadual: { notIn: ['NAO_CONTRIBUINTE', 'CONTRIBUINTE_ISENTO'] } }] }
+                ]
+            },
             select: { UUID: true, Nome: true, Documento: true, End_Estado: true },
             take: limite,
             orderBy: { Nome: 'asc' }
@@ -470,7 +479,7 @@ router.post('/clientes-preencher-ie-sefaz', async (req, res) => {
             const cnpj = String(c.Documento || '').replace(/[^0-9A-Za-z]/g, '');
             if (!/^\d{14}$/.test(cnpj)) { resultados.push({ cliente: c.Nome, pulado: 'documento não é CNPJ numérico' }); continue; }
             const r = await consultaCnpjService.consultarIeSefaz(cnpj, c.End_Estado || 'SC');
-            if (r.ok && r.ie) {
+            if (r.ok && r.ie && r.situacaoIe === 'HABILITADO') {
                 await prisma.clienteFiscal.upsert({
                     where: { clienteUuid: c.UUID },
                     create: { clienteUuid: c.UUID, inscricaoEstadual: r.ie },
@@ -479,12 +488,38 @@ router.post('/clientes-preencher-ie-sefaz', async (req, res) => {
                 await prisma.cliente.update({ where: { UUID: c.UUID }, data: { Indicador_Inscricao_Estadual: 'CONTRIBUINTE' } })
                     .catch(() => {});
                 resultados.push({ cliente: c.Nome, ie: r.ie, situacao: r.situacaoIe });
+            } else if (r.ok) {
+                // Sem IE utilizável (não contribuinte ou IE não habilitada) → nota sai como isento
+                await prisma.cliente.update({ where: { UUID: c.UUID }, data: { Indicador_Inscricao_Estadual: 'NAO_CONTRIBUINTE' } })
+                    .catch(() => {});
+                resultados.push({ cliente: c.Nome, ie: null, motivo: r.ie ? `IE ${r.ie} não habilitada — deixado como não contribuinte` : (r.motivo || 'sem IE (não contribuinte)') });
             } else {
-                resultados.push({ cliente: c.Nome, ie: null, motivo: r.motivo || 'sem IE (não contribuinte)' });
+                resultados.push({ cliente: c.Nome, ie: null, motivo: r.motivo || 'consulta indisponível' });
             }
             await new Promise(rr => setTimeout(rr, 500)); // não martelar a SEFAZ
         }
         res.json({ candidatos: clientes.length, resultados });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/admin-exec/clientes-corrigir-ie-nao-habilitada — remove do cadastro as IEs
+// informadas (gravadas por engano quando a SEFAZ devolveu situação NÃO habilitada) e marca
+// os clientes como NAO_CONTRIBUINTE. Body: { ies: ["256319235", ...] }
+router.post('/clientes-corrigir-ie-nao-habilitada', async (req, res) => {
+    try {
+        const ies = Array.isArray(req.body?.ies) ? req.body.ies.map(v => String(v).replace(/\D/g, '')).filter(Boolean) : [];
+        if (!ies.length) return res.status(400).json({ error: 'Informe body.ies (lista de IEs a remover)' });
+        const fiscais = await prisma.clienteFiscal.findMany({ where: { inscricaoEstadual: { in: ies } } });
+        const resultados = [];
+        for (const f of fiscais) {
+            await prisma.clienteFiscal.update({ where: { clienteUuid: f.clienteUuid }, data: { inscricaoEstadual: null } });
+            await prisma.cliente.update({ where: { UUID: f.clienteUuid }, data: { Indicador_Inscricao_Estadual: 'NAO_CONTRIBUINTE' } })
+                .catch(() => {});
+            resultados.push({ clienteUuid: f.clienteUuid, ieRemovida: f.inscricaoEstadual });
+        }
+        res.json({ corrigidos: resultados.length, resultados });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
