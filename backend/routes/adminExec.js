@@ -166,6 +166,151 @@ router.get('/diag-focus-nfe-eventos', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/focus-nfe-emitir-teste — emite uma NF-e de ENSAIO no ambiente
+// configurado (só permite em homologação — sem valor fiscal). Body: { tipo: 'cnpj'|'cpf' }.
+// Usa o perfil fiscal real extraído das notas do CA (backend/docs/focus-nfe-api.md, seção 12).
+router.post('/focus-nfe-emitir-teste', async (req, res) => {
+    try {
+        const focusNfe = require('../services/focusNfeService');
+        if (focusNfe.ambiente() !== 'homologacao') {
+            return res.status(400).json({ error: 'Teste só é permitido com FOCUS_NFE_AMBIENTE=homologacao.' });
+        }
+        const tipo = req.body?.tipo === 'cpf' ? 'cpf' : 'cnpj';
+        const agora = new Date().toISOString().replace(/\.\d{3}Z$/, '-03:00');
+
+        const emitente = {
+            cnpj_emitente: '08766459000102',
+            nome_emitente: 'HARDT DOCES E SALGADOS LTDA',
+            nome_fantasia_emitente: 'HARDT DOCES E SALGADOS LTDA',
+            logradouro_emitente: 'R 15 DE OUTUBRO',
+            numero_emitente: '170',
+            bairro_emitente: 'RIO BONITO',
+            municipio_emitente: 'Joinville',
+            uf_emitente: 'SC',
+            cep_emitente: '89239700',
+            inscricao_estadual_emitente: '255372744',
+            regime_tributario_emitente: 1,
+        };
+        // Em homologação a SEFAZ força este nome no destinatário.
+        const destinatario = tipo === 'cpf'
+            ? {
+                nome_destinatario: 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL',
+                cpf_destinatario: '11144477735', // CPF de teste (DV válido)
+                indicador_inscricao_estadual_destinatario: 9,
+            }
+            : {
+                nome_destinatario: 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL',
+                cnpj_destinatario: '82146549000153', // CNPJ real de cliente (sem efeito em homologação)
+                indicador_inscricao_estadual_destinatario: 2, // isento — não exige IE
+            };
+        const enderecoDest = {
+            logradouro_destinatario: 'RUA DE TESTE',
+            numero_destinatario: '100',
+            bairro_destinatario: 'CENTRO',
+            municipio_destinatario: 'Joinville',
+            uf_destinatario: 'SC',
+            cep_destinatario: '89201000',
+            pais_destinatario: 'Brasil',
+        };
+
+        const valor = 41.66;
+        const aliquotaCred = 3.82;
+        const item = {
+            numero_item: 1,
+            codigo_produto: '3086',
+            descricao: '3-DOGUINHO 2.SALSICHAS C/08 220GR',
+            cfop: '5101',
+            codigo_ncm: '19022000',
+            unidade_comercial: 'PT',
+            unidade_tributavel: 'PT',
+            quantidade_comercial: 1,
+            quantidade_tributavel: 1,
+            valor_unitario_comercial: valor,
+            valor_unitario_tributavel: valor,
+            valor_bruto: valor,
+            inclui_no_total: 1,
+            icms_origem: 0,
+            pis_situacao_tributaria: '49',
+            cofins_situacao_tributaria: '49',
+            ...(tipo === 'cpf'
+                ? { icms_situacao_tributaria: '102' }
+                : {
+                    icms_situacao_tributaria: '101',
+                    icms_aliquota_credito_simples: aliquotaCred,
+                    icms_valor_credito_simples: +(valor * aliquotaCred / 100).toFixed(2),
+                }),
+        };
+
+        const textosLegais = [
+            'DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.',
+            'NAO GERA DIREITO A CREDITO FISCAL DE IPI.',
+        ];
+        if (tipo === 'cnpj') {
+            const vCred = (valor * aliquotaCred / 100).toFixed(2).replace('.', ',');
+            textosLegais.push(`PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ ${vCred}, CORRESPONDENTE A ALIQUOTA DE ${String(aliquotaCred).replace('.', ',')}%, NOS TERMOS DO ART. 23 DA LC 123/2006.`);
+        }
+
+        const nota = {
+            natureza_operacao: tipo === 'cpf' ? 'Venda a Nao Contribuinte' : 'Venda de Mercadorias / Produtos',
+            data_emissao: agora,
+            data_entrada_saida: agora,
+            tipo_documento: 1,
+            finalidade_emissao: 1,
+            local_destino: 1,
+            consumidor_final: tipo === 'cpf' ? 1 : 0,
+            presenca_comprador: 1,
+            ...emitente,
+            ...destinatario,
+            ...enderecoDest,
+            modalidade_frete: 0,
+            valor_frete: 0,
+            valor_seguro: 0,
+            valor_desconto: 0,
+            valor_outras_despesas: 0,
+            valor_produtos: valor,
+            valor_total: valor,
+            formas_pagamento: [{ forma_pagamento: '01', valor_pagamento: valor }],
+            informacoes_adicionais_contribuinte: ['Referente ao pedido #TESTE (nota de ensaio do app)', ...textosLegais].join('\n'),
+            items: [item],
+        };
+
+        const ref = req.body?.ref || `teste-${tipo}-${Date.now()}`;
+        const resultado = await focusNfe.emitir(ref, nota);
+        res.status(resultado.httpStatus >= 400 ? 502 : 200).json({ ref, ambiente: focusNfe.ambiente(), ...resultado, notaEnviada: nota });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/admin-exec/focus-nfe-consultar?ref=...&completa=1 — status de uma emissão na Focus.
+router.get('/focus-nfe-consultar', async (req, res) => {
+    try {
+        const focusNfe = require('../services/focusNfeService');
+        if (!req.query.ref) return res.status(400).json({ error: 'Informe ?ref=' });
+        const r = await focusNfe.consultar(String(req.query.ref), req.query.completa === '1');
+        res.json({ ambiente: focusNfe.ambiente(), ...r });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/admin-exec/focus-nfe-arquivo?ref=...&qual=danfe|xml — baixa a DANFE (PDF) ou o XML
+// de uma nota emitida, direto da Focus (para conferência).
+router.get('/focus-nfe-arquivo', async (req, res) => {
+    try {
+        const focusNfe = require('../services/focusNfeService');
+        if (!req.query.ref) return res.status(400).json({ error: 'Informe ?ref=' });
+        const { data } = await focusNfe.consultar(String(req.query.ref));
+        const caminho = req.query.qual === 'xml' ? data.caminho_xml_nota_fiscal : data.caminho_danfe;
+        if (!caminho) return res.status(404).json({ error: 'Arquivo ainda não disponível.', statusNota: data.status, data });
+        const buf = await focusNfe.baixarArquivo(caminho);
+        res.setHeader('Content-Type', req.query.qual === 'xml' ? 'application/xml' : 'application/pdf');
+        res.send(buf);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ── Integração de WhatsApp (bot da Ana) ───────────────────────────
 
 // GET /api/admin-exec/bot-whatsapp-status — a chave do EasyPanel é aceita? como está a fila?
