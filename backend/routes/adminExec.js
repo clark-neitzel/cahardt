@@ -345,6 +345,34 @@ router.post('/focus-nfe-emitir-pedido', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-nf-pedido?numero=2269 — raio-X: pedido + notas do app + eventos
+// do webhook + (query ?sincronizar=1) reprocessa eventos pendentes na hora.
+router.get('/diag-nf-pedido', async (req, res) => {
+    try {
+        const numero = parseInt(req.query.numero, 10);
+        if (!numero) return res.status(400).json({ error: 'Informe ?numero=' });
+        const emissao = require('../services/focusNfeEmissaoService');
+        let sincronizados = null;
+        if (req.query.sincronizar === '1') sincronizados = await emissao.sincronizarEventos();
+        const pedido = await prisma.pedido.findFirst({
+            where: { numero },
+            select: {
+                id: true, numero: true, situacaoCA: true, statusEnvio: true,
+                nfeChave: true, nfeNumero: true, especial: true, bonificacao: true,
+                notasFiscaisApp: true,
+            },
+        });
+        if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+        const refs = pedido.notasFiscaisApp.map(n => n.ref);
+        const eventos = refs.length
+            ? await prisma.focusNfeEvento.findMany({ where: { ref: { in: refs } }, orderBy: { id: 'asc' } })
+            : [];
+        res.json({ sincronizados, pedido, eventos });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // POST /api/admin-exec/focus-nfe-producao-numeracao — configura a numeração de PRODUÇÃO na
 // Focus para continuar a sequência do Conta Azul. Body: { proximoNumero: 84844 }.
 // Rodar UMA vez na virada, depois de o dono confirmar o nº da última nota do CA.
