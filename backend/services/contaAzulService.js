@@ -1057,6 +1057,15 @@ const contaAzulService = {
     // Precisamos pingar ativamente os pedidos locais "RECEBIDO" para ver se retornam 404 (Excluídos).
     _verificarPedidosExcluidosContAzul: async () => {
         try {
+            // ⛔ BLINDAGEM (07/2026): pedido com NF-e AUTORIZADA pelo PRÓPRIO APP (Focus NFe)
+            // é IMUNE ao sync/GC do Conta Azul — o CA nunca mais fatura (bloqueou a emissão),
+            // então o status dele ficaria "APROVADO" para sempre e reverteria nosso FATURADO;
+            // e se a venda sumir do CA, o GC cancelaria conta a receber/estoque de pedido VÁLIDO.
+            const notasApp = await prisma.notaFiscalApp.findMany({
+                where: { status: 'AUTORIZADO', ambiente: 'producao' },
+                select: { pedidoId: true }
+            });
+            const pedidosComNotaApp = new Set(notasApp.map(n => n.pedidoId));
             // Cooldown de 4h para pedidos já confirmados (APROVADO).
             const cooldownLimite = new Date(Date.now() - 4 * 60 * 60 * 1000); // 4 horas atrás
 
@@ -1139,6 +1148,7 @@ const contaAzulService = {
             let token = await contaAzulService.getAccessToken();
 
             for (const local of pedidosLocaisAtivos) {
+                if (pedidosComNotaApp.has(local.id)) continue; // faturado pelo APP — imune ao CA
                 try {
                     const url = `https://api-v2.contaazul.com/v1/venda/${local.idVendaContaAzul}`;
                     const resCA = await axios.get(url, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -1299,6 +1309,13 @@ const contaAzulService = {
         });
 
         try {
+            // ⛔ BLINDAGEM: pedidos com NF-e do próprio app são imunes ao sync do CA (ver GC acima)
+            const notasApp = await prisma.notaFiscalApp.findMany({
+                where: { status: 'AUTORIZADO', ambiente: 'producao' },
+                select: { pedidoId: true }
+            });
+            const pedidosComNotaApp = new Set(notasApp.map(n => n.pedidoId));
+
             // Buscar vendas modificadas nos últimos 2 dias ou na última hora.
             // Ampliando para últimos 10 dias para garantir que pegamos o pedido BROTHAUS antigo do screenshot
             const diasAtrasDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
@@ -1357,6 +1374,8 @@ const contaAzulService = {
                     include: { itens: true }
                 });
 
+                if (pedidoLocal && pedidosComNotaApp.has(pedidoLocal.id)) continue; // faturado pelo APP — imune
+
                 // PRIORIDADE 2: Fallback por numero, MAS somente se o pedido local ainda NÃO tem CA id
                 // Isso evita bater num pedido de teste que tem o mesmo numero mas CA id diferente
                 if (!pedidoLocal && venda.numero) {
@@ -1369,6 +1388,7 @@ const contaAzulService = {
                     });
                 }
                 if (!pedidoLocal) { noMatchCount++; continue; }
+                if (pedidosComNotaApp.has(pedidoLocal.id)) continue; // faturado pelo APP — imune ao CA
                 matchCount++;
                 if (pedidoLocal) {
                     // API V2 usa "data_alteracao", não "data_atualizacao"

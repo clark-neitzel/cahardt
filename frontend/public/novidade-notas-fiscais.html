@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Notas Fiscais pelo App — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🧾 URGENTE — Nota Fiscal agora é emitida PELO APP">
+<meta property="og:description" content="A emissão de NF-e saiu do Conta Azul e agora é dentro do Hardt App. Leia como emitir, imprimir a DANFE e o que fazer se der erro.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --cream: #f2f0eb; --gold: #cba258;
+    --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cream); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 88px; text-align: center; }
+  .hero .tag { display: inline-block; background: var(--gold); color: #1E3932; font-weight: 800; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; padding: 6px 14px; border-radius: 999px; }
+  .hero h1 { font-size: 27px; margin: 14px 0 8px; font-weight: 800; }
+  .hero p { margin: 0 auto; max-width: 460px; color: #cfe0d9; font-size: 15.5px; }
+  .cartao { background: #fff; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.07); padding: 20px; margin-top: 16px; }
+  .cartao.primeiro { margin-top: -60px; }
+  .mock { background: #f8f7f4; border: 1px solid #e5e3dd; border-radius: 12px; padding: 14px; font-size: 13.5px; margin: 12px 0; }
+  .mock .linha { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 4px; border-bottom: 1px dashed #e2e0da; }
+  .mock .linha:last-child { border-bottom: none; }
+  .badge { font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .b-cinza { background: #eceae5; color: #57534e; }
+  .b-azul { background: #dbeafe; color: #1e40af; }
+  .b-verde { background: #d1fae5; color: #065f46; }
+  .b-verm { background: #fee2e2; color: #b91c1c; }
+  .btnzinho { background: var(--primary); color: #fff; font-size: 11.5px; font-weight: 800; padding: 6px 12px; border-radius: 999px; }
+  .acc { border: 1px solid #e7e5e0; border-radius: 14px; margin-top: 12px; background: #fff; overflow: hidden; }
+  .acc summary { cursor: pointer; list-style: none; padding: 15px 18px; font-weight: 800; font-size: 15px; color: var(--house); display: flex; align-items: center; gap: 10px; }
+  .acc summary::-webkit-details-marker { display: none; }
+  .acc summary .seta { margin-left: auto; transition: transform .2s; color: #9ca3af; }
+  .acc[open] summary .seta { transform: rotate(180deg); }
+  .acc .corpo { padding: 0 18px 16px; font-size: 14.5px; color: #3f4a46; }
+  .passos { counter-reset: p; padding: 0; margin: 10px 0 0; list-style: none; }
+  .passos li { counter-increment: p; position: relative; padding: 8px 0 8px 40px; }
+  .passos li::before { content: counter(p); position: absolute; left: 0; top: 8px; width: 26px; height: 26px; border-radius: 999px; background: var(--primary); color: #fff; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+  .atencao { background: #fef3c7; border: 1px solid #fde68a; color: #92400e; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; font-weight: 600; margin-top: 12px; }
+  .ok { color: var(--primary-dark); font-weight: 800; }
+  h2.secao { font-size: 13px; text-transform: uppercase; letter-spacing: .14em; color: var(--ink-soft); margin: 28px 4px 2px; }
+  b { color: var(--house); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="tag">Mudança importante · 23/07</span>
+  <h1>🧾 A Nota Fiscal agora é emitida PELO APP</h1>
+  <p>O Conta Azul deixou de emitir as nossas notas. A partir de <b style="color:#fff">hoje</b>, a NF-e sai de dentro do Hardt App — mais rápido e sem depender de ninguém. A numeração, os impostos e a DANFE continuam exatamente iguais.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao primeiro">
+    <b>O resumo em 15 segundos:</b>
+    <div class="mock">
+      <div class="linha"><span><b>Financeiro → Notas Fiscais</b> (tela nova)</span><span class="badge b-verde">NOVA</span></div>
+      <div class="linha"><span>Pedido sem nota</span><span class="btnzinho">Emitir NF-e</span></div>
+      <div class="linha"><span>SEFAZ autoriza em segundos</span><span class="badge b-verde">✓ NF 84845</span></div>
+      <div class="linha"><span>Pedido vira <b>FATURADO</b> sozinho</span><span class="badge b-verde">imprime a DANFE</span></div>
+    </div>
+    Nada muda para o vendedor nem para a entrega — a mudança é só em <b>quem emite a nota</b> (antes: Conta Azul; agora: o botão no app).
+  </div>
+
+  <h2 class="secao">Passo a passo</h2>
+
+  <details class="acc aberto" open>
+    <summary>📤 Como emitir as notas do dia <span class="seta">▾</span></summary>
+    <div class="corpo">
+      <ol class="passos">
+        <li>Abra <b>Financeiro → Notas Fiscais</b>. A tela já abre no filtro <b>"Hoje · A emitir"</b> — só os pedidos que faltam.</li>
+        <li>Para emitir <b>uma</b>: botão <b>"Emitir NF-e"</b> na linha do pedido.</li>
+        <li>Para emitir <b>algumas</b>: marque os <b>quadradinhos</b> ✓ dos pedidos e clique <b>"Emitir selecionadas (N)"</b> no topo.</li>
+        <li>Para emitir <b>todas</b>: sem marcar nada, clique <b>"Emitir todas (N)"</b> — o app emite uma a uma e mostra o progresso.</li>
+        <li>Em segundos o status vira <span class="badge b-verde">✓ NF 84xxx</span>. Pronto — nota oficial, autorizada pela SEFAZ.</li>
+      </ol>
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary>🖨️ Como imprimir a DANFE <span class="seta">▾</span></summary>
+    <div class="corpo">
+      Dois caminhos, os dois valem:
+      <ol class="passos">
+        <li>Na própria tela <b>Notas Fiscais</b>: botões <b>DANFE</b> e <b>XML</b> aparecem na linha quando a nota é autorizada.</li>
+        <li>Na aba <b>Pedidos</b>: o pedido vira <b>FATURADO</b> sozinho e o botão <b>DANFE</b> de sempre imprime a nota nova. A impressão em lote (2 vias + boleto) continua funcionando igual.</li>
+      </ol>
+      As notas <b>antigas</b> (emitidas pelo Conta Azul) continuam imprimindo normalmente pela aba Pedidos — nada se perdeu.
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary>🚦 O que significa cada status <span class="seta">▾</span></summary>
+    <div class="corpo">
+      <div class="mock">
+        <div class="linha"><span class="badge b-cinza">Sem nota</span><span>falta emitir — botão verde disponível</span></div>
+        <div class="linha"><span class="badge b-azul">⏳ Processando</span><span>na SEFAZ; a tela atualiza sozinha (segundos)</span></div>
+        <div class="linha"><span class="badge b-verde">✓ NF 84xxx</span><span>autorizada — pode imprimir e entregar</span></div>
+        <div class="linha"><span class="badge b-verm">✕ Rejeitada</span><span>a SEFAZ recusou — o motivo aparece embaixo</span></div>
+        <div class="linha"><span class="badge b-cinza">Emitida no CA</span><span>nota antiga, da era Conta Azul — só consulta</span></div>
+      </div>
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary>🛠️ Deu erro? O que fazer <span class="seta">▾</span></summary>
+    <div class="corpo">
+      A mensagem de erro <b>explica a causa</b> — quase sempre é cadastro do cliente:
+      <ol class="passos">
+        <li><b>"Cliente sem CPF/CNPJ"</b> ou <b>"falta CEP, rua, número..."</b> → complete o cadastro na aba <b>Clientes</b> e clique "Emitir NF-e" de novo.</li>
+        <li><b>"IE do destinatário não informada"</b> → cliente com CNPJ precisa da <b>inscrição estadual</b> no cadastro. Preencheu → emitir de novo.</li>
+        <li>Ficou preso em "Processando" por muito tempo → botão <b>"Atualizar"</b>; se continuar, avise o Clarkson.</li>
+      </ol>
+      <div class="atencao">⚠️ Reemitir após erro é seguro: o app <b>nunca</b> emite a mesma nota duas vezes — nem clicando várias vezes, nem para pedido que já tinha nota no Conta Azul.</div>
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary>↩️ E as devoluções? <span class="seta">▾</span></summary>
+    <div class="corpo">
+      A nota de devolução <b>ainda não sai pelo app</b> (é a próxima atualização — vai ter um botão direto na conferência de devoluções do Caixa). <b>Até lá:</b> quando houver devolução que precise de nota, avisar o escritório/Clarkson para providenciar.
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary>🔐 Quem pode fazer o quê <span class="seta">▾</span></summary>
+    <div class="corpo">
+      A tela aparece para quem tem a permissão <b>"Notas Fiscais"</b> liberada na aba de vendedores. Emitir de verdade exige a permissão extra <b>"Pode emitir notas"</b>. Se você deveria ver a tela e ela não aparece no menu Financeiro, peça a liberação.
+    </div>
+  </details>
+
+  <div class="cartao" style="text-align:center; margin-top: 24px;">
+    <b>Dúvida na hora?</b><br>
+    <span style="color: var(--ink-soft); font-size: 14px;">Pergunte ao <b>Clippy</b> (balãozinho no canto da tela) — ele já conhece a tela nova — ou chame no grupo.</span>
+  </div>
+
+</div>
+</body>
+</html>
