@@ -594,6 +594,30 @@ model AppConfig {
   @@map("app_configs")
 }
 
+// Evento recebido pelo webhook da Focus NFe (mudança de status de documento
+// fiscal: autorizado, erro_autorizacao, cancelado...). Guardamos tudo que chega;
+// o módulo de emissão consome depois marcando `processado`.
+model FocusNfeEvento {
+  id            Int      @id @default(autoincrement())
+  evento        String   @default("nfe") // tipo do gatilho na Focus (nfe, nfse, ...)
+  ref           String? // nossa referência do documento na Focus
+  cnpjEmitente  String?  @map("cnpj_emitente")
+  status        String? // autorizado | erro_autorizacao | cancelado | processando_autorizacao...
+  statusSefaz   String?  @map("status_sefaz")
+  mensagemSefaz String?  @map("mensagem_sefaz")
+  chaveNfe      String?  @map("chave_nfe")
+  numero        String?
+  serie         String?
+  payload       Json // corpo completo recebido, como veio
+  processado    Boolean  @default(false)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([ref])
+  @@index([processado])
+  @@index([createdAt])
+  @@map("focus_nfe_eventos")
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // RH — Ponto eletrônico e cadastro de funcionário
 // ─────────────────────────────────────────────────────────────────────────────

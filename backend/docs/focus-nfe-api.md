@@ -517,9 +517,17 @@ Rate limit: **não documentado nas páginas baixadas** — ver doc online se nec
 4. **`ref` = id interno da nota no app** (idempotência de graça: reemitir após rejeição usa a mesma
    ref; clique duplo não duplica). Tabela nova tipo `NotaFiscalEmitida` guardando ref, status,
    chave, número, série, caminhos, XML baixado.
-5. **Webhook público `POST /api/webhooks/focus-nfe`** (sem auth de usuário, validando o header
-   secreto; registrar o gatilho `event: "nfe"`) + **worker de fallback** no `scheduler.js`
-   consultando notas presas em `processando_autorizacao`.
+5. **Webhook público `POST /api/webhooks/focus-nfe` — FEITO (jul/2026).** Rota em
+   `backend/routes/focusNfeWebhookRoutes.js`: valida o header `x-focus-secret` (comparação em tempo
+   constante) contra a env `FOCUS_NFE_WEBHOOK_SECRET` ou, na falta dela, o `app_configs`
+   `focus_nfe_webhook_secret` (gravado via `POST /api/admin-exec/focus-nfe-webhook-secret`
+   `{ secret }`); grava cada evento na tabela `focus_nfe_eventos` (model `FocusNfeEvento`, com
+   `payload` completo e flag `processado` para o futuro módulo de emissão) e responde 2xx rápido.
+   Diagnóstico: `GET /api/admin-exec/diag-focus-nfe-eventos` (`?ref=` filtra). O gatilho
+   `event: "nfe"` foi cadastrado no painel da Focus (Produção, CNPJ 08.766.459/0001-02) apontando
+   para `https://cahardt-github.xrqvlq.easypanel.host/api/webhooks/focus-nfe`. Falta o **worker de
+   fallback** no `scheduler.js` consultando notas presas em `processando_autorizacao` (junto com o
+   módulo de emissão).
 6. **Homologação primeiro**, ponta a ponta (emitir → webhook → DANFE → cancelar → CCe), testado
    **em produção do nosso app** atravessando um deploy (regra do projeto), antes de trocar para
    `producao`.

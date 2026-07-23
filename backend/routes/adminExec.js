@@ -127,6 +127,45 @@ router.get('/focus-nfe-status', async (req, res) => {
     });
 });
 
+// POST /api/admin-exec/focus-nfe-webhook-secret — grava o segredo que a Focus
+// manda no header x-focus-secret (cadastrado no painel dela em Webhooks).
+// Body: { "secret": "..." }. A env FOCUS_NFE_WEBHOOK_SECRET, se setada, tem precedência.
+router.post('/focus-nfe-webhook-secret', async (req, res) => {
+    try {
+        const secret = String(req.body?.secret || '').trim();
+        if (secret.length < 16) return res.status(400).json({ error: 'Informe { secret } com pelo menos 16 caracteres.' });
+        await prisma.appConfig.upsert({
+            where: { key: 'focus_nfe_webhook_secret' },
+            update: { value: { secret } },
+            create: { key: 'focus_nfe_webhook_secret', value: { secret } },
+        });
+        res.json({ ok: true, tamanho: secret.length, envTemPrecedencia: !!process.env.FOCUS_NFE_WEBHOOK_SECRET });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// GET /api/admin-exec/diag-focus-nfe-eventos — últimos eventos recebidos do webhook
+// (?ref=... filtra por referência). Não expõe o segredo, só se está configurado.
+router.get('/diag-focus-nfe-eventos', async (req, res) => {
+    try {
+        const where = req.query.ref ? { ref: String(req.query.ref) } : {};
+        const eventos = await prisma.focusNfeEvento.findMany({
+            where,
+            orderBy: { id: 'desc' },
+            take: 20,
+        });
+        const cfg = await prisma.appConfig.findUnique({ where: { key: 'focus_nfe_webhook_secret' } });
+        res.json({
+            segredoWebhook: process.env.FOCUS_NFE_WEBHOOK_SECRET ? 'env' : (cfg?.value?.secret ? 'app_configs' : 'NÃO CONFIGURADO'),
+            total: await prisma.focusNfeEvento.count(),
+            eventos,
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ── Integração de WhatsApp (bot da Ana) ───────────────────────────
 
 // GET /api/admin-exec/bot-whatsapp-status — a chave do EasyPanel é aceita? como está a fila?
