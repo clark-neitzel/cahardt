@@ -243,6 +243,131 @@
     margin-top: 40px;
   }
   .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
 </style>
 </head>
 <body>
@@ -361,6 +486,89 @@
         <li>O app é a <b>fonte oficial</b>: o que está aqui é o que vale (e o que sai na nota).</li>
         <li>Por isso, capricho no cadastro agora conta em dobro. 😉</li>
       </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1: onde fica o botão -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Aba Clientes — onde fica o botão</div>
+    <div class="tela-corpo">
+      <div class="app-busca">
+        <div class="app-input">🔍 Buscar por nome, documento, cidade...</div>
+        <span class="app-btn">➕ Novo Cliente<span class="pin">1</span></span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O botão verde <b>"Novo Cliente"</b> fica no topo da aba <b>Clientes</b>, ao lado da busca. Só aparece para quem tem permissão de editar clientes.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: novo cadastro -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Novo Cadastro — o preenchimento automático</div>
+    <div class="tela-corpo">
+      <div style="margin-bottom:10px;">
+        <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#9aa5a0;margin-bottom:5px;">Este cadastro é de:<span class="pin">1</span></div>
+        <div class="app-pills">
+          <span class="app-pill on">Cliente</span>
+          <span class="app-pill">Fornecedor</span>
+          <span class="app-pill">Cliente + Fornecedor</span>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">🔍 CNPJ / CPF</div>
+        <div class="app-card-body">
+          <div class="app-busca">
+            <div class="app-input" style="color:var(--ink);font-family:ui-monospace,Menlo,monospace;">62.800.570/0001-13</div>
+            <span class="app-btn">Buscar dados<span class="pin">2</span></span>
+          </div>
+          <div style="font-size:11.5px;font-weight:700;color:var(--primary-dark);margin-top:8px;">✅ Dados encontrados (Receita) · IE encontrada na SEFAZ<span class="pin">3</span></div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">🏢 Identificação e Endereço</div>
+        <div class="app-card-body">
+          <div class="app-input ok"><small>Razão Social</small>PANIFICADORA E CONFEITARIA ARTESANAL LTDA</div>
+          <div class="app-input ok"><small>Inscrição Estadual (veio da SEFAZ)</small>263.846.660<span class="pin">4</span></div>
+          <div class="app-input ok" style="margin-bottom:0;"><small>Endereço</small>Rua Duarte Schuttel, 218 · Costa e Silva · Joinville/SC</div>
+        </div>
+      </div>
+      <div style="text-align:right;"><span class="app-btn">💾 Cadastrar Cliente<span class="pin">5</span></span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Escolha o tipo:</b> Cliente, Fornecedor, ou os dois. Fornecedor vai para a lista usada no Contas a Pagar e nas Notas de Entrada.</span></div>
+      <div><span class="pin">2</span><span><b>Digite o CNPJ</b> — a busca acontece sozinha ao completar o número (o botão é só para buscar de novo).</span></div>
+      <div><span class="pin">3</span><span>O app avisa o que encontrou: dados da <b>Receita</b> e a <b>IE da SEFAZ</b>. Se o CNPJ não tiver IE, ele marca "não contribuinte" sozinho.</span></div>
+      <div><span class="pin">4</span><span>Os campos ficam <b>verdinhos</b> = preenchidos automaticamente. Todos podem ser corrigidos antes de salvar.</span></div>
+      <div><span class="pin">5</span><span><b>Cadastrar</b> gera o código do cliente e já abre a ficha completa. Se o CNPJ já existir, o app avisa e abre o cadastro que já está lá.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3: edição do cadastro -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Ficha do cliente — agora tudo editável</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🏢 Informações do Cadastro <span style="margin-left:auto;color:#3b82f6;font-weight:700;text-transform:none;letter-spacing:0;">↻ Atualizar pela Receita/SEFAZ<span class="pin">1</span></span></div>
+        <div class="app-card-body">
+          <div class="app-input"><small>Razão Social</small>PADARIA E CONFEITARIA HILARIO VOLPI LTDA<span class="pin">2</span></div>
+          <div class="app-input"><small>Endereço</small>Rua XV de Novembro, 1200 · Centro · Joinville/SC</div>
+          <div class="app-toggle-linha">
+            <span><b>Também é fornecedor</b><small>Aparece no Contas a Pagar e nas Notas de Entrada</small></span>
+            <span class="app-toggle"></span><span class="pin">3</span>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:right;"><span class="app-btn">💾 Salvar Alterações<span class="pin">4</span></span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Botão <b>"Atualizar pela Receita/SEFAZ"</b>: re-consulta o CNPJ e preenche endereço/IE atuais — nada é gravado até você salvar.</span></div>
+      <div><span class="pin">2</span><span>Razão social, fantasia, CNPJ, telefones e <b>endereço completo</b> agora são <b>editáveis</b> direto na ficha (antes eram travados pelo Conta Azul).</span></div>
+      <div><span class="pin">3</span><span>Ligue <b>"Também é fornecedor"</b> quando o cliente também vende para a gente — ele passa a aparecer no Contas a Pagar.</span></div>
+      <div><span class="pin">4</span><span><b>Salvar Alterações</b> grava tudo no app — que agora é a fonte oficial do cadastro (e o que sai na Nota Fiscal).</span></div>
     </div>
   </div>
 
