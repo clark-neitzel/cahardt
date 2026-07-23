@@ -4457,11 +4457,12 @@ router.post('/ca-extrato-conciliacao-limpar', async (req, res) => {
 router.get('/diag-ca-pix-conciliacao', async (req, res) => {
     try {
         const dias = Math.max(1, Number(req.query.dias) || 8);
-        const limite = Math.min(Number(req.query.limite) || 200, 400);
+        const limite = Math.min(Number(req.query.limite) || 200, 500);
         const round2 = (v) => Math.round(Number(v) * 100) / 100;
         const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
         const somaDias = (s, n) => { const d = new Date(`${s}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-        const ini = somaDias(hoje, -dias);
+        const fimJanela = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.ate || '')) ? String(req.query.ate) : hoje;
+        const ini = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.de || '')) ? String(req.query.de) : somaDias(fimJanela, -dias);
 
         // Conta alvo: a do Conta Azul (mesma regra do caExtratoService)
         let contaAlvo = String(req.query.conta || '');
