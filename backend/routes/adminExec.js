@@ -3753,6 +3753,37 @@ router.post('/ca-extrato-conciliacao-sync', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/ca-extrato-conciliacao-limpar — remove TODAS as linhas de
+// extrato GERADAS automaticamente do Conta Azul (fitId ca-...) para regenerar do
+// zero (ex.: após ajuste na regra anti-duplicidade). Não toca em linha de OFX/PDF.
+router.post('/ca-extrato-conciliacao-limpar', async (req, res) => {
+    try {
+        const linhas = await prisma.extratoLancamento.findMany({
+            where: { fitId: { startsWith: 'ca-' } },
+            select: { id: true, importacaoId: true }
+        });
+        const ids = linhas.map(l => l.id);
+        let removidas = 0;
+        if (ids.length) {
+            await prisma.$transaction(async (tx) => {
+                await tx.transferenciaConta.updateMany({
+                    where: { extratoLancamentoId: { in: ids } },
+                    data: { extratoLancamentoId: null }
+                });
+                const r = await tx.extratoLancamento.deleteMany({ where: { id: { in: ids } } });
+                removidas = r.count;
+                // Importações "Conta Azul (automático)" que ficaram vazias
+                await tx.extratoImportacao.deleteMany({
+                    where: { nomeArquivo: 'Conta Azul (automático)', lancamentos: { none: {} } }
+                });
+            }, { timeout: 20000, maxWait: 10000 });
+        }
+        res.json({ ok: true, removidas });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-ca-get?path=/v1/...
 // SOMENTE LEITURA: repassa um GET cru à API v2 do Conta Azul (com o token OAuth
 // de produção). Para sondar endpoints não documentados (ex.: extrato de conta

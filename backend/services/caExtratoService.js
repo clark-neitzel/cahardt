@@ -360,11 +360,12 @@ async function sincronizarDespesas({ dias = 2, de = null, ate = null, limite = 4
 // dá para mudar pela config ca_extrato_conciliacao_contas (array de UUIDs).
 // ─────────────────────────────────────────────────────────────
 
-/** Contas-alvo do extrato derivado (nunca a do Asaas, que tem API própria). */
+/** Contas-alvo do extrato derivado (nunca a do Asaas, que tem API própria).
+ *  Config ca_extrato_conciliacao_contas: array de UUIDs; ARRAY VAZIO desliga. */
 async function contasAlvoConciliacao() {
     try {
         const cfg = await prisma.appConfig.findUnique({ where: { key: 'ca_extrato_conciliacao_contas' } });
-        if (Array.isArray(cfg?.value) && cfg.value.length) return cfg.value;
+        if (Array.isArray(cfg?.value)) return cfg.value;
     } catch (_) { /* usa o padrão */ }
     const contas = await prisma.contaFinanceira.findMany({
         where: { nomeBanco: { contains: 'conta azul', mode: 'insensitive' }, ativo: true },
@@ -466,7 +467,37 @@ async function sincronizarExtratoConciliacao({ dias = 30, de = null, ate = null 
                 select: { fitId: true }
             });
             const jaTem = new Set(existentes.map(e => e.fitId));
-            const inserir = linhas.filter(l => !jaTem.has(l.fitId));
+
+            // ⚠️ ANTI-DUPLICIDADE com extrato importado à mão (PDF do CA / OFX):
+            // a mesma movimentação pode já existir como linha importada. Não gerar
+            // a linha derivada quando (a) a baixa já está vinculada a alguma linha,
+            // ou (b) existe linha importada com mesmo sentido/valor em ±2 dias.
+            const margemIni = new Date(iniDt.getTime() - 3 * 86400000);
+            const margemFim = new Date(fimDt.getTime() + 3 * 86400000);
+            const importadas = await prisma.extratoLancamento.findMany({
+                where: {
+                    contaFinanceiraCaId: conta,
+                    data: { gte: margemIni, lte: margemFim },
+                    NOT: { fitId: { startsWith: 'ca-' } }
+                },
+                select: { data: true, valor: true, tipo: true, pagamentoParcelaId: true, pagamentoParcelaPagarId: true }
+            });
+            const recVinculadas = new Set(importadas.map(i => i.pagamentoParcelaId).filter(Boolean));
+            const pagVinculadas = new Set(importadas.map(i => i.pagamentoParcelaPagarId).filter(Boolean));
+            const pool = importadas.map(i => ({ t: new Date(i.data).getTime(), valor: round2(i.valor), tipo: i.tipo, usada: false }));
+            const casaComImportada = (l) => {
+                const t = new Date(l.data).getTime();
+                const p = pool.find(x => !x.usada && x.tipo === l.tipo && Math.abs(x.valor - l.valor) <= 0.01 && Math.abs(x.t - t) <= 2 * 86400000);
+                if (p) { p.usada = true; return true; }
+                return false;
+            };
+
+            const inserir = linhas.filter(l => {
+                if (jaTem.has(l.fitId)) return false;
+                if (l.pagamentoParcelaId && recVinculadas.has(l.pagamentoParcelaId)) return false;
+                if (l.pagamentoParcelaPagarId && pagVinculadas.has(l.pagamentoParcelaPagarId)) return false;
+                return !casaComImportada(l);
+            });
 
             if (inserir.length) {
                 const datas = inserir.map(l => new Date(l.data).getTime()).sort((a, b) => a - b);
