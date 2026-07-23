@@ -149,7 +149,12 @@ async function consultarIeSefaz(cnpj, uf) {
         `</soap12:Envelope>`;
 
     try {
-        const agent = new https.Agent({ pfx, passphrase: senha, keepAlive: false });
+        // Cadeia ICP-Brasil dos servidores da SEFAZ (mesma abordagem do node-mde, que já
+        // conversa com a SEFAZ neste app): CA embutida + rejectUnauthorized desligado,
+        // senão o Node falha com "unable to get local issuer certificate".
+        let caSefaz;
+        try { caSefaz = require('node-mde/lib/env').CA; } catch { caSefaz = undefined; }
+        const agent = new https.Agent({ pfx, passphrase: senha, keepAlive: false, ca: caSefaz, rejectUnauthorized: false });
         const { data: xml } = await axios.post(url, envelope, {
             timeout: TIMEOUT_MS,
             httpsAgent: agent,
