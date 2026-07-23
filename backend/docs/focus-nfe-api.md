@@ -629,7 +629,11 @@ misturados com itens 5101 (produção própria) — ex.: `2-FR-ESPETINHO FRANGO 
 com **CEST 1707900**) e `2-FR-BOLINHO DE CARNE`. Ou seja: produtos que a Hardt **compra pronto e
 revende** saem com CFOP 5102; o que ela **fabrica** sai 5101. Implementação: flag `revenda`
 (boolean) no cadastro de Produtos (default false) + campo opcional `cest`; o montador usa
-5102/CEST quando marcado. Levantar com o dono quais produtos são de revenda.
+5102/CEST quando marcado.
+
+**✅ Confirmado pelo dono (23/07/2026): são SÓ esses dois produtos** — `ESPETINHO FRANGO C/BAC.`
+(leva CEST 1707900) e `BOLINHO DE CARNE`. Todo o resto é produção própria (5101). Na
+implementação, marcar a flag `revenda` nesses dois.
 
 ### ⚠️ Pontos de atenção (únicos que podem variar)
 
