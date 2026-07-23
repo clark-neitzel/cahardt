@@ -237,8 +237,10 @@ router.post('/conta-azul', checkPermissao('Pode_Fazer_Devolucao'), uploadDevoluc
             return res.status(400).json({ error: 'Formato inválido para itens.' });
         }
 
-        if (!pedidoId || !itens?.length || !motivo || !notaDevolucaoCA) {
-            return res.status(400).json({ error: 'pedidoId, itens, motivo e notaDevolucaoCA são obrigatórios.' });
+        // notaDevolucaoCA ficou OPCIONAL (legado): desde 07/2026 a NF de devolução é emitida
+        // pelo próprio app (Focus NFe) logo após o registro — ninguém mais digita número do CA.
+        if (!pedidoId || !itens?.length || !motivo) {
+            return res.status(400).json({ error: 'pedidoId, itens e motivo são obrigatórios.' });
         }
 
         const pdfDevolucaoUrl = req.file ? `/uploads/devolucoes/${req.file.filename}` : null;

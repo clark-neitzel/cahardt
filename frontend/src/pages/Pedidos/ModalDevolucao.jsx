@@ -74,10 +74,6 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
             toast.error('Selecione ao menos um item para devolver.');
             return;
         }
-        if (isCA && !notaDevolucaoCA.trim()) {
-            toast.error('Informe o número da nota de devolução.');
-            return;
-        }
 
         try {
             setSaving(true);
@@ -92,10 +88,19 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                 formData.append('itens', JSON.stringify(itens));
                 formData.append('motivo', motivo.trim());
                 formData.append('observacao', observacao.trim());
-                formData.append('notaDevolucaoCA', notaDevolucaoCA.trim());
+                if (notaDevolucaoCA.trim()) formData.append('notaDevolucaoCA', notaDevolucaoCA.trim());
                 if (pdfFile) formData.append('pdf', pdfFile);
 
                 const devCriada = await devolucaoService.criarContaAzul(formData);
+
+                // NF-e de devolução: o APP emite sozinho (Focus NFe) — não é mais digitada do CA
+                try {
+                    await api.post(`/notas-fiscais/emitir-devolucao/${devCriada.id}`);
+                    toast.success('NF de devolução enviada à SEFAZ — acompanhe na aba Devoluções.');
+                } catch (eNf) {
+                    toast(`Devolução registrada, mas a NF não saiu: ${eNf.response?.data?.error || 'erro'}.\nDá para emitir depois na aba Pedidos → Devoluções.`,
+                        { icon: '⚠️', duration: 10000, style: { maxWidth: '480px', whiteSpace: 'pre-line' } });
+                }
 
                 if (isBoleto) {
                     // Abrir wizard para processar boleto no CA
@@ -255,8 +260,15 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                             />
                         </div>
 
-                        {/* Campos exclusivos CA */}
+                        {/* NF de devolução: emitida automaticamente pelo app (Focus NFe) */}
                         {isCA && (
+                            <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200 text-sm text-emerald-800">
+                                🧾 <b>NF de devolução automática:</b> ao confirmar, o app emite a nota de devolução
+                                na SEFAZ referenciando a nota original — sem digitar nada. Acompanhe e imprima a
+                                DANFE na aba <b>Pedidos → Devoluções</b>.
+                            </div>
+                        )}
+                        {false && (
                             <div className="space-y-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
                                 <p className="text-xs font-bold text-blue-700 uppercase">Dados da Nota de Devolução (Conta Azul)</p>
                                 <div>
