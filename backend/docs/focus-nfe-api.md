@@ -594,11 +594,49 @@ Rate limit: **não documentado nas páginas baixadas** — ver doc online se nec
 
 **Sem substituição tributária** em nenhuma das notas analisadas (vBCST/vST = 0).
 
-### Informações adicionais (`infAdic/infCpl`) — reproduzir o mesmo texto
+### Informações adicionais (`infAdic/infCpl`) — catálogo COMPLETO (20 notas analisadas 23/07)
 
-```
-Referente ao pedido #<numero>#DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.#NAO GERA DIREITO A CREDITO FISCAL DE IPI.#PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ <vCred total>, CORRESPONDENTE A#ALIQUOTA DE 3,82%, NOS TERMOS DO ART. 23 DA LC 123/2006.
-```
+Campo na Focus: **`informacoes_adicionais_contribuinte`** (vira o `infCpl` do XML). No XML do CA as
+linhas são separadas por `#` (é o CA que converte quebra de linha em `#`; a DANFE do app já
+reconverte `#` em linha — ver patch da DANFE). Na Focus, mandar o texto com quebras de linha
+normais.
+
+O texto de hoje tem DUAS partes:
+
+**Parte 1 — vem do NOSSO app** (já existe pronta em `syncPedidosService.js:251-252`, enviada ao CA
+como `observacoes` da venda — na Focus é só reusar o mesmo montador):
+1. `Referente ao pedido #<numero>` (sempre)
+2. `pedido.observacoes` (quando houver — ex.: `ENCAIXE DE ENTREGA`, `Site Congelados #28 <endereço>`,
+   texto livre digitado no pedido)
+3. `PROMO - <nomes dos itens em promoção>` (quando houver item em promoção)
+4. `Cobrança: Vendedor responsável` / `Cobrança: Escritório responsável` (condições especiais)
+
+**Parte 2 — o CA acrescenta na emissão; com a Focus, o NOSSO montador passa a acrescentar:**
+1. Sempre: `DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.` +
+   `NAO GERA DIREITO A CREDITO FISCAL DE IPI.`
+2. Destinatário CNPJ (CSOSN 101): `PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$
+   <soma dos vCredICMSSN>, CORRESPONDENTE A ALIQUOTA DE 3,82%, NOS TERMOS DO ART. 23 DA LC
+   123/2006.`
+3. Linha da Lei da Transparência (`Trib aprox R$: X Federal, Y Estadual ... Fonte:
+   IBPT/empresometro.com.br`): nas notas de CPF sempre; apareceu também em nota CNPJ de
+   consumidor final (84761 tem IBPT **e** crédito juntos). Na Focus sai automática com
+   `discrimina_impostos: true` na empresa — **não** montar manualmente (senão duplica; conferir em
+   homologação como a Focus posiciona a linha).
+
+Exemplo real completo (nota 84843, CNPJ): ver seção acima. Exemplo CPF (84787):
+`Referente ao pedido #2213` + `ENCAIXE DE ENTREGA` + `Site Congelados #28 ESTRADA DO OESTE, 476...`
++ linha IBPT + os dois textos do Simples (sem linha de crédito).
+
+### ⚠️ Terceiro documento descoberto: NF-e de DEVOLUÇÃO de venda
+
+A nota **84808** (21/07) não é venda: é **devolução** — `finNFe=4`, `tpNF=0` (entrada), natOp
+`Devolucao de venda`, CFOP **1201**, com `NFref` apontando a chave da NF original (84730) e
+observação manual `DEVOLUCAO REFERENTE SUA NF N 1-84730 DE 17/07/2026`. Isso era emitido dentro do
+CA (provavelmente à mão pelo escritório) quando o cliente devolve mercadoria. **Fora do MVP da
+emissão de venda**, mas o app tem módulo de conferência de devoluções no Caixa — planejar depois um
+botão "emitir NF de devolução" (campos Focus: `finalidade_emissao: 4`, `tipo_documento: 0`,
+`natureza_operacao: "Devolucao de venda"`, CFOP 1201, `notas_referenciadas`/chave referenciada —
+conferir nome exato do campo na doc de campos).
 
 ### Venda para CPF (pessoa física / consumidor final) — perfil DIFERENTE
 
