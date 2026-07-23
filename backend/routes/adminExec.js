@@ -452,7 +452,7 @@ router.post('/asaas-quitar-residuo-ca', async (req, res) => {
                 baixaCaOk: true,
                 parcelaId: { not: null },
                 recebidoEm: { gte: desde },
-                ...(req.body?.pedido ? { pedido: { numero: String(req.body.pedido) } } : {})
+                ...(req.body?.pedido ? { pedido: { numero: Number(req.body.pedido) } } : {})
             },
             include: {
                 parcela: { select: { numeroParcela: true, dataVencimento: true } },
