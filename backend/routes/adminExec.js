@@ -275,7 +275,9 @@ router.post('/focus-nfe-emitir-teste', async (req, res) => {
             valor_produtos: valor,
             valor_total: valor,
             formas_pagamento: [{ forma_pagamento: '01', valor_pagamento: valor }],
-            informacoes_adicionais_contribuinte: ['Referente ao pedido #TESTE (nota de ensaio do app)', ...textosLegais].join('\n'),
+            // Separador '#' como o CA fazia: a Focus converte '\n' em '\\n' literal no XML,
+            // e a nossa DANFE já converte '#' em quebra de linha (patch da DANFE).
+            informacoes_adicionais_contribuinte: ['Referente ao pedido TESTE (nota de ensaio do app)', ...textosLegais].join('#'),
             items: [item],
         };
 

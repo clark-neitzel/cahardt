@@ -616,10 +616,10 @@ Rate limit: **não documentado nas páginas baixadas** — ver doc online se nec
 
 ### Informações adicionais (`infAdic/infCpl`) — catálogo COMPLETO (20 notas analisadas 23/07)
 
-Campo na Focus: **`informacoes_adicionais_contribuinte`** (vira o `infCpl` do XML). No XML do CA as
-linhas são separadas por `#` (é o CA que converte quebra de linha em `#`; a DANFE do app já
-reconverte `#` em linha — ver patch da DANFE). Na Focus, mandar o texto com quebras de linha
-normais.
+Campo na Focus: **`informacoes_adicionais_contribuinte`** (vira o `infCpl` do XML). **Separador de
+linhas: usar `#`, igual ao CA.** Testado na prática (23/07): mandar `\n` de verdade faz a Focus
+gravar `\\n` LITERAL no XML (aparece "\n" escrito na DANFE do app); com `#` o XML fica idêntico ao
+padrão do CA e a DANFE do app já reconverte `#` em quebra de linha (patch da DANFE).
 
 O texto de hoje tem DUAS partes:
 
