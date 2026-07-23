@@ -53,11 +53,17 @@ async function pdfBoletoCA(idSolicitacao) {
 async function pdfDanfe(pedido) {
     const pedidoController = require('../controllers/pedidoController');
     const nota = await pedidoController._localizarNotaFiscal(pedido);
-    const nome = `danfe-${nota.chave_acesso}.pdf`;
+    const chaveLimpa = String(nota.chave_acesso || '').replace(/\D/g, '');
+    const nome = `danfe-${chaveLimpa}.pdf`;
     const doCache = lerCache(nome);
     if (doCache) return doCache;
 
-    const xml = await contaAzulService.buscarXmlNotaFiscal(nota.chave_acesso);
+    // Nota emitida pelo APP (Focus) não existe no CA — o XML vem da central xmlNfeService
+    // (app → Focus; antiga → arquivo local do backup → API do CA como último recurso).
+    const xmlNfeService = require('./xmlNfeService');
+    const xml = nota.origem === 'APP'
+        ? await xmlNfeService.obterXmlNotaApp(nota.notaAppId)
+        : await xmlNfeService.obterXmlNotaCA(chaveLimpa);
     const { gerarPDF } = require('@alexssmusica/node-pdf-nfe');
     const pathLogo = path.join(__dirname, '../assets/logo-danfe.png');
     const doc = await gerarPDF(xml, fs.existsSync(pathLogo) ? { pathLogo } : {});

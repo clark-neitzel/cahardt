@@ -208,7 +208,8 @@ function aplicarRetornoFocus(dadosFocus) {
         status: MAPA_STATUS[dadosFocus.status] || 'PROCESSANDO',
         numero: dadosFocus.numero ? parseInt(dadosFocus.numero, 10) : undefined,
         serie: dadosFocus.serie ? parseInt(dadosFocus.serie, 10) : undefined,
-        chave: dadosFocus.chave_nfe || dadosFocus.chave || undefined,
+        // webhook manda a chave com prefixo "NFe..." — guardar só os 44 dígitos
+        chave: (dadosFocus.chave_nfe || dadosFocus.chave || '').replace(/\D/g, '') || undefined,
         mensagemSefaz: dadosFocus.mensagem_sefaz || undefined,
         caminhoXml: dadosFocus.caminho_xml_nota_fiscal || undefined,
         caminhoDanfe: dadosFocus.caminho_danfe || undefined,
@@ -296,6 +297,11 @@ async function sincronizarEventos() {
     // (ex.: evento consumido por réplica com código antigo durante um deploy) — corrige aqui.
     // `not` do Prisma exclui null — por isso o OR explícito.
     try {
+        // higiene: chaves gravadas com o prefixo "NFe" (webhooks antigos) → só dígitos
+        const comPrefixo = await prisma.notaFiscalApp.findMany({ where: { chave: { startsWith: 'NFe' } } });
+        for (const n of comPrefixo) {
+            await prisma.notaFiscalApp.update({ where: { id: n.id }, data: { chave: n.chave.replace(/\D/g, '') } });
+        }
         const desalinhadas = await prisma.notaFiscalApp.findMany({
             where: {
                 status: 'AUTORIZADO',
