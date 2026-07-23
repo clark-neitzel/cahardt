@@ -25,9 +25,11 @@ const pedidoConversaoService = {
             });
             if (!pedido || !pedido.especial) return { convertido: false };
 
-            const contaAzulService = require('./contaAzulService');
+            const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
             const numeroAntigo = pedido.numero;
-            const numeroNovo = await contaAzulService.obterProximoNumeroPedido();
+            const numeroNovo = CA_SOMENTE_LEITURA
+                ? await require('./syncPedidosService').obterProximoNumeroLocal()
+                : await require('./contaAzulService').obterProximoNumeroPedido();
 
             await prisma.$transaction(async (tx) => {
                 await tx.pedido.update({
@@ -35,7 +37,7 @@ const pedidoConversaoService = {
                     data: {
                         especial: false,
                         numero: numeroNovo,
-                        statusEnvio: 'ENVIAR', // worker envia ao CA; NF-e é emitida lá pelo faturamento
+                        statusEnvio: 'ENVIAR', // worker fatura (local desde 23/07; NF-e sai pelo app)
                         erroEnvio: null
                     }
                 });
@@ -58,7 +60,7 @@ const pedidoConversaoService = {
                 await prisma.atendimento.create({
                     data: {
                         tipo: 'FINANCEIRO',
-                        observacao: `Pedido especial ZZ#${numeroAntigo ?? '?'} recebeu PIX e foi CONVERTIDO no pedido #${numeroNovo} (vai ao Conta Azul p/ emissão da NF-e).`,
+                        observacao: `Pedido especial ZZ#${numeroAntigo ?? '?'} recebeu PIX e foi CONVERTIDO no pedido #${numeroNovo} (segue p/ faturamento e emissão da NF-e pelo app).`,
                         clienteId: pedido.clienteId,
                         idVendedor: cobranca.criadoPorId || pedido.vendedorId || null,
                         pedidoId: pedido.id

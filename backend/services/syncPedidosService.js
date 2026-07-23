@@ -1,6 +1,7 @@
 const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
 const estoqueService = require('./estoqueService');
+const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
 // CNPJ ALFANUMÉRICO: normalizar preservando letras (14 posições = CNPJ, mesmo com letras).
 const { normalizarDoc } = require('../utils/documento');
 
@@ -100,8 +101,46 @@ const syncPedidosService = {
         }
     },
 
+    /**
+     * Próximo número de venda gerado PELO APP (continua a sequência que veio do CA).
+     * Usado desde que o CA virou somente leitura — o app é o dono da numeração.
+     */
+    obterProximoNumeroLocal: async () => {
+        const agg = await prisma.pedido.aggregate({ _max: { numero: true } });
+        return (agg._max.numero || 0) + 1;
+    },
+
     enviarPedidoContaAzul: async (pedido) => {
         console.log(`[Pedido ${pedido.id}] Preparando envio...`);
+
+        // CA somente leitura: "faturar" é local — reserva o número da venda no app e
+        // marca RECEBIDO (o worker que chamou dispara a baixa de estoque ao ver RECEBIDO).
+        // A conta a receber local já foi criada na finalização do pedido; a NF-e sai
+        // pelo app (Focus NFe). Nada é enviado ao Conta Azul.
+        if (CA_SOMENTE_LEITURA) {
+            try {
+                let numeroVenda = pedido.numero;
+                if (!numeroVenda) {
+                    numeroVenda = await syncPedidosService.obterProximoNumeroLocal();
+                    await prisma.pedido.update({
+                        where: { id: pedido.id },
+                        data: { numero: numeroVenda }
+                    });
+                }
+                await prisma.pedido.update({
+                    where: { id: pedido.id },
+                    data: { statusEnvio: 'RECEBIDO', erroEnvio: null }
+                });
+                console.log(`[Pedido ${pedido.id}] Faturado LOCALMENTE (venda nº ${numeroVenda}) — CA somente leitura.`);
+            } catch (error) {
+                console.error(`[Pedido ${pedido.id}] Erro no faturamento local:`, error.message);
+                await prisma.pedido.update({
+                    where: { id: pedido.id },
+                    data: { statusEnvio: 'ERRO', erroEnvio: error.message || 'Erro no faturamento local' }
+                });
+            }
+            return;
+        }
 
         try {
             // Marca como SINCRONIZANDO se ainda for ENVIAR

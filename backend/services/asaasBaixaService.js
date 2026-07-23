@@ -11,6 +11,7 @@
 // =====================================================================
 const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
+const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
 
 // Espelho de backend/routes/contasReceber.js:47 (recalcular status da parcela)
 const calcularStatusParcela = (valor, valorPago, valorDescontoTotal) => {
@@ -129,7 +130,11 @@ const asaasBaixaService = {
         if (!cobranca.baixaCaOk) {
             try {
                 const pedido = cobranca.pedido;
-                if (!pedido || (pedido.especial && !pedido.idVendaContaAzul)) {
+                if (CA_SOMENTE_LEITURA) {
+                    // CA somente leitura: a baixa local (passo 1) é a oficial — nada a registrar lá
+                    await prisma.cobrancaAsaas.update({ where: { id: cobranca.id }, data: { baixaCaOk: true } });
+                    resultado.baixaCa = true;
+                } else if (!pedido || (pedido.especial && !pedido.idVendaContaAzul)) {
                     // Pedido especial (sem espelho no CA): não há o que baixar lá
                     await prisma.cobrancaAsaas.update({ where: { id: cobranca.id }, data: { baixaCaOk: true } });
                     resultado.baixaCa = true;
@@ -297,7 +302,13 @@ const asaasBaixaService = {
         }
 
         // ── 2) Excluir a baixa no Conta Azul (se houve) ──
-        if (cobranca.baixaCaOk && cobranca.pedido?.idVendaContaAzul && cobranca.parcela) {
+        if (CA_SOMENTE_LEITURA) {
+            // CA somente leitura: não mexemos em baixas de lá; o estorno local é o oficial
+            if (cobranca.baixaCaOk) {
+                await prisma.cobrancaAsaas.update({ where: { id: cobranca.id }, data: { baixaCaOk: false } }).catch(() => { });
+            }
+            resultado.estornoCa = true;
+        } else if (cobranca.baixaCaOk && cobranca.pedido?.idVendaContaAzul && cobranca.parcela) {
             try {
                 const dataVendaStr = new Date(cobranca.pedido.dataVenda).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
                 const parcelasCA = await contaAzulService.encontrarParcelasDeVenda(

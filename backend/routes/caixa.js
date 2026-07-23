@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const verificarAuth = require('../middlewares/authMiddleware');
+const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
 
 // ── Helpers ──
 const getPerms = async (userId) => {
@@ -2428,7 +2429,7 @@ router.post('/quitar-ca', async (req, res) => {
         } catch (_) { /* sem config → cai na caixinha com observação */ }
 
         let contaCaixinha = null;
-        if (normais.length > 0) {
+        if (normais.length > 0 && !CA_SOMENTE_LEITURA) {
             try {
                 contaCaixinha = await contaAzulService.buscarContaCaixinha();
             } catch (err) {
@@ -2441,6 +2442,207 @@ router.post('/quitar-ca', async (req, res) => {
                         tipo: 'CA',
                         status: 'ERRO',
                         erro: `Erro ao buscar conta Caixinha no CA: ${err.message}`
+                    });
+                }
+            }
+        }
+
+        // ═══ NORMAIS com CA somente leitura → Baixa LOCAL (o app é o financeiro oficial) ═══
+        if (CA_SOMENTE_LEITURA && normais.length > 0) {
+            const round2 = (v) => Math.round(Number(v) * 100) / 100;
+            // Conta financeira p/ a tela Saldos por Conta: dinheiro → caixinha; PIX Asaas → conta Asaas
+            let caixinhaLocalId = null;
+            try {
+                const cx = await prisma.contaFinanceira.findFirst({
+                    where: { nomeBanco: { contains: 'caixinha', mode: 'insensitive' }, ativo: true }
+                });
+                caixinhaLocalId = cx?.id || null;
+            } catch (_) { /* sem caixinha local → fica "Não informado" */ }
+
+            for (const pedido of normais) {
+                const clienteNome = pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'N/A';
+                const motorista = pedido.embarque?.responsavel?.nome || 'N/I';
+
+                try {
+                    const grupos = pedido._gruposPagamento;
+                    const detalhePgtos = Object.entries(grupos)
+                        .map(([, g]) => `${g.formaNome}: R$ ${g.valor.toFixed(2)}`)
+                        .join(', ');
+                    const obsBase = `Motorista: ${motorista} | Caixa: ${dataPgto} | Solicitante: ${solicitante?.nome || req.user.id} | Pgto: ${detalhePgtos}`;
+
+                    let contaReceber = await prisma.contaReceber.findUnique({
+                        where: { pedidoId: pedido.id },
+                        include: { parcelas: { orderBy: { numeroParcela: 'asc' } } }
+                    });
+                    if (!contaReceber) {
+                        const valorTotal = pedido.itens?.reduce((s, i) => s + (Number(i.valor) * Number(i.quantidade)), 0) || pedido._valorElegivel;
+                        contaReceber = await prisma.contaReceber.create({
+                            data: {
+                                pedidoId: pedido.id,
+                                clienteId: pedido.clienteId,
+                                origem: 'FATURADO_CA',
+                                valorTotal: round2(valorTotal),
+                                status: 'ABERTO',
+                                parcelas: {
+                                    create: [{
+                                        numeroParcela: 1,
+                                        valor: round2(valorTotal),
+                                        dataVencimento: pedido.primeiroVencimento || new Date(),
+                                        status: 'PENDENTE',
+                                    }]
+                                }
+                            },
+                            include: { parcelas: { orderBy: { numeroParcela: 'asc' } } }
+                        });
+                    }
+
+                    const parcelasAbertas = contaReceber.parcelas.filter(p => ['PENDENTE', 'VENCIDO', 'PARCIAL'].includes(p.status));
+                    if (parcelasAbertas.length === 0) {
+                        resultados.push({
+                            pedidoId: pedido.id, numero: pedido.numero, cliente: clienteNome,
+                            tipo: 'CA', status: 'JA_QUITADO', erro: 'Parcelas já quitadas no app'
+                        });
+                        continue;
+                    }
+
+                    const totalAberto = round2(parcelasAbertas.reduce(
+                        (s, p) => s + Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0), 0));
+
+                    // "Filas" de dinheiro recebido por forma (OUTRO = vendedor/escritório
+                    // responsável não é recebimento — a parte dele fica em aberto p/ cobrança)
+                    const filas = Object.entries(grupos)
+                        .filter(([m, g]) => m !== 'OUTRO' && g.valor > 0)
+                        .map(([m, g]) => ({
+                            nome: g.formaNome,
+                            restante: round2(g.valor),
+                            contaCaId: m === 'DINHEIRO' ? caixinhaLocalId : (m === 'PIX_ASAAS' ? contaAsaasCaId : null)
+                        }));
+                    const valorRecebido = round2(filas.reduce((s, f) => s + f.restante, 0));
+
+                    // Devolução de mercadoria = o que estava em aberto menos TUDO que foi
+                    // acertado na entrega (inclui a parte "responsável"). Fecha como desconto.
+                    const valorDevolvido = Math.max(0, round2(totalAberto - pedido._valorElegivel));
+
+                    const dataPagamento = new Date(dataPgto + 'T12:00:00-03:00');
+                    const acoes = [];
+
+                    await prisma.$transaction(async (tx) => {
+                        let descontoRestante = valorDevolvido;
+                        for (const parcela of parcelasAbertas) {
+                            let saldo = round2(Number(parcela.valor) - Number(parcela.valorPago || 0) - Number(parcela.valorDescontoTotal || 0));
+                            if (saldo <= 0) continue;
+                            let recebidoParcela = 0;
+                            let descontoParcela = 0;
+                            let ultimaConta = null;
+                            let formasParcela = [];
+
+                            for (const fila of filas) {
+                                if (saldo <= 0.001) break;
+                                const usa = round2(Math.min(saldo, fila.restante));
+                                if (usa <= 0) continue;
+                                await tx.pagamentoParcela.create({
+                                    data: {
+                                        parcelaId: parcela.id,
+                                        valorRecebido: usa,
+                                        valorDesconto: 0,
+                                        formaPagamento: fila.nome,
+                                        contaFinanceiraCaId: fila.contaCaId,
+                                        dataPagamento,
+                                        observacao: obsBase,
+                                        registradoPorId: req.user.id
+                                    }
+                                });
+                                saldo = round2(saldo - usa);
+                                fila.restante = round2(fila.restante - usa);
+                                recebidoParcela = round2(recebidoParcela + usa);
+                                ultimaConta = fila.contaCaId || ultimaConta;
+                                formasParcela.push(fila.nome);
+                            }
+
+                            // Devolução entra como desconto na parcela que ainda tem saldo
+                            if (saldo > 0.001 && descontoRestante > 0.001) {
+                                descontoParcela = round2(Math.min(saldo, descontoRestante));
+                                await tx.pagamentoParcela.create({
+                                    data: {
+                                        parcelaId: parcela.id,
+                                        valorRecebido: 0,
+                                        valorDesconto: descontoParcela,
+                                        motivoDesconto: 'Devolução de mercadoria (conferência do caixa)',
+                                        formaPagamento: formasParcela.join(', ') || null,
+                                        dataPagamento,
+                                        observacao: obsBase,
+                                        registradoPorId: req.user.id
+                                    }
+                                });
+                                saldo = round2(saldo - descontoParcela);
+                                descontoRestante = round2(descontoRestante - descontoParcela);
+                            }
+
+                            if (recebidoParcela <= 0 && descontoParcela <= 0) continue;
+
+                            const novoPago = round2(Number(parcela.valorPago || 0) + recebidoParcela);
+                            const novoDesc = round2(Number(parcela.valorDescontoTotal || 0) + descontoParcela);
+                            const quitada = (novoPago + novoDesc) >= Number(parcela.valor) - 0.01;
+                            await tx.parcela.update({
+                                where: { id: parcela.id },
+                                data: {
+                                    status: quitada ? 'PAGO' : 'PARCIAL',
+                                    valorPago: novoPago > 0 ? novoPago : null,
+                                    valorDescontoTotal: novoDesc,
+                                    formaPagamento: formasParcela.join(', ') || parcela.formaPagamento,
+                                    contaFinanceiraCaId: ultimaConta || parcela.contaFinanceiraCaId,
+                                    dataPagamento: quitada ? dataPagamento : parcela.dataPagamento,
+                                    baixadoPorId: req.user.id,
+                                    observacao: obsBase
+                                }
+                            });
+                        }
+
+                        const todasParcelas = await tx.parcela.findMany({ where: { contaReceberId: contaReceber.id } });
+                        const pagas = todasParcelas.filter(p => p.status === 'PAGO').length;
+                        const canceladas = todasParcelas.filter(p => p.status === 'CANCELADO').length;
+                        const parciais = todasParcelas.filter(p => p.status === 'PARCIAL').length;
+                        const novoStatus = (pagas + canceladas >= todasParcelas.length) ? 'QUITADO'
+                            : (pagas > 0 || parciais > 0) ? 'PARCIAL' : 'ABERTO';
+                        await tx.contaReceber.update({ where: { id: contaReceber.id }, data: { status: novoStatus } });
+
+                        await tx.pedido.update({
+                            where: { id: pedido.id },
+                            data: {
+                                baixaCaRealizada: true,
+                                baixaCaValor: round2(pedido._valorElegivel),
+                                baixaCaEm: new Date()
+                            }
+                        });
+                    }, { timeout: 20000, maxWait: 10000 });
+
+                    acoes.push(`Baixa local: R$ ${valorRecebido.toFixed(2)} (${detalhePgtos})`);
+                    if (valorDevolvido > 0.01) acoes.push(`Devolução (desconto): R$ ${valorDevolvido.toFixed(2)}`);
+                    if (grupos['OUTRO']) acoes.push(`${grupos['OUTRO'].formaNome}: R$ ${grupos['OUTRO'].valor.toFixed(2)} fica em aberto p/ cobrança`);
+
+                    // Log de histórico fora da transação
+                    try {
+                        await prisma.atendimento.create({
+                            data: {
+                                tipo: 'FINANCEIRO',
+                                observacao: `Baixa caixa - R$ ${valorRecebido.toFixed(2)} (${detalhePgtos})${valorDevolvido > 0.01 ? ` | Devolução: R$ ${valorDevolvido.toFixed(2)}` : ''} | ${obsBase}`,
+                                clienteId: pedido.cliente.UUID,
+                                idVendedor: req.user.id,
+                                pedidoId: pedido.id
+                            }
+                        });
+                    } catch (logErr) {
+                        console.error('[caixa baixa-lote] falha no log (baixa já efetivada):', logErr.message);
+                    }
+
+                    resultados.push({
+                        pedidoId: pedido.id, numero: pedido.numero, cliente: clienteNome,
+                        tipo: 'CA', status: 'OK', valor: pedido._valorElegivel, detalhe: acoes.join(' | ')
+                    });
+                } catch (err) {
+                    resultados.push({
+                        pedidoId: pedido.id, numero: pedido.numero, cliente: clienteNome,
+                        tipo: 'CA', status: 'ERRO', erro: err.message
                     });
                 }
             }

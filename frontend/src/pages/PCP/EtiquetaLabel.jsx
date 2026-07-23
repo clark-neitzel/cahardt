@@ -15,9 +15,12 @@ export function imprimirEtiquetas(labelHtml, copies = 1) {
 
     const style = document.createElement('style');
     style.id = ID_ESTILO;
+    // Impressora ZDesigner está em LANDSCAPE (100×80mm). A etiqueta é desenhada em
+    // portrait (80×100mm), então a página sai em landscape e o conteúdo é girado 90°
+    // para casar com a mídia e sair reto na etiqueta.
     // @page no nível raiz (iOS não lida bem com @page dentro de @media)
     style.textContent = `
-        @page { size: 80mm 100mm; margin: 0; }
+        @page { size: 100mm 80mm; margin: 0; }
         #${ID_AREA} { display: none; }
         @media print {
             html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; }
@@ -26,8 +29,10 @@ export function imprimirEtiquetas(labelHtml, copies = 1) {
             #root { display: none !important; }
             #${ID_AREA} { display: block !important; }
             #${ID_AREA}, #${ID_AREA} * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            #${ID_AREA} .pg { page-break-after: always; }
+            #${ID_AREA} .pg { width: 100mm; height: 80mm; display: flex; align-items: center; justify-content: center; overflow: hidden; page-break-after: always; }
             #${ID_AREA} .pg:last-child { page-break-after: avoid; }
+            /* gira a etiqueta portrait (80×100) para caber na página landscape (100×80) */
+            #${ID_AREA} .pg > * { transform: rotate(90deg); flex: 0 0 auto; }
         }
     `;
     document.head.appendChild(style);
