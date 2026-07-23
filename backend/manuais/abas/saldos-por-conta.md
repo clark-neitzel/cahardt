@@ -28,7 +28,7 @@ Visão gerencial de **por qual banco/caixa o dinheiro entrou e saiu**. Mostra, n
 | Entradas por conta | Recebimentos (parcelas de **Contas a Receber** pagas) agrupados pelo banco em que o dinheiro entrou |
 | Saídas por conta | Pagamentos (baixas de **Contas a Pagar**, não estornadas) agrupados pelo banco de onde o dinheiro saiu |
 | Ajustes manuais | Ajustes de saldo criados nesta tela: valor positivo soma nas entradas, negativo nas saídas da conta |
-| Transferências (Transf. ±) | Marcadas na **Conciliação Bancária** (Buscar… → "Transferência entre contas"): saem da conta de origem e entram na de destino; no extrato aparecem com etiqueta roxa **"transferência"** (quem desfaz é a Conciliação, não esta tela) |
+| Transferências (Transf. ±) | Duas origens: **importadas sozinhas do Conta Azul** (o app busca as transferências feitas lá a cada 3 horas — não precisa digitar nada) e as marcadas na **Conciliação Bancária** (Buscar… → "Transferência entre contas"). Saem da conta de origem e entram na de destino; no extrato aparecem com etiqueta roxa **"transferência"**. Se a mesma transferência já tinha sido registrada à mão, a importação **não duplica** (adota o registro existente) |
 | Saldo atual (CA) | Consulta em tempo real do saldo da conta no Conta Azul (botão opcional; pode demorar alguns segundos) |
 
 A conta (banco/caixa) de cada baixa é capturada automaticamente:
@@ -54,6 +54,7 @@ A conta (banco/caixa) de cada baixa é capturada automaticamente:
 | Caminho | Papel |
 |---------|-------|
 | `backend/services/financeiroGerencialService.js` | Agregação por conta (saldosPorConta, extratoPorConta, inclui ajustes) |
+| `backend/services/caExtratoService.js` | Importação automática do Conta Azul: transferências entre contas (a cada 3h) e despesas lançadas direto lá |
 | `backend/routes/financeiroGerencial.js` | Rotas GET /por-conta e /por-conta/extrato; PUT lancamento-banco; POST/DELETE ajuste |
 | `backend/prisma/schema.prisma` | Modelos `AjusteSaldoConta` (tabela `ajustes_saldo_conta`) e `TransferenciaConta` (tabela `transferencias_conta`) |
 | `frontend/src/pages/Financeiro/ContasBancosPage.jsx` | Tela |

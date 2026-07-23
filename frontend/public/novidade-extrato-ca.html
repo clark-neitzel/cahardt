@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Extrato do Conta Azul no App — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🏦 Novidade no Hardt App: o extrato do Conta Azul entra sozinho">
+<meta property="og:description" content="Transferências entre contas e despesas lançadas no Conta Azul agora aparecem sozinhas no app — Saldos por Conta completo, sem digitar nada.">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock do extrato flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 34px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-body { padding: 6px 0 8px; }
+  .mock-linha {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px;
+  }
+  .mock-linha + .mock-linha { border-top: 1px solid #f0efe9; }
+  .mock-ico {
+    width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .mock-info { flex: 1; min-width: 0; }
+  .mock-info b { display: block; font-size: 13px; line-height: 1.25; }
+  .mock-info span { font-size: 11.5px; color: var(--ink-soft); }
+  .mock-val { font-size: 13px; font-weight: 800; white-space: nowrap; }
+  .mock-val.pos { color: var(--primary-dark); }
+  .mock-val.neg { color: #b3261e; }
+  .etq {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #efe7f7;
+    color: #6b3fa0;
+    margin-left: 6px;
+    vertical-align: 1px;
+  }
+
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade · Financeiro</span>
+    <h1>O extrato do Conta Azul agora entra sozinho no app</h1>
+    <p>Transferências entre contas e despesas lançadas direto no Conta Azul aparecem no app automaticamente — sem digitar, sem exportar arquivo.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <small>Financeiro · Saldos por Conta</small>
+      <strong>Extrato — Sicoob</strong>
+    </div>
+    <div class="mock-body">
+      <div class="mock-linha">
+        <div class="mock-ico">🔁</div>
+        <div class="mock-info">
+          <b>Veio de Conta PJ Conta Azul IP<span class="etq">transferência</span></b>
+          <span>08/07 · importada do Conta Azul</span>
+        </div>
+        <div class="mock-val pos">+ R$ 50.000,00</div>
+      </div>
+      <div class="mock-linha">
+        <div class="mock-ico">📄</div>
+        <div class="mock-info">
+          <b>Folha de pagamento · Julho</b>
+          <span>05/07 · lançada no Conta Azul, chegou sozinha</span>
+        </div>
+        <div class="mock-val neg">− R$ 28.400,00</div>
+      </div>
+      <div class="mock-linha">
+        <div class="mock-ico">💰</div>
+        <div class="mock-info">
+          <b>Recebimento · pedido 2104</b>
+          <span>15/07 · boleto Asaas</span>
+        </div>
+        <div class="mock-val pos">+ R$ 120,70</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button">
+      <span class="acc-ico">🔁</span>
+      <strong>Transferências entre contas: sem digitar mais nada</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Mandou dinheiro da <b>Conta PJ Conta Azul</b> para o <b>Sicoob</b>? Fez a transferência no Conta Azul e pronto: <b>em até 3 horas ela aparece no app</b>, na tela Saldos por Conta — saindo de uma conta e entrando na outra.</p>
+      <ul>
+        <li>Todas as transferências <b>desde janeiro</b> já foram trazidas.</li>
+        <li>Se alguém já tinha registrado a mesma transferência à mão no app, o sistema <b>reconhece e não duplica</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button">
+      <span class="acc-ico">📄</span>
+      <strong>Despesa lançada no Conta Azul aparece no app</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Folha, imposto, tarifa, boleto que a contadora digita direto no Conta Azul… tudo isso agora <b>vira Conta a Pagar no app sozinho</b>, com fornecedor, categoria e parcelas.</p>
+      <ul>
+        <li>Quando for <b>pago lá</b>, a baixa chega junto — com o <b>banco de onde saiu o dinheiro</b>.</li>
+        <li>Nada é reenviado ao Conta Azul (não duplica lá).</li>
+        <li>A importação por arquivo (CSV) continua existindo, mas só para <b>histórico antigo</b> — o dia a dia agora é automático.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button">
+      <span class="acc-ico">🏦</span>
+      <strong>Saldos por Conta completo, igual ao Conta Azul</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Com as transferências e as despesas chegando sozinhas, a tela <b>Financeiro → Saldos por Conta</b> passa a contar a história completa de cada banco/caixa: o que entrou, o que saiu, o que foi só transferência — e o botão de <b>saldo em tempo real</b> confere direto no Conta Azul.</p>
+      <p>Menos digitação, menos diferença entre app e Conta Azul, DRE e Fluxo de Caixa mais certos.</p>
+    </div>
+  </div>
+
+  <div class="sec-label">Onde ver</div>
+
+  <div class="passos">
+    <div class="passo">
+      <div class="passo-n">1</div>
+      <div>Abra <b>Financeiro → Saldos por Conta</b> no app.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">2</div>
+      <div>Clique numa conta (ex.: Sicoob) para abrir o <b>extrato</b> dela — as transferências importadas aparecem com a etiqueta roxa <b>“transferência”</b>.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">3</div>
+      <div>As despesas vindas do Conta Azul ficam em <b>Financeiro → Contas a Pagar</b>, marcadas como importadas — é só conferir e acompanhar.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Novidade ativa desde <strong>23/07/2026</strong> · Hardt Doces e Salgados 🥟</p>
+</div>
+
+<script>
+  // Accordions começam ABERTOS; o clique só recolhe/expande.
+  document.querySelectorAll('.acc-head').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      btn.parentElement.classList.toggle('aberto');
+    });
+  });
+</script>
+</body>
+</html>
