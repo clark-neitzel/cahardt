@@ -592,14 +592,51 @@ Rate limit: **não documentado nas páginas baixadas** — ver doc online se nec
 Referente ao pedido #<numero>#DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.#NAO GERA DIREITO A CREDITO FISCAL DE IPI.#PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ <vCred total>, CORRESPONDENTE A#ALIQUOTA DE 3,82%, NOS TERMOS DO ART. 23 DA LC 123/2006.
 ```
 
+### Venda para CPF (pessoa física / consumidor final) — perfil DIFERENTE
+
+> Extraído das NF-e reais **84791** (Fabiano Rodrigues) e **84787** (Jozileia Mews Ebert), ambas
+> de 21/07/2026. É o segundo (e último) perfil de emissão — o que muda quando o destinatário é
+> CPF em vez de CNPJ:
+
+| Campo | CNPJ (empresa/MEI) | CPF (pessoa física) |
+|---|---|---|
+| `natOp` → `natureza_operacao` | `Venda de Mercadorias / Produtos` | **`Venda a Nao Contribuinte`** |
+| `indFinal` → `consumidor_final` | 0 | **1** |
+| `indIEDest` → `indicador_inscricao_estadual_destinatario` | 1 (com IE) ou 2 (isento — MEI sem IE) | **9 (não contribuinte)** |
+| Destinatário | `cnpj_destinatario` + `inscricao_estadual_destinatario` (se tiver) | **`cpf_destinatario`** (sem IE) |
+| ICMS | **CSOSN 101** + crédito 3,82% (`pCredSN`/`vCredICMSSN`) | **CSOSN 102** (sem direito a crédito — sem campos de crédito) |
+| `infCpl` | linha do crédito de ICMS 3,82% (LC 123/2006) | **sem** linha de crédito; em vez disso vai a linha da **Lei da Transparência** (`Trib aprox R$: X Federal, Y Estadual... Fonte: IBPT`) e o XML leva `vTotTrib` |
+| CFOP | 5101 (ver observação de revenda abaixo) | 5101 (igual — não muda para 5102 por ser PF) |
+| Demais (NCM, PIS/COFINS 49, IPI 99, modFrete 0, série) | iguais | iguais |
+
+- **Regra de decisão no montador do JSON: `cliente.cpf` presente → perfil CPF; senão → perfil
+  CNPJ.** MEI sem IE (ex.: nota 84841) continua no perfil CNPJ, só com `indIEDest=2` e sem o campo
+  de IE. CSOSN segue o destinatário: CNPJ=101, CPF=102.
+- Os valores "Trib aprox" (IBPT) das notas de CPF: nas duas notas reais deram **13,45% federal +
+  12,0% estadual** do total. Na Focus, o flag **`discrimina_impostos: true`** na empresa calcula e
+  imprime isso automaticamente — não precisamos calcular.
+- **Sobre o "CPF 17% / CNPJ 12%" dito pelo dono (23/07):** esses percentuais **não aparecem nos
+  XMLs** — no Simples Nacional a nota não destaca alíquota de ICMS (17% é a alíquota interna
+  padrão de SC e 12% a de alimentos, mas nota do Simples sai sem destaque). A diferença real entre
+  CPF e CNPJ na nota é a da tabela acima (CSOSN 101 c/ crédito vs 102 sem). Os 17%/12% devem ser
+  regra de **precificação** (margem/preço por tipo de cliente), que já vive no app — não entra na
+  emissão. Confirmar com o dono/contador se há algo além disso.
+
+### CFOP de REVENDA — única variação POR PRODUTO encontrada
+
+Na nota 84841 apareceram itens com **CFOP 5102** (revenda de mercadoria adquirida de terceiros)
+misturados com itens 5101 (produção própria) — ex.: `2-FR-ESPETINHO FRANGO C/BAC.` (este também
+com **CEST 1707900**) e `2-FR-BOLINHO DE CARNE`. Ou seja: produtos que a Hardt **compra pronto e
+revende** saem com CFOP 5102; o que ela **fabrica** sai 5101. Implementação: flag `revenda`
+(boolean) no cadastro de Produtos (default false) + campo opcional `cest`; o montador usa
+5102/CEST quando marcado. Levantar com o dono quais produtos são de revenda.
+
 ### ⚠️ Pontos de atenção (únicos que podem variar)
 
 1. **A alíquota de crédito do Simples (3,82%)** depende da faixa de faturamento da empresa — pode
    mudar de mês. Confirmar com o contador se é fixa ou se precisa ser configurável
    (`app_configs`), e o valor vigente na virada.
-2. As notas analisadas são todas **venda dentro de SC para PJ com IE**. Se um dia houver venda
-   interestadual (CFOP 6101) ou para consumidor final/pessoa física (CFOP 5102, `indFinal=1`,
-   destinatário com CPF e `indIEDest=9`), o montador do JSON precisa tratar esses casos — hoje não
-   acontecem.
+2. As notas analisadas são todas **dentro de SC**. Venda interestadual (CFOP 6101/6102) hoje não
+   acontece — fica fora do MVP; se surgir, tratar no montador.
 3. `tPag` por forma de recebimento do app: dinheiro=01, boleto=15, PIX=17, cartão=03/04 (tabela
    completa na doc de campos da Focus).
