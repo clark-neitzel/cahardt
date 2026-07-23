@@ -176,7 +176,9 @@ router.post('/focus-nfe-emitir-teste', async (req, res) => {
             return res.status(400).json({ error: 'Teste só é permitido com FOCUS_NFE_AMBIENTE=homologacao.' });
         }
         const tipo = req.body?.tipo === 'cpf' ? 'cpf' : 'cnpj';
-        const agora = new Date().toISOString().replace(/\.\d{3}Z$/, '-03:00');
+        // Horário de Brasília de verdade (UTC-3) — mandar UTC etiquetado de -03:00 cai na
+        // rejeição 703 "Data-Hora de Emissao posterior ao horario de recebimento".
+        const agora = new Date(Date.now() - 3 * 3600 * 1000).toISOString().replace(/\.\d{3}Z$/, '-03:00');
 
         const emitente = {
             cnpj_emitente: '08766459000102',
