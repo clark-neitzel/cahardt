@@ -662,7 +662,8 @@ async function sincronizarExtratoConciliacao({ dias = 30, de = null, ate = null 
         for (const a of archs) {
             const baixas = a.dadosDetalhe?.baixas || [];
             baixas.forEach((b, idx) => {
-                const cf = b?.conta_financeira;
+                // Conta pode vir na baixa OU no nível do detalhe da parcela (varia no CA)
+                const cf = b?.conta_financeira ?? a.dadosDetalhe?.conta_financeira ?? a.dadosDetalhe?.id_conta_financeira;
                 const cfId = cf ? (typeof cf === 'string' ? cf : cf.id || null) : null;
                 if (cfId !== conta) return;
                 const valor = round2(num(b?.valor_composicao?.valor_bruto));
