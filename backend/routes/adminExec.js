@@ -345,6 +345,55 @@ router.post('/focus-nfe-emitir-pedido', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/focus-nfe-producao-numeracao — configura a numeração de PRODUÇÃO na
+// Focus para continuar a sequência do Conta Azul. Body: { proximoNumero: 84844 }.
+// Rodar UMA vez na virada, depois de o dono confirmar o nº da última nota do CA.
+router.post('/focus-nfe-producao-numeracao', async (req, res) => {
+    try {
+        const proximoNumero = parseInt(req.body?.proximoNumero, 10);
+        if (!proximoNumero) return res.status(400).json({ error: 'Informe { proximoNumero }.' });
+        const tokenConta = process.env.FOCUS_NFE_TOKEN_CONTA;
+        if (!tokenConta) return res.status(400).json({ error: 'FOCUS_NFE_TOKEN_CONTA não configurado.' });
+        const auth = 'Basic ' + Buffer.from(`${tokenConta.trim()}:`).toString('base64');
+        const lista = await fetch('https://api.focusnfe.com.br/v2/empresas?cnpj=08766459000102', {
+            headers: { Authorization: auth }, signal: AbortSignal.timeout(15000),
+        }).then(r => r.json());
+        const empresa = Array.isArray(lista) ? lista[0] : null;
+        if (!empresa?.id) return res.status(404).json({ error: 'Empresa não encontrada na Focus.' });
+        const r = await fetch(`https://api.focusnfe.com.br/v2/empresas/${empresa.id}`, {
+            method: 'PUT',
+            headers: { Authorization: auth, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ proximo_numero_nfe_producao: proximoNumero, serie_nfe_producao: 1 }),
+            signal: AbortSignal.timeout(15000),
+        });
+        const data = await r.json().catch(() => ({}));
+        res.json({
+            httpStatus: r.status,
+            proximo_numero_nfe_producao: data.proximo_numero_nfe_producao,
+            serie_nfe_producao: data.serie_nfe_producao,
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/admin-exec/nfe-backup-ca-xml — baixa TODOS os XMLs de NF-e do Conta Azul para
+// o volume do app (uploads/xml-nfe), em segundo plano, antes do CA cortar o acesso de vez.
+// Body opcional: { meses: 24 }. GET na mesma rota mostra o progresso.
+router.post('/nfe-backup-ca-xml', async (req, res) => {
+    try {
+        const xmlNfeService = require('../services/xmlNfeService');
+        const estado = await xmlNfeService.backupXmlsCA(parseInt(req.body?.meses, 10) || 24);
+        res.json({ ok: true, estado });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+router.get('/nfe-backup-ca-xml', (req, res) => {
+    const xmlNfeService = require('../services/xmlNfeService');
+    res.json(xmlNfeService.backupStatus());
+});
+
 // POST /api/admin-exec/focus-nfe-sync-ie-clientes — para cada pedido do período sem nota
 // cujo cliente PJ está SEM inscrição estadual no app, re-sincroniza o cliente do Conta Azul
 // (o sync traz a IE p/ cliente_fiscal). Body opcional: { dias: 3 }.

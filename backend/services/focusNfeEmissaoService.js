@@ -189,6 +189,20 @@ const MAPA_STATUS = {
     denegado: 'DENEGADO',
 };
 
+// Nota AUTORIZADA em PRODUÇÃO → pedido vira FATURADO na tela de pedidos (o app é o
+// emissor agora; antes quem marcava era o retorno do Conta Azul). Homologação não marca.
+async function marcarPedidoFaturado(nota) {
+    if (nota.status !== 'AUTORIZADO' || nota.ambiente !== 'producao') return;
+    try {
+        await prisma.pedido.update({
+            where: { id: nota.pedidoId },
+            data: { situacaoCA: 'FATURADO', nfeConsultadoEm: new Date() },
+        });
+    } catch (e) {
+        console.error('[FocusNFe] Falha ao marcar pedido faturado:', e.message);
+    }
+}
+
 function aplicarRetornoFocus(dadosFocus) {
     return {
         status: MAPA_STATUS[dadosFocus.status] || 'PROCESSANDO',
@@ -237,7 +251,9 @@ async function emitirVenda(pedidoId) {
         await prisma.notaFiscalApp.update({ where: { ref }, data: { status: 'ERRO', mensagemSefaz: `Validação Focus: ${msg}` } });
         throw new Error(`Nota recusada na validação: ${msg}`);
     }
-    return prisma.notaFiscalApp.update({ where: { ref }, data: aplicarRetornoFocus(data) });
+    const atualizada = await prisma.notaFiscalApp.update({ where: { ref }, data: aplicarRetornoFocus(data) });
+    await marcarPedidoFaturado(atualizada);
+    return atualizada;
 }
 
 /** Consome eventos do webhook ainda não processados, atualizando as notas correspondentes. */
@@ -249,7 +265,8 @@ async function sincronizarEventos() {
                 const nota = await prisma.notaFiscalApp.findUnique({ where: { ref: ev.ref } });
                 if (nota) {
                     const payload = typeof ev.payload === 'object' ? ev.payload : {};
-                    await prisma.notaFiscalApp.update({ where: { ref: ev.ref }, data: aplicarRetornoFocus({ ...payload, status: ev.status || payload.status }) });
+                    const atualizada = await prisma.notaFiscalApp.update({ where: { ref: ev.ref }, data: aplicarRetornoFocus({ ...payload, status: ev.status || payload.status }) });
+                    await marcarPedidoFaturado(atualizada);
                 }
             }
             await prisma.focusNfeEvento.update({ where: { id: ev.id }, data: { processado: true } });
@@ -266,7 +283,17 @@ async function consultarAtualizar(notaId) {
     if (!nota) throw new Error('Nota não encontrada.');
     const { httpStatus, data } = await focusNfe.consultar(nota.ref);
     if (httpStatus === 404) return nota; // ainda não conhecida na Focus
-    return prisma.notaFiscalApp.update({ where: { id: nota.id }, data: aplicarRetornoFocus(data) });
+    const atualizada = await prisma.notaFiscalApp.update({ where: { id: nota.id }, data: aplicarRetornoFocus(data) });
+    await marcarPedidoFaturado(atualizada);
+    return atualizada;
 }
 
-module.exports = { montarNotaVenda, emitirVenda, sincronizarEventos, consultarAtualizar, getConfig };
+/** Nota do app (ambiente atual) AUTORIZADA de um pedido — usada pela DANFE da tela de pedidos. */
+async function notaAutorizadaDoPedido(pedidoId) {
+    const focusNfeSvc = require('./focusNfeService');
+    const ref = `nf-${focusNfeSvc.ambiente() === 'producao' ? 'p' : 'h'}-${pedidoId}`;
+    const nota = await prisma.notaFiscalApp.findUnique({ where: { ref } });
+    return nota && nota.status === 'AUTORIZADO' ? nota : null;
+}
+
+module.exports = { montarNotaVenda, emitirVenda, sincronizarEventos, consultarAtualizar, getConfig, notaAutorizadaDoPedido };

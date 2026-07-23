@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import { formatarDoc } from '../../utils/documento';
 import {
     FileText, Loader2, RefreshCw, Send, FileDown, FileCode2, AlertTriangle
@@ -53,6 +54,7 @@ const NotasFiscais = () => {
     const podeEmitir = hasPermission('Pode_Emitir_NF');
 
     const [periodo, periodoCtl] = usePeriodoSalvo('notas-fiscais', 'hoje');
+    const [filtroStatus, setFiltroStatus] = useFiltroSalvo('notas-fiscais:status', 'a-emitir');
     const [ambiente, setAmbiente] = useState(null);
     const [pedidos, setPedidos] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -97,6 +99,13 @@ const NotasFiscais = () => {
         () => pedidos.filter(p => !p.notaCA && !p.nota),
         [pedidos]
     );
+
+    // Filtro de status (salvo por usuário): a emitir (sem nota/erro/processando) · emitidas · todas
+    const pedidosVisiveis = useMemo(() => {
+        if (filtroStatus === 'emitidas') return pedidos.filter(p => p.notaCA || p.nota?.status === 'AUTORIZADO');
+        if (filtroStatus === 'todas') return pedidos;
+        return pedidos.filter(p => !p.notaCA && (!p.nota || ['ERRO', 'PROCESSANDO'].includes(p.nota.status)));
+    }, [pedidos, filtroStatus]);
 
     const temProcessando = useMemo(
         () => pedidos.some(p => p.nota?.status === 'PROCESSANDO'),
@@ -304,8 +313,25 @@ const NotasFiscais = () => {
                 </div>
 
                 {/* Filtros */}
-                <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3">
+                <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3 flex flex-col md:flex-row md:items-center gap-2">
                     <FiltroPeriodo periodo={periodo} controle={periodoCtl} className="w-full md:w-auto" />
+                    <div className="flex gap-1.5 overflow-x-auto hide-scrollbar">
+                        {[
+                            ['a-emitir', `A emitir (${kpis.semNota + kpis.comErro + kpis.processando})`],
+                            ['emitidas', `Emitidas (${kpis.autorizadas})`],
+                            ['todas', 'Todas'],
+                        ].map(([valor, rotulo]) => (
+                            <button
+                                key={valor}
+                                onClick={() => setFiltroStatus(valor)}
+                                className={`px-3 py-1.5 min-h-[36px] rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${filtroStatus === valor
+                                    ? 'bg-primary text-white shadow-sm'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                            >
+                                {rotulo}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Lista */}
@@ -324,15 +350,15 @@ const NotasFiscais = () => {
                         <div className="flex items-center justify-center gap-2 py-12 text-gray-500 text-sm">
                             <Loader2 className="h-5 w-5 animate-spin" /> Carregando…
                         </div>
-                    ) : pedidos.length === 0 ? (
+                    ) : pedidosVisiveis.length === 0 ? (
                         <div className="py-12 text-center text-sm text-gray-500">
-                            Nenhum pedido no período selecionado.
+                            {pedidos.length === 0 ? 'Nenhum pedido no período selecionado.' : 'Nada neste filtro — troque o filtro acima para ver os demais.'}
                         </div>
                     ) : (
                         <>
                             {/* Mobile: cards */}
                             <div className="md:hidden space-y-3 p-3">
-                                {pedidos.map(p => (
+                                {pedidosVisiveis.map(p => (
                                     <div key={p.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
                                         <div className="flex items-center justify-between gap-2 mb-2">
                                             <span className="font-semibold text-gray-900">Pedido {p.numero != null ? p.numero : '—'}</span>
@@ -371,7 +397,7 @@ const NotasFiscais = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200 text-sm">
-                                        {pedidos.map(p => (
+                                        {pedidosVisiveis.map(p => (
                                             <tr key={p.id} className="hover:bg-gray-50">
                                                 <td className="px-5 py-3 text-gray-900">
                                                     <div className="font-semibold">{p.numero != null ? p.numero : '—'}</div>

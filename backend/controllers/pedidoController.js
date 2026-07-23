@@ -1338,6 +1338,13 @@ const pedidoController = {
     // range curto de datas; ranges longos devolvem 500). Cacheia a chave no
     // pedido para as próximas consultas serem instantâneas.
     _localizarNotaFiscal: async (pedido) => {
+        // NF-e emitida pelo PRÓPRIO APP (Focus NFe) tem prioridade — desde 07/2026 o CA
+        // não emite mais. O XML dela vem da Focus, não da API do CA.
+        const emissaoApp = require('../services/focusNfeEmissaoService');
+        const notaApp = await emissaoApp.notaAutorizadaDoPedido(pedido.id);
+        if (notaApp) {
+            return { chave_acesso: notaApp.chave, numero_nota: notaApp.numero, status: 'EMITIDA', origem: 'APP', caminhoXml: notaApp.caminhoXml, notaAppId: notaApp.id };
+        }
         if (pedido.nfeChave) {
             return { chave_acesso: pedido.nfeChave, numero_nota: pedido.nfeNumero, status: 'EMITIDA', cache: true };
         }
@@ -1400,7 +1407,16 @@ const pedidoController = {
             const pedido = await prisma.pedido.findUnique({ where: { id: req.params.id } });
             if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado' });
             const nota = await pedidoController._localizarNotaFiscal(pedido);
-            const xml = await contaAzulService.buscarXmlNotaFiscal(nota.chave_acesso);
+            let xml;
+            if (nota.origem === 'APP') {
+                // Nota emitida pelo app: XML vem da Focus (com cache local em uploads)
+                const xmlNfeService = require('../services/xmlNfeService');
+                xml = await xmlNfeService.obterXmlNotaApp(nota.notaAppId);
+            } else {
+                // Nota antiga do CA: arquivo local baixado (backup) ou API do CA como último recurso
+                const xmlNfeService = require('../services/xmlNfeService');
+                xml = await xmlNfeService.obterXmlNotaCA(nota.chave_acesso);
+            }
             const { gerarPDF } = require('@alexssmusica/node-pdf-nfe');
             // Logo da Hardt no quadro do emitente (permitido pelo MOC, item 3.1.3)
             const path = require('path');
