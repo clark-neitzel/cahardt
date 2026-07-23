@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Cadastro de Clientes pelo App — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🪄 Novidade no Hardt App: Cadastro de Clientes automático">
+<meta property="og:description" content="Digite o CNPJ e o app preenche tudo sozinho: razão social, endereço e até a Inscrição Estadual direto da SEFAZ. Veja a demonstração!">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo {
+    background: #f6f5f1;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .4s, color .4s;
+  }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Cadastro de cliente<br>que se preenche sozinho</h1>
+    <p>Agora o cliente é cadastrado direto no app: você digita o CNPJ e ele busca razão social, endereço, telefone e até a Inscrição Estadual na Receita e na SEFAZ. E todo o cadastro ficou editável.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock da tela Novo Cliente -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">👤</span>
+      <div>
+        <small>Clientes · Novo Cliente</small>
+        <strong>Digite o CNPJ…</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-label">CNPJ / CPF</div>
+      <div class="mock-input" id="mockInput"><span id="mockCnpj"></span><span class="cursor" id="mockCursor"></span></div>
+      <div class="mock-status" id="mockStatus"></div>
+      <div class="mock-campos">
+        <div class="campo" id="c1"><span class="ck">✅</span> <span>Razão social: <b>Panificadora Exemplo LTDA</b></span></div>
+        <div class="campo" id="c2"><span class="ck">✅</span> <span>Endereço: <b>Rua das Flores, 218 — Joinville/SC</b></span></div>
+        <div class="campo" id="c3"><span class="ck">✅</span> <span>Telefone e e-mail preenchidos</span></div>
+        <div class="campo" id="c4"><span class="ck">✅</span> <span>Inscrição Estadual (SEFAZ): <b>257.887.190</b></span></div>
+      </div>
+    </div>
+  </div>
+
+  <button class="demo-cta" onclick="rodarDemo()">🪄 Toque aqui e veja a mágica acontecer</button>
+  <p class="demo-hint">É uma demonstração com dados fictícios — pode clicar sem medo.</p>
+
+  <!-- ══════════ COMO FUNCIONA ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🪄</span>
+      <strong>CNPJ digitado = cadastro pronto</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Na aba <b>Clientes</b> agora tem o botão <b>"Novo Cliente"</b>.</li>
+        <li>Assim que você termina de digitar o CNPJ, o app consulta a <b>Receita Federal</b> e preenche razão social, nome fantasia, endereço completo, telefone e e-mail.</li>
+        <li>A <b>Inscrição Estadual</b> vem direto da <b>SEFAZ</b>, usando o certificado digital da empresa — sem precisar abrir o Sintegra e copiar na mão.</li>
+        <li>Tudo aparece preenchido, mas <b>editável</b>: confira, ajuste o que quiser e toque em <b>Cadastrar Cliente</b>.</li>
+        <li>Se o CNPJ já estiver cadastrado, o app avisa e abre o cadastro existente (nada de cliente duplicado).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✏️</span>
+      <strong>Todo o cadastro ficou editável</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Antes, razão social, CNPJ e endereço eram travados (vinham do Conta Azul). <b>Agora tudo se edita no próprio app</b>, na tela do cliente.</li>
+        <li>Cliente mudou de endereço ou de razão social? Abra o cadastro, corrija e salve.</li>
+        <li>No card "Informações do Cadastro" tem o botão <b>"Atualizar pela Receita/SEFAZ"</b>: ele re-consulta o CNPJ e preenche os dados atuais para você conferir antes de salvar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧾</span>
+      <strong>Por que isso importa para a Nota Fiscal</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>A NF-e usa a <b>Inscrição Estadual e o endereço</b> do cadastro do cliente. Cadastro incompleto era o motivo das notas <b>rejeitadas</b> ("IE do destinatário não informada").</li>
+        <li>Com a IE vindo da SEFAZ no cadastro, a nota já sai certa de primeira. 🎯</li>
+        <li>Endereço completo (rua, número, bairro, cidade, UF e CEP) é <b>obrigatório</b> para emitir a nota — a tela avisa.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔁</span>
+      <strong>Conta Azul saiu de cena (nos clientes)</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>O cadastro de clientes <b>não sincroniza mais</b> com o Conta Azul — nem puxa de lá, nem envia para lá.</li>
+        <li>O app é a <b>fonte oficial</b>: o que está aqui é o que vale (e o que sai na nota).</li>
+        <li>Por isso, capricho no cadastro agora conta em dobro. 😉</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO ACESSAR ══════════ -->
+  <div class="sec-label">Para cadastrar um cliente</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra <b>Clientes</b> e toque no botão verde <b>"Novo Cliente"</b>.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div><b>Digite o CNPJ</b> e aguarde 2 segundos — os campos se preenchem sozinhos.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Confira os dados, escolha o vendedor e toque em <b>Cadastrar Cliente</b>. Pronto! ✅</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+
+  let demoRodando = false;
+  function rodarDemo() {
+    if (demoRodando) return;
+    demoRodando = true;
+    const cnpj = '62.800.570/0001-13';
+    const alvo = document.getElementById('mockCnpj');
+    const input = document.getElementById('mockInput');
+    const status = document.getElementById('mockStatus');
+    alvo.textContent = '';
+    status.textContent = '';
+    status.classList.remove('ok');
+    ['c1','c2','c3','c4'].forEach(id => document.getElementById(id).classList.remove('cheio'));
+    input.classList.add('focado');
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    let i = 0;
+    const digita = setInterval(() => {
+      alvo.textContent = cnpj.slice(0, ++i);
+      if (i >= cnpj.length) {
+        clearInterval(digita);
+        status.innerHTML = '⏳ Consultando Receita Federal e SEFAZ…';
+        setTimeout(() => { document.getElementById('c1').classList.add('cheio'); }, 900);
+        setTimeout(() => { document.getElementById('c2').classList.add('cheio'); }, 1400);
+        setTimeout(() => { document.getElementById('c3').classList.add('cheio'); }, 1900);
+        setTimeout(() => {
+          document.getElementById('c4').classList.add('cheio');
+          status.innerHTML = '✅ Tudo preenchido — é só conferir e cadastrar!';
+          status.classList.add('ok');
+          input.classList.remove('focado');
+          demoRodando = false;
+        }, 2500);
+      }
+    }, 90);
+  }
+</script>
+</body>
+</html>
