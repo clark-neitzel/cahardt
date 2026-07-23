@@ -35,13 +35,14 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 2. Clique no ícone de alerta (triângulo vermelho) na linha do cliente
 3. O modal abre com total vencido, parcelas e detalhes de cada nota
 
-### Cadastrar um cliente novo
+### Cadastrar um cliente novo (ou fornecedor)
 1. Na lista de clientes, clique em **Novo Cliente** (botão verde no topo — precisa da permissão `clientes.edit` ou admin)
-2. Digite o CNPJ. Assim que ele fica completo e válido, o app consulta a Receita Federal e a SEFAZ e preenche razão social, fantasia, endereço, telefone, e-mail e Inscrição Estadual automaticamente
-3. Confira/edite os campos (todos são editáveis). Endereço completo é obrigatório para emitir NF-e depois
-4. Clique em **Cadastrar Cliente**. O código sequencial é gerado automaticamente e a tela abre no detalhe do cliente
-5. Também funciona com CPF (pessoa física), mas aí não há busca automática — preencha manualmente
-6. Se o CNPJ já existir, o app avisa e oferece abrir o cadastro existente
+2. Escolha o tipo de cadastro: **Cliente**, **Fornecedor** ou **Cliente + Fornecedor**. Fornecedor vai para a lista de Fornecedores (usada no Contas a Pagar e Notas de Entrada); "Cliente + Fornecedor" grava nos dois lugares
+3. Digite o CNPJ. Assim que ele fica completo e válido, o app consulta a Receita Federal e a SEFAZ e preenche razão social, fantasia, endereço, telefone, e-mail e Inscrição Estadual automaticamente
+4. Confira/edite os campos (todos são editáveis). Endereço completo é obrigatório para emitir NF-e depois. CNPJ/CPF é **obrigatório** e o dígito verificador é validado
+5. Clique em **Cadastrar**. Para cliente, o código sequencial é gerado automaticamente e a tela abre no detalhe; fornecedor puro leva à tela de Fornecedores
+6. Também funciona com CPF (pessoa física), mas aí não há busca automática — preencha manualmente
+7. **Não duplica**: se o documento já existir (como cliente ou como fornecedor), o app avisa e oferece abrir o cadastro existente
 
 ### Editar um cliente
 1. Clique na linha do cliente para abrir o detalhe (`/clientes/:uuid`)
@@ -111,6 +112,7 @@ Aba padrão ao abrir o detalhe. Contém tudo que é editável pelo time comercia
 
 **Informações do Cadastro** (editável por quem tem `clientes.edit`/`Pode_Editar_GPS`/admin)
 - Razão social, nome fantasia e CNPJ/CPF (editáveis)
+- Toggle **"Também é fornecedor"**: liga/desliga o espelho deste cadastro na lista de Fornecedores (Contas a Pagar / Notas de Entrada)
 - Endereço completo editável (logradouro, número, complemento, bairro, cidade, UF, CEP) — obrigatório para emitir NF-e
 - Botão **Atualizar pela Receita/SEFAZ** (re-consulta o CNPJ e preenche o formulário; salva só ao clicar em Salvar)
 - Tipo de pessoa, código e perfis (somente leitura)

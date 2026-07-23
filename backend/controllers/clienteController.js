@@ -13,6 +13,29 @@ function validarIe(ie, uf) {
     return null;
 }
 
+// Mantém a tabela `fornecedores` (usada pelo Contas a Pagar e Notas de Entrada) em dia
+// com um cadastro que também é fornecedor. Upsert por documento; reativa se estava inativo.
+async function upsertFornecedorDoCadastro(dados) {
+    const doc = dados.Documento;
+    const base = {
+        razaoSocial: dados.Nome,
+        nomeFantasia: dados.NomeFantasia || null,
+        inscricaoEstadual: dados.InscricaoEstadual || null,
+        email: dados.Email || null,
+        telefone: dados.Telefone_Celular || dados.Telefone || null,
+        cidade: dados.End_Cidade || null,
+        uf: dados.End_Estado || null,
+        ativo: true
+    };
+    const existente = await prisma.fornecedor.findFirst({ where: { cnpjCpf: doc } });
+    if (existente) {
+        return prisma.fornecedor.update({ where: { id: existente.id }, data: base });
+    }
+    return prisma.fornecedor.create({
+        data: { ...base, cnpjCpf: doc, origem: 'APP', statusEnvioCA: 'ENVIAR' }
+    });
+}
+
 const clienteController = {
     // Listar clientes com paginação e busca
     // Listar clientes com paginação e busca
@@ -233,6 +256,12 @@ const clienteController = {
             // Achata a IE (tabela separada) para o front continuar usando cliente.Inscricao_Estadual
             cliente.Inscricao_Estadual = cliente.fiscal?.inscricaoEstadual ?? null;
 
+            // Este cadastro também é fornecedor? (tabela fornecedores, por documento)
+            const docNorm = normalizarDoc(cliente.Documento);
+            cliente.tambemFornecedor = docNorm
+                ? !!(await prisma.fornecedor.findFirst({ where: { cnpjCpf: docNorm, ativo: true }, select: { id: true } }))
+                : false;
+
             res.json(cliente);
         } catch (error) {
             console.error('Erro ao detalhar cliente:', error);
@@ -252,7 +281,10 @@ const clienteController = {
         }
     },
 
-    // Criar cliente novo (cadastro 100% pelo app — clientes não vêm mais do Conta Azul)
+    // Criar cadastro novo (100% pelo app — nada vem do Conta Azul).
+    // body.perfil: 'CLIENTE' (padrão) | 'FORNECEDOR' | 'AMBOS'.
+    // FORNECEDOR grava na tabela fornecedores (Contas a Pagar / Notas de Entrada);
+    // AMBOS grava nas duas.
     criar: async (req, res) => {
         try {
             const perms = typeof req.user.permissoes === 'string'
@@ -263,6 +295,7 @@ const clienteController = {
             }
 
             const b = req.body || {};
+            const perfil = ['CLIENTE', 'FORNECEDOR', 'AMBOS'].includes(b.perfil) ? b.perfil : 'CLIENTE';
             const soDigitos = (v) => String(v ?? '').replace(/\D/g, '');
             const docNorm = normalizarDoc(b.Documento);
             const nome = String(b.Nome || '').trim();
@@ -283,12 +316,42 @@ const clienteController = {
             if (erroIe) erros.push(erroIe);
             if (erros.length) return res.status(400).json({ error: erros.join('; ') });
 
-            const jaExiste = await prisma.cliente.findUnique({ where: { Documento: docNorm } });
-            if (jaExiste) {
-                return res.status(409).json({
-                    error: `Já existe um cliente com este documento: ${jaExiste.Nome}`,
-                    clienteExistente: { UUID: jaExiste.UUID, Nome: jaExiste.Nome }
-                });
+            const criaCliente = perfil === 'CLIENTE' || perfil === 'AMBOS';
+            const criaFornecedor = perfil === 'FORNECEDOR' || perfil === 'AMBOS';
+
+            // Duplicidade — nunca deixar dois cadastros com o mesmo documento
+            if (criaCliente) {
+                const jaExiste = await prisma.cliente.findUnique({ where: { Documento: docNorm } });
+                if (jaExiste) {
+                    return res.status(409).json({
+                        error: `Já existe um cliente com este documento: ${jaExiste.Nome}`,
+                        clienteExistente: { UUID: jaExiste.UUID, Nome: jaExiste.Nome }
+                    });
+                }
+            }
+            if (perfil === 'FORNECEDOR') {
+                const fornExiste = await prisma.fornecedor.findFirst({ where: { cnpjCpf: docNorm, ativo: true } });
+                if (fornExiste) {
+                    return res.status(409).json({ error: `Já existe um fornecedor com este documento: ${fornExiste.razaoSocial}` });
+                }
+            }
+
+            const dadosComuns = {
+                Documento: docNorm,
+                Nome: nome,
+                NomeFantasia: String(b.NomeFantasia || '').trim() || null,
+                InscricaoEstadual: ieNorm || null,
+                Email: emailNorm || null,
+                Telefone: soDigitos(b.Telefone) || null,
+                Telefone_Celular: celularNorm || null,
+                End_Cidade: String(b.End_Cidade || '').trim() || null,
+                End_Estado: ufNorm || null
+            };
+
+            // Só fornecedor: grava na tabela fornecedores e pronto
+            if (!criaCliente) {
+                const fornecedor = await upsertFornecedorDoCadastro(dadosComuns);
+                return res.status(201).json({ fornecedor });
             }
 
             // Próximo código sequencial (continua a numeração vinda do Conta Azul)
@@ -297,28 +360,31 @@ const clienteController = {
                 FROM clientes`;
             const proximoCodigo = String(Number(max) + 1);
 
+            const perfis = [{ perfil: 'CLIENTE' }];
+            if (criaFornecedor) perfis.push({ perfil: 'FORNECEDOR' });
+
             const cliente = await prisma.cliente.create({
                 data: {
                     UUID: crypto.randomUUID(),
                     Codigo: proximoCodigo,
                     Nome: nome,
-                    NomeFantasia: String(b.NomeFantasia || '').trim() || null,
+                    NomeFantasia: dadosComuns.NomeFantasia,
                     Documento: docNorm,
                     Tipo_Pessoa: ehCnpj(docNorm) ? 'JURIDICA' : 'FISICA',
                     Email: emailNorm || null,
-                    Telefone: soDigitos(b.Telefone) || null,
+                    Telefone: dadosComuns.Telefone,
                     Telefone_Celular: celularNorm || null,
                     End_Logradouro: String(b.End_Logradouro || '').trim() || null,
                     End_Numero: String(b.End_Numero || '').trim() || null,
                     End_Complemento: String(b.End_Complemento || '').trim() || null,
                     End_Bairro: String(b.End_Bairro || '').trim() || null,
-                    End_Cidade: String(b.End_Cidade || '').trim() || null,
+                    End_Cidade: dadosComuns.End_Cidade,
                     End_Estado: ufNorm || null,
                     End_CEP: soDigitos(b.End_CEP) || null,
                     End_Pais: 'Brasil',
                     Indicador_Inscricao_Estadual: b.Indicador_Inscricao_Estadual || (ieNorm ? 'CONTRIBUINTE' : null),
                     Ativo: true,
-                    Perfis: JSON.stringify([{ perfil: 'CLIENTE' }]),
+                    Perfis: JSON.stringify(perfis),
                     Perfil_Filtro: 'PADRAO',
                     Data_Criacao: new Date(),
                     idVendedor: b.idVendedor || req.user.id || null,
@@ -330,6 +396,12 @@ const clienteController = {
                 await prisma.clienteFiscal.create({
                     data: { clienteUuid: cliente.UUID, inscricaoEstadual: ieNorm }
                 });
+            }
+
+            // "Os dois": espelha também na tabela de fornecedores (best-effort, não derruba a criação)
+            if (criaFornecedor) {
+                try { await upsertFornecedorDoCadastro(dadosComuns); }
+                catch (fornErr) { console.error('Cliente criado, mas falhou o espelho em fornecedores:', fornErr); }
             }
 
             cliente.Inscricao_Estadual = ieNorm || null;
@@ -379,7 +451,9 @@ const clienteController = {
                 End_Bairro,
                 End_Cidade,
                 End_Estado,
-                End_CEP
+                End_CEP,
+                // Perfil fornecedor (tabela fornecedores)
+                tambemFornecedor
             } = req.body;
 
             // Verificar permissão para editar GPS
@@ -490,6 +564,39 @@ const clienteController = {
             cliente.Inscricao_Estadual = (podeEditarCadastro && ieNorm !== undefined)
                 ? (ieNorm || null)
                 : (atual.fiscal?.inscricaoEstadual ?? null);
+
+            // Perfil fornecedor: liga/desliga o espelho na tabela fornecedores (best-effort)
+            if (podeEditarCadastro && tambemFornecedor !== undefined) {
+                const docFinal = normalizarDoc(cliente.Documento);
+                try {
+                    if (tambemFornecedor && docFinal) {
+                        await upsertFornecedorDoCadastro({
+                            Documento: docFinal,
+                            Nome: cliente.Nome,
+                            NomeFantasia: cliente.NomeFantasia,
+                            InscricaoEstadual: cliente.Inscricao_Estadual,
+                            Email: cliente.Email,
+                            Telefone: cliente.Telefone,
+                            Telefone_Celular: cliente.Telefone_Celular,
+                            End_Cidade: cliente.End_Cidade,
+                            End_Estado: cliente.End_Estado
+                        });
+                    } else if (!tambemFornecedor && docFinal) {
+                        await prisma.fornecedor.updateMany({ where: { cnpjCpf: docFinal }, data: { ativo: false } });
+                    }
+                    // Mantém o campo Perfis coerente com o toggle
+                    let perfis = [];
+                    try { perfis = JSON.parse(cliente.Perfis || '[]'); } catch { perfis = []; }
+                    if (!Array.isArray(perfis)) perfis = [];
+                    const semFornecedor = perfis.filter(p => (p?.perfil || p) !== 'FORNECEDOR');
+                    const novosPerfis = tambemFornecedor ? [...semFornecedor, { perfil: 'FORNECEDOR' }] : semFornecedor;
+                    await prisma.cliente.update({ where: { UUID: uuid }, data: { Perfis: JSON.stringify(novosPerfis) } });
+                    cliente.Perfis = JSON.stringify(novosPerfis);
+                } catch (fornErr) {
+                    console.error('Falha ao atualizar espelho de fornecedor (cliente já salvo):', fornErr);
+                }
+                cliente.tambemFornecedor = !!tambemFornecedor;
+            }
 
             res.json(cliente);
         } catch (error) {

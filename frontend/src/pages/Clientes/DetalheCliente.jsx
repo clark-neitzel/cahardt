@@ -133,7 +133,9 @@ const DetalheCliente = () => {
         End_Bairro: '',
         End_Cidade: '',
         End_Estado: '',
-        End_CEP: ''
+        End_CEP: '',
+        // Espelho na tabela de fornecedores (Contas a Pagar / Notas de Entrada)
+        tambemFornecedor: false
     });
     const [consultandoCnpj, setConsultandoCnpj] = useState(false);
 
@@ -228,7 +230,8 @@ const DetalheCliente = () => {
                 End_Bairro: clienteData.End_Bairro || '',
                 End_Cidade: clienteData.End_Cidade || '',
                 End_Estado: clienteData.End_Estado || '',
-                End_CEP: clienteData.End_CEP || ''
+                End_CEP: clienteData.End_CEP || '',
+                tambemFornecedor: !!clienteData.tambemFornecedor
             });
 
             // Setar nome da indicação se existir
@@ -1188,6 +1191,13 @@ const DetalheCliente = () => {
                                         value={mascaraDoc(formData.Documento)}
                                         onChange={(e) => setFormData({ ...formData, Documento: normalizarDoc(e.target.value) })}
                                     />
+                                </div>
+                                <div className="col-span-2 flex items-center justify-between gap-3 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5">
+                                    <div>
+                                        <span className="block text-sm text-gray-700 font-medium">Também é fornecedor</span>
+                                        <span className="block text-xs text-gray-400">Aparece no Contas a Pagar e nas Notas de Entrada</span>
+                                    </div>
+                                    <Toggle checked={formData.tambemFornecedor} onChange={(v) => setFormData({ ...formData, tambemFornecedor: v })} />
                                 </div>
                             </>
                         ) : null}

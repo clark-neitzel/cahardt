@@ -51,6 +51,7 @@ const NovoCliente = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [documento, setDocumento] = useState('');
+    const [perfil, setPerfil] = useState('CLIENTE'); // CLIENTE | FORNECEDOR | AMBOS
     const [form, setForm] = useState(CAMPOS_VAZIOS);
     const [idVendedor, setIdVendedor] = useState('');
     const [vendedores, setVendedores] = useState([]);
@@ -131,11 +132,17 @@ const NovoCliente = () => {
         try {
             const criado = await clienteService.criar({
                 ...form,
+                perfil,
                 Documento: docNorm,
                 Inscricao_Estadual: ie,
                 idVendedor: idVendedor || undefined
             });
-            alert(`Cliente cadastrado com sucesso! Código ${criado.Codigo}.`);
+            if (perfil === 'FORNECEDOR') {
+                alert('Fornecedor cadastrado com sucesso! Ele já aparece no Contas a Pagar e nas Notas de Entrada.');
+                navigate('/fornecedores');
+                return;
+            }
+            alert(`${perfil === 'AMBOS' ? 'Cliente + Fornecedor cadastrado' : 'Cliente cadastrado'} com sucesso! Código ${criado.Codigo}.`);
             navigate(`/clientes/${criado.UUID}`);
         } catch (e) {
             const resp = e.response?.data;
@@ -161,7 +168,37 @@ const NovoCliente = () => {
                 <div className="bg-mint p-1.5 md:p-2 rounded-lg">
                     <UserPlus className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                 </div>
-                <h1 className="text-base md:text-2xl font-bold text-gray-900">Novo Cliente</h1>
+                <h1 className="text-base md:text-2xl font-bold text-gray-900">Novo Cadastro</h1>
+            </div>
+
+            {/* Tipo de cadastro: cliente, fornecedor ou os dois */}
+            <div className="mb-4">
+                <span className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Este cadastro é de:</span>
+                <div className="flex flex-wrap gap-2">
+                    {[
+                        { valor: 'CLIENTE', rotulo: 'Cliente' },
+                        { valor: 'FORNECEDOR', rotulo: 'Fornecedor' },
+                        { valor: 'AMBOS', rotulo: 'Cliente + Fornecedor' }
+                    ].map(op => (
+                        <button
+                            key={op.valor}
+                            type="button"
+                            onClick={() => setPerfil(op.valor)}
+                            className={`px-4 py-2 text-sm font-semibold rounded-full border transition-colors min-h-[40px] ${perfil === op.valor
+                                ? 'bg-primary text-white border-primary'
+                                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'}`}
+                        >
+                            {op.rotulo}
+                        </button>
+                    ))}
+                </div>
+                {perfil !== 'CLIENTE' && (
+                    <p className="text-xs text-gray-500 mt-1.5">
+                        {perfil === 'FORNECEDOR'
+                            ? 'Vai para a lista de Fornecedores (Contas a Pagar / Notas de Entrada) — não aparece como cliente.'
+                            : 'Entra como cliente e também na lista de Fornecedores (Contas a Pagar / Notas de Entrada).'}
+                    </p>
+                )}
             </div>
 
             <div className="space-y-4">
@@ -245,12 +282,14 @@ const NovoCliente = () => {
                                 <option value="NAO_CONTRIBUINTE">Não Contribuinte</option>
                             </SelectBusca>
                         </Campo>
-                        <Campo label="Vendedor Responsável">
-                            <SelectBusca className="w-full" value={idVendedor} onChange={(e) => setIdVendedor(e.target.value)}>
-                                <option value="">— Sem vendedor —</option>
-                                {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                            </SelectBusca>
-                        </Campo>
+                        {perfil !== 'FORNECEDOR' && (
+                            <Campo label="Vendedor Responsável">
+                                <SelectBusca className="w-full" value={idVendedor} onChange={(e) => setIdVendedor(e.target.value)}>
+                                    <option value="">— Sem vendedor —</option>
+                                    {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
+                                </SelectBusca>
+                            </Campo>
+                        )}
                     </div>
                 </SectionCard>
 
@@ -335,7 +374,7 @@ const NovoCliente = () => {
                 <button onClick={handleSalvar} disabled={salvando}
                     className="px-7 py-2.5 rounded-full bg-primary hover:bg-primaryDark text-white text-sm font-semibold flex items-center gap-2 shadow-sm disabled:opacity-50 min-h-[44px]">
                     {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    {salvando ? 'Salvando...' : 'Cadastrar Cliente'}
+                    {salvando ? 'Salvando...' : (perfil === 'FORNECEDOR' ? 'Cadastrar Fornecedor' : perfil === 'AMBOS' ? 'Cadastrar Cliente + Fornecedor' : 'Cadastrar Cliente')}
                 </button>
             </div>
         </div>
