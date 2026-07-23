@@ -203,7 +203,10 @@ router.post('/focus-nfe-emitir-teste', async (req, res) => {
             : {
                 nome_destinatario: 'NF-E EMITIDA EM AMBIENTE DE HOMOLOGACAO - SEM VALOR FISCAL',
                 cnpj_destinatario: '82146549000153', // CNPJ real de cliente (sem efeito em homologação)
-                indicador_inscricao_estadual_destinatario: 2, // isento — não exige IE
+                // SC rejeitou indicador 2 (isento) com "IE do destinatario nao informada" —
+                // contribuinte com a IE real do cliente, igual às notas do CA.
+                indicador_inscricao_estadual_destinatario: 1,
+                inscricao_estadual_destinatario: '252073649',
             };
         const enderecoDest = {
             logradouro_destinatario: 'RUA DE TESTE',
