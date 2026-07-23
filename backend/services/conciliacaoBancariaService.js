@@ -1037,6 +1037,102 @@ async function _criarDespesaTarifaTx(tx, lanc, valorTarifa, grupoId, userId, ref
     await contasPagarCaSyncService.recalcularParcelaEConta(tx, conta.parcelas[0].id);
 }
 
+/**
+ * Conciliação DETERMINÍSTICA dos créditos do extrato Asaas: o refNum do lançamento
+ * guarda o pay_... da cobrança, que aponta exatamente a parcela (boleto) ou o
+ * pedido (PIX) no app — sem depender de data e valor baterem. Resolve os três
+ * casos que o matching por valor não fecha:
+ *   - boleto pago com JUROS/MULTA (crédito maior que a baixa) → grupo com o motivo;
+ *   - crédito que caiu >3 dias depois da baixa (fim de semana na compensação);
+ *   - dois boletos de mesmo valor no mesmo dia (ambiguidade some: cada pay_ é único).
+ * Conservador: só fecha quando a cobrança leva a EXATAMENTE UMA baixa livre na
+ * conta, e diferença só é aceita como juros até 10% do crédito (mín. R$ 5) —
+ * acima disso, ou crédito MENOR que a baixa, fica para análise manual.
+ * Devolve { conciliados, ids } (ids dos lançamentos fechados aqui).
+ */
+async function _conciliarPorRefAsaas(pendentes, contaFinanceiraCaId, usados, userId) {
+    const feitos = new Set();
+    const creditos = pendentes.filter((l) => l.tipo === 'CREDITO' && /^pay_/.test(String(l.refNum || '')));
+    if (creditos.length === 0) return { conciliados: 0, ids: feitos };
+
+    const cobrancas = await prisma.cobrancaAsaas.findMany({
+        where: { asaasPaymentId: { in: creditos.map((l) => l.refNum) } },
+        select: { asaasPaymentId: true, parcelaId: true, pedidoId: true }
+    });
+    const porPay = new Map(cobrancas.map((c) => [c.asaasPaymentId, c]));
+    // PIX de pedido (sem parcela vinculada): as parcelas vêm da conta a receber do pedido
+    const pedidosIds = [...new Set(cobrancas.filter((c) => !c.parcelaId && c.pedidoId).map((c) => c.pedidoId))];
+    const contasPed = pedidosIds.length > 0
+        ? await prisma.contaReceber.findMany({
+            where: { pedidoId: { in: pedidosIds } },
+            select: { pedidoId: true, parcelas: { select: { id: true } } }
+        })
+        : [];
+    const parcelasPorPedido = new Map(contasPed.map((c) => [c.pedidoId, c.parcelas.map((p) => p.id)]));
+
+    let conciliados = 0;
+    for (const l of creditos) {
+        const cob = porPay.get(l.refNum);
+        if (!cob) continue;
+        const parcelaIds = cob.parcelaId ? [cob.parcelaId] : (parcelasPorPedido.get(cob.pedidoId) || []);
+        if (parcelaIds.length === 0) continue;
+
+        const baixas = await prisma.pagamentoParcela.findMany({
+            where: { estornado: false, contaFinanceiraCaId, parcelaId: { in: parcelaIds } },
+            select: { id: true, valorRecebido: true }
+        });
+        const livres = baixas.filter((b) => !usados.has(b.id));
+        if (livres.length !== 1) continue; // nada ou mais de uma baixa livre — deixa para o matching/manual
+
+        const baixa = livres[0];
+        const dif = round2(num(l.valor) - num(baixa.valorRecebido));
+        const tetoJuros = Math.max(5, round2(num(l.valor) * 0.10));
+        try {
+            if (Math.abs(dif) <= 0.01) {
+                const r = await prisma.extratoLancamento.updateMany({
+                    where: { id: l.id, status: 'PENDENTE' }, // guarda contra corrida/duplo clique
+                    data: {
+                        status: 'CONCILIADO', conciliadoAuto: true, conciliadoPorId: userId || null,
+                        conciliadoEm: new Date(), pagamentoParcelaId: baixa.id
+                    }
+                });
+                if (r.count > 0) { usados.add(baixa.id); feitos.add(l.id); conciliados++; }
+            } else if (dif > 0.01 && dif <= tetoJuros) {
+                // Crédito MAIOR que a baixa: juros/multa do atraso. A baixa do app fica
+                // como está (nominal); a diferença entra registrada no grupo — mesmo
+                // formato do "Juros/multa recebidos" da conciliação manual.
+                await prisma.$transaction(async (tx) => {
+                    const grupo = await tx.conciliacaoGrupo.create({
+                        data: {
+                            contaFinanceiraCaId,
+                            tipo: 'CREDITO',
+                            valor: round2(num(l.valor)),
+                            valorBaixas: round2(num(baixa.valorRecebido)),
+                            diferenca: dif,
+                            motivoDiferenca: `Juros/multa recebidos R$ ${dif.toFixed(2)} — cobrança Asaas paga em atraso`,
+                            criadoPorId: userId || null
+                        }
+                    });
+                    await tx.conciliacaoGrupoItem.createMany({
+                        data: [
+                            { grupoId: grupo.id, extratoLancamentoId: l.id },
+                            { grupoId: grupo.id, pagamentoParcelaId: baixa.id }
+                        ]
+                    });
+                    const r = await tx.extratoLancamento.updateMany({
+                        where: { id: l.id, status: 'PENDENTE' },
+                        data: { status: 'CONCILIADO', conciliadoAuto: true, conciliadoPorId: userId || null, conciliadoEm: new Date() }
+                    });
+                    if (r.count === 0) throw erro('O lançamento deixou de estar pendente.');
+                }, { timeout: 20000, maxWait: 10000 });
+                usados.add(baixa.id); feitos.add(l.id); conciliados++;
+            }
+            // dif negativa (crédito MENOR que a baixa) ou juros acima do teto: análise manual.
+        } catch (_) { /* corrida/duplo clique — segue para o próximo */ }
+    }
+    return { conciliados, ids: feitos };
+}
+
 /** Concilia sozinho os PENDENTES com exatamente 1 candidato (exato ou tarifa do boleto CA). */
 async function conciliarAutomatico({ contaFinanceiraCaId, de, ate, userId }) {
     const pendentes = await prisma.extratoLancamento.findMany({
@@ -1046,8 +1142,12 @@ async function conciliarAutomatico({ contaFinanceiraCaId, de, ate, userId }) {
 
     const [pools, usados] = await Promise.all([carregarPools(contaFinanceiraCaId, de, ate), idsUsados(contaFinanceiraCaId)]);
 
-    let conciliados = 0;
+    // 1º passo: fechamento determinístico pelo pay_ do Asaas (independe de data/valor)
+    const porRef = await _conciliarPorRefAsaas(pendentes, contaFinanceiraCaId, usados, userId);
+
+    let conciliados = porRef.conciliados;
     for (const l of pendentes) {
+        if (porRef.ids.has(l.id)) continue;
         const cands = candidatosPara({ data: ymd(l.data), valor: num(l.valor), tipo: l.tipo }, pools, usados);
         if (cands.length !== 1) continue;
         const alvo = cands[0];
