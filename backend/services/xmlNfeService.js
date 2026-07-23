@@ -50,6 +50,42 @@ async function obterXmlNotaApp(notaAppId) {
     return xml;
 }
 
+// ── Vincular XML ao pedido: o infCpl das notas do app/CA diz "Referente ao pedido #N" ──
+// Preenche pedido.nfeChave/nfeNumero dos pedidos que o app não sabia que já tinham nota
+// (o CA só era consultado quando alguém imprimia a DANFE). Evita emissão em dobro.
+async function vincularXmlAoPedido(chave, xml) {
+    try {
+        if (!xml.includes('<CNPJ>08766459000102</CNPJ>')) return false; // não é nota nossa
+        const mPed = xml.match(/Referente ao pedido #?(\d+)/);
+        const mNum = xml.match(/<nNF>(\d+)<\/nNF>/);
+        const mTpNF = xml.match(/<tpNF>(\d)<\/tpNF>/);
+        if (!mPed || !mNum) return false;
+        if (mTpNF && mTpNF[1] === '0') return false; // nota de ENTRADA (devolução) não é a nota da venda
+        const numeroPedido = parseInt(mPed[1], 10);
+        const atualizados = await prisma.pedido.updateMany({
+            where: { numero: numeroPedido, nfeChave: null },
+            data: { nfeChave: String(chave).replace(/\D/g, ''), nfeNumero: parseInt(mNum[1], 10), nfeConsultadoEm: new Date() },
+        });
+        return atualizados.count > 0;
+    } catch (e) {
+        console.error('[XmlNfe] Falha ao vincular XML ao pedido:', e.message);
+        return false;
+    }
+}
+
+/** Passa por todos os XMLs já baixados vinculando aos pedidos sem chave. */
+async function vincularXmlsBaixados() {
+    let arquivos = [];
+    try { arquivos = fs.readdirSync(DIR).filter(n => n.endsWith('.xml')); } catch { return { arquivos: 0, vinculados: 0 }; }
+    let vinculados = 0;
+    for (const arq of arquivos) {
+        const chave = arq.replace('.xml', '');
+        const xml = fs.readFileSync(path.join(DIR, arq), 'utf8');
+        if (await vincularXmlAoPedido(chave, xml)) vinculados++;
+    }
+    return { arquivos: arquivos.length, vinculados };
+}
+
 // ── Backup em massa dos XMLs do CA (roda em segundo plano; sequencial e educado) ──
 const backup = { rodando: false, baixados: 0, jaExistiam: 0, erros: 0, periodoAtual: null, terminou: null };
 
@@ -75,6 +111,7 @@ async function backupXmlsCA(meses = 24) {
                         try {
                             const xml = await contaAzulService.buscarXmlNotaFiscal(chave);
                             salvarLocal(chave, xml);
+                            await vincularXmlAoPedido(chave, xml); // marca o pedido como "já tem nota do CA"
                             backup.baixados++;
                             await new Promise(r => setTimeout(r, 400)); // não martelar a API do CA
                         } catch (e) {
@@ -102,4 +139,4 @@ function backupStatus() {
     return { ...backup, arquivosNoDisco: arquivos };
 }
 
-module.exports = { obterXmlNotaCA, obterXmlNotaApp, salvarLocal, backupXmlsCA, backupStatus };
+module.exports = { obterXmlNotaCA, obterXmlNotaApp, salvarLocal, backupXmlsCA, backupStatus, vincularXmlAoPedido, vincularXmlsBaixados };

@@ -394,6 +394,17 @@ router.get('/nfe-backup-ca-xml', (req, res) => {
     res.json(xmlNfeService.backupStatus());
 });
 
+// POST /api/admin-exec/nfe-vincular-xmls — vincula os XMLs já baixados aos pedidos sem
+// chave ("Referente ao pedido #N" no infCpl) — some o falso "Sem nota" dos antigos.
+router.post('/nfe-vincular-xmls', async (req, res) => {
+    try {
+        const xmlNfeService = require('../services/xmlNfeService');
+        res.json(await xmlNfeService.vincularXmlsBaixados());
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // POST /api/admin-exec/focus-nfe-sync-ie-clientes — para cada pedido do período sem nota
 // cujo cliente PJ está SEM inscrição estadual no app, re-sincroniza o cliente do Conta Azul
 // (o sync traz a IE p/ cliente_fiscal). Body opcional: { dias: 3 }.

@@ -231,6 +231,24 @@ async function emitirVenda(pedidoId) {
     if (!pedido.numero) throw new Error('Pedido ainda sem número de venda.');
     if (pedido.nfeChave) throw new Error(`Este pedido já tem NF-e emitida pelo Conta Azul (nº ${pedido.nfeNumero || '—'}).`);
 
+    // Pedido da era Conta Azul (anterior a hoje) sem chave em cache: conferir no CA antes de
+    // emitir — o app só guardava a chave quando alguém imprimia a DANFE, então "sem nota" aqui
+    // pode ser nota que o CA emitiu e nós não sabemos. Fecha o risco de nota em DOBRO enquanto
+    // o backup dos XMLs não termina de vincular tudo.
+    const ontem = new Date(Date.now() - 24 * 3600 * 1000);
+    if (pedido.idVendaContaAzul && pedido.dataVenda < ontem) {
+        try {
+            const pedidoController = require('../controllers/pedidoController');
+            const notaCA = await pedidoController._localizarNotaFiscal(pedido);
+            if (notaCA?.chave_acesso) {
+                throw new Error(`Este pedido já tem NF-e emitida pelo Conta Azul (nº ${notaCA.numero_nota || '—'}) — encontrada agora na conferência.`);
+            }
+        } catch (e) {
+            if (!e.statusCode || (e.statusCode !== 404 && e.statusCode !== 400)) throw e;
+            // 404 = CA confirma que não há nota → pode emitir; 400 = sem venda no CA → pode emitir
+        }
+    }
+
     const ambiente = focusNfe.ambiente();
     const ref = `nf-${ambiente === 'producao' ? 'p' : 'h'}-${pedido.id}`;
 
