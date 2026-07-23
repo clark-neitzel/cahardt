@@ -3716,6 +3716,26 @@ router.post('/ca-extrato-transferencias-sync', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/ca-extrato-despesas-sync — importa despesas lançadas
+// direto no Conta Azul para o Contas a Pagar do app (IMPORTADO_CA/NAO_ENVIAR,
+// parcelas com idParcelaCA; as baixas chegam pelo worker de 30min).
+// Body: { dias: 2 } ou { de, ate } (janela de DATA DE ALTERAÇÃO no CA) e
+// { limite: 400 } (máx. de contas novas por rodada). Idempotente.
+router.post('/ca-extrato-despesas-sync', async (req, res) => {
+    try {
+        const caExtratoService = require('../services/caExtratoService');
+        const r = await caExtratoService.sincronizarDespesas({
+            dias: Number(req.body?.dias) || 2,
+            de: req.body?.de || null,
+            ate: req.body?.ate || null,
+            limite: Number(req.body?.limite) || 400
+        });
+        res.json(r);
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.response?.data || e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-ca-get?path=/v1/...
 // SOMENTE LEITURA: repassa um GET cru à API v2 do Conta Azul (com o token OAuth
 // de produção). Para sondar endpoints não documentados (ex.: extrato de conta

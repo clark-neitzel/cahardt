@@ -428,9 +428,12 @@ function startSchedulers() {
     // (janela de 30 dias, idempotente pelo id da transferência no CA). Isolado.
     console.log('⏰ Iniciando Worker de transferências do Conta Azul (extrato CA)...');
     const caExtratoService = require('../services/caExtratoService');
-    const _runExtratoCA = () => {
-        caExtratoService.sincronizarTransferencias({ dias: 30 })
-            .catch(err => console.error('⚠️ Extrato CA (transferências) Error:', err.message));
+    const _runExtratoCA = async () => {
+        try { await caExtratoService.sincronizarTransferencias({ dias: 30 }); }
+        catch (err) { console.error('⚠️ Extrato CA (transferências) Error:', err.message); }
+        // Despesas lançadas direto no CA (janela de 2 dias de alteração; idempotente)
+        try { await caExtratoService.sincronizarDespesas({ dias: 2 }); }
+        catch (err) { console.error('⚠️ Extrato CA (despesas) Error:', err.message); }
     };
     setTimeout(_runExtratoCA, 300000);            // 5min após o start
     setInterval(_runExtratoCA, 3 * 3600000);      // a cada 3 horas
