@@ -632,11 +632,15 @@ Exemplo real completo (nota 84843, CNPJ): ver seção acima. Exemplo CPF (84787)
 A nota **84808** (21/07) não é venda: é **devolução** — `finNFe=4`, `tpNF=0` (entrada), natOp
 `Devolucao de venda`, CFOP **1201**, com `NFref` apontando a chave da NF original (84730) e
 observação manual `DEVOLUCAO REFERENTE SUA NF N 1-84730 DE 17/07/2026`. Isso era emitido dentro do
-CA (provavelmente à mão pelo escritório) quando o cliente devolve mercadoria. **Fora do MVP da
-emissão de venda**, mas o app tem módulo de conferência de devoluções no Caixa — planejar depois um
-botão "emitir NF de devolução" (campos Focus: `finalidade_emissao: 4`, `tipo_documento: 0`,
-`natureza_operacao: "Devolucao de venda"`, CFOP 1201, `notas_referenciadas`/chave referenciada —
-conferir nome exato do campo na doc de campos).
+CA (à mão pelo escritório) quando o cliente devolve mercadoria.
+
+**⚠️ DENTRO DO MVP (confirmado pelo dono 23/07: devolução acontece TODOS OS DIAS — eles nunca
+cancelam nota, sempre emitem devolução).** Implementar junto com a venda: botão "Emitir NF de
+devolução" na conferência de devoluções do Caixa (módulo já existente), pré-preenchido com a nota
+original do pedido (o app guarda o vínculo pedido→NF), itens/quantidades da conferência física e a
+observação no padrão acima. Campos Focus: `finalidade_emissao: 4`, `tipo_documento: 0`,
+`natureza_operacao: "Devolucao de venda"`, CFOP 1201, nota original referenciada
+(`notas_referenciadas`/chave — conferir nome exato do campo na doc de campos).
 
 ### Venda para CPF (pessoa física / consumidor final) — perfil DIFERENTE
 
