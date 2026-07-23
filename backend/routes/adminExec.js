@@ -287,6 +287,41 @@ router.post('/focus-nfe-emitir-teste', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/focus-nfe-homolog-numeracao — ajusta APENAS a numeração de
+// HOMOLOGAÇÃO da empresa na Focus (a empresa já testou NF-e em 2014 e a numeração nova
+// colide — rejeição "Duplicidade de NF-e"). Body: { proximoNumero: 5001 }.
+// Produção não é alterada aqui de propósito (a virada de produção é decisão à parte).
+router.post('/focus-nfe-homolog-numeracao', async (req, res) => {
+    try {
+        const proximoNumero = parseInt(req.body?.proximoNumero, 10);
+        if (!proximoNumero) return res.status(400).json({ error: 'Informe { proximoNumero }.' });
+        const tokenConta = process.env.FOCUS_NFE_TOKEN_CONTA;
+        if (!tokenConta) return res.status(400).json({ error: 'FOCUS_NFE_TOKEN_CONTA não configurado.' });
+        const auth = 'Basic ' + Buffer.from(`${tokenConta.trim()}:`).toString('base64');
+        // Gestão de empresas é sempre na URL de produção (ver backend/docs/focus-nfe-api.md)
+        const lista = await fetch('https://api.focusnfe.com.br/v2/empresas?cnpj=08766459000102', {
+            headers: { Authorization: auth }, signal: AbortSignal.timeout(15000),
+        }).then(r => r.json());
+        const empresa = Array.isArray(lista) ? lista[0] : null;
+        if (!empresa?.id) return res.status(404).json({ error: 'Empresa não encontrada na Focus.', lista });
+        const r = await fetch(`https://api.focusnfe.com.br/v2/empresas/${empresa.id}`, {
+            method: 'PUT',
+            headers: { Authorization: auth, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ proximo_numero_nfe_homologacao: proximoNumero, serie_nfe_homologacao: 1 }),
+            signal: AbortSignal.timeout(15000),
+        });
+        const data = await r.json().catch(() => ({}));
+        res.json({
+            httpStatus: r.status,
+            empresaId: empresa.id,
+            proximo_numero_nfe_homologacao: data.proximo_numero_nfe_homologacao,
+            serie_nfe_homologacao: data.serie_nfe_homologacao,
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // GET /api/admin-exec/focus-nfe-consultar?ref=...&completa=1 — status de uma emissão na Focus.
 router.get('/focus-nfe-consultar', async (req, res) => {
     try {
