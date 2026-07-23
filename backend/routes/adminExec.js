@@ -429,6 +429,56 @@ router.post('/focus-nfe-sync-ie-clientes', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-consulta-cnpj?cnpj=XXXXXXXXXXXXXX — testa a consulta combinada
+// (Receita via BrasilAPI/CNPJá + IE via SEFAZ CadConsultaCadastro4 com o certificado A1).
+router.get('/diag-consulta-cnpj', async (req, res) => {
+    try {
+        const consultaCnpjService = require('../services/consultaCnpjService');
+        const resultado = await consultaCnpjService.consultarCnpj(String(req.query.cnpj || ''));
+        res.json(resultado);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/admin-exec/clientes-preencher-ie-sefaz — consulta a IE na SEFAZ (certificado A1)
+// para clientes PJ ATIVOS sem inscrição estadual e grava em cliente_fiscal.
+// Body opcional: { limite: 30, somenteComPedidoRecenteDias: null }
+router.post('/clientes-preencher-ie-sefaz', async (req, res) => {
+    try {
+        const consultaCnpjService = require('../services/consultaCnpjService');
+        const limite = Math.min(parseInt(req.body?.limite, 10) || 30, 100);
+        const clientes = await prisma.cliente.findMany({
+            where: { Ativo: true, Tipo_Pessoa: 'JURIDICA', OR: [{ fiscal: null }, { fiscal: { inscricaoEstadual: null } }] },
+            select: { UUID: true, Nome: true, Documento: true, End_Estado: true },
+            take: limite,
+            orderBy: { Nome: 'asc' }
+        });
+        const resultados = [];
+        for (const c of clientes) {
+            const cnpj = String(c.Documento || '').replace(/[^0-9A-Za-z]/g, '');
+            if (!/^\d{14}$/.test(cnpj)) { resultados.push({ cliente: c.Nome, pulado: 'documento não é CNPJ numérico' }); continue; }
+            const r = await consultaCnpjService.consultarIeSefaz(cnpj, c.End_Estado || 'SC');
+            if (r.ok && r.ie) {
+                await prisma.clienteFiscal.upsert({
+                    where: { clienteUuid: c.UUID },
+                    create: { clienteUuid: c.UUID, inscricaoEstadual: r.ie },
+                    update: { inscricaoEstadual: r.ie }
+                });
+                await prisma.cliente.update({ where: { UUID: c.UUID }, data: { Indicador_Inscricao_Estadual: 'CONTRIBUINTE' } })
+                    .catch(() => {});
+                resultados.push({ cliente: c.Nome, ie: r.ie, situacao: r.situacaoIe });
+            } else {
+                resultados.push({ cliente: c.Nome, ie: null, motivo: r.motivo || 'sem IE (não contribuinte)' });
+            }
+            await new Promise(rr => setTimeout(rr, 500)); // não martelar a SEFAZ
+        }
+        res.json({ candidatos: clientes.length, resultados });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // POST /api/admin-exec/focus-nfe-marcar-revenda — marca os produtos de REVENDA confirmados
 // pelo dono (espetinho frango c/ bacon → CEST 1707900; bolinho de carne). CFOP 5102 na emissão.
 router.post('/focus-nfe-marcar-revenda', async (req, res) => {
