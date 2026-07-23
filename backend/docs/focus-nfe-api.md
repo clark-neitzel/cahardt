@@ -536,6 +536,26 @@ Rate limit: **não documentado nas páginas baixadas** — ver doc online se nec
    só NCM, que é o mesmo para todos.
 8. XML autorizado → salvar também no Google Drive da contabilidade (fluxo já existente das notas de
    entrada) e disponibilizar DANFE na tela do pedido.
+9. **Permissões (pedido do dono, 23/07): cada tela nova entra no controle de permissões da aba de
+   vendedores/usuários** — sugerido: `Pode_Ver_Notas_Fiscais` (fila/status/DANFE),
+   `Pode_Emitir_NF` (emitir venda e devolução), `Pode_Configurar_NF` (painel de configuração,
+   só gestão). Espelhar exatamente no frontend e backend (regra do projeto).
+
+### Aprendizados da 1ª rodada de homologação (23/07/2026 — notas de ensaio reais)
+
+- **Rejeição 703 "Data-Hora de Emissão posterior"**: `data_emissao` deve ser horário de
+  **Brasília real** (`new Date(Date.now() - 3*3600*1000)` etiquetado `-03:00`) — UTC etiquetado de
+  -03:00 fica 3h no futuro e a SEFAZ rejeita.
+- **"IE do destinatário não informada"**: em SC, destinatário PJ com `indicador_inscricao_
+  estadual_destinatario: 2` (isento) foi rejeitado. Para PJ contribuinte mandar indicador 1 +
+  `inscricao_estadual_destinatario`. (MEI sem IE no cadastro: tratar na implementação — testar
+  indicador 9 ou exigir IE no cadastro do cliente.)
+- **"Duplicidade de NF-e" em homologação**: a empresa já emitiu NF-e de TESTE em 2014 (chave
+  4214-09...) — a numeração de homologação começando em 1 colide. Corrigido pulando
+  `proximo_numero_nfe_homologacao` (rota `focus-nfe-homolog-numeracao`). A numeração de PRODUÇÃO
+  segue o CA (84844+) e não é afetada.
+- Nota rejeitada é reenviada com a MESMA `ref` (confirmado na prática — retry natural).
+- 1ª nota AUTORIZADA em homologação: perfil CPF, ref `teste-cpf-1784807511450`, nº 1 série 1.
 
 ---
 
