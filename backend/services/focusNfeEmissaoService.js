@@ -118,8 +118,8 @@ async function montarNotaVenda(pedido) {
             valor_bruto: bruto,
             inclui_no_total: 1,
             icms_origem: 0,
-            // IPI zerado explícito, como nas notas do CA (fidelidade do XML)
-            ipi_situacao_tributaria: '99',
+            // IPI omitido de propósito: mandar só o CST 99 gera IPITrib inválido no schema
+            // da SEFAZ (testado 23/07); sem IPI a nota autoriza igual (valores todos zero).
             pis_situacao_tributaria: '49',
             cofins_situacao_tributaria: '49',
             ...(ehCPF
