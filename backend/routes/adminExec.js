@@ -4401,6 +4401,26 @@ router.post('/ca-extrato-despesas-sync', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/ca-extrato-recebimentos-sync — espelha no app os
+// recebimentos baixados DIRETO no CA em contas importadas/avulsas (ledger
+// pagamentoParcela + quitação da parcela local) e atualiza o arquivo
+// ca_receber_importado. Body: { dias: 2 } ou { de, ate } (janela de DATA DE
+// ALTERAÇÃO no CA) e { limite: 300 }. Idempotente.
+router.post('/ca-extrato-recebimentos-sync', async (req, res) => {
+    try {
+        const caExtratoService = require('../services/caExtratoService');
+        const r = await caExtratoService.sincronizarRecebimentos({
+            dias: Number(req.body?.dias) || 2,
+            de: req.body?.de || null,
+            ate: req.body?.ate || null,
+            limite: Number(req.body?.limite) || 300
+        });
+        res.json(r);
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.response?.data || e.message });
+    }
+});
+
 // POST /api/admin-exec/ca-extrato-conciliacao-sync — gera as linhas de extrato da
 // Conciliação Bancária para as contas do Conta Azul (padrão: conta com "conta azul"
 // no nome) a partir dos movimentos do app. Body: { dias } ou { de, ate }. Idempotente.
@@ -4479,7 +4499,7 @@ router.get('/diag-ca-pix-conciliacao', async (req, res) => {
         for (let pagina = 1; pagina <= 5; pagina++) {
             const url = `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/contas-a-receber/buscar` +
                 `?pagina=${pagina}&tamanho_pagina=100&data_vencimento_de=${somaDias(hoje, -730)}&data_vencimento_ate=${somaDias(hoje, 365)}` +
-                `&data_alteracao_de=${encodeURIComponent(ini + 'T00:00:00')}&data_alteracao_ate=${encodeURIComponent(hoje + 'T23:59:59')}`;
+                `&data_alteracao_de=${encodeURIComponent(ini + 'T00:00:00')}&data_alteracao_ate=${encodeURIComponent(fimJanela + 'T23:59:59')}`;
             const resp = await contaAzulService._axiosGet(url, 'DIAG_PIX_CONC');
             const pag = resp.data?.itens || [];
             itens.push(...pag);
@@ -4549,7 +4569,7 @@ router.get('/diag-ca-pix-conciliacao', async (req, res) => {
         const porMotivo = {};
         for (const f of faltando) porMotivo[f.motivo] = (porMotivo[f.motivo] || 0) + 1;
         res.json({
-            ok: true, contaAlvo, janelaAlteracao: { de: ini, ate: hoje },
+            ok: true, contaAlvo, janelaAlteracao: { de: ini, ate: fimJanela },
             parcelasAlteradas: itens.length, recebidasVerificadas: recebidas.length, detalhesFalha,
             baixasNaContaCA: baixasAlvo.length, naConciliacao: ok.length,
             faltandoTotal: faltando.length, porMotivo, faltando

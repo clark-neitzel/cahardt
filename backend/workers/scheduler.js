@@ -435,6 +435,9 @@ function startSchedulers() {
         // Despesas lançadas direto no CA (janela de 2 dias de alteração; idempotente)
         try { await caExtratoService.sincronizarDespesas({ dias: 2 }); }
         catch (err) { console.error('⚠️ Extrato CA (despesas) Error:', err.message); }
+        // Recebimentos baixados direto no CA em contas importadas/avulsas (espelha ledger)
+        try { await caExtratoService.sincronizarRecebimentos({ dias: 2 }); }
+        catch (err) { console.error('⚠️ Extrato CA (recebimentos) Error:', err.message); }
         // Extrato da conta Conta Azul IP na Conciliação Bancária (derivado dos movimentos)
         try { await caExtratoService.sincronizarExtratoConciliacao({ dias: 30 }); }
         catch (err) { console.error('⚠️ Extrato CA (conciliação) Error:', err.message); }

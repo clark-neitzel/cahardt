@@ -358,4 +358,4 @@ async function sincronizarContasCliente(clienteId) {
     return { verificadas: contas.length, sincronizadas };
 }
 
-module.exports = { sincronizarConta, sincronizarTodasAbertas, sincronizarContasCliente };
+module.exports = { sincronizarConta, sincronizarTodasAbertas, sincronizarContasCliente, mapMetodoCA };

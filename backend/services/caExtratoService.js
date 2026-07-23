@@ -344,6 +344,184 @@ async function sincronizarDespesas({ dias = 2, de = null, ate = null, limite = 4
 }
 
 // ─────────────────────────────────────────────────────────────
+// RECEBIMENTOS baixados direto no CA → espelho no app
+//
+// O sync de baixas existente (contasReceberSyncService) só cobre contas
+// ABERTAS de pedidos faturados no CA. Baixa dada NO CA em parcela sem
+// pedido no app (venda antiga/avulsa importada pelo caReceberImportService)
+// não chegava: a parcela local ficava PENDENTE (cobrança seguia!) e o
+// extrato derivado da conciliação ficava sem o crédito (PIX "sumido").
+// Este sync busca as parcelas de RECEBER alteradas na janela e, para as
+// pagas no CA:
+//   - atualiza o arquivo ca_receber_importado (status/valores/baixas);
+//   - se existe parcela local do importador sem nenhum pagamento ativo,
+//     espelha as baixas do CA no ledger (pagamentoParcela, cada baixa com
+//     o SEU banco) e quita a parcela/conta — o extrato da conciliação
+//     nasce daí na rodada de sincronizarExtratoConciliacao.
+// ─────────────────────────────────────────────────────────────
+
+const STATUS_PAGO_CA_EXTRATO = ['RECEBIDO', 'RECEBIDO_PARCIAL', 'QUITADO', 'QUITADO_PARCIAL', 'ACQUITTED', 'PAID'];
+
+/** Busca páginas do /contas-a-receber/buscar alteradas na janela. */
+async function buscarReceberAlteradasCA(alteradoDe, alteradoAte) {
+    const hoje = hojeSP();
+    const vencDe = somaDias(hoje, -730);
+    const vencAte = somaDias(hoje, 365);
+    const itens = [];
+    for (let pagina = 1; pagina <= 30; pagina++) {
+        const url = `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/contas-a-receber/buscar` +
+            `?pagina=${pagina}&tamanho_pagina=200&data_vencimento_de=${vencDe}&data_vencimento_ate=${vencAte}` +
+            `&data_alteracao_de=${encodeURIComponent(alteradoDe + 'T00:00:00')}&data_alteracao_ate=${encodeURIComponent(alteradoAte + 'T23:59:59')}`;
+        const resp = await contaAzulService._axiosGet(url, 'CONTAS_RECEBER_BUSCAR_SYNC');
+        const pag = resp.data?.itens || [];
+        itens.push(...pag);
+        const total = Number(resp.data?.itens_totais || 0);
+        if (itens.length >= total || pag.length === 0) break;
+        await sleep(300);
+    }
+    return itens;
+}
+
+/**
+ * Espelha no app os recebimentos baixados direto no CA (janela de alteração).
+ * Idempotente. Devolve { espelhadas, arquivadas, jaTinhamLedger, puladas, erros }.
+ */
+async function sincronizarRecebimentos({ dias = 2, de = null, ate = null, limite = 300 } = {}) {
+    if (!(await temTokenCA())) return { ok: false, motivo: 'Conta Azul não conectado.' };
+    const { mapMetodoCA } = require('./contasReceberSyncService');
+
+    const fim = ate || hojeSP();
+    const ini = de || somaDias(fim, -Math.max(1, dias));
+    const itens = await buscarReceberAlteradasCA(ini, fim);
+
+    const resumo = {
+        ok: true, periodo: { de: ini, ate: fim }, totalParcelasCA: itens.length,
+        pagasCA: 0, espelhadas: 0, arquivadas: 0, jaTinhamLedger: 0, puladas: 0, erros: []
+    };
+    let processadas = 0;
+
+    for (const item of itens) {
+        try {
+            if (!item?.id) { resumo.puladas++; continue; }
+            const statusCA = String(item.status_traduzido || item.status || '').toUpperCase();
+            if (!STATUS_PAGO_CA_EXTRATO.includes(statusCA)) { resumo.puladas++; continue; }
+            resumo.pagasCA++;
+
+            const arch = await prisma.caReceberImportado.findUnique({ where: { idParcelaCA: item.id } });
+            // Parcela de pedido do app: o sync de pedidos (contasReceberSyncService) cuida dela.
+            if (arch?.temPedidoApp) { resumo.puladas++; continue; }
+
+            // Sem parcela local para espelhar E arquivo já diz "pago" → nada a fazer.
+            const jaArquivadaPaga = arch && STATUS_PAGO_CA_EXTRATO.includes(String(arch.status || '').toUpperCase());
+            if (!arch?.parcelaLocalId && jaArquivadaPaga) { resumo.puladas++; continue; }
+
+            if (processadas >= limite) { resumo.erros.push(`limite de ${limite} por rodada atingido — rode de novo para continuar`); break; }
+            processadas++;
+            await sleep(300); // rate limit CA
+
+            const det = await contaAzulService.buscarParcelaDetalhe(item.id);
+
+            // Mantém o arquivo fresco (baixas novas do CA passam a constar)
+            if (arch) {
+                await prisma.caReceberImportado.update({
+                    where: { idParcelaCA: item.id },
+                    data: {
+                        status: statusCA,
+                        valorTotal: item.total != null ? round2(item.total) : arch.valorTotal,
+                        valorPago: item.pago != null ? round2(item.pago) : arch.valorPago,
+                        dadosBusca: item,
+                        dadosDetalhe: det || undefined
+                    }
+                });
+                resumo.arquivadas++;
+            } else {
+                const evento = det?.evento || null;
+                await prisma.caReceberImportado.create({
+                    data: {
+                        idParcelaCA: item.id,
+                        idEventoCA: evento?.id || null,
+                        clienteCaId: item.cliente?.id || null,
+                        clienteNome: item.cliente?.nome || null,
+                        descricao: item.descricao || det?.descricao || null,
+                        origemEventoCA: evento?.referencia?.origem || null,
+                        status: statusCA,
+                        dataVencimento: item.data_vencimento ? new Date(item.data_vencimento + 'T12:00:00-03:00') : null,
+                        valorTotal: item.total != null ? round2(item.total) : null,
+                        valorPago: item.pago != null ? round2(item.pago) : null,
+                        dadosBusca: item,
+                        dadosDetalhe: det || undefined
+                    }
+                });
+                resumo.arquivadas++;
+            }
+
+            if (!arch?.parcelaLocalId) continue; // sem camada operacional — extrato sai do arquivo
+
+            const parcela = await prisma.parcela.findUnique({ where: { id: arch.parcelaLocalId } });
+            if (!parcela || parcela.status === 'CANCELADO') { resumo.puladas++; continue; }
+            const ledgerAtivo = await prisma.pagamentoParcela.count({ where: { parcelaId: parcela.id, estornado: false } });
+            if (ledgerAtivo > 0) { resumo.jaTinhamLedger++; continue; }
+
+            const baixas = det?.baixas || [];
+            if (!baixas.length) { resumo.puladas++; continue; }
+            const valorPago = round2(baixas.reduce((s, b) => s + num(b?.valor_composicao?.valor_bruto), 0));
+            const principal = baixas.slice().sort((a, b) => num(b?.valor_composicao?.valor_bruto) - num(a?.valor_composicao?.valor_bruto))[0];
+            const cfP = principal?.conta_financeira ?? det?.conta_financeira;
+            const contaP = cfP ? (typeof cfP === 'string' ? cfP : cfP.id || null) : null;
+            const dataP = principal?.data_pagamento ? new Date(principal.data_pagamento + 'T12:00:00-03:00') : new Date();
+
+            await prisma.$transaction(async (tx) => {
+                for (const b of baixas) {
+                    const valorB = round2(num(b?.valor_composicao?.valor_bruto));
+                    if (valorB <= 0) continue;
+                    const cfB = b?.conta_financeira ?? det?.conta_financeira;
+                    await tx.pagamentoParcela.create({
+                        data: {
+                            parcelaId: parcela.id,
+                            valorRecebido: valorB,
+                            valorDesconto: round2(num(b?.valor_composicao?.valor_desconto)),
+                            formaPagamento: mapMetodoCA(b?.metodo_pagamento) || 'Outro',
+                            contaFinanceiraCaId: cfB ? (typeof cfB === 'string' ? cfB : cfB.id || null) : contaP,
+                            dataPagamento: b?.data_pagamento ? new Date(b.data_pagamento + 'T12:00:00-03:00') : dataP,
+                            observacao: 'Baixa espelhada do Conta Azul (recebimento em conta importada)'
+                        }
+                    });
+                }
+                await tx.parcela.update({
+                    where: { id: parcela.id },
+                    data: {
+                        status: valorPago + 0.01 >= num(parcela.valor) ? 'PAGO' : 'PARCIAL',
+                        valorPago,
+                        formaPagamento: mapMetodoCA(principal?.metodo_pagamento) || null,
+                        contaFinanceiraCaId: contaP,
+                        dataPagamento: dataP,
+                        observacao: 'Baixa sincronizada do Conta Azul (extrato CA)'
+                    }
+                });
+                const irmas = await tx.parcela.findMany({
+                    where: { contaReceberId: parcela.contaReceberId, status: { not: 'CANCELADO' } },
+                    select: { id: true, status: true }
+                });
+                const todasPagas = irmas.every(p => p.id === parcela.id ? valorPago + 0.01 >= num(parcela.valor) : p.status === 'PAGO');
+                await tx.contaReceber.update({
+                    where: { id: parcela.contaReceberId },
+                    data: { status: todasPagas ? 'PAGO' : 'PARCIAL' }
+                });
+            }, { timeout: 20000, maxWait: 10000 });
+            resumo.espelhadas++;
+        } catch (e) {
+            resumo.erros.push(`parcela ${item?.id}: ${e.response?.status || ''} ${e.message}`.trim());
+            if (resumo.erros.length >= 20) { resumo.erros.push('muitos erros — rodada interrompida'); break; }
+        }
+    }
+
+    if (resumo.espelhadas || resumo.arquivadas) {
+        console.log(`💰 [Extrato CA] Recebimentos: ${resumo.espelhadas} baixa(s) espelhada(s), ${resumo.arquivadas} arquivo(s) atualizado(s) (${ini} → ${fim})`);
+    }
+    return resumo;
+}
+
+// ─────────────────────────────────────────────────────────────
 // EXTRATO na CONCILIAÇÃO BANCÁRIA para contas do Conta Azul
 //
 // A Conciliação Bancária mostra o extrato importado por OFX (Sicoob etc.)
@@ -460,6 +638,54 @@ async function sincronizarExtratoConciliacao({ dias = 30, de = null, ate = null 
             });
         }
 
+        // 4ª fonte: recebimentos arquivados de ca_receber_importado — parcelas que
+        // já estavam PAGAS no CA quando importadas (sem parcela local, sem pedido).
+        // A baixa vive só no JSON arquivado; sem isto o crédito (ex.: PIX) nunca
+        // aparecia na conciliação da conta do CA.
+        const archs = await prisma.caReceberImportado.findMany({
+            where: {
+                status: { in: STATUS_PAGO_CA_EXTRATO },
+                temPedidoApp: false,
+                parcelaLocalId: null,
+                OR: [
+                    { dataVencimento: { gte: new Date(iniDt.getTime() - 120 * 86400000), lte: new Date(fimDt.getTime() + 60 * 86400000) } },
+                    { dataVencimento: null }
+                ]
+            },
+            select: { idParcelaCA: true, clienteNome: true, descricao: true, dadosDetalhe: true }
+        });
+        const arqCandidatas = [];
+        for (const a of archs) {
+            const baixas = a.dadosDetalhe?.baixas || [];
+            baixas.forEach((b, idx) => {
+                const cf = b?.conta_financeira;
+                const cfId = cf ? (typeof cf === 'string' ? cf : cf.id || null) : null;
+                if (cfId !== conta) return;
+                const valor = round2(num(b?.valor_composicao?.valor_bruto));
+                const dataStr = String(b?.data_pagamento || '').slice(0, 10);
+                if (valor <= 0 || !dataStr) return;
+                const data = dataSP(dataStr);
+                if (data < iniDt || data > fimDt) return;
+                arqCandidatas.push({
+                    fitId: `ca-arq-${a.idParcelaCA}-${idx}`,
+                    data, valor, tipo: 'CREDITO',
+                    descricao: `Recebimento ${a.clienteNome || 'cliente'}${a.descricao ? ` · ${a.descricao}` : ''}`.slice(0, 500),
+                    trnType: 'CREDIT'
+                });
+            });
+        }
+        if (arqCandidatas.length) {
+            // Anti-duplicidade com as linhas derivadas do ledger do app (ca-rec/ca-tr):
+            // se a mesma baixa também existe como pagamentoParcela, a linha ca-rec cobre.
+            const poolApp = linhas.map(l => ({ t: new Date(l.data).getTime(), valor: l.valor, tipo: l.tipo, usada: false }));
+            for (const c of arqCandidatas) {
+                const t = new Date(c.data).getTime();
+                const dup = poolApp.find(x => !x.usada && x.tipo === c.tipo && Math.abs(x.valor - c.valor) <= 0.01 && Math.abs(x.t - t) <= 2 * 86400000);
+                if (dup) { dup.usada = true; continue; }
+                linhas.push(c);
+            }
+        }
+
         let novos = 0;
         if (linhas.length) {
             const existentes = await prisma.extratoLancamento.findMany({
@@ -553,4 +779,4 @@ async function sincronizarExtratoConciliacao({ dias = 30, de = null, ate = null 
     return { ok: true, periodo: { de: ini, ate: fim }, contas: resultados };
 }
 
-module.exports = { sincronizarTransferencias, sincronizarDespesas, sincronizarExtratoConciliacao };
+module.exports = { sincronizarTransferencias, sincronizarDespesas, sincronizarRecebimentos, sincronizarExtratoConciliacao };
