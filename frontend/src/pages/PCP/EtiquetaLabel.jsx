@@ -17,7 +17,7 @@ export function imprimirEtiquetas(labelHtml, copies = 1) {
     style.id = ID_ESTILO;
     // @page no nível raiz (iOS não lida bem com @page dentro de @media)
     style.textContent = `
-        @page { size: 80mm 100mm; margin: 2mm; }
+        @page { size: 80mm 100mm; margin: 0; }
         #${ID_AREA} { display: none; }
         @media print {
             html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; }
@@ -130,8 +130,14 @@ export default function EtiquetaLabel({ et, dataFab, dataVal }) {
         { label: 'Sódio (mg)',                raw: et.sodio,                dec: 0, indent: 0 },
     ].filter(r => r.always || r.raw);
 
+    // Wrapper preenche a etiqueta física inteira (80×100mm) — impressora térmica precisa margin 0.
+    // A "folga" fica por dentro: 2mm de padding brancos ao redor da borda.
+    const outer = {
+        width: '80mm', height: '100mm', padding: '2mm', boxSizing: 'border-box',
+        background: '#fff', display: 'flex',
+    };
     const style = {
-        width: '76mm', height: '95mm', fontSize: '6pt',
+        flex: 1, fontSize: '6pt',
         fontFamily: 'Arial, sans-serif', border: '0.4pt solid #000',
         padding: '1mm', boxSizing: 'border-box', lineHeight: 1.12,
         background: '#fff', color: '#000', overflow: 'hidden',
@@ -142,6 +148,7 @@ export default function EtiquetaLabel({ et, dataFab, dataVal }) {
     const cellNome = { padding: '0.1mm 0.8mm' };
 
     return (
+      <div style={outer}>
         <div style={style}>
             {/* Nome do produto (tarja preta opcional) — sem linha separadora */}
             <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'8.5pt', marginBottom:'0.3mm', lineHeight:1.1, background: et.tarjaPreta ? '#000' : 'transparent', color: et.tarjaPreta ? '#fff' : '#000', margin: et.tarjaPreta ? '-1mm -1mm 0.3mm -1mm' : undefined, padding: et.tarjaPreta ? '1mm' : undefined }}>
@@ -231,5 +238,6 @@ export default function EtiquetaLabel({ et, dataFab, dataVal }) {
                 Fabricação/Lote - {dataFab}&nbsp;&nbsp;Validade - {dataVal}
             </div>
         </div>
+      </div>
     );
 }
