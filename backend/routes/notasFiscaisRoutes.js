@@ -101,6 +101,68 @@ router.post('/emitir/:pedidoId', checkEmitir, async (req, res) => {
     }
 });
 
+// POST /api/notas-fiscais/emitir-devolucao/:devolucaoId — NF-e de devolução de venda
+// (só devolução de pedido COM nota; especial não gera NF).
+router.post('/emitir-devolucao/:devolucaoId', checkEmitir, async (req, res) => {
+    try {
+        const nota = await emissao.emitirDevolucao(req.params.devolucaoId);
+        res.json({ ok: true, nota });
+    } catch (e) {
+        res.status(400).json({ error: e.message });
+    }
+});
+
+// GET /api/notas-fiscais/xmls-zip?de=YYYY-MM-DD&ate=YYYY-MM-DD — ZIP com os XMLs do período
+// (notas do app + notas antigas do CA já copiadas/localizáveis) para enviar à contabilidade.
+router.get('/xmls-zip', checkVer, async (req, res) => {
+    try {
+        const { de, ate } = req.query;
+        if (!de || !ate) return res.status(400).json({ error: 'Informe ?de=YYYY-MM-DD&ate=YYYY-MM-DD' });
+        const ini = new Date(`${de}T00:00:00-03:00`);
+        const fim = new Date(`${ate}T23:59:59-03:00`);
+        const AdmZip = require('adm-zip');
+        const xmlNfeService = require('../services/xmlNfeService');
+        const zip = new AdmZip();
+        const erros = [];
+
+        // Notas emitidas pelo app (venda e devolução) autorizadas no período
+        const notasApp = await prisma.notaFiscalApp.findMany({
+            where: { status: 'AUTORIZADO', ambiente: 'producao', atualizadoEm: { gte: ini, lte: fim } },
+            include: { pedido: { select: { numero: true } } },
+        });
+        for (const n of notasApp) {
+            try {
+                const xml = await xmlNfeService.obterXmlNotaApp(n.id);
+                const rotulo = n.tipo === 'DEVOLUCAO' ? 'devolucao' : 'venda';
+                zip.addFile(`nfe-${n.numero || n.ref}-${rotulo}-pedido-${n.pedido?.numero || ''}.xml`, Buffer.from(xml, 'utf8'));
+            } catch (e) {
+                erros.push(`NF ${n.numero || n.ref}: ${e.message}`);
+            }
+        }
+
+        // Notas antigas do CA cujos pedidos são do período (chave em cache)
+        const pedidosCA = await prisma.pedido.findMany({
+            where: { nfeChave: { not: null }, dataVenda: { gte: ini, lte: fim } },
+            select: { numero: true, nfeChave: true, nfeNumero: true },
+        });
+        for (const p of pedidosCA) {
+            try {
+                const xml = await xmlNfeService.obterXmlNotaCA(p.nfeChave);
+                zip.addFile(`nfe-${p.nfeNumero || p.nfeChave}-venda-ca-pedido-${p.numero || ''}.xml`, Buffer.from(xml, 'utf8'));
+            } catch (e) {
+                erros.push(`NF CA ${p.nfeNumero || ''} (pedido ${p.numero}): ${e.message}`);
+            }
+        }
+
+        if (erros.length) zip.addFile('_avisos.txt', Buffer.from(`XMLs que não puderam ser incluídos:\n${erros.join('\n')}\n`, 'utf8'));
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="xmls-nfe-${de}-a-${ate}.zip"`);
+        res.send(zip.toBuffer());
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // POST /api/notas-fiscais/:id/consultar — força atualização de status na Focus.
 router.post('/:id/consultar', checkVer, async (req, res) => {
     try {

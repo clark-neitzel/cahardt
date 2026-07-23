@@ -191,8 +191,10 @@ const MAPA_STATUS = {
 
 // Nota AUTORIZADA em PRODUÇÃO → pedido vira FATURADO na tela de pedidos (o app é o
 // emissor agora; antes quem marcava era o retorno do Conta Azul). Homologação não marca.
+// Só nota de VENDA fatura — devolução não mexe no status do pedido.
 async function marcarPedidoFaturado(nota) {
     if (nota.status !== 'AUTORIZADO' || nota.ambiente !== 'producao') return;
+    if (nota.tipo && nota.tipo !== 'VENDA') return;
     try {
         await prisma.pedido.update({
             where: { id: nota.pedidoId },
@@ -327,6 +329,166 @@ async function consultarAtualizar(notaId) {
     return atualizada;
 }
 
+/**
+ * Emite a NF-e de DEVOLUÇÃO de venda a partir de uma Devolucao registrada no app.
+ * Perfil espelhado da nota real 84808 do CA: natOp "Devolucao de venda", finalidade 4,
+ * tipo entrada (0), CFOP 1201 (produção própria) / 1202 (revenda), PIS/COFINS CST 99,
+ * pagamento "90 - sem pagamento", referenciando a chave da NF-e original da venda.
+ * SÓ para devolução de pedido COM nota (tipo CONTA_AZUL) — pedido especial não tem NF.
+ */
+async function emitirDevolucao(devolucaoId) {
+    const dev = await prisma.devolucao.findUnique({
+        where: { id: devolucaoId },
+        include: {
+            itens: { include: { produto: true } },
+            cliente: { include: { fiscal: true } },
+            pedidoOriginal: true,
+        },
+    });
+    if (!dev) throw new Error('Devolução não encontrada.');
+    if (dev.status !== 'ATIVA') throw new Error('Devolução revertida não gera nota fiscal.');
+    if (dev.tipo === 'ESPECIAL' || dev.pedidoOriginal?.especial) {
+        throw new Error('Devolução de pedido especial não gera nota fiscal (pedido sem nota).');
+    }
+    if (dev.notaDevolucaoCA) {
+        throw new Error(`Esta devolução já tem NF de devolução do Conta Azul (nº ${dev.notaDevolucaoCA}).`);
+    }
+    const pedido = dev.pedidoOriginal;
+
+    // Nota ORIGINAL da venda (obrigatória como referência na devolução)
+    const notaVendaApp = await notaAutorizadaDoPedido(pedido.id);
+    const chaveOriginal = String(notaVendaApp?.chave || pedido.nfeChave || '').replace(/\D/g, '');
+    const numeroOriginal = notaVendaApp?.numero || pedido.nfeNumero;
+    if (!chaveOriginal) {
+        throw new Error('NF-e original da venda não encontrada — a nota da venda precisa existir antes da devolução.');
+    }
+
+    const ambiente = focusNfe.ambiente();
+    const ref = `nfd-${ambiente === 'producao' ? 'p' : 'h'}-${dev.id}`;
+    const existente = await prisma.notaFiscalApp.findUnique({ where: { ref } });
+    if (existente && ['AUTORIZADO', 'PROCESSANDO'].includes(existente.status)) {
+        throw new Error(`Nota de devolução deste registro já está "${existente.status}".`);
+    }
+
+    const cfg = await getConfig();
+    const cliente = dev.cliente;
+    const doc = String(cliente?.Documento || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+    if (!doc) throw new Error(`Cliente "${cliente?.Nome}" sem CPF/CNPJ no cadastro.`);
+    const ehCPF = /^\d{11}$/.test(doc);
+    const ie = String(cliente.fiscal?.inscricaoEstadual || '').replace(/\D/g, '');
+    const faltando = [];
+    if (!cliente.End_Logradouro) faltando.push('endereço (rua)');
+    if (!cliente.End_Numero) faltando.push('número');
+    if (!cliente.End_Bairro) faltando.push('bairro');
+    if (!cliente.End_Cidade) faltando.push('cidade');
+    if (!cliente.End_Estado) faltando.push('UF');
+    if (!cliente.End_CEP) faltando.push('CEP');
+    if (faltando.length) throw new Error(`Cliente "${cliente.Nome}" com cadastro incompleto: falta ${faltando.join(', ')}.`);
+
+    const itensValidos = (dev.itens || []).filter(i => Number(i.quantidade) > 0);
+    if (!itensValidos.length) throw new Error('Devolução sem itens com quantidade.');
+
+    let total = 0;
+    const items = itensValidos.map((item, idx) => {
+        const q = Number(item.quantidade);
+        const v = Number(item.valorUnitario);
+        const bruto = round2(q * v);
+        total = round2(total + bruto);
+        const revenda = !!item.produto?.nfeRevenda;
+        return {
+            numero_item: idx + 1,
+            codigo_produto: item.produto?.codigo || item.produtoId,
+            descricao: item.produto?.nome || 'PRODUTO',
+            cfop: revenda ? '1202' : '1201', // entrada por devolução (espelho de 5102/5101)
+            codigo_ncm: String(item.produto?.ncm || '').replace(/\D/g, '') || cfg.ncmPadrao,
+            ...(revenda && item.produto?.nfeCest ? { cest: item.produto.nfeCest } : {}),
+            unidade_comercial: item.produto?.unidade || 'PT',
+            unidade_tributavel: item.produto?.unidade || 'PT',
+            quantidade_comercial: q,
+            quantidade_tributavel: q,
+            valor_unitario_comercial: v,
+            valor_unitario_tributavel: v,
+            valor_bruto: bruto,
+            inclui_no_total: 1,
+            icms_origem: 0,
+            pis_situacao_tributaria: '99', // na devolução o CA usava 99 (venda usa 49)
+            cofins_situacao_tributaria: '99',
+            ...(ehCPF
+                ? { icms_situacao_tributaria: '102' }
+                : {
+                    icms_situacao_tributaria: '101',
+                    icms_aliquota_credito_simples: cfg.aliquotaCreditoSimples,
+                    icms_valor_credito_simples: round2(bruto * cfg.aliquotaCreditoSimples / 100),
+                }),
+        };
+    });
+
+    const dataOrig = notaVendaApp?.criadoEm || pedido.dataVenda;
+    const dataOrigBR = dataOrig ? new Date(dataOrig).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : null;
+    const linhas = [
+        `DEVOLUCAO REFERENTE SUA NF N 1-${numeroOriginal || ''}${dataOrigBR ? ` DE ${dataOrigBR}` : ''}`.trim(),
+        `Referente ao pedido #${pedido.numero}`,
+        ...cfg.textosLegais,
+    ];
+    if (!ehCPF) {
+        const credTotal = round2(items.reduce((s, it) => s + (it.icms_valor_credito_simples || 0), 0));
+        linhas.push(`PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ ${fmtBR(credTotal)}, CORRESPONDENTE A ALIQUOTA DE ${String(cfg.aliquotaCreditoSimples).replace('.', ',')}%, NOS TERMOS DO ART. 23 DA LC 123/2006.`);
+    }
+
+    const agora = agoraBrasilia();
+    const nota = {
+        natureza_operacao: 'Devolucao de venda',
+        data_emissao: agora,
+        data_entrada_saida: agora,
+        tipo_documento: 0, // ENTRADA
+        finalidade_emissao: 4, // devolução
+        local_destino: 1,
+        consumidor_final: ehCPF ? 1 : 0,
+        presenca_comprador: 1,
+        ...EMITENTE,
+        nome_destinatario: cliente.Nome,
+        ...(ehCPF
+            ? { cpf_destinatario: doc, indicador_inscricao_estadual_destinatario: 9 }
+            : {
+                cnpj_destinatario: doc,
+                ...(ie
+                    ? { indicador_inscricao_estadual_destinatario: 1, inscricao_estadual_destinatario: ie }
+                    : { indicador_inscricao_estadual_destinatario: 2 }),
+            }),
+        logradouro_destinatario: cliente.End_Logradouro,
+        numero_destinatario: String(cliente.End_Numero),
+        ...(cliente.End_Complemento ? { complemento_destinatario: cliente.End_Complemento } : {}),
+        bairro_destinatario: cliente.End_Bairro,
+        municipio_destinatario: cliente.End_Cidade,
+        uf_destinatario: cliente.End_Estado,
+        cep_destinatario: String(cliente.End_CEP).replace(/\D/g, ''),
+        pais_destinatario: 'Brasil',
+        modalidade_frete: 0,
+        valor_frete: 0,
+        valor_seguro: 0,
+        valor_desconto: 0,
+        valor_outras_despesas: 0,
+        valor_produtos: total,
+        valor_total: total,
+        formas_pagamento: [{ forma_pagamento: '90', valor_pagamento: 0 }], // sem pagamento (devolução)
+        notas_referenciadas: [{ chave_nfe: chaveOriginal }],
+        informacoes_adicionais_contribuinte: linhas.filter(Boolean).join('#'),
+        items,
+    };
+
+    const registro = existente
+        ? await prisma.notaFiscalApp.update({ where: { ref }, data: { status: 'PROCESSANDO', mensagemSefaz: null, payloadEnviado: nota } })
+        : await prisma.notaFiscalApp.create({ data: { ref, ambiente, tipo: 'DEVOLUCAO', pedidoId: pedido.id, payloadEnviado: nota } });
+
+    const { httpStatus, data } = await focusNfe.emitir(ref, nota);
+    if (httpStatus >= 400) {
+        const msg = data?.mensagem || data?.erros?.map?.(e => e.mensagem).join('; ') || JSON.stringify(data).slice(0, 300);
+        await prisma.notaFiscalApp.update({ where: { ref }, data: { status: 'ERRO', mensagemSefaz: `Validação Focus: ${msg}` } });
+        throw new Error(`Nota de devolução recusada na validação: ${msg}`);
+    }
+    return prisma.notaFiscalApp.update({ where: { ref }, data: aplicarRetornoFocus(data) });
+}
+
 /** Nota do app (ambiente atual) AUTORIZADA de um pedido — usada pela DANFE da tela de pedidos. */
 async function notaAutorizadaDoPedido(pedidoId) {
     const focusNfeSvc = require('./focusNfeService');
@@ -335,4 +497,4 @@ async function notaAutorizadaDoPedido(pedidoId) {
     return nota && nota.status === 'AUTORIZADO' ? nota : null;
 }
 
-module.exports = { montarNotaVenda, emitirVenda, sincronizarEventos, consultarAtualizar, getConfig, notaAutorizadaDoPedido };
+module.exports = { montarNotaVenda, emitirVenda, emitirDevolucao, sincronizarEventos, consultarAtualizar, getConfig, notaAutorizadaDoPedido };

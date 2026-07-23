@@ -36,6 +36,20 @@ const devolucaoService = {
             prisma.devolucao.count({ where })
         ]);
 
+        // Anexa a NF-e de devolução emitida pelo app (Focus), se houver, no ambiente atual
+        try {
+            const focusNfe = require('./focusNfeService');
+            const prefixo = `nfd-${focusNfe.ambiente() === 'producao' ? 'p' : 'h'}-`;
+            const refs = items.map(d => `${prefixo}${d.id}`);
+            const notas = refs.length
+                ? await prisma.notaFiscalApp.findMany({ where: { ref: { in: refs } } })
+                : [];
+            const porRef = new Map(notas.map(n => [n.ref, n]));
+            for (const d of items) d.notaFiscalDevolucao = porRef.get(`${prefixo}${d.id}`) || null;
+        } catch (e) {
+            console.error('[Devolucao] Falha ao anexar NF de devolução:', e.message);
+        }
+
         return { items, total, pagina, tamanhoPagina };
     },
 

@@ -195,6 +195,34 @@ const NotasFiscais = () => {
         }
     };
 
+    // ZIP com os XMLs do período (p/ mandar à contabilidade)
+    const [baixandoXmls, setBaixandoXmls] = useState(false);
+    const baixarXmlsZip = async () => {
+        if (!periodo.de || !periodo.ate) {
+            toast.error('Escolha um período com início e fim (ex.: Este mês) para exportar os XMLs.');
+            return;
+        }
+        setBaixandoXmls(true);
+        try {
+            const resp = await api.get('/notas-fiscais/xmls-zip', {
+                params: { de: periodo.de, ate: periodo.ate },
+                responseType: 'blob',
+            });
+            const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/zip' }));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `xmls-nfe-${periodo.de}-a-${periodo.ate}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (e) {
+            toast.error(msgErroApi(e, 'Erro ao exportar os XMLs.'));
+        } finally {
+            setBaixandoXmls(false);
+        }
+    };
+
     // DANFE: mesmo padrão do handleDanfe de ListaPedidos.jsx (fetch blob autenticado + abrir)
     const abrirDanfe = async (nota) => {
         setBaixando(`${nota.id}:danfe`);
@@ -355,6 +383,15 @@ const NotasFiscais = () => {
                             </button>
                         ))}
                     </div>
+                    <button
+                        onClick={baixarXmlsZip}
+                        disabled={baixandoXmls}
+                        title="Baixa um ZIP com todos os XMLs do período (para a contabilidade)"
+                        className="md:ml-auto flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] bg-white border border-primary text-primary rounded-full text-xs font-bold hover:bg-mint/40 disabled:opacity-50 whitespace-nowrap"
+                    >
+                        {baixandoXmls ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+                        XMLs (contabilidade)
+                    </button>
                 </div>
 
                 {/* Lista */}

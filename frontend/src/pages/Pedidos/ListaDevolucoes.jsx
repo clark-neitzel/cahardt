@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, RotateCcw, Loader2, FileText, ExternalLink } from 'lucide-react';
 import devolucaoService from '../../services/devolucaoService';
-import { API_URL } from '../../services/api';
+import api, { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -18,6 +18,7 @@ const TIPO_BADGE = {
 const ListaDevolucoes = ({ filtros }) => {
     const { user } = useAuth();
     const podeReverter = user?.permissoes?.admin || user?.permissoes?.Pode_Reverter_Devolucao;
+    const podeEmitirNF = user?.permissoes?.admin || user?.permissoes?.Pode_Emitir_NF;
 
     const TAM_PAGINA = 50;
     const [devolucoes, setDevolucoes] = useState([]);
@@ -28,6 +29,35 @@ const ListaDevolucoes = ({ filtros }) => {
     const [expandedId, setExpandedId] = useState(null);
     const [revertendo, setRevertendo] = useState(null);
     const [motivoReversao, setMotivoReversao] = useState('');
+    const [emitindoNF, setEmitindoNF] = useState(null);   // devolucaoId em emissão
+    const [baixandoDanfe, setBaixandoDanfe] = useState(null);
+
+    const emitirNFDevolucao = async (dev) => {
+        setEmitindoNF(dev.id);
+        try {
+            await api.post(`/notas-fiscais/emitir-devolucao/${dev.id}`);
+            toast.success(`NF de devolução do DEV#${dev.numero} enviada para emissão.`);
+            await carregar(1);
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao emitir a NF de devolução.');
+        } finally {
+            setEmitindoNF(null);
+        }
+    };
+
+    const abrirDanfeDevolucao = async (nota) => {
+        setBaixandoDanfe(nota.id);
+        try {
+            const resp = await api.get(`/notas-fiscais/${nota.id}/danfe`, { responseType: 'blob' });
+            const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
+            window.open(url, '_blank');
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (e) {
+            toast.error('Erro ao abrir a DANFE da devolução.');
+        } finally {
+            setBaixandoDanfe(null);
+        }
+    };
 
     useEffect(() => {
         carregar(1);
@@ -198,6 +228,43 @@ const ListaDevolucoes = ({ filtros }) => {
                                             )}
                                             {dev.processadoCA && (
                                                 <div className="text-green-700 font-medium">Processado no CA</div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* NF-e de devolução emitida pelo APP (Focus) — só p/ devolução de pedido com nota */}
+                                    {dev.tipo !== 'ESPECIAL' && !dev.notaDevolucaoCA && (
+                                        <div className="p-2 bg-emerald-50 rounded border border-emerald-200 text-xs space-y-1.5">
+                                            {dev.notaFiscalDevolucao?.status === 'AUTORIZADO' ? (
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="px-2 py-0.5 rounded-full bg-green-100 text-green-800 font-bold">✓ NF devolução {dev.notaFiscalDevolucao.numero} · série {dev.notaFiscalDevolucao.serie}</span>
+                                                    <button
+                                                        onClick={() => abrirDanfeDevolucao(dev.notaFiscalDevolucao)}
+                                                        disabled={baixandoDanfe === dev.notaFiscalDevolucao.id}
+                                                        className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-white border border-primary text-primary font-bold hover:bg-mint/40 disabled:opacity-50"
+                                                    >
+                                                        {baixandoDanfe === dev.notaFiscalDevolucao.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3" />}
+                                                        DANFE
+                                                    </button>
+                                                </div>
+                                            ) : dev.notaFiscalDevolucao?.status === 'PROCESSANDO' ? (
+                                                <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold">⏳ NF de devolução processando na SEFAZ…</span>
+                                            ) : (
+                                                <div className="space-y-1.5">
+                                                    {dev.notaFiscalDevolucao?.status === 'ERRO' && (
+                                                        <div className="text-red-700">✕ Rejeitada: {dev.notaFiscalDevolucao.mensagemSefaz}</div>
+                                                    )}
+                                                    {podeEmitirNF && dev.status === 'ATIVA' && (
+                                                        <button
+                                                            onClick={() => emitirNFDevolucao(dev)}
+                                                            disabled={emitindoNF === dev.id}
+                                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-white rounded-full text-xs font-bold hover:bg-primaryDark disabled:opacity-50"
+                                                        >
+                                                            {emitindoNF === dev.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3" />}
+                                                            {dev.notaFiscalDevolucao?.status === 'ERRO' ? 'Emitir novamente' : 'Emitir NF de devolução'}
+                                                        </button>
+                                                    )}
+                                                </div>
                                             )}
                                         </div>
                                     )}

@@ -17,6 +17,7 @@
   "dependencies": {
     "@alexssmusica/node-pdf-nfe": "^1.2.21",
     "@prisma/client": "^6.19.2",
+    "adm-zip": "^0.5.16",
     "axios": "^1.7.9",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
