@@ -60,6 +60,73 @@ router.get('/ping', (req, res) => {
     });
 });
 
+// ── Integração Focus NFe ──────────────────────────────────────────
+
+// GET /api/admin-exec/focus-nfe-status — as 4 env vars estão setadas? os tokens autenticam na Focus?
+// Não expõe valor de token (só tamanho) e não emite nada: consulta uma ref inexistente
+// (404 = autenticou; 403 = token errado) e lista empresas com o token de conta.
+router.get('/focus-nfe-status', async (req, res) => {
+    const envInfo = (nome) => {
+        const v = process.env[nome];
+        if (!v) return { configurada: false };
+        return {
+            configurada: true,
+            tamanho: v.length,
+            comEspacoNasPontas: v !== v.trim(), // detecta espaço colado no copiar/colar
+        };
+    };
+    const auth = (token) => 'Basic ' + Buffer.from(`${token || ''}:`).toString('base64');
+    const testarToken = async (baseUrl, token) => {
+        if (!token) return { testado: false, motivo: 'token não configurado' };
+        try {
+            const r = await fetch(`${baseUrl}/v2/nfe/diag-ref-inexistente`, {
+                headers: { Authorization: auth(token.trim()) },
+                signal: AbortSignal.timeout(10000),
+            });
+            // 404 (ref não existe) = token válido; 403/401 = token recusado
+            return { testado: true, autenticou: r.status === 404, httpStatus: r.status };
+        } catch (e) {
+            return { testado: true, autenticou: false, erro: e.message };
+        }
+    };
+
+    const tokenConta = process.env.FOCUS_NFE_TOKEN_CONTA;
+    let conta = { testado: false, motivo: 'token não configurado' };
+    if (tokenConta) {
+        try {
+            // Gestão de empresas é sempre na URL de produção (ver backend/docs/focus-nfe-api.md)
+            const r = await fetch('https://api.focusnfe.com.br/v2/empresas', {
+                headers: { Authorization: auth(tokenConta.trim()) },
+                signal: AbortSignal.timeout(10000),
+            });
+            const corpo = r.ok ? await r.json() : null;
+            conta = {
+                testado: true,
+                autenticou: r.ok,
+                httpStatus: r.status,
+                empresasCadastradas: Array.isArray(corpo) ? corpo.map(e => ({ id: e.id, nome: e.nome, cnpj: e.cnpj })) : undefined,
+            };
+        } catch (e) {
+            conta = { testado: true, autenticou: false, erro: e.message };
+        }
+    }
+
+    res.json({
+        ambiente: process.env.FOCUS_NFE_AMBIENTE || '(não configurado)',
+        envs: {
+            FOCUS_NFE_TOKEN_CONTA: envInfo('FOCUS_NFE_TOKEN_CONTA'),
+            FOCUS_NFE_TOKEN_PRODUCAO: envInfo('FOCUS_NFE_TOKEN_PRODUCAO'),
+            FOCUS_NFE_TOKEN_HOMOLOGACAO: envInfo('FOCUS_NFE_TOKEN_HOMOLOGACAO'),
+            FOCUS_NFE_AMBIENTE: envInfo('FOCUS_NFE_AMBIENTE'),
+        },
+        testes: {
+            tokenConta: conta,
+            tokenProducao: await testarToken('https://api.focusnfe.com.br', process.env.FOCUS_NFE_TOKEN_PRODUCAO),
+            tokenHomologacao: await testarToken('https://homologacao.focusnfe.com.br', process.env.FOCUS_NFE_TOKEN_HOMOLOGACAO),
+        },
+    });
+});
+
 // ── Integração de WhatsApp (bot da Ana) ───────────────────────────
 
 // GET /api/admin-exec/bot-whatsapp-status — a chave do EasyPanel é aceita? como está a fila?
