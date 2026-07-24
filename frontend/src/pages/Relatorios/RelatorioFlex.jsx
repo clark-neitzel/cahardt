@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
-import { TrendingDown, TrendingUp, ChevronDown, ChevronUp, Filter, Percent } from 'lucide-react';
+import { TrendingDown, TrendingUp, ChevronDown, ChevronUp, Percent } from 'lucide-react';
 import toast from 'react-hot-toast';
+import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtSinal = (v) => (v >= 0 ? '+' : '') + fmt(v);
@@ -11,11 +12,7 @@ export default function RelatorioFlex() {
     const { user } = useAuth();
     const podeVerTodos = user?.permissoes?.admin || user?.permissoes?.pedidos?.clientes === 'todos';
 
-    const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
-    const inicioMes = hoje.slice(0, 8) + '01';
-
-    const [dataDe, setDataDe] = useState(inicioMes);
-    const [dataAte, setDataAte] = useState(hoje);
+    const [periodo, periodoCtl] = usePeriodoSalvo('relatorio-flex');
     const [loading, setLoading] = useState(false);
     const [vendedores, setVendedores] = useState([]);
     const [expandidoVendedor, setExpandidoVendedor] = useState(null);
@@ -28,7 +25,7 @@ export default function RelatorioFlex() {
             setExpandidoVendedor(null);
             setExpandidoPedido(null);
             const { data } = await api.get('/pedidos/relatorio-flex', {
-                params: { dataDe, dataAte }
+                params: { dataDe: periodo.de, dataAte: periodo.ate }
             });
             setVendedores(data.vendedores || []);
             setGerado(true);
@@ -37,7 +34,7 @@ export default function RelatorioFlex() {
         } finally {
             setLoading(false);
         }
-    }, [dataDe, dataAte]);
+    }, [periodo.de, periodo.ate]);
 
     const totalNegativo = vendedores.reduce((s, v) => s + v.flexNegativo, 0);
     const totalPositivo = vendedores.reduce((s, v) => s + v.flexPositivo, 0);
@@ -53,21 +50,17 @@ export default function RelatorioFlex() {
 
             {/* Filtros */}
             <div className="bg-white rounded-lg shadow-sm border p-3 sm:p-4 mb-5">
-                <div className="flex flex-wrap items-end gap-3">
-                    <div>
-                        <label className="text-xs text-gray-500 font-medium">De</label>
-                        <input type="date" value={dataDe} onChange={e => setDataDe(e.target.value)}
-                            className="block mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
-                    </div>
-                    <div>
-                        <label className="text-xs text-gray-500 font-medium">Até</label>
-                        <input type="date" value={dataAte} onChange={e => setDataAte(e.target.value)}
-                            className="block mt-1 px-3 py-2 text-sm border rounded-md bg-white text-gray-900" />
-                    </div>
+                <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3">
+                    <FiltroPeriodo
+                        periodo={periodo}
+                        controle={periodoCtl}
+                        ocultarPresets={['todo']}
+                        className="w-full sm:w-auto"
+                    />
                     <button
                         onClick={fetchFlex}
                         disabled={loading}
-                        className="px-5 py-2 text-sm bg-violet-600 text-white rounded-md font-medium hover:bg-violet-700 disabled:opacity-50"
+                        className="px-5 py-2 text-sm bg-violet-600 text-white rounded-full font-medium hover:bg-violet-700 disabled:opacity-50"
                     >
                         {loading ? 'Carregando...' : 'Gerar'}
                     </button>
