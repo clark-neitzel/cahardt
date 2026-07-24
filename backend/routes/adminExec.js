@@ -5434,4 +5434,61 @@ router.get('/ca-receber-importado-resumo', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-boleto-vencimento?numeros=2278,2280,2281,2282
+// Confere, para cada pedido: dataVenda, intervaloDias/qtdParcelas/primeiroVencimento
+// gravados no pedido, o vencimento de cada parcela e o vencimento do boleto Asaas.
+// Serve para confirmar por que o boleto saiu com vencimento errado (na data da venda).
+router.get('/diag-boleto-vencimento', async (req, res) => {
+    try {
+        const numeros = String(req.query.numeros || '').split(',').map(n => parseInt(n.trim(), 10)).filter(Boolean);
+        if (!numeros.length) return res.status(400).json({ ok: false, error: 'Informe ?numeros=2278,2280,...' });
+        const ymd = (d) => d ? new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) : null;
+        const pedidos = await prisma.pedido.findMany({
+            where: { numero: { in: numeros } },
+            select: {
+                numero: true, dataVenda: true, especial: true, bonificacao: true,
+                canalOrigem: true, idVendaContaAzul: true,
+                qtdParcelas: true, intervaloDias: true, primeiroVencimento: true, nomeCondicaoPagamento: true,
+                contaReceber: {
+                    select: {
+                        parcelas: {
+                            orderBy: { numeroParcela: 'asc' },
+                            select: {
+                                id: true, numeroParcela: true, dataVencimento: true, status: true, valor: true,
+                                cobrancasAsaas: {
+                                    where: { tipo: 'BOLETO' },
+                                    orderBy: { createdAt: 'desc' },
+                                    select: { id: true, asaasPaymentId: true, status: true, vencimento: true, valor: true }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        const relatorio = pedidos.map(p => {
+            const dv = ymd(p.dataVenda);
+            return {
+                numero: p.numero, dataVenda: dv, canalOrigem: p.canalOrigem,
+                faturadoLocal: !p.idVendaContaAzul,
+                condicao: p.nomeCondicaoPagamento,
+                qtdParcelas: p.qtdParcelas, intervaloDias: p.intervaloDias,
+                primeiroVencimento: ymd(p.primeiroVencimento),
+                parcelas: (p.contaReceber?.parcelas || []).map(par => ({
+                    numeroParcela: par.numeroParcela, status: par.status, valor: Number(par.valor),
+                    vencimentoParcela: ymd(par.dataVencimento),
+                    vencimentoIgualVenda: ymd(par.dataVencimento) === dv,
+                    boletos: par.cobrancasAsaas.map(c => ({
+                        id: c.id, asaasPaymentId: c.asaasPaymentId, status: c.status,
+                        vencimentoBoleto: ymd(c.vencimento), valor: Number(c.valor)
+                    }))
+                }))
+            };
+        });
+        res.json({ ok: true, hoje: ymd(new Date()), pedidos: relatorio });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;
