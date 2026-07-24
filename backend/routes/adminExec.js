@@ -1602,6 +1602,25 @@ router.get('/diag-extrato-contas', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-extrato-listar?conta=<uuid>&de=YYYY-MM-DD&ate=YYYY-MM-DD
+// SOMENTE LEITURA. Roda o MESMO conciliacaoService.listar() que a tela usa, mas devolve
+// o erro completo (mensagem + stack) quando estoura — a rota real engole tudo num
+// "Erro ao listar o extrato." genérico. Serve para descobrir por que uma conta específica
+// (ex.: ACREDICOOP, cheia de pendentes) quebra a listagem.
+router.get('/diag-extrato-listar', async (req, res) => {
+    try {
+        const conciliacaoService = require('../services/conciliacaoBancariaService');
+        const conta = String(req.query.conta || '').trim();
+        const de = String(req.query.de || '').trim();
+        const ate = String(req.query.ate || '').trim();
+        if (!conta || !de || !ate) return res.status(400).json({ error: 'Passe ?conta=<uuid>&de=YYYY-MM-DD&ate=YYYY-MM-DD' });
+        const dados = await conciliacaoService.listar({ contaFinanceiraCaId: conta, de, ate, status: 'todos' });
+        res.json({ ok: true, resumo: dados.resumo, totalLancamentos: dados.lancamentos.length });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message, stack: (e.stack || '').split('\n').slice(0, 12) });
+    }
+});
+
 // GET /api/admin-exec/diag-conciliacao-asaas-causas — SOMENTE LEITURA: para cada
 // crédito PENDENTE da conta Asaas, roda o matching REAL (candidatosPara) e localiza
 // a baixa "ideal" pelo pay_ do extrato (refNum → cobrança → parcela), explicando a
@@ -4545,6 +4564,97 @@ router.post('/ca-extrato-conciliacao-limpar', async (req, res) => {
             }, { timeout: 20000, maxWait: 10000 });
         }
         res.json({ ok: true, removidas });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// GET/POST /api/admin-exec/ca-ofx-duplicados — OFX do CA importado por cima das
+// linhas automáticas (ca-*) duplica os movimentos (FITIDs diferentes). GET analisa:
+// casa cada linha do(s) OFX recente(s) com a linha derivada (mesmo sentido/valor
+// ±0,01 em ±2 dias; crédito de boleto também casa LÍQUIDO = bruto − R$1,50).
+// POST {aplicar:true} remove as linhas OFX PENDENTES que são duplicata (a linha
+// derivada, já conciliada, fica). Linha OFX sem par (tarifa, crédito sem baixa)
+// nunca é tocada. ?dias= janela das importações (padrão 7).
+router.all('/ca-ofx-duplicados', async (req, res) => {
+    try {
+        const dias = Number(req.query.dias || req.body?.dias) || 7;
+        const aplicar = req.method === 'POST' && req.body?.aplicar === true;
+        const conta = await prisma.contaFinanceira.findFirst({
+            where: { nomeBanco: { contains: 'conta azul', mode: 'insensitive' }, ativo: true }, select: { id: true }
+        });
+        if (!conta) return res.status(400).json({ ok: false, error: 'Conta do CA não encontrada' });
+
+        const importacoes = await prisma.extratoImportacao.findMany({
+            where: {
+                contaFinanceiraCaId: conta.id,
+                nomeArquivo: { not: 'Conta Azul (automático)' },
+                criadoEm: { gte: new Date(Date.now() - dias * 86400000) }
+            },
+            select: { id: true, nomeArquivo: true, criadoEm: true, totalArquivo: true, novos: true }
+        });
+        if (!importacoes.length) return res.json({ ok: true, importacoes: [], mensagem: `Nenhuma importação manual na conta CA nos últimos ${dias} dias.` });
+
+        const ofx = await prisma.extratoLancamento.findMany({
+            where: { importacaoId: { in: importacoes.map(i => i.id) } },
+            select: { id: true, fitId: true, data: true, valor: true, tipo: true, status: true, descricao: true }
+        });
+        const datasOfx = ofx.map(l => new Date(l.data).getTime());
+        const derivadas = await prisma.extratoLancamento.findMany({
+            where: {
+                contaFinanceiraCaId: conta.id,
+                fitId: { startsWith: 'ca-' },
+                data: { gte: new Date(Math.min(...datasOfx) - 3 * 86400000), lte: new Date(Math.max(...datasOfx) + 3 * 86400000) }
+            },
+            select: { id: true, data: true, valor: true, tipo: true }
+        });
+        const pool = derivadas.map(d => ({ t: new Date(d.data).getTime(), valor: Number(d.valor), tipo: d.tipo, usada: false }));
+        const casaCom = (l) => {
+            const t = new Date(l.data).getTime();
+            const v = Number(l.valor);
+            let p = pool.find(x => !x.usada && x.tipo === l.tipo && Math.abs(x.valor - v) <= 0.01 && Math.abs(x.t - t) <= 2 * 86400000);
+            if (p) { p.usada = true; return 'exata'; }
+            if (l.tipo === 'CREDITO') {
+                p = pool.find(x => !x.usada && x.tipo === 'CREDITO' && (x.valor - v) >= 1.49 && (x.valor - v) <= 1.51 && Math.abs(x.t - t) <= 2 * 86400000);
+                if (p) { p.usada = true; return 'tarifaBoleto'; }
+            }
+            return null;
+        };
+
+        const dupExata = [], dupTarifa = [], semPar = [], conciliadasNaoTocadas = [];
+        for (const l of ofx) {
+            const tipoDup = casaCom(l);
+            const item = { id: l.id, data: new Date(l.data).toISOString().slice(0, 10), valor: Number(l.valor), tipo: l.tipo, descricao: (l.descricao || '').slice(0, 60), status: l.status };
+            if (!tipoDup) { semPar.push(item); continue; }
+            if (l.status !== 'PENDENTE') { conciliadasNaoTocadas.push({ ...item, seria: tipoDup }); continue; }
+            (tipoDup === 'exata' ? dupExata : dupTarifa).push(item);
+        }
+
+        let removidas = 0;
+        if (aplicar) {
+            const ids = [...dupExata, ...dupTarifa].map(l => l.id);
+            if (ids.length) {
+                const r = await prisma.extratoLancamento.deleteMany({ where: { id: { in: ids }, status: 'PENDENTE' } });
+                removidas = r.count;
+            }
+        }
+
+        const soma = (arr) => Math.round(arr.reduce((s, l) => s + l.valor, 0) * 100) / 100;
+        res.json({
+            ok: true, aplicado: aplicar, removidas,
+            importacoes,
+            resumo: {
+                linhasOfx: ofx.length,
+                duplicadasExatas: { n: dupExata.length, total: soma(dupExata) },
+                duplicadasBoletoLiquido: { n: dupTarifa.length, total: soma(dupTarifa), tarifasEmbutidas: Math.round(dupTarifa.length * 1.5 * 100) / 100 },
+                semPar: { n: semPar.length, total: soma(semPar) },
+                jaConciliadasNaoTocadas: conciliadasNaoTocadas.length
+            },
+            duplicadasExatas: dupExata.slice(0, 60),
+            duplicadasBoletoLiquido: dupTarifa.slice(0, 60),
+            semPar: semPar.slice(0, 60),
+            jaConciliadasNaoTocadas: conciliadasNaoTocadas.slice(0, 20)
+        });
     } catch (e) {
         res.status(500).json({ ok: false, error: e.message });
     }
