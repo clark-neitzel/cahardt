@@ -474,7 +474,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                 <div className="px-4 py-4 border-b border-gray-100 flex items-center justify-between bg-house text-white rounded-t-xl">
                     <div className="flex flex-col flex-1 truncate">
                         <span className="text-xs uppercase font-bold text-white/60 tracking-wider">Check-in de Doca</span>
-                        <h3 className="text-lg font-bold truncate leading-tight">{pedido.cliente?.NomeFantasia}</h3>
+                        <h3 className="text-lg font-bold truncate leading-tight">{pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}</h3>
                         <p className="text-xs text-white/70 font-mono">Ped #{pedido.numero || 'X'} / Emb: #{pedido.embarque?.numero}</p>
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                             <span className="text-sm font-black text-white">R$ {pedido.itens.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0).toFixed(2)}</span>

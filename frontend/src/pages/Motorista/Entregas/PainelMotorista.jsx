@@ -137,7 +137,7 @@ const PainelMotorista = () => {
                                                     {entrega.prioridadeEntrega}
                                                 </span>
                                             )}
-                                            <h3 className="text-lg font-bold text-gray-900 leading-tight truncate">{entrega.cliente?.NomeFantasia}</h3>
+                                            <h3 className="text-lg font-bold text-gray-900 leading-tight truncate">{entrega.cliente?.NomeFantasia || entrega.cliente?.Nome}</h3>
                                         </div>
                                         <p className="text-xs text-gray-500 line-clamp-2">
                                             <MapPin className="inline h-3 w-3 mr-1" />
