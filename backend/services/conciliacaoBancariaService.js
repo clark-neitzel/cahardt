@@ -737,7 +737,16 @@ async function pistasDeDebito(linhasDebito) {
  * valorBaixa, tarifa, fecha, motivo }.
  */
 async function _identificarPendentes(linhas, usados) {
-    const alvo = linhas.filter((l) => l.status === 'PENDENTE' && l.tipo === 'CREDITO' && l.checkNum && /^\d+$/.test(String(l.checkNum)));
+    // pedido.numero é INT4 no Postgres (máx 2.147.483.647). Extratos de banco (OFX) trazem no
+    // CHECKNUM o nº do documento do próprio banco, que pode ser bem maior que isso (ex.: 9901020002)
+    // — não é "Venda NNNN". Passar um valor fora da faixa do INT4 no `in` derruba a query inteira
+    // (ConversionError) e some com o extrato. Só considera CHECKNUM que caiba como número de pedido.
+    const MAX_INT4 = 2147483647;
+    const alvo = linhas.filter((l) => {
+        if (!(l.status === 'PENDENTE' && l.tipo === 'CREDITO' && l.checkNum && /^\d+$/.test(String(l.checkNum)))) return false;
+        const n = Number(l.checkNum);
+        return Number.isSafeInteger(n) && n >= 1 && n <= MAX_INT4;
+    });
     if (alvo.length === 0) return new Map();
     const numeros = [...new Set(alvo.map((l) => Number(l.checkNum)))];
     const pedidos = await prisma.pedido.findMany({
