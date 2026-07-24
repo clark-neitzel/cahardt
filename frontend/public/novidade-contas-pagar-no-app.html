@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Contas a Pagar 100% no App — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem = cartão compacto) -->
+<meta property="og:title" content="💳 Contas a Pagar agora é 100% no Hardt App">
+<meta property="og:description" content="As despesas não vão mais para o Conta Azul — lançar, pagar e estornar acontece tudo aqui. O jeito de usar continua o mesmo. Veja o que muda.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --cream: #f2f0eb; --gold: #cba258;
+    --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cream); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 88px; text-align: center; }
+  .hero .tag { display: inline-block; background: var(--gold); color: #1E3932; font-weight: 800; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; padding: 6px 14px; border-radius: 999px; }
+  .hero h1 { font-size: 27px; margin: 14px 0 8px; font-weight: 800; }
+  .hero p { margin: 0 auto; max-width: 470px; color: #cfe0d9; font-size: 15.5px; }
+  .cartao { background: #fff; border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.07); padding: 20px; margin-top: 16px; }
+  .cartao.primeiro { margin-top: -60px; }
+  .mock { background: #f8f7f4; border: 1px solid #e5e3dd; border-radius: 12px; padding: 14px; font-size: 13.5px; margin: 12px 0; }
+  .mock .linha { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 4px; border-bottom: 1px dashed #e2e0da; }
+  .mock .linha:last-child { border-bottom: none; }
+  .badge { font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .b-cinza { background: #eceae5; color: #57534e; }
+  .b-verde { background: #d1fae5; color: #065f46; }
+  .b-amar { background: #fef3c7; color: #92400e; }
+  .b-roxa { background: #ede9fe; color: #5b21b6; }
+  .acc { border: 1px solid #e7e5e0; border-radius: 14px; margin-top: 12px; background: #fff; overflow: hidden; }
+  .acc summary { cursor: pointer; list-style: none; padding: 15px 18px; font-weight: 800; font-size: 15px; color: var(--house); display: flex; align-items: center; gap: 10px; }
+  .acc summary::-webkit-details-marker { display: none; }
+  .acc summary .seta { margin-left: auto; transition: transform .2s; color: #9ca3af; }
+  .acc[open] summary .seta { transform: rotate(180deg); }
+  .acc .corpo { padding: 0 18px 16px; font-size: 14.5px; color: #3f4a46; }
+  .passos { counter-reset: p; padding: 0; margin: 10px 0 0; list-style: none; }
+  .passos li { counter-increment: p; position: relative; padding: 8px 0 8px 40px; }
+  .passos li::before { content: counter(p); position: absolute; left: 0; top: 8px; width: 26px; height: 26px; border-radius: 999px; background: var(--primary); color: #fff; font-weight: 800; font-size: 13px; display: flex; align-items: center; justify-content: center; }
+  .atencao { background: #fef3c7; border: 1px solid #fde68a; color: #92400e; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; font-weight: 600; margin-top: 12px; }
+  h2.secao { font-size: 13px; text-transform: uppercase; letter-spacing: .14em; color: var(--ink-soft); margin: 28px 4px 2px; }
+  b { color: var(--house); }
+  /* Mock de tela do app com pins numerados */
+  .tela { border: 2px solid #e2e0da; border-radius: 14px; overflow: hidden; margin: 14px 0 8px; box-shadow: 0 3px 12px rgba(0,0,0,.06); }
+  .tela .barra { background: var(--house); color: #fff; padding: 10px 12px; font-weight: 800; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+  .app-card { background: #fff; padding: 14px; }
+  .campo { margin: 10px 0; }
+  .campo .rot { font-size: 12px; font-weight: 700; color: #6b7280; margin-bottom: 4px; display: block; }
+  .campo .cx { border: 1px solid #d5d3cd; border-radius: 8px; padding: 9px 11px; font-size: 13.5px; color: #374151; background: #fbfaf8; }
+  .checkbox-box { border: 1px solid var(--mint); background: #eef7f3; border-radius: 10px; padding: 12px; }
+  .checkbox-box .top { display: flex; align-items: center; gap: 9px; font-weight: 800; color: var(--house); font-size: 14px; }
+  .checkbox-box .top .cb { width: 17px; height: 17px; border-radius: 4px; background: var(--primary); color:#fff; font-size:12px; display:flex; align-items:center; justify-content:center; font-weight:900; }
+  .toggles { display: flex; gap: 8px; margin-top: 10px; }
+  .toggles .t { flex: 1; text-align: center; border: 1px solid #d5d3cd; border-radius: 8px; padding: 8px; font-size: 12.5px; font-weight: 700; color: #6b7280; background:#fff; }
+  .toggles .t.on { border-color: var(--primary); color: var(--primary-dark); background:#fff; box-shadow: inset 0 0 0 1px var(--primary); }
+  .pin { display: inline-flex; width: 20px; height: 20px; border-radius: 999px; background: var(--gold); color: #3a2c07; font-weight: 900; font-size: 12px; align-items: center; justify-content: center; margin-right: 6px; vertical-align: middle; }
+  .legenda { display: flex; gap: 9px; align-items: flex-start; font-size: 13.5px; color: #3f4a46; margin: 9px 2px; }
+  .btn-primary { display:inline-block; background: var(--primary); color:#fff; font-weight:800; font-size:13px; padding: 9px 16px; border-radius: 999px; margin-top: 4px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="tag">Financeiro · 24/07</span>
+  <h1>💳 Contas a Pagar agora é 100% no App</h1>
+  <p>Última peça do financeiro a sair do Conta Azul: as <b style="color:#fff">despesas não vão mais para lá</b>. Lançar, pagar, quitar em lote e estornar — tudo acontece e fica registrado <b style="color:#fff">dentro do app</b>. O jeito de usar continua o mesmo.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao primeiro">
+    <b>O resumo em 15 segundos:</b>
+    <div class="mock">
+      <div class="linha"><span>Lançar despesa (manual ou da nota fiscal)</span><span class="badge b-verde">fica no app</span></div>
+      <div class="linha"><span>Pagar / quitar em lote / estornar</span><span class="badge b-verde">no app</span></div>
+      <div class="linha"><span>Aparece no Conta Azul depois de lançar?</span><span class="badge b-cinza">NÃO</span></div>
+      <div class="linha"><span>Despesas antigas e da contadora</span><span class="badge b-roxa">importadas p/ cá</span></div>
+    </div>
+    Quem lança nota e paga conta <b>não precisa aprender nada novo</b> — os mesmos botões, no mesmo lugar. A única diferença: <b>não precisa mais conferir nada no Conta Azul</b>.
+  </div>
+
+  <h2 class="secao">A tela de Nova Despesa</h2>
+
+  <div class="cartao">
+    <div class="tela">
+      <div class="barra">💳 Contas a Pagar · Nova Despesa</div>
+      <div class="app-card">
+        <div class="campo"><span class="rot">Fornecedor</span><div class="cx">Distribuidora Exemplo Ltda</div></div>
+        <div class="campo"><span class="rot">Descrição · Categoria · Parcelas</span><div class="cx">NF 1234 · Embalagens · 1x R$ 480,00 (venc. 05/08)</div></div>
+        <div class="campo">
+          <div class="checkbox-box">
+            <div class="top"><span class="cb">✓</span> Registrar forma de pagamento e banco <span style="margin-left:auto" class="pin">1</span></div>
+            <div style="display:flex; gap:8px; margin-top:10px;">
+              <div class="cx" style="flex:1">Forma: PIX</div>
+              <div class="cx" style="flex:1">Banco/caixa: Caixinha <span class="pin">2</span></div>
+            </div>
+            <div class="toggles">
+              <div class="t on">Ainda vou pagar</div>
+              <div class="t">Já paguei <span class="pin">3</span></div>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:right"><span class="btn-primary">Salvar despesa</span></div>
+      </div>
+    </div>
+
+    <div class="legenda"><span class="pin">1</span><div>Antes escrito <i>"Enviar para a Conta Azul"</i>, agora é <b>"Registrar forma de pagamento e banco"</b>. É opcional — marque para dizer <b>como</b> e de <b>onde</b> vai sair o dinheiro.</div></div>
+    <div class="legenda"><span class="pin">2</span><div>A <b>forma</b> e o <b>banco/caixa</b> alimentam os <b>Saldos por Conta</b> do app (Caixinha, Asaas, banco…). Continua tudo igual ao que já era.</div></div>
+    <div class="legenda"><span class="pin">3</span><div><b>"Já paguei"</b> (ex.: dinheiro do caixinha): informe a data e a despesa entra <b>já quitada</b>. <b>"Ainda vou pagar"</b> entra em aberto, para dar baixa depois.</div></div>
+  </div>
+
+  <h2 class="secao">O que muda na prática</h2>
+
+  <details class="acc aberto" open>
+    <summary>🧾 Lançar despesa e pagar <span class="seta">▾</span></summary>
+    <div class="corpo">
+      <ol class="passos">
+        <li>Lance a despesa como sempre — manual ou <b>direto da nota fiscal</b> (aba Notas Recebidas).</li>
+        <li>Ela nasce <b>só no app</b>. Não some, não fica "Enviando…", não depende do Conta Azul.</li>
+        <li>Na hora de pagar, dê a <b>baixa</b> normalmente (uma parcela ou várias em lote). O valor pago, a forma e o banco ficam guardados no histórico da conta.</li>
+      </ol>
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary>📚 Histórico e contas da contadora: continuam chegando <span class="seta">▾</span></summary>
+    <div class="corpo">
+      O Conta Azul continua sendo <b>lido</b> para o histórico não se perder:
+      <ol class="passos">
+        <li>Despesas lançadas direto no Conta Azul (folha, DAS, tarifa, boleto digitado pela contadora) <b>chegam sozinhas</b> ao app, como já era.</li>
+        <li>Contas antigas que ainda vivem no Conta Azul e forem pagas por lá (ex.: DDA) têm a <b>baixa refletida aqui</b> automaticamente.</li>
+        <li>O botão <b>"Importar do Conta Azul"</b> (CSV) continua servindo para trazer meses antigos de uma vez.</li>
+      </ol>
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary>✅ E as contas que já estavam lá? <span class="seta">▾</span></summary>
+    <div class="corpo">
+      Nada ficou preso. As despesas e fornecedores que estavam "na fila" ou "com erro" tentando ir ao Conta Azul foram convertidos automaticamente para <b>"só no app"</b>. As contas antigas que <b>já tinham ido</b> ao Conta Azul continuam lá e o app segue lendo as baixas delas normalmente.
+      <div class="atencao">⚠️ De agora em diante, a despesa que você lançar <b>não vai aparecer no Conta Azul</b> — e é assim mesmo. O app é a fonte oficial das contas a pagar.</div>
+    </div>
+  </details>
+
+</div>
+
+</body>
+</html>
