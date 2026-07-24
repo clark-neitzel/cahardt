@@ -40,7 +40,7 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 
 - A lista mostra **50 pedidos por vez**, do mais novo para o mais antigo. Para ver mais, clique em **Carregar mais** no fim da lista (o rodapé mostra "Mostrando X de Y").
 - A **busca** e o **filtro rápido de status** (Aberto/Enviar/Faturado…) valem sobre **todos os pedidos**, não só os que já apareceram na tela — o sistema busca no servidor. As contagens ao lado de cada status também são o total real.
-- O filtro de **data de entrega** começa **limpo**. Se você escolher um período, ele fica **lembrado** para a próxima vez que abrir a tela. O botão **Limpar** zera todos os filtros (inclusive a data) e volta ao normal.
+- Os filtros de data (**Entrega**, **Criação** e **Vencimento**) usam a pílula de período `[‹] [Este mês ▾] [›]`: clique no meio para escolher um período pronto (Hoje · Últimos 7 dias · Últimos 30 dias · Este mês · Este ano · Todo o período · Período personalizado com De/Até) e use as setas **‹ ›** para pular o período inteiro (um dia, uma semana, um mês…). Os três começam em **Todo o período** (sem limite). A escolha fica **lembrada** para a próxima vez que abrir a tela — sempre recalculada (ex.: "Hoje" salvo ontem abre mostrando o dia de hoje). Quando um filtro está diferente do padrão, a pílula fica com **borda verde**. O botão **Limpar** zera todos os filtros (inclusive os períodos) e volta ao normal.
 - A busca por texto encontra por **cliente, cidade, vendedor, documento ou número** (ex.: `123`, `ZZ#45`, `BN#7`). Não busca mais pelo valor total do pedido.
 
 ---

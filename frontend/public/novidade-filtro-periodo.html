@@ -7,7 +7,7 @@
 <link rel="icon" href="/logo-192.png">
 <!-- Preview do link no WhatsApp -->
 <meta property="og:title" content="📅 Novidade no Hardt App: Filtro de Período">
-<meta property="og:description" content="Filtro de datas novo em Contas a Pagar: atalhos (Hoje, 7 dias, Este mês...), setas que pulam o mês inteiro e a sua escolha fica salva. Veja como funciona — tem demonstração!">
+<meta property="og:description" content="O filtro de datas novo chegou na tela de Pedidos: Entrega, Criação e Vencimento com atalhos (Hoje, 7 dias, Este mês...), setas que pulam o período e a sua escolha fica salva. Veja como funciona — tem demonstração!">
 <meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
 <meta property="og:type" content="website">
 <style>
@@ -87,6 +87,27 @@
   .passo p { margin:3px 0 0; font-size:14.5px; color:#3f4a46; }
   .passo b { color:var(--house); }
   .rodape { text-align:center; color:var(--ink-soft); font-size:12.5px; margin-top:34px; }
+
+  /* ── MOCKUP DA TELA ── */
+  .tela { background:#f7f6f2; border:1px solid #e5e7eb; border-radius:14px; padding:14px; margin-top:12px; }
+  .app-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; }
+  .mock-label { font-size:9.5px; font-weight:800; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; margin:0 0 4px; display:flex; align-items:center; gap:6px; }
+  .mock-fp { position:relative; display:flex; align-items:stretch; height:38px; background:#fff; border:1.5px solid #d1d5db; border-radius:9999px; }
+  .mock-fp.verde { border-color:var(--primary); }
+  .mock-fp .s { width:34px; display:flex; align-items:center; justify-content:center; color:var(--primary); font-weight:800; font-size:16px; }
+  .mock-fp .m { flex:1; display:flex; align-items:center; justify-content:center; gap:6px; border-left:1px solid #e5e7eb; border-right:1px solid #e5e7eb; font-size:12.5px; font-weight:800; color:var(--house); white-space:nowrap; overflow:hidden; }
+  .mock-fp.verde .m { color:var(--primary-dark); }
+  .mock-fp .m small { color:#6b7280; font-weight:400; font-size:11px; }
+  .mock-fp .m .v { color:#9ca3af; font-size:9px; }
+  .mock-grid { display:grid; gap:10px; margin-top:2px; }
+  .pin { position:absolute; top:-9px; right:-6px; width:22px; height:22px; border-radius:999px; background:var(--gold); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,.25); z-index:5; }
+  .pin.p3 { top:auto; bottom:-9px; right:40%; }
+  .legenda { margin-top:14px; }
+  .legenda .item { display:flex; gap:10px; margin-top:9px; font-size:13.5px; color:#3f4a46; }
+  .legenda .item b { color:var(--house); }
+  .legenda .num { flex:none; width:22px; height:22px; border-radius:999px; background:var(--gold); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; margin-top:1px; }
 </style>
 </head>
 <body>
@@ -94,7 +115,7 @@
 <div class="hero">
   <span class="chip">✨ Novidade no app</span>
   <h1>📅 Filtro de Período novo</h1>
-  <p>Escolher as datas ficou rápido: atalhos prontos, setas que pulam o mês inteiro e o app <b>lembra a sua escolha</b>. Já está no ar em <b>Contas a Pagar</b>.</p>
+  <p>Escolher as datas ficou rápido: atalhos prontos, setas que pulam o mês inteiro e o app <b>lembra a sua escolha</b>. Já está em <b>Contas a Pagar</b> e agora chegou na tela de <b>Pedidos</b> (Entrega, Criação e Vencimento).</p>
 </div>
 
 <div class="wrap">
@@ -138,29 +159,77 @@
         Antes eram dois campos de data soltos ("De" e "Até") que você tinha que digitar toda vez. Agora é <b>um controle só</b>, igual ao do Conta Azul: toca no meio e escolhe um atalho pronto — <b>Hoje, Últimos 7 dias, Últimos 30 dias, Este mês, Este ano, Todo o período</b> — ou monta um período personalizado.
       </div>
     </details>
-    <details>
+    <details open>
       <summary>As setas ‹ › pulam o período inteiro <span class="mais">+</span></summary>
       <div class="det-corpo">
         Está vendo <b>"Este mês"</b> e quer conferir junho? Toca na seta <b>‹</b> uma vez — o filtro vira <b>junho/2026</b> completinho (1º ao último dia). Em "Últimos 7 dias" as setas andam de 7 em 7; em "Hoje", dia a dia. Sem abrir calendário, sem digitar data.
       </div>
     </details>
-    <details>
+    <details open>
       <summary>O app lembra a sua escolha <span class="mais">+</span></summary>
       <div class="det-corpo">
         O atalho que você deixar escolhido <b>fica salvo para você</b> (cada usuário tem o seu). E é esperto: quem deixa "Este mês" salvo <b>sempre abre no mês corrente</b> — em agosto a tela já abre em agosto, ninguém fica preso numa data velha. O status e a categoria também continuam salvos, como já era.
       </div>
     </details>
-    <details>
+    <details open>
+      <summary>Agora também na tela de Pedidos <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Os três filtros de data de <b>Pedidos</b> — <b>Entrega, Criação e Vencimento</b> — agora usam este controle (antes eram seis campos de data para digitar). Os três começam em <b>"Todo o período"</b>, igual a antes, que começava sem datas. Vale para todas as sub-abas: Pedidos, Especiais, Bonificação, Amostras e Devoluções (que segue o filtro de Entrega). O botão <b>Limpar</b> continua zerando tudo de uma vez.
+      </div>
+    </details>
+    <details open>
       <summary>Vai chegar nas outras telas <span class="mais">+</span></summary>
       <div class="det-corpo">
-        Esse formato virou o <b>padrão do sistema</b>. Começou por <b>Contas a Pagar</b> e, conforme formos mexendo em cada tela (Contas a Receber, Caixa, relatórios…), o filtro de data vai sendo trocado por este.
+        Esse formato virou o <b>padrão do sistema</b>. Começou por <b>Contas a Pagar</b>, agora está em <b>Pedidos</b> e, conforme formos mexendo em cada tela (Contas a Receber, Caixa, relatórios…), o filtro de data vai sendo trocado por este.
       </div>
     </details>
   </div>
 
   <div class="cartao sec">
+    <p class="sec-titulo">📱 A tela de Pedidos com o filtro novo</p>
+    <div class="tela">
+      <div class="app-card">
+        <div class="mock-grid">
+          <div>
+            <p class="mock-label">📅 Entrega</p>
+            <div class="mock-fp verde">
+              <span class="pin">1</span>
+              <span class="s">‹</span>
+              <span class="m">Hoje <small>24/07</small> <span class="v">▼</span></span>
+              <span class="s">›</span>
+            </div>
+          </div>
+          <div>
+            <p class="mock-label">📅 Criação</p>
+            <div class="mock-fp">
+              <span class="pin">2</span>
+              <span class="pin p3">3</span>
+              <span class="s">‹</span>
+              <span class="m">Todo o período <span class="v">▼</span></span>
+              <span class="s">›</span>
+            </div>
+          </div>
+          <div>
+            <p class="mock-label">📅 Vencimento</p>
+            <div class="mock-fp">
+              <span class="s">‹</span>
+              <span class="m">Todo o período <span class="v">▼</span></span>
+              <span class="s">›</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="legenda">
+        <div class="item"><span class="num">1</span><p style="margin:0"><b>Filtro em uso</b>: quando o período está diferente do padrão, a pílula fica com <b>borda verde</b> — bate o olho e sabe que a lista está filtrada (aqui, Entrega = Hoje).</p></div>
+        <div class="item"><span class="num">2</span><p style="margin:0"><b>Setas ‹ ›</b>: pulam o período inteiro (dia, semana, mês…). Em "Todo o período" ficam desligadas.</p></div>
+        <div class="item"><span class="num">3</span><p style="margin:0"><b>Toque no meio</b> para abrir os atalhos: Hoje · Últimos 7 dias · Últimos 30 dias · Este mês · Este ano · Todo o período · Período personalizado (com De/Até).</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cartao sec">
     <p class="sec-titulo">🚀 Para usar</p>
-    <div class="passo"><div class="num">1</div><p>Abra <b>Financeiro → Contas a Pagar</b>.</p></div>
+    <div class="passo"><div class="num">1</div><p>Abra <b>Pedidos</b> e toque no <b>funil de filtros</b> (ao lado da busca) — ou <b>Financeiro → Contas a Pagar</b>, que já tem o controle.</p></div>
     <div class="passo"><div class="num">2</div><p>Toque no <b>período</b> (no meio do controle novo) e escolha um atalho — ou "Período personalizado" para datas livres.</p></div>
     <div class="passo"><div class="num">3</div><p>Use as <b>setas ‹ ›</b> para voltar/avançar o período inteiro. Pronto — sua escolha fica guardada para a próxima vez.</p></div>
   </div>

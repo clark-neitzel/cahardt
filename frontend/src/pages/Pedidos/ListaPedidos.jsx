@@ -6,6 +6,7 @@ import api, { API_URL } from '../../services/api';
 import amostraService from '../../services/amostraService';
 import vendedorService from '../../services/vendedorService';
 import SelectBusca from '../../components/SelectBusca';
+import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -37,48 +38,36 @@ const CaIcon = ({ className }) => (
     </svg>
 );
 
-const DateRangeField = ({ icon, label, de, ate, onDe, onAte }) => (
-    <div>
-        <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1 mb-0.5">
-            {icon} {label}
-        </label>
-        <div className="flex items-center gap-1">
-            <input
-                type="date"
-                value={de}
-                onChange={e => onDe(e.target.value)}
-                className="w-full min-w-0 border border-gray-200 rounded px-1.5 py-1.5 text-[11px] focus:border-primary focus:ring-0"
-            />
-            <span className="text-gray-300 text-[10px]">→</span>
-            <input
-                type="date"
-                value={ate}
-                onChange={e => onAte(e.target.value)}
-                className="w-full min-w-0 border border-gray-200 rounded px-1.5 py-1.5 text-[11px] focus:border-primary focus:ring-0"
-            />
-        </div>
-    </div>
-);
-
 const ListaPedidos = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user } = useAuth();
     const [highlightId, setHighlightId] = useState(null);
     
-    // Filtros persistentes por usuário/tela. Entrega começa LIMPA (padrão vazio) e,
-    // por ser vazio, pode ser lembrada se o usuário digitar uma data. Busca livre NÃO persiste.
+    // Filtros persistentes por usuário/tela. Busca livre NÃO persiste.
     const [filtros, setFiltros] = useFiltrosSalvos('lista-pedidos', {
-        dataEntregaDe: '',
-        dataEntregaAte: '',
-        dataCriacaoDe: '',
-        dataCriacaoAte: '',
-        vencimentoDe: '',
-        vencimentoAte: '',
         embarqueNumero: '',
         motorista: '',
         vendedorId: ''
     });
+
+    // Datas em FiltroPeriodo (persistem o PRESET por usuário). Padrão: sem limite.
+    const [perEntrega, ctlEntrega] = usePeriodoSalvo('lista-pedidos:entrega', 'todo');
+    const [perCriacao, ctlCriacao] = usePeriodoSalvo('lista-pedidos:criacao', 'todo');
+    const [perVencimento, ctlVencimento] = usePeriodoSalvo('lista-pedidos:vencimento', 'todo');
+
+    // Objeto no formato antigo (dataEntregaDe/Ate...) consumido pelas buscas e pelo
+    // ListaDevolucoes. Sobrescreve qualquer data absoluta que tenha ficado salva no
+    // localStorage da era dos inputs de data.
+    const filtrosComDatas = React.useMemo(() => ({
+        ...filtros,
+        dataEntregaDe: perEntrega.de,
+        dataEntregaAte: perEntrega.ate,
+        dataCriacaoDe: perCriacao.de,
+        dataCriacaoAte: perCriacao.ate,
+        vencimentoDe: perVencimento.de,
+        vencimentoAte: perVencimento.ate,
+    }), [filtros, perEntrega, perCriacao, perVencimento]);
     const [busca, setBusca] = useState('');
     const [buscaServer, setBuscaServer] = useState('');
     const debounceRef = useRef(null);
@@ -303,13 +292,13 @@ const ListaPedidos = () => {
     // Recarrega a 1ª página sempre que aba, filtros, status ou busca (debounced) mudam
     useEffect(() => {
         setPagina(1);
-        carregar(1, abaAtiva, filtros, filtroStatus, buscaServer);
-    }, [carregar, abaAtiva, filtros, filtroStatus, buscaServer]);
+        carregar(1, abaAtiva, filtrosComDatas, filtroStatus, buscaServer);
+    }, [carregar, abaAtiva, filtrosComDatas, filtroStatus, buscaServer]);
 
     const carregarMais = () => {
         const nova = pagina + 1;
         setPagina(nova);
-        carregar(nova, abaAtiva, filtros, filtroStatus, buscaServer);
+        carregar(nova, abaAtiva, filtrosComDatas, filtroStatus, buscaServer);
     };
 
     const handleBuscaChange = (valor) => {
@@ -597,22 +586,23 @@ const ListaPedidos = () => {
         setLoteModal({ pedidoIds: idsArray });
     };
 
-    // Padrão = tudo limpo (entrega inclusive). "Limpar" volta a este estado.
+    // Padrão = tudo limpo (períodos inclusive). "Limpar" volta a este estado.
     const filtrosPadrao = React.useMemo(() => (
-        { dataEntregaDe: '', dataEntregaAte: '', dataCriacaoDe: '', dataCriacaoAte: '', vencimentoDe: '', vencimentoAte: '', embarqueNumero: '', motorista: '', vendedorId: '' }
+        { embarqueNumero: '', motorista: '', vendedorId: '' }
     ), []);
 
     const isFiltroAtivo = React.useMemo(() => {
         if (filtros.vendedorId) return true;
-        if (filtros.dataEntregaDe || filtros.dataEntregaAte) return true;
-        if (filtros.dataCriacaoDe || filtros.dataCriacaoAte) return true;
-        if (filtros.vencimentoDe || filtros.vencimentoAte) return true;
+        if (!perEntrega.padrao || !perCriacao.padrao || !perVencimento.padrao) return true;
         if (filtros.embarqueNumero || filtros.motorista) return true;
         return false;
-    }, [filtros]);
+    }, [filtros, perEntrega, perCriacao, perVencimento]);
 
     const limparFiltros = () => {
         setFiltros({ ...filtrosPadrao });
+        ctlEntrega.limpar();
+        ctlCriacao.limpar();
+        ctlVencimento.limpar();
         setBusca('');
         setBuscaServer('');
         setFiltroStatus('TODOS');
@@ -671,30 +661,24 @@ const ListaPedidos = () => {
             {showFilters && (
                 <div className="mb-3 bg-white p-3 rounded-xl border border-gray-200 shadow-sm animate-in fade-in slide-in-from-top-2 space-y-2">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <DateRangeField
-                            icon={<Calendar className="h-3 w-3" />}
-                            label="Entrega"
-                            de={filtros.dataEntregaDe}
-                            ate={filtros.dataEntregaAte}
-                            onDe={v => setFiltros(p => ({ ...p, dataEntregaDe: v }))}
-                            onAte={v => setFiltros(p => ({ ...p, dataEntregaAte: v }))}
-                        />
-                        <DateRangeField
-                            icon={<Calendar className="h-3 w-3" />}
-                            label="Criação"
-                            de={filtros.dataCriacaoDe}
-                            ate={filtros.dataCriacaoAte}
-                            onDe={v => setFiltros(p => ({ ...p, dataCriacaoDe: v }))}
-                            onAte={v => setFiltros(p => ({ ...p, dataCriacaoAte: v }))}
-                        />
-                        <DateRangeField
-                            icon={<Calendar className="h-3 w-3" />}
-                            label="Vencimento"
-                            de={filtros.vencimentoDe}
-                            ate={filtros.vencimentoAte}
-                            onDe={v => setFiltros(p => ({ ...p, vencimentoDe: v }))}
-                            onAte={v => setFiltros(p => ({ ...p, vencimentoAte: v }))}
-                        />
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1 mb-0.5">
+                                <Calendar className="h-3 w-3" /> Entrega
+                            </label>
+                            <FiltroPeriodo periodo={perEntrega} controle={ctlEntrega} className="w-full" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1 mb-0.5">
+                                <Calendar className="h-3 w-3" /> Criação
+                            </label>
+                            <FiltroPeriodo periodo={perCriacao} controle={ctlCriacao} className="w-full" />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-gray-500 uppercase flex items-center gap-1 mb-0.5">
+                                <Calendar className="h-3 w-3" /> Vencimento
+                            </label>
+                            <FiltroPeriodo periodo={perVencimento} controle={ctlVencimento} className="w-full" />
+                        </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
@@ -925,7 +909,7 @@ const ListaPedidos = () => {
 
             {/* Conteúdo: Devoluções */}
             {abaAtiva === 'devolucoes' ? (
-                <ListaDevolucoes filtros={filtros} />
+                <ListaDevolucoes filtros={filtrosComDatas} />
             ) : abaAtiva === 'amostras' ? (
                 <div className="bg-white rounded-xl overflow-hidden border border-gray-200 shadow-sm">
                     <div className="divide-y divide-gray-200">
