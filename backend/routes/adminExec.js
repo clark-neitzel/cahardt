@@ -4493,8 +4493,30 @@ router.get('/diag-ca-arquivo', async (req, res) => {
             });
             return res.json({ ok: true, valor: alvo, conta: contaQ, linhasExtrato: linhas, pagamentosApp: pagos });
         }
+        // Modo resumo por CONTA: ?desde=YYYY-MM-DD — para cada banco/caixa, quantas
+        // baixas de receber caíram lá desde a data (nº, soma) + as sem banco informado.
+        // Mostra onde o dinheiro está sendo registrado (ou se falta escolher a conta).
+        if (req.query.desde) {
+            const desde = new Date(`${String(req.query.desde)}T00:00:00-03:00`);
+            const pagos = await prisma.pagamentoParcela.findMany({
+                where: { estornado: false, dataPagamento: { gte: desde } },
+                select: { contaFinanceiraCaId: true, valorRecebido: true, formaPagamento: true, dataPagamento: true }
+            });
+            const bancos = await prisma.contaFinanceira.findMany({ select: { id: true, nomeBanco: true } });
+            const nome = (cid) => cid ? (bancos.find(b => b.id === cid)?.nomeBanco || `(conta ${cid.slice(0, 8)}…)`) : 'SEM BANCO INFORMADO';
+            const porConta = {};
+            for (const p of pagos) {
+                const k = nome(p.contaFinanceiraCaId);
+                porConta[k] = porConta[k] || { baixas: 0, total: 0, formas: {} };
+                porConta[k].baixas++;
+                porConta[k].total = Math.round((porConta[k].total + Number(p.valorRecebido || 0)) * 100) / 100;
+                const f = p.formaPagamento || '?';
+                porConta[k].formas[f] = (porConta[k].formas[f] || 0) + 1;
+            }
+            return res.json({ ok: true, desde: String(req.query.desde), totalBaixas: pagos.length, porConta });
+        }
         const id = String(req.query.parcela || '').trim();
-        if (!id) return res.status(400).json({ error: 'Informe ?parcela=UUID (idParcelaCA) ou ?valor=NN.NN' });
+        if (!id) return res.status(400).json({ error: 'Informe ?parcela=UUID (idParcelaCA), ?valor=NN.NN ou ?desde=YYYY-MM-DD' });
         const arch = await prisma.caReceberImportado.findUnique({ where: { idParcelaCA: id } });
         if (!arch) return res.json({ ok: false, motivo: 'não está no arquivo' });
         const det = arch.dadosDetalhe || null;
