@@ -95,6 +95,7 @@ const ABAS = [
     // ── Estoque ──────────────────────────────────
     { slug: 'estoque-posicao',    nome: 'Estoque — Posição',            rota: '/estoque/posicao',                    perm: 'estoque' },
     { slug: 'estoque-ajuste',     nome: 'Estoque — Ajuste',             rota: '/estoque',                            perm: 'estoque' },
+    { slug: 'estoque-inventario', nome: 'Estoque — Inventário',         rota: '/estoque/inventario',                 perm: 'estoque' },
     { slug: 'estoque-historico',  nome: 'Estoque — Histórico',          rota: '/estoque/historico',                  perm: 'estoque' },
     // ── Configurações ────────────────────────────
     { slug: 'config-gerais',               nome: 'Configurações — Gerais',        rota: '/admin/config',                      perm: 'configuracoes' },

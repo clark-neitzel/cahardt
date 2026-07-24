@@ -119,6 +119,7 @@
 |-----|------|-----------|--------|
 | Estoque — Posição | `/estoque/posicao` | Visão atual do estoque com alertas de mínimo e edição inline | [estoque-posicao.md](estoque-posicao.md) |
 | Estoque — Ajuste | `/estoque/ajuste` | Entrada e saída manual de estoque por produto ou código de barras | [estoque-ajuste.md](estoque-ajuste.md) |
+| Estoque — Inventário | `/estoque/inventario` | Contagem física offline (câmara fria): conta sem internet e envia ao reconectar | [estoque-inventario.md](estoque-inventario.md) |
 | Estoque — Histórico | `/estoque/historico` | Registro completo de todas as movimentações de estoque | [estoque-historico.md](estoque-historico.md) |
 
 ---

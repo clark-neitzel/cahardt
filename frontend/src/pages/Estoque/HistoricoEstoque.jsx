@@ -14,6 +14,7 @@ const MOTIVO_LABEL = {
     REVERSAO_DEVOLUCAO: 'Reversão Devolução',
     CANCELAMENTO: 'Cancelamento',
     EXCLUSAO: 'Exclusão',
+    INVENTARIO: 'Inventário',
 };
 
 const formatDate = (d) => {

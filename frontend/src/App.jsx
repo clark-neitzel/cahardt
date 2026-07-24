@@ -57,6 +57,7 @@ const RelatorioFlex = lazyComRetry(() => import('./pages/Relatorios/RelatorioFle
 const PainelEstoque = lazyComRetry(() => import('./pages/Estoque/PainelEstoque'));
 const HistoricoEstoque = lazyComRetry(() => import('./pages/Estoque/HistoricoEstoque'));
 const PosicaoEstoque = lazyComRetry(() => import('./pages/Estoque/PosicaoEstoque'));
+const InventarioEstoque = lazyComRetry(() => import('./pages/Estoque/InventarioEstoque'));
 const ItensPcp = lazyComRetry(() => import('./pages/PCP/ItensPcp'));
 const ItemPcpForm = lazyComRetry(() => import('./pages/PCP/ItemPcpForm'));
 const ReceitasList = lazyComRetry(() => import('./pages/PCP/ReceitasList'));
@@ -382,6 +383,7 @@ const Layout = ({ children }) => {
     { label: 'Produção / Estoque', icon: Warehouse, items: (showEstoque ? [
       { to: '/estoque/posicao', icon: Warehouse, label: 'Posição' },
       { to: '/estoque', icon: Warehouse, label: 'Ajuste de Estoque' },
+      { to: '/estoque/inventario', icon: ClipboardCheck, label: 'Inventário' },
       { to: '/estoque/historico', icon: History, label: 'Histórico' },
     ] : []) },
     { label: 'Configurações', icon: Settings, items: (showConfig ? [
@@ -753,6 +755,7 @@ function App() {
               {/* Produção / Estoque */}
               <Route path="/estoque" element={<PrivateRoute><PainelEstoque /></PrivateRoute>} />
               <Route path="/estoque/historico" element={<PrivateRoute><HistoricoEstoque /></PrivateRoute>} />
+              <Route path="/estoque/inventario" element={<PrivateRoute><InventarioEstoque /></PrivateRoute>} />
               <Route path="/estoque/posicao" element={<PrivateRoute><PosicaoEstoque /></PrivateRoute>} />
 
               {/* Produtos / Admin */}

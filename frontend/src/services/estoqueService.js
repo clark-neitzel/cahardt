@@ -8,6 +8,7 @@ const estoqueService = {
     atualizarMinimo: (produtoId, estoqueMinimo) => api.patch(`/estoque/produto/${produtoId}/minimo`, { estoqueMinimo }).then(r => r.data),
     recalcular: (produtoId) => api.post(`/estoque/produto/${produtoId}/recalcular`).then(r => r.data),
     getAnaliseDemanda: (params) => api.get('/estoque/analise-demanda', { params }).then(r => r.data),
+    enviarInventario: (dados) => api.post('/estoque/inventario', dados).then(r => r.data),
 };
 
 export default estoqueService;

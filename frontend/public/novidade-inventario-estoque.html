@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Inventário de Estoque (funciona sem internet) — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="❄️ Novidade no Hardt App: Inventário que funciona DENTRO da câmara fria">
+<meta property="og:description" content="Conte o estoque sem internet: cada toque fica salvo no celular e o inventário é enviado sozinho quando conectar. Botões grandes, dá para usar de luva!">
+<meta property="og:image" content="https://cahardt-github.xrqvlq.easypanel.host/logo-512.png">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 96px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow { display: inline-block; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  /* mock flutuante — linha de contagem interativa */
+  .mock { max-width: 420px; margin: -68px auto 28px; background: #fff; border-radius: 20px; box-shadow: 0 18px 44px rgba(20,40,34,.28); overflow: hidden; text-align: left; }
+  .mock-top { background: var(--house); color: #fff; padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+  .mock-top small { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; color: rgba(255,255,255,.55); }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .pill-off { display: flex; align-items: center; gap: 7px; background: #fef3c7; color: #92400e; border-radius: 999px; padding: 8px 14px; font-size: 12.5px; font-weight: 800; margin-bottom: 12px; }
+  .mk-item { border: 1.5px solid #e5e3dc; border-radius: 14px; padding: 12px; }
+  .mk-item.ok { background: var(--mint); border-color: rgba(0,117,74,.3); }
+  .mk-nome { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 14px; font-weight: 700; }
+  .mk-nome small { font-weight: 600; color: var(--ink-soft); font-size: 11px; white-space: nowrap; }
+  .mk-ctl { display: flex; gap: 7px; margin-top: 10px; }
+  .mk-btn { border: none; cursor: pointer; font: inherit; font-weight: 800; border-radius: 12px; min-height: 48px; }
+  .mk-menos { width: 48px; background: #eceae2; color: var(--ink); font-size: 22px; }
+  .mk-mais  { width: 48px; background: var(--primary); color: #fff; font-size: 22px; }
+  .mk-dez   { padding: 0 12px; background: var(--mint); color: var(--primary-dark); font-size: 13px; }
+  .mk-val { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; border: 2px solid #d8d5cc; border-radius: 12px; font-size: 22px; font-weight: 800; background: #fff; font-variant-numeric: tabular-nums; }
+  .mk-item.ok .mk-val { border-color: var(--primary); }
+  .mk-salvo { font-size: 11.5px; font-weight: 700; color: var(--primary-dark); margin-top: 9px; min-height: 16px; }
+
+  .demo-cta { display: block; width: 100%; max-width: 420px; margin: 0 auto 8px; background: var(--primary); color: #fff; border: none; font: inherit; font-size: 16px; font-weight: 800; padding: 16px; border-radius: 999px; cursor: pointer; box-shadow: 0 6px 18px rgba(0,117,74,.35); }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible, .mk-btn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; color: var(--primary-dark); margin: 34px 4px 12px; }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit; text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+  .app-card-body { padding: 12px; }
+  .app-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--primary); color: #fff; font-size: 12.5px; font-weight: 700; padding: 9px 16px; border-radius: 999px; }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-btn.cheio { display: flex; justify-content: center; }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill { font-size: 12px; font-weight: 700; padding: 7px 14px; border-radius: 999px; border: 1.5px solid #d8d5cc; color: #6b756f; background: #fff; }
+  .app-pill.on { background: var(--house); border-color: var(--house); color: #fff; }
+  .cat-linha { display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 2px solid #e5e3dc; border-radius: 12px; padding: 11px 12px; margin-bottom: 8px; font-size: 13px; }
+  .cat-linha.sel { border-color: var(--primary); background: var(--mint); }
+  .cat-linha b { display: block; font-size: 13.5px; }
+  .cat-linha small { color: var(--ink-soft); font-size: 11px; }
+  .radio { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #cfcabe; flex-shrink: 0; }
+  .cat-linha.sel .radio { border-color: var(--primary); background: var(--primary); box-shadow: inset 0 0 0 3px #fff; }
+  .barra { height: 7px; border-radius: 999px; background: #e0ddd3; overflow: hidden; margin: 6px 0 10px; }
+  .barra div { height: 100%; width: 60%; background: var(--primary); border-radius: 999px; }
+  .rev-linha { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f0efe9; font-size: 12.5px; }
+  .rev-linha:last-child { border-bottom: none; }
+  .badge { font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .bg-ok { background: #dcfce7; color: #166534; }
+  .bg-dif { background: #fef3c7; color: #92400e; }
+  .bg-neg { background: #fee2e2; color: #b91c1c; }
+  .aviso-amber { background: #fef3c7; color: #92400e; border-radius: 12px; padding: 11px 13px; font-size: 12.5px; font-weight: 600; }
+  .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Inventário que funciona<br>dentro da câmara fria</h1>
+    <p>Agora dá para contar o estoque no celular <b>sem internet nenhuma</b>: cada toque fica salvo no aparelho e o inventário é enviado sozinho quando o sinal voltar. Botões grandes — dá para usar de luva.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock interativo -->
+  <div class="mock">
+    <div class="mock-top">
+      <span class="mock-ico">📦</span>
+      <div>
+        <small>Estoque · Inventário</small>
+        <strong>Contando na câmara fria…</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="pill-off">✈︎ Sem internet — contagem salva no celular</div>
+      <div class="mk-item" id="mkItem">
+        <div class="mk-nome"><span id="mkNome">Coxinha de Frango</span><small>sistema: 48 un</small></div>
+        <div class="mk-ctl">
+          <button class="mk-btn mk-menos" onclick="mkMudar(-1)">−</button>
+          <div class="mk-val" id="mkVal">0</div>
+          <button class="mk-btn mk-mais" onclick="mkMudar(1)">+</button>
+          <button class="mk-btn mk-dez" onclick="mkMudar(10)">+10</button>
+        </div>
+        <div class="mk-salvo" id="mkSalvo"></div>
+      </div>
+    </div>
+  </div>
+
+  <button class="demo-cta" onclick="document.getElementById('mkItem').scrollIntoView({behavior:'smooth',block:'center'})">👆 Teste os botões aí em cima</button>
+  <p class="demo-hint">É só demonstração — pode apertar à vontade, não mexe no estoque de verdade.</p>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">Como funciona</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📶</span>
+      <strong>1º passo (com internet): baixar a lista</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Antes de entrar na câmara, abra <b>Estoque → Inventário</b>, escolha a <b>categoria</b> que vai contar e toque em <b>"Baixar produtos e iniciar"</b>. A lista de produtos fica guardada no seu celular.</p>
+      <p>É o único momento que precisa de internet (além do envio no final).</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">❄️</span>
+      <strong>Na câmara fria: conte sem medo, sem sinal</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Cada toque é salvo na hora</b> no celular — pode fechar o app, a tela apagar ou a bateria acabar: ao reabrir, a contagem continua de onde parou.</li>
+        <li>Botões <b>− / + gigantes</b> e <b>+10</b> para caixas fechadas. Também dá para digitar o número direto.</li>
+        <li><b>Busca</b> por nome e filtros <b>"Faltam contar / Contados"</b>, com barra de progresso para saber quanto falta antes de sair do frio.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📤</span>
+      <strong>De volta ao sinal: envia sozinho</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Na revisão você vê as <b>diferenças</b> entre o que contou e o que o sistema tinha (verde = confere, âmbar/vermelho = diferença) e toca em <b>"Enviar inventário"</b>.</p>
+      <p>Se ainda estiver sem internet, aparece <b>"Inventário guardado no celular"</b> — pode guardar o aparelho no bolso: ele envia sozinho assim que conectar. E reenviar <b>nunca duplica</b> o ajuste.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📒</span>
+      <strong>Tudo fica registrado no histórico</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>O estoque é ajustado para o valor contado e cada ajuste aparece em <b>Estoque → Histórico</b> com o motivo <b>"Inventário"</b> (quem contou, quando, antes → depois).</li>
+        <li>Produto que <b>confere</b> com o sistema não gera ajuste nenhum.</li>
+        <li>Produto que você <b>não contou fica de fora</b> — o estoque dele não muda.</li>
+        <li>As reservas de pedidos continuam valendo: o disponível é recalculado sozinho.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 — Escolher a categoria</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="cat-linha"><span><b>Fritos</b><small>12 produtos</small></span><span class="radio"></span></div>
+          <div class="cat-linha sel"><span><b>Congelados<span class="pin">1</span></b><small>34 produtos</small></span><span class="radio"></span></div>
+          <div class="cat-linha"><span><b>Insumos</b><small>18 produtos</small></span><span class="radio"></span></div>
+          <span class="app-btn cheio">Baixar produtos e iniciar<span class="pin">2</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Toque na <b>categoria</b> que vai contar (uma por vez). Se aparecer "sem permissão", fale com o escritório.</span></div>
+      <div><span class="pin">2</span><span>Este botão <b>baixa a lista para o celular</b> — a partir daqui não precisa mais de internet. Se já tiver uma contagem em andamento, aparece um cartão "⏸ Contagem em andamento" para continuar dela.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">❄️ Tela 2 — Contagem (funciona sem internet)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="pill-off" style="margin-bottom:10px">✈︎ Sem internet — contagem salva no celular<span class="pin">1</span></div>
+          <span class="app-btn claro" style="margin-bottom:10px">‹ Voltar para categorias<span class="pin">2</span></span>
+          <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:800"><span>Congelados</span><span style="color:var(--primary-dark)">21 de 34<span class="pin">3</span></span></div>
+          <div class="barra"><div></div></div>
+          <div class="app-pills" style="margin-bottom:10px"><span class="app-pill on">Todos</span><span class="app-pill">Faltam contar<span class="pin">4</span></span><span class="app-pill">Contados</span></div>
+          <div class="mk-item ok">
+            <div class="mk-nome"><span>✓ Risole de Carne</span><small>sistema: 60 un</small></div>
+            <div class="mk-ctl">
+              <span class="mk-btn mk-menos" style="display:flex;align-items:center;justify-content:center">−</span>
+              <div class="mk-val">58<span class="pin" style="margin-left:4px">5</span></div>
+              <span class="mk-btn mk-mais" style="display:flex;align-items:center;justify-content:center">+</span>
+              <span class="mk-btn mk-dez" style="display:flex;align-items:center">+10<span class="pin">6</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O app <b>avisa que está sem sinal</b> e segue funcionando — tudo fica salvo no celular a cada toque.</span></div>
+      <div><span class="pin">2</span><span>Sair no meio? Ele pergunta se quer <b>guardar para continuar depois</b> ou apagar — nunca perde sem confirmar.</span></div>
+      <div><span class="pin">3</span><span><b>Progresso</b>: quantos produtos já foram contados, para não esquecer nenhum.</span></div>
+      <div><span class="pin">4</span><span>Filtro <b>"Faltam contar"</b> mostra só o que ainda não foi contado. Tem busca por nome também.</span></div>
+      <div><span class="pin">5</span><span>O número contado — dá para <b>digitar direto</b> ou usar os botões − / +, bem grandes para usar de luva.</span></div>
+      <div><span class="pin">6</span><span><b>+10</b> de uma vez: para contar caixas fechadas rapidinho.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-titulo">📤 Tela 3 — Revisar e enviar</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="rev-linha"><span>Risole de Carne<br><small style="color:var(--ink-soft)">sistema 60 → contado <b>58</b></small></span><span class="badge bg-neg">−2<span class="pin" style="background:var(--gold)">1</span></span></div>
+          <div class="rev-linha"><span>Kibe<br><small style="color:var(--ink-soft)">sistema 72 → contado <b>72</b></small></span><span class="badge bg-ok">confere ✓</span></div>
+          <div class="rev-linha"><span>Coxinha GG<br><small style="color:var(--ink-soft)">sistema 13 → contado <b>15</b></small></span><span class="badge bg-dif">+2</span></div>
+          <div class="aviso-amber" style="margin:10px 0">📥 <b>Inventário guardado no celular</b> — sem internet agora. Será enviado sozinho quando conectar.<span class="pin">2</span></div>
+          <span class="app-btn cheio">Enviar inventário<span class="pin">3</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>As <b>diferenças</b> ficam coloridas: verde confere, âmbar sobrou, vermelho faltou. Dá para voltar e ajustar antes de enviar.</span></div>
+      <div><span class="pin">2</span><span>Enviou sem sinal? Fica <b>guardado</b> e sai sozinho quando o celular conectar — pode guardar o aparelho no bolso.</span></div>
+      <div><span class="pin">3</span><span>Ao enviar, o estoque é <b>ajustado para o valor contado</b> e cada ajuste vai para o Histórico com o motivo "Inventário".</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PARA COMEÇAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><div class="passo-n">1</div><div><b>Com internet</b>, abra o menu <b>Produção / Estoque → Inventário</b>.</div></div>
+    <div class="passo"><div class="passo-n">2</div><div>Escolha a <b>categoria</b> e toque em <b>"Baixar produtos e iniciar"</b>.</div></div>
+    <div class="passo"><div class="passo-n">3</div><div>Entre na câmara e <b>conte</b> — sem se preocupar com sinal, está tudo sendo salvo.</div></div>
+    <div class="passo"><div class="passo-n">4</div><div>Ao sair, toque em <b>"Revisar e enviar"</b>. Sem sinal? Ele envia sozinho quando conectar.</div></div>
+  </div>
+
+  <p class="rodape">Dúvidas? É só perguntar ao <strong>Clippy</strong> dentro do app: "como faço o inventário?" 💬</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    var acc = btn.parentElement;
+    var aberto = acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  }
+  var mkV = 0, mkTimer = null;
+  function mkMudar(d) {
+    mkV = Math.max(0, mkV + d);
+    document.getElementById('mkVal').textContent = mkV;
+    var item = document.getElementById('mkItem');
+    var salvo = document.getElementById('mkSalvo');
+    if (mkV > 0) { item.classList.add('ok'); } else { item.classList.remove('ok'); }
+    salvo.textContent = '✓ salvo no celular';
+    clearTimeout(mkTimer);
+    mkTimer = setTimeout(function () { salvo.textContent = ''; }, 1600);
+  }
+</script>
+</body>
+</html>
