@@ -4469,6 +4469,42 @@ router.post('/ca-extrato-conciliacao-limpar', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-ca-arquivo?parcela=UUID
+// SOMENTE LEITURA: mostra o registro de ca_receber_importado da parcela — os campos
+// que a 4ª fonte do extrato usa (status, temPedidoApp, parcelaLocalId, vencimento)
+// e um resumo das baixas do JSON arquivado (valor, data, conta na baixa e no detalhe).
+router.get('/diag-ca-arquivo', async (req, res) => {
+    try {
+        const id = String(req.query.parcela || '').trim();
+        if (!id) return res.status(400).json({ error: 'Informe ?parcela=UUID (idParcelaCA)' });
+        const arch = await prisma.caReceberImportado.findUnique({ where: { idParcelaCA: id } });
+        if (!arch) return res.json({ ok: false, motivo: 'não está no arquivo' });
+        const det = arch.dadosDetalhe || null;
+        const contaDe = (cf) => cf ? (typeof cf === 'string' ? cf : cf.id || null) : null;
+        res.json({
+            ok: true,
+            idParcelaCA: arch.idParcelaCA,
+            status: arch.status,
+            temPedidoApp: arch.temPedidoApp,
+            parcelaLocalId: arch.parcelaLocalId,
+            contaReceberId: arch.contaReceberId,
+            dataVencimento: arch.dataVencimento,
+            clienteNome: arch.clienteNome,
+            descricao: arch.descricao,
+            temDetalhe: !!det,
+            contaNoDetalhe: contaDe(det?.conta_financeira ?? det?.id_conta_financeira),
+            baixas: (det?.baixas || []).map(b => ({
+                valorBruto: b?.valor_composicao?.valor_bruto,
+                dataPagamento: b?.data_pagamento,
+                metodo: b?.metodo_pagamento,
+                contaNaBaixa: contaDe(b?.conta_financeira)
+            }))
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-ca-pix-conciliacao?dias=8&limite=200
 // SOMENTE LEITURA: lista os recebimentos (baixas) registrados no CA que caíram
 // na conta do Conta Azul e cruza com o extrato derivado da Conciliação Bancária
