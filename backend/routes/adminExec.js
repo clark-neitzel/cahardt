@@ -1521,6 +1521,87 @@ router.get('/diag-extrato-asaas-pendentes', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-extrato-contas — SOMENTE LEITURA. Raio-X do que está gravado
+// na tabela extrato_lancamentos: agrupa por conta_financeira_ca_id (count, menor/maior data,
+// status), lista as últimas importações (ExtratoImportacao) e cruza com as contas financeiras
+// do Conta Azul (ativas e inativas) para descobrir por que um extrato importado "não aparece"
+// (conta gravada != conta selecionada na tela, conta inativa some do dropdown, datas fora do
+// período padrão de 30 dias, etc). Use ?busca=acredi para destacar uma conta pelo nome.
+router.get('/diag-extrato-contas', async (req, res) => {
+    try {
+        const busca = (req.query.busca || '').toString().trim().toLowerCase();
+
+        // 1) Agrupamento do que está gravado no extrato, por conta
+        const grupos = await prisma.$queryRawUnsafe(`
+            SELECT conta_financeira_ca_id AS conta,
+                   COUNT(*)::int             AS total,
+                   MIN(data)                 AS data_min,
+                   MAX(data)                 AS data_max,
+                   SUM(CASE WHEN status='PENDENTE'      THEN 1 ELSE 0 END)::int AS pendentes,
+                   SUM(CASE WHEN status='CONCILIADO'    THEN 1 ELSE 0 END)::int AS conciliados,
+                   SUM(CASE WHEN status='IGNORADO'      THEN 1 ELSE 0 END)::int AS ignorados,
+                   SUM(CASE WHEN status='TRANSFERENCIA' THEN 1 ELSE 0 END)::int AS transferencias
+            FROM extrato_lancamentos
+            GROUP BY conta_financeira_ca_id
+            ORDER BY MAX(data) DESC
+        `);
+
+        // 2) Últimas importações registradas
+        const importacoes = await prisma.extratoImportacao.findMany({
+            orderBy: { criadoEm: 'desc' },
+            take: 25
+        }).catch(() => []);
+
+        // 3) Contas financeiras do Conta Azul — TODAS (ativas e inativas) para saber
+        //    se a conta do extrato ainda aparece no dropdown (apenas_ativo=true).
+        let contasCa = [];
+        try {
+            contasCa = await contaAzulService.listarContasFinanceiras();
+        } catch (e) {
+            contasCa = [{ erro: e.message }];
+        }
+        const mapaConta = {};
+        for (const c of contasCa) if (c && c.id) mapaConta[c.id] = c;
+
+        // Anota cada grupo com o nome/ativo da conta
+        const gruposAnotados = grupos.map(g => {
+            const c = mapaConta[g.conta] || null;
+            return {
+                contaFinanceiraCaId: g.conta,
+                nomeConta: c ? (c.nome || c.nomeBanco || c.apelido || '(sem nome)') : '⚠️ NÃO ESTÁ NO DROPDOWN (conta inativa/arquivada ou id diferente)',
+                apareceNoDropdown: !!c,
+                total: g.total,
+                dataMin: g.data_min,
+                dataMax: g.data_max,
+                pendentes: g.pendentes,
+                conciliados: g.conciliados,
+                ignorados: g.ignorados,
+                transferencias: g.transferencias,
+            };
+        });
+
+        const contasDropdown = contasCa
+            .filter(c => c && c.id)
+            .map(c => ({ id: c.id, nome: c.nome || c.nomeBanco || c.apelido, destaque: busca && (String(c.nome || c.nomeBanco || '').toLowerCase().includes(busca)) }));
+
+        res.json({
+            hoje: new Date().toISOString().slice(0, 10),
+            observacao: 'A tela de conciliação filtra por conta + período (padrão: últimos 30 dias) + status. Compare dataMin/dataMax de cada grupo com hoje; e veja se apareceNoDropdown=false.',
+            gruposNoExtrato: gruposAnotados,
+            totalContasNoDropdown: contasDropdown.length,
+            contasDropdown,
+            ultimasImportacoes: importacoes.map(i => ({
+                id: i.id, contaFinanceiraCaId: i.contaFinanceiraCaId,
+                nomeConta: mapaConta[i.contaFinanceiraCaId]?.nome || mapaConta[i.contaFinanceiraCaId]?.nomeBanco || '(conta não está no dropdown)',
+                arquivo: i.nomeArquivo, totalArquivo: i.totalArquivo, novos: i.novos, duplicados: i.duplicados,
+                dataInicio: i.dataInicio, dataFim: i.dataFim, criadoEm: i.criadoEm
+            })),
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message, stack: e.stack });
+    }
+});
+
 // GET /api/admin-exec/diag-conciliacao-asaas-causas — SOMENTE LEITURA: para cada
 // crédito PENDENTE da conta Asaas, roda o matching REAL (candidatosPara) e localiza
 // a baixa "ideal" pelo pay_ do extrato (refNum → cobrança → parcela), explicando a
