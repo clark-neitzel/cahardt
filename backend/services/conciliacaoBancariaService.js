@@ -483,7 +483,41 @@ async function _gravarImportacao({ contaFinanceiraCaId, nomeArquivo, criadoPorId
         select: { id: true, fitId: true, descricao: true, memo: true }
     });
     const porFitId = new Map(existentes.map((e) => [e.fitId, e]));
-    const novos = lancamentos.filter((l) => !porFitId.has(l.fitId));
+    let novos = lancamentos.filter((l) => !porFitId.has(l.fitId));
+
+    // Conta com extrato AUTOMÁTICO (linhas ca-* geradas dos movimentos do CA — caso da
+    // Conta PJ Conta Azul): o OFX/PDF traz os MESMOS movimentos com FITID próprio, o que
+    // duplicava tudo. Linha do arquivo que já existe como linha derivada (mesmo sentido e
+    // valor ±0,01 em ±2 dias; crédito de boleto também casa o LÍQUIDO = bruto − R$1,50 da
+    // tarifa do CA) é pulada e contada como duplicada. Linha sem par (tarifa, crédito
+    // ainda sem baixa) entra normalmente — é justamente a informação nova do arquivo.
+    if (novos.length > 0) {
+        const datasNovos = novos.map((l) => new Date(`${l.data}T12:00:00-03:00`).getTime());
+        const derivadas = await prisma.extratoLancamento.findMany({
+            where: {
+                contaFinanceiraCaId,
+                fitId: { startsWith: 'ca-' },
+                data: {
+                    gte: new Date(Math.min(...datasNovos) - 3 * 86400000),
+                    lte: new Date(Math.max(...datasNovos) + 3 * 86400000)
+                }
+            },
+            select: { data: true, valor: true, tipo: true }
+        });
+        if (derivadas.length > 0) {
+            const pool = derivadas.map((d) => ({ t: new Date(d.data).getTime(), valor: Number(d.valor), tipo: d.tipo, usada: false }));
+            novos = novos.filter((l) => {
+                const t = new Date(`${l.data}T12:00:00-03:00`).getTime();
+                const v = Number(l.valor);
+                let p = pool.find((x) => !x.usada && x.tipo === l.tipo && Math.abs(x.valor - v) <= 0.01 && Math.abs(x.t - t) <= 2 * 86400000);
+                if (!p && l.tipo === 'CREDITO') {
+                    p = pool.find((x) => !x.usada && x.tipo === 'CREDITO' && (x.valor - v) >= 1.49 && (x.valor - v) <= 1.51 && Math.abs(x.t - t) <= 2 * 86400000);
+                }
+                if (p) { p.usada = true; return false; }
+                return true;
+            });
+        }
+    }
 
     // Reimportar o mesmo arquivo NÃO duplica (unique por FITID) — e aproveita para
     // ATUALIZAR o texto das linhas que já estavam lá. É assim que a descrição de quem
