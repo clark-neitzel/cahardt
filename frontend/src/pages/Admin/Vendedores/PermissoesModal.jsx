@@ -533,7 +533,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                     </DeptSection>
 
                     {/* ── VENDAS ── */}
-                    <DeptSection label="Vendas" icon={ClipboardList} color="blue" defaultOpen={true} badge={`${countVendas} menus`}>
+                    <DeptSection label="Vendas" icon={ClipboardList} color="blue" badge={`${countVendas} menus`}>
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Menus visíveis</p>
                         <MenuToggle icon={BookOpen} label="Catálogo" checked={!!permissoes.catalogo?.view} onChange={() => toggleView('catalogo')} />
                         <MenuToggle icon={ClipboardList} label="Pedidos" checked={!!permissoes.pedidos?.view} onChange={() => toggleView('pedidos')} />

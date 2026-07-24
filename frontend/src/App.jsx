@@ -562,7 +562,7 @@ const Layout = ({ children }) => {
 
             {/* Categorias — mesmas seções e permissões do menu desktop, com estrela para favoritar */}
             {desktopSections.map(s => (
-              <MobileMenuSection key={s.label} label={s.label} icon={s.icon} defaultOpen={s.label === 'Vendas'}>
+              <MobileMenuSection key={s.label} label={s.label} icon={s.icon}>
                 {s.items.map(i => (
                   <div key={i.to} className="flex items-center">
                     <NavLink to={i.to} onClick={closeMobile} className={({ isActive }) => `${mobileLink(isActive)} flex-1 min-w-0`}>{i.label}</NavLink>
