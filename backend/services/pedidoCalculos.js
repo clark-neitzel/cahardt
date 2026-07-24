@@ -111,13 +111,22 @@ function parseDateBRT(val) {
 function gerarParcelasData({ valorTotal, qtdParcelas, intervaloDias, primeiroVencimento, dataVenda }) {
     const numParcelas = parseInt(qtdParcelas) || 1;
     const intervalo = parseInt(intervaloDias) || 0;
-    const baseDate = primeiroVencimento ? parseDateBRT(primeiroVencimento) : parseDateBRT(dataVenda);
+    // Sem primeiro vencimento explícito, a 1ª parcela já vence NO PRAZO da condição
+    // (dataVenda + intervalo). Ex.: "7 dias - Boleto" → vence 7 dias após a venda;
+    // "30/60/90" → parcelas em +30, +60, +90. Para à vista (intervalo=0) → dataVenda.
+    // Antes a 1ª parcela caía na própria data da venda porque o vencimento real vinha
+    // do Conta Azul; com o faturamento local (desde 07/2026) isso passou a valer direto
+    // e o boleto saía vencendo no dia da venda (bug). Se um primeiro vencimento explícito
+    // for informado, ele é a data da 1ª parcela (as demais somam o intervalo a partir dele).
+    const temPrimeiroExplicito = !!primeiroVencimento;
+    const baseDate = temPrimeiroExplicito ? parseDateBRT(primeiroVencimento) : parseDateBRT(dataVenda);
+    const offsetInicial = temPrimeiroExplicito ? 0 : intervalo;
     const valorParcela = Math.round((valorTotal / numParcelas) * 100) / 100;
 
     const parcelas = [];
     for (let i = 0; i < numParcelas; i++) {
         const vencimento = new Date(baseDate);
-        vencimento.setDate(vencimento.getDate() + (i * intervalo));
+        vencimento.setDate(vencimento.getDate() + offsetInicial + (i * intervalo));
         const val = i === numParcelas - 1
             ? Math.round((valorTotal - valorParcela * (numParcelas - 1)) * 100) / 100
             : valorParcela;

@@ -5491,4 +5491,81 @@ router.get('/diag-boleto-vencimento', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/corrigir-boleto-vencimento  Body: { numeros: [2278,2280,2281] }
+// Conserta pedidos cujo vencimento saiu no dia da venda (bug do prazo no faturamento
+// local): recalcula a data de vencimento de cada parcela pela condição gravada no
+// pedido (mesma regra do gerarParcelasData) e realinha o boleto no Asaas (data + nova
+// linha digitável + PDF) via asaasService.sincronizarVencimentoBoleto. Idempotente:
+// parcela/boleto que já estiver na data certa não é tocado.
+router.post('/corrigir-boleto-vencimento', async (req, res) => {
+    try {
+        const numeros = (Array.isArray(req.body?.numeros) ? req.body.numeros : [])
+            .map(n => parseInt(n, 10)).filter(Boolean);
+        if (!numeros.length) return res.status(400).json({ ok: false, error: 'Informe { numeros: [2278,...] }.' });
+
+        const { gerarParcelasData } = require('../services/pedidoCalculos');
+        const asaasService = require('../services/asaasService');
+        const ymd = (d) => d ? new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) : null;
+
+        const pedidos = await prisma.pedido.findMany({
+            where: { numero: { in: numeros } },
+            select: {
+                numero: true, dataVenda: true, qtdParcelas: true, intervaloDias: true, primeiroVencimento: true,
+                contaReceber: {
+                    select: {
+                        valorTotal: true,
+                        parcelas: {
+                            orderBy: { numeroParcela: 'asc' },
+                            select: {
+                                id: true, numeroParcela: true, dataVencimento: true,
+                                cobrancasAsaas: { where: { tipo: 'BOLETO', status: 'PENDENTE' }, select: { id: true } }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const resultados = [];
+        for (const p of pedidos) {
+            const parcelas = p.contaReceber?.parcelas || [];
+            if (!parcelas.length) { resultados.push({ numero: p.numero, ok: false, motivo: 'sem parcelas' }); continue; }
+
+            // Datas corretas na mesma regra do cadastro do pedido
+            const corretas = gerarParcelasData({
+                valorTotal: Number(p.contaReceber.valorTotal || 0),
+                qtdParcelas: p.qtdParcelas, intervaloDias: p.intervaloDias,
+                primeiroVencimento: p.primeiroVencimento, dataVenda: p.dataVenda
+            });
+
+            const detalhe = [];
+            for (let i = 0; i < parcelas.length; i++) {
+                const par = parcelas[i];
+                const novaData = corretas[i]?.dataVencimento;   // pareado por ordem (numeroParcela asc)
+                if (!novaData) continue;
+                const antes = ymd(par.dataVencimento);
+                const depois = ymd(novaData);
+                let parcelaAtualizada = false;
+                if (antes !== depois) {
+                    await prisma.parcela.update({ where: { id: par.id }, data: { dataVencimento: novaData } });
+                    parcelaAtualizada = true;
+                }
+                // Realinha o boleto no Asaas (só há um PENDENTE por parcela normalmente)
+                const boletos = [];
+                for (const cob of par.cobrancasAsaas) {
+                    const r = await asaasService.sincronizarVencimentoBoleto(cob.id);
+                    boletos.push({ id: cob.id, vencimentoBoleto: ymd(r?.vencimento) });
+                }
+                detalhe.push({ numeroParcela: par.numeroParcela, de: antes, para: depois, parcelaAtualizada, boletos });
+            }
+            resultados.push({ numero: p.numero, ok: true, parcelas: detalhe });
+        }
+
+        const naoEncontrados = numeros.filter(n => !pedidos.some(p => p.numero === n));
+        res.json({ ok: true, hoje: ymd(new Date()), corrigidos: resultados, naoEncontrados });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;
