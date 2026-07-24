@@ -4475,8 +4475,26 @@ router.post('/ca-extrato-conciliacao-limpar', async (req, res) => {
 // e um resumo das baixas do JSON arquivado (valor, data, conta na baixa e no detalhe).
 router.get('/diag-ca-arquivo', async (req, res) => {
     try {
+        // Modo busca por VALOR: lista linhas de extrato e pagamentos do app que batem
+        // com ?valor=NN.NN (±0,01) na conta ?conta= (padrão: conta do CA), p/ investigar
+        // anti-duplicidade da 4ª fonte. Ex.: ?valor=606.36
+        if (req.query.valor) {
+            const alvo = Number(req.query.valor);
+            const contaQ = String(req.query.conta || 'ed4798c2-f8e3-4e87-9ff3-8f264dcf6aa0');
+            const linhas = await prisma.extratoLancamento.findMany({
+                where: { contaFinanceiraCaId: contaQ, valor: { gte: alvo - 0.01, lte: alvo + 0.01 } },
+                select: { fitId: true, data: true, valor: true, tipo: true, status: true, descricao: true },
+                orderBy: { data: 'asc' }, take: 50
+            });
+            const pagos = await prisma.pagamentoParcela.findMany({
+                where: { contaFinanceiraCaId: contaQ, valorRecebido: { gte: alvo - 0.01, lte: alvo + 0.01 } },
+                select: { id: true, dataPagamento: true, valorRecebido: true, estornado: true, observacao: true },
+                orderBy: { dataPagamento: 'asc' }, take: 50
+            });
+            return res.json({ ok: true, valor: alvo, conta: contaQ, linhasExtrato: linhas, pagamentosApp: pagos });
+        }
         const id = String(req.query.parcela || '').trim();
-        if (!id) return res.status(400).json({ error: 'Informe ?parcela=UUID (idParcelaCA)' });
+        if (!id) return res.status(400).json({ error: 'Informe ?parcela=UUID (idParcelaCA) ou ?valor=NN.NN' });
         const arch = await prisma.caReceberImportado.findUnique({ where: { idParcelaCA: id } });
         if (!arch) return res.json({ ok: false, motivo: 'não está no arquivo' });
         const det = arch.dadosDetalhe || null;
