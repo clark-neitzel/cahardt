@@ -1368,7 +1368,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-3">
                             <label className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
                                 <input type="checkbox" checked={enviarCA} onChange={e => setEnviarCA(e.target.checked)} className="rounded mt-0.5" />
-                                <span><span className="font-semibold">Enviar para a Conta Azul</span></span>
+                                <span><span className="font-semibold">Registrar forma de pagamento e banco</span></span>
                             </label>
 
                             {enviarCA && (
@@ -1418,8 +1418,8 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                     )}
                                     <div className="text-xs text-gray-500">
                                         {pago
-                                            ? 'A despesa entra já quitada no Conta Azul (o app cria e dá a baixa).'
-                                            : 'A despesa entra em aberto no Conta Azul, já com a forma e o banco/caixa definidos.'}
+                                            ? 'A despesa entra já quitada — o app registra a baixa no banco/caixa escolhido.'
+                                            : 'A despesa entra em aberto, já com a forma e o banco/caixa definidos.'}
                                     </div>
                                 </div>
                             )}

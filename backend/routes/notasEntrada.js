@@ -23,6 +23,9 @@ const contasPagarCaSyncService = require('../services/contasPagarCaSyncService')
 const googleDriveService = require('../services/googleDriveService');
 // CNPJ ALFANUMÉRICO: documento/chave podem conter letras — normalizar preservando-as.
 const { normalizarDoc, normalizarChaveNFe } = require('../utils/documento');
+// App é o dono do financeiro: com esta chave ligada, a conta a pagar gerada da nota
+// nasce "só no app" (não vai ao CA). Ver contaAzulModo.js.
+const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
 
 // Caminho absoluto do XML salvo da nota (uploads/notas-xml/{chave}.xml).
 const xmlAbsPath = (nota) => {
@@ -1063,6 +1066,9 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
     try {
         const { categoriaPadrao, categoriaPadraoCaId, enviarCA, observacoes, parcelas, itens,
                 metodoPagamento, contaFinanceiraCaId, pago, dataPagamento } = req.body;
+        // Forma/banco/"já paguei" seguem capturados localmente (saldos); o ENVIO ao CA só ocorre
+        // se o app não estiver em modo somente-leitura.
+        const enviarCAefetivo = enviarCA && !CA_SOMENTE_LEITURA;
 
         const nota = await prisma.notaEntrada.findUnique({
             where: { id: req.params.id },
@@ -1281,7 +1287,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                     observacoes: observacoes?.trim() || null,
                     valorTotal: somaParcelas,
                     status: 'ABERTO',
-                    statusEnvioCA: enviarCA ? 'ENVIAR' : 'NAO_ENVIAR',
+                    statusEnvioCA: enviarCAefetivo ? 'ENVIAR' : 'NAO_ENVIAR',
                     metodoPagamentoCA: condicaoCA?.metodoPagamento || null,
                     contaFinanceiraCaId: condicaoCA?.contaFinanceiraCaId || null,
                     criadoPorId: req.user.id,
@@ -1303,7 +1309,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
             });
 
             // 3) Fornecedor sem vínculo no CA entra na fila de envio (o worker cria lá primeiro)
-            if (enviarCA && fornecedor && !fornecedor.contaAzulId && ['NAO_ENVIAR', 'ERRO'].includes(fornecedor.statusEnvioCA)) {
+            if (enviarCAefetivo && fornecedor && !fornecedor.contaAzulId && ['NAO_ENVIAR', 'ERRO'].includes(fornecedor.statusEnvioCA)) {
                 await tx.fornecedor.update({
                     where: { id: fornecedor.id },
                     data: { statusEnvioCA: 'ENVIAR', erroEnvioCA: null }
@@ -1327,7 +1333,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                             dataPagamento: pagto.dataPagamento,
                             formaPagamento: pagto.metodoPagamento,       // enum do CA (empurrado como metodo_pagamento)
                             contaFinanceiraCaId: pagto.contaFinanceiraCaId,
-                            statusEnvioCA: 'ENVIAR',                      // worker empurra a baixa ao CA
+                            statusEnvioCA: enviarCAefetivo ? 'ENVIAR' : 'NAO_ENVIAR', // worker empurra a baixa ao CA (só se envio ligado)
                             origem: 'MANUAL',
                             observacao: `Pago na entrada da nota (${labelMetodo}).`,
                             registradoPorId: req.user.id
@@ -1365,8 +1371,10 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
 
         res.status(201).json({
             message: pagto
-                ? 'Conta a pagar criada como PAGA — será marcada como quitada no Conta Azul!'
-                : (enviarCA
+                ? (enviarCAefetivo
+                    ? 'Conta a pagar criada como PAGA — será marcada como quitada no Conta Azul!'
+                    : 'Conta a pagar criada e já quitada!')
+                : (enviarCAefetivo
                     ? 'Conta a pagar criada e colocada na fila de envio ao Conta Azul!'
                     : 'Conta a pagar criada!'),
             contaPagarId: contaCriada.id,

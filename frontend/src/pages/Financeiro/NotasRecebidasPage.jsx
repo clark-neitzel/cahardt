@@ -2004,18 +2004,18 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 )}
             </div>
 
-            {/* Envio ao Conta Azul + situação do pagamento */}
+            {/* Forma de pagamento e banco (registro local) + situação do pagamento */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-3">
                 <label className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
                     <input type="checkbox" checked={enviarCA} onChange={e => setEnviarCA(e.target.checked)} className="rounded mt-0.5" />
-                    <span><span className="font-semibold">Enviar para a Conta Azul</span></span>
+                    <span><span className="font-semibold">Registrar forma de pagamento e banco</span></span>
                 </label>
 
                 {enviarCA && (
                     <div className="bg-white border border-gray-200 rounded-lg p-3 space-y-3">
                         {loadingOpcoes ? (
                             <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
-                                <Loader2 className="h-4 w-4 animate-spin" /> Carregando bancos da Conta Azul…
+                                <Loader2 className="h-4 w-4 animate-spin" /> Carregando bancos/caixas…
                             </div>
                         ) : (
                             <>
@@ -2047,7 +2047,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                             ))}
                                         </SelectBusca>
                                         {opcoesCarregadas && opcoesBaixa.contasFinanceiras.length === 0 && (
-                                            <p className="text-xs text-amber-700 mt-1">Nenhum banco encontrado na Conta Azul.</p>
+                                            <p className="text-xs text-amber-700 mt-1">Nenhum banco/caixa cadastrado.</p>
                                         )}
                                     </div>
                                 </div>

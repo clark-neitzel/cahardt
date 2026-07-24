@@ -16,6 +16,10 @@ const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
 // CNPJ ALFANUMÉRICO: normalizar documento preservando letras (nunca replace(/\D/g,'')).
 const { normalizarDoc } = require('../utils/documento');
+// App é o dono do financeiro (desde 07/2026): com esta chave ligada, Contas a Pagar
+// PARA de enviar ao CA (fornecedor, despesa, baixa "já paguei"). A LEITURA continua
+// (conferência de baixas de títulos antigos que ainda vivem no CA). Ver contaAzulModo.js.
+const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
 
 const BASE = 'https://api-v2.contaazul.com';
 
@@ -334,6 +338,19 @@ async function processarFilaFornecedores() {
     if (_fornecedoresRodando) return;
     _fornecedoresRodando = true;
     try {
+        // App é o dono do financeiro: não cria mais fornecedor no CA. Drena a fila (inclusive
+        // itens que estavam ENVIANDO/ERRO) para "só no app" — sem chamar o CA, sem badge preso.
+        if (CA_SOMENTE_LEITURA) {
+            const drenados = await prisma.fornecedor.updateMany({
+                where: { statusEnvioCA: { in: ['ENVIAR', 'ENVIANDO', 'ERRO'] } },
+                data: { statusEnvioCA: 'NAO_ENVIAR', erroEnvioCA: null }
+            });
+            if (drenados.count > 0) {
+                console.log(`[ContasPagar CA] CA_SOMENTE_LEITURA: ${drenados.count} fornecedor(es) mantido(s) só no app (não enviados ao CA).`);
+            }
+            return;
+        }
+
         if (!(await temTokenCA())) return; // CA não conectado → pula silenciosamente
 
         const pendentes = await prisma.fornecedor.findMany({
@@ -644,6 +661,20 @@ async function _encontrarEventoPorNumeroNota(conta) {
 }
 
 async function _enviarDespesasPendentes() {
+    // App é o dono do financeiro: não cria mais despesa no CA. Drena a fila (ENVIAR/ENVIANDO/ERRO)
+    // para "só no app". As que já estão AGUARDANDO_PROTOCOLO ficam — foram POSTadas antes do corte
+    // e o consultor de protocolo (leitura) as finaliza mapeando as parcelas.
+    if (CA_SOMENTE_LEITURA) {
+        const drenadas = await prisma.contaPagar.updateMany({
+            where: { statusEnvioCA: { in: ['ENVIAR', 'ENVIANDO', 'ERRO'] }, status: { not: 'CANCELADO' } },
+            data: { statusEnvioCA: 'NAO_ENVIAR', erroEnvioCA: null }
+        });
+        if (drenadas.count > 0) {
+            console.log(`[ContasPagar CA] CA_SOMENTE_LEITURA: ${drenadas.count} despesa(s) mantida(s) só no app (não enviadas ao CA).`);
+        }
+        return;
+    }
+
     const pendentes = await prisma.contaPagar.findMany({
         where: { statusEnvioCA: 'ENVIAR', status: { not: 'CANCELADO' } },
         include: { fornecedor: true, parcelas: { orderBy: { numeroParcela: 'asc' } }, rateios: true },
@@ -971,6 +1002,20 @@ async function _mapearParcelasCA(contaPagarId, eventoId) {
 // não recriar a baixa localmente depois (dedup por idBaixaCA).
 // ─────────────────────────────────────────────────────────────
 async function _empurrarBaixasPendentes() {
+    // App é o dono do financeiro: não empurra mais baixa ao CA. A baixa LOCAL (ledger
+    // pagamentoParcelaPagar + recalcularParcelaEConta) já é a oficial — só marca como
+    // resolvida ("só no app") para não ficar reprocessando. Espelha asaasBaixaService.
+    if (CA_SOMENTE_LEITURA) {
+        const drenados = await prisma.pagamentoParcelaPagar.updateMany({
+            where: { statusEnvioCA: 'ENVIAR', estornado: false },
+            data: { statusEnvioCA: 'NAO_ENVIAR', erroEnvioCA: null }
+        });
+        if (drenados.count > 0) {
+            console.log(`[ContasPagar CA] CA_SOMENTE_LEITURA: ${drenados.count} baixa(s) mantida(s) só no app (não empurradas ao CA).`);
+        }
+        return;
+    }
+
     const pagamentos = await prisma.pagamentoParcelaPagar.findMany({
         where: {
             statusEnvioCA: 'ENVIAR',

@@ -8,7 +8,7 @@ permissao: Pode_Acessar_Contas_Pagar
 
 ## O que é
 
-Gestão das despesas da empresa (contas a pagar): lançamento manual de contas com parcelas, envio automático para o Conta Azul e **baixa automática** — quando a conta é paga no Conta Azul (por exemplo via DDA/conexão bancária), o app detecta o pagamento sozinho e marca a parcela como paga aqui, sem trabalho manual. Também é possível dar baixa manualmente no próprio app.
+Gestão das despesas da empresa (contas a pagar): lançamento manual de contas com parcelas e **baixa dentro do próprio app**. Desde 07/2026 o **app é o dono do financeiro** — as despesas **não são mais enviadas para o Conta Azul**; tudo (lançar, pagar, estornar) acontece aqui. O Conta Azul continua sendo **lido** só para o histórico: despesas antigas que ainda vivem lá e forem pagas no CA (ex.: DDA/conexão bancária) têm a baixa detectada e refletida aqui automaticamente, e o histórico do CA pode ser importado (ver mais abaixo).
 
 ---
 
@@ -20,14 +20,14 @@ Gestão das despesas da empresa (contas a pagar): lançamento manual de contas c
   - **Em aberto no mês** e **Pago no mês**
 - Filtrar por busca (descrição, nota, fornecedor), status da conta, categoria e período de vencimento — a lista mostra **só as parcelas que vencem dentro do período escolhido** (uma conta parcelada aparece apenas com as parcelas daquele período). **Os filtros ficam salvos por usuário**: ao sair da tela e voltar, continuam aplicados (guardados no próprio navegador/dispositivo). Quando há filtro ativo, aparece uma etiqueta **"N filtros ativos"**; o botão **"Limpar filtros"** volta tudo ao padrão (Este mês, sem busca/status/categoria)
 - **Filtro de período (novo formato, estilo Conta Azul):** um controle só, com **setas ‹ ›** dos lados e o período no meio. Clicando no meio abre o menu com os atalhos **Hoje · Últimos 7 dias · Últimos 30 dias · Este mês · Este ano · Todo o período · Período personalizado** (neste último, escolha De/Até dentro do próprio menu e toque em Aplicar). As **setas pulam o período inteiro** (ex.: em "Este mês" voltam/avançam mês a mês; em "7 dias", de 7 em 7). O que fica salvo é o **atalho escolhido** — quem deixa "Este mês" sempre abre a tela no mês corrente, nunca preso numa data velha; a navegação com as setas é só um passeio (ao reabrir, volta ao atalho salvo)
-- **Clicar em qualquer despesa abre os detalhes completos**: descrição, categoria, observação, status de envio ao Conta Azul, todas as parcelas com o histórico de pagamentos e — quando a conta veio de uma NF-e — os **itens/produtos da nota** (o que foi comprado: descrição, quantidade, unidade, valor unitário e total de cada item), qual produto do estoque cada item alimentou, e as observações da própria nota fiscal. Serve para tirar dúvida do tipo "essa despesa é de quê?" sem sair da tela
+- **Clicar em qualquer despesa abre os detalhes completos**: descrição, categoria, observação, todas as parcelas com o histórico de pagamentos e — quando a conta veio de uma NF-e — os **itens/produtos da nota** (o que foi comprado: descrição, quantidade, unidade, valor unitário e total de cada item), qual produto do estoque cada item alimentou, e as observações da própria nota fiscal. Serve para tirar dúvida do tipo "essa despesa é de quê?" sem sair da tela
 - **Imprimir Recibo (folha A4):** nos detalhes da despesa, cada parcela tem o botão **"Recibo"** — imprime um recibo no padrão da empresa (logo e dados da Hardt), com o valor em destaque e **por extenso**, dizendo **a que se refere** (descrição da despesa, nota, categoria, nº da parcela e vencimento), a data por extenso e a linha de assinatura com o **nome e CNPJ/CPF do fornecedor**. Funciona no iPad/PWA (imprime na própria página)
 - **Duplicar despesa:** nos detalhes da despesa há o botão **"Duplicar"** — abre a Nova Despesa **já preenchida** com fornecedor, descrição, categoria, observações e as parcelas (datas e valores, todas em aberto), sem número de nota. Ideal para relançar contas recorrentes (aluguel, seguro, assinatura) sem digitar tudo de novo — é só ajustar as datas e salvar
-- Criar uma conta a pagar: fornecedor, descrição, categoria de despesa (vem do Conta Azul), número da nota, competência, observações e parcelas (valor + vencimento de cada uma)
+- Criar uma conta a pagar: fornecedor, descrição, categoria de despesa, número da nota, competência, observações e parcelas (valor + vencimento de cada uma). **A conta fica só no app** (não é mais enviada ao Conta Azul)
 - **Gerar várias parcelas de uma vez (assinatura/seguro):** na seção Parcelas da Nova Despesa há o botão **"⚡ Gerar várias"** — informe o **nº de parcelas**, o **valor de cada**, a **data da 1ª** e a **recorrência** (**Todo mês no mesmo dia** = dia fixo, com o dia 31 caindo no último dia dos meses menores; ou **A cada N dias**). O sistema cria todas de uma vez (substituindo as em aberto) e mostra o total; cada parcela ainda pode ser ajustada depois. Evita adicionar dezenas de parcelas uma a uma
-- **Condição de pagamento ao enviar ao Conta Azul (forma + banco/caixa):** ao marcar **"Enviar para a Conta Azul"** na Nova Despesa, escolha a **forma de pagamento** (Pix, **Dinheiro**, transferência, boleto, cartão…) e o **banco/caixa** (lista do próprio CA; ex.: o **caixinha**) — os dois são obrigatórios e vão junto com a despesa. Escolha também:
-  - **Ainda vou pagar** — a despesa entra **em aberto** no CA (para pagar depois, ex.: DDA/boleto);
-  - **Já paguei** — para o que já saiu (ex.: **dinheiro do caixinha**): informe a **data do pagamento** e a despesa entra **já quitada** no Conta Azul (o app cria e **dá a baixa** automaticamente).
+- **Forma de pagamento e banco/caixa (registro local):** ao marcar **"Registrar forma de pagamento e banco"** na Nova Despesa, escolha a **forma de pagamento** (Pix, **Dinheiro**, transferência, boleto, cartão…) e o **banco/caixa** (ex.: o **caixinha**) — isso é usado para os **Saldos por conta** do app. Escolha também:
+  - **Ainda vou pagar** — a despesa entra **em aberto** (para pagar depois);
+  - **Já paguei** — para o que já saiu (ex.: **dinheiro do caixinha**): informe a **data do pagamento** e a despesa entra **já quitada** (o app registra a baixa no banco/caixa escolhido).
 - **Lançar os produtos da compra junto com a despesa manual (opcional)**: na tela de Nova Despesa (entre as Observações e as Parcelas) há a seção **"Produtos comprados"** — clique em "Lançar os produtos desta compra", busque o produto **do catálogo de produtos** (insumos do PCP não aparecem nessa busca, igual ao de-para das Notas Recebidas) e informe a **quantidade** (na nossa unidade) e o **valor unitário OU o valor total** — preenchendo um, o outro é calculado sozinho. Fornecedor, categoria e produto usam **busca com filtro** (combobox digitável, não lista gigante). Ao criar a despesa, cada produto:
   - dá **entrada no estoque** (motivo COMPRA) — produto que não controla estoque só atualiza o custo;
   - atualiza o **custo** por média ponderada com o estoque anterior (produto → custo manual; insumo PCP → custo unitário das receitas);
@@ -37,7 +37,7 @@ Gestão das despesas da empresa (contas a pagar): lançamento manual de contas c
   - a despesa ganha um **selo "PDF"** na lista (dá para ver quais têm documento);
   - nos **detalhes**, o nome do arquivo com botões de **abrir** e **remover** (remover pede confirmação; anexar um novo substitui o antigo);
   - **na hora de dar a baixa da parcela**, uma faixa âmbar no topo do modal de pagamento mostra o documento com o botão **"Ver documento"** — a pessoa confere o boleto e paga sem sair da tela. É o principal motivo do anexo: conferência na hora do pagamento e consulta futura.
-  O PDF fica **só no app** (não é enviado ao Conta Azul).
+  O PDF fica **só no app**.
 - Contas também **chegam sozinhas via NF-e** (origem NFE): a aba **Notas Recebidas** captura as notas dos fornecedores na SEFAZ e gera a conta a pagar já com número da nota, chave da NF-e, fornecedor e parcelas das duplicatas (ver manual [notas-recebidas.md](notas-recebidas.md))
 - **Importar do Conta Azul** (botão no topo): traz o histórico de despesas que só existe no Conta Azul (salário, combustível, imposto, pedágio, empréstimo...) a partir do **CSV exportado** lá (Financeiro → Contas a pagar → Exportar). Serve para a **DRE e o Fluxo de Caixa** terem os meses passados.
   - Ao subir o arquivo, aparece uma **prévia** (quantas contas, quanto já pago, categorias novas) antes de confirmar.
@@ -46,38 +46,26 @@ Gestão das despesas da empresa (contas a pagar): lançamento manual de contas c
   - **Reimportar o mesmo mês não duplica**: cada conta tem uma chave (vencimento + fornecedor + descrição). Se algo que estava em aberto passou a pago, a reimportação registra a baixa.
   - As **categorias** vistas na importação viram itens na tela **Categorias de Despesa** (para classificar o que entra ou não na DRE).
 - **Despesas lançadas direto no Conta Azul chegam sozinhas** (desde 07/2026): o app confere o Conta Azul a cada 3 horas e importa automaticamente qualquer despesa criada lá (folha, DAS, tarifa, boleto digitado pela contadora...) — sem precisar do CSV para o dia a dia. Elas nascem com origem **IMPORTADO_CA**, **não são reenviadas ao CA** e as **baixas** (com o banco/caixa de onde saiu o dinheiro) são puxadas junto pelo sincronismo de 30 minutos. Se a mesma despesa já existia no app (criada aqui ou vinda do CSV), o sync **vincula em vez de duplicar**. O CSV continua útil só para trazer **histórico antigo** de uma vez.
-- **Categoria "Vários" / rateio:** uma conta pode ter **mais de uma categoria** de despesa quando vem de uma NF-e com itens de categorias diferentes. Nesse caso a categoria aparece como **"Vários"** e a conta guarda o **rateio** (quanto do valor foi para cada categoria) — é esse rateio que é enviado ao Conta Azul
-- Escolher se a conta **vai para o Conta Azul** (opção "enviar ao CA") ou fica só no app
-- Editar uma conta (campos e parcelas ainda não pagas — bloqueado se quitada/cancelada). **Se a conta ainda não foi enviada ao CA:** edição livre (adicionar/remover parcela, mudar valor e vencimento). **Se a conta já foi enviada ao CA (status ENVIADO):** edição restrita — dá para ajustar **vencimento** e **valor** das parcelas **em aberto**, e a mudança é aplicada **também no Conta Azul** automaticamente (não é preciso corrigir na mão lá). Nesse caso **não** é possível adicionar, excluir nem mexer em parcela já paga. Se a parcela já constar paga no Conta Azul, o app avisa e não altera. Enquanto a conta ainda está "Enviando…" (em trânsito para o CA), a edição de parcelas espera o envio terminar
+- **Categoria "Vários" / rateio:** uma conta pode ter **mais de uma categoria** de despesa quando vem de uma NF-e com itens de categorias diferentes. Nesse caso a categoria aparece como **"Vários"** e a conta guarda o **rateio** (quanto do valor foi para cada categoria) — é o que alimenta a DRE por categoria
+- Editar uma conta (campos e parcelas ainda não pagas — bloqueado se quitada/cancelada): edição livre (adicionar/remover parcela, mudar valor e vencimento). *(Contas antigas que ainda vivem no Conta Azul — status ENVIADO, de antes de 07/2026 — têm edição restrita às parcelas em aberto, para não desencontrar do CA.)*
 - Dar **baixa manual** numa parcela: no campo **"Valor pago"** digite o **total que saiu do banco** — o app faz a conta sozinho, sem precisar calcular nada:
   - **Pagou a mais que o saldo** (boleto vencido, por exemplo): o modal pergunta se a diferença é **juros** ou **multa** e preenche o campo escolhido. Precisando dividir entre os dois, é só digitar nos campos na mão.
   - **Pagou a menos que o saldo**: o modal pergunta se a diferença é **desconto** (a parcela fica **quitada**) ou **pagamento parcial** (a parcela fica **PARCIAL**, com saldo restante em aberto).
   - Um resumo embaixo mostra quanto abate da parcela e se ela fica quitada ou parcial antes de confirmar. Também dá para informar banco/caixa e forma de pagamento.
-- **Quitar várias de uma vez (baixa em lote)**: marque as caixinhas das parcelas em aberto (há um "selecionar todas" no cabeçalho da tabela) e clique em **"Quitar selecionadas"**. Informe **uma vez só** a data, a forma de pagamento e o banco/caixa — todas as marcadas são quitadas pelo **saldo restante** com essa condição. As despesas que já foram enviadas ao Conta Azul recebem a **baixa lá também** (no banco escolhido); as que são só locais ficam quitadas apenas no app. Útil quando um único PIX/dinheiro pagou várias notas (ex.: nota de serviço + nota de peça) — depois é só juntar essas baixas na conciliação bancária do CA.
-- **Estornar** um pagamento específico. Baixa manual estorna direto. Baixa vinda do Conta Azul (ex.: "Baixado via DDA") também pode ser estornada: o app **exclui a baixa lá no CA primeiro** e depois estorna aqui — a parcela volta a ficar em aberto nos dois lugares (o aviso de confirmação explica isso). Se o CA recusar (baixa conciliada com o extrato lá), desfaça a conciliação no CA e tente de novo
+- **Quitar várias de uma vez (baixa em lote)**: marque as caixinhas das parcelas em aberto (há um "selecionar todas" no cabeçalho da tabela) e clique em **"Quitar selecionadas"**. Informe **uma vez só** a data, a forma de pagamento e o banco/caixa — todas as marcadas são quitadas pelo **saldo restante** com essa condição (registro só no app). Útil quando um único PIX/dinheiro pagou várias notas (ex.: nota de serviço + nota de peça).
+- **Estornar** um pagamento específico. Baixa feita no app estorna direto. *(Baixa antiga que veio do Conta Azul — "Baixado via DDA" — o app exclui a baixa lá no CA primeiro e depois estorna aqui; se o CA recusar porque ela já está conciliada com o extrato lá, desfaça a conciliação no CA e tente de novo.)*
 - Cancelar uma conta (só se não tiver pagamento registrado; estorne antes se precisar). Se a despesa manual tinha **produtos lançados**, o cancelamento **devolve o estoque** automaticamente
-- Reenviar ao Conta Azul uma conta cujo envio deu erro (botão de reenvio, só aparece com status de envio ERRO)
 
 ---
 
-## Fluxo com o Conta Azul (como funciona por trás)
+## Relação com o Conta Azul (desde 07/2026: só leitura)
 
-1. Ao criar a conta com "enviar ao CA", ela entra numa **fila** — um robô envia ao Conta Azul em até 1 minuto.
-2. O fornecedor precisa existir no Conta Azul: se ele foi criado no app, o robô cria o fornecedor no CA primeiro e a despesa espera na fila até isso concluir.
-3. O Conta Azul processa a despesa de forma **assíncrona** (protocolo): o app acompanha até receber o número do lançamento e vincular cada parcela.
-4. A cada 30 minutos o app **confere as baixas no Conta Azul**: parcela paga lá (ex.: DDA, conciliação bancária) vira parcela paga aqui automaticamente, com a marca "baixado via CA".
-5. **Reenviar não duplica:** antes de lançar, o robô verifica no Conta Azul se aquela mesma conta já foi criada (por uma referência única gravada no lançamento). Se já existir, ele **adota o lançamento que já está lá** em vez de criar outro — então reenviar uma conta que deu erro não corre o risco de gerar despesa duplicada no CA.
+O **envio de contas a pagar para o Conta Azul foi desligado** — o app é o dono do financeiro. Toda despesa nova (manual ou vinda de NF-e) nasce **só no app** e é paga aqui. O Conta Azul continua sendo **lido** em dois pontos, para o histórico não se perder:
 
-### Status de envio ao CA
+1. **Baixa de títulos antigos que ainda vivem no CA:** a cada 30 minutos o app confere se uma parcela **de antes do corte** (que já tinha vínculo com o CA) foi paga lá (ex.: DDA/conexão bancária) — se foi, a baixa aparece aqui automaticamente, com a marca "baixado via CA". Para despesas novas isso não se aplica (elas não existem no CA).
+2. **Importação do histórico do CA:** despesas que só existem no Conta Azul (folha, DAS, tarifa, boleto digitado pela contadora) continuam chegando — por importação de CSV e pela sincronização automática de 3h — para a DRE e o Fluxo de Caixa terem os meses passados. Elas nascem com origem **IMPORTADO_CA** e nunca voltam ao CA.
 
-| Status | Significado |
-|--------|-------------|
-| NAO_ENVIAR | Conta só no app, não vai para o CA |
-| ENVIAR | Na fila, será enviada em até 1 min |
-| ENVIANDO | Envio em andamento |
-| AGUARDANDO_PROTOCOLO | CA recebeu, aguardando processamento (assíncrono) |
-| ENVIADO | Lançada no CA com parcelas vinculadas |
-| ERRO | Falhou — veja a mensagem de erro e use "Reenviar" |
+> Contas que ficaram "presas" tentando enviar ao CA (na fila ou com erro) foram automaticamente convertidas para **"só no app"** ao desligar o envio — nenhuma despesa fica travada.
 
 ---
 
@@ -110,15 +98,16 @@ Uma parcela **já lançada aqui** pode ter **uma ou mais notas fiscais vinculada
 | Permissão | Efeito |
 |-----------|--------|
 | `Pode_Acessar_Contas_Pagar` | Ver a tela, as contas e os KPIs |
-| `Pode_Baixar_Contas_Pagar` | Criar, editar, baixar, estornar, cancelar e reenviar ao CA |
+| `Pode_Baixar_Contas_Pagar` | Criar, editar, baixar, estornar e cancelar |
 | `admin` | Tudo acima |
 
 ---
 
 ## Depende de / Interfere em
 
-- **Fornecedores** — toda conta enviada ao CA precisa de um fornecedor cadastrado (e sincronizado com o CA)
-- **Conta Azul** — categorias de despesa e conta financeira padrão vêm do CA; sem o CA conectado, as contas só funcionam localmente
+- **Fornecedores** — cada despesa costuma ter um fornecedor cadastrado no app (os fornecedores também não são mais enviados ao CA)
+- **Saldos por conta** — a forma de pagamento e o banco/caixa informados na baixa alimentam os saldos por conta do app
+- **Conta Azul** — usado só para **leitura**: importação do histórico de despesas e baixa de títulos antigos que ainda vivem lá
 - **Notas Recebidas** — a captura automática de NF-e na SEFAZ (com o certificado digital instalado nas Configurações) gera contas a pagar com origem NFE a partir das notas dos fornecedores; e uma nota que chega **depois** pode ser **vinculada a uma parcela que já existe aqui** (sem criar despesa nova)
 
 ---
@@ -127,7 +116,8 @@ Uma parcela **já lançada aqui** pode ter **uma ou mais notas fiscais vinculada
 
 | Caminho | Papel |
 |---------|-------|
-| `backend/routes/contasPagar.js` | Rotas da API (listar, criar, editar, baixar, estornar, cancelar, reenviar, **detalhe com itens da nota**, produtos-opcoes) |
-| `backend/services/contasPagarCaSyncService.js` | Robôs de envio ao CA e conferência de baixas |
+| `backend/routes/contasPagar.js` | Rotas da API (listar, criar, editar, baixar, estornar, cancelar, **detalhe com itens da nota**, produtos-opcoes) |
+| `backend/services/contasPagarCaSyncService.js` | Robôs do CA: envio **desligado** por `CA_SOMENTE_LEITURA` (drena filas p/ "só no app"); mantém a **leitura** de baixas de títulos antigos |
+| `backend/config/contaAzulModo.js` | Chave `CA_SOMENTE_LEITURA` que desliga o envio ao Conta Azul (app dono do financeiro) |
 | `backend/services/compraEstoqueService.js` | Entrada de estoque/custo/histórico das compras (nota conferida e despesa manual com produtos) |
 | `frontend/src/pages/Financeiro/ContasPagar*` | Telas do módulo |

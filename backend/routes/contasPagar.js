@@ -17,6 +17,9 @@ const verificarAuth = require('../middlewares/authMiddleware');
 const contasPagarCaSyncService = require('../services/contasPagarCaSyncService');
 const importacaoCaService = require('../services/importacaoCaService');
 const contaAzulService = require('../services/contaAzulService');
+// App é o dono do financeiro: com esta chave ligada, Contas a Pagar não envia mais ao CA
+// (a despesa/baixa nasce "só no app"). A forma/banco continuam sendo capturados p/ os saldos.
+const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
 
 // CSV do Conta Azul fica em memória (máx 15 MB) — parse imediato, nada salvo em disco.
 const uploadCsv = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } });
@@ -574,6 +577,10 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
         const erroParcelas = validarParcelasBody(parcelas);
         if (erroParcelas) return res.status(400).json({ error: erroParcelas });
 
+        // A forma/banco/"já paguei" continuam sendo capturados localmente (saldos por conta),
+        // mas o ENVIO ao CA só acontece se o app não estiver em modo somente-leitura.
+        const enviarCAefetivo = enviarCA && !CA_SOMENTE_LEITURA;
+
         let fornecedor = null;
         if (fornecedorId) {
             fornecedor = await prisma.fornecedor.findUnique({ where: { id: fornecedorId } });
@@ -659,7 +666,7 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
                     origem: 'MANUAL',
                     valorTotal,
                     status: 'ABERTO',
-                    statusEnvioCA: enviarCA ? 'ENVIAR' : 'NAO_ENVIAR',
+                    statusEnvioCA: enviarCAefetivo ? 'ENVIAR' : 'NAO_ENVIAR',
                     metodoPagamentoCA: condicaoCA?.metodoPagamento || null,
                     contaFinanceiraCaId: condicaoCA?.contaFinanceiraCaId || null,
                     criadoPorId: req.user.id,
@@ -686,7 +693,7 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
                             dataPagamento: pagto.dataPagamento,
                             formaPagamento: pagto.metodoPagamento,
                             contaFinanceiraCaId: pagto.contaFinanceiraCaId,
-                            statusEnvioCA: 'ENVIAR',
+                            statusEnvioCA: enviarCAefetivo ? 'ENVIAR' : 'NAO_ENVIAR',
                             origem: 'MANUAL',
                             observacao: `Pago na criação da despesa (${labelMetodo}).`,
                             registradoPorId: req.user.id

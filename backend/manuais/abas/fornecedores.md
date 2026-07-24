@@ -8,7 +8,7 @@ permissao: Pode_Acessar_Fornecedores
 
 ## O que é
 
-Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Os fornecedores ficam sincronizados com o Conta Azul nos dois sentidos: quem é criado no app é enviado automaticamente ao CA, e quem já existe no CA pode ser importado de uma vez com um botão.
+Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Desde 07/2026 os fornecedores ficam **só no app** (não são mais enviados ao Conta Azul). Quem já existe no CA ainda pode ser **importado** de uma vez com um botão, para não redigitar.
 
 ---
 
@@ -16,28 +16,18 @@ Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Os fo
 
 - Ver e buscar fornecedores (por nome, nome fantasia ou CNPJ/CPF). A busca por CNPJ/CPF funciona com ou sem pontuação (tanto faz digitar `08.766.459/0001-02` ou `08766459000102`).
 - Cadastrar fornecedor: CNPJ/CPF, razão social, nome fantasia, inscrição estadual, e-mail, telefone, cidade/UF e observações. O campo CNPJ/CPF **já aplica a máscara enquanto você digita** e **confere o dígito verificador** — se o número estiver errado, o app avisa e não salva. Aceita o **CNPJ alfanumérico novo** (com letras, ex.: `12.ABC.345/01DE-35`) que a Receita passa a emitir a partir de 07/2026.
-- Editar um fornecedor (se o envio ao CA tinha dado erro, salvar a edição recoloca ele na fila de envio)
+- Editar um fornecedor
 - **Importar do Conta Azul**: busca todos os cadastros com perfil "Fornecedor" no CA e cria/atualiza aqui (casa por vínculo com o CA ou, se não houver, pelo CNPJ/CPF). Mostra quantos foram importados e quantos atualizados
 - Ativar/inativar fornecedor
 - **Excluir um fornecedor** (botão "Excluir" dentro do "Abrir"/editar): se ele **não tiver** despesas nem notas ligadas, é excluído direto. Se **tiver**, o app oferece **mesclar** — move as despesas e notas para outro fornecedor **de mesmo CNPJ** (útil para juntar cadastros duplicados) e então exclui o duplicado. A exclusão é só no app; o cadastro no Conta Azul não é apagado.
 
 ---
 
-## Sincronização com o Conta Azul
+## Relação com o Conta Azul
 
-- Fornecedor criado no app entra na fila e um robô o cria no Conta Azul em até 1 minuto (perfil "Fornecedor").
-- Fornecedores importados do CA já nascem sincronizados.
-- Uma conta a pagar só é enviada ao CA depois que o fornecedor dela estiver sincronizado.
-
-### Status de envio ao CA
-
-| Status | Significado |
-|--------|-------------|
-| ENVIAR | Na fila, será criado no CA em até 1 min |
-| ENVIANDO | Envio em andamento |
-| SINCRONIZADO | Existe no CA e está vinculado |
-| ERRO | Falhou — veja a mensagem; editar e salvar tenta de novo |
-| NAO_ENVIAR | Não deve ir para o CA |
+- **Envio desligado (07/2026):** fornecedor criado no app fica **só no app** — não é mais enviado ao Conta Azul.
+- **Importar do Conta Azul** continua funcionando: traz os cadastros com perfil "Fornecedor" que já existem lá (casa por vínculo com o CA ou pelo CNPJ/CPF).
+- Fornecedores que estavam "presos" tentando ser enviados ao CA foram convertidos automaticamente para **"só no app"**.
 
 ---
 
@@ -53,7 +43,7 @@ Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Os fo
 
 ## Depende de / Interfere em
 
-- **Contas a Pagar** — o fornecedor é obrigatório para enviar uma despesa ao Conta Azul
+- **Contas a Pagar** — o fornecedor identifica a quem se paga cada despesa
 - **Conta Azul** — cadastro espelhado via API (`/v1/pessoas`, perfil Fornecedor)
 
 ---
