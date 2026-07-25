@@ -2,7 +2,7 @@
 
 **Rota (painel admin):** `/kit-festa-admin`
 **Site público do cliente:** `/kit-festa` (link enviado por WhatsApp/redes; não exige login do app)
-**Permissão:** `admin` ou `kitFesta`. Para liberar a outros usuários: **Vendedores → editar → permissões → ligar "Kit Festa"** (a exclusão de pedidos continua só para admin).
+**Permissão:** `admin` ou `kitFesta`. Para liberar a outros usuários: **Usuários → editar → permissões → ligar "Kit Festa"** (a exclusão de pedidos continua só para admin).
 
 O Kit Festa é a linha de salgados de festa (caixas de 25 unidades, mínimo de 4 caixas). O cliente acessa um **link público**, monta o pedido, escolhe data/horário e finaliza pelo WhatsApp. O pedido cai numa **fila** no painel admin; ao ser **aprovado**, vira um pedido normal/especial/bonificação na aba **Pedidos**.
 

@@ -84,7 +84,7 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 2. Mostre o QR, **copie o código PIX** ou **envie o link por WhatsApp** ao cliente
 3. Quando pagar: **baixa automática** na parcela do app (conta financeira ASAAS); check verde ✓ aparece na pílula
 4. **Pedido ESPECIAL + PIX = conversão**: antes de gerar aparece um aviso vermelho destacado — ao receber qualquer valor via PIX (parcial ou total), o pedido especial é **convertido automaticamente em pedido normal**: ganha número novo na sequência e a **NF-e deve ser emitida** pelo faturamento (aba Notas Fiscais do app)
-5. Quem fatura recebe um **popup a cada 5 minutos** ("Pedido convertido — emitir NF-e") até dar ciência; quem recebe esse aviso é escolhido na aba **Usuários/Vendedores** (ícone de setas circulares laranja)
+5. Quem fatura recebe um **popup a cada 5 minutos** ("Pedido convertido — emitir NF-e") até dar ciência; quem recebe esse aviso é escolhido na aba **Usuários** (ícone de setas circulares laranja)
 
 ### Aprovar Pedido Especial ou Bonificação
 1. Vá para a sub-aba **Especiais** ou **Bonificação**

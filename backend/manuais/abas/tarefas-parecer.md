@@ -35,4 +35,4 @@ Relatório diário de cumprimento das tarefas da equipe, para o administrador (o
 
 ## Permissões
 
-- **Pode_Ver_Parecer_Tarefas** (ou admin): acessa esta tela. Configurável em Administração → Vendedores → Acessos e Permissões → "Tarefas da Equipe".
+- **Pode_Ver_Parecer_Tarefas** (ou admin): acessa esta tela. Configurável em Administração → Usuários → Acessos e Permissões → "Tarefas da Equipe".

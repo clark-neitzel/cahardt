@@ -72,4 +72,4 @@ Excluir uma tarefa recorrente apaga **todas** as repetições.
 | Pode_Ver_Parecer_Tarefas | Acessar o Parecer do dia (/tarefas/parecer) |
 | admin | Tudo acima + editar/excluir qualquer tarefa |
 
-As permissões são configuradas em Administração → Vendedores → escudo (Acessos e Permissões) → seção "Tarefas da Equipe".
+As permissões são configuradas em Administração → Usuários → escudo (Acessos e Permissões) → seção "Tarefas da Equipe".

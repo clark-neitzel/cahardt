@@ -1,10 +1,12 @@
 ---
-aba: Vendedores (Usuários)
+aba: Usuários (Vendedores)
 rota: /admin/vendedores
 permissao: admin
 ---
 
-# Vendedores (Usuários)
+# Usuários (Vendedores)
+
+> O item no menu **Administração** agora se chama **Usuários** (antes "Vendedores"). A tela e a rota são as mesmas.
 
 ## O que é
 

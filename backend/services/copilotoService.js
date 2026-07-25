@@ -73,7 +73,7 @@ const ABAS = [
     { slug: 'categorias-despesa', nome: 'Categorias de Despesa',        rota: '/financeiro/categorias-despesa',      perm: 'Pode_Acessar_Financeiro_Gerencial' },
     // ── Admin ────────────────────────────────────
     { slug: 'produtos',           nome: 'Produtos',                     rota: '/admin/produtos',                     perm: 'produtos' },
-    { slug: 'vendedores',         nome: 'Vendedores',                   rota: '/admin/vendedores',                   perm: 'vendedores' },
+    { slug: 'vendedores',         nome: 'Usuários (Vendedores)',        rota: '/admin/vendedores',                   perm: 'vendedores' },
     { slug: 'mensagens-agendadas',nome: 'Mensagens Agendadas',          rota: '/admin/mensagens',                    perm: 'admin' },
     { slug: 'veiculos',           nome: 'Veículos',                     rota: '/admin/veiculos',                     perm: ['Pode_Acessar_Veiculos'] },
     { slug: 'sincronizar',        nome: 'Sincronizar',                  rota: '/admin/sync',                         perm: 'sync' },

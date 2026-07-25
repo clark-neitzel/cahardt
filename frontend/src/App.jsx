@@ -358,7 +358,7 @@ const Layout = ({ children }) => {
     ].filter(Boolean) },
     { label: 'Administração', icon: UserCog, items: [
       hasPermission('produtos') && { to: '/admin/produtos', icon: Box, label: 'Produtos' },
-      hasPermission('vendedores') && { to: '/admin/vendedores', icon: UserCog, label: 'Vendedores' },
+      hasPermission('vendedores') && { to: '/admin/vendedores', icon: UserCog, label: 'Usuários' },
       isAdmin && { to: '/admin/mensagens', icon: BellRing, label: 'Mensagens' },
       (user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && { to: '/admin/veiculos', icon: Car, label: 'Veículos' },
       hasPermission('sync') && { to: '/admin/sync', icon: RefreshCw, label: 'Sincronizar' },
