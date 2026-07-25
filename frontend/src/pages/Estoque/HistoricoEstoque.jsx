@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowUpCircle, ArrowDownCircle, Filter, ChevronLeft, Loader2, AlertCircle, Search, X } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { ArrowUpCircle, ArrowDownCircle, Filter, ChevronLeft, Loader2, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import estoqueService from '../../services/estoqueService';
+import produtoService from '../../services/produtoService';
 import SelectBusca from '../../components/SelectBusca';
+import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
+import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 
 const MOTIVO_LABEL = {
@@ -55,38 +58,50 @@ const MovimentacaoCard = ({ item, compact }) => (
     </div>
 );
 
+const fmtCaixas = (n) => Number(n || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+
 export default function HistoricoEstoque() {
     const navigate = useNavigate();
     const [items, setItems] = useState([]);
     const [total, setTotal] = useState(0);
+    const [totais, setTotais] = useState(null); // { entradas: {lancamentos, caixas}, saidas: {...} } — filtro inteiro
     const [pagina, setPagina] = useState(1);
     const [loading, setLoading] = useState(false);
     const [erro, setErro] = useState(null);
     const [showFiltros, setShowFiltros] = useState(false);
 
-    const [busca, setBusca] = useState('');
-    const [buscaServer, setBuscaServer] = useState('');
-    const debounceRef = useRef(null);
+    // Produto escolhido na lista (não persiste — é uma busca pontual)
+    const [produtoId, setProdutoId] = useState('');
+    const [produtos, setProdutos] = useState([]);
 
-    const [filtros, setFiltros] = useState({
-        tipo: '',
-        motivo: '',
-        dataInicio: '',
-        dataFim: '',
-    });
-    const [filtrosAplicados, setFiltrosAplicados] = useState({});
+    // Tipo/motivo aplicados ficam salvos por usuário; o rascunho do painel parte deles
+    const [filtrosAplicados, setFiltrosAplicados] = useFiltrosSalvos('estoque-historico', { tipo: '', motivo: '' });
+    const [filtros, setFiltros] = useState(filtrosAplicados);
+
+    // Período no padrão do sistema (preset salvo por usuário; padrão: todo o período)
+    const [periodo, periodoCtl] = usePeriodoSalvo('estoque-historico', 'todo');
 
     const tamanhoPagina = 60;
 
-    const carregar = useCallback(async (pg = 1, filtrosAtivos = {}, busca = '') => {
+    useEffect(() => {
+        produtoService.listar({ limit: 2000, page: 1 }).then(r => {
+            const arr = Array.isArray(r) ? r : (r?.data || []);
+            setProdutos(arr.sort((a, b) => a.nome.localeCompare(b.nome)));
+        }).catch(() => {});
+    }, []);
+
+    const carregar = useCallback(async (pg = 1, filtrosAtivos = {}, prodId = '', de = '', ate = '') => {
         setLoading(true);
         setErro(null);
         try {
             const data = await estoqueService.listarHistorico({
                 pagina: pg,
                 tamanhoPagina,
-                ...filtrosAtivos,
-                ...(busca ? { nomeProduto: busca } : {}),
+                ...(filtrosAtivos.tipo ? { tipo: filtrosAtivos.tipo } : {}),
+                ...(filtrosAtivos.motivo ? { motivo: filtrosAtivos.motivo } : {}),
+                ...(prodId ? { produtoId: prodId } : {}),
+                ...(de ? { dataInicio: de } : {}),
+                ...(ate ? { dataFim: ate } : {}),
             });
             if (pg === 1) {
                 setItems(data.items || []);
@@ -94,6 +109,7 @@ export default function HistoricoEstoque() {
                 setItems(prev => [...prev, ...(data.items || [])]);
             }
             setTotal(data.total || 0);
+            if (data.totais) setTotais(data.totais);
         } catch {
             setErro('Erro ao carregar histórico.');
         } finally {
@@ -102,54 +118,41 @@ export default function HistoricoEstoque() {
     }, []);
 
     useEffect(() => {
-        carregar(1, filtrosAplicados, buscaServer);
-    }, [carregar, filtrosAplicados, buscaServer]);
+        setPagina(1);
+        carregar(1, filtrosAplicados, produtoId, periodo.de, periodo.ate);
+    }, [carregar, filtrosAplicados, produtoId, periodo.de, periodo.ate]);
 
     // Rebusca ao voltar ao app / a cada 5 min: recarrega a 1ª página com os
     // filtros atuais (movimentos novos aparecem no topo, sem perder o filtro)
-    useAtualizaAoVoltar(() => carregar(1, filtrosAplicados, buscaServer));
-
-    const handleBuscaChange = (valor) => {
-        setBusca(valor);
-        clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => {
-            setBuscaServer(valor.trim());
-            setPagina(1);
-        }, 400);
-    };
+    useAtualizaAoVoltar(() => carregar(1, filtrosAplicados, produtoId, periodo.de, periodo.ate));
 
     const aplicarFiltros = () => {
-        const ativos = {};
-        if (filtros.tipo) ativos.tipo = filtros.tipo;
-        if (filtros.motivo) ativos.motivo = filtros.motivo;
-        if (filtros.dataInicio) ativos.dataInicio = filtros.dataInicio;
-        if (filtros.dataFim) ativos.dataFim = filtros.dataFim;
-        setFiltrosAplicados(ativos);
-        setPagina(1);
+        setFiltrosAplicados({ tipo: filtros.tipo || '', motivo: filtros.motivo || '' });
         setShowFiltros(false);
     };
 
     const limparFiltros = () => {
-        setFiltros({ tipo: '', motivo: '', dataInicio: '', dataFim: '' });
-        setFiltrosAplicados({});
-        setBusca('');
-        setBuscaServer('');
-        setPagina(1);
+        setFiltros({ tipo: '', motivo: '' });
+        setFiltrosAplicados({ tipo: '', motivo: '' });
+        setProdutoId('');
+        periodoCtl.limpar();
         setShowFiltros(false);
     };
 
     const carregarMais = () => {
         const nova = pagina + 1;
         setPagina(nova);
-        carregar(nova, filtrosAplicados, buscaServer);
+        carregar(nova, filtrosAplicados, produtoId, periodo.de, periodo.ate);
     };
 
     const temMais = items.length < total;
-    const numFiltrosAtivos = Object.keys(filtrosAplicados).length + (buscaServer ? 1 : 0);
+    const numFiltrosAtivos = (filtrosAplicados.tipo ? 1 : 0) + (filtrosAplicados.motivo ? 1 : 0)
+        + (produtoId ? 1 : 0) + (!periodo.padrao ? 1 : 0);
     const temFiltros = numFiltrosAtivos > 0;
 
     const entradas = items.filter(i => i.tipo === 'ENTRADA');
     const saidas = items.filter(i => i.tipo === 'SAIDA');
+    const saldoPeriodo = totais ? totais.entradas.caixas - totais.saidas.caixas : 0;
 
     return (
         <div className="w-full px-4 py-6">
@@ -160,22 +163,27 @@ export default function HistoricoEstoque() {
                 </button>
                 <div className="flex-1">
                     <h1 className="text-xl font-bold text-gray-900">Histórico de Estoque</h1>
-                    <p className="text-xs text-gray-500">{total} movimentações</p>
+                    <p className="text-xs text-gray-500">
+                        {total} movimentações
+                        {totais && (
+                            <>
+                                {' · '}<span className="font-semibold text-green-700">+{fmtCaixas(totais.entradas.caixas)} entraram</span>
+                                {' · '}<span className="font-semibold text-red-700">−{fmtCaixas(totais.saidas.caixas)} saíram</span>
+                                {' · saldo '}
+                                <span className={`font-semibold ${saldoPeriodo >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                    {saldoPeriodo >= 0 ? '+' : '−'}{fmtCaixas(Math.abs(saldoPeriodo))}
+                                </span>
+                            </>
+                        )}
+                    </p>
                 </div>
-                <div className="relative flex-1 max-w-xs">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
-                    <input
-                        type="text"
-                        placeholder="Buscar produto..."
-                        value={busca}
-                        onChange={e => handleBuscaChange(e.target.value)}
-                        className="w-full pl-8 pr-7 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                    {busca && (
-                        <button onClick={() => handleBuscaChange('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                            <X className="h-3.5 w-3.5" />
-                        </button>
-                    )}
+                <div className="flex-1 max-w-xs">
+                    <SelectBusca value={produtoId} onChange={e => setProdutoId(e.target.value)} className="w-full">
+                        <option value="">Todos os produtos</option>
+                        {produtos.map(p => (
+                            <option key={p.id} value={p.id}>{p.nome}</option>
+                        ))}
+                    </SelectBusca>
                 </div>
                 <button
                     onClick={() => setShowFiltros(!showFiltros)}
@@ -216,17 +224,9 @@ export default function HistoricoEstoque() {
                             </SelectBusca>
                         </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">De</label>
-                            <input type="date" value={filtros.dataInicio} onChange={e => setFiltros(f => ({ ...f, dataInicio: e.target.value }))}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                        </div>
-                        <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Até</label>
-                            <input type="date" value={filtros.dataFim} onChange={e => setFiltros(f => ({ ...f, dataFim: e.target.value }))}
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                        </div>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Período</label>
+                        <FiltroPeriodo periodo={periodo} controle={periodoCtl} className="w-full" />
                     </div>
                     <div className="flex gap-2 pt-1">
                         <button onClick={limparFiltros} className="flex-1 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50">Limpar</button>
@@ -264,7 +264,9 @@ export default function HistoricoEstoque() {
                     <div className="flex items-center gap-2 mb-3 px-1">
                         <ArrowUpCircle className="h-5 w-5 text-green-500" />
                         <h2 className="text-sm font-bold text-green-700 uppercase tracking-wide">Entradas</h2>
-                        <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">{entradas.length}</span>
+                        <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full font-medium">
+                            {totais ? `${totais.entradas.lancamentos} lançamentos · +${fmtCaixas(totais.entradas.caixas)} caixas` : entradas.length}
+                        </span>
                     </div>
                     <div className="space-y-1.5">
                         {entradas.length === 0 && !loading && (
@@ -281,7 +283,9 @@ export default function HistoricoEstoque() {
                     <div className="flex items-center gap-2 mb-3 px-1">
                         <ArrowDownCircle className="h-5 w-5 text-red-500" />
                         <h2 className="text-sm font-bold text-red-700 uppercase tracking-wide">Saídas</h2>
-                        <span className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full font-medium">{saidas.length}</span>
+                        <span className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full font-medium">
+                            {totais ? `${totais.saidas.lancamentos} lançamentos · −${fmtCaixas(totais.saidas.caixas)} caixas` : saidas.length}
+                        </span>
                     </div>
                     <div className="space-y-1.5">
                         {saidas.length === 0 && !loading && (

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Histórico de Estoque melhorado — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: preview compacto) -->
+<meta property="og:title" content="📊 Novidade no Hardt App: Histórico de Estoque com totais em caixas">
+<meta property="og:description" content="Agora dá para ver quantas CAIXAS entraram e saíram (não só quantos registros), escolher o produto numa lista e filtrar o período com presets.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+  .hero { background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 96px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(26px,7vw,38px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:rgba(255,255,255,.75); font-size:16px; max-width:46ch; margin:0 auto; text-wrap:balance; }
+
+  /* mock da tela sobre o hero */
+  .tela { max-width:520px; margin:-68px auto 8px; background:#f7f6f2; border:1px solid #dcd9d0; border-radius:20px; box-shadow:0 18px 44px rgba(20,40,34,.28); padding:16px; text-align:left; }
+  .tela h2 { font-size:15px; font-weight:800; margin:0; }
+  .tela .sub { font-size:11px; color:#666; margin:2px 0 10px; }
+  .tela .sub b.e { color:#15803d; } .tela .sub b.s { color:#b91c1c; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:var(--gold); color:#fff; font-size:11px; font-weight:800; box-shadow:0 1px 4px rgba(0,0,0,.25); flex:none; }
+  .sel { border:1px solid var(--primary); box-shadow:0 0 0 1px var(--primary); border-radius:8px; background:#fff; padding:7px 11px; font-size:12.5px; display:flex; justify-content:space-between; margin-bottom:8px; }
+  .menu { background:#fff; border:1px solid #dcd9d0; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,.12); overflow:hidden; margin-bottom:10px; }
+  .menu .busca { border-bottom:1px solid #eee; padding:7px 11px; font-size:12px; color:#999; }
+  .opt { padding:7px 11px; font-size:12px; }
+  .opt.on { background:var(--mint); font-weight:700; color:var(--primary-dark); }
+  .periodo { display:flex; align-items:center; border:1px solid #d1d5db; border-radius:999px; background:#fff; overflow:hidden; width:fit-content; font-size:12px; margin-bottom:12px; }
+  .periodo span { padding:6px 10px; }
+  .periodo .c { border-left:1px solid #eee; border-right:1px solid #eee; font-weight:700; }
+  .periodo .c small { color:#777; font-weight:500; }
+  .chips { display:flex; gap:8px; flex-wrap:wrap; }
+  .chip { font-size:11px; padding:4px 10px; border-radius:999px; font-weight:700; }
+  .chip.e { background:#dcfce7; color:#15803d; } .chip.s { background:#fee2e2; color:#b91c1c; }
+
+  .legenda { background:#fff; border:1px solid #dcd9d0; border-radius:14px; padding:14px 16px; font-size:14px; margin:16px 0 28px; }
+  .legenda div { display:flex; gap:10px; margin:8px 0; align-items:flex-start; }
+
+  .acc { background:#fff; border:1px solid #dcd9d0; border-radius:14px; margin-bottom:12px; overflow:hidden; }
+  .acc summary { cursor:pointer; padding:14px 16px; font-weight:800; font-size:15px; color:var(--primary-dark); list-style:none; display:flex; justify-content:space-between; align-items:center; }
+  .acc summary::after { content:'▾'; color:#999; }
+  .acc[open] summary::after { content:'▴'; }
+  .acc .corpo { padding:0 16px 14px; font-size:14px; color:#333; }
+  .passo { display:flex; gap:10px; margin:10px 0; align-items:flex-start; }
+  .passo-n { flex:none; width:22px; height:22px; border-radius:50%; background:var(--primary); color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+  .rodape { text-align:center; color:#999; font-size:12px; margin-top:24px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade no app</span>
+    <h1>Histórico de Estoque agora soma as caixas 📊</h1>
+    <p>Totais de verdade (não só nº de registros), produto escolhido em lista e filtro de período com presets.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- mock da tela -->
+  <div class="tela">
+    <h2>Histórico de Estoque</h2>
+    <div class="sub"><span class="pin">1</span> 98 movimentações · <b class="e">+45 caixas entraram</b> · <b class="s">−376 caixas saíram</b> · saldo <b class="s">−331</b></div>
+    <div class="sel"><span>4-MINI EMPADA FRANGO C/50 32GR</span><span style="color:#999">▾</span></div>
+    <div class="menu">
+      <div class="busca">🔍 empada</div>
+      <div class="opt on"><span class="pin" style="width:15px;height:15px;font-size:10px">2</span> 4-MINI EMPADA FRANGO C/50 32GR</div>
+      <div class="opt">4-MINI EMPADA PALMITO C/50 32GR</div>
+      <div class="opt">G-MINI EMPADA FRANGO 500GR</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+      <span class="pin">3</span>
+      <div class="periodo"><span>‹</span><span class="c">Este mês <small>· 01/07 – 31/07</small> ▾</span><span>›</span></div>
+    </div>
+    <div class="chips">
+      <span class="chip e">⬆ 22 lançamentos · +45 caixas</span>
+      <span class="chip s">⬇ 76 lançamentos · −376 caixas</span>
+    </div>
+  </div>
+
+  <div class="legenda">
+    <div><span class="pin">1</span><span><b>Totais em caixas no topo:</b> quantas caixas entraram, quantas saíram e o saldo do período filtrado — contando tudo, não só o que está carregado na tela.</span></div>
+    <div><span class="pin">2</span><span><b>Produto escolhido em lista:</b> clique, digite um pedaço do nome e escolha — sem errar nome, filtro exato.</span></div>
+    <div><span class="pin">3</span><span><b>Período em pílula:</b> Hoje · 7 dias · 30 dias · Este mês · Este ano · Todo o período · Personalizado, com setas ‹ › para pular de período. Sua escolha fica salva.</span></div>
+  </div>
+
+  <details class="acc aberto" open>
+    <summary>O que mudou</summary>
+    <div class="corpo">
+      <p>A tela <b>Estoque → Histórico</b> mostrava só a <i>quantidade de registros</i> (ex.: "76 saídas") — mas cada registro pode ter 1, 10, 56 caixas… Agora os números que importam aparecem prontos: <b>caixas que entraram, caixas que saíram e o saldo</b> do período filtrado.</p>
+      <p>A busca de produto virou <b>lista com busca</b> (igual aos outros menus do app) e o filtro de data ganhou a <b>pílula de período</b> usada no financeiro.</p>
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary>Para começar a usar</summary>
+    <div class="corpo">
+      <div class="passo"><span class="passo-n">1</span><div>Abra <b>Estoque → Histórico</b> (se o app estiver aberto, toque no ícone de atualizar ↻)</div></div>
+      <div class="passo"><span class="passo-n">2</span><div>Toque em <b>"Todos os produtos"</b> e escolha o produto que quer conferir</div></div>
+      <div class="passo"><span class="passo-n">3</span><div>Em <b>Filtros → Período</b>, escolha "Este mês" (ou o que precisar) — os totais de caixas aparecem no topo na hora</div></div>
+    </div>
+  </details>
+
+  <div class="rodape">Hardt Alimentos · atualização de julho/2026</div>
+</div>
+
+</body>
+</html>

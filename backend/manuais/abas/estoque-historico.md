@@ -15,7 +15,10 @@ Registro completo de todas as movimentações de estoque (entradas e saídas), c
 ## O que dá pra fazer aqui
 
 - Ver todas as movimentações de estoque em ordem cronológica
-- Filtrar por: tipo (entrada/saída), motivo, período (data início/fim) e nome do produto
+- Ver os **totais do filtro** no cabeçalho: nº de movimentações, quantas caixas entraram (+), quantas saíram (−) e o saldo do período — somados no servidor, contando todas as páginas (não só o que está carregado na tela)
+- Nos títulos das colunas Entradas/Saídas: nº de lançamentos e total de caixas de cada lado
+- Filtrar por **produto escolhendo da lista** (menu com busca — não é mais texto digitado solto)
+- Filtrar por: tipo (entrada/saída), motivo e **período no padrão do sistema** (pílula com presets: Hoje · 7 dias · 30 dias · Este mês · Este ano · Todo o período · Personalizado, com setas ‹ › para pular de período; a escolha fica salva por usuário; padrão: todo o período)
 - Ver para cada movimentação: produto, tipo, quantidade, responsável, motivo, data, estoque antes/depois e status de sync com CA
 - Carregar mais registros (paginação infinita — 60 por vez)
 
@@ -45,13 +48,19 @@ Registro completo de todas as movimentações de estoque (entradas e saídas), c
 ## Como fazer (passo a passo real)
 
 ### Ver movimentações de um produto
-1. Digite o nome do produto no campo de busca
-2. A lista filtra para mostrar apenas movimentações daquele produto
+1. Clique no seletor **"Todos os produtos"** no topo da tela
+2. Digite parte do nome para filtrar a lista e **escolha o produto**
+3. A lista e os totais passam a mostrar só aquele produto (para voltar, escolha "Todos os produtos")
 
 ### Filtrar por período
 1. Clique em **Filtros**
-2. Defina data início e data fim
-3. Clique em **Aplicar**
+2. No campo **Período**, escolha um preset (Hoje, Últimos 7 dias, Este mês…) ou "Período personalizado" com De/Até
+3. Use as setas **‹ ›** da pílula para pular para o período anterior/seguinte
+4. O período aplica na hora (tipo e motivo aplicam no botão **Aplicar**)
+
+### Conferir quantas caixas se movimentaram
+- O cabeçalho mostra os totais do filtro atual: `+N entraram · −N saíram · saldo ±N`
+- Os chips das colunas mostram `X lançamentos · ±N caixas` de cada lado
 
 ### Carregar mais registros
 - Clique em **Carregar mais** no rodapé da lista

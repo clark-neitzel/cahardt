@@ -590,7 +590,7 @@ const estoqueService = {
         }
 
         const skip = (pagina - 1) * tamanhoPagina;
-        const [items, total] = await Promise.all([
+        const [items, total, agg] = await Promise.all([
             prisma.movimentacaoEstoque.findMany({
                 where,
                 include: {
@@ -601,10 +601,27 @@ const estoqueService = {
                 skip,
                 take: tamanhoPagina
             }),
-            prisma.movimentacaoEstoque.count({ where })
+            prisma.movimentacaoEstoque.count({ where }),
+            // Totais do filtro inteiro (todas as páginas): nº de lançamentos e soma das quantidades
+            prisma.movimentacaoEstoque.groupBy({
+                by: ['tipo'],
+                where,
+                _sum: { quantidade: true },
+                _count: { _all: true }
+            })
         ]);
 
-        return { items, total, pagina, tamanhoPagina };
+        const totais = {
+            entradas: { lancamentos: 0, caixas: 0 },
+            saidas: { lancamentos: 0, caixas: 0 }
+        };
+        for (const g of agg) {
+            const alvo = g.tipo === 'ENTRADA' ? totais.entradas : totais.saidas;
+            alvo.lancamentos = g._count._all;
+            alvo.caixas = parseFloat(g._sum.quantidade || 0);
+        }
+
+        return { items, total, totais, pagina, tamanhoPagina };
     }
 };
 
