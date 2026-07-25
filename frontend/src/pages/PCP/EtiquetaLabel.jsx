@@ -100,14 +100,14 @@ export default function EtiquetaLabel({ et, dataFab, dataVal }) {
         if (!svgRef.current || !et.codigoBarras) return;
         try {
             JsBarcode(svgRef.current, et.codigoBarras, {
-                format: 'EAN13', width: 1.1, height: 15,
-                displayValue: true, fontSize: 6, margin: 0, textMargin: 0,
+                format: 'EAN13', width: 1.6, height: 28,
+                displayValue: true, fontSize: 9, margin: 0, textMargin: 1,
             });
         } catch {
             try {
                 JsBarcode(svgRef.current, et.codigoBarras, {
-                    format: 'CODE128', width: 1.1, height: 22,
-                    displayValue: true, fontSize: 6, margin: 1, textMargin: 0,
+                    format: 'CODE128', width: 1.6, height: 28,
+                    displayValue: true, fontSize: 9, margin: 0, textMargin: 1,
                 });
             } catch { /* sem código de barras */ }
         }
