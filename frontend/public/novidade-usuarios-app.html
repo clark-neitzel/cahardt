@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Usuários criados direto no app — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
+<meta property="og:title" content="👤 Novidade no Hardt App: usuário novo direto no app">
+<meta property="og:description" content="Acabou a dependência do Conta Azul: agora o usuário é criado no próprio app, buscando a pessoa no cadastro. E a tela de Usuários ficou repaginada, no computador e no celular.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 96px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow { display: inline-block; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  /* mock flutuante */
+  .mock { max-width: 420px; margin: -68px auto 28px; background: #fff; border-radius: 20px; box-shadow: 0 18px 44px rgba(20,40,34,.28); overflow: hidden; text-align: left; }
+  .mock-top { background: var(--house); color: #fff; padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+  .mock-top small { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; color: rgba(255,255,255,.55); }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-soft); margin-bottom: 4px; }
+  .mock-input { border: 1.5px solid #d8d5cc; border-radius: 10px; padding: 11px 13px; font-size: 15px; color: var(--ink); background: #fff; display: flex; align-items: center; min-height: 44px; }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo { background: #f6f5f1; border-radius: 9px; padding: 8px 12px; font-size: 13px; color: #b9b5aa; min-height: 36px; display: flex; align-items: center; gap: 8px; transition: background .4s, color .4s; }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status { margin-top: 12px; font-size: 12.5px; font-weight: 700; color: var(--ink-soft); min-height: 20px; display: flex; align-items: center; gap: 7px; }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  .demo-cta { display: block; width: 100%; max-width: 420px; margin: 0 auto 8px; background: var(--primary); color: #fff; border: none; font: inherit; font-size: 16px; font-weight: 800; padding: 16px; border-radius: 999px; cursor: pointer; box-shadow: 0 6px 18px rgba(0,117,74,.35); }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; color: var(--primary-dark); margin: 34px 4px 12px; }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit; text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+  .app-card-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid #f0efe9; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #6b756f; }
+  .app-card-body { padding: 12px; }
+  .app-input { border: 1px solid #d8d5cc; border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: var(--ink); background: #fff; margin-bottom: 8px; }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--primary); color: #fff; font-size: 12.5px; font-weight: 700; padding: 9px 16px; border-radius: 999px; }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* linha de usuário no mock da lista */
+  .u-linha { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-bottom: 1px solid #f0efe9; }
+  .u-linha:last-child { border-bottom: 0; }
+  .u-av { width: 30px; height: 30px; border-radius: 50%; background: var(--mint); color: var(--primary-dark); font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .u-nome { font-size: 13px; font-weight: 700; }
+  .u-vinc { font-size: 10.5px; font-weight: 700; }
+  .u-vinc.ok { color: var(--primary); }
+  .u-vinc.pend { color: #B47712; border-bottom: 1px dashed #d9b26a; }
+  .u-num { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--primary-dark); white-space: nowrap; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Usuário novo?<br>Agora nasce no próprio app</h1>
+    <p>Acabou a dependência do Conta Azul: para dar acesso a alguém, você busca a pessoa no cadastro, define login e senha — pronto. E a tela de Usuários ficou repaginada, no computador e no celular.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock: criar usuário -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">👤</span>
+      <div>
+        <small>Administração · Usuários</small>
+        <strong>Novo Usuário</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-label">Buscar pessoa no cadastro</div>
+      <div class="mock-input" id="mockInput"><span id="mockBusca"></span><span class="cursor" id="mockCursor"></span></div>
+      <div class="mock-status" id="mockStatus"></div>
+      <div class="mock-campos">
+        <div class="campo" id="c1"><span class="ck">✅</span> <span>Pessoa: <b>Bruno Alves Teixeira</b></span></div>
+        <div class="campo" id="c2"><span class="ck">✅</span> <span>E-mail e telefone vêm do cadastro</span></div>
+        <div class="campo" id="c3"><span class="ck">✅</span> <span>Login: <b>bruno</b> · senha definida</span></div>
+        <div class="campo" id="c4"><span class="ck">✅</span> <span>Permissões abrem sozinhas ao criar</span></div>
+      </div>
+    </div>
+  </div>
+
+  <button class="demo-cta" onclick="rodarDemo()">👤 Toque aqui e veja como fica fácil</button>
+  <p class="demo-hint">É uma demonstração com dados fictícios — pode clicar sem medo.</p>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">➕</span>
+      <strong>Botão "Novo Usuário" — em 2 passos</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p><b>Passo 1:</b> busque a pessoa no cadastro (o mesmo dos clientes) pelo nome, documento ou código. Se ela ainda não existir, o atalho "Cadastrar nova pessoa" leva direto ao Novo Cadastro.</p>
+      <p><b>Passo 2:</b> nome, e-mail e telefone já vêm preenchidos do cadastro. Você só define o <b>login</b> e a <b>senha</b>. Ao criar, o painel de permissões abre sozinho para configurar os acessos.</p>
+      <p>Disponível para administradores.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔗</span>
+      <strong>Cada usuário vinculado a um cadastro</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Embaixo do nome de cada usuário agora aparece o vínculo com o cadastro de pessoas:</p>
+      <ul>
+        <li><b style="color:var(--primary)">✓ Cadastro vinculado</b> — já está ligado à pessoa certa;</li>
+        <li><b style="color:#B47712">+ Vincular cadastro</b> — usuários antigos (que vieram do Conta Azul) ainda sem vínculo. Um clique abre a mesma busca para ligar à pessoa do cadastro.</li>
+      </ul>
+      <p>Não tem pressa: dá para vincular os antigos aos poucos.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✨</span>
+      <strong>Tela repaginada — e melhor no celular</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Números alinhados e numa linha só — os detalhes do Flex (orçamento e usado) aparecem ao pousar o mouse sobre o valor;</li>
+        <li>Formas de atendimento viraram três botõezinhos uniformes (Presencial · WhatsApp · Telefone) — aceso = visível para o vendedor;</li>
+        <li>No celular, cada usuário vira um cartão organizado, com os indicadores em régua e telefone que nunca quebra no meio.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔌</span>
+      <strong>Conta Azul desligado dos usuários</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Antes, os usuários só "nasciam" importados do Conta Azul. Essa importação foi desligada: <b>o app agora é o dono do cadastro de usuários</b>, como já acontece com clientes e fornecedores.</p>
+      <p>Nada muda para quem já usa o sistema — logins, senhas e permissões continuam exatamente como estão.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <!-- Tela 1: lista -->
+  <div class="tela">
+    <div class="tela-titulo">📋 Tela 1 · Usuários (a lista)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Usuários <span style="margin-left:auto"><span class="app-btn" style="font-size:11px; padding:6px 12px;">＋ Novo Usuário</span><span class="pin">1</span></span></div>
+        <div class="app-card-body" style="padding:0">
+          <div class="u-linha">
+            <span class="u-av">AF</span>
+            <div><div class="u-nome">Ana Paula Fernandes</div><div class="u-vinc ok">✓ Cadastro vinculado <span class="pin">2</span></div></div>
+            <span class="u-num">R$ 872,40 <span class="pin">3</span></span>
+          </div>
+          <div class="u-linha">
+            <span class="u-av">CE</span>
+            <div><div class="u-nome">Carlos Eduardo</div><div class="u-vinc pend">＋ Vincular cadastro</div></div>
+            <span class="u-num" style="color:#6b756f">R$ 0,00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Novo Usuário</b> — o botão novo, no topo da tela (só administradores veem).</span></div>
+      <div><span class="pin">2</span><span><b>Vínculo com o cadastro</b> — verde quando já ligado à pessoa; âmbar "Vincular cadastro" nos antigos, com a busca a um clique.</span></div>
+      <div><span class="pin">3</span><span><b>Flex disponível (30d)</b> — numa linha só; pouse o mouse para ver orçamento e quanto já foi usado.</span></div>
+    </div>
+  </div>
+
+  <!-- Tela 2: busca -->
+  <div class="tela">
+    <div class="tela-titulo">🔎 Tela 2 · Novo Usuário — passo 1 (buscar a pessoa)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Novo Usuário · buscar no cadastro</div>
+        <div class="app-card-body">
+          <div class="app-input">🔎 bruno <span class="pin">1</span></div>
+          <div class="u-linha" style="border:1px solid #e5e3dc; border-radius:10px; margin-bottom:8px;">
+            <span class="u-av">BA</span>
+            <div><div class="u-nome">Bruno Alves Teixeira</div><div style="font-size:10.5px; color:#9aa5a0">CPF 042.•••.559-70 · Jaraguá do Sul</div></div>
+          </div>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <span style="font-size:11px; color:#9aa5a0">Não achou a pessoa?</span>
+            <span class="app-btn claro" style="font-size:11px; padding:6px 12px;">Cadastrar nova pessoa <span class="pin">2</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Busca no cadastro de clientes</b> — por nome, documento ou código. É a mesma base de sempre; toque na pessoa para selecioná-la.</span></div>
+      <div><span class="pin">2</span><span><b>Cadastrar nova pessoa</b> — se ela ainda não existe, abre o Novo Cadastro (com busca automática por CNPJ) e você volta aqui depois.</span></div>
+    </div>
+  </div>
+
+  <!-- Tela 3: dados de acesso -->
+  <div class="tela">
+    <div class="tela-titulo">🔐 Tela 3 · Novo Usuário — passo 2 (dados de acesso)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Confira os dados e defina o acesso</div>
+        <div class="app-card-body">
+          <div class="app-input ok"><small>Pessoa selecionada</small>Bruno Alves Teixeira <span class="pin">1</span></div>
+          <div class="app-input"><small>Nome completo</small>Bruno Alves Teixeira</div>
+          <div class="app-input ok"><small>E-mail · do cadastro</small>bruno.alves@email.com <span class="pin">2</span></div>
+          <div class="app-input"><small>Login</small>bruno</div>
+          <div class="app-input"><small>Senha</small>••••••••</div>
+          <span class="app-btn">Criar usuário <span class="pin">3</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Pessoa selecionada</b> — dá para trocar antes de criar, se pegou a errada.</span></div>
+      <div><span class="pin">2</span><span><b>Dados que vêm do cadastro</b> — e-mail e telefone chegam preenchidos; pode ajustar se precisar.</span></div>
+      <div><span class="pin">3</span><span><b>Criar usuário</b> — salva e abre sozinho o painel de permissões, para você marcar o que a pessoa pode acessar.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PARA COMEÇAR ══════════ -->
+  <div class="sec-label">Para dar acesso a alguém novo</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div>Abra <b>Administração → Usuários</b> e toque em <b>"+ Novo Usuário"</b></div></div>
+    <div class="passo"><span class="passo-n">2</span><div><b>Busque a pessoa</b> no cadastro pelo nome (ou cadastre-a primeiro, se for nova)</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Confira os dados e defina <b>login e senha</b></div></div>
+    <div class="passo"><span class="passo-n">4</span><div>O painel de <b>permissões abre sozinho</b> — marque o que a pessoa pode acessar e salve</div></div>
+  </div>
+
+  <p class="rodape">Dúvidas? É só perguntar ao <strong>Clippy</strong> dentro do app 💬</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', acc.classList.contains('aberto'));
+  }
+
+  let demoRodando = false;
+  function rodarDemo() {
+    if (demoRodando) return;
+    demoRodando = true;
+    const busca = document.getElementById('mockBusca');
+    const input = document.getElementById('mockInput');
+    const status = document.getElementById('mockStatus');
+    ['c1','c2','c3','c4'].forEach(id => document.getElementById(id).classList.remove('cheio'));
+    busca.textContent = '';
+    status.textContent = '';
+    status.classList.remove('ok');
+    input.classList.add('focado');
+
+    const texto = 'bruno';
+    let i = 0;
+    const digita = setInterval(() => {
+      busca.textContent = texto.slice(0, ++i);
+      if (i >= texto.length) {
+        clearInterval(digita);
+        status.textContent = '🔎 Buscando no cadastro…';
+        setTimeout(() => {
+          status.textContent = '✅ Pessoa encontrada no cadastro!';
+          status.classList.add('ok');
+          ['c1','c2','c3','c4'].forEach((id, idx) => {
+            setTimeout(() => document.getElementById(id).classList.add('cheio'), 350 * (idx + 1));
+          });
+          setTimeout(() => { input.classList.remove('focado'); demoRodando = false; }, 1800);
+        }, 900);
+      }
+    }, 160);
+  }
+</script>
+</body>
+</html>

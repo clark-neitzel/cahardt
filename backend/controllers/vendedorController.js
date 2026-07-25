@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const prisma = require('../config/database');
 const { calcularFlexBulk } = require('../services/flexService');
 
@@ -52,6 +53,65 @@ const vendedorController = {
         }
     },
 
+    // Criar usuário novo (25/07/2026 — o usuário nasce do app, não mais do sync do Conta Azul).
+    // Fluxo: admin busca a pessoa no cadastro de clientes (buscar-global), seleciona e define o acesso.
+    criar: async (req, res) => {
+        try {
+            // Só admin: criação envolve login/senha/permissões (mesma regra dos campos sensíveis do PUT)
+            const isAdmin = req.user?.permissoes?.admin === true;
+            if (!isAdmin) {
+                return res.status(403).json({ error: 'Apenas administradores podem criar usuários.' });
+            }
+
+            const { nome, email, telefone, login, senha, clienteUuid, permissoes, percentualFlex, maxDescontoFlex } = req.body;
+
+            if (!nome || !String(nome).trim()) return res.status(400).json({ error: 'Informe o nome completo.' });
+            if (!login || !String(login).trim()) return res.status(400).json({ error: 'Informe o login.' });
+            if (!senha || String(senha).trim().length < 4) return res.status(400).json({ error: 'Informe uma senha com pelo menos 4 caracteres.' });
+
+            const loginNorm = String(login).trim().toLowerCase();
+            const jaExiste = await prisma.vendedor.findUnique({ where: { login: loginNorm } });
+            if (jaExiste) {
+                return res.status(409).json({ error: `O login "${loginNorm}" já está em uso por ${jaExiste.nome}.` });
+            }
+
+            // Vínculo com o cadastro de pessoas (opcional no backend; a tela sempre envia)
+            if (clienteUuid) {
+                const cadastro = await prisma.cliente.findUnique({ where: { UUID: clienteUuid }, select: { UUID: true } });
+                if (!cadastro) return res.status(400).json({ error: 'Cadastro selecionado não encontrado.' });
+                const jaVinculado = await prisma.vendedor.findFirst({ where: { clienteUuid }, select: { nome: true } });
+                if (jaVinculado) {
+                    return res.status(409).json({ error: `Este cadastro já está vinculado ao usuário ${jaVinculado.nome}.` });
+                }
+            }
+
+            const salt = await bcrypt.genSalt(10);
+            const senhaHash = await bcrypt.hash(String(senha).trim(), salt);
+
+            const vendedor = await prisma.vendedor.create({
+                data: {
+                    id: crypto.randomUUID(), // ID próprio do app (antes vinha do Conta Azul)
+                    nome: String(nome).trim(),
+                    email: email || null,
+                    telefone: telefone || null,
+                    login: loginNorm,
+                    senha: senhaHash,
+                    clienteUuid: clienteUuid || null,
+                    permissoes: permissoes !== undefined ? permissoes : {},
+                    percentualFlex: percentualFlex !== undefined ? percentualFlex : 0,
+                    maxDescontoFlex: maxDescontoFlex !== undefined ? maxDescontoFlex : 100,
+                    ativo: true
+                }
+            });
+
+            vendedor.senha = undefined;
+            res.status(201).json(vendedor);
+        } catch (error) {
+            console.error('Erro ao criar usuário:', error);
+            res.status(500).json({ error: 'Erro ao criar usuário' });
+        }
+    },
+
     // Atualizar dados locais (Email, Flex, Permissoes, Auth)
     atualizar: async (req, res) => {
         try {
@@ -71,7 +131,7 @@ const vendedorController = {
                 return res.status(403).json({ error: 'Sem permissão para editar usuários.' });
             }
 
-            const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, percentualFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento, alertaPedidoConvertido, tabelaCobrancaFaltaId } = req.body;
+            const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, percentualFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento, alertaPedidoConvertido, tabelaCobrancaFaltaId, clienteUuid } = req.body;
 
             // Campos sensíveis (permissões, login, senha, status) só por admin — evita
             // escalonamento de privilégio e sequestro de conta por um gestor não-admin.
@@ -95,6 +155,19 @@ const vendedorController = {
             if (alertaFaturamento !== undefined) dataToUpdate.alertaFaturamento = alertaFaturamento;
             if (alertaPedidoConvertido !== undefined) dataToUpdate.alertaPedidoConvertido = alertaPedidoConvertido;
             if (tabelaCobrancaFaltaId !== undefined) dataToUpdate.tabelaCobrancaFaltaId = tabelaCobrancaFaltaId || null;
+
+            // Vincular usuário antigo ao cadastro de pessoas (um cadastro por usuário)
+            if (clienteUuid !== undefined) {
+                if (clienteUuid) {
+                    const cadastro = await prisma.cliente.findUnique({ where: { UUID: clienteUuid }, select: { UUID: true } });
+                    if (!cadastro) return res.status(400).json({ error: 'Cadastro selecionado não encontrado.' });
+                    const jaVinculado = await prisma.vendedor.findFirst({ where: { clienteUuid, NOT: { id } }, select: { nome: true } });
+                    if (jaVinculado) {
+                        return res.status(409).json({ error: `Este cadastro já está vinculado ao usuário ${jaVinculado.nome}.` });
+                    }
+                }
+                dataToUpdate.clienteUuid = clienteUuid || null;
+            }
 
             if (senha && senha.trim() !== '') {
                 const salt = await bcrypt.genSalt(10);

@@ -12,14 +12,18 @@ permissao: admin
 
 Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas incluem motoristas, escritório e qualquer pessoa com acesso). Aqui se configura: limites de Flex, alerta de faturamento, formas de atendimento visíveis, permissões detalhadas e status ativo/inativo.
 
+> **Desde 25/07/2026 os usuários são criados 100% pelo app** (botão "Novo Usuário"). A importação de vendedores do Conta Azul foi desligada — o "Sincronizar Tudo" não traz mais usuários. Cada usuário novo nasce **vinculado a uma pessoa do cadastro de clientes** (futuro cadastro de pessoas); usuários antigos (vindos do CA) podem ser vinculados aos poucos pelo link "Vincular cadastro" sob o nome.
+
 ---
 
 ## O que dá pra fazer aqui
 
+- **Criar um usuário novo** (botão "Novo Usuário", só admin): busca a pessoa no cadastro de clientes, os dados (nome, e-mail, telefone) vêm preenchidos, define login e senha — e o painel de permissões abre sozinho em seguida
+- **Vincular um usuário antigo ao cadastro** (link "Vincular cadastro" sob o nome, quando ainda não tem vínculo)
 - Listar todos os usuários (ativos e inativos)
 - Buscar por nome
 - Editar: e-mail, telefone, **% Flex** (percentual sobre vendas 30 dias), % máximo de desconto por item
-- Ver o **Flex Disponível (30d)**: calculado automaticamente — não é mais editável manualmente
+- Ver o **Flex Disponível (30d)**: calculado automaticamente — não é mais editável manualmente (detalhes de orçamento/usado aparecem ao pousar o mouse sobre o valor)
 - Ativar ou inativar um usuário
 - Configurar quais formas de atendimento aparecem para o vendedor (Presencial, WhatsApp, Telefone)
 - Ligar/desligar alerta de faturamento por WhatsApp
@@ -28,6 +32,18 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 ---
 
 ## Como fazer (passo a passo real)
+
+### Criar um usuário novo (só admin)
+1. Clique em **"+ Novo Usuário"** no topo da tela
+2. **Passo 1 — buscar a pessoa**: digite o nome (ou documento/código) — a busca é no cadastro de clientes. Se a pessoa não existir ainda, use "Cadastrar nova pessoa" (abre o Novo Cadastro de clientes) e volte aqui depois
+3. **Passo 2 — dados de acesso**: nome completo, e-mail e telefone vêm do cadastro (dá pra ajustar); defina **login** e **senha** (mínimo 4 caracteres)
+4. Clique em "Criar usuário" — o painel de **permissões abre sozinho** para configurar os acessos
+5. O usuário já nasce ativo e vinculado ao cadastro selecionado
+
+### Vincular um usuário antigo ao cadastro
+1. Na linha do usuário, sob o nome, clique em **"Vincular cadastro"** (aparece só para quem ainda não tem vínculo)
+2. Busque e selecione a pessoa no cadastro — o vínculo é salvo na hora
+3. Um cadastro só pode estar vinculado a um usuário (o sistema avisa se já estiver em uso)
 
 ### Editar dados de um vendedor
 1. Clique no ícone de lápis na linha do vendedor
@@ -79,10 +95,10 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 
 | Permissão | Efeito |
 |-----------|--------|
-| `admin` | Acesso total à aba |
-| `vendedores` (edit) | Pode editar dados não-sensíveis do usuário (e-mail, telefone, % Flex, formas de atendimento) |
+| `admin` | Acesso total à aba, incluindo **criar usuário** |
+| `vendedores` (edit) | Pode editar dados não-sensíveis do usuário (e-mail, telefone, % Flex, formas de atendimento) e vincular ao cadastro |
 
-> **Segurança:** alterar **permissões, login, senha ou status (ativo/inativo)** de um usuário é restrito a `admin` — o backend bloqueia (HTTP 403) quem não for admin, mesmo que consiga abrir a tela. Isso impede que alguém sem ser admin conceda privilégios a si mesmo ou troque a senha de outra pessoa.
+> **Segurança:** **criar usuário** e alterar **permissões, login, senha ou status (ativo/inativo)** é restrito a `admin` — o backend bloqueia (HTTP 403) quem não for admin, mesmo que consiga abrir a tela. Isso impede que alguém sem ser admin conceda privilégios a si mesmo ou troque a senha de outra pessoa.
 
 ---
 
@@ -100,6 +116,7 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 | Caminho | Papel |
 |---------|-------|
 | `frontend/src/pages/Admin/Vendedores/ListaVendedores.jsx` | Tela principal |
+| `frontend/src/pages/Admin/Vendedores/NovoUsuarioModal.jsx` | Modal de criação/vínculo com o cadastro |
 | `frontend/src/pages/Admin/Vendedores/PermissoesModal.jsx` | Modal de permissões |
 | `frontend/src/services/vendedorService.js` | Chamadas de API |
-| `backend/src/routes/vendedores.js` | Rotas do backend |
+| `backend/routes/vendedorRoutes.js` | Rotas do backend (GET, POST, PUT) |

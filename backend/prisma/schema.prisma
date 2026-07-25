@@ -435,6 +435,11 @@ model Vendedor {
   // (id ou idCondicao da TabelaPreco, sem FK — mesma flexibilidade de Cliente.Condicao_de_pagamento)
   tabelaCobrancaFaltaId String? @map("tabela_cobranca_falta_id")
 
+  // Vínculo com o cadastro de pessoas (tabela clientes) — desde 25/07/2026 o usuário
+  // nasce da seleção no cadastro (sync com o Conta Azul desligado). Sem FK de propósito:
+  // usuários antigos (vindos do CA) ainda não têm vínculo e são vinculados aos poucos.
+  clienteUuid String? @map("cliente_uuid")
+
   clientes                 Cliente[]
   pedidos                  Pedido[]
   pedidosLancados          Pedido[]         @relation("UsuarioLancamento")

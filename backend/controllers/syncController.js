@@ -31,7 +31,9 @@ const syncController = {
             try {
                 await contaAzulService.syncProdutos();
                 // syncClientes desativado (07/2026) — cadastro de clientes é 100% do app
-                await contaAzulService.syncVendedores();
+                // syncVendedores desativado (25/07/2026) — usuários agora nascem do app
+                // (POST /vendedores, vinculados ao cadastro de pessoas); um sync do CA
+                // poderia sobrescrever/recriar usuários gerenciados aqui.
             } catch (err) {
                 console.error("Erro background syncTudo:", err);
             }
