@@ -100,14 +100,14 @@ export default function EtiquetaLabel({ et, dataFab, dataVal }) {
         if (!svgRef.current || !et.codigoBarras) return;
         try {
             JsBarcode(svgRef.current, et.codigoBarras, {
-                format: 'EAN13', width: 1.6, height: 28,
-                displayValue: true, fontSize: 9, margin: 0, textMargin: 1,
+                format: 'EAN13', width: 2.2, height: 40,
+                displayValue: true, fontSize: 12, margin: 0, textMargin: 1,
             });
         } catch {
             try {
                 JsBarcode(svgRef.current, et.codigoBarras, {
-                    format: 'CODE128', width: 1.6, height: 28,
-                    displayValue: true, fontSize: 9, margin: 0, textMargin: 1,
+                    format: 'CODE128', width: 2.2, height: 40,
+                    displayValue: true, fontSize: 12, margin: 0, textMargin: 1,
                 });
             } catch { /* sem código de barras */ }
         }
@@ -231,10 +231,10 @@ export default function EtiquetaLabel({ et, dataFab, dataVal }) {
                 </div>
             )}
 
-            {/* Código de barras */}
+            {/* Código de barras — ocupa quase toda a largura */}
             {et.codigoBarras && (
                 <div style={{ textAlign:'center', marginBottom:'0.3mm' }}>
-                    <svg ref={svgRef} style={{ maxWidth:'100%', display:'block', margin:'0 auto' }} />
+                    <svg ref={svgRef} style={{ width:'96%', height:'auto', display:'block', margin:'0 auto' }} />
                 </div>
             )}
 
