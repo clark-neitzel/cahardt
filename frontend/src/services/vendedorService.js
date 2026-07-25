@@ -25,6 +25,12 @@ const vendedorService = {
     criar: async (dados) => {
         const response = await api.post('/vendedores', dados);
         return response.data;
+    },
+
+    // Histórico de permissões (auditoria + restaurar versão) — admin
+    historicoPermissoes: async (id) => {
+        const response = await api.get(`/vendedores/${id}/permissoes-historico`);
+        return response.data;
     }
 };
 

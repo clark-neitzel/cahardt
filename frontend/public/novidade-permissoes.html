@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Painel de Permissões repaginado — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
+<meta property="og:title" content="🛡️ Novidade no Hardt App: permissões com busca, perfis e histórico">
+<meta property="og:description" content="Busque a permissão pelo que ela faz, aplique perfis prontos, copie de outro usuário e desfaça mudanças pelo histórico. Tela larga no desktop, chips no celular.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-.01em; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--cream);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:620px;margin:0 auto;padding:0 16px 56px}
+  .hero{background:linear-gradient(168deg,var(--house) 0%,#16302a 100%);color:#fff;padding:40px 16px 96px}
+  .hero-inner{max-width:620px;margin:0 auto;text-align:center}
+  .eyebrow{display:inline-block;background:var(--gold);color:#2b230f;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;padding:6px 14px;border-radius:999px;margin-bottom:18px}
+  .hero h1{font-size:clamp(28px,7vw,40px);font-weight:800;line-height:1.12;margin:0 0 12px;text-wrap:balance}
+  .hero p{color:rgba(255,255,255,.75);font-size:16px;max-width:46ch;margin:0 auto;text-wrap:balance}
+  .mock{max-width:420px;margin:-68px auto 34px;background:#fff;border-radius:20px;box-shadow:0 18px 44px rgba(20,40,34,.28);overflow:hidden;text-align:left}
+  .mock-top{background:var(--house);color:#fff;padding:14px 18px;display:flex;align-items:center;gap:12px}
+  .mock-top small{display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:rgba(255,255,255,.55)}
+  .mock-top strong{font-size:16px;line-height:1.2}
+  .mock-body{padding:16px 18px 18px}
+  .m-busca{border:1.5px solid var(--primary);border-radius:999px;padding:10px 14px;font-size:14px;color:var(--ink);box-shadow:0 0 0 3px rgba(0,117,74,.12);display:flex;gap:8px;align-items:center}
+  .m-res{margin-top:12px;display:grid;gap:8px}
+  .m-item{background:#f6f5f1;border-radius:10px;padding:10px 12px;font-size:12.5px;display:flex;align-items:center;gap:10px}
+  .m-item b{display:block;font-size:13px}
+  .m-item small{color:var(--ink-soft)}
+  .m-sw{margin-left:auto;flex-shrink:0;width:34px;height:20px;border-radius:999px;background:var(--primary);position:relative}
+  .m-sw::after{content:'';position:absolute;top:3px;right:3px;width:14px;height:14px;border-radius:50%;background:#fff}
+  .m-sw.off{background:#d5d9d5}.m-sw.off::after{right:auto;left:3px}
+  .sec-label{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.16em;color:var(--primary-dark);margin:34px 4px 12px}
+  .acc{background:#fff;border:1px solid #e3e1da;border-radius:16px;margin-bottom:10px;overflow:hidden;box-shadow:0 1px 2px rgba(30,57,50,.05)}
+  .acc-head{width:100%;display:flex;align-items:center;gap:12px;background:none;border:none;font:inherit;text-align:left;padding:15px 16px;cursor:pointer;min-height:56px}
+  .acc-ico{width:38px;height:38px;border-radius:11px;background:var(--mint);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+  .acc-head strong{flex:1;font-size:15.5px;font-weight:700}
+  .acc-seta{color:#9aa5a0;transition:transform .2s;font-size:13px}
+  .acc.aberto .acc-seta{transform:rotate(180deg)}
+  .acc-corpo{display:none;padding:0 16px 16px 66px}
+  .acc.aberto .acc-corpo{display:block}
+  .acc-corpo p,.acc-corpo li{font-size:14px;color:var(--ink-soft)}
+  .acc-corpo p{margin:0 0 10px}
+  .acc-corpo ul{margin:0;padding-left:18px}
+  .acc-corpo li{margin-bottom:7px}
+  .acc-corpo b{color:var(--ink)}
+  @media(max-width:420px){.acc-corpo{padding-left:16px}}
+  .tela{background:#fff;border:1px solid #e3e1da;border-radius:16px;overflow:hidden;margin-bottom:12px;box-shadow:0 1px 2px rgba(30,57,50,.05)}
+  .tela-titulo{background:var(--house);color:#fff;padding:12px 16px;font-size:13px;font-weight:800;display:flex;align-items:center;gap:8px}
+  .tela-corpo{padding:16px;background:#f7f6f2}
+  .app-card{background:#fff;border:1px solid #e5e3dc;border-radius:12px;overflow:hidden;margin-bottom:10px}
+  .app-card-head{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid #f0efe9;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#6b756f}
+  .app-card-body{padding:12px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chipx{font-size:11px;font-weight:700;padding:6px 12px;border-radius:999px;border:1.5px solid #d8d5cc;color:#6b756f;background:#fff}
+  .chipx.on{background:var(--primary);border-color:var(--primary);color:#fff}
+  .pin{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gold);color:#2b230f;font-size:11px;font-weight:800;flex-shrink:0;vertical-align:2px;margin-left:6px}
+  .legenda{padding:12px 16px 16px}
+  .legenda div{display:flex;gap:8px;font-size:13px;color:var(--ink-soft);margin-bottom:7px;align-items:flex-start}
+  .legenda .pin{margin:1px 0 0}
+  .legenda b{color:var(--ink)}
+  .hentry{border:1px solid #e5e3dc;border-radius:10px;padding:10px 12px;font-size:12px;color:var(--ink-soft);margin-bottom:8px;background:#fff}
+  .hentry b{color:var(--ink);font-size:12.5px}
+  .hp{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;margin-top:4px}
+  .hp.mais{background:#dcfce7;color:#166534}.hp.menos{background:#fdecec;color:#b42318}
+  .hbtn{display:inline-block;font-size:10.5px;font-weight:700;color:var(--primary);border:1px solid var(--primary);border-radius:999px;padding:3px 10px;margin-top:6px}
+  .passos{background:#fff;border:1px solid #e3e1da;border-radius:16px;padding:18px 16px}
+  .passo{display:flex;gap:14px;padding:10px 0}
+  .passo + .passo{border-top:1px dashed #e3e1da}
+  .passo-n{width:30px;height:30px;flex-shrink:0;border-radius:50%;background:var(--primary);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
+  .passo div{font-size:14px;color:var(--ink-soft)}
+  .passo b{color:var(--ink)}
+  .rodape{text-align:center;font-size:13px;color:var(--ink-soft);margin-top:40px}
+  .rodape strong{color:var(--primary-dark)}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Permissões fáceis<br>de achar e de desfazer</h1>
+    <p>O painel de acessos foi repaginado: busque a permissão pelo que ela faz, aplique perfis prontos, copie de outro usuário — e, se marcar algo errado, o histórico desfaz em um clique.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span style="font-size:24px">🛡️</span>
+      <div>
+        <small>Usuários · Permissões</small>
+        <strong>Busque pelo que a função faz</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="m-busca">🔎 <span>quitar</span></div>
+      <div class="m-res">
+        <div class="m-item"><span>💵</span><span><b>Baixar no Caixa (Quitar)</b><small>Dar baixa de entregas à vista</small></span><span class="m-sw"></span></div>
+        <div class="m-item"><span>📄</span><span><b>Dar Baixa em Parcelas</b><small>Registrar pagamentos e estornar</small></span><span class="m-sw off"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔎</span>
+      <strong>Busca que entende o dia a dia</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>A caixa de busca no topo procura no <b>nome</b>, na <b>descrição</b> e em <b>palavras do dia a dia</b>: "quitar" acha as baixas, "senha" acha a autorização de devolução, "motorista" acha as entregas. O interruptor liga/desliga direto no resultado.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⚡</span>
+      <strong>Perfis rápidos e marcação em lote</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Aplicar perfil rápido</b>: Vendedor de campo, Motorista, Escritório/Financeiro ou Produção — um clique marca o conjunto típico da função;</li>
+        <li><b>Marcar tudo / Limpar</b> em cada seção;</li>
+        <li><b>Copiar de outro usuário</b>: escolhe a pessoa e traz todas as permissões dela.</li>
+      </ul>
+      <p>Segurança: perfis e "Marcar tudo" <b>nunca ligam</b> o Administrador Global nem as permissões da zona de risco (vermelhas) — essas só se ligam uma a uma.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🕘</span>
+      <strong>Histórico com "desfazer"</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Todo save que muda permissões fica registrado: <b>quem</b> mudou, <b>quando</b> e <b>o quê</b> (＋ligadas / −desligadas). Marcou 10 coisas e se arrependeu? Abra o <b>Histórico</b>, clique em <b>"Voltar como estava antes"</b>, confira e salve. Nada é apagado — dá até para desfazer o desfazer.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧭</span>
+      <strong>Organização nova, mesmas permissões</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Menu lateral por seção com contador de ativas (no celular, chips deslizantes), filtros <b>"Só ativas"</b> e <b>"Zona de risco"</b>, e o rodapé avisa quantas alterações estão pendentes antes de salvar.</p>
+      <p><b>Importante:</b> nenhuma permissão mudou de comportamento — são as mesmas ~90 chaves de sempre, só mais fáceis de achar.</p>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">🛡️ Tela 1 · O painel novo</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Acessos de Ana Paula · 23 ativas</div>
+        <div class="app-card-body">
+          <div class="m-busca" style="box-shadow:none;border-color:#d8d5cc">🔎 Buscar permissão ou o que ela faz… <span class="pin">1</span></div>
+          <div class="chips" style="margin-top:10px">
+            <span class="chipx">⚡ Aplicar perfil <span class="pin">2</span></span>
+            <span class="chipx">👥 Copiar de outro</span>
+            <span class="chipx">✓ Só ativas</span>
+            <span class="chipx">🕘 Histórico <span class="pin">3</span></span>
+          </div>
+          <div class="chips" style="margin-top:10px">
+            <span class="chipx on">Vendas · 9</span>
+            <span class="chipx">Financeiro · 4</span>
+            <span class="chipx">Caixa · 2</span>
+            <span class="chipx">PCP · 0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Busca</b> — por nome, descrição ou palavra do dia a dia; o interruptor funciona no próprio resultado.</span></div>
+      <div><span class="pin">2</span><span><b>Barra de ferramentas</b> — perfis prontos, copiar de outro usuário e filtros.</span></div>
+      <div><span class="pin">3</span><span><b>Histórico</b> — a linha do tempo das mudanças, com o botão de desfazer.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">🕘 Tela 2 · Histórico com desfazer</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Histórico de permissões</div>
+        <div class="app-card-body">
+          <div class="hentry">
+            <b>Hoje · 14:32 — por Clark</b> <span class="pin">1</span><br>
+            <span class="hp mais">＋ 10 ligadas</span>
+            <br><span class="hbtn">↩ Voltar como estava antes desta mudança</span> <span class="pin">2</span>
+          </div>
+          <div class="hentry">
+            <b>Ontem · 16:12 — por Clark</b><br>
+            <span class="hp mais">＋ 2 ligadas</span> <span class="hp menos">－ 1 desligada</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Cada save vira uma entrada</b> — quem mudou, quando, e o resumo do que ligou/desligou ("Ver o que mudou" lista os nomes).</span></div>
+      <div><span class="pin">2</span><span><b>Desfazer</b> — re-aplica como estava antes daquela mudança; você confere e salva. A restauração também entra no histórico.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para desfazer uma mudança de permissão</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div>Na aba <b>Usuários</b>, abra as <b>permissões</b> (escudo) da pessoa</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Clique em <b>"Histórico"</b> na barra do topo</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Ache a mudança e clique em <b>"↩ Voltar como estava antes"</b></div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Confira os interruptores e clique em <b>Salvar</b></div></div>
+  </div>
+
+  <p class="rodape">Dúvidas? É só perguntar ao <strong>Clippy</strong> dentro do app 💬</p>
+</div>
+
+<script>
+  function alternar(btn){
+    const acc = btn.parentElement;
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', acc.classList.contains('aberto'));
+  }
+</script>
+</body>
+</html>

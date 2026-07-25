@@ -53,6 +53,26 @@ const vendedorController = {
         }
     },
 
+    // Histórico de permissões (auditoria): quem ligou/desligou o quê e quando.
+    // Só admin — o histórico expõe o mapa de permissões e permite restaurar versões.
+    historicoPermissoes: async (req, res) => {
+        try {
+            if (req.user?.permissoes?.admin !== true) {
+                return res.status(403).json({ error: 'Apenas administradores podem ver o histórico de permissões.' });
+            }
+            const { id } = req.params;
+            const historico = await prisma.vendedorPermissoesHistorico.findMany({
+                where: { vendedorId: id },
+                orderBy: { criadoEm: 'desc' },
+                take: 50
+            });
+            res.json(historico);
+        } catch (error) {
+            console.error('Erro ao listar histórico de permissões:', error);
+            res.status(500).json({ error: 'Erro ao listar histórico de permissões' });
+        }
+    },
+
     // Criar usuário novo (25/07/2026 — o usuário nasce do app, não mais do sync do Conta Azul).
     // Fluxo: admin busca a pessoa no cadastro de clientes (buscar-global), seleciona e define o acesso.
     criar: async (req, res) => {
@@ -174,6 +194,16 @@ const vendedorController = {
                 dataToUpdate.senha = await bcrypt.hash(senha, salt);
             }
 
+            // Histórico de permissões: captura o estado ANTES da gravação
+            let permissoesAnteriores;
+            if (permissoes !== undefined) {
+                const atual = await prisma.vendedor.findUnique({ where: { id }, select: { permissoes: true } });
+                permissoesAnteriores = atual?.permissoes ?? {};
+                if (typeof permissoesAnteriores === 'string') {
+                    try { permissoesAnteriores = JSON.parse(permissoesAnteriores); } catch { permissoesAnteriores = {}; }
+                }
+            }
+
             const vendedor = await prisma.vendedor.update({
                 where: { id },
                 data: dataToUpdate
@@ -182,6 +212,39 @@ const vendedorController = {
             vendedor.senha = undefined;
 
             res.json(vendedor);
+
+            // Auditoria (depois da resposta, em try/catch próprio — falha aqui NUNCA desfaz o save).
+            // Senha não entra: só o JSON de permissões.
+            if (permissoes !== undefined) {
+                try {
+                    const mudou = JSON.stringify(permissoesAnteriores) !== JSON.stringify(permissoes);
+                    if (mudou) {
+                        await prisma.vendedorPermissoesHistorico.create({
+                            data: {
+                                vendedorId: id,
+                                alteradoPorId: req.user?.id || null,
+                                alteradoPorNome: req.user?.nome || null,
+                                permissoesAntes: permissoesAnteriores,
+                                permissoesDepois: permissoes
+                            }
+                        });
+                        // Retenção: mantém as 50 versões mais recentes por usuário
+                        const excedentes = await prisma.vendedorPermissoesHistorico.findMany({
+                            where: { vendedorId: id },
+                            orderBy: { criadoEm: 'desc' },
+                            skip: 50,
+                            select: { id: true }
+                        });
+                        if (excedentes.length) {
+                            await prisma.vendedorPermissoesHistorico.deleteMany({
+                                where: { id: { in: excedentes.map(e => e.id) } }
+                            });
+                        }
+                    }
+                } catch (histErr) {
+                    console.error('Falha ao gravar histórico de permissões (save já efetivado):', histErr);
+                }
+            }
         } catch (error) {
             console.error('Erro ao atualizar vendedor:', error);
             res.status(500).json({ error: 'Erro ao atualizar vendedor' });

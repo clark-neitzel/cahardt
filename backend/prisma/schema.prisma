@@ -496,6 +496,24 @@ model Vendedor {
   @@map("vendedores")
 }
 
+// ─────────── Histórico de permissões (auditoria + restaurar versão) ───────────
+// Uma linha por save que ALTEROU as permissões: guarda o estado antes e depois,
+// quem mudou e quando. "Restaurar" no frontend só re-aplica um estado antigo e
+// salva pelo PUT normal (que gera uma linha nova) — nada é apagado.
+// Senha NUNCA entra aqui (o PUT já não devolve senha e o histórico só grava permissoes).
+model VendedorPermissoesHistorico {
+  id               Int      @id @default(autoincrement())
+  vendedorId       String   @map("vendedor_id") // sem FK: histórico sobrevive a qualquer mudança do usuário
+  alteradoPorId    String?  @map("alterado_por_id")
+  alteradoPorNome  String?  @map("alterado_por_nome") // snapshot do nome (se a pessoa for renomeada/removida)
+  permissoesAntes  Json     @map("permissoes_antes")
+  permissoesDepois Json     @map("permissoes_depois")
+  criadoEm         DateTime @default(now()) @map("criado_em")
+
+  @@index([vendedorId, criadoEm])
+  @@map("vendedor_permissoes_historico")
+}
+
 // ─────────── Tarefas da Equipe (agenda com alerta sonoro) ───────────
 // Datas/horas guardadas como texto ('YYYY-MM-DD' / 'HH:MM') no horário local
 // do usuário — o relógio que manda é o do aparelho de quem recebe o alerta.

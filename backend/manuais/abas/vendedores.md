@@ -50,12 +50,22 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 2. Campos editáveis aparecem: e-mail, telefone, **% Flex** (orçamento dinâmico sobre vendas 30 dias), **% Máx Desc.** (limite por item)
 3. Salve com o ícone de check
 
-### Configurar permissões
+### Configurar permissões (painel repaginado em 25/07/2026)
 1. Clique no ícone de escudo (permissões) na linha do vendedor
-2. O modal de permissões abre com todas as flags disponíveis
-3. Na seção **Permissões do Caixa** também fica o campo **"Tabela para cobrança de faltas de devolução"** — a tabela de preço usada para cobrar o motorista quando falta mercadoria na conferência de devoluções (padrão automático: "À vista - Funcionário")
-3. Marque/desmarque conforme necessário
-4. Salve
+2. O painel abre em tela larga, com **menu lateral por seção** (Acesso e Conta, Dashboard, Tarefas, Vendas, Logística, Financeiro, Caixa Diário, Administração, Produção/Estoque, PCP, RH, Configurações) e contador de ativas em cada uma. No celular, o menu vira chips deslizantes no topo
+3. **Busca no topo**: procura pelo nome da permissão, pela descrição **e por palavras do dia a dia** (ex.: "quitar" acha "Baixar no Caixa"; "senha" acha "Autorizar Desconsiderar Devolução"). O interruptor funciona direto no resultado. Atalho: tecla `/`
+4. **Aplicar perfil rápido**: marca em um clique o conjunto típico de uma função (Vendedor de campo, Motorista, Escritório/Financeiro, Produção/PCP). Perfis nunca ligam admin nem permissões da zona de risco
+5. **Marcar tudo / Limpar** em cada seção (o "Marcar tudo" pula a zona de risco de propósito)
+6. **Copiar de outro usuário**: botão na barra do topo — escolhe a pessoa e copia todas as permissões dela
+7. Filtros **"Só ativas"** e **"Zona de risco"** ajudam a auditar rapidamente
+8. Na seção **Caixa Diário** também fica o campo **"Tabela para cobrança de faltas de devolução"** — a tabela de preço usada para cobrar o motorista quando falta mercadoria na conferência (padrão automático: "À vista - Funcionário")
+9. O rodapé mostra **quantas alterações estão pendentes**; nada é gravado até clicar em **Salvar** (e fechar com pendências pede confirmação)
+
+### Histórico de permissões (auditoria + desfazer)
+1. No painel de permissões, clique em **"Histórico"** na barra do topo
+2. Cada save que mudou permissões vira uma entrada: **quando, quem** e o resumo (＋X ligadas / −Y desligadas; "Ver o que mudou" lista os nomes)
+3. **"↩ Voltar como estava antes desta mudança"** re-aplica o estado anterior àquele save — revise e clique em Salvar. Nada é apagado: a restauração também vira uma entrada nova (dá para desfazer o desfazer)
+4. Guarda as últimas 50 versões por usuário; a senha nunca entra no histórico. Só admin vê o histórico
 
 ### Ativar ou inativar
 - Clique no ícone de usuário com X (inativar) ou com check (reativar)
