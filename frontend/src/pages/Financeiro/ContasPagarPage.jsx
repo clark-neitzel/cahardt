@@ -39,6 +39,16 @@ const STATUS_PARCELA = {
 
 const FORMAS_PGTO = ['PIX', 'Boleto', 'Transferência', 'Dinheiro', 'Cartão'];
 
+// Forma de pagamento legível: baixas gravam o enum do CA (BOLETO_BANCARIO...);
+// baixas antigas/manuais podem já vir como texto livre ("Boleto") — passa direto.
+const FORMA_PGTO_LABEL = {
+    DINHEIRO: 'Dinheiro', BOLETO_BANCARIO: 'Boleto bancário', PIX_PAGAMENTO_INSTANTANEO: 'PIX',
+    CARTAO_CREDITO: 'Cartão de crédito', CARTAO_DEBITO: 'Cartão de débito',
+    TRANSFERENCIA_BANCARIA: 'Transferência', DEPOSITO_BANCARIO: 'Depósito',
+    CHEQUE: 'Cheque', DEBITO_AUTOMATICO: 'Débito automático', OUTRO: 'Outro'
+};
+const labelFormaPgto = (f) => (f ? (FORMA_PGTO_LABEL[String(f).toUpperCase()] || f) : null);
+
 const STATUS_OPCOES = [
     { value: '', label: 'Status: Todos' },
     { value: 'ABERTO', label: 'Aberto' },
@@ -2099,10 +2109,11 @@ const DetalheContaModal = ({ conta: contaInicial, podeBaixar, onClose, onEditar,
                                     {(p.pagamentos || []).filter(pg => !pg.estornado).length > 0 && (
                                         <div className="mt-2 space-y-1.5 border-t border-gray-100 pt-2">
                                             {(p.pagamentos || []).filter(pg => !pg.estornado).map(pg => (
-                                                <div key={pg.id} className="flex items-center justify-between text-xs text-gray-600 gap-2">
-                                                    <span className="truncate">
+                                                <div key={pg.id} className="flex items-start justify-between text-xs text-gray-600 gap-2">
+                                                    <span className="min-w-0">
                                                         Pago R$ {fmt(pg.valorPago)} em {fmtData(pg.dataPagamento)}
-                                                        {pg.formaPagamento ? ` · ${pg.formaPagamento}` : ''}
+                                                        {pg.formaPagamento ? ` · ${labelFormaPgto(pg.formaPagamento)}` : ''}
+                                                        {pg.banco ? ` · ${pg.banco}` : ''}
                                                         {String(pg.origem || '').toUpperCase() === 'CA' || String(pg.origem || '').toUpperCase() === 'DDA' ? ' · via Conta Azul' : ''}
                                                     </span>
                                                     {podeBaixar && podeEstornarPag(pg) && (

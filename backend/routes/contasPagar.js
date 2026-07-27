@@ -102,7 +102,23 @@ const checkEscrita = async (req, res, next) => {
 const num = (v) => (v == null ? null : Number(v));
 const round2 = (v) => Math.round(Number(v) * 100) / 100;
 
-const formatarPagamento = (pg) => ({
+// Mapa id → nome do banco/caixa (tabela local contas_financeiras, UUIDs do CA).
+// Cache curto: a lista quase não muda e a listagem chama a cada request.
+let _bancosCache = { mapa: null, em: 0 };
+const mapaBancos = async () => {
+    if (_bancosCache.mapa && Date.now() - _bancosCache.em < 5 * 60 * 1000) return _bancosCache.mapa;
+    try {
+        const contas = await prisma.contaFinanceira.findMany({ select: { id: true, nomeBanco: true } });
+        const mapa = Object.fromEntries(contas.map((c) => [c.id, c.nomeBanco]));
+        _bancosCache = { mapa, em: Date.now() };
+        return mapa;
+    } catch (e) {
+        console.warn('[ContasPagar] Falha ao montar mapa de bancos:', e.message);
+        return _bancosCache.mapa || {};
+    }
+};
+
+const formatarPagamento = (pg, bancos = {}) => ({
     id: pg.id,
     valorPago: num(pg.valorPago),
     juros: num(pg.juros) || 0,
@@ -112,10 +128,12 @@ const formatarPagamento = (pg) => ({
     dataPagamento: pg.dataPagamento,
     origem: pg.origem,
     temBaixaCA: !!pg.idBaixaCA,
-    estornado: pg.estornado
+    estornado: pg.estornado,
+    contaFinanceiraCaId: pg.contaFinanceiraCaId || null,
+    banco: (pg.contaFinanceiraCaId && bancos[pg.contaFinanceiraCaId]) || null
 });
 
-const formatarConta = (c) => ({
+const formatarConta = (c, bancos = {}) => ({
     id: c.id,
     descricao: c.descricao,
     categoria: c.categoria,
@@ -149,7 +167,7 @@ const formatarConta = (c) => ({
             chave: v.notaEntrada?.chave || null,
             valorVinculado: num(v.valorVinculado)
         })),
-        pagamentos: (p.pagamentos || []).map(formatarPagamento)
+        pagamentos: (p.pagamentos || []).map((pg) => formatarPagamento(pg, bancos))
     }))
 });
 
@@ -351,6 +369,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             }
         }
 
+        const bancos = await mapaBancos();
         res.json({
             kpis: {
                 vencidas,
@@ -358,7 +377,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                 abertoMes: { valor: round2(abertoValor), qtd: abertoQtd },
                 pagoMes: { valor: round2(pagoValor), qtd: parcelasComPgtoNoMes.size }
             },
-            contas: contas.map(formatarConta)
+            contas: contas.map((c) => formatarConta(c, bancos))
         });
     } catch (error) {
         console.error('Erro ao listar contas a pagar:', error);
@@ -724,7 +743,7 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
 
         res.status(201).json({
             message: 'Conta a pagar criada!',
-            conta: formatarConta(conta),
+            conta: formatarConta(conta, await mapaBancos()),
             estoque: { entradas: estoque.registradas, avisos: estoque.avisos }
         });
     } catch (error) {
@@ -876,7 +895,7 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
                         parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: { orderBy: { dataPagamento: 'asc' } } } }
                     }
                 });
-                return res.json({ message: 'Despesa atualizada e sincronizada com o Conta Azul!', conta: formatarConta(atualizada) });
+                return res.json({ message: 'Despesa atualizada e sincronizada com o Conta Azul!', conta: formatarConta(atualizada, await mapaBancos()) });
             }
 
             await prisma.$transaction(async (tx) => {
@@ -924,7 +943,7 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
                 parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: { orderBy: { dataPagamento: 'asc' } } } }
             }
         });
-        res.json({ message: 'Conta atualizada!', conta: formatarConta(atualizada) });
+        res.json({ message: 'Conta atualizada!', conta: formatarConta(atualizada, await mapaBancos()) });
     } catch (error) {
         console.error('Erro ao editar conta a pagar:', error);
         res.status(500).json({ error: 'Erro ao editar conta a pagar.' });
