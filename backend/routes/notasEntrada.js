@@ -21,6 +21,8 @@ const nfseAdnService = require('../services/nfseAdnService');
 const { montarDanfeHtml } = require('../services/danfeHtmlService');
 const contasPagarCaSyncService = require('../services/contasPagarCaSyncService');
 const googleDriveService = require('../services/googleDriveService');
+// Toda nota conferida SOMA no estoque (decisão do dono, 07/2026) — ledger + aplicação/estorno.
+const notaEstoqueService = require('../services/notaEstoqueService');
 // CNPJ ALFANUMÉRICO: documento/chave podem conter letras — normalizar preservando-as.
 const { normalizarDoc, normalizarChaveNFe } = require('../utils/documento');
 // App é o dono do financeiro: com esta chave ligada, a conta a pagar gerada da nota
@@ -141,6 +143,18 @@ const calcularSaldoDisponivel = (valorParcela, vinculos = [], ignorarNotaId = nu
     return Math.max(0, round2(Number(valorParcela || 0) - ocupado));
 };
 
+// "Registrar entrada (sem pagamento)": motivos aceitos e rótulos para mensagens.
+// Nota que entra no CNPJ (bonificação, amostra, remessa/troca, comodato, outro)
+// mas NÃO gera conta a pagar nem mexe em estoque.
+const MOTIVOS_ENTRADA = ['BONIFICACAO', 'AMOSTRA', 'REMESSA_TROCA', 'COMODATO', 'OUTRO'];
+const LABEL_MOTIVO_ENTRADA = {
+    BONIFICACAO: 'Bonificação',
+    AMOSTRA: 'Amostra grátis',
+    REMESSA_TROCA: 'Simples remessa / troca',
+    COMODATO: 'Comodato',
+    OUTRO: 'Outro'
+};
+
 // Ação escolhida no app quando a soma vinculada ≠ valor da nota → tipoDiferenca gravado.
 const ACOES_DIFERENCA = ['NENHUMA', 'AJUSTAR_PARCELA', 'DESCONTO', 'ACRESCIMO'];
 const tipoDiferencaDaAcao = (acao) => (acao === 'AJUSTAR_PARCELA' ? 'AJUSTE' : acao);
@@ -164,6 +178,7 @@ const formatarNotaLista = (n) => ({
     emissao: n.emissao,
     valorTotal: num(n.valorTotal),
     status: n.status,
+    motivoEntrada: n.motivoEntrada || null, // badge de "entrada sem pagamento" na lista
     contaPagarId: n.contaPagarId
 });
 
@@ -592,8 +607,11 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
         const porCodigo = new Map(vinculos.map((v) => [v.codigoFornecedor, v]));
         const porEan = new Map(vinculos.filter((v) => v.ean).map((v) => [v.ean, v]));
 
-        // Parse ao vivo do XML salvo — só quando faltar algum dado no banco (notas antigas).
-        const precisaXml = nota.infComplementar == null || nota.itens.some((i) => i.infAdProd == null);
+        // Parse ao vivo do XML salvo — só quando faltar algum dado no banco (notas antigas,
+        // capturadas antes de infAdProd/naturezaOperacao/cfop virarem colunas).
+        const precisaXml = nota.infComplementar == null
+            || nota.naturezaOperacao == null
+            || nota.itens.some((i) => i.infAdProd == null || i.cfop == null);
         const parsed = precisaXml ? parseXmlSalvo(nota) : null;
         const parsedItens = new Map((parsed?.itens || []).map((i) => [String(i.codigoFornecedor), i]));
 
@@ -620,6 +638,7 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
                 quantidade: num(item.quantidade),
                 valorUnitario: num(item.valorUnitario),
                 valorTotal: num(item.valorTotal),
+                cfop: item.cfop || px?.cfop || null,
                 categoria: item.categoria || null,
                 categoriaCaId: item.categoriaCaId || null,
                 infAdProd: item.infAdProd || px?.infAdProd || null,
@@ -641,6 +660,17 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
             };
         });
 
+        // "Registrar entrada (sem pagamento)": natureza + CFOPs efetivos (banco ou parse ao
+        // vivo do XML, para notas antigas) alimentam a sugestão automática do motivo.
+        const naturezaOperacao = nota.naturezaOperacao || parsed?.naturezaOperacao || null;
+        const motivoSugerido = sefazDfeService.detectarMotivoEntrada({
+            naturezaOperacao,
+            cfops: itens.map((i) => i.cfop)
+        });
+
+        // A nota já tem entrada de estoque ATIVA (ledger com linhas não estornadas)?
+        const estoqueAplicado = await notaEstoqueService.estoqueAplicado(prisma, nota.id);
+
         res.json({
             id: nota.id,
             tipo: nota.tipo,
@@ -657,9 +687,16 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
             valorTotal: num(nota.valorTotal),
             status: nota.status,
             manifestada: nota.manifestada,
+            naturezaOperacao,
+            // Entrada sem pagamento (bonificação/amostra/remessa/comodato)
+            motivoEntrada: nota.motivoEntrada || null,
+            observacaoEntrada: nota.observacaoEntrada || null,
+            entradaRegistradaEm: nota.entradaRegistradaEm,
+            motivoSugerido, // null quando natureza/CFOPs não indicam entrada sem pagamento
             observacoes: nota.infComplementar || parsed?.infComplementar || null,
             temXml: !!nota.xmlPath,
             contaPagarId: nota.contaPagarId,
+            estoqueAplicado, // true = esta nota já somou estoque (ledger ativo)
             criadoEm: nota.criadoEm,
             itens,
             duplicatas: nota.duplicatas.map((d) => ({
@@ -841,6 +878,9 @@ router.post('/:id/vincular-parcelas', verificarAuth, checkEscrita, async (req, r
 
         const nota = await prisma.notaEntrada.findUnique({ where: { id: req.params.id } });
         if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
+        if (nota.status === 'ENTRADA_REGISTRADA') {
+            return res.status(400).json({ error: `Esta nota foi registrada como entrada sem pagamento (motivo: ${LABEL_MOTIVO_ENTRADA[nota.motivoEntrada] || nota.motivoEntrada || 'não informado'}). Desfaça o registro antes de vincular a parcelas.` });
+        }
         if (!['NOVA', 'VINCULADA'].includes(nota.status)) {
             return res.status(400).json({ error: `Só é possível vincular nota com status NOVA ou VINCULADA (status atual: ${nota.status}).` });
         }
@@ -1061,6 +1101,112 @@ const decodeVinculo = (value) => {
     return { produtoId: null, itemPcpId: null };
 };
 
+// Validação dos itens do de-para (mesma para gerar-conta e registrar-entrada).
+// Devolve a mensagem de erro ou null se tudo OK.
+const validarItensBody = (itensBody, itensNota) => {
+    for (const it of itensBody) {
+        if (!it?.itemId || !itensNota.has(it.itemId)) {
+            return 'Item informado não pertence a esta nota.';
+        }
+        if (it.criarItemPcp) {
+            const { nome, tipo, unidade } = it.criarItemPcp;
+            if (!nome?.trim()) return 'Informe o nome do novo item PCP.';
+            if (!['MP', 'SUB', 'PA', 'EMB'].includes(tipo)) return 'Tipo do novo item PCP inválido (use MP, SUB, PA ou EMB).';
+            if (!unidade?.trim()) return 'Informe a unidade do novo item PCP.';
+        }
+    }
+    return null;
+};
+
+/**
+ * Núcleo compartilhado da conferência de itens (gerar-conta E registrar-entrada):
+ * decodifica o vínculo (PROD:/PCP:), cria o ItemPcp novo quando pedido, grava a
+ * categoria efetiva no item da nota (só no gerar-conta) e memoriza o de-para por
+ * fornecedor+cProd (FornecedorProdutoVinculo). Roda DENTRO da transação (tx).
+ *
+ * @returns {Array} itens vinculados prontos para a entrada de estoque:
+ *                  [{ itemNota, produtoId, itemPcpId, fator }]
+ */
+const processarItensConferencia = async (tx, nota, itensBody, itensNota, { catPadrao = null, catPadraoCaId = null, gravarCategoria = true } = {}) => {
+    const vinculados = [];
+    for (const it of itensBody) {
+        const itemNota = itensNota.get(it.itemId);
+
+        // Decodifica o vínculo unificado (PROD:/PCP:) ou cria um ItemPcp novo.
+        let { produtoId, itemPcpId } = decodeVinculo(it.vinculo);
+        if (!produtoId && !itemPcpId && it.criarItemPcp) {
+            const codigo = await proximoCodigoItemPcp(tx, it.criarItemPcp.tipo);
+            const novo = await tx.itemPcp.create({
+                data: {
+                    codigo,
+                    nome: it.criarItemPcp.nome.trim(),
+                    tipo: it.criarItemPcp.tipo,
+                    unidade: it.criarItemPcp.unidade.trim().toUpperCase(),
+                    ativo: true
+                }
+            });
+            itemPcpId = novo.id;
+        }
+        const temProduto = !!(produtoId || itemPcpId);
+        const fator = Number(it.fatorConversao) > 0 ? round4(it.fatorConversao) : 1;
+        if (temProduto && nota.tipo !== 'NFSE') {
+            vinculados.push({ itemNota, produtoId: produtoId || null, itemPcpId: itemPcpId || null, fator });
+        }
+
+        const catItem = gravarCategoria ? (it.categoria?.trim() || catPadrao) : null;
+        const catItemCaId = gravarCategoria ? (it.categoriaCaId || catPadraoCaId) : null;
+
+        // Persiste categoria efetiva no item da nota (fluxo gerar-conta)
+        if (gravarCategoria) {
+            await tx.notaEntradaItem.update({
+                where: { id: itemNota.id },
+                data: { categoria: catItem, categoriaCaId: catItemCaId }
+            });
+        }
+
+        // Memória por fornecedor+cProd: grava se houver produto OU categoria
+        const temCategoria = !!(catItem || catItemCaId);
+        if (!nota.fornecedorCnpj || (!temProduto && !temCategoria)) continue;
+
+        // update parcial: preserva campos existentes (não apaga memória de produto ao salvar só categoria)
+        const updateData = {
+            ean: itemNota.ean,
+            descricaoFornecedor: itemNota.descricao,
+            unidadeFornecedor: itemNota.unidade
+        };
+        // Ao (re)vincular, define explicitamente o campo não usado como null — nunca deixa os dois setados.
+        if (temProduto) {
+            updateData.produtoId = produtoId || null;
+            updateData.itemPcpId = itemPcpId || null;
+            updateData.fatorConversao = fator;
+        }
+        if (temCategoria) { updateData.categoria = catItem; updateData.categoriaCaId = catItemCaId; }
+
+        await tx.fornecedorProdutoVinculo.upsert({
+            where: {
+                fornecedorCnpj_codigoFornecedor: {
+                    fornecedorCnpj: nota.fornecedorCnpj,
+                    codigoFornecedor: itemNota.codigoFornecedor
+                }
+            },
+            update: updateData,
+            create: {
+                fornecedorCnpj: nota.fornecedorCnpj,
+                codigoFornecedor: itemNota.codigoFornecedor,
+                ean: itemNota.ean,
+                descricaoFornecedor: itemNota.descricao,
+                unidadeFornecedor: itemNota.unidade,
+                produtoId: produtoId || null,
+                itemPcpId: itemPcpId || null,
+                fatorConversao: temProduto ? fator : 1,
+                categoria: temCategoria ? catItem : null,
+                categoriaCaId: temCategoria ? catItemCaId : null
+            }
+        });
+    }
+    return vinculados;
+};
+
 // ── POST /:id/gerar-conta — cria a Conta a Pagar a partir da nota ──
 router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) => {
     try {
@@ -1076,6 +1222,10 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
         });
         if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
         if (nota.contaPagarId) return res.status(400).json({ error: 'Esta nota já tem uma conta a pagar gerada.' });
+        // Nota registrada como entrada SEM pagamento: gerar despesa contradiria o registro.
+        if (nota.status === 'ENTRADA_REGISTRADA') {
+            return res.status(400).json({ error: `Esta nota foi registrada como entrada sem pagamento (motivo: ${LABEL_MOTIVO_ENTRADA[nota.motivoEntrada] || nota.motivoEntrada || 'não informado'}). Desfaça o registro antes de gerar uma conta a pagar.` });
+        }
         // Nota já anexada a parcela(s) existente(s): gerar despesa nova duplicaria a dívida.
         const jaVinculada = await prisma.notaEntradaParcela.count({ where: { notaEntradaId: nota.id } });
         if (jaVinculada > 0) {
@@ -1145,17 +1295,8 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
         // ── Validação dos itens do de-para ──
         const itensBody = Array.isArray(itens) ? itens : [];
         const itensNota = new Map(nota.itens.map((i) => [i.id, i]));
-        for (const it of itensBody) {
-            if (!it?.itemId || !itensNota.has(it.itemId)) {
-                return res.status(400).json({ error: 'Item informado não pertence a esta nota.' });
-            }
-            if (it.criarItemPcp) {
-                const { nome, tipo, unidade } = it.criarItemPcp;
-                if (!nome?.trim()) return res.status(400).json({ error: 'Informe o nome do novo item PCP.' });
-                if (!['MP', 'SUB', 'PA', 'EMB'].includes(tipo)) return res.status(400).json({ error: 'Tipo do novo item PCP inválido (use MP, SUB, PA ou EMB).' });
-                if (!unidade?.trim()) return res.status(400).json({ error: 'Informe a unidade do novo item PCP.' });
-            }
-        }
+        const erroItens = validarItensBody(itensBody, itensNota);
+        if (erroItens) return res.status(400).json({ error: erroItens });
 
         const catPadrao = categoriaPadrao?.trim() || null;
         const catPadraoCaId = categoriaPadraoCaId || null;
@@ -1191,87 +1332,14 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
         const categoriaContaCaId = rateio.length === 1 ? (rateio[0].categoriaCaId || null) : null;
 
         let contaCriada;
-        const entradasEstoque = []; // Fase 6: itens vinculados → entrada de estoque/custo após a transação
+        let estoqueResultado = { itens: [], avisos: [] }; // entradas de estoque aplicadas NA transação
         await prisma.$transaction(async (tx) => {
             // 1) Cria itens PCP pedidos, resolve o de-para e memoriza produto+categoria
-            for (const it of itensBody) {
-                const itemNota = itensNota.get(it.itemId);
-
-                // Decodifica o vínculo unificado (PROD:/PCP:) ou cria um ItemPcp novo.
-                let { produtoId, itemPcpId } = decodeVinculo(it.vinculo);
-                if (!produtoId && !itemPcpId && it.criarItemPcp) {
-                    const codigo = await proximoCodigoItemPcp(tx, it.criarItemPcp.tipo);
-                    const novo = await tx.itemPcp.create({
-                        data: {
-                            codigo,
-                            nome: it.criarItemPcp.nome.trim(),
-                            tipo: it.criarItemPcp.tipo,
-                            unidade: it.criarItemPcp.unidade.trim().toUpperCase(),
-                            ativo: true
-                        }
-                    });
-                    itemPcpId = novo.id;
-                }
-                const temProduto = !!(produtoId || itemPcpId);
-                if (temProduto && nota.tipo !== 'NFSE') {
-                    entradasEstoque.push({
-                        itemNota,
-                        produtoId: produtoId || null,
-                        itemPcpId: itemPcpId || null,
-                        fator: Number(it.fatorConversao) > 0 ? round4(it.fatorConversao) : 1
-                    });
-                }
-
-                const catItem = it.categoria?.trim() || catPadrao;
-                const catItemCaId = it.categoriaCaId || catPadraoCaId;
-
-                // Persiste categoria efetiva no item da nota
-                await tx.notaEntradaItem.update({
-                    where: { id: itemNota.id },
-                    data: { categoria: catItem, categoriaCaId: catItemCaId }
-                });
-
-                // Memória por fornecedor+cProd: grava se houver produto OU categoria
-                const temCategoria = !!(catItem || catItemCaId);
-                if (!nota.fornecedorCnpj || (!temProduto && !temCategoria)) continue;
-
-                const fator = Number(it.fatorConversao) > 0 ? round4(it.fatorConversao) : 1;
-                // update parcial: preserva campos existentes (não apaga memória de produto ao salvar só categoria)
-                const updateData = {
-                    ean: itemNota.ean,
-                    descricaoFornecedor: itemNota.descricao,
-                    unidadeFornecedor: itemNota.unidade
-                };
-                // Ao (re)vincular, define explicitamente o campo não usado como null — nunca deixa os dois setados.
-                if (temProduto) {
-                    updateData.produtoId = produtoId || null;
-                    updateData.itemPcpId = itemPcpId || null;
-                    updateData.fatorConversao = fator;
-                }
-                if (temCategoria) { updateData.categoria = catItem; updateData.categoriaCaId = catItemCaId; }
-
-                await tx.fornecedorProdutoVinculo.upsert({
-                    where: {
-                        fornecedorCnpj_codigoFornecedor: {
-                            fornecedorCnpj: nota.fornecedorCnpj,
-                            codigoFornecedor: itemNota.codigoFornecedor
-                        }
-                    },
-                    update: updateData,
-                    create: {
-                        fornecedorCnpj: nota.fornecedorCnpj,
-                        codigoFornecedor: itemNota.codigoFornecedor,
-                        ean: itemNota.ean,
-                        descricaoFornecedor: itemNota.descricao,
-                        unidadeFornecedor: itemNota.unidade,
-                        produtoId: produtoId || null,
-                        itemPcpId: itemPcpId || null,
-                        fatorConversao: temProduto ? fator : 1,
-                        categoria: temCategoria ? catItem : null,
-                        categoriaCaId: temCategoria ? catItemCaId : null
-                    }
-                });
-            }
+            const vinculados = await processarItensConferencia(tx, nota, itensBody, itensNota, {
+                catPadrao,
+                catPadraoCaId,
+                gravarCategoria: true
+            });
 
             // 2) Cria a conta a pagar + parcelas + rateio
             contaCriada = await tx.contaPagar.create({
@@ -1348,26 +1416,23 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                 where: { id: nota.id },
                 data: { status: 'CONFERIDA', contaPagarId: contaCriada.id, fornecedorId: fornecedor?.id || nota.fornecedorId }
             });
+
+            // 5) TODA nota conferida SOMA no estoque (decisão do dono, 07/2026):
+            // itens vinculados entram na MESMA transação, com custo por média ponderada
+            // (idempotente pelo ledger NotaEntradaEstoqueMov). Item sem vínculo não soma.
+            if (vinculados.length > 0) {
+                estoqueResultado = await notaEstoqueService.aplicarEstoqueNota(
+                    tx,
+                    nota,
+                    notaEstoqueService.montarItensResolvidos(vinculados),
+                    { comCusto: true, criadoPorId: req.user.id, contaPagarId: contaCriada.id }
+                );
+            }
         }, { timeout: 20000, maxWait: 10000 });
 
-        // 5) Salva o XML na pasta do mês na Contabilidade (Drive) — best-effort, não bloqueia a entrada.
+        // 6) Salva o XML na pasta do mês na Contabilidade (Drive) — best-effort, não bloqueia a entrada.
         googleDriveService.salvarXmlNota(nota, xmlAbsPath(nota))
             .catch((err) => console.error('[NotasEntrada] Drive (gerar-conta):', err?.message || err));
-
-        // 6) Fase 6 — itens vinculados dão ENTRADA no estoque, atualizam o custo e
-        // alimentam o histórico de compras. Best-effort: falha aqui NÃO desfaz a conta.
-        let estoque = { registradas: 0, avisos: [] };
-        if (entradasEstoque.length > 0) {
-            try {
-                const compraEstoqueService = require('../services/compraEstoqueService');
-                estoque = await compraEstoqueService.registrarEntradasCompra(
-                    nota, contaCriada.id, entradasEstoque, req.user.id
-                );
-            } catch (e) {
-                console.error('[NotasEntrada] Falha geral na entrada de estoque:', e.message);
-                estoque.avisos.push('Falha na entrada de estoque — ajuste manualmente se necessário.');
-            }
-        }
 
         res.status(201).json({
             message: pagto
@@ -1379,11 +1444,147 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                     : 'Conta a pagar criada!'),
             contaPagarId: contaCriada.id,
             notaStatus: 'CONFERIDA',
-            estoque: { entradas: estoque.registradas, avisos: estoque.avisos }
+            // O que entrou no estoque nesta conferência (para a tela mostrar).
+            estoque: estoqueResultado.itens,
+            estoqueAvisos: estoqueResultado.avisos
         });
     } catch (error) {
         console.error('Erro ao gerar conta a pagar da nota:', error);
         res.status(500).json({ error: 'Erro ao gerar a conta a pagar da nota.' });
+    }
+});
+
+// =============================================================
+// REGISTRAR ENTRADA (SEM PAGAMENTO)
+// Terceiro caminho da nota: ela ENTROU no CNPJ (bonificação, amostra grátis,
+// simples remessa/troca, comodato, outro) mas NÃO representa uma dívida —
+// não cria conta a pagar, não mexe em estoque. Só marca a nota como tratada.
+// =============================================================
+
+// ── POST /:id/registrar-entrada — body { motivo, observacao?, itens? } ──
+// `itens` (opcional, mesmo formato do gerar-conta: [{ itemId, vinculo, fatorConversao,
+// criarItemPcp }]): itens vinculados SOMAM no estoque na mesma transação — sem custo
+// (mercadoria sem pagamento entra a custo zero, o custo do produto não muda) — e a
+// memória do de-para (fornecedor+cProd) é gravada igual ao gerar-conta.
+router.post('/:id/registrar-entrada', verificarAuth, checkEscrita, async (req, res) => {
+    try {
+        const motivo = String(req.body?.motivo || '').toUpperCase().trim();
+        if (!MOTIVOS_ENTRADA.includes(motivo)) {
+            return res.status(400).json({ error: 'Motivo inválido. Use BONIFICACAO, AMOSTRA, REMESSA_TROCA, COMODATO ou OUTRO.' });
+        }
+
+        const nota = await prisma.notaEntrada.findUnique({
+            where: { id: req.params.id },
+            include: { itens: true }
+        });
+        if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
+        if (nota.status === 'ENTRADA_REGISTRADA') {
+            return res.status(400).json({ error: 'Esta nota já está registrada como entrada sem pagamento.' });
+        }
+        if (nota.status === 'CONFERIDA') {
+            return res.status(400).json({ error: 'Esta nota já virou conta a pagar. Cancele a conferência antes de registrá-la como entrada sem pagamento.' });
+        }
+        if (nota.status === 'VINCULADA') {
+            return res.status(400).json({ error: 'Esta nota está vinculada a parcela(s) existente(s). Desvincule antes de registrá-la como entrada sem pagamento.' });
+        }
+        if (nota.status === 'IGNORADA') {
+            return res.status(400).json({ error: 'Esta nota está ignorada. Reative-a antes de registrá-la como entrada sem pagamento.' });
+        }
+        if (nota.status !== 'NOVA') {
+            return res.status(400).json({ error: `Só é possível registrar entrada de nota com status NOVA (status atual: ${nota.status}).` });
+        }
+
+        const itensBody = Array.isArray(req.body?.itens) ? req.body.itens : [];
+        const itensNota = new Map(nota.itens.map((i) => [i.id, i]));
+        const erroItens = validarItensBody(itensBody, itensNota);
+        if (erroItens) return res.status(400).json({ error: erroItens });
+
+        let estoqueResultado = { itens: [], avisos: [] };
+        await prisma.$transaction(async (tx) => {
+            // Mesma memória de vínculo do gerar-conta (sem categoria — aqui não há despesa)
+            const vinculados = itensBody.length > 0
+                ? await processarItensConferencia(tx, nota, itensBody, itensNota, { gravarCategoria: false })
+                : [];
+
+            await tx.notaEntrada.update({
+                where: { id: nota.id },
+                data: {
+                    status: 'ENTRADA_REGISTRADA',
+                    motivoEntrada: motivo,
+                    observacaoEntrada: req.body?.observacao?.trim() || null,
+                    entradaRegistradaEm: new Date(),
+                    entradaRegistradaPorId: req.user.id
+                }
+            });
+
+            // Entrada sem pagamento SOMA a quantidade no estoque, mas NÃO mexe no custo.
+            if (vinculados.length > 0) {
+                estoqueResultado = await notaEstoqueService.aplicarEstoqueNota(
+                    tx,
+                    nota,
+                    notaEstoqueService.montarItensResolvidos(vinculados),
+                    { comCusto: false, criadoPorId: req.user.id }
+                );
+            }
+        }, { timeout: 20000, maxWait: 10000 });
+
+        // XML vai para a pasta do mês na Contabilidade (Drive) — mesmo destino do
+        // "gerar conta" (a nota entrou de verdade no CNPJ). Best-effort, nunca bloqueia.
+        if (nota.xmlPath) {
+            googleDriveService.salvarXmlNota(nota, xmlAbsPath(nota))
+                .catch((err) => console.error('[NotasEntrada] Drive (registrar-entrada):', err?.message || err));
+        }
+
+        res.json({
+            ok: true,
+            message: `Entrada registrada como ${LABEL_MOTIVO_ENTRADA[motivo]} — sem gerar conta a pagar.`,
+            status: 'ENTRADA_REGISTRADA',
+            motivo,
+            // O que entrou no estoque (sem custo) — para a tela mostrar.
+            estoque: estoqueResultado.itens,
+            estoqueAvisos: estoqueResultado.avisos
+        });
+    } catch (error) {
+        console.error('Erro ao registrar entrada sem pagamento:', error);
+        res.status(500).json({ error: 'Erro ao registrar a entrada sem pagamento.' });
+    }
+});
+
+// ── POST /:id/desfazer-entrada — volta a nota registrada para a conferência ──
+router.post('/:id/desfazer-entrada', verificarAuth, checkEscrita, async (req, res) => {
+    try {
+        const nota = await prisma.notaEntrada.findUnique({ where: { id: req.params.id } });
+        if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
+        if (nota.status !== 'ENTRADA_REGISTRADA') {
+            return res.status(400).json({ error: 'Só uma nota registrada como entrada sem pagamento pode ter o registro desfeito.' });
+        }
+
+        const novoStatus = nota.xmlPath ? 'NOVA' : 'AGUARDANDO_XML';
+        let estorno = { estornadas: 0, avisos: [] };
+        await prisma.$transaction(async (tx) => {
+            await tx.notaEntrada.update({
+                where: { id: nota.id },
+                data: {
+                    status: novoStatus,
+                    motivoEntrada: null,
+                    observacaoEntrada: null,
+                    entradaRegistradaEm: null,
+                    entradaRegistradaPorId: null
+                }
+            });
+            // Se a entrada tinha somado estoque, sai de volta na mesma transação.
+            estorno = await notaEstoqueService.estornarEstoqueNota(tx, nota.id, { criadoPorId: req.user.id });
+        }, { timeout: 20000, maxWait: 10000 });
+
+        res.json({
+            ok: true,
+            message: 'Registro de entrada desfeito. A nota voltou para conferência.',
+            status: novoStatus,
+            estoque: { estornadas: estorno.estornadas, avisos: estorno.avisos }
+        });
+    } catch (error) {
+        console.error('Erro ao desfazer registro de entrada:', error);
+        res.status(500).json({ error: 'Erro ao desfazer o registro de entrada.' });
     }
 });
 
@@ -1452,6 +1653,7 @@ router.post('/:id/cancelar-conferencia', verificarAuth, checkEscrita, async (req
         const chegouCA = !!conta?.idEventoCA
             || ['AGUARDANDO_PROTOCOLO', 'ENVIANDO', 'ENVIADO', 'ERRO'].includes(conta?.statusEnvioCA);
 
+        let estornoLedger = { estornadas: 0, avisos: [] };
         await prisma.$transaction(async (tx) => {
             if (conta) {
                 await tx.parcelaPagar.updateMany({ where: { contaPagarId: conta.id }, data: { status: 'CANCELADO' } });
@@ -1464,10 +1666,15 @@ router.post('/:id/cancelar-conferencia', verificarAuth, checkEscrita, async (req
                 where: { id: nota.id },
                 data: { status: nota.xmlPath ? 'NOVA' : 'AGUARDANDO_XML', contaPagarId: null }
             });
+            // Estorna as entradas do LEDGER na mesma transação (quantidade sai de volta;
+            // custo é restaurado para o valor anterior quando ninguém mexeu no meio).
+            estornoLedger = await notaEstoqueService.estornarEstoqueNota(tx, nota.id, { criadoPorId: req.user.id });
         }, { timeout: 20000, maxWait: 10000 });
 
-        // Fase 6 — estorna as entradas de estoque desta nota (saída na mesma quantidade;
-        // o histórico fica marcado como estornado). Best-effort: falha não trava o cancelamento.
+        // Fase 6 LEGADA — notas conferidas ANTES do ledger têm as entradas registradas só
+        // em CompraItem; para elas o estorno antigo continua valendo. Para notas do fluxo
+        // novo é no-op (o ledger já marcou as linhas de CompraItem como estornadas acima).
+        // Best-effort: falha não trava o cancelamento.
         let estorno = { estornadas: 0, avisos: [] };
         try {
             const compraEstoqueService = require('../services/compraEstoqueService');
@@ -1476,6 +1683,10 @@ router.post('/:id/cancelar-conferencia', verificarAuth, checkEscrita, async (req
             console.error('[NotasEntrada] Falha ao estornar entradas de estoque:', e.message);
             estorno.avisos.push('Falha ao estornar o estoque — confira e ajuste manualmente.');
         }
+        estorno = {
+            estornadas: estorno.estornadas + estornoLedger.estornadas,
+            avisos: [...estornoLedger.avisos, ...estorno.avisos]
+        };
 
         res.json({
             ok: true,

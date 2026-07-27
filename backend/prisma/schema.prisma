@@ -73,6 +73,7 @@ model Produto {
 
   vinculosFornecedor FornecedorProdutoVinculo[] // Fase 2: de-para produto do fornecedor (NF-e) → Produto do catálogo
   compras            CompraItem[] // Fase 6: histórico de compras (entradas por nota)
+  notaEstoqueMovs    NotaEntradaEstoqueMov[] // ledger das entradas de estoque por nota recebida
 
   // Fase 6: produto pode nascer NO APP — é criado primeiro no Conta Azul (POST /v1/produtos)
   // e só então salvo aqui com o contaAzulId retornado. origem: CA (sync) | APP.
@@ -459,6 +460,8 @@ model Vendedor {
   baixasRealizadas             Parcela[]             @relation("BaixasRealizadas")
   pagamentosParcelaRegistrados PagamentoParcela[]    @relation("PagamentosParcelaRegistrados")
   pagamentosParcelaEstornados  PagamentoParcela[]    @relation("PagamentosParcelaEstornados")
+  cobrancasRotaDestinadas      CobrancaRota[]        @relation("CobrancasRotaDestinadas")
+  cobrancasRotaCobradas        CobrancaRota[]        @relation("CobrancasRotaCobradas")
 
   // Financeiro — Contas a Pagar
   contasPagarCriadas                ContaPagar[]            @relation("ContasPagarCriadas")
@@ -492,6 +495,9 @@ model Vendedor {
 
   // Régua de Cobrança: configs em que este usuário recebe a tarefa de falha de envio
   cobrancaConfigsResponsavel CobrancaConfig[] @relation("CobrancaResponsavelTarefa")
+
+  // Notas Recebidas: entradas sem pagamento registradas por este usuário
+  notasEntradaRegistradas NotaEntrada[] @relation("NotasEntradaRegistradas")
 
   @@map("vendedores")
 }
@@ -619,18 +625,18 @@ model MovimentacaoEstoque {
 // que bloqueou o acesso em 07/2026). `ref` é a idempotência na Focus: rejeitada
 // reenvia com a MESMA ref; autorizada prende a ref para sempre.
 model NotaFiscalApp {
-  id            String  @id @default(uuid())
-  ref           String  @unique
-  ambiente      String // homologacao | producao
-  tipo          String  @default("VENDA") // VENDA | DEVOLUCAO
-  status        String  @default("PROCESSANDO") // PROCESSANDO | AUTORIZADO | ERRO | CANCELADO | DENEGADO
-  numero        Int?
-  serie         Int?
-  chave         String?
-  mensagemSefaz String? @map("mensagem_sefaz") @db.Text
-  caminhoXml    String? @map("caminho_xml")
-  caminhoDanfe  String? @map("caminho_danfe")
-  payloadEnviado Json?  @map("payload_enviado") // JSON mandado à Focus (auditoria/reemissão)
+  id             String  @id @default(uuid())
+  ref            String  @unique
+  ambiente       String // homologacao | producao
+  tipo           String  @default("VENDA") // VENDA | DEVOLUCAO
+  status         String  @default("PROCESSANDO") // PROCESSANDO | AUTORIZADO | ERRO | CANCELADO | DENEGADO
+  numero         Int?
+  serie          Int?
+  chave          String?
+  mensagemSefaz  String? @map("mensagem_sefaz") @db.Text
+  caminhoXml     String? @map("caminho_xml")
+  caminhoDanfe   String? @map("caminho_danfe")
+  payloadEnviado Json?   @map("payload_enviado") // JSON mandado à Focus (auditoria/reemissão)
 
   pedidoId String @map("pedido_id")
   pedido   Pedido @relation(fields: [pedidoId], references: [id])
@@ -1126,14 +1132,15 @@ model Embarque {
   responsavelId String   @map("responsavel_id") // Vendedor/Usuário responsável
   responsavel   Vendedor @relation(fields: [responsavelId], references: [id])
 
-  pedidos  Pedido[]
-  amostras Amostra[]
+  pedidos       Pedido[]
+  amostras      Amostra[]
+  cobrancasRota CobrancaRota[] // títulos pendurados na carga para cobrar na rota
 
   // Versionamento da carga: sobe a cada alteração (data, motorista, pedidos, amostras).
   // A folha impressa carimba a versão + QR; o motorista confere pelo app se a folha ainda vale.
-  versao                Int       @default(1)
-  ultimaImpressaoVersao Int?      @map("ultima_impressao_versao")
-  ultimaImpressaoEm     DateTime? @map("ultima_impressao_em")
+  versao                Int                 @default(1)
+  ultimaImpressaoVersao Int?                @map("ultima_impressao_versao")
+  ultimaImpressaoEm     DateTime?           @map("ultima_impressao_em")
   versoes               EmbarqueVersaoLog[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -1796,6 +1803,7 @@ model Parcela {
 
   pagamentos     PagamentoParcela[]
   cobrancasAsaas CobrancaAsaas[] // PIX/boleto emitidos pelo app via Asaas
+  cobrancasRota  CobrancaRota[] // Cobrança em Rota (motorista/vendedor cobra na rua)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1835,6 +1843,55 @@ model PagamentoParcela {
   @@map("pagamentos_parcela")
 }
 
+// Cobrança em Rota: título (parcela) que o escritório pendura na carga (ou o próprio
+// motorista/vendedor localiza pela busca) para cobrar na rua. O registro em campo NUNCA
+// baixa a parcela — a baixa oficial sai pelo box do Caixa (POST /caixa/cobrancas-rota/baixar),
+// no mesmo ritual da Baixa CA das entregas. "Não consegui cobrar" é só registro: o título
+// continua em aberto, sem efeito no caixa de ninguém.
+model CobrancaRota {
+  id        String  @id @default(uuid())
+  parcelaId String  @map("parcela_id")
+  parcela   Parcela @relation(fields: [parcelaId], references: [id])
+
+  // Vínculo com a carga (opcional). O cobrador efetivo da carga é embarque.responsavelId —
+  // trocar o motorista da carga leva as cobranças pendentes junto. Cobrança avulsa
+  // (busca livre na rua) não tem embarque: nasce direto COBRADA por quem buscou.
+  embarqueId      String?   @map("embarque_id")
+  embarque        Embarque? @relation(fields: [embarqueId], references: [id])
+  destinadoParaId String?   @map("destinado_para_id")
+  destinadoPara   Vendedor? @relation("CobrancasRotaDestinadas", fields: [destinadoParaId], references: [id])
+  criadoPorId     String?   @map("criado_por_id")
+
+  status String @default("PENDENTE") // PENDENTE | COBRADA | NAO_COBRADA | BAIXADA
+
+  // Registro da cobrança em campo (quem cobrou = dono do caixa em que o valor aparece)
+  cobradoPorId       String?   @map("cobrado_por_id")
+  cobradoPor         Vendedor? @relation("CobrancasRotaCobradas", fields: [cobradoPorId], references: [id])
+  cobradoEm          DateTime? @map("cobrado_em")
+  dataReferencia     String?   @map("data_referencia") // YYYY-MM-DD — dia do caixa em que a cobrança entra
+  valorCobrado       Decimal?  @map("valor_cobrado") @db.Decimal(12, 2)
+  formaPagamentoNome String?   @map("forma_pagamento_nome") // Dinheiro | Pix | Cartão | ...
+  observacao         String?   @db.Text
+
+  // "Não consegui cobrar" — só registro (título segue em aberto)
+  responsavelTipo       String? @map("responsavel_tipo") // VENDEDOR | ESCRITORIO
+  responsavelVendedorId String? @map("responsavel_vendedor_id")
+
+  // Baixa pelo Caixa
+  baixadoPorId       String?   @map("baixado_por_id")
+  baixadoEm          DateTime? @map("baixado_em")
+  pagamentoParcelaId String?   @map("pagamento_parcela_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([parcelaId])
+  @@index([embarqueId])
+  @@index([cobradoPorId, dataReferencia])
+  @@index([status])
+  @@map("cobrancas_rota")
+}
+
 // =============================================
 // PCP - Planejamento e Controle de Produção
 // =============================================
@@ -1866,6 +1923,7 @@ model ItemPcp {
   sugestoes             SugestaoProducao[]
   fornecedorVinculos    FornecedorProdutoVinculo[] // Fase 2: de-para produto do fornecedor (NF-e) → item PCP
   compras               CompraItem[] // Fase 6: histórico de compras (entradas por nota)
+  notaEstoqueMovs       NotaEntradaEstoqueMov[] // ledger das entradas de estoque por nota recebida
 
   @@index([tipo])
   @@index([produtoId])
@@ -2978,7 +3036,9 @@ model CertificadoDigital {
 // Nota fiscal emitida CONTRA o nosso CNPJ, capturada automaticamente na SEFAZ.
 // Fluxo de status: AGUARDANDO_XML (só resumo/resNFe) → NOVA (XML completo baixado)
 //                  → CONFERIDA (virou conta a pagar) | VINCULADA (anexada a parcela(s)
-//                    já lançada(s), SEM criar despesa nova) | IGNORADA | CANCELADA_EMITENTE
+//                    já lançada(s), SEM criar despesa nova) | ENTRADA_REGISTRADA (entrada
+//                    SEM pagamento: bonificação/amostra/remessa/comodato — não gera conta
+//                    a pagar) | IGNORADA | CANCELADA_EMITENTE
 model NotaEntrada {
   id              String      @id @default(uuid())
   tipo            String      @default("NFE") // NFE (NFS-e = fase futura)
@@ -2992,7 +3052,7 @@ model NotaEntrada {
   fornecedor      Fornecedor? @relation(fields: [fornecedorId], references: [id])
   emissao         DateTime?
   valorTotal      Decimal?    @map("valor_total") @db.Decimal(12, 2)
-  status          String      @default("AGUARDANDO_XML") // AGUARDANDO_XML | NOVA | CONFERIDA | VINCULADA | IGNORADA | CANCELADA_EMITENTE
+  status          String      @default("AGUARDANDO_XML") // AGUARDANDO_XML | NOVA | CONFERIDA | VINCULADA | ENTRADA_REGISTRADA | IGNORADA | CANCELADA_EMITENTE
   manifestada     Boolean     @default(false) // Ciência da Operação (210210) já enviada?
   infComplementar String?     @map("inf_complementar") @db.Text // infAdic/infCpl do XML (observações da nota)
   xmlPath         String?     @map("xml_path") // uploads/notas-xml/{chave}.xml
@@ -3002,9 +3062,20 @@ model NotaEntrada {
   criadoEm        DateTime    @default(now()) @map("criado_em")
   atualizadoEm    DateTime    @updatedAt @map("atualizado_em")
 
+  // natOp do XML (ex.: "VENDA", "REMESSA EM BONIFICACAO") — base da detecção do motivo
+  naturezaOperacao String? @map("natureza_operacao")
+
+  // "Registrar entrada (sem pagamento)": nota que entra no CNPJ mas NÃO gera conta a pagar.
+  motivoEntrada          String?   @map("motivo_entrada") // BONIFICACAO | AMOSTRA | REMESSA_TROCA | COMODATO | OUTRO
+  observacaoEntrada      String?   @map("observacao_entrada") @db.Text
+  entradaRegistradaEm    DateTime? @map("entrada_registrada_em")
+  entradaRegistradaPorId String?   @map("entrada_registrada_por_id")
+  entradaRegistradaPor   Vendedor? @relation("NotasEntradaRegistradas", fields: [entradaRegistradaPorId], references: [id])
+
   itens              NotaEntradaItem[]
   duplicatas         NotaEntradaDuplicata[]
   compras            CompraItem[] // Fase 6: entradas de estoque/custo geradas na conferência
+  estoqueMovs        NotaEntradaEstoqueMov[] // ledger: entradas de estoque aplicadas por esta nota
   // Parcelas JÁ LANÇADAS às quais esta nota foi vinculada (caminho alternativo ao
   // "gerar despesa nova": a NF chegou depois do lançamento/pagamento).
   parcelasVinculadas NotaEntradaParcela[]
@@ -3051,6 +3122,7 @@ model NotaEntradaItem {
   quantidade       Decimal     @db.Decimal(12, 4) // qCom
   valorUnitario    Decimal     @map("valor_unitario") @db.Decimal(12, 6) // vUnCom
   valorTotal       Decimal     @map("valor_total") @db.Decimal(12, 2) // vProd
+  cfop             String? // CFOP do item (base da detecção de bonificação/amostra/remessa/comodato)
   categoria        String? // categoria de despesa (CA) efetiva escolhida na conferência
   categoriaCaId    String?     @map("categoria_ca_id") // UUID da categoria no CA
   infAdProd        String?     @map("inf_ad_prod") @db.Text // infAdProd do item (informações adicionais)
@@ -3138,6 +3210,38 @@ model CompraItem {
   @@index([notaEntradaId])
   @@index([contaPagarId])
   @@map("compras_itens")
+}
+
+// Ledger das entradas de ESTOQUE aplicadas por uma nota recebida (decisão do dono
+// em 07/2026: TODA nota conferida soma no estoque — tanto "gerar conta a pagar"
+// quanto "registrar entrada sem pagamento"). Uma linha por item aplicado, com a
+// quantidade já convertida e o custo antes/depois — é o que permite estornar com
+// segurança (cancelar conferência / desfazer entrada) sem aplicar nem tirar em dobro.
+model NotaEntradaEstoqueMov {
+  id                String      @id @default(uuid())
+  notaEntradaId     String      @map("nota_entrada_id")
+  notaEntrada       NotaEntrada @relation(fields: [notaEntradaId], references: [id], onDelete: Cascade)
+  notaEntradaItemId String?     @map("nota_entrada_item_id")
+
+  destino   String // PROD (Produto do catálogo) | PCP (insumo ItemPcp)
+  produtoId String?  @map("produto_id")
+  produto   Produto? @relation(fields: [produtoId], references: [id])
+  itemPcpId String?  @map("item_pcp_id")
+  itemPcp   ItemPcp? @relation(fields: [itemPcpId], references: [id])
+
+  quantidade    Decimal  @db.Decimal(12, 4) // já convertida para a NOSSA unidade (qtd da nota × fator)
+  custoUnitario Decimal? @map("custo_unitario") @db.Decimal(12, 6) // custo da compra por unidade convertida; null = entrada sem pagamento (bonificação etc.)
+
+  // Custo do alvo antes/depois da média ponderada (null quando o custo não foi tocado)
+  custoAnterior  Decimal? @map("custo_anterior") @db.Decimal(12, 6)
+  custoPosterior Decimal? @map("custo_posterior") @db.Decimal(12, 6)
+
+  estornado   Boolean   @default(false)
+  estornadoEm DateTime? @map("estornado_em")
+  criadoEm    DateTime  @default(now()) @map("criado_em")
+
+  @@index([notaEntradaId])
+  @@map("nota_entrada_estoque_movs")
 }
 
 // =============================================
@@ -3553,7 +3657,7 @@ model CaReceberImportado {
   descricao       String?
   numeroVendaCA   Int?      @map("numero_venda_ca") // evento.codigo_referencia → casa com pedido.numero
   origemEventoCA  String?   @map("origem_evento_ca") // VENDA | AVULSA | ...
-  status          String?   // status_traduzido do CA (RECEBIDO/PENDENTE/ATRASADO...)
+  status          String? // status_traduzido do CA (RECEBIDO/PENDENTE/ATRASADO...)
   dataVencimento  DateTime? @map("data_vencimento")
   dataCompetencia DateTime? @map("data_competencia")
   valorTotal      Decimal?  @map("valor_total") @db.Decimal(12, 2)
@@ -3561,7 +3665,7 @@ model CaReceberImportado {
   temPedidoApp    Boolean   @default(false) @map("tem_pedido_app")
   contaReceberId  String?   @map("conta_receber_id") // ContaReceber operacional criada p/ esta parcela (quando aberta e sem pedido)
   parcelaLocalId  String?   @map("parcela_local_id")
-  dadosBusca      Json?     @map("dados_busca")   // item cru do /contas-a-receber/buscar
+  dadosBusca      Json?     @map("dados_busca") // item cru do /contas-a-receber/buscar
   dadosDetalhe    Json?     @map("dados_detalhe") // detalhe cru da parcela (evento, baixas, conta financeira...)
   importadoEm     DateTime  @default(now()) @map("importado_em")
   atualizadoEm    DateTime  @updatedAt @map("atualizado_em")

@@ -362,7 +362,7 @@ async function registrarProcNFe(xmlString, nsu, cnpjNosso) {
     const existente = await prisma.notaEntrada.findUnique({ where: { chave: nota.chave } });
 
     // Notas já tratadas pelo usuário não voltam para NOVA — só completam o XML
-    if (existente && ['CONFERIDA', 'IGNORADA', 'CANCELADA_EMITENTE'].includes(existente.status)) {
+    if (existente && ['CONFERIDA', 'ENTRADA_REGISTRADA', 'IGNORADA', 'CANCELADA_EMITENTE'].includes(existente.status)) {
         await prisma.notaEntrada.update({
             where: { chave: nota.chave },
             data: { xmlPath, nsu: nsu || existente.nsu }
@@ -383,6 +383,7 @@ async function registrarProcNFe(xmlString, nsu, cnpjNosso) {
         emissao: nota.emissao,
         valorTotal: nota.valorTotal,
         infComplementar: nota.infComplementar || null,
+        naturezaOperacao: nota.naturezaOperacao || null,
         status: 'NOVA',
         xmlPath,
         // nota onde NÃO somos o destinatário (ex.: transporte): não manifestar ciência
@@ -403,8 +404,8 @@ async function registrarProcNFe(xmlString, nsu, cnpjNosso) {
         await tx.notaEntradaDuplicata.deleteMany({ where: { notaEntradaId: notaId } });
         if (nota.itens.length > 0) {
             await tx.notaEntradaItem.createMany({
-                // cfop existe no parse (para a DANFE) mas não é coluna do NotaEntradaItem → não persistir
-                data: nota.itens.map(({ cfop, ...i }) => ({ notaEntradaId: notaId, ...i }))
+                // cfop agora É coluna do NotaEntradaItem (detecção de bonificação/amostra/remessa)
+                data: nota.itens.map((i) => ({ notaEntradaId: notaId, ...i }))
             });
         }
         if (nota.duplicatas.length > 0) {
@@ -750,6 +751,67 @@ async function processarBuscasAgendadas() {
     return { processadas: 1, encontrada: !!nota };
 }
 
+// ─────────────────────────────────────────────────────────────
+// Detecção do MOTIVO de "entrada sem pagamento" (bonificação, amostra,
+// remessa/troca, comodato) a partir da natureza da operação e dos CFOPs
+// dos itens. Função PURA (testável offline).
+//
+// Regras:
+//  - CFOP 5910/6910 OU natureza com BONIFIC/BRINDE/DOACAO      → BONIFICACAO
+//  - CFOP 5911/6911 OU natureza com AMOSTRA                    → AMOSTRA
+//  - CFOP 5908/6908 OU natureza com COMODATO                   → COMODATO
+//  - CFOP 5915/5916/6915/6916 OU natureza com REMESSA/TROCA/
+//    SUBSTITUI/GARANTIA/CONSERTO                               → REMESSA_TROCA
+//  - Natureza e CFOP divergindo → vale o da NATUREZA.
+//  - Natureza de venda/compra normal não casa com nada → null (sem sugestão).
+// ─────────────────────────────────────────────────────────────
+const CFOPS_MOTIVO_ENTRADA = {
+    BONIFICACAO: new Set(['5910', '6910']),
+    AMOSTRA: new Set(['5911', '6911']),
+    COMODATO: new Set(['5908', '6908']),
+    REMESSA_TROCA: new Set(['5915', '5916', '6915', '6916'])
+};
+
+// Palavras-chave por motivo — a ordem importa: os termos ESPECÍFICOS vêm antes de
+// REMESSA_TROCA ("REMESSA EM BONIFICACAO" contém REMESSA, mas o motivo é BONIFICACAO).
+const NATUREZA_MOTIVO_ENTRADA = [
+    ['BONIFICACAO', /BONIFIC|BRINDE|DOACAO/],
+    ['AMOSTRA', /AMOSTRA/],
+    ['COMODATO', /COMODATO/],
+    ['REMESSA_TROCA', /REMESSA|TROCA|SUBSTITUI|GARANTIA|CONSERTO/]
+];
+
+/**
+ * @param {object} p
+ * @param {string|null} p.naturezaOperacao  natOp da nota (qualquer caixa/acentuação)
+ * @param {Array<string|null>} p.cfops      CFOPs dos itens
+ * @returns {'BONIFICACAO'|'AMOSTRA'|'REMESSA_TROCA'|'COMODATO'|null}
+ */
+function detectarMotivoEntrada({ naturezaOperacao, cfops } = {}) {
+    // normaliza: caixa alta, sem acento
+    const nat = String(naturezaOperacao || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .toUpperCase();
+
+    let motivoNatureza = null;
+    if (nat) {
+        for (const [motivo, re] of NATUREZA_MOTIVO_ENTRADA) {
+            if (re.test(nat)) { motivoNatureza = motivo; break; }
+        }
+    }
+
+    let motivoCfop = null;
+    const lista = (Array.isArray(cfops) ? cfops : [])
+        .map((c) => String(c || '').trim())
+        .filter(Boolean);
+    for (const [motivo, set] of Object.entries(CFOPS_MOTIVO_ENTRADA)) {
+        if (lista.some((c) => set.has(c))) { motivoCfop = motivo; break; }
+    }
+
+    // Divergência → vale a natureza (é o que o emitente declarou por extenso)
+    return motivoNatureza || motivoCfop || null;
+}
+
 module.exports = {
     executarCiclo,
     buscarPorChave,
@@ -762,5 +824,6 @@ module.exports = {
     // funções puras (testáveis offline)
     parseProcNFe,
     parseResNFe,
-    parseEvento
+    parseEvento,
+    detectarMotivoEntrada
 };

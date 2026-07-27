@@ -33,8 +33,8 @@ Registro completo de todas as movimentações de estoque (entradas e saídas), c
 | PEDIDO_BONIFICACAO | Baixa automática ao aprovar bonificação (desde jul/2026) |
 | FATURAMENTO | Baixa automática ao faturar pedido no CA |
 | PRODUCAO | Entrada de produto acabado vinda da produção (PCP) |
-| COMPRA | Entrada por nota de compra recebida |
-| ESTORNO_COMPRA | Saída quando uma entrada de compra é cancelada |
+| COMPRA | Entrada por nota recebida conferida — observação "Entrada NF-e {número} — {fornecedor}". Desde 07/2026 TODA nota conferida em Notas Recebidas soma no estoque: tanto "Gerar conta a pagar" (com atualização de custo) quanto "Registrar entrada sem pagamento" (bonificação/amostra — só quantidade, custo intocado) |
+| ESTORNO_COMPRA | Saída quando a entrada da nota é desfeita (cancelar conferência / desfazer registro de entrada) — observação "Estorno entrada NF-e ..." |
 | DEVOLUCAO | Entrada por devolução de cliente |
 | REVERSAO_DEVOLUCAO | Estorno de devolução |
 | CANCELAMENTO | Estorno quando a aprovação de especial/bonificação é revertida |

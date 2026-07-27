@@ -17,6 +17,8 @@ const notasEntradaService = {
         const response = await api.get('/notas-entrada/itens-pcp', { params: busca ? { busca } : {} });
         return response.data;
     },
+    // Gera a Conta a Pagar da nota; itens vinculados somam no estoque.
+    // → resposta inclui estoque: [{ nome, unidade, quantidade, destino }] (vazio se nenhum item vinculado)
     gerarConta: async (id, dados) => {
         const response = await api.post(`/notas-entrada/${id}/gerar-conta`, dados);
         return response.data;
@@ -42,6 +44,20 @@ const notasEntradaService = {
             parcelaPagarId ? { parcelaPagarId } : {});
         return response.data;
     },
+    // Registra a ENTRADA sem gerar pagamento (bonificação, amostra, remessa/troca, comodato, outro).
+    // Itens vinculados SOMAM NO ESTOQUE (sem alterar o custo).
+    // payload: { motivo, observacao?, itens?: [{ itemId, vinculo: 'PROD:<id>'|'PCP:<id>'|null, fatorConversao|null, criarItemPcp|null }] }
+    // → { ok, message, status, motivo, estoque: [{ nome, unidade, quantidade, destino }] }
+    registrarEntrada: async (id, payload) => {
+        const response = await api.post(`/notas-entrada/${id}/registrar-entrada`, payload);
+        return response.data;
+    },
+    // Desfaz o registro de entrada sem pagamento — a nota volta para conferência (estoque estornado).
+    // → { ok, message, status, avisos?: [] }
+    desfazerEntrada: async (id) => {
+        const response = await api.post(`/notas-entrada/${id}/desfazer-entrada`);
+        return response.data;
+    },
     ignorar: async (id) => {
         const response = await api.post(`/notas-entrada/${id}/ignorar`);
         return response.data;
@@ -50,7 +66,8 @@ const notasEntradaService = {
         const response = await api.post(`/notas-entrada/${id}/reativar`);
         return response.data;
     },
-    // Cancela a entrada gerada (Conta a Pagar) e reabre a nota para nova conferência
+    // Cancela a entrada gerada (Conta a Pagar) e reabre a nota para nova conferência (estoque estornado).
+    // → { ok, message, avisoCA?, avisos?: [] }
     cancelarConferencia: async (id) => {
         const response = await api.post(`/notas-entrada/${id}/cancelar-conferencia`);
         return response.data;

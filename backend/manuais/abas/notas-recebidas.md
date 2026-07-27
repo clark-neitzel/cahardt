@@ -48,6 +48,7 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 | NOVA | XML completo baixado — pronta para conferir e gerar a conta a pagar (NFS-e já nasce NOVA) |
 | CONFERIDA | Já virou conta a pagar (fica vinculada à conta) |
 | VINCULADA | Foi **anexada a parcela(s) de despesa que já existiam** (a nota chegou depois do lançamento) — **não** criou despesa nova |
+| ENTRADA_REGISTRADA | **Entrada sem pagamento**: a mercadoria entrou no CNPJ (bonificação, amostra grátis, remessa/troca, comodato, outro) mas **não gera conta a pagar** — a nota fica registrada com o motivo, e os itens vinculados **somam no estoque sem custo** (ver seção própria) |
 | IGNORADA | Marcada para ignorar (ex.: nota que não gera conta) — dá para reativar |
 | CANCELADA_EMITENTE | O fornecedor/prestador cancelou a nota |
 
@@ -72,6 +73,7 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 - **Baixar o XML** completo da nota
 - **Imprimir a DANFE** (NF-e: visão em folha com emitente, chave, itens com NCM/CFOP, totais, duplicatas) ou o **DANFSE** (NFS-e: espelho com prestador, tomador, discriminação do serviço, valores e retenções) — impressos na própria página, funciona no iPad/PWA
 - **Ignorar** uma nota (e **reativar** depois, se mudar de ideia)
+- **Registrar entrada (sem pagamento)** — para nota de **bonificação, amostra grátis, simples remessa/troca, comodato ou outro** motivo que entra no CNPJ mas **não gera dívida** (ver seção própria abaixo). O motivo já vem **sugerido automaticamente** pela natureza da operação e pelos CFOPs da nota
 - **Gerar a conta a pagar** a partir da nota:
   - As **parcelas vêm sugeridas pelas duplicatas** da nota (pode ajustar; a soma precisa bater com o total da nota). Quando a nota **não tem boleto/duplicata no XML** (compra à vista e toda NFS-e), a parcela já vem com a **data de emissão da nota** (não a data de hoje), para a despesa aparecer no Conta Azul com a data certa.
   - **Parcelamento manual inteligente** (para notas **sem** boleto no XML): ao clicar **"+ Adicionar parcela"**, o valor é **dividido igualmente** entre todas (a 1ª absorve os centavos) e as datas entram em **sequência**; o campo **"a cada N dias"** define o intervalo entre as parcelas (ex.: 30 → 08/07, 07/08, 06/09). Ao **digitar um valor** numa parcela, o **saldo se redistribui automaticamente** nas parcelas seguintes. Qualquer **data** pode ser editada manualmente. **Notas que já têm parcelas no XML continuam vindo do XML** (sem redividir).
@@ -91,8 +93,8 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
   - A nota vira **CONFERIDA** e fica ligada à conta criada
   - **O XML é salvo automaticamente no Google Drive da Contabilidade** (ver seção abaixo)
 - **Cancelar entrada e refazer** (nota CONFERIDA): cancela a conta a pagar gerada e devolve a nota para conferência (se a despesa já chegou ao Conta Azul, o app avisa para excluí-la lá manualmente; com baixa registrada, é preciso estornar antes)
-- **(Fase 6) Item vinculado movimenta o estoque e o custo**: ao gerar a conta, cada item com vínculo dá **ENTRADA automática no estoque** (do Produto do catálogo ou do insumo PCP, já na quantidade convertida) e o **custo é atualizado por média ponderada** com o estoque anterior (Produto → custo manual; insumo → custo unitário usado nas receitas). A compra também entra no **histórico de compras** do produto (fornecedor, nota, quantidade, custo). Item sem vínculo continua gerando só a despesa.
-- **Cancelar entrada e refazer** também **estorna o estoque** (saída na mesma quantidade); o custo não é revertido — ajuste manualmente se preciso
+- **TODA nota conferida SOMA no estoque** (decisão do dono, 07/2026): ao gerar a conta, cada item com vínculo dá **ENTRADA automática no estoque** (do Produto do catálogo ou do insumo PCP, já na quantidade convertida pelo fator) e o **custo é atualizado por média ponderada** com o estoque anterior (Produto → custo manual; insumo → custo unitário usado nas receitas). A compra também entra no **histórico de compras** do produto (fornecedor, nota, quantidade, custo). A movimentação aparece no Histórico de Estoque como "Entrada NF-e {número} — {fornecedor}". **Item sem vínculo (ou sem fator de conversão) não soma** — a tela avisa; vincule para o estoque entrar.
+- **Cancelar entrada e refazer** também **estorna o estoque** (saída na mesma quantidade, na mesma operação) e **restaura o custo para o valor anterior à entrada** — a menos que o custo tenha sido alterado por outra operação no meio tempo (aí a quantidade sai, o custo fica e o app avisa para conferir)
 
 ---
 
@@ -130,9 +132,37 @@ Dá para **remover o vínculo** de uma parcela específica ou de todas. Removend
 
 ---
 
+## Registrar entrada (sem pagamento) — o TERCEIRO caminho da nota
+
+Nem toda nota recebida representa uma dívida. Fornecedor manda **bonificação**, **amostra grátis**, **simples remessa/troca** ou material em **comodato** — a mercadoria entra no CNPJ, a nota precisa ficar guardada para a contabilidade, mas **não existe nada a pagar**. Para esses casos existe o botão **"Registrar entrada (sem pagamento)"** (nota com status NOVA), o terceiro caminho ao lado de "Gerar conta a pagar" e "Vincular a parcela já lançada".
+
+**Quando usar cada motivo:**
+
+| Motivo | Quando usar |
+|--------|-------------|
+| **Bonificação** | Mercadoria dada de graça pelo fornecedor (bonificação, brinde, doação) — CFOP 5910/6910 |
+| **Amostra grátis** | Amostras para degustação/teste — CFOP 5911/6911 |
+| **Simples remessa / troca** | Mercadoria em trânsito sem venda: remessa, troca, substituição em garantia, conserto — CFOP 5915/5916/6915/6916 |
+| **Comodato** | Equipamento emprestado pelo fornecedor (freezer, máquina de café…) — CFOP 5908/6908 |
+| **Outro** | Qualquer outra entrada que não gere pagamento |
+
+**Detecção automática do motivo:** o sistema lê a **natureza da operação** da nota (ex.: "REMESSA EM BONIFICACAO") e os **CFOPs dos itens** e já **sugere o motivo** certo na tela (`motivoSugerido`). Se a natureza e o CFOP apontarem motivos diferentes, vale o que a **natureza** diz. Nota de venda/compra normal não recebe sugestão nenhuma.
+
+**O que acontece ao registrar:**
+- A nota vira **ENTRADA_REGISTRADA**, guardando o **motivo**, a **observação** (opcional), **quem** registrou e **quando**.
+- **NÃO cria conta a pagar**, mas os itens **vinculados a um produto/insumo SOMAM no estoque** (decisão do dono, 07/2026): a mercadoria entrou de verdade, então a quantidade entra — **sem custo** (bonificação/amostra entra a custo zero; o custo do produto **não muda**, já que nada foi pago). O vínculo e o fator de conversão são os mesmos do "gerar conta" e ficam memorizados por fornecedor para as próximas notas. Item sem vínculo não soma.
+- O **XML é salvo no Google Drive da Contabilidade** (pasta do mês), igual ao "gerar conta".
+- Com o registro feito, **"Gerar conta a pagar" e "Vincular a parcela" ficam bloqueados** para essa nota (o app avisa o motivo e pede para desfazer antes, se for o caso).
+
+**Desfazer:** o botão **"Desfazer registro"** volta a nota para **NOVA** (ou AGUARDANDO XML, se o XML ainda não chegou), limpa motivo/observação e **estorna do estoque o que a entrada tinha somado** — daí ela pode seguir por qualquer caminho de novo.
+
+> Diferença para **Ignorar**: a nota ignorada é "não é nossa / não interessa". A entrada registrada é "**é nossa e entrou de verdade**, só não tem pagamento" — por isso ela ganha motivo, autor e data, e o XML vai para a pasta normal do mês na contabilidade (não para "Ignoradas").
+
+---
+
 ## Salvamento automático do XML na Contabilidade (Google Drive)
 
-Ao **dar entrada** numa nota (gerar a conta a pagar) ou ao **ignorá-la**, o sistema **salva o XML sozinho no Google Drive**, na pasta da contabilidade organizada por mês — sem precisar baixar e arrastar nada. Vale para **NF-e e NFS-e**.
+Ao **dar entrada** numa nota (gerar a conta a pagar), **registrá-la como entrada sem pagamento** ou **ignorá-la**, o sistema **salva o XML sozinho no Google Drive**, na pasta da contabilidade organizada por mês — sem precisar baixar e arrastar nada. Vale para **NF-e e NFS-e**.
 
 **Como organiza (pela data de EMISSÃO da nota):**
 
@@ -169,7 +199,7 @@ Envio Contabilidade
 | Permissão | Efeito |
 |-----------|--------|
 | `Pode_Acessar_Notas_Recebidas` | Ver a caixa de entrada, detalhes e XML |
-| `Pode_Baixar_Contas_Pagar` | Gerar conta, **vincular/desvincular a parcela já lançada**, ignorar/reativar, cancelar entrada e "Consultar agora" |
+| `Pode_Baixar_Contas_Pagar` | Gerar conta, **vincular/desvincular a parcela já lançada**, **registrar/desfazer entrada sem pagamento**, ignorar/reativar, cancelar entrada e "Consultar agora" |
 | `configuracoes.edit` | Ligar/desligar as capturas e instalar o certificado |
 | `admin` | Tudo acima |
 
@@ -180,7 +210,8 @@ Envio Contabilidade
 - **Configurações → Certificado Digital** — sem certificado A1 válido não há captura (nem NF-e nem NFS-e)
 - **Contas a Pagar** — a conta gerada aparece lá com origem NF-e/NFS-e (e pode ir ao Conta Azul)
 - **Fornecedores** — fornecedores/prestadores novos são criados automaticamente pelo CNPJ da nota
-- **Produtos** e **PCP → Itens** — o de-para liga itens da NF-e aos produtos do catálogo ou a itens PCP criados na hora (base para entrada de estoque no futuro)
+- **Produtos** e **PCP → Itens** — o de-para liga itens da NF-e aos produtos do catálogo ou a itens PCP criados na hora; é ele que faz a nota **somar no estoque** ao ser conferida (com custo no "gerar conta"; sem custo no "registrar entrada")
+- **Estoque → Histórico** e **PCP → Estoque** — cada entrada/estorno de nota aparece lá como movimentação ("Entrada NF-e ..." / "Estorno entrada NF-e ...")
 
 ---
 
@@ -190,7 +221,7 @@ Envio Contabilidade
 |---------|-------|
 | `backend/services/sefazDfeService.js` | Robô de captura de NF-e na SEFAZ (Distribuição DF-e + manifestação 210210) + busca pontual por chave de acesso (`buscarPorChave`) |
 | `backend/services/nfseAdnService.js` | Robô de captura de NFS-e no Ambiente de Dados Nacional (ADN) + espelho DANFSE |
-| `backend/routes/notasEntrada.js` | Rotas da API (listar com filtro de tipo/período, detalhar, XML, DANFE/DANFSE, gerar conta com categoria por item + rateio, **parcelas-compativeis / vincular-parcelas / desvincular-parcelas**, ignorar, consultar agora, **importar-xml** e **lancar-manual**) — dispara o salvamento do XML no Drive ao dar entrada/ignorar |
+| `backend/routes/notasEntrada.js` | Rotas da API (listar com filtro de tipo/período, detalhar, XML, DANFE/DANFSE, gerar conta com categoria por item + rateio, **parcelas-compativeis / vincular-parcelas / desvincular-parcelas**, **registrar-entrada / desfazer-entrada** (entrada sem pagamento), ignorar, consultar agora, **importar-xml** e **lancar-manual**) — dispara o salvamento do XML no Drive ao dar entrada/registrar/ignorar |
 | `backend/services/googleDriveService.js` | Salva o XML da nota no Google Drive da Contabilidade (pasta do mês por emissão; subpasta "Ignoradas"); credenciais OAuth em `app_configs.gdrive_config` |
 | `backend/services/danfeHtmlService.js` | Monta o HTML da DANFE simplificada (função pura) a partir do XML da NF-e |
 | `backend/routes/configNotas.js` | Certificado digital + liga/desliga das capturas (NF-e e NFS-e) |

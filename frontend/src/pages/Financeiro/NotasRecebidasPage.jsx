@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import notasEntradaService from '../../services/notasEntradaService';
 import contasPagarService from '../../services/contasPagarService';
-import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search, Upload, Calendar, FilePlus, UploadCloud, Clock, Link2, Unlink } from 'lucide-react';
+import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search, Upload, Calendar, FilePlus, UploadCloud, Clock, Link2, Unlink, PackageCheck, Undo2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
@@ -21,6 +21,10 @@ const fmtDataHora = (d) => d
     ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
     : '—';
 const fmtHora = (d) => d ? new Date(d).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }) : '';
+// Data + hora COM o ano (DD/MM/AAAA HH:MM) — usada em registros permanentes (ex.: entrada sem pagamento)
+const fmtDataHoraAno = (d) => d
+    ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : '—';
 const toYMD = (d) => d ? new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) : '';
 const hojeYMD = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 // Dinheiro pt-BR ("2.425,00") → número
@@ -72,12 +76,50 @@ const STATUS_NOTA = {
         label: 'Vinculada ✓', cls: 'bg-green-100 text-green-800',
         title: 'Anexada a despesa(s) que já estavam lançadas — não gerou despesa nova'
     },
+    ENTRADA_REGISTRADA: {
+        label: 'Entrada registrada ✓', cls: 'bg-purple-100 text-purple-700',
+        title: 'Entrou no CNPJ sem gerar pagamento (bonificação, amostra, troca, comodato) — não criou despesa'
+    },
     IGNORADA: { label: 'Ignorada', cls: 'bg-gray-100 text-gray-700' },
     CANCELADA_EMITENTE: { label: 'Cancelada pelo emitente', cls: 'bg-red-100 text-red-700' }
 };
 
-const BadgeStatusNota = ({ status }) => {
-    const cfg = STATUS_NOTA[status] || { label: status || '—', cls: 'bg-gray-100 text-gray-700' };
+// Motivos da entrada sem pagamento (labels centralizados — badge, painel e detalhes usam daqui)
+const MOTIVOS_ENTRADA = [
+    { value: 'BONIFICACAO', label: 'Bonificação' },
+    { value: 'AMOSTRA', label: 'Amostra grátis' },
+    { value: 'REMESSA_TROCA', label: 'Remessa / Troca' },
+    { value: 'COMODATO', label: 'Comodato' },
+    { value: 'OUTRO', label: 'Outro' }
+];
+const motivoEntradaLabel = (m) => MOTIVOS_ENTRADA.find(x => x.value === m)?.label || null;
+
+// Toast "Estoque atualizado" após gerar-conta / registrar-entrada.
+// resp.estoque = [{ nome, unidade, quantidade, destino }] — mostra até 3 itens e resume o resto.
+const toastEstoque = (estoque) => {
+    const lista = Array.isArray(estoque) ? estoque : [];
+    if (lista.length === 0) return; // nada somado — sem alarme
+    const MAX_ITENS = 3;
+    const partes = lista.slice(0, MAX_ITENS).map(e =>
+        `+${fmtQtd(e.quantidade)} ${e.unidade || 'un'} ${e.nome || 'item'}`
+    );
+    const resto = lista.length - MAX_ITENS;
+    toast(`Estoque atualizado: ${partes.join(' · ')}${resto > 0 ? ` e mais ${resto}` : ''}`, { icon: '📦', duration: 7000 });
+};
+
+// Badge da nota: STATUS_NOTA é estático — aqui o label vira dinâmico pelo motivo
+// da entrada sem pagamento (ex.: "Bonificação ✓" no lugar de "Entrada registrada ✓").
+const badgeNota = (nota) => {
+    const cfg = STATUS_NOTA[nota?.status] || { label: nota?.status || '—', cls: 'bg-gray-100 text-gray-700' };
+    if (nota?.status === 'ENTRADA_REGISTRADA') {
+        const rotulo = motivoEntradaLabel(nota.motivoEntrada);
+        if (rotulo) return { ...cfg, label: `${rotulo} ✓` };
+    }
+    return cfg;
+};
+
+const BadgeStatusNota = ({ nota }) => {
+    const cfg = badgeNota(nota);
     return (
         <span
             className={`px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${cfg.cls} ${cfg.title ? 'cursor-help' : ''}`}
@@ -99,12 +141,14 @@ const tipoItemLabel = (t) => TIPOS_ITEM_PCP.find(x => x.value === t)?.label || t
 const CHIPS = [
     { key: 'NOVAS', label: (n) => `Novas${n != null ? ` (${n})` : ''}` },
     { key: 'GERADAS', label: () => 'Despesa gerada / vinculada' },
+    { key: 'SEM_PAGAMENTO', label: () => 'Sem pagamento' },
     { key: 'IGNORADAS', label: () => 'Ignoradas' },
     { key: 'TODAS', label: () => 'Todas' }
 ];
 
 const notaPassaChip = (nota, chip) => {
     if (chip === 'GERADAS') return nota.status === 'CONFERIDA' || nota.status === 'VINCULADA';
+    if (chip === 'SEM_PAGAMENTO') return nota.status === 'ENTRADA_REGISTRADA';
     if (chip === 'IGNORADAS') return nota.status === 'IGNORADA';
     if (chip === 'TODAS') return true;
     // NOVAS: novas + resumos aguardando o XML completo
@@ -582,14 +626,14 @@ const NotasRecebidasPage = () => {
 const NotaCard = ({ nota, podeOperar, onAbrir }) => {
     const aguardandoXml = nota.status === 'AGUARDANDO_XML';
     const conferivel = nota.status === 'NOVA' && podeOperar;
-    const finalizada = nota.status === 'CONFERIDA' || nota.status === 'IGNORADA' || nota.status === 'VINCULADA';
+    const finalizada = nota.status === 'CONFERIDA' || nota.status === 'IGNORADA' || nota.status === 'VINCULADA' || nota.status === 'ENTRADA_REGISTRADA';
 
     return (
         <div className={`bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${finalizada ? 'opacity-75' : ''}`}>
             <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-gray-900 truncate">{nota.fornecedorNome || 'Fornecedor não identificado'}</span>
-                    <BadgeStatusNota status={nota.status} />
+                    <BadgeStatusNota nota={nota} />
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
                         String(nota.tipo || '').toUpperCase().includes('NFS') ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'
                     }`}>
@@ -606,6 +650,7 @@ const NotaCard = ({ nota, podeOperar, onAbrir }) => {
                     {nota.fornecedorCnpj && <span className="text-xs text-gray-500">CNPJ {fmtCnpj(nota.fornecedorCnpj)}</span>}
                     {nota.status === 'CONFERIDA' && nota.contaPagarId && <span className="text-xs text-gray-500">· despesa gerada em Contas a Pagar</span>}
                     {nota.status === 'VINCULADA' && <span className="text-xs text-gray-500">· anexada a despesa já lançada</span>}
+                    {nota.status === 'ENTRADA_REGISTRADA' && <span className="text-xs text-gray-500">· entrada sem pagamento (não gerou despesa)</span>}
                 </div>
             </div>
             <div className="flex items-center justify-between md:justify-end gap-4 shrink-0">
@@ -938,7 +983,7 @@ const NotaExpandida = ({ nota, podeOperar, itensPcp, categorias, categoriasErro,
                 <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-gray-900">{nota.fornecedorNome || 'Fornecedor não identificado'}</span>
-                        <BadgeStatusNota status={nota.status} />
+                        <BadgeStatusNota nota={nota} />
                         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 whitespace-nowrap">
                             {tipoNotaLabel(nota.tipo)}{nota.numero ? ` ${nota.numero}` : ''}
                         </span>
@@ -1454,6 +1499,148 @@ const PainelVincularParcelas = ({ nota, onCancelar, onChanged }) => {
 };
 
 // ═══════════════════════════════════════════════════════════
+// ENTRADA SEM PAGAMENTO (bonificação, amostra, remessa/troca, comodato, outro)
+// A nota entra no CNPJ e fica arquivada — NÃO cria despesa no Contas a Pagar.
+// ═══════════════════════════════════════════════════════════
+// `obterItens` (opcional, só NF-e de produto): função da conferência que valida os vínculos da
+// seção de itens (visível acima do painel) e devolve { itens } no formato do gerar-conta —
+// itens vinculados são SOMADOS NO ESTOQUE mesmo sem pagamento (decisão do dono, 07/2026).
+const PainelRegistrarEntrada = ({ nota, obterItens, onCancelar, onChanged }) => {
+    const [motivo, setMotivo] = useState(nota.motivoSugerido || '');
+    const [observacao, setObservacao] = useState('');
+    const [salvando, setSalvando] = useState(false);
+
+    const registrar = async () => {
+        if (!motivo) { toast.error('Escolha o motivo da entrada.'); return; }
+        // Vínculos atuais da seção "Itens da nota → nossos produtos" (mesma montagem do gerar-conta)
+        let itens;
+        if (obterItens) {
+            const r = obterItens();
+            if (r?.erro) { toast.error(r.erro); return; }
+            itens = r?.itens;
+        }
+        setSalvando(true);
+        try {
+            const resp = await notasEntradaService.registrarEntrada(nota.id, {
+                motivo,
+                observacao: observacao.trim() || undefined,
+                itens
+            });
+            toast.success(resp?.message || 'Entrada registrada sem pagamento!');
+            toastEstoque(resp?.estoque);
+            for (const aviso of [...(resp?.avisos || []), ...(resp?.estoqueAvisos || [])]) {
+                toast(aviso, { icon: '⚠️', duration: 8000 });
+            }
+            onChanged();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Não foi possível registrar a entrada.');
+        } finally {
+            setSalvando(false);
+        }
+    };
+
+    return (
+        <div className="border-2 border-primary rounded-xl overflow-hidden bg-white">
+            {/* Cabeçalho */}
+            <div className="px-4 md:px-5 py-3.5 border-b border-gray-100 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                        <PackageCheck className="h-4 w-4 text-purple-600 shrink-0" />
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Registrar entrada sem pagamento</span>
+                    </div>
+                    <div className="text-sm text-gray-700 mt-1 break-words">
+                        {tipoNotaLabel(nota.tipo)}{nota.numero ? ` ${nota.numero}` : ''}
+                        {nota.fornecedorNome ? ` · ${nota.fornecedorNome}` : ''}
+                    </div>
+                </div>
+                <button onClick={onCancelar} title="Fechar" className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 shrink-0">
+                    <X className="h-4 w-4" />
+                </button>
+            </div>
+
+            <div className="p-4 md:p-5 space-y-4">
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-xs text-purple-900 leading-relaxed">
+                    A nota fica <b>arquivada como recebida</b> (com XML e DANFE), <b>sem criar despesa</b> no Contas a Pagar.
+                    Use para bonificação, amostra grátis, remessa/troca, comodato — notas que entram no CNPJ mas não geram pagamento.
+                    {obterItens && (
+                        <> Itens vinculados acima serão <b>somados no estoque</b> (sem alterar o custo — mercadoria sem pagamento). Itens sem vínculo não entram no estoque.</>
+                    )}
+                </div>
+
+                {/* Motivo (pílulas — comportamento de radio) */}
+                <div>
+                    <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Motivo da entrada</div>
+                    <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Motivo da entrada">
+                        {MOTIVOS_ENTRADA.map(m => {
+                            const ativo = motivo === m.value;
+                            const sugerido = nota.motivoSugerido === m.value;
+                            return (
+                                <button
+                                    key={m.value}
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={ativo}
+                                    onClick={() => setMotivo(m.value)}
+                                    className={`px-4 py-2 min-h-[44px] rounded-full text-sm transition-colors inline-flex items-center gap-1.5 ${
+                                        ativo
+                                            ? 'bg-primary text-white font-semibold'
+                                            : 'bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50'
+                                    }`}
+                                >
+                                    {m.label}
+                                    {sugerido && (
+                                        <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded-full whitespace-nowrap ${
+                                            ativo ? 'bg-white/25 text-white' : 'bg-purple-100 text-purple-700'
+                                        }`}>
+                                            detectado pela nota
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Observação */}
+                <div>
+                    <label className="text-sm font-medium text-gray-700">Observação (opcional)</label>
+                    <input
+                        value={observacao}
+                        onChange={e => setObservacao(e.target.value)}
+                        placeholder="Ex.: troca da carga avariada NF 43.980"
+                        className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                    />
+                </div>
+
+                {!motivo && (
+                    <div className="text-xs text-amber-700">Escolha o motivo da entrada para liberar o registro.</div>
+                )}
+
+                {/* Ações */}
+                <div className="flex flex-col md:flex-row gap-3">
+                    <button
+                        onClick={registrar}
+                        disabled={salvando || !motivo}
+                        title={!motivo ? 'Escolha o motivo da entrada' : undefined}
+                        className="w-full md:w-auto px-4 py-3 md:py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                    >
+                        {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
+                        {salvando ? 'Registrando…' : 'Registrar entrada'}
+                    </button>
+                    <button
+                        onClick={onCancelar}
+                        disabled={salvando}
+                        className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm disabled:opacity-50"
+                    >
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ═══════════════════════════════════════════════════════════
 // CONFERÊNCIA (nota NOVA, com permissão)
 // ═══════════════════════════════════════════════════════════
 const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged }) => {
@@ -1494,6 +1681,8 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     const [ignorando, setIgnorando] = useState(false);
     // Caminho alternativo: a despesa JÁ está lançada — só anexar a nota nela (não gera despesa)
     const [vincularAberto, setVincularAberto] = useState(false);
+    // Caminho alternativo 2: entrada SEM pagamento (bonificação/amostra/troca/comodato — não gera despesa)
+    const [entradaAberta, setEntradaAberta] = useState(false);
 
     // Condição de pagamento (forma + banco) — obrigatória ao enviar ao CA.
     // "Já paguei" (compra à vista) marca a despesa como QUITADA no Conta Azul.
@@ -1608,6 +1797,37 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         return { it, v, opcao, unidadeNossa, vinculado, fator, entrada, custo };
     };
 
+    // Validação dos vínculos — comum aos DOIS fluxos que somam estoque (gerar conta e registrar entrada)
+    const validarVinculos = () => {
+        for (let i = 0; i < vinculos.length; i++) {
+            const { v, it, vinculado, fator } = infoItem(i);
+            if (v.novo && (!v.novo.nome.trim() || !v.novo.unidade.trim())) {
+                return `Preencha nome e unidade do produto novo do item "${it.descricao || i + 1}".`;
+            }
+            if (vinculado && fator <= 0) {
+                return `Informe a conversão de quantidade do item "${it.descricao || i + 1}" (ou desfaça o vínculo).`;
+            }
+        }
+        return '';
+    };
+
+    // Payload de itens (vínculo + conversão) — MESMO formato no gerar-conta e no registrar-entrada
+    const montarItensBase = () => vinculos.map(v => ({
+        itemId: v.itemId,
+        vinculo: v.novo ? null : (v.vinculoValue || null),
+        fatorConversao: parseFator(v.fator) > 0 ? parseFator(v.fator) : null,
+        criarItemPcp: v.novo
+            ? { nome: v.novo.nome.trim(), tipo: v.novo.tipo, unidade: v.novo.unidade.trim() }
+            : null
+    }));
+
+    // Usado pelo painel "Registrar entrada (sem pagamento)": valida e devolve os itens p/ somar no estoque
+    const obterItensEntrada = () => {
+        const erro = validarVinculos();
+        if (erro) return { erro };
+        return { itens: montarItensBase() };
+    };
+
     const gerar = async () => {
         if (parcelas.length === 0 || parcelas.some(p => !p.dataVencimento || parseNum(p.valor) <= 0)) {
             toast.error('Preencha data e valor de todas as parcelas.');
@@ -1618,19 +1838,8 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
             return;
         }
         // Vínculo é opcional — mas, se vinculou, a conversão precisa estar preenchida
-        for (let i = 0; i < vinculos.length; i++) {
-            const { v, it, vinculado, fator } = infoItem(i);
-            if (v.novo) {
-                if (!v.novo.nome.trim() || !v.novo.unidade.trim()) {
-                    toast.error(`Preencha nome e unidade do produto novo do item "${it.descricao || i + 1}".`);
-                    return;
-                }
-            }
-            if (vinculado && fator <= 0) {
-                toast.error(`Informe a conversão de quantidade do item "${it.descricao || i + 1}" (ou desfaça o vínculo).`);
-                return;
-            }
-        }
+        const erroVinculos = validarVinculos();
+        if (erroVinculos) { toast.error(erroVinculos); return; }
         // Se vai enviar ao CA, todo grupo do rateio precisa ter categoria da lista do CA (com id)
         if (enviarCA) {
             if (semCategoria) {
@@ -1661,28 +1870,23 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 pago: pago || undefined,
                 dataPagamento: pago ? dataPagamento : undefined,
                 parcelas: parcelas.map(p => ({ valor: parseNum(p.valor), dataVencimento: p.dataVencimento })),
-                itens: vinculos.map(v => ({
-                    itemId: v.itemId,
-                    vinculo: v.novo ? null : (v.vinculoValue || null),
-                    fatorConversao: parseFator(v.fator) > 0 ? parseFator(v.fator) : null,
-                    categoria: v.categoria || null,
-                    categoriaCaId: caIdDaCategoria(v.categoria),
-                    criarItemPcp: v.novo
-                        ? { nome: v.novo.nome.trim(), tipo: v.novo.tipo, unidade: v.novo.unidade.trim() }
-                        : null
+                itens: montarItensBase().map((base, i) => ({
+                    ...base,
+                    categoria: vinculos[i]?.categoria || null,
+                    categoriaCaId: caIdDaCategoria(vinculos[i]?.categoria)
                 }))
             });
-            const qtdEntradas = Number(resp?.estoque?.entradas || 0);
             toast.success(
                 <span>
-                    {pago ? 'Conta a Pagar gerada como PAGA!' : 'Conta a Pagar gerada!'}
-                    {qtdEntradas > 0 ? ` ${qtdEntradas} item(ns) entraram no estoque com custo atualizado.` : ''}{' '}
+                    {pago ? 'Conta a Pagar gerada como PAGA!' : 'Conta a Pagar gerada!'}{' '}
                     <a href="/contas-pagar" className="font-semibold underline">Abrir Contas a Pagar</a>
                 </span>,
                 { duration: 8000 }
             );
-            for (const aviso of resp?.estoque?.avisos || []) {
-                toast(aviso, { icon: '⚠️', duration: 9000 });
+            // Itens somados no estoque — resp.estoque = [{ nome, unidade, quantidade, destino }]
+            toastEstoque(resp?.estoque);
+            for (const aviso of [...(resp?.avisos || []), ...(resp?.estoqueAvisos || [])]) {
+                toast(aviso, { icon: '⚠️', duration: 8000 });
             }
             onChanged();
         } catch (e) {
@@ -1719,12 +1923,35 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         );
     }
 
+    // Caminho 3: entrada sem pagamento — o painel abre ABAIXO da seção de itens, que CONTINUA
+    // visível e editável (os vínculos definem o que soma no estoque). Só parcelas/categoria/
+    // forma de pagamento somem — ver o return principal (`entradaAberta`).
+
     return (
         <div className="p-4 md:p-5 space-y-4">
+            {/* Sugestão: a natureza da operação indica nota sem pagamento (bonificação, troca…) */}
+            {!entradaAberta && nota.motivoSugerido && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-sm text-purple-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <span>
+                        Esta nota parece ser <span className="font-semibold">{motivoEntradaLabel(nota.motivoSugerido) || 'entrada sem pagamento'}</span>
+                        {nota.naturezaOperacao ? ` (${nota.naturezaOperacao})` : ''} — ela não deveria gerar pagamento.
+                    </span>
+                    <button
+                        onClick={() => setEntradaAberta(true)}
+                        className="shrink-0 self-start sm:self-auto px-3 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 bg-white border border-purple-300 text-purple-700 hover:bg-purple-100/60 rounded-full font-semibold text-xs inline-flex items-center gap-1.5"
+                    >
+                        <PackageCheck className="h-3.5 w-3.5" /> Registrar entrada sem pagamento
+                    </button>
+                </div>
+            )}
+
             {/* Observações da nota (infCpl) */}
             <ObservacoesNota observacoes={nota.observacoes} />
 
-            {/* Itens da nota → nossos produtos (NFS-e: só o serviço + categoria) */}
+            {/* Itens da nota → nossos produtos (NFS-e: só o serviço + categoria).
+                Fica visível também com o painel "Registrar entrada" aberto — os vínculos definem
+                o que soma no estoque (NFS-e não tem estoque, então some nesse caso). */}
+            {!(entradaAberta && ehServico) && (
             <div>
                 <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">
                     {ehServico ? 'Serviço da nota' : 'Itens da nota → nossos produtos'}
@@ -1769,6 +1996,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                         <div className="text-sm font-medium text-gray-900">{it.descricao || `Item ${it.numeroItem || idx + 1}`}</div>
                                         <div className="text-xs text-gray-500">
                                             {it.codigoFornecedor ? `cód. do fornecedor ${it.codigoFornecedor} · ` : ''}
+                                            {it.cfop ? `CFOP ${it.cfop} · ` : ''}
                                             {fmtQtd(it.quantidade)} {it.unidade || 'un'} × R$ {fmt(it.valorUnitario)} = R$ {fmt(it.valorTotal)}
                                         </div>
                                         {String(it.infAdProd || '').trim() && (
@@ -1849,36 +2077,42 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                         <label className="text-xs font-medium text-gray-500">Entrada convertida</label>
                                         <div className="mt-1 text-sm min-h-[38px] flex items-center flex-wrap">
                                             {!vinculado ? (
-                                                <span className="text-gray-400">— sem vínculo (só gera a despesa)</span>
+                                                <span className="text-gray-400">— sem vínculo (não entra no estoque)</span>
                                             ) : fator <= 0 ? (
                                                 <span className="text-gray-400">— informe a conversão</span>
                                             ) : (
                                                 <>
                                                     <span className="font-semibold text-gray-900">{fmtQtd(entrada)} {unidadeNossa}</span>
-                                                    <span className="text-gray-500 ml-2">· custo R$ {fmtCusto(custo)}/{unidadeNossa}</span>
+                                                    <span className="text-green-700 font-medium ml-1.5">→ soma no estoque</span>
+                                                    {/* Entrada sem pagamento NÃO altera o custo — só mostra o custo no fluxo de gerar conta */}
+                                                    {!entradaAberta && (
+                                                        <span className="text-gray-500 ml-1.5">· custo R$ {fmtCusto(custo)}/{unidadeNossa}</span>
+                                                    )}
                                                 </>
                                             )}
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Categoria de custo por item */}
-                                <div className="mt-3">
-                                    <div className="flex items-center gap-2">
-                                        <label className="text-xs font-medium text-gray-500">Categoria de custo</label>
-                                        {String(it.vinculo?.categoria || '').trim() && (
-                                            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800">lembrado ✓</span>
-                                        )}
+                                {/* Categoria de custo por item (não se aplica ao registrar entrada sem pagamento) */}
+                                {!entradaAberta && (
+                                    <div className="mt-3">
+                                        <div className="flex items-center gap-2">
+                                            <label className="text-xs font-medium text-gray-500">Categoria de custo</label>
+                                            {String(it.vinculo?.categoria || '').trim() && (
+                                                <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-green-100 text-green-800">lembrado ✓</span>
+                                            )}
+                                        </div>
+                                        <SelectCategoria
+                                            value={v.categoria}
+                                            onChange={val => setVinculo(idx, { categoria: val })}
+                                            categorias={categorias}
+                                            categoriasErro={categoriasErro}
+                                            placeholder="Usar categoria padrão…"
+                                            className="mt-1 md:max-w-md"
+                                        />
                                     </div>
-                                    <SelectCategoria
-                                        value={v.categoria}
-                                        onChange={val => setVinculo(idx, { categoria: val })}
-                                        categorias={categorias}
-                                        categoriasErro={categoriasErro}
-                                        placeholder="Usar categoria padrão…"
-                                        className="mt-1 md:max-w-md"
-                                    />
-                                </div>
+                                )}
                             </div>
                         );
                     })}
@@ -1886,10 +2120,24 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 <div className="mt-2 text-xs text-gray-500">
                     {ehServico
                         ? <>A categoria fica <span className="font-semibold text-gray-700">memorizada por prestador</span> — na próxima nota de serviço deste fornecedor ela já vem preenchida.</>
-                        : <>Item vinculado <span className="font-semibold text-gray-700">entra no estoque e atualiza o custo</span> do produto ao gerar a conta. O vínculo e a conversão ficam <span className="font-semibold text-gray-700">salvos por fornecedor + código do produto na nota</span> (e código de barras, quando houver) — na próxima nota deste fornecedor, tudo já entra preenchido. O vínculo é opcional: sem ele, só gera a despesa.</>}
+                        : entradaAberta
+                            ? <>Confira o vínculo e a conversão de cada item — <span className="font-semibold text-gray-700">itens vinculados serão somados no estoque</span> ao registrar a entrada. Itens sem vínculo não entram no estoque.</>
+                            : <>Item vinculado <span className="font-semibold text-gray-700">soma no estoque e atualiza o custo</span> do produto ao gerar a conta. O vínculo e a conversão ficam <span className="font-semibold text-gray-700">salvos por fornecedor + código do produto na nota</span> (e código de barras, quando houver) — na próxima nota deste fornecedor, tudo já entra preenchido. O vínculo é opcional: sem ele, o item não entra no estoque (só gera a despesa).</>}
                 </div>
             </div>
+            )}
 
+            {/* Painel "Registrar entrada (sem pagamento)" abaixo dos itens — parcelas/categoria/
+                forma de pagamento e ações da conferência somem enquanto ele está aberto */}
+            {entradaAberta ? (
+                <PainelRegistrarEntrada
+                    nota={nota}
+                    obterItens={ehServico ? undefined : obterItensEntrada}
+                    onCancelar={() => setEntradaAberta(false)}
+                    onChanged={onChanged}
+                />
+            ) : (
+            <>
             {/* Parcelas da despesa */}
             <div>
                 <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
@@ -2107,6 +2355,13 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 >
                     <Link2 className="h-4 w-4" /> Vincular a despesa já lançada
                 </button>
+                <button
+                    onClick={() => setEntradaAberta(true)}
+                    title="Nota que não deve gerar pagamento (bonificação, amostra, troca, comodato)? Registre só a entrada, sem criar despesa."
+                    className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-purple-300 text-purple-700 hover:bg-purple-50 rounded-full font-medium text-sm inline-flex items-center justify-center gap-1.5"
+                >
+                    <PackageCheck className="h-4 w-4" /> Registrar entrada (sem pagamento)
+                </button>
                 <BotaoImprimirDanfe id={nota.id} rotulo={ehServico ? 'Imprimir DANFSE' : 'Imprimir DANFE'} />
                 <button
                     onClick={() => baixarXmlNota(nota)}
@@ -2122,6 +2377,8 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                     {ignorando ? 'Ignorando…' : 'Ignorar nota'}
                 </button>
             </div>
+            </>
+            )}
         </div>
     );
 };
@@ -2132,6 +2389,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
 const DetalheNota = ({ nota, podeOperar, onChanged }) => {
     const [reativando, setReativando] = useState(false);
     const [cancelando, setCancelando] = useState(false);
+    const [desfazendoEntrada, setDesfazendoEntrada] = useState(false);
     const [desvinculando, setDesvinculando] = useState(''); // '' | 'TODAS' | id da parcela
     const itensNota = Array.isArray(nota.itens) ? nota.itens : [];
     const parcelasVinculadas = Array.isArray(nota.parcelasVinculadas) ? nota.parcelasVinculadas : [];
@@ -2161,6 +2419,29 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
     const duplicatas = Array.isArray(nota.duplicatas) ? nota.duplicatas : [];
     const ehServico = String(nota.tipo || '').toUpperCase().includes('NFS');
 
+    // Quem registrou a entrada sem pagamento (campo opcional — pode vir string ou objeto)
+    const quemRegistrouEntrada = typeof nota.entradaRegistradaPor === 'string'
+        ? nota.entradaRegistradaPor
+        : (nota.entradaRegistradaPor?.nome || null);
+
+    const desfazerEntrada = async () => {
+        if (!window.confirm('Desfazer o registro de entrada sem pagamento? A nota volta para conferência, como Nova. Itens somados no estoque são estornados.')) return;
+        setDesfazendoEntrada(true);
+        try {
+            const r = await notasEntradaService.desfazerEntrada(nota.id);
+            toast.success(r?.message || 'Registro desfeito. A nota voltou para conferência.');
+            // Avisos do estorno de estoque (ex.: quantidade já consumida)
+            for (const aviso of [...(r?.avisos || []), ...(r?.estoque?.avisos || [])]) {
+                toast(aviso, { icon: '⚠️', duration: 8000 });
+            }
+            onChanged();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Não foi possível desfazer o registro.');
+        } finally {
+            setDesfazendoEntrada(false);
+        }
+    };
+
     const reativar = async () => {
         setReativando(true);
         try {
@@ -2179,13 +2460,13 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
         setCancelando(true);
         try {
             const r = await notasEntradaService.cancelarConferencia(nota.id);
-            const estornadas = Number(r?.estoque?.estornadas || 0);
-            toast.success(`Entrada cancelada. A nota voltou para conferência.${estornadas > 0 ? ` ${estornadas} item(ns) saíram do estoque (estorno).` : ''}`);
+            toast.success(r?.message || 'Entrada cancelada. A nota voltou para conferência.');
             if (r?.avisoCA) {
                 toast('Atenção: esta despesa já pode ter chegado à Conta Azul. Se aparecer lá, exclua-a manualmente no CA.', { icon: '⚠️', duration: 8000 });
             }
-            for (const aviso of r?.estoque?.avisos || []) {
-                toast(aviso, { icon: '⚠️', duration: 9000 });
+            // Avisos do estorno de estoque (raiz ou dentro de `estoque`, conforme a rota)
+            for (const aviso of [...(r?.avisos || []), ...(r?.estoque?.avisos || [])]) {
+                toast(aviso, { icon: '⚠️', duration: 8000 });
             }
             onChanged();
         } catch (e) {
@@ -2197,6 +2478,14 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
 
     return (
         <div className="p-4 md:p-5 space-y-4">
+            {/* Itens desta nota já somados no estoque (GET /:id → estoqueAplicado) */}
+            {nota.estoqueAplicado === true && (
+                <div>
+                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 whitespace-nowrap">
+                        <PackageCheck className="h-3.5 w-3.5" /> Estoque somado ✓
+                    </span>
+                </div>
+            )}
             {nota.status === 'CONFERIDA' && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
                     Despesa gerada a partir desta nota.{' '}
@@ -2207,6 +2496,24 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
                     Nota anexada a despesa(s) que já estavam lançadas — <span className="font-semibold">não gerou despesa nova</span>.{' '}
                     <Link to="/contas-pagar" className="font-semibold underline">Ver em Contas a Pagar</Link>
+                </div>
+            )}
+            {nota.status === 'ENTRADA_REGISTRADA' && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-sm text-purple-900">
+                    <div>
+                        <span className="font-semibold">Entrada registrada sem pagamento</span>
+                        {motivoEntradaLabel(nota.motivoEntrada) ? <> — <span className="font-semibold">{motivoEntradaLabel(nota.motivoEntrada)}</span></> : null}
+                        . A nota está arquivada como recebida (com XML e DANFE) e <span className="font-semibold">não gerou despesa</span> no Contas a Pagar.
+                    </div>
+                    {String(nota.observacaoEntrada || '').trim() && (
+                        <div className="mt-1 whitespace-pre-wrap break-words">obs.: {String(nota.observacaoEntrada).trim()}</div>
+                    )}
+                    {(nota.entradaRegistradaEm || quemRegistrouEntrada) && (
+                        <div className="text-xs text-purple-700 mt-1">
+                            {nota.entradaRegistradaEm ? `registrada em ${fmtDataHoraAno(nota.entradaRegistradaEm)}` : 'registrada'}
+                            {quemRegistrouEntrada ? ` por ${quemRegistrouEntrada}` : ''}
+                        </div>
+                    )}
                 </div>
             )}
             {nota.status === 'CANCELADA_EMITENTE' && (
@@ -2307,6 +2614,7 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
                                     ? <>Valor: R$ {fmt(it.valorTotal)}</>
                                     : <>
                                         {it.codigoFornecedor ? `cód. do fornecedor ${it.codigoFornecedor} · ` : ''}
+                                        {it.cfop ? `CFOP ${it.cfop} · ` : ''}
                                         {fmtQtd(it.quantidade)} {it.unidade || 'un'} × R$ {fmt(it.valorUnitario)} = R$ {fmt(it.valorTotal)}
                                     </>}
                             </div>
@@ -2371,6 +2679,17 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
                         className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-red-300 text-red-700 hover:bg-red-50 rounded-md font-medium text-sm disabled:opacity-50"
                     >
                         {cancelando ? 'Cancelando…' : 'Cancelar entrada e refazer'}
+                    </button>
+                )}
+                {nota.status === 'ENTRADA_REGISTRADA' && podeOperar && (
+                    <button
+                        onClick={desfazerEntrada}
+                        disabled={desfazendoEntrada}
+                        title="Desfaz o registro de entrada sem pagamento — a nota volta para conferência."
+                        className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-red-300 text-red-700 hover:bg-red-50 rounded-md font-medium text-sm disabled:opacity-50 inline-flex items-center justify-center gap-1.5"
+                    >
+                        <Undo2 className="h-4 w-4" />
+                        {desfazendoEntrada ? 'Desfazendo…' : 'Desfazer registro'}
                     </button>
                 )}
             </div>

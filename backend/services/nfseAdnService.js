@@ -340,7 +340,7 @@ async function registrarNfse(xmlString, nsu, cnpjNosso) {
     const existente = await prisma.notaEntrada.findUnique({ where: { chave: nota.chave } });
 
     // Notas já tratadas pelo usuário não voltam para NOVA
-    if (existente && ['CONFERIDA', 'IGNORADA', 'CANCELADA_EMITENTE'].includes(existente.status)) {
+    if (existente && ['CONFERIDA', 'ENTRADA_REGISTRADA', 'IGNORADA', 'CANCELADA_EMITENTE'].includes(existente.status)) {
         await prisma.notaEntrada.update({
             where: { chave: nota.chave },
             data: { xmlPath, nsu: nsu != null ? String(nsu) : existente.nsu }

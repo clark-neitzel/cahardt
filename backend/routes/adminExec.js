@@ -5206,6 +5206,93 @@ router.post('/compras-retroativas', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/nota-estoque-aplicar/:notaId
+// Aplica estoque RETROATIVAMENTE numa nota já tratada (CONFERIDA ou ENTRADA_REGISTRADA)
+// que ainda não passou pelo ledger novo (NotaEntradaEstoqueMov). Resolve cada item
+// pela memória FornecedorProdutoVinculo (cnpj+cProd, fallback EAN). comCusto conforme
+// o caminho: CONFERIDA (compra) = com custo; ENTRADA_REGISTRADA (bonificação) = sem.
+// UMA nota por chamada — o dono revisa nota a nota, sem aplicação em massa.
+router.post('/nota-estoque-aplicar/:notaId', async (req, res) => {
+    try {
+        const notaEstoqueService = require('../services/notaEstoqueService');
+
+        const nota = await prisma.notaEntrada.findUnique({
+            where: { id: req.params.notaId },
+            include: { itens: { orderBy: { numeroItem: 'asc' } } }
+        });
+        if (!nota) return res.status(404).json({ ok: false, error: 'Nota não encontrada.' });
+        if (!['CONFERIDA', 'ENTRADA_REGISTRADA'].includes(nota.status)) {
+            return res.status(400).json({ ok: false, error: `Só nota CONFERIDA ou ENTRADA_REGISTRADA (status atual: ${nota.status}).` });
+        }
+        if (nota.tipo === 'NFSE') {
+            return res.status(400).json({ ok: false, error: 'NFS-e (serviço) não movimenta estoque.' });
+        }
+
+        // Já aplicado pelo ledger novo?
+        const ledgerAtivo = await prisma.notaEntradaEstoqueMov.count({
+            where: { notaEntradaId: nota.id, estornado: false }
+        });
+        if (ledgerAtivo > 0) {
+            return res.status(400).json({ ok: false, error: 'Esta nota já tem entrada de estoque aplicada (ledger ativo). Nada a fazer.' });
+        }
+        // Já aplicado pelo fluxo ANTIGO (Fase 6 / CompraItem)? Aplicar de novo somaria em dobro.
+        const compraAtiva = await prisma.compraItem.count({
+            where: { notaEntradaId: nota.id, estornado: false }
+        });
+        if (compraAtiva > 0) {
+            return res.status(400).json({ ok: false, error: `Esta nota já teve ${compraAtiva} entrada(s) aplicada(s) pelo fluxo antigo (CompraItem ativo). Aplicar de novo somaria em dobro.` });
+        }
+
+        // Resolve cada item pela memória do fornecedor (cnpj+cProd; fallback EAN)
+        const vinculos = nota.fornecedorCnpj
+            ? await prisma.fornecedorProdutoVinculo.findMany({ where: { fornecedorCnpj: nota.fornecedorCnpj } })
+            : [];
+        const porCodigo = new Map(vinculos.map((v) => [v.codigoFornecedor, v]));
+        const porEan = new Map(vinculos.filter((v) => v.ean).map((v) => [v.ean, v]));
+
+        const vinculados = [];
+        const pulados = [];
+        for (const itemNota of nota.itens) {
+            const v = porCodigo.get(itemNota.codigoFornecedor) || (itemNota.ean ? porEan.get(itemNota.ean) : null);
+            if (!v || (!v.produtoId && !v.itemPcpId)) {
+                pulados.push({ item: itemNota.descricao, motivo: 'sem memória de vínculo (fornecedor+cProd/EAN)' });
+                continue;
+            }
+            vinculados.push({
+                itemNota,
+                produtoId: v.produtoId || null,
+                itemPcpId: v.produtoId ? null : v.itemPcpId,
+                fator: Number(v.fatorConversao) > 0 ? Number(v.fatorConversao) : 1
+            });
+        }
+        if (vinculados.length === 0) {
+            return res.status(400).json({ ok: false, error: 'Nenhum item da nota tem memória de vínculo — nada para aplicar.', pulados });
+        }
+
+        const comCusto = nota.status === 'CONFERIDA';
+        let resultado = { itens: [], avisos: [] };
+        await prisma.$transaction(async (tx) => {
+            resultado = await notaEstoqueService.aplicarEstoqueNota(
+                tx,
+                nota,
+                notaEstoqueService.montarItensResolvidos(vinculados),
+                { comCusto, criadoPorId: null, contaPagarId: nota.contaPagarId || null }
+            );
+        }, { timeout: 20000, maxWait: 10000 });
+
+        res.json({
+            ok: true,
+            nota: { id: nota.id, numero: nota.numero, fornecedor: nota.fornecedorNome, status: nota.status },
+            comCusto,
+            aplicados: resultado.itens,
+            pulados,
+            avisos: resultado.avisos
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/gerencial-diag
 // SOMENTE LEITURA. Roda o Fluxo de Caixa e a DRE (Fase 5) e devolve um resumo
 // compacto — validar os números reais em produção logo após o deploy.
