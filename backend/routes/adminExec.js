@@ -60,6 +60,75 @@ router.get('/ping', (req, res) => {
     });
 });
 
+// GET /api/admin-exec/diag-pedidos-abertos-antigos
+// Rascunhos ABERTOS com data de entrega no passado, agrupados por usuário — são os
+// que apareciam no lembrete "pedidos salvos sem enviar" (hoje o lembrete filtra
+// entrega >= hoje; estes ficam quietos no banco). Ajuda a decidir se limpa.
+router.get('/diag-pedidos-abertos-antigos', async (req, res) => {
+    try {
+        const hojeSP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const antigos = await prisma.pedido.findMany({
+            where: { statusEnvio: 'ABERTO', dataVenda: { lt: new Date(hojeSP + 'T00:00:00-03:00') } },
+            select: {
+                id: true, numero: true, dataVenda: true, createdAt: true,
+                especial: true, bonificacao: true,
+                cliente: { select: { Nome: true, NomeFantasia: true } },
+                vendedor: { select: { nome: true } },
+                usuarioLancamento: { select: { nome: true } }
+            },
+            orderBy: { dataVenda: 'asc' }
+        });
+        const porUsuario = {};
+        for (const p of antigos) {
+            const dono = p.usuarioLancamento?.nome || p.vendedor?.nome || '(sem dono)';
+            if (!porUsuario[dono]) porUsuario[dono] = [];
+            porUsuario[dono].push({
+                id: p.id,
+                cliente: p.cliente?.NomeFantasia || p.cliente?.Nome || '—',
+                entrega: p.dataVenda?.toISOString?.().slice(0, 10) || null,
+                criadoEm: p.createdAt?.toISOString?.().slice(0, 10) || null,
+                tipo: p.especial ? 'ESPECIAL' : p.bonificacao ? 'BONIFICACAO' : 'NORMAL'
+            });
+        }
+        res.json({ total: antigos.length, porUsuario });
+    } catch (e) {
+        console.error('[diag-pedidos-abertos-antigos]', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/admin-exec/limpar-pedidos-abertos-antigos { "confirmar": true, "antesDe": "YYYY-MM-DD" (opcional) }
+// Exclui os rascunhos ABERTOS com entrega no passado (não enviados ao CA, sem
+// financeiro). Rodar o diag acima antes; a exclusão remove itens junto.
+router.post('/limpar-pedidos-abertos-antigos', async (req, res) => {
+    try {
+        if (req.body?.confirmar !== true) return res.status(400).json({ error: 'Envie { "confirmar": true } para excluir.' });
+        const hojeSP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const limite = req.body?.antesDe || hojeSP;
+        const alvo = await prisma.pedido.findMany({
+            where: { statusEnvio: 'ABERTO', dataVenda: { lt: new Date(limite + 'T00:00:00-03:00') } },
+            select: { id: true }
+        });
+        const ids = alvo.map(p => p.id);
+        let excluidos = 0;
+        for (const id of ids) {
+            try {
+                await prisma.$transaction(async (tx) => {
+                    await tx.pedidoItem.deleteMany({ where: { pedidoId: id } });
+                    await tx.pedido.delete({ where: { id } });
+                }, { timeout: 20000, maxWait: 10000 });
+                excluidos++;
+            } catch (delErr) {
+                console.error(`[limpar-pedidos-abertos-antigos] pedido ${id}:`, delErr.message);
+            }
+        }
+        res.json({ ok: true, encontrados: ids.length, excluidos });
+    } catch (e) {
+        console.error('[limpar-pedidos-abertos-antigos]', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-bloqueio-estoque?login=xxx
 // Diagnóstico do bloqueio de venda sem estoque: confirma que este backend tem a
 // validação (marcador de deploy) e mostra quem está com a restrição ligada.

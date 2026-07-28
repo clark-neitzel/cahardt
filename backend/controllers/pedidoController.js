@@ -223,9 +223,13 @@ const pedidoController = {
     meusNaoEnviados: async (req, res) => {
         try {
             if (!req.user?.id) return res.json({ total: 0, pedidos: [] });
+            // Só pedidos com entrega HOJE ou futura: rascunho com data passada nem
+            // pode mais ser enviado (trava de data no ENVIAR) — avisar seria só ruído.
+            const hojeSP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
             const pedidos = await prisma.pedido.findMany({
                 where: {
                     statusEnvio: 'ABERTO',
+                    dataVenda: { gte: new Date(hojeSP + 'T00:00:00-03:00') },
                     OR: [{ vendedorId: req.user.id }, { usuarioLancamentoId: req.user.id }]
                 },
                 select: {
