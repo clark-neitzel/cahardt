@@ -113,6 +113,7 @@ export default function CongeladosSite() {
     setCart(c => ({ ...c, [id]: (c[id] || 0) + 1 }));
   };
   const removeItem = (id) => setCart(c => { const n = { ...c }; const v = (n[id] || 0) - 1; if (v <= 0) delete n[id]; else n[id] = v; return n; });
+  const delItem = (id) => setCart(c => { const n = { ...c }; delete n[id]; return n; }); // remove o item inteiro
 
   // O site usa SÓ a condição padrão do cliente. O preço de cada produto já vem
   // pronto do servidor (igual ao que o vendedor vê: condição + último preço + flex).
@@ -403,6 +404,7 @@ export default function CongeladosSite() {
                       <span className="q">{cart[id]}</span>
                       <button onClick={() => addItem(id)}><Icon n="plus" w={14} /></button>
                     </div>
+                    <button className="cg-citem-del" onClick={() => delItem(id)} title="Remover item" aria-label="Remover item"><Icon n="trash" w={16} /></button>
                   </div>
                 );
               })}

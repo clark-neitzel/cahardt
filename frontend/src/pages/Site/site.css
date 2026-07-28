@@ -575,6 +575,10 @@
 .cg-drawer .cg-ministep button{ width:30px; height:30px; border-radius:999px; color:#fff; }
 .cg-drawer .cg-ministep button:hover{ background:rgba(255,255,255,.18); }
 .cg-drawer .cg-ministep .q{ color:#fff; min-width:24px; }
+/* lixeira por item (remover o item inteiro) */
+.cg-drawer .cg-citem-del{ flex:0 0 auto; width:34px; height:34px; display:flex; align-items:center; justify-content:center;
+  border-radius:9px; color:#b0714a; background:none; border:none; cursor:pointer; transition:.15s; }
+.cg-drawer .cg-citem-del:hover{ background:#fbe9e4; color:var(--tomato); }
 
 /* carrinho vazio */
 .cg-drawer .cg-cart-empty{ color:#8a7d63; }
