@@ -4149,6 +4149,107 @@ router.get('/diag-conciliados-sem-baixa', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/diag-conciliados-sem-baixa/corrigir  body: { aplicar: true|false }
+// Corrige os vínculos quebrados achados pela auditoria acima (sem aplicar = só mostra o plano):
+//  (a) lançamento CONCILIADO preso a baixa ESTORNADA com a parcela PAGA por outra baixa ativa
+//      → re-aponta o vínculo para a baixa ativa (mesma parcela, mesma conta, valor batendo, livre);
+//  (b) GRUPO cujas baixas foram TODAS estornadas/canceladas depois da conciliação
+//      → desfaz a conciliação (a linha do extrato volta para PENDENTE, para conciliar de novo
+//        com a despesa certa). Nada além desses dois casos é tocado.
+router.post('/diag-conciliados-sem-baixa/corrigir', async (req, res) => {
+    try {
+        const aplicar = req.body?.aplicar === true;
+        const n = (v) => Number(v || 0);
+        const plano = [];
+
+        // ── (a) vínculo direto → baixa estornada ──
+        const lancs = await prisma.extratoLancamento.findMany({
+            where: { status: 'CONCILIADO', OR: [{ pagamentoParcelaId: { not: null } }, { pagamentoParcelaPagarId: { not: null } }] },
+            select: { id: true, valor: true, tipo: true, data: true, descricao: true, contaFinanceiraCaId: true, pagamentoParcelaId: true, pagamentoParcelaPagarId: true }
+        });
+        const recIds = lancs.map((l) => l.pagamentoParcelaId).filter(Boolean);
+        const pagIds = lancs.map((l) => l.pagamentoParcelaPagarId).filter(Boolean);
+        const [recsEst, pagsEst] = await Promise.all([
+            recIds.length ? prisma.pagamentoParcela.findMany({ where: { id: { in: recIds }, estornado: true }, select: { id: true, parcelaId: true } }) : [],
+            pagIds.length ? prisma.pagamentoParcelaPagar.findMany({ where: { id: { in: pagIds }, estornado: true }, select: { id: true, parcelaPagarId: true } }) : []
+        ]);
+        const recEstPorId = new Map(recsEst.map((r) => [r.id, r]));
+        const pagEstPorId = new Map(pagsEst.map((p) => [p.id, p]));
+
+        // baixas já usadas em qualquer lugar (vínculo direto ou item de grupo)
+        const [usoDireto, usoGrupo] = await Promise.all([
+            prisma.extratoLancamento.findMany({ where: { status: 'CONCILIADO' }, select: { pagamentoParcelaId: true, pagamentoParcelaPagarId: true } }),
+            prisma.conciliacaoGrupoItem.findMany({ select: { pagamentoParcelaId: true, pagamentoParcelaPagarId: true } })
+        ]);
+        const usados = new Set([...usoDireto, ...usoGrupo].flatMap((u) => [u.pagamentoParcelaId, u.pagamentoParcelaPagarId]).filter(Boolean));
+
+        for (const l of lancs) {
+            const est = l.pagamentoParcelaId ? recEstPorId.get(l.pagamentoParcelaId) : pagEstPorId.get(l.pagamentoParcelaPagarId);
+            if (!est) continue;
+            let novo = null, motivo = null;
+            if (l.pagamentoParcelaId) {
+                const ativas = await prisma.pagamentoParcela.findMany({
+                    where: { parcelaId: est.parcelaId, estornado: false },
+                    select: { id: true, valorRecebido: true, contaFinanceiraCaId: true }
+                });
+                const livres = ativas.filter((b) => !usados.has(b.id) && Math.abs(n(b.valorRecebido) - n(l.valor)) <= 0.02);
+                novo = livres.length === 1 ? livres[0] : null;
+                motivo = livres.length === 0 ? 'nenhuma baixa ativa livre com o valor' : (livres.length > 1 ? 'mais de uma candidata — manual' : null);
+            } else {
+                const ativas = await prisma.pagamentoParcelaPagar.findMany({
+                    where: { parcelaPagarId: est.parcelaPagarId, estornado: false },
+                    select: { id: true, valorPago: true, juros: true, multa: true, contaFinanceiraCaId: true }
+                });
+                const livres = ativas.filter((b) => !usados.has(b.id) && Math.abs(n(b.valorPago) + n(b.juros) + n(b.multa) - n(l.valor)) <= 0.02);
+                novo = livres.length === 1 ? livres[0] : null;
+                motivo = livres.length === 0 ? 'nenhuma baixa ativa livre com o valor' : (livres.length > 1 ? 'mais de uma candidata — manual' : null);
+            }
+            const acao = {
+                caso: 'RELINK_BAIXA_ESTORNADA', lancamentoId: l.id, data: l.data, valor: n(l.valor),
+                tipo: l.tipo, descricao: l.descricao, baixaEstornadaId: est.id,
+                novaBaixaId: novo?.id || null, executado: false, motivoSemAcao: motivo
+            };
+            if (novo && aplicar) {
+                await prisma.extratoLancamento.update({
+                    where: { id: l.id },
+                    data: l.pagamentoParcelaId ? { pagamentoParcelaId: novo.id } : { pagamentoParcelaPagarId: novo.id }
+                });
+                usados.add(novo.id);
+                acao.executado = true;
+            }
+            plano.push(acao);
+        }
+
+        // ── (b) grupos com TODAS as baixas estornadas ──
+        const grupos = await prisma.conciliacaoGrupo.findMany({
+            select: { id: true, itens: { select: { extratoLancamentoId: true, pagamentoParcelaId: true, pagamentoParcelaPagarId: true } } }
+        });
+        for (const g of grupos) {
+            const recG = g.itens.map((i) => i.pagamentoParcelaId).filter(Boolean);
+            const pagG = g.itens.map((i) => i.pagamentoParcelaPagarId).filter(Boolean);
+            if (recG.length + pagG.length === 0) continue;
+            const [recAtivas, pagAtivas] = await Promise.all([
+                recG.length ? prisma.pagamentoParcela.count({ where: { id: { in: recG }, estornado: false } }) : 0,
+                pagG.length ? prisma.pagamentoParcelaPagar.count({ where: { id: { in: pagG }, estornado: false } }) : 0
+            ]);
+            if (recAtivas + pagAtivas > 0) continue; // alguma baixa viva — grupo fica
+            const lancIds = g.itens.map((i) => i.extratoLancamentoId).filter(Boolean);
+            const acao = { caso: 'DESFAZER_GRUPO_TODO_ESTORNADO', grupoId: g.id, lancamentos: lancIds, executado: false };
+            if (aplicar && lancIds.length) {
+                const conciliacaoService = require('../services/conciliacaoBancariaService');
+                await conciliacaoService.desfazer({ lancamentoId: lancIds[0] }); // desfaz o grupo inteiro (irmãos juntos)
+                acao.executado = true;
+            }
+            plano.push(acao);
+        }
+
+        res.json({ ok: true, aplicar, acoes: plano.length, plano });
+    } catch (error) {
+        console.error('[admin-exec] Erro corrigir conciliados-sem-baixa:', error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
 // GET /api/admin-exec/contas-pagar-conciliacao-suspeitas
 // Varre vínculos suspeitos com o CA (incidente do ICMS DESTDA, 07/2026):
 //  (a) parcelas com baixa vinda do CA cujo total pago EXCEDE o valor da parcela
