@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { X, MapPin, LocateFixed, Check, Loader2, ShieldCheck } from 'lucide-react';
+import toast from 'react-hot-toast';
 import gpsClientesService from '../services/gpsClientesService';
 import SelectBusca from './SelectBusca';
 
@@ -53,6 +54,7 @@ export default function ModalPontoGps({
     const [autorizadorId, setAutorizadorId] = useState('');
     const [senhaAutorizador, setSenhaAutorizador] = useState('');
     const [avisoFinal, setAvisoFinal] = useState(null);    // { tipo: 'pendente'|'offline', texto }
+    const [buscandoPos, setBuscandoPos] = useState(false); // "Usar minha posição" em andamento
 
     const distanciaM = (a, b) => {
         const R = 6371000, toRad = (g) => (g * Math.PI) / 180;
@@ -145,13 +147,32 @@ export default function ModalPontoGps({
     const usarMinhaPosicao = () => {
         if (posAtual && mapObj.current) {
             mapObj.current.setView([posAtual.lat, posAtual.lng], 18);
-        } else if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => mapObj.current?.setView([pos.coords.latitude, pos.coords.longitude], 18),
-                () => alert('Não foi possível obter sua localização. Ative o GPS.'),
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
+            return;
         }
+        const ehCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+        if (!navigator.geolocation) {
+            toast('Este navegador não informa localização — arraste o mapa até a porta do cliente.', { icon: '🗺️', duration: 6000 });
+            return;
+        }
+        setBuscandoPos(true);
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                setBuscandoPos(false);
+                mapObj.current?.setView([pos.coords.latitude, pos.coords.longitude], 18);
+            },
+            (err) => {
+                setBuscandoPos(false);
+                // Computador não tem GPS — falhar aqui é normal; o caminho é o mapa.
+                if (err.code === 1) {
+                    toast('A permissão de localização está bloqueada neste navegador (cadeado na barra de endereço → Localização → Permitir). Enquanto isso, arraste o mapa até a porta do cliente.', { icon: '🔒', duration: 8000 });
+                } else if (!ehCelular) {
+                    toast('Computador não tem GPS, então nem sempre acha sua posição — é normal. Arraste o mapa até a porta do cliente; no celular este botão usa o GPS de verdade.', { icon: '🖥️', duration: 8000 });
+                } else {
+                    toast.error('Não foi possível obter sua localização. Ative o GPS do aparelho e tente de novo.', { duration: 6000 });
+                }
+            },
+            { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+        );
     };
 
     const abrirAutorizacao = async (resp) => {
@@ -308,8 +329,9 @@ export default function ModalPontoGps({
                                     📏 O alfinete está a <b>{distDoAntigo >= 1000 ? `${(distDoAntigo / 1000).toFixed(1)} km` : `${distDoAntigo} m`}</b> do ponto atual do cadastro (bolinha cinza).
                                 </div>
                             )}
-                            <button onClick={usarMinhaPosicao} className="w-full px-4 py-2.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center justify-center gap-2 min-h-[44px]">
-                                <LocateFixed className="h-4 w-4" /> Usar minha posição atual
+                            <button onClick={usarMinhaPosicao} disabled={buscandoPos} className="w-full px-4 py-2.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center justify-center gap-2 min-h-[44px] disabled:opacity-60">
+                                {buscandoPos ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
+                                {buscandoPos ? 'Buscando sua posição…' : 'Usar minha posição atual'}
                             </button>
                             <button
                                 onClick={() => salvar()}
