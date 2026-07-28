@@ -111,6 +111,7 @@ router.post('/limpar-pedidos-abertos-antigos', async (req, res) => {
         });
         const ids = alvo.map(p => p.id);
         let excluidos = 0;
+        const falhas = [];
         for (const id of ids) {
             try {
                 await prisma.$transaction(async (tx) => {
@@ -120,9 +121,28 @@ router.post('/limpar-pedidos-abertos-antigos', async (req, res) => {
                 excluidos++;
             } catch (delErr) {
                 console.error(`[limpar-pedidos-abertos-antigos] pedido ${id}:`, delErr.message);
+                // Contar o que está pendurado neste pedido (para decidir com segurança)
+                const dependentes = {};
+                try {
+                    const checagens = {
+                        movimentacoesEstoque: () => prisma.movimentacaoEstoque.count({ where: { pedidoId: id } }),
+                        pagamentosReais: () => prisma.pedidoPagamentoReal.count({ where: { pedidoId: id } }),
+                        itensDevolvidos: () => prisma.entregaItemDevolvido.count({ where: { pedidoId: id } }),
+                        contaReceber: () => prisma.contaReceber.count({ where: { pedidoId: id } }),
+                        cobrancasAsaas: () => prisma.cobrancaAsaas.count({ where: { pedidoId: id } }),
+                        caixaConferencias: () => prisma.caixaEntregaConferida.count({ where: { pedidoId: id } }),
+                        devolucoes: () => prisma.devolucao.count({ where: { pedidoId: id } }),
+                        avisosConversao: () => prisma.pedidoConvertidoAviso.count({ where: { pedidoId: id } }),
+                        notasFiscaisApp: () => prisma.notaFiscalApp.count({ where: { pedidoId: id } })
+                    };
+                    for (const [nome, fn] of Object.entries(checagens)) {
+                        try { const n = await fn(); if (n > 0) dependentes[nome] = n; } catch { /* modelo sem campo */ }
+                    }
+                } catch { /* melhor esforço */ }
+                falhas.push({ id, erro: (delErr.message || '').split('\n').pop().slice(0, 200), dependentes });
             }
         }
-        res.json({ ok: true, encontrados: ids.length, excluidos });
+        res.json({ ok: true, encontrados: ids.length, excluidos, falhas });
     } catch (e) {
         console.error('[limpar-pedidos-abertos-antigos]', e);
         res.status(500).json({ error: e.message });
