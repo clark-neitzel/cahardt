@@ -21,6 +21,7 @@ import ModalAmostra from '../Pedidos/ModalAmostra';
 import ModalNovoLead from './ModalNovoLead';
 import CheckoutEntregaModal from '../Motorista/Entregas/CheckoutEntregaModal';
 import ConferirFolhaModal from '../Motorista/Entregas/ConferirFolhaModal';
+import CobrancasRotaAba from '../Motorista/Entregas/CobrancasRotaAba';
 import ClientePopup from './ClientePopup';
 import roteirizacaoService from '../../services/roteirizacaoService';
 import api from '../../services/api';
@@ -1589,6 +1590,8 @@ const RotaLeads = () => {
     const podeVerTodasEntregas = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Ver_Todas_Entregas);
     const podeEntregas = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Executar_Entregas);
     const podeAjustar = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Ajustar_Entregas);
+    // Cobrança de títulos em rota (aparece dentro da aba Entregas, junto do roteiro do dia)
+    const podeCobrarRota = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Cobrar_Titulo_Rota);
     const podeUsarIAOrientacao = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Usar_IA_Orientacao);
 
     // Filtro persistido para não resetar ao voltar pra tela
@@ -2465,6 +2468,15 @@ const RotaLeads = () => {
                                             <strong>{rotaOrganizada.semGPS.length}</strong> entrega{rotaOrganizada.semGPS.length > 1 ? 's' : ''} sem GPS no cadastro (listada{rotaOrganizada.semGPS.length > 1 ? 's' : ''} ao final).
                                         </p>
                                     </div>
+                                )}
+
+                                {/* Cobranças em rota: títulos a cobrar junto com as entregas do dia */}
+                                {podeCobrarRota && (
+                                    <CobrancasRotaAba
+                                        embutido
+                                        vendedorId={rotaVendedorId}
+                                        somenteLeitura={!!rotaVendedorId && rotaVendedorId !== vendedorId}
+                                    />
                                 )}
 
                                 {entregasPendentesFiltradas.length === 0 ? (

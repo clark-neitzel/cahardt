@@ -215,12 +215,15 @@ const CobrarTituloModal = ({ alvo, onClose, onSuccess }) => {
     );
 };
 
-// Aba "Cobranças" do painel do motorista/vendedor
-const CobrancasRotaAba = () => {
-    const [dados, setDados] = useState({ pendentes: [], trabalhadasHoje: [] });
+// Cobranças em rota. Dois usos:
+//  - `embutido` (padrão de uso real): seção dentro da aba Entregas da tela Rota
+//  - solto: aba própria no painel do motorista (/minhas-entregas)
+const CobrancasRotaAba = ({ embutido = false, vendedorId, somenteLeitura = false }) => {
+    const [dados, setDados] = useState({ pendentes: [], trabalhadasHoje: [], souEu: true });
     const [loading, setLoading] = useState(true);
     const [alvoCobranca, setAlvoCobranca] = useState(null);
     const [q, setQ] = useState('');
+    const [buscaAberta, setBuscaAberta] = useState(!embutido);
     const [resultadosBusca, setResultadosBusca] = useState([]);
     const [buscando, setBuscando] = useState(false);
     const debounceRef = useRef(null);
@@ -228,7 +231,7 @@ const CobrancasRotaAba = () => {
     const fetchMinhas = async () => {
         try {
             setLoading(true);
-            const data = await cobrancasRotaService.minhas();
+            const data = await cobrancasRotaService.minhas(vendedorId);
             setDados(data);
         } catch {
             toast.error('Erro ao carregar cobranças. Verifique seu 4G.');
@@ -237,7 +240,10 @@ const CobrancasRotaAba = () => {
         }
     };
 
-    useEffect(() => { fetchMinhas(); }, []);
+    useEffect(() => { fetchMinhas(); }, [vendedorId]);
+
+    // Só quem está vendo a PRÓPRIA lista cobra (o escritório olhando a rota alheia não registra por ele)
+    const podeRegistrar = !somenteLeitura && dados.souEu !== false;
 
     // Busca livre por cliente (imprevisto: cliente quer pagar na hora)
     useEffect(() => {
@@ -290,10 +296,49 @@ const CobrancasRotaAba = () => {
         dataVencimento: p.dataVencimento
     });
 
+    // Embutido na aba Entregas: enquanto não houver nada e a busca estiver fechada,
+    // fica só o botão discreto — não rouba espaço das entregas do dia.
+    const vazio = !loading && dados.pendentes.length === 0 && dados.trabalhadasHoje.length === 0;
+    if (embutido && vazio && !buscaAberta) {
+        return podeRegistrar ? (
+            <div className="mb-3">
+                <button
+                    onClick={() => setBuscaAberta(true)}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-white border border-primary text-primary hover:bg-mint/40 text-[12px] font-bold rounded-lg shadow-sm transition-colors"
+                >
+                    <HandCoins className="h-4 w-4" /> Cobrar um título
+                </button>
+            </div>
+        ) : null;
+    }
+
     return (
-        <div className="px-4 space-y-4">
+        <div className={embutido ? 'mb-4' : 'px-4 space-y-4'}>
+            {embutido && (
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <h3 className="text-[13px] font-bold text-primaryDark flex items-center gap-1.5">
+                        <HandCoins className="h-4 w-4" /> Cobranças a fazer
+                    </h3>
+                    {dados.pendentes.length > 0 && (
+                        <span className="bg-mint text-primaryDark text-[11px] font-bold px-2 py-0.5 rounded-full">{dados.pendentes.length}</span>
+                    )}
+                    {podeRegistrar && (
+                        <button
+                            onClick={() => setBuscaAberta(v => !v)}
+                            className="ml-auto flex items-center gap-1 px-2.5 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 text-[11px] font-bold rounded-lg"
+                        >
+                            <Search className="h-3.5 w-3.5" /> {buscaAberta ? 'Fechar busca' : 'Buscar título'}
+                        </button>
+                    )}
+                    {!podeRegistrar && (
+                        <span className="ml-auto text-[11px] text-gray-500">somente visualização</span>
+                    )}
+                </div>
+            )}
+
             {/* Busca livre */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-3">
+            {buscaAberta && podeRegistrar && (
+            <div className={`bg-white rounded-xl shadow-sm border border-gray-200 p-3 ${embutido ? 'mb-3' : ''}`}>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <input
@@ -330,16 +375,21 @@ const CobrancasRotaAba = () => {
                     </div>
                 ))}
             </div>
+            )}
 
             {loading ? (
-                <div className="text-center py-10 opacity-60">
-                    <HandCoins className="h-10 w-10 text-primary animate-pulse mb-3 mx-auto" />
-                    <p className="font-semibold text-gray-600">Carregando cobranças…</p>
+                <div className={embutido ? 'text-[12px] text-gray-500 py-2' : 'text-center py-10 opacity-60'}>
+                    {embutido ? 'Carregando cobranças…' : (
+                        <>
+                            <HandCoins className="h-10 w-10 text-primary animate-pulse mb-3 mx-auto" />
+                            <p className="font-semibold text-gray-600">Carregando cobranças…</p>
+                        </>
+                    )}
                 </div>
             ) : (
                 <>
                     {/* Pendentes das minhas cargas */}
-                    {dados.pendentes.length === 0 && dados.trabalhadasHoje.length === 0 && (
+                    {vazio && !embutido && (
                         <div className="text-center py-10 bg-white rounded-xl shadow-sm border border-gray-100">
                             <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-2" />
                             <p className="text-lg font-bold text-gray-800">Nenhuma cobrança na carga</p>
@@ -347,6 +397,7 @@ const CobrancasRotaAba = () => {
                         </div>
                     )}
 
+                    <div className={embutido ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2' : 'space-y-4'}>
                     {dados.pendentes.map(c => (
                         <div key={c.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
                             <div className="flex items-start justify-between gap-2">
@@ -360,20 +411,23 @@ const CobrancasRotaAba = () => {
                                 </div>
                                 <span className="text-base font-bold text-gray-900 whitespace-nowrap">{fmtMoeda(c.saldoParcela)}</span>
                             </div>
-                            <button
-                                onClick={() => abrirCobranca(c)}
-                                className="mt-3 w-full py-2.5 bg-primary active:bg-primaryDark text-white rounded-full text-sm font-bold shadow-sm min-h-[44px]"
-                            >
-                                <HandCoins className="inline h-4 w-4 mr-1 -mt-0.5" /> Cobrar
-                            </button>
+                            {podeRegistrar && (
+                                <button
+                                    onClick={() => abrirCobranca(c)}
+                                    className="mt-3 w-full py-2.5 bg-primary active:bg-primaryDark text-white rounded-full text-sm font-bold shadow-sm min-h-[44px]"
+                                >
+                                    <HandCoins className="inline h-4 w-4 mr-1 -mt-0.5" /> Cobrar
+                                </button>
+                            )}
                         </div>
                     ))}
+                    </div>
 
                     {/* Trabalhadas hoje */}
                     {dados.trabalhadasHoje.length > 0 && (
-                        <div>
+                        <div className={embutido ? 'mt-3' : ''}>
                             <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2 px-1">Registradas hoje</p>
-                            <div className="space-y-2">
+                            <div className={embutido ? 'grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2' : 'space-y-2'}>
                                 {dados.trabalhadasHoje.map(c => (
                                     <div key={c.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-3 flex items-center gap-2">
                                         <div className="flex-1 min-w-0">
@@ -391,7 +445,7 @@ const CobrancasRotaAba = () => {
                                         ) : (
                                             <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800 whitespace-nowrap">Cobrada ✓</span>
                                         )}
-                                        {c.status !== 'BAIXADA' && (
+                                        {c.status !== 'BAIXADA' && podeRegistrar && (
                                             <button
                                                 onClick={() => handleDesfazer(c)}
                                                 className="p-2 text-gray-500 active:text-gray-700 rounded-full active:bg-gray-100"

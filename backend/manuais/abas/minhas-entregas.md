@@ -23,6 +23,7 @@ Tela exclusiva do motorista, usada no celular. Mostra o roteiro de entrega do di
 - Dar baixa na entrega via modal de checkout (informar status físico e pagamento recebido)
 - **Conferir a folha impressa** (botão **Folha** no header): escaneia o QR do romaneio e o app diz se aquela impressão ainda é a versão atual da carga
 - **Cobrar títulos em rota** (sub-aba **Cobranças**, exige `Pode_Cobrar_Titulo_Rota`): cobrar na rua parcelas em aberto que o escritório pendurou na carga, ou buscar um cliente e cobrar um título na hora
+  > Na prática a equipe cobra pela tela **Rota → Entregas** (seção "Cobranças a fazer"), que é onde o roteiro do dia é trabalhado. Aqui é a mesma função, para quem usa esta tela.
 
 ---
 

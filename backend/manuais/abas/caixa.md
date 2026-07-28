@@ -75,7 +75,7 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 **Pagamentos "PIX Asaas":** o dinheiro desse PIX **não** fica com o motorista — não entra no valor a prestar.
 
 ### Baixar as cobranças da rota (títulos cobrados na rua)
-O cartão **Cobranças da Rota** aparece quando o motorista/vendedor registrou alguma cobrança de título naquele dia (aba **Cobranças** do roteiro dele). Cada linha mostra o cliente, a parcela, quanto foi cobrado, a forma de pagamento e a carga de origem.
+O cartão **Cobranças da Rota** aparece quando o motorista/vendedor registrou alguma cobrança de título naquele dia (seção **"Cobranças a fazer"**, na tela **Rota → Entregas**). Cada linha mostra o cliente, a parcela, quanto foi cobrado, a forma de pagamento e a carga de origem.
 
 1. Cobrança registrada na rua chega com o badge azul **"Aberto"** — a parcela **ainda não foi baixada**. Isso é de propósito: a baixa oficial sai aqui, depois da conferência
 2. Marque o box de cada cobrança conferida (ou **Todas**) e clique em **Baixar selecionadas** — o sistema registra o pagamento na parcela do Contas a Receber: valor cheio → **PAGO**, valor parcial → **PARCIAL** (o restante continua em aberto)

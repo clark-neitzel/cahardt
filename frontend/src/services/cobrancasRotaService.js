@@ -27,9 +27,12 @@ const cobrancasRotaService = {
         return response.data;
     },
 
-    // Cobranças do cobrador logado (pendentes das cargas dele + trabalhadas hoje)
-    minhas: async () => {
-        const response = await api.get('/cobrancas-rota/minhas');
+    // Cobranças do cobrador logado (pendentes das cargas dele + trabalhadas hoje).
+    // vendedorId só é respeitado para quem pode ver a rota de outro motorista.
+    minhas: async (vendedorId) => {
+        const response = await api.get('/cobrancas-rota/minhas', {
+            params: vendedorId ? { vendedorId } : undefined
+        });
         return response.data;
     },
 

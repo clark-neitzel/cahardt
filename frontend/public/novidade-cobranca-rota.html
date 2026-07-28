@@ -104,7 +104,7 @@
 <div class="wrap">
 
   <div class="destaques">
-    <div class="dest"><b>💰 Cobrança viaja com a carga</b><span>O escritório escolhe os títulos e eles aparecem no celular do motorista.</span></div>
+    <div class="dest"><b>💰 Cobrança viaja com a carga</b><span>O escritório escolhe os títulos e eles aparecem na <b>Rota › Entregas</b>, junto do roteiro.</span></div>
     <div class="dest"><b>🔎 Também dá para procurar</b><span>Cliente quis pagar na hora? Busca pelo nome e cobra, mesmo fora da carga.</span></div>
     <div class="dest"><b>💵 Total ou parcial</b><span>Recebeu só uma parte? Registra o valor e o resto continua em aberto.</span></div>
     <div class="dest"><b>✅ Baixa só no Caixa</b><span>Na rua nada é baixado. Quem confere o caixa marca o box e baixa a fatura.</span></div>
@@ -113,7 +113,7 @@
   <h2 class="sec">Como funciona, do começo ao fim</h2>
   <div class="passos">
     <div class="passo"><span class="n">1</span><div><b>Escritório insere a cobrança na carga</b><span>Na tela da carga, busca o cliente e marca os títulos em aberto que vão para a rota.</span></div></div>
-    <div class="passo"><span class="n">2</span><div><b>Motorista/vendedor vê na aba Cobranças</b><span>No “Meu Roteiro”, ao lado de A Entregar e Já Finalizadas.</span></div></div>
+    <div class="passo"><span class="n">2</span><div><b>Aparece na Rota, junto das entregas</b><span>Na aba <b>Rota › Entregas</b>, logo acima dos cards de entrega do dia.</span></div></div>
     <div class="passo"><span class="n">3</span><div><b>Cobra na rua</b><span>Total, parcial ou “não consegui cobrar” (aí marca escritório ou vendedor responsável).</span></div></div>
     <div class="passo"><span class="n">4</span><div><b>Cai no Caixa como “Aberto”</b><span>O que recebeu em dinheiro já soma no valor a prestar do dia.</span></div></div>
     <div class="passo"><span class="n">5</span><div><b>Baixa pelo box, como sempre</b><span>Marca a cobrança conferida e baixa: total vira Pago, parcial vira Parcial.</span></div></div>
@@ -153,10 +153,18 @@
 
   <!-- TELA 2 -->
   <div class="tela">
-    <div class="tela-topo"><span class="dot"></span> Tela 2 — Meu Roteiro › aba Cobranças (celular do motorista)</div>
+    <div class="tela-topo"><span class="dot"></span> Tela 2 — Rota › aba Entregas (é aqui que você já trabalha)</div>
     <div class="tela-corpo">
-      <div class="abas"><span class="aba">A Entregar</span><span class="aba">Já Finalizadas</span><span class="aba on">Cobranças <span class="pin">1</span></span></div>
-      <div class="app-card"><div class="app-body" style="padding:10px 14px"><div class="input">🔍 Buscar cliente para cobrar… <span class="pin" style="float:right">2</span></div></div></div>
+      <div class="abas"><span class="aba">Atendimento</span><span class="aba">Atendidos</span><span class="aba on">Entregas <span class="pin">1</span></span><span class="aba">Entregues</span></div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+        <span class="btn btn-p" style="padding:7px 14px">Organizar Rota</span>
+        <span class="btn btn-p" style="padding:7px 14px">Conferir Folha</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
+        <b style="font-size:13px;color:#006241">🤝 Cobranças a fazer</b>
+        <span class="badge" style="background:#d4e9e2;color:#006241">1</span>
+        <span class="btn btn-o" style="padding:5px 11px;font-size:11px;margin-left:auto">🔍 Buscar título <span class="pin">2</span></span>
+      </div>
       <div class="app-card">
         <div class="app-body">
           <div class="linha">
@@ -166,18 +174,20 @@
           <div style="margin-top:8px"><span class="btn btn-p" style="display:block">💰 Cobrar <span class="pin" style="background:#fff">3</span></span></div>
         </div>
       </div>
+      <div style="margin:12px 0 6px;font-size:11px;font-weight:800;letter-spacing:.12em;color:#4b5563">REGISTRADAS HOJE <span class="pin">4</span></div>
       <div class="app-card">
-        <div class="app-head">Registradas hoje <span class="pin" style="margin-left:auto">4</span></div>
         <div class="app-body">
           <div class="linha"><div style="flex:1"><span class="cli">SAFF DISTRIBUIDORA</span><span class="sub2">R$ 300,00 · Pix · aguarda caixa</span></div><span class="badge b-azul">Cobrada ✓</span><span style="color:#6b7280">↺</span></div>
           <div class="linha"><div style="flex:1"><span class="cli">CASA DO VINHO</span><span class="sub2">Não cobrada · escritório responsável</span></div><span class="badge b-amar">Não cobrada</span><span style="color:#6b7280">↺</span></div>
         </div>
       </div>
+      <div style="margin-top:10px;font-size:11.5px;color:#6b7280;text-align:center">↓ abaixo seguem os cards de entrega do dia, como sempre <span class="pin">5</span></div>
       <div class="legendas">
-        <div class="legenda"><span class="pin">1</span><div>Aba nova no roteiro. Só aparece para quem tem a permissão de cobrar em rota.</div></div>
-        <div class="legenda"><span class="pin">2</span><div><b>Busca livre</b>: o cliente pediu para pagar uma conta na hora? Digita o nome dele e cobra — mesmo que não estivesse na carga.</div></div>
-        <div class="legenda"><span class="pin">3</span><div>Botão grande para abrir a cobrança. Um toque só.</div></div>
+        <div class="legenda"><span class="pin">1</span><div>É a <b>mesma aba Entregas de sempre</b> — a cobrança fica no topo, acima das entregas. Não mudou nada no jeito de dar baixa nas entregas.</div></div>
+        <div class="legenda"><span class="pin">2</span><div><b>Buscar título</b>: o cliente pediu para pagar uma conta na hora? Digita o nome dele e cobra — mesmo que não estivesse na carga. Quando não há nada a cobrar, aparece só o botão <b>“Cobrar um título”</b>, discreto.</div></div>
+        <div class="legenda"><span class="pin">3</span><div>Um toque abre a cobrança daquele título.</div></div>
         <div class="legenda"><span class="pin">4</span><div>Tudo que você registrou hoje fica aqui. A setinha <b>↺</b> desfaz se você errou (só antes do caixa baixar).</div></div>
+        <div class="legenda"><span class="pin">5</span><div>As entregas continuam logo abaixo, no mesmo lugar de sempre.</div></div>
       </div>
     </div>
   </div>
@@ -244,7 +254,7 @@
   <h2 class="sec">Perguntas rápidas</h2>
 
   <div class="acc aberto"><div class="acc-h">Quem pode cobrar em rota? <span class="ch">▾</span></div>
-    <div class="acc-b"><p>Quem receber a permissão <b>“Cobrar Títulos em Rota”</b> (fica em Usuários › Permissões › Logística). Sem ela, a aba Cobranças nem aparece no roteiro.</p></div></div>
+    <div class="acc-b"><p>Quem receber a permissão <b>“Cobrar Títulos em Rota”</b> (fica em Usuários › Permissões › Logística). Sem ela, a seção de cobranças nem aparece na aba Entregas.</p></div></div>
 
   <div class="acc aberto"><div class="acc-h">O dinheiro que eu cobrei entra no meu caixa? <span class="ch">▾</span></div>
     <div class="acc-b"><p>Sim, quando for em <b>dinheiro</b>: vira a linha “+ Cobranças da rota (dinheiro)” no seu valor a prestar. <b>Pix e cartão</b> não somam, porque o dinheiro não passou pela sua mão.</p></div></div>
@@ -256,7 +266,7 @@
     <div class="acc-b"><p>Enquanto o caixa <b>não baixou</b>, é só tocar na setinha <b>↺</b> em “Registradas hoje” e registrar de novo. Depois de baixada, o acerto é pelo estorno no Contas a Receber, como qualquer outra baixa.</p></div></div>
 
   <div class="acc aberto"><div class="acc-h">Trocaram o motorista da carga. As cobranças vão junto? <span class="ch">▾</span></div>
-    <div class="acc-b"><p>Vão. As cobranças que ainda não foram trabalhadas passam automaticamente para o novo motorista, que já as vê na aba Cobranças dele.</p></div></div>
+    <div class="acc-b"><p>Vão. As cobranças que ainda não foram trabalhadas passam automaticamente para o novo motorista, que já as vê na aba Entregas dele.</p></div></div>
 
   <div class="acc aberto"><div class="acc-h">Inserir cobrança muda a folha impressa da carga? <span class="ch">▾</span></div>
     <div class="acc-b"><p>Não. A cobrança não entra no romaneio, então <b>não pede reimpressão</b>. Fica registrada no Histórico da carga, para saber quem colocou e quando.</p></div></div>

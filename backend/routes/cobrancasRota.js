@@ -289,22 +289,30 @@ router.delete('/:id', checkEscritorio, async (req, res) => {
 });
 
 // ── GET /minhas — cobranças do cobrador logado (pendentes das minhas cargas + trabalhadas hoje) ──
+// `?vendedorId=` mostra a lista de outro motorista (só para quem já pode ver a rota alheia,
+// mesma regra da tela Rota/Entregas); quem não tem essa permissão sempre vê a própria.
 router.get('/minhas', checkCobrador, async (req, res) => {
     try {
         const hoje = hojeSP();
+        const perms = req._perms;
+        const podeVerDeOutro = perms.admin || perms.Pode_Ver_Todas_Entregas || perms.Pode_Editar_Caixa;
+        const alvo = (podeVerDeOutro && req.query.vendedorId) ? req.query.vendedorId : req.user.id;
+
         const [pendentes, trabalhadasHoje] = await Promise.all([
             prisma.cobrancaRota.findMany({
-                where: { status: 'PENDENTE', embarque: { responsavelId: req.user.id } },
+                where: { status: 'PENDENTE', embarque: { responsavelId: alvo } },
                 include: INCLUDE_PADRAO,
                 orderBy: { createdAt: 'asc' }
             }),
             prisma.cobrancaRota.findMany({
-                where: { cobradoPorId: req.user.id, dataReferencia: hoje },
+                where: { cobradoPorId: alvo, dataReferencia: hoje },
                 include: INCLUDE_PADRAO,
                 orderBy: { cobradoEm: 'desc' }
             })
         ]);
         res.json({
+            vendedorId: alvo,
+            souEu: alvo === req.user.id,
             pendentes: pendentes.map(formatarCobranca),
             trabalhadasHoje: trabalhadasHoje.map(formatarCobranca)
         });

@@ -69,7 +69,7 @@ Serve para mandar um título em aberto junto com o motorista, para ele cobrar do
 6. **Tirar da carga:** clique na lixeira da linha. Só sai enquanto estiver "A cobrar" — depois que o motorista registrou algo na rua, fica travado
 7. Inserir/tirar cobrança **não sobe a versão da carga** (não muda o romaneio impresso), mas fica registrado no Histórico da carga
 8. **Trocar o motorista** da carga leva as cobranças pendentes junto — o novo motorista passa a vê-las na aba Cobranças dele
-9. O motorista cobra pela aba **Cobranças** (tela Minhas Entregas) e a **baixa oficial sai no Caixa Diário**, no cartão "Cobranças da Rota"
+9. O motorista cobra na tela **Rota → Entregas** (seção "Cobranças a fazer", junto do roteiro do dia) e a **baixa oficial sai no Caixa Diário**, no cartão "Cobranças da Rota"
 
 ### Imprimir romaneio
 1. Abra o detalhe do embarque

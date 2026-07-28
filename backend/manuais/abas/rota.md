@@ -27,6 +27,7 @@ A tela central de trabalho do vendedor. É aqui que começa qualquer ação de v
 - Adicionar e prospectar leads (novos pontos de venda)
 - Converter lead em cliente
 - Ver e finalizar entregas pendentes — sub-abas Entregas e Entregues (visível se o usuário tem `Pode_Executar_Entregas`)
+- **Cobrar títulos em aberto na rua** — seção "Cobranças a fazer" dentro da sub-aba Entregas (visível se o usuário tem `Pode_Cobrar_Titulo_Rota`)
 - Organizar rota de entrega com roteirizador (calcula sequência e ETA por GPS)
 - Filtrar por dia da semana, forma de atendimento ou ver todos os clientes
 - Ver banner de meta da cidade do dia
@@ -97,6 +98,18 @@ Lista de clientes e leads que **já receberam pelo menos um atendimento hoje** p
 - Os cards continuam com opção de registrar novo atendimento ou pedido
 - Útil para consultar o que já foi feito no dia
 
+### Cobrança em Rota (dentro da sub-aba Entregas)
+Quem tem `Pode_Cobrar_Titulo_Rota` vê, no topo da sub-aba **Entregas**, a seção **"Cobranças a fazer"** — títulos em aberto para cobrar do cliente na mesma visita da entrega.
+
+1. **Cobranças que o escritório mandou** aparecem como cards junto das entregas, com cliente, parcela, vencimento e saldo. Botão **Cobrar**
+2. **Cliente quer pagar uma conta na hora?** Clique em **Cobrar um título** / **Buscar título**, digite o nome do cliente e cobre — não precisa estar na carga
+3. No modal: **Total** ou **Parcial** (digita quanto recebeu, o resto continua em aberto) + forma (Dinheiro, Pix, Cartão, Outro)
+4. **Não consegui cobrar**: marca **escritório** ou **vendedor** responsável. É só registro — **não gera devolução** e o título continua em aberto
+5. **Nada é baixado na rua.** A cobrança entra no Caixa Diário do dia como "Aberto" e a baixa oficial da parcela sai lá, no cartão "Cobranças da Rota"
+6. **Registradas hoje** lista o que já foi feito; a seta **↺** desfaz um registro errado (só antes de o caixa baixar)
+7. Dinheiro cobrado **soma no valor a prestar** do dia; Pix/cartão não passam pela mão do motorista e não somam
+8. Quando o escritório está olhando a rota de outro motorista (filtro de vendedor), a seção fica **somente leitura** — quem registra é quem está na rua
+
 ### Entregas (pendentes do motorista)
 Visível apenas para usuários com `Pode_Executar_Entregas` ou `admin`.
 
@@ -153,6 +166,7 @@ Antes de registrar um atendimento ou criar pedido, o sistema pode exibir um popu
 | Ver popup de orientação de IA | `Pode_Usar_IA_Orientacao` ou `admin` |
 | Ajustar entrega concluída | `Pode_Ajustar_Entregas` ou `admin` |
 | Ver todas as entregas (de todos) | `Pode_Ver_Todas_Entregas` ou `admin` |
+| Cobrar títulos em rota (seção dentro de Entregas) | `Pode_Cobrar_Titulo_Rota` ou `admin` |
 
 ---
 
