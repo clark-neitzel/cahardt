@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Cobrança em Rota — Hardt</title>
+<meta property="og:title" content="Novidade no app: Cobrança em Rota">
+<meta property="og:description" content="O escritório manda os títulos na carga, o motorista cobra na rua (total, parcial ou não cobrou) e a baixa sai no Caixa. Veja como usar.">
+<meta property="og:type" content="article">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{letter-spacing:-.01em}
+  body{font-family:'Manrope',-apple-system,'SF Pro Text',sans-serif;background:#f2f0eb;color:rgba(0,0,0,.87);font-variant-numeric:tabular-nums;line-height:1.5}
+  .wrap{max-width:720px;margin:0 auto;padding:0 16px 56px}
+
+  .hero{background:#1E3932;color:#fff;padding:36px 16px 32px}
+  .hero-in{max-width:720px;margin:0 auto}
+  .hero .tag{display:inline-block;background:#cba258;color:#1E3932;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;padding:4px 12px;border-radius:999px;margin-bottom:14px}
+  .hero h1{font-size:27px;font-weight:800;line-height:1.18}
+  .hero p{margin-top:11px;font-size:14.5px;color:#d4e9e2;max-width:560px}
+
+  .destaques{display:grid;grid-template-columns:1fr;gap:10px;margin:24px 0 4px}
+  .dest{background:#fff;border:1px solid #e5e2da;border-radius:12px;padding:13px 15px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .dest b{display:block;font-size:14.5px;margin-bottom:2px}
+  .dest span{font-size:13.5px;color:#555}
+
+  h2.sec{margin:34px 0 6px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:#006241}
+  p.sub{font-size:13.5px;color:#555;margin-bottom:14px}
+
+  .acc{background:#fff;border:1px solid #e5e2da;border-radius:12px;margin-bottom:10px;overflow:hidden}
+  .acc-h{display:flex;align-items:center;gap:10px;padding:14px 15px;cursor:pointer;font-size:14.5px;font-weight:700;user-select:none}
+  .acc-h .ch{margin-left:auto;color:#8a8a8a;font-size:12px;transition:transform .2s}
+  .acc.aberto .acc-h .ch{transform:rotate(180deg)}
+  .acc-b{display:none;padding:0 15px 15px;font-size:14px;color:#3a3a3a}
+  .acc.aberto .acc-b{display:block}
+  .acc-b ul{list-style:none;display:flex;flex-direction:column;gap:9px;margin-top:4px}
+  .acc-b li{display:flex;gap:9px}
+  .acc-b li::before{content:'•';color:#00754A;font-weight:800;flex:none}
+  .acc-b p+p{margin-top:9px}
+
+  /* mockups */
+  .tela{background:#fff;border:1px solid #e5e2da;border-radius:16px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.06);margin-bottom:14px}
+  .tela-topo{background:#1E3932;color:#fff;padding:9px 14px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .dot{width:8px;height:8px;border-radius:999px;background:#cba258}
+  .tela-corpo{padding:14px;background:#f2f0eb}
+  .app-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .app-card+.app-card{margin-top:10px}
+  .app-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #f3f4f6;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#4b5563}
+  .app-body{padding:12px 14px}
+  .linha{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:9px 0;border-bottom:1px dashed #eee;font-size:13px}
+  .linha:last-child{border-bottom:none}
+  .cli{font-weight:700}
+  .sub2{font-size:11.5px;color:#6b7280;display:block;margin-top:1px}
+  .val{font-weight:800;white-space:nowrap}
+  .badge{display:inline-block;padding:2px 9px;font-size:10.5px;font-weight:700;border-radius:999px;white-space:nowrap}
+  .b-verm{background:#fee2e2;color:#b91c1c}.b-verde{background:#dcfce7;color:#166534}
+  .b-azul{background:#dbeafe;color:#1d4ed8}.b-cinza{background:#f3f4f6;color:#374151}
+  .b-amar{background:#fef9c3;color:#854d0e}
+  .chk{flex:none;width:17px;height:17px;border:2px solid #9ca3af;border-radius:4px;display:inline-block}
+  .chk.on{background:#00754A;border-color:#00754A;position:relative}
+  .chk.on::after{content:'✓';color:#fff;font-size:11px;font-weight:800;position:absolute;top:-3px;left:2px}
+  .btn{display:inline-block;padding:8px 17px;border-radius:999px;font-size:12.5px;font-weight:700;text-align:center}
+  .btn-p{background:#00754A;color:#fff}
+  .btn-o{background:#fff;border:1.5px solid #00754A;color:#00754A}
+  .btn-c{background:#fff;border:1.5px solid #d1d5db;color:#4b5563}
+  .input{background:#fff;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;font-size:13px;color:#9ca3af}
+  .abas{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  .aba{padding:7px 15px;border-radius:999px;font-size:12.5px;font-weight:700;background:#fff;border:1px solid #e5e7eb;color:#6b7280}
+  .aba.on{background:#1E3932;color:#fff;border-color:#1E3932}
+
+  .pin{flex:none;width:20px;height:20px;border-radius:999px;background:#cba258;color:#1E3932;font-size:11.5px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.25);vertical-align:middle}
+  .legendas{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+  .legenda{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#374151}
+  .legenda .pin{margin-top:1px}
+
+  .passos{counter-reset:p;display:flex;flex-direction:column;gap:10px;margin-top:6px}
+  .passo{background:#fff;border:1px solid #e5e2da;border-radius:12px;padding:13px 15px;display:flex;gap:12px}
+  .passo .n{flex:none;width:26px;height:26px;border-radius:999px;background:#00754A;color:#fff;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center}
+  .passo b{display:block;font-size:14px}
+  .passo span{font-size:13.5px;color:#555}
+
+  .aviso{background:#1E3932;color:#fff;border-radius:16px;padding:20px 18px;margin-top:32px}
+  .aviso h3{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:#cba258;margin-bottom:13px}
+  .aviso ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+  .aviso li{display:flex;gap:10px;font-size:13.5px;color:#e8f0ed}
+  .aviso li::before{content:'✓';flex:none;color:#cba258;font-weight:800}
+
+  .rodape{text-align:center;font-size:12.5px;color:#6b7280;margin-top:26px}
+  @media (min-width:640px){.hero h1{font-size:33px}.destaques{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <span class="tag">Novidade no app</span>
+    <h1>Cobrança em Rota 🧾</h1>
+    <p>Agora dá para mandar títulos em aberto junto com a carga. O motorista ou o vendedor cobra na rua, e a baixa da fatura sai no Caixa — do mesmo jeito que já é feito com as entregas.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="destaques">
+    <div class="dest"><b>💰 Cobrança viaja com a carga</b><span>O escritório escolhe os títulos e eles aparecem no celular do motorista.</span></div>
+    <div class="dest"><b>🔎 Também dá para procurar</b><span>Cliente quis pagar na hora? Busca pelo nome e cobra, mesmo fora da carga.</span></div>
+    <div class="dest"><b>💵 Total ou parcial</b><span>Recebeu só uma parte? Registra o valor e o resto continua em aberto.</span></div>
+    <div class="dest"><b>✅ Baixa só no Caixa</b><span>Na rua nada é baixado. Quem confere o caixa marca o box e baixa a fatura.</span></div>
+  </div>
+
+  <h2 class="sec">Como funciona, do começo ao fim</h2>
+  <div class="passos">
+    <div class="passo"><span class="n">1</span><div><b>Escritório insere a cobrança na carga</b><span>Na tela da carga, busca o cliente e marca os títulos em aberto que vão para a rota.</span></div></div>
+    <div class="passo"><span class="n">2</span><div><b>Motorista/vendedor vê na aba Cobranças</b><span>No “Meu Roteiro”, ao lado de A Entregar e Já Finalizadas.</span></div></div>
+    <div class="passo"><span class="n">3</span><div><b>Cobra na rua</b><span>Total, parcial ou “não consegui cobrar” (aí marca escritório ou vendedor responsável).</span></div></div>
+    <div class="passo"><span class="n">4</span><div><b>Cai no Caixa como “Aberto”</b><span>O que recebeu em dinheiro já soma no valor a prestar do dia.</span></div></div>
+    <div class="passo"><span class="n">5</span><div><b>Baixa pelo box, como sempre</b><span>Marca a cobrança conferida e baixa: total vira Pago, parcial vira Parcial.</span></div></div>
+  </div>
+
+  <h2 class="sec">As telas do app</h2>
+  <p class="sub">Veja onde fica cada coisa antes de usar pela primeira vez.</p>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-topo"><span class="dot"></span> Tela 1 — Embarque › Gerenciamento da Carga (escritório)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-head">💰 Cobranças na Carga (3) <span class="pin" style="margin-left:auto">1</span> <span class="btn btn-o" style="padding:5px 12px;font-size:11px">+ Inserir Cobrança <span class="pin">2</span></span></div>
+        <div class="app-body">
+          <div class="linha">
+            <div style="flex:1"><span class="cli">MERCADO ROSA DOS VENTOS</span><span class="sub2">1/1 · #179 · venc. 14/04/2026</span></div>
+            <span class="val">R$ 142,05</span><span class="badge b-cinza">A cobrar</span><span style="color:#dc2626">🗑 <span class="pin">3</span></span>
+          </div>
+          <div class="linha">
+            <div style="flex:1"><span class="cli">SAFF DISTRIBUIDORA LTDA</span><span class="sub2">1/1 · #125 · venc. 17/04/2026</span></div>
+            <span class="val">R$ 655,00</span><span class="badge b-cinza">A cobrar</span><span style="color:#dc2626">🗑</span>
+          </div>
+          <div class="linha">
+            <div style="flex:1"><span class="cli">CASA DO VINHO</span><span class="sub2">1/1 · #482 · venc. 23/04/2026</span></div>
+            <span class="val">R$ 113,00</span><span class="badge b-cinza">A cobrar</span><span style="color:#dc2626">🗑</span>
+          </div>
+        </div>
+      </div>
+      <div class="legendas">
+        <div class="legenda"><span class="pin">1</span><div>Seção nova, logo abaixo dos pedidos da carga. Mostra tudo que o motorista tem para cobrar.</div></div>
+        <div class="legenda"><span class="pin">2</span><div><b>Inserir Cobrança</b>: abre a busca por nome do cliente e lista <b>só títulos em aberto</b> (vencidos marcados em vermelho). Pode mandar qualquer cliente — não precisa ser da rota do dia.</div></div>
+        <div class="legenda"><span class="pin">3</span><div>A lixeira tira a cobrança da carga — só enquanto estiver “A cobrar”. Depois que o motorista registrou algo na rua, trava.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-topo"><span class="dot"></span> Tela 2 — Meu Roteiro › aba Cobranças (celular do motorista)</div>
+    <div class="tela-corpo">
+      <div class="abas"><span class="aba">A Entregar</span><span class="aba">Já Finalizadas</span><span class="aba on">Cobranças <span class="pin">1</span></span></div>
+      <div class="app-card"><div class="app-body" style="padding:10px 14px"><div class="input">🔍 Buscar cliente para cobrar… <span class="pin" style="float:right">2</span></div></div></div>
+      <div class="app-card">
+        <div class="app-body">
+          <div class="linha">
+            <div style="flex:1"><span class="cli">MERCADO ROSA DOS VENTOS</span><span class="sub2">Parcela 1/1 · venc. 14/04 · Carga #75</span></div>
+            <span class="val">R$ 142,05</span>
+          </div>
+          <div style="margin-top:8px"><span class="btn btn-p" style="display:block">💰 Cobrar <span class="pin" style="background:#fff">3</span></span></div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-head">Registradas hoje <span class="pin" style="margin-left:auto">4</span></div>
+        <div class="app-body">
+          <div class="linha"><div style="flex:1"><span class="cli">SAFF DISTRIBUIDORA</span><span class="sub2">R$ 300,00 · Pix · aguarda caixa</span></div><span class="badge b-azul">Cobrada ✓</span><span style="color:#6b7280">↺</span></div>
+          <div class="linha"><div style="flex:1"><span class="cli">CASA DO VINHO</span><span class="sub2">Não cobrada · escritório responsável</span></div><span class="badge b-amar">Não cobrada</span><span style="color:#6b7280">↺</span></div>
+        </div>
+      </div>
+      <div class="legendas">
+        <div class="legenda"><span class="pin">1</span><div>Aba nova no roteiro. Só aparece para quem tem a permissão de cobrar em rota.</div></div>
+        <div class="legenda"><span class="pin">2</span><div><b>Busca livre</b>: o cliente pediu para pagar uma conta na hora? Digita o nome dele e cobra — mesmo que não estivesse na carga.</div></div>
+        <div class="legenda"><span class="pin">3</span><div>Botão grande para abrir a cobrança. Um toque só.</div></div>
+        <div class="legenda"><span class="pin">4</span><div>Tudo que você registrou hoje fica aqui. A setinha <b>↺</b> desfaz se você errou (só antes do caixa baixar).</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-topo"><span class="dot"></span> Tela 3 — Registrar a cobrança (na rua)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-body">
+          <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#4b5563;margin-bottom:8px">Quanto recebeu? <span class="pin">1</span></div>
+          <div style="display:flex;gap:8px;margin-bottom:14px"><span class="btn btn-p" style="flex:1">Total · R$ 142,05</span><span class="btn btn-o" style="flex:1">Parcial…</span></div>
+          <div style="font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#4b5563;margin-bottom:8px">Forma de pagamento <span class="pin">2</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+            <span class="btn btn-p">💵 Dinheiro</span><span class="btn btn-o">📱 Pix</span>
+            <span class="btn btn-o">💳 Cartão</span><span class="btn btn-o">Outro</span>
+          </div>
+          <div style="background:#fef9c3;color:#854d0e;border-radius:8px;padding:8px 11px;font-size:12px;margin-bottom:14px">O dinheiro entra no seu caixa de hoje (valor a prestar).</div>
+          <span class="btn btn-c" style="display:block">😕 Não consegui cobrar <span class="pin">3</span></span>
+        </div>
+      </div>
+      <div class="legendas">
+        <div class="legenda"><span class="pin">1</span><div><b>Total ou parcial.</b> No parcial você digita quanto recebeu e o app mostra o quanto continua em aberto.</div></div>
+        <div class="legenda"><span class="pin">2</span><div><b>Dinheiro</b> soma no seu valor a prestar do dia. <b>Pix e cartão</b> não passam pela sua mão, então não somam.</div></div>
+        <div class="legenda"><span class="pin">3</span><div><b>Não consegui cobrar</b>: escolhe se fica com o <b>escritório</b> ou com o <b>vendedor</b>. É só um registro — não gera devolução e o título continua em aberto.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA 4 -->
+  <div class="tela">
+    <div class="tela-topo"><span class="dot"></span> Tela 4 — Caixa Diário › Cobranças da Rota (escritório)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-head">🧾 Cobranças da Rota <span class="badge b-azul" style="margin-left:4px">3 sem baixa</span> <span class="pin" style="margin-left:auto">1</span> <span class="btn btn-p" style="padding:5px 12px;font-size:11px">Baixar selecionadas <span class="pin" style="background:#fff">3</span></span></div>
+        <div class="app-body">
+          <div class="linha">
+            <span class="chk on"></span>
+            <div style="flex:1"><span class="cli">MERCADO ROSA DOS VENTOS</span><span class="sub2">parc. 1 · #179 · carga #75 · Dinheiro</span></div>
+            <span class="val">R$ 142,05</span><span class="badge b-azul">Aberto</span>
+          </div>
+          <div class="linha">
+            <span class="chk on"></span>
+            <div style="flex:1"><span class="cli">SAFF DISTRIBUIDORA LTDA</span><span class="sub2">parcial (de R$ 655,00) · Pix</span></div>
+            <span class="val">R$ 300,00</span><span class="badge b-azul">Aberto</span>
+          </div>
+          <div class="linha" style="opacity:.6">
+            <span style="width:17px"></span>
+            <div style="flex:1"><span class="cli">CASA DO VINHO</span><span class="sub2">não conseguiu cobrar</span></div>
+            <span class="val" style="text-decoration:line-through;color:#6b7280">R$ 113,00</span><span class="badge b-cinza">Escritório resp. <span class="pin">4</span></span>
+          </div>
+          <div style="margin-top:11px;font-size:12px;color:#374151">💵 Dinheiro (soma no valor a prestar): <b>R$ 142,05</b> &nbsp;·&nbsp; Outras formas (não passam pelo caixa): <b>R$ 300,00</b> <span class="pin">2</span></div>
+        </div>
+      </div>
+      <div class="legendas">
+        <div class="legenda"><span class="pin">1</span><div>Cartão novo no Caixa, junto das entregas. Cada cobrança chega como <b>Aberto</b> — ainda não foi baixada.</div></div>
+        <div class="legenda"><span class="pin">2</span><div>O rodapé separa o que é <b>dinheiro</b> (soma no valor a prestar do motorista) do que caiu por Pix/cartão.</div></div>
+        <div class="legenda"><span class="pin">3</span><div>Marca o box das conferidas e clica em <b>Baixar selecionadas</b> — a fatura é baixada normal: <b>total vira Pago</b>, <b>parcial vira Parcial</b> (o resto continua em aberto).</div></div>
+        <div class="legenda"><span class="pin">4</span><div>“Não conseguiu cobrar” fica só como registro, riscado e sem box. O título continua em aberto para o responsável resolver.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <h2 class="sec">Perguntas rápidas</h2>
+
+  <div class="acc aberto"><div class="acc-h">Quem pode cobrar em rota? <span class="ch">▾</span></div>
+    <div class="acc-b"><p>Quem receber a permissão <b>“Cobrar Títulos em Rota”</b> (fica em Usuários › Permissões › Logística). Sem ela, a aba Cobranças nem aparece no roteiro.</p></div></div>
+
+  <div class="acc aberto"><div class="acc-h">O dinheiro que eu cobrei entra no meu caixa? <span class="ch">▾</span></div>
+    <div class="acc-b"><p>Sim, quando for em <b>dinheiro</b>: vira a linha “+ Cobranças da rota (dinheiro)” no seu valor a prestar. <b>Pix e cartão</b> não somam, porque o dinheiro não passou pela sua mão.</p></div></div>
+
+  <div class="acc aberto"><div class="acc-h">Posso fechar o caixa com cobrança pendente? <span class="ch">▾</span></div>
+    <div class="acc-b"><p>Não. Se tiver cobrança de rota ainda em “Aberto”, o caixa avisa e não fecha — igual já acontece com a conferência de devoluções. Baixe todas antes.</p></div></div>
+
+  <div class="acc aberto"><div class="acc-h">Errei o valor. E agora? <span class="ch">▾</span></div>
+    <div class="acc-b"><p>Enquanto o caixa <b>não baixou</b>, é só tocar na setinha <b>↺</b> em “Registradas hoje” e registrar de novo. Depois de baixada, o acerto é pelo estorno no Contas a Receber, como qualquer outra baixa.</p></div></div>
+
+  <div class="acc aberto"><div class="acc-h">Trocaram o motorista da carga. As cobranças vão junto? <span class="ch">▾</span></div>
+    <div class="acc-b"><p>Vão. As cobranças que ainda não foram trabalhadas passam automaticamente para o novo motorista, que já as vê na aba Cobranças dele.</p></div></div>
+
+  <div class="acc aberto"><div class="acc-h">Inserir cobrança muda a folha impressa da carga? <span class="ch">▾</span></div>
+    <div class="acc-b"><p>Não. A cobrança não entra no romaneio, então <b>não pede reimpressão</b>. Fica registrada no Histórico da carga, para saber quem colocou e quando.</p></div></div>
+
+  <div class="aviso">
+    <h3>O combinado</h3>
+    <ul>
+      <li>Na rua <b>nada é baixado</b> — o registro só entra no caixa para conferência.</li>
+      <li>“Não consegui cobrar” <b>não gera devolução</b>: o título continua em aberto.</li>
+      <li>A baixa sai <b>pelo box do Caixa</b>, por quem já faz a Baixa CA hoje.</li>
+      <li>Fica gravado <b>quem cobrou na rua</b> e <b>quem baixou no caixa</b>, em cada parcela.</li>
+      <li>Cobrar duas vezes não duplica nada: o sistema avisa que já foi baixada.</li>
+    </ul>
+  </div>
+
+  <p class="rodape">Dúvida na hora de usar? Chama no grupo ou pergunta pro Clippy dentro do app 📎</p>
+</div>
+
+<script>
+  document.querySelectorAll('.acc-h').forEach(function (h) {
+    h.addEventListener('click', function () { h.parentElement.classList.toggle('aberto'); });
+  });
+</script>
+</body>
+</html>
