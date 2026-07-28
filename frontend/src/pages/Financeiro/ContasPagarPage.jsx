@@ -368,6 +368,12 @@ const ContasPagarPage = () => {
     const [importarModal, setImportarModal] = useState(false); // importar CSV do Conta Azul
     const [baixaModal, setBaixaModal] = useState(null);     // { conta, parcela }
     const [detalheConta, setDetalheConta] = useState(null); // conta
+    // Conta cujo modal de detalhes foi fechado para abrir uma ação (editar/baixar/duplicar).
+    // Se o usuário cancelar a ação, os detalhes voltam sozinhos — nunca ficam dois modais empilhados.
+    const [voltarDetalhe, setVoltarDetalhe] = useState(null);
+    const abrirAcaoDoDetalhe = (conta, abrir) => { setVoltarDetalhe(conta); setDetalheConta(null); abrir(); };
+    const fecharAcao = (fechar) => { fechar(); if (voltarDetalhe) { setDetalheConta(voltarDetalhe); setVoltarDetalhe(null); } };
+    const concluirAcao = (fechar) => { fechar(); setVoltarDetalhe(null); setDetalheConta(null); fetchData(); };
 
 
     // Debounce da busca
@@ -761,8 +767,8 @@ const ContasPagarPage = () => {
                     categoriasErro={categoriasErro}
                     fornecedores={fornecedores}
                     onFornecedoresChanged={recarregarFornecedores}
-                    onClose={() => setDespesaModal(null)}
-                    onSuccess={() => { setDespesaModal(null); setDetalheConta(null); fetchData(); }}
+                    onClose={() => fecharAcao(() => setDespesaModal(null))}
+                    onSuccess={() => concluirAcao(() => setDespesaModal(null))}
                 />
             )}
 
@@ -771,8 +777,8 @@ const ContasPagarPage = () => {
                 <BaixaParcelaModal
                     conta={baixaModal.conta}
                     parcela={baixaModal.parcela}
-                    onClose={() => setBaixaModal(null)}
-                    onSuccess={() => { setBaixaModal(null); setDetalheConta(null); fetchData(); }}
+                    onClose={() => fecharAcao(() => setBaixaModal(null))}
+                    onSuccess={() => concluirAcao(() => setBaixaModal(null))}
                 />
             )}
 
@@ -791,11 +797,11 @@ const ContasPagarPage = () => {
                 <DetalheContaModal
                     conta={detalheConta}
                     podeBaixar={podeBaixar}
-                    onClose={() => setDetalheConta(null)}
-                    onEditar={(c) => setDespesaModal({ conta: c })}
-                    onDuplicar={(c) => { setDetalheConta(null); setDespesaModal({ conta: null, base: c }); }}
-                    onBaixar={(c, p) => setBaixaModal({ conta: c, parcela: p })}
-                    onChanged={() => { setDetalheConta(null); fetchData(); }}
+                    onClose={() => { setVoltarDetalhe(null); setDetalheConta(null); }}
+                    onEditar={(c) => abrirAcaoDoDetalhe(c, () => setDespesaModal({ conta: c }))}
+                    onDuplicar={(c) => abrirAcaoDoDetalhe(c, () => setDespesaModal({ conta: null, base: c }))}
+                    onBaixar={(c, p) => abrirAcaoDoDetalhe(c, () => setBaixaModal({ conta: c, parcela: p }))}
+                    onChanged={() => { setVoltarDetalhe(null); setDetalheConta(null); fetchData(); }}
                 />
             )}
         </div>
