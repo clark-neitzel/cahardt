@@ -22,6 +22,7 @@ Tela exclusiva do motorista, usada no celular. Mostra o roteiro de entrega do di
 - Abrir o endereço do cliente no Google Maps (usa GPS cadastrado ou o endereço completo)
 - Dar baixa na entrega via modal de checkout (informar status físico e pagamento recebido)
 - **Conferir a folha impressa** (botão **Folha** no header): escaneia o QR do romaneio e o app diz se aquela impressão ainda é a versão atual da carga
+- **Cobrar títulos em rota** (sub-aba **Cobranças**, exige `Pode_Cobrar_Titulo_Rota`): cobrar na rua parcelas em aberto que o escritório pendurou na carga, ou buscar um cliente e cobrar um título na hora
 
 ---
 
@@ -93,6 +94,17 @@ Escolha o que aconteceu na entrega:
 4. Se o motorista tem duas cargas no dia, escaneia uma folha de cada vez ("Escanear outra folha")
 5. Se a câmera não abrir, libere o acesso à câmera para o app nas configurações do celular
 
+### Cobrar um título em rota (sub-aba Cobranças)
+1. Toque na sub-aba **Cobranças** (só aparece para quem tem `Pode_Cobrar_Titulo_Rota`)
+2. As cobranças que o escritório pendurou na sua carga já aparecem na lista, com cliente, parcela e valor
+3. Toque em **Cobrar** e escolha:
+   - **Total** (valor cheio) ou **Parcial** (digite quanto recebeu — o restante continua em aberto)
+   - Forma de pagamento: **Dinheiro** (entra no seu caixa do dia, no valor a prestar), Pix, Cartão ou Outro
+4. Confirme — a cobrança fica registrada como **"aguarda caixa"**. **Nada é baixado na rua**: a baixa oficial da parcela sai no Caixa Diário, quando o escritório confere e marca o box
+5. **Não consegui cobrar**: toque em "😕 Não consegui cobrar" e marque quem fica responsável (**Escritório** ou **Vendedor** da carteira do cliente). É só registro — o título continua em aberto e nada entra no caixa
+6. **Busca livre** (imprevisto): se um cliente quiser pagar um título na hora, digite o nome dele em "Buscar cliente para cobrar…", toque em **Cobrar** no título e registre normal — não precisa estar na carga
+7. Registro errado? Na lista "Registradas hoje", toque na seta de **desfazer** (só antes da baixa no caixa)
+
 ### Ver entregas já concluídas
 1. Clique na sub-aba **Já Finalizadas**
 2. A lista carrega do backend com as entregas concluídas
@@ -126,6 +138,12 @@ Cada card mostra:
 - Aviso de divergência de pagamento (se houver)
 - Horário e data da conclusão
 
+### Cobranças (exige `Pode_Cobrar_Titulo_Rota`)
+Títulos em aberto para cobrar na rua. Mostra:
+- Campo de **busca livre** por cliente (cobrar um título na hora, sem carga)
+- Cobranças **pendentes** penduradas nas cargas deste motorista (botão **Cobrar**)
+- **Registradas hoje**: cobradas (aguardando o caixa ou já baixadas) e não-cobradas, com botão de desfazer
+
 ---
 
 ## Permissões necessárias
@@ -135,6 +153,7 @@ Cada card mostra:
 | Ver a tela | `Pode_Executar_Entregas` |
 | Dar baixa nas entregas | `Pode_Executar_Entregas` |
 | Marcar prioridade | `Pode_Executar_Entregas` |
+| Ver a sub-aba Cobranças e cobrar títulos em rota | `Pode_Cobrar_Titulo_Rota` |
 | Ver entregas de outro motorista | Não disponível nesta tela — use a aba Rota com `Pode_Ver_Todas_Entregas` |
 
 ---
@@ -155,6 +174,8 @@ Cada card mostra:
 | `frontend/src/pages/Motorista/Entregas/PainelMotorista.jsx` | Tela principal com sub-abas e cards de entrega |
 | `frontend/src/pages/Motorista/Entregas/CheckoutEntregaModal.jsx` | Modal de checkout em 4 etapas (status, devolução, caixa, GPS) |
 | `frontend/src/pages/Motorista/Entregas/PixAsaasModal.jsx` | Modal do QR Code PIX (Asaas) com confirmação automática |
+| `frontend/src/pages/Motorista/Entregas/CobrancasRotaAba.jsx` | Sub-aba Cobranças: títulos a cobrar em rota + busca livre + modal de cobrança |
+| `backend/routes/cobrancasRota.js` | API da Cobrança em Rota (inserir na carga, cobrar, não-cobrada, desfazer) |
 | `frontend/src/services/entregasService.js` | Chamadas de API para entregas do motorista |
 | `frontend/src/services/asaasService.js` | Chamadas de API da integração Asaas (PIX) |
 | `backend/services/asaasService.js` | Integração com a API do Asaas (cliente, cobrança, webhook) |

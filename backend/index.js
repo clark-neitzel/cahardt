@@ -33,6 +33,7 @@ const embarqueRoutes = require('./routes/embarques'); // Módulo de Formação d
 const entregasRoutes = require('./routes/entregas'); // Módulo Mobile do Entregador
 const despesasRoutes = require('./routes/despesas'); // Módulo de Despesas
 const caixaRoutes = require('./routes/caixa'); // Módulo Caixa Diário
+const cobrancasRotaRoutes = require('./routes/cobrancasRota'); // Cobrança em Rota (títulos cobrados pelo motorista/vendedor)
 const adminResetRoutes = require('./routes/adminReset'); // Reset Transacional (Admin)
 const adminExecRoutes = require('./routes/adminExec');   // Admin Exec: diagnóstico e manutenção
 const adminDashboardRoutes = require('./routes/adminDashboard'); // Novo Dashboard Admin
@@ -164,6 +165,7 @@ app.use('/api/embarques', embarqueRoutes); // Montagem Cargas e Despacho Logíst
 app.use('/api/entregas', entregasRoutes); // App Motorista
 app.use('/api/despesas', despesasRoutes); // Módulo de Despesas
 app.use('/api/caixa', caixaRoutes); // Módulo Caixa Diário
+app.use('/api/cobrancas-rota', cobrancasRotaRoutes); // Cobrança em Rota (auth inside)
 app.use('/api/metas', metaRoutes); // Módulo de Metas e Dashboard
 app.use('/api/admin', adminResetRoutes);         // Admin: Reset, Utilitários
 app.use('/api/admin-exec', adminExecRoutes);    // Admin Exec: diagnóstico protegido por ADMIN_SECRET

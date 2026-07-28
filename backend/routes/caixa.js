@@ -449,7 +449,64 @@ router.get('/resumo', async (req, res) => {
         // Parcial com itens devolvidos OU pedido devolvido inteiro (sem itens gravados no checkout)
         const temDevolucoesDia = entregas.some(e => (e.itensDevolvidos?.length || 0) > 0 || e.statusEntrega === 'DEVOLVIDO');
 
-        const valorAPrestar = Math.round((Number(caixa.adiantamento) + totalRecebidoCaixa + faltasDevolucao - totalDespesas) * 100) / 100;
+        // Cobranças em Rota do dia (títulos que este usuário cobrou na rua).
+        // Dinheiro cobrado soma ao valor a prestar; a baixa da parcela sai pelo box
+        // (POST /cobrancas-rota/baixar). NAO_COBRADA é só registro (não soma nada).
+        const cobrancasRotaDia = await prisma.cobrancaRota.findMany({
+            where: { cobradoPorId: targetVendedor, dataReferencia: data },
+            include: {
+                parcela: {
+                    include: {
+                        contaReceber: {
+                            include: {
+                                cliente: { select: { NomeFantasia: true, Nome: true } },
+                                pedido: { select: { numero: true } }
+                            }
+                        }
+                    }
+                },
+                embarque: { select: { numero: true } },
+                cobradoPor: { select: { nome: true } }
+            },
+            orderBy: { cobradoEm: 'asc' }
+        });
+        const respVendIds = [...new Set(cobrancasRotaDia.map(c => c.responsavelVendedorId).filter(Boolean))];
+        const respVendNomes = respVendIds.length > 0
+            ? Object.fromEntries((await prisma.vendedor.findMany({ where: { id: { in: respVendIds } }, select: { id: true, nome: true } })).map(v => [v.id, v.nome]))
+            : {};
+        let cobrancasRotaDinheiro = 0;
+        let cobrancasRotaOutros = 0;
+        const cobrancasRotaFormatadas = cobrancasRotaDia.map(c => {
+            const val = c.valorCobrado != null ? Number(c.valorCobrado) : 0;
+            const ehDinheiro = (c.formaPagamentoNome || '').toLowerCase().includes('dinheiro');
+            if (['COBRADA', 'BAIXADA'].includes(c.status)) {
+                if (ehDinheiro) cobrancasRotaDinheiro += val;
+                else cobrancasRotaOutros += val;
+            }
+            return {
+                id: c.id,
+                status: c.status,
+                clienteNome: c.parcela?.contaReceber?.cliente?.NomeFantasia || c.parcela?.contaReceber?.cliente?.Nome || 'Cliente',
+                pedidoNumero: c.parcela?.contaReceber?.pedido?.numero || null,
+                numeroParcela: c.parcela?.numeroParcela,
+                valorParcela: c.parcela ? Number(c.parcela.valor) : null,
+                valorCobrado: c.valorCobrado != null ? Number(c.valorCobrado) : null,
+                parcial: c.valorCobrado != null && c.parcela != null && Number(c.valorCobrado) < Number(c.parcela.valor) - 0.01,
+                formaPagamentoNome: c.formaPagamentoNome,
+                debitaCaixa: ehDinheiro,
+                embarqueNumero: c.embarque?.numero || null,
+                responsavelTipo: c.responsavelTipo,
+                responsavelVendedorNome: c.responsavelVendedorId ? (respVendNomes[c.responsavelVendedorId] || null) : null,
+                observacao: c.observacao || null,
+                cobradoEm: c.cobradoEm,
+                baixadoEm: c.baixadoEm
+            };
+        });
+        cobrancasRotaDinheiro = Math.round(cobrancasRotaDinheiro * 100) / 100;
+        cobrancasRotaOutros = Math.round(cobrancasRotaOutros * 100) / 100;
+        const cobrancasRotaSemBaixa = cobrancasRotaDia.filter(c => c.status === 'COBRADA').length;
+
+        const valorAPrestar = Math.round((Number(caixa.adiantamento) + totalRecebidoCaixa + faltasDevolucao + cobrancasRotaDinheiro - totalDespesas) * 100) / 100;
 
         // Atendimentos do dia: registrados pelo vendedor OU em clientes que foram entregues na rota
         const clienteIdsEntreguesRes = [...new Set(entregas.filter(e => e.clienteId).map(e => e.clienteId))];
@@ -605,11 +662,18 @@ router.get('/resumo', async (req, res) => {
                 conferidoEm: confDev?.conferidoEm || null
             },
             faltasDevolucao,
+            cobrancasRota: {
+                itens: cobrancasRotaFormatadas,
+                totalDinheiro: cobrancasRotaDinheiro,
+                totalOutros: cobrancasRotaOutros,
+                semBaixa: cobrancasRotaSemBaixa
+            },
             pendencias: {
                 devolucoesNaoFeitas,
                 quitacoesNaoFeitas,
                 conferenciaDevolucaoPendente,
-                podeFechar: devolucoesNaoFeitas === 0 && quitacoesNaoFeitas === 0 && !conferenciaDevolucaoPendente
+                cobrancasRotaSemBaixa,
+                podeFechar: devolucoesNaoFeitas === 0 && quitacoesNaoFeitas === 0 && !conferenciaDevolucaoPendente && cobrancasRotaSemBaixa === 0
             },
             finalizacaoDia
         });
@@ -798,6 +862,16 @@ router.post('/fechar', async (req, res) => {
             pendencias.push('Conferência de devoluções pendente: confira a mercadoria que voltou antes de fechar o caixa.');
         }
 
+        // 4. Cobranças em Rota do dia sem baixa: precisam ser baixadas pelo box antes de fechar
+        const cobrancasRotaFecharDia = await prisma.cobrancaRota.findMany({
+            where: { cobradoPorId: targetVendedor, dataReferencia: data },
+            select: { status: true, valorCobrado: true, formaPagamentoNome: true }
+        });
+        const cobrancasSemBaixaFechar = cobrancasRotaFecharDia.filter(c => c.status === 'COBRADA').length;
+        if (cobrancasSemBaixaFechar > 0) {
+            pendencias.push(`${cobrancasSemBaixaFechar} cobrança(s) de rota sem baixa: baixe os títulos cobrados na rua antes de fechar o caixa.`);
+        }
+
         if (pendencias.length > 0) {
             return res.status(400).json({
                 error: `Não é possível fechar o caixa. Pendências:\n${pendencias.join('\n')}`,
@@ -841,10 +915,13 @@ router.post('/fechar', async (req, res) => {
         });
 
         // Snapshot do valor a prestar — mesma fórmula do /resumo:
-        // adiantamento + recebido em caixa + faltas de devolução − despesas
+        // adiantamento + recebido em caixa + faltas de devolução + cobranças de rota em dinheiro − despesas
         const adiantamentoFechar = Number(caixaExistente?.adiantamento || 0);
         const faltasDevolucaoFechar = confDevFechar?.status === 'CONFERIDA' ? Number(confDevFechar.totalCobrado) : 0;
-        const valorAPrestarFechar = Math.round((adiantamentoFechar + totalRecebidoCaixa + faltasDevolucaoFechar - totalDespesas) * 100) / 100;
+        const cobrancasDinheiroFechar = cobrancasRotaFecharDia
+            .filter(c => ['COBRADA', 'BAIXADA'].includes(c.status) && (c.formaPagamentoNome || '').toLowerCase().includes('dinheiro'))
+            .reduce((s, c) => s + Number(c.valorCobrado || 0), 0);
+        const valorAPrestarFechar = Math.round((adiantamentoFechar + totalRecebidoCaixa + faltasDevolucaoFechar + cobrancasDinheiroFechar - totalDespesas) * 100) / 100;
 
         const caixa = await prisma.caixaDiario.upsert({
             where: { vendedorId_dataReferencia: { vendedorId: targetVendedor, dataReferencia: data } },
@@ -2082,6 +2159,129 @@ router.get('/audit-logs', async (req, res) => {
     } catch (error) {
         console.error('Erro ao buscar audit logs:', error);
         res.status(500).json({ error: 'Erro ao buscar logs.' });
+    }
+});
+
+// ── POST /cobrancas-rota/baixar — Baixa oficial dos títulos cobrados na rua ──
+// O box do caixa: para cada cobrança COBRADA, cria o PagamentoParcela (ledger),
+// atualiza a parcela/conta e marca a cobrança como BAIXADA. Idempotente: cobrança
+// já BAIXADA devolve JA_BAIXADO sem repetir a baixa (clique duplo não duplica).
+router.post('/cobrancas-rota/baixar', async (req, res) => {
+    const perms = req._perms || await getPerms(req.user.id);
+    if (!perms.admin && !perms.Pode_Editar_Caixa && !perms.Pode_Baixar_Caixa) {
+        return res.status(403).json({ error: 'Sem permissão para dar baixa no caixa.' });
+    }
+    try {
+        const { ids } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'Selecione ao menos uma cobrança.' });
+        }
+
+        const statusParcelaPos = (valor, valorPago, valorDescontoTotal) => {
+            const recebidoTotal = Number(valorPago || 0) + Number(valorDescontoTotal || 0);
+            if (recebidoTotal <= 0) return 'PENDENTE';
+            if (recebidoTotal >= Number(valor) - 0.01) return 'PAGO';
+            return 'PARCIAL';
+        };
+        const statusContaPos = (todasParcelas) => {
+            const total = todasParcelas.length;
+            const pagas = todasParcelas.filter(p => p.status === 'PAGO').length;
+            const parciais = todasParcelas.filter(p => p.status === 'PARCIAL').length;
+            const canceladas = todasParcelas.filter(p => p.status === 'CANCELADO').length;
+            if (pagas + canceladas >= total) return 'QUITADO';
+            if (pagas > 0 || parciais > 0) return 'PARCIAL';
+            return 'ABERTO';
+        };
+
+        const resultados = [];
+        for (const id of ids) {
+            const cobranca = await prisma.cobrancaRota.findUnique({
+                where: { id },
+                include: {
+                    parcela: { include: { contaReceber: { include: { cliente: { select: { NomeFantasia: true, Nome: true } } } } } },
+                    cobradoPor: { select: { nome: true } }
+                }
+            });
+            const clienteNome = cobranca?.parcela?.contaReceber?.cliente?.NomeFantasia
+                || cobranca?.parcela?.contaReceber?.cliente?.Nome || 'Cliente';
+
+            if (!cobranca) { resultados.push({ id, status: 'ERRO', motivo: 'Cobrança não encontrada.' }); continue; }
+            if (cobranca.status === 'BAIXADA') { resultados.push({ id, cliente: clienteNome, status: 'JA_BAIXADO' }); continue; }
+            if (cobranca.status !== 'COBRADA') { resultados.push({ id, cliente: clienteNome, status: 'ERRO', motivo: 'Cobrança ainda não registrada na rua.' }); continue; }
+
+            const parcela = cobranca.parcela;
+            const saldo = Math.round((Number(parcela.valor) - Number(parcela.valorPago || 0) - Number(parcela.valorDescontoTotal || 0)) * 100) / 100;
+            const recebido = Math.round(Number(cobranca.valorCobrado) * 100) / 100;
+            if (recebido > saldo + 0.01) {
+                resultados.push({ id, cliente: clienteNome, status: 'ERRO', motivo: `Valor cobrado (R$ ${recebido.toFixed(2)}) maior que o saldo atual do título (R$ ${saldo.toFixed(2)}) — a parcela pode ter sido baixada no financeiro. Confira no Contas a Receber.` });
+                continue;
+            }
+
+            try {
+                const novoValorPago = Number(parcela.valorPago || 0) + recebido;
+                const novoStatusParcela = statusParcelaPos(parcela.valor, novoValorPago, parcela.valorDescontoTotal);
+                const dataPgto = cobranca.cobradoEm || new Date();
+                const obsBaixa = `Cobrança em rota — cobrada por ${cobranca.cobradoPor?.nome || 'motorista'} em ${cobranca.dataReferencia || ''}`.trim();
+
+                await prisma.$transaction(async (tx) => {
+                    const pagamento = await tx.pagamentoParcela.create({
+                        data: {
+                            parcelaId: parcela.id,
+                            valorRecebido: recebido,
+                            formaPagamento: cobranca.formaPagamentoNome || null,
+                            dataPagamento: dataPgto,
+                            observacao: obsBaixa,
+                            registradoPorId: req.user.id
+                        }
+                    });
+                    await tx.parcela.update({
+                        where: { id: parcela.id },
+                        data: {
+                            status: novoStatusParcela,
+                            valorPago: novoValorPago,
+                            formaPagamento: cobranca.formaPagamentoNome || parcela.formaPagamento,
+                            dataPagamento: novoStatusParcela === 'PAGO' ? dataPgto : parcela.dataPagamento,
+                            baixadoPorId: req.user.id
+                        }
+                    });
+                    const todasParcelas = await tx.parcela.findMany({ where: { contaReceberId: parcela.contaReceberId } });
+                    const parcelasAtualizadas = todasParcelas.map(p => p.id === parcela.id ? { ...p, status: novoStatusParcela } : p);
+                    await tx.contaReceber.update({
+                        where: { id: parcela.contaReceberId },
+                        data: { status: statusContaPos(parcelasAtualizadas) }
+                    });
+                    await tx.cobrancaRota.update({
+                        where: { id: cobranca.id },
+                        data: { status: 'BAIXADA', baixadoPorId: req.user.id, baixadoEm: new Date(), pagamentoParcelaId: pagamento.id }
+                    });
+                }, { timeout: 20000, maxWait: 10000 });
+
+                // Histórico no cliente (best-effort, baixa já efetivada)
+                try {
+                    await prisma.atendimento.create({
+                        data: {
+                            tipo: 'FINANCEIRO',
+                            observacao: `Baixa de cobrança em rota — parcela ${parcela.numeroParcela}: R$ ${recebido.toFixed(2)} (${cobranca.formaPagamentoNome || 'N/I'}) | ${obsBaixa}`,
+                            clienteId: parcela.contaReceber.clienteId,
+                            idVendedor: req.user.id,
+                            pedidoId: parcela.contaReceber.pedidoId || null
+                        }
+                    });
+                } catch (logErr) {
+                    console.error('[CobrancaRota] Falha no histórico da baixa (baixa já efetivada):', logErr.message);
+                }
+
+                resultados.push({ id, cliente: clienteNome, status: 'OK', novoStatusParcela });
+            } catch (e) {
+                console.error(`[CobrancaRota] Erro ao baixar cobrança ${id}:`, e);
+                resultados.push({ id, cliente: clienteNome, status: 'ERRO', motivo: 'Erro ao efetivar a baixa. Tente novamente.' });
+            }
+        }
+
+        res.json({ resultados });
+    } catch (error) {
+        console.error('[CobrancaRota] Erro na baixa de cobranças de rota:', error);
+        res.status(500).json({ error: 'Erro ao baixar as cobranças de rota.' });
     }
 });
 

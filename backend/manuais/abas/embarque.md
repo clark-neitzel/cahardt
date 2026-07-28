@@ -25,6 +25,7 @@ Painel de expedição logística. Aqui são criados os "embarques" (cargas), que
   - Imprimir o romaneio completo (roteiro de entrega + consolidado de produtos + rastreabilidade)
   - Ver a **versão atual da carga** (badge `vN` no cabeçalho do modal) e o **Histórico da carga** (toda alteração registrada: quem fez, quando e o quê)
   - Ver o aviso amarelo **"A folha impressa ficou para trás"** quando a carga mudou depois da última impressão — sinal de reimprimir o romaneio
+  - **Inserir cobranças na carga** (seção "Cobranças na Carga"): pendurar títulos em aberto para o motorista cobrar na rua
 
 ---
 
@@ -56,6 +57,19 @@ Painel de expedição logística. Aqui são criados os "embarques" (cargas), que
 2. Clique no botão de edição (lápis) — visível apenas para `Pode_Editar_Embarque` ou `admin`
 3. Altere a data de saída e/ou o motorista responsável
 4. Clique em Salvar
+
+### Inserir uma cobrança na carga (Cobrança em Rota)
+Serve para mandar um título em aberto junto com o motorista, para ele cobrar do cliente na rua.
+
+1. Abra o detalhe da carga e vá até a seção **Cobranças na Carga** (embaixo dos pedidos/amostras)
+2. Clique em **Inserir Cobrança** e **busque o cliente pelo nome** (mínimo 2 letras)
+3. A busca mostra **só títulos em aberto**, com parcela, vencimento e saldo; os vencidos vêm marcados em vermelho. A lista **não é limitada aos clientes da carga** — dá para mandar qualquer cobrança
+4. Marque um ou vários e clique em **Adicionar** — eles aparecem na carga com a situação **"A cobrar"**
+5. Título que já está em outra rota aparece bloqueado ("já em rota"), para não cobrar duas vezes
+6. **Tirar da carga:** clique na lixeira da linha. Só sai enquanto estiver "A cobrar" — depois que o motorista registrou algo na rua, fica travado
+7. Inserir/tirar cobrança **não sobe a versão da carga** (não muda o romaneio impresso), mas fica registrado no Histórico da carga
+8. **Trocar o motorista** da carga leva as cobranças pendentes junto — o novo motorista passa a vê-las na aba Cobranças dele
+9. O motorista cobra pela aba **Cobranças** (tela Minhas Entregas) e a **baixa oficial sai no Caixa Diário**, no cartão "Cobranças da Rota"
 
 ### Imprimir romaneio
 1. Abra o detalhe do embarque
@@ -91,7 +105,9 @@ Apenas usuários com a permissão `Pode_Executar_Entregas` ou `admin` e com stat
 | Criar embarque | `Pode_Acessar_Embarque` (acesso à tela implica criação) |
 | Editar data/motorista do embarque | `Pode_Editar_Embarque` ou `admin` |
 | Adicionar/remover pedidos da carga | `Pode_Acessar_Embarque` (acesso à tela implica gestão da carga) |
+| Inserir/tirar cobranças da carga | `Pode_Acessar_Embarque` ou `admin` |
 | Aparecer como motorista disponível | `Pode_Executar_Entregas` ou `admin` |
+| Cobrar os títulos na rua | `Pode_Cobrar_Titulo_Rota` (do motorista/vendedor, na tela Minhas Entregas) |
 
 ---
 
@@ -99,7 +115,8 @@ Apenas usuários com a permissão `Pode_Executar_Entregas` ou `admin` e com stat
 
 - **Pedidos** — somente pedidos com `situacaoCA = FATURADO` podem ser incluídos em um embarque
 - **Entregas (Rota e Minhas Entregas)** — após criado, cada pedido do embarque se torna uma entrega pendente para o motorista
-- **Caixa Diário** — as baixas de entrega (pagamentos recebidos) registradas pelo motorista alimentam o caixa do dia
+- **Caixa Diário** — as baixas de entrega (pagamentos recebidos) registradas pelo motorista alimentam o caixa do dia; as **cobranças da rota** cobradas em dinheiro somam no valor a prestar e são baixadas no cartão "Cobranças da Rota"
+- **Contas a Receber** — as cobranças inseridas na carga são parcelas em aberto; a baixa acontece no Caixa, não aqui
 - **Auditoria de Entregas** — permite revisar e corrigir pagamentos registrados pelo motorista
 - **Veículos** — o veículo não é selecionado no formulário atual de criação (apenas motorista e data); veículo pode estar vinculado via backend
 
@@ -113,5 +130,7 @@ Apenas usuários com a permissão `Pode_Executar_Entregas` ou `admin` e com stat
 | `frontend/src/pages/Admin/Embarques/NovaCargaModal.jsx` | Modal de criação (data + motorista) |
 | `frontend/src/pages/Admin/Embarques/DetalhesCargaModal.jsx` | Modal de detalhes, edição, remoção e impressão do romaneio |
 | `frontend/src/pages/Admin/Embarques/AdicionarPedidosModal.jsx` | Modal de seleção de pedidos FATURADOS para adicionar à carga |
+| `frontend/src/pages/Admin/Embarques/CobrancasCargaSection.jsx` | Seção "Cobranças na Carga" + modal de busca de títulos em aberto |
+| `backend/routes/cobrancasRota.js` | Rotas da Cobrança em Rota (inserir/tirar da carga, cobrar, não-cobrada) |
 | `frontend/src/services/embarqueService.js` | Chamadas de API para embarques |
 | `backend/src/routes/embarques.js` | Rotas do backend |

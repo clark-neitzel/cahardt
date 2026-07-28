@@ -40,6 +40,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Executar_Entregas: false,
     Pode_Ver_Todas_Entregas: false,
     Pode_Ajustar_Entregas: false,
+    Pode_Cobrar_Titulo_Rota: false,
     Pode_Editar_GPS: false,
     // Módulo Caixa Diário e Despesas
     Pode_Acessar_Caixa: false,
@@ -277,6 +278,7 @@ const BOOL_INDEX = [
     { sec: 'logistica', path: 'Pode_Executar_Entregas', nome: 'Minhas Entregas (Motorista)', desc: 'A pessoa aparece como motorista e executa entregas', kw: 'motorista entregar dirigir minhas entregas caminhao' },
     { sec: 'logistica', path: 'Pode_Editar_Embarque', nome: 'Editar Carga', desc: 'Alterar data e motorista de cargas já criadas', kw: 'editar carga data motorista' },
     { sec: 'logistica', path: 'Pode_Ajustar_Entregas', nome: 'Administrador Financeiro de Entrega', desc: 'Desmanchar/alterar devoluções ou pagamentos do motorista', kw: 'desmanchar pagamento motorista corrigir ajustar', danger: true },
+    { sec: 'logistica', path: 'Pode_Cobrar_Titulo_Rota', nome: 'Cobrar Títulos em Rota', desc: 'Aba Cobranças no roteiro: cobra títulos em aberto na rua (a baixa sai só no Caixa)', kw: 'cobranca titulo rota rua motorista vendedor cobrar parcela' },
     // Financeiro
     { sec: 'financeiro', path: 'Pode_Acessar_Contas_Receber', nome: 'Contas a Receber', desc: 'Parcelas em aberto, boletos, inadimplência', kw: 'receber boleto parcela menu inadimplencia' },
     { sec: 'financeiro', path: 'Pode_Baixar_Contas_Receber', nome: 'Dar Baixa em Parcelas', desc: 'Registrar pagamentos (inclusive parciais) e estornar baixas', kw: 'baixa quitar pagamento estorno receber' },
@@ -1077,6 +1079,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                     label="Editar Carga" sublabel="Alterar data e motorista de cargas já criadas" />
                 <Toggle checked={!!permissoes.Pode_Ajustar_Entregas} onChange={() => toggleBool('Pode_Ajustar_Entregas')}
                     label="Administrador Financeiro de Entrega" sublabel="Desmanchar/alterar devoluções ou pagamentos do motorista" danger />
+                <Toggle checked={!!permissoes.Pode_Cobrar_Titulo_Rota} onChange={() => toggleBool('Pode_Cobrar_Titulo_Rota')}
+                    label="Cobrar Títulos em Rota" sublabel="Aba Cobranças no roteiro: cobra títulos em aberto na rua (a baixa sai só no Caixa)" />
             </div>
         </div>
     );

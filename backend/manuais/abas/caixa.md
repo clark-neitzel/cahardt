@@ -33,6 +33,7 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 - Registrar devolução a partir de uma entrega do caixa
 - **Conferir devoluções fisicamente** (cartão "Conferência de Devoluções"): contar a mercadoria que voltou no caminhão, comparar com o que o motorista marcou como devolvido, registrar sobras e cobrar faltas do motorista
 - **Autorizar desconsiderar falta de devolução** com senha do responsável (ex.: produto que não foi carregado de manhã)
+- **Baixar as cobranças da rota** (cartão "Cobranças da Rota"): títulos que o motorista/vendedor cobrou na rua chegam como "Aberto"; marcar o box e baixar dá a baixa oficial na parcela
 
 ---
 
@@ -72,6 +73,17 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 **Como a baixa local funciona:** dinheiro entra na conta "Caixinha", PIX Asaas entra na conta financeira do Asaas (alimenta o relatório Saldos por Conta). Se o valor acertado na entrega for menor que a parcela por causa de devolução de mercadoria, a diferença fecha como **desconto** ("Devolução de mercadoria — conferência do caixa"). Valores marcados como "Vendedor responsável"/"Escritório responsável" **não baixam** — a parcela fica em aberto para essa parte.
 
 **Pagamentos "PIX Asaas":** o dinheiro desse PIX **não** fica com o motorista — não entra no valor a prestar.
+
+### Baixar as cobranças da rota (títulos cobrados na rua)
+O cartão **Cobranças da Rota** aparece quando o motorista/vendedor registrou alguma cobrança de título naquele dia (aba **Cobranças** do roteiro dele). Cada linha mostra o cliente, a parcela, quanto foi cobrado, a forma de pagamento e a carga de origem.
+
+1. Cobrança registrada na rua chega com o badge azul **"Aberto"** — a parcela **ainda não foi baixada**. Isso é de propósito: a baixa oficial sai aqui, depois da conferência
+2. Marque o box de cada cobrança conferida (ou **Todas**) e clique em **Baixar selecionadas** — o sistema registra o pagamento na parcela do Contas a Receber: valor cheio → **PAGO**, valor parcial → **PARCIAL** (o restante continua em aberto)
+3. Fica gravado **quem cobrou na rua** e **quem baixou no caixa** (aparece no histórico do cliente e no ledger da parcela)
+4. Cobrança marcada como **"não conseguiu cobrar"** aparece só como registro (sem box, riscada, com "Escritório resp." ou "Vendedor resp.") — o título continua em aberto e **não gera devolução**
+5. O que foi cobrado em **dinheiro** entra na linha "+ Cobranças da rota (dinheiro)" do **valor a prestar**; PIX/cartão não passam pela mão do motorista e não somam
+6. **O caixa não fecha** com cobrança de rota ainda em "Aberto" — baixe todas antes de fechar o dia
+7. Clicar duas vezes não duplica: cobrança já baixada devolve "já estava baixada" e é ignorada
 
 ### Registrar uma despesa
 1. Clique em **+ Despesa** (botão no topo ou no card do veículo)
@@ -175,6 +187,7 @@ Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de 
 | Registrar adiantamento | `Pode_Definir_Adiantamento` ou `Pode_Editar_Caixa` ou `admin` |
 | Fechar caixa | `Pode_Fechar_Caixa` ou `Pode_Editar_Caixa` ou `admin` |
 | Registrar baixa no Conta Azul | `Pode_Baixar_Caixa` ou `Pode_Editar_Caixa` ou `admin` |
+| Baixar cobranças da rota | `Pode_Baixar_Caixa` ou `Pode_Editar_Caixa` ou `admin` (com o caixa ABERTO) |
 | Conferir e reverter conferência | `Pode_Reverter_Caixa` ou `admin` (reverter); `admin` ou `Pode_Editar_Caixa` (conferir) |
 | Reabrir caixa fechado | `Pode_Reverter_Caixa` ou `admin` |
 | Registrar devolução | `Pode_Fazer_Devolucao` ou `admin` |
@@ -189,7 +202,9 @@ Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de 
 
 - **Embarque / Entregas** — as entregas do caixa vêm dos embarques criados para aquele motorista
 - **Despesas** — são acessíveis também pela aba própria (`/despesas`)
-- **Contas a Receber** — a baixa registra o recebimento na parcela correspondente do app (dinheiro → Caixinha, PIX Asaas → conta Asaas; nada vai mais ao Conta Azul desde 23/07/2026)
+- **Contas a Receber** — a baixa registra o recebimento na parcela correspondente do app (dinheiro → Caixinha, PIX Asaas → conta Asaas; nada vai mais ao Conta Azul desde 23/07/2026). A baixa das **cobranças da rota** também sai daqui, na parcela que o motorista cobrou na rua
+- **Minhas Entregas (aba Cobranças)** — as cobranças deste cartão vêm do que o motorista/vendedor registrou na rua
+- **Embarque** — o escritório pendura os títulos a cobrar na carga (seção "Cobranças na Carga")
 - **Veículos** — o KM inicial e a ficha do veículo do dia são acessíveis dentro do caixa
 
 ---
@@ -201,6 +216,7 @@ Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de 
 | `frontend/src/pages/Caixa/CaixaDiarioPage.jsx` | Tela principal do caixa com todos os fluxos |
 | `frontend/src/pages/Caixa/NovaDespesaModal.jsx` | Modal de nova despesa |
 | `frontend/src/pages/Caixa/ConferenciaDevolucaoCard.jsx` | Cartão de conferência de devoluções + modal de autorização com senha |
+| `frontend/src/pages/Caixa/CobrancasRotaCard.jsx` | Cartão "Cobranças da Rota" com seleção por box e baixa das parcelas |
 | `frontend/src/pages/Pedidos/ModalDevolucao.jsx` | Modal de devolução acessível pelo caixa |
 | `frontend/src/pages/Veiculos/VeiculoFicha.jsx` | Ficha do veículo embutida no caixa |
 | `frontend/src/services/caixaService.js` | Chamadas de API do caixa |

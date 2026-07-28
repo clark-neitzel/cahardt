@@ -61,6 +61,12 @@ const caixaService = {
         return response.data;
     },
 
+    // Baixa oficial dos títulos cobrados na rua (Cobrança em Rota)
+    baixarCobrancasRota: async (ids) => {
+        const response = await api.post('/caixa/cobrancas-rota/baixar', { ids });
+        return response.data;
+    },
+
     // Seletor do caixa: só ativos + inativos com movimento no dia
     getVendedoresDoDia: async (data) => {
         const response = await api.get('/caixa/vendedores-do-dia', { params: { data } });

@@ -4,9 +4,13 @@ import toast from 'react-hot-toast';
 import entregasService from '../../../services/entregasService';
 import CheckoutEntregaModal from './CheckoutEntregaModal';
 import ConferirFolhaModal from './ConferirFolhaModal';
+import CobrancasRotaAba from './CobrancasRotaAba';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const PainelMotorista = () => {
-    const [abaAtiva, setAbaAtiva] = useState('pendentes'); // 'pendentes' | 'concluidas'
+    const { user } = useAuth();
+    const podeCobrarRota = !!(user?.permissoes?.admin || user?.permissoes?.Pode_Cobrar_Titulo_Rota);
+    const [abaAtiva, setAbaAtiva] = useState('pendentes'); // 'pendentes' | 'concluidas' | 'cobrancas'
     const [entregas, setEntregas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [entregaAtivaParaCheckout, setEntregaAtivaParaCheckout] = useState(null);
@@ -29,6 +33,7 @@ const PainelMotorista = () => {
     };
 
     useEffect(() => {
+        if (abaAtiva === 'cobrancas') return; // aba de cobranças carrega os próprios dados
         fetchEntregas();
     }, [abaAtiva]);
 
@@ -81,9 +86,11 @@ const PainelMotorista = () => {
                             <Star className="h-3 w-3" /> {totalPrioridades}
                         </div>
                     )}
-                    <div className="text-xs font-semibold bg-white/15 px-2 py-1 rounded">
-                        {entregas.length} {abaAtiva === 'pendentes' ? 'Restantes' : 'Feitas'}
-                    </div>
+                    {abaAtiva !== 'cobrancas' && (
+                        <div className="text-xs font-semibold bg-white/15 px-2 py-1 rounded">
+                            {entregas.length} {abaAtiva === 'pendentes' ? 'Restantes' : 'Feitas'}
+                        </div>
+                    )}
                     <button
                         onClick={() => setConferirFolhaAberto(true)}
                         className="text-xs font-bold bg-primary px-2.5 py-1.5 rounded-full flex items-center gap-1 active:bg-primaryDark min-h-[32px]"
@@ -108,9 +115,21 @@ const PainelMotorista = () => {
                 >
                     Já Finalizadas
                 </button>
+                {podeCobrarRota && (
+                    <button
+                        onClick={() => setAbaAtiva('cobrancas')}
+                        className={`flex-1 py-3 text-center text-sm font-bold border-b-2 transition-colors ${abaAtiva === 'cobrancas' ? 'border-primary text-primary' : 'border-transparent text-gray-500'}`}
+                    >
+                        Cobranças
+                    </button>
+                )}
             </div>
 
+            {/* Aba de Cobranças em Rota (títulos a cobrar na rua) */}
+            {abaAtiva === 'cobrancas' && <CobrancasRotaAba />}
+
             {/* Lista dos Clientes */}
+            {abaAtiva !== 'cobrancas' && (
             <div className="px-4 space-y-4">
                 {loading ? (
                     <div className="text-center py-12 flex flex-col items-center justify-center opacity-60">
@@ -214,6 +233,7 @@ const PainelMotorista = () => {
                     ))
                 )}
             </div>
+            )}
 
             {/* Conferência da folha impressa (QR) */}
             {conferirFolhaAberto && (

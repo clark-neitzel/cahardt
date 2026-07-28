@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cobrança em Rota — proposta para confirmar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  :root { letter-spacing:-0.01em; }
+  body { font-family:'Manrope',-apple-system,'SF Pro Text',sans-serif; background:#f2f0eb; color:rgba(0,0,0,.87); font-variant-numeric:tabular-nums; }
+  .wrap { max-width:760px; margin:0 auto; padding:0 16px 60px; }
+
+  /* HERO */
+  .hero { background:#1E3932; color:#fff; padding:34px 16px 30px; }
+  .hero-inner { max-width:760px; margin:0 auto; }
+  .hero .tag { display:inline-block; background:#cba258; color:#1E3932; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; padding:4px 12px; border-radius:999px; margin-bottom:14px; }
+  .hero h1 { font-size:26px; font-weight:800; line-height:1.2; }
+  .hero p { margin-top:10px; font-size:14px; color:#d4e9e2; line-height:1.55; max-width:560px; }
+
+  /* FLUXO RESUMIDO */
+  .fluxo { display:flex; flex-direction:column; gap:10px; margin:26px 0 8px; }
+  .passo { display:flex; gap:12px; align-items:flex-start; background:#fff; border:1px solid #e5e2da; border-radius:12px; padding:12px 14px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .passo .n { flex:none; width:26px; height:26px; border-radius:999px; background:#00754A; color:#fff; font-size:13px; font-weight:800; display:flex; align-items:center; justify-content:center; margin-top:1px; }
+  .passo b { display:block; font-size:14px; }
+  .passo span { font-size:13px; color:#555; line-height:1.45; }
+
+  h2.sec { margin:36px 0 6px; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; color:#006241; }
+  p.sec-sub { font-size:13.5px; color:#555; line-height:1.5; margin-bottom:14px; }
+
+  /* TELA (mock container) */
+  .tela { background:#fff; border:1px solid #e5e2da; border-radius:16px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.06); }
+  .tela-topo { background:#1E3932; color:#fff; padding:9px 14px; font-size:12px; font-weight:700; display:flex; align-items:center; gap:8px; }
+  .dot { width:8px; height:8px; border-radius:999px; background:#cba258; }
+  .tela-corpo { padding:14px; background:#f2f0eb; position:relative; }
+
+  /* elementos de app dentro do mock */
+  .app-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 1px 2px rgba(0,0,0,.05); position:relative; }
+  .app-card + .app-card { margin-top:10px; }
+  .app-head { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid #f3f4f6; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:#4b5563; }
+  .app-body { padding:12px 14px; }
+  .linha { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px dashed #eee; font-size:13px; }
+  .linha:last-child { border-bottom:none; }
+  .cli { font-weight:700; }
+  .sub { font-size:11.5px; color:#6b7280; display:block; margin-top:1px; }
+  .valor { font-weight:800; white-space:nowrap; }
+  .badge { display:inline-block; padding:2px 9px; font-size:10.5px; font-weight:700; border-radius:999px; white-space:nowrap; }
+  .b-verm { background:#fee2e2; color:#b91c1c; }
+  .b-verde { background:#dcfce7; color:#166534; }
+  .b-azul { background:#dbeafe; color:#1d4ed8; }
+  .b-cinza { background:#f3f4f6; color:#374151; }
+  .b-amar { background:#fef9c3; color:#854d0e; }
+  .b-mint { background:#d4e9e2; color:#006241; }
+  .chk { flex:none; width:18px; height:18px; border:2px solid #9ca3af; border-radius:4px; display:inline-block; vertical-align:middle; }
+  .chk.on { background:#00754A; border-color:#00754A; position:relative; }
+  .chk.on::after { content:'✓'; color:#fff; font-size:12px; font-weight:800; position:absolute; top:-2px; left:2px; }
+  .btn { display:inline-block; padding:8px 18px; border-radius:999px; font-size:13px; font-weight:700; text-align:center; }
+  .btn-p { background:#00754A; color:#fff; }
+  .btn-o { background:#fff; border:1.5px solid #00754A; color:#00754A; }
+  .btn-c { background:#fff; border:1.5px solid #d1d5db; color:#4b5563; }
+  .input { background:#fff; border:1px solid #d1d5db; border-radius:6px; padding:8px 12px; font-size:13px; color:#9ca3af; }
+  .abas { display:flex; gap:6px; margin-bottom:12px; }
+  .aba { padding:7px 16px; border-radius:999px; font-size:12.5px; font-weight:700; background:#fff; border:1px solid #e5e7eb; color:#6b7280; }
+  .aba.on { background:#1E3932; color:#fff; border-color:#1E3932; }
+
+  /* pins + legendas */
+  .pin { flex:none; width:20px; height:20px; border-radius:999px; background:#cba258; color:#1E3932; font-size:11.5px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; box-shadow:0 1px 3px rgba(0,0,0,.25); vertical-align:middle; }
+  .legendas { margin-top:12px; display:flex; flex-direction:column; gap:8px; }
+  .legenda { display:flex; gap:10px; align-items:flex-start; font-size:13px; color:#374151; line-height:1.5; }
+  .legenda .pin { margin-top:1px; }
+
+  /* box regras */
+  .regras { background:#1E3932; color:#fff; border-radius:16px; padding:20px 18px; margin-top:36px; }
+  .regras h3 { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; color:#cba258; margin-bottom:14px; }
+  .regras ul { list-style:none; display:flex; flex-direction:column; gap:10px; }
+  .regras li { display:flex; gap:10px; font-size:13.5px; line-height:1.5; color:#e8f0ed; }
+  .regras li::before { content:'✓'; flex:none; color:#cba258; font-weight:800; }
+
+  .confirma { background:#fff; border:2px dashed #cba258; border-radius:16px; padding:18px; margin-top:22px; }
+  .confirma h3 { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; color:#8a6a2f; margin-bottom:10px; }
+  .confirma p { font-size:13.5px; line-height:1.55; color:#374151; }
+  .confirma p + p { margin-top:8px; }
+
+  @media (min-width:640px){
+    .hero h1 { font-size:32px; }
+    .tela-corpo { padding:20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="tag">Proposta — confirmar antes de construir</span>
+    <h1>Cobrança em Rota 🧾</h1>
+    <p>O escritório destina títulos em aberto para o motorista ou vendedor cobrar na rua. A cobrança viaja como se fosse uma entrega: total, parcial ou "não consegui cobrar" — e a baixa oficial sai pelo box do Caixa, igual à Baixa CA de hoje.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <h2 class="sec">O fluxo em 5 passos</h2>
+  <div class="fluxo">
+    <div class="passo"><span class="n">1</span><div><b>Escritório destina</b><span>Na montagem da carga (ou avulso para um vendedor), escolhe os títulos em aberto que vão para a rota.</span></div></div>
+    <div class="passo"><span class="n">2</span><div><b>Motorista/vendedor vê e também pode procurar</b><span>Aba "Cobranças" no roteiro com as destinadas + busca por cliente para cobrar uma nota na hora.</span></div></div>
+    <div class="passo"><span class="n">3</span><div><b>Cobra na rua</b><span>Total ou parcial, em Dinheiro ou PIX (QR Asaas). Se não conseguiu: marca vendedor ou escritório responsável — sem devolução, o título continua em aberto.</span></div></div>
+    <div class="passo"><span class="n">4</span><div><b>Cai no Caixa como ABERTO</b><span>Aparece junto das entregas do dia, com checkbox. Dinheiro soma no valor a prestar do motorista.</span></div></div>
+    <div class="passo"><span class="n">5</span><div><b>Baixa pelo box, como hoje</b><span>Quem confere marca o box e a fatura é baixada normalmente (total → PAGO, parcial → PARCIAL), gravando quem cobrou e quem baixou.</span></div></div>
+  </div>
+
+  <!-- TELA 1 -->
+  <h2 class="sec">Tela 1 — Escritório destina a cobrança</h2>
+  <p class="sec-sub">Na montagem do embarque, uma seção nova lista os títulos em aberto dos clientes da rota. O escritório marca quais vão junto. Dá também para destinar avulso a um vendedor de campo, sem carga.</p>
+  <div class="tela">
+    <div class="tela-topo"><span class="dot"></span> Embarque — Nova Carga · Rota Litoral · Motorista: João</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-head">💰 Cobranças da rota <span class="pin" style="margin-left:auto">1</span></div>
+        <div class="app-body">
+          <div class="linha">
+            <span><span class="chk on"></span></span>
+            <div style="flex:1"><span class="cli">Padaria Sol Nascente</span><span class="sub">Parcela 2/3 · venc. 10/07 · 17 dias em atraso</span></div>
+            <span class="valor">R$ 350,00</span>
+            <span class="badge b-verm">Vencida</span>
+          </div>
+          <div class="linha">
+            <span><span class="chk on"></span></span>
+            <div style="flex:1"><span class="cli">Mercado Central</span><span class="sub">Parcela 1/1 · venc. 20/07</span></div>
+            <span class="valor">R$ 812,50</span>
+            <span class="badge b-verm">Vencida</span>
+          </div>
+          <div class="linha">
+            <span><span class="chk"></span></span>
+            <div style="flex:1"><span class="cli">Lanchonete do Porto</span><span class="sub">Parcela 3/4 · venc. 05/08</span></div>
+            <span class="valor">R$ 190,00</span>
+            <span class="badge b-cinza">A vencer</span>
+          </div>
+          <div style="margin-top:12px; display:flex; justify-content:flex-end;"><span class="btn btn-p">Adicionar 2 cobranças à carga <span class="pin" style="background:#fff">2</span></span></div>
+        </div>
+      </div>
+      <div class="legendas">
+        <div class="legenda"><span class="pin">1</span><div>O sistema lista sozinho os títulos em aberto <b>dos clientes daquela rota</b> (vencidos primeiro). O escritório só marca os que quer mandar.</div></div>
+        <div class="legenda"><span class="pin">2</span><div>As cobranças marcadas viajam junto com a carga — aparecem no roteiro do motorista. Também dá para destinar a um <b>vendedor</b> sem carga.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <h2 class="sec">Tela 2 — Roteiro do motorista/vendedor</h2>
+  <p class="sec-sub">Aba nova "Cobranças" ao lado das entregas. Mostra as destinadas pelo escritório e tem busca por cliente para o imprevisto ("quero pagar aquela conta").</p>
+  <div class="tela">
+    <div class="tela-topo"><span class="dot"></span> Meu Roteiro — celular do João</div>
+    <div class="tela-corpo">
+      <div class="abas">
+        <span class="aba">A Entregar (8)</span>
+        <span class="aba on">Cobranças (2) <span class="pin">1</span></span>
+      </div>
+      <div class="app-card">
+        <div class="app-body" style="padding:10px 14px;">
+          <div class="input">🔍 Buscar cliente para cobrar…  <span class="pin" style="float:right">2</span></div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-body">
+          <div class="linha">
+            <div style="flex:1"><span class="cli">Padaria Sol Nascente</span><span class="sub">Parcela 2/3 · venc. 10/07</span></div>
+            <span class="valor">R$ 350,00</span>
+            <span class="btn btn-p" style="padding:6px 14px; font-size:12px;">Cobrar</span>
+          </div>
+          <div class="linha">
+            <div style="flex:1"><span class="cli">Mercado Central</span><span class="sub">Parcela 1/1 · venc. 20/07</span></div>
+            <span class="valor">R$ 812,50</span>
+            <span class="badge b-verde">Cobrada ✓</span>
+          </div>
+        </div>
+      </div>
+      <div class="legendas">
+        <div class="legenda"><span class="pin">1</span><div>As cobranças que o escritório destinou já vêm prontas na aba, junto do roteiro do dia.</div></div>
+        <div class="legenda"><span class="pin">2</span><div><b>Busca por cliente</b>: se um cliente pedir para pagar uma nota na hora, o motorista/vendedor procura e vê só as parcelas em aberto daquele cliente.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <h2 class="sec">Tela 3 — Registrar a cobrança (na rua)</h2>
+  <p class="sec-sub">Igual ao checkout de entrega: valor total ou parcial, forma de pagamento, ou "não consegui cobrar". Nada é baixado aqui — só registrado para conferência.</p>
+  <div class="tela">
+    <div class="tela-topo"><span class="dot"></span> Cobrar — Padaria Sol Nascente · Parcela 2/3 · R$ 350,00</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-body">
+          <div style="font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:#4b5563; margin-bottom:8px;">Quanto recebeu? <span class="pin">1</span></div>
+          <div style="display:flex; gap:8px; margin-bottom:14px;">
+            <span class="btn btn-p" style="flex:1">Total · R$ 350,00</span>
+            <span class="btn btn-o" style="flex:1">Parcial…</span>
+          </div>
+          <div style="font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:#4b5563; margin-bottom:8px;">Forma <span class="pin">2</span></div>
+          <div style="display:flex; gap:8px; margin-bottom:16px;">
+            <span class="btn btn-o" style="flex:1">💵 Dinheiro</span>
+            <span class="btn btn-o" style="flex:1">📱 PIX (QR na hora)</span>
+          </div>
+          <div style="border-top:1px dashed #e5e7eb; padding-top:12px;">
+            <span class="btn btn-c" style="width:100%;">😕 Não consegui cobrar <span class="pin">3</span></span>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+              <span class="badge b-amar" style="padding:6px 12px;">Vendedor responsável</span>
+              <span class="badge b-cinza" style="padding:6px 12px;">Escritório responsável</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="legendas">
+        <div class="legenda"><span class="pin">1</span><div><b>Total ou parcial</b> — no parcial ele digita o valor recebido; o restante da parcela continua em aberto.</div></div>
+        <div class="legenda"><span class="pin">2</span><div><b>Dinheiro</b> soma no caixa dele (valor a prestar). <b>PIX</b> gera o QR Asaas na hora (mesma tela da entrega) e cai direto na conta — não soma no dinheiro do caixa.</div></div>
+        <div class="legenda"><span class="pin">3</span><div><b>Não consegui cobrar</b>: sem devolução, sem baixa — o título continua em aberto. Só marca quem fica responsável (vendedor ou escritório), igual já funciona na entrega.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA 4 -->
+  <h2 class="sec">Tela 4 — Caixa Diário: vem como ABERTO, baixa pelo box</h2>
+  <p class="sec-sub">As cobranças do dia aparecem no caixa do motorista/vendedor junto das entregas, como "aberto". Quem confere marca o checkbox e faz a baixa — exatamente o mesmo ritual da Baixa CA de hoje.</p>
+  <div class="tela">
+    <div class="tela-topo"><span class="dot"></span> Caixa Diário — João · 27/07</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-head">🧾 Cobranças da rota <span class="pin" style="margin-left:auto">1</span></div>
+        <div class="app-body">
+          <div class="linha">
+            <span><span class="chk on"></span></span>
+            <div style="flex:1"><span class="cli">Mercado Central</span><span class="sub">Parcela 1/1 · cobrou total · 💵 Dinheiro</span></div>
+            <span class="valor">R$ 812,50</span>
+            <span class="badge b-azul">Aberto</span>
+          </div>
+          <div class="linha">
+            <span><span class="chk on"></span></span>
+            <div style="flex:1"><span class="cli">Padaria Sol Nascente</span><span class="sub">Parcela 2/3 · cobrou parcial (de R$ 350,00) · 📱 PIX Asaas</span></div>
+            <span class="valor">R$ 200,00</span>
+            <span class="badge b-azul">Aberto</span>
+          </div>
+          <div class="linha">
+            <span><span class="chk" style="opacity:.3"></span></span>
+            <div style="flex:1"><span class="cli">Depósito Bela Vista</span><span class="sub">Parcela 4/6 · não conseguiu cobrar</span></div>
+            <span class="valor" style="color:#9ca3af">R$ 480,00</span>
+            <span class="badge b-cinza">Escritório resp. <span class="pin">3</span></span>
+          </div>
+          <div style="margin-top:12px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+            <span style="font-size:12.5px; color:#374151;">💵 Dinheiro de cobranças no valor a prestar: <b>R$ 812,50</b> <span class="pin">2</span></span>
+            <span class="btn btn-p">Baixar selecionadas <span class="pin" style="background:#fff">4</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="legendas">
+        <div class="legenda"><span class="pin">1</span><div>Cada cobrança do dia chega como <b>Aberto</b>, com o checkbox — mesma cara da tabela de entregas da Baixa CA.</div></div>
+        <div class="legenda"><span class="pin">2</span><div>O que foi cobrado em <b>dinheiro</b> soma automaticamente no valor a prestar do motorista. PIX Asaas fica em "recebido outros" (já caiu na conta).</div></div>
+        <div class="legenda"><span class="pin">3</span><div>"Não conseguiu cobrar" aparece só como registro — sem box, sem baixa, título segue em aberto com o responsável marcado.</div></div>
+        <div class="legenda"><span class="pin">4</span><div>Ao marcar o box e baixar, a fatura é <b>baixada normalmente como as outras contas</b>: total vira PAGO, parcial vira PARCIAL (resto continua em aberto). Fica gravado quem cobrou (rua) e quem baixou (caixa).</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELA 5 -->
+  <h2 class="sec">Tela 5 — Rastro no Contas a Receber</h2>
+  <p class="sec-sub">Depois da baixa, a parcela conta a história completa — e um filtro novo permite listar tudo que foi cobrado em rota.</p>
+  <div class="tela">
+    <div class="tela-topo"><span class="dot"></span> Financeiro — Contas a Receber</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-body">
+          <div class="linha">
+            <div style="flex:1"><span class="cli">Mercado Central — Parcela 1/1</span><span class="sub">🚚 Cobrada em rota por <b>João</b> em 27/07 · baixada por <b>Maria (Caixa)</b> em 27/07 <span class="pin">1</span></span></div>
+            <span class="valor">R$ 812,50</span>
+            <span class="badge b-verde">Pago</span>
+          </div>
+          <div class="linha">
+            <div style="flex:1"><span class="cli">Padaria Sol Nascente — Parcela 2/3</span><span class="sub">🚚 Parcial em rota: R$ 200,00 de R$ 350,00 · restam R$ 150,00</span></div>
+            <span class="valor">R$ 350,00</span>
+            <span class="badge b-amar">Parcial</span>
+          </div>
+          <div style="margin-top:10px;"><span class="badge b-mint" style="padding:6px 14px;">Filtro: 🚚 Cobradas em rota <span class="pin">2</span></span></div>
+        </div>
+      </div>
+      <div class="legendas">
+        <div class="legenda"><span class="pin">1</span><div>A parcela guarda <b>quem cobrou na rua</b> e <b>quem baixou no caixa</b> — some a dúvida de "quem recebeu esse dinheiro?".</div></div>
+        <div class="legenda"><span class="pin">2</span><div>Filtro novo para listar todas as cobranças feitas em rota (por período, por motorista/vendedor).</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REGRAS -->
+  <div class="regras">
+    <h3>Regras que entendi (o combinado)</h3>
+    <ul>
+      <li><b>Escritório destina</b> — é o caminho principal: a cobrança entra na carga do motorista ou é destinada a um vendedor.</li>
+      <li><b>Motorista e vendedor também podem procurar</b> uma nota em aberto pelo nome do cliente e cobrar na hora.</li>
+      <li>Cobrança da carga tem 3 saídas: <b>total</b>, <b>parcial</b> ou <b>não consegui cobrar</b> (aí só marca vendedor/escritório responsável).</li>
+      <li>"Não consegui cobrar" <b>não gera devolução</b> — o título simplesmente continua em aberto.</li>
+      <li>Na rua <b>nada é baixado</b> — a cobrança chega no Caixa como <b>Aberto</b>.</li>
+      <li>A baixa sai <b>pelo box do Caixa</b>, por quem já faz a Baixa CA hoje — baixa normal, como as outras contas (total → Pago, parcial → Parcial).</li>
+      <li>Dinheiro cobrado <b>soma no valor a prestar</b> do motorista; PIX Asaas cai direto na conta (não soma no dinheiro).</li>
+      <li>Permissão nova para liberar quem pode cobrar em rota; a conferência usa as permissões do Caixa que já existem.</li>
+    </ul>
+  </div>
+
+  <div class="confirma">
+    <h3>Só me confirme 2 detalhes</h3>
+    <p><b>1.</b> Quando o motorista/vendedor <b>procura uma nota por conta própria</b> (sem o escritório ter destinado) e cobra — pode, direto? Ou precisa de alguma confirmação do escritório? <i>(Minha sugestão: pode direto — de qualquer jeito a baixa só sai na conferência do caixa, então o controle continua.)</i></p>
+    <p><b>2.</b> No <b>"não consegui cobrar"</b> com <b>vendedor responsável</b>: funciona como na entrega (o valor entra na conta do vendedor para ele resolver/prestar contas depois)? Ou é só um aviso de "fulano vai cobrar de novo"?</p>
+  </div>
+
+</div>
+</body>
+</html>

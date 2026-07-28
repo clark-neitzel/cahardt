@@ -4,6 +4,7 @@ import { X, Printer, Plus, Trash2, MapPin, Package, Edit2, Check, History, Alert
 import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
 import AdicionarPedidosModal from './AdicionarPedidosModal';
+import CobrancasCargaSection from './CobrancasCargaSection';
 import { useAuth } from '../../../contexts/AuthContext';
 import SelectBusca from '../../../components/SelectBusca';
 
@@ -15,6 +16,8 @@ const ACAO_VERSAO_LABELS = {
     PEDIDO_REMOVIDO: 'Pedido removido',
     AMOSTRAS_ADICIONADAS: 'Amostras adicionadas',
     AMOSTRA_REMOVIDA: 'Amostra removida',
+    COBRANCAS_ADICIONADAS: 'Cobranças adicionadas',
+    COBRANCA_REMOVIDA: 'Cobrança removida',
     IMPRESSA: 'Folha impressa'
 };
 
@@ -30,6 +33,10 @@ const descreverAlteracoes = (log) => {
     }
     if (Array.isArray(alt.amostras)) {
         alt.amostras.forEach(a => linhas.push(`${sinal} ${a.numero}${a.destinatario ? ` — ${a.destinatario}` : ''}`));
+    }
+    if (Array.isArray(alt.cobrancas)) {
+        const sinalCob = log.acao === 'COBRANCA_REMOVIDA' ? '−' : '+';
+        alt.cobrancas.forEach(c => linhas.push(`${sinalCob} Cobrança ${c.cliente || ''}${c.valor != null ? ` — R$ ${Number(c.valor).toFixed(2)}` : ''}`));
     }
     if (log.acao === 'CRIADA' && typeof alt.pedidos === 'number') {
         linhas.push(`${alt.pedidos} pedido(s) na criação${alt.motorista ? ` · Motorista: ${alt.motorista}` : ''}`);
@@ -785,6 +792,9 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                     </div>
                                 </div>
                             )}
+
+                            {/* Cobranças em Rota penduradas nesta carga */}
+                            <CobrancasCargaSection embarqueId={embarqueId} />
 
                             {/* Histórico de versões da carga */}
                             {embarque.versoes && embarque.versoes.length > 0 && (

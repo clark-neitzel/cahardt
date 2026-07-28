@@ -13,6 +13,7 @@ import VeiculoFicha from '../Veiculos/VeiculoFicha';
 import ModalDevolucao from '../Pedidos/ModalDevolucao';
 import SelectBusca from '../../components/SelectBusca';
 import ConferenciaDevolucaoCard from './ConferenciaDevolucaoCard';
+import CobrancasRotaCard from './CobrancasRotaCard';
 
 const SESSION_KEY = '@CAHardt:CaixaFiltros';
 
@@ -822,6 +823,13 @@ const CaixaDiarioPage = () => {
                         onChanged={fetchResumo}
                     />
 
+                    {/* Card Cobranças da Rota (títulos cobrados na rua — baixa pelo box) */}
+                    <CobrancasRotaCard
+                        cobrancas={resumo.cobrancasRota}
+                        podeBaixar={podeBaixarCaixa && isAberto}
+                        onChanged={fetchResumo}
+                    />
+
                     {/* Card Amostras */}
                     {(resumo.amostrasCount > 0) && (
                         <div className="bg-white rounded-lg shadow-sm border border-orange-200 p-4">
@@ -1087,6 +1095,14 @@ const CaixaDiarioPage = () => {
                                 <div className="flex justify-between text-orange-700">
                                     <span>+ Faltas de devolução</span>
                                     <span className="font-medium">R$ {Number(resumo.faltasDevolucao).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            )}
+
+                            {/* Cobranças em rota recebidas em dinheiro */}
+                            {Number(resumo.cobrancasRota?.totalDinheiro || 0) > 0 && (
+                                <div className="flex justify-between text-green-700">
+                                    <span>+ Cobranças da rota (dinheiro)</span>
+                                    <span className="font-medium">R$ {Number(resumo.cobrancasRota.totalDinheiro).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                 </div>
                             )}
 
