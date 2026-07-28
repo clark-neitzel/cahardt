@@ -33,6 +33,12 @@ const pedidoService = {
         return response.data;
     },
 
+    // Pedidos salvos (ABERTO) do próprio usuário — lembrete de envio (30 em 30 min)
+    meusNaoEnviados: async () => {
+        const response = await api.get('/pedidos/meus-nao-enviados');
+        return response.data;
+    },
+
     // Listagem de Pedidos
     listar: async (filtros) => {
         const response = await api.get('/pedidos', { params: filtros });

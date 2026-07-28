@@ -44,7 +44,13 @@ async function validarBloqueioEstoque(itens, pedidoIdEdicao) {
     if (violacoes.length === 0) return null;
     const fmt = (v) => String(parseFloat(Number(v).toFixed(3))).replace('.', ',');
     const linhas = violacoes.map(v => `• ${v.nome}: pedido ${fmt(v.pedida)} ${v.unidade}, disponível ${fmt(v.disponivel)} ${v.unidade}`).join('\n');
-    return `Estoque insuficiente — seu usuário não pode vender além do estoque disponível:\n${linhas}\nReduza a quantidade ou fale com o escritório para repor o estoque.`;
+    return `Estoque insuficiente — seu usuário não pode vender além do estoque disponível:\n${linhas}\nVocê pode salvar o pedido, mas só conseguirá enviá-lo quando houver estoque.`;
+}
+
+// Data da venda/entrega no fuso de São Paulo, como 'YYYY-MM-DD'
+function dataSP(d) {
+    try { return new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }); }
+    catch { return null; }
 }
 
 const pedidoController = {
@@ -212,6 +218,39 @@ const pedidoController = {
         }
     },
 
+    // Pedidos ABERTOS (salvos e ainda não enviados) do próprio usuário — alimenta o
+    // lembrete de 30 em 30 minutos na tela do vendedor (AlertaPedidosNaoEnviados).
+    meusNaoEnviados: async (req, res) => {
+        try {
+            if (!req.user?.id) return res.json({ total: 0, pedidos: [] });
+            const pedidos = await prisma.pedido.findMany({
+                where: {
+                    statusEnvio: 'ABERTO',
+                    OR: [{ vendedorId: req.user.id }, { usuarioLancamentoId: req.user.id }]
+                },
+                select: {
+                    id: true, dataVenda: true, createdAt: true, especial: true, bonificacao: true,
+                    cliente: { select: { Nome: true, NomeFantasia: true } }
+                },
+                orderBy: { createdAt: 'asc' },
+                take: 20
+            });
+            res.json({
+                total: pedidos.length,
+                pedidos: pedidos.map(p => ({
+                    id: p.id,
+                    cliente: p.cliente?.NomeFantasia || p.cliente?.Nome || '—',
+                    dataEntrega: p.dataVenda,
+                    especial: p.especial,
+                    bonificacao: p.bonificacao
+                }))
+            });
+        } catch (e) {
+            console.error('Erro ao listar pedidos não enviados:', e);
+            res.status(500).json({ error: 'Erro ao listar pedidos não enviados.' });
+        }
+    },
+
     avisoConvertidoCiente: async (req, res) => {
         try {
             await prisma.pedidoConvertidoAviso.update({
@@ -349,9 +388,19 @@ const pedidoController = {
             });
             if (erroCondicao) return res.status(400).json({ error: erroCondicao });
 
+            // Data de entrega não pode ficar no passado
+            if (dadosPedido.dataVenda) {
+                const hojeSP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+                const entregaSP = dataSP(dadosPedido.dataVenda);
+                if (entregaSP && entregaSP < hojeSP) {
+                    return res.status(400).json({ error: `A data de entrega (${entregaSP.split('-').reverse().join('/')}) está no passado. Escolha hoje ou uma data futura.` });
+                }
+            }
+
             // Bloqueio por usuário: não vender além do estoque disponível.
-            // Aplica também a admin — o interruptor é explícito por usuário.
-            if (req.user?.permissoes?.Bloqueio_Venda_Sem_Estoque) {
+            // Só trava o ENVIO — salvar como ABERTO é permitido (o vendedor guarda o
+            // pedido e envia quando o estoque for reposto). Aplica também a admin.
+            if (req.user?.permissoes?.Bloqueio_Venda_Sem_Estoque && dadosPedido.statusEnvio === 'ENVIAR') {
                 const erroEstoque = await validarBloqueioEstoque(dadosPedido.itens);
                 if (erroEstoque) return res.status(403).json({ error: erroEstoque });
             }
@@ -387,7 +436,7 @@ const pedidoController = {
             // 🔒 Bloqueio: pedidos recebidos pelo CA não podem ser editados aqui
             const pedidoAtual = await prisma.pedido.findUnique({
                 where: { id },
-                select: { statusEnvio: true, situacaoCA: true, clienteId: true, especial: true, bonificacao: true, nomeCondicaoPagamento: true }
+                select: { statusEnvio: true, situacaoCA: true, clienteId: true, especial: true, bonificacao: true, nomeCondicaoPagamento: true, dataVenda: true }
             });
             if (!pedidoAtual) return res.status(404).json({ error: 'Pedido não encontrado.' });
 
@@ -409,9 +458,22 @@ const pedidoController = {
             });
             if (erroCondicao) return res.status(400).json({ error: erroCondicao });
 
+            // Data de entrega não pode ser MUDADA para o passado (manter a data que o
+            // pedido já tinha continua permitido — pedidos antigos têm datas antigas)
+            if (dadosPedido.dataVenda) {
+                const hojeSP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+                const entregaSP = dataSP(dadosPedido.dataVenda);
+                const atualSP = pedidoAtual.dataVenda ? dataSP(pedidoAtual.dataVenda) : null;
+                if (entregaSP && entregaSP < hojeSP && entregaSP !== atualSP) {
+                    return res.status(400).json({ error: `A data de entrega (${entregaSP.split('-').reverse().join('/')}) está no passado. Escolha hoje ou uma data futura.` });
+                }
+            }
+
             // Bloqueio por usuário: não vender além do estoque disponível (a reserva
-            // do próprio pedido volta ao disponível antes da comparação).
-            if (req.user?.permissoes?.Bloqueio_Venda_Sem_Estoque && dadosPedido.itens) {
+            // do próprio pedido volta ao disponível antes da comparação). Só trava
+            // quando o pedido está sendo ENVIADO — salvar/editar como ABERTO pode.
+            const statusFinal = dadosPedido.statusEnvio || pedidoAtual.statusEnvio;
+            if (req.user?.permissoes?.Bloqueio_Venda_Sem_Estoque && dadosPedido.itens && statusFinal === 'ENVIAR') {
                 const erroEstoque = await validarBloqueioEstoque(dadosPedido.itens, id);
                 if (erroEstoque) return res.status(403).json({ error: erroEstoque });
             }

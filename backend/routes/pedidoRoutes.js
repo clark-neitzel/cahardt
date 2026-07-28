@@ -36,6 +36,9 @@ router.post('/imprimir-lote', pedidoController.imprimirLote);
 
 // Avisos de pedido especial convertido (popup do faturamento a cada 5 min)
 router.get('/avisos-convertidos', pedidoController.avisosConvertidos);
+
+// Pedidos salvos (ABERTO) do próprio usuário — lembrete de envio a cada 30 min
+router.get('/meus-nao-enviados', pedidoController.meusNaoEnviados);
 router.post('/avisos-convertidos/:avisoId/ciente', pedidoController.avisoConvertidoCiente);
 
 // Detalhes de um pedido

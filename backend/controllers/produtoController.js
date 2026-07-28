@@ -38,7 +38,7 @@ const produtoController = {
                 }
             }
 
-            const [produtos, total] = await Promise.all([
+            const [produtos, total, categoriasEstoque] = await Promise.all([
                 prisma.produto.findMany({
                     where,
                     skip: Number(skip),
@@ -54,11 +54,22 @@ const produtoController = {
                     },
                     orderBy: { nome: 'asc' }
                 }),
-                prisma.produto.count({ where })
+                prisma.produto.count({ where }),
+                prisma.categoriaEstoque.findMany({ select: { nome: true, controlaEstoque: true } })
             ]);
 
+            // Controle de estoque EFETIVO: produto.controlaEstoque força; null segue a categoria.
+            // O front (tela de pedido) usa isso p/ avisar item sem estoque sem falso positivo.
+            const catControla = new Map(categoriasEstoque.map(c => [c.nome, c.controlaEstoque === true]));
+            const produtosComFlag = produtos.map(p => ({
+                ...p,
+                controlaEstoqueEfetivo: p.controlaEstoque === true ? true
+                    : p.controlaEstoque === false ? false
+                    : (catControla.get(p.categoria) || false)
+            }));
+
             res.json({
-                data: produtos,
+                data: produtosComFlag,
                 meta: {
                     total,
                     page: Number(page),

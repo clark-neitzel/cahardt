@@ -115,6 +115,7 @@ import DiarioCheckout from './components/Diario/DiarioCheckout';
 import PendenciaRotaGateway from './components/PendenciaRotaGateway';
 import AlertaFaturamento from './components/AlertaFaturamento';
 import AlertaPedidoConvertido from './components/AlertaPedidoConvertido';
+import AlertaPedidosNaoEnviados from './components/AlertaPedidosNaoEnviados';
 import AlertaTarefas from './components/AlertaTarefas';
 import AlertaPedidosSite from './components/AlertaPedidosSite';
 import AlertaAutorizacaoDevolucao from './components/AlertaAutorizacaoDevolucao';
@@ -611,6 +612,9 @@ const Layout = ({ children }) => {
 
         {/* ALERTA DE PEDIDO ESPECIAL CONVERTIDO EM NF (popup a cada 5 min p/ faturamento) */}
         <AlertaPedidoConvertido />
+
+        {/* LEMBRETE DE PEDIDOS SALVOS SEM ENVIAR (popup a cada 30 min p/ o vendedor) */}
+        <AlertaPedidosNaoEnviados />
 
         {/* ALERTA DE TAREFAS DA EQUIPE (pop-up + som no horário; insiste a cada 5 min) */}
         <AlertaTarefas />

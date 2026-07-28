@@ -17,6 +17,8 @@ import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import ClientePopup from '../Rota/ClientePopup';
 import AlertaGpsFaltante from '../../components/AlertaGpsFaltante';
+import ModalErroEstoque from '../../components/ModalErroEstoque';
+import { somAviso } from '../../utils/sons';
 import { normalizarDoc } from '../../utils/documento'; // busca por CPF/CNPJ (inclui alfanumérico)
 
 const DIA_SEMANA_MAP = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
@@ -179,6 +181,11 @@ const NovoPedido = () => {
     const [duplicataAceitouResponsabilidade, setDuplicataAceitouResponsabilidade] = useState(false);
     const [pendingSalvarStatus, setPendingSalvarStatus] = useState(null);
     const [showConfirmacaoPedido, setShowConfirmacaoPedido] = useState(false);
+    // Bloqueio de venda sem estoque (por usuário): popup de erro + avisos por item
+    const [erroEstoqueMsg, setErroEstoqueMsg] = useState(null);
+    const qtdOriginalRef = useRef(new Map());   // edição: qtd já reservada pelo próprio pedido
+    const dataEntregaOriginalRef = useRef(null); // edição: manter a data antiga é permitido
+    const avisadosEstoqueRef = useRef(new Set()); // produtos já avisados (evita toast repetido)
 
     const carregouDraftRef = useRef(false);
     const isRestoringDraftRef = useRef(false);
@@ -259,7 +266,10 @@ const NovoPedido = () => {
 
                         setClienteId(pd.clienteId);
                         setObservacoes(pd.observacoes || '');
-                        if (pd.dataVenda) setDataEntrega(pd.dataVenda.split('T')[0]);
+                        if (pd.dataVenda) {
+                            setDataEntrega(pd.dataVenda.split('T')[0]);
+                            dataEntregaOriginalRef.current = pd.dataVenda.split('T')[0];
+                        }
                         if (pd.valorFrete != null) setValorFrete(String(pd.valorFrete));
                         if (pd.canalOrigem) setCanalOrigem(pd.canalOrigem);
                         // Reencontrar a condição pelo NOME gravado (tipo+opção não são únicos:
@@ -270,6 +280,7 @@ const NovoPedido = () => {
 
                         if (pd.itens && pd.itens.length > 0) {
                             const map = new Map();
+                            const orig = new Map();
                             pd.itens.forEach(i => {
                                 map.set(i.produtoId, {
                                     quantidade: i.quantidade,
@@ -278,8 +289,11 @@ const NovoPedido = () => {
                                     valorBase: Number(i.valorBase),
                                     flexUnitario: Number((Number(i.valor) - Number(i.valorBase)).toFixed(2))
                                 });
+                                orig.set(i.produtoId, (orig.get(i.produtoId) || 0) + Number(i.quantidade));
                             });
                             setItensMap(map);
+                            // Qtd já reservada por este pedido: volta ao "disponível" na conta do aviso de estoque
+                            qtdOriginalRef.current = orig;
                         }
                         carregouDraftRef.current = true;
                     }
@@ -301,7 +315,9 @@ const NovoPedido = () => {
 
                         if (clienteAlvo) setTimeout(() => setClienteId(clienteAlvo), 100);
                         if (pd.clienteSearchText && mesmoCLiente) setClienteSearchText(pd.clienteSearchText);
-                        if (pd.dataEntrega) setDataEntrega(pd.dataEntrega);
+                        // Rascunho antigo pode ter data já passada — nesse caso o vendedor escolhe de novo
+                        const hojeLocal = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+                        if (pd.dataEntrega && pd.dataEntrega >= hojeLocal) setDataEntrega(pd.dataEntrega);
                         if (pd.isEncaixe !== undefined) setIsEncaixe(pd.isEncaixe);
                         if (pd.observacoes && mesmoCLiente) setObservacoes(pd.observacoes);
                         if (pd.canalOrigem && mesmoCLiente) setCanalOrigem(pd.canalOrigem);
@@ -811,7 +827,62 @@ const NovoPedido = () => {
         return null;
     };
 
+    // Data de entrega: nunca no passado (vale p/ todos, inclusive admin) + regras de horário.
+    // Na edição, MANTER a data antiga do pedido é permitido (pedidos antigos têm datas antigas).
+    const validarDataEntrega = (dataStr) => {
+        if (!dataStr) return null;
+        const hojeSP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        if (dataStr < hojeSP && (!editId || dataStr !== dataEntregaOriginalRef.current)) {
+            return `A data de entrega (${dataStr.split('-').reverse().join('/')}) está no passado. Escolha hoje ou uma data futura.`;
+        }
+        return validarHorarioEntrega(dataStr);
+    };
+
+    // ── Bloqueio de venda sem estoque (por usuário) ──
+    const bloqueioEstoque = !!user?.permissoes?.Bloqueio_Venda_Sem_Estoque;
+
+    // Itens do carrinho pedindo mais do que o estoque disponível (só produtos que controlam estoque).
+    // Na edição, a qtd que o próprio pedido já reservou volta ao disponível antes da conta.
+    const estourosEstoque = useMemo(() => {
+        if (!bloqueioEstoque) return [];
+        const lista = [];
+        itensMap.forEach((it, pid) => {
+            const p = produtos.find(x => x.id === pid);
+            if (!p || p.controlaEstoqueEfetivo !== true) return;
+            const extra = editId ? (qtdOriginalRef.current.get(pid) || 0) : 0;
+            const disp = Number(p.estoqueDisponivel || 0) + extra;
+            const qtd = Number(it.quantidade) || 0;
+            if (qtd > disp) lista.push({ pid, nome: p.nome, unidade: p.unidade || 'un', pedida: qtd, disponivel: Math.max(0, disp) });
+        });
+        return lista;
+    }, [itensMap, produtos, bloqueioEstoque, editId]);
+
+    // Avisa na hora, item a item, quando a quantidade passa do estoque (1 aviso por produto)
+    useEffect(() => {
+        if (!bloqueioEstoque) return;
+        const atuais = new Set(estourosEstoque.map(e => e.pid));
+        estourosEstoque.forEach(e => {
+            if (!avisadosEstoqueRef.current.has(e.pid)) {
+                avisadosEstoqueRef.current.add(e.pid);
+                somAviso();
+                toast.error(`⚠️ ${e.nome}: só ${String(e.disponivel).replace('.', ',')} ${e.unidade} em estoque.\nVocê pode SALVAR o pedido, mas não vai conseguir ENVIAR assim.`, { duration: 6000, style: { maxWidth: '600px' } });
+            }
+        });
+        avisadosEstoqueRef.current.forEach(pid => { if (!atuais.has(pid)) avisadosEstoqueRef.current.delete(pid); });
+    }, [estourosEstoque, bloqueioEstoque]);
+
+    const mensagemErroEstoque = () => {
+        const fmt = (v) => String(v).replace('.', ',');
+        const linhas = estourosEstoque.map(e => `• ${e.nome}: pedido ${fmt(e.pedida)} ${e.unidade}, disponível ${fmt(e.disponivel)} ${e.unidade}`).join('\n');
+        return `Seu usuário não pode vender além do estoque disponível:\n${linhas}\n\nVocê pode SALVAR o pedido e enviá-lo quando o estoque for reposto — ou reduzir as quantidades agora.`;
+    };
+
     const handleSalvar = (statusEnvio) => {
+        // Bloqueio de estoque: ENVIAR não pode com item acima do disponível (salvar pode)
+        if (statusEnvio === 'ENVIAR' && estourosEstoque.length > 0) {
+            setErroEstoqueMsg(mensagemErroEstoque());
+            return;
+        }
         // Aviso de pedido duplicado — exige confirmação explícita
         if (pedidosDuplicados.length > 0 && !duplicataConfirmadaRef.current) {
             setPendingSalvarStatus(statusEnvio);
@@ -837,7 +908,7 @@ const NovoPedido = () => {
         if (!condicaoPagamentoId || !condicaoSelecionada) { toast.error("Selecione uma condição de pagamento (entre as liberadas para este cliente).", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (!dataEntrega) { toast.error("Selecione a data de entrega.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
 
-        const erroHorario = validarHorarioEntrega(dataEntrega);
+        const erroHorario = validarDataEntrega(dataEntrega);
         if (erroHorario) { toast.error(erroHorario, { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (statusEnvio === 'ENVIAR' && !canalOrigem) { toast.error("Informe o Tipo de Atendimento que resultou nesta venda.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
 
@@ -910,7 +981,13 @@ const NovoPedido = () => {
                 }
             });
         } catch (error) {
-            toast.error(error.response?.data?.error || "Erro ao salvar pedido.", { duration: 6000, style: { maxWidth: "600px" } });
+            const msg = error.response?.data?.error || "Erro ao salvar pedido.";
+            // Bloqueio de estoque vindo do servidor: popup do sistema com som de erro
+            if (error.response?.status === 403 && msg.startsWith('Estoque insuficiente')) {
+                setErroEstoqueMsg(msg);
+            } else {
+                toast.error(msg, { duration: 6000, style: { maxWidth: "600px" } });
+            }
         } finally {
             setSaving(false);
         }
@@ -1173,6 +1250,12 @@ const NovoPedido = () => {
                                 <span className={`text-[10px] sm:text-xs font-semibold ${Number(produto.estoqueDisponivel) > 0 ? 'text-green-600' : 'text-red-500'}`}>
                                     Est: {Number(produto.estoqueDisponivel || 0).toFixed(0)} {produto.unidade || 'un'}
                                 </span>
+                                {/* Bloqueio de venda sem estoque: item passou do disponível */}
+                                {qtd > 0 && estourosEstoque.some(e => e.pid === produto.id) && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 border border-red-200 uppercase">
+                                        Sem estoque p/ enviar
+                                    </span>
+                                )}
                             </div>
                         </div>
                         {/* Chevron (Desktop/Tablet) */}
@@ -1360,7 +1443,9 @@ const NovoPedido = () => {
                                 <Trash2 className="h-4 w-4" />
                             </button>
                         )}
-                        <button onClick={() => handleSalvar('ABERTO')} className="px-3 py-1.5 text-primary font-bold text-xs border border-primary/30 rounded-lg hover:bg-blue-50 transition-colors">
+                        <button onClick={() => handleSalvar('ABERTO')}
+                            className={`px-3 py-1.5 font-bold text-xs border rounded-lg transition-colors ${estourosEstoque.length > 0 ? 'animate-pulse bg-amber-100 border-amber-400 text-amber-800' : 'text-primary border-primary/30 hover:bg-blue-50'}`}
+                            title={estourosEstoque.length > 0 ? 'Há itens sem estoque — salve o pedido para enviar depois' : undefined}>
                             Salvar
                         </button>
                     </div>
@@ -1595,15 +1680,16 @@ const NovoPedido = () => {
                                         <div className="relative mt-0.5">
                                             <input
                                                 type="date"
-                                                className={`w-full border rounded-md p-2 bg-white text-sm focus:ring-blue-500 focus:border-blue-500 ${validarHorarioEntrega(dataEntrega) ? 'border-red-400 bg-red-50 text-red-700' : dataEntrega ? 'border-gray-300 text-gray-900' : 'border-blue-300 text-gray-400'}`}
+                                                min={new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' })}
+                                                className={`w-full border rounded-md p-2 bg-white text-sm focus:ring-blue-500 focus:border-blue-500 ${validarDataEntrega(dataEntrega) ? 'border-red-400 bg-red-50 text-red-700' : dataEntrega ? 'border-gray-300 text-gray-900' : 'border-blue-300 text-gray-400'}`}
                                                 value={dataEntrega}
                                                 onChange={e => setDataEntrega(e.target.value)}
                                                 onClick={e => { try { if (e.target.showPicker) e.target.showPicker(); } catch (err) { } }}
                                             />
                                         </div>
-                                        {dataEntrega && validarHorarioEntrega(dataEntrega) && (
+                                        {dataEntrega && validarDataEntrega(dataEntrega) && (
                                             <p className="text-xs text-red-600 font-semibold mt-1 bg-red-50 rounded px-2 py-1 border border-red-200">
-                                                {validarHorarioEntrega(dataEntrega)}
+                                                {validarDataEntrega(dataEntrega)}
                                             </p>
                                         )}
                                         {isEncaixe && (
@@ -1895,6 +1981,14 @@ const NovoPedido = () => {
                                         <span className="text-sm font-bold text-gray-900 shrink-0">R$ {linha.toFixed(2).replace('.', ',')}</span>
                                     </div>
                                     <p className="text-[11px] text-gray-400 mt-0.5">{it.quantidade} × R$ {Number(it.valorUnitario).toFixed(2).replace('.', ',')}</p>
+                                    {(() => {
+                                        const est = estourosEstoque.find(e => e.pid === pid);
+                                        return est ? (
+                                            <p className="text-[11px] font-bold text-red-600 mt-0.5 flex items-center gap-1">
+                                                <AlertCircle className="h-3 w-3" /> Sem estoque p/ enviar — disponível {String(est.disponivel).replace('.', ',')} {est.unidade}
+                                            </p>
+                                        ) : null;
+                                    })()}
                                     <div className="flex items-center justify-between mt-1.5">
                                         <div className="flex items-center gap-1">
                                             <button
@@ -1967,6 +2061,17 @@ const NovoPedido = () => {
                                     </div>
                                 );
                             }
+                            if (estourosEstoque.length > 0) {
+                                return (
+                                    <button
+                                        onClick={() => setErroEstoqueMsg(mensagemErroEstoque())}
+                                        className="w-full mt-1 bg-red-600 text-white font-bold py-2.5 rounded-lg shadow-sm text-sm animate-pulse flex items-center justify-center gap-2"
+                                    >
+                                        <AlertCircle className="h-4 w-4" />
+                                        Sem estoque p/ enviar — só salvar
+                                    </button>
+                                );
+                            }
                             return (
                                 <button
                                     onClick={() => setShowConfirmacaoPedido(true)}
@@ -2005,6 +2110,18 @@ const NovoPedido = () => {
                                         VALOR MÍNIMO NÃO ATINGIDO
                                     </button>
                                 </div>
+                            );
+                        }
+
+                        if (estourosEstoque.length > 0) {
+                            return (
+                                <button
+                                    onClick={() => setErroEstoqueMsg(mensagemErroEstoque())}
+                                    className="w-full bg-red-600 text-white font-bold py-3.5 rounded-lg shadow-sm text-[15px] animate-pulse flex items-center justify-center gap-2 tracking-wide"
+                                >
+                                    <AlertCircle className="h-5 w-5" />
+                                    SEM ESTOQUE P/ ENVIAR — SÓ SALVAR
+                                </button>
                             );
                         }
 
@@ -2129,6 +2246,15 @@ const NovoPedido = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* Popup de erro do bloqueio de estoque (som de erro + estilo do sistema) */}
+            {erroEstoqueMsg && (
+                <ModalErroEstoque
+                    titulo="Estoque insuficiente"
+                    mensagem={erroEstoqueMsg}
+                    onClose={() => setErroEstoqueMsg(null)}
+                />
             )}
 
             {/* Popup de info do cliente (read-only) */}
