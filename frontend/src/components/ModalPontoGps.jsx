@@ -105,27 +105,35 @@ export default function ModalPontoGps({
         mapObj.current = map;
         validarCentro(map.getCenter());
 
-        // Bolinha azul: posição do aparelho (GPS funciona sem internet)
+        // Bolinha azul: posição do aparelho (GPS no celular; Wi-Fi no computador)
         if (navigator.geolocation) {
+            const aplicarPos = (pos) => {
+                const p = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
+                setPosAtual(p);
+                if (!marcadorPos.current) {
+                    circuloPos.current = L.circle([p.lat, p.lng], {
+                        radius: Math.min(p.accuracy || 30, 150), color: '#3b82f6', weight: 1, fillOpacity: 0.1
+                    }).addTo(map);
+                    marcadorPos.current = L.circleMarker([p.lat, p.lng], {
+                        radius: 7, color: '#ffffff', fillColor: '#3b82f6', fillOpacity: 1, weight: 2
+                    }).addTo(map).bindTooltip('Você está aqui');
+                    // Sem ponto cadastrado nem sugestão: centraliza na posição da pessoa
+                    if (!pontoAtual && !sugestao) map.setView([p.lat, p.lng], 17);
+                } else {
+                    marcadorPos.current.setLatLng([p.lat, p.lng]);
+                    circuloPos.current.setLatLng([p.lat, p.lng]);
+                }
+            };
             watchRef.current = navigator.geolocation.watchPosition(
-                (pos) => {
-                    const p = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy };
-                    setPosAtual(p);
-                    if (!marcadorPos.current) {
-                        circuloPos.current = L.circle([p.lat, p.lng], {
-                            radius: Math.min(p.accuracy || 30, 150), color: '#3b82f6', weight: 1, fillOpacity: 0.1
-                        }).addTo(map);
-                        marcadorPos.current = L.circleMarker([p.lat, p.lng], {
-                            radius: 7, color: '#ffffff', fillColor: '#3b82f6', fillOpacity: 1, weight: 2
-                        }).addTo(map).bindTooltip('Você está aqui');
-                        // Sem ponto cadastrado nem sugestão: centraliza na posição da pessoa
-                        if (!pontoAtual && !sugestao) map.setView([p.lat, p.lng], 17);
-                    } else {
-                        marcadorPos.current.setLatLng([p.lat, p.lng]);
-                        circuloPos.current.setLatLng([p.lat, p.lng]);
+                aplicarPos,
+                (errW) => {
+                    // Desktop: alta precisão pode falhar — tenta 1x em modo compatível (Wi-Fi)
+                    if (!marcadorPos.current && errW.code !== 1) {
+                        navigator.geolocation.getCurrentPosition(aplicarPos, () => { }, {
+                            enableHighAccuracy: false, timeout: 15000, maximumAge: 120000
+                        });
                     }
                 },
-                () => { },
                 { enableHighAccuracy: true, maximumAge: 10000 }
             );
         }
@@ -144,35 +152,52 @@ export default function ModalPontoGps({
         setAutorizadorId(''); setSenhaAutorizador(''); setDistDoAntigo(null);
     }, [aberto]);
 
-    const usarMinhaPosicao = () => {
+    const usarMinhaPosicao = async () => {
         if (posAtual && mapObj.current) {
             mapObj.current.setView([posAtual.lat, posAtual.lng], 18);
             return;
         }
-        const ehCelular = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+        const ehMac = /Macintosh/i.test(navigator.userAgent);
         if (!navigator.geolocation) {
             toast('Este navegador não informa localização — arraste o mapa até a porta do cliente.', { icon: '🗺️', duration: 6000 });
             return;
         }
+
+        const obter = (highAcc, timeout) => new Promise((resolve, reject) =>
+            navigator.geolocation.getCurrentPosition(resolve, reject, {
+                enableHighAccuracy: highAcc, timeout, maximumAge: 120000
+            }));
+
         setBuscandoPos(true);
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                setBuscandoPos(false);
-                mapObj.current?.setView([pos.coords.latitude, pos.coords.longitude], 18);
-            },
-            (err) => {
-                setBuscandoPos(false);
-                // Computador não tem GPS — falhar aqui é normal; o caminho é o mapa.
-                if (err.code === 1) {
-                    toast('A permissão de localização está bloqueada neste navegador (cadeado na barra de endereço → Localização → Permitir). Enquanto isso, arraste o mapa até a porta do cliente.', { icon: '🔒', duration: 8000 });
-                } else if (!ehCelular) {
-                    toast('Computador não tem GPS, então nem sempre acha sua posição — é normal. Arraste o mapa até a porta do cliente; no celular este botão usa o GPS de verdade.', { icon: '🖥️', duration: 8000 });
-                } else {
-                    toast.error('Não foi possível obter sua localização. Ative o GPS do aparelho e tente de novo.', { duration: 6000 });
-                }
-            },
-            { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
-        );
+        try {
+            // 1ª tentativa: precisão alta (GPS). Desktop localiza por Wi-Fi — se
+            // falhar, tenta de novo em modo compatível (precisão baixa).
+            let pos;
+            try {
+                pos = await obter(true, 10000);
+            } catch (e1) {
+                if (e1.code === 1) throw e1; // permissão negada: repetir não adianta
+                pos = await obter(false, 15000);
+            }
+            mapObj.current?.setView([pos.coords.latitude, pos.coords.longitude], 18);
+            setPosAtual({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
+        } catch (err) {
+            // Diagnóstico preciso: permissão do SITE × serviço de localização do SISTEMA
+            let estadoPermissao = null;
+            try {
+                estadoPermissao = (await navigator.permissions?.query({ name: 'geolocation' }))?.state || null;
+            } catch { /* navegador sem Permissions API */ }
+
+            if (err.code === 1 || estadoPermissao === 'denied') {
+                toast('O NAVEGADOR está bloqueando a localização deste site. Clique no cadeado 🔒 na barra de endereço → Localização → Permitir, e tente de novo.', { icon: '🔒', duration: 9000 });
+            } else if (ehMac) {
+                toast('O site tem permissão, mas o macOS não devolveu a posição. Confira: Ajustes do Sistema → Privacidade e Segurança → Serviços de Localização → ligado, e o seu navegador (Chrome/Safari) marcado na lista. Depois tente de novo — ou arraste o mapa até a porta do cliente.', { icon: '🖥️', duration: 10000 });
+            } else {
+                toast.error('Não foi possível obter sua localização. Verifique o GPS/serviço de localização do aparelho e tente de novo — ou arraste o mapa até o lugar certo.', { duration: 7000 });
+            }
+        } finally {
+            setBuscandoPos(false);
+        }
     };
 
     const abrirAutorizacao = async (resp) => {
