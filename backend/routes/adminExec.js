@@ -4186,20 +4186,22 @@ router.post('/diag-conciliados-sem-baixa/corrigir', async (req, res) => {
         for (const l of lancs) {
             const est = l.pagamentoParcelaId ? recEstPorId.get(l.pagamentoParcelaId) : pagEstPorId.get(l.pagamentoParcelaPagarId);
             if (!est) continue;
-            let novo = null, motivo = null;
+            let novo = null, motivo = null, ativasInfo = [];
             if (l.pagamentoParcelaId) {
                 const ativas = await prisma.pagamentoParcela.findMany({
                     where: { parcelaId: est.parcelaId, estornado: false },
-                    select: { id: true, valorRecebido: true, contaFinanceiraCaId: true }
+                    select: { id: true, valorRecebido: true, contaFinanceiraCaId: true, dataPagamento: true, observacao: true }
                 });
+                ativasInfo = ativas.map((b) => ({ id: b.id, valor: n(b.valorRecebido), conta: b.contaFinanceiraCaId, data: b.dataPagamento, jaUsada: usados.has(b.id), obs: (b.observacao || '').slice(0, 80) }));
                 const livres = ativas.filter((b) => !usados.has(b.id) && Math.abs(n(b.valorRecebido) - n(l.valor)) <= 0.02);
                 novo = livres.length === 1 ? livres[0] : null;
                 motivo = livres.length === 0 ? 'nenhuma baixa ativa livre com o valor' : (livres.length > 1 ? 'mais de uma candidata — manual' : null);
             } else {
                 const ativas = await prisma.pagamentoParcelaPagar.findMany({
                     where: { parcelaPagarId: est.parcelaPagarId, estornado: false },
-                    select: { id: true, valorPago: true, juros: true, multa: true, contaFinanceiraCaId: true }
+                    select: { id: true, valorPago: true, juros: true, multa: true, contaFinanceiraCaId: true, dataPagamento: true, origem: true, observacao: true }
                 });
+                ativasInfo = ativas.map((b) => ({ id: b.id, valor: Math.round((n(b.valorPago) + n(b.juros) + n(b.multa)) * 100) / 100, conta: b.contaFinanceiraCaId, data: b.dataPagamento, origem: b.origem, jaUsada: usados.has(b.id), obs: (b.observacao || '').slice(0, 80) }));
                 const livres = ativas.filter((b) => !usados.has(b.id) && Math.abs(n(b.valorPago) + n(b.juros) + n(b.multa) - n(l.valor)) <= 0.02);
                 novo = livres.length === 1 ? livres[0] : null;
                 motivo = livres.length === 0 ? 'nenhuma baixa ativa livre com o valor' : (livres.length > 1 ? 'mais de uma candidata — manual' : null);
@@ -4207,7 +4209,8 @@ router.post('/diag-conciliados-sem-baixa/corrigir', async (req, res) => {
             const acao = {
                 caso: 'RELINK_BAIXA_ESTORNADA', lancamentoId: l.id, data: l.data, valor: n(l.valor),
                 tipo: l.tipo, descricao: l.descricao, baixaEstornadaId: est.id,
-                novaBaixaId: novo?.id || null, executado: false, motivoSemAcao: motivo
+                novaBaixaId: novo?.id || null, executado: false, motivoSemAcao: motivo,
+                baixasAtivasDaParcela: ativasInfo
             };
             if (novo && aplicar) {
                 await prisma.extratoLancamento.update({
