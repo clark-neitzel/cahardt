@@ -96,6 +96,7 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 | `Pode_Conferir_Devolucao_Caixa` | Recebe a mercadoria devolvida e digita a contagem na conferência de devoluções do caixa |
 | `Pode_Autorizar_Desconsiderar_Devolucao` | A senha desta pessoa libera falta de devolução sem cobrança ao motorista |
 | `Pode_Gerenciar_Metas` | Cria e edita metas de vendas |
+| `Bloqueio_Venda_Sem_Estoque` | **RESTRIÇÃO** (seção Vendas): ligado, o usuário não consegue **ENVIAR** pedido com quantidade acima do estoque disponível (salvar como ABERTO pode) — a tela avisa item a item e o popup de erro mostra o disponível por produto. Vale até para admin; fica fora do "Marcar tudo" e dos perfis (só liga individualmente) |
 | `Pode_Ver_Dashboard_Admin` | Vê o painel gerencial do dashboard |
 | `Pode_Editar_Veiculos` | Cadastra e edita veículos |
 

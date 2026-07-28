@@ -59,6 +59,24 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 7. Adicione os produtos e quantidades
 8. Clique em **Salvar** — o pedido é criado com status **ABERTO**
 
+### Bloqueio de venda sem estoque (por usuário)
+- Se o interruptor **Bloquear Venda Sem Estoque** estiver ligado nas permissões do usuário (aba Usuários → Permissões → seção Vendas), o sistema **não deixa ENVIAR** pedido pedindo mais do que o **estoque disponível** de qualquer produto — o estoque não fica negativo.
+- **Salvar o pedido (ABERTO) continua permitido**: o vendedor guarda o pedido e envia quando o estoque for reposto.
+- Na tela de pedido, **cada item que passa do disponível avisa na hora** (toast + som + selo vermelho "Sem estoque p/ enviar" no card do produto e no carrinho). O botão **Salvar fica piscando** em âmbar e o botão "Fechar pedido" vira um alerta vermelho piscante — clicar nele abre o **popup de erro** do sistema (com som de erro) listando produto por produto: quantidade pedida × disponível.
+- É uma **restrição** por usuário e vale **até para admin** (o interruptor é explícito). Com ele desligado (padrão), nada muda — o usuário vende mesmo com estoque zerado/negativo.
+- Vale para pedido normal, especial e bonificação (tudo que reserva estoque). Produtos que **não controlam estoque** não entram na conta.
+- Na **edição**, a quantidade que o próprio pedido já reservou volta ao disponível antes da comparação — reeditar um pedido sem mudar quantidades nunca é bloqueado.
+- "Disponível" = estoque total menos o que os outros pedidos em aberto já reservaram (o mesmo número "Est:" que aparece na tela de pedido).
+
+### Lembrete de pedidos salvos sem enviar (popup a cada 30 min)
+- Quem tem pedido **ABERTO** (salvo e ainda não enviado) recebe um **popup com som a cada 30 minutos**, em qualquer tela do app (menos dentro da própria tela de criação de pedido), listando os pedidos e a data de entrega de cada um.
+- Botões: **"Ver pedidos"** (vai para a lista) e **"Lembrar em 30 min"** (fecha e volta a avisar depois). O aviso considera os pedidos em que a pessoa é o vendedor **ou** foi quem lançou.
+
+### Data de entrega nunca no passado
+- Ao criar pedido, a **data de entrega não pode ser anterior a hoje** (vale para todos, inclusive admin). O campo de data já impede escolher datas passadas e o servidor valida de novo.
+- Rascunho antigo com data já passada abre **sem data** — o vendedor escolhe de novo.
+- Na **edição**, manter a data que o pedido já tinha é permitido (pedidos antigos têm datas antigas); só não dá para **mudar** para uma data passada.
+
 ### Faturar pedido (antes: "enviar ao Conta Azul")
 - Pedidos com status **ABERTO** precisam ser marcados como **ENVIAR** (fluxo igual ao de sempre)
 - O worker fatura sozinho em até ~1 minuto: gera o **número da venda no próprio app** (continua a sequência), muda o status para **RECEBIDO** e baixa o estoque — nada é enviado ao Conta Azul (somente leitura desde 23/07/2026)
@@ -187,6 +205,7 @@ Desde 23/07/2026 o acerto financeiro da devolução acontece **nas parcelas do p
 | Ver pedidos de todos os vendedores | `pedidos.clientes = "todos"` ou `admin` |
 | Reatribuir vendedor | `Pode_Reatribuir_Vendedor` ou `admin` |
 | Ver sub-aba Devoluções | `Pode_Fazer_Devolucao` ou `admin` |
+| Enviar pedido além do estoque disponível | **Bloqueado** se `Bloqueio_Venda_Sem_Estoque` estiver ligado (salvar como ABERTO pode; restrição, vale até para admin) |
 
 ---
 
