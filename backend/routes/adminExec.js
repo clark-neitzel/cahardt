@@ -60,6 +60,49 @@ router.get('/ping', (req, res) => {
     });
 });
 
+// GET /api/admin-exec/diag-bloqueio-estoque?login=xxx
+// Diagnóstico do bloqueio de venda sem estoque: confirma que este backend tem a
+// validação (marcador de deploy) e mostra quem está com a restrição ligada.
+// Com ?login= também roda a validação de teste contra um produto real.
+router.get('/diag-bloqueio-estoque', async (req, res) => {
+    try {
+        const estoqueService = require('../services/estoqueService');
+        const marcador = typeof estoqueService.validarVendaSemEstoque === 'function';
+
+        const vendedores = await prisma.vendedor.findMany({
+            where: { ativo: true },
+            select: { id: true, nome: true, login: true, permissoes: true }
+        });
+        const parse = (p) => (typeof p === 'string' ? JSON.parse(p) : p) || {};
+        const comBloqueio = vendedores
+            .filter(v => parse(v.permissoes).Bloqueio_Venda_Sem_Estoque === true)
+            .map(v => ({ nome: v.nome, login: v.login }));
+
+        let usuario = null;
+        let testeValidacao = null;
+        if (req.query.login) {
+            const v = vendedores.find(x => (x.login || '').toLowerCase() === String(req.query.login).toLowerCase());
+            if (!v) return res.status(404).json({ error: `Login "${req.query.login}" não encontrado entre os ativos.` });
+            usuario = { nome: v.nome, login: v.login, bloqueioLigado: parse(v.permissoes).Bloqueio_Venda_Sem_Estoque === true };
+
+            const prod = await prisma.produto.findFirst({
+                where: { ativo: true, estoqueDisponivel: { gt: 0 } },
+                select: { id: true, nome: true, estoqueDisponivel: true },
+                orderBy: { estoqueDisponivel: 'desc' }
+            });
+            if (prod && marcador) {
+                const disp = parseFloat(prod.estoqueDisponivel);
+                const violacoes = await estoqueService.validarVendaSemEstoque([{ produtoId: prod.id, quantidade: disp + 100 }]);
+                testeValidacao = { produto: prod.nome, disponivel: disp, pedindo: disp + 100, violou: violacoes.length === 1 };
+            }
+        }
+
+        res.json({ ok: true, backendComBloqueio: marcador, usuario, testeValidacao, usuariosComBloqueioLigado: comBloqueio });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // ── Integração Focus NFe ──────────────────────────────────────────
 
 // GET /api/admin-exec/focus-nfe-status — as 4 env vars estão setadas? os tokens autenticam na Focus?
