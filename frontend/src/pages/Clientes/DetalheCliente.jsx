@@ -16,6 +16,9 @@ import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink, Truck, CreditCard, AlertTriangle } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
 import { normalizarDoc, formatarDoc, mascaraDoc, validarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
+import toast from 'react-hot-toast';
+import gpsClientesService from '../../services/gpsClientesService';
+import ModalPontoGps from '../../components/ModalPontoGps';
 
 // Toggle switch inline
 const Toggle = ({ checked, onChange }) => (
@@ -86,6 +89,11 @@ const DetalheCliente = () => {
     // Espelha o gate do backend (clienteController.atualizar): quem pode editar o cadastro sincronizado com o CA
     const podeEditarCadastroCA = perms.admin || perms.clientes?.edit || perms.Pode_Editar_GPS;
     const [cliente, setCliente] = useState(null);
+    // Ponto GPS: mapa + selo + cliente balcão
+    const [showMapaGps, setShowMapaGps] = useState(false);
+    const [gpsInfo, setGpsInfo] = useState(null); // { balcao, selo, sugestao, balcaoPorNome }
+    const [salvandoBalcao, setSalvandoBalcao] = useState(false);
+    const podeLiberarBalcao = !!(perms.admin || perms.Pode_Liberar_Cliente_Balcao);
     const [condicoesPagamento, setCondicoesPagamento] = useState([]);
     const [condicoesPagamentoCA, setCondicoesPagamentoCA] = useState([]);
     const [vendedores, setVendedores] = useState([]);
@@ -165,6 +173,11 @@ const DetalheCliente = () => {
             setCondicoesPagamentoCA(condicoesCAData);
             setVendedores(vendedoresData);
             setCategoriasCliente(categoriasCli);
+
+            // Selo/balcão do ponto GPS (tabela lateral) — não pode travar a tela se falhar
+            gpsClientesService.cliente(uuid)
+                .then(r => setGpsInfo(r.cliente?.gps || {}))
+                .catch(() => setGpsInfo({}));
 
             try {
                 const atends = await atendimentoService.listarPorCliente(uuid);
@@ -944,15 +957,71 @@ const DetalheCliente = () => {
                         <DayPicker label="Dia de Entrega" selected={formData.Dia_de_entrega} onChange={(val) => setFormData({ ...formData, Dia_de_entrega: val })} />
                     </div>
                     <div className="mt-4">
-                        <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide"><MapPin className="h-3.5 w-3.5 inline mr-1" />Localização GPS (lat,lng)</label>
-                        <input type="text"
-                            className="block w-full border border-gray-200 rounded-lg p-2.5 bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
-                            placeholder="Ex: -23.550520,-46.633308"
-                            value={formData.Ponto_GPS}
-                            onChange={(e) => setFormData({ ...formData, Ponto_GPS: e.target.value })}
-                        />
+                        <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide"><MapPin className="h-3.5 w-3.5 inline mr-1" />Localização GPS</label>
+                        <div className="flex items-center gap-2">
+                            <input type="text" readOnly
+                                className="block w-full border border-gray-200 rounded-lg p-2.5 bg-gray-50 text-gray-700 font-mono text-sm"
+                                placeholder="Sem ponto definido"
+                                value={formData.Ponto_GPS}
+                            />
+                            <button type="button" onClick={() => setShowMapaGps(true)}
+                                className="px-4 py-2.5 bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm whitespace-nowrap flex items-center gap-1.5">
+                                <MapPin className="h-4 w-4" /> Mapa
+                            </button>
+                        </div>
+                        {gpsInfo?.selo === 'CONFIRMADO' && (
+                            <p className="mt-1.5 text-xs font-semibold text-green-700">📍✅ Ponto confirmado pelas entregas reais</p>
+                        )}
+                        {gpsInfo?.selo === 'SUSPEITO' && (
+                            <p className="mt-1.5 text-xs font-semibold text-amber-700">📍⚠️ Ponto suspeito — as entregas estão acontecendo em outro lugar (abra o mapa para corrigir)</p>
+                        )}
+
+                        {/* Cliente balcão: ou GPS, ou balcão (com permissão) */}
+                        <div className="mt-3 flex items-start gap-2">
+                            <input
+                                type="checkbox"
+                                id="chkBalcao"
+                                checked={!!gpsInfo?.balcao}
+                                disabled={!podeLiberarBalcao || salvandoBalcao}
+                                onChange={async (e) => {
+                                    const ativo = e.target.checked;
+                                    setSalvandoBalcao(true);
+                                    try {
+                                        await gpsClientesService.setBalcao(uuid, ativo);
+                                        setGpsInfo(g => ({ ...(g || {}), balcao: ativo }));
+                                        toast.success(ativo ? 'Cliente marcado como balcão.' : 'Cliente deixou de ser balcão.');
+                                    } catch (err) {
+                                        toast.error(err.response?.data?.error || 'Erro ao mudar o balcão.');
+                                    } finally { setSalvandoBalcao(false); }
+                                }}
+                                className="h-4 w-4 mt-0.5 rounded text-primary focus:ring-primary"
+                            />
+                            <label htmlFor="chkBalcao" className={`text-sm ${podeLiberarBalcao ? 'text-gray-700' : 'text-gray-400'}`}>
+                                🏪 <b>Cliente Balcão</b> — compra e retira na empresa (vende sem exigir ponto GPS)
+                                {!podeLiberarBalcao && <span className="block text-[11px]">Só quem tem a permissão "Liberar Cliente Balcão" pode marcar.</span>}
+                                {gpsInfo?.balcao && gpsInfo?.balcaoPorNome && <span className="block text-[11px] text-gray-500">Marcado por {gpsInfo.balcaoPorNome}</span>}
+                            </label>
+                        </div>
                     </div>
                 </SectionCard>
+
+                <ModalPontoGps
+                    aberto={showMapaGps}
+                    onFechar={() => setShowMapaGps(false)}
+                    clienteUuid={uuid}
+                    clienteNome={formData.NomeFantasia || formData.Nome || ''}
+                    pontoAtual={formData.Ponto_GPS || null}
+                    sugestao={gpsInfo?.sugestao || null}
+                    origem="CADASTRO"
+                    onSalvo={(ponto, r) => {
+                        if (r?.pendente) {
+                            toast('Mudança registrada — espera aprovação da logística (o ponto antigo segue valendo).', { icon: '🕓' });
+                        } else if (ponto) {
+                            setFormData(f => ({ ...f, Ponto_GPS: ponto }));
+                            if (!r?.offline) toast.success('Ponto GPS salvo!');
+                        }
+                    }}
+                />
 
                 {/* ─── CARD: CANAIS E PAGAMENTO ─── */}
                 <SectionCard icon={CreditCard} title="Canais e Pagamento">

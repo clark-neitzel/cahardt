@@ -220,6 +220,11 @@ model Cliente {
   // Dados fiscais em tabela separada (a tabela `clientes` atingiu o limite de colunas do Postgres)
   fiscal ClienteFiscal?
 
+  // GPS: selo de confiança, cliente balcão, auditoria e sinais (tabelas laterais)
+  gps       ClienteGps?
+  gpsLogs   ClienteGpsLog[]
+  gpsSinais ClienteGpsSinal[]
+
   kitFestaCliente   KitFestaCliente?
   congeladosCliente CongeladosCliente?
 
@@ -247,6 +252,88 @@ model ClienteFiscal {
   cliente           Cliente @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
 
   @@map("cliente_fiscal")
+}
+
+// Dados de GPS do cliente em tabela lateral (a tabela `clientes` está no teto de
+// colunas do Postgres — mesma razão da ClienteFiscal). O ponto em si continua em
+// clientes.Ponto_GPS; aqui ficam selo de confiança, cliente balcão e foto da fachada.
+model ClienteGps {
+  clienteUuid String  @id @map("cliente_uuid")
+  cliente     Cliente @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
+
+  // Cliente que compra e retira na empresa — dispensa ponto de GPS no envio de pedido
+  balcao        Boolean   @default(false)
+  balcaoPorId   String?   @map("balcao_por_id")
+  balcaoPorNome String?   @map("balcao_por_nome")
+  balcaoEm      DateTime? @map("balcao_em")
+
+  // Selo calculado pelo agrupamento de sinais (entregas, atendimentos, "na porta")
+  selo     String?   // CONFIRMADO | SUSPEITO (null = sem sinais suficientes / aguardando)
+  seloEm   DateTime? @map("selo_em")
+  sugestao String?   // "lat,lng" — centro do agrupamento quando o cadastro diverge
+
+  fotoFachada String? @map("foto_fachada")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("clientes_gps")
+}
+
+// Auditoria de toda mudança de ponto GPS (quem, quando, de onde para onde e de
+// onde a pessoa estava ao mudar). Mudança grande de ponto CONFIRMADO entra como
+// PENDENTE e só vale após aprovação da logística.
+model ClienteGpsLog {
+  id          String  @id @default(uuid())
+  clienteUuid String  @map("cliente_uuid")
+  cliente     Cliente @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
+
+  tipo   String @default("MUDANCA") // MUDANCA | BALCAO_ON | BALCAO_OFF
+  status String @default("APLICADO") // APLICADO | PENDENTE | REJEITADO | DESFEITO
+
+  pontoAntigo String? @map("ponto_antigo")
+  pontoNovo   String? @map("ponto_novo")
+  distanciaM  Int?    @map("distancia_m") // distância movida (antigo → novo)
+
+  autorId      String? @map("autor_id")
+  autorNome    String? @map("autor_nome")
+  posicaoAutor String? @map("posicao_autor") // onde o autor estava ao mudar
+  origem       String? // CADASTRO | ROTA | MOTORISTA | SAUDE | PEDIDO
+
+  // Ponto a menos de 30 m de outro cliente: liberado por quem tem a permissão
+  autorizadoPorId   String? @map("autorizado_por_id")
+  autorizadoPorNome String? @map("autorizado_por_nome")
+
+  // Decisão de pendência (aprovar/rejeitar) e desfazer
+  decididoPorId   String?   @map("decidido_por_id")
+  decididoPorNome String?   @map("decidido_por_nome")
+  decididoEm      DateTime? @map("decidido_em")
+  motivo          String?   @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([clienteUuid])
+  @@index([status])
+  @@map("clientes_gps_log")
+}
+
+// Sinal de "estou na porta do cliente" confirmado pelo motorista quando a entrega
+// conclui longe do ponto cadastrado (com foto da fachada como prova). Entregas e
+// atendimentos NÃO ficam aqui — são lidos direto de pedidos/atendimentos.
+model ClienteGpsSinal {
+  id          String  @id @default(uuid())
+  clienteUuid String  @map("cliente_uuid")
+  cliente     Cliente @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
+
+  ponto       String // "lat,lng" onde o motorista confirmou estar
+  pedidoId    String? @map("pedido_id")
+  autorId     String? @map("autor_id")
+  autorNome   String? @map("autor_nome")
+  fotoFachada String? @map("foto_fachada")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([clienteUuid])
+  @@map("clientes_gps_sinais")
 }
 
 model Pedido {

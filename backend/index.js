@@ -149,6 +149,7 @@ app.use('/api/webhooks', focusNfeWebhookRoutes); // Focus NFe: webhook público 
 app.use('/api/notas-fiscais', authMiddleware, notasFiscaisRoutes); // NF-e emitida pelo app (Focus NFe)
 app.use('/api/produtos', authMiddleware, produtoRoutes);
 app.use('/api/clientes', authMiddleware, clienteRoutes);
+app.use('/api/gps-clientes', authMiddleware, require('./routes/gpsClientesRoutes')); // Ponto GPS confiável por cliente
 app.use('/api/vendedores', authMiddleware, vendedorRoutes);
 app.use('/api/config', authMiddleware, configRoutes);
 app.use('/api/tabela-precos', authMiddleware, tabelaPrecoRoutes);

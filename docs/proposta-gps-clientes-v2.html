@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proposta v2 — Ponto GPS confiável (para aprovação)</title>
+<style>
+  :root{
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --bg:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Manrope',-apple-system,'SF Pro Text',sans-serif;letter-spacing:-0.01em;background:var(--bg);color:var(--ink);font-feature-settings:"tnum";line-height:1.55}
+  .wrap{max-width:760px;margin:0 auto;padding:0 16px 60px}
+
+  .hero{background:var(--house);color:#fff;padding:36px 16px 44px;text-align:center}
+  .hero .chip{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#cde7dd;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:6px 14px;border-radius:999px;margin-bottom:14px}
+  .hero h1{font-size:26px;font-weight:800;line-height:1.25;max-width:580px;margin:0 auto 10px}
+  .hero p{color:#cde7dd;font-size:15px;max-width:540px;margin:0 auto}
+  .hero .pinicon{font-size:34px;display:block;margin-bottom:10px}
+
+  h2.sec{font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#5a6b64;margin:36px 0 14px;display:flex;align-items:center;gap:8px}
+  h2.sec::after{content:"";flex:1;height:1px;background:#ddd8ce}
+
+  .card{background:#fff;border:1px solid #e3ded4;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:18px;margin-bottom:14px}
+
+  /* entendi: você disse / eu entendi */
+  .ent{border-bottom:1px dashed #e8e3d9;padding:12px 0}
+  .ent:last-child{border-bottom:0}
+  .ent .vd{font-size:13px;color:#666;font-style:italic;margin-bottom:6px}
+  .ent .vd::before{content:"Você disse: ";font-style:normal;font-weight:800;color:#999;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+  .ent .ei{font-size:14px;display:flex;gap:8px}
+  .ent .ei .ok{flex:none;color:var(--primary);font-weight:800}
+
+  details.acc{background:#fff;border:1px solid #e3ded4;border-radius:14px;margin-bottom:12px;overflow:hidden}
+  details.acc summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:16px;font-weight:800;font-size:15px}
+  details.acc summary::-webkit-details-marker{display:none}
+  details.acc summary .num{flex:none;width:30px;height:30px;border-radius:999px;background:var(--mint);color:var(--primary-dark);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800}
+  details.acc summary .arrow{margin-left:auto;color:#999;transition:transform .2s}
+  details.acc[open] summary .arrow{transform:rotate(180deg)}
+  details.acc .body{padding:0 16px 18px;font-size:14px;color:#444}
+  details.acc .body p{margin-bottom:10px}
+  details.acc .body ul{margin:0 0 10px 18px}
+  details.acc .body li{margin-bottom:6px}
+  .tagauto{display:inline-block;background:var(--mint);color:var(--primary-dark);font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.06em}
+  .tagnew{display:inline-block;background:#f5ecd9;color:#8a6620;font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;text-transform:uppercase;letter-spacing:.06em}
+
+  .phone{background:#fff;border:1px solid #d9d3c7;border-radius:22px;box-shadow:0 8px 24px rgba(30,57,50,.10);overflow:hidden;max-width:390px;margin:0 auto}
+  .phone .pbar{background:var(--house);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px}
+  .phone .pbar .mod{background:var(--mint);border-radius:8px;padding:5px;font-size:14px;line-height:1}
+  .phone .pbar b{font-size:15px}
+  .pbody{padding:14px;background:#f7f5f0}
+
+  .app-card{background:#fff;border:1px solid #e5e0d5;border-radius:12px;padding:12px;margin-bottom:10px;position:relative}
+  .app-card .cab{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#6b7a72;margin-bottom:8px}
+
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;border-radius:999px;font-weight:700;font-size:14px;border:0;text-align:center}
+  .btn.pri{background:var(--primary);color:#fff}
+  .btn.sec{background:#fff;border:1.5px solid var(--primary);color:var(--primary)}
+  .btn.ghost{background:#fff;border:1.5px solid #d5d0c4;color:#777}
+  .btn.danger{background:#dc2626;color:#fff}
+  .btn + .btn{margin-top:8px}
+
+  .badge{display:inline-block;padding:3px 10px;font-size:11px;font-weight:700;border-radius:999px}
+  .b-green{background:#dcfce7;color:#166534}
+  .b-red{background:#fee2e2;color:#b91c1c}
+  .b-yellow{background:#fef9c3;color:#854d0e}
+  .b-gray{background:#f3f4f6;color:#374151}
+  .b-blue{background:#dbeafe;color:#1e40af}
+
+  .avisobox{display:flex;gap:10px;border-radius:10px;padding:10px 12px;font-size:12.5px;margin-top:10px;align-items:flex-start}
+  .avisobox .i{font-size:16px;line-height:1.2}
+  .av-red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .av-yellow{background:#fefce8;border:1px solid #fde68a;color:#854d0e}
+  .av-green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .av-blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+
+  .pinnum{position:absolute;z-index:5;width:20px;height:20px;border-radius:999px;background:var(--gold);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.35);border:2px solid #fff}
+  .legenda{max-width:390px;margin:12px auto 0;font-size:13px}
+  .legenda .li{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
+  .legenda .li .n{flex:none;width:20px;height:20px;border-radius:999px;background:var(--gold);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .legenda .li span{color:#444}
+  .legenda .li b{color:#111}
+
+  .trow{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #f0ece3;font-size:13px}
+  .trow:last-child{border-bottom:0}
+  .trow .nm{flex:1;min-width:0}
+  .trow .nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+  .trow .nm span{font-size:11.5px;color:#888}
+  .selo{font-size:16px;flex:none}
+
+  .tela{margin-bottom:34px}
+  .tela .tela-titulo{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .tela .tela-titulo .tnum{flex:none;width:28px;height:28px;border-radius:999px;background:var(--house);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+  .tela .tela-titulo b{font-size:16px}
+  .tela .tela-sub{font-size:13px;color:#666;margin-bottom:14px}
+
+  /* cluster viz */
+  .cluster{position:relative;height:210px;border-radius:12px;overflow:hidden;border:1px solid #dcd6c9;background:linear-gradient(#e8ecdf,#e8ecdf)}
+  .cluster .street-h{position:absolute;left:0;right:0;height:12px;background:#f8f6ef;border-top:1px solid #d8d2c4;border-bottom:1px solid #d8d2c4}
+  .cluster .street-v{position:absolute;top:0;bottom:0;width:12px;background:#f8f6ef;border-left:1px solid #d8d2c4;border-right:1px solid #d8d2c4}
+  .cluster .bloco{position:absolute;background:#dfe5d2;border-radius:3px}
+  .cluster .raio{position:absolute;width:110px;height:110px;border-radius:999px;border:2px dashed var(--primary);background:rgba(0,117,74,.07);transform:translate(-50%,-50%)}
+  .dotmark{position:absolute;transform:translate(-50%,-50%);font-size:13px;line-height:1;filter:drop-shadow(0 1px 1px rgba(0,0,0,.3))}
+  .pin2{position:absolute;transform:translate(-50%,-100%);font-size:24px;line-height:1;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+  .lblmap{position:absolute;font-size:9.5px;font-weight:800;background:#fff;border:1px solid #ddd;border-radius:999px;padding:2px 7px;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.1);transform:translate(-50%,0)}
+
+  .fluxo{display:flex;flex-direction:column;margin-top:6px}
+  .fstep{display:flex;gap:12px}
+  .fstep .rail{display:flex;flex-direction:column;align-items:center}
+  .fstep .dot{width:26px;height:26px;border-radius:999px;background:var(--primary);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+  .fstep .line{width:2px;flex:1;background:#cfe0d8;min-height:14px}
+  .fstep:last-child .line{display:none}
+  .fstep .txt{padding-bottom:16px;font-size:13.5px}
+  .fstep .txt b{display:block;font-size:14px}
+  .fstep .txt span{color:#555}
+
+  /* tabela de regras */
+  .regras{width:100%;border-collapse:collapse;font-size:13px}
+  .regras th{background:#f6f4ee;text-align:left;padding:9px 10px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#6b7a72;border-bottom:1px solid #e3ded4}
+  .regras td{padding:9px 10px;border-bottom:1px solid #f0ece3;vertical-align:top}
+  .regras tr:last-child td{border-bottom:0}
+  .tabwrap{overflow-x:auto}
+
+  /* quadro de aprovação */
+  .aprova{border:2px solid var(--primary);border-radius:14px;background:#fff;overflow:hidden;margin-bottom:14px}
+  .aprova .cabA{background:var(--primary);color:#fff;padding:12px 16px;font-weight:800;font-size:15px}
+  .aprova .item{display:flex;gap:12px;padding:13px 16px;border-bottom:1px solid #eee9df;align-items:flex-start}
+  .aprova .item:last-child{border-bottom:0}
+  .aprova .letra{flex:none;width:28px;height:28px;border-radius:8px;background:var(--house);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
+  .aprova .item b{display:block;font-size:14px}
+  .aprova .item span{font-size:12.5px;color:#666}
+
+  .footer{margin-top:44px;text-align:center;font-size:12px;color:#999}
+  @media(min-width:700px){ .hero h1{font-size:30px} }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="pinicon">📍</span>
+  <span class="chip">Proposta v2 · ajustada com suas respostas</span>
+  <h1>Ponto GPS confiável — versão para você aprovar</h1>
+  <p>Sem Google, sem CEP, sem confiar em uma entrega só: a certeza vem da repetição no mesmo lugar. Abaixo: o que entendi, o que mudou e as telas.</p>
+</div>
+
+<div class="wrap">
+
+  <h2 class="sec">O que eu entendi das suas respostas</h2>
+  <div class="card">
+    <div class="ent">
+      <div class="vd">"Não dá pra ter certeza que o motorista registrou no endereço certo… a não ser que tem vários pontos no mesmo lugar."</div>
+      <div class="ei"><span class="ok">✓</span><span><b>Uma entrega sozinha não prova nada.</b> A confirmação passa a exigir <b>repetição</b>: só quando várias marcações caem agrupadas no mesmo lugar é que aquele lugar vira o ponto de confiança. Nada de Google/geocodificação de endereço — endereço e CEP no Brasil não são confiáveis.</span></div>
+    </div>
+    <div class="ent">
+      <div class="vd">"O selo de confirmado deve vir no Caixa… se entregou fora do local, selo dizendo que foi fora — só um emoji para não ocupar lugar."</div>
+      <div class="ei"><span class="ok">✓</span><span>Na conferência do Caixa, cada entrega ganha <b>um emoji discreto</b>: 📍✅ entregue no ponto · 📍❗ entregue longe do ponto · 📍➖ sem GPS na hora. Tocar no emoji mostra a distância.</span></div>
+    </div>
+    <div class="ent">
+      <div class="vd">"Ponto muito perto só pode salvar com autorização de usuário autorizado em logística. Galeria existe, mas é raro."</div>
+      <div class="ei"><span class="ok">✓</span><span>Ponto a menos de ~30 m de outro cliente <b>não é mais só aviso: é trava</b>. Só salva com liberação de quem tem a permissão nova de logística (senha/aprovação na hora, igual ao "desconsiderar" da conferência de devoluções).</span></div>
+    </div>
+    <div class="ent">
+      <div class="vd">"Se as entregas estão acontecendo diferente do ponto cadastrado, avisa o VENDEDOR para corrigir."</div>
+      <div class="ei"><span class="ok">✓</span><span>A divergência não fica só numa tela do escritório: <b>o vendedor da carteira recebe o aviso</b> no app, com a lista dos clientes dele para corrigir (e o atalho do mapa).</span></div>
+    </div>
+    <div class="ent">
+      <div class="vd">"O mapa vai trazer o ponto atual dele na hora, certo?"</div>
+      <div class="ei"><span class="ok">✓</span><span><b>Sim.</b> Ao abrir o mapa, aparece a <b>bolinha azul com a posição do celular naquele momento</b> (o GPS do aparelho funciona até sem internet). O alfinete de edição começa no ponto já cadastrado do cliente — e se o cliente não tem ponto, começa na posição atual.</span></div>
+    </div>
+    <div class="ent">
+      <div class="vd">"A ideia 5 preciso saber mais detalhes."</div>
+      <div class="ei"><span class="ok">✓</span><span>Detalhei abaixo, com a tabela de regras (o que aplica na hora × o que precisa de aprovação) e a tela de aprovação da logística.</span></div>
+    </div>
+    <div class="ent">
+      <div class="vd">"Preciso liberar para quem pode vender sem exigir o ponto de GPS — cliente que vem comprar na empresa, ninguém foi atender ele."</div>
+      <div class="ei"><span class="ok">✓</span><span>Criado o <b>Cliente Balcão</b>: quem tem a permissão marca o cliente como "balcão" no cadastro — <b>ou coloca o ponto de GPS, ou marca balcão</b>. Cliente balcão vende sem exigência de GPS; se um dia pedir <b>entrega</b>, aí o ponto volta a ser exigido.</span></div>
+    </div>
+    <div class="ent">
+      <div class="vd">"Se ele estiver fora do ponto e disser que esse é o novo ponto, pede para bater a foto da fachada."</div>
+      <div class="ei"><span class="ok">✓</span><span>A foto deixou de ser opcional: ao responder <b>"Sim, estou na porta do cliente"</b> num lugar diferente do cadastro, o app <b>pede a foto da fachada</b> na hora. A foto fica no cadastro e o entregador novo vê na rota.</span></div>
+    </div>
+  </div>
+
+  <h2 class="sec">A ideia melhorada — confiança por repetição</h2>
+
+  <details class="acc" open>
+    <summary><span class="num">★</span> Como o sistema passa a ter certeza (sem Google, sem CEP) <span class="arrow">▾</span></summary>
+    <div class="body">
+      <p><span class="tagauto">Automático</span></p>
+      <p>Cada visita ao cliente deixa um <b>rastro de GPS</b> que o sistema já grava (ou passa a gravar). São 3 tipos de sinal:</p>
+      <ul>
+        <li>🚚 <b>Entrega concluída</b> pelo motorista (o app já grava a posição no checkout);</li>
+        <li>🧑‍💼 <b>Atendimento do vendedor</b> na rua (a tela de Rota já grava a posição do vendedor no atendimento);</li>
+        <li>👍 <b>Confirmação na porta</b> — a solução nova, explicada logo abaixo.</li>
+      </ul>
+      <p><b>A regra da certeza:</b> quando <b>3 ou mais sinais, de dias diferentes</b>, caem agrupados num raio de ~100 m, aquele centro vira o <b>ponto de confiança</b> do cliente:</p>
+      <ul>
+        <li>Se o ponto cadastrado está <b>dentro</b> do grupo → ganha selo 📍✅ <b>Confirmado</b>;</li>
+        <li>Se está <b>longe</b> do grupo → o cadastro está errado: avisa o vendedor e sugere o centro do grupo como ponto novo.</li>
+      </ul>
+      <p><b>Filtros anti-engano</b> (por isso uma entrega só não vale):</p>
+      <ul>
+        <li><b>Checkout em lote descartado:</b> se o motorista registrar várias entregas seguidas do mesmo lugar (ex.: estacionou e "baixou" 5 de uma vez, ou registrou tudo ao voltar pra empresa), aquelas posições quase idênticas em poucos minutos contam como <b>1 sinal só</b> — ou nenhum, se for dentro da empresa;</li>
+        <li><b>Sinal dentro do raio da empresa nunca conta;</b></li>
+        <li><b>Dias diferentes:</b> os 3 sinais precisam vir de pelo menos 2 dias distintos — repetição de verdade, não coincidência de um dia.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="acc" open>
+    <summary><span class="num">＋</span> Solução nova: "Confirmação na porta" (1 toque do motorista) <span class="arrow">▾</span></summary>
+    <div class="body">
+      <p><span class="tagnew">Proposta nova</span></p>
+      <p>O problema que você apontou: o motorista pode registrar a entrega <b>de outro lugar</b> (depois, no caminho, na empresa). Então, em vez de adivinhar, o app <b>pergunta</b> — uma pergunta de 1 toque, só quando importa:</p>
+      <ul>
+        <li>Ao concluir a entrega <b>perto do ponto cadastrado</b> → não pergunta nada (o sinal conta sozinho);</li>
+        <li>Ao concluir <b>longe do ponto</b> → aparece: <i>"Você está na porta do cliente agora?"</i> — <b>Sim</b> = sinal forte de que o ponto cadastrado está errado e o certo é ali · <b>Não</b> = a posição é descartada (ele só registrou depois), e o ponto do cliente não é tocado.</li>
+        <li>📸 <b>Respondeu "Sim"? O app pede a foto da fachada do cliente na hora</b> — é a prova de que ele está mesmo na porta, e não parado em outro lugar. Sem a foto, o "Sim" não vale como confirmação de ponto novo.</li>
+      </ul>
+      <p>É isso que separa "registrou de longe" de "o ponto está errado mesmo" — sem atrapalhar: quem registra na porta certa nunca vê pergunta nem foto.</p>
+      <p>A foto fica guardada no cadastro do cliente e aparece para o <b>entregador novo na rota</b>: ele reconhece a loja pela fachada mesmo que o alfinete fique 20 m fora. Sem internet, a foto fica no aparelho e sobe junto com a correção quando o sinal voltar.</p>
+    </div>
+  </details>
+
+  <details class="acc" open>
+    <summary><span class="num">🏪</span> Cliente Balcão — venda liberada sem ponto de GPS <span class="arrow">▾</span></summary>
+    <div class="body">
+      <p><span class="tagnew">Sua consideração</span></p>
+      <p>Cliente que vem comprar <b>na empresa</b> (ninguém foi até ele) não pode ficar travado por falta de GPS. A regra:</p>
+      <ul>
+        <li>No cadastro, quem tem a <b>permissão</b> escolhe um dos dois caminhos: <b>ou define o ponto de GPS, ou marca "Cliente Balcão"</b> — um dos dois é obrigatório para vender;</li>
+        <li>Cliente balcão aparece com a etiqueta 🏪 e <b>não exige GPS em nenhum pedido de retirada</b>;</li>
+        <li>Se um dia esse cliente pedir <b>entrega</b>, aí sim o pedido volta a exigir o ponto (não dá para entregar sem saber onde é);</li>
+        <li>Marcar/desmarcar balcão fica no <b>histórico</b> (quem e quando), igual às mudanças de ponto — para ninguém usar o balcão como jeitinho de pular o GPS de cliente de entrega.</li>
+      </ul>
+    </div>
+  </details>
+
+  <h2 class="sec">As telas (atualizadas)</h2>
+
+  <!-- TELA 1: cluster -->
+  <div class="tela">
+    <div class="tela-titulo"><span class="tnum">1</span><b>Como a repetição confirma o ponto</b></div>
+    <div class="tela-sub">O que o sistema enxerga por trás — você não precisa operar nada, é automático.</div>
+    <div class="phone">
+      <div class="pbar"><span class="mod">🩺</span><b>Padaria Central — sinais de GPS</b></div>
+      <div class="pbody">
+        <div class="app-card" style="padding:0;overflow:hidden">
+          <div class="cluster">
+            <div class="bloco" style="left:6%;top:8%;width:26%;height:28%"></div>
+            <div class="bloco" style="left:40%;top:8%;width:26%;height:28%"></div>
+            <div class="bloco" style="left:74%;top:8%;width:20%;height:28%"></div>
+            <div class="bloco" style="left:6%;top:48%;width:26%;height:40%"></div>
+            <div class="bloco" style="left:40%;top:48%;width:26%;height:40%"></div>
+            <div class="bloco" style="left:74%;top:48%;width:20%;height:40%"></div>
+            <div class="street-h" style="top:38%"></div>
+            <div class="street-v" style="left:34%"></div>
+            <div class="street-v" style="left:68%"></div>
+            <div class="raio" style="left:52%;top:66%"></div>
+            <div class="dotmark" style="left:49%;top:60%">🚚</div>
+            <div class="dotmark" style="left:56%;top:68%">🚚</div>
+            <div class="dotmark" style="left:51%;top:72%">🧑‍💼</div>
+            <div class="dotmark" style="left:55%;top:63%">👍</div>
+            <div class="pin2" style="left:16%;top:22%">📍</div>
+            <div class="lblmap" style="left:16%;top:23%">ponto cadastrado (errado)</div>
+            <div class="lblmap" style="left:52%;top:88%">4 sinais · 3 dias · aqui é o cliente</div>
+            <div class="pinnum" style="left:8px;top:8px">1</div>
+            <div class="pinnum" style="right:8px;bottom:8px">2</div>
+          </div>
+        </div>
+        <div class="avisobox av-yellow" style="position:relative"><div class="i">⚠️</div><div>O ponto cadastrado está a <b>350 m</b> do grupo de sinais. Aviso enviado ao vendedor <b>Carlos</b> para corrigir.<div class="pinnum" style="right:-6px;top:-6px">3</div></div></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="n">1</span><span><b>Alfinete</b> = o ponto que está no cadastro hoje.</span></div>
+      <div class="li"><span class="n">2</span><span><b>Círculo verde</b> = os sinais agrupados (🚚 entregas, 🧑‍💼 atendimento do vendedor, 👍 confirmação na porta) em dias diferentes. 3+ sinais juntos = aqui é o cliente de verdade.</span></div>
+      <div class="li"><span class="n">3</span><span>Cadastro longe do grupo → <b>o vendedor da carteira recebe o aviso</b> para corrigir (Tela 4).</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: caixa -->
+  <div class="tela">
+    <div class="tela-titulo"><span class="tnum">2</span><b>Selo no Caixa — só um emoji</b></div>
+    <div class="tela-sub">Na conferência do Caixa, cada entrega mostra onde foi concluída — sem ocupar espaço.</div>
+    <div class="phone">
+      <div class="pbar"><span class="mod">💰</span><b>Caixa — Conferência do dia</b></div>
+      <div class="pbody">
+        <div class="app-card">
+          <div class="cab">Entregas do motorista João</div>
+          <div class="trow" style="position:relative"><span class="selo">📍✅</span><div class="nm"><b>Padaria Central</b><span>Pedido #1842 · R$ 630,00</span></div><span class="badge b-green">Entregue</span><div class="pinnum" style="left:-18px;top:10px">1</div></div>
+          <div class="trow" style="position:relative"><span class="selo">📍❗</span><div class="nm"><b>Bar da Esquina</b><span>Pedido #1843 · R$ 210,00</span></div><span class="badge b-green">Entregue</span><div class="pinnum" style="left:-18px;top:10px">2</div></div>
+          <div class="trow"><span class="selo">📍➖</span><div class="nm"><b>Mercado Bom Preço</b><span>Pedido #1844 · R$ 480,00</span></div><span class="badge b-green">Entregue</span></div>
+        </div>
+        <div class="avisobox av-red" style="position:relative"><div class="i">📍❗</div><div><b>Bar da Esquina:</b> entrega concluída a <b>2,4 km</b> do ponto cadastrado (toque no emoji para ver no mapa).<div class="pinnum" style="right:-6px;top:-6px">3</div></div></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="n">1</span><span><b>📍✅</b> = concluída no ponto do cliente. <b>📍➖</b> = o aparelho não deu GPS na hora (sem punição, só informação).</span></div>
+      <div class="li"><span class="n">2</span><span><b>📍❗</b> = concluída longe do ponto. Um emoji só, como você pediu — nada de coluna nova.</span></div>
+      <div class="li"><span class="n">3</span><span><b>Tocar no emoji</b> abre o detalhe: distância e mapa. É aqui que o escritório enxerga, na baixa, se a entrega bateu com o lugar.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3: autorização logística -->
+  <div class="tela">
+    <div class="tela-titulo"><span class="tnum">3</span><b>Ponto perto de outro cliente — só com autorização</b></div>
+    <div class="tela-sub">Trava de verdade: os casos de galeria são poucos, então a exceção passa pela logística.</div>
+    <div class="phone">
+      <div class="pbar"><span class="mod">📍</span><b>Salvar ponto — Doceria da Ana</b></div>
+      <div class="pbody">
+        <div class="avisobox av-red" style="margin-top:0;position:relative"><div class="i">🚫</div><div><b>Este ponto fica a 18 m do cliente "Café Galeria".</b> Para salvar tão perto de outro cliente é preciso autorização da logística.<div class="pinnum" style="right:-6px;top:-6px">1</div></div></div>
+        <div class="app-card" style="margin-top:12px">
+          <div class="cab">Autorização (logística)</div>
+          <div style="font-size:13px;color:#555;margin-bottom:8px">Peça para um usuário com a permissão <b>"Autorizar ponto GPS próximo"</b> liberar:</div>
+          <div style="display:flex;gap:8px;position:relative">
+            <input style="flex:1;border:1px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:14px" placeholder="Senha do autorizador" disabled>
+            <div class="pinnum" style="right:-6px;top:-6px">2</div>
+          </div>
+        </div>
+        <button class="btn pri">✓ Liberar e salvar (são vizinhos de verdade)</button>
+        <button class="btn ghost" style="position:relative">Voltar e mover o alfinete<span class="pinnum" style="right:10px;top:50%;transform:translateY(-50%)">3</span></button>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="n">1</span><span><b>Menos de ~30 m de outro cliente = trava.</b> Ponto idêntico ou dentro da empresa continua bloqueado sem exceção.</span></div>
+      <div class="li"><span class="n">2</span><span><b>Permissão nova</b> no painel de permissões: só quem a logística definir consegue liberar (mesmo esquema de senha do "desconsiderar" da conferência de devoluções).</span></div>
+      <div class="li"><span class="n">3</span><span>Quem não tem autorização só tem um caminho: <b>mover o alfinete</b> para o lugar certo.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4: aviso vendedor -->
+  <div class="tela">
+    <div class="tela-titulo"><span class="tnum">4</span><b>Aviso ao vendedor — "corrija o ponto"</b></div>
+    <div class="tela-sub">Quando as entregas acontecem longe do ponto cadastrado, quem corrige é o vendedor da carteira.</div>
+    <div class="phone">
+      <div class="pbar"><span class="mod">🛒</span><b>Início — Carlos (vendedor)</b></div>
+      <div class="pbody">
+        <div class="avisobox av-yellow" style="margin-top:0;position:relative"><div class="i">📍</div><div><b>2 clientes seus estão com o ponto GPS errado</b> — as entregas estão acontecendo em outro lugar.<div class="pinnum" style="right:-6px;top:-6px">1</div></div></div>
+        <div class="app-card" style="margin-top:12px">
+          <div class="cab">Corrigir ponto GPS</div>
+          <div class="trow" style="position:relative"><div class="nm"><b>Padaria Central</b><span>4 sinais a 350 m do cadastro</span></div><button class="btn sec" style="width:auto;padding:7px 14px;font-size:12px">Corrigir</button><div class="pinnum" style="right:-18px;top:10px">2</div></div>
+          <div class="trow"><div class="nm"><b>Bar da Esquina</b><span>3 sinais a 2,4 km do cadastro</span></div><button class="btn sec" style="width:auto;padding:7px 14px;font-size:12px">Corrigir</button></div>
+        </div>
+        <div class="avisobox av-green" style="position:relative"><div class="i">🤖</div><div>Ao tocar em "Corrigir", o mapa já abre com o <b>alfinete sugerido no centro dos sinais</b> — normalmente é só conferir e salvar.<div class="pinnum" style="right:-6px;top:-6px">3</div></div></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="n">1</span><span>O aviso aparece <b>na tela inicial do vendedor</b> (e some quando ele corrigir). O escritório continua vendo tudo na tela de Saúde dos Pontos.</span></div>
+      <div class="li"><span class="n">2</span><span>Cada cliente mostra <b>quantos sinais</b> e <b>a que distância</b> do cadastro — o vendedor entende o porquê.</span></div>
+      <div class="li"><span class="n">3</span><span><b>Correção quase pronta:</b> o alfinete já vem no lugar apontado pela repetição das entregas; o vendedor confirma.</span></div>
+    </div>
+  </div>
+
+  <h2 class="sec">Ideia 5 em detalhes — mudança auditada</h2>
+
+  <div class="card">
+    <p style="font-size:14px;color:#444;margin-bottom:12px">Toda alteração de ponto fica gravada para sempre: <b>quem mudou, quando, de onde para onde (com a distância movida)</b> — e também <b>onde a pessoa estava</b> na hora em que mudou (se mudou o ponto estando dentro da empresa, isso fica visível). E o que acontece com cada tipo de mudança:</p>
+    <div class="tabwrap">
+      <table class="regras">
+        <tr><th>Situação</th><th>O que acontece</th></tr>
+        <tr><td><b>Cliente sem ponto</b> ganha o primeiro ponto</td><td>Aplica na hora ✅ (fica no histórico)</td></tr>
+        <tr><td><b>Ajuste pequeno</b> — até ~100 m (acertar o alfinete no telhado)</td><td>Aplica na hora ✅ (fica no histórico)</td></tr>
+        <tr><td>Mover ponto <b>ainda não confirmado</b> para longe (&gt; 100 m)</td><td>Aplica na hora ✅, mas marca o ponto como "aguardando confirmação" — a repetição das próximas entregas valida</td></tr>
+        <tr><td>Mover ponto <b>já confirmado 📍✅</b> para longe (&gt; 300 m)</td><td><b>Não aplica direto:</b> vira pendência para a logística aprovar (tela abaixo). O ponto antigo continua valendo até aprovar</td></tr>
+        <tr><td>Ponto <b>idêntico</b> ao de outro cliente / <b>dentro da empresa</b></td><td>Bloqueado sempre 🚫 (sem exceção)</td></tr>
+        <tr><td>Ponto a <b>menos de ~30 m</b> de outro cliente</td><td>Só com autorização da logística (Tela 3)</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo"><span class="tnum">5</span><b>Aprovações da logística + histórico</b></div>
+    <div class="tela-sub">Onde a logística decide as mudanças grandes e enxerga quem mexeu em quê.</div>
+    <div class="phone">
+      <div class="pbar"><span class="mod">🚚</span><b>Logística — Pontos GPS</b></div>
+      <div class="pbody">
+        <div class="app-card">
+          <div class="cab">Pendentes de aprovação (1)</div>
+          <div style="font-size:13.5px;position:relative"><b>Padaria Central</b> — ponto confirmado seria movido <b>350 m</b><div style="font-size:12px;color:#888;margin-top:2px">Pedido por: Carlos (vendedor) · ontem 16:42 · ele estava <b>na porta do cliente</b> ao pedir</div><div class="pinnum" style="right:-6px;top:-6px">1</div></div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn pri" style="flex:1;padding:9px;font-size:13px">✓ Aprovar</button>
+            <button class="btn ghost" style="flex:1;padding:9px;font-size:13px">Ver no mapa</button>
+            <button class="btn danger" style="flex:1;padding:9px;font-size:13px">Rejeitar</button>
+          </div>
+        </div>
+        <div class="app-card">
+          <div class="cab">Histórico de alterações</div>
+          <div class="trow" style="position:relative"><div class="nm"><b>Bar da Esquina</b><span>hoje 09:10 · Carlos moveu 2,4 km · estava na porta do cliente</span></div><span class="badge b-green">Aplicado</span><div class="pinnum" style="right:-18px;top:10px">2</div></div>
+          <div class="trow"><div class="nm"><b>Lanchonete do Zé</b><span>12/07 14:55 · Pedro moveu 1,1 km · estava NA EMPRESA</span></div><span class="badge b-red">Suspeito</span></div>
+          <div class="trow"><div class="nm"><b>Doceria da Ana</b><span>10/07 11:20 · ponto liberado perto de "Café Galeria" por Márcia</span></div><span class="badge b-blue">Autorizado</span></div>
+        </div>
+        <div class="avisobox av-blue" style="position:relative"><div class="i">↩️</div><div>Qualquer alteração pode ser <b>desfeita com um clique</b> — o ponto volta ao valor anterior (que nunca se perde).<div class="pinnum" style="right:-6px;top:-6px">3</div></div></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="n">1</span><span>A pendência mostra <b>onde a pessoa estava ao pedir a mudança</b> — pedido feito da porta do cliente merece confiança; feito de dentro da empresa acende alerta.</span></div>
+      <div class="li"><span class="n">2</span><span><b>Histórico completo</b>: quem, quando, distância movida e de onde mexeu. É o fim do "alguém mudou e ninguém sabe quem".</span></div>
+      <div class="li"><span class="n">3</span><span><b>Desfazer</b>: errou a aprovação? Um clique volta o ponto antigo.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo"><span class="tnum">6</span><b>Cadastro — GPS ou Balcão (um dos dois)</b></div>
+    <div class="tela-sub">Como fica o cadastro do cliente que compra na empresa.</div>
+    <div class="phone">
+      <div class="pbar"><span class="mod">👥</span><b>Cadastro — Doces & Cia (novo)</b></div>
+      <div class="pbody">
+        <div class="app-card">
+          <div class="cab">Localização do cliente <span style="color:#b91c1c">*</span></div>
+          <button class="btn sec" style="position:relative">📍 Definir ponto no mapa<span class="pinnum" style="right:10px;top:50%;transform:translateY(-50%)">1</span></button>
+          <div style="text-align:center;font-size:11px;color:#999;font-weight:800;margin:8px 0">— OU —</div>
+          <button class="btn ghost" style="position:relative;border-color:var(--gold);color:#8a6620">🏪 Marcar como Cliente Balcão<span class="pinnum" style="right:10px;top:50%;transform:translateY(-50%)">2</span></button>
+          <div class="avisobox av-yellow"><div class="i">🔒</div><div>Marcar balcão exige a permissão <b>"Liberar cliente balcão"</b> — e fica registrado quem marcou.</div></div>
+        </div>
+        <div class="app-card">
+          <div class="cab">Como fica na lista</div>
+          <div class="trow" style="position:relative"><div class="nm"><b>Doces & Cia</b><span>compra e retira na empresa</span></div><span class="badge b-gray">🏪 Balcão</span><div class="pinnum" style="right:-18px;top:10px">3</div></div>
+          <div class="trow"><div class="nm"><b>Padaria Central</b><span>entrega às terças</span></div><span class="badge b-green">📍✅ Confirmado</span></div>
+        </div>
+        <div class="avisobox av-blue" style="position:relative"><div class="i">🚚</div><div>Se o cliente balcão pedir <b>entrega</b> um dia, o ENVIAR volta a exigir o ponto de GPS.<div class="pinnum" style="right:-6px;top:-6px">4</div></div></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="n">1</span><span><b>Caminho normal</b>: definir o ponto no mapa (Tela 1 da v1).</span></div>
+      <div class="li"><span class="n">2</span><span><b>Caminho balcão</b>: só para quem tem a permissão — cliente compra na empresa e não precisa de GPS.</span></div>
+      <div class="li"><span class="n">3</span><span>A etiqueta 🏪 deixa claro para todo mundo por que aquele cliente não tem ponto.</span></div>
+      <div class="li"><span class="n">4</span><span><b>Proteção</b>: balcão não vira jeitinho — pedido com entrega exige o ponto de qualquer forma.</span></div>
+    </div>
+  </div>
+
+  <h2 class="sec">Quadro de aprovação — me responda pelas letras</h2>
+
+  <div class="aprova">
+    <div class="cabA">Para aprovar, é só responder: "aprovado tudo" ou apontar as letras que quer mudar</div>
+    <div class="item"><span class="letra">A</span><div><b>Confirmação por repetição (3+ sinais, dias diferentes, raio ~100 m)</b><span>Sem Google/CEP. Checkout em lote e posição na empresa são descartados.</span></div></div>
+    <div class="item"><span class="letra">B</span><div><b>Pergunta "está na porta do cliente?" quando a entrega conclui longe do ponto</b><span>1 toque, só quando diverge. Respondeu "Sim" → o app pede a foto da fachada (obrigatória para o ponto novo valer).</span></div></div>
+    <div class="item"><span class="letra">C</span><div><b>Emoji no Caixa: 📍✅ no ponto · 📍❗ fora · 📍➖ sem GPS</b><span>Na conferência do dia; tocar mostra a distância e o mapa.</span></div></div>
+    <div class="item"><span class="letra">D</span><div><b>Ponto a menos de 30 m de outro cliente: trava com autorização da logística</b><span>Permissão nova no painel; idêntico ou dentro da empresa = bloqueado sempre.</span></div></div>
+    <div class="item"><span class="letra">E</span><div><b>Aviso ao vendedor da carteira quando as entregas divergem do cadastro</b><span>Com o alfinete já sugerido no lugar certo para ele só confirmar.</span></div></div>
+    <div class="item"><span class="letra">F</span><div><b>Regras da mudança auditada (tabela acima) + tela de aprovações da logística</b><span>Mudança grande de ponto confirmado só com aprovação; histórico com desfazer.</span></div></div>
+    <div class="item"><span class="letra">G</span><div><b>Mapa com alfinete + bolinha azul da posição atual + bloqueio de pedido sem GPS no ENVIAR</b><span>Como na proposta anterior (telas 1 e 2 da v1), que você já aprovou.</span></div></div>
+    <div class="item"><span class="letra">H</span><div><b>Cliente Balcão: ou GPS, ou balcão — com permissão</b><span>Cliente que compra na empresa vende sem GPS; pedido com entrega volta a exigir o ponto; marcar balcão fica no histórico.</span></div></div>
+  </div>
+
+  <div class="avisobox av-yellow"><div class="i">📌</div><div><b>Três decisões que preciso de você:</b> (1) na trava de 30 m, quem são os usuários da logística que podem autorizar? (2) quem recebe a permissão de marcar <b>Cliente Balcão</b>? (3) o bloqueio de pedido sem GPS deve valer já de início ou só depois da faxina dos pontos (recomendo depois, para não travar cliente bom)?</div></div>
+
+  <div class="footer">Proposta v2 — Ponto GPS por cliente · CA-Hardt · nada implementado ainda; página para decisão.</div>
+</div>
+
+</body>
+</html>

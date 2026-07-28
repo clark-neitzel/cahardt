@@ -42,6 +42,8 @@ const DEFAULT_PERMISSIONS = {
     Pode_Ajustar_Entregas: false,
     Pode_Cobrar_Titulo_Rota: false,
     Pode_Editar_GPS: false,
+    Pode_Autorizar_Ponto_Gps: false,
+    Pode_Liberar_Cliente_Balcao: false,
     // Módulo Caixa Diário e Despesas
     Pode_Acessar_Caixa: false,
     Pode_Editar_Caixa: false,
@@ -279,6 +281,8 @@ const BOOL_INDEX = [
     { sec: 'logistica', path: 'Pode_Editar_Embarque', nome: 'Editar Carga', desc: 'Alterar data e motorista de cargas já criadas', kw: 'editar carga data motorista' },
     { sec: 'logistica', path: 'Pode_Ajustar_Entregas', nome: 'Administrador Financeiro de Entrega', desc: 'Desmanchar/alterar devoluções ou pagamentos do motorista', kw: 'desmanchar pagamento motorista corrigir ajustar', danger: true },
     { sec: 'logistica', path: 'Pode_Cobrar_Titulo_Rota', nome: 'Cobrar Títulos em Rota', desc: 'Aba Cobranças no roteiro: cobra títulos em aberto na rua (a baixa sai só no Caixa)', kw: 'cobranca titulo rota rua motorista vendedor cobrar parcela' },
+    { sec: 'logistica', path: 'Pode_Autorizar_Ponto_Gps', nome: 'Autorizar Ponto GPS (Logística)', desc: 'Libera ponto perto de outro cliente, aprova mudança de ponto confirmado, desfaz mudanças e liga o bloqueio de pedido sem GPS', kw: 'gps ponto autorizar aprovar logistica pendencia mapa', danger: true },
+    { sec: 'logistica', path: 'Pode_Liberar_Cliente_Balcao', nome: 'Liberar Cliente Balcão', desc: 'Marca cliente que compra e retira na empresa (vende sem exigir ponto GPS)', kw: 'balcao retira empresa gps sem ponto cliente' },
     // Financeiro
     { sec: 'financeiro', path: 'Pode_Acessar_Contas_Receber', nome: 'Contas a Receber', desc: 'Parcelas em aberto, boletos, inadimplência', kw: 'receber boleto parcela menu inadimplencia' },
     { sec: 'financeiro', path: 'Pode_Baixar_Contas_Receber', nome: 'Dar Baixa em Parcelas', desc: 'Registrar pagamentos (inclusive parciais) e estornar baixas', kw: 'baixa quitar pagamento estorno receber' },

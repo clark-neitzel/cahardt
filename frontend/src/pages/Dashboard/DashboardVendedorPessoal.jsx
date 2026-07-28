@@ -25,6 +25,86 @@ const saudacao = () => {
 
 const ordinal = (n) => (n != null ? `${n}º` : '—');
 
+// Aviso: clientes da carteira com ponto GPS divergente das entregas reais.
+// O vendedor corrige pelo mapa — o alfinete já abre no lugar sugerido.
+const AvisoGpsDivergente = () => {
+    const [lista, setLista] = useState([]);
+    const [corrigindo, setCorrigindo] = useState(null); // cliente em correção
+    useEffect(() => {
+        let vivo = true;
+        import('../../services/gpsClientesService').then(({ default: svc }) =>
+            svc.minhasDivergencias().then(l => { if (vivo) setLista(l || []); }).catch(() => { })
+        );
+        return () => { vivo = false; };
+    }, []);
+    if (!lista.length) return null;
+    const fmtD = (m) => m == null ? '' : (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`);
+    return (
+        <>
+            <div className="bg-white rounded-xl border border-amber-300 shadow-sm overflow-hidden">
+                <div className="bg-amber-50 px-4 py-3 border-b border-amber-200 flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-amber-600" />
+                    <p className="text-sm font-bold text-amber-800">
+                        {lista.length === 1 ? '1 cliente seu está' : `${lista.length} clientes seus estão`} com o ponto GPS errado
+                    </p>
+                </div>
+                <div className="divide-y divide-gray-100">
+                    {lista.map(c => (
+                        <div key={c.UUID} className="px-4 py-2.5 flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                                <p className="text-sm font-semibold text-gray-900 truncate">{c.nome}</p>
+                                <p className="text-xs text-gray-500">
+                                    {c.distanciaM != null
+                                        ? `entregas acontecendo a ${fmtD(c.distanciaM)} do cadastro`
+                                        : 'entregas acontecendo em lugar diferente do cadastro'}
+                                </p>
+                            </div>
+                            <button onClick={() => setCorrigindo(c)}
+                                className="px-3 py-1.5 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold shrink-0">
+                                Corrigir
+                            </button>
+                        </div>
+                    ))}
+                </div>
+            </div>
+            {corrigindo && (
+                <ModalGpsLazy
+                    cliente={corrigindo}
+                    onFechar={(corrigiu) => {
+                        if (corrigiu) setLista(l => l.filter(x => x.UUID !== corrigindo.UUID));
+                        setCorrigindo(null);
+                    }}
+                />
+            )}
+        </>
+    );
+};
+
+// O mapa (Leaflet) só carrega quando o vendedor toca em "Corrigir"
+const ModalGpsLazy = ({ cliente, onFechar }) => {
+    const [Comp, setComp] = useState(null);
+    useEffect(() => {
+        import('../../components/ModalPontoGps').then(m => setComp(() => m.default));
+    }, []);
+    if (!Comp) return null;
+    return (
+        <Comp
+            aberto
+            onFechar={() => onFechar(false)}
+            clienteUuid={cliente.UUID}
+            clienteNome={cliente.nome}
+            pontoAtual={cliente.ponto}
+            sugestao={cliente.sugestao}
+            origem="SAUDE"
+            onSalvo={(ponto, r) => {
+                if (r?.pendente) toast('Mudança registrada — espera aprovação da logística.', { icon: '🕓' });
+                else if (ponto) toast.success('Ponto corrigido — obrigado!');
+                onFechar(!!ponto || r?.pendente);
+            }}
+        />
+    );
+};
+
 /**
  * Dashboard pessoal do vendedor: minha meta, meu dia, meu ranking e
  * quem visitar primeiro (recompra crítica + retornos prometidos + cobrança).
@@ -124,6 +204,9 @@ const DashboardVendedorPessoal = ({ vendedorInicial = '' }) => {
             </div>
 
             <div className="px-3 md:px-0 -mt-10 space-y-3 pb-10">
+                {/* Pontos GPS da carteira que precisam de correção */}
+                {!vendedorSelecionado && <AvisoGpsDivergente />}
+
                 {/* Minha meta do mês */}
                 {metas?.temMeta ? (
                     <Card icon={Target} titulo={`Minha meta de ${dayjs().format('MMMM')}`} direita={`${cal.diasTrabalhadosMesAteHoje || 0} de ${cal.totalDiasMes || 0} dias`}>

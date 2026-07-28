@@ -231,3 +231,7 @@ Desde 23/07/2026 o acerto financeiro da devolução acontece **nas parcelas do p
 | `frontend/src/services/pedidoService.js` | Chamadas de API para pedidos |
 | `frontend/src/services/amostraService.js` | Chamadas de API para amostras |
 | `backend/src/routes/pedidos.js` | Rotas do backend para pedidos |
+
+## Bloqueio de pedido sem ponto GPS (novo — 07/2026)
+
+Quando o interruptor "Exigir ponto GPS para ENVIAR pedido" está LIGADO (tela Saúde dos Pontos GPS), pedido de cliente **sem ponto GPS e que não é Cliente Balcão** não pode ser ENVIADO — aparece um aviso com o botão **"Definir ponto agora"**, que abre o mapa; depois de salvar o ponto, o pedido é enviado automaticamente. Salvar o pedido como ABERTO continua permitido (igual ao bloqueio de estoque). Cliente Balcão (compra e retira na empresa) é dispensado da exigência.

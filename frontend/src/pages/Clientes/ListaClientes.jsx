@@ -246,6 +246,15 @@ const ListaClientes = () => {
                     </button>
                     {podeCadastrar && (
                         <button
+                            onClick={() => navigate('/clientes/saude-gps')}
+                            title="Saúde dos Pontos GPS"
+                            className="shrink-0 px-3 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center gap-1.5 min-h-[38px]"
+                        >
+                            📍<span className="hidden lg:inline">Saúde GPS</span>
+                        </button>
+                    )}
+                    {podeCadastrar && (
+                        <button
                             onClick={() => navigate('/clientes/novo')}
                             className="shrink-0 px-3 py-2 md:px-4 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm flex items-center gap-1.5 min-h-[38px]"
                         >

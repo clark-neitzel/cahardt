@@ -4,10 +4,10 @@ import {
     Calendar, DollarSign, User, FileText, Save,
     Loader, CheckCircle, ExternalLink, AlertCircle, Lock, ClipboardList
 } from 'lucide-react';
-import clienteService from '../../services/clienteService';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import HistoricoModal from './HistoricoModal';
+import ModalPontoGps from '../../components/ModalPontoGps';
 import { formatarDoc, normalizarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
 
 const formatDoc = (doc) => {
@@ -45,6 +45,7 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
     const [salvandoGps, setSalvandoGps] = useState(false);
     const [gpsSalvo, setGpsSalvo] = useState(false);
     const [showHistorico, setShowHistorico] = useState(false);
+    const [showMapa, setShowMapa] = useState(false);
 
     const capturarGpsAtual = () => {
         if (!navigator.geolocation) {
@@ -67,19 +68,17 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
         );
     };
 
-    const salvarGps = async () => {
+    // Lead ainda usa o fluxo simples (vira cliente depois, quando o ponto passa
+    // pela validação). Cliente usa SEMPRE o mapa (ModalPontoGps) — validado.
+    const salvarGpsLead = async () => {
         if (!gpsInput.trim()) return;
         try {
             setSalvandoGps(true);
-            if (isLead) {
-                const leadService = (await import('../../services/leadService')).default;
-                await leadService.atualizar(cliente.id, { pontoGps: gpsInput.trim() });
-            } else {
-                await clienteService.atualizar(cliente.UUID, { Ponto_GPS: gpsInput.trim() });
-            }
+            const leadService = (await import('../../services/leadService')).default;
+            await leadService.atualizar(cliente.id, { pontoGps: gpsInput.trim() });
             setGpsSalvo(true);
             toast.success('Localização salva com sucesso!');
-            if (onAtualizado) onAtualizado({ ...cliente, Ponto_GPS: gpsInput.trim(), pontoGps: gpsInput.trim() });
+            if (onAtualizado) onAtualizado({ ...cliente, pontoGps: gpsInput.trim() });
             setTimeout(() => setGpsSalvo(false), 3000);
         } catch {
             toast.error('Erro ao salvar localização.');
@@ -204,9 +203,32 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                     <div className="px-4 pt-3 pb-4 border-t border-gray-100">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">📍 Localização GPS</p>
 
-                        {podeEditarGPS ? (
+                        {podeEditarGPS && !isLead ? (
                             <div className="space-y-2">
-                                {/* Input de coordenadas */}
+                                {gpsInput ? (
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-[12px] font-mono text-gray-600 flex-1">{gpsInput}</p>
+                                        <button
+                                            onClick={abrirMapa}
+                                            className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-gray-600 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                                        >
+                                            <ExternalLink className="h-3 w-3" /> Google Maps
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <p className="text-[12px] text-gray-500 italic">Sem ponto GPS cadastrado</p>
+                                )}
+                                <button
+                                    onClick={() => setShowMapa(true)}
+                                    className="w-full py-2.5 text-[13px] font-bold rounded-full flex items-center justify-center gap-2 bg-primary hover:bg-primaryDark text-white transition-colors min-h-[44px]"
+                                >
+                                    <MapPin className="h-4 w-4" />
+                                    {gpsInput ? 'Ajustar ponto no mapa' : 'Definir ponto no mapa'}
+                                </button>
+                            </div>
+                        ) : podeEditarGPS && isLead ? (
+                            <div className="space-y-2">
+                                {/* Input de coordenadas (lead: fluxo simples, valida ao virar cliente) */}
                                 <div className="relative">
                                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                     <input
@@ -242,7 +264,7 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
 
                                 {/* Salvar GPS */}
                                 <button
-                                    onClick={salvarGps}
+                                    onClick={salvarGpsLead}
                                     disabled={salvandoGps || !gpsInput.trim()}
                                     className={`w-full py-2.5 text-[13px] font-bold rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 ${gpsSalvo ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                                 >
@@ -308,6 +330,29 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
 
             {showHistorico && (
                 <HistoricoModal cliente={cliente} onClose={() => setShowHistorico(false)} />
+            )}
+
+            {!isLead && (
+                <ModalPontoGps
+                    aberto={showMapa}
+                    onFechar={() => setShowMapa(false)}
+                    clienteUuid={cliente.UUID}
+                    clienteNome={fantasia || nome}
+                    pontoAtual={gpsInput || null}
+                    origem="ROTA"
+                    onSalvo={(ponto, r) => {
+                        if (r?.pendente) {
+                            toast('Mudança registrada — espera aprovação da logística.', { icon: '🕓' });
+                        } else if (r?.offline) {
+                            toast('Sem internet: o ponto será enviado quando o sinal voltar.', { icon: '📵' });
+                            setGpsInput(ponto);
+                        } else if (ponto) {
+                            setGpsInput(ponto);
+                            toast.success('Ponto GPS salvo!');
+                            if (onAtualizado) onAtualizado({ ...cliente, Ponto_GPS: ponto });
+                        }
+                    }}
+                />
             )}
         </div>
     );

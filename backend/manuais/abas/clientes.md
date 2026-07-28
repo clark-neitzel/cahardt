@@ -181,3 +181,12 @@ Exibe os leads que foram associados a este cliente — geralmente leads converti
 | `frontend/src/services/clienteService.js` | Chamadas de API para clientes |
 | `frontend/src/services/clienteInsightService.js` | Chamadas de API para insights do cliente |
 | `backend/src/routes/clientes.js` | Rotas do backend |
+
+## Ponto GPS e Cliente Balcão (novo — 07/2026)
+
+- O ponto GPS do cliente agora é definido **num mapa com alfinete** (botão "Mapa" no card Logística do cadastro, ou "Definir ponto no mapa" no popup da Rota) — arrasta-se o mapa até a porta do cliente e salva. A bolinha azul mostra onde o celular está agora.
+- **Validações automáticas ao salvar:** ponto idêntico ao de outro cliente ou dentro da empresa é bloqueado; ponto a menos de 30 m de outro cliente exige autorização por senha de quem tem a permissão "Autorizar Ponto GPS (Logística)"; mover um ponto confirmado (📍✅) para longe vira pendência de aprovação.
+- **Selo de confiança** no cadastro: 📍✅ confirmado (entregas reais acontecem ali) ou 📍⚠️ suspeito (entregas acontecem longe — o mapa abre já com a sugestão de correção).
+- **Cliente Balcão** (checkbox no cadastro, permissão "Liberar Cliente Balcão"): cliente que compra e retira na empresa — dispensado de ponto GPS. No cadastro novo: ou define o ponto no mapa, ou marca balcão.
+- Sem internet, a correção de ponto fica guardada no aparelho e é enviada sozinha quando o sinal volta.
+- Visão geral e faxina dos pontos: tela **Saúde dos Pontos GPS** (`/clientes/saude-gps`).

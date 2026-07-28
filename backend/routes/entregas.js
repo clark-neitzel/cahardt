@@ -360,7 +360,10 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
 
         const pedido = await prisma.pedido.findUnique({
             where: { id },
-            include: { embarque: true, itens: true }
+            include: {
+                embarque: true, itens: true,
+                cliente: { select: { UUID: true, Ponto_GPS: true, gps: { select: { balcao: true } } } }
+            }
         });
 
         if (!pedido) return res.status(404).json({ error: 'Pedido não localizado.' });
@@ -559,7 +562,31 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
             }
         }, { timeout: 20000, maxWait: 10000 });
 
-        res.json({ message: 'Entrega Finalizada e Registrada com Sucesso!' });
+        // Ponto GPS do cliente: se a entrega concluiu LONGE do ponto cadastrado (ou o
+        // cliente nem tem ponto), o app pergunta ao motorista se ele está na porta —
+        // resposta "sim" (com foto da fachada) vira sinal de correção do cadastro.
+        let gpsInfo = null;
+        try {
+            const gpsClientesService = require('../services/gpsClientesService');
+            if (['ENTREGUE', 'ENTREGUE_PARCIAL'].includes(statusEntrega) && !pedido.cliente?.gps?.balcao) {
+                const selo = gpsClientesService.seloEntrega(gpsEntrega, pedido.cliente?.Ponto_GPS);
+                gpsInfo = {
+                    clienteUuid: pedido.cliente?.UUID || null,
+                    status: selo.status,
+                    distanciaM: selo.distanciaM,
+                    perguntarNaPorta: ['FORA', 'SEM_PONTO'].includes(selo.status) && !!gpsEntrega
+                };
+                // Reavaliar o selo de confiança em background
+                if (gpsEntrega && pedido.cliente?.UUID) {
+                    gpsClientesService.reavaliarCliente(pedido.cliente.UUID)
+                        .catch(err => console.error('[GpsClientes] reavaliar pós-entrega:', err.message));
+                }
+            }
+        } catch (gpsErr) {
+            console.error('[GpsClientes] selo pós-entrega (entrega já registrada):', gpsErr.message);
+        }
+
+        res.json({ message: 'Entrega Finalizada e Registrada com Sucesso!', gps: gpsInfo });
     } catch (error) {
         console.error('Erro na submissão de baixa logística:', error);
         res.status(500).json({ error: 'Erro crítico ao processar o fechamento de caixa do motorista.' });

@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
     ArrowLeft, Save, User, ChevronDown, ChevronUp, Calendar,
     FileText, AlertCircle, X, CheckCircle, Minus, Plus, Clock,
-    ShoppingBag, Search, Trash2, Package, Tag, Phone, Mic, MicOff
+    ShoppingBag, Search, Trash2, Package, Tag, Phone, Mic, MicOff, MapPin
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clienteService from '../../services/clienteService';
@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import ClientePopup from '../Rota/ClientePopup';
 import AlertaGpsFaltante from '../../components/AlertaGpsFaltante';
 import ModalErroEstoque from '../../components/ModalErroEstoque';
+import ModalPontoGps from '../../components/ModalPontoGps';
 import { somAviso } from '../../utils/sons';
 import { normalizarDoc } from '../../utils/documento'; // busca por CPF/CNPJ (inclui alfanumérico)
 
@@ -183,6 +184,8 @@ const NovoPedido = () => {
     const [showConfirmacaoPedido, setShowConfirmacaoPedido] = useState(false);
     // Bloqueio de venda sem estoque (por usuário): popup de erro + avisos por item
     const [erroEstoqueMsg, setErroEstoqueMsg] = useState(null);
+    const [gpsBloqueio, setGpsBloqueio] = useState(null);       // { clienteUuid, mensagem, statusEnvio }
+    const [gpsMapaAberto, setGpsMapaAberto] = useState(false);  // mapa "Definir ponto agora"
     const qtdOriginalRef = useRef(new Map());   // edição: qtd já reservada pelo próprio pedido
     const dataEntregaOriginalRef = useRef(null); // edição: manter a data antiga é permitido
     const avisadosEstoqueRef = useRef(new Set()); // produtos já avisados (evita toast repetido)
@@ -985,6 +988,13 @@ const NovoPedido = () => {
             // Bloqueio de estoque vindo do servidor: popup do sistema com som de erro
             if (error.response?.status === 403 && msg.startsWith('Estoque insuficiente')) {
                 setErroEstoqueMsg(msg);
+            } else if (error.response?.status === 403 && error.response?.data?.codigo === 'SEM_GPS') {
+                // Cliente sem ponto GPS: popup com atalho "Definir ponto agora"
+                setGpsBloqueio({
+                    clienteUuid: error.response.data.clienteId || clienteId,
+                    mensagem: msg,
+                    statusEnvio
+                });
             } else {
                 toast.error(msg, { duration: 6000, style: { maxWidth: "600px" } });
             }
@@ -2256,6 +2266,59 @@ const NovoPedido = () => {
                     onClose={() => setErroEstoqueMsg(null)}
                 />
             )}
+
+            {/* Bloqueio do servidor: cliente sem ponto GPS não envia (resolve na hora pelo mapa) */}
+            {gpsBloqueio && !gpsMapaAberto && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                        <div className="bg-red-600 px-5 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white/20 rounded-full p-2">
+                                    <MapPin className="h-6 w-6 text-white" />
+                                </div>
+                                <h2 className="text-white font-bold text-lg leading-tight">Cliente sem ponto GPS</h2>
+                            </div>
+                            <button onClick={() => setGpsBloqueio(null)} className="text-white/80 hover:text-white p-1">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="px-5 py-4">
+                            <p className="text-sm text-gray-700 leading-relaxed">{gpsBloqueio.mensagem}</p>
+                        </div>
+                        <div className="px-5 py-3 bg-gray-50 border-t flex flex-col md:flex-row gap-2 md:justify-end">
+                            <button onClick={() => setGpsBloqueio(null)}
+                                className="px-5 py-2 bg-white border border-gray-300 text-gray-600 text-sm font-medium rounded-full">
+                                Fechar
+                            </button>
+                            <button onClick={() => setGpsMapaAberto(true)}
+                                className="px-5 py-2 bg-primary hover:bg-primaryDark text-white text-sm font-semibold rounded-full shadow-sm flex items-center justify-center gap-2">
+                                <MapPin className="h-4 w-4" /> Definir ponto agora
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <ModalPontoGps
+                aberto={gpsMapaAberto}
+                onFechar={() => setGpsMapaAberto(false)}
+                clienteUuid={gpsBloqueio?.clienteUuid || null}
+                clienteNome={clienteSelecionado?.NomeFantasia || clienteSelecionado?.Nome || ''}
+                pontoAtual={clienteSelecionado?.Ponto_GPS || null}
+                origem="PEDIDO"
+                onSalvo={(ponto, r) => {
+                    const statusRetry = gpsBloqueio?.statusEnvio || 'ENVIAR';
+                    setGpsMapaAberto(false);
+                    setGpsBloqueio(null);
+                    if (ponto && !r?.offline && !r?.pendente) {
+                        if (clienteSelecionado) clienteSelecionado.Ponto_GPS = ponto;
+                        toast.success('Ponto GPS salvo! Enviando o pedido…');
+                        setTimeout(() => handleSalvar(statusRetry), 400);
+                    } else if (r?.offline) {
+                        toast('Sem internet: o ponto será enviado quando o sinal voltar. Tente enviar o pedido novamente mais tarde.', { icon: '📵' });
+                    }
+                }}
+            />
 
             {/* Popup de info do cliente (read-only) */}
             {showClientePopup && clienteSelecionado && (

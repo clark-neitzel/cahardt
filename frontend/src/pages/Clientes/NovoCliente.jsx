@@ -5,6 +5,7 @@ import vendedorService from '../../services/vendedorService';
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, UserPlus, Search, Building, MapPin, Mail, Save, X, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
+import ModalPontoGps from '../../components/ModalPontoGps';
 import { mascaraDoc, normalizarDoc, validarDoc } from '../../utils/documento';
 
 const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
@@ -58,6 +59,11 @@ const NovoCliente = () => {
     const [consultando, setConsultando] = useState(false);
     const [consulta, setConsulta] = useState(null); // resultado da busca automática
     const [salvando, setSalvando] = useState(false);
+    // Localização: ponto GPS no mapa OU cliente balcão (um dos dois)
+    const [pontoGps, setPontoGps] = useState('');
+    const [clienteBalcao, setClienteBalcao] = useState(false);
+    const [showMapaGps, setShowMapaGps] = useState(false);
+    const podeLiberarBalcao = !!(user?.permissoes?.admin || user?.permissoes?.Pode_Liberar_Cliente_Balcao);
 
     useEffect(() => {
         vendedorService.listarAtivos().then(setVendedores).catch(() => setVendedores([]));
@@ -135,7 +141,9 @@ const NovoCliente = () => {
                 perfil,
                 Documento: docNorm,
                 Inscricao_Estadual: ie,
-                idVendedor: idVendedor || undefined
+                idVendedor: idVendedor || undefined,
+                Ponto_GPS: pontoGps || undefined,
+                clienteBalcao: clienteBalcao || undefined
             });
             if (perfil === 'FORNECEDOR') {
                 alert('Fornecedor cadastrado com sucesso! Ele já aparece no Contas a Pagar e nas Notas de Entrada.');
@@ -358,6 +366,45 @@ const NovoCliente = () => {
                     </p>
                 </SectionCard>
 
+                {/* ─── LOCALIZAÇÃO: ponto GPS OU cliente balcão ─── */}
+                {perfil !== 'FORNECEDOR' && (
+                    <SectionCard icon={MapPin} title="Localização do cliente">
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <input type="text" readOnly
+                                    className="block w-full border border-gray-200 rounded-lg p-2.5 bg-gray-50 text-gray-700 font-mono text-sm"
+                                    placeholder="Sem ponto definido"
+                                    value={clienteBalcao ? '' : pontoGps}
+                                    disabled={clienteBalcao}
+                                />
+                                <button type="button" onClick={() => setShowMapaGps(true)} disabled={clienteBalcao}
+                                    className="px-4 py-2.5 bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm whitespace-nowrap flex items-center gap-1.5 disabled:opacity-40">
+                                    <MapPin className="h-4 w-4" /> Definir no mapa
+                                </button>
+                            </div>
+                            <div className="text-center text-[11px] font-bold text-gray-400 uppercase">— ou —</div>
+                            <div className="flex items-start gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="chkBalcaoNovo"
+                                    checked={clienteBalcao}
+                                    disabled={!podeLiberarBalcao}
+                                    onChange={(e) => { setClienteBalcao(e.target.checked); if (e.target.checked) setPontoGps(''); }}
+                                    className="h-4 w-4 mt-0.5 rounded text-primary focus:ring-primary"
+                                />
+                                <label htmlFor="chkBalcaoNovo" className={`text-sm ${podeLiberarBalcao ? 'text-gray-700' : 'text-gray-400'}`}>
+                                    🏪 <b>Cliente Balcão</b> — compra e retira na empresa (vende sem exigir ponto GPS)
+                                    {!podeLiberarBalcao && <span className="block text-[11px]">Só quem tem a permissão "Liberar Cliente Balcão" pode marcar.</span>}
+                                </label>
+                            </div>
+                            <p className="text-xs text-amber-600 flex items-start gap-1.5">
+                                <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                                Sem ponto GPS (e sem ser balcão) o cliente não conseguirá receber pedidos quando o bloqueio de envio estiver ligado.
+                            </p>
+                        </div>
+                    </SectionCard>
+                )}
+
                 {/* ─── OBSERVAÇÕES ─── */}
                 <SectionCard icon={Building} title="Observações">
                     <textarea rows={3} className={`${inputCls} resize-none`} placeholder="Observações sobre o cliente..."
@@ -377,6 +424,15 @@ const NovoCliente = () => {
                     {salvando ? 'Salvando...' : (perfil === 'FORNECEDOR' ? 'Cadastrar Fornecedor' : perfil === 'AMBOS' ? 'Cadastrar Cliente + Fornecedor' : 'Cadastrar Cliente')}
                 </button>
             </div>
+
+            <ModalPontoGps
+                aberto={showMapaGps}
+                onFechar={() => setShowMapaGps(false)}
+                clienteNome={form.NomeFantasia || form.Nome || 'Novo cliente'}
+                pontoAtual={pontoGps || null}
+                origem="CADASTRO"
+                onEscolher={(ponto) => setPontoGps(ponto)}
+            />
         </div>
     );
 };

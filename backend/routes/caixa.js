@@ -257,7 +257,7 @@ router.get('/resumo', async (req, res) => {
                 embarque: { responsavelId: targetVendedor }
             },
             include: {
-                cliente: { select: { NomeFantasia: true, Nome: true } },
+                cliente: { select: { NomeFantasia: true, Nome: true, Ponto_GPS: true, gps: { select: { balcao: true } } } },
                 vendedor: { select: { nome: true } },
                 embarque: { select: { numero: true } },
                 itens: { include: { produto: { select: { nome: true, unidade: true } } } },
@@ -365,10 +365,16 @@ router.get('/resumo', async (req, res) => {
             // Buscar conferência
             const conferencia = caixa.entregasConferidas.find(c => c.pedidoId === e.id);
 
+            // Selo GPS: onde a entrega foi concluída em relação ao ponto do cliente
+            // (📍✅ no ponto · 📍❗ fora · 📍➖ sem GPS; balcão não mostra selo)
+            const gpsClientesService = require('../services/gpsClientesService');
+            const seloGps = e.cliente?.gps?.balcao ? null : gpsClientesService.seloEntrega(e.gpsEntrega, e.cliente?.Ponto_GPS);
+
             return {
                 pedidoId: e.id,
                 numero: e.numero,
                 especial: e.especial || false,
+                seloGps,
                 clienteNome: e.cliente?.NomeFantasia || e.cliente?.Nome || 'N/A',
                 vendedorNome: e.vendedor?.nome,
                 embarqueNumero: e.embarque?.numero,

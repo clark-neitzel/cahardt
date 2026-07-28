@@ -17,6 +17,32 @@ import CobrancasRotaCard from './CobrancasRotaCard';
 
 const SESSION_KEY = '@CAHardt:CaixaFiltros';
 
+// Selo de GPS da entrega: só um emoji ao lado do cliente (📍✅ concluída no ponto ·
+// 📍❗ concluída longe do ponto cadastrado · 📍➖ sem GPS na hora · 📍❓ cliente sem
+// ponto). Tocar mostra o detalhe com a distância.
+const fmtDistancia = (m) => m == null ? '' : (m >= 1000 ? `${(m / 1000).toFixed(1)} km` : `${m} m`);
+const SeloGps = ({ selo }) => {
+    if (!selo?.status) return null;
+    const mapa = {
+        NO_PONTO: { emoji: '📍✅', texto: `Entrega concluída no ponto do cliente${selo.distanciaM != null ? ` (a ${fmtDistancia(selo.distanciaM)} do cadastro)` : ''}.` },
+        FORA: { emoji: '📍❗', texto: `Atenção: entrega concluída a ${fmtDistancia(selo.distanciaM)} do ponto cadastrado do cliente.` },
+        SEM_GPS: { emoji: '📍➖', texto: 'O aparelho do motorista não informou GPS ao concluir esta entrega.' },
+        SEM_PONTO: { emoji: '📍❓', texto: 'Este cliente ainda não tem ponto GPS cadastrado.' },
+    };
+    const info = mapa[selo.status];
+    if (!info) return null;
+    return (
+        <button
+            type="button"
+            onClick={() => toast(info.texto, { duration: 5000, icon: info.emoji.slice(0, 2) })}
+            title={info.texto}
+            className="text-[13px] leading-none shrink-0"
+        >
+            {info.emoji}
+        </button>
+    );
+};
+
 const STATUS_BADGES = {
     ABERTO: { label: 'Aberto', class: 'bg-green-100 text-green-800' },
     FECHADO: { label: 'Fechado', class: 'bg-yellow-100 text-yellow-800' },
@@ -660,6 +686,7 @@ const CaixaDiarioPage = () => {
                                                     <td className="py-2 px-2 text-gray-500 whitespace-nowrap">{e.numero}</td>
                                                     <td className="py-2 px-2 font-medium text-gray-900 min-w-0">
                                                         <div className="flex flex-wrap items-center gap-1">
+                                                            <SeloGps selo={e.seloGps} />
                                                             <span className="truncate max-w-[180px] lg:max-w-[280px]" title={e.clienteNome}>{e.clienteNome}</span>
                                                             {e.especial && <span className="text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESP.</span>}
                                                             {e.quitado === 'QUITADO' && <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">QUIT.</span>}
@@ -724,6 +751,7 @@ const CaixaDiarioPage = () => {
                                                 <div className="min-w-0 flex-1">
                                                     <div className="flex items-center gap-1 text-sm">
                                                         <span className="text-gray-400 font-mono">#{e.numero}</span>
+                                                        <SeloGps selo={e.seloGps} />
                                                         <span className="font-medium text-gray-900 truncate" title={e.clienteNome}>{e.clienteNome}</span>
                                                     </div>
                                                     <p className="text-xs text-gray-500 mt-0.5 truncate">{e.condicaoPagamento}</p>

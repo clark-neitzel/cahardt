@@ -9,12 +9,14 @@ import { useAuth } from '../../../contexts/AuthContext';
 import AlertaGpsFaltante from '../../../components/AlertaGpsFaltante';
 import ClientePopup from '../../Rota/ClientePopup';
 import PixAsaasModal from './PixAsaasModal';
+import NaPortaGpsModal from './NaPortaGpsModal';
 
 const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     const { user } = useAuth();
     const [step, setStep] = useState(1); // 1 = Status Físico, 2 = Devoluções (Se Parcial), 3 = Caixa (Dinheiro), 4 = GPS e Conclusão
     const [statusFinal, setStatusFinal] = useState(''); // ENTREGUE, ENTREGUE_PARCIAL, DEVOLVIDO
     const [alertaGpsDismissed, setAlertaGpsDismissed] = useState(false);
+    const [naPortaInfo, setNaPortaInfo] = useState(null); // pergunta "está na porta?" pós-conclusão
     const [showClientePopupGps, setShowClientePopupGps] = useState(false);
 
     // Carrinho Reverso
@@ -427,7 +429,14 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
             }
 
             // Manda pro Cloud
-            await entregasService.concluirEntrega(pedido.id, payload);
+            const respConcluir = await entregasService.concluirEntrega(pedido.id, payload);
+
+            // Entrega concluída longe do ponto do cliente (ou cliente sem ponto):
+            // pergunta se o motorista está na porta — resposta corrige o cadastro.
+            if (respConcluir?.gps?.perguntarNaPorta && respConcluir?.gps?.clienteUuid) {
+                setNaPortaInfo({ ...respConcluir.gps, ponto: gpsCoords });
+                return; // onSuccess sai quando o modal da pergunta fechar
+            }
 
             // Aciona o painel anterior p/ sumir
             onSuccess();
@@ -444,6 +453,17 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
 
     return (
         <>
+        {naPortaInfo && (
+            <NaPortaGpsModal
+                clienteUuid={naPortaInfo.clienteUuid}
+                clienteNome={pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'o cliente'}
+                distanciaM={naPortaInfo.distanciaM}
+                status={naPortaInfo.status}
+                ponto={naPortaInfo.ponto}
+                pedidoId={pedido.id}
+                onFechar={() => { setNaPortaInfo(null); onSuccess(); }}
+            />
+        )}
         {!pedido.cliente?.Ponto_GPS && !alertaGpsDismissed && (
             <AlertaGpsFaltante
                 nomeCliente={pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}

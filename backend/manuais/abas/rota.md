@@ -193,3 +193,7 @@ Antes de registrar um atendimento ou criar pedido, o sistema pode exibir um popu
 | `frontend/src/services/leadService.js` | API de leads |
 | `frontend/src/services/atendimentoService.js` | API de atendimentos |
 | `frontend/src/services/roteirizacaoService.js` | API de roteirização (ETA) |
+
+## Ponto GPS pelo mapa (novo — 07/2026)
+
+No popup do cliente, o botão de GPS mudou: em vez de gravar "onde estou", abre um **mapa com alfinete** — arrasta-se o mapa até a porta do cliente e salva (dá para marcar o lugar certo mesmo estando longe dele). O botão "Usar minha posição atual" continua existindo dentro do mapa. Valem as travas: ponto repetido/na empresa não salva; perto de outro cliente só com autorização da logística. Para **leads** o fluxo antigo (capturar posição atual) continua — a validação acontece quando o lead vira cliente.

@@ -180,3 +180,12 @@ Títulos em aberto para cobrar na rua. Mostra:
 | `frontend/src/services/entregasService.js` | Chamadas de API para entregas do motorista |
 | `frontend/src/services/asaasService.js` | Chamadas de API da integração Asaas (PIX) |
 | `backend/services/asaasService.js` | Integração com a API do Asaas (cliente, cobrança, webhook) |
+
+## Pergunta "Você está na porta do cliente?" (novo — 07/2026)
+
+Ao concluir uma entrega **longe do ponto GPS cadastrado** do cliente (ou de cliente sem ponto), o app faz uma pergunta de 1 toque: *"Você está na porta do cliente agora?"*
+
+- **Não** → nada acontece (você só registrou a entrega de outro lugar).
+- **Sim** → o app pede uma **foto da fachada** do cliente (obrigatória). A confirmação vira um sinal de correção do cadastro; se o cliente não tinha ponto nenhum, o lugar já vira o primeiro ponto dele. A foto fica no cadastro para o próximo entregador reconhecer a loja.
+
+Quem conclui a entrega no lugar certo nunca vê essa pergunta. Sem internet, a confirmação fica guardada e sobe quando o sinal voltar.

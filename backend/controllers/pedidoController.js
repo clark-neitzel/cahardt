@@ -405,6 +405,14 @@ const pedidoController = {
                 if (erroEstoque) return res.status(403).json({ error: erroEstoque });
             }
 
+            // Cliente precisa de ponto GPS (ou ser balcão) para ENVIAR — interruptor
+            // na tela Saúde dos Pontos; salvar como ABERTO continua permitido.
+            if (dadosPedido.statusEnvio === 'ENVIAR' && dadosPedido.clienteId) {
+                const gpsClientesService = require('../services/gpsClientesService');
+                const erroGps = await gpsClientesService.validarPedidoEnviar(dadosPedido.clienteId);
+                if (erroGps) return res.status(403).json({ error: erroGps, codigo: 'SEM_GPS', clienteId: dadosPedido.clienteId });
+            }
+
             const novoPedido = await pedidoService.criar(dadosPedido);
 
             // Notificação de WhatsApp ao cliente (não bloqueia a resposta)
@@ -476,6 +484,14 @@ const pedidoController = {
             if (req.user?.permissoes?.Bloqueio_Venda_Sem_Estoque && dadosPedido.itens && statusFinal === 'ENVIAR') {
                 const erroEstoque = await validarBloqueioEstoque(dadosPedido.itens, id);
                 if (erroEstoque) return res.status(403).json({ error: erroEstoque });
+            }
+
+            // Cliente precisa de ponto GPS (ou ser balcão) para ENVIAR
+            if (statusFinal === 'ENVIAR') {
+                const clienteAlvo = dadosPedido.clienteId || pedidoAtual.clienteId;
+                const gpsClientesService = require('../services/gpsClientesService');
+                const erroGps = await gpsClientesService.validarPedidoEnviar(clienteAlvo);
+                if (erroGps) return res.status(403).json({ error: erroGps, codigo: 'SEM_GPS', clienteId: clienteAlvo });
             }
 
             const pedidoAtualizado = await pedidoService.editar(id, dadosPedido);

@@ -319,6 +319,29 @@ const clienteController = {
             const criaCliente = perfil === 'CLIENTE' || perfil === 'AMBOS';
             const criaFornecedor = perfil === 'FORNECEDOR' || perfil === 'AMBOS';
 
+            // Ponto GPS no cadastro novo: mesma validação do módulo de GPS
+            // (duplicado/empresa bloqueiam; perto de outro cliente exige autorização)
+            let pontoGpsNovo = null;
+            if (criaCliente && b.Ponto_GPS) {
+                const gpsClientesService = require('../services/gpsClientesService');
+                const problema = await gpsClientesService.validarPonto(b.Ponto_GPS, null);
+                if (problema && problema.codigo !== 'PROXIMO') {
+                    return res.status(422).json({ error: problema.mensagem, codigo: problema.codigo });
+                }
+                if (problema?.codigo === 'PROXIMO') {
+                    if (!b.gpsAutorizacao) {
+                        return res.status(422).json({ error: problema.mensagem, codigo: 'PROXIMO', clienteConflito: problema.clienteConflito });
+                    }
+                    try {
+                        await gpsClientesService.validarAutorizador(b.gpsAutorizacao, 'Pode_Autorizar_Ponto_Gps');
+                    } catch (autErr) {
+                        return res.status(autErr.status || 403).json({ error: autErr.message });
+                    }
+                }
+                pontoGpsNovo = String(b.Ponto_GPS).trim();
+            }
+            const marcarBalcao = criaCliente && b.clienteBalcao === true && (perms.admin || perms.Pode_Liberar_Cliente_Balcao);
+
             // Duplicidade — nunca deixar dois cadastros com o mesmo documento
             if (criaCliente) {
                 const jaExiste = await prisma.cliente.findUnique({ where: { Documento: docNorm } });
@@ -388,9 +411,29 @@ const clienteController = {
                     Perfil_Filtro: 'PADRAO',
                     Data_Criacao: new Date(),
                     idVendedor: b.idVendedor || req.user.id || null,
-                    Observacoes_Gerais: String(b.Observacoes_Gerais || '').trim() || null
+                    Observacoes_Gerais: String(b.Observacoes_Gerais || '').trim() || null,
+                    Ponto_GPS: pontoGpsNovo
                 }
             });
+
+            // Auditoria do GPS / cliente balcão (best-effort — o cadastro já foi criado)
+            try {
+                const autorGpsNome = (await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { nome: true } }))?.nome || null;
+                if (pontoGpsNovo) {
+                    await prisma.clienteGpsLog.create({
+                        data: {
+                            clienteUuid: cliente.UUID, tipo: 'MUDANCA', status: 'APLICADO',
+                            pontoAntigo: null, pontoNovo: pontoGpsNovo,
+                            autorId: req.user.id, autorNome: autorGpsNome, origem: 'CADASTRO'
+                        }
+                    });
+                }
+                if (marcarBalcao) {
+                    const gpsClientesService = require('../services/gpsClientesService');
+                    await gpsClientesService.setBalcao(cliente.UUID, true, { id: req.user.id, nome: autorGpsNome });
+                    cliente.clienteBalcao = true;
+                }
+            } catch (gpsLogErr) { console.error('Cadastro criado; falhou log de GPS/balcão:', gpsLogErr.message); }
 
             if (ieNorm) {
                 await prisma.clienteFiscal.create({
@@ -526,12 +569,53 @@ const clienteController = {
                 End_CEP: End_CEP !== undefined ? (soDigitos(End_CEP) || null) : undefined
             } : {};
 
+            // Ponto GPS nunca é gravado direto: passa pela validação (duplicado/empresa/
+            // próximo) e auditoria do módulo de GPS. Mudança grande de ponto confirmado
+            // vira pendência para a logística — os demais campos salvam normalmente.
+            let gpsResultado = null;
+            if (podeEditarGPS && Ponto_GPS !== undefined) {
+                const atualGpsCli = await prisma.cliente.findUnique({ where: { UUID: uuid }, select: { Ponto_GPS: true } });
+                const mudou = String(Ponto_GPS || '').trim() !== String(atualGpsCli?.Ponto_GPS || '').trim();
+                if (mudou && Ponto_GPS) {
+                    const gpsClientesService = require('../services/gpsClientesService');
+                    const autorGps = await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { nome: true } });
+                    try {
+                        gpsResultado = await gpsClientesService.registrarMudanca({
+                            clienteUuid: uuid,
+                            pontoNovo: Ponto_GPS,
+                            autor: { id: req.user.id, nome: autorGps?.nome || null },
+                            origem: req.body.gpsOrigem || 'CADASTRO',
+                            posicaoAutor: req.body.gpsPosicaoAutor || null,
+                            autorizacao: req.body.gpsAutorizacao || null
+                        });
+                    } catch (gpsErr) {
+                        return res.status(gpsErr.status || 422).json({
+                            error: gpsErr.message,
+                            codigo: gpsErr.codigo || undefined,
+                            clienteConflito: gpsErr.clienteConflito || undefined
+                        });
+                    }
+                } else if (mudou && !Ponto_GPS) {
+                    // Limpar o ponto: permitido, mas fica no histórico
+                    await prisma.cliente.update({ where: { UUID: uuid }, data: { Ponto_GPS: null } });
+                    try {
+                        const autorGps = await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { nome: true } });
+                        await prisma.clienteGpsLog.create({
+                            data: {
+                                clienteUuid: uuid, tipo: 'MUDANCA', status: 'APLICADO',
+                                pontoAntigo: atualGpsCli?.Ponto_GPS || null, pontoNovo: null,
+                                autorId: req.user.id, autorNome: autorGps?.nome || null, origem: 'CADASTRO'
+                            }
+                        });
+                    } catch (logErr) { console.error('Log de limpeza de GPS (já aplicada):', logErr.message); }
+                }
+            }
+
             const cliente = await prisma.cliente.update({
                 where: { UUID: uuid },
                 data: {
                     Dia_de_entrega,
                     Dia_de_venda,
-                    Ponto_GPS: podeEditarGPS ? Ponto_GPS : undefined,
                     Observacoes_Gerais,
                     idVendedor: idVendedor === "" ? null : idVendedor,
                     Formas_Atendimento,
@@ -596,6 +680,13 @@ const clienteController = {
                     console.error('Falha ao atualizar espelho de fornecedor (cliente já salvo):', fornErr);
                 }
                 cliente.tambemFornecedor = !!tambemFornecedor;
+            }
+
+            // GPS que virou pendência: informar (o cadastro salvou, mas o ponto espera aprovação)
+            if (gpsResultado?.pendente) {
+                cliente.gpsPendente = true;
+            } else if (gpsResultado?.aplicado) {
+                cliente.Ponto_GPS = await prisma.cliente.findUnique({ where: { UUID: uuid }, select: { Ponto_GPS: true } }).then(c => c?.Ponto_GPS || null);
             }
 
             res.json(cliente);

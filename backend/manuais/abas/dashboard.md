@@ -107,3 +107,7 @@ No topo há um seletor de **categoria de produto** (padrão: Produto Acabado). E
 | `frontend/src/pages/Dashboard/DashboardEntregador.jsx` | Dashboard do entregador |
 | `backend/routes/dashboards.js` | API `/api/dashboards/geral/*`, `/api/dashboards/vendedor`, `/api/dashboards/entregador` |
 | `backend/routes/metaRoutes.js` | API `/metas/dashboard` (painel de metas do vendedor) |
+
+## Aviso de ponto GPS divergente (vendedor — novo 07/2026)
+
+Na tela inicial do vendedor, quando clientes da carteira dele estão com o ponto GPS **divergente das entregas reais** (selo suspeito), aparece um cartão âmbar listando esses clientes com o botão **"Corrigir"** — o mapa abre com o alfinete já no lugar sugerido pelas entregas; normalmente é só conferir e salvar. O aviso some quando tudo é corrigido.

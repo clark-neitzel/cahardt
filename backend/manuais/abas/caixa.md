@@ -221,3 +221,14 @@ Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de 
 | `frontend/src/pages/Veiculos/VeiculoFicha.jsx` | Ficha do veículo embutida no caixa |
 | `frontend/src/services/caixaService.js` | Chamadas de API do caixa |
 | `backend/src/routes/caixa.js` | Rotas do backend |
+
+## Selo GPS das entregas (novo — 07/2026)
+
+Cada entrega listada na conferência do dia mostra um emoji ao lado do nome do cliente, dizendo ONDE o motorista concluiu a entrega em relação ao ponto GPS cadastrado:
+
+- **📍✅** concluída no ponto do cliente;
+- **📍❗** concluída LONGE do ponto cadastrado (tocar no emoji mostra a distância);
+- **📍➖** o aparelho não informou GPS na conclusão;
+- **📍❓** cliente sem ponto GPS cadastrado.
+
+Cliente balcão não mostra selo. Tocar no emoji abre o detalhe com a distância. Entregas concluídas no ponto vão, com a repetição, gerando o selo "ponto confirmado" do cliente automaticamente.

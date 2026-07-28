@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Ponto GPS confiável — Hardt App</title>
+<meta property="og:title" content="📍 Novidade no Hardt App: Ponto GPS certo em cada cliente">
+<meta property="og:description" content="Chega de entregador perdido: ponto no mapa, travas contra ponto repetido, selo de confirmação pelas entregas reais e cliente balcão. Veja como funciona.">
+<meta property="og:type" content="website">
+<style>
+  :root{
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --bg:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Manrope',-apple-system,'SF Pro Text',sans-serif;letter-spacing:-0.01em;background:var(--bg);color:var(--ink);font-feature-settings:"tnum";line-height:1.55}
+  .wrap{max-width:760px;margin:0 auto;padding:0 16px 60px}
+
+  .hero{background:var(--house);color:#fff;padding:36px 16px 44px;text-align:center}
+  .hero .chip{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);color:#cde7dd;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:6px 14px;border-radius:999px;margin-bottom:14px}
+  .hero h1{font-size:26px;font-weight:800;line-height:1.25;max-width:580px;margin:0 auto 10px}
+  .hero p{color:#cde7dd;font-size:15px;max-width:540px;margin:0 auto}
+  .hero .pinicon{font-size:34px;display:block;margin-bottom:10px}
+  @media(min-width:700px){ .hero h1{font-size:30px} }
+
+  h2.sec{font-size:13px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#5a6b64;margin:36px 0 14px;display:flex;align-items:center;gap:8px}
+  h2.sec::after{content:"";flex:1;height:1px;background:#ddd8ce}
+
+  .card{background:#fff;border:1px solid #e3ded4;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:18px;margin-bottom:14px}
+
+  details.acc{background:#fff;border:1px solid #e3ded4;border-radius:14px;margin-bottom:12px;overflow:hidden}
+  details.acc summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;padding:16px;font-weight:800;font-size:15px}
+  details.acc summary::-webkit-details-marker{display:none}
+  details.acc summary .num{flex:none;width:30px;height:30px;border-radius:999px;background:var(--mint);color:var(--primary-dark);display:flex;align-items:center;justify-content:center;font-size:15px}
+  details.acc summary .arrow{margin-left:auto;color:#999;transition:transform .2s}
+  details.acc[open] summary .arrow{transform:rotate(180deg)}
+  details.acc .body{padding:0 16px 18px;font-size:14px;color:#444}
+  details.acc .body p{margin-bottom:10px}
+  details.acc .body ul{margin:0 0 10px 18px}
+  details.acc .body li{margin-bottom:6px}
+
+  .phone{background:#fff;border:1px solid #d9d3c7;border-radius:22px;box-shadow:0 8px 24px rgba(30,57,50,.10);overflow:hidden;max-width:390px;margin:0 auto}
+  .phone .pbar{background:var(--house);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px}
+  .phone .pbar .mod{background:var(--mint);border-radius:8px;padding:5px;font-size:14px;line-height:1}
+  .phone .pbar b{font-size:15px}
+  .pbody{padding:14px;background:#f7f5f0}
+  .app-card{background:#fff;border:1px solid #e5e0d5;border-radius:12px;padding:12px;margin-bottom:10px;position:relative}
+  .app-card .cab{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#6b7a72;margin-bottom:8px}
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:12px;border-radius:999px;font-weight:700;font-size:14px;border:0;text-align:center}
+  .btn.pri{background:var(--primary);color:#fff}
+  .btn.sec{background:#fff;border:1.5px solid var(--primary);color:var(--primary)}
+  .btn.ghost{background:#fff;border:1.5px solid #d5d0c4;color:#777}
+  .btn.blocked{background:#e5e2da;color:#999}
+  .btn + .btn{margin-top:8px}
+  .badge{display:inline-block;padding:3px 10px;font-size:11px;font-weight:700;border-radius:999px}
+  .b-green{background:#dcfce7;color:#166534}
+  .b-red{background:#fee2e2;color:#b91c1c}
+  .b-yellow{background:#fef9c3;color:#854d0e}
+  .b-gray{background:#f3f4f6;color:#374151}
+  .avisobox{display:flex;gap:10px;border-radius:10px;padding:10px 12px;font-size:12.5px;margin-top:10px;align-items:flex-start}
+  .avisobox .i{font-size:16px;line-height:1.2}
+  .av-red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+  .av-yellow{background:#fefce8;border:1px solid #fde68a;color:#854d0e}
+  .av-green{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}
+  .av-blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+
+  .pinnum{position:absolute;z-index:5;width:20px;height:20px;border-radius:999px;background:var(--gold);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.35);border:2px solid #fff}
+  .legenda{max-width:390px;margin:12px auto 0;font-size:13px}
+  .legenda .li{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
+  .legenda .li .n{flex:none;width:20px;height:20px;border-radius:999px;background:var(--gold);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .legenda .li span{color:#444}
+  .legenda .li b{color:#111}
+
+  .trow{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid #f0ece3;font-size:13px}
+  .trow:last-child{border-bottom:0}
+  .trow .nm{flex:1;min-width:0}
+  .trow .nm b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+  .trow .nm span{font-size:11.5px;color:#888}
+  .selo{font-size:15px;flex:none}
+
+  .tela{margin-bottom:34px}
+  .tela .tela-titulo{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .tela .tela-titulo .tnum{flex:none;width:28px;height:28px;border-radius:999px;background:var(--house);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+  .tela .tela-titulo b{font-size:16px}
+  .tela .tela-sub{font-size:13px;color:#666;margin-bottom:14px}
+
+  .map{position:relative;height:210px;border-radius:12px;overflow:hidden;border:1px solid #dcd6c9;background:linear-gradient(#e8ecdf,#e8ecdf)}
+  .map .street-h{position:absolute;left:0;right:0;height:13px;background:#f8f6ef;border-top:1px solid #d8d2c4;border-bottom:1px solid #d8d2c4}
+  .map .street-v{position:absolute;top:0;bottom:0;width:13px;background:#f8f6ef;border-left:1px solid #d8d2c4;border-right:1px solid #d8d2c4}
+  .map .bloco{position:absolute;background:#dfe5d2;border-radius:3px}
+  .pin{position:absolute;transform:translate(-50%,-100%);text-align:center;line-height:1}
+  .pin .pino{font-size:24px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+  .pin .lbl{font-size:9px;font-weight:800;background:#fff;border:1px solid #ddd;border-radius:999px;padding:2px 6px;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+  .pulse{position:absolute;width:42px;height:42px;border-radius:999px;background:rgba(59,130,246,.25);transform:translate(-50%,-50%);animation:pulsar 1.6s ease-out infinite}
+  @keyframes pulsar{0%{opacity:.7;transform:translate(-50%,-50%) scale(.5)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.15)}}
+  .mira{position:absolute;left:50%;top:44%;transform:translate(-50%,-100%);font-size:28px;pointer-events:none;filter:drop-shadow(0 2px 3px rgba(0,0,0,.3))}
+  .map-hint{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);background:rgba(30,57,50,.85);color:#fff;font-size:11px;font-weight:700;padding:5px 12px;border-radius:999px;white-space:nowrap}
+
+  .fluxo{display:flex;flex-direction:column}
+  .fstep{display:flex;gap:12px}
+  .fstep .rail{display:flex;flex-direction:column;align-items:center}
+  .fstep .dot{width:26px;height:26px;border-radius:999px;background:var(--primary);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+  .fstep .line{width:2px;flex:1;background:#cfe0d8;min-height:14px}
+  .fstep:last-child .line{display:none}
+  .fstep .txt{padding-bottom:16px;font-size:13.5px}
+  .fstep .txt b{display:block;font-size:14px}
+  .fstep .txt span{color:#555}
+
+  .footer{margin-top:44px;text-align:center;font-size:12px;color:#999}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="pinicon">📍</span>
+  <span class="chip">Novidade no app</span>
+  <h1>Ponto GPS certo em cada cliente — chega de entregador perdido</h1>
+  <p>Agora o ponto é escolhido no mapa, o sistema trava ponto repetido ou na empresa, e as entregas de verdade confirmam (ou corrigem) cada endereço.</p>
+</div>
+
+<div class="wrap">
+
+  <h2 class="sec">Por que mudou</h2>
+  <div class="card" style="font-size:14px;color:#444">
+    O ponto GPS do cliente era gravado "de onde a pessoa estava" — e acabou virando bagunça: pontos no endereço da empresa, clientes com o mesmo ponto, entregador novo sem achar os lugares. <b>Isso acabou.</b> Agora o ponto é escolhido no mapa, com travas, auditoria e confirmação automática pelas entregas reais.
+  </div>
+
+  <h2 class="sec">O que mudou</h2>
+
+  <details class="acc aberto" open>
+    <summary><span class="num">🗺️</span> Ponto escolhido no MAPA, não mais "onde estou" <span class="arrow">▾</span></summary>
+    <div class="body">
+      <p>No cadastro do cliente, no popup da Rota e no aviso do pedido: abre um mapa, você <b>arrasta até a porta do cliente</b> e salva. A bolinha azul mostra onde seu celular está agora. Dá para marcar o lugar certo mesmo estando longe dele.</p>
+      <p><b>Sem internet?</b> O GPS do celular funciona offline: a correção fica guardada no aparelho e sobe sozinha quando o sinal volta.</p>
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary><span class="num">🚫</span> Travas: ponto repetido ou na empresa não salva mais <span class="arrow">▾</span></summary>
+    <div class="body">
+      <ul>
+        <li><b>Ponto igual ao de outro cliente</b> → bloqueado (mostra qual cliente já usa aquele ponto).</li>
+        <li><b>Ponto dentro da empresa</b> → bloqueado.</li>
+        <li><b>Ponto a menos de 30 m de outro cliente</b> (galeria, vizinhos) → só com senha de quem tem a permissão da logística.</li>
+        <li><b>Toda mudança fica registrada</b>: quem, quando, de onde para onde — com desfazer. Mudar muito um ponto já confirmado precisa de aprovação da logística.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary><span class="num">✅</span> As entregas de verdade confirmam o ponto <span class="arrow">▾</span></summary>
+    <div class="body">
+      <p>Sem Google, sem CEP: quando <b>3+ registros de GPS, de dias diferentes</b> (entregas concluídas, atendimentos na rua, confirmações do motorista) caem no mesmo lugar, o ponto ganha o selo <span class="badge b-green">📍✅ Confirmado</span>. Se as entregas acontecem longe do cadastro, o ponto vira <span class="badge b-yellow">Suspeito</span> e o sistema <b>sugere a correção sozinho</b> — e avisa o vendedor da carteira na tela inicial.</p>
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary><span class="num">📸</span> Motorista: pergunta "está na porta?" + foto da fachada <span class="arrow">▾</span></summary>
+    <div class="body">
+      <p>Se a entrega for concluída <b>longe do ponto cadastrado</b>, o app pergunta: <i>"Você está na porta do cliente agora?"</i>. Respondeu <b>Sim</b> → bate uma <b>foto da fachada</b> (obrigatória) e isso vira a correção do cadastro. Respondeu Não → nada acontece. Quem entrega no lugar certo nunca vê a pergunta.</p>
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary><span class="num">💰</span> Selo no Caixa: um emoji por entrega <span class="arrow">▾</span></summary>
+    <div class="body">
+      <p>Na conferência do Caixa, cada entrega mostra onde foi concluída: <b>📍✅</b> no ponto do cliente · <b>📍❗</b> longe do ponto · <b>📍➖</b> sem GPS na hora · <b>📍❓</b> cliente sem ponto. Tocar no emoji mostra a distância.</p>
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary><span class="num">🏪</span> Cliente Balcão: quem compra na empresa não precisa de GPS <span class="arrow">▾</span></summary>
+    <div class="body">
+      <p>Cliente que compra e <b>retira na empresa</b> pode ser marcado como <b>Cliente Balcão</b> (com permissão) — aí não precisa de ponto GPS. No cadastro novo a regra é: <b>ou define o ponto no mapa, ou marca balcão</b>. Se um dia ele pedir entrega, o ponto volta a ser exigido.</p>
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary><span class="num">🩺</span> Tela nova: Saúde dos Pontos GPS <span class="arrow">▾</span></summary>
+    <div class="body">
+      <p>Em <b>Clientes → 📍 Saúde GPS</b>: o placar dos problemas (repetidos, na empresa, suspeitos, sem GPS), correção em 1 clique pelas sugestões, aprovações da logística, histórico com desfazer — e o <b>interruptor do bloqueio de pedido sem GPS</b> (começa desligado; recomendamos ligar depois da faxina).</p>
+    </div>
+  </details>
+
+  <h2 class="sec">As telas do app</h2>
+
+  <!-- TELA 1: mapa -->
+  <div class="tela">
+    <div class="tela-titulo"><span class="tnum">1</span><b>O mapa do ponto GPS</b></div>
+    <div class="tela-sub">Cadastro do cliente, popup da Rota e aviso do pedido — todos abrem este mapa.</div>
+    <div class="phone">
+      <div class="pbar"><span class="mod">📍</span><b>Ponto GPS — Padaria Central</b></div>
+      <div class="pbody">
+        <div class="app-card" style="padding:0;overflow:hidden">
+          <div class="map">
+            <div class="bloco" style="left:6%;top:8%;width:26%;height:28%"></div>
+            <div class="bloco" style="left:40%;top:8%;width:26%;height:28%"></div>
+            <div class="bloco" style="left:74%;top:8%;width:20%;height:28%"></div>
+            <div class="bloco" style="left:6%;top:48%;width:26%;height:40%"></div>
+            <div class="bloco" style="left:40%;top:48%;width:26%;height:40%"></div>
+            <div class="bloco" style="left:74%;top:48%;width:20%;height:40%"></div>
+            <div class="street-h" style="top:38%"></div>
+            <div class="street-v" style="left:34%"></div>
+            <div class="street-v" style="left:68%"></div>
+            <div class="pulse" style="left:20%;top:72%"></div>
+            <div class="pin" style="left:20%;top:72%"><div class="lbl">você está aqui</div><div class="pino">🔵</div></div>
+            <div class="pin" style="left:78%;top:24%"><div class="lbl">ponto antigo</div><div class="pino" style="opacity:.45">⚪</div></div>
+            <div class="mira">📍</div>
+            <div class="map-hint">Arraste o mapa até a porta do cliente</div>
+            <div class="pinnum" style="left:8px;top:8px">1</div>
+            <div class="pinnum" style="right:8px;top:8px">2</div>
+          </div>
+        </div>
+        <div class="avisobox av-red" style="position:relative"><div class="i">🚫</div><div><b>Este ponto é o mesmo do cliente "Mercado Bom Preço".</b> Mova o alfinete — cada cliente tem o seu.<div class="pinnum" style="right:-6px;top:-6px">3</div></div></div>
+        <button class="btn sec">🔵 Usar minha posição atual</button>
+        <button class="btn pri" style="position:relative">✓ Salvar este ponto<span class="pinnum" style="right:10px;top:50%;transform:translateY(-50%)">4</span></button>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="n">1</span><span><b>Bolinha azul</b> = onde o celular está agora (funciona sem internet).</span></div>
+      <div class="li"><span class="n">2</span><span><b>Bolinha cinza</b> = o ponto antigo do cadastro, para comparar. O 📍 central é o novo ponto — arraste o mapa até a porta certa.</span></div>
+      <div class="li"><span class="n">3</span><span><b>Trava automática</b>: ponto repetido ou na empresa não salva; perto de outro cliente pede senha da logística.</span></div>
+      <div class="li"><span class="n">4</span><span><b>Salvar</b>: sem internet, guarda no aparelho e envia sozinho quando o sinal voltar.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: pedido bloqueado -->
+  <div class="tela">
+    <div class="tela-titulo"><span class="tnum">2</span><b>Pedido segurado no ENVIAR (quando o bloqueio estiver ligado)</b></div>
+    <div class="tela-sub">Cliente sem ponto (e que não é balcão) não envia — resolve na hora pelo botão.</div>
+    <div class="phone">
+      <div class="pbar"><span class="mod">🛒</span><b>Novo Pedido — Padaria Central</b></div>
+      <div class="pbody">
+        <div class="avisobox av-red" style="margin-top:0;position:relative"><div class="i">📍</div><div><b>Cliente sem ponto GPS.</b> Defina o ponto no mapa (ou marque como Cliente Balcão) para enviar o pedido.<div class="pinnum" style="right:-6px;top:-6px">1</div></div></div>
+        <div style="height:10px"></div>
+        <button class="btn pri" style="position:relative">📍 Definir ponto agora<span class="pinnum" style="right:10px;top:50%;transform:translateY(-50%)">2</span></button>
+        <button class="btn blocked">ENVIAR pedido 🔒</button>
+        <div class="avisobox av-green"><div class="i">✅</div><div>Depois de salvar o ponto, o pedido é <b>enviado sozinho</b> — não precisa clicar de novo. Salvar como rascunho (aberto) continua podendo.</div></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="n">1</span><span>O aviso diz exatamente o que falta — sem mistério.</span></div>
+      <div class="li"><span class="n">2</span><span><b>Atalho</b>: abre o mapa da Tela 1, salva e o pedido segue.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3: caixa -->
+  <div class="tela">
+    <div class="tela-titulo"><span class="tnum">3</span><b>Selo GPS no Caixa</b></div>
+    <div class="tela-sub">Um emoji por entrega — sem ocupar espaço. Toque para ver a distância.</div>
+    <div class="phone">
+      <div class="pbar"><span class="mod">💰</span><b>Caixa — Conferência do dia</b></div>
+      <div class="pbody">
+        <div class="app-card">
+          <div class="cab">Entregas do motorista João</div>
+          <div class="trow" style="position:relative"><span class="selo">📍✅</span><div class="nm"><b>Padaria Central</b><span>Pedido #1842 · R$ 630,00</span></div><span class="badge b-green">Entregue</span><div class="pinnum" style="left:-16px;top:10px">1</div></div>
+          <div class="trow" style="position:relative"><span class="selo">📍❗</span><div class="nm"><b>Bar da Esquina</b><span>Pedido #1843 · R$ 210,00</span></div><span class="badge b-green">Entregue</span><div class="pinnum" style="left:-16px;top:10px">2</div></div>
+          <div class="trow"><span class="selo">📍➖</span><div class="nm"><b>Mercado Bom Preço</b><span>Pedido #1844 · R$ 480,00</span></div><span class="badge b-green">Entregue</span></div>
+        </div>
+        <div class="avisobox av-red"><div class="i">📍❗</div><div><b>Bar da Esquina:</b> entrega concluída a <b>2,4 km</b> do ponto cadastrado (tocou no emoji, aparece isso).</div></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="n">1</span><span><b>📍✅</b> concluída no ponto do cliente · <b>📍➖</b> aparelho sem GPS na hora · <b>📍❓</b> cliente sem ponto.</span></div>
+      <div class="li"><span class="n">2</span><span><b>📍❗</b> concluída longe do ponto — o escritório enxerga na hora da conferência.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4: motorista na porta -->
+  <div class="tela">
+    <div class="tela-titulo"><span class="tnum">4</span><b>Motorista: "Você está na porta do cliente?"</b></div>
+    <div class="tela-sub">Só aparece quando a entrega conclui longe do ponto — e é 1 toque.</div>
+    <div class="phone">
+      <div class="pbar" style="background:#b45309"><span class="mod">📍</span><b>Entrega longe do ponto</b></div>
+      <div class="pbody">
+        <div class="app-card" style="position:relative">
+          <p style="font-size:13.5px;color:#444">Esta entrega foi concluída a <b>2,4 km</b> do ponto cadastrado de <b>Bar da Esquina</b>.</p>
+          <p style="font-size:15px;font-weight:800;margin-top:8px">Você está na porta do cliente agora?</p>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn ghost" style="flex:1;margin:0">Não</button>
+            <button class="btn pri" style="flex:1;margin:0">Sim, estou na porta</button>
+          </div>
+          <div class="pinnum" style="right:-6px;top:-6px">1</div>
+        </div>
+        <div class="app-card" style="position:relative">
+          <div class="cab">Se respondeu "Sim"</div>
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:90px;border:2px dashed #d5d0c4;border-radius:12px;color:#888">
+            <span style="font-size:22px">📷</span>
+            <span style="font-size:13px;font-weight:700">Abrir a câmera — foto da fachada</span>
+          </div>
+          <div class="pinnum" style="right:-6px;top:-6px">2</div>
+        </div>
+        <div class="avisobox av-green"><div class="i">🖼️</div><div>A foto fica no cadastro: o <b>entregador novo reconhece a loja pela fachada</b>, mesmo que o alfinete fique uns metros fora.</div></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="n">1</span><span><b>Não</b> = você só registrou de outro lugar, nada muda. <b>Sim</b> = o lugar vira sinal de correção do cadastro.</span></div>
+      <div class="li"><span class="n">2</span><span><b>Foto obrigatória</b> no "Sim" — é a prova de que o lugar é o certo. Sem internet, sobe depois sozinha.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 5: saude -->
+  <div class="tela">
+    <div class="tela-titulo"><span class="tnum">5</span><b>Saúde dos Pontos GPS (escritório)</b></div>
+    <div class="tela-sub">Clientes → botão "📍 Saúde GPS". A faxina acontece aqui.</div>
+    <div class="phone">
+      <div class="pbar"><span class="mod">🩺</span><b>Saúde dos Pontos GPS</b></div>
+      <div class="pbody">
+        <div class="app-card" style="display:flex;gap:8px;text-align:center;position:relative">
+          <div style="flex:1"><div style="font-size:20px;font-weight:800;color:#b91c1c">14</div><div style="font-size:10px;color:#888;font-weight:700">REPETIDOS</div></div>
+          <div style="flex:1"><div style="font-size:20px;font-weight:800;color:#b45309">9</div><div style="font-size:10px;color:#888;font-weight:700">NA EMPRESA</div></div>
+          <div style="flex:1"><div style="font-size:20px;font-weight:800;color:#854d0e">11</div><div style="font-size:10px;color:#888;font-weight:700">SUSPEITOS</div></div>
+          <div style="flex:1"><div style="font-size:20px;font-weight:800;color:#374151">23</div><div style="font-size:10px;color:#888;font-weight:700">SEM GPS</div></div>
+          <div class="pinnum" style="right:-6px;top:-6px">1</div>
+        </div>
+        <div class="app-card" style="position:relative">
+          <div class="cab">Suspeito — sugestão automática</div>
+          <div class="trow"><div class="nm"><b>Bar da Esquina</b><span>4 sinais em 3 dias · a 2,4 km do cadastro</span></div><span class="badge b-yellow">Suspeito</span></div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn pri" style="flex:1;margin:0;padding:9px;font-size:13px">✓ Aceitar sugestão</button>
+            <button class="btn ghost" style="flex:1;margin:0;padding:9px;font-size:13px">Ver no mapa</button>
+          </div>
+          <div class="pinnum" style="right:-6px;top:-6px">2</div>
+        </div>
+        <div class="app-card" style="position:relative">
+          <div class="cab">Exigir GPS para enviar pedido</div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+            <span style="font-size:12.5px;color:#555">Comece desligado; ligue depois da faxina.</span>
+            <button class="btn pri" style="width:auto;margin:0;padding:8px 16px;font-size:12px">Ligar bloqueio</button>
+          </div>
+          <div class="pinnum" style="right:-6px;top:-6px">3</div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="n">1</span><span><b>Placar</b> dos problemas — a meta é zerar tudo.</span></div>
+      <div class="li"><span class="n">2</span><span><b>Correção em 1 clique</b>: o sistema propõe o centro das entregas reais; é só aceitar. O vendedor da carteira também recebe o aviso na tela inicial dele.</span></div>
+      <div class="li"><span class="n">3</span><span><b>O interruptor do bloqueio</b> de pedido sem GPS fica aqui (permissão da logística).</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 6: cadastro balcão -->
+  <div class="tela">
+    <div class="tela-titulo"><span class="tnum">6</span><b>Cadastro: ponto no mapa OU Cliente Balcão</b></div>
+    <div class="tela-sub">Cliente novo que compra na empresa não fica travado.</div>
+    <div class="phone">
+      <div class="pbar"><span class="mod">👥</span><b>Novo Cadastro — Doces & Cia</b></div>
+      <div class="pbody">
+        <div class="app-card">
+          <div class="cab">Localização do cliente</div>
+          <button class="btn sec" style="position:relative">📍 Definir no mapa<span class="pinnum" style="right:10px;top:50%;transform:translateY(-50%)">1</span></button>
+          <div style="text-align:center;font-size:11px;color:#999;font-weight:800;margin:8px 0">— OU —</div>
+          <button class="btn ghost" style="position:relative;border-color:var(--gold);color:#8a6620">🏪 Marcar como Cliente Balcão<span class="pinnum" style="right:10px;top:50%;transform:translateY(-50%)">2</span></button>
+        </div>
+        <div class="app-card">
+          <div class="cab">Como fica na lista</div>
+          <div class="trow"><div class="nm"><b>Doces & Cia</b><span>compra e retira na empresa</span></div><span class="badge b-gray">🏪 Balcão</span></div>
+          <div class="trow"><div class="nm"><b>Padaria Central</b><span>entrega às terças</span></div><span class="badge b-green">📍✅ Confirmado</span></div>
+        </div>
+        <div class="avisobox av-blue" style="position:relative"><div class="i">🔒</div><div>Marcar balcão exige a permissão <b>"Liberar Cliente Balcão"</b> — e fica registrado quem marcou.<div class="pinnum" style="right:-6px;top:-6px">3</div></div></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="n">1</span><span>Caminho normal: escolher o ponto no mapa.</span></div>
+      <div class="li"><span class="n">2</span><span>Caminho balcão: cliente compra na empresa, não precisa de GPS.</span></div>
+      <div class="li"><span class="n">3</span><span>Permissão + registro de quem marcou — balcão não vira jeitinho.</span></div>
+    </div>
+  </div>
+
+  <h2 class="sec">Para começar a usar</h2>
+  <div class="card">
+    <div class="fluxo">
+      <div class="fstep"><div class="rail"><div class="dot">1</div><div class="line"></div></div><div class="txt"><b>Escritório: abrir Clientes → 📍 Saúde GPS</b><span>Ver o placar e corrigir os suspeitos com "Aceitar sugestão" (1 clique cada).</span></div></div>
+      <div class="fstep"><div class="rail"><div class="dot">2</div><div class="line"></div></div><div class="txt"><b>Distribuir as permissões novas</b><span>No painel de permissões: "Autorizar Ponto GPS (Logística)" e "Liberar Cliente Balcão".</span></div></div>
+      <div class="fstep"><div class="rail"><div class="dot">3</div><div class="line"></div></div><div class="txt"><b>Vendedores: corrigir os avisos da tela inicial</b><span>O alfinete já abre no lugar sugerido — conferir e salvar.</span></div></div>
+      <div class="fstep"><div class="rail"><div class="dot">4</div><div class="line"></div></div><div class="txt"><b>Depois da faxina: ligar o bloqueio de pedido sem GPS</b><span>Na própria tela Saúde GPS. Aí nenhum cliente novo entra sem ponto (ou balcão).</span></div></div>
+    </div>
+  </div>
+
+  <div class="footer">Hardt App · Ponto GPS confiável por cliente · 07/2026</div>
+</div>
+
+</body>
+</html>
