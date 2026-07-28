@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Notas Recebidas completa — estoque automático e notas sem pagamento</title>
+<meta property="og:title" content="📦 Novidade no Hardt App: toda nota de entrada agora soma no estoque">
+<meta property="og:description" content="Bonificação, remessa e comodato sem gerar pagamento · estoque e custo atualizados sozinhos ao conferir a nota · e a NF do contrato que chega depois agora encaixa na parcela certa.">
+<meta property="og:type" content="website">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --cream:#f2f0eb; --ink:rgba(0,0,0,.87); --ink-soft:#4b5563; --line:#e5e7eb;
+    --gold:#cba258; --purple:#6d28d9; --purple-bg:#ede9fe; --blue:#1d4ed8; --blue-bg:#dbeafe;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--cream);color:var(--ink);font-family:Manrope,-apple-system,BlinkMacSystemFont,sans-serif;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.55}
+  .hero{background:var(--house);color:#fff;padding:34px 18px 40px;text-align:center}
+  .hero-inner{max-width:640px;margin:0 auto}
+  .eyebrow{display:inline-block;background:rgba(212,233,226,.16);color:var(--mint);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.16em;padding:5px 12px;border-radius:999px}
+  .hero h1{font-size:25px;line-height:1.25;margin:.6em 0 .35em;font-weight:800}
+  .hero p{margin:0;color:#cfe0da;font-size:15.5px}
+  .wrap{max-width:680px;margin:0 auto;padding:22px 16px 60px}
+  h2{font-size:19px;font-weight:800;margin:30px 0 12px}
+  .muted{color:var(--ink-soft);font-size:14px}
+
+  /* Accordions — SEMPRE abertos por padrão */
+  .acc{background:#fff;border:1px solid var(--line);border-radius:14px;margin:10px 0;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .acc-head{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;background:none;border:0;cursor:pointer;text-align:left;font-family:inherit}
+  .acc-ico{width:38px;height:38px;border-radius:12px;background:var(--mint);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+  .acc-head strong{flex:1;font-size:15.5px;font-weight:700}
+  .acc-seta{color:#9aa5a0;transition:transform .2s;font-size:13px}
+  .acc.aberto .acc-seta{transform:rotate(180deg)}
+  .acc-corpo{display:none;padding:0 16px 16px 66px}
+  .acc.aberto .acc-corpo{display:block}
+  .acc-corpo p,.acc-corpo li{font-size:14px;color:var(--ink-soft)}
+  .acc-corpo p{margin:0 0 10px}
+  .acc-corpo ul{margin:0;padding-left:18px}
+  .acc-corpo li{margin-bottom:7px}
+  .acc-corpo b{color:var(--ink)}
+  @media(max-width:420px){.acc-corpo{padding-left:16px}}
+
+  /* Telas do app (mockups) */
+  .tela{background:#fff;border:1px solid var(--line);border-radius:16px;margin:14px 0;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .tela-titulo{padding:12px 16px;border-bottom:1px solid var(--line);font-weight:800;font-size:14px;background:#fafaf9}
+  .app-card{margin:14px;border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:13px}
+  .app-card-head{background:#fafaf9;border-bottom:1px solid var(--line);padding:9px 12px;font-weight:700;color:#6b7280;font-size:11.5px;text-transform:uppercase;letter-spacing:.09em}
+  .app-card-body{padding:12px}
+  .app-linha{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:7px 0;border-bottom:1px dashed #eee;flex-wrap:wrap}
+  .app-linha:last-child{border-bottom:0}
+  .badge{display:inline-block;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+  .b-purple{background:var(--purple-bg);color:var(--purple)} .b-green{background:var(--mint);color:var(--primary-dark)}
+  .b-blue{background:var(--blue-bg);color:var(--blue)} .b-gray{background:#f1f2f1;color:#4b5563}
+  .app-pills{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+  .app-pill{border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;background:#fff}
+  .app-pill.on{border-color:var(--primary);background:#f0f7f4;color:var(--primary-dark)}
+  .app-btn{display:inline-block;background:var(--primary);color:#fff;border-radius:999px;padding:8px 15px;font-weight:700;font-size:12.5px}
+  .app-btn.sec{background:#fff;border:1px solid var(--primary);color:var(--primary)}
+  .app-aviso{background:var(--purple-bg);border:1px solid #ddd6fe;border-radius:10px;padding:9px 11px;font-size:12.5px;color:#4c1d95;margin-bottom:10px}
+  .app-toast{background:#0f2e24;color:#e7f3ee;border-radius:10px;padding:9px 12px;font-size:12.5px;margin:10px 14px 14px;box-shadow:0 4px 10px rgba(0,0,0,.18)}
+  .pin{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;background:var(--gold);color:#2b230f;font-size:11px;font-weight:800;flex-shrink:0;vertical-align:2px;margin-left:6px}
+  .legenda{padding:12px 16px 16px}
+  .legenda div{display:flex;gap:9px;font-size:13.5px;color:var(--ink-soft);margin-bottom:7px}
+  .legenda .pin{margin:2px 0 0}
+  .legenda b{color:var(--ink)}
+
+  /* Passos */
+  .passos{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0}
+  .passo{display:flex;gap:12px;margin-bottom:12px}
+  .passo:last-child{margin-bottom:0}
+  .passo-num{width:26px;height:26px;border-radius:50%;background:var(--primary);color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+  .passo p{margin:0;font-size:14px;color:var(--ink-soft)}
+  .passo b{color:var(--ink)}
+  .rodape{text-align:center;color:#8a938f;font-size:12.5px;margin-top:34px}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade no Hardt App</span>
+    <h1>Notas Recebidas ficou completa:<br>estoque automático e notas sem pagamento</h1>
+    <p>Conferiu a nota → o estoque soma sozinho. E bonificação, remessa, troca e comodato agora têm o caminho certo, sem gerar conta a pagar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <h2>O que mudou</h2>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button" onclick="this.parentElement.classList.toggle('aberto')">
+      <span class="acc-ico">📦</span>
+      <strong>Toda nota conferida agora soma no estoque</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Ao conferir uma nota (compra normal ou sem pagamento), cada item <b>vinculado a um produto nosso</b> soma a quantidade <b>já convertida</b> no estoque — ex.: 80 sacos × 50 = <b>4.000 kg de farinha</b>.</p>
+      <ul>
+        <li><b>Compra normal:</b> soma a quantidade <b>e atualiza o custo</b> do produto (média entre o estoque antigo e a compra nova).</li>
+        <li><b>Bonificação/remessa:</b> soma <b>só a quantidade</b> — o custo não muda, porque não pagamos por ela.</li>
+        <li>Tudo aparece no <b>histórico de estoque</b>: “Entrada NF-e 48.213 — Moinho”.</li>
+        <li>Errou? <b>Desfazer devolve o estoque</b> exatamente como estava.</li>
+        <li>Item <b>sem vínculo</b> não entra no estoque (a tela avisa) — vinculando uma vez, o app <b>memoriza</b> para as próximas notas do fornecedor.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button" onclick="this.parentElement.classList.toggle('aberto')">
+      <span class="acc-ico">🎁</span>
+      <strong>Bonificação, remessa, troca e comodato — sem gerar pagamento</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Notas que entram no nosso CNPJ mas <b>não são para pagar</b> agora têm o botão certo: <b>“Registrar entrada (sem pagamento)”</b>.</p>
+      <ul>
+        <li>O app <b>reconhece sozinho</b> pelo que está escrito na nota (“REMESSA EM BONIFICAÇÃO”, “SIMPLES REMESSA”…) e já sugere o motivo — é só confirmar.</li>
+        <li>Motivos: <b>Bonificação</b>, <b>Amostra grátis</b>, <b>Remessa/Troca</b>, <b>Comodato</b> e Outro.</li>
+        <li>Não cria nada em Contas a Pagar — mas a nota fica <b>arquivada completa</b> (XML e DANFE) para a contabilidade, e o estoque dos itens vinculados soma normalmente.</li>
+        <li>Na caixa de entrada, o filtro novo <b>“Sem pagamento”</b> junta todas elas.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button" onclick="this.parentElement.classList.toggle('aberto')">
+      <span class="acc-ico">📎</span>
+      <strong>A nota do contrato que chega depois do pagamento</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Serviço com parcelas já lançadas (ex.: contrato do advogado) e a NF do mês chega depois? Agora tem o botão <b>“Vincular a despesa já lançada”</b>: a nota <b>encaixa na parcela certa</b>, sem criar despesa duplicada.</p>
+      <ul>
+        <li>Pode vincular em parcela <b>já paga</b> (o caso real: a NF vem depois do pagamento).</li>
+        <li>Pode escolher <b>várias parcelas</b> e informar o valor de cada uma.</li>
+        <li>Se o valor não fechar, o app pergunta: vínculo parcial, ajustar a parcela, desconto ou acréscimo.</li>
+        <li>Em Contas a Pagar, a coluna <b>NOTA</b> mostra a NF de cada parcela.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button" onclick="this.parentElement.classList.toggle('aberto')">
+      <span class="acc-ico">✨</span>
+      <strong>E mais, na mesma tela</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Busca de produto por digitação</b> — digite “trigo” e ele acha, no catálogo inteiro (chega de rolar lista gigante).</li>
+        <li><b>Categoria de custo por item</b> — material de limpeza e matéria-prima na mesma nota? Cada item na sua categoria, dividido certinho.</li>
+        <li><b>DANFE oficial</b> — impressão no padrão da Receita, com todos os dados da nota, ocupando a folha inteira.</li>
+        <li><b>Observações da nota</b> visíveis na conferência.</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>As telas do app</h2>
+
+  <!-- TELA 1: bonificação detectada -->
+  <div class="tela">
+    <div class="tela-titulo">Tela 1 · Nota de bonificação detectada</div>
+    <div class="app-card">
+      <div class="app-card-head">Conferindo NF-e 44.201 · Fornecedor Alfa</div>
+      <div class="app-card-body">
+        <div class="app-aviso">Esta nota parece ser <b>Bonificação</b> (REMESSA EM BONIFICAÇÃO) — ela não deveria gerar pagamento. <span class="pin">1</span></div>
+        <div style="font-size:12px;color:#6b7280;margin-bottom:4px">Motivo <span class="badge b-purple">detectado pela nota</span> <span class="pin">2</span></div>
+        <div class="app-pills">
+          <span class="app-pill on">Bonificação</span>
+          <span class="app-pill">Amostra grátis</span>
+          <span class="app-pill">Remessa / Troca</span>
+          <span class="app-pill">Comodato</span>
+          <span class="app-pill">Outro</span>
+        </div>
+        <div class="app-linha" style="border:0;margin-top:6px">
+          <span class="app-btn">Registrar entrada</span> <span class="pin">3</span>
+          <span class="app-btn sec">Imprimir DANFE</span>
+        </div>
+      </div>
+    </div>
+    <div class="app-toast">📦 Estoque atualizado: +200 kg Farinha de trigo · +40 un Refrigerante 2L <span class="pin">4</span></div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O app <b>lê a nota</b> e avisa quando ela é bonificação, remessa, troca ou comodato.</span></div>
+      <div><span class="pin">2</span><span>O <b>motivo já vem marcado</b> — só conferir (dá para trocar).</span></div>
+      <div><span class="pin">3</span><span><b>Registrar entrada</b>: arquiva a nota SEM criar conta a pagar.</span></div>
+      <div><span class="pin">4</span><span>Os itens vinculados <b>somam no estoque na hora</b> — bonificação entra sem mexer no custo.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: item vinculado somando estoque -->
+  <div class="tela">
+    <div class="tela-titulo">Tela 2 · Item da nota somando no estoque</div>
+    <div class="app-card">
+      <div class="app-card-head">Itens da nota → nossos produtos</div>
+      <div class="app-card-body">
+        <div style="font-weight:700">FARINHA TRIGO ESPECIAL SC 50KG <span class="badge b-green">vínculo lembrado ✓</span> <span class="pin">1</span></div>
+        <div class="muted" style="font-size:12px;margin:2px 0 8px">cód. do fornecedor MC-4432 · 80 SC × R$ 52,50</div>
+        <div class="app-linha"><span>Nosso produto: <b>Farinha de trigo (kg)</b></span><span class="pin">2</span></div>
+        <div class="app-linha"><span>Conversão: 1 SC = <b>50</b> kg</span><span class="pin">3</span></div>
+        <div class="app-linha"><span><b>4.000 kg</b> <span style="color:var(--primary-dark);font-weight:700">→ soma no estoque</span> · custo R$ 1,05/kg</span><span class="pin">4</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Fornecedor conhecido: o vínculo <b>vem preenchido da última vez</b>.</span></div>
+      <div><span class="pin">2</span><span>Busca por digitação no <b>catálogo inteiro</b> (produtos e insumos).</span></div>
+      <div><span class="pin">3</span><span>A nota vem em <b>sacos/caixas</b>; nós controlamos em <b>kg/un</b> — a conversão fica salva.</span></div>
+      <div><span class="pin">4</span><span>Quantidade convertida vai para o estoque; compra normal também <b>atualiza o custo</b>.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3: vincular a despesa já lançada -->
+  <div class="tela">
+    <div class="tela-titulo">Tela 3 · NF do contrato encaixando na parcela já lançada</div>
+    <div class="app-card">
+      <div class="app-card-head">Vincular NFS-e 56995 · R$ 1.000,00 · Villela Consultoria</div>
+      <div class="app-card-body">
+        <div class="app-linha">
+          <span>PCO-18570 · parcela 1/3 · vence 15/07 <span class="badge b-green">valor confere</span> <span class="pin">1</span></span>
+          <span class="app-btn" style="padding:5px 12px">Vincular</span>
+        </div>
+        <div class="app-linha">
+          <span>PCO-18570 · parcela 2/3 · vence 15/08 <span class="badge b-gray">em aberto</span></span>
+          <span class="app-btn sec" style="padding:5px 12px">Vincular</span>
+        </div>
+        <div class="app-linha" style="border:0">
+          <span class="muted" style="font-size:12.5px">Valor da nota R$ 1.000,00 · Vinculado R$ 1.000,00 · Diferença R$ 0,00 ✓</span>
+          <span class="pin">2</span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O app lista as parcelas do fornecedor — <b>inclusive as já pagas</b> — e destaca a que bate o valor.</span></div>
+      <div><span class="pin">2</span><span>Se o valor não fechar, ele pergunta o que fazer (parcial, ajuste, desconto, acréscimo). <b>Nada é duplicado.</b></span></div>
+    </div>
+  </div>
+
+  <h2>Para começar a usar</h2>
+  <div class="passos">
+    <div class="passo"><div class="passo-num">1</div><p>Abra <b>Financeiro → Notas Recebidas</b> (as notas chegam sozinhas da SEFAZ).</p></div>
+    <div class="passo"><div class="passo-num">2</div><p>Clique em <b>Conferir</b> na nota. Vincule os itens aos nossos produtos (só na primeira vez de cada fornecedor — depois vem pronto).</p></div>
+    <div class="passo"><div class="passo-num">3</div><p>Escolha o caminho: <b>Gerar Conta a Pagar</b> (compra), <b>Registrar entrada sem pagamento</b> (bonificação/remessa/comodato) ou <b>Vincular a despesa já lançada</b> (NF de contrato).</p></div>
+    <div class="passo"><div class="passo-num">4</div><p>Pronto: o estoque soma sozinho e aparece o aviso <b>📦 Estoque atualizado</b>. Errou? <b>Desfazer</b> devolve tudo.</p></div>
+  </div>
+
+  <p class="muted" style="margin-top:18px">⚠️ Importante: as notas conferidas <b>antes desta novidade</b> não somaram estoque. Se precisar acertar alguma antiga, fale com o Clarkson.</p>
+
+  <div class="rodape">Hardt Alimentos · atualização automática — é só atualizar o app pelo ícone de recarregar</div>
+</div>
+
+</body>
+</html>
