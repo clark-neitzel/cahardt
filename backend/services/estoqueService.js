@@ -82,11 +82,54 @@ async function saldoBaixadoPorProduto(pedidoId, db) {
     return saldo;
 }
 
+// Valida os itens de um pedido contra o estoque disponível (permissão Bloqueio_Venda_Sem_Estoque).
+// Na edição, a quantidade já reservada pelo próprio pedido volta ao disponível antes de comparar —
+// senão salvar o pedido sem mudar nada seria bloqueado. Produtos que não controlam estoque passam direto.
+// Retorna [] quando tudo ok, ou [{ nome, unidade, pedida, disponivel }] por produto estourado.
+async function validarVendaSemEstoque(itens, pedidoIdEdicao) {
+    const porProduto = new Map();
+    for (const item of itens || []) {
+        if (!item.produtoId) continue;
+        const q = parseFloat(item.quantidade || 0);
+        if (q > 0) porProduto.set(item.produtoId, (porProduto.get(item.produtoId) || 0) + q);
+    }
+    if (porProduto.size === 0) return [];
+
+    const produtos = await prisma.produto.findMany({
+        where: { id: { in: [...porProduto.keys()] } },
+        select: { id: true, nome: true, unidade: true, estoqueDisponivel: true, categoria: true, controlaEstoque: true }
+    });
+
+    const reservaPropria = new Map();
+    if (pedidoIdEdicao) {
+        const itensAtuais = await prisma.pedidoItem.findMany({
+            where: { pedidoId: pedidoIdEdicao, pedido: { statusEnvio: { in: STATUS_RESERVA } } },
+            select: { produtoId: true, quantidade: true }
+        });
+        for (const it of itensAtuais) {
+            reservaPropria.set(it.produtoId, (reservaPropria.get(it.produtoId) || 0) + parseFloat(it.quantidade || 0));
+        }
+    }
+
+    const violacoes = [];
+    for (const p of produtos) {
+        const controla = await produtoControlaEstoque(p);
+        if (!controla) continue;
+        const disponivel = parseFloat(p.estoqueDisponivel || 0) + (reservaPropria.get(p.id) || 0);
+        const pedida = porProduto.get(p.id);
+        if (pedida > disponivel) {
+            violacoes.push({ nome: p.nome, unidade: p.unidade || 'un', pedida, disponivel: Math.max(0, disponivel) });
+        }
+    }
+    return violacoes;
+}
+
 const estoqueService = {
 
     recalcularEstoqueProduto,
     produtoControlaEstoque,
     saldoBaixadoPorProduto,
+    validarVendaSemEstoque,
 
     // Ajuste manual de estoque: afeta somente estoqueTotal, depois recalcula disponivel/reservado.
     // tipo: 'ENTRADA' | 'SAIDA'

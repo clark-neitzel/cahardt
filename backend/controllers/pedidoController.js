@@ -37,6 +37,16 @@ async function validarCondicaoLiberada({ clienteId, nomeCondicao, especial, boni
     return null;
 }
 
+// Bloqueio_Venda_Sem_Estoque: monta a mensagem de erro quando algum item do pedido
+// pede mais do que o estoque disponível. Devolve null quando está tudo ok.
+async function validarBloqueioEstoque(itens, pedidoIdEdicao) {
+    const violacoes = await estoqueService.validarVendaSemEstoque(itens, pedidoIdEdicao);
+    if (violacoes.length === 0) return null;
+    const fmt = (v) => String(parseFloat(Number(v).toFixed(3))).replace('.', ',');
+    const linhas = violacoes.map(v => `• ${v.nome}: pedido ${fmt(v.pedida)} ${v.unidade}, disponível ${fmt(v.disponivel)} ${v.unidade}`).join('\n');
+    return `Estoque insuficiente — seu usuário não pode vender além do estoque disponível:\n${linhas}\nReduza a quantidade ou fale com o escritório para repor o estoque.`;
+}
+
 const pedidoController = {
     resumoPendencias: async (req, res) => {
         try {
@@ -339,6 +349,13 @@ const pedidoController = {
             });
             if (erroCondicao) return res.status(400).json({ error: erroCondicao });
 
+            // Bloqueio por usuário: não vender além do estoque disponível.
+            // Aplica também a admin — o interruptor é explícito por usuário.
+            if (req.user?.permissoes?.Bloqueio_Venda_Sem_Estoque) {
+                const erroEstoque = await validarBloqueioEstoque(dadosPedido.itens);
+                if (erroEstoque) return res.status(403).json({ error: erroEstoque });
+            }
+
             const novoPedido = await pedidoService.criar(dadosPedido);
 
             // Notificação de WhatsApp ao cliente (não bloqueia a resposta)
@@ -391,6 +408,14 @@ const pedidoController = {
                 nomeAtual: pedidoAtual.nomeCondicaoPagamento,
             });
             if (erroCondicao) return res.status(400).json({ error: erroCondicao });
+
+            // Bloqueio por usuário: não vender além do estoque disponível (a reserva
+            // do próprio pedido volta ao disponível antes da comparação).
+            if (req.user?.permissoes?.Bloqueio_Venda_Sem_Estoque && dadosPedido.itens) {
+                const erroEstoque = await validarBloqueioEstoque(dadosPedido.itens, id);
+                if (erroEstoque) return res.status(403).json({ error: erroEstoque });
+            }
+
             const pedidoAtualizado = await pedidoService.editar(id, dadosPedido);
             res.json(pedidoAtualizado);
         } catch (error) {

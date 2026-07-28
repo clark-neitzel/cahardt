@@ -124,6 +124,8 @@ const DEFAULT_PERMISSIONS = {
     horarioLimiteAmanha: '18:00',
     horarioLimiteHoje: '12:00',
     Pode_Entregar_Fim_Semana: false,
+    // Bloqueio de venda além do estoque disponível (restrição, não capacidade)
+    Bloqueio_Venda_Sem_Estoque: false,
     // Módulo RH — Currículos
     Pode_Ver_RH: false,
     Pode_Editar_RH: false,
@@ -268,6 +270,7 @@ const BOOL_INDEX = [
     { sec: 'vendas', path: 'Pode_Aprovar_Bonificacao', nome: 'Aprovar Bonificação', desc: 'Aprovar bonificações pendentes', kw: 'aprovar bonificacao' },
     { sec: 'vendas', path: 'Pode_Reverter_Bonificacao', nome: 'Reverter Bonificação', desc: 'Desfazer bonificações aprovadas', kw: 'reverter bonificacao', danger: true },
     { sec: 'vendas', path: 'Pode_Entregar_Fim_Semana', nome: 'Pode Entregar no Fim de Semana', desc: 'Criar pedidos com entrega no sábado ou domingo', kw: 'sabado domingo fim de semana entrega' },
+    { sec: 'vendas', path: 'Bloqueio_Venda_Sem_Estoque', nome: 'Bloquear Venda Sem Estoque', desc: 'É uma RESTRIÇÃO: ligado, a pessoa não cria/edita pedido com quantidade acima do estoque disponível (vale até para admin)', kw: 'estoque negativo abaixo zero sem estoque bloquear disponivel ruptura restricao', noBulk: true },
     // Logística
     { sec: 'logistica', path: 'Pode_Acessar_Embarque', nome: 'Embarque', desc: 'Montagem de cargas e romaneios', kw: 'carga romaneio embarque caminhao menu' },
     { sec: 'logistica', path: 'Pode_Ver_Todas_Entregas', nome: 'Entregas (Auditor)', desc: 'Vê as entregas de todos os motoristas (+ menu Auditoria Entregas)', kw: 'auditoria entregas todas fiscalizar conferir' },
@@ -1045,6 +1048,16 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                             colorClass="bg-orange-600"
                         />
                     </div>
+                </div>
+            )}
+
+            {/* Restrições de venda */}
+            {permissoes.pedidos?.view && (
+                <div className="border-t mt-3 pt-3">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Restrições de Venda</p>
+                    <Toggle checked={!!permissoes.Bloqueio_Venda_Sem_Estoque} onChange={() => toggleBool('Bloqueio_Venda_Sem_Estoque')}
+                        label="Bloquear Venda Sem Estoque"
+                        sublabel="RESTRIÇÃO: ligado, este usuário não cria nem edita pedido com quantidade acima do estoque disponível (vale até para admin). O erro mostra o disponível de cada produto. Fica fora do 'Marcar tudo' e dos perfis." />
                 </div>
             )}
         </div>
