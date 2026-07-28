@@ -149,6 +149,46 @@ router.post('/limpar-pedidos-abertos-antigos', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/corrigir-especiais-entregues-abertos { "confirmar": true }
+// Especiais ABERTOS que já foram entregues e pagos na prática (têm pagamento real /
+// conta a receber) ganham o status de especial aprovado (RECEBIDO/FATURADO) —
+// SÓ o status: sem baixa de estoque retroativa (aprovar de verdade meses depois
+// bagunçaria o saldo atual).
+router.post('/corrigir-especiais-entregues-abertos', async (req, res) => {
+    try {
+        if (req.body?.confirmar !== true) return res.status(400).json({ error: 'Envie { "confirmar": true }.' });
+        const alvo = await prisma.pedido.findMany({
+            where: {
+                statusEnvio: 'ABERTO',
+                especial: true,
+                statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL'] }
+            },
+            select: {
+                id: true, numero: true, statusEntrega: true, dataVenda: true,
+                cliente: { select: { Nome: true, NomeFantasia: true } },
+                pagamentosReais: { select: { id: true }, take: 1 }
+            }
+        });
+        const corrigidos = [];
+        for (const p of alvo) {
+            await prisma.pedido.update({
+                where: { id: p.id },
+                data: { statusEnvio: 'RECEBIDO', situacaoCA: 'FATURADO', enviadoEm: new Date() }
+            });
+            corrigidos.push({
+                id: p.id, numero: p.numero,
+                cliente: p.cliente?.NomeFantasia || p.cliente?.Nome || '—',
+                statusEntrega: p.statusEntrega,
+                entrega: p.dataVenda?.toISOString?.().slice(0, 10) || null
+            });
+        }
+        res.json({ ok: true, corrigidos });
+    } catch (e) {
+        console.error('[corrigir-especiais-entregues-abertos]', e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-bloqueio-estoque?login=xxx
 // Diagnóstico do bloqueio de venda sem estoque: confirma que este backend tem a
 // validação (marcador de deploy) e mostra quem está com a restrição ligada.
