@@ -1545,6 +1545,42 @@ async function desfazer({ lancamentoId }) {
 }
 
 /**
+ * ESTORNARAM uma baixa: solta a conciliação bancária que dependia dela — senão a
+ * linha do extrato fica "Conciliado" apontando para uma baixa morta (foi o caso
+ * SEGALAS/LCA/Emerson descoberto na auditoria de 28/07). Vínculo 1↔1 → a linha
+ * volta para PENDENTE; item de GRUPO → o grupo inteiro é desfeito (a soma deixou
+ * de fechar). Chamar DEPOIS do estorno, fora da transação dele (o desfazer de
+ * grupo tem transação própria); falha aqui não desfaz o estorno — a auditoria
+ * diag-conciliados-sem-baixa pega o que sobrar.
+ */
+async function desconciliarPorBaixa({ pagamentoParcelaId = null, pagamentoParcelaPagarId = null }) {
+    const chave = pagamentoParcelaId ? { pagamentoParcelaId } : { pagamentoParcelaPagarId };
+    const r = await prisma.extratoLancamento.updateMany({
+        where: { ...chave, status: 'CONCILIADO' },
+        data: {
+            status: 'PENDENTE', pagamentoParcelaId: null, pagamentoParcelaPagarId: null,
+            conciliadoAuto: false, conciliadoPorId: null, conciliadoEm: null
+        }
+    });
+    let linhasSoltas = r.count;
+    const item = await prisma.conciliacaoGrupoItem.findFirst({ where: chave, select: { grupoId: true } });
+    if (item) {
+        const lanc = await prisma.conciliacaoGrupoItem.findFirst({
+            where: { grupoId: item.grupoId, extratoLancamentoId: { not: null } },
+            select: { extratoLancamentoId: true }
+        });
+        if (lanc) {
+            await desfazer({ lancamentoId: lanc.extratoLancamentoId }); // desfaz o grupo inteiro
+            linhasSoltas++;
+        } else {
+            await prisma.conciliacaoGrupo.delete({ where: { id: item.grupoId } }).catch(() => { });
+        }
+    }
+    if (linhasSoltas > 0) console.log(`🏦 [Conciliação] Estorno de baixa soltou ${linhasSoltas} vínculo(s) do extrato (voltaram para pendente).`);
+    return { linhasSoltas };
+}
+
+/**
  * Baixas do app DISPONÍVEIS (não conciliadas) na conta/período, para o modal
  * de conciliação em grupo. tipo CREDITO → recebimentos; DEBITO → pagamentos.
  *
@@ -2557,6 +2593,7 @@ module.exports = {
     identificarDebitosViaCA,
     corrigirContaBaixa,
     desfazer,
+    desconciliarPorBaixa,
     listarImportacoes,
     criarDespesaDoLancamento,
     criarDespesasLoteEConciliar,

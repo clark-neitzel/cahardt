@@ -4188,36 +4188,48 @@ router.post('/diag-conciliados-sem-baixa/corrigir', async (req, res) => {
             if (!est) continue;
             let novo = null, motivo = null, ativasInfo = [];
             if (l.pagamentoParcelaId) {
+                // Candidatas: baixas ativas da MESMA parcela e das parcelas IRMÃS da mesma conta
+                const parcelaEst = await prisma.parcela.findUnique({ where: { id: est.parcelaId }, select: { contaReceberId: true } });
                 const ativas = await prisma.pagamentoParcela.findMany({
-                    where: { parcelaId: est.parcelaId, estornado: false },
-                    select: { id: true, valorRecebido: true, contaFinanceiraCaId: true, dataPagamento: true, observacao: true }
+                    where: { estornado: false, parcela: { contaReceberId: parcelaEst?.contaReceberId || '-' } },
+                    select: { id: true, valorRecebido: true, contaFinanceiraCaId: true, dataPagamento: true, observacao: true, parcela: { select: { numeroParcela: true } } }
                 });
-                ativasInfo = ativas.map((b) => ({ id: b.id, valor: n(b.valorRecebido), conta: b.contaFinanceiraCaId, data: b.dataPagamento, jaUsada: usados.has(b.id), obs: (b.observacao || '').slice(0, 80) }));
+                ativasInfo = ativas.map((b) => ({ id: b.id, parcela: b.parcela?.numeroParcela, valor: n(b.valorRecebido), conta: b.contaFinanceiraCaId, data: b.dataPagamento, jaUsada: usados.has(b.id), obs: (b.observacao || '').slice(0, 80) }));
                 const livres = ativas.filter((b) => !usados.has(b.id) && Math.abs(n(b.valorRecebido) - n(l.valor)) <= 0.02);
                 novo = livres.length === 1 ? livres[0] : null;
-                motivo = livres.length === 0 ? 'nenhuma baixa ativa livre com o valor' : (livres.length > 1 ? 'mais de uma candidata — manual' : null);
+                motivo = livres.length === 0 ? 'sem baixa ativa livre com o valor — desconciliar' : (livres.length > 1 ? 'mais de uma candidata — manual' : null);
             } else {
+                const parcelaEst = await prisma.parcelaPagar.findUnique({ where: { id: est.parcelaPagarId }, select: { contaPagarId: true } });
                 const ativas = await prisma.pagamentoParcelaPagar.findMany({
-                    where: { parcelaPagarId: est.parcelaPagarId, estornado: false },
-                    select: { id: true, valorPago: true, juros: true, multa: true, contaFinanceiraCaId: true, dataPagamento: true, origem: true, observacao: true }
+                    where: { estornado: false, parcelaPagar: { contaPagarId: parcelaEst?.contaPagarId || '-' } },
+                    select: { id: true, valorPago: true, juros: true, multa: true, contaFinanceiraCaId: true, dataPagamento: true, origem: true, observacao: true, parcelaPagar: { select: { numeroParcela: true } } }
                 });
-                ativasInfo = ativas.map((b) => ({ id: b.id, valor: Math.round((n(b.valorPago) + n(b.juros) + n(b.multa)) * 100) / 100, conta: b.contaFinanceiraCaId, data: b.dataPagamento, origem: b.origem, jaUsada: usados.has(b.id), obs: (b.observacao || '').slice(0, 80) }));
+                ativasInfo = ativas.map((b) => ({ id: b.id, parcela: b.parcelaPagar?.numeroParcela, valor: Math.round((n(b.valorPago) + n(b.juros) + n(b.multa)) * 100) / 100, conta: b.contaFinanceiraCaId, data: b.dataPagamento, origem: b.origem, jaUsada: usados.has(b.id), obs: (b.observacao || '').slice(0, 80) }));
                 const livres = ativas.filter((b) => !usados.has(b.id) && Math.abs(n(b.valorPago) + n(b.juros) + n(b.multa) - n(l.valor)) <= 0.02);
                 novo = livres.length === 1 ? livres[0] : null;
-                motivo = livres.length === 0 ? 'nenhuma baixa ativa livre com o valor' : (livres.length > 1 ? 'mais de uma candidata — manual' : null);
+                motivo = livres.length === 0 ? 'sem baixa ativa livre com o valor — desconciliar' : (livres.length > 1 ? 'mais de uma candidata — manual' : null);
             }
+            const desconciliar = !novo && motivo && motivo.includes('desconciliar');
             const acao = {
-                caso: 'RELINK_BAIXA_ESTORNADA', lancamentoId: l.id, data: l.data, valor: n(l.valor),
+                caso: novo ? 'RELINK_BAIXA_ESTORNADA' : (desconciliar ? 'DESCONCILIAR_SEM_BAIXA_VIVA' : 'MANUAL'),
+                lancamentoId: l.id, data: l.data, valor: n(l.valor),
                 tipo: l.tipo, descricao: l.descricao, baixaEstornadaId: est.id,
-                novaBaixaId: novo?.id || null, executado: false, motivoSemAcao: motivo,
-                baixasAtivasDaParcela: ativasInfo
+                novaBaixaId: novo?.id || null, executado: false, motivoSemAcao: novo ? null : motivo,
+                baixasAtivasDaConta: ativasInfo
             };
-            if (novo && aplicar) {
+            if (aplicar && novo) {
                 await prisma.extratoLancamento.update({
                     where: { id: l.id },
                     data: l.pagamentoParcelaId ? { pagamentoParcelaId: novo.id } : { pagamentoParcelaPagarId: novo.id }
                 });
                 usados.add(novo.id);
+                acao.executado = true;
+            } else if (aplicar && desconciliar) {
+                // Nada vivo para amarrar: a linha volta para PENDENTE (conciliar de novo com o certo)
+                await prisma.extratoLancamento.update({
+                    where: { id: l.id },
+                    data: { status: 'PENDENTE', pagamentoParcelaId: null, pagamentoParcelaPagarId: null, conciliadoAuto: false, conciliadoPorId: null, conciliadoEm: null }
+                });
                 acao.executado = true;
             }
             plano.push(acao);
@@ -5324,6 +5336,13 @@ router.post('/estornar-baixa-pagar/:pagamentoId', async (req, res) => {
             });
             resultado = await caSync.recalcularParcelaEConta(tx, pagamento.parcelaPagarId);
         }, { timeout: 20000, maxWait: 10000 });
+
+        // Conciliação bancária presa nesta baixa volta para pendente (estorno já efetivado)
+        try {
+            await require('../services/conciliacaoBancariaService').desconciliarPorBaixa({ pagamentoParcelaPagarId: pagamento.id });
+        } catch (e) {
+            console.error('Falha ao desconciliar extrato após estorno (estorno já efetivado):', e);
+        }
 
         let cancelamento = null;
         if (String(req.query.cancelarConta || '') === '1') {

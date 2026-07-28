@@ -264,6 +264,11 @@ const asaasBaixaService = {
         if (cobranca.baixaAppOk && cobranca.parcelaId && cobranca.parcela) {
             try {
                 const parcela = cobranca.parcela;
+                // Ids ANTES do estorno — para soltar a conciliação bancária depois
+                const idsEstornar = (await prisma.pagamentoParcela.findMany({
+                    where: { parcelaId: parcela.id, estornado: false, observacao: { contains: cobranca.asaasPaymentId } },
+                    select: { id: true }
+                })).map(p => p.id);
                 await prisma.$transaction(async (tx) => {
                     await tx.pagamentoParcela.updateMany({
                         where: {
@@ -294,6 +299,14 @@ const asaasBaixaService = {
                     });
                 }, { timeout: 20000, maxWait: 10000 });
                 await prisma.cobrancaAsaas.update({ where: { id: cobranca.id }, data: { baixaAppOk: false } });
+                // Conciliação bancária presa nestas baixas volta para pendente (estorno já efetivado)
+                for (const pid of idsEstornar) {
+                    try {
+                        await require('./conciliacaoBancariaService').desconciliarPorBaixa({ pagamentoParcelaId: pid });
+                    } catch (e) {
+                        console.error('[Asaas estorno] Falha ao desconciliar extrato (estorno já efetivado):', e.message);
+                    }
+                }
                 resultado.estornoApp = true;
             } catch (e) {
                 console.error(`[Asaas estorno] Falha no estorno local de ${cobranca.asaasPaymentId}:`, e.message);

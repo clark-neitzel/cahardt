@@ -29,6 +29,7 @@ Para a conta do **Asaas** (onde caem os PIX da entrega e os boletos emitidos pel
    - **Conta do Asaas (desde 07/2026):** os créditos "Cobrança recebida" trazem o código da cobrança (`pay_...`), e o automático usa esse código para achar a baixa **exata** do boleto/PIX — funciona mesmo quando: o cliente pagou **com juros/multa** (a diferença fica registrada no grupo como "Juros/multa recebidos", aceita até 10% do crédito); o dinheiro caiu **mais de 3 dias** depois do pagamento (fim de semana); ou há **dois boletos de mesmo valor** no mesmo dia (cada código acha o seu). Crédito MENOR que a baixa ou juros acima do teto continuam pendentes para análise manual.
 4. Revisar os pendentes: **Conciliar** quando a sugestão está certa; **Buscar…** para escolher manualmente.
 5. **Desfazer** (ícone de seta) volta qualquer conciliado/ignorado para pendente. Num lançamento conciliado **em grupo**, o desfazer **dissolve o grupo inteiro** (a baixa criada na conciliação NÃO é estornada — se preciso, estorne no Contas a Pagar).
+6. **Estornou uma baixa que estava conciliada?** O caminho inverso é automático: ao estornar uma baixa (no Contas a Pagar, no Contas a Receber ou por estorno de cobrança Asaas), a linha do extrato que estava presa nela **volta sozinha para pendente** (se era grupo, o grupo inteiro é desfeito). Assim o extrato nunca fica "Conciliado" apontando para uma baixa morta — é só conciliar de novo com a baixa/conta certa.
 
 ## A janela "Buscar…" (o que é este lançamento?)
 

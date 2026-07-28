@@ -1203,6 +1203,13 @@ router.post('/:id/parcelas/:parcelaId/estorno', verificarAuth, checkEscrita, asy
             resultado = await contasPagarCaSyncService.recalcularParcelaEConta(tx, parcelaId);
         }, { timeout: 20000, maxWait: 10000 });
 
+        // Conciliação bancária presa nesta baixa volta para pendente (estorno já efetivado).
+        try {
+            await require('../services/conciliacaoBancariaService').desconciliarPorBaixa({ pagamentoParcelaPagarId: pagamentoId });
+        } catch (e) {
+            console.error('Falha ao desconciliar extrato após estorno (estorno já efetivado):', e);
+        }
+
         res.json({
             message: 'Pagamento estornado com sucesso!',
             novoStatusParcela: resultado?.statusParcela,

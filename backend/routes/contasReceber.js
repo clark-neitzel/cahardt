@@ -765,6 +765,13 @@ router.delete('/:parcelaId/pagamentos/:pagamentoId', verificarAuth, checkBaixa, 
             await tx.contaReceber.update({ where: { id: parcela.contaReceberId }, data: { status: novoStatusConta } });
         }, { timeout: 20000, maxWait: 10000 });
 
+        // Conciliação bancária presa nesta baixa volta para pendente (estorno já efetivado).
+        try {
+            await require('../services/conciliacaoBancariaService').desconciliarPorBaixa({ pagamentoParcelaId: pagamentoId });
+        } catch (e) {
+            console.error('Falha ao desconciliar extrato após estorno (estorno já efetivado):', e);
+        }
+
         res.json({ message: 'Pagamento estornado com sucesso!', novoStatusParcela, novoStatusConta });
     } catch (error) {
         console.error('Erro ao estornar pagamento:', error);
@@ -786,6 +793,11 @@ router.delete('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) =
         if (parcela.status !== 'PAGO' && parcela.status !== 'PARCIAL') {
             return res.status(400).json({ error: 'Parcela não tem baixa para estornar.' });
         }
+
+        // Ids ANTES do estorno em lote — para soltar a conciliação bancária depois
+        const idsEstornar = (await prisma.pagamentoParcela.findMany({
+            where: { parcelaId, estornado: false }, select: { id: true }
+        })).map(p => p.id);
 
         let novoStatusConta;
         await prisma.$transaction(async (tx) => {
@@ -813,6 +825,15 @@ router.delete('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) =
 
             await tx.contaReceber.update({ where: { id: parcela.contaReceberId }, data: { status: novoStatusConta } });
         }, { timeout: 20000, maxWait: 10000 });
+
+        // Conciliação bancária presa nestas baixas volta para pendente (estorno já efetivado).
+        for (const pid of idsEstornar) {
+            try {
+                await require('../services/conciliacaoBancariaService').desconciliarPorBaixa({ pagamentoParcelaId: pid });
+            } catch (e) {
+                console.error('Falha ao desconciliar extrato após estorno (estorno já efetivado):', e);
+            }
+        }
 
         res.json({ message: 'Baixa estornada com sucesso!', novoStatus: novoStatusConta });
     } catch (error) {
