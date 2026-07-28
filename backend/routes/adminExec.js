@@ -3959,6 +3959,196 @@ router.get('/diag-extrato-conciliado', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-conciliados-sem-baixa?contaId=&de=YYYY-MM-DD&ate=YYYY-MM-DD
+// AUDITORIA (somente leitura): todo lançamento CONCILIADO da conciliação bancária cuja
+// contraparte no app NÃO está quitada — a regra do sistema é "conciliar dá baixa"
+// (direto no aberto) ou "conciliar amarra uma baixa que já existe" (parcela já paga).
+// Encontra: (a) crédito conciliado com parcela a receber ainda ABERTO/PARCIAL/VENCIDO,
+// (b) idem para débito × parcela a pagar, (c) conciliado apontando para baixa ESTORNADA,
+// (d) conciliado órfão: sem vínculo direto E sem grupo (fora as linhas ca-arq-, que são
+// recebimentos arquivados do CA sem parcela local — esperado).
+router.get('/diag-conciliados-sem-baixa', async (req, res) => {
+    try {
+        const ymd = (d) => d ? new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) : null;
+        const n = (v) => Number(v || 0);
+        const where = { status: 'CONCILIADO' };
+        if (req.query.contaId) where.contaFinanceiraCaId = String(req.query.contaId);
+        if (req.query.de || req.query.ate) {
+            where.data = {};
+            if (req.query.de) where.data.gte = new Date(`${req.query.de}T00:00:00-03:00`);
+            if (req.query.ate) where.data.lte = new Date(`${req.query.ate}T23:59:59-03:00`);
+        }
+        const lancs = await prisma.extratoLancamento.findMany({
+            where,
+            select: {
+                id: true, fitId: true, data: true, valor: true, tipo: true, descricao: true,
+                contaFinanceiraCaId: true, conciliadoAuto: true, conciliadoEm: true,
+                pagamentoParcelaId: true, pagamentoParcelaPagarId: true
+            }
+        });
+
+        // Grupos dos lançamentos sem vínculo direto
+        const idsSemLink = lancs.filter((l) => !l.pagamentoParcelaId && !l.pagamentoParcelaPagarId).map((l) => l.id);
+        const itensLanc = idsSemLink.length ? await prisma.conciliacaoGrupoItem.findMany({
+            where: { extratoLancamentoId: { in: idsSemLink } },
+            select: { grupoId: true, extratoLancamentoId: true }
+        }) : [];
+        const grupoPorLanc = new Map(itensLanc.map((i) => [i.extratoLancamentoId, i.grupoId]));
+        const grupoIds = [...new Set(itensLanc.map((i) => i.grupoId))];
+        const itensGrupos = grupoIds.length ? await prisma.conciliacaoGrupoItem.findMany({
+            where: { grupoId: { in: grupoIds } },
+            select: { grupoId: true, pagamentoParcelaId: true, pagamentoParcelaPagarId: true }
+        }) : [];
+        const baixasPorGrupo = new Map();
+        for (const it of itensGrupos) {
+            if (!baixasPorGrupo.has(it.grupoId)) baixasPorGrupo.set(it.grupoId, { rec: [], pag: [] });
+            if (it.pagamentoParcelaId) baixasPorGrupo.get(it.grupoId).rec.push(it.pagamentoParcelaId);
+            if (it.pagamentoParcelaPagarId) baixasPorGrupo.get(it.grupoId).pag.push(it.pagamentoParcelaPagarId);
+        }
+
+        // Todas as baixas envolvidas (diretas + de grupo), com a parcela e a conta
+        const recIds = [...new Set([
+            ...lancs.map((l) => l.pagamentoParcelaId).filter(Boolean),
+            ...itensGrupos.map((i) => i.pagamentoParcelaId).filter(Boolean)
+        ])];
+        const pagIds = [...new Set([
+            ...lancs.map((l) => l.pagamentoParcelaPagarId).filter(Boolean),
+            ...itensGrupos.map((i) => i.pagamentoParcelaPagarId).filter(Boolean)
+        ])];
+        const [recs, pags] = await Promise.all([
+            recIds.length ? prisma.pagamentoParcela.findMany({
+                where: { id: { in: recIds } },
+                select: {
+                    id: true, estornado: true, valorRecebido: true,
+                    parcela: {
+                        select: {
+                            id: true, numeroParcela: true, status: true, valor: true, valorPago: true,
+                            contaReceber: {
+                                select: {
+                                    status: true,
+                                    pedido: { select: { numero: true } },
+                                    cliente: { select: { Nome: true, NomeFantasia: true } }
+                                }
+                            }
+                        }
+                    }
+                }
+            }) : [],
+            pagIds.length ? prisma.pagamentoParcelaPagar.findMany({
+                where: { id: { in: pagIds } },
+                select: {
+                    id: true, estornado: true, valorPago: true,
+                    parcelaPagar: {
+                        select: {
+                            id: true, numeroParcela: true, status: true, valor: true,
+                            contaPagar: { select: { status: true, descricao: true, fornecedor: { select: { razaoSocial: true } } } }
+                        }
+                    }
+                }
+            }) : []
+        ]);
+        const recPorId = new Map(recs.map((r) => [r.id, r]));
+        const pagPorId = new Map(pags.map((p) => [p.id, p]));
+
+        const ABERTOS = new Set(['PENDENTE', 'ABERTO', 'PARCIAL', 'VENCIDO', 'ATRASADO']);
+        const problemas = [];
+        const orfaosInesperados = [];
+        let orfaosCaArq = 0, okDireto = 0, okGrupo = 0;
+
+        const checarRec = (r) => {
+            if (!r) return { tipo: 'BAIXA_SUMIU' };
+            if (r.estornado) return { tipo: 'BAIXA_ESTORNADA' };
+            const st = r.parcela?.status;
+            if (ABERTOS.has(st)) return { tipo: 'PARCELA_NAO_QUITADA', status: st };
+            const stConta = r.parcela?.contaReceber?.status;
+            if (ABERTOS.has(stConta)) return { tipo: 'CONTA_NAO_QUITADA', status: stConta };
+            return null;
+        };
+        const checarPag = (p) => {
+            if (!p) return { tipo: 'BAIXA_SUMIU' };
+            if (p.estornado) return { tipo: 'BAIXA_ESTORNADA' };
+            const st = p.parcelaPagar?.status;
+            if (ABERTOS.has(st)) return { tipo: 'PARCELA_NAO_QUITADA', status: st };
+            const stConta = p.parcelaPagar?.contaPagar?.status;
+            if (ABERTOS.has(stConta)) return { tipo: 'CONTA_NAO_QUITADA', status: stConta };
+            return null;
+        };
+        const rotuloRec = (r) => r ? {
+            pedido: r.parcela?.contaReceber?.pedido?.numero || null,
+            cliente: r.parcela?.contaReceber?.cliente?.NomeFantasia || r.parcela?.contaReceber?.cliente?.Nome || null,
+            parcela: r.parcela?.numeroParcela ?? null,
+            parcelaId: r.parcela?.id || null,
+            statusParcela: r.parcela?.status || null,
+            statusConta: r.parcela?.contaReceber?.status || null,
+            valorParcela: n(r.parcela?.valor), valorPago: n(r.parcela?.valorPago), valorBaixa: n(r.valorRecebido)
+        } : null;
+        const rotuloPag = (p) => p ? {
+            fornecedor: p.parcelaPagar?.contaPagar?.fornecedor?.razaoSocial || null,
+            despesa: p.parcelaPagar?.contaPagar?.descricao || null,
+            parcela: p.parcelaPagar?.numeroParcela ?? null,
+            parcelaId: p.parcelaPagar?.id || null,
+            statusParcela: p.parcelaPagar?.status || null,
+            statusConta: p.parcelaPagar?.contaPagar?.status || null,
+            valorParcela: n(p.parcelaPagar?.valor), valorBaixa: n(p.valorPago)
+        } : null;
+
+        for (const l of lancs) {
+            const base = {
+                lancamentoId: l.id, data: ymd(l.data), valor: n(l.valor), tipo: l.tipo,
+                descricao: l.descricao, contaFinanceiraCaId: l.contaFinanceiraCaId,
+                auto: l.conciliadoAuto, conciliadoEm: l.conciliadoEm
+            };
+            if (l.pagamentoParcelaId || l.pagamentoParcelaPagarId) {
+                const prob = l.pagamentoParcelaId ? checarRec(recPorId.get(l.pagamentoParcelaId)) : checarPag(pagPorId.get(l.pagamentoParcelaPagarId));
+                if (prob) {
+                    problemas.push({
+                        ...base, vinculo: 'DIRETO', problema: prob.tipo, statusEncontrado: prob.status || null,
+                        alvo: l.pagamentoParcelaId ? rotuloRec(recPorId.get(l.pagamentoParcelaId)) : rotuloPag(pagPorId.get(l.pagamentoParcelaPagarId))
+                    });
+                } else okDireto++;
+                continue;
+            }
+            const grupoId = grupoPorLanc.get(l.id);
+            if (grupoId) {
+                const b = baixasPorGrupo.get(grupoId) || { rec: [], pag: [] };
+                const probs = [
+                    ...b.rec.map((id) => ({ id, prob: checarRec(recPorId.get(id)), alvo: rotuloRec(recPorId.get(id)) })),
+                    ...b.pag.map((id) => ({ id, prob: checarPag(pagPorId.get(id)), alvo: rotuloPag(pagPorId.get(id)) }))
+                ].filter((x) => x.prob);
+                if (b.rec.length + b.pag.length === 0) {
+                    problemas.push({ ...base, vinculo: 'GRUPO', problema: 'GRUPO_SEM_NENHUMA_BAIXA', grupoId });
+                } else if (probs.length) {
+                    problemas.push({
+                        ...base, vinculo: 'GRUPO', grupoId,
+                        problema: probs[0].prob.tipo, statusEncontrado: probs[0].prob.status || null,
+                        alvos: probs.map((x) => x.alvo)
+                    });
+                } else okGrupo++;
+                continue;
+            }
+            // Sem vínculo e sem grupo
+            if (String(l.fitId || '').startsWith('ca-arq-')) { orfaosCaArq++; continue; }
+            orfaosInesperados.push(base);
+        }
+
+        const contasFin = await prisma.contaFinanceira.findMany({ select: { id: true, nomeBanco: true } });
+        const nomeConta = new Map(contasFin.map((c) => [c.id, c.nomeBanco]));
+        const marcarConta = (x) => ({ ...x, conta: nomeConta.get(x.contaFinanceiraCaId) || x.contaFinanceiraCaId });
+
+        res.json({
+            ok: true,
+            regra: 'Conciliar dá baixa (aberto) ou amarra baixa existente (parcela já paga) — aqui aparece o que fugiu disso.',
+            totalConciliados: lancs.length,
+            saudaveis: { vinculoDireto: okDireto, viaGrupo: okGrupo, arquivadosCA: orfaosCaArq },
+            problemas: { qtd: problemas.length, itens: problemas.slice(0, 200).map(marcarConta) },
+            orfaosInesperados: { qtd: orfaosInesperados.length, itens: orfaosInesperados.slice(0, 100).map(marcarConta) }
+        });
+    } catch (error) {
+        console.error('[admin-exec] Erro diag-conciliados-sem-baixa:', error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
 // GET /api/admin-exec/contas-pagar-conciliacao-suspeitas
 // Varre vínculos suspeitos com o CA (incidente do ICMS DESTDA, 07/2026):
 //  (a) parcelas com baixa vinda do CA cujo total pago EXCEDE o valor da parcela
