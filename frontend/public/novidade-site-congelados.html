@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Site de Congelados — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem = cartão compacto) -->
+<meta property="og:title" content="🧊 Novidade: o site de Congelados ficou completo">
+<meta property="og:description" content="Cardápio novo com fotos, ficha do produto, entrega OU retirada com data, carrinho fácil — e no painel um aviso a cada 15 min pra não deixar pedido esperando.">
+<meta property="og:type" content="website">
+<style>
+  :root{
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66;
+    --sky:#0369a1; --pink:#be1259; --amber:#b45309;
+    letter-spacing:-0.01em;
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--cream); color:var(--ink);
+        font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap{ max-width:640px; margin:0 auto; padding:0 16px 56px; }
+
+  /* HERO */
+  .hero{ background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:40px 16px 92px; text-align:center; }
+  .hero-inner{ max-width:640px; margin:0 auto; }
+  .eyebrow{ display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase;
+            letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1{ font-size:clamp(27px,7vw,40px); font-weight:800; line-height:1.12; margin:0 0 12px; text-wrap:balance; }
+  .hero p{ color:rgba(255,255,255,.78); font-size:16px; max-width:48ch; margin:0 auto; text-wrap:balance; }
+
+  /* MOCK (telas do app) */
+  .mock{ max-width:400px; margin:-64px auto 10px; background:#fff; border-radius:20px; box-shadow:0 18px 44px rgba(20,40,34,.28); overflow:hidden; }
+  .mock-cap{ text-align:center; font-size:12.5px; font-weight:700; color:var(--ink-soft); margin:0 auto 30px; max-width:400px; }
+  .mock-top{ background:var(--primary); color:#fff; padding:13px 16px; display:flex; align-items:center; gap:10px; font-weight:800; }
+  .mock-top .lp{ margin-left:auto; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; background:rgba(255,255,255,.2); padding:5px 9px; border-radius:999px; }
+  .mock-body{ padding:14px 16px 18px; }
+  .m-lbl{ font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:var(--ink-soft); margin:12px 0 5px; }
+  .m-field{ border:1.5px solid #d8d5cc; border-radius:10px; padding:10px 12px; font-size:14px; min-height:42px; display:flex; align-items:center; background:#fff; }
+  .m-seg{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .m-seg .b{ text-align:center; border:1.6px solid #d8d5cc; border-radius:10px; padding:10px; font-weight:800; font-size:13px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.03em; }
+  .m-seg .b.on{ background:var(--primary); color:#fff; border-color:var(--primary); }
+  .m-item{ display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px dashed #e5e2da; }
+  .m-thumb{ width:42px; height:42px; border-radius:9px; background:linear-gradient(160deg,#fbf7ee,#ece2cd); flex:none; display:flex; align-items:center; justify-content:center; font-size:20px; }
+  .m-item .nm{ flex:1; min-width:0; font-size:13px; font-weight:600; }
+  .m-item .nm small{ display:block; color:#9a8c70; font-weight:400; }
+  .m-step{ background:var(--primary); color:#fff; border-radius:999px; padding:3px 8px; font-size:13px; font-weight:700; display:flex; gap:8px; align-items:center; }
+  .m-trash{ width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#c8492f; font-size:15px; }
+  .m-cta{ margin-top:14px; background:#25d366; color:#fff; text-align:center; font-weight:800; padding:12px; border-radius:999px; }
+
+  /* pins numerados */
+  .pin{ display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:999px;
+        background:var(--gold); color:#2b230f; font-size:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,.2); flex:none; }
+  .legendas{ max-width:400px; margin:0 auto 8px; display:grid; gap:8px; }
+  .legendas li{ list-style:none; display:flex; gap:10px; align-items:flex-start; background:#fff; border:1px solid #e7e4dc; border-radius:12px; padding:10px 12px; font-size:14px; }
+  .legendas b{ color:var(--primary-dark); }
+
+  /* SEÇÕES / ACCORDIONS */
+  h2.sec{ font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:var(--ink-soft); margin:34px 4px 12px; }
+  .acc{ background:#fff; border:1px solid #e7e4dc; border-radius:16px; margin-bottom:12px; overflow:hidden; }
+  .acc summary{ list-style:none; cursor:pointer; padding:16px 18px; display:flex; align-items:center; gap:13px; }
+  .acc summary::-webkit-details-marker{ display:none; }
+  .acc .ic{ width:42px; height:42px; border-radius:12px; background:var(--mint); color:var(--primary-dark); display:flex; align-items:center; justify-content:center; font-size:22px; flex:none; }
+  .acc .ti{ flex:1; }
+  .acc .ti strong{ display:block; font-size:16px; font-weight:800; }
+  .acc .ti span{ font-size:13px; color:var(--ink-soft); }
+  .acc .chev{ color:#b7b2a6; transition:transform .2s; }
+  .acc[open] .chev{ transform:rotate(180deg); }
+  .acc .cont{ padding:0 18px 18px; color:#3f4a45; font-size:14.5px; }
+  .acc .cont ul{ margin:6px 0 0; padding-left:18px; }
+  .acc .cont li{ margin-bottom:6px; }
+  .tagrow{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+  .tag{ font-size:11px; font-weight:700; padding:4px 9px; border-radius:999px; background:var(--mint); color:var(--primary-dark); }
+  .tag.sky{ background:#e0f2fe; color:var(--sky); } .tag.pink{ background:#fce7f3; color:var(--pink); } .tag.amber{ background:#fef3c7; color:var(--amber); }
+
+  /* popup mock */
+  .pop{ max-width:380px; margin:6px auto 30px; border-radius:16px; overflow:hidden; box-shadow:0 16px 40px rgba(20,40,34,.25); background:#fff; }
+  .pop-top{ background:linear-gradient(120deg,#f59e0b,#ea7a0c); color:#fff; padding:14px 16px; display:flex; align-items:center; gap:11px; }
+  .pop-top .ic{ width:38px; height:38px; border-radius:999px; background:rgba(255,255,255,.22); display:flex; align-items:center; justify-content:center; font-size:19px; }
+  .pop-top strong{ font-size:15px; font-weight:800; display:block; }
+  .pop-top span{ font-size:12px; opacity:.9; }
+  .pop-body{ padding:12px 14px; }
+  .pop-row{ display:flex; align-items:center; gap:9px; border:1px solid #fde4c0; background:#fff8ef; border-radius:10px; padding:8px 10px; margin-bottom:7px; font-size:13px; }
+  .pop-row .o{ font-size:10px; font-weight:800; text-transform:uppercase; padding:2px 6px; border-radius:5px; }
+  .pop-row .o.kf{ background:#fce7f3; color:var(--pink); } .pop-row .o.cg{ background:#e0f2fe; color:var(--sky); }
+  .pop-foot{ padding:11px 14px; background:#f8f8f6; display:flex; gap:8px; }
+  .pop-foot .bt{ flex:1; text-align:center; color:#fff; font-weight:800; font-size:12.5px; padding:9px; border-radius:9px; }
+  .pop-foot .bt.pink{ background:#db2777; } .pop-foot .bt.sky{ background:#0284c7; }
+
+  .foot{ text-align:center; color:var(--ink-soft); font-size:13px; margin-top:36px; }
+  .foot .logo{ font-weight:800; color:var(--primary-dark); }
+</style>
+</head>
+<body>
+
+  <div class="hero">
+    <div class="hero-inner">
+      <span class="eyebrow">Novidade · Congelados</span>
+      <h1>O site de Congelados ficou completo 🧊</h1>
+      <p>Cardápio novo com fotos, ficha do produto, entrega <b>ou</b> retirada com data e um carrinho fácil. E no painel: um aviso a cada 15 min pra nenhum pedido ficar esperando.</p>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <!-- MOCK 1: carrinho -->
+    <div class="mock">
+      <div class="mock-top">🛒 Seu pedido <span class="lp">Limpar</span></div>
+      <div class="mock-body">
+        <div class="m-item">
+          <div class="m-thumb">🍗</div>
+          <div class="nm">Coxinha Aipim G 130gr<small>R$ 42,03 · 20un</small></div>
+          <div class="m-step">− 1 +</div>
+          <div class="m-trash">🗑️</div>
+        </div>
+        <div class="m-lbl">Como receber</div>
+        <div class="m-seg"><div class="b on">Entrega</div><div class="b">Retirar na loja</div></div>
+        <div class="m-lbl">Data de entrega</div>
+        <div class="m-field">quarta, 02/07/2026 &nbsp; <span style="margin-left:auto;color:var(--primary);font-weight:700;font-size:12px">trocar data</span></div>
+        <div class="m-cta">✓ Enviar pedido pelo WhatsApp</div>
+      </div>
+    </div>
+    <ul class="legendas">
+      <li><span class="pin">1</span> <span><b>Lixeira em cada item</b> — remove o produto de uma vez (além do − e +).</span></li>
+      <li><span class="pin">2</span> <span><b>Entrega ou Retirada</b> — o cliente escolhe como quer receber.</span></li>
+      <li><span class="pin">3</span> <span><b>Data no calendário</b> — já vem sugerida no dia dele; pode trocar (nunca hoje).</span></li>
+      <li><span class="pin">4</span> <span>No fim, o cliente <b>envia o pedido pelo próprio WhatsApp</b> — a loja não dispara nada (protege o número).</span></li>
+    </ul>
+
+    <h2 class="sec">O que mudou pro cliente</h2>
+
+    <details class="acc" open>
+      <summary><span class="ic">📸</span><span class="ti"><strong>Cardápio novo, com fotos que passam</strong><span>Visual claro e bonito, igual ao Kit Festa</span></span><span class="chev">▾</span></summary>
+      <div class="cont">
+        Cardápio repaginado: cards claros, categorias em pílulas e, quando o produto tem <b>mais de uma foto</b>, elas passam sozinhas. Aparece primeiro o <b>“Você sempre pede”</b> (o que ele mais compra) e o preço é <b>o mesmo que o vendedor pratica</b> pra ele.
+        <div class="tagrow"><span class="tag">Fotos passando</span><span class="tag">Você sempre pede</span><span class="tag">Preço do vendedor</span></div>
+      </div>
+    </details>
+
+    <details class="acc" open>
+      <summary><span class="ic">📋</span><span class="ti"><strong>Ficha do produto completa</strong><span>Clicou na foto, abre tudo</span></span><span class="chev">▾</span></summary>
+      <div class="cont">
+        Tocando no produto abre um popup com <b>imagem grande</b> (com setas), <b>tabela nutricional no padrão ANVISA</b>, ingredientes, alérgicos (glúten/lactose), modo de preparo e validade — os mesmos dados da etiqueta impressa.
+        <div class="tagrow"><span class="tag">Imagem grande</span><span class="tag">Tabela ANVISA</span><span class="tag">Alérgicos</span></div>
+      </div>
+    </details>
+
+    <details class="acc" open>
+      <summary><span class="ic">🚚</span><span class="ti"><strong>Entrega ou retirada, com data</strong><span>Calendário com as regras certas</span></span><span class="chev">▾</span></summary>
+      <div class="cont">
+        O cliente escolhe <b>Entrega</b> (sugere a próxima data do dia dele) ou <b>Retirar na loja</b> (escolhe a data). Nunca hoje, e fim de semana só se você liberar no painel. Se a data foge do dia normal dele, o pedido vira <b>“Encaixe”</b> e ele é avisado de que a equipe confirma a viabilidade.
+        <div class="tagrow"><span class="tag">Entrega</span><span class="tag">Retirada</span><span class="tag amber">Encaixe</span></div>
+      </div>
+    </details>
+
+    <details class="acc" open>
+      <summary><span class="ic">🛒</span><span class="ti"><strong>Carrinho fácil e que não se perde</strong><span>Salvo mesmo se fechar a página</span></span><span class="chev">▾</span></summary>
+      <div class="cont">
+        O carrinho fica <b>salvo</b> (não perde ao atualizar a página), tem <b>lixeira por item</b> e botão <b>“Limpar”</b>. Se um preço mudar ou um produto sair do site, o carrinho <b>se ajusta sozinho</b> — sem preço fantasma.
+      </div>
+    </details>
+
+    <!-- MOCK 2: popup -->
+    <h2 class="sec">O que mudou pra equipe (painel)</h2>
+    <p class="mock-cap" style="margin-top:2px">Aparece sozinho a cada 15 minutos enquanto tiver pedido novo:</p>
+    <div class="pop">
+      <div class="pop-top"><span class="ic">📣</span><div><strong>Pedidos novos esperando!</strong><span>3 pedidos do site aguardando aprovação</span></div></div>
+      <div class="pop-body">
+        <div class="pop-row"><span class="o cg">Congelados</span> Aroma Padaria · há 41 min <b style="margin-left:auto">R$ 398,34</b></div>
+        <div class="pop-row"><span class="o kf">Kit Festa</span> Mariana Souza · há 8 min <b style="margin-left:auto">R$ 130,00</b></div>
+      </div>
+      <div class="pop-foot"><span class="bt pink">Ver Kit Festa</span><span class="bt sky">Ver Congelados</span></div>
+    </div>
+
+    <details class="acc" open>
+      <summary><span class="ic">⏰</span><span class="ti"><strong>Aviso a cada 15 min de pedido novo</strong><span>Com bip — não deixa passar</span></span><span class="chev">▾</span></summary>
+      <div class="cont">
+        Enquanto houver <b>pedido novo do site</b> (Kit Festa ou Congelados), esse popup <b>toca um bip e reaparece a cada 15 minutos</b> até o pedido ser aprovado. É o mesmo estilo do aviso de pedidos pra faturar. Assim ninguém esquece o pedido esperando.
+        <div class="tagrow"><span class="tag amber">A cada 15 min</span><span class="tag">Com bip</span><span class="tag">Kit Festa + Congelados</span></div>
+      </div>
+    </details>
+
+    <details class="acc" open>
+      <summary><span class="ic">🗂️</span><span class="ti"><strong>Fila de pedidos repaginada</strong><span>Buscar, filtrar e ver o detalhe</span></span><span class="chev">▾</span></summary>
+      <div class="cont">
+        No painel <b>Site → Pedidos</b>: busca por nome, razão, fantasia, cidade, CPF/CNPJ; pílulas de status com contagem; a lista atualiza sozinha. <b>Clicando no pedido</b> abre o detalhe completo: a <b>hora em que o cliente enviou</b>, o <b>vendedor</b> do cliente, entrega/retirada + data, todos os itens com valores e as ações (Aprovar / Vincular / Recusar).
+        <div class="tagrow"><span class="tag">Busca ampla</span><span class="tag">Hora do envio</span><span class="tag">Vendedor</span><span class="tag sky">Entrega/Retirada</span></div>
+      </div>
+    </details>
+
+    <div class="foot">
+      <p>Feito com carinho no <span class="logo">Hardt App</span> 🧊</p>
+    </div>
+
+  </div>
+
+</body>
+</html>
