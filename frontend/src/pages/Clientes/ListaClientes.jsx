@@ -67,6 +67,7 @@ const ListaClientes = () => {
 
     // Seleção em Lote
     const [selectedIds, setSelectedIds] = useState([]);
+    const [selecaoMobile, setSelecaoMobile] = useState(false); // modo seleção no celular (mostra os checkboxes)
     const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
     const [batchData, setBatchData] = useState({ idVendedor: '', Dia_de_entrega: '', Dia_de_venda: '' });
 
@@ -584,6 +585,25 @@ const ListaClientes = () => {
             </div>
 
             {/* Lista Mobile */}
+            <div className="md:hidden flex items-center justify-between gap-2 mb-2">
+                <button
+                    onClick={() => { setSelecaoMobile(!selecaoMobile); if (selecaoMobile) setSelectedIds([]); }}
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border min-h-[36px] ${selecaoMobile ? 'bg-primary text-white border-primary' : 'bg-white text-primary border-primary'}`}
+                >
+                    {selecaoMobile ? 'Cancelar seleção' : 'Selecionar vários'}
+                </button>
+                {selecaoMobile && (
+                    <label className="flex items-center gap-2 text-xs font-medium text-gray-600 min-h-[36px] px-2">
+                        <input
+                            type="checkbox"
+                            className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4"
+                            checked={clientes.length > 0 && selectedIds.length === clientes.length}
+                            onChange={handleSelectAll}
+                        />
+                        Marcar todos ({clientes.length})
+                    </label>
+                )}
+            </div>
             <div className="md:hidden space-y-2">
                 {loading ? (
                     <div className="text-center py-8 text-gray-400 text-sm">Carregando...</div>
@@ -594,18 +614,17 @@ const ListaClientes = () => {
                         key={cliente.UUID}
                         className={`rounded-lg shadow-sm border relative ${selectedIds.includes(cliente.UUID) ? 'border-primary bg-blue-50/40' : cliente.inadimplente ? 'border-red-300 bg-red-50/40' : 'bg-white border-gray-100'}`}
                     >
-                        {selectedIds.length > 0 && (
-                            <div className="absolute top-3 right-3 z-10">
+                        {(selecaoMobile || selectedIds.length > 0) && (
+                            <div className="absolute top-2 right-2 z-10 p-2" onClick={e => { e.stopPropagation(); handleSelectOne(cliente.UUID); }}>
                                 <input
                                     type="checkbox"
-                                    className="rounded border-gray-300 text-primary focus:ring-primary h-4 w-4 bg-white shadow-sm"
+                                    className="rounded border-gray-300 text-primary focus:ring-primary h-5 w-5 bg-white shadow-sm"
                                     checked={selectedIds.includes(cliente.UUID)}
-                                    onChange={() => handleSelectOne(cliente.UUID)}
-                                    onClick={e => e.stopPropagation()}
+                                    onChange={() => {}}
                                 />
                             </div>
                         )}
-                        <div className="p-3 flex flex-col gap-1.5" onClick={() => navigate(`/clientes/${cliente.UUID}`)}>
+                        <div className="p-3 flex flex-col gap-1.5" onClick={() => (selecaoMobile ? handleSelectOne(cliente.UUID) : navigate(`/clientes/${cliente.UUID}`))}>
                             <div className="pr-8">
                                 <h3 className="font-bold text-gray-900 text-sm leading-tight">
                                     {cliente.NomeFantasia || cliente.Nome}
