@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Contas a Pagar sem cancelados — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🧹 Novidade no Hardt App: Contas a Pagar mais limpa">
+<meta property="og:description" content="As despesas canceladas saíram da lista — a tela abre só com o que interessa. Quem precisar vê-las, é só escolher no filtro de status.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --cream: #f2f0eb; --gold: #cba258;
+    --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); line-height:1.55;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased; font-variant-numeric: tabular-nums; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background:linear-gradient(168deg, var(--house) 0%, #16302a 100%); color:#fff;
+    padding:40px 16px 96px; text-align:center; }
+  .hero .chip { display:inline-block; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);
+    color:#d4e9e2; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+    border-radius:999px; padding:6px 14px; margin-bottom:14px; }
+  .hero h1 { font-size:28px; margin:0 0 10px; font-weight:800; }
+  .hero p { color:#c8d6d0; max-width:460px; margin:0 auto; font-size:15.5px; }
+
+  .cartao { background:#fff; border:1px solid #e5e7eb; border-radius:16px;
+    box-shadow:0 8px 24px rgba(30,57,50,.10); padding:20px; margin-top:-64px; }
+  .cartao + .cartao, .sec { margin-top:16px; }
+  .sec-titulo { font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+
+  /* ── ACCORDION (sempre abertos) ── */
+  details { background:#fff; border:1px solid #e5e7eb; border-radius:14px; margin-top:10px; overflow:hidden; }
+  summary { list-style:none; cursor:pointer; padding:15px 18px; font-weight:800; font-size:15px; color:var(--house);
+    display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  summary::-webkit-details-marker { display:none; }
+  summary .mais { color:var(--primary); font-size:20px; font-weight:800; transition:transform .2s; flex:none; }
+  details[open] summary .mais { transform:rotate(45deg); }
+  .det-corpo { padding:0 18px 16px; font-size:14.5px; color:#3f4a46; }
+  .det-corpo b { color:var(--house); }
+
+  /* ── PASSOS ── */
+  .passo { display:flex; gap:12px; margin-top:14px; }
+  .passo .num { flex:none; width:28px; height:28px; border-radius:999px; background:var(--primary); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+  .passo p { margin:3px 0 0; font-size:14.5px; color:#3f4a46; }
+  .passo b { color:var(--house); }
+  .rodape { text-align:center; color:var(--ink-soft); font-size:12.5px; margin-top:34px; }
+
+  /* ── MOCKUP DA TELA ── */
+  .tela { background:#f7f6f2; border:1px solid #e5e7eb; border-radius:14px; padding:14px; margin-top:12px; }
+  .app-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; }
+  .mock-label { font-size:9.5px; font-weight:800; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; margin:0 0 4px; }
+  .mock-select { position:relative; border:1.5px solid var(--primary); border-radius:8px; background:#fff;
+    padding:9px 12px; font-size:13.5px; font-weight:700; color:var(--house);
+    display:flex; justify-content:space-between; align-items:center; }
+  .mock-select .v { color:#9ca3af; font-size:9px; }
+  .mock-menu { position:relative; margin-top:8px; background:#fff; border:1px solid #e5e7eb; border-radius:12px;
+    box-shadow:0 10px 26px rgba(0,0,0,.12); padding:5px; }
+  .mock-op { position:relative; display:flex; justify-content:space-between; align-items:center;
+    padding:9px 12px; border-radius:8px; font-size:13.5px; color:#374151; }
+  .mock-op.ativo { background:var(--mint); color:var(--primary-dark); font-weight:800; }
+  .mock-op .badge-cinza { display:inline-block; background:#f3f4f6; color:#374151; font-size:10.5px; font-weight:700;
+    border-radius:999px; padding:2px 8px; }
+  .mock-linha { display:flex; justify-content:space-between; align-items:center; gap:8px;
+    border:1px solid #e5e7eb; border-radius:10px; padding:9px 12px; margin-top:8px; font-size:13px; }
+  .mock-linha .desc { color:var(--house); font-weight:700; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mock-linha .sub { display:block; color:#6b7280; font-weight:400; font-size:11.5px; }
+  .mock-badge { flex:none; font-size:10.5px; font-weight:700; border-radius:999px; padding:3px 9px; }
+  .b-aberto { background:#dbeafe; color:#1e40af; }
+  .b-pago { background:#dcfce7; color:#166534; }
+  .b-vencido { background:#fee2e2; color:#b91c1c; }
+  .b-cancelado { background:#f3f4f6; color:#374151; }
+  .mock-linha.sumiu { opacity:.42; border-style:dashed; }
+  .pin { position:absolute; top:50%; transform:translateY(-50%); right:-7px; width:22px; height:22px; border-radius:999px;
+    background:var(--gold); color:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,.25); z-index:5; }
+  .legenda { margin-top:14px; }
+  .legenda .item { display:flex; gap:10px; margin-top:9px; font-size:13.5px; color:#3f4a46; }
+  .legenda .item b { color:var(--house); }
+  .legenda .num { flex:none; width:22px; height:22px; border-radius:999px; background:var(--gold); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; margin-top:1px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="chip">✨ Novidade no app</span>
+  <h1>🧹 Contas a Pagar mais limpa</h1>
+  <p>As despesas <b>canceladas saíram da lista</b> — a tela abre só com o que ainda importa: aberto, vencido, parcial e pago. Precisou conferir um cancelamento? É só escolher no <b>filtro de status</b>.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao">
+    <p class="sec-titulo">📱 A tela do app</p>
+    <div class="tela">
+      <div class="app-card">
+        <p class="mock-label">Filtro de status</p>
+        <div class="mock-select">
+          Status: Todos <span class="v">▼</span>
+          <span class="pin">1</span>
+        </div>
+        <div class="mock-menu">
+          <div class="mock-op ativo">Status: Todos ✓</div>
+          <div class="mock-op">Aberto</div>
+          <div class="mock-op">Vencido</div>
+          <div class="mock-op">Parcial</div>
+          <div class="mock-op">Pago</div>
+          <div class="mock-op">Cancelado <span class="pin">2</span></div>
+          <div class="mock-op">Todos (com cancelados) <span class="pin">3</span></div>
+        </div>
+
+        <p class="mock-label" style="margin-top:14px">Como a lista abre agora</p>
+        <div class="mock-linha">
+          <span class="desc">Energia elétrica <span class="sub">Celesc · vence 05/08</span></span>
+          <span class="mock-badge b-aberto">Aberto</span>
+        </div>
+        <div class="mock-linha">
+          <span class="desc">Embalagens <span class="sub">Fornecedor XYZ · venceu 20/07</span></span>
+          <span class="mock-badge b-vencido">Vencido</span>
+        </div>
+        <div class="mock-linha">
+          <span class="desc">Farinha de trigo <span class="sub">Moinho ABC · pago 15/07</span></span>
+          <span class="mock-badge b-pago">Pago</span>
+        </div>
+        <div class="mock-linha sumiu">
+          <span class="desc">Pedido duplicado (lançado errado) <span class="sub">não aparece mais na abertura</span></span>
+          <span class="mock-badge b-cancelado">Cancelado</span>
+        </div>
+      </div>
+      <div class="legenda">
+        <div class="item"><span class="num">1</span><p style="margin:0"><b>"Status: Todos" é como a tela abre</b> — e agora ele mostra tudo, <b>menos os cancelados</b>. A lista fica só com o que ainda vale.</p></div>
+        <div class="item"><span class="num">2</span><p style="margin:0"><b>"Cancelado"</b> mostra <b>só</b> as parcelas canceladas — bom para conferir um lançamento desfeito.</p></div>
+        <div class="item"><span class="num">3</span><p style="margin:0"><b>"Todos (com cancelados)"</b> é a opção nova: mostra a lista completa, cancelados junto com o resto, como era antes.</p></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <details class="acc aberto" open>
+      <summary>O que mudou? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Antes, uma despesa cancelada (lançamento errado, pedido desfeito…) <b>continuava aparecendo no meio da lista</b>, ocupando espaço e confundindo na hora de conferir o que falta pagar. Agora a tela abre <b>sem os cancelados</b> — eles continuam guardados no sistema, só não poluem mais a visão do dia a dia.
+      </div>
+    </details>
+    <details class="acc aberto" open>
+      <summary>Nada foi apagado <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Cancelar uma despesa <b>não a apaga</b> — ela só sai da vista. Para revê-la, use o filtro de status: <b>"Cancelado"</b> (só elas) ou <b>"Todos (com cancelados)"</b> (tudo junto). E como os filtros desta tela <b>ficam salvos por usuário</b>, se você escolher ver os cancelados, a tela continua assim até você trocar de novo.
+      </div>
+    </details>
+    <details class="acc aberto" open>
+      <summary>Os totais não mudam <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Os cartões do topo (Vencidas, A vencer, Em aberto, Pago no período) <b>já ignoravam os cancelados</b> — nenhum número muda. A novidade é só na lista, que agora bate com os cartões.
+      </div>
+    </details>
+  </div>
+
+  <div class="cartao sec">
+    <p class="sec-titulo">🚀 Para ver os cancelados quando precisar</p>
+    <div class="passo"><div class="num">1</div><p>Abra <b>Financeiro → Contas a Pagar</b>.</p></div>
+    <div class="passo"><div class="num">2</div><p>Toque no filtro <b>"Status: Todos"</b> (ao lado da busca).</p></div>
+    <div class="passo"><div class="num">3</div><p>Escolha <b>"Cancelado"</b> para ver só eles, ou <b>"Todos (com cancelados)"</b> para a lista completa.</p></div>
+  </div>
+
+  <p class="rodape">Hardt Alimentos · atualização de julho/2026<br>Dúvidas? É só falar com o escritório. 💚</p>
+</div>
+
+</body>
+</html>

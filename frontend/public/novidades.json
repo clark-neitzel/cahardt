@@ -1,5 +1,11 @@
 [
   {
+    "slug": "pagar-sem-cancelados",
+    "titulo": "Contas a Pagar sem cancelados",
+    "resumo": "As despesas canceladas saíram da lista — a tela abre só com o que importa. Para vê-las, escolha 'Cancelado' ou 'Todos (com cancelados)' no filtro de status.",
+    "data": "2026-07-29"
+  },
+  {
     "slug": "cliente-fornecedor",
     "titulo": "Cliente que vira só fornecedor",
     "resumo": "Novo botão 'É cliente' no cadastro: desligue quem parou de comprar mas continua nos vendendo. Desligando os dois botões, o cadastro fica inativo. E cliente inativo sumiu de vez da rota e dos dashboards.",
