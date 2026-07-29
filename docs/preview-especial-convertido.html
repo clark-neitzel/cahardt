@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Proposta v2: Especial Convertido + Detalhes do Pedido</title>
+<style>
+  :root{
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --bg:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Manrope',-apple-system,'SF Pro Text',sans-serif;background:var(--bg);color:var(--ink);letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.55}
+  .wrap{max-width:760px;margin:0 auto;padding:0 16px 64px}
+
+  .hero{background:var(--house);color:#fff;padding:36px 16px 44px;text-align:center}
+  .hero .chip{display:inline-block;background:var(--gold);border-radius:999px;padding:4px 14px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}
+  .hero h1{font-size:26px;font-weight:800;line-height:1.25;max-width:640px;margin:0 auto 10px}
+  .hero p{color:#cfe3db;font-size:15px;max-width:580px;margin:0 auto}
+
+  .ajustes{background:#fff;border-radius:14px;border:1px solid #e5e2da;box-shadow:0 2px 10px rgba(0,0,0,.06);padding:16px;margin:-24px 0 28px}
+  .ajustes h3{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#5a5a52;margin-bottom:10px}
+  .aj{display:flex;gap:10px;font-size:13px;color:#444;margin-bottom:8px;align-items:flex-start}
+  .aj:last-child{margin-bottom:0}
+  .aj .ok{flex-shrink:0;width:22px;height:22px;border-radius:99px;background:#dcfce7;color:#15803d;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:12px}
+
+  h2.sec{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:#5a5a52;margin:38px 0 6px;display:flex;align-items:center;gap:8px}
+  h2.sec::before{content:'';display:inline-block;width:22px;height:3px;border-radius:2px;background:var(--gold)}
+  .sub{font-size:14px;color:#666;margin-bottom:16px}
+
+  .tela{background:#fff;border-radius:16px;border:2px solid var(--gold);box-shadow:0 3px 14px rgba(0,0,0,.07);overflow:hidden;margin-bottom:14px}
+  .tela.ref{border:1px solid #e5e2da}
+  .tela-head{background:var(--house);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:10px}
+  .tela-head .dot{width:9px;height:9px;border-radius:99px;background:#cba258}
+  .tela-head span{font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+  .tela-body{padding:16px;background:#f7f6f2}
+  .caminho{font-size:12px;color:#777;background:#fff;border:1px dashed #d8d4c8;border-radius:8px;padding:7px 10px;margin-bottom:12px}
+  .caminho b{color:var(--primary-dark)}
+
+  .app-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.05);padding:12px;position:relative;margin-bottom:10px}
+  .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .row+.row{margin-top:6px}
+  .num{font-size:10px;font-weight:800;padding:2px 6px;border-radius:5px;border:1px solid}
+  .num.azul{color:#1d4ed8;background:#eff6ff;border-color:#dbeafe}
+  .num.roxo{color:#7e22ce;background:#faf5ff;border-color:#e9d5ff}
+  .cli{font-size:13px;font-weight:800;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .valor{font-size:13px;font-weight:900}
+  .meta{font-size:11px;color:#6b7280}
+  .badge{font-size:9px;font-weight:800;padding:2px 7px;border-radius:99px;text-transform:uppercase;display:inline-flex;align-items:center;gap:4px}
+  .b-green{background:#dcfce7;color:#166534}
+  .b-blue{background:#dbeafe;color:#1e40af}
+  .b-amber{background:#fef3c7;color:#b45309;border:1px solid #fcd34d}
+  .b-red{background:#fee2e2;color:#b91c1c}
+  .b-gray{background:#f3f4f6;color:#374151}
+  .b-purple{background:#f3e8ff;color:#7e22ce}
+  .b-novo{background:var(--gold);color:#fff;box-shadow:0 1px 4px rgba(203,162,88,.5)}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;padding:8px 16px;border-radius:999px;border:none;cursor:default}
+  .btn-p{background:var(--primary);color:#fff}
+  .btn-sec{background:#fff;border:1px solid var(--primary);color:var(--primary)}
+  .btn-sm{font-size:11px;padding:6px 12px}
+
+  .pin{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:99px;background:var(--gold);color:#fff;font-size:11px;font-weight:800;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .pin.s{width:16px;height:16px;font-size:9px;vertical-align:middle}
+  .legenda{background:#fff;border-top:1px solid #eee9dd;padding:12px 16px}
+  .legenda .li{display:flex;gap:10px;font-size:12.5px;color:#444;margin-bottom:8px;align-items:flex-start}
+  .legenda .li:last-child{margin-bottom:0}
+  .legenda .li p{margin-top:1px}
+
+  .faixa-info{background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;padding:10px 12px;font-size:12px;color:#78350f}
+  .faixa-azul{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .faixa-azul b{font-size:12.5px;color:#1e40af}
+  .faixa-laranja{background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+  .faixa-laranja b{font-size:12.5px;color:#9a3412}
+
+  /* seções do modal de detalhes */
+  .det-sec{border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-top:10px;background:#fff}
+  .det-head{background:#f9fafb;border-bottom:1px solid #eee;padding:7px 12px;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#6b7280;display:flex;align-items:center;gap:6px}
+  .det-body{padding:10px 12px}
+  .parc{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px dashed #f0f0ec;font-size:12px}
+  .parc:last-child{border-bottom:none}
+  .tl{list-style:none;position:relative;padding-left:20px}
+  .tl::before{content:'';position:absolute;left:6px;top:6px;bottom:6px;width:2px;background:#e2ddd0;border-radius:2px}
+  .tl li{position:relative;font-size:12px;color:#444;padding:4px 0}
+  .tl li::before{content:'';position:absolute;left:-18px;top:9px;width:10px;height:10px;border-radius:99px;background:var(--primary);border:2px solid #fff;box-shadow:0 0 0 1px #d7d2c4}
+  .tl li.gold::before{background:var(--gold)}
+  .tl li b{color:#222}
+  .tl li small{display:block;color:#999;font-size:11px}
+
+  /* filtro mock */
+  .filtro-menu{background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 6px 18px rgba(0,0,0,.12);max-width:250px;overflow:hidden}
+  .filtro-menu .op{padding:8px 12px;font-size:12.5px;border-bottom:1px solid #f4f3ee;color:#444}
+  .filtro-menu .op.sel{background:var(--mint);color:var(--primary-dark);font-weight:800}
+
+  .nota{background:var(--mint);border-radius:12px;padding:14px 16px;font-size:13px;color:#1E3932;margin:18px 0}
+  .nota b{display:block;margin-bottom:4px}
+  ul.lista{margin:8px 0 0 18px;font-size:13px;color:#555}
+  ul.lista li{margin-bottom:5px}
+  a.mapa{color:#1d4ed8;text-decoration:underline;font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="chip">Proposta · versão 2</div>
+  <h1>Especial Convertido + Detalhes do Pedido completos</h1>
+  <p>Mesma proposta de antes, agora com os seus quatro ajustes aplicados. As telas 1 a 3 da verificação (permissões e devolução) seguem no final, como referência.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="ajustes">
+    <h3>O que mudou com o seu retorno</h3>
+    <div class="aj"><span class="ok">✓</span><p><b>Pílula NOVO</b> em <b>todo pedido ainda não faturado</b> (não só nos convertidos) — some sozinha quando o pedido é faturado.</p></div>
+    <div class="aj"><span class="ok">✓</span><p><b>Filtro "Especiais convertidos"</b> incluído no filtro de status da aba Pedidos.</p></div>
+    <div class="aj"><span class="ok">✓</span><p><b>Detalhes do pedido repaginado</b>: ao clicar no pedido, tudo num lugar só — pago ou em aberto, quem entregou, data, hora, GPS — sem precisar abrir Contas a Receber ou outras telas.</p></div>
+    <div class="aj"><span class="ok">✓</span><p><b>Conversão com qualquer forma de recebimento</b> (dinheiro, boleto, PIX, ou ainda em aberto) — para quando o cliente exige a NF. O que já foi recebido acompanha o pedido.</p></div>
+  </div>
+
+  <!-- ================= PROPOSTA A ================= -->
+  <h2 class="sec">Proposta A — Aba Pedidos: pílula NOVO + selo do convertido + filtro</h2>
+  <p class="sub">Como as linhas ficariam na lista de Pedidos.</p>
+
+  <div class="tela">
+    <div class="tela-head"><span class="dot"></span><span>Pedidos · lista</span></div>
+    <div class="tela-body">
+      <div class="app-card">
+        <div class="row"><span class="badge b-novo">NOVO <span class="pin s">1</span></span><span class="num azul">#3142</span><span class="cli">Buffet Alegria</span><span class="valor">R$ 850,00</span></div>
+        <div class="row"><span class="meta">Entrega: 28/07 | Criação: 25/07 · por: Carla</span></div>
+        <div class="row"><span class="badge b-blue">A faturar</span><span class="badge b-amber">⚡ Especial convertido · era ZZ#141 <span class="pin s">2</span></span></div>
+      </div>
+      <div class="app-card">
+        <div class="row"><span class="badge b-novo">NOVO</span><span class="num azul">#3145</span><span class="cli">Padaria Central</span><span class="valor">R$ 380,00</span></div>
+        <div class="row"><span class="meta">Pedido comum, ainda não faturado — também leva a pílula <span class="pin s">1</span></span></div>
+        <div class="row"><span class="badge b-blue">A faturar</span></div>
+      </div>
+      <div class="app-card">
+        <div class="row"><span class="num azul">#3139</span><span class="cli">Mercado Bom Preço</span><span class="valor">R$ 1.240,00</span></div>
+        <div class="row"><span class="meta">Já faturado — a pílula NOVO sumiu <span class="pin s">3</span>; o selo do convertido fica para sempre</span></div>
+        <div class="row"><span class="badge b-green">Faturado</span><span class="badge b-amber">⚡ Especial convertido · era ZZ#138</span></div>
+      </div>
+      <div class="caminho" style="margin:12px 0 8px">Filtro de status da aba Pedidos <span class="pin s">4</span></div>
+      <div class="filtro-menu">
+        <div class="op">Todos</div>
+        <div class="op">A faturar</div>
+        <div class="op">Faturados</div>
+        <div class="op sel">⚡ Especiais convertidos</div>
+        <div class="op">Com erro</div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="pin">1</span><p>A pílula dourada <b>NOVO</b> aparece em <b>todo pedido que ainda não foi faturado</b> — convertido ou não. É o "chama atenção" do faturamento.</p></div>
+      <div class="li"><span class="pin">2</span><p>O selo âmbar mostra que <b>nasceu especial e qual era o ZZ#</b>. Esse fica permanente, mesmo depois de faturar.</p></div>
+      <div class="li"><span class="pin">3</span><p>Faturou → NOVO some sozinho. Sem clique, sem manutenção.</p></div>
+      <div class="li"><span class="pin">4</span><p>Opção <b>"Especiais convertidos"</b> no filtro de status: lista só os pedidos que nasceram especiais.</p></div>
+    </div>
+  </div>
+
+  <!-- ================= PROPOSTA B ================= -->
+  <h2 class="sec">Proposta B — Detalhes do pedido: tudo num lugar só</h2>
+  <p class="sub">Ao clicar no pedido, além do que já existe (itens, valores), entram estas seções — sem precisar procurar em Contas a Receber, Caixa ou Expedição.</p>
+
+  <div class="tela">
+    <div class="tela-head"><span class="dot"></span><span>Detalhes do pedido · #3142</span></div>
+    <div class="tela-body">
+      <div class="app-card">
+        <div class="row"><span class="num azul">#3142</span><span class="cli">Buffet Alegria</span><span class="valor">R$ 850,00</span></div>
+
+        <div class="faixa-info" style="margin-top:10px">
+          <b>⚡ Especial convertido</b> — nasceu como <b>ZZ#141</b> e virou pedido em <b>28/07/2026 14:32</b> <span class="pin s">1</span>
+        </div>
+
+        <div class="det-sec">
+          <div class="det-head">💰 Recebimento <span class="pin s">2</span></div>
+          <div class="det-body">
+            <div class="parc"><span>Parcela 1/2 · venc. 28/07</span><span class="badge b-green">Pago</span><span class="meta">PIX Asaas · R$ 425,00 · 28/07 14:31</span></div>
+            <div class="parc"><span>Parcela 2/2 · venc. 15/08</span><span class="badge b-gray">Em aberto</span><span class="meta">Boleto · R$ 425,00</span></div>
+            <div class="parc" style="border-top:1px solid #eee;font-weight:800"><span>Recebido até agora</span><span></span><span>R$ 425,00 de R$ 850,00</span></div>
+          </div>
+        </div>
+
+        <div class="det-sec">
+          <div class="det-head">🚚 Entrega <span class="pin s">3</span></div>
+          <div class="det-body" style="font-size:12px;color:#444">
+            <div class="row"><span class="badge b-green">Entregue</span><span><b>28/07/2026 às 16:45</b></span></div>
+            <div class="row"><span>Motorista: <b>João</b> · Carga Emb. <b>#52</b></span></div>
+            <div class="row"><span>GPS da entrega: <a class="mapa">📍 ver no mapa</a></span></div>
+            <div class="row"><span class="meta">Obs. do motorista: "recebido pela Dona Marta na cozinha"</span></div>
+          </div>
+        </div>
+
+        <div class="det-sec">
+          <div class="det-head">🕐 O que aconteceu com este pedido <span class="pin s">4</span></div>
+          <div class="det-body">
+            <ul class="tl">
+              <li><b>Criado como especial ZZ#141</b> por Carla<small>25/07 · 09:12</small></li>
+              <li><b>Aprovado / faturado como especial</b><small>25/07 · 10:03</small></li>
+              <li><b>Saiu na carga</b> Emb. #52 · motorista João<small>28/07 · 07:40</small></li>
+              <li><b>Entregue</b> · GPS registrado<small>28/07 · 16:45</small></li>
+              <li class="gold"><b>PIX Asaas pago · R$ 425,00</b><small>28/07 · 14:31</small></li>
+              <li class="gold"><b>Convertido em pedido #3142</b><small>28/07 · 14:32</small></li>
+              <li><b>NF-e emitida</b> nº 418 · série 1<small>28/07 · 15:20</small></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="pin">1</span><p>A faixa da conversão só aparece em pedido que nasceu especial. Pedido comum abre direto nas seções de baixo.</p></div>
+      <div class="li"><span class="pin">2</span><p><b>Pago ou em aberto, parcela por parcela</b>, com forma (PIX, boleto, dinheiro) e data — a mesma informação do Contas a Receber, sem sair do pedido.</p></div>
+      <div class="li"><span class="pin">3</span><p><b>Quem entregou, data, hora e GPS</b> (abre o ponto no mapa), com a observação do motorista.</p></div>
+      <div class="li"><span class="pin">4</span><p>Linha do tempo completa do pedido, do nascimento à NF. As bolinhas douradas são os eventos da conversão.</p></div>
+      <div class="li"><span class="pin">✓</span><p>Vale para <b>todos os pedidos</b> (não só convertidos) — todo clique em detalhes ganha essas seções.</p></div>
+    </div>
+  </div>
+
+  <!-- ================= PROPOSTA C ================= -->
+  <h2 class="sec">Proposta C — Converter o especial: qualquer forma de recebimento</h2>
+  <p class="sub">Para quando o cliente exige a NF: converte já pago (em qualquer forma), parcialmente pago ou ainda em aberto.</p>
+
+  <div class="tela">
+    <div class="tela-head"><span class="dot"></span><span>Aba Especiais · abrir o pedido</span></div>
+    <div class="tela-body">
+      <div class="app-card">
+        <div class="row"><span class="num roxo">ZZ#150</span><span class="cli">Cliente Y — especial EM ABERTO</span></div>
+        <div class="faixa-azul" style="margin-top:8px"><b>Pedido em aberto</b><span><span class="btn btn-sec btn-sm">Editar</span> <span class="btn btn-p btn-sm">🔁 Converter em pedido c/ NF <span class="pin s">1</span></span></span></div>
+      </div>
+      <div class="app-card">
+        <div class="row"><span class="num roxo">ZZ#141</span><span class="cli">Buffet Alegria — especial JÁ FATURADO, pago em dinheiro</span></div>
+        <div class="faixa-laranja" style="margin-top:8px"><b>Pedido faturado</b><span><span class="btn btn-sec btn-sm">Reverter</span> <span class="btn btn-p btn-sm">🔁 Converter em pedido c/ NF <span class="pin s">2</span></span></span></div>
+      </div>
+      <div class="faixa-info">Confirmação antes de converter: <i>"Converter ZZ#141 em pedido com NF? Ele ganha número novo na sequência oficial, vai para a fila de faturamento/NF-e e leva junto entrega, carga e <b>tudo que já foi recebido</b> (dinheiro, PIX, boleto). Não dá para desfazer."</i> <span class="pin s">3</span></div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="pin">1</span><p>O botão aparece <b>sempre</b> no especial — em aberto ou faturado, pago ou não. Não depende de PIX.</p></div>
+      <div class="li"><span class="pin">2</span><p>Se já houve recebimento em <b>qualquer forma</b> (dinheiro no caixa, PIX, boleto), ele acompanha o pedido e aparece na seção Recebimento dos Detalhes (Proposta B) — nada se perde.</p></div>
+      <div class="li"><span class="pin">3</span><p>Visível só para quem pode <b>aprovar especial</b> (mesma permissão de hoje). Dispara o mesmo aviso âmbar que insiste no faturamento até darem "Ciente".</p></div>
+      <div class="li"><span class="pin">✓</span><p>A conversão <b>automática pelo PIX Asaas continua igual</b> — o botão é o caminho manual para os outros casos.</p></div>
+    </div>
+  </div>
+
+  <!-- O QUE SERIA FEITO -->
+  <h2 class="sec">Resumo do que eu construo, se aprovar</h2>
+  <ul class="lista">
+    <li><b>Pílula NOVO</b> em todo pedido ainda não faturado (some ao faturar).</li>
+    <li><b>Selo "⚡ Especial convertido · era ZZ#"</b> permanente na linha + <b>filtro "Especiais convertidos"</b> no status.</li>
+    <li><b>Detalhes do pedido repaginado</b> (todos os pedidos): recebimento parcela a parcela, entrega com motorista/data/hora/GPS, e linha do tempo completa.</li>
+    <li><b>Botão "Converter em pedido c/ NF"</b> no especial — qualquer situação e forma de recebimento; o que já foi recebido acompanha.</li>
+    <li>Manual do Clippy atualizado + página de novidade para o grupo do WhatsApp, como sempre.</li>
+  </ul>
+  <div class="nota" style="margin-top:14px"><b>Nada muda no que já roda:</b> conversão automática por PIX, popup do faturamento e devolução com NF continuam exatamente como estão.</div>
+
+  <!-- ================= REFERÊNCIA ================= -->
+  <h2 class="sec">Referência — o que já existe hoje (verificado)</h2>
+  <p class="sub">Recapitulando a verificação anterior, sem mudanças propostas aqui.</p>
+
+  <div class="tela ref">
+    <div class="tela-head"><span class="dot"></span><span>Já existe · onde fica cada coisa</span></div>
+    <div class="legenda" style="border-top:none">
+      <div class="li"><span class="pin">1</span><p><b>Permissões:</b> Usuários → permissões → seção <b>Financeiro</b> → "Pode Emitir Notas" (libera a NF de devolução), "Fazer Devolução" e "Reverter Devolução".</p></div>
+      <div class="li"><span class="pin">2</span><p><b>Registrar devolução:</b> Caixa Diário → entrega Parcial/Devolvida → botão "Fazer Devolução". Estoque e cobrança ajustam sozinhos <b>e a NF-e de devolução já é emitida automaticamente no mesmo clique</b>.</p></div>
+      <div class="li"><span class="pin">3</span><p><b>Se a NF automática falhar</b> (SEFAZ fora, cadastro incompleto): a devolução fica registrada e o botão verde "Emitir NF de devolução" em Pedidos → aba Devoluções serve de <b>reemissão</b>. Processo protegido no projeto — nada disso muda com esta proposta.</p></div>
+      <div class="li"><span class="pin">4</span><p><b>Conversão por PIX:</b> PIX Asaas pago no especial → converte sozinho e o popup âmbar insiste no faturamento a cada 5 min até o "Ciente".</p></div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
