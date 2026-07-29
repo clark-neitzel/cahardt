@@ -49,13 +49,16 @@ const FORMA_PGTO_LABEL = {
 };
 const labelFormaPgto = (f) => (f ? (FORMA_PGTO_LABEL[String(f).toUpperCase()] || f) : null);
 
+// "Status: Todos" (padrão) NÃO mostra cancelados — para vê-los junto das demais
+// há a opção "Todos (com cancelados)"; "Cancelado" mostra só eles.
 const STATUS_OPCOES = [
     { value: '', label: 'Status: Todos' },
     { value: 'ABERTO', label: 'Aberto' },
     { value: 'VENCIDO', label: 'Vencido' },
     { value: 'PARCIAL', label: 'Parcial' },
     { value: 'PAGO', label: 'Pago' },
-    { value: 'CANCELADO', label: 'Cancelado' }
+    { value: 'CANCELADO', label: 'Cancelado' },
+    { value: 'TODOS', label: 'Todos (com cancelados)' }
 ];
 
 // Nome do fornecedor com fallback seguro (nunca "undefined")
@@ -430,11 +433,14 @@ const ContasPagarPage = () => {
                 return true;
             });
         }
-        if (filtros.status) {
+        if (filtros.status !== 'TODOS') {
             rows = rows.filter(({ parcela }) => {
                 const s = parcela.status;
                 const emAberto = s === 'ABERTO' || s === 'PENDENTE' || s === 'PARCIAL';
                 switch (filtros.status) {
+                    // Padrão ("Status: Todos"): tudo MENOS cancelados — quem quiser
+                    // vê-los usa "Todos (com cancelados)" ou "Cancelado".
+                    case '': return s !== 'CANCELADO';
                     // "Aberto" = toda parcela não paga (vencida ou não) — bate com o KPI "Em aberto"
                     case 'ABERTO': return emAberto;
                     case 'VENCIDO': return parcelaVencida(parcela);
