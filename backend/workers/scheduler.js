@@ -444,6 +444,25 @@ function startSchedulers() {
     };
     setTimeout(_runExtratoCA, 300000);            // 5min após o start
     setInterval(_runExtratoCA, 3 * 3600000);      // a cada 3 horas
+
+    // === 12. BACKUP AUTOMÁTICO → GOOGLE DRIVE ===
+    // Banco: pg_dump a cada 15 min (janela de perda ≤ 15 min — dado fiscal).
+    // Arquivos (uploads): tar.gz 1x/dia na madrugada. Falha persistente avisa os
+    // admins por WhatsApp (dentro do próprio service). Isolado: nunca derruba nada.
+    console.log('⏰ Iniciando Worker de Backup (banco 15min + arquivos diário)...');
+    const backupService = require('../services/backupService');
+    const _runBackupBanco = () => {
+        backupService.executarBackupBanco()
+            .catch(err => console.error('⚠️ Backup Banco Error:', err.message));
+    };
+    setTimeout(_runBackupBanco, 120000);            // 2min após o start
+    setInterval(_runBackupBanco, 15 * 60 * 1000);   // a cada 15 minutos
+    const _runBackupUploads = () => {
+        backupService.executarBackupUploads()       // idempotente: só roda 1x por dia
+            .catch(err => console.error('⚠️ Backup Arquivos Error:', err.message));
+    };
+    setTimeout(_runBackupUploads, 600000);          // 10min após o start (cobre restart de madrugada)
+    setInterval(_runBackupUploads, 3600000);        // tick de 60 min (a trava de dia controla a cadência real)
 }
 
 module.exports = { startSchedulers };

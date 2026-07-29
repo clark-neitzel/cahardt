@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import RotasAtivasPreview from './RotasAtivasPreview';
 import NotasCertificadoConfig from './NotasCertificadoConfig';
 import SecaoAsaas from './SecaoAsaas';
+import SecaoBackup from './SecaoBackup';
 import { useAuth } from '../../../contexts/AuthContext';
 import api from '../../../services/api';
 import caixaService from '../../../services/caixaService';
@@ -853,6 +854,9 @@ const Configuracoes = () => {
                     </div>
                 </div>
             )}
+
+            {/* ── Backup automático (banco + arquivos → Google Drive) ── */}
+            {isAdmin && <SecaoBackup />}
 
             {/* ── Asaas (boleto e PIX) ── */}
             {isAdmin && <SecaoAsaas />}

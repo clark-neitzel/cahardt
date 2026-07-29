@@ -184,4 +184,8 @@ async function testarAcesso() {
 
 function limparCacheConfig() { _cfgCache = null; _cfgCacheAt = 0; _drive = null; _driveRefreshToken = null; }
 
-module.exports = { salvarXmlNota, testarAcesso, limparCacheConfig };
+module.exports = {
+    salvarXmlNota, testarAcesso, limparCacheConfig,
+    // helpers de baixo nível reutilizados pelo backupService
+    getDrive, carregarConfig, acharOuCriarPasta, jaExiste, nomeArquivoSeguro, escq, ALL_DRIVES,
+};

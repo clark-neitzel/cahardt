@@ -21,6 +21,18 @@ router.get('/bot-whatsapp/status', async (req, res) => {
     }
 });
 
+// Status do backup automático (banco 15min + arquivos diário → Google Drive).
+// Precisa vir ANTES de '/:key' pelo mesmo motivo da rota acima.
+router.get('/backup/status', async (req, res) => {
+    try {
+        const backupService = require('../services/backupService');
+        const { status, driveConfigurado } = await backupService.statusBackup();
+        res.json({ status, driveConfigurado });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Rotas de Configuração
 router.get('/', configController.get);
 router.get('/categorias', configController.getCategorias);

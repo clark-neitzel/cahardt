@@ -82,6 +82,15 @@ Desde 07/2026 **todas** as mensagens de WhatsApp do sistema saem pelo **WhatsApp
 4. Se aparecer o aviso de **modo de emergência**, o WhatsApp da empresa está sob risco de bloqueio e o bot passou a entregar só para quem já conversou com a gente — o resto fica na fila até o modo ser desligado no painel do bot.
 5. O domínio e a chave do bot **não ficam nesta tela** — são configurados no servidor (EasyPanel), por segurança. Se aparecer "Sem conexão", é aí que se resolve.
 
+### Backup automático — só admin (somente leitura)
+O sistema faz backup sozinho para o **Google Drive** (a mesma conta conectada para os XMLs da contabilidade): o **banco de dados a cada 15 minutos** e os **arquivos anexados (PDFs, XMLs, fotos) 1x por dia** de madrugada. A janela máxima de perda de dados do banco é de 15 minutos.
+
+1. O cartão **"Backup automático"** mostra o selo de saúde: **Protegido** (último backup do banco há menos de 30 min), **Atrasado** (até 2 h) ou **Com problema**.
+2. Mostra também a hora e o tamanho do último backup do banco e do último backup de arquivos.
+3. Não há botão para agendar ou configurar — o backup roda sozinho no servidor. Se falhar repetidamente, **os admins recebem aviso automático no WhatsApp**.
+4. Retenção no Drive (pasta "Backup Sistema Hardt"): cópias de 15 min das últimas 48 h, 1 por dia dos últimos 60 dias, 1 por mês para sempre; arquivos anexados dos últimos 30 dias.
+5. Como restaurar (procedimento técnico): `backend/docs/backup-restauracao.md`.
+
 ---
 
 ## Permissões necessárias
@@ -112,3 +121,5 @@ Desde 07/2026 **todas** as mensagens de WhatsApp do sistema saem pelo **WhatsApp
 | `backend/src/routes/configuracoes.js` | Rotas do backend |
 | `backend/routes/configNotas.js` | Certificado digital (instalar/consultar) + liga/desliga das capturas de NF-e e NFS-e |
 | `backend/services/certificadoService.js` | Validação do .pfx e criptografia AES-256-GCM |
+| `frontend/src/pages/Admin/Configuracoes/SecaoBackup.jsx` | Cartão de status do backup automático |
+| `backend/services/backupService.js` | Backup do banco (15 min) e dos uploads (diário) para o Google Drive |

@@ -60,6 +60,33 @@ router.get('/ping', (req, res) => {
     });
 });
 
+// GET /api/admin-exec/diag-backup
+// Status do backup automático: último banco/arquivos OK, versão do pg_dump x
+// versão do servidor Postgres, Drive configurado.
+router.get('/diag-backup', async (req, res) => {
+    try {
+        const backupService = require('../services/backupService');
+        res.json(await backupService.statusBackup());
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/admin-exec/backup-executar?tipo=banco|uploads
+// Dispara um backup agora (fora do agendamento). uploads aceita ?forcar=1.
+router.post('/backup-executar', async (req, res) => {
+    try {
+        const backupService = require('../services/backupService');
+        const tipo = req.query.tipo || 'banco';
+        const r = tipo === 'uploads'
+            ? await backupService.executarBackupUploads({ forcar: req.query.forcar === '1' })
+            : await backupService.executarBackupBanco();
+        res.json(r);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-pedidos-abertos-antigos
 // Rascunhos ABERTOS com data de entrega no passado, agrupados por usuário — são os
 // que apareciam no lembrete "pedidos salvos sem enviar" (hoje o lembrete filtra
