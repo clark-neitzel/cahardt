@@ -32,6 +32,7 @@ Quando a nota é **autorizada**, o pedido correspondente vira **FATURADO** na ab
 - **Pedido especial e bonificação não aparecem** na fila (não geram nota).
 - Nota rejeitada pode ser reenviada à vontade — a referência única na Focus impede duplicidade.
 - Pedido faturado pelo app fica **imune ao sync do Conta Azul** (o status FATURADO não é revertido).
+- **Venda para outro estado (interestadual):** o app ajusta a nota sozinho pela UF do cliente — usa **CFOP 6101/6102** e marca a operação como **interestadual** (dentro de SC continua 5101/5102). Para sair certa, o cliente precisa estar cadastrado com a **UF correta** e, se for contribuinte de ICMS, com a **Inscrição Estadual** preenchida. Os impostos do Simples (CSOSN 101 + crédito) e os demais campos são os mesmos da venda interna.
 
 ## Erros comuns e o que fazer
 
@@ -50,7 +51,7 @@ Continuam disponíveis: a DANFE sai pela aba Pedidos (botão DANFE) como sempre.
 ## NF-e de DEVOLUÇÃO de venda
 
 Na aba **Pedidos → Devoluções**, ao expandir uma devolução de pedido **com nota** (tipo Conta Azul/normal), aparece o bloco verde da NF de devolução:
-- Botão **"Emitir NF de devolução"** (permissão `Pode_Emitir_NF`) — o app monta tudo sozinho: itens e valores da devolução registrada, cliente, e a **referência à NF-e original da venda** (exigência da SEFAZ). CFOP 1201 (produção própria) / 1202 (revenda), sem pagamento.
+- Botão **"Emitir NF de devolução"** (permissão `Pode_Emitir_NF`) — o app monta tudo sozinho: itens e valores da devolução registrada, cliente, e a **referência à NF-e original da venda** (exigência da SEFAZ). CFOP 1201 (produção própria) / 1202 (revenda) dentro de SC — ou **2201/2202** quando a devolução é de cliente de outro estado (ajuste automático pela UF), sem pagamento.
 - Status igual ao da venda: Processando → ✓ Autorizada (com botão **DANFE**) ou ✕ Rejeitada (motivo + "Emitir novamente").
 - **Devolução de pedido ESPECIAL não gera nota** (pedido sem nota) — o botão nem aparece; o fluxo especial segue como sempre.
 - Devolução que já teve nota emitida pelo CA (campo "Nota Devolução" preenchido) também não emite de novo.

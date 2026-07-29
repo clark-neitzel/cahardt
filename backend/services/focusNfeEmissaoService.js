@@ -3,6 +3,8 @@
 //   - destinatário CNPJ  → natOp "Venda de Mercadorias / Produtos", CSOSN 101 + crédito Simples
 //   - destinatário CPF   → natOp "Venda a Nao Contribuinte", consumidor final, CSOSN 102
 //   - produto de revenda → CFOP 5102 (+CEST); produção própria → CFOP 5101
+//   - cliente em OUTRA UF (interestadual) → CFOP 6102/6101 e local_destino 2 (idDest interestadual);
+//     sem isso a SEFAZ rejeita (idDest incompatível com a UF de destino). Ref.: nota real 84501 do CA (SC→PR, CFOP 6101).
 const prisma = require('../config/database');
 const focusNfe = require('./focusNfeService');
 
@@ -76,6 +78,11 @@ async function montarNotaVenda(pedido) {
 
     const ie = String(cliente.fiscal?.inscricaoEstadual || '').replace(/\D/g, '');
 
+    // Operação interestadual: cliente em UF diferente da do emitente (SC).
+    // Troca o CFOP (5xxx interno → 6xxx interestadual) e o local_destino (1 → 2);
+    // sem o idDest=2 a SEFAZ rejeita ("idDest incompatível com a UF de destino").
+    const interestadual = String(cliente.End_Estado || '').trim().toUpperCase() !== EMITENTE.uf_emitente;
+
     const destinatario = ehCPF
         ? {
             nome_destinatario: cliente.Nome,
@@ -106,7 +113,7 @@ async function montarNotaVenda(pedido) {
             numero_item: idx + 1,
             codigo_produto: item.produto?.codigo || item.produtoId,
             descricao: item.produto?.nome || item.descricao || 'PRODUTO',
-            cfop: revenda ? '5102' : '5101',
+            cfop: revenda ? (interestadual ? '6102' : '5102') : (interestadual ? '6101' : '5101'),
             codigo_ncm: ncm,
             ...(revenda && item.produto?.nfeCest ? { cest: item.produto.nfeCest } : {}),
             unidade_comercial: item.produto?.unidade || 'PT',
@@ -154,7 +161,7 @@ async function montarNotaVenda(pedido) {
         data_entrada_saida: agora,
         tipo_documento: 1,
         finalidade_emissao: 1,
-        local_destino: 1,
+        local_destino: interestadual ? 2 : 1,
         consumidor_final: ehCPF ? 1 : 0,
         presenca_comprador: 1,
         ...EMITENTE,
@@ -385,6 +392,9 @@ async function emitirDevolucao(devolucaoId) {
     if (!cliente.End_CEP) faltando.push('CEP');
     if (faltando.length) throw new Error(`Cliente "${cliente.Nome}" com cadastro incompleto: falta ${faltando.join(', ')}.`);
 
+    // Devolução interestadual (entrada de UF diferente de SC): CFOP 2xxx e local_destino 2.
+    const interestadual = String(cliente.End_Estado || '').trim().toUpperCase() !== EMITENTE.uf_emitente;
+
     const itensValidos = (dev.itens || []).filter(i => Number(i.quantidade) > 0);
     if (!itensValidos.length) throw new Error('Devolução sem itens com quantidade.');
 
@@ -399,7 +409,7 @@ async function emitirDevolucao(devolucaoId) {
             numero_item: idx + 1,
             codigo_produto: item.produto?.codigo || item.produtoId,
             descricao: item.produto?.nome || 'PRODUTO',
-            cfop: revenda ? '1202' : '1201', // entrada por devolução (espelho de 5102/5101)
+            cfop: revenda ? (interestadual ? '2202' : '1202') : (interestadual ? '2201' : '1201'), // entrada por devolução (espelho de 6102/6101/5102/5101)
             codigo_ncm: String(item.produto?.ncm || '').replace(/\D/g, '') || cfg.ncmPadrao,
             ...(revenda && item.produto?.nfeCest ? { cest: item.produto.nfeCest } : {}),
             unidade_comercial: item.produto?.unidade || 'PT',
@@ -442,7 +452,7 @@ async function emitirDevolucao(devolucaoId) {
         data_entrada_saida: agora,
         tipo_documento: 0, // ENTRADA
         finalidade_emissao: 4, // devolução
-        local_destino: 1,
+        local_destino: interestadual ? 2 : 1,
         consumidor_final: ehCPF ? 1 : 0,
         presenca_comprador: 1,
         ...EMITENTE,
