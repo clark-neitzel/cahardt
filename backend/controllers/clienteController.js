@@ -41,7 +41,7 @@ const clienteController = {
     // Listar clientes com paginação e busca
     listar: async (req, res) => {
         try {
-            const { page = 1, limit = 10, search = '', ativo, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida } = req.query;
+            const { page = 1, limit = 10, search = '', ativo, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda } = req.query;
             const skip = (page - 1) * limit;
 
             const where = {};
@@ -72,6 +72,25 @@ const clienteController = {
             }
             if (idVendedor) {
                 where.idVendedor = idVendedor;
+            }
+            // Tempo sem vendas: clientes SEM nenhum pedido válido no período.
+            // semVenda = dias ('30', '90', '180'...) ou 'nunca' (nunca comprou).
+            // Pedido válido = não bonificação, não excluído, não cancelado/devolvido no CA.
+            if (semVenda) {
+                const pedidoValido = {
+                    bonificacao: false,
+                    statusEnvio: { not: 'EXCLUIDO' },
+                    OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['CANCELADO', 'DEVOLVIDO', 'EXCLUIDO'] } }]
+                };
+                if (semVenda === 'nunca') {
+                    where.pedidos = { none: pedidoValido };
+                } else {
+                    const dias = parseInt(semVenda);
+                    if (!isNaN(dias) && dias > 0) {
+                        const corte = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
+                        where.pedidos = { none: { ...pedidoValido, dataVenda: { gte: corte } } };
+                    }
+                }
             }
             if (diaEntrega) {
                 where.Dia_de_entrega = { contains: diaEntrega };

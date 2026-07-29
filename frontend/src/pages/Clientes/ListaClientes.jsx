@@ -34,6 +34,7 @@ const ListaClientes = () => {
     const initialDiaVenda = searchParams.get('diaVenda') !== null ? searchParams.get('diaVenda') : getSaved('diaVenda', '');
     const initialCondPadrão = searchParams.get('condicaoPagamento') !== null ? searchParams.get('condicaoPagamento') : getSaved('condicaoPagamento', '');
     const initialCondPermitida = searchParams.get('condicaoPermitida') !== null ? searchParams.get('condicaoPermitida') : getSaved('condicaoPermitida', '');
+    const initialSemVenda = searchParams.get('semVenda') !== null ? searchParams.get('semVenda') : getSaved('semVenda', '');
 
     // Estados de Dados
     const [clientes, setClientes] = useState([]);
@@ -53,6 +54,7 @@ const ListaClientes = () => {
     const [diaVenda, setDiaVenda] = useState(initialDiaVenda);
     const [condicaoPagamento, setCondicaoPagamento] = useState(initialCondPadrão);
     const [condicaoPermitida, setCondicaoPermitida] = useState(initialCondPermitida);
+    const [semVenda, setSemVenda] = useState(initialSemVenda);
     const [showFilters, setShowFilters] = useState(false);
 
     // Seleção em Lote
@@ -93,6 +95,7 @@ const ListaClientes = () => {
         if (diaVenda) params.diaVenda = diaVenda;
         if (condicaoPagamento) params.condicaoPagamento = condicaoPagamento;
         if (condicaoPermitida) params.condicaoPermitida = condicaoPermitida;
+        if (semVenda) params.semVenda = semVenda;
         setSearchParams(params, { replace: true });
 
         saveToLocal('search', search);
@@ -102,8 +105,9 @@ const ListaClientes = () => {
         saveToLocal('diaVenda', diaVenda);
         saveToLocal('condicaoPagamento', condicaoPagamento);
         saveToLocal('condicaoPermitida', condicaoPermitida);
+        saveToLocal('semVenda', semVenda);
         saveToLocal('activeTab', activeTab);
-    }, [search, page, limit, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, activeTab, setSearchParams]);
+    }, [search, page, limit, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, activeTab, setSearchParams]);
 
     const fetchClientes = async () => {
         setLoading(true);
@@ -111,7 +115,7 @@ const ListaClientes = () => {
             const ativo = activeTab === 'ativos';
             const data = await clienteService.listar({
                 page, limit, search, ativo, idVendedor, diaEntrega, diaVenda,
-                condicaoPagamento, condicaoPermitida
+                condicaoPagamento, condicaoPermitida, semVenda
             });
             setClientes(data.data);
             setTotalPages(data.meta.totalPages);
@@ -126,7 +130,7 @@ const ListaClientes = () => {
     useEffect(() => {
         const t = setTimeout(fetchClientes, 300);
         return () => clearTimeout(t);
-    }, [page, limit, search, activeTab, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida]);
+    }, [page, limit, search, activeTab, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda]);
 
     const handleSearch = (e) => { setSearch(e.target.value); setPage(1); };
 
@@ -137,10 +141,11 @@ const ListaClientes = () => {
         setDiaVenda('');
         setCondicaoPagamento('');
         setCondicaoPermitida('');
+        setSemVenda('');
         setPage(1);
     };
 
-    const activeFiltersCount = [idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida].filter(Boolean).length;
+    const activeFiltersCount = [idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda].filter(Boolean).length;
 
     const handleSelectAll = (e) => {
         setSelectedIds(e.target.checked ? clientes.map(c => c.UUID) : []);
@@ -345,6 +350,23 @@ const ListaClientes = () => {
                         </SelectBusca>
                     </div>
 
+                    <div>
+                        <label className="block text-[11px] font-medium text-gray-500 mb-1">Tempo sem Vendas</label>
+                        <SelectBusca
+                            className="w-full"
+                            value={semVenda}
+                            onChange={(e) => { setSemVenda(e.target.value); setPage(1); }}
+                        >
+                            <option value="">Qualquer período</option>
+                            <option value="30">30+ dias sem comprar</option>
+                            <option value="60">60+ dias sem comprar</option>
+                            <option value="90">90+ dias sem comprar</option>
+                            <option value="180">6+ meses sem comprar</option>
+                            <option value="365">1+ ano sem comprar</option>
+                            <option value="nunca">Nunca comprou</option>
+                        </SelectBusca>
+                    </div>
+
                     <div className="flex items-end col-span-2 sm:col-span-1">
                         <button
                             onClick={handleClearFilters}
@@ -457,6 +479,11 @@ const ListaClientes = () => {
                                             <span className={`px-1.5 py-0.5 inline-flex text-[11px] leading-4 font-semibold rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                                 {cliente.Ativo ? 'Ativo' : 'Inativo'}
                                             </span>
+                                            {semVenda && cliente.clienteInsights?.[0]?.diasSemComprar != null && (
+                                                <span className="px-1.5 py-0.5 inline-flex text-[11px] leading-4 font-semibold rounded-full bg-amber-100 text-amber-700">
+                                                    {cliente.clienteInsights[0].diasSemComprar}d sem comprar
+                                                </span>
+                                            )}
                                             {cliente.inadimplente && (
                                                 <button
                                                     onClick={(e) => abrirModalInadimplencia(e, cliente)}
@@ -560,6 +587,11 @@ const ListaClientes = () => {
                                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${cliente.Ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                     {cliente.Ativo ? 'Ativo' : 'Inativo'}
                                 </span>
+                                {semVenda && cliente.clienteInsights?.[0]?.diasSemComprar != null && (
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                        {cliente.clienteInsights[0].diasSemComprar}d sem comprar
+                                    </span>
+                                )}
                                 {cliente.inadimplente && (
                                     <button
                                         onClick={(e) => abrirModalInadimplencia(e, cliente)}

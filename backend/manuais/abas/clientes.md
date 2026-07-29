@@ -68,6 +68,7 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 | Dia de Venda | Dia da semana em que o vendedor visita |
 | Condição Padrão | Condição de pagamento padrão do cliente |
 | Condição Permitida | Filtra por condição que o cliente tem autorizado |
+| Tempo sem Vendas | Clientes sem nenhum pedido válido há 30+/60+/90+ dias, 6+ meses, 1+ ano — ou que nunca compraram. Bonificações e pedidos cancelados/excluídos não contam como venda. Com o filtro ativo, cada cliente mostra o chip "Xd sem comprar" |
 | Ativos / Inativos | Aba de seleção no topo |
 
 ---
