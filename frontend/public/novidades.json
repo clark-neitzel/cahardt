@@ -1,0 +1,38 @@
+[
+  {
+    "slug": "clippy-novidades",
+    "titulo": "O Clippy agora avisa as novidades",
+    "resumo": "Quando sai uma melhoria no sistema, o Clippy balança no canto da tela. Clique nele e veja o anúncio completo, igual ao que vai pro grupo do WhatsApp.",
+    "data": "2026-07-28"
+  },
+  {
+    "slug": "site-congelados",
+    "titulo": "O site de Congelados ficou completo",
+    "resumo": "Cardápio novo com fotos, ficha do produto, entrega ou retirada com data, carrinho fácil — e no painel um aviso a cada 15 min pra não deixar pedido esperando.",
+    "data": "2026-07-28"
+  },
+  {
+    "slug": "gps-clientes",
+    "titulo": "Ponto GPS certo em cada cliente",
+    "resumo": "Chega de entregador perdido: ponto no mapa, travas contra ponto repetido, selo de confirmação pelas entregas reais e cliente balcão.",
+    "data": "2026-07-28"
+  },
+  {
+    "slug": "cobranca-rota",
+    "titulo": "Cobrança em Rota",
+    "resumo": "O escritório manda os títulos na carga, o motorista cobra na rua (total, parcial ou não cobrou) e a baixa sai no Caixa.",
+    "data": "2026-07-28"
+  },
+  {
+    "slug": "notas-estoque",
+    "titulo": "Toda nota de entrada agora soma no estoque",
+    "resumo": "Bonificação, remessa e comodato sem gerar pagamento · estoque e custo atualizados sozinhos ao conferir a nota.",
+    "data": "2026-07-28"
+  },
+  {
+    "slug": "bloqueio-estoque",
+    "titulo": "Bloqueio de venda sem estoque",
+    "resumo": "Pedido com quantidade acima do estoque pode ser salvo, mas não enviado. Avisos na hora, popup com som e lembrete de pedidos parados.",
+    "data": "2026-07-28"
+  }
+]

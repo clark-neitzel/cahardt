@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Send, ArrowRight } from 'lucide-react';
+import { X, Send, ArrowRight, Gift } from 'lucide-react';
 import copilotoService from '../../services/copilotoService';
 
 // ── Mascote: clipe de papel com olhos (Clippy nostálgico) ──
@@ -42,11 +42,35 @@ export default function Clippy() {
 
     const [open, setOpen] = useState(false);
     const [dica, setDica] = useState(true);
+    const [modo, setModo] = useState('chat'); // 'chat' | 'novidade'
     const [mensagens, setMensagens] = useState([]); // { role, content, atalhos? }
     const [input, setInput] = useState('');
     const [enviando, setEnviando] = useState(false);
     const chatEndRef = useRef(null);
     const inputRef = useRef(null);
+
+    // ── Novidades do sistema (frontend/public/novidades.json, mais recente primeiro) ──
+    const [novidades, setNovidades] = useState([]);
+    const [novidadeVista, setNovidadeVista] = useState(() => {
+        try { return localStorage.getItem('clippy_novidade_vista') || ''; } catch { return ''; }
+    });
+    useEffect(() => {
+        fetch('/novidades.json', { cache: 'no-store' })
+            .then((r) => (r.ok ? r.json() : []))
+            .then((lista) => { if (Array.isArray(lista) && lista.length) setNovidades(lista); })
+            .catch(() => { /* sem manifesto, Clippy segue normal */ });
+    }, []);
+    const ultimaNovidade = novidades[0] || null;
+    const temNovidade = !!ultimaNovidade && ultimaNovidade.slug !== novidadeVista;
+
+    function abrirNovidade() {
+        if (!ultimaNovidade) return;
+        try { localStorage.setItem('clippy_novidade_vista', ultimaNovidade.slug); } catch { /* ignora */ }
+        setNovidadeVista(ultimaNovidade.slug);
+        setModo('novidade');
+        setOpen(true);
+        setDica(false);
+    }
 
     // Posição do mascote (arrastável). Guardada em px como distância das bordas direita/baixo.
     const [pos, setPos] = useState(() => {
@@ -100,8 +124,17 @@ export default function Clippy() {
         setArrastando(false);
         // Persiste a posição final (lê o valor mais recente via setPos funcional)
         setPos((p) => { try { localStorage.setItem('clippy_pos', JSON.stringify(p)); } catch { /* ignora */ } return p; });
-        // Se quase não moveu, trata como clique (abre/fecha)
-        if (d && !d.moved) { setOpen((o) => !o); setDica(false); }
+        // Se quase não moveu, trata como clique (abre/fecha).
+        // Com novidade não vista, o clique abre direto o anúncio da novidade.
+        if (d && !d.moved) {
+            if (!open && temNovidade) {
+                abrirNovidade();
+            } else {
+                setModo('chat');
+                setOpen((o) => !o);
+                setDica(false);
+            }
+        }
     }
 
     function irPara(rota) {
@@ -132,17 +165,61 @@ export default function Clippy() {
     // Abre o painel para o lado que tiver espaço, para não sair da tela
     const vw = typeof window !== 'undefined' ? window.innerWidth : 1280;
     const vh = typeof window !== 'undefined' ? window.innerHeight : 800;
-    const abrirParaCima = (vh - pos.bottom - 64) >= 500;
-    const alinharEsquerda = (vw - pos.right - 64) < 370;
+    const larguraPainel = modo === 'novidade' ? 400 : 370;
+    const alturaDesejada = modo === 'novidade' ? 620 : 500;
+    const espacoCima = vh - pos.bottom - 64 - 16;
+    const espacoBaixo = pos.bottom - 16;
+    const abrirParaCima = espacoCima >= alturaDesejada || espacoCima >= espacoBaixo;
+    const alturaPainel = Math.max(Math.min(alturaDesejada, abrirParaCima ? espacoCima : espacoBaixo), 320);
+    const alinharEsquerda = (vw - pos.right - 64) < larguraPainel;
     const painelPos = `${abrirParaCima ? 'bottom-full mb-3' : 'top-full mt-3'} ${alinharEsquerda ? 'left-0' : 'right-0'}`;
 
     return (
         <div className="hidden lg:block fixed z-50 no-print" style={{ right: pos.right, bottom: pos.bottom }}>
-            {/* ── Painel de chat ── */}
-            {open && (
+            {/* ── Painel de novidade (anúncio igual ao do grupo do WhatsApp) ── */}
+            {open && modo === 'novidade' && ultimaNovidade && (
                 <div
-                    className={`absolute ${painelPos} w-[370px] h-[500px] bg-white rounded-2xl border border-gray-200 shadow-2xl flex flex-col overflow-hidden`}
-                    style={{ animation: 'clippyPop .18s ease-out' }}
+                    className={`absolute ${painelPos} bg-white rounded-2xl border border-gray-200 shadow-2xl flex flex-col overflow-hidden`}
+                    style={{ width: larguraPainel, height: alturaPainel, animation: 'clippyPop .18s ease-out' }}
+                >
+                    {/* Header */}
+                    <div className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-primary to-blue-600 text-white shrink-0">
+                        <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center shrink-0">
+                            <Gift className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <p className="text-sm font-bold leading-tight truncate">Novidade no sistema 🎉</p>
+                            <p className="text-[11px] text-white/80 leading-tight truncate">{ultimaNovidade.titulo}</p>
+                        </div>
+                        <button onClick={() => setOpen(false)} title="Fechar" className="p-1.5 rounded-lg hover:bg-white/15 transition-colors">
+                            <X className="h-4 w-4" />
+                        </button>
+                    </div>
+                    {/* A própria página de anúncio, igual à que vai pro grupo do WhatsApp */}
+                    <iframe
+                        src={`/novidade-${ultimaNovidade.slug}.html`}
+                        title={ultimaNovidade.titulo}
+                        className="flex-1 w-full border-0 bg-secondary"
+                    />
+                    <div className="flex items-center gap-2 px-3 py-2 border-t border-gray-100 shrink-0">
+                        <p className="flex-1 text-[11px] text-gray-500 leading-snug truncate">
+                            Esse é o anúncio que vai pro grupo do WhatsApp.
+                        </p>
+                        <button
+                            onClick={() => setModo('chat')}
+                            className="px-3 py-1.5 text-[12px] font-semibold text-primary bg-blue-50 hover:bg-blue-100 rounded-full transition-colors shrink-0"
+                        >
+                            Perguntar ao Clippy
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Painel de chat ── */}
+            {open && modo === 'chat' && (
+                <div
+                    className={`absolute ${painelPos} bg-white rounded-2xl border border-gray-200 shadow-2xl flex flex-col overflow-hidden`}
+                    style={{ width: larguraPainel, height: alturaPainel, animation: 'clippyPop .18s ease-out' }}
                 >
                     {/* Header */}
                     <div className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-primary to-blue-600 text-white shrink-0">
@@ -153,6 +230,11 @@ export default function Clippy() {
                             <p className="text-sm font-bold leading-tight">Clippy</p>
                             <p className="text-[11px] text-white/80 leading-tight">Ajuda do sistema — onde fica cada coisa</p>
                         </div>
+                        {ultimaNovidade && (
+                            <button onClick={abrirNovidade} title="Ver a última novidade" className="p-1.5 rounded-lg hover:bg-white/15 transition-colors">
+                                <Gift className="h-4 w-4" />
+                            </button>
+                        )}
                         <button onClick={() => setOpen(false)} title="Fechar" className="p-1.5 rounded-lg hover:bg-white/15 transition-colors">
                             <X className="h-4 w-4" />
                         </button>
@@ -252,7 +334,15 @@ export default function Clippy() {
 
             {/* ── Mascote (botão) ── */}
             <div className="flex items-end gap-2 justify-end">
-                {!open && dica && (
+                {!open && temNovidade && (
+                    <div
+                        className="mb-1 max-w-[210px] bg-white rounded-2xl rounded-br-sm border border-gray-200 shadow-lg px-3 py-2 text-[12px] text-gray-600 leading-snug"
+                        style={{ animation: 'clippyPop .2s ease-out' }}
+                    >
+                        🎉 <b>Novidade:</b> {ultimaNovidade.titulo}. Clique em mim pra ver!
+                    </div>
+                )}
+                {!open && !temNovidade && dica && (
                     <div
                         className="mb-1 max-w-[180px] bg-white rounded-2xl rounded-br-sm border border-gray-200 shadow-lg px-3 py-2 text-[12px] text-gray-600 leading-snug"
                         style={{ animation: 'clippyPop .2s ease-out' }}
@@ -264,16 +354,23 @@ export default function Clippy() {
                     onPointerDown={onPointerDown}
                     onPointerMove={onPointerMove}
                     onPointerUp={onPointerUp}
-                    title="Clique para abrir • arraste para mover"
-                    className={`w-16 h-16 rounded-full bg-white border border-gray-200 shadow-xl flex items-center justify-center shrink-0 transition-transform ${arrastando ? 'cursor-grabbing scale-105' : 'cursor-grab hover:-translate-y-0.5'}`}
-                    style={{ touchAction: 'none', ...((!open && !arrastando) ? { animation: 'clippyFloat 3.5s ease-in-out infinite' } : {}) }}
+                    title={temNovidade ? 'Tem novidade no sistema! Clique para ver' : 'Clique para abrir • arraste para mover'}
+                    className={`relative w-16 h-16 rounded-full bg-white border border-gray-200 shadow-xl flex items-center justify-center shrink-0 transition-transform ${arrastando ? 'cursor-grabbing scale-105' : 'cursor-grab hover:-translate-y-0.5'}`}
+                    style={{ touchAction: 'none', ...((!open && !arrastando) ? { animation: temNovidade ? 'clippyWiggle 1.4s ease-in-out infinite' : 'clippyFloat 3.5s ease-in-out infinite' } : {}) }}
                 >
                     <ClippyMascot size={40} />
+                    {temNovidade && (
+                        <span
+                            className="absolute top-0.5 right-0.5 w-4 h-4 bg-red-500 border-2 border-white rounded-full"
+                            style={{ animation: 'clippyBlink 1.4s infinite' }}
+                        />
+                    )}
                 </button>
             </div>
 
             <style>{`
                 @keyframes clippyFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+                @keyframes clippyWiggle { 0%,70%,100%{transform:rotate(0deg)} 10%{transform:rotate(-14deg)} 22%{transform:rotate(11deg)} 34%{transform:rotate(-8deg)} 46%{transform:rotate(5deg)} 58%{transform:rotate(-2deg)} }
                 @keyframes clippyPop { from{opacity:0;transform:translateY(8px) scale(.97)} to{opacity:1;transform:translateY(0) scale(1)} }
                 @keyframes clippyBlink { 0%,100%{opacity:.3} 50%{opacity:1} }
             `}</style>

@@ -227,7 +227,8 @@ REGRAS:
 - Baseie-se SOMENTE no índice e nos manuais fornecidos. NUNCA invente telas, menus, botões ou caminhos.
 - Se a tela necessária não estiver na lista (o usuário não tem permissão), diga que ele não tem acesso a ela.
 - Responda de forma COMPLETA e prática, em português do Brasil: se o manual traz um passo a passo, liste TODOS os passos em ordem. NUNCA escreva "siga os passos abaixo" (ou parecido) sem de fato listar os passos. Use as informações do manual, não invente nem resuma a ponto de ficar vago.
-- FORMATO: quando houver passos, escreva UM passo por linha, cada um iniciando com "1.", "2.", "3."... e uma quebra de linha real (\\n) entre eles. Use texto simples, SEM markdown (nada de **, *, # ou _). Se precisar destacar um botão, escreva o nome entre aspas, ex.: clique em "+ Entrada".`;
+- FORMATO: quando houver passos, escreva UM passo por linha, cada um iniciando com "1.", "2.", "3."... e uma quebra de linha real (\\n) entre eles. Use texto simples, SEM markdown (nada de **, *, # ou _). Se precisar destacar um botão, escreva o nome entre aspas, ex.: clique em "+ Entrada".
+- NOVIDADES DO SISTEMA: quando sai uma melhoria, você mesmo (o clipe no canto da tela) balança com uma bolinha vermelha; clicar em você abre o anúncio completo da novidade. Para REVER a última novidade a qualquer momento: abrir o chat do Clippy e tocar no ícone de presente no topo da janela. Se perguntarem "onde vejo as novidades", explique isso.`;
 
 /**
  * Responde uma dúvida de uso com base nos manuais das abas acessíveis ao usuário.

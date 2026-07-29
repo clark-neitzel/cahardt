@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: o Clippy agora avisa as novidades — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito — preview compacto) -->
+<meta property="og:title" content="📎 Novidade no Hardt App: o Clippy avisa as novidades">
+<meta property="og:description" content="Saiu melhoria no sistema? O clipe balança no canto da tela com uma bolinha vermelha. É só clicar nele pra ver o anúncio completo, sem esperar a mensagem do grupo.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock flutuando sobre o hero: cantinho da tela com o Clippy */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body {
+    padding: 26px 18px 22px;
+    background: #f7f6f2;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    gap: 10px;
+    min-height: 150px;
+  }
+  .balao {
+    max-width: 210px;
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    border-bottom-right-radius: 4px;
+    box-shadow: 0 4px 14px rgba(30,57,50,.12);
+    padding: 10px 12px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    margin-bottom: 6px;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity .3s, transform .3s;
+  }
+  .balao.no-ar { opacity: 1; transform: translateY(0); }
+  .balao b { color: var(--ink); }
+  .clippy-btn {
+    position: relative;
+    width: 64px; height: 64px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: #fff;
+    border: 1px solid #e3e1da;
+    box-shadow: 0 8px 22px rgba(30,57,50,.18);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .clippy-btn.balancando { animation: wiggle 1.4s ease-in-out infinite; }
+  @keyframes wiggle {
+    0%,70%,100% { transform: rotate(0deg); }
+    10% { transform: rotate(-14deg); }
+    22% { transform: rotate(11deg); }
+    34% { transform: rotate(-8deg); }
+    46% { transform: rotate(5deg); }
+    58% { transform: rotate(-2deg); }
+  }
+  @media (prefers-reduced-motion: reduce) { .clippy-btn.balancando { animation: none; } }
+  .bolinha {
+    position: absolute;
+    top: 2px; right: 2px;
+    width: 15px; height: 15px;
+    border-radius: 50%;
+    background: #ef4444;
+    border: 2px solid #fff;
+    opacity: 0;
+    transition: opacity .3s;
+  }
+  .bolinha.no-ar { opacity: 1; animation: pisca 1.4s ease-in-out infinite; }
+  @keyframes pisca { 0%,100% { opacity: .35; } 50% { opacity: 1; } }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    font-size: 11px;
+    font-weight: 800;
+    color: #fff;
+    background: linear-gradient(90deg, var(--primary), var(--primary-dark));
+  }
+  .app-card-head .x { margin-left: auto; opacity: .8; font-weight: 700; }
+  .app-card-body { padding: 12px; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: var(--mint); color: var(--primary-dark); }
+  .mini-anuncio {
+    background: var(--house);
+    color: #fff;
+    border-radius: 10px;
+    padding: 14px 12px;
+    text-align: center;
+  }
+  .mini-anuncio .tag {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    padding: 3px 10px;
+    border-radius: 999px;
+    margin-bottom: 8px;
+  }
+  .mini-anuncio strong { display: block; font-size: 15px; line-height: 1.25; }
+  .mini-anuncio span { display: block; font-size: 11.5px; color: rgba(255,255,255,.7); margin-top: 5px; }
+  .barra-rodape {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border-top: 1px solid #f0efe9;
+    padding: 9px 12px;
+    font-size: 11px;
+    color: #9aa5a0;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>O Clippy agora<br>avisa as novidades</h1>
+    <p>Saiu melhoria no sistema? O clipe do canto da tela balança e ganha uma bolinha vermelha. É só clicar nele pra ver o anúncio completo — o mesmo que chega aqui no grupo.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do cantinho da tela com o Clippy -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">📎</span>
+      <div>
+        <small>Cantinho da tela do app</small>
+        <strong>O Clippy de olho nas novidades</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="balao" id="demoBalao">🎉 <b>Novidade:</b> O Clippy agora avisa as novidades. Clique em mim pra ver!</div>
+      <div class="clippy-btn" id="demoClippy">
+        <svg width="40" height="40" viewBox="0 0 48 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M31 22 V42 a9 9 0 0 1 -18 0 V17 a6.5 6.5 0 0 1 13 0 V40 a3.2 3.2 0 0 1 -6.4 0 V24"
+            stroke="#9aa3ad" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          <path d="M12.5 12.5 q4 -4.5 8 -0.5" stroke="#5b6470" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <path d="M25 12 q4 -4.5 8 -0.5" stroke="#5b6470" stroke-width="2" stroke-linecap="round" fill="none"/>
+          <circle cx="17" cy="20" r="5.4" fill="#fff" stroke="#5b6470" stroke-width="1.6"/>
+          <circle cx="29" cy="20" r="5.4" fill="#fff" stroke="#5b6470" stroke-width="1.6"/>
+          <circle cx="18.4" cy="21" r="2.3" fill="#2b2f36"/>
+          <circle cx="30.4" cy="21" r="2.3" fill="#2b2f36"/>
+        </svg>
+        <span class="bolinha" id="demoBolinha"></span>
+      </div>
+    </div>
+  </div>
+
+  <button class="demo-cta" onclick="rodarDemo()">📎 Toque aqui e veja o Clippy balançar</button>
+  <p class="demo-hint">É só uma demonstração — no app ele balança sozinho quando tem novidade.</p>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📎</span>
+      <strong>O clipe balança quando tem novidade</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quando sai uma <b>melhoria nova</b> no sistema, o Clippy (o clipe que fica no canto da tela do computador) começa a <b>balançar</b> e ganha uma <b>bolinha vermelha</b>.</li>
+        <li>Ao lado dele aparece um balãozinho dizendo <b>qual é a novidade</b>.</li>
+        <li>Depois que você vê, ele para de balançar — e só volta a balançar <b>na próxima novidade</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🗞️</span>
+      <strong>Clicou, abriu o anúncio completo</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Clicando no clipe, abre uma janelinha <b>dentro do próprio app</b> com o anúncio da novidade — <b>o mesmo</b> que o Clarkson manda no grupo do WhatsApp, com telas e explicações.</li>
+        <li>Você não sai do que estava fazendo: leu, fechou no <b>✕</b> e pronto.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🎁</span>
+      <strong>Dá pra rever quando quiser</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Perdeu o balanço ou quer ler de novo? Abra o Clippy e toque no <b>presentinho 🎁</b> no topo da conversa — ele mostra a <b>última novidade</b> de novo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">💻</span>
+      <strong>Onde isso aparece</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>O Clippy mora na <b>tela grande</b> (computador e iPad na horizontal). No celular nada muda: as novidades continuam chegando <b>pelo grupo</b>, como sempre.</li>
+        <li>O aviso é <b>por pessoa</b>: cada um vê o balanço até abrir a novidade no seu próprio usuário.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📎 Tela 1 — O aviso no canto da tela</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body" style="display:flex; align-items:flex-end; justify-content:flex-end; gap:10px; background:#f7f6f2;">
+          <div class="balao no-ar" style="opacity:1; transform:none;">🎉 <b>Novidade:</b> Cobrança em Rota. Clique em mim pra ver! <span class="pin">2</span></div>
+          <div class="clippy-btn" style="width:56px; height:56px;">
+            <svg width="34" height="34" viewBox="0 0 48 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M31 22 V42 a9 9 0 0 1 -18 0 V17 a6.5 6.5 0 0 1 13 0 V40 a3.2 3.2 0 0 1 -6.4 0 V24"
+                stroke="#9aa3ad" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+              <circle cx="17" cy="20" r="5.4" fill="#fff" stroke="#5b6470" stroke-width="1.6"/>
+              <circle cx="29" cy="20" r="5.4" fill="#fff" stroke="#5b6470" stroke-width="1.6"/>
+              <circle cx="18.4" cy="21" r="2.3" fill="#2b2f36"/>
+              <circle cx="30.4" cy="21" r="2.3" fill="#2b2f36"/>
+            </svg>
+            <span class="bolinha no-ar" style="animation:none; opacity:1;"></span>
+            <span class="pin" style="position:absolute; bottom:-6px; left:-6px; margin:0;">1</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Clipe balançando com a bolinha vermelha</b> — é o sinal de que tem novidade que você ainda não viu. Clique nele.</span></div>
+      <div><span class="pin">2</span><span><b>Balãozinho</b> — já adianta qual é a novidade, sem precisar abrir.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">🗞️ Tela 2 — O anúncio aberto dentro do app</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🎁 Novidade no sistema 🎉 · Cobrança em Rota <span class="pin" style="margin-left:6px;">1</span> <span class="x">✕ <span class="pin" style="margin-left:4px;">4</span></span></div>
+        <div class="app-card-body">
+          <div class="mini-anuncio">
+            <span class="tag">✦ Novidade no Hardt App</span>
+            <strong>Cobrança em Rota</strong>
+            <span>O anúncio completo, com telas e explicações — igualzinho ao do grupo <span class="pin">2</span></span>
+          </div>
+        </div>
+        <div class="barra-rodape">
+          <span>Esse é o anúncio que vai pro grupo do WhatsApp.</span>
+          <span class="app-btn claro" style="padding:6px 12px; font-size:11px;">Perguntar ao Clippy <span class="pin" style="margin-left:4px;">3</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Cabeçalho</b> — mostra o nome da novidade que você está lendo.</span></div>
+      <div><span class="pin">2</span><span><b>O anúncio de verdade</b> — a mesma página que chega no grupo do WhatsApp, com mockups das telas e passo a passo.</span></div>
+      <div><span class="pin">3</span><span><b>Perguntar ao Clippy</b> — ficou com dúvida sobre a novidade? Esse botão vira a conversa de ajuda na hora.</span></div>
+      <div><span class="pin">4</span><span><b>Fechar</b> — leu, fechou, volta pro que estava fazendo. O clipe para de balançar.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">🎁 Tela 3 — Rever a última novidade</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">📎 Clippy · Ajuda do sistema <span class="x">🎁 <span class="pin" style="margin-left:4px;">1</span> &nbsp;✕</span></div>
+        <div class="app-card-body">
+          <div style="font-size:12.5px; color:#5f6b66; background:#f7f6f2; border-radius:10px; padding:10px 12px;">Oi! 👋 Me diga o que você quer fazer e eu te mostro <b>onde</b> fica no sistema.</div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Presentinho no topo do chat</b> — a qualquer momento, toque nele pra abrir de novo a última novidade publicada.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PARA COMEÇAR ══════════ -->
+  <div class="sec-label">Como usar (é bem simples)</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Viu o clipe balançando</b> com a bolinha vermelha? É porque saiu melhoria nova no sistema.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div><b>Clique nele.</b> O anúncio completo abre ali mesmo, dentro do app.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div><b>Leia e feche no ✕.</b> Ele para de balançar até a próxima novidade.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Quer <b>rever depois</b>? Abra o Clippy e toque no <b>🎁</b> no topo da conversa.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Novidade no ar desde <strong>28/07/2026</strong> · Hardt Alimentos 💚<br>Dúvidas? É só perguntar pro próprio Clippy 📎</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+
+  let demoRodando = false;
+  function rodarDemo() {
+    if (demoRodando) return;
+    demoRodando = true;
+    const clippy = document.getElementById('demoClippy');
+    const balao = document.getElementById('demoBalao');
+    const bolinha = document.getElementById('demoBolinha');
+    clippy.classList.add('balancando');
+    bolinha.classList.add('no-ar');
+    setTimeout(() => balao.classList.add('no-ar'), 400);
+    setTimeout(() => {
+      clippy.classList.remove('balancando');
+      balao.classList.remove('no-ar');
+      bolinha.classList.remove('no-ar');
+      demoRodando = false;
+    }, 7000);
+  }
+</script>
+</body>
+</html>
