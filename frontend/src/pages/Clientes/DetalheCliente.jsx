@@ -142,7 +142,8 @@ const DetalheCliente = () => {
         End_Cidade: '',
         End_Estado: '',
         End_CEP: '',
-        // Espelho na tabela de fornecedores (Contas a Pagar / Notas de Entrada)
+        // Perfis do cadastro: cliente (Ativo) e espelho na tabela de fornecedores
+        ehCliente: true,
         tambemFornecedor: false
     });
     const [consultandoCnpj, setConsultandoCnpj] = useState(false);
@@ -244,6 +245,7 @@ const DetalheCliente = () => {
                 End_Cidade: clienteData.End_Cidade || '',
                 End_Estado: clienteData.End_Estado || '',
                 End_CEP: clienteData.End_CEP || '',
+                ehCliente: clienteData.Ativo !== false,
                 tambemFornecedor: !!clienteData.tambemFornecedor
             });
 
@@ -363,10 +365,15 @@ const DetalheCliente = () => {
             return;
         }
 
+        if (podeEditarCadastroCA && !formData.ehCliente && !formData.tambemFornecedor && cliente.Ativo) {
+            if (!window.confirm('Desmarcando "É cliente" e "Também é fornecedor", o cadastro fica INATIVO e some de todas as telas. O histórico é preservado e dá para reativar depois. Continuar?')) return;
+        }
+
         try {
             // Envia já normalizado (celular/telefone/IE só dígitos; documento sem pontuação)
             await clienteService.atualizar(uuid, {
                 ...formData,
+                Ativo: !!formData.ehCliente,
                 Email: email,
                 Telefone_Celular: celular,
                 Telefone: telefone,
@@ -430,8 +437,8 @@ const DetalheCliente = () => {
                             </span> {formatarDoc(cliente.Documento)}
                         </p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full font-medium text-sm ${cliente.Ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                        {cliente.Ativo ? 'ATIVO' : 'INATIVO'}
+                    <span className={`px-3 py-1 rounded-full font-medium text-sm ${cliente.Ativo ? 'bg-green-100 text-green-800' : (cliente.tambemFornecedor ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')}`}>
+                        {cliente.Ativo ? 'ATIVO' : (cliente.tambemFornecedor ? 'SÓ FORNECEDOR' : 'INATIVO')}
                     </span>
                 </div>
             </div>
@@ -1263,11 +1270,25 @@ const DetalheCliente = () => {
                                 </div>
                                 <div className="col-span-2 flex items-center justify-between gap-3 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5">
                                     <div>
+                                        <span className="block text-sm text-gray-700 font-medium">É cliente</span>
+                                        <span className="block text-xs text-gray-400">Aparece nas telas de venda, rota e dashboards e pode receber pedidos</span>
+                                    </div>
+                                    <Toggle checked={formData.ehCliente} onChange={(v) => setFormData({ ...formData, ehCliente: v })} />
+                                </div>
+                                <div className="col-span-2 flex items-center justify-between gap-3 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2.5">
+                                    <div>
                                         <span className="block text-sm text-gray-700 font-medium">Também é fornecedor</span>
                                         <span className="block text-xs text-gray-400">Aparece no Contas a Pagar e nas Notas de Entrada</span>
                                     </div>
                                     <Toggle checked={formData.tambemFornecedor} onChange={(v) => setFormData({ ...formData, tambemFornecedor: v })} />
                                 </div>
+                                {!formData.ehCliente && (
+                                    <div className={`col-span-2 text-xs rounded-lg px-3 py-2 border ${formData.tambemFornecedor ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                                        {formData.tambemFornecedor
+                                            ? 'Ao salvar, este cadastro vira SÓ FORNECEDOR: sai das listas de clientes, rotas e dashboards, mas continua no Contas a Pagar e nas Notas de Entrada. O histórico fica preservado.'
+                                            : 'Ao salvar, este cadastro fica INATIVO por completo (nem cliente, nem fornecedor). O histórico fica preservado e dá para reativar depois.'}
+                                    </div>
+                                )}
                             </>
                         ) : null}
                         <div>

@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Cliente que vira só Fornecedor — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito — preview compacto) -->
+<meta property="og:title" content="🔀 Novidade no Hardt App: cliente que vira só fornecedor">
+<meta property="og:description" content="Novo botão 'É cliente' no cadastro: desligue quem parou de comprar mas continua nos vendendo. E cliente inativo sumiu de vez da rota, dashboards e novo pedido.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 34px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+    margin-bottom: 8px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .app-toggle.off { background: #cfcabe; }
+  .app-toggle.off::after { right: auto; left: 3px; }
+  .app-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 800;
+  }
+  .app-badge.verde { background: #d7ecd9; color: #1d6b34; }
+  .app-badge.ambar { background: #fdf0d7; color: #8a6420; }
+  .app-badge.verm  { background: #fbe0dd; color: #b3382c; }
+  .app-aviso {
+    background: #fdf6e7;
+    border: 1px solid #ecd9ad;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12px;
+    color: #8a6420;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* matriz das combinações */
+  .combos { display: grid; gap: 8px; }
+  .combo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+  }
+  .combo .chks { flex-shrink: 0; font-size: 13px; letter-spacing: 2px; width: 44px; text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Parou de comprar,<br>mas continua fornecendo?</h1>
+    <p>O cadastro do cliente ganhou o botão "É cliente". Desligue quem não compra mais e o cadastro vira só fornecedor — sem perder nenhum histórico. E cliente inativo agora some de verdade da rota e dos dashboards.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock dos toggles flutuando -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🔀</span>
+      <div>
+        <small>Clientes · Detalhe · Editar</small>
+        <strong>Informações do Cadastro</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="app-toggle-linha">
+        <div><b>É cliente</b><small>Aparece nas telas de venda, rota e dashboards</small></div>
+        <span class="app-toggle off"></span>
+      </div>
+      <div class="app-toggle-linha">
+        <div><b>Também é fornecedor</b><small>Aparece no Contas a Pagar e Notas de Entrada</small></div>
+        <span class="app-toggle"></span>
+      </div>
+      <div class="app-aviso">Ao salvar, este cadastro vira <b>SÓ FORNECEDOR</b>: sai das listas de clientes, mas continua no Contas a Pagar. Histórico preservado.</div>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔀</span>
+      <strong>Novo botão "É cliente" no cadastro</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Na ficha do cliente (aba <b>Cadastro</b>, modo editar) agora existem <b>dois botões lado a lado</b>: <b>"É cliente"</b> e <b>"Também é fornecedor"</b>.</li>
+        <li>Desligou o <b>"É cliente"</b>? Ele some das telas de venda: lista de clientes, <b>Rota</b>, <b>Novo Pedido</b>, <b>Catálogo</b>, dashboards e metas do dia.</li>
+        <li>Se o <b>"Também é fornecedor"</b> ficar ligado, o cadastro vira <b>SÓ FORNECEDOR</b> — continua normal no Contas a Pagar e nas Notas de Entrada.</li>
+        <li>Desligou <b>os dois</b>? O cadastro fica <b>INATIVO</b> por completo (o app pede confirmação antes).</li>
+        <li><b>Nada é apagado:</b> pedidos antigos, financeiro e atendimentos continuam na ficha, e dá para religar quando quiser.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧹</span>
+      <strong>Cliente inativo sumiu de vez das telas</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Antes, cliente inativo ainda <b>aparecia em alguns lugares</b>: contagem de cidades da rota do dia, conversão do dia nas metas, fechamento do Caixa e buscas.</li>
+        <li>Agora o app filtra <b>direto na fonte</b>: inativo não entra mais em rota, dashboards, metas, novo pedido, catálogo nem no campo de busca de indicação.</li>
+        <li>A lista de Clientes continua com a aba <b>"Apenas Inativos"</b> para consultar quem foi desligado.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🏷️</span>
+      <strong>Selo novo na ficha: SÓ FORNECEDOR</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O selo no topo da ficha agora mostra o estado real do cadastro:</p>
+      <p>
+        <span class="app-badge verde">ATIVO</span>&nbsp;
+        <span class="app-badge ambar">SÓ FORNECEDOR</span>&nbsp;
+        <span class="app-badge verm">INATIVO</span>
+      </p>
+      <p>O âmbar é o caso novo: não compra mais da gente, mas segue nos vendendo.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ TELAS ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Detalhe do Cliente — aba Cadastro (editar)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Informações do cadastro</div>
+        <div class="app-card-body">
+          <div class="app-toggle-linha">
+            <div><b>É cliente</b> <span class="pin">1</span><small>Aparece nas telas de venda, rota e dashboards e pode receber pedidos</small></div>
+            <span class="app-toggle off"></span>
+          </div>
+          <div class="app-toggle-linha">
+            <div><b>Também é fornecedor</b> <span class="pin">2</span><small>Aparece no Contas a Pagar e nas Notas de Entrada</small></div>
+            <span class="app-toggle"></span>
+          </div>
+          <div class="app-aviso">Ao salvar, este cadastro vira SÓ FORNECEDOR: sai das listas de clientes, rotas e dashboards, mas continua no Contas a Pagar e nas Notas de Entrada. O histórico fica preservado. <span class="pin">3</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>É cliente</b> — o botão novo. Desligue para tirar o cadastro de todas as telas de venda. Religa a qualquer momento.</span></div>
+      <div><span class="pin">2</span><span><b>Também é fornecedor</b> — o mesmo botão que já existia: mantém o cadastro na lista de Fornecedores.</span></div>
+      <div><span class="pin">3</span><span><b>Aviso na hora</b> — antes de salvar, o app explica exatamente o que vai acontecer com o cadastro.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Topo da ficha — o selo de estado</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+            <div>
+              <div style="font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:#9aa5a0;">Razão social</div>
+              <div style="font-size:15px; font-weight:800;">Distribuidora Exemplo LTDA</div>
+              <div style="font-size:12px; color:#6b756f; margin-top:3px;">CNPJ: 12.345.678/0001-90</div>
+            </div>
+            <span class="app-badge ambar">SÓ FORNECEDOR <span class="pin">1</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="combos">
+        <div class="combo"><span class="chks">✅ ✅</span><span><span class="app-badge verde">ATIVO</span> — cliente e fornecedor, como sempre</span></div>
+        <div class="combo"><span class="chks">⬜ ✅</span><span><span class="app-badge ambar">SÓ FORNECEDOR</span> — não compra mais, segue nos vendendo <span class="pin">2</span></span></div>
+        <div class="combo"><span class="chks">✅ ⬜</span><span><span class="app-badge verde">ATIVO</span> — cliente normal, sem lado fornecedor</span></div>
+        <div class="combo"><span class="chks">⬜ ⬜</span><span><span class="app-badge verm">INATIVO</span> — cadastro desligado por completo <span class="pin">3</span></span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Selo âmbar novo</b> — bate o olho e já sabe que este cadastro só existe como fornecedor.</span></div>
+      <div><span class="pin">2</span><span>A ordem dos quadradinhos é: <b>É cliente · Também é fornecedor</b>.</span></div>
+      <div><span class="pin">3</span><span><b>Inativo</b> só acontece com os dois desligados — e o app pede confirmação antes de salvar assim.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PASSOS ══════════ -->
+  <div class="sec-label">Para desligar o lado cliente</div>
+  <div class="passos">
+    <div class="passo"><span class="passo-n">1</span><div>Abra <b>Clientes</b>, entre na ficha e vá na aba <b>Cadastro</b> (modo editar).</div></div>
+    <div class="passo"><span class="passo-n">2</span><div>Desligue o botão <b>"É cliente"</b>. Se ele ainda nos fornece, deixe <b>"Também é fornecedor"</b> ligado.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div>Toque em <b>Salvar Alterações</b>. Pronto: ele sai da rota, das listas e dos dashboards na hora.</div></div>
+    <div class="passo"><span class="passo-n">4</span><div>Se voltar a comprar, é só religar o <b>"É cliente"</b> — tudo volta como era, com o histórico intacto.</div></div>
+  </div>
+
+  <div class="rodape">
+    Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a novidade. 💬
+  </div>
+
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', acc.classList.contains('aberto') ? 'true' : 'false');
+  }
+</script>
+
+</body>
+</html>

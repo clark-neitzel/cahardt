@@ -112,7 +112,10 @@ Aba padrão ao abrir o detalhe. Contém tudo que é editável pelo time comercia
 
 **Informações do Cadastro** (editável por quem tem `clientes.edit`/`Pode_Editar_GPS`/admin)
 - Razão social, nome fantasia e CNPJ/CPF (editáveis)
+- Toggle **"É cliente"**: liga/desliga o lado cliente do cadastro. Desligado, o cadastro some de TODAS as telas de venda (lista de clientes ativos, Rota, Novo Pedido, Catálogo, dashboards, metas do dia) — mas o histórico (pedidos, financeiro, atendimentos) fica preservado na ficha e dá para religar a qualquer momento
 - Toggle **"Também é fornecedor"**: liga/desliga o espelho deste cadastro na lista de Fornecedores (Contas a Pagar / Notas de Entrada)
+- **Combinações dos dois toggles**: os dois ligados = cadastro completo; só "fornecedor" = vira **SÓ FORNECEDOR** (selo âmbar no topo da ficha — caso do cliente que parou de comprar mas continua nos vendendo); só "cliente" = cliente normal; os dois desligados = cadastro **INATIVO** por completo (o app pede confirmação antes de salvar assim)
+- O selo no topo da ficha mostra o estado: **ATIVO** (verde), **SÓ FORNECEDOR** (âmbar) ou **INATIVO** (vermelho)
 - Endereço completo editável (logradouro, número, complemento, bairro, cidade, UF, CEP) — obrigatório para emitir NF-e
 - Botão **Atualizar pela Receita/SEFAZ** (re-consulta o CNPJ e preenche o formulário; salva só ao clicar em Salvar)
 - Tipo de pessoa, código e perfis (somente leitura)

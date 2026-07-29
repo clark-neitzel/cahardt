@@ -375,7 +375,7 @@ const metaService = {
                 .map(mc => mc.cidade);
         } else {
             const clientesHoje = await prisma.cliente.findMany({
-                where: { idVendedor: vendedorId, Dia_de_venda: { contains: diaHojeSigla } },
+                where: { idVendedor: vendedorId, Ativo: true, Dia_de_venda: { contains: diaHojeSigla } },
                 select: { End_Cidade: true }
             });
             cidadesDeHoje = [...new Set(clientesHoje.map(c => c.End_Cidade).filter(Boolean))];
@@ -530,6 +530,7 @@ const metaService = {
             prisma.cliente.findMany({
                 where: {
                     idVendedor: { in: vendedorIds },
+                    Ativo: true,
                     Dia_de_venda: { contains: diaHojeSigla },
                     End_Cidade: { not: null }
                 },
@@ -679,7 +680,7 @@ const metaService = {
 
         // Filtra cidades pelo Dia_de_venda dos clientes — igual ao filtro da lista Rota
         const clientesVisitamHoje = await prisma.cliente.findMany({
-            where: { idVendedor: vendedorId, Dia_de_venda: { contains: diaHojeSigla } },
+            where: { idVendedor: vendedorId, Ativo: true, Dia_de_venda: { contains: diaHojeSigla } },
             select: { End_Cidade: true }
         });
         const cidadesComClientesHoje = new Set(clientesVisitamHoje.map(c => c.End_Cidade).filter(Boolean));
@@ -721,6 +722,7 @@ const metaService = {
             prisma.cliente.findMany({
                 where: {
                     idVendedor: vendedorId,
+                    Ativo: true,
                     Dia_de_venda: { contains: diaHojeSigla },
                     End_Cidade: { in: cidadesHojeNomes }
                 },

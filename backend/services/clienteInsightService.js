@@ -311,7 +311,7 @@ const clienteInsightService = {
         console.log('🔄 [InsightService] Iniciando recálculo massivo de insights...');
         try {
             const clientesAtivos = await prisma.cliente.findMany({
-                where: { insightAtivo: true }, // regra 5
+                where: { Ativo: true, insightAtivo: true }, // regra 5 + cliente desativado não gera insight
                 select: { UUID: true }
             });
 

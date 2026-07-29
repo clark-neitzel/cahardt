@@ -62,7 +62,12 @@ const clienteController = {
             }
 
             // Filtros Específicos
-            if (ativo !== undefined) {
+            // Padrão: SÓ ativos. Cliente desativado (ex.: virou só fornecedor) não pode
+            // aparecer em rota, novo pedido, catálogo nem autocomplete. A lista de
+            // clientes pede explicitamente ativo=false na aba "Inativos"; ativo=todos traz os dois.
+            if (ativo === undefined) {
+                where.Ativo = true;
+            } else if (ativo !== 'todos') {
                 where.Ativo = ativo === 'true';
             }
             if (idVendedor) {

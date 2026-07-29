@@ -1,5 +1,11 @@
 [
   {
+    "slug": "cliente-fornecedor",
+    "titulo": "Cliente que vira só fornecedor",
+    "resumo": "Novo botão 'É cliente' no cadastro: desligue quem parou de comprar mas continua nos vendendo. Desligando os dois botões, o cadastro fica inativo. E cliente inativo sumiu de vez da rota e dos dashboards.",
+    "data": "2026-07-29"
+  },
+  {
     "slug": "pedidos-detalhes-conversao",
     "titulo": "Pedidos: tudo num lugar só + converter especial",
     "resumo": "Clique no pedido e veja pagamento, entrega com GPS e a história completa. Pílula NOVO nos pedidos a faturar e botão que converte o especial em pedido com NF sem perder nada.",

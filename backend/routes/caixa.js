@@ -554,6 +554,7 @@ router.get('/resumo', async (req, res) => {
         const clientesDoDia = await prisma.cliente.findMany({
             where: {
                 idVendedor: targetVendedor,
+                Ativo: true,
                 Dia_de_venda: { contains: siglaDoDia, mode: 'insensitive' }
             },
             select: { UUID: true, NomeFantasia: true, Nome: true, Dia_de_venda: true, Ativo: true }
