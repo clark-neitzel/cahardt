@@ -55,7 +55,12 @@ function LinhaProduto({ item, valor, onMudar }) {
                     {contado && <CheckCircle2 className="inline h-4 w-4 text-primary mr-1 -mt-0.5" />}
                     {item.nome}
                 </p>
-                <span className="text-xs text-gray-500 whitespace-nowrap">sistema: {fmt(item.sistema)} {item.unidade || 'un'}</span>
+                <span className="text-xs text-gray-500 whitespace-nowrap text-right">
+                    sistema: {fmt(item.sistema)} {item.unidade || 'un'}
+                    {item.reservado > 0 && (
+                        <span className="block text-amber-700 font-medium">reservado: {fmt(item.reservado)} (pedidos a faturar)</span>
+                    )}
+                </span>
             </div>
             <div className="flex items-center gap-2 mt-3">
                 <button
@@ -195,7 +200,8 @@ export default function InventarioEstoque() {
                 nome: p.nome,
                 codigo: p.codigo,
                 unidade: p.unidade,
-                sistema: parseFloat(p.estoqueTotal || 0)
+                sistema: parseFloat(p.estoqueTotal || 0),
+                reservado: parseFloat(p.estoqueReservado || 0)
             }));
         if (itens.length === 0) return toast.error('Nenhum produto nesta categoria.');
         setDraft({
