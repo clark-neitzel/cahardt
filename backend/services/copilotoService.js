@@ -213,11 +213,36 @@ function selecionarRelevantes(pergunta, abasAcessiveis, n = 3) {
 // Extrai o trecho ÚTIL do manual para responder: descarta as seções de
 // desenvolvedor ("Depende de", "Arquivos no código"), que ficam no fim e só
 // gastam tokens. Mantém "O que é / O que dá pra fazer / Como fazer / Permissões".
-function trechoUtil(corpo) {
+//
+// Manual maior que o limite NÃO pode ser cortado só pelo começo: a seção que
+// responde a pergunta pode estar no fim (ex.: "NF-e de devolução" começava no
+// caractere 4283 e o corte em 4000 fazia o Clippy responder que a função não
+// existe). Por isso as seções que mencionam os termos da pergunta entram PRIMEIRO
+// no orçamento; o resto completa na ordem original até o limite.
+function trechoUtil(corpo, tokensPergunta = []) {
     if (!corpo) return '';
     const corte = corpo.search(/\n##\s*(Depende|Arquivos)/i);
-    const t = corte > 0 ? corpo.slice(0, corte) : corpo;
-    return t.trim().slice(0, 4000);
+    const util = (corte > 0 ? corpo.slice(0, corte) : corpo).trim();
+    const LIMITE = 8000;
+    if (util.length <= LIMITE) return util;
+
+    const blocos = util.split(/\n(?=###?\s)/);
+    // Quanto mais termos da pergunta o bloco cita, mais cedo ele entra no orçamento
+    // (empate mantém a ordem original do manual). A introdução (bloco 0) sempre entra.
+    const pontuacao = blocos.map((b) => {
+        const bn = normalizar(b);
+        return tokensPergunta.filter((t) => bn.includes(t)).length;
+    });
+    const ordem = blocos
+        .map((_, i) => i)
+        .sort((a, b) => (a === 0 ? -1 : b === 0 ? 1 : pontuacao[b] - pontuacao[a] || a - b));
+    let out = '';
+    for (const i of ordem) {
+        const restante = LIMITE - out.length;
+        if (restante <= 0) break;
+        out += (out ? '\n' : '') + blocos[i].slice(0, restante);
+    }
+    return out.trim();
 }
 
 const PERSONA = `Você é o "Clippy", o assistente de ajuda do app de gestão da Hardt Salgados.
@@ -256,8 +281,9 @@ async function responderAjuda({ pergunta, historico = [], perms = {} } = {}) {
         .join('\n');
 
     const relevantes = selecionarRelevantes(pergunta, acessiveis);
+    const tokensPergunta = [...new Set(tokenizar(pergunta))];
     const detalhes = relevantes
-        .map((a) => `### ${a.nome} (${a.rota})\n${trechoUtil(MANUAIS[a.slug]?.corpo)}`)
+        .map((a) => `### ${a.nome} (${a.rota})\n${trechoUtil(MANUAIS[a.slug]?.corpo, tokensPergunta)}`)
         .join('\n\n');
 
     const system = `${PERSONA}
@@ -304,4 +330,4 @@ Responda SEMPRE em JSON neste formato:
     return { resposta: parsed.resposta || texto, atalhos, modelo, provider };
 }
 
-module.exports = { responderAjuda, ABAS };
+module.exports = { responderAjuda, ABAS, trechoUtil, tokenizar };
