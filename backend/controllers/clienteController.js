@@ -41,7 +41,7 @@ const clienteController = {
     // Listar clientes com paginação e busca
     listar: async (req, res) => {
         try {
-            const { page = 1, limit = 10, search = '', ativo, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda } = req.query;
+            const { page = 1, limit = 10, search = '', ativo, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil } = req.query;
             const skip = (page - 1) * limit;
 
             const where = {};
@@ -73,10 +73,15 @@ const clienteController = {
             if (idVendedor) {
                 where.idVendedor = idVendedor;
             }
-            // Tempo sem vendas: clientes SEM nenhum pedido válido no período.
-            // semVenda = dias ('30', '90', '180'...) ou 'nunca' (nunca comprou).
-            // Pedido válido = não bonificação, não excluído, não cancelado/devolvido no CA.
-            if (semVenda) {
+            // Tempo sem vendas (pela data de venda do pedido; pedido válido = não bonificação,
+            // não excluído, não cancelado/devolvido no CA):
+            //   semVenda='nunca'      → nunca teve pedido válido
+            //   semVendaDe=X          → última compra há X dias ou mais (quem nunca comprou NÃO entra —
+            //                           para isso existe o 'nunca'; senão a faixa vira sempre "todo mundo")
+            //   semVendaAte=Y         → última compra há no máximo Y dias
+            //   De+Até juntos         → faixa: última compra entre X e Y dias atrás
+            // (semVenda numérico é o formato antigo do filtro — tratado como semVendaDe)
+            if (semVenda || semVendaDe || semVendaAte) {
                 const pedidoValido = {
                     bonificacao: false,
                     statusEnvio: { not: 'EXCLUIDO' },
@@ -85,12 +90,27 @@ const clienteController = {
                 if (semVenda === 'nunca') {
                     where.pedidos = { none: pedidoValido };
                 } else {
-                    const dias = parseInt(semVenda);
-                    if (!isNaN(dias) && dias > 0) {
-                        const corte = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
-                        where.pedidos = { none: { ...pedidoValido, dataVenda: { gte: corte } } };
+                    const de = parseInt(semVendaDe !== undefined && semVendaDe !== '' ? semVendaDe : semVenda);
+                    const ate = parseInt(semVendaAte);
+                    const conds = [];
+                    if (!isNaN(de) && de > 0) {
+                        const corteDe = new Date(Date.now() - de * 24 * 60 * 60 * 1000);
+                        conds.push({ pedidos: { none: { ...pedidoValido, dataVenda: { gte: corteDe } } } });
+                        conds.push({ pedidos: { some: pedidoValido } }); // já comprou alguma vez
                     }
+                    if (!isNaN(ate) && ate > 0) {
+                        const corteAte = new Date(Date.now() - ate * 24 * 60 * 60 * 1000);
+                        conds.push({ pedidos: { some: { ...pedidoValido, dataVenda: { gte: corteAte } } } });
+                    }
+                    if (conds.length > 0) where.AND = [...(where.AND || []), ...conds];
                 }
+            }
+            // Perfil do cadastro: 'fornecedor' = também é fornecedor; 'cliente' = só cliente
+            // (o toggle "Também é fornecedor" mantém o campo Perfis em dia)
+            if (perfil === 'fornecedor') {
+                where.Perfis = { contains: 'fornecedor', mode: 'insensitive' };
+            } else if (perfil === 'cliente') {
+                where.NOT = [...(where.NOT || []), { Perfis: { contains: 'fornecedor', mode: 'insensitive' } }];
             }
             if (diaEntrega) {
                 where.Dia_de_entrega = { contains: diaEntrega };
@@ -844,8 +864,20 @@ const clienteController = {
             if (dados.Dia_de_venda !== undefined) dadosAtualizacao.Dia_de_venda = dados.Dia_de_venda;
             if (dados.Formas_Atendimento !== undefined) dadosAtualizacao.Formas_Atendimento = dados.Formas_Atendimento;
 
+            // Desativar/reativar em lote — mesma permissão do toggle "É cliente" da ficha.
+            // Só mexe no lado cliente (Ativo); o espelho de fornecedor não é tocado.
+            if (dados.Ativo !== undefined) {
+                const perms = typeof req.user.permissoes === 'string'
+                    ? JSON.parse(req.user.permissoes)
+                    : (req.user.permissoes || {});
+                if (!(perms.admin || perms.clientes?.edit || perms.Pode_Editar_GPS)) {
+                    return res.status(403).json({ error: 'Sem permissão para ativar/desativar clientes.' });
+                }
+                dadosAtualizacao.Ativo = !!dados.Ativo;
+            }
+
             if (Object.keys(dadosAtualizacao).length === 0) {
-                return res.status(400).json({ error: 'Nenhum campo válido para atualização (Vendedor, Entrega, Venda, Atendimento).' });
+                return res.status(400).json({ error: 'Nenhum campo válido para atualização (Vendedor, Entrega, Venda, Atendimento, Ativo).' });
             }
 
             const resultado = await prisma.cliente.updateMany({

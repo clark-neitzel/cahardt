@@ -56,6 +56,13 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 3. Escolha o campo para alterar: vendedor, dia de entrega, dia de venda ou formas de atendimento
 4. Confirme — o sistema atualiza todos os selecionados de uma vez
 
+### Desativar / reativar clientes em lote
+1. Filtre quem quer desligar (ex.: Tempo sem Vendas "de 180 até em branco" ou "Nunca comprou") e marque os checkboxes (o "selecionar todos" pega a página atual — aumente o "Exibir por página" para pegar mais de uma vez)
+2. Na barra de seleção, clique em **Desativar** (vermelho) e confirme
+3. Só o LADO CLIENTE é desligado: o cadastro continua no sistema (e como fornecedor, quando for o caso), histórico e cobranças em aberto preservados; eles somem das listas de venda, rota e dashboards
+4. Para voltar atrás: aba **"Apenas Inativos"** → selecionar → botão **Reativar** (verde)
+5. Exige a mesma permissão de edição de cadastro (`clientes.edit`/admin)
+
 ---
 
 ## Filtros disponíveis
@@ -68,7 +75,8 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 | Dia de Venda | Dia da semana em que o vendedor visita |
 | Condição Padrão | Condição de pagamento padrão do cliente |
 | Condição Permitida | Filtra por condição que o cliente tem autorizado |
-| Tempo sem Vendas | Clientes sem nenhum pedido válido há 30+/60+/90+ dias, 6+ meses, 1+ ano — ou que nunca compraram. Bonificações e pedidos cancelados/excluídos não contam como venda. Com o filtro ativo, cada cliente mostra o chip "Xd sem comprar" |
+| Tempo sem Vendas | Duas opções: **"Sem comprar de… até… (dias)"** — faixa livre (ex.: de 30 até 180 dias sem comprar; quem NUNCA comprou não entra na faixa) — e **"Nunca comprou"** (nenhum pedido válido, opção separada de propósito para não poluir a faixa). Bonificações e pedidos cancelados/excluídos não contam como venda. Com o filtro ativo, cada cliente mostra o chip "Xd sem comprar" |
+| Perfil | Todos os cadastros · Só cliente (não é fornecedor) · Também é fornecedor |
 | Ativos / Inativos | Aba de seleção no topo |
 
 ---

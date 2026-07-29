@@ -34,7 +34,12 @@ const ListaClientes = () => {
     const initialDiaVenda = searchParams.get('diaVenda') !== null ? searchParams.get('diaVenda') : getSaved('diaVenda', '');
     const initialCondPadrão = searchParams.get('condicaoPagamento') !== null ? searchParams.get('condicaoPagamento') : getSaved('condicaoPagamento', '');
     const initialCondPermitida = searchParams.get('condicaoPermitida') !== null ? searchParams.get('condicaoPermitida') : getSaved('condicaoPermitida', '');
-    const initialSemVenda = searchParams.get('semVenda') !== null ? searchParams.get('semVenda') : getSaved('semVenda', '');
+    const rawSemVenda = searchParams.get('semVenda') !== null ? searchParams.get('semVenda') : getSaved('semVenda', '');
+    // Formato antigo do filtro ('30', '90'...) vira faixa com só o "De" preenchido
+    const initialSemVenda = /^\d+$/.test(rawSemVenda) ? 'faixa' : rawSemVenda;
+    const initialSemVendaDe = searchParams.get('semVendaDe') !== null ? searchParams.get('semVendaDe') : getSaved('semVendaDe', /^\d+$/.test(rawSemVenda) ? rawSemVenda : '');
+    const initialSemVendaAte = searchParams.get('semVendaAte') !== null ? searchParams.get('semVendaAte') : getSaved('semVendaAte', '');
+    const initialPerfil = searchParams.get('perfil') !== null ? searchParams.get('perfil') : getSaved('perfil', '');
 
     // Estados de Dados
     const [clientes, setClientes] = useState([]);
@@ -55,6 +60,9 @@ const ListaClientes = () => {
     const [condicaoPagamento, setCondicaoPagamento] = useState(initialCondPadrão);
     const [condicaoPermitida, setCondicaoPermitida] = useState(initialCondPermitida);
     const [semVenda, setSemVenda] = useState(initialSemVenda);
+    const [semVendaDe, setSemVendaDe] = useState(initialSemVendaDe);
+    const [semVendaAte, setSemVendaAte] = useState(initialSemVendaAte);
+    const [perfil, setPerfil] = useState(initialPerfil);
     const [showFilters, setShowFilters] = useState(false);
 
     // Seleção em Lote
@@ -96,6 +104,9 @@ const ListaClientes = () => {
         if (condicaoPagamento) params.condicaoPagamento = condicaoPagamento;
         if (condicaoPermitida) params.condicaoPermitida = condicaoPermitida;
         if (semVenda) params.semVenda = semVenda;
+        if (semVenda === 'faixa' && semVendaDe) params.semVendaDe = semVendaDe;
+        if (semVenda === 'faixa' && semVendaAte) params.semVendaAte = semVendaAte;
+        if (perfil) params.perfil = perfil;
         setSearchParams(params, { replace: true });
 
         saveToLocal('search', search);
@@ -106,8 +117,11 @@ const ListaClientes = () => {
         saveToLocal('condicaoPagamento', condicaoPagamento);
         saveToLocal('condicaoPermitida', condicaoPermitida);
         saveToLocal('semVenda', semVenda);
+        saveToLocal('semVendaDe', semVendaDe);
+        saveToLocal('semVendaAte', semVendaAte);
+        saveToLocal('perfil', perfil);
         saveToLocal('activeTab', activeTab);
-    }, [search, page, limit, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, activeTab, setSearchParams]);
+    }, [search, page, limit, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, activeTab, setSearchParams]);
 
     const fetchClientes = async () => {
         setLoading(true);
@@ -115,7 +129,10 @@ const ListaClientes = () => {
             const ativo = activeTab === 'ativos';
             const data = await clienteService.listar({
                 page, limit, search, ativo, idVendedor, diaEntrega, diaVenda,
-                condicaoPagamento, condicaoPermitida, semVenda
+                condicaoPagamento, condicaoPermitida, perfil,
+                semVenda: semVenda === 'nunca' ? 'nunca' : undefined,
+                semVendaDe: semVenda === 'faixa' ? semVendaDe : undefined,
+                semVendaAte: semVenda === 'faixa' ? semVendaAte : undefined
             });
             setClientes(data.data);
             setTotalPages(data.meta.totalPages);
@@ -130,7 +147,7 @@ const ListaClientes = () => {
     useEffect(() => {
         const t = setTimeout(fetchClientes, 300);
         return () => clearTimeout(t);
-    }, [page, limit, search, activeTab, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda]);
+    }, [page, limit, search, activeTab, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil]);
 
     const handleSearch = (e) => { setSearch(e.target.value); setPage(1); };
 
@@ -142,10 +159,13 @@ const ListaClientes = () => {
         setCondicaoPagamento('');
         setCondicaoPermitida('');
         setSemVenda('');
+        setSemVendaDe('');
+        setSemVendaAte('');
+        setPerfil('');
         setPage(1);
     };
 
-    const activeFiltersCount = [idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda].filter(Boolean).length;
+    const activeFiltersCount = [idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, perfil].filter(Boolean).length;
 
     const handleSelectAll = (e) => {
         setSelectedIds(e.target.checked ? clientes.map(c => c.UUID) : []);
@@ -175,6 +195,25 @@ const ListaClientes = () => {
         } catch (error) {
             console.error("Erro na atualização em lote", error);
             alert("Erro ao atualizar clientes.");
+        }
+    };
+
+    // Desativa (ou reativa, na aba Inativos) o LADO CLIENTE dos selecionados.
+    // O cadastro continua no sistema (e como fornecedor, se for) — só some das telas de venda.
+    const handleBatchAtivo = async (novoAtivo) => {
+        if (selectedIds.length === 0) return;
+        const msg = novoAtivo
+            ? `Reativar ${selectedIds.length} cliente(s)? Eles voltam a aparecer nas listas, rota e dashboards.`
+            : `Desativar ${selectedIds.length} cliente(s) como CLIENTE?\n\nEles somem das listas de venda, rota e dashboards, mas o cadastro continua no sistema (e como fornecedor, quando for o caso). O histórico e as cobranças em aberto são preservados. Dá para reativar depois na aba "Apenas Inativos".`;
+        if (!window.confirm(msg)) return;
+        try {
+            await clienteService.atualizarLote({ ids: selectedIds, dados: { Ativo: novoAtivo } });
+            alert(novoAtivo ? 'Clientes reativados!' : 'Clientes desativados! Veja-os na aba "Apenas Inativos".');
+            setSelectedIds([]);
+            fetchClientes();
+        } catch (error) {
+            console.error('Erro ao ativar/desativar em lote', error);
+            alert('Erro: ' + (error.response?.data?.error || 'não foi possível concluir a operação.'));
         }
     };
 
@@ -215,6 +254,21 @@ const ListaClientes = () => {
                             <Settings className="h-4 w-4" />
                             Alterar em Lote
                         </button>
+                        {activeTab === 'inativos' ? (
+                            <button
+                                onClick={() => handleBatchAtivo(true)}
+                                className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors"
+                            >
+                                Reativar
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => handleBatchAtivo(false)}
+                                className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors"
+                            >
+                                Desativar
+                            </button>
+                        )}
                         <button onClick={() => setSelectedIds([])} className="text-blue-500 hover:text-blue-700">
                             <X className="h-4 w-4" />
                         </button>
@@ -358,12 +412,38 @@ const ListaClientes = () => {
                             onChange={(e) => { setSemVenda(e.target.value); setPage(1); }}
                         >
                             <option value="">Qualquer período</option>
-                            <option value="30">30+ dias sem comprar</option>
-                            <option value="60">60+ dias sem comprar</option>
-                            <option value="90">90+ dias sem comprar</option>
-                            <option value="180">6+ meses sem comprar</option>
-                            <option value="365">1+ ano sem comprar</option>
+                            <option value="faixa">Sem comprar de… até… (dias)</option>
                             <option value="nunca">Nunca comprou</option>
+                        </SelectBusca>
+                        {semVenda === 'faixa' && (
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                                <input
+                                    type="number" min="1" inputMode="numeric" placeholder="De (dias)"
+                                    className="w-full min-w-0 border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                    value={semVendaDe}
+                                    onChange={(e) => { setSemVendaDe(e.target.value); setPage(1); }}
+                                />
+                                <span className="text-xs text-gray-400 shrink-0">até</span>
+                                <input
+                                    type="number" min="1" inputMode="numeric" placeholder="Até (dias)"
+                                    className="w-full min-w-0 border border-gray-300 rounded px-2 py-1.5 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                    value={semVendaAte}
+                                    onChange={(e) => { setSemVendaAte(e.target.value); setPage(1); }}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    <div>
+                        <label className="block text-[11px] font-medium text-gray-500 mb-1">Perfil</label>
+                        <SelectBusca
+                            className="w-full"
+                            value={perfil}
+                            onChange={(e) => { setPerfil(e.target.value); setPage(1); }}
+                        >
+                            <option value="">Todos os cadastros</option>
+                            <option value="cliente">Só cliente (não é fornecedor)</option>
+                            <option value="fornecedor">Também é fornecedor</option>
                         </SelectBusca>
                     </div>
 
