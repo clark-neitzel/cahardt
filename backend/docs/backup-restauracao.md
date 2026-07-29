@@ -44,6 +44,13 @@ pg_restore --no-owner --no-privileges -d hardt_restaurado banco-2026-07-28-1615.
 O dump é formato *custom* do Postgres (`pg_dump --format=custom`), já comprimido.
 `--no-owner --no-privileges` na geração e na restauração permitem restaurar com qualquer usuário.
 
+**Versão do pg_restore:** o servidor de produção é Postgres **17** — o `pg_restore` precisa ser
+17 ou mais novo (o 16 falha com `unsupported version (1.16) in file header`). No Mac do
+escritório: `brew install postgresql@17` e usar `/opt/homebrew/opt/postgresql@17/bin/pg_restore`
+(instalado e testado em 28/07/2026 — restauração do dump de produção conferida com contagens).
+Restaurar num servidor 16 funciona (warning inofensivo de `SET transaction_timeout`), desde que
+o `pg_restore` seja 17.
+
 ## RESTAURAR os arquivos (uploads)
 
 1. Baixe `Arquivos/arquivos-<dia>.tar.gz` do Drive.
