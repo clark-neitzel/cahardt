@@ -722,6 +722,45 @@ const pedidoController = {
         }
     },
 
+    // Conversão MANUAL: especial → pedido com NF, em qualquer estágio (aberto ou
+    // faturado) e com qualquer forma de recebimento. Mesmo motor da conversão por
+    // PIX — é o MESMO registro que muda de aba (nada duplica; entrega/carga ficam).
+    converterEspecial: async (req, res) => {
+        try {
+            const permissoes = req.user?.permissoes || {};
+            if (!permissoes.Pode_Aprovar_Especial && !permissoes.admin) {
+                return res.status(403).json({ error: 'Você não tem permissão para converter pedidos especiais.' });
+            }
+
+            const pedidoConversaoService = require('../services/pedidoConversaoService');
+            const resultado = await pedidoConversaoService.converterManual(req.params.id, req.user?.id || null);
+
+            // Auditoria fora da conversão (falha aqui não desfaz nada)
+            try {
+                await prisma.auditLog.create({
+                    data: {
+                        acao: 'CONVERTER_ESPECIAL',
+                        entidade: 'Pedido',
+                        entidadeId: req.params.id,
+                        detalhes: `Especial ZZ#${resultado.numeroAntigo ?? '?'} convertido manualmente no pedido #${resultado.numeroNovo}`,
+                        usuarioId: req.user.id,
+                        usuarioNome: req.user.nome || req.user.login || '-'
+                    }
+                });
+            } catch (eLog) {
+                console.error('[Conversão] Falha no audit log (conversão já efetivada):', eLog.message);
+            }
+
+            res.json({
+                message: `Pedido convertido: ZZ#${resultado.numeroAntigo ?? '?'} virou o pedido #${resultado.numeroNovo}. Ele segue para o faturamento e emissão da NF-e.`,
+                ...resultado
+            });
+        } catch (error) {
+            console.error('Erro ao converter pedido especial:', error);
+            res.status(400).json({ error: error.message || 'Erro ao converter pedido especial.' });
+        }
+    },
+
     aprovarBonificacao: async (req, res) => {
         try {
             const id = req.params.id;

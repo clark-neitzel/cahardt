@@ -127,13 +127,21 @@ const pedidoService = {
             where: whereBase,
             _count: { id: true },
         });
-        const c = { TODOS: 0, ABERTO: 0, ENVIAR: 0, SINCRONIZANDO: 0, APROVADO: 0, ERRO: 0, FATURADO: 0 };
+        const c = { TODOS: 0, ABERTO: 0, ENVIAR: 0, SINCRONIZANDO: 0, APROVADO: 0, ERRO: 0, FATURADO: 0, CONVERTIDO: 0 };
         for (const r of rows) {
             const n = r._count.id;
             c.TODOS += n;
             if (r.situacaoCA === 'FATURADO') c.FATURADO += n;
             else if (r.situacaoCA === 'APROVADO') c.APROVADO += n;
             else if (c[r.statusEnvio] !== undefined) c[r.statusEnvio] += n;
+        }
+        // Especiais convertidos (chip próprio — count leve, não entra no groupBy acima)
+        try {
+            c.CONVERTIDO = await prisma.pedido.count({
+                where: { ...whereBase, avisosConversao: { some: {} } }
+            });
+        } catch (e) {
+            console.error('Falha ao contar convertidos (chip segue zerado):', e.message);
         }
         return c;
     },
@@ -155,6 +163,9 @@ const pedidoService = {
                 where.situacaoCA = 'FATURADO';
             } else if (statusRapido === 'APROVADO') {
                 where.situacaoCA = 'APROVADO';
+            } else if (statusRapido === 'CONVERTIDO') {
+                // Pedidos que nasceram especiais e foram convertidos (têm aviso de conversão)
+                where.avisosConversao = { some: {} };
             } else {
                 where.statusEnvio = statusRapido;
                 // situacaoCA != FATURADO e != APROVADO — INCLUINDO null (pedidos em aberto têm
@@ -193,6 +204,9 @@ const pedidoService = {
             },
             embarque: {
                 select: { id: true, numero: true, responsavel: { select: { id: true, nome: true } } }
+            },
+            avisosConversao: {
+                select: { numeroAntigo: true, valorPago: true, createdAt: true }
             },
             devolucoes: {
                 where: { status: 'ATIVA' },
@@ -721,7 +735,18 @@ const pedidoService = {
                     }
                 },
                 pagamentosReais: true,
-                embarque: { select: { id: true, numero: true, dataSaida: true, responsavel: { select: { nome: true } } } }
+                embarque: { select: { id: true, numero: true, dataSaida: true, responsavel: { select: { nome: true } } } },
+                avisosConversao: {
+                    select: { numeroAntigo: true, numeroNovo: true, valorPago: true, createdAt: true }
+                },
+                cobrancasAsaas: {
+                    select: { id: true, tipo: true, status: true, valor: true, valorRecebido: true, recebidoEm: true, createdAt: true },
+                    orderBy: { createdAt: 'asc' }
+                },
+                notasFiscaisApp: {
+                    select: { id: true, tipo: true, status: true, numero: true, serie: true, criadoEm: true, atualizadoEm: true },
+                    orderBy: { criadoEm: 'asc' }
+                }
             }
         });
     },

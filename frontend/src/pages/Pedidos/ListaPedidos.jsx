@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck, CircleDollarSign } from 'lucide-react';
+import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck, CircleDollarSign, Zap, MapPin, Clock } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import api, { API_URL } from '../../services/api';
 import amostraService from '../../services/amostraService';
@@ -17,6 +17,14 @@ import PixAvulsoModal from './PixAvulsoModal';
 import ImprimirLoteModal from './ImprimirLoteModal';
 
 const fmtNumero = (pedido) => pedido.bonificacao ? `BN#${pedido.numero}` : pedido.especial ? `ZZ#${pedido.numero}` : `#${pedido.numero}`;
+
+// Pedido "faturado" = RECEBIDO no app (faturamento local/especial aprovado) ou FATURADO no CA.
+// Enquanto não faturar, a linha leva a pílula dourada NOVO (pedido do dono, 07/2026).
+const pedidoFaturado = (p) => p.statusEnvio === 'RECEBIDO' || p.situacaoCA === 'FATURADO';
+
+const fmtMoeda = (v) => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const fmtDataHora = (d) => d ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—';
 
 // Marca do Asaas (a azul) para os botões de boleto/PIX no pedido
 const AsaasIcon = ({ className }) => (
@@ -131,6 +139,8 @@ const ListaPedidos = () => {
     const [pixModal, setPixModal] = useState(null); // { id, numero, especial, clienteNome, valorSugerido }
     const [loteModal, setLoteModal] = useState(null); // { pedidoIds } ou { amostraIds } p/ impressão em lote
     const [gerandoDanfe, setGerandoDanfe] = useState(null); // pedidoId com DANFE em geração
+    const [convertendo, setConvertendo] = useState(null); // pedidoId em conversão especial→pedido
+    const [detalheExtra, setDetalheExtra] = useState(null); // detalhe completo do pedido do modal (parcelas, cobranças, NFs)
 
     // DANFE (PDF da NF-e emitida no CA) — o backend baixa o XML autorizado e gera o PDF
     const handleDanfe = async (pedido) => {
@@ -295,6 +305,19 @@ const ListaPedidos = () => {
         carregar(1, abaAtiva, filtrosComDatas, filtroStatus, buscaServer);
     }, [carregar, abaAtiva, filtrosComDatas, filtroStatus, buscaServer]);
 
+    // Detalhe completo do pedido do modal (parcelas, cobranças Asaas, NF-e, conversão) —
+    // buscado ao abrir; as seções aparecem quando chega (o modal já abre com o que a lista tem)
+    useEffect(() => {
+        setDetalheExtra(null);
+        const id = selectedPedido?.id;
+        if (!id) return;
+        let ativo = true;
+        pedidoService.detalhar(id)
+            .then(d => { if (ativo && d?.id === id) setDetalheExtra(d); })
+            .catch(() => { /* modal segue com os dados da lista */ });
+        return () => { ativo = false; };
+    }, [selectedPedido?.id]);
+
     const carregarMais = () => {
         const nova = pagina + 1;
         setPagina(nova);
@@ -372,6 +395,25 @@ const ListaPedidos = () => {
             toast.error(error.response?.data?.error || 'Erro ao reverter pedido.');
         } finally {
             setRevertendo(null);
+        }
+    };
+
+    // Conversão manual: especial → pedido com NF (qualquer forma de recebimento).
+    // Mesmo motor da conversão automática por PIX — o registro só muda de aba.
+    const handleConverterEspecial = async (pedido) => {
+        if (!podeAprovar) return;
+        if (!window.confirm(`Converter o especial ZZ#${pedido.numero ?? '?'} em pedido com NF?\n\nEle ganha número novo na sequência oficial, vai para a fila de faturamento/NF-e e leva junto entrega, carga e tudo que já foi recebido (dinheiro, PIX, boleto).\n\nNão dá para desfazer.`)) return;
+        try {
+            setConvertendo(pedido.id);
+            const { data } = await api.post(`/pedidos/${pedido.id}/converter-especial`);
+            toast.success(data?.message || 'Pedido convertido! Ele agora está na aba Pedidos.', { duration: 8000 });
+            // Sai da aba Especiais (o registro mudou de aba, não foi excluído)
+            setPedidos(prev => prev.filter(p => p.id !== pedido.id));
+            setSelectedPedido(null);
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao converter o pedido.');
+        } finally {
+            setConvertendo(null);
         }
     };
 
@@ -864,6 +906,8 @@ const ListaPedidos = () => {
                         { key: 'APROVADO', label: 'Aprovado', icon: CheckCircle, active: 'bg-green-100 text-green-800 border-green-300' },
                         { key: 'ERRO', label: 'Erro', icon: XCircle, active: 'bg-red-100 text-red-800 border-red-300' },
                         { key: 'FATURADO', label: 'Faturado', icon: Receipt, active: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+                        // Só na aba Pedidos: quem nasceu especial e foi convertido
+                        ...(abaAtiva === 'pedidos' ? [{ key: 'CONVERTIDO', label: 'Convertidos', icon: Zap, active: 'bg-amber-100 text-amber-800 border-amber-300' }] : []),
                     ].map(({ key, label, icon: Icon, active }) => {
                         const ativo = filtroStatus === key;
                         // Contagens vêm do backend (groupBy sobre a aba/filtro atual, não só a página carregada)
@@ -1054,6 +1098,11 @@ const ListaPedidos = () => {
                                                 {selecionados.has(pedido.id) ? <CheckSquare className="h-5 w-5 text-primary" /> : <Square className="h-5 w-5" />}
                                             </button>
                                         )}
+                                        {!pedidoFaturado(pedido) && (
+                                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded-full bg-[#cba258] text-white shrink-0 mt-0.5 shadow-sm tracking-wide" title="Pedido ainda não faturado">
+                                                NOVO
+                                            </span>
+                                        )}
                                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 shadow-sm mt-0.5 ${pedido.especial ? 'text-purple-700 bg-purple-50 border-purple-200' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
                                             {fmtNumero(pedido)}
                                         </span>
@@ -1113,6 +1162,12 @@ const ListaPedidos = () => {
                                             {pedido.situacaoCA && (
                                                 <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase border shadow-sm ${pedido.situacaoCA === 'FATURADO' ? 'text-green-700 bg-green-50 border-green-200' : 'text-blue-700 bg-blue-50 border-blue-100'}`}>
                                                     {pedido.especial ? '' : 'CA: '}{pedido.situacaoCA}
+                                                </span>
+                                            )}
+                                            {pedido.avisosConversao?.length > 0 && (
+                                                <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-300 shadow-sm flex items-center gap-0.5"
+                                                    title={`Nasceu como pedido especial ZZ#${pedido.avisosConversao[0].numeroAntigo ?? '?'} e foi convertido em ${fmtData(pedido.avisosConversao[0].createdAt)}`}>
+                                                    <Zap className="h-2.5 w-2.5" /> Especial convertido · era ZZ#{pedido.avisosConversao[0].numeroAntigo ?? '?'}
                                                 </span>
                                             )}
                                             {pedido.revisaoPendente && <span className="text-[9px] font-bold text-orange-600 bg-orange-100 px-1.5 py-0.5 rounded flex items-center gap-0.5"><AlertCircle className="h-2.5 w-2.5" /> ALT ERP</span>}
@@ -1332,19 +1387,35 @@ const ListaPedidos = () => {
                                         {podeAprovar && (
                                             <button onClick={() => handleAprovarEspecial(selectedPedido.id)} className="px-4 py-2 bg-purple-600 text-white rounded font-bold text-sm shadow-sm">Aprovar agora</button>
                                         )}
+                                        {podeAprovar && (
+                                            <button onClick={() => handleConverterEspecial(selectedPedido)} disabled={convertendo === selectedPedido.id}
+                                                className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded font-bold text-sm shadow-sm flex items-center gap-1 disabled:opacity-50">
+                                                <Zap className="h-4 w-4" /> {convertendo === selectedPedido.id ? 'Convertendo…' : 'Converter em pedido c/ NF'}
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             )}
-                            {selectedPedido.especial && selectedPedido.statusEnvio === 'RECEBIDO' && podeReverter && (
+                            {selectedPedido.especial && selectedPedido.statusEnvio === 'RECEBIDO' && (podeReverter || podeAprovar) && (
                                 <div className="bg-orange-50 p-3 rounded border border-orange-200 flex flex-wrap justify-between items-center gap-2">
                                     <span className="text-sm font-bold text-orange-900">Pedido faturado</span>
-                                    <button
-                                        onClick={() => handleReverterEspecial(selectedPedido.id)}
-                                        disabled={revertendo === selectedPedido.id}
-                                        className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1 hover:bg-orange-700 disabled:opacity-50"
-                                    >
-                                        <RotateCcw className="h-4 w-4" /> {revertendo === selectedPedido.id ? 'Revertendo...' : 'Reverter para Aberto'}
-                                    </button>
+                                    <div className="flex gap-2 flex-wrap">
+                                        {podeReverter && (
+                                            <button
+                                                onClick={() => handleReverterEspecial(selectedPedido.id)}
+                                                disabled={revertendo === selectedPedido.id}
+                                                className="px-4 py-2 bg-orange-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1 hover:bg-orange-700 disabled:opacity-50"
+                                            >
+                                                <RotateCcw className="h-4 w-4" /> {revertendo === selectedPedido.id ? 'Revertendo...' : 'Reverter para Aberto'}
+                                            </button>
+                                        )}
+                                        {podeAprovar && (
+                                            <button onClick={() => handleConverterEspecial(selectedPedido)} disabled={convertendo === selectedPedido.id}
+                                                className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded font-bold text-sm shadow-sm flex items-center gap-1 disabled:opacity-50">
+                                                <Zap className="h-4 w-4" /> {convertendo === selectedPedido.id ? 'Convertendo…' : 'Converter em pedido c/ NF'}
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                             {selectedPedido.especial && ['ABERTO', 'ERRO'].includes(selectedPedido.statusEnvio) && !(['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(selectedPedido.situacaoCA)) && (
@@ -1357,6 +1428,12 @@ const ListaPedidos = () => {
                                         {podeAprovar && (
                                             <button onClick={() => handleAprovarEspecial(selectedPedido.id)} className="px-4 py-2 bg-green-600 text-white rounded font-bold text-sm shadow-sm flex items-center gap-1">
                                                 <CheckCircle className="h-4 w-4" /> Faturar
+                                            </button>
+                                        )}
+                                        {podeAprovar && (
+                                            <button onClick={() => handleConverterEspecial(selectedPedido)} disabled={convertendo === selectedPedido.id}
+                                                className="px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded font-bold text-sm shadow-sm flex items-center gap-1 disabled:opacity-50">
+                                                <Zap className="h-4 w-4" /> {convertendo === selectedPedido.id ? 'Convertendo…' : 'Converter em pedido c/ NF'}
                                             </button>
                                         )}
                                     </div>
@@ -1442,6 +1519,139 @@ const ListaPedidos = () => {
                                 <div><p className="text-[10px] uppercase font-bold text-gray-400">Emissão</p><p className="font-medium">{new Date(selectedPedido.createdAt).toLocaleDateString('pt-BR')}</p></div>
                                 <div className="col-span-2"><p className="text-[10px] uppercase font-bold text-gray-400">Pagamento</p><p className="font-medium">{selectedPedido.nomeCondicaoPagamento || 'N/D'}</p></div>
                             </div>
+
+                            {/* Especial convertido — faixa de origem */}
+                            {(detalheExtra?.avisosConversao || selectedPedido.avisosConversao || []).length > 0 && (() => {
+                                const av = (detalheExtra?.avisosConversao || selectedPedido.avisosConversao)[0];
+                                return (
+                                    <div className="bg-amber-50 p-3 rounded border border-amber-200 text-sm text-amber-900">
+                                        <p className="font-bold flex items-center gap-1"><Zap className="h-4 w-4" /> Especial convertido</p>
+                                        <p className="text-xs mt-1">
+                                            Nasceu como pedido especial <b>ZZ#{av.numeroAntigo ?? '?'}</b> e virou o pedido <b>#{av.numeroNovo ?? selectedPedido.numero}</b> em {fmtDataHora(av.createdAt)}.
+                                            {av.valorPago != null ? <> Já recebido na conversão: <b>{fmtMoeda(av.valorPago)}</b>.</> : null}
+                                        </p>
+                                        <p className="text-[11px] text-amber-700 mt-0.5">Entrega, carga e pagamentos abaixo são deste mesmo pedido — nada foi apagado na conversão.</p>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Recebimento — parcela a parcela, sem precisar abrir Contas a Receber */}
+                            <div className="bg-green-50/50 p-3 rounded border border-green-100 space-y-1.5">
+                                <p className="text-[10px] uppercase font-bold text-green-700 flex items-center gap-1"><CircleDollarSign className="h-3.5 w-3.5" /> Recebimento</p>
+                                {!detalheExtra ? <p className="text-xs text-gray-400">Carregando…</p> : (() => {
+                                    const cr = detalheExtra.contaReceber;
+                                    if (!cr) return (
+                                        <p className="text-xs text-gray-500">
+                                            {selectedPedido.bonificacao
+                                                ? 'Bonificação — não gera conta a receber.'
+                                                : 'Ainda sem conta a receber — ela é criada quando o pedido é finalizado/faturado.'}
+                                        </p>
+                                    );
+                                    const parcelas = cr.parcelas || [];
+                                    const hoje = new Date();
+                                    const recebido = parcelas.reduce((s, p) => s + Number(p.valorPago || 0), 0);
+                                    return (<>
+                                        {parcelas.map(p => {
+                                            const vencida = p.status === 'PENDENTE' && new Date(p.dataVencimento) < hoje;
+                                            const [stLabel, stCls] = p.status === 'PAGO' ? ['Pago', 'bg-green-100 text-green-800']
+                                                : p.status === 'PARCIAL' ? ['Parcial', 'bg-yellow-100 text-yellow-800']
+                                                : p.status === 'CANCELADO' ? ['Cancelado', 'bg-gray-100 text-gray-500']
+                                                : vencida ? ['Vencido', 'bg-red-100 text-red-700']
+                                                : ['Em aberto', 'bg-gray-100 text-gray-700'];
+                                            return (
+                                                <div key={p.id} className="flex items-center justify-between gap-2 text-xs py-1 border-b border-green-100 last:border-0 flex-wrap">
+                                                    <span className="text-gray-700">Parcela {p.numeroParcela}/{parcelas.length} · venc. {fmtData(p.dataVencimento)}</span>
+                                                    <span className={`px-1.5 py-0.5 rounded-full font-semibold ${stCls}`}>{stLabel}</span>
+                                                    <span className="font-bold text-gray-800">{fmtMoeda(p.valor)}</span>
+                                                    {Number(p.valorPago) > 0 && (
+                                                        <span className="text-gray-500 w-full text-right">
+                                                            ↳ pago {fmtMoeda(p.valorPago)}{p.formaPagamento ? ` · ${p.formaPagamento}` : ''}{p.dataPagamento ? ` · ${fmtData(p.dataPagamento)}` : ''}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                        <div className="flex justify-between text-xs font-bold pt-1 text-green-900">
+                                            <span>Recebido até agora</span>
+                                            <span>{fmtMoeda(recebido)} de {fmtMoeda(cr.valorTotal)}</span>
+                                        </div>
+                                    </>);
+                                })()}
+                            </div>
+
+                            {/* Entrega — quem entregou, quando e onde (GPS) */}
+                            <div className="bg-sky-50/50 p-3 rounded border border-sky-100 space-y-1 text-xs">
+                                <p className="text-[10px] uppercase font-bold text-sky-700 flex items-center gap-1"><Truck className="h-3.5 w-3.5" /> Entrega</p>
+                                {(() => {
+                                    const p = detalheExtra || selectedPedido;
+                                    const st = p.statusEntrega;
+                                    if (!p.embarque && (!st || st === 'PENDENTE')) return <p className="text-gray-500">Ainda não saiu em carga.</p>;
+                                    return (<>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                            {st && st !== 'PENDENTE' && (
+                                                <span className={`px-1.5 py-0.5 rounded-full font-bold ${st === 'ENTREGUE' ? 'bg-green-100 text-green-700' : st === 'ENTREGUE_PARCIAL' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                                                    {st === 'ENTREGUE' ? 'Entregue' : st === 'ENTREGUE_PARCIAL' ? 'Entregue parcial' : 'Devolvido'}
+                                                </span>
+                                            )}
+                                            {p.dataEntrega && <span className="font-bold text-gray-800">{fmtDataHora(p.dataEntrega)}</span>}
+                                            {!p.dataEntrega && st === 'PENDENTE' && <span className="text-gray-500">Entrega pendente</span>}
+                                        </div>
+                                        {p.embarque && (
+                                            <p className="text-gray-600">
+                                                Carga Emb. <b>#{p.embarque.numero}</b>
+                                                {p.embarque.responsavel?.nome ? <> · motorista <b>{p.embarque.responsavel.nome}</b></> : null}
+                                                {p.embarque.dataSaida ? ` · saiu em ${fmtData(p.embarque.dataSaida)}` : ''}
+                                            </p>
+                                        )}
+                                        {p.gpsEntrega && (
+                                            <a href={`https://www.google.com/maps?q=${encodeURIComponent(p.gpsEntrega)}`} target="_blank" rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 text-blue-600 font-semibold hover:underline">
+                                                <MapPin className="h-3 w-3" /> Ver GPS da entrega no mapa
+                                            </a>
+                                        )}
+                                        {p.observacaoEntrega && <p className="text-gray-500 italic">Obs. do motorista: “{p.observacaoEntrega}”</p>}
+                                        {p.motivoDevolucao && <p className="text-red-600">Motivo da devolução: {p.motivoDevolucao}</p>}
+                                    </>);
+                                })()}
+                            </div>
+
+                            {/* Linha do tempo — o que aconteceu com este pedido */}
+                            {detalheExtra && (() => {
+                                const d = detalheExtra;
+                                const conv = d.avisosConversao?.[0];
+                                const eventos = [];
+                                eventos.push({
+                                    t: d.createdAt, gold: !!conv,
+                                    titulo: conv ? `Criado como pedido especial ZZ#${conv.numeroAntigo ?? '?'}` : (d.bonificacao ? 'Bonificação criada' : d.especial ? 'Pedido especial criado' : 'Pedido criado'),
+                                    sub: d.usuarioLancamento?.nome ? `por ${d.usuarioLancamento.nome}` : (d.vendedor?.nome ? `vendedor ${d.vendedor.nome}` : null)
+                                });
+                                if (d.enviadoEm) eventos.push({ t: d.enviadoEm, titulo: 'Faturado', sub: null });
+                                if (d.embarque?.dataSaida) eventos.push({ t: d.embarque.dataSaida, titulo: `Saiu na carga Emb. #${d.embarque.numero}`, sub: d.embarque.responsavel?.nome ? `motorista ${d.embarque.responsavel.nome}` : null });
+                                if (d.dataEntrega) eventos.push({ t: d.dataEntrega, titulo: d.statusEntrega === 'ENTREGUE_PARCIAL' ? 'Entregue parcialmente' : d.statusEntrega === 'DEVOLVIDO' ? 'Entrega devolvida' : 'Entregue', sub: d.gpsEntrega ? 'GPS registrado' : null });
+                                (d.cobrancasAsaas || []).filter(c => c.status === 'RECEBIDO').forEach(c =>
+                                    eventos.push({ t: c.recebidoEm || c.createdAt, gold: true, titulo: `${c.tipo === 'BOLETO' ? 'Boleto' : 'PIX'} Asaas pago · ${fmtMoeda(c.valorRecebido ?? c.valor)}`, sub: null }));
+                                ((d.contaReceber?.parcelas) || []).filter(p => p.dataPagamento && Number(p.valorPago) > 0).forEach(p =>
+                                    eventos.push({ t: p.dataPagamento, titulo: `Parcela ${p.numeroParcela} paga · ${fmtMoeda(p.valorPago)}`, sub: p.formaPagamento || null }));
+                                if (conv) eventos.push({ t: conv.createdAt, gold: true, titulo: `Convertido no pedido #${conv.numeroNovo ?? d.numero}`, sub: 'nasceu especial e ganhou NF' });
+                                (d.devolucoes || []).forEach(dev => eventos.push({ t: dev.dataDevolucao, titulo: `Devolução DEV#${dev.numero} · ${fmtMoeda(dev.valorTotal)}`, sub: dev.motivo || null }));
+                                (d.notasFiscaisApp || []).filter(n => n.status === 'AUTORIZADO').forEach(n =>
+                                    eventos.push({ t: n.atualizadoEm || n.criadoEm, titulo: `${n.tipo === 'DEVOLUCAO' ? 'NF-e de devolução' : 'NF-e'} nº ${n.numero ?? '?'}${n.serie != null ? ` · série ${n.serie}` : ''} emitida`, sub: null }));
+                                eventos.sort((a, b) => new Date(a.t) - new Date(b.t));
+                                return (
+                                    <div className="bg-gray-50 p-3 rounded border border-gray-100">
+                                        <p className="text-[10px] uppercase font-bold text-gray-500 flex items-center gap-1 mb-2"><Clock className="h-3.5 w-3.5" /> O que aconteceu com este pedido</p>
+                                        <ol className="relative border-l-2 border-gray-200 ml-1.5 space-y-2">
+                                            {eventos.map((ev, i) => (
+                                                <li key={i} className="pl-3 relative">
+                                                    <span className={`absolute -left-[5px] top-1.5 h-2 w-2 rounded-full ${ev.gold ? 'bg-[#cba258]' : 'bg-primary'}`}></span>
+                                                    <p className="text-xs font-bold text-gray-800">{ev.titulo}</p>
+                                                    <p className="text-[10px] text-gray-400">{fmtDataHora(ev.t)}{ev.sub ? ` · ${ev.sub}` : ''}</p>
+                                                </li>
+                                            ))}
+                                        </ol>
+                                    </div>
+                                );
+                            })()}
 
                             <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 space-y-2">
                                 <p className="text-[10px] uppercase font-bold text-gray-400">Itens</p>

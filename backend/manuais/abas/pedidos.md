@@ -19,7 +19,11 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - Visualizar pedidos separados por tipo (sub-abas: Pedidos | Especiais | Bonificação | Amostras | Devoluções)
 - Filtrar por data de entrega, data de criação, vencimento, embarque, motorista e vendedor
 - Buscar por cliente, cidade, vendedor, documento ou número do pedido
-- Filtrar rapidamente por status (Aberto, Enviar, Sincronizando, Aprovado, Faturado, Erro)
+- Filtrar rapidamente por status (Aberto, Enviar, Sincronizando, Aprovado, Faturado, Erro — e, na aba Pedidos, **Convertidos**: só os que nasceram especiais)
+- Ver de longe o que ainda não faturou: **pílula dourada NOVO** na linha de todo pedido ainda não faturado (some sozinha quando fatura; vale para pedidos, especiais e bonificações)
+- Identificar pedido que nasceu especial: selo âmbar **"⚡ Especial convertido · era ZZ#"** na linha (permanente, mesmo depois de faturar)
+- Clicar no pedido e ver **tudo num lugar só**: recebimento parcela a parcela (pago/em aberto, forma e data), entrega (motorista, data/hora, GPS no mapa, observação) e a linha do tempo completa do pedido — sem precisar abrir Contas a Receber
+- **Converter pedido especial em pedido com NF** manualmente (quem aprova especial), em qualquer situação — em aberto, faturado, pago em qualquer forma ou ainda sem pagamento
 - Carregar a lista aos poucos: mostra os 50 primeiros e um botão **Carregar mais** (deixa a tela leve e rápida)
 - Ver pendências de faturamento em tempo real
 - Imprimir pedido individual ou vários ao mesmo tempo (seleção em lote)
@@ -111,6 +115,22 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 4. O status muda para RECEBIDO e o pedido é faturado
 5. **A aprovação dá baixa no estoque automaticamente** (desde jul/2026) — os itens saem do estoque do sistema no momento da aprovação, igual acontece com pedidos normais no faturamento. Se a aprovação for **revertida**, os itens voltam ao estoque sozinhos. A baixa tem trava contra duplicidade: aprovar/faturar duas vezes o mesmo pedido não desconta em dobro.
 
+### Converter pedido especial em pedido com NF (manual)
+1. Vá para a sub-aba **Especiais** e clique no pedido para abrir os detalhes
+2. Clique em **Converter em pedido c/ NF** (botão verde com raio ⚡) — aparece tanto no especial **em aberto** quanto no **já faturado**; exige `Pode_Aprovar_Especial` ou `admin`
+3. Confirme o aviso: o pedido ganha **número novo na sequência oficial**, sai da aba Especiais e entra na aba **Pedidos**, indo para a fila de faturamento/emissão da NF-e
+4. **Nada duplica e nada se perde**: é o MESMO registro que muda de aba — entrega, carga, devoluções e tudo que já foi recebido (dinheiro, PIX, boleto) continuam no pedido, visíveis nos detalhes
+5. Serve para o caso do cliente que **exige a NF** de um pedido especial, pago em qualquer forma. **Não dá para desfazer**
+6. Após converter, o pedido leva o selo âmbar **"⚡ Especial convertido · era ZZ#"** e o mesmo popup do faturamento ("Pedido convertido — emitir NF-e") avisa quem emite a nota
+- A conversão **automática** continua igual: pedido especial que recebe **PIX Asaas** converte sozinho (ver seção do PIX acima)
+
+### Detalhes do pedido (clicar no pedido) — tudo num lugar só
+Ao clicar em qualquer pedido, além dos itens e valores, o app mostra (desde jul/2026):
+- **Recebimento**: cada parcela com status (Pago / Parcial / Em aberto / Vencido / Cancelado), valor, vencimento e — se paga — valor recebido, forma e data. No rodapé, o total recebido até agora. É a mesma informação do Contas a Receber, sem sair do pedido
+- **Entrega**: status (Entregue / Parcial / Devolvido), data e hora, número da carga (embarque) e motorista, link **"Ver GPS da entrega no mapa"** (abre o ponto exato no Google Maps) e a observação do motorista
+- **O que aconteceu com este pedido**: linha do tempo completa — criação (e por quem), faturamento, saída na carga, entrega, pagamentos (PIX/boleto/parcelas), conversão de especial (bolinhas douradas), devoluções e NF-e emitidas
+- Se o pedido nasceu especial, uma **faixa âmbar** no topo mostra o ZZ# de origem, quando foi convertido e quanto já tinha sido recebido
+
 ### Consultar situação no Conta Azul
 - Clique no botão de reload ao lado do pedido que já tem `idVendaContaAzul`
 - O sistema consulta o CA e atualiza `situacaoCA` e `statusEnvio`
@@ -138,6 +158,7 @@ Lista pedidos do tipo **Especial** (`ZZ#`). São pedidos com condições diferen
 
 - Exibe botão **Aprovar** (para aprovadores) e **Reverter** (para quem pode reverter)
 - Após aprovação, o status muda e o pedido é faturado no CA automaticamente
+- Botão **Converter em pedido c/ NF** (⚡, para quem aprova especial): transforma o especial em pedido normal com nota — em aberto ou já faturado, pago em qualquer forma. O pedido sai desta aba e vai para a aba Pedidos com o selo "Especial convertido" (ver seção própria acima)
 
 ### Bonificação
 Lista pedidos do tipo **Bonificação** (`BN#`). Produtos enviados de graça para o cliente. Também requerem aprovação.

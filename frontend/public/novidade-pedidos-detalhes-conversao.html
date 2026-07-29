@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Pedidos com tudo num lugar só + Especial convertido — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem = cartão compacto) -->
+<meta property="og:title" content="⚡ Novidade no Hardt App: Pedidos com tudo num lugar só">
+<meta property="og:description" content="Clique no pedido e veja pagamento, entrega, GPS e a história completa. Pedido especial agora converte em pedido com NF com um botão — sem perder nada.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; line-height:1.55; -webkit-font-smoothing:antialiased; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+
+  .hero { background:linear-gradient(168deg, var(--house) 0%, #16302a 100%); color:#fff; padding:40px 16px 96px; }
+  .hero-inner { max-width:620px; margin:0 auto; text-align:center; }
+  .eyebrow { display:inline-block; background:var(--gold); color:#2b230f; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.14em; padding:6px 14px; border-radius:999px; margin-bottom:18px; }
+  .hero h1 { font-size:clamp(26px,7vw,38px); font-weight:800; line-height:1.14; margin:0 0 12px; text-wrap:balance; }
+  .hero p { color:#cfe3db; font-size:16px; margin:0 auto; max-width:520px; }
+
+  .cards { display:grid; gap:10px; margin-top:-72px; }
+  .card { background:#fff; border-radius:16px; border:1px solid #e5e2da; box-shadow:0 3px 14px rgba(0,0,0,.08); padding:16px; display:flex; gap:12px; align-items:flex-start; }
+  .card .emoji { font-size:22px; line-height:1; margin-top:2px; }
+  .card b { font-size:15px; }
+  .card p { font-size:13.5px; color:var(--ink-soft); margin:3px 0 0; }
+
+  h2.sec { font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.12em; color:#5a5a52; margin:36px 0 10px; display:flex; align-items:center; gap:8px; }
+  h2.sec::before { content:''; width:22px; height:3px; border-radius:2px; background:var(--gold); }
+
+  /* Telas do app (mockups) */
+  .tela { background:#fff; border-radius:16px; border:1px solid #e5e2da; box-shadow:0 3px 14px rgba(0,0,0,.07); overflow:hidden; margin-bottom:16px; }
+  .tela-head { background:var(--house); color:#fff; padding:10px 16px; display:flex; align-items:center; gap:8px; }
+  .tela-head .dot { width:8px; height:8px; border-radius:99px; background:var(--gold); }
+  .tela-head span { font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; }
+  .tela-body { padding:14px; background:#f7f6f2; }
+  .app-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; box-shadow:0 1px 3px rgba(0,0,0,.05); padding:12px; margin-bottom:10px; }
+  .row { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .row + .row { margin-top:6px; }
+  .num { font-size:10px; font-weight:800; padding:2px 6px; border-radius:5px; border:1px solid; }
+  .num.azul { color:#1d4ed8; background:#eff6ff; border-color:#dbeafe; }
+  .num.roxo { color:#7e22ce; background:#faf5ff; border-color:#e9d5ff; }
+  .cli { font-size:13px; font-weight:800; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .valor { font-size:13px; font-weight:900; }
+  .meta { font-size:11px; color:#6b7280; }
+  .badge { font-size:9px; font-weight:800; padding:2px 7px; border-radius:99px; text-transform:uppercase; display:inline-flex; align-items:center; gap:3px; }
+  .b-green { background:#dcfce7; color:#166534; }
+  .b-blue { background:#dbeafe; color:#1e40af; }
+  .b-amber { background:#fef3c7; color:#b45309; border:1px solid #fcd34d; }
+  .b-gray { background:#f3f4f6; color:#374151; }
+  .b-red { background:#fee2e2; color:#b91c1c; }
+  .b-novo { background:var(--gold); color:#fff; box-shadow:0 1px 4px rgba(203,162,88,.5); }
+  .btnm { display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:7px 14px; border-radius:999px; border:none; }
+  .btnm.verde { background:var(--primary); color:#fff; }
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:99px; background:var(--gold); color:#fff; font-size:11px; font-weight:800; flex-shrink:0; box-shadow:0 1px 3px rgba(0,0,0,.25); }
+  .pin.s { width:16px; height:16px; font-size:9px; vertical-align:middle; }
+  .legenda { background:#fff; border-top:1px solid #eee9dd; padding:12px 16px; }
+  .legenda .li { display:flex; gap:10px; font-size:12.5px; color:#444; margin-bottom:8px; align-items:flex-start; }
+  .legenda .li:last-child { margin-bottom:0; }
+  .legenda .li p { margin:1px 0 0; }
+  .faixa-ambar { background:#fffbeb; border:1px solid #fcd34d; border-radius:10px; padding:9px 11px; font-size:11.5px; color:#78350f; }
+  .det-sec { border:1px solid #e5e7eb; border-radius:10px; overflow:hidden; margin-top:8px; background:#fff; }
+  .det-head { background:#f9fafb; border-bottom:1px solid #eee; padding:6px 10px; font-size:9.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:#6b7280; }
+  .det-body { padding:8px 10px; }
+  .parc { display:flex; align-items:center; justify-content:space-between; gap:6px; padding:5px 0; border-bottom:1px dashed #f0f0ec; font-size:11px; flex-wrap:wrap; }
+  .parc:last-child { border-bottom:none; }
+  .tl { list-style:none; position:relative; padding-left:18px; margin:0; }
+  .tl::before { content:''; position:absolute; left:5px; top:6px; bottom:6px; width:2px; background:#e2ddd0; border-radius:2px; }
+  .tl li { position:relative; font-size:11px; color:#444; padding:3px 0; }
+  .tl li::before { content:''; position:absolute; left:-17px; top:8px; width:9px; height:9px; border-radius:99px; background:var(--primary); border:2px solid #fff; box-shadow:0 0 0 1px #d7d2c4; }
+  .tl li.gold::before { background:var(--gold); }
+  .tl li b { color:#222; }
+  .tl li small { display:block; color:#999; font-size:10px; }
+
+  /* Accordions — sempre abertos por padrão */
+  .acc { background:#fff; border:1px solid #e5e2da; border-radius:14px; margin-bottom:10px; overflow:hidden; }
+  .acc-head { width:100%; display:flex; align-items:center; gap:10px; padding:14px 16px; background:none; border:none; font:inherit; font-weight:800; font-size:14.5px; color:var(--ink); cursor:pointer; text-align:left; }
+  .acc-ico { font-size:18px; }
+  .acc-head span:nth-child(2) { flex:1; }
+  .acc-seta { color:#b5b0a4; font-size:11px; transition:transform .2s; }
+  .acc.aberto .acc-seta { transform:rotate(180deg); }
+  .acc-corpo { display:none; padding:0 16px 14px; font-size:13.5px; color:var(--ink-soft); }
+  .acc.aberto .acc-corpo { display:block; }
+  .acc-corpo ul { margin:6px 0 0 18px; padding:0; }
+  .acc-corpo li { margin-bottom:5px; }
+
+  .passos { background:#fff; border:1px solid #e5e2da; border-radius:16px; padding:16px; }
+  .passo { display:flex; gap:12px; margin-bottom:12px; align-items:flex-start; }
+  .passo:last-child { margin-bottom:0; }
+  .passo .n { width:24px; height:24px; border-radius:99px; background:var(--primary); color:#fff; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px; }
+  .passo p { margin:0; font-size:13.5px; color:var(--ink-soft); }
+  .passo b { color:var(--ink); }
+
+  .nota { background:var(--mint); border-radius:12px; padding:13px 15px; font-size:13px; color:var(--house); margin:16px 0 0; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">Novidade no app</div>
+    <h1>Pedidos: tudo num lugar só ⚡</h1>
+    <p>Clique no pedido e veja pagamento, entrega com GPS e a história completa — e o pedido especial agora vira pedido com NF com um botão, sem perder nada.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="cards">
+    <div class="card"><div class="emoji">🟡</div><div><b>Pílula NOVO nos pedidos a faturar</b><p>Todo pedido que ainda não foi faturado (inclusive especiais e bonificações) leva a pílula dourada NOVO. Faturou? Ela some sozinha.</p></div></div>
+    <div class="card"><div class="emoji">🔍</div><div><b>Detalhes completos ao clicar no pedido</b><p>Recebimento parcela a parcela, entrega com motorista/data/hora/GPS e a linha do tempo do pedido — sem precisar abrir Contas a Receber.</p></div></div>
+    <div class="card"><div class="emoji">⚡</div><div><b>Converter especial em pedido com NF</b><p>Um botão converte o especial — em aberto ou faturado, pago em dinheiro, PIX, boleto ou ainda sem pagar. Nada duplica, nada se perde.</p></div></div>
+  </div>
+
+  <h2 class="sec">As telas do app</h2>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-head"><span class="dot"></span><span>Tela 1 · Lista de pedidos</span></div>
+    <div class="tela-body">
+      <div class="app-card">
+        <div class="row"><span class="badge b-novo">NOVO <span class="pin s">1</span></span><span class="num azul">#3142</span><span class="cli">Buffet Alegria</span><span class="valor">R$ 850,00</span></div>
+        <div class="row"><span class="badge b-blue">Enviar</span><span class="badge b-amber">⚡ Especial convertido · era ZZ#141 <span class="pin s">2</span></span></div>
+      </div>
+      <div class="app-card">
+        <div class="row"><span class="num azul">#3139</span><span class="cli">Mercado Bom Preço</span><span class="valor">R$ 1.240,00</span></div>
+        <div class="row"><span class="badge b-green">Faturado</span><span class="meta">— sem pílula NOVO: já faturou <span class="pin s">1</span></span></div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <span class="badge b-gray">Todos (1126)</span>
+        <span class="badge b-green">Faturado (1034)</span>
+        <span class="badge b-amber">⚡ Convertidos (12) <span class="pin s">3</span></span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="pin">1</span><p>A pílula dourada <b>NOVO</b> marca todo pedido ainda não faturado — o "chama atenção" de quem fatura. Some sozinha ao faturar.</p></div>
+      <div class="li"><span class="pin">2</span><p>Selo âmbar permanente em pedido que <b>nasceu especial</b>: mostra o número ZZ# antigo. Fica para sempre, mesmo depois de faturado.</p></div>
+      <div class="li"><span class="pin">3</span><p>Novo filtro <b>Convertidos</b> nos chips de status da aba Pedidos: lista só os pedidos que nasceram especiais.</p></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-head"><span class="dot"></span><span>Tela 2 · Detalhes do pedido (clicar no pedido)</span></div>
+    <div class="tela-body">
+      <div class="app-card">
+        <div class="row"><span class="num azul">#3142</span><span class="cli">Buffet Alegria</span><span class="valor">R$ 850,00</span></div>
+        <div class="faixa-ambar" style="margin-top:8px">⚡ <b>Especial convertido</b> — nasceu como <b>ZZ#141</b> e virou o pedido <b>#3142</b> em 28/07 14:32. Já recebido na conversão: <b>R$ 425,00</b>. <span class="pin s">1</span></div>
+        <div class="det-sec">
+          <div class="det-head">💰 Recebimento <span class="pin s">2</span></div>
+          <div class="det-body">
+            <div class="parc"><span>Parcela 1/2 · venc. 28/07</span><span class="badge b-green">Pago</span><span class="meta">PIX · R$ 425,00 · 28/07</span></div>
+            <div class="parc"><span>Parcela 2/2 · venc. 15/08</span><span class="badge b-gray">Em aberto</span><span class="meta">R$ 425,00</span></div>
+            <div class="parc" style="font-weight:800;color:#166534"><span>Recebido até agora</span><span>R$ 425,00 de R$ 850,00</span></div>
+          </div>
+        </div>
+        <div class="det-sec">
+          <div class="det-head">🚚 Entrega <span class="pin s">3</span></div>
+          <div class="det-body" style="font-size:11px;color:#444">
+            <div class="row"><span class="badge b-green">Entregue</span><b>28/07/2026 16:45</b></div>
+            <div class="row"><span>Carga Emb. <b>#52</b> · motorista <b>João</b></span></div>
+            <div class="row"><span style="color:#1d4ed8;font-weight:700">📍 Ver GPS da entrega no mapa</span></div>
+          </div>
+        </div>
+        <div class="det-sec">
+          <div class="det-head">🕐 O que aconteceu com este pedido <span class="pin s">4</span></div>
+          <div class="det-body">
+            <ul class="tl">
+              <li class="gold"><b>Criado como especial ZZ#141</b><small>25/07 09:12 · por Carla</small></li>
+              <li><b>Faturado</b><small>25/07 10:03</small></li>
+              <li><b>Saiu na carga Emb. #52</b><small>28/07 07:40 · motorista João</small></li>
+              <li class="gold"><b>PIX Asaas pago · R$ 425,00</b><small>28/07 14:31</small></li>
+              <li class="gold"><b>Convertido no pedido #3142</b><small>28/07 14:32</small></li>
+              <li><b>Entregue</b><small>28/07 16:45 · GPS registrado</small></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="pin">1</span><p>Se o pedido nasceu especial, a faixa âmbar mostra a origem, quando converteu e quanto já tinha sido recebido.</p></div>
+      <div class="li"><span class="pin">2</span><p><b>Pago ou em aberto, parcela por parcela</b> — com forma, valor e data. A mesma informação do Contas a Receber, sem sair do pedido.</p></div>
+      <div class="li"><span class="pin">3</span><p><b>Quem entregou, quando e onde</b>: carga, motorista, data/hora e o link do GPS que abre o ponto exato no mapa.</p></div>
+      <div class="li"><span class="pin">4</span><p>A história completa do pedido, do nascimento à NF — as bolinhas douradas são os eventos da conversão e dos pagamentos.</p></div>
+      <div class="li"><span class="pin">✓</span><p>Vale para <b>todos os pedidos</b>, não só os convertidos.</p></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-head"><span class="dot"></span><span>Tela 3 · Converter o especial (aba Especiais)</span></div>
+    <div class="tela-body">
+      <div class="app-card">
+        <div class="row"><span class="num roxo">ZZ#150</span><span class="cli">Cliente Y — em aberto</span></div>
+        <div class="row" style="justify-content:flex-end;margin-top:8px"><span class="btnm verde">⚡ Converter em pedido c/ NF <span class="pin s">1</span></span></div>
+      </div>
+      <div class="app-card">
+        <div class="row"><span class="num roxo">ZZ#141</span><span class="cli">Buffet Alegria — já faturado, pago em dinheiro</span></div>
+        <div class="row" style="justify-content:flex-end;margin-top:8px"><span class="btnm verde">⚡ Converter em pedido c/ NF <span class="pin s">2</span></span></div>
+      </div>
+      <div class="faixa-ambar">Antes de converter, o app confirma: o pedido ganha <b>número novo na sequência oficial</b>, vai para a fila de faturamento/NF-e e leva junto entrega, carga e tudo que já foi recebido. <b>Não dá para desfazer.</b> <span class="pin s">3</span></div>
+    </div>
+    <div class="legenda">
+      <div class="li"><span class="pin">1</span><p>O botão aparece ao abrir o especial, <b>em qualquer situação</b>: em aberto, faturado, pago (em qualquer forma) ou não.</p></div>
+      <div class="li"><span class="pin">2</span><p>Para o cliente que <b>exige a NF</b>: converte mesmo já pago em dinheiro/boleto — o que foi recebido acompanha e aparece nos detalhes.</p></div>
+      <div class="li"><span class="pin">3</span><p>Só para quem tem a permissão de <b>aprovar especial</b>. Depois, o mesmo popup de sempre avisa quem emite a NF-e.</p></div>
+    </div>
+  </div>
+
+  <h2 class="sec">Detalhes que valem saber</h2>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔁</span><span>Nada duplica na conversão</span><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>A conversão <b>não cria um pedido novo</b> — é o MESMO registro que sai da aba Especiais e entra na aba Pedidos, com número novo. Por isso:</p>
+      <ul>
+        <li>As vendas não contam duas vezes em relatório nenhum;</li>
+        <li>Entrega, carga, devoluções e pagamentos continuam no pedido;</li>
+        <li>A conta a receber é a mesma — só muda a origem.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⚡</span><span>A conversão automática pelo PIX continua igual</span><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Pedido especial que recebe <b>PIX do Asaas</b> segue convertendo sozinho, como já era. O botão novo é o caminho <b>manual</b> para os outros casos (dinheiro, boleto, ou cliente que pediu a NF antes de pagar).</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧾</span><span>Depois de converter, a NF-e</span><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O pedido convertido entra na <b>fila de emissão de NF-e</b> (aba Notas Fiscais) e o popup "Pedido convertido — emitir NF-e" insiste a cada 5 minutos até alguém dar ciência. Com a NF emitida, até a <b>devolução</b> desse pedido passa a gerar NF de devolução normalmente.</p>
+    </div>
+  </div>
+
+  <h2 class="sec">Para começar a usar</h2>
+  <div class="passos">
+    <div class="passo"><div class="n">1</div><p>Abra <b>Pedidos</b> e repare nas pílulas douradas <b>NOVO</b> — são os que ainda não faturaram.</p></div>
+    <div class="passo"><div class="n">2</div><p><b>Clique em qualquer pedido</b> e veja as seções novas: Recebimento, Entrega e a linha do tempo.</p></div>
+    <div class="passo"><div class="n">3</div><p>Na aba <b>Especiais</b>, abra um pedido e use <b>⚡ Converter em pedido c/ NF</b> quando o cliente precisar da nota (precisa da permissão de aprovar especial).</p></div>
+    <div class="passo"><div class="n">4</div><p>Na aba Pedidos, use o filtro <b>Convertidos</b> para achar rapidinho quem nasceu especial.</p></div>
+  </div>
+
+  <div class="nota">💡 Dúvidas? Pergunte ao <b>Clippy</b> no app (ex.: "como converter um pedido especial?") — ele já conhece tudo desta novidade.</div>
+
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.closest('.acc');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', acc.classList.contains('aberto') ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

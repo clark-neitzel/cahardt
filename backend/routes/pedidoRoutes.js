@@ -59,6 +59,9 @@ router.put('/:id/aprovar-especial', pedidoController.aprovarEspecial);
 // Reverter Pedido Especial (desfazer aprovação → volta para ABERTO)
 router.put('/:id/reverter-especial', pedidoController.reverterEspecial);
 
+// Conversão manual: especial → pedido com NF (qualquer forma de recebimento)
+router.post('/:id/converter-especial', pedidoController.converterEspecial);
+
 // Aprovar Pedido Bonificação
 router.put('/:id/aprovar-bonificacao', pedidoController.aprovarBonificacao);
 
