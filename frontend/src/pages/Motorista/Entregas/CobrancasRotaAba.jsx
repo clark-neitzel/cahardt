@@ -296,21 +296,9 @@ const CobrancasRotaAba = ({ embutido = false, vendedorId, somenteLeitura = false
         dataVencimento: p.dataVencimento
     });
 
-    // Embutido na aba Entregas: enquanto não houver nada e a busca estiver fechada,
-    // fica só o botão discreto — não rouba espaço das entregas do dia.
+    // Embutido na aba Entregas: o cabeçalho "Cobranças a fazer" aparece SEMPRE
+    // (senão ninguém descobre a função); só a lista é que ocupa espaço quando existe.
     const vazio = !loading && dados.pendentes.length === 0 && dados.trabalhadasHoje.length === 0;
-    if (embutido && vazio && !buscaAberta) {
-        return podeRegistrar ? (
-            <div className="mb-3">
-                <button
-                    onClick={() => setBuscaAberta(true)}
-                    className="flex items-center gap-1.5 px-3 py-2 bg-white border border-primary text-primary hover:bg-mint/40 text-[12px] font-bold rounded-lg shadow-sm transition-colors"
-                >
-                    <HandCoins className="h-4 w-4" /> Cobrar um título
-                </button>
-            </div>
-        ) : null;
-    }
 
     return (
         <div className={embutido ? 'mb-4' : 'px-4 space-y-4'}>
@@ -319,15 +307,18 @@ const CobrancasRotaAba = ({ embutido = false, vendedorId, somenteLeitura = false
                     <h3 className="text-[13px] font-bold text-primaryDark flex items-center gap-1.5">
                         <HandCoins className="h-4 w-4" /> Cobranças a fazer
                     </h3>
-                    {dados.pendentes.length > 0 && (
-                        <span className="bg-mint text-primaryDark text-[11px] font-bold px-2 py-0.5 rounded-full">{dados.pendentes.length}</span>
+                    <span className="bg-mint text-primaryDark text-[11px] font-bold px-2 py-0.5 rounded-full">{dados.pendentes.length}</span>
+                    {vazio && (
+                        <span className="text-[11px] text-gray-500">
+                            {podeRegistrar ? 'nenhum título pendurado na carga' : 'nenhuma cobrança deste motorista hoje'}
+                        </span>
                     )}
                     {podeRegistrar && (
                         <button
                             onClick={() => setBuscaAberta(v => !v)}
                             className="ml-auto flex items-center gap-1 px-2.5 py-1.5 bg-white border border-primary text-primary hover:bg-mint/40 text-[11px] font-bold rounded-lg"
                         >
-                            <Search className="h-3.5 w-3.5" /> {buscaAberta ? 'Fechar busca' : 'Buscar título'}
+                            <Search className="h-3.5 w-3.5" /> {buscaAberta ? 'Fechar busca' : 'Cobrar um título'}
                         </button>
                     )}
                     {!podeRegistrar && (
