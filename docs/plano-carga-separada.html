@@ -186,6 +186,50 @@
   </div>
 
   <div class="cardao">
+    <h2>Parte 2 — Pedidos fora de carga e vencimentos</h2>
+
+    <div class="fase">
+      <span class="fase-n">5</span>
+      <div>
+        <b class="t">Entregar/separar em LOTE na aba Pedidos</b><span class="chip-prox">PROPOSTA</span>
+        <p class="sub">Para pedidos faturados que <b>não vão em carga</b> (ex.: um dia inteiro de pedidos de funcionários): modo de seleção na lista de Pedidos → marca vários → <b>“Entregar em lote”</b>. Todos ganham o check de separado/retirado (fase 3) e statusEntrega ENTREGUE de uma vez.</p>
+        <div class="tela">
+          <div class="cab"><b>Pedidos</b><span class="badge montando">3 selecionados</span><span class="btn verde">✓ Entregar em lote</span></div>
+          <div class="linha-ped"><span>☑ #2345 · João (funcionário) · retirada</span><span>2 cx</span></div>
+          <div class="linha-ped"><span>☑ #2346 · Maria (funcionária) · retirada</span><span>1 cx</span></div>
+          <div class="linha-ped"><span>☑ #2348 · Pedro (funcionário) · retirada</span><span>3 cx</span></div>
+          <div class="ok-mini">✅ Saem do “aguardando separação” do estoque e ficam marcados como entregues (sem passar por carga).</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fase">
+      <span class="fase-n">6</span>
+      <div>
+        <b class="t">Vencimento conta da DATA DE FATURAMENTO</b><span class="chip-prox">PROPOSTA</span>
+        <p class="sub"><b>Hoje:</b> o vencimento nasce na criação do pedido = data de entrega prevista + prazo. Se o faturamento antecipar ou atrasar, o vencimento não acompanha.</p>
+        <p class="sub"><b>Proposta:</b> ao faturar, o pedido guarda a <b>data de faturamento</b> e os vencimentos das parcelas <b>ainda não pagas</b> são recalculados a partir dela (faturou dia 5 com prazo 28 → vence dia 2 do mês seguinte). Boleto Asaas já emitido é realinhado automático (a rotina de realinhar já existe, hoje é manual).</p>
+        <div class="aviso-mini">📌 Detalhe técnico importante: a “data do pedido” de hoje é usada pela logística (embarque/rota ordenam por ela como data de ENTREGA). A proposta é guardar a data de faturamento num campo próprio e usar ELA para o vencimento — a data de entrega continua existindo para a rota. Visualmente o pedido passa a mostrar as duas.</div>
+      </div>
+    </div>
+
+    <div class="fase">
+      <span class="fase-n">7</span>
+      <div>
+        <b class="t">Condição “tipo cartão” para funcionários (fechamento + vencimento)</b><span class="chip-prox">PROPOSTA</span>
+        <p class="sub">Nova modalidade de condição de pagamento: <b>CICLO</b>, com dois parâmetros — <b>fechamento dia X</b> e <b>vencimento dia Y</b>. Pedido faturado até o dia X entra na fatura que vence no dia Y; depois do dia X, vai para o ciclo seguinte. O vencimento <b>ignora</b> a data do pedido/entrega — igual cartão de crédito.</p>
+        <div class="tela">
+          <div class="cab"><b>Condição: Funcionário — Ciclo mensal</b><span class="badge separada">fechamento dia 25 · vencimento dia 5</span></div>
+          <div class="linha-ped"><span>Pedido faturado 03/08</span><span>→ vence 05/09</span></div>
+          <div class="linha-ped"><span>Pedido faturado 24/08</span><span>→ vence 05/09</span></div>
+          <div class="linha-ped"><span>Pedido faturado 26/08 (após o fechamento)</span><span>→ vence 05/10</span></div>
+        </div>
+        <p class="sub" style="margin-top:6px">Opcional (fase futura): agrupar os pedidos do ciclo numa <b>fatura única por funcionário</b>, em vez de uma parcela por pedido no mesmo dia.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="cardao">
     <h2>Regras de segurança da carga fechada</h2>
     <ul style="padding-left:18px">
       <li><b>Fechar</b>: qualquer um com acesso a embarque (registra quem e quando).</li>
@@ -204,6 +248,9 @@
         <tr><td><b>2</b></td><td>Fechar/reabrir carga + travas no backend</td><td>~1 tarde</td></tr>
         <tr><td><b>3</b></td><td>Check “separada/retirada” no pedido avulso</td><td>~1-2 h</td></tr>
         <tr><td><b>4</b></td><td>Inventário com “esperado na prateleira”</td><td>~meia tarde</td></tr>
+        <tr><td><b>5</b></td><td>Entregar em lote na aba Pedidos (fora de carga)</td><td>~2-3 h</td></tr>
+        <tr><td><b>6</b></td><td>Data de faturamento própria + vencimento recalculado ao faturar (com realinhamento do boleto)</td><td>~1 tarde</td></tr>
+        <tr><td><b>7</b></td><td>Condição CICLO p/ funcionários (fechamento dia X · vencimento dia Y)</td><td>~1 tarde</td></tr>
       </tbody>
     </table>
     <p class="sub" style="margin-top:10px">Enquanto as fases 2–4 não entram, a regra prática continua: <b>contar depois de separar a carga</b> e conferir se não há nota faturada aguardando separação.</p>
