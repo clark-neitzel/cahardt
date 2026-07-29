@@ -53,8 +53,8 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 ### Alterar dados em lote
 1. Marque o checkbox de um ou mais clientes
 2. Um botão de "Ações em lote" aparece no topo
-3. Escolha o campo para alterar: vendedor, dia de entrega, dia de venda ou formas de atendimento
-4. Confirme — o sistema atualiza todos os selecionados de uma vez
+3. Escolha o campo para alterar: **É cliente** (Sim/Não — desativa/reativa o lado cliente), **É fornecedor** (Sim/Não — liga/desliga o espelho na lista de Fornecedores; exige CNPJ/CPF no cadastro), vendedor, dia de entrega, dia de venda ou formas de atendimento
+4. Confirme — o sistema atualiza todos os selecionados de uma vez ("Não alterar" mantém como está)
 
 ### Desativar / reativar clientes em lote
 1. Filtre quem quer desligar (ex.: Tempo sem Vendas "de 180 até em branco" ou "Nunca comprou") e marque os checkboxes (o "selecionar todos" pega a página atual — aumente o "Exibir por página" para pegar mais de uma vez)

@@ -864,32 +864,78 @@ const clienteController = {
             if (dados.Dia_de_venda !== undefined) dadosAtualizacao.Dia_de_venda = dados.Dia_de_venda;
             if (dados.Formas_Atendimento !== undefined) dadosAtualizacao.Formas_Atendimento = dados.Formas_Atendimento;
 
-            // Desativar/reativar em lote — mesma permissão do toggle "É cliente" da ficha.
-            // Só mexe no lado cliente (Ativo); o espelho de fornecedor não é tocado.
-            if (dados.Ativo !== undefined) {
+            // Desativar/reativar e perfil fornecedor em lote — mesma permissão do toggle da ficha.
+            if (dados.Ativo !== undefined || dados.tambemFornecedor !== undefined) {
                 const perms = typeof req.user.permissoes === 'string'
                     ? JSON.parse(req.user.permissoes)
                     : (req.user.permissoes || {});
                 if (!(perms.admin || perms.clientes?.edit || perms.Pode_Editar_GPS)) {
-                    return res.status(403).json({ error: 'Sem permissão para ativar/desativar clientes.' });
+                    return res.status(403).json({ error: 'Sem permissão para alterar o perfil (cliente/fornecedor) em lote.' });
                 }
-                dadosAtualizacao.Ativo = !!dados.Ativo;
+                if (dados.Ativo !== undefined) dadosAtualizacao.Ativo = !!dados.Ativo;
             }
 
-            if (Object.keys(dadosAtualizacao).length === 0) {
-                return res.status(400).json({ error: 'Nenhum campo válido para atualização (Vendedor, Entrega, Venda, Atendimento, Ativo).' });
+            if (Object.keys(dadosAtualizacao).length === 0 && dados.tambemFornecedor === undefined) {
+                return res.status(400).json({ error: 'Nenhum campo válido para atualização (Vendedor, Entrega, Venda, Atendimento, Cliente/Fornecedor).' });
             }
 
-            const resultado = await prisma.cliente.updateMany({
-                where: {
-                    UUID: { in: ids }
-                },
-                data: dadosAtualizacao
-            });
+            const resultado = Object.keys(dadosAtualizacao).length > 0
+                ? await prisma.cliente.updateMany({
+                    where: { UUID: { in: ids } },
+                    data: dadosAtualizacao
+                })
+                : { count: ids.length };
+
+            // Espelho de fornecedor em lote (best-effort por cliente; precisa de documento)
+            let semDocumento = 0;
+            if (dados.tambemFornecedor !== undefined) {
+                const ligar = !!dados.tambemFornecedor;
+                const clientesSel = await prisma.cliente.findMany({
+                    where: { UUID: { in: ids } },
+                    select: {
+                        UUID: true, Documento: true, Nome: true, NomeFantasia: true, Email: true,
+                        Telefone: true, Telefone_Celular: true, End_Cidade: true, End_Estado: true,
+                        Perfis: true, fiscal: { select: { inscricaoEstadual: true } }
+                    }
+                });
+                for (const c of clientesSel) {
+                    const doc = normalizarDoc(c.Documento);
+                    if (!doc) { semDocumento++; continue; }
+                    try {
+                        if (ligar) {
+                            await upsertFornecedorDoCadastro({
+                                Documento: doc,
+                                Nome: c.Nome,
+                                NomeFantasia: c.NomeFantasia,
+                                InscricaoEstadual: c.fiscal?.inscricaoEstadual || null,
+                                Email: c.Email,
+                                Telefone: c.Telefone,
+                                Telefone_Celular: c.Telefone_Celular,
+                                End_Cidade: c.End_Cidade,
+                                End_Estado: c.End_Estado
+                            });
+                        } else {
+                            await prisma.fornecedor.updateMany({ where: { cnpjCpf: doc }, data: { ativo: false } });
+                        }
+                        // Mantém o campo Perfis coerente com o toggle (mesma regra da ficha)
+                        let perfis = [];
+                        try { perfis = JSON.parse(c.Perfis || '[]'); } catch { perfis = []; }
+                        if (!Array.isArray(perfis)) perfis = [];
+                        const semFornecedor = perfis.filter(p => String(p?.perfil || p).toUpperCase() !== 'FORNECEDOR');
+                        const novosPerfis = ligar ? [...semFornecedor, { perfil: 'FORNECEDOR' }] : semFornecedor;
+                        await prisma.cliente.update({ where: { UUID: c.UUID }, data: { Perfis: JSON.stringify(novosPerfis) } });
+                    } catch (fornErr) {
+                        console.error(`Falha no espelho de fornecedor (lote) para ${c.UUID}:`, fornErr.message);
+                    }
+                }
+            }
 
             res.json({
-                message: 'Atualização em lote concluída com sucesso.',
-                count: resultado.count
+                message: semDocumento > 0
+                    ? `Atualização concluída. ${semDocumento} cadastro(s) sem CNPJ/CPF não puderam virar fornecedor.`
+                    : 'Atualização em lote concluída com sucesso.',
+                count: resultado.count,
+                semDocumento
             });
 
         } catch (error) {

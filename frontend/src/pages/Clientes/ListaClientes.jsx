@@ -69,7 +69,7 @@ const ListaClientes = () => {
     const [selectedIds, setSelectedIds] = useState([]);
     const [selecaoMobile, setSelecaoMobile] = useState(false); // modo seleção no celular (mostra os checkboxes)
     const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
-    const [batchData, setBatchData] = useState({ idVendedor: '', Dia_de_entrega: '', Dia_de_venda: '' });
+    const [batchData, setBatchData] = useState({ idVendedor: '', Dia_de_entrega: '', Dia_de_venda: '', ehCliente: '', tambemFornecedor: '' });
 
     // Modal de Inadimplência
     const [clienteInadimplente, setClienteInadimplente] = useState(null); // { nome, uuid }
@@ -184,14 +184,20 @@ const ListaClientes = () => {
         if (batchData.Formas_Atendimento && batchData.Formas_Atendimento.length > 0) {
             dadosParaEnviar.Formas_Atendimento = batchData.Formas_Atendimento;
         }
+        if (batchData.ehCliente) dadosParaEnviar.Ativo = batchData.ehCliente === 'sim';
+        if (batchData.tambemFornecedor) dadosParaEnviar.tambemFornecedor = batchData.tambemFornecedor === 'sim';
         if (Object.keys(dadosParaEnviar).length === 0) { alert("Selecione pelo menos um campo para alterar."); return; }
-        if (!window.confirm(`Tem certeza que deseja alterar ${selectedIds.length} clientes?`)) return;
+        let msg = `Tem certeza que deseja alterar ${selectedIds.length} clientes?`;
+        if (dadosParaEnviar.Ativo === false) {
+            msg += '\n\n⚠️ "É cliente = Não": eles somem das listas de venda, rota e dashboards. O cadastro, o histórico e as cobranças em aberto são preservados.';
+        }
+        if (!window.confirm(msg)) return;
         try {
-            await clienteService.atualizarLote({ ids: selectedIds, dados: dadosParaEnviar });
-            alert("Atualização em lote realizada com sucesso!");
+            const resp = await clienteService.atualizarLote({ ids: selectedIds, dados: dadosParaEnviar });
+            alert(resp?.message || "Atualização em lote realizada com sucesso!");
             setIsBatchModalOpen(false);
             setSelectedIds([]);
-            setBatchData({ idVendedor: '', Dia_de_entrega: '', Dia_de_venda: '' });
+            setBatchData({ idVendedor: '', Dia_de_entrega: '', Dia_de_venda: '', ehCliente: '', tambemFornecedor: '' });
             fetchClientes();
         } catch (error) {
             console.error("Erro na atualização em lote", error);
@@ -764,6 +770,38 @@ const ListaClientes = () => {
                                     Você está alterando <strong>{selectedIds.length}</strong> clientes.
                                     Campos vazios não serão alterados.
                                 </p>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">É cliente</label>
+                                    <SelectBusca
+                                        className="w-full"
+                                        value={batchData.ehCliente}
+                                        onChange={(e) => setBatchData({ ...batchData, ehCliente: e.target.value })}
+                                    >
+                                        <option value="">Não alterar</option>
+                                        <option value="sim">Sim (ativo)</option>
+                                        <option value="nao">Não (desativar)</option>
+                                    </SelectBusca>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">É fornecedor</label>
+                                    <SelectBusca
+                                        className="w-full"
+                                        value={batchData.tambemFornecedor}
+                                        onChange={(e) => setBatchData({ ...batchData, tambemFornecedor: e.target.value })}
+                                    >
+                                        <option value="">Não alterar</option>
+                                        <option value="sim">Sim</option>
+                                        <option value="nao">Não</option>
+                                    </SelectBusca>
+                                </div>
+                                {batchData.ehCliente === 'nao' && (
+                                    <p className="col-span-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 -mt-1">
+                                        Os selecionados somem das listas de venda, rota e dashboards. Cadastro, histórico e cobranças em aberto ficam preservados{batchData.tambemFornecedor === 'sim' ? ' — e continuam como fornecedor' : ''}.
+                                    </p>
+                                )}
                             </div>
 
                             <div>
