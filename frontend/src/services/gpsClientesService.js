@@ -14,6 +14,10 @@ const gpsClientesService = {
     enderecoVsGpsLote: async (uuids) =>
         (await api.post('/gps-clientes/endereco-vs-gps-lote', { uuids })).data,
 
+    // Coordenada do endereço escrito ("lat,lng") — para centrar o mapa no endereço
+    geocodeEndereco: async (uuid) =>
+        (await api.get(`/gps-clientes/cliente/${uuid}/geocode-endereco`)).data,
+
     salvarPonto: async (uuid, dados) =>
         (await api.post(`/gps-clientes/cliente/${uuid}/ponto`, dados)).data,
 

@@ -642,6 +642,19 @@ const enderecoVsGps = async (uuid) => {
     return enderecoVsGpsCliente(c);
 };
 
+// Coordenada do endereço escrito (para centrar o mapa do "Ajustar ponto" no endereço)
+const geocodeEnderecoDoCliente = async (uuid) => {
+    const c = await prisma.cliente.findUnique({ where: { UUID: uuid }, select: SELECT_ENDERECO });
+    if (!c) { const e = new Error('Cliente não encontrado.'); e.status = 404; throw e; }
+    if (!c.End_Logradouro && !c.End_CEP) return { geo: null, motivo: 'SEM_ENDERECO' };
+    const { geo, precisao } = await geocodeEndereco({
+        logradouro: c.End_Logradouro, numero: c.End_Numero, bairro: c.End_Bairro,
+        cidade: c.End_Cidade, uf: c.End_Estado, cep: c.End_CEP
+    });
+    if (!geo) return { geo: null, motivo: 'GEOCODE_FALHOU' };
+    return { geo: `${geo.lat.toFixed(6)},${geo.lng.toFixed(6)}`, precisao };
+};
+
 // Lote (máx. 10 por chamada): o frontend manda os clientes da rota em pedaços,
 // e cada pedaço volta assim que geocodificado (na 1ª vez ~1s/endereço não cacheado).
 const enderecoVsGpsLote = async (uuids) => {
@@ -662,5 +675,5 @@ module.exports = {
     registrarMudanca, decidirPendencia, desfazerMudanca,
     setBalcao, validarPedidoEnviar, seloEntrega,
     reavaliarCliente, saude, divergenciasDoVendedor,
-    enderecoVsGps, enderecoVsGpsLote
+    enderecoVsGps, enderecoVsGpsLote, geocodeEnderecoDoCliente
 };
