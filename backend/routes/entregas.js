@@ -13,6 +13,18 @@ const getPerms = async (userId) => {
         : (vendedor?.permissoes || {});
 };
 
+// Campos do cliente que a ficha (ClientePopup) usa — UUID é obrigatório: sem ele
+// o histórico não carrega e a validação do ponto GPS não ignora o próprio cliente
+const CLIENTE_FICHA_SELECT = {
+    UUID: true, NomeFantasia: true, Nome: true, Documento: true, Tipo_Pessoa: true,
+    Telefone: true, Telefone_Celular: true, Email: true,
+    End_Logradouro: true, End_Numero: true, End_Complemento: true, End_Bairro: true,
+    End_Cidade: true, End_Estado: true, End_CEP: true, Ponto_GPS: true,
+    Dia_de_venda: true, Horario_Atendimento: true, Dia_de_entrega: true,
+    Horario_Entrega: true, Condicao_de_pagamento: true,
+    Observacoes_Gerais: true, Situacao_serasa: true
+};
+
 // Middleware interno: Permissão Entregador (ou quem pode ver todas entregas)
 const checkAcessoEntregador = async (req, res, next) => {
     try {
@@ -136,7 +148,7 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
         const entregas = await prisma.pedido.findMany({
             where,
             include: {
-                cliente: { select: { UUID: true, NomeFantasia: true, Nome: true, End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true, Ponto_GPS: true } },
+                cliente: { select: CLIENTE_FICHA_SELECT },
                 embarque: { select: { numero: true, responsavel: { select: { id: true, nome: true } } } },
                 vendedor: { select: { id: true, nome: true } },
                 usuarioLancamento: { select: { id: true, nome: true } },
@@ -187,7 +199,7 @@ router.get('/pendentes', verificarAuth, checkAcessoEntregador, async (req, res) 
         const amostrasPendentes = await prisma.amostra.findMany({
             where: whereAmostra,
             include: {
-                cliente: { select: { UUID: true, NomeFantasia: true, Nome: true, End_Logradouro: true, End_Numero: true, End_Bairro: true, End_Cidade: true, Ponto_GPS: true } },
+                cliente: { select: CLIENTE_FICHA_SELECT },
                 lead: { select: { nomeEstabelecimento: true, pontoGps: true } },
                 embarque: { select: { numero: true, responsavel: { select: { id: true, nome: true } } } },
                 solicitadoPor: { select: { id: true, nome: true } },
@@ -239,7 +251,7 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
         const entregas = await prisma.pedido.findMany({
             where,
             include: {
-                cliente: { select: { NomeFantasia: true, Nome: true } },
+                cliente: { select: CLIENTE_FICHA_SELECT },
                 embarque: { select: { numero: true, responsavel: { select: { id: true, nome: true } } } },
                 vendedor: { select: { id: true, nome: true } },
                 itens: { include: { produto: { select: { id: true, nome: true, unidade: true } } } },
@@ -286,7 +298,7 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
         const amostrasEntregues = await prisma.amostra.findMany({
             where: whereAmostraConcluida,
             include: {
-                cliente: { select: { NomeFantasia: true, Nome: true } },
+                cliente: { select: CLIENTE_FICHA_SELECT },
                 lead: { select: { nomeEstabelecimento: true } },
                 embarque: { select: { numero: true, responsavel: { select: { id: true, nome: true } } } },
                 solicitadoPor: { select: { id: true, nome: true } },
