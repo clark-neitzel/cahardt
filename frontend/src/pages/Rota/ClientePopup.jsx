@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     X, MapPin, Navigation, Phone, Mail, Package,
     Calendar, DollarSign, User, FileText, Save,
-    Loader, CheckCircle, ExternalLink, AlertCircle, Lock, ClipboardList, Copy
+    Loader, CheckCircle, ExternalLink, AlertCircle, Lock, ClipboardList, Copy, History
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -30,6 +30,43 @@ const DataRow = ({ label, value, icon: Icon }) => {
     );
 };
 
+// Últimas alterações do ponto GPS: quem fez, o que fez e quando (data + hora)
+const HistoricoGpsLista = ({ logs }) => {
+    if (!logs) return null;
+    const fmtDist = (m) => m == null ? '' : m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`;
+    const acaoDe = (h) =>
+        h.tipo === 'BALCAO_ON' ? 'marcou como balcão' :
+            h.tipo === 'BALCAO_OFF' ? 'tirou de balcão' :
+                h.pontoNovo == null ? 'removeu o ponto' :
+                    h.pontoAntigo == null ? 'definiu o primeiro ponto' :
+                        `moveu o ponto ${fmtDist(h.distanciaM)}`;
+    return (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                <History className="h-3 w-3" /> Últimas alterações do ponto
+            </p>
+            {logs.length === 0 ? (
+                <p className="text-[11px] text-gray-400 italic">Nenhuma alteração registrada ainda.</p>
+            ) : (
+                <div className="space-y-1.5">
+                    {logs.map(h => {
+                        const d = new Date(h.criadoEm);
+                        return (
+                            <div key={h.id} className="text-[11px] text-gray-600 leading-snug">
+                                <b className="text-gray-800">{h.autor || '—'}</b> {acaoDe(h)}
+                                <span className="text-gray-400"> · {d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })} às {d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                {h.status !== 'APLICADO' && (
+                                    <span className="ml-1 px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-gray-100 text-gray-600 align-middle">{h.status}</span>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
     const { user } = useAuth();
     const podeEditarGPS = !!(user?.permissoes?.admin || user?.permissoes?.Pode_Editar_GPS || user?.permissoes?.clientes?.edit);
@@ -47,6 +84,19 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
     const [gpsSalvo, setGpsSalvo] = useState(false);
     const [showHistorico, setShowHistorico] = useState(false);
     const [showMapa, setShowMapa] = useState(false);
+
+    // Últimas alterações do ponto GPS (quem mexeu, quando e a que horas)
+    const [historicoGps, setHistoricoGps] = useState(null);
+    const [historicoGpsVersao, setHistoricoGpsVersao] = useState(0); // +1 após salvar ponto → recarrega
+    useEffect(() => {
+        let ativo = true;
+        if (isLead || !cliente?.UUID) { setHistoricoGps(null); return; }
+        import('../../services/gpsClientesService')
+            .then(m => m.default.historico(cliente.UUID))
+            .then(logs => { if (ativo) setHistoricoGps((logs || []).slice(0, 5)); })
+            .catch(() => { if (ativo) setHistoricoGps(null); }); // sem rede/permissão: seção não aparece
+        return () => { ativo = false; };
+    }, [cliente?.UUID, historicoGpsVersao]);
 
     const capturarGpsAtual = () => {
         if (!navigator.geolocation) {
@@ -348,6 +398,8 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                                 </div>
                             </div>
                         )}
+
+                        {!isLead && <HistoricoGpsLista logs={historicoGps} />}
                     </div>
 
                     {/* ── Observações ── */}
@@ -400,6 +452,7 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                             toast.success('Ponto GPS salvo!');
                             if (onAtualizado) onAtualizado({ ...cliente, Ponto_GPS: ponto });
                         }
+                        setHistoricoGpsVersao(v => v + 1); // recarrega "últimas alterações do ponto"
                     }}
                 />
             )}

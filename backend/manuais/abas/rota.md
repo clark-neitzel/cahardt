@@ -224,3 +224,7 @@ Detalhes:
 ## Ponto GPS pelo mapa (novo — 07/2026)
 
 No popup do cliente, o botão de GPS mudou: em vez de gravar "onde estou", abre um **mapa com alfinete** — arrasta-se o mapa até a porta do cliente e salva (dá para marcar o lugar certo mesmo estando longe dele). O botão "Usar minha posição atual" continua existindo dentro do mapa. Valem as travas: ponto repetido/na empresa não salva; perto de outro cliente só com autorização da logística. Para **leads** o fluxo antigo (capturar posição atual) continua — a validação acontece quando o lead vira cliente.
+
+### Últimas alterações do ponto (novo — 07/2026)
+
+Abaixo do botão "Ajustar ponto no mapa", a seção **"Últimas alterações do ponto"** mostra as **5 mudanças mais recentes** do ponto GPS daquele cliente: **quem fez** (nome), **o que fez** (definiu o primeiro ponto, moveu o ponto X metros, removeu o ponto, marcou/tirou de balcão) e **quando** (data e hora). Mudanças desfeitas ou rejeitadas aparecem com o selo do status. Aparece para todo mundo que abre a ficha (inclusive quem não pode editar o GPS). O histórico completo, com o botão Desfazer, continua na tela **Clientes → Saúde GPS**.
