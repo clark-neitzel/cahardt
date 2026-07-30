@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { abrirLinkExterno } from '../../../utils/linkExterno';
 import { Truck, MapPin, CheckCircle, Clock, Navigation, Star, X, QrCode } from 'lucide-react';
 import toast from 'react-hot-toast';
 import entregasService from '../../../services/entregasService';
@@ -40,11 +41,11 @@ const PainelMotorista = () => {
     const handleAbrirMaps = (cliente) => {
         if (!cliente.Ponto_GPS) {
             const endereco = `${cliente.End_Logradouro || ''} ${cliente.End_Numero || ''} ${cliente.End_Bairro || ''} ${cliente.End_Cidade || ''}`;
-            window.open(`https://maps.google.com/?q=${encodeURIComponent(endereco)}`);
+            abrirLinkExterno(`https://maps.google.com/?q=${encodeURIComponent(endereco)}`);
             return;
         }
         const [lat, lng] = cliente.Ponto_GPS.split(',');
-        window.open(`https://maps.google.com/?q=${lat},${lng}`);
+        abrirLinkExterno(`https://maps.google.com/?q=${lat},${lng}`);
     };
 
     const handleCheckoutSuccess = () => {

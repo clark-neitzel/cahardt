@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { abrirLinkExterno } from '../../utils/linkExterno';
 import { useNavigate } from 'react-router-dom';
 import {
     MapPin, Phone, MessageCircle, User, Plus, ChevronRight,
@@ -223,7 +224,7 @@ const isProximaVisitaHoje = (proximaVisita) => {
 const abrirMapa = (gps) => {
     if (!gps) return;
     const [lat, lng] = gps.split(',');
-    window.open(`https://maps.google.com/?q=${lat},${lng}`, '_blank');
+    abrirLinkExterno(`https://maps.google.com/?q=${lat},${lng}`);
 };
 
 // ================================================
@@ -944,11 +945,11 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente, o
     const abrirMaps = () => {
         if (!pedido.cliente?.Ponto_GPS) {
             const addr = `${pedido.cliente?.End_Logradouro || ''} ${pedido.cliente?.End_Numero || ''} ${pedido.cliente?.End_Cidade || ''}`;
-            window.open(`https://maps.google.com/?q=${encodeURIComponent(addr)}`);
+            abrirLinkExterno(`https://maps.google.com/?q=${encodeURIComponent(addr)}`);
             return;
         }
         const [lat, lng] = pedido.cliente.Ponto_GPS.split(',');
-        window.open(`https://maps.google.com/?q=${lat},${lng}`);
+        abrirLinkExterno(`https://maps.google.com/?q=${lat},${lng}`);
     };
     return (
         <div className={`bg-white border shadow-sm overflow-hidden mb-2 ${semRounded ? 'rounded-b-xl' : 'rounded-xl'} ${pedido.prioridadeEntrega ? 'border-amber-400 ring-1 ring-amber-300' : 'border-sky-400/50 ring-1 ring-sky-500/20'}`}>
@@ -1029,7 +1030,7 @@ const CardAmostraEntrega = ({ amostra, onEntregarAmostra, podeCheckout, semRound
     const abrirMaps = () => {
         if (!amostra.cliente?.Ponto_GPS) return;
         const [lat, lng] = amostra.cliente.Ponto_GPS.split(',');
-        window.open(`https://maps.google.com/?q=${lat},${lng}`);
+        abrirLinkExterno(`https://maps.google.com/?q=${lat},${lng}`);
     };
     return (
         <div className={`bg-white border border-orange-400/50 ring-1 ring-orange-500/20 shadow-sm overflow-hidden mb-2 ${semRounded ? 'rounded-b-xl' : 'rounded-xl'}`}>
