@@ -20,8 +20,7 @@ const CLIENTE_FICHA_SELECT = {
     Telefone: true, Telefone_Celular: true, Email: true,
     End_Logradouro: true, End_Numero: true, End_Complemento: true, End_Bairro: true,
     End_Cidade: true, End_Estado: true, End_CEP: true, Ponto_GPS: true,
-    Dia_de_venda: true, Horario_Atendimento: true, Dia_de_entrega: true,
-    Horario_Entrega: true, Condicao_de_pagamento: true,
+    Dia_de_venda: true, Dia_de_entrega: true, Condicao_de_pagamento: true,
     Observacoes_Gerais: true, Situacao_serasa: true
 };
 
