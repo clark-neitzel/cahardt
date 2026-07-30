@@ -96,6 +96,12 @@ router.post('/endereco-vs-gps-lote', async (req, res) => {
     catch (e) { trataErro(res, e, 'endereco-vs-gps-lote'); }
 });
 
+// Coordenada do endereço escrito ("lat,lng") — centra o mapa do Ajustar ponto
+router.get('/cliente/:uuid/geocode-endereco', async (req, res) => {
+    try { res.json(await gps.geocodeEnderecoDoCliente(req.params.uuid)); }
+    catch (e) { trataErro(res, e, 'geocode-endereco'); }
+});
+
 // ── Salvar/mover o ponto ─────────────────────────────────────────────────────
 
 router.post('/cliente/:uuid/ponto', async (req, res) => {

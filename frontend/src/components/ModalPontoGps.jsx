@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { X, MapPin, LocateFixed, Check, Loader2, ShieldCheck } from 'lucide-react';
+import { X, MapPin, LocateFixed, Check, Loader2, ShieldCheck, Home } from 'lucide-react';
 import toast from 'react-hot-toast';
 import gpsClientesService from '../services/gpsClientesService';
 import SelectBusca from './SelectBusca';
@@ -56,11 +56,60 @@ export default function ModalPontoGps({
     const [avisoFinal, setAvisoFinal] = useState(null);    // { tipo: 'pendente'|'offline', texto }
     const [buscandoPos, setBuscandoPos] = useState(false); // "Usar minha posição" em andamento
 
+    // Endereço do cadastro localizado no mapa (marcador laranja + botão "Ir para o endereço")
+    const marcadorEnd = useRef(null);
+    const endGeoRef = useRef(null);                        // {lat,lng} | 'FALHOU' | null (ainda não buscou)
+    const [buscandoEnd, setBuscandoEnd] = useState(false); // "Ir para o endereço" em andamento
+
     const distanciaM = (a, b) => {
         const R = 6371000, toRad = (g) => (g * Math.PI) / 180;
         const dLat = toRad(b.lat - a.lat), dLng = toRad(b.lng - a.lng);
         const x = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
         return Math.round(R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x)));
+    };
+
+    const centradoNoEndereco = useRef(false); // impede a bolinha azul de "roubar" o centro do endereço
+
+    // Localiza o endereço do cadastro (geocodificado no backend, com cache) uma vez por abertura
+    const obterEnderecoGeo = async () => {
+        if (!clienteUuid) return null;
+        if (endGeoRef.current) return endGeoRef.current === 'FALHOU' ? null : endGeoRef.current;
+        try {
+            const r = await gpsClientesService.geocodeEndereco(clienteUuid);
+            const geo = parseLatLng(r?.geo);
+            endGeoRef.current = geo ? { ...geo, precisao: r.precisao } : 'FALHOU';
+        } catch {
+            endGeoRef.current = 'FALHOU'; // sem internet/serviço fora: botão avisa, nada quebra
+        }
+        return endGeoRef.current === 'FALHOU' ? null : endGeoRef.current;
+    };
+
+    const marcarEndereco = (geo) => {
+        if (!mapObj.current || !geo) return;
+        if (!marcadorEnd.current) {
+            marcadorEnd.current = L.circleMarker([geo.lat, geo.lng], {
+                radius: 8, color: '#f59e0b', fillColor: '#f59e0b', fillOpacity: 0.4, weight: 2
+            }).addTo(mapObj.current).bindTooltip('Endereço do cadastro (aproximado)');
+        } else {
+            marcadorEnd.current.setLatLng([geo.lat, geo.lng]);
+        }
+    };
+
+    const irParaEndereco = async () => {
+        setBuscandoEnd(true);
+        try {
+            const geo = await obterEnderecoGeo();
+            if (!geo) {
+                toast('Não deu para localizar o endereço do cadastro no mapa — arraste até a porta do cliente.', { icon: '🗺️', duration: 6000 });
+                return;
+            }
+            marcarEndereco(geo);
+            centradoNoEndereco.current = true;
+            mapObj.current?.setView([geo.lat, geo.lng], geo.precisao === 'cep' ? 15 : 17);
+            if (geo.precisao === 'cep') toast('Endereço localizado só pelo CEP — posição aproximada.', { icon: '📍', duration: 5000 });
+        } finally {
+            setBuscandoEnd(false);
+        }
     };
 
     const validarCentro = useCallback((centro) => {
@@ -105,6 +154,17 @@ export default function ModalPontoGps({
         mapObj.current = map;
         validarCentro(map.getCenter());
 
+        // Endereço do cadastro: marca no mapa e, se o cliente ainda não tem ponto,
+        // já abre centrado no endereço (em vez do Brasil inteiro / posição da pessoa)
+        obterEnderecoGeo().then(geo => {
+            if (!geo || !mapObj.current) return;
+            marcarEndereco(geo);
+            if (!pontoAtual && !sugestao) {
+                centradoNoEndereco.current = true;
+                mapObj.current.setView([geo.lat, geo.lng], geo.precisao === 'cep' ? 15 : 17);
+            }
+        });
+
         // Bolinha azul: posição do aparelho (GPS no celular; Wi-Fi no computador)
         if (navigator.geolocation) {
             const aplicarPos = (pos) => {
@@ -117,8 +177,9 @@ export default function ModalPontoGps({
                     marcadorPos.current = L.circleMarker([p.lat, p.lng], {
                         radius: 7, color: '#ffffff', fillColor: '#3b82f6', fillOpacity: 1, weight: 2
                     }).addTo(map).bindTooltip('Você está aqui');
-                    // Sem ponto cadastrado nem sugestão: centraliza na posição da pessoa
-                    if (!pontoAtual && !sugestao) map.setView([p.lat, p.lng], 17);
+                    // Sem ponto cadastrado nem sugestão (e sem já ter centrado no
+                    // endereço do cadastro): centraliza na posição da pessoa
+                    if (!pontoAtual && !sugestao && !centradoNoEndereco.current) map.setView([p.lat, p.lng], 17);
                 } else {
                     marcadorPos.current.setLatLng([p.lat, p.lng]);
                     circuloPos.current.setLatLng([p.lat, p.lng]);
@@ -148,7 +209,8 @@ export default function ModalPontoGps({
         watchRef.current = null;
         if (mapObj.current) { mapObj.current.remove(); mapObj.current = null; }
         marcadorAntigo.current = null; marcadorPos.current = null; circuloPos.current = null;
-        setProblema(null); setAutorizar(null); setAvisoFinal(null);
+        marcadorEnd.current = null; endGeoRef.current = null; centradoNoEndereco.current = false;
+        setProblema(null); setAutorizar(null); setAvisoFinal(null); setBuscandoEnd(false);
         setAutorizadorId(''); setSenhaAutorizador(''); setDistDoAntigo(null);
     }, [aberto]);
 
@@ -353,6 +415,12 @@ export default function ModalPontoGps({
                                 <div className="text-[13px] bg-blue-50 border border-blue-200 text-blue-800 rounded-lg px-3 py-2.5">
                                     📏 O alfinete está a <b>{distDoAntigo >= 1000 ? `${(distDoAntigo / 1000).toFixed(1)} km` : `${distDoAntigo} m`}</b> do ponto atual do cadastro (bolinha cinza).
                                 </div>
+                            )}
+                            {clienteUuid && (
+                                <button onClick={irParaEndereco} disabled={buscandoEnd} className="w-full px-4 py-2.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center justify-center gap-2 min-h-[44px] disabled:opacity-60">
+                                    {buscandoEnd ? <Loader2 className="h-4 w-4 animate-spin" /> : <Home className="h-4 w-4" />}
+                                    {buscandoEnd ? 'Localizando o endereço…' : 'Ir para o endereço do cliente'}
+                                </button>
                             )}
                             <button onClick={usarMinhaPosicao} disabled={buscandoPos} className="w-full px-4 py-2.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center justify-center gap-2 min-h-[44px] disabled:opacity-60">
                                 {buscandoPos ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
