@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { abrirLinkExterno } from '../../utils/linkExterno';
 import { Link } from 'react-router-dom';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
@@ -59,7 +60,7 @@ const DashboardEntregador = () => {
     const abrirMapa = (parada) => {
         const destino = parada.gps || parada.endereco;
         if (!destino) return;
-        window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destino)}`, '_blank');
+        abrirLinkExterno(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destino)}`);
     };
 
     return (

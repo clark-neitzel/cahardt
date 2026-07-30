@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import HistoricoModal from './HistoricoModal';
 import ModalPontoGps from '../../components/ModalPontoGps';
 import { formatarDoc, normalizarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
+import { abrirLinkExterno } from '../../utils/linkExterno';
 
 const formatDoc = (doc) => {
     if (!doc) return null;
@@ -91,7 +92,7 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
         const gps = gpsInput || (isLead ? cliente.pontoGps : cliente.Ponto_GPS);
         if (!gps) return;
         const [lat, lng] = gps.split(',');
-        window.open(`https://maps.google.com/?q=${lat},${lng}`, '_blank');
+        abrirLinkExterno(`https://maps.google.com/?q=${lat},${lng}`);
     };
 
     // Endereço formatado  
@@ -133,7 +134,7 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
 
     const abrirEnderecoNoMaps = () => {
         if (!enderecoCompleto) return;
-        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(enderecoCompleto)}`, '_blank');
+        abrirLinkExterno(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(enderecoCompleto)}`);
     };
 
     return (

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { abrirLinkExterno } from '../../utils/linkExterno';
 import { useAuth } from '../../contexts/AuthContext';
 import atendimentoService from '../../services/atendimentoService';
 import vendedorService from '../../services/vendedorService';
@@ -572,7 +573,7 @@ const PainelAtendimentos = () => {
                                                                 <p className="text-xs font-bold text-gray-500 uppercase mb-1">GPS</p>
                                                                 <button onClick={() => {
                                                                     const [lat, lng] = a.gpsVendedor.split(',');
-                                                                    window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+                                                                    abrirLinkExterno(`https://www.google.com/maps?q=${lat},${lng}`);
                                                                 }} className="text-blue-600 hover:text-blue-800 text-[12px] font-semibold flex items-center gap-1">
                                                                     <MapPin className="h-3 w-3" /> Ver no mapa
                                                                 </button>
@@ -704,7 +705,7 @@ const PainelAtendimentos = () => {
                                                 <button onClick={(e) => {
                                                     e.stopPropagation();
                                                     const [lat, lng] = a.gpsVendedor.split(',');
-                                                    window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+                                                    abrirLinkExterno(`https://www.google.com/maps?q=${lat},${lng}`);
                                                 }} className="text-blue-600 text-[11px] font-semibold flex items-center gap-1">
                                                     <MapPin className="h-3 w-3" /> Ver GPS
                                                 </button>
