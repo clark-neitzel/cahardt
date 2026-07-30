@@ -83,6 +83,19 @@ router.get('/cliente/:uuid', async (req, res) => {
     } catch (e) { trataErro(res, e, 'cliente'); }
 });
 
+// ── Endereço escrito × ponto GPS (selo nos cards da rota organizada) ─────────
+
+router.get('/cliente/:uuid/endereco-vs-gps', async (req, res) => {
+    try { res.json(await gps.enderecoVsGps(req.params.uuid)); }
+    catch (e) { trataErro(res, e, 'endereco-vs-gps'); }
+});
+
+// Lote: body { uuids: [...] } (máx. 10 por chamada) → { uuid: resultado }
+router.post('/endereco-vs-gps-lote', async (req, res) => {
+    try { res.json(await gps.enderecoVsGpsLote(req.body?.uuids)); }
+    catch (e) { trataErro(res, e, 'endereco-vs-gps-lote'); }
+});
+
 // ── Salvar/mover o ponto ─────────────────────────────────────────────────────
 
 router.post('/cliente/:uuid/ponto', async (req, res) => {

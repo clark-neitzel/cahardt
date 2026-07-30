@@ -122,6 +122,7 @@ Lista de pedidos faturados em embarques que ainda precisam ser entregues fisicam
 - ETA estimado e sequência de entrega (quando a rota está organizada)
 - Botão **Maps** — abre Google Maps com a localização do cliente (usa GPS cadastrado ou endereço)
 - Botão **Fazer Check-in (Entregar)** — abre o modal de checkout para registrar a baixa
+- **Selo GPS × endereço** (aparece depois de organizar a rota) — compara o ponto GPS cadastrado com o endereço escrito e mostra no card: verde "GPS no endereço", âmbar "GPS a ~X do endereço", vermelho "GPS longe do endereço (~X)" (ver seção própria abaixo)
 
 Para organizar a sequência de entrega, há o botão **Organizar Rota** (roteirizador por GPS).
 
@@ -203,6 +204,22 @@ No popup de detalhes do cliente (abre ao tocar no nome do cliente no card da rot
 - **Ver no Google Maps** — abre o Google Maps buscando pelo **endereço escrito** (não pelo ponto GPS). É o caminho quando o cliente **não tem GPS cadastrado ou o GPS está errado**: o motorista consulta o endereço direto no Maps sem precisar copiar e colar à mão.
 
 O botão **Google Maps** que já existia na seção "Localização GPS" continua igual — esse abre pelo ponto GPS cadastrado. São duas coisas diferentes: um vai pelo endereço, o outro pela coordenada.
+
+## Selo GPS × endereço nos cards de entrega (novo — 07/2026)
+
+Ao **organizar a rota** (botão Organizar Rota, ou quando já existe uma rota organizada salva do dia), o sistema compara automaticamente, para cada entrega, o **ponto GPS cadastrado** do cliente com o **endereço escrito** (localizado num serviço de mapas gratuito) e mostra um selo colorido no card, abaixo do endereço:
+
+- 🟢 Verde **"GPS no endereço"** — os dois batem; pode confiar no GPS.
+- 🟡 Âmbar **"GPS a ~X do endereço"** — divergência moderada; vale conferir.
+- 🔴 Vermelho **"GPS longe do endereço (~X)"** — divergência grande: ou o ponto GPS está errado, ou o endereço escrito está desatualizado. O motorista já sai sabendo que precisa confirmar antes de ir.
+- **Sem GPS** continua como já era: o aviso âmbar "N entregas sem GPS no cadastro" e os cards listados ao final.
+
+Detalhes:
+- Os selos aparecem **aos poucos** logo após organizar a rota (a localização dos endereços é consultada em lotes). Na primeira vez do dia pode levar alguns segundos; depois fica em cache.
+- A distância é **aproximada** — quando o endereço só foi localizado pelo CEP, o selo mostra um `*` e os limites de cor são mais folgados.
+- Se o serviço de mapas estiver fora do ar ou o cliente não tiver endereço, o card simplesmente fica sem selo (não é erro).
+- O selo **não corrige nada sozinho** — para corrigir o ponto, usar "Ajustar ponto no mapa" no popup do cliente (ou a tela Saúde GPS).
+- **Se as entregas já começaram sem organizar a rota** (alguma entrega concluída e nenhuma rota do dia), aparece um aviso azul na aba Entregas pedindo para tocar em **Organizar Rota** — é ele que calcula a sequência e os selos.
 
 ## Ponto GPS pelo mapa (novo — 07/2026)
 
