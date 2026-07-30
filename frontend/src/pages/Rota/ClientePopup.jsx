@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     X, MapPin, Navigation, Phone, Mail, Package,
     Calendar, DollarSign, User, FileText, Save,
-    Loader, CheckCircle, ExternalLink, AlertCircle, Lock, ClipboardList
+    Loader, CheckCircle, ExternalLink, AlertCircle, Lock, ClipboardList, Copy
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -102,6 +102,40 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
     ].filter(Boolean).join(', ') : null;
     const cidadeEstado = !isLead ? [cliente.End_Cidade, cliente.End_Estado].filter(Boolean).join(' - ') : null;
 
+    // Endereço completo em uma linha (para copiar e para buscar no Google Maps)
+    const enderecoCompleto = !isLead
+        ? [endereco, cliente.End_Bairro, cidadeEstado, cliente.End_CEP].filter(Boolean).join(', ')
+        : null;
+
+    const copiarEndereco = async () => {
+        if (!enderecoCompleto) return;
+        try {
+            await navigator.clipboard.writeText(enderecoCompleto);
+            toast.success('Endereço copiado!');
+        } catch {
+            // Fallback para navegadores sem clipboard API (ou fora de HTTPS)
+            const ta = document.createElement('textarea');
+            ta.value = enderecoCompleto;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.focus();
+            ta.select();
+            try {
+                document.execCommand('copy');
+                toast.success('Endereço copiado!');
+            } catch {
+                toast.error('Não foi possível copiar o endereço.');
+            }
+            document.body.removeChild(ta);
+        }
+    };
+
+    const abrirEnderecoNoMaps = () => {
+        if (!enderecoCompleto) return;
+        window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(enderecoCompleto)}`, '_blank');
+    };
+
     return (
         <div className="fixed inset-0 z-[80] flex">
             {/* Overlay */}
@@ -173,6 +207,20 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                             {endereco && <p className="text-[13px] text-gray-800 font-medium">{endereco}</p>}
                             {cliente.End_Bairro && <p className="text-[12px] text-gray-500">{cliente.End_Bairro}</p>}
                             {cidadeEstado && <p className="text-[12px] text-gray-500">{cidadeEstado}{cliente.End_CEP ? ` · CEP ${cliente.End_CEP}` : ''}</p>}
+                            <div className="flex gap-2 mt-2.5">
+                                <button
+                                    onClick={copiarEndereco}
+                                    className="flex items-center justify-center gap-1.5 px-3 py-2 text-[12px] font-semibold text-gray-600 border border-gray-200 rounded-full bg-gray-50 hover:bg-gray-100 transition-colors"
+                                >
+                                    <Copy className="h-3.5 w-3.5" /> Copiar
+                                </button>
+                                <button
+                                    onClick={abrirEnderecoNoMaps}
+                                    className="flex items-center justify-center gap-1.5 px-3 py-2 text-[12px] font-semibold text-gray-600 border border-gray-200 rounded-full bg-gray-50 hover:bg-gray-100 transition-colors"
+                                >
+                                    <ExternalLink className="h-3.5 w-3.5" /> Ver no Google Maps
+                                </button>
+                            </div>
                         </div>
                     )}
 

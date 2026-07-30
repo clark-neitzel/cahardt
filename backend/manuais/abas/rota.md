@@ -23,6 +23,7 @@ A tela central de trabalho do vendedor. É aqui que começa qualquer ação de v
 - Ver inadimplência do cliente em tempo real (clique no ícone vermelho)
 - Ver o último pedido e última compra do cliente
 - Abrir mapa (GPS) do cliente
+- Copiar o endereço do cliente ou abri-lo direto no Google Maps (botões na seção Endereço do popup do cliente)
 - Enviar WhatsApp diretamente do card
 - Adicionar e prospectar leads (novos pontos de venda)
 - Converter lead em cliente
@@ -193,6 +194,15 @@ Antes de registrar um atendimento ou criar pedido, o sistema pode exibir um popu
 | `frontend/src/services/leadService.js` | API de leads |
 | `frontend/src/services/atendimentoService.js` | API de atendimentos |
 | `frontend/src/services/roteirizacaoService.js` | API de roteirização (ETA) |
+
+## Endereço no popup do cliente — copiar e abrir no Google Maps (novo — 07/2026)
+
+No popup de detalhes do cliente (abre ao tocar no nome do cliente no card da rota ou da entrega), a seção **Endereço** tem dois botões logo abaixo do endereço:
+
+- **Copiar** — copia o endereço completo (rua, número, bairro, cidade - estado e CEP) para a área de transferência, pronto para colar em qualquer app.
+- **Ver no Google Maps** — abre o Google Maps buscando pelo **endereço escrito** (não pelo ponto GPS). É o caminho quando o cliente **não tem GPS cadastrado ou o GPS está errado**: o motorista consulta o endereço direto no Maps sem precisar copiar e colar à mão.
+
+O botão **Google Maps** que já existia na seção "Localização GPS" continua igual — esse abre pelo ponto GPS cadastrado. São duas coisas diferentes: um vai pelo endereço, o outro pela coordenada.
 
 ## Ponto GPS pelo mapa (novo — 07/2026)
 
