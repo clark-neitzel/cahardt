@@ -409,6 +409,53 @@ const decidirPendencia = async (logId, aprovar, decisor, motivo) => {
     return { aplicado: true };
 };
 
+// Migração única (07/2026): com o fim da pendência de aprovação, as mudanças
+// que ficaram PENDENTES são aplicadas nos cadastros automaticamente no boot —
+// eram edições legítimas de quem estava na rua (regra nova: editou, valeu).
+// Guardada por flag no appConfig para rodar uma vez só.
+const PENDENCIAS_FLAG_KEY = 'gps_pendencias_legadas_aplicadas';
+const aplicarPendenciasLegadas = async () => {
+    const flag = await prisma.appConfig.findUnique({ where: { key: PENDENCIAS_FLAG_KEY } });
+    if (flag) return { jaRodou: true, aplicadas: 0 };
+
+    // Ordem cronológica: se o mesmo cliente tem mais de uma, a mais recente vence
+    const pendentes = await prisma.clienteGpsLog.findMany({
+        where: { status: 'PENDENTE' },
+        orderBy: { createdAt: 'asc' }
+    });
+
+    const decisor = { id: null, nome: 'Sistema — aprovação automática (regra 07/2026)' };
+    let aplicadas = 0;
+    for (const log of pendentes) {
+        try {
+            await prisma.$transaction(async (tx) => {
+                await tx.cliente.update({ where: { UUID: log.clienteUuid }, data: { Ponto_GPS: log.pontoNovo } });
+                await tx.clienteGps.upsert({
+                    where: { clienteUuid: log.clienteUuid },
+                    update: { selo: null, sugestao: null, seloEm: new Date() },
+                    create: { clienteUuid: log.clienteUuid, selo: null, sugestao: null, seloEm: new Date() }
+                });
+                await tx.clienteGpsLog.update({
+                    where: { id: log.id },
+                    data: { status: 'APLICADO', decididoPorNome: decisor.nome, decididoEm: new Date(), motivo: 'Aplicada automaticamente: edição manual passou a valer na hora.' }
+                });
+            }, { timeout: 20000, maxWait: 10000 });
+            aplicadas++;
+        } catch (e) {
+            // Cliente apagado etc.: pula e segue — não pode travar o boot
+            console.error(`[GpsClientes] pendência legada ${log.id} não aplicada:`, e.message);
+        }
+    }
+
+    await prisma.appConfig.upsert({
+        where: { key: PENDENCIAS_FLAG_KEY },
+        update: { value: { em: new Date().toISOString(), aplicadas } },
+        create: { key: PENDENCIAS_FLAG_KEY, value: { em: new Date().toISOString(), aplicadas } }
+    });
+    if (aplicadas) console.log(`[GpsClientes] ${aplicadas} pendência(s) de ponto GPS aplicadas nos cadastros (migração 07/2026).`);
+    return { jaRodou: false, aplicadas };
+};
+
 const desfazerMudanca = async (logId, decisor) => {
     const log = await prisma.clienteGpsLog.findUnique({ where: { id: logId } });
     if (!log || log.tipo !== 'MUDANCA' || log.status !== 'APLICADO') {
@@ -675,5 +722,6 @@ module.exports = {
     registrarMudanca, decidirPendencia, desfazerMudanca,
     setBalcao, validarPedidoEnviar, seloEntrega,
     reavaliarCliente, saude, divergenciasDoVendedor,
-    enderecoVsGps, enderecoVsGpsLote, geocodeEnderecoDoCliente
+    enderecoVsGps, enderecoVsGpsLote, geocodeEnderecoDoCliente,
+    aplicarPendenciasLegadas
 };
