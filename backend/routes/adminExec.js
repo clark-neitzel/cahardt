@@ -60,6 +60,35 @@ router.get('/ping', (req, res) => {
     });
 });
 
+// GET /api/admin-exec/gps-pendencias-status
+// Confirma a migração 07/2026 (pendências de ponto GPS aplicadas nos cadastros):
+// flag de execução, quantas ainda restam PENDENTES e as últimas aplicadas pelo sistema.
+router.get('/gps-pendencias-status', async (req, res) => {
+    try {
+        const prisma = require('../config/database');
+        const flag = await prisma.appConfig.findUnique({ where: { key: 'gps_pendencias_legadas_aplicadas' } });
+        const restantes = await prisma.clienteGpsLog.count({ where: { status: 'PENDENTE' } });
+        const aplicadasPeloSistema = await prisma.clienteGpsLog.findMany({
+            where: { status: 'APLICADO', decididoPorNome: { contains: 'aprovação automática' } },
+            orderBy: { decididoEm: 'desc' },
+            take: 20,
+            include: { cliente: { select: { Nome: true, NomeFantasia: true } } }
+        });
+        res.json({
+            migracaoRodou: !!flag,
+            detalheFlag: flag?.value || null,
+            pendentesRestantes: restantes,
+            aplicadasPeloSistema: aplicadasPeloSistema.map(l => ({
+                cliente: l.cliente?.NomeFantasia || l.cliente?.Nome || l.clienteUuid,
+                pontoNovo: l.pontoNovo, distanciaM: l.distanciaM,
+                autorOriginal: l.autorNome, aplicadaEm: l.decididoEm
+            }))
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-backup
 // Status do backup automático: último banco/arquivos OK, versão do pg_dump x
 // versão do servidor Postgres, Drive configurado.
