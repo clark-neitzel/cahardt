@@ -70,6 +70,12 @@ export default function ModalPontoGps({
 
     const centradoNoEndereco = useRef(false); // impede a bolinha azul de "roubar" o centro do endereço
 
+    // Ponto GPS já cadastrado (bolinha cinza) — atalho para voltar até ele
+    const pontoSalvo = parseLatLng(pontoAtual);
+    const irParaPontoSalvo = () => {
+        if (pontoSalvo && mapObj.current) mapObj.current.setView([pontoSalvo.lat, pontoSalvo.lng], 18);
+    };
+
     // Localiza o endereço do cadastro (geocodificado no backend, com cache) uma vez por abertura
     const obterEnderecoGeo = async () => {
         if (!clienteUuid) return null;
@@ -416,16 +422,30 @@ export default function ModalPontoGps({
                                     📏 O alfinete está a <b>{distDoAntigo >= 1000 ? `${(distDoAntigo / 1000).toFixed(1)} km` : `${distDoAntigo} m`}</b> do ponto atual do cadastro (bolinha cinza).
                                 </div>
                             )}
-                            {clienteUuid && (
-                                <button onClick={irParaEndereco} disabled={buscandoEnd} className="w-full px-4 py-2.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center justify-center gap-2 min-h-[44px] disabled:opacity-60">
-                                    {buscandoEnd ? <Loader2 className="h-4 w-4 animate-spin" /> : <Home className="h-4 w-4" />}
-                                    {buscandoEnd ? 'Localizando o endereço…' : 'Ir para o endereço do cliente'}
+                            {/* Atalhos de navegação: endereço do cadastro · ponto salvo · minha posição */}
+                            <div className={`grid gap-2 ${clienteUuid ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                                {clienteUuid && (
+                                    <button onClick={irParaEndereco} disabled={buscandoEnd} title="Centraliza no endereço escrito do cadastro (bolinha laranja)" className="px-2 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-[12px] flex items-center justify-center gap-1.5 min-h-[44px] disabled:opacity-60">
+                                        {buscandoEnd ? <Loader2 className="h-4 w-4 animate-spin shrink-0" /> : <Home className="h-4 w-4 shrink-0" />}
+                                        Endereço
+                                    </button>
+                                )}
+                                {pontoSalvo ? (
+                                    <button onClick={irParaPontoSalvo} title="Centraliza no ponto GPS cadastrado (bolinha cinza)" className="px-2 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-[12px] flex items-center justify-center gap-1.5 min-h-[44px]">
+                                        <MapPin className="h-4 w-4 shrink-0" />
+                                        Ponto salvo
+                                    </button>
+                                ) : (
+                                    <button disabled title="Este cliente ainda não tem ponto GPS cadastrado" className="px-2 py-2 bg-gray-50 border border-gray-200 text-gray-400 rounded-full font-medium text-[12px] flex items-center justify-center gap-1.5 min-h-[44px] cursor-not-allowed">
+                                        <MapPin className="h-4 w-4 shrink-0" />
+                                        Sem ponto
+                                    </button>
+                                )}
+                                <button onClick={usarMinhaPosicao} disabled={buscandoPos} title="Centraliza onde você está agora (bolinha azul)" className="px-2 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-[12px] flex items-center justify-center gap-1.5 min-h-[44px] disabled:opacity-60">
+                                    {buscandoPos ? <Loader2 className="h-4 w-4 animate-spin shrink-0" /> : <LocateFixed className="h-4 w-4 shrink-0" />}
+                                    Minha posição
                                 </button>
-                            )}
-                            <button onClick={usarMinhaPosicao} disabled={buscandoPos} className="w-full px-4 py-2.5 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm flex items-center justify-center gap-2 min-h-[44px] disabled:opacity-60">
-                                {buscandoPos ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
-                                {buscandoPos ? 'Buscando sua posição…' : 'Usar minha posição atual'}
-                            </button>
+                            </div>
                             <button
                                 onClick={() => salvar()}
                                 disabled={salvando || bloqueado}

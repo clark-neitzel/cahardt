@@ -225,7 +225,14 @@ Detalhes:
 
 No popup do cliente, o botão de GPS mudou: em vez de gravar "onde estou", abre um **mapa com alfinete** — arrasta-se o mapa até a porta do cliente e salva (dá para marcar o lugar certo mesmo estando longe dele). O botão "Usar minha posição atual" continua existindo dentro do mapa. Valem as travas: ponto repetido/na empresa não salva; perto de outro cliente só com autorização da logística. Para **leads** o fluxo antigo (capturar posição atual) continua — a validação acontece quando o lead vira cliente.
 
-**Endereço do cliente no mapa (novo — 07/2026):** o mapa localiza o **endereço escrito do cadastro** e marca com uma **bolinha laranja** ("Endereço do cadastro (aproximado)"). O botão **"Ir para o endereço do cliente"** centraliza o mapa nesse ponto — não precisa mais procurar a rua na mão. E quando o cliente **ainda não tem ponto GPS**, o mapa **já abre centrado no endereço** (em vez da posição de quem está mexendo). Se o endereço só foi localizado pelo CEP, aparece um aviso de posição aproximada; se não deu para localizar (ou está sem internet), o botão avisa e o fluxo de arrastar o mapa continua normal.
+**Endereço do cliente no mapa (novo — 07/2026):** o mapa localiza o **endereço escrito do cadastro** e marca com uma **bolinha laranja** ("Endereço do cadastro (aproximado)"). Quando o cliente **ainda não tem ponto GPS**, o mapa **já abre centrado no endereço** (em vez da posição de quem está mexendo). Se o endereço só foi localizado pelo CEP, aparece um aviso de posição aproximada; se não deu para localizar (ou está sem internet), o botão avisa e o fluxo de arrastar o mapa continua normal.
+
+**Atalhos de navegação no mapa (novo — 07/2026):** três botões acima do "Salvar este ponto" centralizam o mapa em cada referência, para conferir tudo antes de salvar:
+- **Endereço** — vai até o endereço escrito do cadastro (bolinha laranja);
+- **Ponto salvo** — vai até o ponto GPS cadastrado (bolinha cinza). Se o cliente **não tem ponto**, o botão fica **cinza, desabilitado**, com o texto "Sem ponto";
+- **Minha posição** — vai até onde a pessoa está agora (bolinha azul).
+
+Assim dá para comparar endereço × ponto salvo × posição atual sem sair do mapa.
 
 ### Últimas alterações do ponto (novo — 07/2026)
 
