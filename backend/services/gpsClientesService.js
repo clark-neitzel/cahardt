@@ -567,11 +567,100 @@ const divergenciasDoVendedor = async (vendedorId) => {
     });
 };
 
+// ── Endereço escrito × ponto GPS (selo nos cards da rota organizada) ─────────
+// Geocodifica o endereço cadastrado (Nominatim por endereço → BrasilAPI por CEP,
+// mesmo padrão do kitFestaService) e mede a distância até o Ponto_GPS. É uma
+// ESTIMATIVA: geocoding por endereço erra fácil dezenas de metros — serve para
+// apontar divergência grande, não para corrigir ponto.
+
+const geocodeCache = new Map(); // chave = endereço normalizado → { geo, precisao, em }
+const GEOCODE_TTL_MS = 24 * 60 * 60 * 1000;
+
+// Política de uso do Nominatim público: no máximo 1 requisição/segundo.
+// Reserva de "vez" síncrona (Node single-thread) — chamadas concorrentes se enfileiram.
+const NOMINATIM_INTERVALO_MS = 1100;
+let nominatimProximaVez = 0;
+const esperarVezNominatim = () => {
+    const agora = Date.now();
+    const espera = Math.max(0, nominatimProximaVez - agora);
+    nominatimProximaVez = Math.max(agora, nominatimProximaVez) + NOMINATIM_INTERVALO_MS;
+    return espera ? new Promise(r => setTimeout(r, espera)) : Promise.resolve();
+};
+
+const geocodeEndereco = async ({ logradouro, numero, bairro, cidade, uf, cep }) => {
+    const chave = [logradouro, numero, bairro, cidade, uf, cep].map(v => String(v || '').trim().toLowerCase()).join('|');
+    const emCache = geocodeCache.get(chave);
+    if (emCache && (Date.now() - emCache.em) < GEOCODE_TTL_MS) return emCache;
+
+    let resultado = null;
+    try {
+        await esperarVezNominatim();
+        const q = [[logradouro, numero].filter(Boolean).join(' '), bairro, cidade, uf, 'Brasil'].filter(Boolean).join(', ');
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${encodeURIComponent(q)}`;
+        const r = await fetch(url, { headers: { 'User-Agent': 'HardtApp/1.0' } }).then(x => x.json());
+        if (r?.[0]?.lat && r?.[0]?.lon) resultado = { geo: { lat: +r[0].lat, lng: +r[0].lon }, precisao: 'endereco' };
+    } catch (_) { }
+    if (!resultado && cep) {
+        try {
+            const r = await fetch(`https://brasilapi.com.br/api/cep/v2/${String(cep).replace(/\D/g, '')}`).then(x => x.json());
+            const c = r?.location?.coordinates;
+            if (c?.latitude && c?.longitude) resultado = { geo: { lat: +c.latitude, lng: +c.longitude }, precisao: 'cep' };
+        } catch (_) { }
+    }
+
+    const salvo = { ...(resultado || { geo: null, precisao: null }), em: Date.now() };
+    geocodeCache.set(chave, salvo);
+    if (geocodeCache.size > 2000) geocodeCache.delete(geocodeCache.keys().next().value);
+    return salvo;
+};
+
+const enderecoVsGpsCliente = (c) => {
+    const ponto = parseLatLng(c.Ponto_GPS);
+    if (!ponto) return Promise.resolve({ comparavel: false, motivo: 'SEM_GPS' });
+    if (!c.End_Logradouro && !c.End_CEP) return Promise.resolve({ comparavel: false, motivo: 'SEM_ENDERECO' });
+    return geocodeEndereco({
+        logradouro: c.End_Logradouro, numero: c.End_Numero, bairro: c.End_Bairro,
+        cidade: c.End_Cidade, uf: c.End_Estado, cep: c.End_CEP
+    }).then(({ geo, precisao }) => {
+        if (!geo) return { comparavel: false, motivo: 'GEOCODE_FALHOU' };
+        return {
+            comparavel: true,
+            distanciaM: Math.round(haversineMetros(ponto.lat, ponto.lng, geo.lat, geo.lng)),
+            precisao // 'endereco' = achou a rua/número; 'cep' = só o centro do CEP (mais grosseiro)
+        };
+    });
+};
+
+const SELECT_ENDERECO = {
+    UUID: true, Ponto_GPS: true, End_Logradouro: true, End_Numero: true,
+    End_Bairro: true, End_Cidade: true, End_Estado: true, End_CEP: true
+};
+
+const enderecoVsGps = async (uuid) => {
+    const c = await prisma.cliente.findUnique({ where: { UUID: uuid }, select: SELECT_ENDERECO });
+    if (!c) { const e = new Error('Cliente não encontrado.'); e.status = 404; throw e; }
+    return enderecoVsGpsCliente(c);
+};
+
+// Lote (máx. 10 por chamada): o frontend manda os clientes da rota em pedaços,
+// e cada pedaço volta assim que geocodificado (na 1ª vez ~1s/endereço não cacheado).
+const enderecoVsGpsLote = async (uuids) => {
+    const lista = [...new Set((uuids || []).filter(u => typeof u === 'string'))].slice(0, 10);
+    if (!lista.length) return {};
+    const clientes = await prisma.cliente.findMany({ where: { UUID: { in: lista } }, select: SELECT_ENDERECO });
+    const resultado = {};
+    for (const c of clientes) {
+        resultado[c.UUID] = await enderecoVsGpsCliente(c); // sequencial de propósito (vez do Nominatim)
+    }
+    return resultado;
+};
+
 module.exports = {
     RAIO_PROXIMO_M, RAIO_FORA_M, RAIO_NO_PONTO_M,
     getConfig, setConfig, getEmpresa,
     validarPonto, validarAutorizador,
     registrarMudanca, decidirPendencia, desfazerMudanca,
     setBalcao, validarPedidoEnviar, seloEntrega,
-    reavaliarCliente, saude, divergenciasDoVendedor
+    reavaliarCliente, saude, divergenciasDoVendedor,
+    enderecoVsGps, enderecoVsGpsLote
 };

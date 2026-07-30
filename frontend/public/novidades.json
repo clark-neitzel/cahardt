@@ -2,7 +2,7 @@
   {
     "slug": "endereco-maps",
     "titulo": "Endereço do cliente direto no Maps",
-    "resumo": "Na ficha do cliente (rota e entregas), dois botões novos na seção Endereço: Copiar com um toque e Ver no Google Maps — o Maps abre já buscando o endereço. Ideal quando o GPS não está cadastrado ou está errado.",
+    "resumo": "Na ficha do cliente, botões para copiar o endereço e abrir direto no Google Maps. E ao Organizar Rota, cada card de entrega ganha o selo GPS × endereço: verde confere, âmbar vale conferir, vermelho o ponto pode estar errado.",
     "data": "2026-07-30"
   },
   {

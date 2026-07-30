@@ -10,6 +10,10 @@ const gpsClientesService = {
 
     cliente: async (uuid) => (await api.get(`/gps-clientes/cliente/${uuid}`)).data,
 
+    // Distância entre o endereço escrito (geocodificado) e o Ponto_GPS — lote de até 10 UUIDs
+    enderecoVsGpsLote: async (uuids) =>
+        (await api.post('/gps-clientes/endereco-vs-gps-lote', { uuids })).data,
+
     salvarPonto: async (uuid, dados) =>
         (await api.post(`/gps-clientes/cliente/${uuid}/ponto`, dados)).data,
 

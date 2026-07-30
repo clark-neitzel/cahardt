@@ -117,7 +117,41 @@
     </div>
   </div>
 
+  <div class="cartao sec">
+    <p class="sec-titulo">🚚 Novo: selo GPS × endereço no card da entrega</p>
+    <p style="font-size:13.5px; color:#3f4a46; margin:0 0 4px">Ao tocar em <b>Organizar Rota</b>, o app agora também confere, entrega por entrega, se o <b>ponto GPS</b> cadastrado bate com o <b>endereço escrito</b> — e mostra o resultado direto no card:</p>
+    <div class="tela">
+      <div class="app-card">
+        <p class="mock-label">Card da entrega (aba Entregas)</p>
+        <p class="mock-end">MERCEARIA CARMEL</p>
+        <p class="mock-sub">R JAGUARUNA 279 · Joinville</p>
+        <span style="display:inline-flex; align-items:center; gap:4px; background:#dcfce7; color:#166534; font-size:10.5px; font-weight:700; border-radius:999px; padding:3px 9px; margin-top:6px">📍 GPS no endereço</span>
+        <p class="mock-end" style="margin-top:14px">JEFF CAFE</p>
+        <p class="mock-sub">R QUINZE DE NOVEMBRO 357 · Joinville</p>
+        <span style="display:inline-flex; align-items:center; gap:4px; background:#fef3c7; color:#b45309; font-size:10.5px; font-weight:700; border-radius:999px; padding:3px 9px; margin-top:6px">📍 GPS a ~380 m do endereço</span>
+        <p class="mock-end" style="margin-top:14px">CANTINA MACHADO DE ASSIS</p>
+        <p class="mock-sub">HERVAL DO OESTE 335 · Joinville</p>
+        <span style="display:inline-flex; align-items:center; gap:4px; background:#fee2e2; color:#b91c1c; font-size:10.5px; font-weight:700; border-radius:999px; padding:3px 9px; margin-top:6px">📍 GPS longe do endereço (~2,1 km)</span>
+      </div>
+      <div class="legenda">
+        <div class="item"><span class="num">✓</span><p style="margin:0"><b>Verde</b> = pode confiar no GPS. <b>Âmbar</b> = divergência moderada, vale conferir. <b>Vermelho</b> = ou o ponto GPS está errado, ou o endereço está desatualizado — confirme antes de ir. Cliente <b>sem GPS</b> continua com o aviso que já existia.</p></div>
+      </div>
+    </div>
+  </div>
+
   <div class="sec">
+    <details class="acc aberto" open>
+      <summary>Quando o selo aparece? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Ao tocar em <b>Organizar Rota</b> (ou quando o dia já tem rota organizada salva). Os selos vão aparecendo <b>aos poucos</b> nos cards — na primeira vez do dia a conferência leva alguns segundos. E se as entregas <b>já começaram sem organizar a rota</b>, aparece um aviso azul pedindo para tocar em Organizar Rota.
+      </div>
+    </details>
+    <details class="acc aberto" open>
+      <summary>O selo é exato? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        É uma <b>estimativa</b>: o endereço escrito é localizado num serviço de mapas, o que pode errar algumas dezenas de metros (com <code>*</code> no selo quando só achou pelo CEP). Serve para apontar <b>divergência grande</b>, não ajuste fino. O selo não corrige nada sozinho — para corrigir, use o <b>Ajustar ponto no mapa</b> na ficha do cliente.
+      </div>
+    </details>
     <details class="acc aberto" open>
       <summary>Para que serve? <span class="mais">+</span></summary>
       <div class="det-corpo">

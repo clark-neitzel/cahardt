@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { abrirLinkExterno } from '../../utils/linkExterno';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -938,7 +938,31 @@ const STATUS_ENTREGA_CORES = {
     DEVOLVIDO: 'bg-red-100 text-red-700',
 };
 
-const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente, onTogglePrioridade, semRounded }) => {
+// Selo "endereço × ponto GPS" no card da entrega (calculado ao organizar a rota).
+// Distância APROXIMADA (endereço localizado por serviço de mapas) — limites folgados
+// de propósito: o selo aponta divergência grande, não ajuste fino.
+const ChipGpsEndereco = ({ resultado }) => {
+    if (!resultado?.comparavel) return null;
+    const m = resultado.distanciaM;
+    const porCep = resultado.precisao === 'cep';
+    const lim = porCep ? { ok: 800, atencao: 2500 } : { ok: 150, atencao: 500 };
+    const dist = m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`;
+    const [classes, texto] = m <= lim.ok
+        ? ['bg-green-100 text-green-800', 'GPS no endereço']
+        : m <= lim.atencao
+            ? ['bg-amber-100 text-amber-700', `GPS a ~${dist} do endereço`]
+            : ['bg-red-100 text-red-700', `GPS longe do endereço (~${dist})`];
+    return (
+        <span
+            className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold rounded-full mt-1 ${classes}`}
+            title={`Distância aproximada entre o ponto GPS cadastrado e o endereço escrito${porCep ? ' (localizado só pelo CEP)' : ''}`}
+        >
+            <MapPin className="h-3 w-3" /> {texto}{porCep ? ' *' : ''}
+        </span>
+    );
+};
+
+const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente, onTogglePrioridade, semRounded, gpsEndereco }) => {
     const totalValor = pedido.itens?.reduce((s, i) => s + (Number(i.valor) * Number(i.quantidade)), 0) || 0;
     const motoristaNome = pedido.embarque?.responsavel?.nome;
     const vendedorNome = pedido.vendedor?.nome;
@@ -983,6 +1007,7 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente, o
                         {pedido.cliente?.End_Cidade && (
                             <p className="text-[11px] md:text-[12px] text-gray-500 truncate">{pedido.cliente.End_Logradouro} {pedido.cliente.End_Numero} · {pedido.cliente.End_Cidade}</p>
                         )}
+                        <ChipGpsEndereco resultado={gpsEndereco} />
                     </div>
                     <button onClick={abrirMaps} className="p-1.5 text-sky-500 hover:bg-sky-50 rounded-lg shrink-0">
                         <Navigation className="h-4 w-4" />
@@ -1522,6 +1547,31 @@ const RotaLeads = () => {
         rotaOrganizada.sequencia.forEach(p => { mapa[p.pedidoId] = p; });
         return mapa;
     }, [rotaOrganizada]);
+
+    // Selo "endereço × ponto GPS" dos cards — calculado quando a rota está organizada
+    // (recém-gerada ou salva de antes). Vai em lotes de 6: os selos aparecem aos poucos.
+    const [gpsEnderecoMapa, setGpsEnderecoMapa] = useState({}); // clienteUUID → resultado
+    const gpsEnderecoSolicitados = useRef(new Set());
+    useEffect(() => {
+        if (!rotaOrganizada || !entregasPendentes.length) return;
+        const uuids = [...new Set(
+            entregasPendentes
+                .map(p => p.cliente)
+                .filter(c => c?.UUID && c?.Ponto_GPS && (c?.End_Logradouro || c?.End_CEP))
+                .map(c => c.UUID)
+        )].filter(u => !gpsEnderecoSolicitados.current.has(u));
+        if (!uuids.length) return;
+        uuids.forEach(u => gpsEnderecoSolicitados.current.add(u));
+        (async () => {
+            const svc = (await import('../../services/gpsClientesService')).default;
+            for (let i = 0; i < uuids.length; i += 6) {
+                try {
+                    const parte = await svc.enderecoVsGpsLote(uuids.slice(i, i + 6));
+                    setGpsEnderecoMapa(prev => ({ ...prev, ...parte }));
+                } catch { /* serviço de mapas fora do ar: cards ficam sem selo */ }
+            }
+        })();
+    }, [rotaOrganizada, entregasPendentes]);
 
     const handleOrganizarRota = async () => {
         setIsRoteirizando(true);
@@ -2181,6 +2231,9 @@ const RotaLeads = () => {
     useEffect(() => {
         if (aba === 'entregas') {
             carregarEntregas('pendentes');
+            // Sem rota organizada: carrega as concluídas também, para o aviso
+            // "entregas já começaram sem organizar a rota" saber se deve aparecer
+            if (!rotaOrganizada) carregarEntregas('concluidas');
             // Recalcular ETAs com base no horário atual (remove entregas já concluídas e ajusta horários)
             if (rotaOrganizada) {
                 roteirizacaoService.recalcularEtas(rotaVendedorId)
@@ -2461,6 +2514,17 @@ const RotaLeads = () => {
                                     )}
                                 </div>
 
+                                {/* Entregas já começaram sem organizar a rota → pede para executar
+                                    (é o Organizar Rota que calcula sequência e o selo GPS × endereço) */}
+                                {!rotaOrganizada && entregasPendentesFiltradas.length > 0 && entregasConcluidasFiltradas.length > 0 && (
+                                    <div className="mb-3 bg-sky-50 border border-sky-200 rounded-lg px-3 py-2 flex items-center gap-2">
+                                        <Navigation className="h-4 w-4 text-sky-500 shrink-0" />
+                                        <p className="text-[11px] text-sky-700">
+                                            As entregas já começaram sem organizar a rota. Toque em <strong>Organizar Rota</strong> para ver a melhor sequência e conferir se o <strong>ponto GPS</strong> de cada cliente bate com o endereço.
+                                        </p>
+                                    </div>
+                                )}
+
                                 {/* Aviso de clientes sem GPS (quando rota está calculada) */}
                                 {rotaOrganizada?.semGPS?.length > 0 && (
                                     <div className="mb-3 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-center gap-2">
@@ -2522,6 +2586,7 @@ const RotaLeads = () => {
                                                             onVerCliente={setClientePopupItem}
                                                             onTogglePrioridade={handleTogglePrioridade}
                                                             semRounded={!!rotaInfo}
+                                                            gpsEndereco={gpsEnderecoMapa[p.cliente?.UUID]}
                                                         />
                                                     )}
                                                 </div>
