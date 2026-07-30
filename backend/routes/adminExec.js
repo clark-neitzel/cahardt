@@ -1820,6 +1820,193 @@ router.get('/diag-extrato-listar', async (req, res) => {
     }
 });
 
+// ── Remoção de importação de extrato feita na CONTA ERRADA ─────────────────
+// Caso real (30/07/2026): o OFX exportado do Conta Azul ("Extrato CA Julho 2026.ofx",
+// 326 lançamentos da Conta PJ CA IP) foi importado dentro da conta SICOOB na
+// conciliação bancária. Estas rotas desfazem isso: soltam as conciliações feitas
+// em cima desses lançamentos (1↔1, grupo, transferência, ignorado) e apagam os
+// lançamentos + o registro da importação. Genéricas: servem para qualquer importação.
+
+// Raio-X de uma importação: lançamentos por status e tudo que está pendurado neles
+// (grupos, transferências, despesas que NASCERAM da conciliação desses lançamentos).
+async function _resumoImportacaoExtrato(importacaoId) {
+    const imp = await prisma.extratoImportacao.findUnique({ where: { id: importacaoId } });
+    if (!imp) return null;
+    const lancs = await prisma.extratoLancamento.findMany({
+        where: { importacaoId },
+        select: {
+            id: true, data: true, valor: true, tipo: true, descricao: true, status: true,
+            pagamentoParcelaId: true, pagamentoParcelaPagarId: true
+        }
+    });
+    const ids = lancs.map((l) => l.id);
+    const porStatus = {};
+    for (const l of lancs) porStatus[l.status] = (porStatus[l.status] || 0) + 1;
+
+    const [itensGrupo, transferencias] = await Promise.all([
+        ids.length ? prisma.conciliacaoGrupoItem.findMany({
+            where: { extratoLancamentoId: { in: ids } }, select: { grupoId: true }
+        }) : [],
+        ids.length ? prisma.transferenciaConta.findMany({
+            where: { extratoLancamentoId: { in: ids } }, select: { id: true, data: true, valor: true, descricao: true }
+        }) : []
+    ]);
+    const gruposIds = [...new Set(itensGrupo.map((i) => i.grupoId))];
+
+    // Baixas de contas a PAGAR vinculadas 1↔1 cuja baixa foi CRIADA pela própria
+    // conciliação (fluxos "criar despesa" unitário e em lote) — a despesa nasceu
+    // deste lançamento errado e é candidata a cancelamento junto.
+    const idsBaixaPagar = lancs.map((l) => l.pagamentoParcelaPagarId).filter(Boolean);
+    const baixasPagar = idsBaixaPagar.length ? await prisma.pagamentoParcelaPagar.findMany({
+        where: { id: { in: idsBaixaPagar } },
+        select: {
+            id: true, valorPago: true, observacao: true,
+            parcelaPagar: { select: { id: true, contaPagar: { select: { id: true, descricao: true, valorTotal: true, status: true } } } }
+        }
+    }) : [];
+    const despesasDaConciliacao = baixasPagar
+        .filter((b) => /pela conciliação bancária/i.test(b.observacao || ''))
+        .map((b) => ({
+            pagamentoParcelaPagarId: b.id,
+            parcelaPagarId: b.parcelaPagar?.id || null,
+            contaPagarId: b.parcelaPagar?.contaPagar?.id || null,
+            descricao: b.parcelaPagar?.contaPagar?.descricao || null,
+            valor: Number(b.valorPago),
+            statusConta: b.parcelaPagar?.contaPagar?.status || null
+        }));
+
+    return {
+        importacao: {
+            id: imp.id, contaFinanceiraCaId: imp.contaFinanceiraCaId, arquivo: imp.nomeArquivo,
+            criadoEm: imp.criadoEm, dataInicio: imp.dataInicio, dataFim: imp.dataFim,
+            totalArquivo: imp.totalArquivo, novos: imp.novos, duplicados: imp.duplicados
+        },
+        totalLancamentos: lancs.length,
+        porStatus,
+        conciliados1a1Receber: lancs.filter((l) => l.pagamentoParcelaId).length,
+        conciliados1a1Pagar: lancs.filter((l) => l.pagamentoParcelaPagarId).length,
+        gruposEnvolvidos: gruposIds.length,
+        transferencias,
+        despesasDaConciliacao
+    };
+}
+
+// GET /api/admin-exec/diag-extrato-importacao?id=<uuid> — SOMENTE LEITURA: o resumo acima.
+// Sem ?id, lista as importações de uma conta: ?conta=<uuid>.
+router.get('/diag-extrato-importacao', async (req, res) => {
+    try {
+        const id = String(req.query.id || '').trim();
+        if (!id) {
+            const conta = String(req.query.conta || '').trim();
+            if (!conta) return res.status(400).json({ error: 'Passe ?id=<importacaoId> ou ?conta=<contaFinanceiraCaId>' });
+            const imps = await prisma.extratoImportacao.findMany({
+                where: { contaFinanceiraCaId: conta }, orderBy: { criadoEm: 'desc' }, take: 50
+            });
+            return res.json({ importacoes: imps });
+        }
+        const resumo = await _resumoImportacaoExtrato(id);
+        if (!resumo) return res.status(404).json({ error: 'Importação não encontrada.' });
+        res.json(resumo);
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message, stack: (e.stack || '').split('\n').slice(0, 12) });
+    }
+});
+
+// POST /api/admin-exec/extrato-remover-importacao?id=<uuid>&confirmar=1[&cancelarDespesas=1]
+// Sem confirmar=1: só devolve a PRÉVIA (mesmo resumo do diag) — não mexe em nada.
+// Com confirmar=1:
+//   1) desfaz cada lançamento não-pendente pelo conciliacaoService.desfazer (o MESMO do
+//      botão da tela): solta vínculo 1↔1, desfaz grupo inteiro (irmãos de outras importações
+//      voltam a PENDENTE), apaga transferência e cancela despesa de tarifa de grupo;
+//   2) com cancelarDespesas=1, cancela também as despesas que nasceram do "criar despesa"
+//      da conciliação sobre ESTES lançamentos (estorna a baixa + cancela parcela e conta,
+//      statusEnvioCA vira NAO_ENVIAR);
+//   3) apaga os lançamentos e o registro da importação.
+router.post('/extrato-remover-importacao', async (req, res) => {
+    try {
+        const conciliacaoService = require('../services/conciliacaoBancariaService');
+        const id = String(req.query.id || '').trim();
+        if (!id) return res.status(400).json({ error: 'Passe ?id=<importacaoId>' });
+        const resumo = await _resumoImportacaoExtrato(id);
+        if (!resumo) return res.status(404).json({ error: 'Importação não encontrada.' });
+        if (req.query.confirmar !== '1') {
+            return res.json({
+                previa: true, mexeuEmAlgo: false, resumo,
+                comoConfirmar: `POST /api/admin-exec/extrato-remover-importacao?id=${id}&confirmar=1` +
+                    (resumo.despesasDaConciliacao.length ? ' — adicione &cancelarDespesas=1 para cancelar também as despesas criadas pela conciliação' : '')
+            });
+        }
+        const cancelarDespesas = req.query.cancelarDespesas === '1';
+
+        // 1) desfazer conciliações (grupo/1↔1/transferência/ignorado) — snapshot das
+        //    despesas-da-conciliação já está no resumo (o desfazer limpa o vínculo).
+        const lancs = await prisma.extratoLancamento.findMany({
+            where: { importacaoId: id }, select: { id: true, status: true }
+        });
+        let desfeitos = 0;
+        const errosDesfazer = [];
+        for (const l of lancs) {
+            // Mesmo PENDENTE pode estar num grupo (não deveria, mas custa 1 consulta conferir)
+            const temGrupo = await prisma.conciliacaoGrupoItem.findUnique({
+                where: { extratoLancamentoId: l.id }, select: { id: true }
+            });
+            if (l.status === 'PENDENTE' && !temGrupo) continue;
+            try {
+                await conciliacaoService.desfazer({ lancamentoId: l.id });
+                desfeitos++;
+            } catch (e) {
+                if (!/Nada para desfazer/i.test(e.message)) errosDesfazer.push({ lancamentoId: l.id, erro: e.message });
+            }
+        }
+
+        // 2) cancelar as despesas que nasceram da conciliação destes lançamentos
+        const despesasCanceladas = [];
+        const errosDespesa = [];
+        if (cancelarDespesas) {
+            for (const d of resumo.despesasDaConciliacao) {
+                if (!d.contaPagarId || d.statusConta === 'CANCELADO') continue;
+                try {
+                    await prisma.$transaction(async (tx) => {
+                        await tx.pagamentoParcelaPagar.updateMany({
+                            where: { parcelaPagarId: d.parcelaPagarId, estornado: false },
+                            data: { estornado: true, estornadoEm: new Date(), statusEnvioCA: 'NAO_ENVIAR' }
+                        });
+                        await tx.parcelaPagar.update({ where: { id: d.parcelaPagarId }, data: { status: 'CANCELADO' } });
+                        await tx.contaPagar.update({
+                            where: { id: d.contaPagarId },
+                            data: { status: 'CANCELADO', statusEnvioCA: 'NAO_ENVIAR' }
+                        });
+                    }, { timeout: 20000, maxWait: 10000 });
+                    despesasCanceladas.push({ contaPagarId: d.contaPagarId, descricao: d.descricao, valor: d.valor });
+                } catch (e) {
+                    errosDespesa.push({ contaPagarId: d.contaPagarId, erro: e.message });
+                }
+            }
+        }
+
+        // 3) apagar lançamentos + importação (só se nada travou no desfazer)
+        if (errosDesfazer.length > 0) {
+            return res.status(409).json({
+                ok: false, desfeitos, errosDesfazer, despesasCanceladas, errosDespesa,
+                aviso: 'Alguns lançamentos não desfizeram — NADA foi apagado. Corrija e rode de novo.'
+            });
+        }
+        const del = await prisma.extratoLancamento.deleteMany({ where: { importacaoId: id } });
+        await prisma.extratoImportacao.delete({ where: { id } });
+
+        res.json({
+            ok: true,
+            lancamentosApagados: del.count,
+            conciliacoesDesfeitas: desfeitos,
+            despesasCanceladas,
+            errosDespesa,
+            resumoAntes: resumo
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message, stack: (e.stack || '').split('\n').slice(0, 12) });
+    }
+});
+
 // GET /api/admin-exec/diag-conciliacao-asaas-causas — SOMENTE LEITURA: para cada
 // crédito PENDENTE da conta Asaas, roda o matching REAL (candidatosPara) e localiza
 // a baixa "ideal" pelo pay_ do extrato (refNum → cobrança → parcela), explicando a
