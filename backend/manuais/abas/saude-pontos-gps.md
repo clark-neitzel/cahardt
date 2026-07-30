@@ -14,7 +14,7 @@
 
 1. **Placar (KPIs):** Repetidos · Na empresa · Suspeitos · Sem GPS (+ chips de confirmados, balcão e total).
 2. **Interruptor "Exigir ponto GPS para ENVIAR pedido":** quando LIGADO, pedido de cliente sem ponto (e que não é balcão) não pode ser ENVIADO — só salvo como aberto. Recomendação: ligar só depois de zerar os problemas. Só quem tem a permissão **Autorizar Ponto GPS (Logística)** liga/desliga.
-3. **Pendentes de aprovação:** mudanças grandes (>300 m) de pontos CONFIRMADOS não aplicam direto — aparecem aqui para a logística **Aprovar** ou **Rejeitar** (mostra quem pediu e se a pessoa estava em campo ao pedir). O ponto antigo vale até a decisão.
+3. **Pendentes de aprovação (legado):** desde 07/2026 a edição manual do ponto **vale na hora** — nenhuma pendência nova é criada. Esta seção só lista pendências antigas (de antes da mudança), que a logística ainda pode **Aprovar** ou **Rejeitar**. Zerou, some do dia a dia. As correções em massa continuam pelas **sugestões** (abaixo).
 4. **Suspeitos:** cada um com a distância e o botão **"Aceitar sugestão"** (corrige em 1 clique para o centro das entregas reais) ou "Ver no mapa".
 5. **Repetidos/colados:** pares de clientes com ponto idêntico ou a menos de 30 m um do outro.
 6. **Na empresa:** pontos gravados dentro do raio da fábrica (erro clássico do botão antigo).
@@ -27,7 +27,7 @@
 - Ponto **idêntico** ao de outro cliente ou **dentro da empresa**: bloqueado sempre.
 - Ponto a **menos de 30 m** de outro cliente: só salva com autorização por senha de quem tem a permissão **Autorizar Ponto GPS (Logística)** (casos legítimos: galeria, vizinhos).
 - Primeiro ponto de um cliente e ajustes de até 100 m: aplicam na hora.
-- Mover ponto **📍✅ confirmado** para mais de 300 m: vira pendência de aprovação.
+- Mover ponto **📍✅ confirmado** para mais de 300 m: aplica na hora e **zera o selo** — as próximas entregas reais voltam a confirmar o lugar (desde 07/2026 não gera mais pendência de aprovação).
 - Toda mudança fica no histórico (auditada), inclusive de onde a pessoa estava ao mudar.
 
 ## Cliente Balcão

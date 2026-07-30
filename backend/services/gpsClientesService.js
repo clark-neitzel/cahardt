@@ -28,7 +28,7 @@ const RAIO_CLUSTER_M = 100;    // sinais a até isso um do outro formam grupo
 const RAIO_NO_PONTO_M = 150;   // entrega a até isso do cadastro = "no ponto"
 const RAIO_FORA_M = 300;       // entrega além disso = "fora" (pergunta na porta)
 const AJUSTE_LIVRE_M = 100;    // mover até isso aplica direto sem perder selo
-const APROVACAO_M = 300;       // mover ponto CONFIRMADO além disso = pendência
+const APROVACAO_M = 300;       // legado — pendência de aprovação desativada em 07/2026 (edição manual vale na hora)
 const MIN_SINAIS = 3;
 const MIN_DIAS = 2;
 const JANELA_LOTE_MIN = 10;    // minutos p/ detectar checkout em lote
@@ -359,12 +359,12 @@ const registrarMudanca = async ({ clienteUuid, pontoNovo, autor, origem, posicao
         autorizadoPorNome: autorizadoPor?.nome || null
     };
 
-    // Ponto CONFIRMADO movido para longe → vira pendência (o antigo segue valendo)
-    const seloAtual = cliente.gps?.selo || null;
-    if (seloAtual === 'CONFIRMADO' && antigo && dist > APROVACAO_M) {
-        const log = await prisma.clienteGpsLog.create({ data: { ...dadosLog, status: 'PENDENTE' } });
-        return { aplicado: false, pendente: true, logId: log.id };
-    }
+    // Decisão do dono (07/2026): edição manual VALE NA HORA, sempre — quem está
+    // na rua sabe onde o cliente fica; aprovar cada ajuste é impraticável.
+    // A aprovação da logística ficou só para o que já era dela (autorização de
+    // ponto colado em outro cliente) e a Saúde GPS trabalha com SUGESTÕES
+    // (entregas concluídas longe do ponto). Pendências antigas ainda podem ser
+    // decididas lá (decidirPendencia), mas nenhuma nova é criada aqui.
 
     await prisma.$transaction(async (tx) => {
         await tx.cliente.update({ where: { UUID: clienteUuid }, data: { Ponto_GPS: pontoNovoFmt } });
