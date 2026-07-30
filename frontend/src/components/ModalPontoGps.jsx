@@ -295,7 +295,12 @@ export default function ModalPontoGps({
         };
         try {
             const r = await gpsClientesService.salvarPonto(clienteUuid, dados);
-            if (r.pendente) {
+            if (r.semMudanca) {
+                // Alfinete no mesmo lugar do ponto já salvo (<5 m): o backend não
+                // grava nem loga — avisar a verdade em vez de "salvo!"
+                toast('O alfinete está no mesmo lugar do ponto já salvo — nada foi alterado. Para registrar uma mudança, mova o alfinete.', { icon: 'ℹ️', duration: 6000 });
+                onFechar();
+            } else if (r.pendente) {
                 setAvisoFinal({
                     tipo: 'pendente',
                     texto: 'Este cliente tem ponto CONFIRMADO e a mudança é grande. A alteração foi registrada e espera aprovação da logística — o ponto antigo continua valendo até lá.'
