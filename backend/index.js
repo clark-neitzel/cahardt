@@ -243,6 +243,13 @@ const startServer = async () => {
             // Inicia todos os jobs background (keep-alive, syncs, worker, cron)
             const { startSchedulers } = require('./workers/scheduler');
             startSchedulers();
+
+            // Migração única 07/2026: aplica nos cadastros as mudanças de ponto
+            // GPS que ficaram pendentes de aprovação (regra nova: editou, valeu)
+            setTimeout(() => {
+                require('./services/gpsClientesService').aplicarPendenciasLegadas()
+                    .catch(e => console.error('[GpsClientes] migração de pendências legadas:', e.message));
+            }, 10000);
         });
     } catch (error) {
         console.error('Erro fatal ao iniciar servidor:', error);
