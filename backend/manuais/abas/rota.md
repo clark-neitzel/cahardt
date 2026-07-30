@@ -236,4 +236,8 @@ Assim dá para comparar endereço × ponto salvo × posição atual sem sair do 
 
 ### Últimas alterações do ponto (novo — 07/2026)
 
-Abaixo do botão "Ajustar ponto no mapa", a seção **"Últimas alterações do ponto"** mostra as **5 mudanças mais recentes** do ponto GPS daquele cliente: **quem fez** (nome), **o que fez** (definiu o primeiro ponto, moveu o ponto X metros, removeu o ponto, marcou/tirou de balcão) e **quando** (data e hora). Mudanças desfeitas ou rejeitadas aparecem com o selo do status. Aparece para todo mundo que abre a ficha (inclusive quem não pode editar o GPS). O histórico completo, com o botão Desfazer, continua na tela **Clientes → Saúde GPS**.
+Abaixo do botão "Ajustar ponto no mapa", a seção **"Últimas alterações do ponto"** mostra as **5 mudanças mais recentes** do ponto GPS daquele cliente: **quem fez** (nome), **o que fez** (definiu o primeiro ponto, moveu o ponto X metros, removeu o ponto, marcou/tirou de balcão) e **quando** (data e hora). Aparece para todo mundo que abre a ficha (inclusive quem não pode editar o GPS). O histórico completo, com o botão Desfazer, continua na tela **Clientes → Saúde GPS**.
+
+- Mudança que **espera aprovação da logística** aparece com o selo âmbar **"AGUARDA APROVAÇÃO"** (o ponto antigo continua valendo até a decisão). Rejeitadas e desfeitas também aparecem, com o selo correspondente.
+- Cliente com ponto mas **sem nenhum registro**: o ponto foi cadastrado **antes do histórico existir** (o log de auditoria nasceu em 07/2026) — a lista avisa isso. A partir da primeira mudança nova, tudo fica registrado.
+- Ponto salvo **sem internet** (fila offline) só entra no histórico quando o aparelho envia a mudança ao voltar o sinal.

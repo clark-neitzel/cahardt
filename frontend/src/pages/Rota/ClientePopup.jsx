@@ -31,7 +31,12 @@ const DataRow = ({ label, value, icon: Icon }) => {
 };
 
 // Últimas alterações do ponto GPS: quem fez, o que fez e quando (data + hora)
-const HistoricoGpsLista = ({ logs }) => {
+const STATUS_GPS_BADGE = {
+    PENDENTE: ['bg-amber-100 text-amber-700', 'AGUARDA APROVAÇÃO'],
+    REJEITADO: ['bg-red-100 text-red-700', 'REJEITADO'],
+    DESFEITO: ['bg-gray-100 text-gray-600', 'DESFEITO'],
+};
+const HistoricoGpsLista = ({ logs, temPonto }) => {
     if (!logs) return null;
     const fmtDist = (m) => m == null ? '' : m < 1000 ? `${m} m` : `${(m / 1000).toFixed(1).replace('.', ',')} km`;
     const acaoDe = (h) =>
@@ -46,7 +51,11 @@ const HistoricoGpsLista = ({ logs }) => {
                 <History className="h-3 w-3" /> Últimas alterações do ponto
             </p>
             {logs.length === 0 ? (
-                <p className="text-[11px] text-gray-400 italic">Nenhuma alteração registrada ainda.</p>
+                <p className="text-[11px] text-gray-400 italic">
+                    {temPonto
+                        ? 'Nenhuma alteração registrada — o ponto atual foi cadastrado antes do histórico existir (07/2026).'
+                        : 'Nenhuma alteração registrada ainda.'}
+                </p>
             ) : (
                 <div className="space-y-1.5">
                     {logs.map(h => {
@@ -56,7 +65,9 @@ const HistoricoGpsLista = ({ logs }) => {
                                 <b className="text-gray-800">{h.autor || '—'}</b> {acaoDe(h)}
                                 <span className="text-gray-400"> · {d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' })} às {d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                                 {h.status !== 'APLICADO' && (
-                                    <span className="ml-1 px-1.5 py-0.5 text-[9px] font-bold rounded-full bg-gray-100 text-gray-600 align-middle">{h.status}</span>
+                                    <span className={`ml-1 px-1.5 py-0.5 text-[9px] font-bold rounded-full align-middle ${(STATUS_GPS_BADGE[h.status] || STATUS_GPS_BADGE.DESFEITO)[0]}`}>
+                                        {(STATUS_GPS_BADGE[h.status] || [null, h.status])[1]}
+                                    </span>
                                 )}
                             </div>
                         );
@@ -399,7 +410,7 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                             </div>
                         )}
 
-                        {!isLead && <HistoricoGpsLista logs={historicoGps} />}
+                        {!isLead && <HistoricoGpsLista logs={historicoGps} temPonto={!!gpsInput} />}
                     </div>
 
                     {/* ── Observações ── */}

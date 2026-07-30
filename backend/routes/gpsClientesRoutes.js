@@ -210,8 +210,11 @@ router.post('/pendencias/:id/decidir', exigirPermissao('Pode_Autorizar_Ponto_Gps
 router.get('/historico', async (req, res) => {
     try {
         const { clienteUuid } = req.query;
+        // Por cliente (ficha): mostra TUDO, inclusive pendências de aprovação —
+        // senão o ajuste "some" da ficha enquanto espera a logística.
+        // Global (Saúde GPS): pendências ficam fora (têm seção própria lá).
         const logs = await prisma.clienteGpsLog.findMany({
-            where: { ...(clienteUuid ? { clienteUuid } : {}), status: { not: 'PENDENTE' } },
+            where: clienteUuid ? { clienteUuid } : { status: { not: 'PENDENTE' } },
             include: { cliente: { select: { Nome: true, NomeFantasia: true } } },
             orderBy: { createdAt: 'desc' },
             take: 100
