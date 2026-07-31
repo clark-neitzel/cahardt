@@ -1,5 +1,11 @@
 [
   {
+    "slug": "extrato-conta-errada",
+    "titulo": "Extrato não entra na conta errada",
+    "resumo": "O sistema lê de qual banco é o arquivo OFX e recusa se a conta escolhida for outra — antes de gravar. E o card novo 'Arquivos importados' deixa remover um arquivo que entrou errado.",
+    "data": "2026-07-31"
+  },
+  {
     "slug": "estoque-negativo",
     "titulo": "Estoque negativo no ajuste de saída",
     "resumo": "Saiu produto que ainda não tinha no sistema? A saída manual agora deixa o saldo negativo de verdade — o débito fica visível e a entrada da produção compensa sozinha.",

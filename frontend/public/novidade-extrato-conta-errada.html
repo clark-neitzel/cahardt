@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: trava do extrato na conta errada — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🛡️ Novidade no Hardt App: o extrato não entra mais na conta errada">
+<meta property="og:description" content="O sistema lê de qual banco é o arquivo OFX e recusa se você escolher a conta errada. E se algo passar, dá para remover o arquivo importado pela própria tela.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --cream: #f2f0eb; --gold: #cba258;
+    --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); line-height:1.55;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased; font-variant-numeric: tabular-nums; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background:linear-gradient(168deg, var(--house) 0%, #16302a 100%); color:#fff;
+    padding:40px 16px 96px; text-align:center; }
+  .hero .chip { display:inline-block; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);
+    color:#d4e9e2; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+    border-radius:999px; padding:6px 14px; margin-bottom:14px; }
+  .hero h1 { font-size:28px; margin:0 0 10px; font-weight:800; }
+  .hero p { color:#c8d6d0; max-width:470px; margin:0 auto; font-size:15.5px; }
+
+  .cartao { background:#fff; border:1px solid #e5e7eb; border-radius:16px;
+    box-shadow:0 8px 24px rgba(30,57,50,.10); padding:20px; margin-top:-64px; }
+  .cartao + .cartao, .sec { margin-top:16px; }
+  .sec-titulo { font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+
+  /* ── ACCORDION (sempre abertos) ── */
+  details { background:#fff; border:1px solid #e5e7eb; border-radius:14px; margin-top:10px; overflow:hidden; }
+  summary { list-style:none; cursor:pointer; padding:15px 18px; font-weight:800; font-size:15px; color:var(--house);
+    display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  summary::-webkit-details-marker { display:none; }
+  summary .mais { color:var(--primary); font-size:20px; font-weight:800; transition:transform .2s; flex:none; }
+  details[open] summary .mais { transform:rotate(45deg); }
+  .det-corpo { padding:0 18px 16px; font-size:14.5px; color:#3f4a46; }
+  .det-corpo b { color:var(--house); }
+  .det-corpo ul { margin:8px 0 0; padding-left:20px; }
+  .det-corpo li { margin-top:6px; }
+
+  /* ── PASSOS ── */
+  .passo { display:flex; gap:12px; margin-top:14px; }
+  .passo .num { flex:none; width:28px; height:28px; border-radius:999px; background:var(--primary); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+  .passo p { margin:3px 0 0; font-size:14.5px; color:#3f4a46; }
+  .passo b { color:var(--house); }
+  .rodape { text-align:center; color:var(--ink-soft); font-size:12.5px; margin-top:34px; }
+
+  /* ── MOCKUP DA TELA ── */
+  .tela { background:#f7f6f2; border:1px solid #e5e7eb; border-radius:14px; padding:14px; margin-top:12px; }
+  .app-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; }
+  .mock-label { font-size:9.5px; font-weight:800; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; margin:0 0 4px; }
+  .mock-topo { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .mock-titulo { font-size:14px; font-weight:800; color:var(--house); }
+  .btn-verde { background:var(--primary); color:#fff; font-size:11.5px; font-weight:800;
+    border-radius:999px; padding:7px 13px; display:inline-block; }
+  .btn-branco { background:#fff; border:1px solid #d1d5db; color:#374151; font-size:11.5px; font-weight:700;
+    border-radius:999px; padding:6px 12px; display:inline-block; }
+  .btn-vermelho { background:#dc2626; color:#fff; font-size:11.5px; font-weight:800;
+    border-radius:999px; padding:7px 13px; display:inline-block; }
+  .btn-vermelho.off { opacity:.4; }
+  .btn-outline-vermelho { background:#fff; border:1px solid #fca5a5; color:#b91c1c; font-size:11px; font-weight:700;
+    border-radius:999px; padding:5px 11px; display:inline-block; white-space:nowrap; }
+  .mock-select { position:relative; border:1.5px solid var(--primary); border-radius:8px; background:#fff;
+    padding:9px 12px; font-size:13.5px; font-weight:700; color:var(--house);
+    display:flex; justify-content:space-between; align-items:center; }
+  .mock-select .v { color:#9ca3af; font-size:9px; }
+
+  /* alerta vermelho (o modal da trava) */
+  .alerta { position:relative; border:1px solid #fecaca; background:#fef2f2; border-radius:12px; padding:12px; margin-top:10px; }
+  .alerta .tit { font-size:13.5px; font-weight:800; color:#991b1b; display:flex; gap:7px; align-items:center; }
+  .alerta .item { display:flex; gap:7px; font-size:12.5px; color:#7f1d1d; margin-top:8px; align-items:flex-start; }
+  .alerta .item span.x { flex:none; font-weight:800; }
+  .dica-verde { position:relative; border:1px solid rgba(0,117,74,.25); background:var(--mint); border-radius:12px;
+    padding:11px 12px; margin-top:10px; font-size:12.5px; color:var(--primary-dark); }
+  .dica-verde b { color:var(--house); }
+  .de-para { display:flex; align-items:center; gap:10px; margin-top:4px; }
+  .de-para .lado { flex:1; min-width:0; }
+  .de-para .cap { font-size:9.5px; font-weight:800; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; }
+  .de-para .val { font-size:12.5px; font-weight:700; color:var(--house); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .de-para .seta { flex:none; color:#9ca3af; font-size:14px; }
+  .check-linha { position:relative; display:flex; gap:8px; align-items:flex-start; margin-top:11px; font-size:12.5px; color:#3f4a46; }
+  .check-linha .cx { flex:none; width:15px; height:15px; border:1.5px solid #9ca3af; border-radius:4px; margin-top:1px; }
+  .acoes { display:flex; gap:8px; justify-content:flex-end; margin-top:12px; }
+
+  /* lista de arquivos importados */
+  .arq { position:relative; display:flex; justify-content:space-between; align-items:center; gap:8px;
+    border-bottom:1px solid #f3f4f6; padding:9px 0; font-size:12.5px; }
+  .arq:last-child { border-bottom:0; }
+  .arq .nome { font-weight:700; color:var(--house); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .arq .sub { display:block; color:#6b7280; font-weight:400; font-size:11px; white-space:normal; }
+  .arq .travado { flex:none; color:#6b7280; font-size:11px; }
+
+  .pin { position:absolute; top:50%; transform:translateY(-50%); right:-7px; width:22px; height:22px; border-radius:999px;
+    background:var(--gold); color:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,.25); z-index:5; }
+  .pin.topo { top:-9px; transform:none; }
+  .legenda { margin-top:14px; }
+  .legenda .item { display:flex; gap:10px; margin-top:9px; font-size:13.5px; color:#3f4a46; }
+  .legenda .item b { color:var(--house); }
+  .legenda .num { flex:none; width:22px; height:22px; border-radius:999px; background:var(--gold); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; margin-top:1px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="chip">✨ Novidade no app</span>
+  <h1>🛡️ O extrato não entra mais na conta errada</h1>
+  <p>O arquivo do banco (OFX) diz, dentro dele, <b>de qual banco e de qual conta ele é</b>. Agora o sistema lê isso e <b>recusa</b> se a conta escolhida na tela for outra — antes de gravar qualquer coisa.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao">
+    <p class="sec-titulo">📱 Tela 1 — quando o arquivo é de outra conta</p>
+    <div class="tela">
+      <div class="app-card">
+        <p class="mock-label">Conciliação Bancária</p>
+        <div class="mock-topo">
+          <div class="mock-select" style="flex:1">Sicoob <span class="v">▼</span><span class="pin">1</span></div>
+          <span class="btn-verde" style="margin-left:8px">⬆ Importar OFX/PDF</span>
+        </div>
+
+        <div class="alerta">
+          <span class="pin topo">2</span>
+          <div class="tit">⚠️ Este extrato parece ser de outra conta</div>
+          <div style="font-size:12px; color:#7f1d1d; margin-top:3px">Nada foi importado. Confira a conta antes de continuar.</div>
+
+          <div class="de-para" style="margin-top:11px">
+            <div class="lado"><div class="cap">Arquivo</div><div class="val">Extrato CA Julho.ofx</div></div>
+            <span class="seta">⇄</span>
+            <div class="lado"><div class="cap">Conta escolhida</div><div class="val">Sicoob</div></div>
+          </div>
+
+          <div class="item"><span class="x">✕</span><span>Este arquivo é de outra conta bancária (banco 001 · conta 998877). Os extratos já importados aqui são da banco 756 · conta 12345-6.</span></div>
+          <div class="item"><span class="x">✕</span><span>326 dos 326 lançamentos deste arquivo já estão na conta "Conta PJ Conta Azul IP".</span></div>
+
+          <div class="dica-verde">
+            <span class="pin">3</span>
+            Pelo jeito este arquivo é da conta <b>Conta PJ Conta Azul IP</b>. Cancele, escolha essa conta no topo da tela e importe de novo.
+          </div>
+
+          <div class="check-linha">
+            <span class="cx"></span>
+            <span>Conferi e o arquivo é <b>mesmo</b> desta conta — importar assim mesmo.<span class="pin">4</span></span>
+          </div>
+
+          <div class="acoes">
+            <span class="btn-branco">Cancelar (recomendado)</span>
+            <span class="btn-vermelho off">Importar mesmo assim</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span><b>A conta escolhida no topo</b> continua igual — é ela que manda. A trava só confere se o arquivo combina com ela.</span></div>
+      <div class="item"><span class="num">2</span><span><b>O aviso vermelho aparece no lugar da importação.</b> Nada foi gravado: o extrato continua exatamente como estava.</span></div>
+      <div class="item"><span class="num">3</span><span><b>O sistema diz de qual conta o arquivo parece ser</b> — normalmente é só cancelar, trocar a conta no topo e importar de novo.</span></div>
+      <div class="item"><span class="num">4</span><span><b>Só dá para insistir marcando a caixinha</b> (o botão vermelho fica apagado até lá). Serve para o caso raro de o banco ter trocado o número da conta.</span></div>
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">📱 Tela 2 — desfazer um arquivo importado</p>
+    <div class="tela">
+      <div class="app-card">
+        <div class="mock-topo">
+          <span class="mock-titulo">📄 Arquivos importados nesta conta</span>
+          <span style="color:#9ca3af; font-size:12px">▾</span>
+          <span class="pin topo">1</span>
+        </div>
+
+        <div style="margin-top:10px">
+          <div class="arq">
+            <span class="nome">Sicoob Julho 2026.ofx
+              <span class="sub">29/07/2026 17:08 · 01/07 a 29/07 · 3 novo(s), 132 já existiam<br>Conta no arquivo: banco 756 · conta 12345-6</span>
+            </span>
+            <span class="btn-outline-vermelho">🗑 Remover<span class="pin">2</span></span>
+          </div>
+          <div class="arq">
+            <span class="nome">Sicoob Junho 2026.ofx
+              <span class="sub">28/07/2026 10:51 · 01/06 a 30/06 · 129 novo(s)<br>Conta no arquivo: banco 756 · conta 12345-6</span>
+            </span>
+            <span class="travado">110 já conciliado(s)<span class="pin">3</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span><b>Card novo no rodapé da tela</b> (clique para abrir): a lista de todos os arquivos já importados naquela conta, com data, período e <b>de qual conta bancária o arquivo era</b>.</span></div>
+      <div class="item"><span class="num">2</span><span><b>Remover</b> tira do extrato só os lançamentos que aquele arquivo trouxe. Nenhuma baixa, despesa ou pagamento do sistema é apagado.</span></div>
+      <div class="item"><span class="num">3</span><span><b>Arquivo com linhas já conciliadas não pode ser removido</b> — apareceria "110 já conciliado(s)". Aí é desfazer essas conciliações primeiro (botão Desfazer na linha).</span></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <p class="sec-titulo">❓ Perguntas rápidas</p>
+
+    <details open class="acc aberto">
+      <summary>Como o sistema sabe de qual conta é o arquivo? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        O OFX que o banco gera traz, dentro do arquivo, o <b>código do banco, a agência e o número da conta</b>. O sistema lê isso e guarda: cada conta do app <b>aprende</b> qual é a sua na primeira importação. Da próxima vez, se vier arquivo de outra conta, ele barra.
+        <br><br>
+        Além disso, há mais duas conferências que funcionam mesmo quando o arquivo não informa a conta (como o PDF do Conta Azul):
+        <ul>
+          <li><b>Arquivo repetido</b> — este mesmo arquivo já entrou em outra conta.</li>
+          <li><b>Lançamentos de outra conta</b> — boa parte dos movimentos do arquivo já existe em outra conta.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details open class="acc aberto">
+      <summary>Vai barrar o meu extrato de sempre por engano? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Não. O mesmo número de conta escrito de jeitos diferentes (<b>com hífen, com zeros na frente</b>) é reconhecido como a mesma conta. Reimportar o mesmo arquivo continua liberado e, como sempre, <b>não duplica nada</b>.
+        <br><br>
+        E se algum dia precisar mesmo passar (o banco trocou o número da conta, por exemplo), é só marcar a caixinha e clicar em <b>Importar mesmo assim</b>.
+      </div>
+    </details>
+
+    <details open class="acc aberto">
+      <summary>E se eu já tiver importado errado antes? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Use o card <b>"Arquivos importados nesta conta"</b> (Tela 2): ache o arquivo pela data e clique em <b>Remover</b>. Os lançamentos que ele trouxe saem do extrato na hora.
+        <br><br>
+        Se aquele arquivo já tiver linhas conciliadas, o sistema <b>não deixa remover</b> — primeiro desfaça a conciliação dessas linhas (botão <b>Desfazer</b> em cada uma) e depois remova. É proteção: assim nenhuma baixa fica perdida.
+      </div>
+    </details>
+
+    <details open class="acc aberto">
+      <summary>A conta do Asaas e a Conta PJ mudam em alguma coisa? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Não. O extrato do <b>Asaas</b> continua entrando sozinho a cada 30 minutos e o da <b>Conta PJ do Conta Azul</b> a cada 3 horas — nada disso passa por importação de arquivo, então nada muda para elas.
+      </div>
+    </details>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">🚀 Na prática</p>
+    <div class="passo">
+      <span class="num">1</span>
+      <p>Importe o extrato como sempre: <b>Financeiro → Conciliação Bancária</b>, escolha o banco e clique em <b>Importar OFX/PDF</b>.</p>
+    </div>
+    <div class="passo">
+      <span class="num">2</span>
+      <p>Se aparecer o <b>aviso vermelho</b>, leia qual conta o sistema sugeriu, clique em <b>Cancelar</b>, troque a conta no topo e importe de novo.</p>
+    </div>
+    <div class="passo">
+      <span class="num">3</span>
+      <p>Errou antes? Abra <b>"Arquivos importados nesta conta"</b> no rodapé da tela e clique em <b>Remover</b> no arquivo errado.</p>
+    </div>
+  </div>
+
+  <p class="rodape">Hardt App · Conciliação Bancária · julho de 2026</p>
+</div>
+
+</body>
+</html>

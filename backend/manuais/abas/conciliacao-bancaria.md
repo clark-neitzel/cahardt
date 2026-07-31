@@ -25,6 +25,26 @@ Para a conta do **Asaas** (onde caem os PIX da entrega e os boletos emitidos pel
    - **Conta PJ do Conta Azul:** o extrato dela **entra sozinho** (desde 07/2026): o sistema gera as linhas a cada 3 horas a partir dos movimentos sincronizados do Conta Azul (recebimentos, pagamentos e transferências) e elas já nascem **conciliadas** (vinculadas às baixas) ou com etiqueta **transferência** — não precisa importar arquivo. Isso inclui os **recebimentos baixados direto no Conta Azul** de vendas antigas/avulsas importadas na migração (ex.: PIX recebido lá): a baixa é espelhada no app (quitando a cobrança) ou, se a venda já estava paga antes da migração, a linha do crédito sai do arquivo importado. O **OFX ou PDF** do extrato do CA continua aceito para conferência/histórico: ao importar, linha que já existe como linha automática **não duplica** (mesmo sentido/valor em ±2 dias é reconhecido — inclusive **crédito de boleto líquido**, que vem R$ 1,50 menor que a baixa por causa da tarifa do CA). O que sobra do arquivo são os movimentos que o app ainda não tinha (tarifas, créditos sem baixa, PIX baixado em outra conta) — é justamente o que falta conciliar.
 2. Na tela, **escolher o banco/caixa** (mesmas contas do Conta Azul usadas nas baixas) e clicar **Importar OFX/PDF**.
    - Importar o mesmo arquivo (ou períodos sobrepostos) de novo **não duplica** (identidade FITID; no PDF, uma identidade estável calculada de data+descrição+valor); só **atualiza a descrição** das linhas que já existiam.
+   - **O sistema não deixa importar o extrato de um banco na conta de outro** (desde 07/2026) — ver seção "Trava de conta errada" abaixo.
+
+## Trava de conta errada (desde 07/2026)
+
+O arquivo OFX diz, nele mesmo, de qual banco e de qual conta ele é. O sistema lê isso: cada conta **aprende** sua identidade na importação e, da próxima vez, **recusa arquivo de outra conta** — nada é gravado. Aparece uma janela vermelha explicando o motivo e, quando o sistema reconhece o arquivo, dizendo **de qual conta ele parece ser** ("Pelo jeito este arquivo é da conta Conta PJ Conta Azul IP").
+
+São três conferências (basta uma para barrar):
+- **Identidade diferente** — banco/conta do arquivo ≠ o que já foi importado nessa conta. (O mesmo número escrito de formas diferentes, com hífen ou zeros à esquerda, é reconhecido como a mesma conta — isso não barra.)
+- **Arquivo repetido** — este mesmo arquivo já foi importado em outra conta.
+- **Lançamentos de outra conta** — boa parte dos movimentos do arquivo já existe em outra conta (pega o PDF do CA e o OFX que não informa a conta).
+
+Para insistir (banco trocou o número da conta, por exemplo) é preciso marcar **"Conferi e o arquivo é mesmo desta conta"** e clicar em **Importar mesmo assim** — o padrão da janela é cancelar.
+
+## Arquivos importados nesta conta (desfazer importação)
+
+Card recolhível no rodapé da tela: lista os arquivos já importados naquela conta, com data, período, quantos lançamentos trouxe e **de qual conta bancária o arquivo era**.
+
+- Botão **Remover** apaga do extrato **os lançamentos que aquele arquivo trouxe** — é o conserto de "importei o arquivo errado".
+- Só funciona **enquanto nenhuma linha daquele arquivo tiver sido conciliada, ignorada ou marcada como transferência**; se já houver, o card mostra "N já conciliado(s)" e o sistema recusa a remoção, pedindo para **Desfazer** essas linhas primeiro.
+- **Nenhuma baixa, despesa ou pagamento do sistema é apagado** — sai só a linha do extrato.
 3. Clicar **"Conciliar automático"** — fecha sozinho todo lançamento com **exatamente uma** baixa já registrada de mesmo valor (±R$ 0,01) e data próxima (±3 dias) na mesma conta. (O automático **não** cria baixa em boleto aberto — isso sempre pede um clique seu no Conciliar da linha.)
    - **Conta do Asaas (desde 07/2026):** os créditos "Cobrança recebida" trazem o código da cobrança (`pay_...`), e o automático usa esse código para achar a baixa **exata** do boleto/PIX — funciona mesmo quando: o cliente pagou **com juros/multa** (a diferença fica registrada no grupo como "Juros/multa recebidos", aceita até 10% do crédito); o dinheiro caiu **mais de 3 dias** depois do pagamento (fim de semana); ou há **dois boletos de mesmo valor** no mesmo dia (cada código acha o seu). Crédito MENOR que a baixa ou juros acima do teto continuam pendentes para análise manual.
 4. Revisar os pendentes: **Conciliar** quando a sugestão está certa; **Buscar…** para escolher manualmente.

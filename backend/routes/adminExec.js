@@ -1920,6 +1920,66 @@ async function _resumoImportacaoExtrato(importacaoId) {
     };
 }
 
+// GET /api/admin-exec/diag-trava-extrato?conta=<uuid>&bankId=756&acctId=12345-6
+// SOMENTE LEITURA. Roda a trava de "extrato na conta errada" com uma identidade de
+// arquivo fictícia, sem importar nada — serve para conferir, em produção, o que a
+// tela responderia a um arquivo daquele banco/conta. Sem bankId/acctId, mostra só a
+// identidade que cada conta já aprendeu.
+router.get('/diag-trava-extrato', async (req, res) => {
+    try {
+        const conciliacaoService = require('../services/conciliacaoBancariaService');
+        const conta = String(req.query.conta || '').trim();
+
+        const aprendidas = await prisma.extratoImportacao.findMany({
+            where: { OR: [{ bankId: { not: null } }, { acctId: { not: null } }] },
+            select: { contaFinanceiraCaId: true, bankId: true, acctId: true, orgArquivo: true, nomeArquivo: true, criadoEm: true },
+            orderBy: { criadoEm: 'desc' },
+            take: 50
+        });
+        const contas = await prisma.contaFinanceira.findMany({ select: { id: true, nomeBanco: true } });
+        const nomePorId = new Map(contas.map((c) => [c.id, c.nomeBanco]));
+        const identidadesConhecidas = aprendidas.map((a) => ({
+            conta: nomePorId.get(a.contaFinanceiraCaId) || a.contaFinanceiraCaId,
+            arquivo: a.nomeArquivo,
+            identidade: conciliacaoService.rotuloIdentidade({ bankId: a.bankId, acctId: a.acctId, org: a.orgArquivo }),
+            chave: conciliacaoService.chaveIdentidade(a)
+        }));
+
+        if (!conta) {
+            return res.json({
+                observacao: 'Cada conta aprende sua identidade na PRIMEIRA importação feita depois de 30/07/2026. Passe ?conta=<uuid>&bankId=&acctId= para simular um arquivo.',
+                identidadesConhecidas
+            });
+        }
+
+        const identidade = (req.query.bankId || req.query.acctId)
+            ? {
+                bankId: req.query.bankId ? String(req.query.bankId).toUpperCase() : null,
+                acctId: req.query.acctId ? String(req.query.acctId).toUpperCase() : null,
+                org: req.query.org ? String(req.query.org).toUpperCase() : null
+            }
+            : null;
+        const fitIds = String(req.query.fitIds || '').split(',').map((s) => s.trim()).filter(Boolean);
+
+        const r = await conciliacaoService.conferirArquivoDaConta({
+            contaFinanceiraCaId: conta,
+            identidade,
+            hashArquivo: req.query.hash ? String(req.query.hash) : null,
+            fitIds
+        });
+        res.json({
+            contaTestada: { id: conta, nome: nomePorId.get(conta) || null },
+            identidadeSimulada: conciliacaoService.rotuloIdentidade(identidade),
+            resultado: r.bloqueios.length === 0 ? 'PASSARIA (nada barra este arquivo)' : 'SERIA BLOQUEADO',
+            bloqueios: r.bloqueios,
+            contaSugerida: r.contaSugerida,
+            identidadesConhecidas
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, erro: e.message, stack: (e.stack || '').split('\n').slice(0, 12) });
+    }
+});
+
 // GET /api/admin-exec/diag-extrato-importacao?id=<uuid> — SOMENTE LEITURA: o resumo acima.
 // Sem ?id, lista as importações de uma conta: ?conta=<uuid>.
 router.get('/diag-extrato-importacao', async (req, res) => {
