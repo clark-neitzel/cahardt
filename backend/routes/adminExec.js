@@ -6596,4 +6596,192 @@ router.post('/corrigir-boleto-vencimento', async (req, res) => {
     }
 });
 
+// ---------------------------------------------------------------------------
+// TRAVA-ZERO DO ESTOQUE (correção 07/2026)
+// De 03/04/2026 (criação do estoque local, commit 6a7c16e8) até 31/07/2026 o
+// ajuste manual travava o saldo em zero (Math.max(0, ...)); entre 03/04 e
+// 14/04 (fe7a8d32) as saídas de pedido também. O lançamento ficava gravado no
+// histórico com estoqueDepois segurado no zero, mas a diferença nunca saía do
+// saldo — o estoque ficou MAIOR do que o real nesses produtos.
+//
+// Detecção exata, sem depender de data: toda movimentação grava estoqueAntes e
+// estoqueDepois, e depois deveria ser antes ± quantidade. Quando não bate, a
+// diferença é exatamente o que a trava engoliu (nenhum outro fluxo grava
+// antes/depois inconsistente — conferido em todos os call sites em 07/2026).
+// Um INVENTARIO (contagem física zera a discussão: o saldo vira o contado) ou
+// uma correção já aplicada por esta rotina ([correcao-trava-zero]) descartam
+// tudo que veio antes — só conta o engolido DEPOIS do último desses marcos.
+
+const TAG_CORRECAO_TRAVA_ZERO = '[correcao-trava-zero]';
+
+async function analisarTravaZeroEstoque() {
+    const movs = await prisma.movimentacaoEstoque.findMany({
+        orderBy: { createdAt: 'asc' },
+        select: {
+            id: true, produtoId: true, tipo: true, quantidade: true, motivo: true,
+            observacao: true, estoqueAntes: true, estoqueDepois: true, createdAt: true
+        }
+    });
+
+    const porProduto = new Map();
+    for (const mv of movs) {
+        let st = porProduto.get(mv.produtoId);
+        if (!st) { st = { lancamentos: [], ultimoMarco: null }; porProduto.set(mv.produtoId, st); }
+
+        // Marco de reset: inventário físico ou correção anterior desta rotina
+        if (mv.motivo === 'INVENTARIO' || (mv.observacao || '').includes(TAG_CORRECAO_TRAVA_ZERO)) {
+            st.lancamentos = [];
+            st.ultimoMarco = { motivo: mv.motivo, data: mv.createdAt };
+            continue;
+        }
+
+        const q = parseFloat(mv.quantidade || 0);
+        const antes = parseFloat(mv.estoqueAntes || 0);
+        const depois = parseFloat(mv.estoqueDepois || 0);
+        const esperado = mv.tipo === 'ENTRADA' ? antes + q : antes - q;
+        const engolido = Math.round((depois - esperado) * 1000) / 1000;
+        if (Math.abs(engolido) < 0.001) continue;
+
+        st.lancamentos.push({
+            movId: mv.id, data: mv.createdAt, tipo: mv.tipo, motivo: mv.motivo,
+            observacao: mv.observacao, quantidade: q,
+            estoqueAntes: antes, estoqueDepois: depois, engolido
+        });
+    }
+
+    const afetados = [];
+    for (const [produtoId, st] of porProduto) {
+        if (st.lancamentos.length === 0) continue;
+        const engolido = Math.round(st.lancamentos.reduce((s, l) => s + l.engolido, 0) * 1000) / 1000;
+        if (Math.abs(engolido) < 0.001) continue;
+        afetados.push({ produtoId, engolido, ultimoMarco: st.ultimoMarco, lancamentos: st.lancamentos });
+    }
+    if (afetados.length === 0) return [];
+
+    const produtos = await prisma.produto.findMany({
+        where: { id: { in: afetados.map(a => a.produtoId) } },
+        select: {
+            id: true, codigo: true, nome: true, unidade: true, categoria: true,
+            ativo: true, estoqueTotal: true, estoqueReservado: true, estoqueDisponivel: true
+        }
+    });
+    const pMap = new Map(produtos.map(p => [p.id, p]));
+
+    return afetados.map(a => {
+        const p = pMap.get(a.produtoId);
+        const saldoAtual = parseFloat(p?.estoqueTotal || 0);
+        const saldoCorrigido = Math.round((saldoAtual - a.engolido) * 1000) / 1000;
+        return {
+            produtoId: a.produtoId,
+            codigo: p?.codigo || null,
+            nome: p?.nome || '(produto não encontrado)',
+            unidade: p?.unidade || 'un',
+            categoria: p?.categoria || null,
+            ativo: p?.ativo ?? null,
+            saldoAtual,
+            engolido: a.engolido,
+            saldoCorrigido,
+            ficaNegativo: saldoCorrigido < 0,
+            ultimoMarco: a.ultimoMarco,
+            lancamentos: a.lancamentos
+        };
+    }).sort((x, y) => y.engolido - x.engolido);
+}
+
+// GET /api/admin-exec/estoque-trava-zero
+// Relatório: produtos cujo saldo ficou inflado pela trava do zero, com cada
+// lançamento engolido (data, motivo, quanto), saldo atual e saldo corrigido
+// proposto (pode ficar negativo — é o esperado para venda autorizada sem saldo).
+// Só leitura, não mexe em nada.
+router.get('/estoque-trava-zero', async (req, res) => {
+    try {
+        const produtos = await analisarTravaZeroEstoque();
+        res.json({
+            ok: true,
+            produtosAfetados: produtos.length,
+            totalEngolido: Math.round(produtos.reduce((s, p) => s + p.engolido, 0) * 1000) / 1000,
+            comoCorrigir: 'POST /api/admin-exec/estoque-trava-zero/corrigir com body {"todos":true} ou {"produtoIds":["id1","id2"]}',
+            produtos
+        });
+    } catch (e) {
+        console.error('[admin-exec] estoque-trava-zero:', e.message);
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// POST /api/admin-exec/estoque-trava-zero/corrigir
+// Aplica a correção: para cada produto, registra UMA saída AJUSTE_MANUAL com o
+// total engolido (marcada com [correcao-trava-zero]) e atualiza o saldo — que
+// pode ficar negativo. Idempotente: a marca vira "marco" na análise, então
+// rodar de novo encontra 0 e não mexe. Uma transação curta por produto (banco
+// compartilhado lento); se parar no meio, rodar de novo continua de onde parou.
+// Body: { todos: true } ou { produtoIds: [...] }
+router.post('/estoque-trava-zero/corrigir', async (req, res) => {
+    try {
+        const { todos, produtoIds } = req.body || {};
+        if (todos !== true && !Array.isArray(produtoIds)) {
+            return res.status(400).json({ error: 'Envie { "todos": true } ou { "produtoIds": ["..."] }.' });
+        }
+
+        const analise = await analisarTravaZeroEstoque();
+        const alvo = todos === true ? analise : analise.filter(p => produtoIds.includes(p.produtoId));
+
+        const aplicadas = [];
+        const falhas = [];
+        for (const p of alvo) {
+            if (p.engolido <= 0) {
+                // Trava só segura o saldo pra CIMA — engolido negativo indica algo fora do padrão
+                falhas.push({ produtoId: p.produtoId, nome: p.nome, erro: `Engolido não positivo (${p.engolido}) — conferir manualmente.` });
+                continue;
+            }
+            try {
+                const r = await prisma.$transaction(async (tx) => {
+                    const atual = await tx.produto.findUnique({
+                        where: { id: p.produtoId },
+                        select: { estoqueTotal: true }
+                    });
+                    const antes = parseFloat(atual?.estoqueTotal || 0);
+                    const depois = Math.round((antes - p.engolido) * 1000) / 1000;
+
+                    await tx.produto.update({
+                        where: { id: p.produtoId },
+                        data: { estoqueTotal: depois, estoqueDisponivel: depois }
+                    });
+
+                    await tx.movimentacaoEstoque.create({
+                        data: {
+                            produtoId: p.produtoId,
+                            tipo: 'SAIDA',
+                            quantidade: p.engolido,
+                            motivo: 'AJUSTE_MANUAL',
+                            observacao: `${TAG_CORRECAO_TRAVA_ZERO} Correção de ${p.lancamentos.length} lançamento(s) que a trava do zero engoliu (bug 03/04–31/07/2026)`,
+                            estoqueAntes: antes,
+                            estoqueDepois: depois,
+                            sincCA: false,
+                            erroCA: null
+                        }
+                    });
+
+                    await estoqueService.recalcularEstoqueProduto(p.produtoId, tx);
+                    return { antes, depois };
+                }, { timeout: 20000, maxWait: 10000 });
+
+                aplicadas.push({
+                    produtoId: p.produtoId, codigo: p.codigo, nome: p.nome,
+                    engolido: p.engolido, saldoAntes: r.antes, saldoDepois: r.depois
+                });
+            } catch (errItem) {
+                console.error(`[admin-exec] estoque-trava-zero/corrigir — falha em ${p.nome}:`, errItem.message);
+                falhas.push({ produtoId: p.produtoId, nome: p.nome, erro: errItem.message });
+            }
+        }
+
+        console.log(`[admin-exec] estoque-trava-zero/corrigir: ${aplicadas.length} produto(s) corrigido(s), ${falhas.length} falha(s).`);
+        res.json({ ok: falhas.length === 0, corrigidos: aplicadas.length, aplicadas, falhas });
+    } catch (e) {
+        console.error('[admin-exec] estoque-trava-zero/corrigir:', e.message);
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;
