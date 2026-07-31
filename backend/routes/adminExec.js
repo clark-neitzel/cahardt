@@ -1959,7 +1959,18 @@ router.get('/diag-trava-extrato', async (req, res) => {
                 org: req.query.org ? String(req.query.org).toUpperCase() : null
             }
             : null;
-        const fitIds = String(req.query.fitIds || '').split(',').map((s) => s.trim()).filter(Boolean);
+        let fitIds = String(req.query.fitIds || '').split(',').map((s) => s.trim()).filter(Boolean);
+        // ?fitsDe=<contaId>&n=20 — simula um arquivo com lançamentos REAIS de outra conta
+        // (é assim que se confere, sem importar nada, se a 3ª trava pegaria o arquivo trocado).
+        if (req.query.fitsDe) {
+            const amostra = await prisma.extratoLancamento.findMany({
+                where: { contaFinanceiraCaId: String(req.query.fitsDe) },
+                select: { fitId: true },
+                orderBy: { data: 'desc' },
+                take: Math.min(200, Number(req.query.n) || 20)
+            });
+            fitIds = amostra.map((a) => a.fitId);
+        }
 
         const r = await conciliacaoService.conferirArquivoDaConta({
             contaFinanceiraCaId: conta,
