@@ -89,13 +89,11 @@ const ListaPedidos = () => {
     const [loadingMais, setLoadingMais] = useState(false);
     const [loading, setLoading] = useState(true);
     const [selectedPedido, setSelectedPedido] = useState(null);
-    const [abaAtiva, setAbaAtiva] = useState(() => {
-        return localStorage.getItem('pedidos_aba_ativa') || 'pedidos';
-    }); // 'pedidos' | 'especiais' | 'bonificacao' | 'amostras'
-
-    useEffect(() => {
-        localStorage.setItem('pedidos_aba_ativa', abaAtiva);
-    }, [abaAtiva]);
+    // 'pedidos' | 'especiais' | 'bonificacao' | 'amostras' | 'devolucoes' — lembrada POR USUÁRIO
+    // (antes ficava na chave global 'pedidos_aba_ativa', compartilhada por quem usasse o mesmo aparelho;
+    //  ela ainda é lida como padrão inicial para ninguém perder a aba em que estava na migração)
+    const [abaAtiva, setAbaAtiva] = useFiltroSalvo('lista-pedidos:aba',
+        localStorage.getItem('pedidos_aba_ativa') || 'pedidos');
 
     // Se chegou vindo de um novo pedido salvo, abre a aba correta e destaca
     useEffect(() => {
@@ -122,7 +120,9 @@ const ListaPedidos = () => {
     const [loadingAmostras, setLoadingAmostras] = useState(false);
     const [expandedAmostra, setExpandedAmostra] = useState(null);
     const [todosVendedores, setTodosVendedores] = useState([]);
-    const [showFilters, setShowFilters] = useState(false);
+    // Painel de filtros avançados lembrado por usuário: quem deixou aberto ao sair volta
+    // vendo os filtros que ficaram aplicados (sem isso parecia que a escolha se perdia)
+    const [showFilters, setShowFilters] = useFiltroSalvo('lista-pedidos:painelFiltros', false);
     const [filtroStatus, setFiltroStatus] = useFiltroSalvo('lista-pedidos:filtroStatus', 'TODOS');
 
     const podeAprovar = user?.permissoes?.Pode_Aprovar_Especial || user?.permissoes?.admin;

@@ -1,5 +1,11 @@
 [
   {
+    "slug": "pedidos-filtros",
+    "titulo": "Pedidos lembra seus filtros",
+    "resumo": "Aba, status, período, vendedor, motorista e até o painel de filtros: a tela de Pedidos agora volta exatamente como cada usuário deixou — sem precisar salvar nada.",
+    "data": "2026-07-31"
+  },
+  {
     "slug": "estoque-negativo",
     "titulo": "Estoque negativo no ajuste de saída",
     "resumo": "Saiu produto que ainda não tinha no sistema? A saída manual agora deixa o saldo negativo de verdade — o débito fica visível e a entrada da produção compensa sozinha.",
