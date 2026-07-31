@@ -143,7 +143,10 @@ const estoqueService = {
 
         const delta = tipo === 'ENTRADA' ? Math.abs(quantidade) : -Math.abs(quantidade);
         const totalAntes = parseFloat(produto.estoqueTotal || 0);
-        const totalDepois = Math.max(0, totalAntes + delta);
+        // Saída pode deixar o estoque NEGATIVO (igual ao faturamento de pedido): venda
+        // autorizada sem saldo precisa aparecer como débito, e a produção/entrada
+        // seguinte compensa o negativo. Não travar em zero.
+        const totalDepois = totalAntes + delta;
 
         const result = await prisma.$transaction(async (tx) => {
             // Atualiza estoqueTotal; estoqueDisponivel parte do mesmo valor e será corrigido

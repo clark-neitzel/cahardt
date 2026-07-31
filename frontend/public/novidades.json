@@ -1,5 +1,11 @@
 [
   {
+    "slug": "estoque-negativo",
+    "titulo": "Estoque negativo no ajuste de saída",
+    "resumo": "Saiu produto que ainda não tinha no sistema? A saída manual agora deixa o saldo negativo de verdade — o débito fica visível e a entrada da produção compensa sozinha.",
+    "data": "2026-07-31"
+  },
+  {
     "slug": "endereco-maps",
     "titulo": "Endereço do cliente direto no Maps",
     "resumo": "Na ficha do cliente, botões para copiar o endereço e abrir direto no Google Maps. E ao Organizar Rota, cada card de entrega ganha o selo GPS × endereço: verde confere, âmbar vale conferir, vermelho o ponto pode estar errado.",

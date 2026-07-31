@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Estoque pode ficar negativo no ajuste</title>
+<meta property="og:title" content="📉 Novidade: Estoque negativo no ajuste de saída">
+<meta property="og:description" content="A saída manual agora deixa o estoque negativo quando não há saldo — o débito fica visível e a produção seguinte compensa sozinha.">
+<meta property="og:type" content="website">
+<style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+        font-family: 'Manrope', -apple-system, 'SF Pro Text', sans-serif;
+        background: #f2f0eb;
+        color: rgba(0,0,0,0.87);
+        letter-spacing: -0.01em;
+        line-height: 1.55;
+    }
+    .hero {
+        background: #1E3932;
+        color: #fff;
+        padding: 40px 20px 48px;
+        text-align: center;
+    }
+    .hero .chip {
+        display: inline-block;
+        background: rgba(255,255,255,0.14);
+        border: 1px solid rgba(255,255,255,0.25);
+        border-radius: 999px;
+        padding: 5px 14px;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        margin-bottom: 16px;
+    }
+    .hero h1 { font-size: 26px; font-weight: 800; margin-bottom: 10px; }
+    .hero p { font-size: 15px; opacity: 0.85; max-width: 460px; margin: 0 auto; }
+    .wrap { max-width: 560px; margin: 0 auto; padding: 20px 16px 48px; }
+
+    /* Mock da tela */
+    .mock {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        padding: 18px;
+        margin: -28px auto 12px;
+        position: relative;
+    }
+    .mock .titulo { font-size: 13px; font-weight: 800; color: #374151; margin-bottom: 4px; }
+    .mock .sub { font-size: 11px; color: #6b7280; margin-bottom: 14px; }
+    .kpis { display: flex; gap: 8px; margin-bottom: 14px; }
+    .kpi {
+        flex: 1; border: 1px solid #e5e7eb; border-radius: 12px;
+        padding: 10px 8px; text-align: center; position: relative;
+    }
+    .kpi .lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; }
+    .kpi .val { font-size: 20px; font-weight: 800; color: #111827; }
+    .kpi.neg { border-color: #fecaca; background: #fef2f2; }
+    .kpi.neg .val { color: #dc2626; }
+    .botoes { display: flex; gap: 10px; }
+    .botoes .btn {
+        flex: 1; text-align: center; border-radius: 12px; padding: 12px 0;
+        font-size: 14px; font-weight: 800; color: #fff; position: relative;
+    }
+    .btn.saida { background: #ef4444; }
+    .btn.entrada { background: #00754A; }
+    .pin {
+        position: absolute; top: -10px; right: -8px;
+        width: 22px; height: 22px; border-radius: 999px;
+        background: #cba258; color: #fff; font-size: 12px; font-weight: 800;
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+    .legenda { margin-bottom: 24px; }
+    .legenda .item { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: #374151; margin-bottom: 6px; }
+    .legenda .n {
+        flex-shrink: 0; width: 20px; height: 20px; border-radius: 999px;
+        background: #cba258; color: #fff; font-size: 11px; font-weight: 800;
+        display: flex; align-items: center; justify-content: center; margin-top: 1px;
+    }
+
+    h2 { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: #4b5563; margin: 26px 0 10px; }
+    .card {
+        background: #fff; border: 1px solid #e5e7eb; border-radius: 14px;
+        padding: 16px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .card b { color: #006241; }
+    .card p { font-size: 14px; color: #374151; }
+    .passos { counter-reset: p; }
+    .passos .card { display: flex; gap: 12px; align-items: flex-start; }
+    .passos .num {
+        counter-increment: p; flex-shrink: 0;
+        width: 28px; height: 28px; border-radius: 999px;
+        background: #d4e9e2; color: #006241; font-weight: 800; font-size: 14px;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .passos .num::before { content: counter(p); }
+    .rodape { text-align: center; font-size: 12px; color: #9ca3af; margin-top: 32px; }
+</style>
+</head>
+<body>
+    <div class="hero">
+        <div class="chip">✨ Novidade no sistema</div>
+        <h1>📉 Estoque negativo no ajuste de saída</h1>
+        <p>Saiu produto que ainda não tinha no sistema? Agora o estoque fica negativo de verdade — e a produção seguinte compensa sozinha.</p>
+    </div>
+
+    <div class="wrap">
+        <div class="mock">
+            <div class="titulo">7-M-COXINHA AIPIM FRANGO C/30 60GR</div>
+            <div class="sub">4826 · Produto Acabado</div>
+            <div class="kpis">
+                <div class="kpi neg"><div class="lbl">Total</div><div class="val">-1</div><span class="pin">1</span></div>
+                <div class="kpi"><div class="lbl">Reservado</div><div class="val">0</div></div>
+                <div class="kpi neg"><div class="lbl">Disponível</div><div class="val">-1</div></div>
+            </div>
+            <div class="botoes">
+                <div class="btn saida">− Saída<span class="pin">2</span></div>
+                <div class="btn entrada">+ Entrada<span class="pin">3</span></div>
+            </div>
+        </div>
+        <div class="legenda">
+            <div class="item"><span class="n">1</span><span>O saldo agora mostra o <b>número negativo em vermelho</b> quando saiu mais do que tinha — antes ele travava em 0 e a saída "sumia".</span></div>
+            <div class="item"><span class="n">2</span><span><b>− Saída</b> registra o ajuste mesmo com estoque zerado: o débito fica anotado.</span></div>
+            <div class="item"><span class="n">3</span><span><b>+ Entrada</b> (quando a produção ficar pronta) soma em cima do negativo e o saldo volta ao real.</span></div>
+        </div>
+
+        <h2>O que mudou</h2>
+        <div class="card"><p>✅ A <b>saída manual</b> em Estoque → Ajuste agora pode deixar o saldo <b>abaixo de zero</b>. Antes o sistema travava em 0: o lançamento aparecia no histórico, mas o estoque não descia.</p></div>
+        <div class="card"><p>🔁 <b>Compensação automática:</b> estoque em -3 e entraram 10 da produção? O saldo vai direto para 7. Nada precisa ser refeito.</p></div>
+        <div class="card"><p>🧾 Pedido <b>faturado sem saldo</b> já funcionava assim — agora o ajuste manual segue a mesma regra e os números batem.</p></div>
+
+        <h2>Quando usar</h2>
+        <div class="passos">
+            <div class="card"><span class="num"></span><p>Saiu produto <b>com autorização</b> antes de ser produzido ou lançado</p></div>
+            <div class="card"><span class="num"></span><p>Registre a <b>saída</b> normalmente — o saldo fica negativo, mostrando o que está "devendo"</p></div>
+            <div class="card"><span class="num"></span><p>Quando o produto entrar, lance a <b>entrada</b> — o negativo compensa e o saldo fica certo</p></div>
+        </div>
+
+        <div class="card" style="background:#fffbeb; border-color:#fde68a;">
+            <p>💡 <b style="color:#92400e;">Atenção:</b> saldo negativo é um <b>aviso de acerto pendente</b> — significa que falta lançar uma produção ou entrada. Se um produto ficar negativo por muito tempo, vale conferir o que aconteceu.</p>
+        </div>
+
+        <div class="rodape">Sistema Hardt · Estoque · julho/2026</div>
+    </div>
+</body>
+</html>

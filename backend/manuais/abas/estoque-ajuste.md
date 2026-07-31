@@ -44,6 +44,11 @@ No **mobile**, a lista de cards aparece primeiro. Ao clicar em "Escolher", a lis
 6. Clique em **+ Entrada** ou **- Saída**
 7. O estoque é atualizado imediatamente; o card na lista reflete o novo saldo
 
+### Estoque negativo (comportamento esperado)
+- A **saída pode deixar o estoque negativo** — não existe trava em zero
+- Serve para registrar venda/saída autorizada de produto que ainda não foi produzido: o saldo fica negativo (ex.: -3) e, quando a produção entra, a entrada compensa e o saldo volta ao real
+- O mesmo já acontece no faturamento de pedidos: pedido faturado sem saldo também deixa o estoque negativo
+
 ### Ler o "Lançados hoje" nos cards
 - Cada card mostra o saldo líquido do dia: entradas menos saídas
 - Verde com "+" = mais entrou do que saiu hoje
