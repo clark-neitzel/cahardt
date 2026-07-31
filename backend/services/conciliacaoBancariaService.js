@@ -146,6 +146,170 @@ function parseOfx(texto) {
 }
 
 // ─────────────────────────────────────────────────────────────
+// IDENTIDADE DO ARQUIVO — "de qual conta é este extrato?"
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Todo OFX de banco diz de qual conta ele é, no bloco <BANKACCTFROM> (ou
+ * <CCACCTFROM>, cartão): banco (<BANKID>), agência (<BRANCHID>) e conta
+ * (<ACCTID>). O cabeçalho <FI> traz ainda quem gerou o arquivo (<ORG>/<FID>).
+ *
+ * É com isso que se trava a importação na conta errada — sem depender de o
+ * usuário ler o nome do arquivo. Devolve null quando o arquivo não identifica
+ * conta nenhuma (PDF do CA, OFX capado): aí a trava cai nas outras conferências.
+ */
+function identidadeOfx(texto) {
+    if (!texto) return null;
+    const s = String(texto);
+    const acct = (s.match(/<(?:BANK|CC)ACCTFROM>([\s\S]*?)(?:<\/(?:BANK|CC)ACCTFROM>|<BANKTRANLIST>|<STMTTRN>)/i) || [])[1] || '';
+    const fi = (s.match(/<FI>([\s\S]*?)(?:<\/FI>|<\/SONRS>)/i) || [])[1] || '';
+    const norm = (v) => (v ? String(v).trim().replace(/\s+/g, ' ').toUpperCase() : null);
+    const id = {
+        bankId: norm(tagOfx(acct, 'BANKID')),
+        branchId: norm(tagOfx(acct, 'BRANCHID')),
+        acctId: norm(tagOfx(acct, 'ACCTID')),
+        acctType: norm(tagOfx(acct, 'ACCTTYPE')),
+        org: norm(tagOfx(fi, 'ORG')),
+        fid: norm(tagOfx(fi, 'FID'))
+    };
+    return id.bankId || id.acctId || id.org ? id : null;
+}
+
+/**
+ * Chave de comparação de duas identidades. O MESMO banco escreve a conta de
+ * formas diferentes entre exportações ("12345-6", "0012345 6"), então compara-se
+ * só os dígitos, sem zeros à esquerda. Sem banco NEM conta não dá para comparar
+ * (devolve null → a conferência de identidade não opina).
+ */
+function chaveIdentidade(id) {
+    if (!id) return null;
+    const so = (v) => String(v || '').replace(/\D/g, '').replace(/^0+/, '');
+    const banco = so(id.bankId);
+    const conta = so(id.acctId);
+    if (!banco && !conta) return null;
+    return `${banco || '?'}/${conta || '?'}`;
+}
+
+/** Rótulo humano da identidade, para a mensagem de erro ("banco 756 · conta 12345-6"). */
+function rotuloIdentidade(id) {
+    if (!id) return null;
+    const partes = [];
+    if (id.bankId) partes.push(`banco ${id.bankId}`);
+    if (id.branchId) partes.push(`ag. ${id.branchId}`);
+    if (id.acctId) partes.push(`conta ${id.acctId}`);
+    if (!partes.length && id.org) partes.push(id.org);
+    else if (id.org) partes.push(`(${id.org})`);
+    return partes.join(' · ') || null;
+}
+
+const nomeDaConta = async (id) => {
+    if (!id) return null;
+    const c = await prisma.contaFinanceira.findUnique({ where: { id }, select: { nomeBanco: true } }).catch(() => null);
+    return c?.nomeBanco || null;
+};
+
+/**
+ * TRAVA DE CONTA ERRADA — roda antes de gravar qualquer importação.
+ *
+ * Três conferências independentes, da mais forte para a mais fraca:
+ *   1. IDENTIDADE — a conta já recebeu extrato de outra conta bancária? Cada conta
+ *      aprende sua identidade na primeira importação que trouxer as tags do OFX.
+ *   2. ARQUIVO REPETIDO — o mesmo arquivo (byte a byte) já entrou em outra conta.
+ *   3. LANÇAMENTOS REPETIDOS — boa parte dos FITIDs do arquivo já existe em outra
+ *      conta. Pega o caso do OFX sem identidade (PDF do CA) reimportado no lugar errado.
+ *
+ * Devolve `{ bloqueios: [{codigo, mensagem}], contaSugerida }`. Lista vazia = pode gravar.
+ * NUNCA decide sozinho o que apagar: só recusa a gravação (o usuário pode forçar).
+ */
+async function conferirArquivoDaConta({ contaFinanceiraCaId, identidade, hashArquivo, fitIds = [] }) {
+    const bloqueios = [];
+    let contaSugerida = null;
+
+    // 1) Identidade do arquivo × identidade já conhecida da conta
+    const chaveArq = chaveIdentidade(identidade);
+    if (chaveArq) {
+        const anteriores = await prisma.extratoImportacao.findMany({
+            where: { contaFinanceiraCaId, OR: [{ bankId: { not: null } }, { acctId: { not: null } }] },
+            select: { bankId: true, acctId: true, orgArquivo: true, nomeArquivo: true },
+            orderBy: { criadoEm: 'desc' },
+            take: 30
+        });
+        const conhecidas = new Map();
+        for (const a of anteriores) {
+            const k = chaveIdentidade(a);
+            if (k) conhecidas.set(k, a);
+        }
+        if (conhecidas.size > 0 && !conhecidas.has(chaveArq)) {
+            const daConta = rotuloIdentidade([...conhecidas.values()][0]) || 'outra conta';
+            bloqueios.push({
+                codigo: 'IDENTIDADE_DIFERENTE',
+                mensagem: `Este arquivo é de outra conta bancária (${rotuloIdentidade(identidade)}). ` +
+                    `Os extratos já importados aqui são da ${daConta}.`
+            });
+        }
+        // De qual conta do sistema esse arquivo parece ser? (ajuda a apontar a certa)
+        const outras = await prisma.extratoImportacao.findMany({
+            where: { contaFinanceiraCaId: { not: contaFinanceiraCaId }, OR: [{ bankId: { not: null } }, { acctId: { not: null } }] },
+            select: { contaFinanceiraCaId: true, bankId: true, acctId: true },
+            orderBy: { criadoEm: 'desc' },
+            take: 200
+        });
+        const casa = outras.find((o) => chaveIdentidade(o) === chaveArq);
+        if (casa) {
+            contaSugerida = { id: casa.contaFinanceiraCaId, nome: await nomeDaConta(casa.contaFinanceiraCaId) };
+            if (bloqueios.length === 0) {
+                bloqueios.push({
+                    codigo: 'ARQUIVO_DE_OUTRA_CONTA',
+                    mensagem: `Este arquivo (${rotuloIdentidade(identidade)}) já foi importado na conta ` +
+                        `"${contaSugerida.nome || 'outra conta'}" — é o extrato dela, não desta.`
+                });
+            }
+        }
+    }
+
+    // 2) Mesmo arquivo, byte a byte, já importado em outra conta
+    if (hashArquivo) {
+        const igual = await prisma.extratoImportacao.findFirst({
+            where: { hashArquivo, contaFinanceiraCaId: { not: contaFinanceiraCaId } },
+            select: { contaFinanceiraCaId: true, nomeArquivo: true, criadoEm: true },
+            orderBy: { criadoEm: 'desc' }
+        });
+        if (igual) {
+            const nome = await nomeDaConta(igual.contaFinanceiraCaId);
+            if (!contaSugerida) contaSugerida = { id: igual.contaFinanceiraCaId, nome };
+            bloqueios.push({
+                codigo: 'ARQUIVO_JA_IMPORTADO_EM_OUTRA',
+                mensagem: `Este mesmo arquivo já foi importado na conta "${nome || 'outra conta'}" ` +
+                    `em ${new Date(igual.criadoEm).toLocaleDateString('pt-BR')}.`
+            });
+        }
+    }
+
+    // 3) Os lançamentos do arquivo já existem em OUTRA conta
+    const amostra = fitIds.slice(0, 500);
+    if (amostra.length >= 5) {
+        const repetidos = await prisma.extratoLancamento.groupBy({
+            by: ['contaFinanceiraCaId'],
+            where: { fitId: { in: amostra }, contaFinanceiraCaId: { not: contaFinanceiraCaId } },
+            _count: { _all: true }
+        });
+        const limite = Math.max(3, Math.ceil(amostra.length * 0.2));
+        const forte = repetidos.filter((r) => r._count._all >= limite).sort((a, b) => b._count._all - a._count._all)[0];
+        if (forte) {
+            const nome = await nomeDaConta(forte.contaFinanceiraCaId);
+            if (!contaSugerida) contaSugerida = { id: forte.contaFinanceiraCaId, nome };
+            bloqueios.push({
+                codigo: 'LANCAMENTOS_DE_OUTRA_CONTA',
+                mensagem: `${forte._count._all} dos ${amostra.length} lançamentos deste arquivo já estão na conta ` +
+                    `"${nome || 'outra conta'}" — o extrato parece ser de lá.`
+            });
+        }
+    }
+
+    return { bloqueios, contaSugerida };
+}
+
+// ─────────────────────────────────────────────────────────────
 // Matching (função PURA sobre pools já carregados)
 // ─────────────────────────────────────────────────────────────
 
@@ -457,19 +621,21 @@ async function parsePdfExtratoCA(buffer) {
     return { lancamentos, avisos };
 }
 
-async function importarOfx({ contaFinanceiraCaId, nomeArquivo, conteudo, criadoPorId }) {
+async function importarOfx({ contaFinanceiraCaId, nomeArquivo, conteudo, criadoPorId, hashArquivo = null, forcar = false }) {
     const { lancamentos, avisos } = parseOfx(conteudo);
-    return _gravarImportacao({ contaFinanceiraCaId, nomeArquivo, criadoPorId, lancamentos, avisos });
+    const identidade = identidadeOfx(conteudo);
+    return _gravarImportacao({ contaFinanceiraCaId, nomeArquivo, criadoPorId, lancamentos, avisos, identidade, hashArquivo, forcar });
 }
 
 /** Importa o extrato em PDF do Conta Azul (mesma persistência/idempotência do OFX). */
-async function importarPdf({ contaFinanceiraCaId, nomeArquivo, buffer, criadoPorId }) {
+async function importarPdf({ contaFinanceiraCaId, nomeArquivo, buffer, criadoPorId, hashArquivo = null, forcar = false }) {
     const { lancamentos, avisos } = await parsePdfExtratoCA(buffer);
-    return _gravarImportacao({ contaFinanceiraCaId, nomeArquivo, criadoPorId, lancamentos, avisos });
+    // PDF não traz identidade de conta — a trava fica por conta do hash e dos FITIDs repetidos.
+    return _gravarImportacao({ contaFinanceiraCaId, nomeArquivo, criadoPorId, lancamentos, avisos, identidade: null, hashArquivo, forcar });
 }
 
 // Persistência comum (OFX e PDF): dedupe por fitId, atualização de descrição e registro da importação.
-async function _gravarImportacao({ contaFinanceiraCaId, nomeArquivo, criadoPorId, lancamentos, avisos }) {
+async function _gravarImportacao({ contaFinanceiraCaId, nomeArquivo, criadoPorId, lancamentos, avisos, identidade = null, hashArquivo = null, forcar = false }) {
     if (lancamentos.length === 0) {
         const motivo = avisos[0] || 'Nenhum lançamento encontrado no arquivo.';
         const err = new Error(motivo);
@@ -478,6 +644,22 @@ async function _gravarImportacao({ contaFinanceiraCaId, nomeArquivo, criadoPorId
     }
 
     const fitIds = lancamentos.map((l) => l.fitId);
+
+    // TRAVA: o arquivo é mesmo desta conta? (só recusa — nunca apaga nada)
+    const conferencia = await conferirArquivoDaConta({ contaFinanceiraCaId, identidade, hashArquivo, fitIds });
+    if (conferencia.bloqueios.length > 0 && !forcar) {
+        const nomeEscolhida = await nomeDaConta(contaFinanceiraCaId);
+        const err = new Error(
+            `Este extrato não parece ser da conta "${nomeEscolhida || 'selecionada'}". ` +
+            conferencia.bloqueios.map((b) => b.mensagem).join(' ')
+        );
+        err.status = 409;
+        err.bloqueios = conferencia.bloqueios;
+        err.contaSugerida = conferencia.contaSugerida;
+        err.contaEscolhida = { id: contaFinanceiraCaId, nome: nomeEscolhida };
+        throw err;
+    }
+
     const existentes = await prisma.extratoLancamento.findMany({
         where: { contaFinanceiraCaId, fitId: { in: fitIds } },
         select: { id: true, fitId: true, descricao: true, memo: true }
@@ -542,7 +724,13 @@ async function _gravarImportacao({ contaFinanceiraCaId, nomeArquivo, criadoPorId
                 totalArquivo: lancamentos.length,
                 novos: novos.length,
                 duplicados: lancamentos.length - novos.length,
-                criadoPorId: criadoPorId || null
+                criadoPorId: criadoPorId || null,
+                // A conta APRENDE aqui de qual banco/conta ela recebe extrato — é o que
+                // permite recusar o arquivo errado na próxima importação.
+                bankId: identidade?.bankId || null,
+                acctId: identidade?.acctId || null,
+                orgArquivo: identidade?.org || null,
+                hashArquivo: hashArquivo || null
             }
         });
         if (novos.length > 0) {
@@ -588,7 +776,54 @@ async function _gravarImportacao({ contaFinanceiraCaId, nomeArquivo, criadoPorId
         duplicados: lancamentos.length - novos.length,
         atualizados: paraAtualizar.length,
         periodo: { de: datas[0], ate: datas[datas.length - 1] },
+        contaNome: await nomeDaConta(contaFinanceiraCaId),
+        identidade: rotuloIdentidade(identidade),
+        forcado: conferencia.bloqueios.length > 0,
         avisos
+    };
+}
+
+/**
+ * Apaga uma importação inteira — o conserto de "importei o arquivo errado".
+ *
+ * Só remove o que ELA trouxe (lançamentos com este importacaoId) e SÓ se nenhum
+ * deles tiver sido conciliado/ignorado/marcado como transferência: mexer em linha
+ * já conciliada apagaria o trabalho do usuário e deixaria baixa órfã. Nesse caso
+ * recusa e diz para desfazer a conciliação antes.
+ */
+async function removerImportacao({ importacaoId }) {
+    const imp = await prisma.extratoImportacao.findUnique({ where: { id: importacaoId } });
+    if (!imp) throw erro('Importação não encontrada.', 404);
+
+    const lancs = await prisma.extratoLancamento.findMany({
+        where: { importacaoId }, select: { id: true, status: true }
+    });
+    const presos = lancs.filter((l) => l.status !== 'PENDENTE');
+    if (presos.length > 0) {
+        throw erro(
+            `Esta importação tem ${presos.length} lançamento(s) já conciliado(s) ou ignorado(s). ` +
+            `Desfaça a conciliação deles primeiro (botão "Desfazer" em cada linha) e tente de novo.`
+        );
+    }
+    // PENDENTE mas dentro de um grupo não deveria existir; se existir, para tudo.
+    const ids = lancs.map((l) => l.id);
+    if (ids.length > 0) {
+        const emGrupo = await prisma.conciliacaoGrupoItem.count({ where: { extratoLancamentoId: { in: ids } } });
+        if (emGrupo > 0) throw erro(`${emGrupo} lançamento(s) fazem parte de uma conciliação em grupo. Desfaça o grupo primeiro.`);
+    }
+
+    let apagados = 0;
+    await prisma.$transaction(async (tx) => {
+        const del = await tx.extratoLancamento.deleteMany({ where: { importacaoId } });
+        apagados = del.count;
+        await tx.extratoImportacao.delete({ where: { id: importacaoId } });
+    }, { timeout: 20000, maxWait: 10000 });
+
+    return {
+        message: apagados > 0
+            ? `Importação removida — ${apagados} lançamento(s) saíram do extrato.`
+            : 'Importação removida (ela não tinha trazido nenhum lançamento novo).',
+        apagados
     };
 }
 
@@ -2568,15 +2803,39 @@ async function listarImportacoes(contaFinanceiraCaId) {
         orderBy: { criadoEm: 'desc' },
         take: 20
     });
-    return imps.map((i) => ({
-        id: i.id,
-        nomeArquivo: i.nomeArquivo,
-        periodo: { de: i.dataInicio ? ymd(i.dataInicio) : null, ate: i.dataFim ? ymd(i.dataFim) : null },
-        totalArquivo: i.totalArquivo,
-        novos: i.novos,
-        duplicados: i.duplicados,
-        criadoEm: i.criadoEm
-    }));
+    // Quantos lançamentos de cada importação ainda estão pendentes: se TODOS estiverem,
+    // dá para remover a importação pela tela (conserto de "importei o arquivo errado").
+    const ids = imps.map((i) => i.id);
+    const porImportacao = new Map();
+    if (ids.length > 0) {
+        const grupos = await prisma.extratoLancamento.groupBy({
+            by: ['importacaoId', 'status'],
+            where: { importacaoId: { in: ids } },
+            _count: { _all: true }
+        });
+        for (const g of grupos) {
+            const atual = porImportacao.get(g.importacaoId) || { total: 0, presos: 0 };
+            atual.total += g._count._all;
+            if (g.status !== 'PENDENTE') atual.presos += g._count._all;
+            porImportacao.set(g.importacaoId, atual);
+        }
+    }
+    return imps.map((i) => {
+        const c = porImportacao.get(i.id) || { total: 0, presos: 0 };
+        return {
+            id: i.id,
+            nomeArquivo: i.nomeArquivo,
+            periodo: { de: i.dataInicio ? ymd(i.dataInicio) : null, ate: i.dataFim ? ymd(i.dataFim) : null },
+            totalArquivo: i.totalArquivo,
+            novos: i.novos,
+            duplicados: i.duplicados,
+            criadoEm: i.criadoEm,
+            identidade: rotuloIdentidade({ bankId: i.bankId, acctId: i.acctId, org: i.orgArquivo }),
+            lancamentosNoExtrato: c.total,
+            conciliados: c.presos,
+            podeRemover: c.presos === 0
+        };
+    });
 }
 
 module.exports = {
@@ -2595,6 +2854,8 @@ module.exports = {
     desfazer,
     desconciliarPorBaixa,
     listarImportacoes,
+    removerImportacao,
+    conferirArquivoDaConta,
     criarDespesaDoLancamento,
     criarDespesasLoteEConciliar,
     opcoesDespesa,
@@ -2605,6 +2866,9 @@ module.exports = {
     // puras (testáveis offline)
     decodificarOfx,
     parseOfx,
+    identidadeOfx,
+    chaveIdentidade,
+    rotuloIdentidade,
     candidatosPara,
     validarSomaGrupo
 };

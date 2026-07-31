@@ -2,14 +2,22 @@ import api from './api';
 
 // Conciliação bancária — extrato OFX × baixas do app
 const conciliacaoBancariaService = {
-    // Sobe o arquivo OFX. Retorna { message, novos, duplicados, totalArquivo, periodo }
-    importar: async (contaFinanceiraCaId, arquivo) => {
+    // Sobe o arquivo OFX. Retorna { message, novos, duplicados, totalArquivo, periodo }.
+    // Se o arquivo for de OUTRA conta bancária, o backend recusa com 409 + { bloqueios,
+    // contaSugerida } e NADA é gravado; forcar=true repete a importação assumindo o risco.
+    importar: async (contaFinanceiraCaId, arquivo, forcar = false) => {
         const form = new FormData();
         form.append('contaFinanceiraCaId', contaFinanceiraCaId);
         form.append('arquivo', arquivo);
+        if (forcar) form.append('forcar', '1');
         const response = await api.post('/conciliacao-bancaria/importar', form, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
+        return response.data;
+    },
+    // Desfaz uma importação inteira (só enquanto nada dela foi conciliado)
+    removerImportacao: async (importacaoId) => {
+        const response = await api.delete(`/conciliacao-bancaria/importacoes/${importacaoId}`);
         return response.data;
     },
     // { resumo, lancamentos: [{id, data, valor, tipo, descricao, status, sugestoes?/conciliadoCom?}], soNoApp }

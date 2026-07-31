@@ -5,6 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const multer = require('multer');
 const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
@@ -54,13 +55,21 @@ router.post('/importar', verificarAuth, checkAcesso, uploadOfx.single('arquivo')
         if (!contaFinanceiraCaId) return res.status(400).json({ error: 'Escolha o banco/caixa do extrato.' });
         if (!req.file?.buffer) return res.status(400).json({ error: 'Envie o arquivo OFX ou PDF do extrato.' });
 
+        // "forcar" só chega quando o usuário confirmou, na tela, que quer importar mesmo
+        // o arquivo tendo sido recusado pela trava de conta errada.
+        const forcar = req.body.forcar === '1' || req.body.forcar === 'true' || req.body.forcar === true;
+        // Impressão digital do arquivo: pega o MESMO arquivo subindo em duas contas.
+        const hashArquivo = crypto.createHash('sha256').update(req.file.buffer).digest('hex');
+
         const ehPdf = req.file.buffer.slice(0, 5).toString('latin1').startsWith('%PDF');
         const resultado = ehPdf
             ? await conciliacaoService.importarPdf({
                 contaFinanceiraCaId,
                 nomeArquivo: req.file.originalname || 'extrato.pdf',
                 buffer: req.file.buffer,
-                criadoPorId: req.user.id
+                criadoPorId: req.user.id,
+                hashArquivo,
+                forcar
             })
             : await conciliacaoService.importarOfx({
                 contaFinanceiraCaId,
@@ -68,13 +77,27 @@ router.post('/importar', verificarAuth, checkAcesso, uploadOfx.single('arquivo')
                 // OFX de banco brasileiro vem em Latin1 — decodificar às cegas em UTF-8
                 // corrompia os acentos ("D�B.TIT.COMPE").
                 conteudo: conciliacaoService.decodificarOfx(req.file.buffer),
-                criadoPorId: req.user.id
+                criadoPorId: req.user.id,
+                hashArquivo,
+                forcar
             });
         const partes = [`${resultado.novos} lançamento(s) novo(s) importado(s)`];
         if (resultado.duplicados) partes.push(`${resultado.duplicados} já existiam`);
         if (resultado.atualizados) partes.push(`${resultado.atualizados} tiveram a descrição corrigida`);
-        res.json({ message: `${partes.join(', ')}.`, ...resultado });
+        const onde = resultado.contaNome ? ` na conta ${resultado.contaNome}` : '';
+        res.json({ message: `${partes.join(', ')}${onde}.`, ...resultado });
     } catch (error) {
+        // 409 = trava de conta errada. Devolve o detalhe para a tela explicar e oferecer
+        // "importar mesmo assim" (nada foi gravado).
+        if (error.status === 409 && error.bloqueios) {
+            return res.status(409).json({
+                error: error.message,
+                bloqueios: error.bloqueios,
+                contaSugerida: error.contaSugerida || null,
+                contaEscolhida: error.contaEscolhida || null,
+                podeForcar: true
+            });
+        }
         console.error('Erro ao importar extrato:', error);
         res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao importar o extrato.' });
     }
@@ -430,6 +453,19 @@ router.get('/importacoes', verificarAuth, checkAcesso, async (req, res) => {
     } catch (error) {
         console.error('Erro ao listar importações:', error);
         res.status(500).json({ error: 'Erro ao listar as importações.' });
+    }
+});
+
+// ── DELETE /importacoes/:id — desfaz uma importação inteira ──
+// Conserto de "importei o arquivo errado": tira do extrato os lançamentos que ESTA
+// importação trouxe. Só funciona enquanto nenhum deles foi conciliado/ignorado.
+router.delete('/importacoes/:id', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const r = await conciliacaoService.removerImportacao({ importacaoId: req.params.id });
+        res.json(r);
+    } catch (error) {
+        console.error('Erro ao remover importação:', error);
+        res.status(error.status || 500).json({ error: error.status ? error.message : 'Erro ao remover a importação.' });
     }
 });
 

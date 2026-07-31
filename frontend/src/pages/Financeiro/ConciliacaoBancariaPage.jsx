@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import conciliacaoService from '../../services/conciliacaoBancariaService';
 import contasReceberService from '../../services/contasReceberService';
 import SelectBusca from '../../components/SelectBusca';
-import { Landmark, Loader2, RefreshCw, Upload, Wand2, Check, X, Undo2, ChevronDown, ChevronUp, Search, Download, ArrowLeftRight } from 'lucide-react';
+import { Landmark, Loader2, RefreshCw, Upload, Wand2, Check, X, Undo2, ChevronDown, ChevronUp, Search, Download, ArrowLeftRight, AlertTriangle, FileText, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
@@ -1041,6 +1041,184 @@ const DespesaLoteModal = ({ lancamentos, onClose, onSuccess }) => {
     );
 };
 
+/**
+ * TRAVA DE CONTA ERRADA — o backend recusou o arquivo (HTTP 409) porque ele é de
+ * outra conta bancária. Nada foi gravado. A tela explica o motivo em português,
+ * diz de qual conta o arquivo parece ser e só deixa insistir depois de marcar a
+ * caixinha (importar errado suja o extrato inteiro — foi o que aconteceu em 07/2026).
+ */
+const BloqueioImportacaoModal = ({ info, onCancelar, onForcar, importando }) => {
+    const [ciente, setCiente] = useState(false);
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 p-0 md:p-4">
+            <div className="bg-white rounded-t-2xl md:rounded-2xl w-full md:max-w-lg max-h-[90vh] overflow-y-auto">
+                <div className="flex items-start gap-3 p-5 border-b border-gray-100">
+                    <div className="bg-red-100 p-2 rounded-lg shrink-0">
+                        <AlertTriangle className="h-5 w-5 text-red-600" />
+                    </div>
+                    <div className="min-w-0">
+                        <h3 className="font-bold text-gray-900">Este extrato parece ser de outra conta</h3>
+                        <p className="text-sm text-gray-600 mt-0.5">
+                            Nada foi importado. Confira a conta antes de continuar.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="p-5 space-y-4">
+                    <div className="flex items-center gap-3 text-sm">
+                        <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Arquivo</div>
+                            <div className="font-medium text-gray-900 truncate">{info.nomeArquivo}</div>
+                        </div>
+                        <ArrowLeftRight className="h-4 w-4 text-gray-400 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Conta escolhida</div>
+                            <div className="font-medium text-gray-900 truncate">{info.contaEscolhida?.nome || '—'}</div>
+                        </div>
+                    </div>
+
+                    <ul className="space-y-2">
+                        {(info.bloqueios || []).map((b, i) => (
+                            <li key={i} className="flex gap-2 text-sm text-gray-700 bg-red-50 border border-red-100 rounded-lg p-3">
+                                <X className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                                <span>{b.mensagem}</span>
+                            </li>
+                        ))}
+                    </ul>
+
+                    {info.contaSugerida?.nome && (
+                        <div className="text-sm text-gray-700 bg-mint/40 border border-primary/20 rounded-lg p-3">
+                            Pelo jeito este arquivo é da conta <strong>{info.contaSugerida.nome}</strong>. Cancele,
+                            escolha essa conta no topo da tela e importe de novo.
+                        </div>
+                    )}
+
+                    <label className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={ciente}
+                            onChange={e => setCiente(e.target.checked)}
+                            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                        <span>
+                            Conferi e o arquivo é <strong>mesmo</strong> desta conta — importar assim mesmo.
+                        </span>
+                    </label>
+                </div>
+
+                <div className="flex flex-col-reverse md:flex-row gap-2 md:justify-end p-5 border-t border-gray-100">
+                    <button
+                        onClick={onCancelar}
+                        className="px-4 py-2 min-h-[44px] md:min-h-0 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm"
+                    >
+                        Cancelar (recomendado)
+                    </button>
+                    <button
+                        onClick={onForcar}
+                        disabled={!ciente || importando}
+                        className="px-4 py-2 min-h-[44px] md:min-h-0 bg-red-600 hover:bg-red-700 text-white rounded-full font-semibold text-sm disabled:opacity-40 inline-flex items-center justify-center gap-2"
+                    >
+                        {importando && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Importar mesmo assim
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+/**
+ * Arquivos que já entraram nesta conta. Serve para (1) conferir de qual conta bancária
+ * cada arquivo era e (2) REMOVER uma importação inteira quando o arquivo errado passou —
+ * enquanto nada dela tiver sido conciliado.
+ */
+const ImportacoesCard = ({ contaId, recarregarExtrato }) => {
+    const [aberto, setAberto] = useState(false);
+    const [itens, setItens] = useState(null);
+    const [removendo, setRemovendo] = useState(null);
+
+    const carregar = useCallback(() => {
+        if (!contaId) return;
+        conciliacaoService.importacoes(contaId).then(setItens).catch(() => setItens([]));
+    }, [contaId]);
+
+    useEffect(() => { if (aberto) carregar(); }, [aberto, carregar]);
+
+    const remover = async (imp) => {
+        if (!window.confirm(
+            `Remover a importação "${imp.nomeArquivo}"?\n\n` +
+            `Os ${imp.lancamentosNoExtrato} lançamento(s) que ela trouxe saem do extrato. ` +
+            `Nenhuma baixa do sistema é apagada.`
+        )) return;
+        setRemovendo(imp.id);
+        try {
+            const r = await conciliacaoService.removerImportacao(imp.id);
+            toast.success(r.message);
+            carregar();
+            recarregarExtrato();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao remover a importação');
+        } finally {
+            setRemovendo(null);
+        }
+    };
+
+    return (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+            <button
+                onClick={() => setAberto(a => !a)}
+                className="w-full flex items-center gap-2 px-5 py-3.5 text-left"
+            >
+                <FileText className="h-4 w-4 text-blue-600" />
+                <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Arquivos importados nesta conta</span>
+                {aberto ? <ChevronUp className="h-4 w-4 text-gray-400 ml-auto" /> : <ChevronDown className="h-4 w-4 text-gray-400 ml-auto" />}
+            </button>
+            {aberto && (
+                <div className="border-t border-gray-100 p-5">
+                    {itens === null && <div className="text-sm text-gray-500">Carregando…</div>}
+                    {itens?.length === 0 && <div className="text-sm text-gray-500">Nenhum arquivo importado nesta conta ainda.</div>}
+                    <div className="space-y-3">
+                        {(itens || []).map(i => (
+                            <div key={i.id} className="flex flex-col md:flex-row md:items-center gap-2 border-b border-gray-100 last:border-0 pb-3 last:pb-0">
+                                <div className="min-w-0 flex-1">
+                                    <div className="font-medium text-gray-900 text-sm truncate">{i.nomeArquivo}</div>
+                                    <div className="text-xs text-gray-500">
+                                        {new Date(i.criadoEm).toLocaleString('pt-BR')}
+                                        {i.periodo?.de && ` · ${fmtData(i.periodo.de)} a ${fmtData(i.periodo.ate)}`}
+                                        {` · ${i.novos} novo(s), ${i.duplicados} já existiam`}
+                                    </div>
+                                    {i.identidade && (
+                                        <div className="text-xs text-gray-500 mt-0.5">Conta no arquivo: {i.identidade}</div>
+                                    )}
+                                </div>
+                                {i.podeRemover ? (
+                                    <button
+                                        onClick={() => remover(i)}
+                                        disabled={removendo === i.id}
+                                        className="px-3 py-1.5 min-h-[44px] md:min-h-0 bg-white border border-red-300 text-red-700 hover:bg-red-50 rounded-full text-xs font-medium inline-flex items-center justify-center gap-1.5 disabled:opacity-50 shrink-0"
+                                        title="Tira do extrato os lançamentos que este arquivo trouxe"
+                                    >
+                                        {removendo === i.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                                        Remover
+                                    </button>
+                                ) : (
+                                    <span className="text-xs text-gray-500 shrink-0" title="Desfaça a conciliação dessas linhas para poder remover">
+                                        {i.conciliados} já conciliado(s)
+                                    </span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-4">
+                        Importou o arquivo errado? Remova aqui — só é possível enquanto nenhuma linha daquele
+                        arquivo tiver sido conciliada. Baixas e pagamentos do sistema não são apagados.
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const ConciliacaoBancariaPage = () => {
     const [contas, setContas] = useState([]);
     // Filtros persistidos por usuário/tela; o período segue o padrão FiltroPeriodo
@@ -1062,6 +1240,8 @@ const ConciliacaoBancariaPage = () => {
     const [loteModal, setLoteModal] = useState(false); // modal de lançar despesas em lote
     const [asaasInfo, setAsaasInfo] = useState(null); // { configurado, contaFinanceiraCaId, ultimaSync }
     const [syncAsaas, setSyncAsaas] = useState(false);
+    // Arquivo recusado pela trava de conta errada: { bloqueios, contaSugerida, arquivo… }
+    const [bloqueio, setBloqueio] = useState(null);
     const inputArquivo = useRef(null);
 
     useEffect(() => {
@@ -1094,16 +1274,24 @@ const ConciliacaoBancariaPage = () => {
 
     useEffect(() => { carregar(); }, [carregar]);
 
-    const importar = async (arquivo) => {
+    // forcar = true só depois de o usuário confirmar no modal de bloqueio.
+    const importar = async (arquivo, forcar = false) => {
         if (!arquivo) return;
         setImportando(true);
         try {
-            const r = await conciliacaoService.importar(contaId, arquivo);
+            const r = await conciliacaoService.importar(contaId, arquivo, forcar);
             toast.success(r.message);
             (r.avisos || []).slice(0, 3).forEach(a => toast(a, { icon: '⚠️' }));
+            setBloqueio(null);
             carregar();
         } catch (e) {
-            toast.error(e.response?.data?.error || 'Erro ao importar o arquivo OFX');
+            const d = e.response?.data;
+            // 409 = a trava barrou o arquivo (nada foi gravado): explica no modal
+            if (e.response?.status === 409 && d?.bloqueios) {
+                setBloqueio({ ...d, arquivo, nomeArquivo: arquivo.name });
+            } else {
+                toast.error(d?.error || 'Erro ao importar o arquivo OFX');
+            }
         } finally {
             setImportando(false);
             if (inputArquivo.current) inputArquivo.current.value = '';
@@ -1747,6 +1935,9 @@ const ConciliacaoBancariaPage = () => {
                             </div>
                         )}
 
+                        {/* Histórico de arquivos + conserto do "importei na conta errada" */}
+                        <ImportacoesCard contaId={contaId} recarregarExtrato={carregar} />
+
                         <p className="text-xs text-gray-500">
                             Como funciona: exporte o extrato do banco em OFX — ou, na Conta PJ do Conta Azul (que não gera OFX), o próprio PDF do extrato — e importe aqui (importar de novo não duplica —
                             só atualiza a descrição das linhas que já existiam). O sistema <strong>sugere</strong> quando data e
@@ -1799,6 +1990,16 @@ const ConciliacaoBancariaPage = () => {
                     lancamento={despesaModal}
                     onClose={() => setDespesaModal(null)}
                     onSuccess={() => { setDespesaModal(null); carregar(); }}
+                />
+            )}
+
+            {/* Trava: o arquivo é de outra conta bancária (nada foi gravado) */}
+            {bloqueio && (
+                <BloqueioImportacaoModal
+                    info={bloqueio}
+                    importando={importando}
+                    onCancelar={() => setBloqueio(null)}
+                    onForcar={() => importar(bloqueio.arquivo, true)}
                 />
             )}
 

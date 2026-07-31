@@ -3348,9 +3348,19 @@ model ExtratoImportacao {
   criadoPorId         String?   @map("criado_por_id")
   criadoEm            DateTime  @default(now()) @map("criado_em")
 
+  // IDENTIDADE DO ARQUIVO — de qual banco/conta o extrato é (tags do próprio OFX).
+  // É a TRAVA contra importar na conta errada: cada conta "aprende" sua identidade na
+  // primeira importação e recusa arquivo de outra conta depois disso. (Em 29/07/2026 o
+  // OFX da Conta PJ do Conta Azul entrou no Sicoob e sujou o extrato com 326 linhas.)
+  bankId      String? @map("bank_id") // <BANKID> — código do banco
+  acctId      String? @map("acct_id") // <ACCTID> — número da conta
+  orgArquivo  String? @map("org_arquivo") // <FI><ORG> — quem gerou o arquivo
+  hashArquivo String? @map("hash_arquivo") // SHA-256 do arquivo (mesmo arquivo em 2 contas)
+
   lancamentos ExtratoLancamento[]
 
   @@index([contaFinanceiraCaId])
+  @@index([acctId])
   @@map("extrato_importacoes")
 }
 
