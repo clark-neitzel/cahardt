@@ -1981,6 +1981,7 @@ router.get('/diag-trava-extrato', async (req, res) => {
         res.json({
             contaTestada: { id: conta, nome: nomePorId.get(conta) || null },
             identidadeSimulada: conciliacaoService.rotuloIdentidade(identidade),
+            lancamentosSimulados: fitIds.length,
             resultado: r.bloqueios.length === 0 ? 'PASSARIA (nada barra este arquivo)' : 'SERIA BLOQUEADO',
             bloqueios: r.bloqueios,
             contaSugerida: r.contaSugerida,
