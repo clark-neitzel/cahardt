@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Roda o backup rotativo no Drive DEPOIS de cada commit.
+# Em segundo plano (&) e com "|| true" para NUNCA atrasar nem derrubar o commit.
+RAIZ="$(git rev-parse --show-toplevel 2>/dev/null)"
+[ -n "$RAIZ" ] && [ -f "$RAIZ/scripts/backup-drive.sh" ] && \
+    ( bash "$RAIZ/scripts/backup-drive.sh" >/dev/null 2>&1 || true ) &
+exit 0
