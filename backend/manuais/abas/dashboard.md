@@ -20,8 +20,10 @@ Os painéis antigos (cockpit, painel clássico) foram substituídos por este.
 
 ## Dashboard Gerencial (gestão)
 
-### Filtro de categoria
-No topo há um seletor de **categoria de produto** (padrão: Produto Acabado). Ele filtra as abas Visão Geral, Vendas e a margem por produto. A escolha fica salva por usuário.
+### Navegador de mês e filtro de categoria
+No topo há:
+- **Navegador de mês** (`‹ Julho 2026 ›`): passe entre os meses para ver o dashboard de cada um. No mês atual mostra tudo (inclusive hoje/alertas/caixa); num **mês fechado** a Visão Geral vira "Resultado do mês" (vendas, meta, atingimento, margem, devoluções) e os blocos de *hoje/alertas/saúde do caixa* somem (são do momento). As abas Vendas, Atendimentos e Resultado & Margem passam a mostrar o mês escolhido; a Recorrência é sempre a foto atual da carteira. Abre sempre no mês corrente; navega até 12 meses atrás.
+- **Seletor de categoria** (padrão: Produto Acabado): filtra as abas Visão Geral, Vendas e a margem. A escolha fica salva por usuário.
 
 ### Aba Visão Geral
 - O mês até agora: vendas líquidas, meta da equipe, **projeção de fechamento** (verde quando bate a meta), ticket médio, margem bruta e devoluções
