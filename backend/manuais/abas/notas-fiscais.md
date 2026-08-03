@@ -38,7 +38,7 @@ Quando a nota é **autorizada**, o pedido correspondente vira **FATURADO** na ab
 
 - **"Cliente ... sem CPF/CNPJ"** ou **"cadastro incompleto: falta CEP/rua/número..."** → completar o cadastro do cliente (aba Clientes) e emitir de novo.
 - **"IE do destinatário não informada"** → cliente PJ contribuinte sem inscrição estadual no cadastro; preencher a IE do cliente (ou rodar o sync do CA que puxa a IE) e reemitir.
-- **Nota presa em "Processando"** por mais de alguns minutos → botão "Atualizar"; persistindo, avisar o suporte.
+- **Nota presa em "Processando"** por mais de alguns minutos → botão "Atualizar". Se a SEFAZ estiver lenta, é só aguardar e atualizar de novo. Se a emissão tiver se perdido no caminho (falha de rede ou reinício do servidor durante o envio), o "Atualizar" detecta isso após ~5 minutos e a nota vira **✕ Rejeitada** com a mensagem "A emissão não chegou à Focus NFe... clique em Emitir para tentar novamente" — nesse caso basta reemitir (não duplica). Persistindo o "Processando" mesmo após atualizar, avisar o suporte.
 
 ## XMLs para a contabilidade
 

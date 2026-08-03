@@ -330,7 +330,23 @@ async function consultarAtualizar(notaId) {
     const nota = await prisma.notaFiscalApp.findUnique({ where: { id: notaId } });
     if (!nota) throw new Error('Nota não encontrada.');
     const { httpStatus, data } = await focusNfe.consultar(nota.ref);
-    if (httpStatus === 404) return nota; // ainda não conhecida na Focus
+    if (httpStatus === 404) {
+        // Focus não conhece a ref. Se a nota está "PROCESSANDO" há mais de 5 minutos, o envio
+        // se perdeu (rede/deploy caiu entre gravar PROCESSANDO e o POST chegar na Focus) —
+        // sem este tratamento ela ficava presa para sempre: o 404 não mudava nada e a trava
+        // de idempotência da emissão recusava reemitir. Vira ERRO para liberar a reemissão.
+        const IDADE_MINIMA_MS = 5 * 60 * 1000;
+        if (nota.status === 'PROCESSANDO' && Date.now() - nota.atualizadoEm.getTime() > IDADE_MINIMA_MS) {
+            return prisma.notaFiscalApp.update({
+                where: { id: nota.id },
+                data: {
+                    status: 'ERRO',
+                    mensagemSefaz: 'A emissão não chegou à Focus NFe (falha de rede ou reinício do servidor durante o envio). Nenhuma nota foi gerada — clique em Emitir para tentar novamente.',
+                },
+            });
+        }
+        return nota; // recém-enviada — dar tempo do POST da emissão concluir
+    }
     const atualizada = await prisma.notaFiscalApp.update({ where: { id: nota.id }, data: aplicarRetornoFocus(data) });
     await marcarPedidoFaturado(atualizada);
     return atualizada;
