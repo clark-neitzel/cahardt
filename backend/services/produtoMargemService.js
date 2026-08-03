@@ -112,42 +112,77 @@ const margemPctDe = (preco, custo) => (preco > 0 && custo != null ? Math.round((
  * Lista de produtos com custo/preço/markup/margem + tendência do custo (6 meses)
  * e resumo (KPIs). origem: 'propria' | 'revenda' | 'todos'.
  */
-async function listar({ categoria = null, origem = 'todos', meses = 6 } = {}) {
+async function listar({ categoria = null, origem = 'todos', meses = 6, mes = null } = {}) {
+    const mesAtual = ymNowSP();
+    // Mês selecionado (YYYY-MM). Nunca no futuro; padrão = mês corrente.
+    const mesSel = (typeof mes === 'string' && /^\d{4}-\d{2}$/.test(mes) && mes <= mesAtual) ? mes : mesAtual;
+    const ehAtual = mesSel === mesAtual;
+    const mesesArr = listaMeses(mesSel, meses); // janela da tendência termina no mês selecionado
+
     const produtos = await prisma.produto.findMany({
         where: { ativo: true, ...(categoria ? { categoria } : {}) },
         select: { id: true, codigo: true, nome: true, unidade: true, valorVenda: true, categoria: true }
     });
     const ids = produtos.map((p) => p.id);
-    const custos = await custoAtualDeProdutos(ids);
 
-    // Histórico dos últimos N meses para a mini-tendência (sparkline)
-    const mesAtual = ymNowSP();
-    const mesesArr = listaMeses(mesAtual, meses);
+    // Custo/preço do mês selecionado:
+    //  - mês corrente → custo calculado agora + preço de tabela (valorVenda)
+    //  - mês passado  → custo do snapshot daquele mês + preço PRATICADO (das vendas),
+    //                   caindo para o preço de tabela guardado no snapshot
+    const custoAtual = ehAtual ? await custoAtualDeProdutos(ids) : new Map();
+
     const hist = ids.length ? await prisma.produtoCustoHistorico.findMany({
         where: { produtoId: { in: ids }, mesReferencia: { in: mesesArr } },
-        select: { produtoId: true, mesReferencia: true, custoUnitario: true }
+        select: { produtoId: true, mesReferencia: true, custoUnitario: true, precoVenda: true, fonteCusto: true }
     }) : [];
-    const histPorProduto = new Map();
+    const histWin = new Map(); // produtoId -> Map(mes -> custo)  (para o sparkline)
+    const histSel = new Map(); // produtoId -> { custo, preco, fonte } do mês selecionado
     for (const h of hist) {
-        if (!histPorProduto.has(h.produtoId)) histPorProduto.set(h.produtoId, new Map());
-        histPorProduto.get(h.produtoId).set(h.mesReferencia, h.custoUnitario == null ? null : num(h.custoUnitario));
+        if (!histWin.has(h.produtoId)) histWin.set(h.produtoId, new Map());
+        histWin.get(h.produtoId).set(h.mesReferencia, h.custoUnitario == null ? null : num(h.custoUnitario));
+        if (h.mesReferencia === mesSel) {
+            histSel.set(h.produtoId, {
+                custo: h.custoUnitario == null ? null : num(h.custoUnitario),
+                preco: h.precoVenda == null ? null : round2(h.precoVenda),
+                fonte: h.fonteCusto || 'SEM_CUSTO'
+            });
+        }
+    }
+
+    // Preço praticado do mês selecionado (só faz sentido buscar em mês passado)
+    const praticado = new Map();
+    if (!ehAtual) {
+        const gte = inicioMesSP(mesSel), lte = fimMesSP(mesSel);
+        const vendas = await prisma.$queryRaw`
+            SELECT i.produto_id AS pid,
+                   COALESCE(SUM(i.valor * i.quantidade), 0)::float AS receita,
+                   COALESCE(SUM(i.quantidade), 0)::float AS qtd
+            FROM pedidos p JOIN pedido_itens i ON i.pedido_id = p.id
+            WHERE p.bonificacao = false AND (p.situacao_ca = 'FATURADO' OR p.especial = true)
+              AND p.data_venda >= ${gte} AND p.data_venda <= ${lte}
+            GROUP BY 1`;
+        for (const v of vendas) if (num(v.qtd) > 0) praticado.set(v.pid, round2(num(v.receita) / num(v.qtd)));
     }
 
     const linhas = [];
     for (const p of produtos) {
-        const c = custos.get(p.id) || { custoUnitario: null, fonteCusto: 'SEM_CUSTO' };
-        const org = origemDe(c.fonteCusto);
+        let custo, fonteCusto, preco;
+        if (ehAtual) {
+            const c = custoAtual.get(p.id) || { custoUnitario: null, fonteCusto: 'SEM_CUSTO' };
+            custo = c.custoUnitario; fonteCusto = c.fonteCusto; preco = round2(p.valorVenda);
+        } else {
+            const s = histSel.get(p.id);
+            custo = s ? s.custo : null;
+            fonteCusto = s ? s.fonte : 'SEM_CUSTO';
+            preco = praticado.has(p.id) ? praticado.get(p.id) : (s && s.preco != null ? s.preco : null);
+        }
+        const org = origemDe(fonteCusto);
         if (origem !== 'todos' && org !== origem) continue;
 
-        const preco = round2(p.valorVenda);
-        const custo = c.custoUnitario;
-        const serieHist = histPorProduto.get(p.id) || new Map();
-        // fecha a série com o custo atual no mês corrente (mesmo sem snapshot ainda)
-        const serie = mesesArr.map((m) => {
-            const v = serieHist.has(m) ? serieHist.get(m) : (m === mesAtual ? custo : null);
-            return { mes: m, custo: v };
-        });
-        const pontos = serie.filter((s) => s.custo != null).map((s) => s.custo);
+        // sparkline da janela terminando no mês selecionado
+        const win = histWin.get(p.id) || new Map();
+        const serie = mesesArr.map((m) => (win.has(m) ? win.get(m) : (ehAtual && m === mesAtual ? custo : null)));
+        const pontos = serie.filter((v) => v != null);
         const custoInicio = pontos.length ? pontos[0] : null;
         const custoFim = pontos.length ? pontos[pontos.length - 1] : null;
         const variacaoCustoPct = (custoInicio && custoFim && custoInicio > 0)
@@ -160,18 +195,18 @@ async function listar({ categoria = null, origem = 'todos', meses = 6 } = {}) {
             unidade: p.unidade || null,
             categoria: p.categoria || null,
             origem: org,
-            fonteCusto: c.fonteCusto,
-            temFicha: c.fonteCusto === 'FICHA',
+            fonteCusto,
+            temFicha: fonteCusto === 'FICHA',
             custoUnitario: custo,
             precoVenda: preco,
+            precoPraticado: ehAtual ? null : (praticado.has(p.id) ? praticado.get(p.id) : null),
             markup: markupDe(preco, custo),
             margemPct: margemPctDe(preco, custo),
             variacaoCustoPct,
-            sparkCusto: serie.map((s) => s.custo)
+            sparkCusto: serie
         });
     }
 
-    // Ordena por margem (nulos por último), depois por nome
     linhas.sort((a, b) => {
         if (a.margemPct == null && b.margemPct == null) return a.nome.localeCompare(b.nome);
         if (a.margemPct == null) return 1;
@@ -184,8 +219,14 @@ async function listar({ categoria = null, origem = 'todos', meses = 6 } = {}) {
     const comMarkup = linhas.filter((l) => l.markup != null);
     const markupMedio = comMarkup.length ? Math.round((comMarkup.reduce((s, l) => s + l.markup, 0) / comMarkup.length) * 100) / 100 : null;
 
+    // Mês mais antigo com histórico (limite de navegação para trás)
+    const maisAntigo = await prisma.produtoCustoHistorico.aggregate({ _min: { mesReferencia: true } });
+
     return {
         mesAtual,
+        mesSelecionado: mesSel,
+        ehAtual,
+        mesMinimo: maisAntigo._min.mesReferencia || mesesArr[0],
         meses: mesesArr,
         categoria,
         origem,
@@ -206,7 +247,7 @@ async function listar({ categoria = null, origem = 'todos', meses = 6 } = {}) {
  * Detalhe de um produto: série mensal de preço praticado × custo × margem,
  * e composição do custo (ingredientes que mais pesam, se tiver ficha técnica).
  */
-async function detalhe(produtoId, meses = 6) {
+async function detalhe(produtoId, meses = 6, mes = null) {
     const produto = await prisma.produto.findUnique({
         where: { id: produtoId },
         select: { id: true, codigo: true, nome: true, unidade: true, valorVenda: true, categoria: true }
@@ -214,7 +255,9 @@ async function detalhe(produtoId, meses = 6) {
     if (!produto) return null;
 
     const mesAtual = ymNowSP();
-    const mesesArr = listaMeses(mesAtual, meses);
+    const mesSel = (typeof mes === 'string' && /^\d{4}-\d{2}$/.test(mes) && mes <= mesAtual) ? mes : mesAtual;
+    const ehAtual = mesSel === mesAtual;
+    const mesesArr = listaMeses(mesSel, meses); // série termina no mês selecionado
     const custoAtualMap = await custoAtualDeProdutos([produtoId]);
     const c = custoAtualMap.get(produtoId) || { custoUnitario: null, fonteCusto: 'SEM_CUSTO' };
     const preco = round2(produto.valorVenda);
@@ -228,7 +271,7 @@ async function detalhe(produtoId, meses = 6) {
 
     // Preço praticado por mês (das vendas — receita/quantidade, regra da DRE)
     const gte = inicioMesSP(mesesArr[0]);
-    const lte = fimMesSP(mesAtual);
+    const lte = fimMesSP(mesSel);
     const vendasRaw = await prisma.$queryRaw`
         SELECT to_char((p.data_venda AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo', 'YYYY-MM') AS mes,
                COALESCE(SUM(i.valor * i.quantidade), 0)::float AS receita,
@@ -299,14 +342,23 @@ async function detalhe(produtoId, meses = 6) {
     const margemInicio = serie.find((s) => s.margemPct != null)?.margemPct ?? null;
     const margemFim = [...serie].reverse().find((s) => s.margemPct != null)?.margemPct ?? null;
 
+    // Cabeçalho reflete o mês selecionado (custo/preço daquele mês)
+    const sel = serie.find((s) => s.mes === mesSel) || {};
+    const custoHeader = sel.custo != null ? sel.custo : null;
+    const precoHeader = sel.precoReferencia != null ? sel.precoReferencia : null;
+
     return {
+        mesSelecionado: mesSel,
+        ehAtual,
         produto: {
             produtoId: produto.id, codigo: produto.codigo, nome: produto.nome,
             unidade: produto.unidade || null, categoria: produto.categoria || null,
             origem: origemDe(c.fonteCusto), fonteCusto: c.fonteCusto,
-            custoUnitario: c.custoUnitario, precoVenda: preco,
-            markup: markupDe(preco, c.custoUnitario), margemPct: margemPctDe(preco, c.custoUnitario)
+            custoUnitario: custoHeader, precoVenda: precoHeader,
+            markup: markupDe(precoHeader, custoHeader), margemPct: margemPctDe(precoHeader, custoHeader)
         },
+        // A composição reflete a ficha técnica ATUAL (não temos a receita histórica de meses passados)
+        composicaoAtual: !ehAtual,
         serie,
         composicao,
         variacao: {

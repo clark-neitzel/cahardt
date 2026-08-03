@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { Tag, TrendingUp, TrendingDown, AlertTriangle, Loader2, ChevronDown } from 'lucide-react';
+import { Tag, TrendingUp, TrendingDown, AlertTriangle, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../services/api';
 import SelectBusca from '../../components/SelectBusca';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
@@ -8,7 +8,15 @@ import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 import { Card, Kpi, Carregando, fmtRS, fmtRS0, fmtBR, fmtInt } from '../Dashboard/dashUi';
 
 const MESES_LABEL = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const MESES_LONGO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 const rotuloMes = (ym) => MESES_LABEL[Number(ym.slice(5, 7)) - 1] || ym.slice(5, 7);
+const rotuloMesLongo = (ym) => `${MESES_LONGO[Number(ym.slice(5, 7)) - 1]} de ${ym.slice(0, 4)}`;
+const mesAtualSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
+const somaMes = (ym, n) => {
+    const [y, m] = ym.split('-').map(Number);
+    const d = new Date(y, m - 1 + n, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
 
 /* ── mini-gráficos ── */
 // Sparkline do custo (aceita nulos)
@@ -84,13 +92,19 @@ const TendenciaCusto = ({ pct, spark }) => (
 
 const ProdutosMargemCusto = () => {
     const [filtros, setFiltros] = useFiltrosSalvos('produtos-margem', { categoria: 'Produto Acabado', origem: 'propria', meses: 6 });
+    // Mês selecionado NÃO é persistido: sempre abre no mês corrente (regra do projeto)
+    const [mes, setMes] = useState(mesAtualSP());
     const [categorias, setCategorias] = useState([]);
     const [dados, setDados] = useState(null);
     const [loading, setLoading] = useState(true);
     const [busca, setBusca] = useState('');
     const [expandido, setExpandido] = useState(null);       // produtoId aberto
-    const [detalhes, setDetalhes] = useState({});           // cache { produtoId: detalhe }
+    const [detalhes, setDetalhes] = useState({});           // cache { produtoId: detalhe } do mês atual
     const [loadingDet, setLoadingDet] = useState(null);
+
+    const hoje = mesAtualSP();
+    const ehAtual = mes === hoje;
+    const mesMinimo = dados?.mesMinimo || somaMes(hoje, -11);
 
     useEffect(() => {
         api.get('/produtos-margem/categorias').then((r) => setCategorias(Array.isArray(r.data) ? r.data : [])).catch(() => { });
@@ -99,7 +113,7 @@ const ProdutosMargemCusto = () => {
     const carregar = useCallback(async () => {
         if (!dados) setLoading(true);
         try {
-            const params = { origem: filtros.origem, meses: filtros.meses };
+            const params = { origem: filtros.origem, meses: filtros.meses, mes };
             if (filtros.categoria) params.categoria = filtros.categoria;
             const r = await api.get('/produtos-margem', { params });
             setDados(r.data);
@@ -109,7 +123,7 @@ const ProdutosMargemCusto = () => {
             setLoading(false);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [filtros.categoria, filtros.origem, filtros.meses]);
+    }, [filtros.categoria, filtros.origem, filtros.meses, mes]);
 
     useEffect(() => { carregar(); }, [carregar]);
     useAtualizaAoVoltar(carregar);
@@ -120,7 +134,7 @@ const ProdutosMargemCusto = () => {
         if (!detalhes[produtoId]) {
             setLoadingDet(produtoId);
             try {
-                const r = await api.get(`/produtos-margem/${produtoId}`, { params: { meses: filtros.meses } });
+                const r = await api.get(`/produtos-margem/${produtoId}`, { params: { meses: filtros.meses, mes } });
                 setDetalhes((d) => ({ ...d, [produtoId]: r.data }));
             } catch {
                 toast.error('Não foi possível carregar o detalhe.');
@@ -131,7 +145,12 @@ const ProdutosMargemCusto = () => {
         }
     };
 
-    const setFiltro = (patch) => { setDados(null); setExpandido(null); setFiltros({ ...filtros, ...patch }); };
+    const setFiltro = (patch) => { setDados(null); setExpandido(null); setDetalhes({}); setFiltros({ ...filtros, ...patch }); };
+    const irMes = (n) => {
+        const alvo = somaMes(mes, n);
+        if (alvo > hoje || alvo < mesMinimo) return;
+        setExpandido(null); setDetalhes({}); setMes(alvo);
+    };
 
     if (loading && !dados) return <Carregando />;
     const resumo = dados?.resumo || {};
@@ -158,6 +177,18 @@ const ProdutosMargemCusto = () => {
                         </div>
                     </div>
                     <div className="md:ml-auto flex flex-wrap items-center gap-2">
+                        {/* Navegador de mês */}
+                        <div className="flex items-center bg-white border border-gray-300 rounded-full">
+                            <button onClick={() => irMes(-1)} disabled={mes <= mesMinimo}
+                                className="p-2 rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent min-h-[40px]" aria-label="Mês anterior">
+                                <ChevronLeft className="h-4 w-4" />
+                            </button>
+                            <span className="px-2 text-sm font-bold text-gray-800 capitalize whitespace-nowrap select-none">{rotuloMesLongo(mes)}</span>
+                            <button onClick={() => irMes(1)} disabled={ehAtual}
+                                className="p-2 rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent min-h-[40px]" aria-label="Próximo mês">
+                                <ChevronRight className="h-4 w-4" />
+                            </button>
+                        </div>
                         <SelectBusca value={filtros.categoria} onChange={(e) => setFiltro({ categoria: e.target.value })} className="w-full md:w-52">
                             <option value="">Todas as categorias</option>
                             {categorias.map((c) => <option key={c.categoria} value={c.categoria}>{c.categoria}</option>)}
@@ -169,14 +200,22 @@ const ProdutosMargemCusto = () => {
                         </SelectBusca>
                     </div>
                 </div>
-                {/* Segmented */}
-                <div className="inline-flex bg-gray-100 rounded-full p-0.5 gap-0.5 mt-3">
-                    {[['propria', '🏭 Produção própria'], ['revenda', '📦 Revenda'], ['todos', 'Todos']].map(([k, lbl]) => (
-                        <button key={k} onClick={() => setFiltro({ origem: k })}
-                            className={`px-4 py-1.5 rounded-full text-xs md:text-sm font-bold min-h-[38px] transition-colors ${filtros.origem === k ? 'bg-white text-primaryDark shadow-sm' : 'text-gray-600'}`}>
-                            {lbl}
-                        </button>
-                    ))}
+                {/* Segmented + aviso de mês passado */}
+                <div className="flex flex-wrap items-center gap-3 mt-3">
+                    <div className="inline-flex bg-gray-100 rounded-full p-0.5 gap-0.5">
+                        {[['propria', '🏭 Produção própria'], ['revenda', '📦 Revenda'], ['todos', 'Todos']].map(([k, lbl]) => (
+                            <button key={k} onClick={() => setFiltro({ origem: k })}
+                                className={`px-4 py-1.5 rounded-full text-xs md:text-sm font-bold min-h-[38px] transition-colors ${filtros.origem === k ? 'bg-white text-primaryDark shadow-sm' : 'text-gray-600'}`}>
+                                {lbl}
+                            </button>
+                        ))}
+                    </div>
+                    {!ehAtual && (
+                        <span className="inline-flex items-center gap-2 text-xs font-bold text-amber-700 bg-amber-100 rounded-full px-3 py-1.5">
+                            📅 vendo {rotuloMesLongo(mes)} — preço é o praticado nas vendas do mês
+                            <button onClick={() => { setExpandido(null); setDetalhes({}); setMes(hoje); }} className="underline">voltar ao mês atual</button>
+                        </span>
+                    )}
                 </div>
             </div>
 
@@ -337,6 +376,7 @@ const DetalheProduto = ({ det, carregando }) => {
                             </div>
                         )}
                         {comp.temCustoFaltando && <p className="text-xs text-amber-700 font-semibold mt-2">Alguns ingredientes estão sem custo cadastrado — o custo pode estar subestimado.</p>}
+                        {det.composicaoAtual && <p className="text-xs text-gray-500 font-medium mt-2">Composição da <b>ficha técnica atual</b> (a receita de meses passados não fica guardada).</p>}
                     </>
                 ) : (
                     <p className="text-sm text-gray-500">Este produto não tem ficha técnica no PCP (é revenda ou custo de compra). A composição aparece só para produção própria.</p>

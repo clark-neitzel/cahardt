@@ -29,7 +29,8 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         const categoria = (req.query.categoria || '').trim() || null;
         const origem = ['propria', 'revenda', 'todos'].includes(req.query.origem) ? req.query.origem : 'todos';
         const meses = Math.min(12, Math.max(3, Number(req.query.meses) || 6));
-        const dados = await produtoMargemService.listar({ categoria, origem, meses });
+        const mes = /^\d{4}-\d{2}$/.test(String(req.query.mes)) ? String(req.query.mes) : null;
+        const dados = await produtoMargemService.listar({ categoria, origem, meses, mes });
         res.json(dados);
     } catch (error) {
         console.error('[ProdutoMargem] Erro ao listar:', error);
@@ -59,7 +60,8 @@ router.get('/categorias', verificarAuth, checkAcesso, async (req, res) => {
 router.get('/:produtoId', verificarAuth, checkAcesso, async (req, res) => {
     try {
         const meses = Math.min(12, Math.max(3, Number(req.query.meses) || 6));
-        const dados = await produtoMargemService.detalhe(req.params.produtoId, meses);
+        const mes = /^\d{4}-\d{2}$/.test(String(req.query.mes)) ? String(req.query.mes) : null;
+        const dados = await produtoMargemService.detalhe(req.params.produtoId, meses, mes);
         if (!dados) return res.status(404).json({ error: 'Produto não encontrado.' });
         res.json(dados);
     } catch (error) {
