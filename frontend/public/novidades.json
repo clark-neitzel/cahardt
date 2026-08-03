@@ -1,5 +1,11 @@
 [
   {
+    "slug": "ponto-folha",
+    "titulo": "Cartão de ponto + folha",
+    "resumo": "Todos os dias do período aparecem no cartão de ponto, inclusive fim de semana: quem não veio fica como falta, sábado é compensado. Dá para imprimir a folha A4 e o app já calcula hora extra, DSR, desconto de falta e o total a pagar.",
+    "data": "2026-08-03"
+  },
+  {
     "slug": "corrigir-entrada-estoque",
     "titulo": "Corrigir conversão da nota",
     "resumo": "Lançou a caixa como se fosse quilo e o custo do produto ficou errado? Agora dá para arrumar o produto e a conversão de uma nota já lançada e já paga — sem cancelar a despesa nem estornar a baixa.",

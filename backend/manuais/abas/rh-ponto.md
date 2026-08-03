@@ -17,6 +17,10 @@ Controle de ponto eletrônico da equipe. O funcionário bate o ponto por um **li
 - **Domínio do link de ponto:** define o início do link enviado ao funcionário (ex.: domínio da hardtsalgados). Em branco, usa o domínio em que o app está aberto.
 - A opção **Bloquear batida fora da área** liga/desliga o bloqueio. Sem localização configurada, o ponto é registrado sem checagem de área.
 
+## Feriados da empresa
+- Na mesma tela **Configurar** (`/rh/ponto/config`), o bloco **Feriados da empresa**: adicione a **data** + um **nome** (ex.: "Aniversário da cidade"). Cada inclusão/exclusão já é gravada na hora.
+- Efeito no cartão de ponto de **todos** os funcionários: quem não vem no feriado **não fica com falta** (o dia aparece com o nome do feriado), e o feriado entra como **dia de descanso** no cálculo do DSR sobre as horas extras.
+
 ## Painel de Ponto (admin)
 - KPIs do dia: **trabalhando agora**, total de ativos e fora.
 - Tabela com as **batidas de hoje** de cada funcionário, com link do mapa em cada horário e status (Trabalhando / Fora).
@@ -33,4 +37,7 @@ Controle de ponto eletrônico da equipe. O funcionário bate o ponto por um **li
 
 ## Cartão de ponto / regras
 - A **carga diária** vem da escala do funcionário. Com **janela móvel**, se entrar antes, a saída esperada desloca mantendo a mesma carga; só o que passar disso vira **banco de horas** ou **hora extra paga** (conforme o tipo configurado por funcionário).
-- O espelho mostra, por dia: batidas, previsto, trabalhado e saldo; e no resumo do mês: total trabalhado, saldo do banco, hora extra e faltas/atrasos. Dias com atestado entram como **abonados**.
+- O espelho mostra **todos os dias do período escolhido** (inclusive fim de semana), com batidas, previsto, trabalhado, saldo e a **situação** do dia; e no resumo: total trabalhado, previsto, saldo do banco, hora extra e faltas.
+- **Dia útil sem batida = falta.** Sábado sem carga aparece como *Compensado* e domingo como *Descanso* (não são falta). Atestado entra como **abonado**; feriado cadastrado entra como **feriado**.
+- Qualquer dia pode ser **marcado à mão** (Falta / Abonado / Feriado / Folga) clicando no selo da coluna Situação — a marcação manda no automático.
+- Abaixo do espelho, a **folha do período** apura salário, horas extras (+ DSR), descontos de falta e DSR perdido, e o **total a pagar** (valor bruto). Detalhes no manual de **Funcionários (RH)**.

@@ -170,7 +170,8 @@ const funcionarioController = {
     // ─── Atualizar dados ──────────────────────────────────────────────────────
     atualizar: async (req, res) => {
         try {
-            const { nome, cpf, telefone, email, endereco, cargo, dataAdmissao, dataDemissao, salario, tipoHoraExtra, jornadaMovel, ativo, observacao } = req.body || {};
+            const { nome, cpf, telefone, email, endereco, cargo, dataAdmissao, dataDemissao, salario, tipoHoraExtra, jornadaMovel, ativo, observacao,
+                percentualHoraExtra, divisorHoras, descontarDsrFalta } = req.body || {};
             const data = {};
             if (nome !== undefined) data.nome = nome;
             if (cpf !== undefined) data.cpf = cpf ? soDigitos(cpf) : null;
@@ -185,6 +186,15 @@ const funcionarioController = {
             if (jornadaMovel !== undefined) data.jornadaMovel = !!jornadaMovel;
             if (ativo !== undefined) data.ativo = !!ativo;
             if (observacao !== undefined) data.observacao = observacao;
+            if (percentualHoraExtra !== undefined) {
+                const p = Number(String(percentualHoraExtra).replace(',', '.'));
+                data.percentualHoraExtra = isNaN(p) ? 50 : Math.max(0, Math.min(300, p));
+            }
+            if (divisorHoras !== undefined) {
+                const dv = parseInt(divisorHoras);
+                data.divisorHoras = !dv || dv < 1 ? 220 : dv;
+            }
+            if (descontarDsrFalta !== undefined) data.descontarDsrFalta = !!descontarDsrFalta;
 
             const f = await prisma.funcionario.update({ where: { id: req.params.id }, data });
             res.json(f);
@@ -357,12 +367,69 @@ const funcionarioController = {
     // ─── Cartão de ponto / espelho ────────────────────────────────────────────
     cartao: async (req, res) => {
         try {
-            const cartao = await pontoService.montarCartao(req.params.id, req.query.mes);
+            const { de, ate, mes } = req.query;
+            const cartao = await pontoService.montarCartao(req.params.id, { de, ate, mes });
             res.json(cartao);
         } catch (error) {
             if (error.status) return res.status(error.status).json({ erro: error.message });
             console.error('[RH] cartão:', error);
             res.status(500).json({ erro: 'Erro ao montar o cartão de ponto.' });
+        }
+    },
+
+    // ─── Marcação manual de um dia (falta, abono, feriado, folga) ─────────────
+    // Sem `tipo` a marcação é removida e o dia volta a ser classificado sozinho.
+    marcarDia: async (req, res) => {
+        try {
+            const { funcionarioId, data, tipo, obs } = req.body || {};
+            if (!funcionarioId || !data) return res.status(400).json({ erro: 'Informe o funcionário e o dia.' });
+            const dia = String(data).slice(0, 10);
+
+            if (!tipo) {
+                await prisma.pontoOcorrencia.deleteMany({ where: { funcionarioId, data: dia } });
+                return res.json({ ok: true, removido: true });
+            }
+
+            const TIPOS = ['FALTA', 'ABONO', 'FERIADO', 'FOLGA'];
+            const t = String(tipo).toUpperCase();
+            if (!TIPOS.includes(t)) return res.status(400).json({ erro: 'Tipo de marcação inválido.' });
+
+            const dados = { tipo: t, obs: obs || null, registradoPor: req.user?.id || null };
+            const ocorrencia = await prisma.pontoOcorrencia.upsert({
+                where: { funcionarioId_data: { funcionarioId, data: dia } },
+                update: dados,
+                create: { funcionarioId, data: dia, ...dados }
+            });
+            res.json(ocorrencia);
+        } catch (error) {
+            console.error('[RH] marcar dia:', error);
+            res.status(500).json({ erro: 'Erro ao marcar o dia.' });
+        }
+    },
+
+    // ─── Ajustes manuais da folha do período (vale, adiantamento, prêmio…) ────
+    salvarAjusteFolha: async (req, res) => {
+        try {
+            const { de, ate, outrosProventos, outrosDescontos, obs } = req.body || {};
+            if (!de || !ate) return res.status(400).json({ erro: 'Informe o período.' });
+            const num = (v) => {
+                const n = Number(String(v ?? 0).replace(/\./g, '').replace(',', '.'));
+                return isNaN(n) ? 0 : Math.max(0, n);
+            };
+            const dados = {
+                outrosProventos: num(outrosProventos),
+                outrosDescontos: num(outrosDescontos),
+                obs: obs || null
+            };
+            const ajuste = await prisma.folhaPeriodo.upsert({
+                where: { funcionarioId_de_ate: { funcionarioId: req.params.id, de, ate } },
+                update: dados,
+                create: { funcionarioId: req.params.id, de, ate, ...dados }
+            });
+            res.json(ajuste);
+        } catch (error) {
+            console.error('[RH] ajuste da folha:', error);
+            res.status(500).json({ erro: 'Erro ao salvar os ajustes da folha.' });
         }
     },
 

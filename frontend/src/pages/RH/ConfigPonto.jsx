@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Loader2, ChevronLeft, Crosshair } from 'lucide-react';
+import { MapPin, Loader2, ChevronLeft, Crosshair, CalendarDays, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import configService from '../../services/configService';
 
@@ -8,6 +8,8 @@ export default function ConfigPonto() {
   const navigate = useNavigate();
   const [form, setForm] = useState({ lat: '', lng: '', raioMetros: 10, bloquear: true });
   const [linkBase, setLinkBase] = useState('');
+  const [feriados, setFeriados] = useState([]); // [{ data:'YYYY-MM-DD', nome }]
+  const [novoFeriado, setNovoFeriado] = useState({ data: '', nome: '' });
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
   const [localizando, setLocalizando] = useState(false);
@@ -29,6 +31,14 @@ export default function ConfigPonto() {
         const base = await configService.get('ponto_link_base');
         // armazenado como { url }; tolera string antiga
         if (base) setLinkBase(typeof base === 'string' ? base : (base.url || ''));
+      } catch { /* sem config ainda */ }
+      try {
+        const v = await configService.get('rh_feriados');
+        const bruto = Array.isArray(v) ? v : (Array.isArray(v?.lista) ? v.lista : []);
+        setFeriados(bruto
+          .map((i) => (typeof i === 'string' ? { data: i, nome: 'Feriado' } : { data: i?.data, nome: i?.nome || 'Feriado' }))
+          .filter((i) => i.data)
+          .sort((a, b) => a.data.localeCompare(b.data)));
       } catch { /* sem config ainda */ }
       finally { setCarregando(false); }
     })();
@@ -59,6 +69,7 @@ export default function ConfigPonto() {
     try {
       await configService.save('empresa_geofence', { lat, lng, raioMetros, bloquear: !!form.bloquear });
       await configService.save('ponto_link_base', { url: (linkBase || '').trim().replace(/\/$/, '') });
+      await configService.save('rh_feriados', { lista: feriados });
       toast.success('Configuração salva!');
     } catch {
       toast.error('Erro ao salvar.');
@@ -66,6 +77,24 @@ export default function ConfigPonto() {
       setSalvando(false);
     }
   };
+
+  // Feriados: cada mudança já é gravada (não depende do Salvar da área do ponto)
+  const gravarFeriados = async (lista) => {
+    setFeriados(lista);
+    try { await configService.save('rh_feriados', { lista }); }
+    catch { toast.error('Erro ao salvar os feriados.'); }
+  };
+
+  const addFeriado = () => {
+    if (!novoFeriado.data) { toast.error('Escolha a data do feriado.'); return; }
+    if (feriados.some((f) => f.data === novoFeriado.data)) { toast.error('Esse dia já está na lista.'); return; }
+    const lista = [...feriados, { data: novoFeriado.data, nome: novoFeriado.nome.trim() || 'Feriado' }]
+      .sort((a, b) => a.data.localeCompare(b.data));
+    setNovoFeriado({ data: '', nome: '' });
+    gravarFeriados(lista);
+  };
+
+  const removerFeriado = (data) => gravarFeriados(feriados.filter((f) => f.data !== data));
 
   const temCoord = form.lat !== '' && form.lng !== '' && !isNaN(parseFloat(form.lat)) && !isNaN(parseFloat(form.lng));
   const mapaSrc = temCoord
@@ -128,6 +157,48 @@ export default function ConfigPonto() {
           </div>
         )}
       </div>
+
+      {/* Feriados da empresa */}
+      {!carregando && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm mt-4">
+          <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
+            <CalendarDays className="h-4 w-4 text-blue-600" />
+            <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Feriados da empresa</span>
+          </div>
+          <div className="p-5 space-y-3">
+            <p className="text-sm text-gray-500">
+              No cartão de ponto, quem não vem em dia de feriado <b>não fica com falta</b>. Os feriados também entram
+              como dias de descanso no cálculo do DSR sobre as horas extras.
+            </p>
+
+            <div className="flex flex-col md:flex-row gap-2">
+              <input
+                type="date" value={novoFeriado.data}
+                onChange={(e) => setNovoFeriado((s) => ({ ...s, data: e.target.value }))}
+                className="border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none md:w-44"
+              />
+              <input
+                value={novoFeriado.nome} placeholder="Nome (ex.: Natal)"
+                onChange={(e) => setNovoFeriado((s) => ({ ...s, nome: e.target.value }))}
+                className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+              />
+              <button onClick={addFeriado} className="px-4 py-2 min-h-[44px] md:min-h-0 bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm inline-flex items-center justify-center gap-1">
+                <Plus className="h-4 w-4" /> Adicionar
+              </button>
+            </div>
+
+            <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg">
+              {feriados.length === 0 && <li className="px-4 py-3 text-sm text-gray-400">Nenhum feriado cadastrado.</li>}
+              {feriados.map((fe) => (
+                <li key={fe.data} className="flex items-center justify-between px-4 py-2.5 text-sm">
+                  <span><b className="tabular-nums">{fe.data.split('-').reverse().join('/')}</b> · {fe.nome}</span>
+                  <button onClick={() => removerFeriado(fe.data)} className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100"><Trash2 className="h-4 w-4" /></button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

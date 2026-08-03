@@ -147,6 +147,37 @@ const registrarBatida = async (funcionario, { latLng, origem = 'LINK', ajustadoP
     });
 };
 
+// ─── Calendário do período ───────────────────────────────────────────────────
+
+// Todos os dias entre de..ate (YYYY-MM-DD), inclusive — inclusive sábado e domingo
+const listarDias = (de, ate) => {
+    const dias = [];
+    if (!de || !ate || de > ate) return dias;
+    const d = new Date(`${de}T12:00:00`);
+    const fim = new Date(`${ate}T12:00:00`);
+    let guarda = 0;
+    while (d <= fim && guarda++ < 800) {
+        dias.push(d.toLocaleDateString('en-CA'));
+        d.setDate(d.getDate() + 1);
+    }
+    return dias;
+};
+
+// Feriados da empresa (AppConfig: rh_feriados) → { 'YYYY-MM-DD': 'Natal' }
+// Aceita { lista: [{ data, nome }] } ou um array simples de datas.
+const getFeriados = async () => {
+    const cfg = await prisma.appConfig.findUnique({ where: { key: 'rh_feriados' } });
+    const v = cfg?.value;
+    const bruto = Array.isArray(v) ? v : (Array.isArray(v?.lista) ? v.lista : []);
+    const mapa = {};
+    for (const item of bruto) {
+        const data = typeof item === 'string' ? item : item?.data;
+        if (!data) continue;
+        mapa[String(data).slice(0, 10)] = (typeof item === 'object' && item?.nome) || 'Feriado';
+    }
+    return mapa;
+};
+
 // ─── Motor do cartão de ponto (janela móvel / banco / hora extra) ─────────────
 
 // Carga prevista (minutos) de um dia a partir da jornada daquele dia da semana
@@ -172,8 +203,27 @@ const trabalhadoDasBatidas = (batidas) => {
     return Math.round(total);
 };
 
-// Monta o cartão do mês ("YYYY-MM")
-const montarCartao = async (funcionarioId, mes) => {
+// Rótulo humano de cada situação do dia
+const ROTULO_SITUACAO = {
+    TRABALHADO: 'Trabalhado',
+    FALTA: 'Falta',
+    ABONO: 'Abonado',
+    FERIADO: 'Feriado',
+    FOLGA: 'Folga',
+    COMPENSADO: 'Compensado',
+    FUTURO: 'A cumprir',
+    SEM_VINCULO: 'Fora do contrato'
+};
+
+const cent = (n) => Number((Number(n) || 0).toFixed(2));
+
+/**
+ * Monta o cartão de ponto de um PERÍODO (de..ate, YYYY-MM-DD) — todos os dias
+ * aparecem, inclusive sábado e domingo. Dia útil sem batida vira FALTA; dia de
+ * folga na escala (fim de semana compensado) não é falta.
+ * Aceita também { mes: 'YYYY-MM' } por compatibilidade.
+ */
+const montarCartao = async (funcionarioId, filtro) => {
     const funcionario = await prisma.funcionario.findUnique({
         where: { id: funcionarioId },
         include: { jornadas: true }
@@ -184,23 +234,45 @@ const montarCartao = async (funcionarioId, mes) => {
         throw err;
     }
 
-    const mesRef = mes || getDataReferencia().slice(0, 7);
+    // ── Janela do período ────────────────────────────────────────────────────
+    const f = typeof filtro === 'string' ? { mes: filtro } : (filtro || {});
+    let de = f.de ? String(f.de).slice(0, 10) : '';
+    let ate = f.ate ? String(f.ate).slice(0, 10) : '';
+    if (!de || !ate) {
+        const mesRef = f.mes || getDataReferencia().slice(0, 7);
+        const [ano, mm] = mesRef.split('-').map(Number);
+        de = `${mesRef}-01`;
+        ate = new Date(ano, mm, 0).toLocaleDateString('en-CA');
+    }
+    if (de > ate) { const t = de; de = ate; ate = t; }
+
+    const hoje = getDataReferencia();
+    const admissao = funcionario.dataAdmissao ? getDataReferencia(funcionario.dataAdmissao) : null;
+    const demissao = funcionario.dataDemissao ? getDataReferencia(funcionario.dataDemissao) : null;
+
     const jornadaPorDia = {};
     for (const j of funcionario.jornadas) jornadaPorDia[j.diaSemana] = j;
 
-    const registros = await prisma.pontoRegistro.findMany({
-        where: { funcionarioId, dataReferencia: { startsWith: mesRef } },
-        orderBy: { hora: 'asc' }
-    });
-    const atestados = await prisma.funcionarioAtestado.findMany({ where: { funcionarioId } });
+    const [registros, atestados, ocorrencias, feriados, ajuste] = await Promise.all([
+        prisma.pontoRegistro.findMany({
+            where: { funcionarioId, dataReferencia: { gte: de, lte: ate } },
+            orderBy: { hora: 'asc' }
+        }),
+        prisma.funcionarioAtestado.findMany({ where: { funcionarioId } }),
+        prisma.pontoOcorrencia.findMany({ where: { funcionarioId, data: { gte: de, lte: ate } } }),
+        getFeriados(),
+        prisma.folhaPeriodo.findUnique({ where: { funcionarioId_de_ate: { funcionarioId, de, ate } } }).catch(() => null)
+    ]);
 
     // Agrupa batidas por dia
     const porDia = {};
-    for (const r of registros) {
-        (porDia[r.dataReferencia] = porDia[r.dataReferencia] || []).push(r);
-    }
+    for (const r of registros) (porDia[r.dataReferencia] = porDia[r.dataReferencia] || []).push(r);
 
-    // Dias com atestado (data inicial + dias)
+    // Marcações manuais do RH por dia
+    const ocorPorDia = {};
+    for (const o of ocorrencias) ocorPorDia[o.data] = o;
+
+    // Dias cobertos por atestado (data inicial + nº de dias)
     const diasAtestado = new Set();
     for (const a of atestados) {
         const base = new Date(a.dataInicio);
@@ -211,30 +283,43 @@ const montarCartao = async (funcionarioId, mes) => {
         }
     }
 
-    const dias = Object.keys(porDia).sort();
-    // Garante que dias com atestado dentro do mês apareçam mesmo sem batida
-    for (const d of diasAtestado) {
-        if (d.startsWith(mesRef) && !porDia[d]) dias.push(d);
-    }
-    dias.sort();
+    // ── Linha a linha (TODOS os dias do período) ─────────────────────────────
+    let trabalhadoTotal = 0, previstoTotal = 0, saldoTotal = 0, extraMin = 0, negativoMin = 0;
+    let faltas = 0, diasUteis = 0, domingos = 0, feriadosNaoDomingo = 0, diasTrabalhados = 0;
+    const semanasComFalta = new Set();
 
-    const valorHora = Number(funcionario.salario) > 0 ? Number(funcionario.salario) / 220 : 0;
-
-    let trabalhadoTotal = 0, previstoTotal = 0, saldoTotal = 0, extraMin = 0, faltas = 0;
-
-    const linhas = dias.map((d) => {
+    const linhas = listarDias(de, ate).map((d) => {
         const batidas = porDia[d] || [];
         const diaSemana = new Date(`${d}T12:00:00`).getDay();
         const jornada = jornadaPorDia[diaSemana];
-        const previsto = cargaDaJornada(jornada);
-        const abonado = diasAtestado.has(d);
+        const cargaEscala = cargaDaJornada(jornada);
+        const feriadoNome = feriados[d] || null;
+        const ocor = ocorPorDia[d] || null;
+        const foraDoContrato = (admissao && d < admissao) || (demissao && d > demissao);
+        const trabalhado = trabalhadoDasBatidas(batidas);
 
-        let trabalhado = trabalhadoDasBatidas(batidas);
-        let saldo = abonado ? 0 : trabalhado - previsto;
+        // Situação do dia — a marcação manual do RH manda em tudo
+        let situacao;
+        if (foraDoContrato) situacao = 'SEM_VINCULO';
+        else if (ocor?.tipo === 'FERIADO' || (!ocor && feriadoNome)) situacao = 'FERIADO';
+        else if (ocor?.tipo === 'FOLGA') situacao = 'FOLGA';
+        else if (ocor?.tipo === 'ABONO' || (!ocor && diasAtestado.has(d))) situacao = 'ABONO';
+        else if (ocor?.tipo === 'FALTA') situacao = 'FALTA';
+        else if (batidas.length) situacao = 'TRABALHADO';
+        // Sábado sem carga = jornada compensada na semana; domingo = descanso semanal
+        else if (cargaEscala === 0) situacao = diaSemana === 6 ? 'COMPENSADO' : 'FOLGA';
+        else if (d > hoje) situacao = 'FUTURO';
+        else situacao = 'FALTA';
 
-        // Janela móvel: saldo já é (trabalhado − carga), o que desloca naturalmente
-        // o horário mantendo a carga diária. Sem móvel, o saldo é o mesmo total,
-        // mas marcamos atraso se a 1ª batida passou da entrada prevista.
+        // Carga que o dia exigia (mostrada na coluna "Previsto"): só nos dias em que
+        // ele devia trabalhar — feriado, abono e folga não exigem nada.
+        const cargaExigida = ['TRABALHADO', 'FALTA', 'FUTURO'].includes(situacao) ? cargaEscala : 0;
+        // Já o SALDO (banco de horas) só desconta a carga do dia efetivamente trabalhado:
+        // falta não vira hora negativa — ela é descontada em dinheiro na folha.
+        const previsto = situacao === 'TRABALHADO' ? cargaEscala : 0;
+        const saldo = trabalhado - previsto;
+
+        // Sem janela móvel, marca atraso quando a 1ª batida passa da entrada prevista
         let atraso = false;
         if (!funcionario.jornadaMovel && jornada && !jornada.folga && batidas.length) {
             const primeira = hmToMin(horaLocalHM(batidas[0].hora));
@@ -242,37 +327,95 @@ const montarCartao = async (funcionarioId, mes) => {
             if (prevista != null && primeira != null && primeira > prevista + 5) atraso = true;
         }
 
-        if (!abonado) {
-            trabalhadoTotal += trabalhado;
-            previstoTotal += previsto;
-            saldoTotal += saldo;
-            if (saldo > 0) extraMin += saldo;
-            if (previsto > 0 && trabalhado === 0) faltas += 1;
+        trabalhadoTotal += trabalhado;
+        previstoTotal += cargaExigida;
+        saldoTotal += saldo;
+        if (saldo > 0) extraMin += saldo;
+        if (saldo < 0) negativoMin += -saldo;
+        if (batidas.length) diasTrabalhados++;
+
+        // Base do DSR: dias úteis × dias de repouso (domingos + feriados), pela ESCALA
+        if (!foraDoContrato) {
+            if (diaSemana === 0) domingos++;
+            else if (feriadoNome) feriadosNaoDomingo++;
+            else if (cargaEscala > 0) diasUteis++;
+        }
+
+        if (situacao === 'FALTA') {
+            faltas++;
+            // Semana do repouso (domingo a sábado) — 1 falta na semana derruba 1 DSR
+            const dt = new Date(`${d}T12:00:00`);
+            dt.setDate(dt.getDate() - dt.getDay());
+            semanasComFalta.add(dt.toLocaleDateString('en-CA'));
         }
 
         return {
             data: d,
             diaSemana,
-            previstoMin: previsto,
-            previsto: minToHM(previsto),
+            situacao,
+            situacaoRotulo: feriadoNome && situacao === 'FERIADO'
+                ? feriadoNome
+                : (situacao === 'FOLGA' && diaSemana === 0 ? 'Descanso' : ROTULO_SITUACAO[situacao]),
+            marcadoManual: !!ocor,
+            ocorrenciaId: ocor?.id || null,
+            ocorrenciaObs: ocor?.obs || '',
+            cargaEscalaMin: cargaEscala,
+            previstoMin: cargaExigida,          // o que o dia exigia (coluna Previsto)
+            previsto: cargaExigida ? minToHM(cargaExigida) : '—',
+            previstoCobradoMin: previsto,       // o que entrou na conta do banco de horas
             trabalhadoMin: trabalhado,
-            trabalhado: batidas.length ? minToHM(trabalhado) : (abonado ? 'abonado' : '—'),
+            trabalhado: batidas.length ? minToHM(trabalhado) : '—',
             saldoMin: saldo,
-            saldo: abonado ? 'abonado' : minToHM(saldo),
-            abonado,
+            saldo: batidas.length || previsto ? minToHM(saldo) : '—',
+            abonado: situacao === 'ABONO',
             atraso,
-            folga: !!(jornada && jornada.folga),
+            folga: situacao === 'FOLGA' || situacao === 'COMPENSADO',
             batidas: batidas.map(mapBatida)
         };
     });
 
-    const extraValor = funcionario.tipoHoraExtra === 'PAGA'
-        ? (extraMin / 60) * valorHora * 1.5
-        : 0;
+    // ── Folha do período ─────────────────────────────────────────────────────
+    const salario = Number(funcionario.salario) || 0;
+    const divisor = Number(funcionario.divisorHoras) || 220;
+    const percHE = Number(funcionario.percentualHoraExtra ?? 50);
+    const valorHora = salario > 0 ? salario / divisor : 0;
+    const valorDia = salario > 0 ? salario / 30 : 0;
+    const horaExtraPaga = funcionario.tipoHoraExtra === 'PAGA';
+
+    const valorHoraExtra = horaExtraPaga ? (extraMin / 60) * valorHora * (1 + percHE / 100) : 0;
+    const diasRepouso = domingos + feriadosNaoDomingo;
+    const dsrSobreExtra = horaExtraPaga && diasUteis > 0 ? (valorHoraExtra / diasUteis) * diasRepouso : 0;
+
+    const dsrPerdidos = funcionario.descontarDsrFalta ? Math.min(semanasComFalta.size, diasRepouso) : 0;
+    const descontoFaltas = faltas * valorDia;
+    const descontoDsr = dsrPerdidos * valorDia;
+
+    const outrosProventos = Number(ajuste?.outrosProventos || 0);
+    const outrosDescontos = Number(ajuste?.outrosDescontos || 0);
+
+    const totalProventos = salario + valorHoraExtra + dsrSobreExtra + outrosProventos;
+    const totalDescontos = descontoFaltas + descontoDsr + outrosDescontos;
+
+    // O período cobre um mês fechado? (senão o salário base do cálculo não vale)
+    const [anoDe, mesDe, diaDe] = de.split('-').map(Number);
+    const ultimoDoMes = new Date(anoDe, mesDe, 0).toLocaleDateString('en-CA');
+    const mesCheio = diaDe === 1 && ate === ultimoDoMes;
 
     return {
-        funcionario: { id: funcionario.id, nome: funcionario.nome, tipoHoraExtra: funcionario.tipoHoraExtra },
-        mes: mesRef,
+        funcionario: {
+            id: funcionario.id,
+            nome: funcionario.nome,
+            cargo: funcionario.cargo || '',
+            cpf: funcionario.cpf || '',
+            dataAdmissao: funcionario.dataAdmissao,
+            salario: cent(salario),
+            tipoHoraExtra: funcionario.tipoHoraExtra,
+            percentualHoraExtra: percHE,
+            divisorHoras: divisor,
+            descontarDsrFalta: funcionario.descontarDsrFalta
+        },
+        periodo: { de, ate, mesCheio },
+        mes: de.slice(0, 7), // compatibilidade
         resumo: {
             trabalhadoMin: trabalhadoTotal,
             trabalhado: minToHM(trabalhadoTotal),
@@ -281,9 +424,38 @@ const montarCartao = async (funcionarioId, mes) => {
             saldoMin: saldoTotal,
             saldo: minToHM(saldoTotal),                 // banco de horas do período
             extraMin,
-            extra: minToHM(extraMin),                   // horas extras (quando tipo = PAGA)
-            extraValor: Number(extraValor.toFixed(2)),
-            faltas
+            extra: minToHM(extraMin),                   // horas além da carga do dia
+            negativoMin,
+            negativo: minToHM(negativoMin),
+            extraValor: cent(valorHoraExtra),
+            faltas,
+            diasTrabalhados,
+            diasUteis,
+            diasRepouso
+        },
+        folha: {
+            salarioBase: cent(salario),
+            valorHora: cent(valorHora),
+            valorDia: cent(valorDia),
+            horaExtraPaga,
+            percentualHoraExtra: percHE,
+            extraMin,
+            extraHoras: minToHM(extraMin),
+            valorHoraExtra: cent(valorHoraExtra),
+            dsrSobreExtra: cent(dsrSobreExtra),
+            faltas,
+            descontoFaltas: cent(descontoFaltas),
+            dsrPerdidos,
+            descontoDsr: cent(descontoDsr),
+            outrosProventos: cent(outrosProventos),
+            outrosDescontos: cent(outrosDescontos),
+            obsAjuste: ajuste?.obs || '',
+            totalProventos: cent(totalProventos),
+            totalDescontos: cent(totalDescontos),
+            liquido: cent(totalProventos - totalDescontos),
+            diasUteis,
+            diasRepouso,
+            mesCheio
         },
         linhas
     };
@@ -298,5 +470,7 @@ module.exports = {
     mapBatida,
     statusDoDia,
     registrarBatida,
+    listarDias,
+    getFeriados,
     montarCartao
 };

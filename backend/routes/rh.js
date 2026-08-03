@@ -61,6 +61,7 @@ router.delete('/curriculos/:id', checkDeleteRH, ctrl.excluir);
 router.get('/ponto/hoje', checkPonto, func.pontoHoje);
 router.post('/ponto/importar', checkEditPonto, func.importar);
 router.post('/ponto/registros', checkEditPonto, func.addBatidaManual);
+router.post('/ponto/marcar-dia', checkEditPonto, func.marcarDia);
 router.put('/ponto/registros/:id', checkEditPonto, func.updateBatida);
 router.delete('/ponto/registros/:id', checkEditPonto, func.delBatida);
 
@@ -73,6 +74,7 @@ router.post('/funcionarios/:id/gerar-link', checkEditPonto, func.gerarLink);
 router.put('/funcionarios/:id/senha', checkEditPonto, func.definirSenha);
 router.put('/funcionarios/:id/jornada', checkEditPonto, func.salvarJornada);
 router.get('/funcionarios/:id/cartao', checkPonto, func.cartao);
+router.put('/funcionarios/:id/folha', checkEditPonto, func.salvarAjusteFolha);
 
 router.post('/funcionarios/:id/documentos', checkEditPonto, uploadFuncionario.single('arquivo'), func.addDocumento);
 router.delete('/funcionarios/:id/documentos/:docId', checkEditPonto, func.delDocumento);

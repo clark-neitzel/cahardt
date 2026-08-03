@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: cartão de ponto com todos os dias e folha calculada — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="⏱ Novidade no Hardt App: o cartão de ponto agora mostra todos os dias e calcula a folha">
+<meta property="og:description" content="Todo dia do período aparece — inclusive sábado e domingo. Faltou, é falta. Fim de semana é compensado. Você escolhe o período, imprime a folha e o app já entrega o valor a pagar com hora extra, DSR e desconto de falta.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --cream: #f2f0eb; --gold: #cba258;
+    --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); line-height:1.55;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased; font-variant-numeric: tabular-nums; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background:linear-gradient(168deg, var(--house) 0%, #16302a 100%); color:#fff;
+    padding:40px 16px 96px; text-align:center; }
+  .hero .chip { display:inline-block; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);
+    color:#d4e9e2; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+    border-radius:999px; padding:6px 14px; margin-bottom:14px; }
+  .hero h1 { font-size:28px; margin:0 0 10px; font-weight:800; }
+  .hero p { color:#c8d6d0; max-width:470px; margin:0 auto; font-size:15.5px; }
+
+  .cartao { background:#fff; border:1px solid #e5e7eb; border-radius:16px;
+    box-shadow:0 8px 24px rgba(30,57,50,.10); padding:20px; margin-top:-64px; }
+  .cartao + .cartao, .sec { margin-top:16px; }
+  .sec-titulo { font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+  .texto { margin:0; font-size:14.5px; color:#3f4a46; }
+  .texto b { color:var(--house); }
+
+  /* ── ACCORDION (sempre abertos) ── */
+  details { background:#fff; border:1px solid #e5e7eb; border-radius:14px; margin-top:10px; overflow:hidden; }
+  summary { list-style:none; cursor:pointer; padding:15px 18px; font-weight:800; font-size:15px; color:var(--house);
+    display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  summary::-webkit-details-marker { display:none; }
+  summary .mais { color:var(--primary); font-size:20px; font-weight:800; transition:transform .2s; flex:none; }
+  details[open] summary .mais { transform:rotate(45deg); }
+  .det-corpo { padding:0 18px 16px; font-size:14.5px; color:#3f4a46; }
+  .det-corpo b { color:var(--house); }
+  .det-corpo ul { margin:8px 0 0; padding-left:20px; }
+  .det-corpo li { margin-top:6px; }
+
+  /* ── PASSOS ── */
+  .passo { display:flex; gap:12px; margin-top:14px; }
+  .passo .num { flex:none; width:28px; height:28px; border-radius:999px; background:var(--primary); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+  .passo p { margin:3px 0 0; font-size:14.5px; color:#3f4a46; }
+  .passo b { color:var(--house); }
+  .rodape { text-align:center; color:var(--ink-soft); font-size:12.5px; margin-top:34px; }
+
+  /* ── MOCKUP DA TELA ── */
+  .tela { background:#f7f6f2; border:1px solid #e5e7eb; border-radius:14px; padding:14px; margin-top:12px; }
+  .app-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; }
+  .mock-label { font-size:9.5px; font-weight:800; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; margin:0 0 4px; }
+  .mock-topo { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .mock-titulo { font-size:14px; font-weight:800; color:var(--house); }
+  .btn-verde { background:var(--primary); color:#fff; font-size:11.5px; font-weight:800;
+    border-radius:999px; padding:7px 13px; display:inline-block; }
+  .btn-branco { background:#fff; border:1px solid #d1d5db; color:#374151; font-size:11.5px; font-weight:700;
+    border-radius:999px; padding:6px 12px; display:inline-block; }
+  .btn-outline { background:#fff; border:1px solid var(--primary); color:var(--primary); font-size:11.5px; font-weight:800;
+    border-radius:999px; padding:6px 12px; display:inline-block; white-space:nowrap; }
+
+  /* pílula do filtro de período */
+  .periodo { display:inline-flex; align-items:stretch; border:1px solid #d1d5db; border-radius:999px;
+    background:#fff; overflow:hidden; font-size:12px; }
+  .periodo span { padding:7px 10px; display:flex; align-items:center; }
+  .periodo .seta { color:var(--primary); font-weight:800; }
+  .periodo .meio { border-left:1px solid #e5e7eb; border-right:1px solid #e5e7eb; font-weight:800; color:var(--house); gap:6px; }
+  .periodo .meio i { font-style:normal; color:#9ca3af; font-weight:600; font-size:11px; }
+
+  /* KPIs */
+  .kpis { display:flex; gap:7px; margin-top:11px; flex-wrap:wrap; }
+  .kpi { flex:1; min-width:82px; background:#faf9f6; border:1px solid #e9e7e1; border-radius:9px; padding:7px 5px; text-align:center; }
+  .kpi .v { font-size:15px; font-weight:800; color:var(--house); }
+  .kpi .v.verde { color:var(--primary); } .kpi .v.ambar { color:#b45309; } .kpi .v.vermelho { color:#b91c1c; }
+  .kpi .l { font-size:8.5px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:.04em; margin-top:1px; }
+
+  /* tabela de dias */
+  .dias { width:100%; border-collapse:collapse; margin-top:11px; font-size:11.5px; }
+  .dias th { background:#f3f2ee; color:#6b7280; font-size:8.5px; text-transform:uppercase; letter-spacing:.05em;
+    padding:6px 5px; text-align:left; font-weight:800; }
+  .dias td { border-top:1px solid #f0efec; padding:6px 5px; color:#3f4a46; vertical-align:middle; }
+  .dias td.n { text-align:center; white-space:nowrap; }
+  .dias tr.falta td { background:#fef2f2; }
+  .dias tr.fds td { background:#fafaf9; }
+  .dia-nome { font-weight:800; color:var(--house); white-space:nowrap; }
+  .bat { display:inline-block; border:1px solid #e5e7eb; border-radius:999px; padding:1px 6px; margin-right:3px;
+    font-size:10.5px; font-weight:700; color:#374151; }
+  .bat.e { border-left:2px solid var(--primary); } .bat.s { border-left:2px solid #c2703a; }
+  .selo { font-size:9.5px; font-weight:800; border-radius:999px; padding:3px 8px; display:inline-block; white-space:nowrap; }
+  .s-ok { background:#dcfce7; color:#166534; } .s-falta { background:#fee2e2; color:#b91c1c; }
+  .s-abono { background:#fef3c7; color:#b45309; } .s-feriado { background:#dbeafe; color:#1e40af; }
+  .s-folga { background:#eeeeee; color:#4b5563; }
+
+  /* folha */
+  .folha { display:flex; gap:12px; margin-top:11px; flex-wrap:wrap; }
+  .folha .col { flex:1; min-width:180px; }
+  .folha .cap { font-size:9px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#6b7280;
+    border-bottom:1px solid #e5e7eb; padding-bottom:4px; }
+  .lf { display:flex; justify-content:space-between; gap:8px; border-bottom:1px solid #f3f2ee; padding:6px 0; font-size:12px; }
+  .lf .r { color:#3f4a46; } .lf .r small { display:block; color:#9ca3af; font-size:10px; }
+  .lf .v { font-weight:700; color:var(--house); white-space:nowrap; }
+  .lf .v.neg { color:#b91c1c; }
+  .lf.total { border-bottom:none; border-top:1px solid #d1d5db; font-weight:800; }
+  .total-pagar { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:11px;
+    background:var(--mint); border:1px solid rgba(0,117,74,.3); border-radius:12px; padding:11px 13px; }
+  .total-pagar .cap { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--primary-dark); border:none; padding:0; }
+  .total-pagar .v { font-size:20px; font-weight:800; color:var(--primary-dark); }
+
+  /* campos do formulário */
+  .campos { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .campo { flex:1; min-width:130px; position:relative; }
+  .campo .cap { font-size:9.5px; font-weight:800; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; }
+  .campo .cx { border:1px solid #d1d5db; border-radius:7px; background:#fff; padding:7px 9px;
+    font-size:12.5px; font-weight:700; color:var(--house); margin-top:3px; }
+  .campo .aj { font-size:10px; color:#9ca3af; margin-top:3px; }
+
+  /* opções do marcador de dia */
+  .opcao { border:1px solid #e5e7eb; border-radius:10px; padding:9px 11px; margin-top:8px; background:#fff; position:relative; }
+  .opcao.ativa { border-color:var(--primary); background:#f0fdf7; }
+  .opcao b { font-size:13px; color:var(--house); }
+  .opcao span { display:block; font-size:11.5px; color:#6b7280; }
+
+  .trava { border:1px solid rgba(0,117,74,.25); background:var(--mint); border-radius:12px;
+    padding:11px 12px; margin-top:11px; font-size:12.5px; color:var(--primary-dark); position:relative; }
+  .trava b { color:var(--house); }
+  .aviso { border:1px solid #fcd34d; background:#fffbeb; border-radius:12px; padding:11px 12px; margin-top:11px;
+    font-size:12.5px; color:#92400e; }
+  .aviso b { color:#78350f; }
+
+  .pin { position:absolute; top:50%; transform:translateY(-50%); right:-7px; width:22px; height:22px; border-radius:999px;
+    background:var(--gold); color:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,.25); z-index:5; }
+  .pin.topo { top:-9px; transform:none; }
+  .legenda { margin-top:14px; }
+  .legenda .item { display:flex; gap:10px; margin-top:9px; font-size:13.5px; color:#3f4a46; }
+  .legenda .item b { color:var(--house); }
+  .legenda .num { flex:none; width:22px; height:22px; border-radius:999px; background:var(--gold); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; margin-top:1px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="chip">✨ Novidade no app</span>
+  <h1>⏱ O cartão de ponto agora mostra todos os dias — e calcula a folha</h1>
+  <p>Antes só apareciam os dias em que a pessoa bateu o ponto. Agora <b>todo dia do período aparece</b>: quem não veio fica como <b>falta</b>, fim de semana aparece como <b>compensado</b>, e no fim da tela o app entrega o <b>valor a pagar</b> já com hora extra, DSR e desconto de falta.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao">
+    <p class="sec-titulo">🎯 O que mudou, em quatro linhas</p>
+    <p class="texto">
+      1. <b>Todos os dias do período</b> na tela — inclusive sábado e domingo.<br>
+      2. <b>Filtro de período</b> igual ao do resto do app (Este mês, personalizado, setas para andar).<br>
+      3. <b>Botão Imprimir</b> — o cartão sai em folha A4 no modelo do recibo, com espaço de assinatura.<br>
+      4. <b>Folha do período</b> pronta: salário, hora extra, DSR, desconto de falta e o <b>total a pagar</b>.
+    </p>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">📱 Tela 1 — o cartão de ponto (Funcionários → ficha → Cartão de ponto)</p>
+    <div class="tela">
+      <div class="app-card">
+        <div class="mock-topo">
+          <span class="periodo" style="position:relative">
+            <span class="seta">‹</span>
+            <span class="meio">julho/2026 <i>01/07 – 31/07</i> ▾</span>
+            <span class="seta">›</span>
+            <span class="pin">1</span>
+          </span>
+          <span style="display:flex; gap:6px; position:relative">
+            <span class="btn-outline">🖨 Imprimir</span>
+            <span class="btn-verde">+ Adicionar batida</span>
+            <span class="pin">2</span>
+          </span>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi"><div class="v">185:35</div><div class="l">Trabalhadas</div></div>
+          <div class="kpi"><div class="v">184:48</div><div class="l">Previsto</div></div>
+          <div class="kpi"><div class="v verde">09:35</div><div class="l">Banco de horas</div></div>
+          <div class="kpi"><div class="v ambar">09:35</div><div class="l">Hora extra</div></div>
+          <div class="kpi"><div class="v vermelho">1</div><div class="l">Faltas</div></div>
+        </div>
+
+        <table class="dias">
+          <tr><th>Dia</th><th>Batidas</th><th style="text-align:center">Prev.</th><th style="text-align:center">Trab.</th><th style="text-align:center">Saldo</th><th>Situação</th></tr>
+          <tr>
+            <td class="dia-nome">Qua., 01/07</td>
+            <td><span class="bat e">07:28</span><span class="bat s">11:31</span><span class="bat e">12:58</span><span class="bat s">19:05</span></td>
+            <td class="n">08:48</td><td class="n">10:10</td><td class="n" style="color:#166534;font-weight:700">01:22</td>
+            <td><span class="selo s-ok">Trabalhado</span></td>
+          </tr>
+          <tr class="falta">
+            <td class="dia-nome">Sex., 03/07</td><td style="color:#9ca3af">—</td>
+            <td class="n">08:48</td><td class="n">—</td><td class="n">—</td>
+            <td style="position:relative"><span class="selo s-falta">Falta</span><span class="pin">3</span></td>
+          </tr>
+          <tr class="fds">
+            <td class="dia-nome">Sáb., 04/07</td><td style="color:#9ca3af">—</td>
+            <td class="n">—</td><td class="n">—</td><td class="n">—</td>
+            <td style="position:relative"><span class="selo s-folga">Compensado</span><span class="pin">4</span></td>
+          </tr>
+          <tr class="fds">
+            <td class="dia-nome">Dom., 05/07</td><td style="color:#9ca3af">—</td>
+            <td class="n">—</td><td class="n">—</td><td class="n">—</td>
+            <td><span class="selo s-folga">Descanso</span></td>
+          </tr>
+          <tr>
+            <td class="dia-nome">Qui., 09/07</td><td style="color:#9ca3af">—</td>
+            <td class="n">—</td><td class="n">—</td><td class="n">—</td>
+            <td style="position:relative"><span class="selo s-feriado">Aniversário da cidade</span><span class="pin">5</span></td>
+          </tr>
+          <tr>
+            <td class="dia-nome">Sex., 10/07</td><td style="color:#9ca3af">—</td>
+            <td class="n">—</td><td class="n">—</td><td class="n">—</td>
+            <td><span class="selo s-abono">Abonado ✎</span></td>
+          </tr>
+          <tr>
+            <td class="dia-nome">Sáb., 11/07</td>
+            <td><span class="bat e">08:00</span><span class="bat s">12:04</span></td>
+            <td class="n">—</td><td class="n">04:04</td><td class="n" style="color:#166534;font-weight:700">04:04</td>
+            <td style="position:relative"><span class="selo s-ok">Trabalhado</span><span class="pin">6</span></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span><b>Filtro de período</b>, o mesmo do Contas a Pagar e do Financeiro: Este mês, Últimos 30 dias, Este ano ou período personalizado. As setas pulam o mês inteiro e a sua escolha fica salva.</span></div>
+      <div class="item"><span class="num">2</span><span><b>Imprimir</b> — sai a folha A4 com todos os dias, o resumo, a folha do período e as linhas de assinatura (Tela 4).</span></div>
+      <div class="item"><span class="num">3</span><span><b>Dia útil sem batida = Falta</b> (linha vermelha). A coluna <b>Previsto</b> continua mostrando as horas que o dia exigia — dá para ver o que ficou faltando.</span></div>
+      <div class="item"><span class="num">4</span><span><b>Sábado = Compensado</b> e <b>domingo = Descanso</b>. Aparecem na lista, mas <b>não contam falta</b> — a jornada do sábado já está distribuída na semana.</span></div>
+      <div class="item"><span class="num">5</span><span><b>Feriado</b> cadastrado (Ponto → Configurar) aparece com o nome e também não é falta. Atestado lançado na aba Atestados entra como <b>Abonado</b>.</span></div>
+      <div class="item"><span class="num">6</span><span><b>Sábado trabalhado</b>: como não havia carga prevista, <b>tudo o que ele bateu vira hora extra</b> (04:04 no saldo).</span></div>
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">📱 Tela 2 — dizer o que foi aquele dia (clicando no selo)</p>
+    <div class="tela">
+      <div class="app-card">
+        <span class="mock-titulo">Sex., 03/07</span>
+        <p style="margin:2px 0 0; font-size:11.5px; color:#6b7280">Hoje está como <b>Falta</b> (automático pelas batidas e pela escala).</p>
+
+        <div class="opcao ativa"><b>Falta</b><span>Desconta o dia e o DSR da semana</span><span class="pin">1</span></div>
+        <div class="opcao"><b>Abonado</b><span>Atestado, folga paga — não desconta</span><span class="pin">2</span></div>
+        <div class="opcao"><b>Feriado</b><span>Dia de repouso, não é falta</span></div>
+        <div class="opcao"><b>Folga / compensado</b><span>Sem carga prevista no dia</span></div>
+
+        <div class="campo" style="margin-top:10px">
+          <div class="cap">Motivo (opcional)</div>
+          <div class="cx" style="color:#9ca3af; font-weight:500">Ex.: faltou sem avisar</div>
+        </div>
+
+        <div class="mock-topo" style="margin-top:11px">
+          <span style="font-size:11.5px; color:#6b7280; position:relative">Voltar ao automático<span class="pin">3</span></span>
+          <span class="btn-branco">Fechar</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span>O app já marca sozinho pelo que aconteceu — <b>você só mexe quando ele errou</b> ou quando quer justificar. Dia marcado à mão fica com um <b>✎</b> do lado do selo.</span></div>
+      <div class="item"><span class="num">2</span><span>Marcou <b>Abonado</b>? O dia sai da conta das faltas na hora e o total a pagar já muda embaixo.</span></div>
+      <div class="item"><span class="num">3</span><span><b>Voltar ao automático</b> apaga a marcação e o dia volta a ser classificado pelas batidas e pela escala.</span></div>
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">📱 Tela 3 — a folha do período (fim da mesma tela)</p>
+    <div class="tela">
+      <div class="app-card">
+        <span class="mock-titulo">💲 Folha do período</span>
+        <div class="folha">
+          <div class="col">
+            <div class="cap">Proventos</div>
+            <div class="lf"><span class="r">Salário base</span><span class="v">R$ 2.400,00</span></div>
+            <div class="lf" style="position:relative"><span class="r">Horas extras (09:35)<small>+50% · hora R$ 10,91</small></span><span class="v">R$ 156,82</span><span class="pin">1</span></div>
+            <div class="lf" style="position:relative"><span class="r">DSR sobre horas extras<small>5 de descanso ÷ 22 úteis</small></span><span class="v">R$ 35,64</span><span class="pin">2</span></div>
+            <div class="lf"><span class="r">Outros proventos<small>prêmio, ajuda de custo…</small></span><span class="v">R$ 0,00</span></div>
+            <div class="lf total"><span class="r">Total de proventos</span><span class="v">R$ 2.592,46</span></div>
+          </div>
+          <div class="col">
+            <div class="cap">Descontos</div>
+            <div class="lf" style="position:relative"><span class="r">Faltas (1 dia)<small>dia R$ 80,00</small></span><span class="v neg">− R$ 80,00</span><span class="pin">3</span></div>
+            <div class="lf" style="position:relative"><span class="r">DSR perdido (1 dia)<small>semanas com falta</small></span><span class="v neg">− R$ 80,00</span><span class="pin">4</span></div>
+            <div class="lf"><span class="r">Outros descontos<small>vale de 15/07</small></span><span class="v neg">− R$ 180,00</span></div>
+            <div class="lf total"><span class="r">Total de descontos</span><span class="v neg">− R$ 340,00</span></div>
+          </div>
+        </div>
+
+        <div class="total-pagar" style="position:relative">
+          <span class="cap">Total a pagar</span><span class="v">R$ 2.252,46</span><span class="pin">5</span>
+        </div>
+        <p style="margin:5px 0 0; font-size:10.5px; color:#9ca3af">Valor bruto: não inclui INSS, IRRF, FGTS nem vale-transporte — esses ficam com a contabilidade.</p>
+
+        <div class="campos">
+          <div class="campo"><div class="cap">Outros proventos (R$)</div><div class="cx" style="color:#9ca3af; font-weight:500">0,00</div></div>
+          <div class="campo"><div class="cap">Outros descontos (R$)</div><div class="cx">180,00</div><span class="pin">6</span></div>
+          <div class="campo"><div class="cap">Observação</div><div class="cx">vale de 15/07</div></div>
+        </div>
+        <div class="mock-topo" style="margin-top:10px; justify-content:flex-end"><span class="btn-verde">Salvar ajustes</span></div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span><b>Hora extra em dinheiro</b>: as horas que passaram da carga × valor da hora × o adicional (50% por padrão). Se o funcionário estiver como <b>banco de horas</b>, aparece "não pagas" — o app não paga o que é para compensar.</span></div>
+      <div class="item"><span class="num">2</span><span><b>DSR sobre as horas extras</b> — o reflexo das extras no descanso semanal, pela conta da CLT: valor das extras ÷ dias úteis × (domingos + feriados) do período.</span></div>
+      <div class="item"><span class="num">3</span><span><b>Falta</b> desconta um dia de salário (salário ÷ 30). A falta <b>não</b> vira hora negativa no banco — senão descontaria duas vezes.</span></div>
+      <div class="item"><span class="num">4</span><span><b>DSR perdido</b>: cada semana que teve falta derruba um dia de descanso. Dá para desligar isso por funcionário, na aba Dados.</span></div>
+      <div class="item"><span class="num">5</span><span><b>O número que você queria:</b> proventos − descontos. É o <b>valor bruto</b> do período.</span></div>
+      <div class="item"><span class="num">6</span><span><b>Vale, adiantamento, prêmio</b>: digite aqui e clique em <b>Salvar ajustes</b>. Fica guardado naquele funcionário e naquele período — ao reabrir o mês, está lá.</span></div>
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">📱 Tela 4 — onde se define o salário (ficha → aba Dados)</p>
+    <div class="tela">
+      <div class="app-card">
+        <div class="campos">
+          <div class="campo"><div class="cap">Salário mensal (R$)</div><div class="cx">2.400,00</div><div class="aj">valor da hora = salário ÷ 220 · valor do dia = salário ÷ 30</div><span class="pin topo">1</span></div>
+          <div class="campo"><div class="cap">Hora extra</div><div class="cx">Hora extra paga ▾</div><div class="aj">ou "Banco de horas"</div><span class="pin topo">2</span></div>
+        </div>
+
+        <p class="mock-label" style="margin:14px 0 0">💲 Cálculo da folha</p>
+        <div class="campos">
+          <div class="campo"><div class="cap">Adicional de hora extra (%)</div><div class="cx">50</div><div class="aj">50% é o padrão da CLT</div><span class="pin topo">3</span></div>
+          <div class="campo"><div class="cap">Divisor de horas do mês</div><div class="cx">220</div><div class="aj">220 para 44h semanais; 180 para 36h</div><span class="pin topo">4</span></div>
+        </div>
+        <div class="opcao ativa" style="margin-top:10px"><b>☑ Falta faz perder o DSR da semana</b><span>Além do dia da falta, desconta 1 dia de descanso semanal</span><span class="pin">5</span></div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span><b>É daqui que sai tudo.</b> Sem salário preenchido, a folha aparece zerada.</span></div>
+      <div class="item"><span class="num">2</span><span><b>Paga × banco:</b> em "hora extra paga" as horas viram dinheiro na folha; em "banco de horas" elas só ficam no saldo para compensar depois.</span></div>
+      <div class="item"><span class="num">3</span><span>Adicional diferente do combinado com a pessoa? Troque aqui (ex.: 100% para domingo).</span></div>
+      <div class="item"><span class="num">4</span><span>O divisor define o <b>valor da hora</b>. 44h por semana = 220.</span></div>
+      <div class="item"><span class="num">5</span><span>Se a empresa não desconta o DSR da falta, é só <b>desmarcar</b> — a linha some do cálculo daquele funcionário.</span></div>
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">🗓 Feriados: cadastre uma vez, vale para todo mundo</p>
+    <div class="tela">
+      <div class="app-card">
+        <p class="mock-label">Ponto → Configurar → Feriados da empresa</p>
+        <div class="campos">
+          <div class="campo" style="max-width:130px"><div class="cx">09/07/2026</div></div>
+          <div class="campo"><div class="cx">Aniversário da cidade</div></div>
+          <div class="campo" style="flex:none"><span class="btn-verde" style="margin-top:3px">+ Adicionar</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="texto" style="margin-top:11px">
+      Quem não vem no feriado <b>não fica com falta</b>, e o feriado entra como dia de descanso na conta do DSR.
+      Cada inclusão já é gravada na hora — não precisa clicar em salvar.
+    </p>
+  </div>
+
+  <div class="sec">
+    <p class="sec-titulo">❓ Perguntas que vão aparecer</p>
+
+    <details class="acc aberto" open>
+      <summary>E se a pessoa faltou, mas era justificado? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Clique no selo <b>Falta</b> daquele dia e escolha <b>Abonado</b> (com o motivo, se quiser). O desconto do dia e do DSR
+        somem na hora e o total a pagar se refaz sozinho. Atestado lançado na aba <b>Atestados</b> já entra como abonado automaticamente,
+        sem precisar marcar nada.
+      </div>
+    </details>
+
+    <details class="acc aberto" open>
+      <summary>Por que a falta não aparece como hora negativa? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Porque a falta já é descontada <b>em dinheiro</b> na folha (um dia de salário + o DSR da semana). Se ela também virasse
+        hora negativa no banco, a pessoa seria descontada duas vezes pela mesma falta. Por isso a coluna <b>Previsto</b> mostra
+        as horas que o dia exigia, mas o <b>saldo</b> do dia fica em branco.
+      </div>
+    </details>
+
+    <details class="acc aberto" open>
+      <summary>O total já é o valor que eu deposito? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        É o <b>valor bruto do período</b>. O app não calcula <b>INSS, IRRF, FGTS nem vale-transporte</b> — isso continua com a
+        contabilidade. O que ele resolve é a parte que dava mais trabalho: apurar as horas, a hora extra com o DSR e o
+        desconto das faltas. Vale e adiantamento você digita em <b>Outros descontos</b>.
+      </div>
+    </details>
+
+    <details class="acc aberto" open>
+      <summary>Posso escolher um período que não seja o mês? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Pode — o filtro aceita qualquer intervalo (ex.: 16/07 a 15/08). Só lembre que o <b>salário base entra cheio</b> mesmo
+        assim; quando o período não fecha um mês inteiro, aparece um aviso amarelo em cima da folha. Para fechar a folha,
+        use <b>Este mês</b>.
+      </div>
+    </details>
+
+    <details class="acc aberto" open>
+      <summary>Como fica a impressão? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        O botão <b>Imprimir</b> monta uma folha A4 no mesmo modelo dos recibos: cabeçalho com a logo e os dados da empresa,
+        nome/cargo/CPF/admissão do funcionário, <b>todos os dias com as batidas</b>, o resumo, a folha do período, o total a pagar
+        e duas linhas de assinatura (funcionário e empregador), com a frase de conferência das marcações.
+        Imprime <b>dentro do próprio app</b> — funciona no iPad, sem abrir outra aba.
+      </div>
+    </details>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">🚀 Para começar a usar</p>
+    <div class="passo"><span class="num">1</span><p>Abra <b>RH → Funcionários</b>, entre na ficha da pessoa e confira na aba <b>Dados</b> o <b>salário mensal</b>, o tipo de hora extra e o adicional (%).</p></div>
+    <div class="passo"><span class="num">2</span><p>Em <b>Ponto → Configurar</b>, cadastre os <b>feriados</b> do ano. Uma vez só, vale para todos os funcionários.</p></div>
+    <div class="passo"><span class="num">3</span><p>Na ficha, abra <b>Cartão de ponto</b>, escolha o período (começa em "Este mês") e <b>revise os dias em vermelho</b> — marque como Abonado o que for justificado.</p></div>
+    <div class="passo"><span class="num">4</span><p>Lance <b>vale/adiantamento</b> em Outros descontos e clique em <b>Salvar ajustes</b>.</p></div>
+    <div class="passo"><span class="num">5</span><p>Leia o <b>Total a pagar</b> e clique em <b>Imprimir</b> para o funcionário conferir e assinar.</p></div>
+  </div>
+
+  <p class="rodape">Hardt App · qualquer dúvida, chama no grupo 💚</p>
+</div>
+
+</body>
+</html>

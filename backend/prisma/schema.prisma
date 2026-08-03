@@ -790,6 +790,11 @@ model Funcionario {
   tipoHoraExtra String  @default("BANCO") @map("tipo_hora_extra") // BANCO | PAGA
   jornadaMovel  Boolean @default(true) @map("jornada_movel") // desloca mantendo a carga
 
+  // Parâmetros do cálculo da folha
+  percentualHoraExtra Decimal @default(50) @map("percentual_hora_extra") @db.Decimal(5, 2) // adicional da hora extra (%)
+  divisorHoras        Int     @default(220) @map("divisor_horas") // divisor do salário p/ achar o valor da hora
+  descontarDsrFalta   Boolean @default(true) @map("descontar_dsr_falta") // falta injustificada faz perder o DSR da semana
+
   // Link pessoal de ponto (token permanente)
   pontoToken String? @unique @map("ponto_token")
   // Senha de acesso ao link de ponto (bcrypt). Sem senha = acesso não liberado.
@@ -809,15 +814,53 @@ model Funcionario {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  jornadas   FuncionarioJornada[]
-  registros  PontoRegistro[]
-  documentos FuncionarioDocumento[]
-  exames     FuncionarioExame[]
-  atestados  FuncionarioAtestado[]
-  avaliacoes FuncionarioAvaliacao[]
+  jornadas    FuncionarioJornada[]
+  registros   PontoRegistro[]
+  documentos  FuncionarioDocumento[]
+  exames      FuncionarioExame[]
+  atestados   FuncionarioAtestado[]
+  avaliacoes  FuncionarioAvaliacao[]
+  ocorrencias PontoOcorrencia[]
+  folhas      FolhaPeriodo[]
 
   @@index([ativo])
   @@map("funcionarios")
+}
+
+// Marcação manual de um DIA do cartão de ponto (o RH diz o que foi aquele dia).
+// Sem marcação o dia é classificado sozinho pelas batidas + escala.
+model PontoOcorrencia {
+  id            String   @id @default(uuid())
+  funcionarioId String   @map("funcionario_id")
+  data          String // YYYY-MM-DD (timezone SP)
+  tipo          String // FALTA | ABONO | FERIADO | FOLGA
+  obs           String?
+  registradoPor String?  @map("registrado_por") // id do usuário que marcou
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+
+  @@unique([funcionarioId, data])
+  @@index([data])
+  @@map("ponto_ocorrencias")
+}
+
+// Ajustes manuais da folha de um período (vale, adiantamento, prêmio…)
+model FolhaPeriodo {
+  id              String   @id @default(uuid())
+  funcionarioId   String   @map("funcionario_id")
+  de              String // YYYY-MM-DD
+  ate             String // YYYY-MM-DD
+  outrosProventos Decimal  @default(0) @map("outros_proventos") @db.Decimal(12, 2)
+  outrosDescontos Decimal  @default(0) @map("outros_descontos") @db.Decimal(12, 2)
+  obs             String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  funcionario Funcionario @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+
+  @@unique([funcionarioId, de, ate])
+  @@map("folha_periodos")
 }
 
 // Escala semanal (uma linha por dia da semana)

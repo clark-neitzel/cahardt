@@ -10,7 +10,11 @@ const funcionarioService = {
     gerarLink: async (id) => (await api.post(`/rh/funcionarios/${id}/gerar-link`)).data,
     definirSenha: async (id, senha) => (await api.put(`/rh/funcionarios/${id}/senha`, { senha })).data,
     salvarJornada: async (id, dados) => (await api.put(`/rh/funcionarios/${id}/jornada`, dados)).data,
-    cartao: async (id, mes) => (await api.get(`/rh/funcionarios/${id}/cartao`, { params: { mes } })).data,
+    // params: { de, ate } (padrão do sistema) ou { mes: 'YYYY-MM' } (legado)
+    cartao: async (id, params) => (await api.get(`/rh/funcionarios/${id}/cartao`, {
+        params: typeof params === 'string' ? { mes: params } : (params || {})
+    })).data,
+    salvarAjusteFolha: async (id, dados) => (await api.put(`/rh/funcionarios/${id}/folha`, dados)).data,
 
     // Anexos (multipart)
     addDocumento: async (id, form) => (await api.post(`/rh/funcionarios/${id}/documentos`, form, { headers: { 'Content-Type': 'multipart/form-data' } })).data,
@@ -26,6 +30,8 @@ const funcionarioService = {
     addBatida: async (dados) => (await api.post('/rh/ponto/registros', dados)).data,
     updateBatida: async (id, dados) => (await api.put(`/rh/ponto/registros/${id}`, dados)).data,
     delBatida: async (id) => (await api.delete(`/rh/ponto/registros/${id}`)).data,
+    // tipo: 'FALTA' | 'ABONO' | 'FERIADO' | 'FOLGA' | null (null = volta ao automático)
+    marcarDia: async (dados) => (await api.post('/rh/ponto/marcar-dia', dados)).data,
     importarPonto: async (linhas) => (await api.post('/rh/ponto/importar', { linhas })).data
 };
 
