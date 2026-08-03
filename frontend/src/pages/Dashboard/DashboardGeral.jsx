@@ -5,7 +5,8 @@ import 'dayjs/locale/pt-br';
 import toast from 'react-hot-toast';
 import {
     Home, BarChart3, Repeat, MessageCircle, DollarSign, AlertTriangle,
-    CreditCard, Clock, Users, Tag, TrendingDown, TrendingUp, MapPin, CalendarDays
+    CreditCard, Clock, Users, Tag, TrendingDown, TrendingUp, MapPin, CalendarDays,
+    ChevronLeft, ChevronRight
 } from 'lucide-react';
 import api from '../../services/api';
 import SelectBusca from '../../components/SelectBusca';
@@ -28,9 +29,26 @@ const ABAS = [
 
 // Abas cujos dados mudam quando o filtro de categoria muda
 const ABAS_COM_CATEGORIA = ['visao', 'vendas', 'resultado'];
+// Abas que respondem ao mês selecionado (recorrência é sempre a foto atual da carteira)
+const ABAS_COM_MES = ['visao', 'vendas', 'atendimentos', 'resultado'];
+
+const MESES_LONGO = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const mesAtualSP = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }).slice(0, 7);
+const rotuloMesLongo = (ym) => `${MESES_LONGO[Number(ym.slice(5, 7)) - 1]} de ${ym.slice(0, 4)}`;
+const somaMesYM = (ym, n) => {
+    const [y, m] = ym.split('-').map(Number);
+    const d = new Date(y, m - 1 + n, 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+};
+const ultimoDiaMes = (ym) => {
+    const [y, m] = ym.split('-').map(Number);
+    return `${ym}-${String(new Date(y, m, 0).getDate()).padStart(2, '0')}`;
+};
 
 const DashboardGeral = () => {
     const [filtros, setFiltros] = useFiltrosSalvos('dashboard-geral', { categoria: 'Produto Acabado', aba: 'visao' });
+    // Mês selecionado NÃO é persistido: sempre abre no mês corrente (regra do projeto)
+    const [mes, setMes] = useState(mesAtualSP());
     const [categorias, setCategorias] = useState([]);
     const [dados, setDados] = useState({});     // { [aba]: payload }
     const [carregando, setCarregando] = useState({});
@@ -39,6 +57,9 @@ const DashboardGeral = () => {
 
     const aba = ABAS.some((a) => a.key === filtros.aba) ? filtros.aba : 'visao';
     const categoria = filtros.categoria || '';
+    const hoje = mesAtualSP();
+    const ehAtual = mes === hoje;
+    const mesMinimo = somaMesYM(hoje, -11); // navega até 12 meses atrás
 
     // Dado vivo: rebusca ao voltar para o app (PWA em segundo plano) e a cada 5 min
     const marcarAtualizado = useAtualizaAoVoltar(() => setTick((t) => t + 1));
@@ -49,10 +70,15 @@ const DashboardGeral = () => {
             .catch(() => { });
     }, []);
 
-    const buscarAba = useCallback(async (chave, cat) => {
+    const buscarAba = useCallback(async (chave, cat, mesSel) => {
         setCarregando((c) => ({ ...c, [chave]: true }));
         try {
-            const params = ABAS_COM_CATEGORIA.includes(chave) && cat ? { categoria: cat } : {};
+            const params = {};
+            if (ABAS_COM_CATEGORIA.includes(chave) && cat) params.categoria = cat;
+            if (ABAS_COM_MES.includes(chave)) {
+                if (chave === 'atendimentos') { params.de = `${mesSel}-01`; params.ate = ultimoDiaMes(mesSel); }
+                else params.mes = mesSel;
+            }
             const res = await api.get(`/dashboards/geral/${chave === 'visao' ? 'visao-geral' : chave}`, { params });
             setDados((d) => ({ ...d, [chave]: res.data }));
             setAtualizadoEm(new Date());
@@ -65,12 +91,12 @@ const DashboardGeral = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Busca sempre que troca de aba, muda o filtro ou o gatilho de recarga dispara.
+    // Busca sempre que troca de aba, muda o filtro/mês ou o gatilho de recarga dispara.
     // O dado anterior continua na tela durante a rebusca (sem "piscar").
     useEffect(() => {
-        buscarAba(aba, categoria);
+        buscarAba(aba, categoria, mes);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [aba, categoria, tick]);
+    }, [aba, categoria, mes, tick]);
 
     const trocarCategoria = (valor) => {
         setDados((d) => {
@@ -80,6 +106,17 @@ const DashboardGeral = () => {
         });
         setFiltros({ ...filtros, categoria: valor });
     };
+
+    const irParaMes = (alvo) => {
+        if (alvo > hoje || alvo < mesMinimo || alvo === mes) return;
+        setDados((d) => {
+            const novo = { ...d };
+            ABAS_COM_MES.forEach((k) => delete novo[k]); // recarrega as abas sensíveis ao mês
+            return novo;
+        });
+        setMes(alvo);
+    };
+    const irMes = (n) => irParaMes(somaMesYM(mes, n));
 
     const d = dados[aba];
     const ocupado = carregando[aba] && !d;
@@ -95,19 +132,41 @@ const DashboardGeral = () => {
                         </div>
                         <div className="min-w-0">
                             <h1 className="text-base md:text-2xl font-bold text-gray-900 truncate">Dashboard Gerencial</h1>
-                            <p className="text-xs md:text-sm text-gray-500 font-medium">{dayjs().format('MMMM [de] YYYY')}</p>
+                            <p className="text-xs md:text-sm text-gray-500 font-medium capitalize">{rotuloMesLongo(mes)}</p>
                         </div>
                     </div>
-                    <div className="md:ml-auto flex items-center gap-2">
-                        <Tag className="h-4 w-4 text-gray-500 flex-none" />
-                        <SelectBusca value={categoria} onChange={(e) => trocarCategoria(e.target.value)} className="w-full md:w-56">
-                            <option value="">Todas as categorias</option>
-                            {categorias.map((c) => (
-                                <option key={c.categoria} value={c.categoria}>{c.categoria}</option>
-                            ))}
-                        </SelectBusca>
+                    <div className="md:ml-auto flex flex-wrap items-center gap-2">
+                        {/* Navegador de mês */}
+                        <div className="flex items-center bg-white border border-gray-300 rounded-full">
+                            <button onClick={() => irMes(-1)} disabled={mes <= mesMinimo}
+                                className="p-2 rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent min-h-[40px]" aria-label="Mês anterior">
+                                <ChevronLeft className="h-4 w-4" />
+                            </button>
+                            <span className="px-2 text-sm font-bold text-gray-800 capitalize whitespace-nowrap select-none">{rotuloMesLongo(mes)}</span>
+                            <button onClick={() => irMes(1)} disabled={ehAtual}
+                                className="p-2 rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-transparent min-h-[40px]" aria-label="Próximo mês">
+                                <ChevronRight className="h-4 w-4" />
+                            </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <Tag className="h-4 w-4 text-gray-500 flex-none" />
+                            <SelectBusca value={categoria} onChange={(e) => trocarCategoria(e.target.value)} className="w-full md:w-56">
+                                <option value="">Todas as categorias</option>
+                                {categorias.map((c) => (
+                                    <option key={c.categoria} value={c.categoria}>{c.categoria}</option>
+                                ))}
+                            </SelectBusca>
+                        </div>
                     </div>
                 </div>
+                {!ehAtual && (
+                    <div className="mt-3">
+                        <span className="inline-flex items-center gap-2 text-xs font-bold text-amber-700 bg-amber-100 rounded-full px-3 py-1.5">
+                            📅 vendo {rotuloMesLongo(mes)} (mês fechado)
+                            <button onClick={() => irParaMes(hoje)} className="underline">voltar ao mês atual</button>
+                        </span>
+                    </div>
+                )}
                 {/* Abas */}
                 <div className="flex gap-2 mt-3 md:mt-4 overflow-x-auto hide-scrollbar -mx-3 px-3 md:mx-0 md:px-0">
                     {ABAS.map(({ key, label, icon: Icon }) => (
@@ -134,7 +193,10 @@ const DashboardGeral = () => {
                 {ocupado && <Carregando />}
                 {!ocupado && aba === 'visao' && d && <AbaVisaoGeral d={d} irPara={(k) => setFiltros({ ...filtros, aba: k })} />}
                 {!ocupado && aba === 'vendas' && d && <AbaVendas d={d} />}
-                {!ocupado && aba === 'recorrencia' && d && <AbaRecorrencia d={d} />}
+                {!ocupado && aba === 'recorrencia' && d && <>
+                    {!ehAtual && <p className="text-sm text-gray-600 font-medium px-1">A recorrência mostra a <b>situação atual da carteira</b> (não muda por mês) — mesmo vendo {rotuloMesLongo(mes)}.</p>}
+                    <AbaRecorrencia d={d} />
+                </>}
                 {!ocupado && aba === 'atendimentos' && d && <AbaAtendimentos d={d} />}
                 {!ocupado && aba === 'resultado' && d && <AbaResultado d={d} />}
             </div>
@@ -145,6 +207,7 @@ const DashboardGeral = () => {
 /* ══════════════ ABA 1 · VISÃO GERAL ══════════════ */
 const AbaVisaoGeral = ({ d, irPara }) => {
     const v = d.vendasMes || {};
+    const ehAtual = d.ehAtual !== false;
     const h = d.hoje || {};
     const a = d.alertas || {};
     const c = d.caixa || {};
@@ -154,8 +217,8 @@ const AbaVisaoGeral = ({ d, irPara }) => {
         <>
             <Card
                 icon={Clock}
-                titulo={`O mês até agora${d.categoria ? ` — ${d.categoria}` : ''}`}
-                direita={`dia ${v.diaAtual} de ${v.totalDias}`}
+                titulo={`${ehAtual ? 'O mês até agora' : 'Resultado do mês'}${d.categoria ? ` — ${d.categoria}` : ''}`}
+                direita={ehAtual ? `dia ${v.diaAtual} de ${v.totalDias}` : `mês fechado`}
             >
                 <div className="flex flex-wrap items-center gap-4 md:gap-6">
                     <Gauge percent={v.pctMeta ?? 0} />
@@ -163,9 +226,9 @@ const AbaVisaoGeral = ({ d, irPara }) => {
                         <div><p className="text-xs font-bold text-gray-500">Vendas líquidas</p><p className="text-base md:text-lg font-extrabold text-gray-900 tabular-nums">{fmtRS0(v.liquida)}</p></div>
                         <div><p className="text-xs font-bold text-gray-500">Meta do mês</p><p className="text-base md:text-lg font-extrabold text-gray-900 tabular-nums">{v.meta > 0 ? fmtRS0(v.meta) : '—'}</p></div>
                         <div>
-                            <p className="text-xs font-bold text-gray-500">Projeção*</p>
+                            <p className="text-xs font-bold text-gray-500">{ehAtual ? 'Projeção*' : 'Atingimento'}</p>
                             <p className={`text-base md:text-lg font-extrabold tabular-nums ${v.projecaoBateMeta == null ? 'text-gray-900' : v.projecaoBateMeta ? 'text-green-700' : 'text-red-700'}`}>
-                                {fmtRS0(v.projecao)}{v.projecaoBateMeta ? ' ✓' : ''}
+                                {ehAtual ? fmtRS0(v.projecao) : (v.pctMeta != null ? `${fmtBR(v.pctMeta, 0)}%` : '—')}{v.projecaoBateMeta ? ' ✓' : ''}
                             </p>
                         </div>
                         <div><p className="text-xs font-bold text-gray-500">Ticket médio</p><p className="text-base md:text-lg font-extrabold text-gray-900 tabular-nums">{fmtRS0(v.ticketMedio)}</p></div>
@@ -176,11 +239,18 @@ const AbaVisaoGeral = ({ d, irPara }) => {
                 <div className="mt-4">
                     <BarraMeta percent={v.pctMeta ?? 0} />
                     <p className="text-xs text-gray-500 font-medium mt-1.5">
-                        *Projeção = ritmo atual mantido até o fim do mês. {v.pedidos ? `${fmtInt(v.pedidos)} pedidos no mês.` : ''}
+                        {ehAtual ? '*Projeção = ritmo atual mantido até o fim do mês. ' : ''}{v.pedidos ? `${fmtInt(v.pedidos)} pedidos no mês.` : ''}
                     </p>
                 </div>
             </Card>
 
+            {!ehAtual && (
+                <p className="text-sm text-gray-600 font-medium px-1">
+                    Indicadores de <b>hoje</b>, <b>alertas</b> e <b>saúde do caixa</b> aparecem só no mês atual (são do momento). Para o mês fechado, veja as vendas acima e as abas <b>Vendas</b>, <b>Atendimentos</b> e <b>Resultado &amp; Margem</b>.
+                </p>
+            )}
+
+            {ehAtual && <>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <Kpi label="Vendas hoje" valor={fmtRS0(h.vendas)} sub={`${fmtInt(h.pedidos)} pedidos lançados`} />
                 <Kpi label="Pedidos hoje" valor={fmtInt(h.pedidos)} />
@@ -239,6 +309,7 @@ const AbaVisaoGeral = ({ d, irPara }) => {
                     </p>
                 </Card>
             </div>
+            </>}
         </>
     );
 };

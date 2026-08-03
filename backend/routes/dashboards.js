@@ -156,56 +156,24 @@ router.get('/geral/visao-geral', verificarAuth, checkGestor, async (req, res) =>
     try {
         const categoria = (req.query.categoria || '').trim() || null;
         const hoje = isoNowTZ();
-        const mes = hoje.slice(0, 7);
-        const inicioMes = inicioDiaSP(`${mes}-01`);
-        const fimHoje = fimDiaSP(hoje);
-        const inicioHoje = inicioDiaSP(hoje);
-        const diaAtual = Number(hoje.slice(8, 10));
+        const mesAtual = hoje.slice(0, 7);
+        // Mês selecionado (YYYY-MM), nunca no futuro; padrão = mês corrente
+        const mes = (/^\d{4}-\d{2}$/.test(String(req.query.mes)) && String(req.query.mes) <= mesAtual) ? String(req.query.mes) : mesAtual;
+        const ehAtual = mes === mesAtual;
         const totalDias = diasNoMes(mes);
-        // Mês INTEIRO: pedido lançado hoje para entrega depois de amanhã é venda do mês
-        // do mesmo jeito — cortar em "até hoje" fazia o número parecer congelado.
+        const inicioMes = inicioDiaSP(`${mes}-01`);
         const fimMes = fimDiaSP(`${mes}-${String(totalDias).padStart(2, '0')}`);
+        const fimMesISO = ehAtual ? hoje : `${mes}-${String(totalDias).padStart(2, '0')}`;
+        const inicioHoje = inicioDiaSP(hoje);
+        const fimHoje = fimDiaSP(hoje);
+        // Mês fechado → dia "cheio"; mês corrente → dia de hoje (para a projeção)
+        const diaAtual = ehAtual ? Number(hoje.slice(8, 10)) : totalDias;
 
-        const [vendasMes, devolMes, metaAgg, vendasHojeRaw, atendHoje, margem, fluxo, aging] = await Promise.all([
+        const [vendasMes, devolMes, metaAgg, margem] = await Promise.all([
             vendasPeriodo(inicioMes, fimMes, categoria),
-            devolucoesPeriodo(inicioMes, fimHoje, categoria),
+            devolucoesPeriodo(inicioMes, fimMes, categoria),
             prisma.metaMensalVendedor.aggregate({ _sum: { valorMensal: true }, where: { mesReferencia: mes } }),
-            // "Hoje" = o que foi LANÇADO hoje (created_at), qualquer situação/data de entrega
-            prisma.$queryRaw`
-                SELECT COALESCE(SUM(i.valor * i.quantidade), 0)::float AS total, COUNT(DISTINCT p.id)::int AS pedidos
-                FROM pedidos p
-                JOIN pedido_itens i ON i.pedido_id = p.id
-                JOIN produtos pr ON pr.id = i.produto_id
-                WHERE p.bonificacao = false
-                  AND p.created_at >= ${inicioHoje} AND p.created_at <= ${fimHoje}
-                  ${filtroCategoriaItem(categoria)}
-            `,
-            prisma.atendimento.findMany({
-                where: { criadoEm: { gte: inicioHoje, lte: fimHoje } },
-                select: { pedidoId: true, clienteId: true, leadId: true }
-            }),
-            financeiroGerencialService.margemProdutos(`${mes}-01`, hoje),
-            financeiroGerencialService.fluxoCaixa(hoje, somaDiasISO(hoje, 29), 'dia'),
-            financeiroGerencialService.agingRecebiveis()
-        ]);
-
-        // Alertas de ação (contagens leves)
-        const [criticos, retornosVencidos, vencidosParcelas, pedidosErro] = await Promise.all([
-            prisma.clienteInsight.count({
-                where: { statusRecompra: 'CRITICO', cliente: { Ativo: true, insightAtivo: true } }
-            }),
-            prisma.atendimento.count({
-                where: { dataRetorno: { gte: inicioDiaSP(somaDiasISO(hoje, -60)), lt: inicioHoje } }
-            }),
-            prisma.parcela.findMany({
-                where: {
-                    status: { in: ['PENDENTE', 'VENCIDO', 'PARCIAL'] },
-                    dataVencimento: { lt: inicioHoje },
-                    contaReceber: { status: { not: 'CANCELADO' } }
-                },
-                select: { contaReceber: { select: { clienteId: true } } }
-            }),
-            prisma.pedido.count({ where: { statusEnvio: 'ERRO' } })
+            financeiroGerencialService.margemProdutos(`${mes}-01`, fimMesISO)
         ]);
 
         // Margem bruta do mês (linhas da margem filtradas pela categoria, se houver)
@@ -216,13 +184,61 @@ router.get('/geral/visao-geral', verificarAuth, checkGestor, async (req, res) =>
 
         const liquida = round2(vendasMes.total - devolMes);
         const meta = num(metaAgg._sum.valorMensal);
-        const projecao = diaAtual > 0 ? round2((liquida / diaAtual) * totalDias) : 0;
+        // Mês corrente projeta pelo ritmo; mês fechado = o próprio realizado
+        const projecao = ehAtual ? (diaAtual > 0 ? round2((liquida / diaAtual) * totalDias) : 0) : liquida;
 
-        // A pagar nos próximos 7 dias (linhas do fluxo previsto)
-        const aPagar7 = round2((fluxo.linhas || []).slice(0, 7).reduce((s, l) => s + num(l.saidasPrevistas), 0));
+        // Widgets de "agora" (hoje, precisa de atenção, saúde do caixa) só no mês corrente
+        let hojeBloco = null, alertas = null, caixa = null;
+        if (ehAtual) {
+            const [vendasHojeRaw, atendHoje, fluxo, aging, criticos, retornosVencidos, vencidosParcelas, pedidosErro] = await Promise.all([
+                prisma.$queryRaw`
+                    SELECT COALESCE(SUM(i.valor * i.quantidade), 0)::float AS total, COUNT(DISTINCT p.id)::int AS pedidos
+                    FROM pedidos p
+                    JOIN pedido_itens i ON i.pedido_id = p.id
+                    JOIN produtos pr ON pr.id = i.produto_id
+                    WHERE p.bonificacao = false
+                      AND p.created_at >= ${inicioHoje} AND p.created_at <= ${fimHoje}
+                      ${filtroCategoriaItem(categoria)}
+                `,
+                prisma.atendimento.findMany({ where: { criadoEm: { gte: inicioHoje, lte: fimHoje } }, select: { pedidoId: true, clienteId: true, leadId: true } }),
+                financeiroGerencialService.fluxoCaixa(hoje, somaDiasISO(hoje, 29), 'dia'),
+                financeiroGerencialService.agingRecebiveis(),
+                prisma.clienteInsight.count({ where: { statusRecompra: 'CRITICO', cliente: { Ativo: true, insightAtivo: true } } }),
+                prisma.atendimento.count({ where: { dataRetorno: { gte: inicioDiaSP(somaDiasISO(hoje, -60)), lt: inicioHoje } } }),
+                prisma.parcela.findMany({
+                    where: { status: { in: ['PENDENTE', 'VENCIDO', 'PARCIAL'] }, dataVencimento: { lt: inicioHoje }, contaReceber: { status: { not: 'CANCELADO' } } },
+                    select: { contaReceber: { select: { clienteId: true } } }
+                }),
+                prisma.pedido.count({ where: { statusEnvio: 'ERRO' } })
+            ]);
+            const aPagar7 = round2((fluxo.linhas || []).slice(0, 7).reduce((s, l) => s + num(l.saidasPrevistas), 0));
+            hojeBloco = {
+                vendas: round2(num(vendasHojeRaw[0]?.total)),
+                pedidos: num(vendasHojeRaw[0]?.pedidos),
+                atendimentos: atendHoje.length,
+                atendimentosComPedido: atendHoje.filter((a) => a.pedidoId).length,
+                clientesAtendidos: new Set(atendHoje.map((a) => a.clienteId || `lead:${a.leadId}`)).size
+            };
+            alertas = {
+                recompraCritica: criticos,
+                retornosVencidos,
+                clientesVencidos: new Set(vencidosParcelas.map((p) => p.contaReceber?.clienteId).filter(Boolean)).size,
+                valorVencido: aging.totalVencido,
+                pedidosErroEnvio: pedidosErro
+            };
+            caixa = {
+                aReceberVencido: aging.totalVencido,
+                aPagar7dias: aPagar7,
+                entradasPrevistas30: round2(num(fluxo.totais?.entradasPrevistas)),
+                saidasPrevistas30: round2(num(fluxo.totais?.saidasPrevistas)),
+                saldoPrevisto30: fluxo.kpis?.saldoPrevistoPeriodo ?? null
+            };
+        }
 
         res.json({
             mes,
+            mesAtual,
+            ehAtual,
             hojeISO: hoje,
             categoria,
             vendasMes: {
@@ -239,27 +255,9 @@ router.get('/geral/visao-geral', verificarAuth, checkGestor, async (req, res) =>
                 totalDias,
                 margemBrutaPct
             },
-            hoje: {
-                vendas: round2(num(vendasHojeRaw[0]?.total)),
-                pedidos: num(vendasHojeRaw[0]?.pedidos),
-                atendimentos: atendHoje.length,
-                atendimentosComPedido: atendHoje.filter((a) => a.pedidoId).length,
-                clientesAtendidos: new Set(atendHoje.map((a) => a.clienteId || `lead:${a.leadId}`)).size
-            },
-            alertas: {
-                recompraCritica: criticos,
-                retornosVencidos,
-                clientesVencidos: new Set(vencidosParcelas.map((p) => p.contaReceber?.clienteId).filter(Boolean)).size,
-                valorVencido: aging.totalVencido,
-                pedidosErroEnvio: pedidosErro
-            },
-            caixa: {
-                aReceberVencido: aging.totalVencido,
-                aPagar7dias: aPagar7,
-                entradasPrevistas30: round2(num(fluxo.totais?.entradasPrevistas)),
-                saidasPrevistas30: round2(num(fluxo.totais?.saidasPrevistas)),
-                saldoPrevisto30: fluxo.kpis?.saldoPrevistoPeriodo ?? null
-            }
+            hoje: hojeBloco,
+            alertas,
+            caixa
         });
     } catch (error) {
         console.error('[Dashboards] Erro na visão geral:', error);
@@ -275,16 +273,21 @@ router.get('/geral/vendas', verificarAuth, checkGestor, async (req, res) => {
         const categoria = (req.query.categoria || '').trim() || null;
         const semanas = Math.min(26, Math.max(4, Number(req.query.semanas) || 12));
         const hoje = isoNowTZ();
-        const mes = hoje.slice(0, 7);
+        const mesAtual = hoje.slice(0, 7);
+        const mes = (/^\d{4}-\d{2}$/.test(String(req.query.mes)) && String(req.query.mes) <= mesAtual) ? String(req.query.mes) : mesAtual;
+        const ehAtual = mes === mesAtual;
+        const totalDias = diasNoMes(mes);
+        // Âncora = "hoje" do mês selecionado (dia de hoje no mês corrente; último dia se fechado)
+        const ancoraISO = ehAtual ? hoje : `${mes}-${String(totalDias).padStart(2, '0')}`;
         const inicioMes = inicioDiaSP(`${mes}-01`);
-        const fimHoje = fimDiaSP(hoje);
+        const fimAncora = fimDiaSP(ancoraISO);
         // Mês/semana INTEIROS: venda lançada para entrega futura conta no período dela
-        const fimMes = fimDiaSP(`${mes}-${String(diasNoMes(mes)).padStart(2, '0')}`);
-        const fimSemanaAtual = fimDiaSP(somaDiasISO(segundaDaSemana(hoje), 6));
-        const inicioSerie = inicioDiaSP(segundaDaSemana(somaDiasISO(hoje, -7 * (semanas - 1))));
-        const ini30 = inicioDiaSP(somaDiasISO(hoje, -29));
-        const ini60 = inicioDiaSP(somaDiasISO(hoje, -59));
-        const fim31 = fimDiaSP(somaDiasISO(hoje, -30));
+        const fimMes = fimDiaSP(`${mes}-${String(totalDias).padStart(2, '0')}`);
+        const fimSemanaAtual = fimDiaSP(somaDiasISO(segundaDaSemana(ancoraISO), 6));
+        const inicioSerie = inicioDiaSP(segundaDaSemana(somaDiasISO(ancoraISO, -7 * (semanas - 1))));
+        const ini30 = inicioDiaSP(somaDiasISO(ancoraISO, -29));
+        const ini60 = inicioDiaSP(somaDiasISO(ancoraISO, -59));
+        const fimHoje = fimAncora; // janelas de 30/60 dias e devoluções terminam na âncora do mês
 
         const [brutoSemanaRaw, devolSemanaRaw, realizadoVendRaw, metas, devolucoesMes, topRaw, devolProdRaw, quedaRaw, cidadesRaw] = await Promise.all([
             prisma.$queryRaw`
@@ -335,7 +338,7 @@ router.get('/geral/vendas', verificarAuth, checkGestor, async (req, res) => {
                 select: { vendedorId: true, valorMensal: true, vendedor: { select: { nome: true, ativo: true } } }
             }),
             prisma.devolucao.findMany({
-                where: { status: 'ATIVA', dataDevolucao: { gte: inicioMes, lte: fimHoje } },
+                where: { status: 'ATIVA', dataDevolucao: { gte: inicioMes, lte: fimMes } },
                 select: { valorTotal: true, pedidoOriginal: { select: { vendedorId: true } } }
             }),
             prisma.$queryRaw`
@@ -393,7 +396,7 @@ router.get('/geral/vendas', verificarAuth, checkGestor, async (req, res) => {
         const serieMap = new Map(brutoSemanaRaw.map((s) => [s.semana, num(s.total)]));
         const semanasSerie = [];
         for (let i = semanas - 1; i >= 0; i--) {
-            const seg = segundaDaSemana(somaDiasISO(hoje, -7 * i));
+            const seg = segundaDaSemana(somaDiasISO(ancoraISO, -7 * i));
             semanasSerie.push({
                 semana: seg,
                 total: round2((serieMap.get(seg) || 0) - (devolPorSemana.get(seg) || 0)),
@@ -408,8 +411,8 @@ router.get('/geral/vendas', verificarAuth, checkGestor, async (req, res) => {
             if (id) devolPorVend.set(id, (devolPorVend.get(id) || 0) + num(d.valorTotal));
         }
         const realPorVend = new Map(realizadoVendRaw.map((r) => [r.vendedor_id, { total: num(r.total), pedidos: num(r.pedidos) }]));
-        const diaAtual = Number(hoje.slice(8, 10));
-        const totalDias = diasNoMes(mes);
+        // Mês corrente projeta pelo ritmo; mês fechado usa o realizado (dia "cheio")
+        const diaAtual = ehAtual ? Number(hoje.slice(8, 10)) : totalDias;
         const idsVend = new Set([...metas.map((m) => m.vendedorId), ...realPorVend.keys()].filter(Boolean));
         const nomesFaltantes = [...idsVend].filter((id) => !metas.find((m) => m.vendedorId === id));
         const vendedoresExtra = nomesFaltantes.length
@@ -455,6 +458,8 @@ router.get('/geral/vendas', verificarAuth, checkGestor, async (req, res) => {
 
         res.json({
             mes,
+            mesAtual,
+            ehAtual,
             categoria,
             serieSemanal: semanasSerie,
             vendedores,
