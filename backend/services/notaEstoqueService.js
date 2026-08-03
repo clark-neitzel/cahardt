@@ -19,6 +19,16 @@
  * Estorno (cancelar-conferência / desfazer-entrada): subtrai a quantidade de volta
  * e RESTAURA o custo para o `custoAnterior` — mas só se o custo atual ainda for o
  * `custoPosterior` gravado (se alguém mexeu no meio, o custo fica e sai um aviso).
+ *
+ * CORREÇÃO (corrigirEstoqueNota) — 08/2026: conferência com produto/conversão errados
+ * não obriga mais a cancelar a despesa. `corrigirEstoqueNota` estorna o ledger e
+ * reaplica com os vínculos certos DENTRO da mesma transação, sem encostar em
+ * ContaPagar/parcelas/pagamentos. O VALOR nunca vem do formulário — quantidade e
+ * custo saem sempre de `itemNota.quantidade`/`itemNota.valorTotal` (o que está no
+ * XML), então corrigir a conversão só redistribui o MESMO dinheiro pela quantidade
+ * certa. Quando a nota tem custo, o chamador ainda recalcula a média pelo histórico
+ * de compras válidas DEPOIS do commit (compraEstoqueService.recalcularCustoPelasCompras)
+ * — o "restaurar custoAnterior" do estorno não basta quando houve compras no meio.
  */
 
 const round = (v, casas) => {
@@ -81,7 +91,7 @@ const rotuloNota = (nota) =>
  * @returns {{ itens: Array<{nome,unidade,quantidade,destino}>, avisos: string[] }}
  *          Idempotente: se a nota já tem linhas ativas no ledger, devolve { itens: [], avisos: [...] }.
  */
-async function aplicarEstoqueNota(tx, nota, itensResolvidos, { comCusto = false, criadoPorId = null, contaPagarId = null } = {}) {
+async function aplicarEstoqueNota(tx, nota, itensResolvidos, { comCusto = false, criadoPorId = null, contaPagarId = null, correcao = false } = {}) {
     const itens = [];
     const avisos = [];
 
@@ -93,7 +103,7 @@ async function aplicarEstoqueNota(tx, nota, itensResolvidos, { comCusto = false,
         return { itens: [], avisos: ['Esta nota já tinha entrada de estoque aplicada — nada foi somado de novo.'] };
     }
 
-    const observacao = `Entrada ${rotuloNota(nota)}`;
+    const observacao = correcao ? `Correção da entrada ${rotuloNota(nota)}` : `Entrada ${rotuloNota(nota)}`;
 
     for (const item of itensResolvidos || []) {
         const qtd = round(num(item.quantidadeConvertida), 3);
@@ -259,7 +269,7 @@ const custoIgual = (a, b, casas) => a != null && b != null && Math.abs(num(a) - 
  *
  * @returns {{ estornadas: number, avisos: string[] }}
  */
-async function estornarEstoqueNota(tx, notaId, { criadoPorId = null } = {}) {
+async function estornarEstoqueNota(tx, notaId, { criadoPorId = null, correcao = false } = {}) {
     const avisos = [];
     const linhas = await tx.notaEntradaEstoqueMov.findMany({
         where: { notaEntradaId: notaId, estornado: false },
@@ -271,7 +281,8 @@ async function estornarEstoqueNota(tx, notaId, { criadoPorId = null } = {}) {
         where: { id: notaId },
         select: { id: true, tipo: true, numero: true, fornecedorNome: true }
     });
-    const observacao = `Estorno entrada ${rotuloNota(nota || { tipo: 'NFE' })}`;
+    const rotulo = rotuloNota(nota || { tipo: 'NFE' });
+    const observacao = correcao ? `Correção — retirada do lançamento errado ${rotulo}` : `Estorno entrada ${rotulo}`;
 
     let estornadas = 0;
     for (const mov of linhas) {
@@ -293,7 +304,8 @@ async function estornarEstoqueNota(tx, notaId, { criadoPorId = null } = {}) {
             if (mov.custoPosterior != null) {
                 if (custoIgual(p.custoManual, mov.custoPosterior, 2)) {
                     data.custoManual = mov.custoAnterior != null ? round(num(mov.custoAnterior), 2) : null;
-                } else {
+                } else if (!correcao) {
+                    // Na correção esse aviso é ruído: o custo é refeito pelo histórico de compras depois do commit.
                     avisos.push(`"${p.nome}": o custo mudou depois desta entrada — quantidade estornada, custo mantido (confira o Custo Manual).`);
                 }
             }
@@ -329,7 +341,7 @@ async function estornarEstoqueNota(tx, notaId, { criadoPorId = null } = {}) {
             if (mov.custoPosterior != null) {
                 if (custoIgual(i.custoUnitario, mov.custoPosterior, 4)) {
                     data.custoUnitario = mov.custoAnterior != null ? round(num(mov.custoAnterior), 4) : null;
-                } else {
+                } else if (!correcao) {
                     avisos.push(`"${i.nome}": o custo mudou depois desta entrada — quantidade estornada, custo mantido (confira o custo unitário no PCP).`);
                 }
             }
@@ -375,11 +387,83 @@ async function estoqueAplicado(db, notaId) {
     return n > 0;
 }
 
+/**
+ * O que esta nota tem HOJE somado no estoque (linhas ativas do ledger), já com o
+ * nome do produto/insumo. É o que a tela de correção mostra como "está assim" —
+ * NÃO usar a memória do de-para (FornecedorProdutoVinculo), que pode ter sido
+ * alterada por uma nota posterior do mesmo fornecedor.
+ */
+async function entradaAplicada(db, notaId) {
+    const linhas = await db.notaEntradaEstoqueMov.findMany({
+        where: { notaEntradaId: notaId, estornado: false },
+        orderBy: { criadoEm: 'asc' },
+        include: {
+            produto: { select: { id: true, nome: true, unidade: true } },
+            itemPcp: { select: { id: true, nome: true, unidade: true } }
+        }
+    });
+    return linhas.map((m) => ({
+        notaEntradaItemId: m.notaEntradaItemId,
+        destino: m.destino,
+        vinculo: m.produtoId ? `PROD:${m.produtoId}` : (m.itemPcpId ? `PCP:${m.itemPcpId}` : null),
+        nome: m.produto?.nome || m.itemPcp?.nome || null,
+        unidade: m.produto?.unidade || m.itemPcp?.unidade || null,
+        quantidade: num(m.quantidade),
+        custoUnitario: m.custoUnitario != null ? num(m.custoUnitario) : null
+    }));
+}
+
+/**
+ * CORRIGE a entrada de estoque de uma nota já lançada: estorna o ledger ativo e
+ * reaplica com os vínculos/fatores novos, na MESMA transação. Não encosta em
+ * ContaPagar, parcelas nem pagamentos — o financeiro fica exatamente como está.
+ *
+ * O valor NUNCA vem do formulário: `itensResolvidos` é montado por
+ * `montarItensResolvidos` a partir do próprio item da nota (quantidade × fator e
+ * valorTotal ÷ quantidade convertida). Mudar o fator só redistribui o mesmo
+ * dinheiro por outra quantidade.
+ *
+ * @returns {{ antes: Array, depois: Array, avisos: string[], alvos: {produtoIds: string[], itemPcpIds: string[]} }}
+ *          `alvos` = produtos/insumos tocados (antes OU depois) — o chamador recalcula
+ *          o custo deles pelo histórico de compras DEPOIS do commit.
+ */
+async function corrigirEstoqueNota(tx, nota, itensResolvidos, { comCusto = false, criadoPorId = null, contaPagarId = null } = {}) {
+    const antes = await entradaAplicada(tx, nota.id);
+
+    const estorno = await estornarEstoqueNota(tx, nota.id, { criadoPorId, correcao: true });
+    const aplicacao = await aplicarEstoqueNota(tx, nota, itensResolvidos, {
+        comCusto,
+        criadoPorId,
+        contaPagarId,
+        correcao: true
+    });
+
+    const depois = await entradaAplicada(tx, nota.id);
+
+    // Alvos tocados dos DOIS lados (o produto que saiu também precisa ter o custo refeito).
+    const produtoIds = new Set();
+    const itemPcpIds = new Set();
+    for (const l of [...antes, ...depois]) {
+        if (l.destino === 'PROD' && l.vinculo) produtoIds.add(l.vinculo.slice(5));
+        else if (l.destino === 'PCP' && l.vinculo) itemPcpIds.add(l.vinculo.slice(4));
+    }
+
+    return {
+        antes,
+        depois,
+        estornadas: estorno.estornadas,
+        avisos: [...estorno.avisos, ...aplicacao.avisos],
+        alvos: { produtoIds: [...produtoIds], itemPcpIds: [...itemPcpIds] }
+    };
+}
+
 module.exports = {
     aplicarEstoqueNota,
     estornarEstoqueNota,
+    corrigirEstoqueNota,
     montarItensResolvidos,
     estoqueAplicado,
+    entradaAplicada,
     // pura (testável offline)
     custoMedioPonderado
 };

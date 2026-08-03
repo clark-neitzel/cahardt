@@ -98,6 +98,31 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 
 ---
 
+## Corrigir produto/conversão de uma nota JÁ lançada (sem mexer no pagamento)
+
+**O problema que isto resolve:** se a conferência foi feita com o **produto errado** ou a **conversão errada** (ex.: 1 caixa lançada como 1 kg em vez de 10 kg), o **custo do produto sai errado** — porque o custo é sempre *valor do item ÷ quantidade convertida*. Até 08/2026 o único conserto era "Cancelar entrada e refazer", que exige **estornar a baixa, cancelar a despesa e refazer o pagamento**. Aconteceu em julho/2026 e travou a correção do custo.
+
+**Onde fica:** abra a nota (status **Despesa gerada** ou **Entrada registrada**) → ao lado do selo verde **"Estoque somado ✓"** aparece o botão **"Corrigir produto/conversão"**.
+
+**O que a correção faz:**
+- Deixa você trocar o **produto vinculado** e a **conversão de quantidade** de cada item (inclusive vincular um item que não tinha entrado, ou desvincular um que entrou errado).
+- Mostra, item a item, **como está hoje** (produto, quantidade e custo) e **como vai ficar**, além da diferença que entra ou sai do estoque.
+- Ao confirmar: retira do estoque o lançamento errado, lança o certo e **recalcula o custo pelo histórico de compras válidas** do produto (as compras posteriores continuam valendo — não é um simples "volta ao custo anterior").
+- A diferença de quantidade entra (ou sai) do **estoque de hoje**, com movimentação registrada no Histórico de Estoque ("Correção da entrada NF-e ..." e "Correção — retirada do lançamento errado ...").
+- A **memória do de-para** do fornecedor é atualizada junto: a próxima nota daquele fornecedor já vem com a conversão certa.
+
+**O que a correção NÃO faz (de propósito):**
+- **Não altera o valor da nota nem da despesa.** O valor de cada item vem do XML; o formulário só diz *para onde* vai e *em que conversão*. Por isso o custo apenas se espalha pela quantidade certa.
+- **Não mexe** na conta a pagar, nas parcelas, nas baixas/pagamentos nem no envio ao Conta Azul.
+- **Não muda a categoria de despesa** (isso alteraria o rateio e a DRE) — para trocar categoria, o caminho continua sendo "Cancelar entrada e refazer".
+- Não vale para **NFS-e** (serviço não movimenta estoque) nem para nota **sem estoque aplicado**.
+
+**O custo cai ou sobe?** Depende do erro: se a conversão errada lançou **quantidade a menos**, o custo estava inflado e **cai** ao corrigir; se lançou **quantidade a mais**, o custo estava baixo demais e **sobe**. O total pago é sempre o mesmo.
+
+**Permissão:** exige **Pode_Corrigir_Entrada_Estoque** (permissão própria, separada de "Operar Contas a Pagar") — porque mexe em custo e estoque de mês já fechado.
+
+---
+
 ## Quando a nota chega DEPOIS da despesa já lançada (Vincular a parcela existente)
 
 Caso típico: um **contrato de serviço** (advogado, contador, manutenção) com **várias parcelas já lançadas na mão** em Contas a Pagar. A nota fiscal de cada mês só chega **depois** — às vezes depois de a parcela já ter sido paga. Se você "gerar a despesa" dessa nota, a dívida fica **duplicada**.
@@ -200,6 +225,7 @@ Envio Contabilidade
 |-----------|--------|
 | `Pode_Acessar_Notas_Recebidas` | Ver a caixa de entrada, detalhes e XML |
 | `Pode_Baixar_Contas_Pagar` | Gerar conta, **vincular/desvincular a parcela já lançada**, **registrar/desfazer entrada sem pagamento**, ignorar/reativar, cancelar entrada e "Consultar agora" |
+| `Pode_Corrigir_Entrada_Estoque` | **Corrigir produto/conversão de nota já lançada** — ajusta estoque e custo sem mexer na despesa, nas parcelas nem nos pagamentos |
 | `configuracoes.edit` | Ligar/desligar as capturas e instalar o certificado |
 | `admin` | Tudo acima |
 
@@ -211,7 +237,7 @@ Envio Contabilidade
 - **Contas a Pagar** — a conta gerada aparece lá com origem NF-e/NFS-e (e pode ir ao Conta Azul)
 - **Fornecedores** — fornecedores/prestadores novos são criados automaticamente pelo CNPJ da nota
 - **Produtos** e **PCP → Itens** — o de-para liga itens da NF-e aos produtos do catálogo ou a itens PCP criados na hora; é ele que faz a nota **somar no estoque** ao ser conferida (com custo no "gerar conta"; sem custo no "registrar entrada")
-- **Estoque → Histórico** e **PCP → Estoque** — cada entrada/estorno de nota aparece lá como movimentação ("Entrada NF-e ..." / "Estorno entrada NF-e ...")
+- **Estoque → Histórico** e **PCP → Estoque** — cada entrada/estorno de nota aparece lá como movimentação ("Entrada NF-e ..." / "Estorno entrada NF-e ..."); a correção de produto/conversão aparece como "Correção — retirada do lançamento errado ..." seguida de "Correção da entrada NF-e ..."
 
 ---
 

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import notasEntradaService from '../../services/notasEntradaService';
 import contasPagarService from '../../services/contasPagarService';
-import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search, Upload, Calendar, FilePlus, UploadCloud, Clock, Link2, Unlink, PackageCheck, Undo2 } from 'lucide-react';
+import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search, Upload, Calendar, FilePlus, UploadCloud, Clock, Link2, Unlink, PackageCheck, Undo2, Wrench, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
@@ -32,6 +32,8 @@ const parseNum = (v) => parseFloat(String(v ?? '').replace(/\./g, '').replace(',
 // Fator de conversão ("0,5" / "50") → número (sem tratar ponto como milhar)
 const parseFator = (v) => parseFloat(String(v ?? '').trim().replace(',', '.')) || 0;
 const round2 = (v) => Math.round(Number(v || 0) * 100) / 100;
+// 4 casas — precisão do fator de conversão gravado no banco (Decimal(12,4))
+const round4 = (v) => Math.round(Number(v || 0) * 10000) / 10000;
 // Soma `dias` a uma data 'YYYY-MM-DD' preservando o dia local (sem salto de fuso) → 'YYYY-MM-DD'
 const addDiasYMD = (ymd, dias) => {
     const [y, m, d] = String(ymd || '').split('-').map(Number);
@@ -1014,7 +1016,7 @@ const NotaExpandida = ({ nota, podeOperar, itensPcp, categorias, categoriasErro,
                     onChanged={onChanged}
                 />
             ) : (
-                <DetalheNota nota={nota} podeOperar={podeOperar} onChanged={onChanged} />
+                <DetalheNota nota={nota} podeOperar={podeOperar} itensPcp={itensPcp} onChanged={onChanged} />
             )}
         </>
     );
@@ -2386,12 +2388,341 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
 // ═══════════════════════════════════════════════════════════
 // DETALHES (somente leitura: gerada / ignorada / cancelada / sem permissão)
 // ═══════════════════════════════════════════════════════════
-const DetalheNota = ({ nota, podeOperar, onChanged }) => {
+// ═══════════════════════════════════════════════════════════
+// CORRIGIR A ENTRADA DE ESTOQUE (nota já lançada)
+//
+// Conserta produto vinculado e conversão de uma nota que JÁ virou despesa, sem
+// estornar baixa nem cancelar a conta a pagar. O valor da nota é intocável: o custo
+// é sempre valor do item ÷ quantidade convertida — corrigir a conversão só espalha
+// o MESMO dinheiro pela quantidade certa (por isso o custo pode cair ou subir).
+// ═══════════════════════════════════════════════════════════
+const PainelCorrigirEntrada = ({ nota, itensPcp, onCancelar, onChanged }) => {
+    const itensNota = useMemo(() => Array.isArray(nota.itens) ? nota.itens : [], [nota]);
+    // O que está somado HOJE no estoque por esta nota (ledger), por item da nota.
+    const aplicadoPorItem = useMemo(() => {
+        const m = new Map();
+        for (const l of (Array.isArray(nota.entradaEstoque) ? nota.entradaEstoque : [])) {
+            if (l.notaEntradaItemId) m.set(l.notaEntradaItemId, l);
+        }
+        return m;
+    }, [nota]);
+
+    // Pré-preenche com o que foi REALMENTE aplicado (não com a memória do fornecedor,
+    // que pode ter mudado numa nota posterior). Fator = quantidade aplicada ÷ quantidade da nota.
+    const [vinculos, setVinculos] = useState(() => itensNota.map(it => {
+        const ap = aplicadoPorItem.get(it.id);
+        const qtdNota = Number(it.quantidade || 0);
+        const fator = ap && qtdNota > 0 ? ap.quantidade / qtdNota : 0;
+        return {
+            itemId: it.id,
+            vinculoValue: ap?.vinculo || it.vinculo?.value || '',
+            fator: fator > 0 ? String(round4(fator)).replace('.', ',') : '',
+            novo: null
+        };
+    }));
+    const [salvando, setSalvando] = useState(false);
+    const [confirmando, setConfirmando] = useState(false);
+
+    const setVinculo = (idx, patch) => setVinculos(prev => prev.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
+
+    // Situação de cada item: como está hoje × como vai ficar.
+    const linhas = useMemo(() => itensNota.map((it, idx) => {
+        const v = vinculos[idx];
+        const ap = aplicadoPorItem.get(it.id) || null;
+        const opcao = v.novo ? null : itensPcp.find(p => String(p.value) === String(v.vinculoValue));
+        const unidadeNova = v.novo ? (v.novo.unidade || '?') : (opcao?.unidade || ap?.unidade || '?');
+        const vinculado = !!v.novo || !!v.vinculoValue;
+        const fator = parseFator(v.fator);
+        const qtdNova = vinculado && fator > 0 ? Number(it.quantidade || 0) * fator : 0;
+        const custoNovo = qtdNova > 0 ? Number(it.valorTotal || 0) / qtdNova : 0;
+        // Mudou de produto? (comparado com o que está aplicado hoje)
+        const trocouProduto = !!ap && !v.novo && String(v.vinculoValue || '') !== String(ap.vinculo || '');
+        const mudou = !ap
+            ? vinculado
+            : (trocouProduto || !!v.novo || Math.abs(qtdNova - Number(ap.quantidade || 0)) > 0.0005);
+        // Diferença que entra/sai do estoque HOJE (só faz sentido no mesmo produto)
+        const difEstoque = ap && !trocouProduto && !v.novo ? qtdNova - Number(ap.quantidade || 0) : null;
+        return { it, v, ap, opcao, unidadeNova, vinculado, fator, qtdNova, custoNovo, trocouProduto, mudou, difEstoque };
+    }), [itensNota, vinculos, aplicadoPorItem, itensPcp]);
+
+    const algoMudou = linhas.some(l => l.mudou);
+
+    const validar = () => {
+        for (let i = 0; i < linhas.length; i++) {
+            const { v, it, vinculado, fator } = linhas[i];
+            if (v.novo && (!v.novo.nome.trim() || !v.novo.unidade.trim())) {
+                return `Preencha nome e unidade do produto novo do item "${it.descricao || i + 1}".`;
+            }
+            if (vinculado && fator <= 0) {
+                return `Informe a conversão de quantidade do item "${it.descricao || i + 1}" (ou desfaça o vínculo).`;
+            }
+        }
+        if (!algoMudou) return 'Nada mudou — ajuste o produto ou a conversão de algum item.';
+        return '';
+    };
+
+    const corrigir = async () => {
+        const erro = validar();
+        if (erro) { toast.error(erro); return; }
+        setSalvando(true);
+        try {
+            const resp = await notasEntradaService.corrigirEntradaEstoque(nota.id, {
+                itens: vinculos.map(v => ({
+                    itemId: v.itemId,
+                    vinculo: v.novo ? null : (v.vinculoValue || null),
+                    fatorConversao: parseFator(v.fator) > 0 ? parseFator(v.fator) : null,
+                    criarItemPcp: v.novo
+                        ? { nome: v.novo.nome.trim(), tipo: v.novo.tipo, unidade: v.novo.unidade.trim() }
+                        : null
+                }))
+            });
+            toast.success(resp?.message || 'Entrada corrigida!');
+            toastEstoque(resp?.depois);
+            for (const aviso of (resp?.avisos || [])) toast(aviso, { icon: '⚠️', duration: 8000 });
+            onChanged();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Não foi possível corrigir a entrada.');
+        } finally {
+            setSalvando(false);
+            setConfirmando(false);
+        }
+    };
+
+    return (
+        <div className="border-2 border-amber-400 rounded-xl overflow-hidden bg-white">
+            <div className="px-4 md:px-5 py-3.5 border-b border-gray-100 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                        <Wrench className="h-4 w-4 text-amber-600 shrink-0" />
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Corrigir entrada de estoque</span>
+                    </div>
+                    <div className="text-sm text-gray-700 mt-1 break-words">
+                        {tipoNotaLabel(nota.tipo)}{nota.numero ? ` ${nota.numero}` : ''}
+                        {nota.fornecedorNome ? ` · ${nota.fornecedorNome}` : ''}
+                    </div>
+                </div>
+                <button onClick={onCancelar} title="Fechar" className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 shrink-0">
+                    <X className="h-4 w-4" />
+                </button>
+            </div>
+
+            <div className="p-4 md:p-5 space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 leading-relaxed">
+                    Arruma o <b>produto</b> e a <b>conversão</b> de uma entrada já lançada, sem estornar pagamento nem cancelar a despesa.
+                    A despesa de <b>R$ {fmt(nota.valorTotal)}</b>, as parcelas e as baixas <b>não mudam</b> — o app só espalha esse mesmo
+                    valor pela quantidade certa, então o <b>custo cai</b> se faltou quantidade e <b>sobe</b> se entrou quantidade demais.
+                    A diferença de quantidade entra (ou sai) do estoque <b>hoje</b>, com movimentação registrada.
+                </div>
+
+                <div className="space-y-3">
+                    {linhas.map((l, idx) => {
+                        const { it, v, ap, unidadeNova, vinculado, fator, qtdNova, custoNovo, trocouProduto, mudou, difEstoque } = l;
+                        return (
+                            <div key={it.id} className={`rounded-lg p-3 md:p-4 border ${mudou ? 'border-amber-300 bg-amber-50/40' : 'border-gray-200'}`}>
+                                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-1">
+                                    <div className="min-w-0">
+                                        <div className="text-sm font-medium text-gray-900 whitespace-pre-wrap break-words">
+                                            {it.descricao || `Item ${it.numeroItem || idx + 1}`}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                            {fmtQtd(it.quantidade)} {it.unidade || 'un'} · valor do item R$ {fmt(it.valorTotal)}
+                                            <span className="text-gray-400"> (não muda)</span>
+                                        </div>
+                                    </div>
+                                    {mudou && (
+                                        <span className="shrink-0 self-start px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
+                                            vai mudar
+                                        </span>
+                                    )}
+                                </div>
+
+                                {/* Como está hoje no estoque */}
+                                <div className="mt-2 text-xs text-gray-600">
+                                    {ap ? (
+                                        <>Hoje: <span className="font-semibold text-gray-800">{ap.nome || 'produto removido'}</span>
+                                            {' · '}{fmtQtd(ap.quantidade)} {ap.unidade || 'un'}
+                                            {ap.custoUnitario != null ? ` · custo R$ ${fmtCusto(ap.custoUnitario)}/${ap.unidade || 'un'}` : ' · sem custo (entrada sem pagamento)'}
+                                        </>
+                                    ) : (
+                                        <span className="text-gray-400">Hoje: este item não entrou no estoque.</span>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                                    {/* Nosso produto */}
+                                    <div>
+                                        <label className="text-xs font-medium text-gray-500">Nosso produto</label>
+                                        {v.novo ? (
+                                            <div className="mt-1 space-y-2 border border-gray-200 rounded-lg p-2 bg-white">
+                                                <input
+                                                    value={v.novo.nome}
+                                                    onChange={e => setVinculo(idx, { novo: { ...v.novo, nome: e.target.value } })}
+                                                    placeholder="Nome do produto novo"
+                                                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                                />
+                                                <div className="flex gap-2">
+                                                    <SelectBusca
+                                                        value={v.novo.tipo}
+                                                        onChange={e => setVinculo(idx, { novo: { ...v.novo, tipo: e.target.value } })}
+                                                        className="flex-1 min-w-0"
+                                                    >
+                                                        {TIPOS_ITEM_PCP.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                                    </SelectBusca>
+                                                    <input
+                                                        value={v.novo.unidade}
+                                                        onChange={e => setVinculo(idx, { novo: { ...v.novo, unidade: e.target.value } })}
+                                                        placeholder="un. (kg, un, L…)"
+                                                        className="w-24 border border-gray-300 rounded px-2 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                                    />
+                                                </div>
+                                                <button
+                                                    onClick={() => setVinculo(idx, { novo: null, vinculoValue: '' })}
+                                                    className="text-xs text-gray-500 hover:text-gray-700 underline"
+                                                >
+                                                    Cancelar produto novo
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <ComboProduto
+                                                value={v.vinculoValue || ''}
+                                                itens={itensPcp}
+                                                invalido={!vinculado}
+                                                onSelect={val => setVinculo(idx, { vinculoValue: val })}
+                                                onCriarNovo={() => setVinculo(idx, { novo: { nome: it.descricao || '', tipo: 'MP', unidade: '' }, vinculoValue: '' })}
+                                            />
+                                        )}
+                                    </div>
+
+                                    {/* Conversão */}
+                                    <div>
+                                        <label className="text-xs font-medium text-gray-500">Conversão de quantidade</label>
+                                        <div className="mt-1 flex items-center gap-2 text-sm text-gray-700 min-h-[38px]">
+                                            <span className="whitespace-nowrap">1 {it.unidade || 'un'} =</span>
+                                            <input
+                                                value={v.fator}
+                                                onChange={e => setVinculo(idx, { fator: e.target.value })}
+                                                placeholder="?"
+                                                inputMode="decimal"
+                                                disabled={!vinculado}
+                                                className={`w-20 border rounded px-2 py-2 text-sm text-right bg-white focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:bg-gray-50 disabled:text-gray-400 ${vinculado ? 'border-gray-300' : 'border-amber-300'}`}
+                                            />
+                                            <span className="truncate">{unidadeNova}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Vai ficar */}
+                                    <div>
+                                        <label className="text-xs font-medium text-gray-500">Vai ficar</label>
+                                        <div className="mt-1 text-sm min-h-[38px] flex items-center flex-wrap gap-x-1.5">
+                                            {!vinculado ? (
+                                                <span className="text-gray-400">— sem vínculo (sai do estoque)</span>
+                                            ) : fator <= 0 ? (
+                                                <span className="text-gray-400">— informe a conversão</span>
+                                            ) : (
+                                                <>
+                                                    <span className="font-semibold text-gray-900">{fmtQtd(qtdNova)} {unidadeNova}</span>
+                                                    {ap?.custoUnitario != null || nota.status === 'CONFERIDA' ? (
+                                                        <span className="text-gray-600">· custo R$ {fmtCusto(custoNovo)}/{unidadeNova}</span>
+                                                    ) : null}
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Impacto no estoque de hoje */}
+                                {mudou && (
+                                    <div className="mt-2 text-xs">
+                                        {trocouProduto ? (
+                                            <span className="text-amber-800 inline-flex items-center gap-1 flex-wrap">
+                                                <ArrowRight className="h-3.5 w-3.5 shrink-0" />
+                                                sai {fmtQtd(ap.quantidade)} {ap.unidade || 'un'} de <b>{ap.nome}</b> e entra {fmtQtd(qtdNova)} {unidadeNova} no produto novo
+                                            </span>
+                                        ) : difEstoque != null && Math.abs(difEstoque) > 0.0005 ? (
+                                            <span className={difEstoque > 0 ? 'text-green-700' : 'text-red-700'}>
+                                                {difEstoque > 0 ? 'entram' : 'saem'} <b>{fmtQtd(Math.abs(difEstoque))} {unidadeNova}</b> no estoque de hoje
+                                            </span>
+                                        ) : !ap && vinculado ? (
+                                            <span className="text-green-700">entram <b>{fmtQtd(qtdNova)} {unidadeNova}</b> no estoque de hoje</span>
+                                        ) : ap && !vinculado ? (
+                                            <span className="text-red-700">saem <b>{fmtQtd(ap.quantidade)} {ap.unidade || 'un'}</b> do estoque de hoje</span>
+                                        ) : null}
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {confirmando ? (
+                    <div className="bg-white border-2 border-amber-400 rounded-lg p-3">
+                        <div className="text-sm text-gray-800">
+                            Confirmar a correção? O <b>estoque</b> e o <b>custo</b> dos produtos acima serão ajustados agora.
+                            A despesa de R$ {fmt(nota.valorTotal)} em Contas a Pagar <b>não será alterada</b>.
+                        </div>
+                        <div className="flex flex-col md:flex-row gap-3 mt-3">
+                            <button
+                                onClick={corrigir}
+                                disabled={salvando}
+                                className="w-full md:w-auto px-4 py-3 md:py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                            >
+                                {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
+                                {salvando ? 'Corrigindo…' : 'Sim, corrigir agora'}
+                            </button>
+                            <button
+                                onClick={() => setConfirmando(false)}
+                                disabled={salvando}
+                                className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm disabled:opacity-50"
+                            >
+                                Voltar
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex flex-col md:flex-row gap-3">
+                        <button
+                            onClick={() => { const e = validar(); if (e) { toast.error(e); return; } setConfirmando(true); }}
+                            disabled={salvando || !algoMudou}
+                            title={!algoMudou ? 'Ajuste o produto ou a conversão de algum item' : undefined}
+                            className="w-full md:w-auto px-4 py-3 md:py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                        >
+                            <Wrench className="h-4 w-4" /> Revisar e corrigir
+                        </button>
+                        <button
+                            onClick={onCancelar}
+                            disabled={salvando}
+                            className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm disabled:opacity-50"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+const DetalheNota = ({ nota, podeOperar, itensPcp = [], onChanged }) => {
+    const { hasPermission } = useAuth();
     const [reativando, setReativando] = useState(false);
     const [cancelando, setCancelando] = useState(false);
     const [desfazendoEntrada, setDesfazendoEntrada] = useState(false);
     const [desvinculando, setDesvinculando] = useState(''); // '' | 'TODAS' | id da parcela
+    // Corrigir só o estoque/custo (produto ou conversão errados), sem mexer na despesa.
+    // Vale para nota que virou despesa E para entrada sem pagamento, desde que tenha estoque aplicado.
+    const [corrigirAberto, setCorrigirAberto] = useState(false);
+    const podeCorrigirEstoque = hasPermission('Pode_Corrigir_Entrada_Estoque')
+        && nota.estoqueAplicado === true
+        && ['CONFERIDA', 'ENTRADA_REGISTRADA'].includes(nota.status);
     const itensNota = Array.isArray(nota.itens) ? nota.itens : [];
+    // O que cada item desta nota somou no estoque de verdade (ledger), por id do item da nota.
+    const aplicadoPorItem = useMemo(() => {
+        const m = new Map();
+        for (const l of (Array.isArray(nota.entradaEstoque) ? nota.entradaEstoque : [])) {
+            if (l.notaEntradaItemId) m.set(l.notaEntradaItemId, l);
+        }
+        return m;
+    }, [nota]);
     const parcelasVinculadas = Array.isArray(nota.parcelasVinculadas) ? nota.parcelasVinculadas : [];
     const somaVinculada = nota.somaVinculada != null
         ? Number(nota.somaVinculada)
@@ -2456,7 +2787,10 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
     };
 
     const cancelarEntrada = async () => {
-        if (!window.confirm('Cancelar a entrada desta nota? A despesa gerada em Contas a Pagar será cancelada e a nota volta para conferência, para você refazer com o produto/categoria/parcelas corretos.')) return;
+        const dica = podeCorrigirEstoque
+            ? '\n\nSe o erro foi SÓ o produto ou a conversão, use "Corrigir produto/conversão" — arruma o estoque e o custo sem mexer na despesa nem nos pagamentos.'
+            : '';
+        if (!window.confirm(`Cancelar a entrada desta nota? A despesa gerada em Contas a Pagar será cancelada e a nota volta para conferência, para você refazer com o produto/categoria/parcelas corretos.${dica}`)) return;
         setCancelando(true);
         try {
             const r = await notasEntradaService.cancelarConferencia(nota.id);
@@ -2480,11 +2814,30 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
         <div className="p-4 md:p-5 space-y-4">
             {/* Itens desta nota já somados no estoque (GET /:id → estoqueAplicado) */}
             {nota.estoqueAplicado === true && (
-                <div>
+                <div className="flex items-center gap-2 flex-wrap">
                     <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 whitespace-nowrap">
                         <PackageCheck className="h-3.5 w-3.5" /> Estoque somado ✓
                     </span>
+                    {podeCorrigirEstoque && !corrigirAberto && (
+                        <button
+                            onClick={() => setCorrigirAberto(true)}
+                            title="Arruma o produto/conversão desta entrada sem estornar pagamento nem cancelar a despesa"
+                            className="px-3 py-2 min-h-[44px] md:min-h-0 md:py-1.5 bg-white border border-amber-300 text-amber-700 hover:bg-amber-50 rounded-full font-semibold text-xs inline-flex items-center gap-1.5"
+                        >
+                            <Wrench className="h-3.5 w-3.5" /> Corrigir produto/conversão
+                        </button>
+                    )}
                 </div>
+            )}
+
+            {/* Correção só do estoque/custo — a despesa e os pagamentos ficam intactos */}
+            {corrigirAberto && podeCorrigirEstoque && (
+                <PainelCorrigirEntrada
+                    nota={nota}
+                    itensPcp={itensPcp}
+                    onCancelar={() => setCorrigirAberto(false)}
+                    onChanged={onChanged}
+                />
             )}
             {nota.status === 'CONFERIDA' && (
                 <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-800">
@@ -2621,14 +2974,24 @@ const DetalheNota = ({ nota, podeOperar, onChanged }) => {
                             {String(it.infAdProd || '').trim() && (
                                 <div className="text-xs text-gray-400 mt-0.5 whitespace-pre-wrap break-words">{String(it.infAdProd).trim()}</div>
                             )}
-                            {it.vinculo?.nome && (
+                            {/* O que ESTA nota somou no estoque (ledger) tem prioridade sobre a memória
+                                do de-para — a memória pode ter mudado numa nota posterior do fornecedor. */}
+                            {aplicadoPorItem.get(it.id) ? (
+                                <div className="text-xs text-gray-600 mt-1">
+                                    → entrou como <span className="font-semibold">{aplicadoPorItem.get(it.id).nome || 'produto removido'}</span>
+                                    {' · '}{fmtQtd(aplicadoPorItem.get(it.id).quantidade)} {aplicadoPorItem.get(it.id).unidade || 'un'}
+                                    {aplicadoPorItem.get(it.id).custoUnitario != null
+                                        ? ` · custo R$ ${fmtCusto(aplicadoPorItem.get(it.id).custoUnitario)}/${aplicadoPorItem.get(it.id).unidade || 'un'}`
+                                        : ''}
+                                </div>
+                            ) : it.vinculo?.nome ? (
                                 <div className="text-xs text-gray-600 mt-1">
                                     → vinculado a <span className="font-semibold">{it.vinculo.nome}</span>
                                     {it.vinculo.fatorConversao != null
                                         ? ` (1 ${it.unidade || 'un'} = ${fmtQtd(it.vinculo.fatorConversao)} ${it.vinculo.unidade || 'un'})`
                                         : ''}
                                 </div>
-                            )}
+                            ) : null}
                             {String(it.vinculo?.categoria || '').trim() && (
                                 <div className="text-xs text-gray-500 mt-1">categoria: <span className="font-medium text-gray-700">{it.vinculo.categoria}</span></div>
                             )}

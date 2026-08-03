@@ -6,8 +6,9 @@
  *   da nota (com de-para produto do fornecedor → item PCP, lembrado por CNPJ).
  *
  * Permissões (padrão do contasPagar.js):
- *   ver   → admin ou Pode_Acessar_Notas_Recebidas
- *   ações → admin ou Pode_Baixar_Contas_Pagar
+ *   ver     → admin ou Pode_Acessar_Notas_Recebidas
+ *   ações   → admin ou Pode_Baixar_Contas_Pagar
+ *   corrigir entrada de estoque de nota já lançada → admin ou Pode_Corrigir_Entrada_Estoque
  */
 
 const express = require('express');
@@ -75,6 +76,17 @@ const checkEscrita = async (req, res, next) => {
     req._perms = perms;
     if (!perms.admin && !perms.Pode_Baixar_Contas_Pagar) {
         return res.status(403).json({ error: 'Sem permissão para executar ações nas notas recebidas.' });
+    }
+    next();
+};
+
+// Corrigir a entrada de estoque de uma nota JÁ lançada mexe em custo de mês fechado —
+// permissão própria, separada de quem só confere nota (decisão do dono, 08/2026).
+const checkCorrigirEstoque = async (req, res, next) => {
+    const perms = req._perms || await getPerms(req.user.id);
+    req._perms = perms;
+    if (!perms.admin && !perms.Pode_Corrigir_Entrada_Estoque) {
+        return res.status(403).json({ error: 'Sem permissão para corrigir a entrada de estoque de uma nota já lançada.' });
     }
     next();
 };
@@ -669,7 +681,11 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
         });
 
         // A nota já tem entrada de estoque ATIVA (ledger com linhas não estornadas)?
-        const estoqueAplicado = await notaEstoqueService.estoqueAplicado(prisma, nota.id);
+        // `entradaEstoque` = o que está somado HOJE (produto, quantidade convertida e custo
+        // de cada item) — é o que a tela de correção usa para pré-preencher, em vez da
+        // memória do de-para, que pode ter mudado numa nota posterior do mesmo fornecedor.
+        const entradaEstoque = await notaEstoqueService.entradaAplicada(prisma, nota.id);
+        const estoqueAplicado = entradaEstoque.length > 0;
 
         res.json({
             id: nota.id,
@@ -697,6 +713,7 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
             temXml: !!nota.xmlPath,
             contaPagarId: nota.contaPagarId,
             estoqueAplicado, // true = esta nota já somou estoque (ledger ativo)
+            entradaEstoque,  // [{ notaEntradaItemId, vinculo, nome, unidade, quantidade, custoUnitario }]
             criadoEm: nota.criadoEm,
             itens,
             duplicatas: nota.duplicatas.map((d) => ({
@@ -1697,6 +1714,109 @@ router.post('/:id/cancelar-conferencia', verificarAuth, checkEscrita, async (req
     } catch (error) {
         console.error('Erro ao cancelar conferência da nota:', error);
         res.status(500).json({ error: 'Erro ao cancelar a entrada.' });
+    }
+});
+
+// =============================================================
+// CORRIGIR A ENTRADA DE ESTOQUE (sem mexer no financeiro) — 08/2026
+//
+// O problema que isto resolve: uma conferência com o PRODUTO ou a CONVERSÃO errados
+// bagunça o custo (custo = valor do item ÷ quantidade convertida). Até aqui, a única
+// saída era "Cancelar entrada e refazer" — que exige estornar as baixas, cancelar a
+// despesa e refazer o pagamento, com risco de duplicar a despesa no Conta Azul.
+//
+// Esta rota corrige SÓ o lado do estoque/custo:
+//   • estorna o ledger da nota e reaplica com os vínculos/fatores novos;
+//   • recalcula o custo pelo histórico de compras válidas (compras posteriores entram
+//     na conta — só "restaurar o custo anterior" não bastaria);
+//   • NÃO encosta em ContaPagar, parcelas, pagamentos nem no envio ao Conta Azul.
+//
+// O VALOR é intocável: quantidade e custo saem sempre de `notaEntradaItem`
+// (quantidade × fator, valorTotal ÷ quantidade convertida). O corpo da requisição
+// só informa PARA ONDE vai e em QUE conversão — nunca quanto vale.
+// =============================================================
+
+// ── POST /:id/corrigir-entrada-estoque — body { itens: [{ itemId, vinculo, fatorConversao, criarItemPcp? }] } ──
+router.post('/:id/corrigir-entrada-estoque', verificarAuth, checkAcesso, checkCorrigirEstoque, async (req, res) => {
+    try {
+        const nota = await prisma.notaEntrada.findUnique({
+            where: { id: req.params.id },
+            include: { itens: true }
+        });
+        if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
+        if (!['CONFERIDA', 'ENTRADA_REGISTRADA'].includes(nota.status)) {
+            return res.status(400).json({ error: `Só dá para corrigir a entrada de uma nota já lançada (status atual: ${nota.status}).` });
+        }
+        if (nota.tipo === 'NFSE') {
+            return res.status(400).json({ error: 'Nota de serviço (NFS-e) não movimenta estoque — não há entrada para corrigir.' });
+        }
+
+        // O que está somado hoje: define o que estornar e se a entrada tem custo.
+        const antesLedger = await notaEstoqueService.entradaAplicada(prisma, nota.id);
+        if (antesLedger.length === 0) {
+            return res.status(400).json({ error: 'Esta nota não tem entrada de estoque aplicada — não há o que corrigir.' });
+        }
+        // Entrada com pagamento (nota que virou despesa) mexe no custo; entrada sem
+        // pagamento (bonificação/amostra) entrou a custo zero e continua assim.
+        const comCusto = nota.status === 'CONFERIDA' || antesLedger.some((l) => l.custoUnitario != null);
+
+        const itensBody = Array.isArray(req.body?.itens) ? req.body.itens : [];
+        const itensNota = new Map(nota.itens.map((i) => [i.id, i]));
+        const erroItens = validarItensBody(itensBody, itensNota);
+        if (erroItens) return res.status(400).json({ error: erroItens });
+
+        let resultado = { antes: [], depois: [], avisos: [], alvos: { produtoIds: [], itemPcpIds: [] } };
+        await prisma.$transaction(async (tx) => {
+            // Mesmo núcleo da conferência: resolve PROD:/PCP:, cria item PCP novo se pedido e
+            // atualiza a memória do de-para por fornecedor+cProd (a próxima nota já vem certa).
+            // Categoria NÃO é tocada — mexer nela mudaria o rateio da despesa/DRE.
+            const vinculados = await processarItensConferencia(tx, nota, itensBody, itensNota, { gravarCategoria: false });
+
+            resultado = await notaEstoqueService.corrigirEstoqueNota(
+                tx,
+                nota,
+                notaEstoqueService.montarItensResolvidos(vinculados),
+                { comCusto, criadoPorId: req.user.id, contaPagarId: nota.contaPagarId || null }
+            );
+        }, { timeout: 20000, maxWait: 10000 });
+
+        // Custo refeito pelo histórico de compras VÁLIDAS de cada alvo tocado — fora da
+        // transação (é ajuste secundário e lê muitas linhas; falhar aqui não desfaz a
+        // correção do estoque, que já está efetivada).
+        const custos = [];
+        if (comCusto) {
+            const compraEstoqueService = require('../services/compraEstoqueService');
+            for (const produtoId of resultado.alvos.produtoIds) {
+                try {
+                    const novo = await compraEstoqueService.recalcularCustoPelasCompras({ produtoId });
+                    if (novo != null) custos.push({ produtoId, custo: novo });
+                } catch (err) {
+                    console.error(`[NotasEntrada] Falha ao recalcular custo do produto ${produtoId}:`, err.message);
+                    resultado.avisos.push('Não consegui recalcular o custo de um dos produtos — confira o Custo Manual dele.');
+                }
+            }
+            for (const itemPcpId of resultado.alvos.itemPcpIds) {
+                try {
+                    const novo = await compraEstoqueService.recalcularCustoPelasCompras({ itemPcpId });
+                    if (novo != null) custos.push({ itemPcpId, custo: novo });
+                } catch (err) {
+                    console.error(`[NotasEntrada] Falha ao recalcular custo do insumo ${itemPcpId}:`, err.message);
+                    resultado.avisos.push('Não consegui recalcular o custo de um dos insumos — confira o custo unitário no PCP.');
+                }
+            }
+        }
+
+        res.json({
+            ok: true,
+            message: 'Entrada corrigida. Estoque e custo ajustados — a despesa e os pagamentos não foram alterados.',
+            antes: resultado.antes,
+            depois: resultado.depois,
+            custos,
+            avisos: resultado.avisos
+        });
+    } catch (error) {
+        console.error('Erro ao corrigir a entrada de estoque da nota:', error);
+        res.status(500).json({ error: 'Erro ao corrigir a entrada de estoque da nota.' });
     }
 });
 

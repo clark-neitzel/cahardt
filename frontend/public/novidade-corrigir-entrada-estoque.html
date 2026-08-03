@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: corrigir produto/conversão da nota — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🔧 Novidade no Hardt App: corrigir a conversão da nota sem estornar o pagamento">
+<meta property="og:description" content="Lançou a caixa como se fosse quilo e o custo do produto saiu errado? Agora dá para arrumar o produto e a conversão de uma nota já lançada — sem cancelar a despesa nem estornar a baixa.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --cream: #f2f0eb; --gold: #cba258;
+    --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); line-height:1.55;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased; font-variant-numeric: tabular-nums; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background:linear-gradient(168deg, var(--house) 0%, #16302a 100%); color:#fff;
+    padding:40px 16px 96px; text-align:center; }
+  .hero .chip { display:inline-block; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);
+    color:#d4e9e2; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+    border-radius:999px; padding:6px 14px; margin-bottom:14px; }
+  .hero h1 { font-size:28px; margin:0 0 10px; font-weight:800; }
+  .hero p { color:#c8d6d0; max-width:470px; margin:0 auto; font-size:15.5px; }
+
+  .cartao { background:#fff; border:1px solid #e5e7eb; border-radius:16px;
+    box-shadow:0 8px 24px rgba(30,57,50,.10); padding:20px; margin-top:-64px; }
+  .cartao + .cartao, .sec { margin-top:16px; }
+  .sec-titulo { font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+
+  /* ── ACCORDION (sempre abertos) ── */
+  details { background:#fff; border:1px solid #e5e7eb; border-radius:14px; margin-top:10px; overflow:hidden; }
+  summary { list-style:none; cursor:pointer; padding:15px 18px; font-weight:800; font-size:15px; color:var(--house);
+    display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  summary::-webkit-details-marker { display:none; }
+  summary .mais { color:var(--primary); font-size:20px; font-weight:800; transition:transform .2s; flex:none; }
+  details[open] summary .mais { transform:rotate(45deg); }
+  .det-corpo { padding:0 18px 16px; font-size:14.5px; color:#3f4a46; }
+  .det-corpo b { color:var(--house); }
+  .det-corpo ul { margin:8px 0 0; padding-left:20px; }
+  .det-corpo li { margin-top:6px; }
+
+  /* ── PASSOS ── */
+  .passo { display:flex; gap:12px; margin-top:14px; }
+  .passo .num { flex:none; width:28px; height:28px; border-radius:999px; background:var(--primary); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+  .passo p { margin:3px 0 0; font-size:14.5px; color:#3f4a46; }
+  .passo b { color:var(--house); }
+  .rodape { text-align:center; color:var(--ink-soft); font-size:12.5px; margin-top:34px; }
+
+  /* ── MOCKUP DA TELA ── */
+  .tela { background:#f7f6f2; border:1px solid #e5e7eb; border-radius:14px; padding:14px; margin-top:12px; }
+  .app-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; }
+  .mock-label { font-size:9.5px; font-weight:800; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; margin:0 0 4px; }
+  .mock-topo { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .mock-titulo { font-size:14px; font-weight:800; color:var(--house); }
+  .btn-verde { background:var(--primary); color:#fff; font-size:11.5px; font-weight:800;
+    border-radius:999px; padding:7px 13px; display:inline-block; }
+  .btn-branco { background:#fff; border:1px solid #d1d5db; color:#374151; font-size:11.5px; font-weight:700;
+    border-radius:999px; padding:6px 12px; display:inline-block; }
+  .btn-ambar { background:#fff; border:1px solid #fcd34d; color:#b45309; font-size:11.5px; font-weight:800;
+    border-radius:999px; padding:6px 12px; display:inline-block; white-space:nowrap; }
+  .btn-ambar-cheio { background:#d97706; color:#fff; font-size:11.5px; font-weight:800;
+    border-radius:999px; padding:7px 13px; display:inline-block; }
+  .selo-verde { background:#dcfce7; color:#166534; font-size:11px; font-weight:800;
+    border-radius:999px; padding:5px 10px; display:inline-block; white-space:nowrap; }
+  .selo-ambar { background:#fef3c7; color:#b45309; font-size:10.5px; font-weight:800;
+    border-radius:999px; padding:4px 9px; display:inline-block; white-space:nowrap; }
+
+  /* bloco de item da correção */
+  .item-box { position:relative; border:1px solid #fcd34d; background:#fffbeb; border-radius:12px; padding:11px; margin-top:10px; }
+  .item-box.neutro { border-color:#e5e7eb; background:#fff; }
+  .item-nome { font-size:13px; font-weight:800; color:var(--house); }
+  .item-sub { font-size:11.5px; color:#6b7280; margin-top:2px; }
+  .item-hoje { font-size:11.5px; color:#4b5563; margin-top:7px; }
+  .campos { display:flex; gap:8px; margin-top:9px; flex-wrap:wrap; }
+  .campo { flex:1; min-width:130px; }
+  .campo .cap { font-size:9.5px; font-weight:800; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; }
+  .campo .cx { border:1px solid #d1d5db; border-radius:7px; background:#fff; padding:7px 9px;
+    font-size:12.5px; font-weight:700; color:var(--house); margin-top:3px;
+    display:flex; justify-content:space-between; align-items:center; gap:6px; }
+  .campo .cx .v { color:#9ca3af; font-size:9px; }
+  .campo .valor { font-size:12.5px; font-weight:800; color:var(--house); margin-top:9px; }
+  .campo .valor .custo { font-weight:600; color:#4b5563; }
+  .impacto { font-size:12px; font-weight:700; color:#15803d; margin-top:8px; }
+  .impacto.sai { color:#b91c1c; }
+  .trava { border:1px solid rgba(0,117,74,.25); background:var(--mint); border-radius:12px;
+    padding:11px 12px; margin-top:11px; font-size:12.5px; color:var(--primary-dark); position:relative; }
+  .trava b { color:var(--house); }
+  .acoes { display:flex; gap:8px; justify-content:flex-start; margin-top:12px; flex-wrap:wrap; }
+
+  /* antes × depois */
+  .comparativo { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  .comparativo .col { flex:1; min-width:150px; border:1px solid #e5e7eb; border-radius:12px; padding:11px; background:#fff; }
+  .comparativo .col.erro { border-color:#fecaca; background:#fef2f2; }
+  .comparativo .col.ok { border-color:rgba(0,117,74,.3); background:#f0fdf4; }
+  .comparativo .cap { font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#6b7280; }
+  .comparativo .big { font-size:20px; font-weight:800; color:var(--house); margin-top:3px; }
+  .comparativo .col.erro .big { color:#b91c1c; }
+  .comparativo .col.ok .big { color:var(--primary-dark); }
+  .comparativo .det { font-size:11.5px; color:#4b5563; margin-top:4px; }
+
+  .pin { position:absolute; top:50%; transform:translateY(-50%); right:-7px; width:22px; height:22px; border-radius:999px;
+    background:var(--gold); color:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,.25); z-index:5; }
+  .pin.topo { top:-9px; transform:none; }
+  .legenda { margin-top:14px; }
+  .legenda .item { display:flex; gap:10px; margin-top:9px; font-size:13.5px; color:#3f4a46; }
+  .legenda .item b { color:var(--house); }
+  .legenda .num { flex:none; width:22px; height:22px; border-radius:999px; background:var(--gold); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; margin-top:1px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="chip">✨ Novidade no app</span>
+  <h1>🔧 Corrigir a conversão da nota sem estornar o pagamento</h1>
+  <p>Lançou a <b>caixa</b> como se fosse <b>quilo</b> e o custo do produto ficou lá em cima? Agora dá para arrumar o produto e a conversão de uma nota <b>já lançada e já paga</b> — sem cancelar a despesa e sem estornar a baixa.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao">
+    <p class="sec-titulo">🧮 O que acontecia antes</p>
+    <p style="margin:0; font-size:14.5px; color:#3f4a46">
+      O custo de um produto comprado é sempre <b>o valor do item dividido pela quantidade que entrou</b>.
+      Se a conversão foi digitada errada, a conta inteira vai junto:
+    </p>
+    <div class="comparativo">
+      <div class="col erro">
+        <div class="cap">Conversão errada (1 CX = 1 KG)</div>
+        <div class="big">R$ 200,00/kg</div>
+        <div class="det">R$ 2.400 ÷ <b>12 kg</b><br>e só 12 kg entraram no estoque</div>
+      </div>
+      <div class="col ok">
+        <div class="cap">Conversão certa (1 CX = 10 KG)</div>
+        <div class="big">R$ 20,00/kg</div>
+        <div class="det">R$ 2.400 ÷ <b>120 kg</b><br>entram os 108 kg que faltavam</div>
+      </div>
+    </div>
+    <div class="trava" style="margin-top:12px">
+      <b>O valor pago é sempre o mesmo — R$ 2.400.</b> O app só espalha esse dinheiro pela quantidade certa.
+      Por isso o custo <b>cai</b> quando entrou quantidade a menos, e <b>sobe</b> quando entrou quantidade demais.
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">📱 Tela 1 — o botão novo, na nota já lançada</p>
+    <div class="tela">
+      <div class="app-card">
+        <p class="mock-label">Notas Recebidas · NF-e 999999 · Laticínios São Pedro</p>
+        <div class="mock-topo" style="margin-top:6px">
+          <span class="selo-verde">📦 Estoque somado ✓</span>
+          <span class="btn-ambar" style="position:relative">🔧 Corrigir produto/conversão<span class="pin">1</span></span>
+        </div>
+
+        <div class="item-box neutro" style="margin-top:11px">
+          <div class="item-nome">MUSSARELA CAIXA 10KG</div>
+          <div class="item-sub">12 CX × R$ 200,00 = R$ 2.400,00</div>
+          <div class="item-hoje" style="position:relative">
+            → entrou como <b>Mussarela</b> · 12 KG · custo R$ 200,0000/KG<span class="pin">2</span>
+          </div>
+        </div>
+
+        <div class="mock-topo" style="margin-top:12px">
+          <span class="btn-branco">🖨 Imprimir DANFE</span>
+          <span class="btn-branco">Ver XML</span>
+          <span style="position:relative" class="btn-branco">Cancelar entrada e refazer<span class="pin">3</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span><b>Botão novo</b>, ao lado do selo "Estoque somado". Aparece em nota que já virou despesa <b>e</b> em entrada sem pagamento (bonificação, amostra).</span></div>
+      <div class="item"><span class="num">2</span><span><b>A lista de itens agora mostra o que entrou de verdade</b> no estoque por aquela nota — produto, quantidade e custo. Antes mostrava só o vínculo lembrado do fornecedor, que podia já ter mudado.</span></div>
+      <div class="item"><span class="num">3</span><span><b>"Cancelar entrada e refazer" continua existindo</b> — é o caminho para trocar categoria, parcelas ou refazer a despesa inteira. Para produto/conversão, use o botão novo: é muito mais leve.</span></div>
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">📱 Tela 2 — a correção, item a item</p>
+    <div class="tela">
+      <div class="app-card">
+        <span class="mock-titulo">🔧 Corrigir entrada de estoque</span>
+
+        <div class="trava" style="margin-top:9px">
+          <span class="pin topo">1</span>
+          A despesa de <b>R$ 2.400,00</b>, as parcelas e as baixas <b>não mudam</b>. O app só espalha esse mesmo valor
+          pela quantidade certa — a diferença entra (ou sai) do estoque <b>hoje</b>, com movimentação registrada.
+        </div>
+
+        <div class="item-box">
+          <span class="selo-ambar" style="position:absolute; top:10px; right:10px">vai mudar</span>
+          <div class="item-nome">MUSSARELA CAIXA 10KG</div>
+          <div class="item-sub">12 CX · valor do item R$ 2.400,00 <span style="color:#9ca3af">(não muda)</span><span class="pin">2</span></div>
+          <div class="item-hoje">Hoje: <b>Mussarela</b> · 12 KG · custo R$ 200,0000/KG</div>
+
+          <div class="campos">
+            <div class="campo">
+              <div class="cap">Nosso produto</div>
+              <div class="cx">Mussarela (KG) <span class="v">▼</span></div>
+            </div>
+            <div class="campo">
+              <div class="cap">Conversão de quantidade</div>
+              <div class="cx" style="position:relative">1 CX = <b style="color:var(--primary)">10</b> KG<span class="pin">3</span></div>
+            </div>
+            <div class="campo">
+              <div class="cap">Vai ficar</div>
+              <div class="valor">120 KG <span class="custo">· custo R$ 20,00/KG</span><span class="pin">4</span></div>
+            </div>
+          </div>
+
+          <div class="impacto">entram <b>108 KG</b> no estoque de hoje</div>
+        </div>
+
+        <div class="acoes">
+          <span class="btn-verde">🔧 Revisar e corrigir</span>
+          <span class="btn-branco">Cancelar</span>
+        </div>
+
+        <div style="border:2px solid #fcd34d; border-radius:10px; padding:11px; margin-top:12px; position:relative">
+          <span class="pin topo">5</span>
+          <div style="font-size:12.5px; color:#3f4a46">
+            Confirmar a correção? O <b>estoque</b> e o <b>custo</b> dos produtos acima serão ajustados agora.
+            A despesa de R$ 2.400,00 em Contas a Pagar <b>não será alterada</b>.
+          </div>
+          <div class="acoes">
+            <span class="btn-ambar-cheio">Sim, corrigir agora</span>
+            <span class="btn-branco">Voltar</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span><b>O aviso deixa claro o que não muda:</b> despesa, parcelas, baixas e o que já foi para o Conta Azul ficam exatamente como estão.</span></div>
+      <div class="item"><span class="num">2</span><span><b>O valor do item não é editável</b> — ele vem do XML da nota. Não existe jeito de alterar o valor da nota por aqui, nem sem querer.</span></div>
+      <div class="item"><span class="num">3</span><span><b>Aqui é onde se arruma o erro:</b> o produto vinculado e a conversão. Dá para vincular um item que tinha ficado de fora, ou desvincular um que entrou errado.</span></div>
+      <div class="item"><span class="num">4</span><span><b>"Vai ficar" mostra o resultado antes de salvar</b> — a nova quantidade e o novo custo por unidade, calculados na hora enquanto você digita.</span></div>
+      <div class="item"><span class="num">5</span><span><b>Confirmação em dois passos:</b> primeiro "Revisar e corrigir", depois "Sim, corrigir agora". Nada é alterado antes disso.</span></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <p class="sec-titulo">❓ Perguntas rápidas</p>
+
+    <details open class="acc aberto">
+      <summary>O custo do produto vai cair? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        <b>Depende de qual foi o erro</b> — e o total pago nunca muda:
+        <ul>
+          <li>Se a conversão errada lançou <b>quantidade a MENOS</b> (a caixa entrou como se fosse 1 kg), o custo estava inflado e <b>cai</b> ao corrigir.</li>
+          <li>Se lançou <b>quantidade a MAIS</b>, o custo estava baixo demais e <b>sobe</b>.</li>
+        </ul>
+        E não é só a nota corrigida: o app <b>refaz a média do produto pelo histórico de compras</b>, então as compras que vieram depois continuam valendo. O lançamento errado simplesmente sai da conta.
+      </div>
+    </details>
+
+    <details open class="acc aberto">
+      <summary>Isso mexe na despesa ou no pagamento? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        <b>Não.</b> Conta a pagar, parcelas, baixas e o que já foi enviado ao Conta Azul ficam intocados — é justamente o motivo de a correção existir.
+        Antes, arrumar uma conversão exigia estornar a baixa, cancelar a despesa e refazer o pagamento inteiro.
+        <br><br>
+        O que <b>não</b> dá para mudar por aqui é a <b>categoria de despesa</b> (ela altera o rateio e a DRE). Para isso, o caminho continua sendo <b>Cancelar entrada e refazer</b>.
+      </div>
+    </details>
+
+    <details open class="acc aberto">
+      <summary>E o estoque de hoje? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        A diferença de quantidade <b>entra (ou sai) do estoque agora</b> — no exemplo, os 108 kg que nunca tinham entrado.
+        A tela mostra essa diferença antes de você confirmar.
+        <br><br>
+        Tudo fica rastreável no <b>Histórico de Estoque</b>: aparece uma saída "Correção — retirada do lançamento errado" e uma entrada "Correção da entrada NF-e ...".
+        <br><br>
+        ⚠️ <b>Atenção:</b> se você já acertou aquele produto na mão (inventário, ajuste manual), a correção vai somar por cima. Confira o saldo depois.
+      </div>
+    </details>
+
+    <details open class="acc aberto">
+      <summary>A próxima nota do mesmo fornecedor já vem certa? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        <b>Sim.</b> Ao corrigir, o app atualiza a <b>memória do de-para</b> daquele fornecedor (produto + conversão).
+        Na próxima nota com o mesmo item, a conversão certa já vem preenchida — o erro não se repete.
+      </div>
+    </details>
+
+    <details open class="acc aberto">
+      <summary>Quem pode usar? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Só quem tiver a permissão nova <b>"Corrigir Entrada de Estoque"</b> (em Permissões → Financeiro).
+        Ela é <b>separada</b> de "Operar Contas a Pagar" de propósito: mexer em custo e estoque de mês já fechado é operação sensível, então fica liberada só para quem o dono escolher.
+      </div>
+    </details>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">🚀 Na prática</p>
+    <div class="passo">
+      <span class="num">1</span>
+      <p>Abra <b>Financeiro → Notas Recebidas</b> e clique na nota que foi lançada errada (ela vai estar como <b>Despesa gerada</b>).</p>
+    </div>
+    <div class="passo">
+      <span class="num">2</span>
+      <p>Ao lado do selo <b>"Estoque somado ✓"</b>, clique em <b>Corrigir produto/conversão</b>.</p>
+    </div>
+    <div class="passo">
+      <span class="num">3</span>
+      <p>Arrume o <b>produto</b> e/ou a <b>conversão</b> de cada item. Confira o "Vai ficar" e a diferença de estoque.</p>
+    </div>
+    <div class="passo">
+      <span class="num">4</span>
+      <p>Clique em <b>Revisar e corrigir</b> e confirme. Pronto: custo e estoque ajustados, despesa e pagamento intactos.</p>
+    </div>
+  </div>
+
+  <p class="rodape">Hardt App · Notas Recebidas · agosto de 2026</p>
+</div>
+
+</body>
+</html>

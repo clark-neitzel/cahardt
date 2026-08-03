@@ -72,6 +72,15 @@ const notasEntradaService = {
         const response = await api.post(`/notas-entrada/${id}/cancelar-conferencia`);
         return response.data;
     },
+    // Corrige SÓ o estoque/custo de uma nota já lançada (produto ou conversão errados),
+    // sem tocar na despesa, nas parcelas nem nos pagamentos. O valor da nota é intocável —
+    // o payload só diz para onde vai e em que conversão.
+    // payload: { itens: [{ itemId, vinculo: 'PROD:<id>'|'PCP:<id>'|null, fatorConversao|null, criarItemPcp|null }] }
+    // → { ok, message, antes: [], depois: [], custos: [], avisos: [] }
+    corrigirEntradaEstoque: async (id, payload) => {
+        const response = await api.post(`/notas-entrada/${id}/corrigir-entrada-estoque`, payload);
+        return response.data;
+    },
     consultarAgora: async () => {
         const response = await api.post('/notas-entrada/consultar-agora');
         return response.data;

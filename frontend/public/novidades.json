@@ -1,5 +1,11 @@
 [
   {
+    "slug": "corrigir-entrada-estoque",
+    "titulo": "Corrigir conversão da nota",
+    "resumo": "Lançou a caixa como se fosse quilo e o custo do produto ficou errado? Agora dá para arrumar o produto e a conversão de uma nota já lançada e já paga — sem cancelar a despesa nem estornar a baixa.",
+    "data": "2026-08-03"
+  },
+  {
     "slug": "extrato-conta-errada",
     "titulo": "Extrato não entra na conta errada",
     "resumo": "O sistema lê de qual banco é o arquivo OFX e recusa se a conta escolhida for outra — antes de gravar. E o card novo 'Arquivos importados' deixa remover um arquivo que entrou errado.",

@@ -96,6 +96,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Acessar_Contas_Pagar: false,
     Pode_Baixar_Contas_Pagar: false,
     Pode_Acessar_Notas_Recebidas: false,
+    Pode_Corrigir_Entrada_Estoque: false,
     Pode_Acessar_Fornecedores: false,
     Pode_Acessar_Financeiro_Gerencial: false,
     Pode_Acessar_Cobranca: false,
@@ -292,6 +293,7 @@ const BOOL_INDEX = [
     { sec: 'financeiro', path: 'Pode_Acessar_Contas_Pagar', nome: 'Contas a Pagar', desc: 'Despesas e boletos a pagar da empresa', kw: 'pagar despesa boleto fornecedor menu' },
     { sec: 'financeiro', path: 'Pode_Baixar_Contas_Pagar', nome: 'Operar Contas a Pagar', desc: 'Criar/editar despesas, dar baixa e conferir notas recebidas (gerar conta, ignorar)', kw: 'operar baixa despesa conferir nota gerar conta pagar' },
     { sec: 'financeiro', path: 'Pode_Acessar_Notas_Recebidas', nome: 'Notas Recebidas', desc: 'Notas fiscais de entrada (compras)', kw: 'nota recebida entrada xml compra menu' },
+    { sec: 'financeiro', path: 'Pode_Corrigir_Entrada_Estoque', nome: 'Corrigir Entrada de Estoque', desc: 'Arruma produto/conversão de uma nota já lançada — mexe no custo e no estoque (a despesa não é alterada)', kw: 'corrigir conversao fator custo estoque nota lancada produto errado', danger: true },
     { sec: 'financeiro', path: 'Pode_Acessar_Notas_Fiscais', nome: 'Notas Fiscais (emissão)', desc: 'Fila de emissão de NF-e dos pedidos', kw: 'nfe emissao fila nota fiscal menu' },
     { sec: 'financeiro', path: 'Pode_Emitir_NF', nome: 'Pode Emitir Notas', desc: "Emitir NF-e dos pedidos da fila (individual ou 'Emitir todas')", kw: 'emitir nota nfe faturar' },
     { sec: 'financeiro', path: 'Pode_Configurar_NF', nome: 'Pode Configurar Emissão', desc: 'Alterar configurações da emissão de NF-e (ambiente, certificado, série)', kw: 'configurar certificado serie ambiente nfe', danger: true },
@@ -1135,6 +1137,10 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                 <div className="border-t mt-3 pt-3">
                     <Toggle checked={!!permissoes.Pode_Baixar_Contas_Pagar} onChange={() => toggleBool('Pode_Baixar_Contas_Pagar')}
                         label="Operar Contas a Pagar" sublabel="Criar/editar despesas, dar baixa e conferir notas recebidas (gerar conta, ignorar)" />
+                    {permissoes.Pode_Acessar_Notas_Recebidas && (
+                        <Toggle checked={!!permissoes.Pode_Corrigir_Entrada_Estoque} onChange={() => toggleBool('Pode_Corrigir_Entrada_Estoque')}
+                            label="Corrigir Entrada de Estoque" sublabel="Arruma produto/conversão de nota já lançada — altera custo e estoque (a despesa e os pagamentos ficam intactos)" danger />
+                    )}
                 </div>
             )}
 
