@@ -60,6 +60,50 @@ router.get('/ping', (req, res) => {
     });
 });
 
+// GET /api/admin-exec/diag-cartao-ponto?funcionarioId=&de=&ate=
+// Confere em produção o cartão de ponto por período + folha (tabelas novas de
+// 08/2026: ponto_ocorrencias e folha_periodos, e as colunas de cálculo da folha).
+// Sem funcionarioId, usa o primeiro funcionário ativo e o mês corrente.
+router.get('/diag-cartao-ponto', async (req, res) => {
+    try {
+        const pontoService = require('../services/pontoService');
+        const { de, ate } = req.query;
+
+        // As tabelas/colunas novas existem? (se o db push do deploy não passou, cai aqui)
+        const tabelas = {
+            ocorrencias: await prisma.pontoOcorrencia.count(),
+            folhaPeriodos: await prisma.folhaPeriodo.count()
+        };
+        const feriados = await pontoService.getFeriados();
+
+        let funcionarioId = req.query.funcionarioId;
+        if (!funcionarioId) {
+            const f = await prisma.funcionario.findFirst({ where: { ativo: true }, orderBy: { nome: 'asc' } });
+            funcionarioId = f?.id;
+        }
+        if (!funcionarioId) return res.json({ ok: true, tabelas, feriados, aviso: 'Nenhum funcionário cadastrado.' });
+
+        const cartao = await pontoService.montarCartao(funcionarioId, { de, ate });
+        const porSituacao = {};
+        for (const l of cartao.linhas) porSituacao[l.situacao] = (porSituacao[l.situacao] || 0) + 1;
+
+        res.json({
+            ok: true,
+            tabelas,
+            feriados,
+            funcionario: cartao.funcionario,
+            periodo: cartao.periodo,
+            diasNoPeriodo: cartao.linhas.length,
+            porSituacao,
+            resumo: cartao.resumo,
+            folha: cartao.folha
+        });
+    } catch (error) {
+        console.error('[admin-exec] diag-cartao-ponto:', error);
+        res.status(500).json({ ok: false, erro: error.message });
+    }
+});
+
 // GET /api/admin-exec/gps-pendencias-status
 // Confirma a migração 07/2026 (pendências de ponto GPS aplicadas nos cadastros):
 // flag de execução, quantas ainda restam PENDENTES e as últimas aplicadas pelo sistema.
