@@ -7,8 +7,9 @@ Tela para acompanhar a **rentabilidade de cada produto** — custo, preço, mark
 ## O que a tela mostra
 
 ### Filtros (no topo)
+- **Navegador de mês** (`‹ Julho 2026 ›`) — passe entre os meses para ver **o que aconteceu em cada mês**. No mês atual mostra o custo de hoje e o preço de tabela; num **mês passado** mostra o custo daquele mês e o **preço praticado** (média real das vendas do mês), com markup e margem recalculados. Abre sempre no mês corrente.
 - **Categoria** (menu com busca) — padrão **Produto Acabado**.
-- **Período** — últimos 3, 6 ou 12 meses (define a janela da variação de custo).
+- **Período** — últimos 3, 6 ou 12 meses (define a janela da variação de custo, terminando no mês selecionado).
 - **Produção própria / Revenda / Todos** — porque o custo de um vem da ficha técnica e do outro da compra.
 
 ### Cartões (KPIs)
