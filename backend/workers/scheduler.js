@@ -445,7 +445,26 @@ function startSchedulers() {
     setTimeout(_runExtratoCA, 300000);            // 5min após o start
     setInterval(_runExtratoCA, 3 * 3600000);      // a cada 3 horas
 
-    // === 12. BACKUP AUTOMÁTICO → GOOGLE DRIVE ===
+    // === 12. NF-e PRESA EM "PROCESSANDO" (fallback do webhook da Focus) ===
+    // O webhook é a via normal, mas a Focus desiste de reenviar depois de
+    // 1min → 30min → 1h → 3h → 24h. Sem isto, nota já autorizada na SEFAZ ficava
+    // "Processando" na tela (sem DANFE) até alguém clicar "Atualizar" na mão, e o
+    // pedido não virava FATURADO. Aqui só CONSULTA a Focus — nunca reemite, então
+    // não existe risco de nota em dobro. Isolado: nunca derruba nada.
+    console.log('⏰ Iniciando Worker de NF-e presas em processamento (Focus)...');
+    const focusNfeEmissao = require('../services/focusNfeEmissaoService');
+    const _runNfePresas = () => {
+        focusNfeEmissao.consultarPresas({ minutos: 3 })
+            .then((r) => {
+                if (r.resolvidas) console.log(`[FocusNFe] Consulta ativa: ${r.resolvidas} de ${r.consultadas} nota(s) saíram de "processando".`);
+                if (r.erros.length) console.error('⚠️ NF-e presas (consulta):', r.erros.join(' | '));
+            })
+            .catch(err => console.error('⚠️ NF-e presas Error:', err.message));
+    };
+    setTimeout(_runNfePresas, 90000);            // 1min30 após o start
+    setInterval(_runNfePresas, 5 * 60 * 1000);   // a cada 5 minutos
+
+    // === 13. BACKUP AUTOMÁTICO → GOOGLE DRIVE ===
     // Banco: pg_dump a cada 15 min (janela de perda ≤ 15 min — dado fiscal).
     // Arquivos (uploads): tar.gz 1x/dia na madrugada. Falha persistente avisa os
     // admins por WhatsApp (dentro do próprio service). Isolado: nunca derruba nada.

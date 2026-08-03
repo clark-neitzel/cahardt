@@ -337,6 +337,47 @@ async function consultarAtualizar(notaId) {
 }
 
 /**
+ * Fallback de consulta ativa: notas presas em PROCESSANDO há mais de `minutos`.
+ *
+ * O webhook da Focus é a via normal, mas ele pode se perder — a Focus tenta
+ * 1min → 30min → 1h → 3h → 24h e depois DESISTE daquele evento. Sem isto, uma
+ * nota já autorizada na SEFAZ ficava "Processando" na tela até alguém clicar
+ * "Atualizar" na mão (e o pedido não virava FATURADO).
+ *
+ * Só LÊ da Focus (`GET /v2/nfe/REF`) e grava o retorno — nunca reemite, então
+ * não há risco de nota em dobro. Isolada por nota: uma falha não para as outras.
+ */
+async function consultarPresas({ minutos = 3, maxNotas = 20, diasMax = 7 } = {}) {
+    const agora = Date.now();
+    const presas = await prisma.notaFiscalApp.findMany({
+        where: {
+            status: 'PROCESSANDO',
+            criadoEm: {
+                lte: new Date(agora - minutos * 60 * 1000),
+                gte: new Date(agora - diasMax * 24 * 3600 * 1000),
+            },
+        },
+        orderBy: { criadoEm: 'asc' },
+        take: maxNotas,
+        select: { id: true, ref: true },
+    });
+    let resolvidas = 0;
+    const erros = [];
+    for (const n of presas) {
+        try {
+            const atualizada = await consultarAtualizar(n.id);
+            if (atualizada.status !== 'PROCESSANDO') {
+                resolvidas++;
+                console.log(`[FocusNFe] Nota ${n.ref} destravada pela consulta ativa: ${atualizada.status}${atualizada.numero ? ` (nº ${atualizada.numero})` : ''}.`);
+            }
+        } catch (e) {
+            erros.push(`${n.ref}: ${e.message}`);
+        }
+    }
+    return { consultadas: presas.length, resolvidas, erros };
+}
+
+/**
  * Emite a NF-e de DEVOLUÇÃO de venda a partir de uma Devolucao registrada no app.
  * Perfil espelhado da nota real 84808 do CA: natOp "Devolucao de venda", finalidade 4,
  * tipo entrada (0), CFOP 1201 (produção própria) / 1202 (revenda), PIS/COFINS CST 99,
@@ -507,4 +548,4 @@ async function notaAutorizadaDoPedido(pedidoId) {
     return nota && nota.status === 'AUTORIZADO' ? nota : null;
 }
 
-module.exports = { montarNotaVenda, emitirVenda, emitirDevolucao, sincronizarEventos, consultarAtualizar, getConfig, notaAutorizadaDoPedido };
+module.exports = { montarNotaVenda, emitirVenda, emitirDevolucao, sincronizarEventos, consultarAtualizar, consultarPresas, getConfig, notaAutorizadaDoPedido };

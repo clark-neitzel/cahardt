@@ -812,6 +812,20 @@ router.get('/focus-nfe-consultar', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/focus-nfe-consultar-presas — roda na hora o fallback do webhook:
+// consulta na Focus toda nota parada em PROCESSANDO e grava o status real. Só LÊ da Focus
+// (nunca reemite). Body opcional: { minutos: 3, maxNotas: 20 }.
+router.post('/focus-nfe-consultar-presas', async (req, res) => {
+    try {
+        const emissao = require('../services/focusNfeEmissaoService');
+        const minutos = req.body?.minutos != null ? parseInt(req.body.minutos, 10) : 3;
+        const maxNotas = req.body?.maxNotas != null ? parseInt(req.body.maxNotas, 10) : 20;
+        res.json(await emissao.consultarPresas({ minutos, maxNotas }));
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // GET /api/admin-exec/focus-nfe-arquivo?ref=...&qual=danfe|xml|danfe-app — baixa a DANFE (PDF)
 // ou o XML de uma nota emitida. `danfe-app` gera a DANFE com o NOSSO gerador (o mesmo layout
 // que o app usa hoje para as notas do CA) a partir do XML da Focus.

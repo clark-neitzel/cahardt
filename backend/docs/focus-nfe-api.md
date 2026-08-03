@@ -525,9 +525,15 @@ Rate limit: **não documentado nas páginas baixadas** — ver doc online se nec
    `payload` completo e flag `processado` para o futuro módulo de emissão) e responde 2xx rápido.
    Diagnóstico: `GET /api/admin-exec/diag-focus-nfe-eventos` (`?ref=` filtra). O gatilho
    `event: "nfe"` foi cadastrado no painel da Focus (Produção, CNPJ 08.766.459/0001-02) apontando
-   para `https://cahardt-github.xrqvlq.easypanel.host/api/webhooks/focus-nfe`. Falta o **worker de
-   fallback** no `scheduler.js` consultando notas presas em `processando_autorizacao` (junto com o
-   módulo de emissão).
+   para `https://cahardt-github.xrqvlq.easypanel.host/api/webhooks/focus-nfe`.
+   **Worker de fallback — FEITO (08/2026).** `focusNfeEmissaoService.consultarPresas()`, chamado
+   pelo bloco 12 do `scheduler.js` a cada 5 min: consulta na Focus (`GET /v2/nfe/REF`) toda nota
+   em `PROCESSANDO` há mais de 3 min (janela de 7 dias, até 20 por rodada) e grava o status real.
+   Só **lê** da Focus — nunca reemite, então não há risco de nota em dobro. Sem isso, um evento
+   que a Focus desiste de reenviar (1min → 30min → 1h → 3h → 24h) deixava a nota "Processando" na
+   tela, sem DANFE, e o pedido sem virar FATURADO, até alguém clicar "Atualizar" na mão.
+   Rodar na hora: `POST /api/admin-exec/focus-nfe-consultar-presas` (body opcional
+   `{ minutos, maxNotas }`).
 6. **Homologação primeiro**, ponta a ponta (emitir → webhook → DANFE → cancelar → CCe), testado
    **em produção do nosso app** atravessando um deploy (regra do projeto), antes de trocar para
    `producao`.
