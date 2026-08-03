@@ -389,6 +389,8 @@ const SELO_SITUACAO = {
   TRABALHADO: 'bg-green-100 text-green-800',
   FALTA: 'bg-red-100 text-red-700',
   ABONO: 'bg-amber-100 text-amber-700',
+  ATESTADO: 'bg-amber-100 text-amber-700',
+  FERIAS: 'bg-purple-100 text-purple-700',
   FERIADO: 'bg-blue-100 text-blue-800',
   FOLGA: 'bg-gray-100 text-gray-700',
   COMPENSADO: 'bg-gray-100 text-gray-700',
@@ -397,10 +399,13 @@ const SELO_SITUACAO = {
 };
 
 const OPCOES_DIA = [
-  { tipo: 'FALTA', rotulo: 'Falta', ajuda: 'Desconta o dia e o DSR da semana' },
-  { tipo: 'ABONO', rotulo: 'Abonado', ajuda: 'Atestado, folga paga — não desconta' },
+  { tipo: 'FERIAS', rotulo: 'Férias', ajuda: 'Dia pago, não desconta nada' },
+  { tipo: 'ATESTADO', rotulo: 'Atestado', ajuda: 'Afastamento médico — não desconta' },
+  { tipo: 'ABONO', rotulo: 'Abonado', ajuda: 'Falta justificada, folga paga' },
+  { tipo: 'COMPENSADO', rotulo: 'Compensado', ajuda: 'Já compensado em outro dia' },
+  { tipo: 'FOLGA', rotulo: 'Folga', ajuda: 'Sem carga prevista no dia' },
   { tipo: 'FERIADO', rotulo: 'Feriado', ajuda: 'Dia de repouso, não é falta' },
-  { tipo: 'FOLGA', rotulo: 'Folga / compensado', ajuda: 'Sem carga prevista no dia' }
+  { tipo: 'FALTA', rotulo: 'Falta', ajuda: 'Desconta o dia e o DSR da semana' }
 ];
 
 function AbaCartao({ f }) {
@@ -409,6 +414,8 @@ function AbaCartao({ f }) {
   const [carregando, setCarregando] = useState(true);
   const [modal, setModal] = useState(null);     // null | 'novo' | objeto da batida (editar)
   const [modalDia, setModalDia] = useState(null); // linha do dia sendo marcada
+  const [selecao, setSelecao] = useState([]);     // datas marcadas para ação em lote
+  const [ultimoClique, setUltimoClique] = useState(null); // p/ selecionar intervalo com Shift
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -418,7 +425,27 @@ function AbaCartao({ f }) {
   }, [f.id, periodo.de, periodo.ate]);
   useEffect(() => { carregar(); }, [carregar]);
 
+  // Trocou de período? A seleção antiga não vale mais
+  useEffect(() => { setSelecao([]); setUltimoClique(null); }, [periodo.de, periodo.ate]);
+
   const primeiroDia = periodo.de || `${mesAtual()}-01`;
+  const dias = cartao?.linhas || [];
+
+  // Clique com Shift pega o intervalo inteiro desde o último dia clicado
+  const alternarDia = (data, comShift) => {
+    if (comShift && ultimoClique) {
+      const i = dias.findIndex(l => l.data === ultimoClique);
+      const j = dias.findIndex(l => l.data === data);
+      if (i >= 0 && j >= 0) {
+        const faixa = dias.slice(Math.min(i, j), Math.max(i, j) + 1).map(l => l.data);
+        setSelecao((s) => [...new Set([...s, ...faixa])]);
+        setUltimoClique(data);
+        return;
+      }
+    }
+    setSelecao((s) => s.includes(data) ? s.filter(d => d !== data) : [...s, data]);
+    setUltimoClique(data);
+  };
 
   return (
     <div>
@@ -429,9 +456,9 @@ function AbaCartao({ f }) {
             onClick={() => cartao && imprimirCartaoPonto(cartao)}
             disabled={!cartao}
             className="flex-1 md:flex-none px-3 py-2 min-h-[40px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-semibold inline-flex items-center justify-center gap-1 disabled:opacity-50"
-            title="Imprime o cartão do período + a folha (folha A4)"
+            title="Imprime a folha de ponto do período (uma folha A4, para o funcionário assinar)"
           >
-            <Printer className="h-4 w-4" /> Imprimir
+            <Printer className="h-4 w-4" /> Imprimir ponto
           </button>
           <button onClick={() => setModal('novo')} className="flex-1 md:flex-none px-3 py-2 min-h-[40px] bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold inline-flex items-center justify-center gap-1">
             <Plus className="h-4 w-4" /> Adicionar batida
@@ -449,12 +476,23 @@ function AbaCartao({ f }) {
             <Kpi v={String(cartao.resumo.faltas)} l="Faltas" cor={cartao.resumo.faltas ? 'text-red-600' : 'text-gray-900'} />
           </div>
 
+          <BarraSelecao
+            funcionarioId={f.id}
+            selecao={selecao}
+            dias={dias}
+            onLimparSelecao={() => { setSelecao([]); setUltimoClique(null); }}
+            onSaved={() => { setSelecao([]); setUltimoClique(null); carregar(); }}
+          />
+
           {/* Mobile: cards */}
           <div className="md:hidden space-y-2">
             {cartao.linhas.map((l) => (
-              <div key={l.data} className={`bg-white rounded-xl border shadow-sm p-3 ${l.situacao === 'FALTA' ? 'border-red-200 bg-red-50/40' : 'border-gray-200'}`}>
+              <div key={l.data} className={`bg-white rounded-xl border shadow-sm p-3 ${selecao.includes(l.data) ? 'border-primary bg-mint/20' : l.situacao === 'FALTA' ? 'border-red-200 bg-red-50/40' : 'border-gray-200'}`}>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="font-semibold text-gray-900 capitalize">{rotuloDia(l.data)}</span>
+                  <label className="flex items-center gap-2 min-h-[32px]">
+                    <input type="checkbox" checked={selecao.includes(l.data)} onChange={() => alternarDia(l.data, false)} className="h-4 w-4" />
+                    <span className="font-semibold text-gray-900 capitalize">{rotuloDia(l.data)}</span>
+                  </label>
                   <button onClick={() => setModalDia(l)} className={`px-2 py-1 text-xs font-semibold rounded-full ${SELO_SITUACAO[l.situacao]}`}>{l.situacaoRotulo}</button>
                 </div>
                 <Batidas linha={l} onEditar={(b) => setModal({ ...b, data: l.data })} />
@@ -471,6 +509,15 @@ function AbaCartao({ f }) {
           <div className="hidden md:block overflow-x-auto border border-gray-200 rounded-lg">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50"><tr>
+                <th className="pl-3 pr-1 py-3 w-8">
+                  <input
+                    type="checkbox"
+                    checked={dias.length > 0 && selecao.length === dias.length}
+                    onChange={(e) => { setSelecao(e.target.checked ? dias.map(l => l.data) : []); setUltimoClique(null); }}
+                    title="Selecionar todos os dias do período"
+                    className="h-4 w-4"
+                  />
+                </th>
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Dia</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Batidas</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Previsto</th>
@@ -479,9 +526,18 @@ function AbaCartao({ f }) {
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Situação</th>
               </tr></thead>
               <tbody className="bg-white divide-y divide-gray-200 text-sm">
-                {cartao.linhas.length === 0 && <tr><td colSpan="6" className="px-3 py-6 text-center text-gray-400">Nenhum dia no período selecionado.</td></tr>}
+                {cartao.linhas.length === 0 && <tr><td colSpan="7" className="px-3 py-6 text-center text-gray-400">Nenhum dia no período selecionado.</td></tr>}
                 {cartao.linhas.map((l) => (
-                  <tr key={l.data} className={`hover:bg-gray-50 ${l.situacao === 'FALTA' ? 'bg-red-50/50' : l.folga ? 'bg-gray-50/60' : ''}`}>
+                  <tr key={l.data} className={`hover:bg-gray-50 ${selecao.includes(l.data) ? 'bg-mint/30' : l.situacao === 'FALTA' ? 'bg-red-50/50' : l.folga ? 'bg-gray-50/60' : ''}`}>
+                    <td className="pl-3 pr-1 py-2.5">
+                      <input
+                        type="checkbox"
+                        checked={selecao.includes(l.data)}
+                        onChange={() => {}}
+                        onClick={(e) => alternarDia(l.data, e.shiftKey)}
+                        className="h-4 w-4"
+                      />
+                    </td>
                     <td className="px-3 py-2.5 font-medium capitalize whitespace-nowrap">{rotuloDia(l.data)}</td>
                     <td className="px-3 py-2.5"><Batidas linha={l} onEditar={(b) => setModal({ ...b, data: l.data })} /></td>
                     <td className="px-3 py-2.5 tabular-nums">{l.previsto}</td>
@@ -513,6 +569,85 @@ function AbaCartao({ f }) {
 }
 
 const rotuloDia = (data) => new Date(`${data}T12:00:00`).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' });
+const soDia = (data) => data.slice(8, 10) + '/' + data.slice(5, 7);
+
+// ─── Barra de ação em lote (aparece quando há dias selecionados) ──────────────
+function BarraSelecao({ funcionarioId, selecao, dias, onLimparSelecao, onSaved }) {
+  const [tipo, setTipo] = useState('FERIAS');
+  const [obs, setObs] = useState('');
+  const [salvando, setSalvando] = useState(false);
+
+  if (!selecao.length) {
+    return (
+      <p className="mb-3 text-xs text-gray-500">
+        Dica: marque as caixinhas dos dias (ou clique com <b>Shift</b> para pegar um intervalo inteiro)
+        para lançar <b>férias, atestado ou folga</b> de uma vez.
+      </p>
+    );
+  }
+
+  // Ordena e mostra o intervalo escolhido
+  const ordenados = [...selecao].sort();
+  const resumo = ordenados.length === 1
+    ? soDia(ordenados[0])
+    : `${soDia(ordenados[0])} a ${soDia(ordenados[ordenados.length - 1])}`;
+  const uteis = dias.filter(l => selecao.includes(l.data) && l.cargaEscalaMin > 0).length;
+  // Marcar como férias/atestado um dia que TEM batida transforma o que ele bateu em hora extra
+  const comBatidas = dias.filter(l => selecao.includes(l.data) && l.batidas.length).length;
+  const avisaBatidas = comBatidas > 0 && tipo !== 'FALTA';
+
+  const aplicar = async (limpar = false) => {
+    setSalvando(true);
+    try {
+      await funcionarioService.marcarDias({ funcionarioId, datas: ordenados, tipo: limpar ? null : tipo, obs });
+      toast.success(limpar
+        ? `${ordenados.length} dia(s) voltaram ao automático.`
+        : `${ordenados.length} dia(s) marcados como ${OPCOES_DIA.find(o => o.tipo === tipo)?.rotulo.toLowerCase()}.`);
+      setObs('');
+      onSaved();
+    } catch (e) { toast.error(e?.response?.data?.erro || 'Erro ao marcar os dias.'); }
+    finally { setSalvando(false); }
+  };
+
+  return (
+    <div className="mb-3 bg-white border border-primary rounded-xl shadow-sm p-3 md:sticky md:top-2 z-20">
+      <div className="flex flex-col md:flex-row md:items-center gap-2">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-primaryDark">
+            {selecao.length} dia{selecao.length !== 1 ? 's' : ''} selecionado{selecao.length !== 1 ? 's' : ''}
+            <span className="font-medium text-gray-500"> · {resumo}</span>
+          </p>
+          <p className="text-xs text-gray-500">{uteis} com jornada prevista (os outros já eram folga/descanso)</p>
+        </div>
+        <SelectBusca value={tipo} onChange={(e) => setTipo(e.target.value)} className="w-full md:w-52">
+          {OPCOES_DIA.map(o => <option key={o.tipo} value={o.tipo}>{o.rotulo}</option>)}
+        </SelectBusca>
+        <input
+          value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Motivo (opcional)"
+          className="w-full md:w-44 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+        />
+        <button
+          onClick={() => aplicar(false)} disabled={salvando}
+          className="px-4 py-2 min-h-[40px] bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm disabled:opacity-60 inline-flex items-center justify-center gap-1"
+        >
+          {salvando && <Loader2 className="h-4 w-4 animate-spin" />} Marcar
+        </button>
+      </div>
+      {avisaBatidas && (
+        <p className="mt-2 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">
+          <b>{comBatidas} dia{comBatidas !== 1 ? 's' : ''} da seleção tem batida de ponto.</b> Marcando assim, o dia deixa de
+          ter jornada prevista e <b>as horas batidas viram hora extra</b>. Se não era isso, tire esses dias da seleção.
+        </p>
+      )}
+      <div className="flex items-center justify-between gap-2 mt-2 pt-2 border-t border-gray-100">
+        <button onClick={() => aplicar(true)} disabled={salvando} className="text-xs font-medium text-gray-500 hover:text-gray-700 disabled:opacity-40">
+          Voltar esses dias ao automático
+        </button>
+        <button onClick={onLimparSelecao} className="text-xs font-medium text-gray-500 hover:text-gray-700">Limpar seleção</button>
+      </div>
+    </div>
+  );
+}
 
 function Batidas({ linha, onEditar }) {
   if (!linha.batidas.length) return <span className="text-gray-400 text-sm">—</span>;
@@ -570,6 +705,12 @@ function PainelFolha({ f, cartao, onSaved }) {
         {!fo.mesCheio && (
           <p className="mb-4 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">
             O período escolhido não fecha um mês inteiro. O salário base entra cheio mesmo assim — use “Este mês” para o fechamento da folha.
+          </p>
+        )}
+        {fo.diasFerias > 0 && (
+          <p className="mb-4 text-xs bg-purple-50 border border-purple-200 text-purple-800 rounded-lg px-3 py-2">
+            <b>{fo.diasFerias} dia{fo.diasFerias !== 1 ? 's' : ''} de férias</b> no período — não descontam nada, mas o
+            <b> adicional de 1/3</b> e o pagamento das férias <b>não estão calculados aqui</b> (é lançamento da contabilidade).
           </p>
         )}
 
@@ -661,7 +802,7 @@ function ModalDia({ funcionarioId, linha, onClose, onSaved }) {
           Hoje está como <b>{linha.situacaoRotulo}</b>{linha.marcadoManual ? ' (marcado à mão)' : ' (automático pelas batidas e pela escala)'}.
         </p>
 
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[45vh] overflow-y-auto">
           {OPCOES_DIA.map((o) => (
             <button
               key={o.tipo}

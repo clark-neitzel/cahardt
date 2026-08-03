@@ -208,12 +208,20 @@ const ROTULO_SITUACAO = {
     TRABALHADO: 'Trabalhado',
     FALTA: 'Falta',
     ABONO: 'Abonado',
+    ATESTADO: 'Atestado',
+    FERIAS: 'Férias',
     FERIADO: 'Feriado',
     FOLGA: 'Folga',
     COMPENSADO: 'Compensado',
     FUTURO: 'A cumprir',        // dia de hoje ainda em aberto ou dia futuro do período
     SEM_VINCULO: 'Fora do contrato'
 };
+
+// Marcações que o RH pode aplicar a um dia (valem mais que o automático)
+const TIPOS_MARCACAO = ['FALTA', 'ABONO', 'ATESTADO', 'FERIAS', 'FERIADO', 'FOLGA', 'COMPENSADO'];
+
+// Dias pagos em que não há carga a cumprir (não descontam nada)
+const SITUACOES_ABONADAS = ['ABONO', 'ATESTADO', 'FERIAS'];
 
 const cent = (n) => Number((Number(n) || 0).toFixed(2));
 
@@ -286,6 +294,7 @@ const montarCartao = async (funcionarioId, filtro) => {
     // ── Linha a linha (TODOS os dias do período) ─────────────────────────────
     let trabalhadoTotal = 0, previstoTotal = 0, saldoTotal = 0, extraMin = 0, negativoMin = 0;
     let faltas = 0, diasUteis = 0, domingos = 0, feriadosNaoDomingo = 0, diasTrabalhados = 0;
+    let diasFerias = 0, diasAtestadoTotal = 0, diasAbonados = 0;
     const semanasComFalta = new Set();
 
     const linhas = listarDias(de, ate).map((d) => {
@@ -301,10 +310,9 @@ const montarCartao = async (funcionarioId, filtro) => {
         // Situação do dia — a marcação manual do RH manda em tudo
         let situacao;
         if (foraDoContrato) situacao = 'SEM_VINCULO';
-        else if (ocor?.tipo === 'FERIADO' || (!ocor && feriadoNome)) situacao = 'FERIADO';
-        else if (ocor?.tipo === 'FOLGA') situacao = 'FOLGA';
-        else if (ocor?.tipo === 'ABONO' || (!ocor && diasAtestado.has(d))) situacao = 'ABONO';
-        else if (ocor?.tipo === 'FALTA') situacao = 'FALTA';
+        else if (ocor && TIPOS_MARCACAO.includes(ocor.tipo)) situacao = ocor.tipo;
+        else if (feriadoNome) situacao = 'FERIADO';
+        else if (diasAtestado.has(d)) situacao = 'ATESTADO';
         else if (batidas.length) situacao = 'TRABALHADO';
         // Sábado sem carga = jornada compensada na semana; domingo = descanso semanal
         else if (cargaEscala === 0) situacao = diaSemana === 6 ? 'COMPENSADO' : 'FOLGA';
@@ -343,6 +351,10 @@ const montarCartao = async (funcionarioId, filtro) => {
             else if (cargaEscala > 0) diasUteis++;
         }
 
+        if (situacao === 'FERIAS') diasFerias++;
+        else if (situacao === 'ATESTADO') diasAtestadoTotal++;
+        else if (situacao === 'ABONO') diasAbonados++;
+
         if (situacao === 'FALTA') {
             faltas++;
             // Semana do repouso (domingo a sábado) — 1 falta na semana derruba 1 DSR
@@ -369,7 +381,7 @@ const montarCartao = async (funcionarioId, filtro) => {
             trabalhado: batidas.length ? minToHM(trabalhado) : '—',
             saldoMin: saldo,
             saldo: batidas.length || previsto ? minToHM(saldo) : '—',
-            abonado: situacao === 'ABONO',
+            abonado: SITUACOES_ABONADAS.includes(situacao),
             atraso,
             folga: situacao === 'FOLGA' || situacao === 'COMPENSADO',
             batidas: batidas.map(mapBatida)
@@ -433,7 +445,10 @@ const montarCartao = async (funcionarioId, filtro) => {
             faltas,
             diasTrabalhados,
             diasUteis,
-            diasRepouso
+            diasRepouso,
+            diasFerias,
+            diasAtestado: diasAtestadoTotal,
+            diasAbonados
         },
         folha: {
             salarioBase: cent(salario),
@@ -457,6 +472,9 @@ const montarCartao = async (funcionarioId, filtro) => {
             liquido: cent(totalProventos - totalDescontos),
             diasUteis,
             diasRepouso,
+            diasFerias,
+            diasAtestado: diasAtestadoTotal,
+            diasAbonados,
             mesCheio
         },
         linhas
@@ -474,5 +492,7 @@ module.exports = {
     registrarBatida,
     listarDias,
     getFeriados,
-    montarCartao
+    montarCartao,
+    TIPOS_MARCACAO,
+    ROTULO_SITUACAO
 };

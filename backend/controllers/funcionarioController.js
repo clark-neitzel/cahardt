@@ -377,7 +377,7 @@ const funcionarioController = {
         }
     },
 
-    // ─── Marcação manual de um dia (falta, abono, feriado, folga) ─────────────
+    // ─── Marcação manual de um dia (falta, abono, atestado, férias…) ──────────
     // Sem `tipo` a marcação é removida e o dia volta a ser classificado sozinho.
     marcarDia: async (req, res) => {
         try {
@@ -390,9 +390,8 @@ const funcionarioController = {
                 return res.json({ ok: true, removido: true });
             }
 
-            const TIPOS = ['FALTA', 'ABONO', 'FERIADO', 'FOLGA'];
             const t = String(tipo).toUpperCase();
-            if (!TIPOS.includes(t)) return res.status(400).json({ erro: 'Tipo de marcação inválido.' });
+            if (!pontoService.TIPOS_MARCACAO.includes(t)) return res.status(400).json({ erro: 'Tipo de marcação inválido.' });
 
             const dados = { tipo: t, obs: obs || null, registradoPor: req.user?.id || null };
             const ocorrencia = await prisma.pontoOcorrencia.upsert({
@@ -404,6 +403,38 @@ const funcionarioController = {
         } catch (error) {
             console.error('[RH] marcar dia:', error);
             res.status(500).json({ erro: 'Erro ao marcar o dia.' });
+        }
+    },
+
+    // ─── Marcação em LOTE (vários dias de uma vez: férias, atestado…) ─────────
+    // { funcionarioId, datas: ['YYYY-MM-DD', ...], tipo, obs } — sem `tipo`, limpa.
+    marcarDias: async (req, res) => {
+        try {
+            const { funcionarioId, datas, tipo, obs } = req.body || {};
+            if (!funcionarioId || !Array.isArray(datas) || !datas.length) {
+                return res.status(400).json({ erro: 'Informe o funcionário e os dias.' });
+            }
+            const dias = [...new Set(datas.map(d => String(d).slice(0, 10)).filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d)))];
+            if (!dias.length) return res.status(400).json({ erro: 'Nenhum dia válido.' });
+            if (dias.length > 400) return res.status(400).json({ erro: 'São muitos dias de uma vez (máx. 400).' });
+
+            const t = tipo ? String(tipo).toUpperCase() : null;
+            if (t && !pontoService.TIPOS_MARCACAO.includes(t)) return res.status(400).json({ erro: 'Tipo de marcação inválido.' });
+
+            // Substitui de uma vez: apaga o que havia nesses dias e recria (idempotente)
+            await prisma.$transaction(async (tx) => {
+                await tx.pontoOcorrencia.deleteMany({ where: { funcionarioId, data: { in: dias } } });
+                if (t) {
+                    await tx.pontoOcorrencia.createMany({
+                        data: dias.map(data => ({ funcionarioId, data, tipo: t, obs: obs || null, registradoPor: req.user?.id || null }))
+                    });
+                }
+            }, { timeout: 20000, maxWait: 10000 });
+
+            res.json({ ok: true, dias: dias.length, tipo: t, removido: !t });
+        } catch (error) {
+            console.error('[RH] marcar dias em lote:', error);
+            res.status(500).json({ erro: 'Erro ao marcar os dias.' });
         }
     },
 

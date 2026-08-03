@@ -102,6 +102,7 @@
   .selo { font-size:9.5px; font-weight:800; border-radius:999px; padding:3px 8px; display:inline-block; white-space:nowrap; }
   .s-ok { background:#dcfce7; color:#166534; } .s-falta { background:#fee2e2; color:#b91c1c; }
   .s-abono { background:#fef3c7; color:#b45309; } .s-feriado { background:#dbeafe; color:#1e40af; }
+  .s-ferias { background:#ede9fe; color:#6d28d9; }
   .s-folga { background:#eeeeee; color:#4b5563; }
 
   /* folha */
@@ -166,9 +167,10 @@
     <p class="sec-titulo">🎯 O que mudou, em quatro linhas</p>
     <p class="texto">
       1. <b>Todos os dias do período</b> na tela — inclusive sábado e domingo.<br>
-      2. <b>Filtro de período</b> igual ao do resto do app (Este mês, personalizado, setas para andar).<br>
-      3. <b>Botão Imprimir</b> — o cartão sai em folha A4 no modelo do recibo, com espaço de assinatura.<br>
-      4. <b>Folha do período</b> pronta: salário, hora extra, DSR, desconto de falta e o <b>total a pagar</b>.
+      2. <b>Marcar vários dias de uma vez</b> — férias, atestado, folga: seleciona e pronto.<br>
+      3. <b>Filtro de período</b> igual ao do resto do app (Este mês, personalizado, setas para andar).<br>
+      4. <b>Imprimir ponto</b> — a folha de ponto para assinar, com o mês inteiro em <b>uma folha A4</b>.<br>
+      5. <b>Folha do período</b> pronta na tela: salário, hora extra, DSR, desconto de falta e o <b>total a pagar</b>.
     </p>
   </div>
 
@@ -243,7 +245,7 @@
 
     <div class="legenda">
       <div class="item"><span class="num">1</span><span><b>Filtro de período</b>, o mesmo do Contas a Pagar e do Financeiro: Este mês, Últimos 30 dias, Este ano ou período personalizado. As setas pulam o mês inteiro e a sua escolha fica salva.</span></div>
-      <div class="item"><span class="num">2</span><span><b>Imprimir</b> — sai a folha A4 com todos os dias, o resumo, a folha do período e as linhas de assinatura (Tela 4).</span></div>
+      <div class="item"><span class="num">2</span><span><b>Imprimir ponto</b> — sai a <b>folha de ponto</b> para o funcionário assinar: todos os dias, as batidas e o resumo em horas, <b>tudo em uma folha A4</b>. Os valores em dinheiro <b>não</b> vão para o papel.</span></div>
       <div class="item"><span class="num">3</span><span><b>Dia útil já fechado e sem batida = Falta</b> (linha vermelha). A coluna <b>Previsto</b> continua mostrando as horas que o dia exigia — dá para ver o que ficou faltando. <b>O dia de hoje nunca vira falta sozinho</b>: fica como <i>A cumprir</i> até o dia terminar (a pessoa ainda pode bater o ponto).</span></div>
       <div class="item"><span class="num">4</span><span><b>Sábado = Compensado</b> e <b>domingo = Descanso</b>. Aparecem na lista, mas <b>não contam falta</b> — a jornada do sábado já está distribuída na semana.</span></div>
       <div class="item"><span class="num">5</span><span><b>Feriado</b> cadastrado (Ponto → Configurar) aparece com o nome e também não é falta. Atestado lançado na aba Atestados entra como <b>Abonado</b>.</span></div>
@@ -279,6 +281,44 @@
       <div class="item"><span class="num">1</span><span>O app já marca sozinho pelo que aconteceu — <b>você só mexe quando ele errou</b> ou quando quer justificar. Dia marcado à mão fica com um <b>✎</b> do lado do selo.</span></div>
       <div class="item"><span class="num">2</span><span>Marcou <b>Abonado</b>? O dia sai da conta das faltas na hora e o total a pagar já muda embaixo.</span></div>
       <div class="item"><span class="num">3</span><span><b>Voltar ao automático</b> apaga a marcação e o dia volta a ser classificado pelas batidas e pela escala.</span></div>
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">🏖 Tela 2b — marcar VÁRIOS dias de uma vez (férias, atestado, folga)</p>
+    <div class="tela">
+      <div class="app-card">
+        <div class="mock-topo" style="align-items:flex-start">
+          <div style="flex:1; min-width:150px; position:relative">
+            <div style="font-size:13px; font-weight:800; color:var(--primary-dark)">12 dias selecionados <span style="font-weight:500;color:#6b7280">· 06/07 a 17/07</span></div>
+            <div style="font-size:11px; color:#6b7280">10 com jornada prevista (os outros já eram folga/descanso)</div>
+            <span class="pin">1</span>
+          </div>
+          <span style="display:flex; gap:6px; align-items:center; position:relative">
+            <span class="cx" style="border:1px solid #d1d5db; border-radius:7px; background:#fff; padding:7px 12px; font-size:12.5px; font-weight:700; color:var(--house)">Férias ▾</span>
+            <span class="btn-verde">Marcar</span>
+            <span class="pin">2</span>
+          </span>
+        </div>
+        <div class="aviso" style="position:relative">
+          <b>9 dias da seleção têm batida de ponto.</b> Marcando assim, o dia deixa de ter jornada prevista e
+          <b>as horas batidas viram hora extra</b>. Se não era isso, tire esses dias da seleção.
+          <span class="pin">3</span>
+        </div>
+
+        <table class="dias" style="margin-top:11px">
+          <tr class="fds"><td style="width:22px">☑</td><td class="dia-nome">Seg., 06/07</td><td><span class="selo s-ferias">Férias ✎</span></td></tr>
+          <tr class="fds"><td>☑</td><td class="dia-nome">Ter., 07/07</td><td><span class="selo s-ferias">Férias ✎</span></td></tr>
+          <tr class="fds"><td>☑</td><td class="dia-nome">Qua., 08/07</td><td><span class="selo s-ferias">Férias ✎</span></td></tr>
+          <tr><td style="color:#9ca3af">☐</td><td class="dia-nome">Seg., 20/07</td><td><span class="selo s-ok">Trabalhado</span></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span>Marque as <b>caixinhas</b> na primeira coluna. Clicando com a tecla <b>Shift</b>, ele pega <b>o intervalo inteiro</b> entre os dois dias — férias de 15 dias em dois cliques. A caixinha do cabeçalho seleciona o período todo.</span></div>
+      <div class="item"><span class="num">2</span><span>Escolha o tipo — <b>Férias, Atestado, Abonado, Compensado, Folga, Feriado ou Falta</b> — o motivo (opcional) e clique em <b>Marcar</b>. Na mesma barra tem <b>Voltar esses dias ao automático</b> para desfazer.</span></div>
+      <div class="item"><span class="num">3</span><span>O app <b>avisa</b> quando algum dia selecionado já tem batida — para você não transformar sem querer as horas daquele dia em hora extra.</span></div>
     </div>
   </div>
 
@@ -382,7 +422,16 @@
       <div class="det-corpo">
         Clique no selo <b>Falta</b> daquele dia e escolha <b>Abonado</b> (com o motivo, se quiser). O desconto do dia e do DSR
         somem na hora e o total a pagar se refaz sozinho. Atestado lançado na aba <b>Atestados</b> já entra como abonado automaticamente,
-        sem precisar marcar nada.
+        sem precisar marcar nada. Para <b>vários dias seguidos</b>, use as caixinhas + Shift (Tela 2b).
+      </div>
+    </details>
+
+    <details class="acc aberto" open>
+      <summary>Férias entram no cálculo? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Os dias marcados como <b>Férias</b> não contam falta e <b>não descontam nada</b> — e a folha mostra um aviso roxo com
+        quantos dias de férias tem no período. Mas atenção: o <b>pagamento das férias e o adicional de 1/3</b> <b>não são
+        calculados aqui</b> — isso continua sendo lançamento da contabilidade.
       </div>
     </details>
 
@@ -425,10 +474,11 @@
     <details class="acc aberto" open>
       <summary>Como fica a impressão? <span class="mais">+</span></summary>
       <div class="det-corpo">
-        O botão <b>Imprimir</b> monta uma folha A4 no mesmo modelo dos recibos: cabeçalho com a logo e os dados da empresa,
-        nome/cargo/CPF/admissão do funcionário, <b>todos os dias com as batidas</b>, o resumo, a folha do período, o total a pagar
-        e duas linhas de assinatura (funcionário e empregador), com a frase de conferência das marcações.
-        Imprime <b>dentro do próprio app</b> — funciona no iPad, sem abrir outra aba.
+        O botão <b>Imprimir ponto</b> monta a <b>folha de ponto</b> para o funcionário conferir e assinar: cabeçalho com a logo e
+        os dados da empresa, nome/cargo/CPF/admissão, o resumo <b>em horas</b>, <b>todos os dias com as batidas</b>, a frase de
+        conferência das marcações e duas linhas de assinatura (funcionário e empregador).
+        <b>O mês inteiro cabe em uma folha A4</b> e <b>nenhum valor em dinheiro vai para o papel</b> — salário, hora extra e
+        descontos ficam só na tela, para você. Imprime <b>dentro do próprio app</b> — funciona no iPad, sem abrir outra aba.
       </div>
     </details>
   </div>
@@ -438,8 +488,9 @@
     <div class="passo"><span class="num">1</span><p>Abra <b>RH → Funcionários</b>, entre na ficha da pessoa e confira na aba <b>Dados</b> o <b>salário mensal</b>, o tipo de hora extra e o adicional (%).</p></div>
     <div class="passo"><span class="num">2</span><p>Em <b>Ponto → Configurar</b>, cadastre os <b>feriados</b> do ano. Uma vez só, vale para todos os funcionários.</p></div>
     <div class="passo"><span class="num">3</span><p>Na ficha, abra <b>Cartão de ponto</b>, escolha o período (começa em "Este mês") e <b>revise os dias em vermelho</b> — marque como Abonado o que for justificado.</p></div>
-    <div class="passo"><span class="num">4</span><p>Lance <b>vale/adiantamento</b> em Outros descontos e clique em <b>Salvar ajustes</b>.</p></div>
-    <div class="passo"><span class="num">5</span><p>Leia o <b>Total a pagar</b> e clique em <b>Imprimir</b> para o funcionário conferir e assinar.</p></div>
+    <div class="passo"><span class="num">4</span><p>Teve <b>férias ou atestado</b>? Marque as caixinhas dos dias (Shift pega o intervalo inteiro) e lance tudo de uma vez.</p></div>
+    <div class="passo"><span class="num">5</span><p>Lance <b>vale/adiantamento</b> em Outros descontos e clique em <b>Salvar ajustes</b>.</p></div>
+    <div class="passo"><span class="num">6</span><p>Leia o <b>Total a pagar</b> na tela e clique em <b>Imprimir ponto</b> para o funcionário conferir e assinar a folha de ponto.</p></div>
   </div>
 
   <p class="rodape">Hardt App · qualquer dúvida, chama no grupo 💚</p>

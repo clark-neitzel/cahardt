@@ -30,8 +30,11 @@ const funcionarioService = {
     addBatida: async (dados) => (await api.post('/rh/ponto/registros', dados)).data,
     updateBatida: async (id, dados) => (await api.put(`/rh/ponto/registros/${id}`, dados)).data,
     delBatida: async (id) => (await api.delete(`/rh/ponto/registros/${id}`)).data,
-    // tipo: 'FALTA' | 'ABONO' | 'FERIADO' | 'FOLGA' | null (null = volta ao automático)
+    // tipo: 'FALTA' | 'ABONO' | 'ATESTADO' | 'FERIAS' | 'FERIADO' | 'FOLGA' | 'COMPENSADO'
+    //       ou null (null = volta ao automático)
     marcarDia: async (dados) => (await api.post('/rh/ponto/marcar-dia', dados)).data,
+    // vários dias de uma vez: { funcionarioId, datas: [...], tipo, obs }
+    marcarDias: async (dados) => (await api.post('/rh/ponto/marcar-dias', dados)).data,
     importarPonto: async (linhas) => (await api.post('/rh/ponto/importar', { linhas })).data
 };
 
