@@ -119,8 +119,8 @@ const valorPorExtenso = (valor) => {
 
 const escapeHtml = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-// Imprime o recibo NA PRÓPRIA PÁGINA (@media print) — nunca window.open/iframe (regra do PWA/iPad)
-const imprimirRecibo = (conta, parcela, totalParcelas) => {
+// Monta o HTML de UM recibo (bloco .rc). Reutilizado no recibo único e no lote.
+const montarReciboHtml = (conta, parcela, totalParcelas) => {
     const pagamentos = (parcela.pagamentos || []).filter(pg => !pg.estornado);
     const totalPago = pagamentos.reduce((s, pg) => s + Number(pg.valorPago || 0) + Number(pg.juros || 0) + Number(pg.multa || 0), 0);
     const pago = totalPago > 0.009;
@@ -173,25 +173,32 @@ const imprimirRecibo = (conta, parcela, totalParcelas) => {
             </div>
         </div>`;
 
-    const estilos = `
-        .rc { font-family: 'Manrope', -apple-system, sans-serif; color: rgba(0,0,0,0.87); max-width: 180mm; margin: 0 auto; padding-top: 6mm; }
-        .rc-rule { border-top: 2.5pt solid #111; margin: 6mm 0; }
-        .rc-header { display: flex; align-items: center; gap: 8mm; padding: 2mm 0; }
-        .rc-logo { height: 22mm; width: auto; }
-        .rc-emp { font-size: 11pt; color: #666; line-height: 1.65; }
-        .rc-titulo { display: flex; align-items: baseline; justify-content: space-between; margin: 4mm 0 2mm; }
-        .rc-titulo h1 { font-size: 26pt; font-weight: 800; margin: 0; color: #111; }
-        .rc-valor { font-size: 24pt; font-weight: 500; color: #777; }
-        .rc-valor span { font-size: 13pt; margin-right: 1mm; }
-        .rc-dash { border-top: 1.5pt dashed #999; margin: 3mm 0 10mm; }
-        .rc-texto { font-size: 12.5pt; line-height: 1.6; margin: 0 0 8mm; }
-        .rc-data { text-align: center; font-size: 12.5pt; margin: 14mm 0 18mm; }
-        .rc-assinatura { text-align: center; }
-        .rc-linha { border-top: 1pt solid #111; width: 70%; margin: 0 auto 3mm; }
-        .rc-nome { font-size: 12.5pt; letter-spacing: 0.03em; }
-        .rc-doc { font-size: 12pt; margin-top: 2mm; }`;
+    return corpoHtml;
+};
 
-    // Padrão do projeto: monta na página, esconde o app com display:none e limpa depois
+const RECIBO_ESTILOS = `
+    .rc { font-family: 'Manrope', -apple-system, sans-serif; color: rgba(0,0,0,0.87); max-width: 180mm; margin: 0 auto; padding-top: 6mm; }
+    .rc-rule { border-top: 2.5pt solid #111; margin: 6mm 0; }
+    .rc-header { display: flex; align-items: center; gap: 8mm; padding: 2mm 0; }
+    .rc-logo { height: 22mm; width: auto; }
+    .rc-emp { font-size: 11pt; color: #666; line-height: 1.65; }
+    .rc-titulo { display: flex; align-items: baseline; justify-content: space-between; margin: 4mm 0 2mm; }
+    .rc-titulo h1 { font-size: 26pt; font-weight: 800; margin: 0; color: #111; }
+    .rc-valor { font-size: 24pt; font-weight: 500; color: #777; }
+    .rc-valor span { font-size: 13pt; margin-right: 1mm; }
+    .rc-dash { border-top: 1.5pt dashed #999; margin: 3mm 0 10mm; }
+    .rc-texto { font-size: 12.5pt; line-height: 1.6; margin: 0 0 8mm; }
+    .rc-data { text-align: center; font-size: 12.5pt; margin: 14mm 0 18mm; }
+    .rc-assinatura { text-align: center; }
+    .rc-linha { border-top: 1pt solid #111; width: 70%; margin: 0 auto 3mm; }
+    .rc-nome { font-size: 12.5pt; letter-spacing: 0.03em; }
+    .rc-doc { font-size: 12pt; margin-top: 2mm; }
+    /* Um recibo por folha (lote) */
+    .rc-folha { break-after: page; page-break-after: always; }
+    .rc-folha:last-child { break-after: auto; page-break-after: auto; }`;
+
+// Imprime 1+ recibos NA PRÓPRIA PÁGINA (@media print) — nunca window.open/iframe (regra do PWA/iPad)
+const imprimirReciboNaPagina = (corpoHtml) => {
     document.getElementById('area-impressao')?.remove();
     document.getElementById('estilo-impressao')?.remove();
     const style = document.createElement('style');
@@ -205,7 +212,7 @@ const imprimirRecibo = (conta, parcela, totalParcelas) => {
             #root { display: none !important; }
             #area-impressao { display: block !important; }
             #area-impressao * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            ${estilos}
+            ${RECIBO_ESTILOS}
         }`;
     document.head.appendChild(style);
     const area = document.createElement('div');
@@ -217,6 +224,18 @@ const imprimirRecibo = (conta, parcela, totalParcelas) => {
     setTimeout(limpar, 60000);
     void area.offsetHeight;
     window.print(); // síncrono no clique (senão o iOS bloqueia)
+};
+
+// Recibo de UMA parcela
+const imprimirRecibo = (conta, parcela, totalParcelas) =>
+    imprimirReciboNaPagina(montarReciboHtml(conta, parcela, totalParcelas));
+
+// Vários recibos de uma vez — um por folha
+const imprimirRecibosLote = (itens) => {
+    const corpo = itens
+        .map(({ conta, parcela, totalParcelas }) => `<div class="rc-folha">${montarReciboHtml(conta, parcela, totalParcelas)}</div>`)
+        .join('');
+    imprimirReciboNaPagina(corpo);
 };
 
 // Parcela vencida e ainda em aberto?
@@ -460,24 +479,33 @@ const ContasPagarPage = () => {
         podeBaixar && conta.status !== 'CANCELADO' &&
         parcela.status !== 'PAGO' && parcela.status !== 'CANCELADO';
 
-    // Seleção múltipla para quitar várias parcelas de uma vez (mesma data/forma/banco)
+    // Parcela com pagamento (paga/parcial) → tem recibo para imprimir
+    const parcelaTemRecibo = (parcela) =>
+        (parcela.pagamentos || []).some(pg => !pg.estornado) || parcela.status === 'PAGO' || Number(parcela.valorPago || 0) > 0;
+    // Qualquer parcela não cancelada pode ser marcada (para quitar em lote OU imprimir recibos)
+    const selecionavelParcela = (conta, parcela) => conta.status !== 'CANCELADO' && parcela.status !== 'CANCELADO';
+
+    // Seleção múltipla: quitar várias em aberto OU imprimir vários recibos de pagas (um por folha)
     const [selecionadas, setSelecionadas] = useState(() => new Set());
     const [baixaLoteModal, setBaixaLoteModal] = useState(false);
     const idsSelecionaveis = useMemo(
-        () => linhas.filter(({ conta, parcela }) => podeBaixarParcela(conta, parcela)).map(({ parcela }) => parcela.id),
+        () => linhas.filter(({ conta, parcela }) => selecionavelParcela(conta, parcela)).map(({ parcela }) => parcela.id),
         [linhas] // eslint-disable-line react-hooks/exhaustive-deps
     );
     const toggleSel = (id) => setSelecionadas(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
     const limparSel = () => setSelecionadas(new Set());
     const todasMarcadas = idsSelecionaveis.length > 0 && idsSelecionaveis.every(id => selecionadas.has(id));
     const toggleTodas = () => setSelecionadas(todasMarcadas ? new Set() : new Set(idsSelecionaveis));
-    const valorSelecionado = useMemo(() => {
-        let s = 0;
-        linhas.forEach(({ parcela }) => {
-            if (selecionadas.has(parcela.id)) s += Math.max(0, Number(parcela.valor || 0) - Number(parcela.valorPago || 0));
-        });
-        return s;
-    }, [linhas, selecionadas]);
+
+    const itensSelecionados = useMemo(() => linhas.filter(({ parcela }) => selecionadas.has(parcela.id)), [linhas, selecionadas]);
+    // Recibos: parcelas selecionadas que estão pagas (na ordem da lista)
+    const itensRecibo = useMemo(() => itensSelecionados.filter(({ parcela }) => parcelaTemRecibo(parcela)), [itensSelecionados]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Quitáveis: parcelas selecionadas ainda em aberto (respeita permissão)
+    const itensQuitaveis = useMemo(() => itensSelecionados.filter(({ conta, parcela }) => podeBaixarParcela(conta, parcela)), [itensSelecionados]); // eslint-disable-line react-hooks/exhaustive-deps
+    const valorQuitaveis = useMemo(
+        () => itensQuitaveis.reduce((s, { parcela }) => s + Math.max(0, Number(parcela.valor || 0) - Number(parcela.valorPago || 0)), 0),
+        [itensQuitaveis]
+    );
 
     const recarregarFornecedores = () =>
         fornecedorService.listar().then(f => setFornecedores(Array.isArray(f) ? f : [])).catch(() => {});
@@ -586,16 +614,28 @@ const ContasPagarPage = () => {
                 )}
 
                 {/* Barra de ações em lote */}
-                {podeBaixar && selecionadas.size > 0 && (
-                    <div className="sticky top-2 z-20 bg-primary text-white rounded-lg px-4 py-2.5 flex items-center justify-between gap-3 shadow-md">
+                {selecionadas.size > 0 && (
+                    <div className="sticky top-2 z-20 bg-primary text-white rounded-lg px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-md">
                         <span className="text-sm font-medium">
-                            {selecionadas.size} selecionada(s) · R$ {fmt(valorSelecionado)}
+                            {selecionadas.size} selecionada(s)
+                            {itensRecibo.length > 0 ? ` · ${itensRecibo.length} paga(s)` : ''}
                         </span>
                         <div className="flex items-center gap-2">
                             <button onClick={limparSel} className="text-xs px-3 py-1.5 rounded bg-white/15 hover:bg-white/25">Limpar</button>
-                            <button onClick={() => setBaixaLoteModal(true)} className="text-xs font-semibold px-3 py-1.5 rounded bg-white text-primary hover:bg-gray-100">
-                                Quitar selecionadas
-                            </button>
+                            {itensRecibo.length > 0 && (
+                                <button
+                                    onClick={() => imprimirRecibosLote(itensRecibo)}
+                                    className="text-xs font-semibold px-3 py-1.5 rounded bg-white text-primary hover:bg-gray-100 inline-flex items-center gap-1.5"
+                                    title="Imprime um recibo por folha (A4) de cada parcela paga selecionada"
+                                >
+                                    <Printer className="h-3.5 w-3.5" /> Imprimir {itensRecibo.length} recibo{itensRecibo.length !== 1 ? 's' : ''}
+                                </button>
+                            )}
+                            {podeBaixar && itensQuitaveis.length > 0 && (
+                                <button onClick={() => setBaixaLoteModal(true)} className="text-xs font-semibold px-3 py-1.5 rounded bg-white text-primary hover:bg-gray-100">
+                                    Quitar {itensQuitaveis.length} selecionada{itensQuitaveis.length !== 1 ? 's' : ''}
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}
@@ -611,7 +651,7 @@ const ContasPagarPage = () => {
                         <div key={parcela.id} className={`bg-white rounded-xl border shadow-sm p-4 ${selecionadas.has(parcela.id) ? 'border-primary ring-1 ring-primary' : 'border-gray-200'}`} onClick={() => setDetalheConta(conta)}>
                             <div className="flex items-center justify-between mb-1 gap-2">
                                 <div className="flex items-center gap-2 min-w-0">
-                                    {podeBaixarParcela(conta, parcela) && (
+                                    {selecionavelParcela(conta, parcela) && (
                                         <input
                                             type="checkbox"
                                             checked={selecionadas.has(parcela.id)}
@@ -667,7 +707,7 @@ const ContasPagarPage = () => {
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="pl-5 pr-1 py-3 w-8">
-                                        {podeBaixar && idsSelecionaveis.length > 0 && (
+                                        {idsSelecionaveis.length > 0 && (
                                             <input type="checkbox" checked={todasMarcadas} onChange={toggleTodas} className="rounded h-4 w-4" title="Selecionar todas" />
                                         )}
                                     </th>
@@ -694,7 +734,7 @@ const ContasPagarPage = () => {
                                         className={`hover:bg-gray-50 cursor-pointer ${selecionadas.has(parcela.id) ? 'bg-blue-50/60' : parcela.status === 'PAGO' ? 'bg-green-50/40' : ''}`}
                                     >
                                         <td className="pl-5 pr-1 py-3 w-8" onClick={e => e.stopPropagation()}>
-                                            {podeBaixarParcela(conta, parcela) && (
+                                            {selecionavelParcela(conta, parcela) && (
                                                 <input
                                                     type="checkbox"
                                                     checked={selecionadas.has(parcela.id)}
@@ -749,10 +789,10 @@ const ContasPagarPage = () => {
                     </div>
                 </div>
 
-                {/* Banner explicativo do ciclo DDA */}
+                {/* Banner explicativo */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-900">
-                    <span className="font-semibold">Como funciona a baixa automática:</span>{' '}
-                    a despesa criada aqui é enviada à Conta Azul → lá você vincula ao DDA e paga como hoje → o sistema confere as baixas na Conta Azul a cada 30 minutos e marca como <span className="font-semibold">Pago</span> sozinho (igual o Contas a Receber já faz).
+                    <span className="font-semibold">Contas a pagar é tudo no app:</span>{' '}
+                    lance a despesa (manual ou da nota fiscal) e dê a <span className="font-semibold">baixa</span> aqui quando pagar — uma parcela ou várias em lote. Marque as pagas para <span className="font-semibold">imprimir os recibos</span> (um por folha). O Conta Azul entra só para o histórico: despesas antigas pagas por lá (DDA) têm a baixa refletida aqui sozinha.
                 </div>
             </div>
 
@@ -791,8 +831,8 @@ const ContasPagarPage = () => {
             {/* Modal Quitar em lote */}
             {baixaLoteModal && (
                 <BaixaLoteModal
-                    parcelaIds={[...selecionadas]}
-                    valorTotal={valorSelecionado}
+                    parcelaIds={itensQuitaveis.map(({ parcela }) => parcela.id)}
+                    valorTotal={valorQuitaveis}
                     onClose={() => setBaixaLoteModal(false)}
                     onSuccess={() => { setBaixaLoteModal(false); limparSel(); fetchData(); }}
                 />
