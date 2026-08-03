@@ -4,8 +4,10 @@ import api from '../../services/api';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import { formatarDoc } from '../../utils/documento';
+import { explicarRejeicao } from '../../utils/rejeicaoNfe';
+import clienteService from '../../services/clienteService';
 import {
-    FileText, Loader2, RefreshCw, Send, FileDown, FileCode2, AlertTriangle
+    FileText, Loader2, RefreshCw, Send, FileDown, FileCode2, AlertTriangle, HelpCircle, Search
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -37,6 +39,98 @@ const BadgeNota = ({ pedido }) => {
         return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">Cancelada</span>;
     }
     return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">{nota.status || '—'}</span>;
+};
+
+// Rejeição da SEFAZ explicada: a mensagem oficial + o que fazer + consulta do
+// cadastro do cliente na Receita/SEFAZ na hora (é o que resolve a maioria dos casos).
+const AvisoRejeicao = ({ pedido }) => {
+    const [aberto, setAberto] = useState(false);
+    const [consultando, setConsultando] = useState(false);
+    const [consulta, setConsulta] = useState(null);
+
+    const msg = pedido.nota?.mensagemSefaz || '';
+    const guia = useMemo(() => explicarRejeicao(msg), [msg]);
+    const doc = (pedido.cliente?.documento || '').replace(/[^0-9A-Za-z]/g, '');
+    const podeConsultar = guia.conferirCliente && doc.length === 14;
+
+    const conferir = async () => {
+        setConsultando(true);
+        try {
+            setConsulta(await clienteService.consultarCnpj(doc));
+        } catch (e) {
+            toast.error(msgErroApi(e, 'Não foi possível consultar agora.'));
+        } finally {
+            setConsultando(false);
+        }
+    };
+
+    return (
+        <div className="mt-2 text-xs bg-red-50 border border-red-200 rounded-lg px-3 py-2 max-w-xl">
+            <div className="text-red-700 font-medium">{msg}</div>
+            <button
+                type="button"
+                onClick={() => setAberto(a => !a)}
+                className="mt-1.5 inline-flex items-center gap-1 font-semibold text-red-800 underline underline-offset-2 min-h-[32px]"
+            >
+                <HelpCircle className="h-3.5 w-3.5" />
+                {aberto ? 'Ocultar' : 'O que fazer?'}
+            </button>
+
+            {aberto && (
+                <div className="mt-2 pt-2 border-t border-red-200 text-gray-700 space-y-2">
+                    <div className="font-semibold text-gray-900">{guia.titulo}</div>
+                    <ul className="list-disc pl-4 space-y-1">
+                        {guia.passos.map((p, i) => <li key={i}>{p}</li>)}
+                    </ul>
+
+                    {podeConsultar && (
+                        <button
+                            type="button"
+                            onClick={conferir}
+                            disabled={consultando}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium min-h-[36px] disabled:opacity-50"
+                        >
+                            {consultando
+                                ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Consultando…</>
+                                : <><Search className="h-3.5 w-3.5" /> Conferir na Receita/SEFAZ</>}
+                        </button>
+                    )}
+
+                    {consulta && (
+                        <div className="bg-white border border-gray-200 rounded-lg px-3 py-2 space-y-0.5">
+                            {!consulta.encontrado ? (
+                                <div className="text-gray-700">CNPJ não encontrado na Receita Federal.</div>
+                            ) : (
+                                <>
+                                    <div className="font-semibold text-gray-900">{consulta.razaoSocial || '—'}</div>
+                                    <div>
+                                        CNPJ: <strong className={consulta.ativa ? 'text-green-700' : 'text-red-700'}>
+                                            {consulta.situacao || '—'}
+                                        </strong>
+                                    </div>
+                                    <div>
+                                        Inscrição estadual: <strong className={consulta.ieConsulta?.situacao === 'HABILITADO' ? 'text-green-700' : 'text-red-700'}>
+                                            {consulta.ieConsulta?.situacao
+                                                ? consulta.ieConsulta.situacao.replace(/_/g, ' ').toLowerCase()
+                                                : (consulta.inscricaoEstadual || 'não informada')}
+                                        </strong>
+                                        {consulta.inscricaoEstadual ? ` (${consulta.inscricaoEstadual})` : ''}
+                                    </div>
+                                    {(!consulta.ativa || consulta.ieConsulta?.situacao === 'NAO_HABILITADO') && (
+                                        <div className="pt-1 text-red-700">
+                                            É este o motivo da recusa. Não adianta reemitir: a empresa do cliente
+                                            está encerrada ou bloqueada na SEFAZ. Fale com o cliente para conseguir
+                                            o CNPJ novo — ou faturar no CPF dele.
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
 };
 
 const BadgeDoc = ({ cliente }) => {
@@ -443,9 +537,7 @@ const NotasFiscais = () => {
                                             <span className="font-semibold text-gray-900">R$ {fmt(p.total)}</span>
                                         </div>
                                         {p.nota?.status === 'ERRO' && p.nota?.mensagemSefaz && (
-                                            <div className="mt-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                                                {p.nota.mensagemSefaz}
-                                            </div>
+                                            <AvisoRejeicao pedido={p} />
                                         )}
                                         <div className="mt-3">
                                             <Acoes pedido={p} />
@@ -509,7 +601,7 @@ const NotasFiscais = () => {
                                                         <div className="text-xs text-gray-500 mt-1">Série {p.nota.serie}</div>
                                                     )}
                                                     {p.nota?.status === 'ERRO' && p.nota?.mensagemSefaz && (
-                                                        <div className="text-xs text-red-700 mt-1 max-w-md">{p.nota.mensagemSefaz}</div>
+                                                        <AvisoRejeicao pedido={p} />
                                                     )}
                                                 </td>
                                                 <td className="px-5 py-3"><Acoes pedido={p} /></td>

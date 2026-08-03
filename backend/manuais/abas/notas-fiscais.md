@@ -15,7 +15,7 @@ Desde 23/07/2026 a NF-e de venda é emitida **pelo próprio app**, via Focus NFe
   - **Sem nota** (cinza) — ainda não emitida; botão "Emitir NF-e".
   - **⏳ Processando** (azul) — enviada, aguardando a SEFAZ (segundos); a tela atualiza sozinha a cada 10s; botão "Atualizar" força a consulta.
   - **✓ NF 84xxx** (verde) — autorizada; botões **DANFE** (PDF) e **XML**.
-  - **✕ Rejeitada** (vermelho) — a SEFAZ recusou; o motivo aparece embaixo (ex.: cadastro do cliente incompleto). Corrigiu a causa → clicar "Emitir NF-e" de novo (não duplica).
+  - **✕ Rejeitada** (vermelho) — a SEFAZ recusou; o motivo oficial aparece embaixo, com o link **"O que fazer?"** ao lado (ver seção própria). Corrigiu a causa → clicar "Reemitir NF-e" (não duplica).
   - **Emitida no CA** (cinza) — nota antiga da era Conta Azul; sem ações aqui (imprime pela tela de Pedidos).
 
 ## Como emitir
@@ -34,10 +34,20 @@ Quando a nota é **autorizada**, o pedido correspondente vira **FATURADO** na ab
 - Pedido faturado pelo app fica **imune ao sync do Conta Azul** (o status FATURADO não é revertido).
 - **Venda para outro estado (interestadual):** o app ajusta a nota sozinho pela UF do cliente — usa **CFOP 6101/6102** e marca a operação como **interestadual** (dentro de SC continua 5101/5102). Para sair certa, o cliente precisa estar cadastrado com a **UF correta** e, se for contribuinte de ICMS, com a **Inscrição Estadual** preenchida. Os impostos do Simples (CSOSN 101 + crédito) e os demais campos são os mesmos da venda interna.
 
+## Nota rejeitada: o link "O que fazer?"
+
+Toda linha **✕ Rejeitada** mostra a mensagem oficial da SEFAZ e, logo abaixo, o link **"O que fazer?"**. Ao abrir, aparece a orientação prática para aquele motivo específico: se o problema é do cadastro do cliente, do nosso cadastro, dos valores do pedido, ou se é caso de chamar o suporte. Se a SEFAZ mandar um motivo que o app ainda não conhece, aparece a orientação geral — nunca fica sem saída.
+
+Quando o motivo tem a ver com o cadastro do cliente (documento, inscrição estadual, cliente bloqueado), aparece também o botão **"Conferir na Receita/SEFAZ"**: ele consulta na hora a situação real do CNPJ na Receita Federal e da inscrição estadual na SEFAZ, e mostra o resultado ali mesmo — sem precisar sair da tela nem pedir para o suporte.
+
+- **CNPJ "BAIXADA"/inapto ou IE "não habilitado"** → a empresa do cliente foi encerrada ou está bloqueada. **Não adianta reemitir**: é preciso o CNPJ novo do cliente, ou faturar no CPF dele (aí o cadastro passa a ser pessoa física, não contribuinte). Quem decide isso é a direção/contabilidade, não o app.
+- **Consulta mostra tudo regular** → é bloqueio interno da SEFAZ do estado do cliente; só o contador do cliente resolve.
+
 ## Erros comuns e o que fazer
 
 - **"Cliente ... sem CPF/CNPJ"** ou **"cadastro incompleto: falta CEP/rua/número..."** → completar o cadastro do cliente (aba Clientes) e emitir de novo.
 - **"IE do destinatário não informada"** → cliente PJ contribuinte sem inscrição estadual no cadastro; preencher a IE do cliente (ou rodar o sync do CA que puxa a IE) e reemitir.
+- **"Destinatário bloqueado na UF"** (rejeição 305) → **não é falta de IE nem erro de UF**; o cadastro do cliente está bloqueado na SEFAZ do estado dele. Usar o botão "Conferir na Receita/SEFAZ" (acima) para ver se o CNPJ foi baixado.
 - **Nota presa em "Processando"** por mais de alguns minutos → o sistema já consulta sozinho, a cada 5 minutos, toda nota parada nesse status, e destrava assim que a SEFAZ responde (não é preciso ficar clicando). O botão "Atualizar" serve para conferir na hora. Se passar de ~1 hora assim, a nota está travada do lado da SEFAZ/Focus, não do app: avisar o suporte informando o número do pedido.
 
 ## XMLs para a contabilidade
