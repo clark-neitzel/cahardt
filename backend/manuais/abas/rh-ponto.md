@@ -38,6 +38,6 @@ Controle de ponto eletrônico da equipe. O funcionário bate o ponto por um **li
 ## Cartão de ponto / regras
 - A **carga diária** vem da escala do funcionário. Com **janela móvel**, se entrar antes, a saída esperada desloca mantendo a mesma carga; só o que passar disso vira **banco de horas** ou **hora extra paga** (conforme o tipo configurado por funcionário).
 - O espelho mostra **todos os dias do período escolhido** (inclusive fim de semana), com batidas, previsto, trabalhado, saldo e a **situação** do dia; e no resumo: total trabalhado, previsto, saldo do banco, hora extra e faltas.
-- **Dia útil sem batida = falta.** Sábado sem carga aparece como *Compensado* e domingo como *Descanso* (não são falta). Atestado entra como **abonado**; feriado cadastrado entra como **feriado**.
+- **Dia útil já fechado e sem batida = falta.** O **dia de hoje** (e os dias futuros do período) aparece como *A cumprir* e não conta falta. Sábado sem carga aparece como *Compensado* e domingo como *Descanso* (não são falta). Atestado entra como **abonado**; feriado cadastrado entra como **feriado**.
 - Qualquer dia pode ser **marcado à mão** (Falta / Abonado / Feriado / Folga) clicando no selo da coluna Situação — a marcação manda no automático.
 - Abaixo do espelho, a **folha do período** apura salário, horas extras (+ DSR), descontos de falta e DSR perdido, e o **total a pagar** (valor bruto). Detalhes no manual de **Funcionários (RH)**.

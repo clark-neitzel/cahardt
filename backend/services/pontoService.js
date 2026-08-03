@@ -211,7 +211,7 @@ const ROTULO_SITUACAO = {
     FERIADO: 'Feriado',
     FOLGA: 'Folga',
     COMPENSADO: 'Compensado',
-    FUTURO: 'A cumprir',
+    FUTURO: 'A cumprir',        // dia de hoje ainda em aberto ou dia futuro do período
     SEM_VINCULO: 'Fora do contrato'
 };
 
@@ -308,7 +308,9 @@ const montarCartao = async (funcionarioId, filtro) => {
         else if (batidas.length) situacao = 'TRABALHADO';
         // Sábado sem carga = jornada compensada na semana; domingo = descanso semanal
         else if (cargaEscala === 0) situacao = diaSemana === 6 ? 'COMPENSADO' : 'FOLGA';
-        else if (d > hoje) situacao = 'FUTURO';
+        // O DIA DE HOJE nunca vira falta sozinho — a pessoa ainda pode bater o ponto.
+        // Falta automática só em dia já fechado; hoje o RH marca à mão se quiser.
+        else if (d >= hoje) situacao = 'FUTURO';
         else situacao = 'FALTA';
 
         // Carga que o dia exigia (mostrada na coluna "Previsto"): só nos dias em que

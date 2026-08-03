@@ -244,7 +244,7 @@
     <div class="legenda">
       <div class="item"><span class="num">1</span><span><b>Filtro de período</b>, o mesmo do Contas a Pagar e do Financeiro: Este mês, Últimos 30 dias, Este ano ou período personalizado. As setas pulam o mês inteiro e a sua escolha fica salva.</span></div>
       <div class="item"><span class="num">2</span><span><b>Imprimir</b> — sai a folha A4 com todos os dias, o resumo, a folha do período e as linhas de assinatura (Tela 4).</span></div>
-      <div class="item"><span class="num">3</span><span><b>Dia útil sem batida = Falta</b> (linha vermelha). A coluna <b>Previsto</b> continua mostrando as horas que o dia exigia — dá para ver o que ficou faltando.</span></div>
+      <div class="item"><span class="num">3</span><span><b>Dia útil já fechado e sem batida = Falta</b> (linha vermelha). A coluna <b>Previsto</b> continua mostrando as horas que o dia exigia — dá para ver o que ficou faltando. <b>O dia de hoje nunca vira falta sozinho</b>: fica como <i>A cumprir</i> até o dia terminar (a pessoa ainda pode bater o ponto).</span></div>
       <div class="item"><span class="num">4</span><span><b>Sábado = Compensado</b> e <b>domingo = Descanso</b>. Aparecem na lista, mas <b>não contam falta</b> — a jornada do sábado já está distribuída na semana.</span></div>
       <div class="item"><span class="num">5</span><span><b>Feriado</b> cadastrado (Ponto → Configurar) aparece com o nome e também não é falta. Atestado lançado na aba Atestados entra como <b>Abonado</b>.</span></div>
       <div class="item"><span class="num">6</span><span><b>Sábado trabalhado</b>: como não havia carga prevista, <b>tudo o que ele bateu vira hora extra</b> (04:04 no saldo).</span></div>
@@ -383,6 +383,15 @@
         Clique no selo <b>Falta</b> daquele dia e escolha <b>Abonado</b> (com o motivo, se quiser). O desconto do dia e do DSR
         somem na hora e o total a pagar se refaz sozinho. Atestado lançado na aba <b>Atestados</b> já entra como abonado automaticamente,
         sem precisar marcar nada.
+      </div>
+    </details>
+
+    <details class="acc aberto" open>
+      <summary>O dia de hoje aparece como falta? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Não. <b>Hoje</b> (e qualquer dia do período que ainda não chegou) aparece como <b>A cumprir</b> — a pessoa ainda pode
+        bater o ponto, então o app não desconta nada. A falta automática só aparece em <b>dia já fechado</b>. Se você já sabe
+        que a pessoa faltou hoje, clique no selo do dia e marque <b>Falta</b> à mão.
       </div>
     </details>
 
