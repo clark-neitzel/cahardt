@@ -1,5 +1,11 @@
 [
   {
+    "slug": "ponto-facil",
+    "titulo": "Bater o ponto sem erro",
+    "resumo": "Agora você escolhe ENTRADA ou SAÍDA — esquecer uma batida não inverte mais o dia inteiro. Confirmação com o total do dia, botão 'não era isso?' nos primeiros 10 minutos e, se esqueceu, você pede o acerto pelo celular: o escritório aprova e a resposta aparece na sua tela.",
+    "data": "2026-08-04"
+  },
+  {
     "slug": "corrigir-entrada-estoque",
     "titulo": "Corrigir conversão da nota",
     "resumo": "A correção de produto/conversão agora vale também para as notas antigas (conferidas até 27/07), que não mostravam o selo \"Estoque somado ✓\" e ficavam sem o botão. E a nota que nunca somou estoque — conferida sem vincular nenhum item — ganhou o botão \"Lançar entrada de estoque\": vincule os itens e a quantidade entra agora, sem mexer na despesa.",

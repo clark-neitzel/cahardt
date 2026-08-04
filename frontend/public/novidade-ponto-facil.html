@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: bater o ponto ficou à prova de erro — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="⏱ Novidade no Hardt App: bater o ponto ficou à prova de erro">
+<meta property="og:description" content="Agora você escolhe ENTRADA ou SAÍDA — esquecer uma batida não vira mais bagunça no dia. E se esqueceu, pede o acerto pelo próprio celular: o escritório aprova e a resposta aparece na sua tela.">
+<meta property="og:type" content="website">
+<style>
+  :root { --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258;
+    --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  *{box-sizing:border-box}
+  html,body{max-width:100%;overflow-x:hidden}
+  body{margin:0;background:var(--cream);color:var(--ink);line-height:1.55;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;overflow-wrap:break-word}
+  .wrap{max-width:620px;margin:0 auto;padding:0 16px 56px}
+
+  .hero{background:linear-gradient(168deg,var(--house) 0%,#16302a 100%);color:#fff;padding:40px 16px 96px;text-align:center}
+  .hero .chip{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+    color:#d4e9e2;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+    border-radius:999px;padding:6px 14px;margin-bottom:14px}
+  .hero h1{font-size:27px;margin:0 0 10px;font-weight:800}
+  .hero p{color:#c8d6d0;max-width:470px;margin:0 auto;font-size:15.5px}
+
+  .cartao{background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 8px 24px rgba(30,57,50,.10);padding:20px;margin-top:-64px}
+  .cartao+.cartao,.sec{margin-top:16px}
+  .sec-titulo{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 12px}
+  .texto{margin:0;font-size:14.5px;color:#3f4a46}
+  .texto b{color:var(--house)}
+
+  details{background:#fff;border:1px solid #e5e7eb;border-radius:14px;margin-top:10px;overflow:hidden}
+  summary{list-style:none;cursor:pointer;padding:15px 18px;font-weight:800;font-size:15px;color:var(--house);
+    display:flex;justify-content:space-between;align-items:center;gap:10px}
+  summary::-webkit-details-marker{display:none}
+  summary .mais{color:var(--primary);font-size:20px;font-weight:800;transition:transform .2s;flex:none}
+  details[open] summary .mais{transform:rotate(45deg)}
+  .det-corpo{padding:0 18px 16px;font-size:14.5px;color:#3f4a46}
+  .det-corpo b{color:var(--house)}
+  .det-corpo ul{margin:8px 0 0;padding-left:20px}
+  .det-corpo li{margin-top:6px}
+
+  .passo{display:flex;gap:12px;margin-top:14px}
+  .passo .num{flex:none;width:28px;height:28px;border-radius:999px;background:var(--primary);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+  .passo p{margin:3px 0 0;font-size:14.5px;color:#3f4a46}
+  .passo b{color:var(--house)}
+  .rodape{text-align:center;color:var(--ink-soft);font-size:12.5px;margin-top:34px}
+
+  .tela{background:#f7f6f2;border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin-top:12px}
+  .tela.dupla{display:flex;gap:10px;flex-wrap:wrap}
+  .tela.dupla > div{flex:1 1 200px;min-width:0}
+  .rotulo-mock{font-size:9.5px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px}
+  .rotulo-mock.ruim{color:#b91c1c}
+  .rotulo-mock.bom{color:var(--primary)}
+  .app-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;position:relative}
+  .fone{max-width:238px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;position:relative}
+  .fone-topo{background:var(--primary);color:#fff;padding:9px 11px;display:flex;align-items:center;gap:8px}
+  .fone-topo .ic{background:rgba(255,255,255,.2);border-radius:7px;padding:3px 6px;font-size:12px}
+  .fone-topo small{display:block;font-size:8px;opacity:.8;line-height:1.2}
+  .fone-topo b{font-size:12px}
+  .fone-corpo{padding:11px;text-align:center}
+  .relogio{font-size:28px;font-weight:800;margin:5px 0 0}
+  .data-hoje{font-size:10px;color:#6b7280}
+  .estado{display:inline-block;font-size:9.5px;font-weight:800;border-radius:999px;padding:3px 9px;margin-top:7px}
+  .estado.dentro{background:#dcfce7;color:#166534}
+  .estado.fora{background:#f3f4f6;color:#4b5563}
+  .btn-grande{display:block;width:100%;border-radius:11px;padding:12px 8px;font-size:14px;font-weight:800;margin-top:8px;color:#fff}
+  .btn-entrada{background:var(--primary)} .btn-saida{background:#c2703a}
+  .btn-menor{display:block;width:100%;border-radius:11px;padding:8px;font-size:11.5px;font-weight:800;margin-top:7px;
+    background:#fff;border:1.5px solid #d1d5db;color:#4b5563}
+  .btn-verde{background:var(--primary);color:#fff;font-size:11px;font-weight:800;border-radius:999px;padding:6px 12px;display:inline-block}
+  .btn-branco{background:#fff;border:1px solid #d1d5db;color:#374151;font-size:11px;font-weight:700;border-radius:999px;padding:5px 11px;display:inline-block}
+
+  .lb{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;padding:3px 0}
+  .lb .tag{font-size:9px;font-weight:800;border-radius:999px;padding:2px 7px}
+  .tag-e{background:#dcfce7;color:#166534} .tag-s{background:#fee2e2;color:#9a3412}
+  .tag-err{background:#fee2e2;color:#b91c1c}
+  .lb b{white-space:nowrap}
+  .alerta-tela{border:1px solid #fcd34d;background:#fffbeb;border-radius:10px;padding:9px;margin-top:9px;font-size:10.5px;color:#92400e;text-align:left}
+  .alerta-tela b{color:#78350f}
+  .ok-tela{border:1px solid rgba(0,117,74,.3);background:#f0fdf7;border-radius:10px;padding:9px;margin-top:9px;font-size:10.5px;color:var(--primary-dark);text-align:left}
+  .ok-tela b{color:var(--house)}
+  .neg-tela{border:1px solid #fecaca;background:#fef2f2;border-radius:10px;padding:9px;margin-top:9px;font-size:10.5px;color:#991b1b;text-align:left}
+
+  .campo{margin-top:8px;text-align:left}
+  .campo .cap{font-size:9px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.05em}
+  .campo .cx{border:1px solid #d1d5db;border-radius:7px;background:#fff;padding:7px 9px;font-size:12px;font-weight:700;color:var(--house);margin-top:3px}
+  .linha-p{display:flex;gap:5px;align-items:flex-end;margin-top:6px}
+  .linha-p .campo{flex:1;margin-top:0}
+  .linha-p .x{color:#9ca3af;font-size:13px;padding-bottom:7px}
+
+  .selo{font-size:9.5px;font-weight:800;border-radius:999px;padding:3px 8px;display:inline-block;white-space:nowrap}
+  .s-relogio{background:#e0e7ff;color:#3730a3} .s-ok{background:#dcfce7;color:#166534}
+
+  .pin{position:absolute;top:50%;transform:translateY(-50%);right:-7px;width:22px;height:22px;border-radius:999px;
+    background:var(--gold);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;
+    box-shadow:0 2px 6px rgba(0,0,0,.25);z-index:5}
+  .pin.topo{top:-9px;transform:none}
+  .legenda{margin-top:14px}
+  .legenda .item{display:flex;gap:10px;margin-top:9px;font-size:13.5px;color:#3f4a46}
+  .legenda .item b{color:var(--house)}
+  .legenda .num{flex:none;width:22px;height:22px;border-radius:999px;background:var(--gold);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;margin-top:1px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="chip">✨ Novidade no app</span>
+  <h1>⏱ Bater o ponto ficou à prova de erro</h1>
+  <p>Agora <b>você escolhe</b> se está batendo <b>entrada</b> ou <b>saída</b> — esquecer uma batida não bagunça mais o dia inteiro.
+  E se esqueceu mesmo, <b>pede o acerto pelo próprio celular</b>: o escritório aprova e a resposta aparece na sua tela.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao">
+    <p class="sec-titulo">😤 O que estava acontecendo</p>
+    <p class="texto">
+      O app <b>adivinhava</b> se você estava entrando ou saindo, contando as batidas do dia: 1ª entrada, 2ª saída, 3ª entrada…
+      Bastava <b>esquecer uma</b> para <b>tudo depois disso ficar trocado</b> — a saída virava entrada e a entrada virava saída.
+      Aí só restava mandar mensagem pedindo pra alguém arrumar.
+    </p>
+    <div class="ok-tela" style="font-size:13.5px;padding:12px">
+      <b>Agora não adivinha mais.</b> Os dois botões estão sempre na tela e você toca no que está realmente fazendo.
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">📱 Tela 1 — dois botões, sem adivinhação</p>
+    <div class="tela dupla">
+      <div>
+        <p class="rotulo-mock ruim">✗ Antes</p>
+        <div class="fone">
+          <div class="fone-topo"><span class="ic">🕐</span><div><small>Registro de Ponto</small><b>CA-Hardt</b></div></div>
+          <div class="fone-corpo">
+            <div class="relogio">09:30</div>
+            <div class="data-hoje">quinta-feira, 06 de agosto</div>
+            <span class="estado fora">● Fora do expediente</span>
+            <div class="btn-grande btn-entrada">→ Registrar Entrada</div>
+            <div class="alerta-tela">Um botão só. Se você esqueceu de bater antes, ele grava o tipo errado — e todo o resto do dia inverte.</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="rotulo-mock bom">✓ Agora</p>
+        <div class="fone">
+          <div class="fone-topo"><span class="ic">🕐</span><div><small>Registro de Ponto</small><b>CA-Hardt</b></div></div>
+          <div class="fone-corpo">
+            <div class="relogio">09:30</div>
+            <div class="data-hoje">quinta-feira, 06 de agosto</div>
+            <span class="estado fora">● Fora do expediente</span>
+            <div style="position:relative">
+              <div class="btn-grande btn-entrada">→ ENTRADA<span class="pin topo">1</span></div>
+              <div class="btn-grande btn-saida">← SAÍDA</div>
+            </div>
+            <div class="ok-tela" style="position:relative">Você escolhe. <b>O dia não inverte mais.</b><span class="pin">2</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span>O botão que o app espera continua <b>em cima e maior</b> — no dia normal é um toque só, como sempre foi.</span></div>
+      <div class="item"><span class="num">2</span><span>Mas o outro está <b>sempre do lado</b>. Esqueceu de bater a saída do café? Ao voltar, toque em <b>ENTRADA</b> e pronto.</span></div>
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">📱 Tela 2 — confirmação e “não era isso?”</p>
+    <div class="tela dupla">
+      <div>
+        <p class="rotulo-mock">Depois de bater</p>
+        <div class="fone">
+          <div class="fone-topo"><span class="ic">✓</span><div><small>Registro de Ponto</small><b>CA-Hardt</b></div></div>
+          <div class="fone-corpo">
+            <div style="font-size:34px;line-height:1;margin:6px 0 3px">✅</div>
+            <div style="font-size:14px;font-weight:800;color:var(--house)">Saída registrada</div>
+            <div style="font-size:24px;font-weight:800">13:01</div>
+            <div style="font-size:10px;color:#6b7280">📍 na empresa · 12 m</div>
+            <div class="ok-tela" style="position:relative;text-align:center">Total de hoje até agora <b>5h33</b><span class="pin">1</span></div>
+            <div class="btn-menor" style="position:relative">Não era isso? Registrar como entrada<span class="pin">2</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="rotulo-mock">Se o dia ficar estranho</p>
+        <div class="fone">
+          <div class="fone-topo"><span class="ic">🕐</span><div><small>Registro de Ponto</small><b>CA-Hardt</b></div></div>
+          <div class="fone-corpo">
+            <div class="alerta-tela" style="position:relative;margin-top:0">
+              <b>⚠️ Confere o seu dia</b><br>
+              Você está com <b>entrada às 09:08 sem saída</b> há 3h52. Se esqueceu de bater, peça o acerto.
+              <span class="pin">3</span>
+            </div>
+            <div style="margin-top:8px;text-align:left">
+              <div class="lb"><span class="tag tag-e">Entrada</span><b>07:28 📍</b></div>
+              <div class="lb"><span class="tag tag-s">Saída</span><b>09:08 📍</b></div>
+              <div class="lb"><span class="tag tag-e">Entrada</span><b>09:30 📍</b></div>
+            </div>
+            <div class="btn-menor">✋ Esqueci de bater — pedir acerto</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span>Confirmação grande, com a hora, se você estava na empresa e <b>o total de horas do dia</b>. Chega de “será que registrou?”.</span></div>
+      <div class="item"><span class="num">2</span><span>Tocou no botão errado? Nos <b>primeiros 10 minutos</b> você mesmo troca — sem pedir nada a ninguém. (E bater duas vezes seguidas o mesmo tipo agora é recusado.)</span></div>
+      <div class="item"><span class="num">3</span><span>O app <b>avisa na hora</b> quando o dia está estranho: entrada sem saída, duas entradas seguidas, toque repetido. Você resolve no mesmo dia, não no fim do mês.</span></div>
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">📱 Tela 3 — “Esqueci de bater”, direto no celular</p>
+    <div class="tela dupla">
+      <div>
+        <p class="rotulo-mock">Você lança os horários</p>
+        <div class="fone">
+          <div class="fone-topo"><span class="ic">✋</span><div><small>Pedir acerto de ponto</small><b>Ponto</b></div></div>
+          <div class="fone-corpo" style="text-align:left">
+            <div class="linha-p" style="position:relative">
+              <div class="campo"><div class="cap">Hora</div><div class="cx">09:30</div></div>
+              <div class="campo"><div class="cap">O que era</div><div class="cx">Entrada ▾</div></div>
+              <span class="x">✕</span><span class="pin">1</span>
+            </div>
+            <div class="linha-p">
+              <div class="campo"><div class="cx">16:35</div></div>
+              <div class="campo"><div class="cx">Saída ▾</div></div>
+              <span class="x">✕</span>
+            </div>
+            <div class="btn-menor" style="position:relative">+ Adicionar outro horário<span class="pin">2</span></div>
+            <div class="campo"><div class="cap">Motivo</div><div class="cx">Esqueci ao voltar do café</div></div>
+            <div class="btn-grande btn-entrada" style="font-size:12.5px">Enviar 2 acertos</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="rotulo-mock">A resposta chega na sua tela</p>
+        <div class="fone">
+          <div class="fone-topo"><span class="ic">🕐</span><div><small>Registro de Ponto</small><b>CA-Hardt</b></div></div>
+          <div class="fone-corpo">
+            <div class="ok-tela" style="position:relative;margin-top:0">
+              <b>✅ Seu pedido foi aprovado</b><br>
+              <span style="color:#4b5563">por Josiane · hoje 08:12</span>
+              <div style="margin-top:5px;border-top:1px solid rgba(0,117,74,.2);padding-top:4px">
+                <div class="lb"><span>06/08 · 09:30</span><span class="tag tag-e">Entrada</span></div>
+                <div class="lb"><span>06/08 · 16:35</span><span class="tag tag-s">Saída</span></div>
+              </div>
+              <span class="pin">3</span>
+            </div>
+            <div class="btn-menor">OK, entendi</div>
+            <div class="neg-tela" style="position:relative">
+              Se recusarem, você vê <b>o motivo</b>: <i>“Dia 05 você estava de folga”</i>.<span class="pin">4</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span>Cada linha é <b>um horário que faltou</b>: a hora e se era entrada ou saída.</span></div>
+      <div class="item"><span class="num">2</span><span>Esqueceu <b>vários</b>? Adicione quantas linhas precisar e mande <b>tudo num pedido só</b>, com um motivo.</span></div>
+      <div class="item"><span class="num">3</span><span><b>A resposta espera por você.</b> Se aprovarem só no dia seguinte, o aviso aparece quando você abrir o ponto — com o que entrou e quem aprovou.</span></div>
+      <div class="item"><span class="num">4</span><span>Recusado ou aprovado em parte, você vê <b>exatamente o quê e por quê</b>. Sem precisar perguntar.</span></div>
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">🕰 Quem bate no relógio da empresa</p>
+    <div class="tela">
+      <div class="app-card">
+        <div class="campo" style="position:relative"><div class="cap">Como registra o ponto</div>
+          <div class="cx">Relógio da empresa ▾</div><span class="pin">1</span></div>
+        <div style="display:flex;gap:6px;margin-top:9px;flex-wrap:wrap">
+          <span class="selo s-ok">Simone · App</span>
+          <span class="selo s-relogio">Marcos · Relógio</span>
+          <span class="selo s-relogio">Cleusa · Relógio</span>
+        </div>
+        <div class="ok-tela" style="position:relative">Quem é <b>relógio</b> não é mais cobrado por batida no celular, e os dias
+          ficam como <b>“aguardando importação”</b> (sem virar falta) até o arquivo do equipamento entrar no sistema.<span class="pin">2</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span>No cadastro do funcionário: <b>App</b>, <b>Relógio da empresa</b> ou <b>Não registra ponto</b>. Quem é relógio abre o link e vê “seu ponto é no relógio da empresa”.</span></div>
+      <div class="item"><span class="num">2</span><span>Isso evita o pior: a folha da pessoa <b>cheia de falta</b> só porque o arquivo do relógio ainda não tinha sido importado.</span></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <p class="sec-titulo">❓ Perguntas que vão aparecer</p>
+
+    <details class="acc aberto" open>
+      <summary>Eu consigo ver meu ponto do mês? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Não — a tela do link mostra <b>só o dia de hoje</b>: suas batidas e o total de horas do dia.
+        Saldo, banco de horas e faltas ficam com o escritório. Para conferir o mês, peça a
+        <b>folha de ponto impressa</b>, que sai em uma folha e é feita para você assinar.
+      </div>
+    </details>
+
+    <details class="acc aberto" open>
+      <summary>De quantos dias atrás dá para pedir acerto? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Por enquanto, <b>só do dia de hoje</b>. Esqueceu de um dia anterior? Fale com o escritório, que ajusta direto no sistema.
+        (Isso pode ser liberado para mais dias, se o dono decidir.)
+      </div>
+    </details>
+
+    <details class="acc aberto" open>
+      <summary>E se eu tocar no botão errado? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Nos <b>primeiros 10 minutos</b>, a própria tela de confirmação tem o <b>“Não era isso?”</b> — um toque e o tipo troca.
+        Passou disso, use o <b>pedir acerto</b>. E bater o mesmo tipo duas vezes em menos de 2 minutos agora é <b>recusado</b>,
+        para não duplicar sem querer.
+      </div>
+    </details>
+
+    <details class="acc aberto" open>
+      <summary>Quem aprova os pedidos? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Quem já podia ajustar ponto no sistema. No <b>Painel de Ponto</b> aparece o cartão <b>Pedidos de acerto</b>: dá para
+        aprovar todos de uma vez, aprovar só alguns (escrevendo o motivo da recusa) ou recusar. Cada acerto aprovado fica
+        registrado com <b>quem pediu, o motivo, quem aprovou e quando</b>.
+      </div>
+    </details>
+
+    <details class="acc aberto" open>
+      <summary>Tem alguma novidade para quem ganha por hora? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Tem: agora existe o tipo <b>Prestador (por hora)</b>. A ficha dele fica só com o <b>valor da hora</b> — sem salário
+        mensal, jornada, falta ou DSR. O cartão vira <b>Horas prestadas</b> (dia sem batida é só “sem serviço”) e o total é
+        <b>horas × valor da hora</b>, no minuto exato. Além da folha de horas para assinar, sai um <b>recibo</b> com o valor por extenso.
+      </div>
+    </details>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">🚀 Na prática, para você</p>
+    <div class="passo"><span class="num">1</span><p>Abra o seu link de ponto e toque em <b>ENTRADA</b> ou <b>SAÍDA</b> — o que você estiver fazendo.</p></div>
+    <div class="passo"><span class="num">2</span><p>Confira a <b>confirmação</b> e o total do dia. Errou o botão? <b>“Não era isso?”</b> nos primeiros 10 minutos.</p></div>
+    <div class="passo"><span class="num">3</span><p>Esqueceu de bater? <b>“Esqueci de bater — pedir acerto”</b>, lance os horários e mande. Nada de WhatsApp.</p></div>
+    <div class="passo"><span class="num">4</span><p>Ficou <b>aguardando o RH</b>. Quando responderem, o aviso aparece na sua tela — mesmo que seja no dia seguinte.</p></div>
+  </div>
+
+  <p class="rodape">Hardt App · qualquer dúvida, chama no grupo 💚</p>
+</div>
+
+</body>
+</html>
