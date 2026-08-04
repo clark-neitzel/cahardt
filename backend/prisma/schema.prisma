@@ -831,9 +831,49 @@ model Funcionario {
   avaliacoes  FuncionarioAvaliacao[]
   ocorrencias PontoOcorrencia[]
   folhas      FolhaPeriodo[]
+  acertos     PontoAcerto[]
 
   @@index([ativo])
   @@map("funcionarios")
+}
+
+// Pedido de acerto de ponto feito pelo PRÓPRIO funcionário na tela do link
+// ("esqueci de bater"). Um pedido leva vários horários (itens) e o RH aprova
+// tudo de uma vez ou item a item.
+model PontoAcerto {
+  id            String    @id @default(uuid())
+  funcionarioId String    @map("funcionario_id")
+  motivo        String?
+  status        String    @default("PENDENTE") // PENDENTE | RESPONDIDO
+  respondidoPor String?   @map("respondido_por") // id do usuário do app
+  respondidoNome String?  @map("respondido_nome") // nome, para mostrar ao funcionário
+  respondidoEm  DateTime? @map("respondido_em")
+  lidoEm        DateTime? @map("lido_em") // quando o funcionário deu "OK, entendi"
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  funcionario Funcionario       @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
+  itens       PontoAcertoItem[]
+
+  @@index([funcionarioId, status])
+  @@index([status])
+  @@map("ponto_acertos")
+}
+
+// Cada horário esquecido dentro de um pedido
+model PontoAcertoItem {
+  id           String  @id @default(uuid())
+  acertoId     String  @map("acerto_id")
+  data         String // YYYY-MM-DD
+  hora         String // HH:MM
+  tipo         String // ENTRADA | SAIDA
+  status       String  @default("PENDENTE") // PENDENTE | APROVADO | RECUSADO
+  motivoRecusa String? @map("motivo_recusa")
+  batidaId     String? @map("batida_id") // batida criada quando aprovado
+
+  acerto PontoAcerto @relation(fields: [acertoId], references: [id], onDelete: Cascade)
+
+  @@index([acertoId])
+  @@map("ponto_acerto_itens")
 }
 
 // Marcação manual de um DIA do cartão de ponto (o RH diz o que foi aquele dia).

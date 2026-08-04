@@ -35,6 +35,10 @@ const funcionarioService = {
     marcarDia: async (dados) => (await api.post('/rh/ponto/marcar-dia', dados)).data,
     // vários dias de uma vez: { funcionarioId, datas: [...], tipo, obs }
     marcarDias: async (dados) => (await api.post('/rh/ponto/marcar-dias', dados)).data,
+    // pedidos de acerto ("esqueci de bater") feitos pelo funcionário
+    listarAcertos: async (status = 'PENDENTE') => (await api.get('/rh/ponto/acertos', { params: { status } })).data,
+    // itens: [{ id, aprovado: bool, motivoRecusa? }]
+    responderAcerto: async (id, itens) => (await api.post(`/rh/ponto/acertos/${id}/responder`, { itens })).data,
     importarPonto: async (linhas) => (await api.post('/rh/ponto/importar', { linhas })).data
 };
 

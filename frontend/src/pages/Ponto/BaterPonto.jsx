@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { Clock, ArrowRight, ArrowLeft, MapPin, AlertCircle, Loader2, Lock, CheckCircle2, RefreshCw } from 'lucide-react';
-import { obterMeta, loginPonto, obterEstado, registrarPonto, corrigirUltima } from '../../services/pontoPublicoService';
+import { Clock, ArrowRight, ArrowLeft, MapPin, AlertCircle, Loader2, Lock, CheckCircle2, RefreshCw, Hand, Plus, X, Hourglass } from 'lucide-react';
+import { obterMeta, loginPonto, obterEstado, registrarPonto, corrigirUltima, pedirAcerto, marcarAcertoLido } from '../../services/pontoPublicoService';
 
 const pad = (n) => String(n).padStart(2, '0');
+const hojeISO = () => new Date().toLocaleDateString('en-CA');
+const dmy = (d) => (d ? String(d).slice(0, 10).split('-').reverse().join('/') : '');
 
 export default function BaterPonto() {
   const { token } = useParams();
@@ -23,6 +25,11 @@ export default function BaterPonto() {
   const [mapaAberto, setMapaAberto] = useState(null);
   const [confirmacao, setConfirmacao] = useState(null);    // batida recém-registrada
   const [corrigindo, setCorrigindo] = useState(false);
+  const [pedindo, setPedindo] = useState(false);           // formulário "esqueci de bater" aberto
+  const [linhas, setLinhas] = useState([]);                // horários esquecidos do pedido
+  const [motivoPedido, setMotivoPedido] = useState('');
+  const [enviandoPedido, setEnviandoPedido] = useState(false);
+  const [marcandoLido, setMarcandoLido] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setAgora(new Date()), 1000);
@@ -122,6 +129,43 @@ export default function BaterPonto() {
     }
   };
 
+  // ── "Esqueci de bater": monta o pedido com vários horários ─────────────────
+  const abrirPedido = () => {
+    setLinhas([{ data: hojeISO(), hora: '', tipo: 'ENTRADA' }]);
+    setMotivoPedido('');
+    setAviso(null);
+    setPedindo(true);
+  };
+  const setLinha = (i, campo, valor) => setLinhas((ls) => ls.map((l, idx) => idx === i ? { ...l, [campo]: valor } : l));
+  const addLinha = () => setLinhas((ls) => [...ls, { data: ls[ls.length - 1]?.data || hojeISO(), hora: '', tipo: 'SAIDA' }]);
+  const tirarLinha = (i) => setLinhas((ls) => ls.filter((_, idx) => idx !== i));
+
+  const enviarPedido = async () => {
+    const itens = linhas.filter(l => l.hora);
+    if (!itens.length) { setAviso({ tipo: 'erro', texto: 'Preencha ao menos um horário.' }); return; }
+    setEnviandoPedido(true);
+    setAviso(null);
+    try {
+      const resp = await pedirAcerto(token, sessao, itens, motivoPedido);
+      setEstado((prev) => ({ ...prev, ...resp }));
+      setPedindo(false);
+      setAviso({ tipo: 'ok', texto: 'Pedido enviado! Você recebe a resposta aqui.' });
+    } catch (e) {
+      setAviso({ tipo: 'erro', texto: e?.response?.data?.erro || 'Não foi possível enviar o pedido.' });
+    } finally {
+      setEnviandoPedido(false);
+    }
+  };
+
+  const confirmarLeitura = async (acertoId) => {
+    setMarcandoLido(true);
+    try {
+      const resp = await marcarAcertoLido(token, sessao, acertoId);
+      setEstado((prev) => ({ ...prev, ...resp }));
+    } catch { /* segue mostrando; tenta de novo depois */ }
+    finally { setMarcandoLido(false); }
+  };
+
   const horaAgora = `${pad(agora.getHours())}:${pad(agora.getMinutes())}`;
   const dataAgora = agora.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
 
@@ -202,6 +246,78 @@ export default function BaterPonto() {
     );
   }
 
+  // ── Formulário "esqueci de bater" ───────────────────────────────────────────
+  if (pedindo) {
+    const soHoje = (estado.acertoDiasParaTras ?? 0) === 0;
+    const minData = new Date(Date.now() - (estado.acertoDiasParaTras ?? 0) * 86400000).toLocaleDateString('en-CA');
+    return (
+      <Casca>
+        <div className="p-5">
+          <p className="font-bold text-gray-900">Esqueci de bater</p>
+          <p className="text-xs text-gray-500 mb-3">
+            Informe os horários que faltaram. {soHoje ? 'Só do dia de hoje.' : `Até ${estado.acertoDiasParaTras} dias atrás.`}
+            {' '}O RH confere e aprova.
+          </p>
+
+          <div className="space-y-2">
+            {linhas.map((l, i) => (
+              <div key={i} className="flex items-end gap-1.5">
+                {!soHoje && (
+                  <label className="flex-1 min-w-0">
+                    {i === 0 && <span className="block text-[10px] font-bold uppercase tracking-wide text-gray-500">Dia</span>}
+                    <input type="date" value={l.data} min={minData} max={hojeISO()} onChange={(e) => setLinha(i, 'data', e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm" />
+                  </label>
+                )}
+                <label className="w-[92px]">
+                  {i === 0 && <span className="block text-[10px] font-bold uppercase tracking-wide text-gray-500">Hora</span>}
+                  <input type="time" value={l.hora} onChange={(e) => setLinha(i, 'hora', e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm" />
+                </label>
+                <label className="flex-1 min-w-0">
+                  {i === 0 && <span className="block text-[10px] font-bold uppercase tracking-wide text-gray-500">O que era</span>}
+                  <select value={l.tipo} onChange={(e) => setLinha(i, 'tipo', e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm bg-white">
+                    <option value="ENTRADA">Entrada</option>
+                    <option value="SAIDA">Saída</option>
+                  </select>
+                </label>
+                <button onClick={() => tirarLinha(i)} disabled={linhas.length === 1}
+                  className="p-2 text-gray-400 disabled:opacity-30" title="Tirar este horário">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <button onClick={addLinha} disabled={linhas.length >= (estado.acertoMaxItens || 20)}
+            className="mt-2 w-full min-h-[44px] bg-white border border-gray-300 text-gray-700 rounded-xl font-semibold text-sm inline-flex items-center justify-center gap-1 disabled:opacity-50">
+            <Plus className="h-4 w-4" /> Adicionar outro horário
+          </button>
+
+          <label className="block mt-3">
+            <span className="text-xs font-bold uppercase tracking-wide text-gray-500">Motivo</span>
+            <input value={motivoPedido} onChange={(e) => setMotivoPedido(e.target.value)}
+              placeholder="Ex.: esqueci ao voltar do café"
+              className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+          </label>
+
+          {aviso && <p className={`mt-2 text-center text-xs font-semibold ${aviso.tipo === 'ok' ? 'text-green-700' : 'text-red-600'}`}>{aviso.texto}</p>}
+
+          <button onClick={enviarPedido} disabled={enviandoPedido}
+            className="mt-4 w-full min-h-[52px] bg-primary hover:bg-primaryDark text-white rounded-xl font-bold inline-flex items-center justify-center gap-2 disabled:opacity-60">
+            {enviandoPedido && <Loader2 className="h-5 w-5 animate-spin" />}
+            Enviar {linhas.filter(l => l.hora).length || ''} acerto{linhas.filter(l => l.hora).length === 1 ? '' : 's'}
+          </button>
+          <button onClick={() => { setPedindo(false); setAviso(null); }}
+            className="mt-2 w-full min-h-[44px] bg-white border border-gray-300 text-gray-700 rounded-xl font-medium text-sm">
+            Cancelar
+          </button>
+        </div>
+      </Casca>
+    );
+  }
+
   // ── Confirmação depois de bater ─────────────────────────────────────────────
   if (confirmacao) {
     const foiEntrada = confirmacao.tipo === 'ENTRADA';
@@ -252,8 +368,57 @@ export default function BaterPonto() {
   // ── Tela de bater ponto ─────────────────────────────────────────────────────
   const dentro = estado.status === 'DENTRO';
   const sugerido = estado.proximaAcao; // 'ENTRADA' | 'SAIDA'
+  const resposta = estado.acertoResposta;   // pedido respondido e ainda não lido
+  const pendente = estado.acertoPendente;   // pedido aguardando o RH
+
   return (
     <Casca>
+      {/* Resposta do pedido de acerto — espera por ele, mesmo se a aprovação
+          saiu dias depois. Só some quando ele toca em "OK, entendi". */}
+      {resposta && (
+        <div className={`m-4 rounded-xl border px-4 py-3 ${resposta.recusados ? 'bg-red-50 border-red-200' : 'bg-mint/50 border-primary/30'}`}>
+          <p className={`text-sm font-bold ${resposta.recusados ? 'text-red-800' : 'text-primaryDark'}`}>
+            {resposta.recusados
+              ? `Pedido respondido — ${resposta.aprovados} de ${resposta.total} aprovados`
+              : '✅ Seu pedido foi aprovado'}
+          </p>
+          <p className="text-xs text-gray-600">
+            {resposta.respondidoNome ? `por ${resposta.respondidoNome}` : ''}
+            {resposta.respondidoEm ? ` · ${new Date(resposta.respondidoEm).toLocaleDateString('pt-BR')} ${new Date(resposta.respondidoEm).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ''}
+          </p>
+          <ul className="mt-2 space-y-1 border-t border-black/10 pt-2">
+            {resposta.itens.map((i) => (
+              <li key={i.id} className="flex items-center justify-between text-xs">
+                <span className={i.status === 'APROVADO' ? 'text-gray-700' : 'text-red-700'}>
+                  {i.status === 'APROVADO' ? '✅' : '❌'} {dmy(i.data)} · <b className="tabular-nums">{i.hora}</b>
+                </span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${i.tipo === 'ENTRADA' ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'}`}>
+                  {i.tipo === 'ENTRADA' ? 'Entrada' : 'Saída'}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {resposta.itens.some(i => i.motivoRecusa) && (
+            <p className="mt-2 text-xs text-red-800">Motivo: “{resposta.itens.find(i => i.motivoRecusa)?.motivoRecusa}”</p>
+          )}
+          <button onClick={() => confirmarLeitura(resposta.id)} disabled={marcandoLido}
+            className="mt-3 w-full min-h-[44px] bg-white border border-gray-300 text-gray-700 rounded-xl font-semibold text-sm disabled:opacity-60">
+            {marcandoLido ? 'Salvando…' : 'OK, entendi'}
+          </button>
+        </div>
+      )}
+
+      {pendente && (
+        <div className="m-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <p className="text-sm font-bold text-amber-900 flex items-center gap-1.5">
+            <Hourglass className="h-4 w-4" /> Aguardando o RH
+          </p>
+          <p className="text-xs text-amber-800">
+            Você pediu acerto de {pendente.total} horário{pendente.total === 1 ? '' : 's'}. A resposta aparece aqui.
+          </p>
+        </div>
+      )}
+
       <div className="px-5 pt-5 text-center">
         <p className="text-sm text-gray-500">Olá,</p>
         <p className="text-lg font-bold text-gray-900">{estado.nome}</p>
@@ -305,10 +470,19 @@ export default function BaterPonto() {
       </div>
 
       {/* Confere o dia: avisa na hora quando ficou estranho */}
-      {estado.alerta && (
+      {estado.alerta && !pendente && (
         <div className="mx-5 mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
           <p className="text-xs font-bold text-amber-900">⚠️ Confere o seu dia</p>
           <p className="text-xs text-amber-800 mt-0.5">{estado.alerta.texto}</p>
+        </div>
+      )}
+
+      {!pendente && (
+        <div className="px-5 pb-4">
+          <button onClick={abrirPedido}
+            className="w-full min-h-[48px] bg-white border border-gray-300 text-gray-700 rounded-xl font-semibold text-sm inline-flex items-center justify-center gap-2">
+            <Hand className="h-4 w-4" /> Esqueci de bater — pedir acerto
+          </button>
         </div>
       )}
 

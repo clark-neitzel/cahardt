@@ -63,6 +63,8 @@ router.post('/ponto/importar', checkEditPonto, func.importar);
 router.post('/ponto/registros', checkEditPonto, func.addBatidaManual);
 router.post('/ponto/marcar-dia', checkEditPonto, func.marcarDia);
 router.post('/ponto/marcar-dias', checkEditPonto, func.marcarDias);
+router.get('/ponto/acertos', checkPonto, func.listarAcertos);
+router.post('/ponto/acertos/:id/responder', checkEditPonto, func.responderAcerto);
 router.put('/ponto/registros/:id', checkEditPonto, func.updateBatida);
 router.delete('/ponto/registros/:id', checkEditPonto, func.delBatida);
 

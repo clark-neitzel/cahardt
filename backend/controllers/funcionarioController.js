@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const prisma = require('../config/database');
 const pontoService = require('../services/pontoService');
+const acertoService = require('../services/pontoAcertoService');
 
 const soDigitos = (s) => String(s || '').replace(/\D/g, '');
 
@@ -461,6 +462,28 @@ const funcionarioController = {
         } catch (error) {
             console.error('[RH] ajuste da folha:', error);
             res.status(500).json({ erro: 'Erro ao salvar os ajustes da folha.' });
+        }
+    },
+
+    // ─── Pedidos de acerto ("esqueci de bater") ───────────────────────────────
+    listarAcertos: async (req, res) => {
+        try {
+            res.json(await acertoService.listarPedidos({ status: req.query.status || 'PENDENTE' }));
+        } catch (error) {
+            console.error('[RH] listar acertos:', error);
+            res.status(500).json({ erro: 'Erro ao listar os pedidos de acerto.' });
+        }
+    },
+
+    responderAcerto: async (req, res) => {
+        try {
+            const { itens } = req.body || {};
+            const pedido = await acertoService.responderPedido(req.params.id, itens, req.user);
+            res.json(pedido);
+        } catch (error) {
+            if (error.status) return res.status(error.status).json({ erro: error.message });
+            console.error('[RH] responder acerto:', error);
+            res.status(500).json({ erro: 'Erro ao responder o pedido.' });
         }
     },
 

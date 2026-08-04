@@ -35,3 +35,16 @@ export async function corrigirUltima(token, sessao, tipo) {
     const { data } = await apiPublica.post(`/ponto-publico/${token}/corrigir-ultima`, { tipo }, auth(sessao));
     return data;
 }
+
+// "Esqueci de bater": vários horários num pedido só
+// itens: [{ data:'YYYY-MM-DD', hora:'HH:MM', tipo:'ENTRADA'|'SAIDA' }]
+export async function pedirAcerto(token, sessao, itens, motivo) {
+    const { data } = await apiPublica.post(`/ponto-publico/${token}/acertos`, { itens, motivo }, auth(sessao));
+    return data;
+}
+
+// "OK, entendi" no aviso de pedido respondido
+export async function marcarAcertoLido(token, sessao, acertoId) {
+    const { data } = await apiPublica.post(`/ponto-publico/${token}/acertos/${acertoId}/lido`, {}, auth(sessao));
+    return data;
+}

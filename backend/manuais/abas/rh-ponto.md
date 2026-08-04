@@ -31,8 +31,16 @@ Controle de ponto eletrônico da equipe. O funcionário bate o ponto por um **li
 - Tabela com as **batidas de hoje** de cada funcionário, com link do mapa em cada horário e status (Trabalhando / Fora).
 - Botão **Ajustar** leva à ficha do funcionário (aba Cartão de ponto) para corrigir/adicionar batidas.
 
-## Ajustar / adicionar batida
-- Na ficha do funcionário → **Cartão de ponto** → **Adicionar batida**: informa data, hora, tipo (Entrada/Saída) e motivo. Fica marcada como **ajuste manual** (registra quem ajustou). Útil quando o funcionário esqueceu de bater.
+## Pedido de acerto — "Esqueci de bater" (o funcionário pede, o RH aprova)
+- Na tela do link, o botão **"Esqueci de bater — pedir acerto"** abre um formulário onde o funcionário lança **vários horários num pedido só**: cada linha é hora + se era Entrada ou Saída, com "**+ Adicionar outro horário**" (até 20) e um **motivo** que vale para o pedido inteiro.
+- **Por padrão só dá para pedir acerto do dia de hoje.** Para abrir dias anteriores, grave a chave `ponto_acerto` em AppConfig com `{ "diasParaTras": 7 }` — aí o campo **Dia** aparece no formulário, limitado a esse número de dias.
+- Enquanto não respondem, a tela dele mostra **"Aguardando o RH"** e o botão de pedir some (um pedido pendente por vez).
+- **No app:** *Painel de Ponto* mostra o cartão **Pedidos de acerto** com o nome, o motivo e a lista de horários. O RH pode **Aprovar todos**, **desmarcar alguns e aprovar só os marcados** (escrevendo o **motivo da recusa**, que o funcionário vê) ou **Recusar tudo**. Exige `Pode_Editar_Ponto`.
+- Cada horário aprovado vira uma **batida** no cartão, com origem manual, guardando **quem pediu, o motivo, quem aprovou e quando**. Horário que já existia no minuto exato não é duplicado.
+- **A resposta espera pelo funcionário:** aprovado hoje ou daqui a três dias, na próxima vez que ele abrir o ponto aparece no topo da tela — *"Seu pedido foi aprovado"* (ou *"1 de 2 aprovados"*, com o motivo da recusa), listando cada horário com ✅/❌. O aviso só some quando ele toca em **"OK, entendi"** — e essa confirmação de leitura fica registrada.
+
+## Ajustar / adicionar batida (pelo escritório)
+- Na ficha do funcionário → **Cartão de ponto** → **Adicionar batida**: informa data, hora, tipo (Entrada/Saída) e motivo. Fica marcada como **ajuste manual** (registra quem ajustou). Útil para corrigir dias antigos, fora do fluxo de pedido.
 
 ## Importar ponto do relógio (CSV)
 - Em **Funcionários → Importar** (ou no Painel de Ponto → Importar): sobe a planilha **CSV** exportada pelo relógio de ponto físico.

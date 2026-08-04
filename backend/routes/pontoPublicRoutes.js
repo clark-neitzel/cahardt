@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/database');
 const pontoService = require('../services/pontoService');
+const acertoService = require('../services/pontoAcertoService');
 
 // Rotas PÚBLICAS (sem login do app) — tela /ponto/:token do funcionário.
 // O token pessoal (Funcionario.pontoToken) identifica a pessoa; o acesso para
@@ -33,12 +34,19 @@ function sessaoValida(req, funcionario) {
 }
 
 async function estadoCompleto(funcionario) {
-    const estado = await pontoService.statusDoDia(funcionario.id);
-    const geo = await pontoService.getGeofence();
+    const [estado, geo, acertos, limiteDias] = await Promise.all([
+        pontoService.statusDoDia(funcionario.id),
+        pontoService.getGeofence(),
+        acertoService.paraTelaDoFuncionario(funcionario.id),
+        acertoService.getLimiteDias()
+    ]);
     return {
         nome: funcionario.nome,
         empresa: { geofenceAtivo: geo.ativo, raioMetros: geo.raioMetros, bloquear: geo.bloquear },
         minutosCorrigirUltima: pontoService.MINUTOS_CORRIGIR_ULTIMA,
+        acertoDiasParaTras: limiteDias,   // 0 = só o dia de hoje
+        acertoMaxItens: acertoService.MAX_ITENS,
+        ...acertos,                        // acertoPendente | acertoResposta
         ...estado
     };
 }
@@ -133,6 +141,41 @@ router.post('/:token/corrigir-ultima', async (req, res) => {
         if (error.status) return res.status(error.status).json({ erro: error.message });
         console.error('[PontoPublico] corrigir última:', error);
         res.status(500).json({ erro: 'Erro ao corrigir a batida.' });
+    }
+});
+
+// POST /api/ponto-publico/:token/acertos → "esqueci de bater": vários horários
+// num pedido só, que o RH aprova depois
+router.post('/:token/acertos', async (req, res) => {
+    try {
+        const funcionario = await buscarPorToken(req.params.token);
+        if (!funcionario) return res.status(404).json({ erro: 'Link não encontrado. Fale com o RH.' });
+        if (!funcionario.ativo) return res.status(403).json({ erro: 'Acesso bloqueado. Fale com o RH.' });
+        if (!sessaoValida(req, funcionario)) return res.status(401).json({ erro: 'Sessão expirada. Entre novamente.' });
+
+        const pedido = await acertoService.criarPedido(funcionario.id, req.body || {});
+        const estado = await estadoCompleto(funcionario);
+        res.status(201).json({ pedido, ...estado });
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ erro: error.message });
+        console.error('[PontoPublico] criar acerto:', error);
+        res.status(500).json({ erro: 'Erro ao enviar o pedido.' });
+    }
+});
+
+// POST /api/ponto-publico/:token/acertos/:id/lido → "OK, entendi" no aviso
+router.post('/:token/acertos/:id/lido', async (req, res) => {
+    try {
+        const funcionario = await buscarPorToken(req.params.token);
+        if (!funcionario) return res.status(404).json({ erro: 'Link não encontrado. Fale com o RH.' });
+        if (!sessaoValida(req, funcionario)) return res.status(401).json({ erro: 'Sessão expirada. Entre novamente.' });
+
+        await acertoService.marcarLido(funcionario.id, req.params.id);
+        res.json(await estadoCompleto(funcionario));
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ erro: error.message });
+        console.error('[PontoPublico] marcar lido:', error);
+        res.status(500).json({ erro: 'Erro ao confirmar a leitura.' });
     }
 });
 
