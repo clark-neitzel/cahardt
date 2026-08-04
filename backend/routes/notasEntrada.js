@@ -680,7 +680,8 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
             cfops: itens.map((i) => i.cfop)
         });
 
-        // A nota já tem entrada de estoque ATIVA (ledger com linhas não estornadas)?
+        // A nota já tem entrada de estoque ATIVA? (ledger com linhas não estornadas; para
+        // notas conferidas antes do ledger, o histórico de compras antigo faz esse papel)
         // `entradaEstoque` = o que está somado HOJE (produto, quantidade convertida e custo
         // de cada item) — é o que a tela de correção usa para pré-preencher, em vez da
         // memória do de-para, que pode ter mudado numa nota posterior do mesmo fornecedor.
@@ -712,7 +713,7 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
             observacoes: nota.infComplementar || parsed?.infComplementar || null,
             temXml: !!nota.xmlPath,
             contaPagarId: nota.contaPagarId,
-            estoqueAplicado, // true = esta nota já somou estoque (ledger ativo)
+            estoqueAplicado, // true = esta nota já somou estoque (ledger ativo, ou histórico antigo)
             entradaEstoque,  // [{ notaEntradaItemId, vinculo, nome, unidade, quantidade, custoUnitario }]
             criadoEm: nota.criadoEm,
             itens,
@@ -1688,13 +1689,22 @@ router.post('/:id/cancelar-conferencia', verificarAuth, checkEscrita, async (req
             estornoLedger = await notaEstoqueService.estornarEstoqueNota(tx, nota.id, { criadoPorId: req.user.id });
         }, { timeout: 20000, maxWait: 10000 });
 
-        // Fase 6 LEGADA — notas conferidas ANTES do ledger têm as entradas registradas só
-        // em CompraItem; para elas o estorno antigo continua valendo. Para notas do fluxo
-        // novo é no-op (o ledger já marcou as linhas de CompraItem como estornadas acima).
+        // Nota conferida ANTES do ledger: o estorno acima já saiu pelo caminho legado
+        // (CompraItem), mas o custo lá não tem "antes/depois" gravado — refazer pelo
+        // histórico de compras válidas é o que tira a compra cancelada da média.
         // Best-effort: falha não trava o cancelamento.
         let estorno = { estornadas: 0, avisos: [] };
         try {
             const compraEstoqueService = require('../services/compraEstoqueService');
+            if (estornoLedger.legado) {
+                for (const produtoId of (estornoLedger.alvos?.produtoIds || [])) {
+                    await compraEstoqueService.recalcularCustoPelasCompras({ produtoId });
+                }
+                for (const itemPcpId of (estornoLedger.alvos?.itemPcpIds || [])) {
+                    await compraEstoqueService.recalcularCustoPelasCompras({ itemPcpId });
+                }
+            }
+            // Rede de segurança: qualquer linha antiga que não tenha saído acima.
             estorno = await compraEstoqueService.estornarEntradasNota(nota.id, req.user.id);
         } catch (e) {
             console.error('[NotasEntrada] Falha ao estornar entradas de estoque:', e.message);
@@ -1752,13 +1762,15 @@ router.post('/:id/corrigir-entrada-estoque', verificarAuth, checkAcesso, checkCo
         }
 
         // O que está somado hoje: define o que estornar e se a entrada tem custo.
-        const antesLedger = await notaEstoqueService.entradaAplicada(prisma, nota.id);
-        if (antesLedger.length === 0) {
+        // Vale também para nota conferida antes do ledger (entrada só no histórico de
+        // compras) — nesse caso a correção já grava o ledger novo.
+        const antesAplicado = await notaEstoqueService.entradaAplicada(prisma, nota.id);
+        if (antesAplicado.length === 0) {
             return res.status(400).json({ error: 'Esta nota não tem entrada de estoque aplicada — não há o que corrigir.' });
         }
         // Entrada com pagamento (nota que virou despesa) mexe no custo; entrada sem
         // pagamento (bonificação/amostra) entrou a custo zero e continua assim.
-        const comCusto = nota.status === 'CONFERIDA' || antesLedger.some((l) => l.custoUnitario != null);
+        const comCusto = nota.status === 'CONFERIDA' || antesAplicado.some((l) => l.custoUnitario != null);
 
         const itensBody = Array.isArray(req.body?.itens) ? req.body.itens : [];
         const itensNota = new Map(nota.itens.map((i) => [i.id, i]));

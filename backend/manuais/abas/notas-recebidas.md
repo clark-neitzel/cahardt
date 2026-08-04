@@ -115,9 +115,11 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 - **Não altera o valor da nota nem da despesa.** O valor de cada item vem do XML; o formulário só diz *para onde* vai e *em que conversão*. Por isso o custo apenas se espalha pela quantidade certa.
 - **Não mexe** na conta a pagar, nas parcelas, nas baixas/pagamentos nem no envio ao Conta Azul.
 - **Não muda a categoria de despesa** (isso alteraria o rateio e a DRE) — para trocar categoria, o caminho continua sendo "Cancelar entrada e refazer".
-- Não vale para **NFS-e** (serviço não movimenta estoque) nem para nota **sem estoque aplicado**.
+- Não vale para **NFS-e** (serviço não movimenta estoque) nem para nota **sem estoque aplicado** (nenhum item vinculado a produto/insumo).
 
 **O custo cai ou sobe?** Depende do erro: se a conversão errada lançou **quantidade a menos**, o custo estava inflado e **cai** ao corrigir; se lançou **quantidade a mais**, o custo estava baixo demais e **sobe**. O total pago é sempre o mesmo.
+
+**Notas antigas (conferidas antes de 27/07/2026)** também podem ser corrigidas (liberado em 08/2026). Elas foram lançadas por um registro mais velho do app e, por isso, não mostravam o selo "Estoque somado ✓" nem o botão. Agora o app lê esse registro antigo, o selo aparece e a correção funciona igual — a tela mostra um aviso em cinza explicando que a **conversão exibida foi reconstituída** pela quantidade que está somada hoje no estoque (confira item a item antes de confirmar). Depois de corrigida, a nota passa a usar o registro novo.
 
 **Permissão:** exige **Pode_Corrigir_Entrada_Estoque** (permissão própria, separada de "Operar Contas a Pagar") — porque mexe em custo e estoque de mês já fechado.
 

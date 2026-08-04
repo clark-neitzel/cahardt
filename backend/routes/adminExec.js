@@ -6151,6 +6151,47 @@ router.post('/nota-estoque-aplicar/:notaId', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-nota-entrada-estoque?numero=701430  (ou ?id=<uuid>)
+// SOMENTE LEITURA. Mostra o que a tela de Notas Recebidas enxerga da entrada de
+// estoque de uma nota: se o app considera "estoque somado" (é isso que libera o
+// botão "Corrigir produto/conversão") e de onde veio esse retrato — do ledger novo
+// ou do histórico antigo (nota conferida antes de 27/07/2026).
+router.get('/diag-nota-entrada-estoque', async (req, res) => {
+    try {
+        const notaEstoqueService = require('../services/notaEstoqueService');
+        const { numero, id } = req.query;
+        if (!numero && !id) return res.status(400).json({ ok: false, error: 'Informe ?numero= ou ?id=' });
+
+        const nota = id
+            ? await prisma.notaEntrada.findUnique({ where: { id } })
+            : await prisma.notaEntrada.findFirst({ where: { numero: String(numero) }, orderBy: { criadoEm: 'desc' } });
+        if (!nota) return res.status(404).json({ ok: false, error: 'Nota não encontrada.' });
+
+        const [ledgerAtivo, legadoAtivo, entrada] = await Promise.all([
+            prisma.notaEntradaEstoqueMov.count({ where: { notaEntradaId: nota.id, estornado: false } }),
+            prisma.compraItem.count({ where: { notaEntradaId: nota.id, estornado: false } }),
+            notaEstoqueService.entradaAplicada(prisma, nota.id)
+        ]);
+
+        res.json({
+            ok: true,
+            nota: {
+                id: nota.id, numero: nota.numero, tipo: nota.tipo, status: nota.status,
+                fornecedor: nota.fornecedorNome, emissao: nota.emissao, valorTotal: nota.valorTotal,
+                contaPagarId: nota.contaPagarId
+            },
+            ledgerAtivo,
+            legadoAtivo,
+            origemDoRetrato: entrada.some((l) => l.legado) ? 'HISTORICO_ANTIGO' : (entrada.length ? 'LEDGER' : 'NENHUM'),
+            estoqueAplicado: entrada.length > 0, // true = botão de corrigir aparece na tela
+            podeCorrigir: entrada.length > 0 && ['CONFERIDA', 'ENTRADA_REGISTRADA'].includes(nota.status) && nota.tipo !== 'NFSE',
+            entrada
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/gerencial-diag
 // SOMENTE LEITURA. Roda o Fluxo de Caixa e a DRE (Fase 5) e devolve um resumo
 // compacto — validar os números reais em produção logo após o deploy.

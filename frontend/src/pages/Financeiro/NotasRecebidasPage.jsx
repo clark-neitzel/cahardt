@@ -2406,6 +2406,12 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, onCancelar, onChanged }) => {
         }
         return m;
     }, [nota]);
+    // Entrada lançada no formato antigo (nota conferida antes de 27/07/2026): dá para
+    // corrigir do mesmo jeito — a correção já grava no formato novo.
+    const entradaAntiga = useMemo(
+        () => (Array.isArray(nota.entradaEstoque) ? nota.entradaEstoque : []).some(l => l.legado),
+        [nota]
+    );
 
     // Pré-preenche com o que foi REALMENTE aplicado (não com a memória do fornecedor,
     // que pode ter mudado numa nota posterior). Fator = quantidade aplicada ÷ quantidade da nota.
@@ -2513,6 +2519,14 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, onCancelar, onChanged }) => {
                     valor pela quantidade certa, então o <b>custo cai</b> se faltou quantidade e <b>sobe</b> se entrou quantidade demais.
                     A diferença de quantidade entra (ou sai) do estoque <b>hoje</b>, com movimentação registrada.
                 </div>
+
+                {entradaAntiga && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600 leading-relaxed">
+                        Esta entrada foi lançada por um registro <b>antigo</b> do app (nota conferida antes de 27/07/2026).
+                        A correção funciona igual — a conversão que aparece abaixo foi reconstituída pela quantidade que
+                        está somada hoje no estoque. Confira item por item antes de confirmar.
+                    </div>
+                )}
 
                 <div className="space-y-3">
                     {linhas.map((l, idx) => {
