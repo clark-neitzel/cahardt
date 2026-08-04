@@ -123,6 +123,16 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 
 **Permissão:** exige **Pode_Corrigir_Entrada_Estoque** (permissão própria, separada de "Operar Contas a Pagar") — porque mexe em custo e estoque de mês já fechado.
 
+### Nota que nunca somou estoque → "Lançar entrada de estoque"
+
+Quando a conferência foi feita **sem vincular nenhum item** a produto/insumo, a nota vira só despesa e **não soma nada no estoque**. Nesse caso a nota mostra o selo cinza **"Sem entrada no estoque"** e o botão **"Lançar entrada de estoque"** (mesma permissão, mesma tela do corrigir, em modo de lançamento):
+
+- Você vincula os itens que forem de estoque, informa a conversão e confirma; itens sem vínculo simplesmente não entram.
+- A conversão vem pré-preenchida pela **memória do de-para** do fornecedor, quando existir.
+- A quantidade entra no **estoque de hoje** e o custo do produto passa a considerar essa compra. Despesa, parcelas e baixas continuam intocadas.
+- Sem vincular nada, o app recusa (não existe "lançar entrada vazia").
+- **Não aparece** em NFS-e (serviço não movimenta estoque). Em nota de despesa pura (combustível, material elétrico) o botão aparece, mas normalmente não há o que lançar.
+
 ---
 
 ## Quando a nota chega DEPOIS da despesa já lançada (Vincular a parcela existente)

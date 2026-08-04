@@ -1735,7 +1735,11 @@ router.post('/:id/cancelar-conferencia', verificarAuth, checkEscrita, async (req
 // saída era "Cancelar entrada e refazer" — que exige estornar as baixas, cancelar a
 // despesa e refazer o pagamento, com risco de duplicar a despesa no Conta Azul.
 //
-// Esta rota corrige SÓ o lado do estoque/custo:
+// A mesma rota também LANÇA a entrada que nunca aconteceu: conferência feita sem
+// nenhum item vinculado a produto/insumo vira só despesa e não soma estoque — antes
+// não havia como consertar isso depois, a não ser cancelando a entrada e refazendo.
+//
+// Esta rota corrige (ou lança) SÓ o lado do estoque/custo:
 //   • estorna o ledger da nota e reaplica com os vínculos/fatores novos;
 //   • recalcula o custo pelo histórico de compras válidas (compras posteriores entram
 //     na conta — só "restaurar o custo anterior" não bastaria);
@@ -1764,10 +1768,11 @@ router.post('/:id/corrigir-entrada-estoque', verificarAuth, checkAcesso, checkCo
         // O que está somado hoje: define o que estornar e se a entrada tem custo.
         // Vale também para nota conferida antes do ledger (entrada só no histórico de
         // compras) — nesse caso a correção já grava o ledger novo.
+        //
+        // Lista VAZIA é um caso legítimo: nota conferida sem nenhum item vinculado a
+        // produto/insumo (a conferência foi só financeira) — nunca entrou nada no estoque.
+        // Aqui a mesma rota LANÇA a entrada que faltou; não há o que estornar antes.
         const antesAplicado = await notaEstoqueService.entradaAplicada(prisma, nota.id);
-        if (antesAplicado.length === 0) {
-            return res.status(400).json({ error: 'Esta nota não tem entrada de estoque aplicada — não há o que corrigir.' });
-        }
         // Entrada com pagamento (nota que virou despesa) mexe no custo; entrada sem
         // pagamento (bonificação/amostra) entrou a custo zero e continua assim.
         const comCusto = nota.status === 'CONFERIDA' || antesAplicado.some((l) => l.custoUnitario != null);
@@ -1776,6 +1781,11 @@ router.post('/:id/corrigir-entrada-estoque', verificarAuth, checkAcesso, checkCo
         const itensNota = new Map(nota.itens.map((i) => [i.id, i]));
         const erroItens = validarItensBody(itensBody, itensNota);
         if (erroItens) return res.status(400).json({ error: erroItens });
+        // Nada aplicado hoje E nada vinculado agora = pedido vazio (não é "corrigir para zero").
+        const vaiVincular = itensBody.some((i) => i.vinculo || i.criarItemPcp);
+        if (antesAplicado.length === 0 && !vaiVincular) {
+            return res.status(400).json({ error: 'Esta nota não tem entrada de estoque — vincule pelo menos um item a um produto ou insumo para lançar a entrada.' });
+        }
 
         let resultado = { antes: [], depois: [], avisos: [], alvos: { produtoIds: [], itemPcpIds: [] } };
         await prisma.$transaction(async (tx) => {
@@ -1820,7 +1830,9 @@ router.post('/:id/corrigir-entrada-estoque', verificarAuth, checkAcesso, checkCo
 
         res.json({
             ok: true,
-            message: 'Entrada corrigida. Estoque e custo ajustados — a despesa e os pagamentos não foram alterados.',
+            message: antesAplicado.length === 0
+                ? 'Entrada lançada. Estoque e custo atualizados — a despesa e os pagamentos não foram alterados.'
+                : 'Entrada corrigida. Estoque e custo ajustados — a despesa e os pagamentos não foram alterados.',
             antes: resultado.antes,
             depois: resultado.depois,
             custos,

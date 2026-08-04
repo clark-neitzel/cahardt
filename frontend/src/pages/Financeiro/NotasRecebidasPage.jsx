@@ -2395,8 +2395,14 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
 // estornar baixa nem cancelar a conta a pagar. O valor da nota é intocável: o custo
 // é sempre valor do item ÷ quantidade convertida — corrigir a conversão só espalha
 // o MESMO dinheiro pela quantidade certa (por isso o custo pode cair ou subir).
+//
+// Dois modos, mesma tela e mesma rota:
+//   'corrigir' → a nota já somou estoque e algo saiu errado;
+//   'lancar'   → a nota nunca somou nada (conferência só financeira, sem item
+//                vinculado) e a entrada vai ser lançada agora.
 // ═══════════════════════════════════════════════════════════
-const PainelCorrigirEntrada = ({ nota, itensPcp, onCancelar, onChanged }) => {
+const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, onChanged }) => {
+    const lancando = modo === 'lancar';
     const itensNota = useMemo(() => Array.isArray(nota.itens) ? nota.itens : [], [nota]);
     // O que está somado HOJE no estoque por esta nota (ledger), por item da nota.
     const aplicadoPorItem = useMemo(() => {
@@ -2415,10 +2421,14 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, onCancelar, onChanged }) => {
 
     // Pré-preenche com o que foi REALMENTE aplicado (não com a memória do fornecedor,
     // que pode ter mudado numa nota posterior). Fator = quantidade aplicada ÷ quantidade da nota.
+    // Item que nunca entrou no estoque não tem de onde tirar isso: aí sim vale a memória
+    // do de-para do fornecedor, que é o palpite que a conferência usaria.
     const [vinculos, setVinculos] = useState(() => itensNota.map(it => {
         const ap = aplicadoPorItem.get(it.id);
         const qtdNota = Number(it.quantidade || 0);
-        const fator = ap && qtdNota > 0 ? ap.quantidade / qtdNota : 0;
+        const fator = ap && qtdNota > 0
+            ? ap.quantidade / qtdNota
+            : (ap ? 0 : Number(it.vinculo?.fatorConversao || 0));
         return {
             itemId: it.id,
             vinculoValue: ap?.vinculo || it.vinculo?.value || '',
@@ -2463,7 +2473,11 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, onCancelar, onChanged }) => {
                 return `Informe a conversão de quantidade do item "${it.descricao || i + 1}" (ou desfaça o vínculo).`;
             }
         }
-        if (!algoMudou) return 'Nada mudou — ajuste o produto ou a conversão de algum item.';
+        if (!algoMudou) {
+            return lancando
+                ? 'Vincule pelo menos um item a um produto ou insumo para lançar a entrada.'
+                : 'Nada mudou — ajuste o produto ou a conversão de algum item.';
+        }
         return '';
     };
 
@@ -2482,7 +2496,7 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, onCancelar, onChanged }) => {
                         : null
                 }))
             });
-            toast.success(resp?.message || 'Entrada corrigida!');
+            toast.success(resp?.message || (lancando ? 'Entrada lançada!' : 'Entrada corrigida!'));
             toastEstoque(resp?.depois);
             for (const aviso of (resp?.avisos || [])) toast(aviso, { icon: '⚠️', duration: 8000 });
             onChanged();
@@ -2500,7 +2514,9 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, onCancelar, onChanged }) => {
                 <div className="min-w-0">
                     <div className="flex items-center gap-2">
                         <Wrench className="h-4 w-4 text-amber-600 shrink-0" />
-                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Corrigir entrada de estoque</span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">
+                            {lancando ? 'Lançar entrada de estoque' : 'Corrigir entrada de estoque'}
+                        </span>
                     </div>
                     <div className="text-sm text-gray-700 mt-1 break-words">
                         {tipoNotaLabel(nota.tipo)}{nota.numero ? ` ${nota.numero}` : ''}
@@ -2514,10 +2530,21 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, onCancelar, onChanged }) => {
 
             <div className="p-4 md:p-5 space-y-4">
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-900 leading-relaxed">
-                    Arruma o <b>produto</b> e a <b>conversão</b> de uma entrada já lançada, sem estornar pagamento nem cancelar a despesa.
-                    A despesa de <b>R$ {fmt(nota.valorTotal)}</b>, as parcelas e as baixas <b>não mudam</b> — o app só espalha esse mesmo
-                    valor pela quantidade certa, então o <b>custo cai</b> se faltou quantidade e <b>sobe</b> se entrou quantidade demais.
-                    A diferença de quantidade entra (ou sai) do estoque <b>hoje</b>, com movimentação registrada.
+                    {lancando ? (
+                        <>
+                            Esta nota <b>nunca somou nada no estoque</b>: na conferência nenhum item foi vinculado a produto ou insumo,
+                            então ela virou só despesa. Aqui você vincula os itens e lança a entrada agora. A despesa de{' '}
+                            <b>R$ {fmt(nota.valorTotal)}</b>, as parcelas e as baixas <b>não mudam</b> — a quantidade entra no estoque
+                            de <b>hoje</b> e o custo do produto passa a considerar essa compra.
+                        </>
+                    ) : (
+                        <>
+                            Arruma o <b>produto</b> e a <b>conversão</b> de uma entrada já lançada, sem estornar pagamento nem cancelar a despesa.
+                            A despesa de <b>R$ {fmt(nota.valorTotal)}</b>, as parcelas e as baixas <b>não mudam</b> — o app só espalha esse mesmo
+                            valor pela quantidade certa, então o <b>custo cai</b> se faltou quantidade e <b>sobe</b> se entrou quantidade demais.
+                            A diferença de quantidade entra (ou sai) do estoque <b>hoje</b>, com movimentação registrada.
+                        </>
+                    )}
                 </div>
 
                 {entradaAntiga && (
@@ -2671,8 +2698,9 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, onCancelar, onChanged }) => {
                 {confirmando ? (
                     <div className="bg-white border-2 border-amber-400 rounded-lg p-3">
                         <div className="text-sm text-gray-800">
-                            Confirmar a correção? O <b>estoque</b> e o <b>custo</b> dos produtos acima serão ajustados agora.
-                            A despesa de R$ {fmt(nota.valorTotal)} em Contas a Pagar <b>não será alterada</b>.
+                            {lancando ? <>Confirmar o lançamento? A quantidade dos itens vinculados <b>entra no estoque agora</b> e o <b>custo</b> desses produtos será atualizado.</>
+                                : <>Confirmar a correção? O <b>estoque</b> e o <b>custo</b> dos produtos acima serão ajustados agora.</>}
+                            {' '}A despesa de R$ {fmt(nota.valorTotal)} em Contas a Pagar <b>não será alterada</b>.
                         </div>
                         <div className="flex flex-col md:flex-row gap-3 mt-3">
                             <button
@@ -2681,7 +2709,9 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, onCancelar, onChanged }) => {
                                 className="w-full md:w-auto px-4 py-3 md:py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
                             >
                                 {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wrench className="h-4 w-4" />}
-                                {salvando ? 'Corrigindo…' : 'Sim, corrigir agora'}
+                                {salvando
+                                    ? (lancando ? 'Lançando…' : 'Corrigindo…')
+                                    : (lancando ? 'Sim, lançar agora' : 'Sim, corrigir agora')}
                             </button>
                             <button
                                 onClick={() => setConfirmando(false)}
@@ -2697,10 +2727,10 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, onCancelar, onChanged }) => {
                         <button
                             onClick={() => { const e = validar(); if (e) { toast.error(e); return; } setConfirmando(true); }}
                             disabled={salvando || !algoMudou}
-                            title={!algoMudou ? 'Ajuste o produto ou a conversão de algum item' : undefined}
+                            title={!algoMudou ? (lancando ? 'Vincule pelo menos um item a um produto ou insumo' : 'Ajuste o produto ou a conversão de algum item') : undefined}
                             className="w-full md:w-auto px-4 py-3 md:py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
                         >
-                            <Wrench className="h-4 w-4" /> Revisar e corrigir
+                            <Wrench className="h-4 w-4" /> {lancando ? 'Revisar e lançar' : 'Revisar e corrigir'}
                         </button>
                         <button
                             onClick={onCancelar}
@@ -2723,11 +2753,17 @@ const DetalheNota = ({ nota, podeOperar, itensPcp = [], onChanged }) => {
     const [desfazendoEntrada, setDesfazendoEntrada] = useState(false);
     const [desvinculando, setDesvinculando] = useState(''); // '' | 'TODAS' | id da parcela
     // Corrigir só o estoque/custo (produto ou conversão errados), sem mexer na despesa.
-    // Vale para nota que virou despesa E para entrada sem pagamento, desde que tenha estoque aplicado.
+    // Vale para nota que virou despesa E para entrada sem pagamento.
+    //   • com estoque aplicado  → "Corrigir produto/conversão"
+    //   • sem nada aplicado     → "Lançar entrada de estoque" (conferência que saiu só
+    //     financeira, sem item vinculado — nunca somou nada no estoque)
     const [corrigirAberto, setCorrigirAberto] = useState(false);
-    const podeCorrigirEstoque = hasPermission('Pode_Corrigir_Entrada_Estoque')
-        && nota.estoqueAplicado === true
+    const notaDeServico = String(nota.tipo || '').toUpperCase().includes('NFS');
+    const podeMexerEstoque = hasPermission('Pode_Corrigir_Entrada_Estoque')
+        && !notaDeServico
         && ['CONFERIDA', 'ENTRADA_REGISTRADA'].includes(nota.status);
+    const podeCorrigirEstoque = podeMexerEstoque && nota.estoqueAplicado === true;
+    const podeLancarEstoque = podeMexerEstoque && nota.estoqueAplicado !== true;
     const itensNota = Array.isArray(nota.itens) ? nota.itens : [];
     // O que cada item desta nota somou no estoque de verdade (ledger), por id do item da nota.
     const aplicadoPorItem = useMemo(() => {
@@ -2844,11 +2880,29 @@ const DetalheNota = ({ nota, podeOperar, itensPcp = [], onChanged }) => {
                 </div>
             )}
 
+            {/* Conferência que saiu só financeira: nenhum item foi vinculado, então a nota
+                nunca somou estoque. Dá para lançar a entrada depois, sem refazer a despesa. */}
+            {podeLancarEstoque && !corrigirAberto && (
+                <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 whitespace-nowrap">
+                        <PackageCheck className="h-3.5 w-3.5" /> Sem entrada no estoque
+                    </span>
+                    <button
+                        onClick={() => setCorrigirAberto(true)}
+                        title="Vincula os itens a produtos/insumos e lança a entrada agora, sem mexer na despesa"
+                        className="px-3 py-2 min-h-[44px] md:min-h-0 md:py-1.5 bg-white border border-amber-300 text-amber-700 hover:bg-amber-50 rounded-full font-semibold text-xs inline-flex items-center gap-1.5"
+                    >
+                        <Wrench className="h-3.5 w-3.5" /> Lançar entrada de estoque
+                    </button>
+                </div>
+            )}
+
             {/* Correção só do estoque/custo — a despesa e os pagamentos ficam intactos */}
-            {corrigirAberto && podeCorrigirEstoque && (
+            {corrigirAberto && (podeCorrigirEstoque || podeLancarEstoque) && (
                 <PainelCorrigirEntrada
                     nota={nota}
                     itensPcp={itensPcp}
+                    modo={podeCorrigirEstoque ? 'corrigir' : 'lancar'}
                     onCancelar={() => setCorrigirAberto(false)}
                     onChanged={onChanged}
                 />

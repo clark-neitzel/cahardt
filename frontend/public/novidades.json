@@ -2,7 +2,7 @@
   {
     "slug": "corrigir-entrada-estoque",
     "titulo": "Corrigir conversão da nota",
-    "resumo": "A correção de produto/conversão agora vale também para as notas antigas (conferidas até 27/07): 58 notas que não mostravam o selo \"Estoque somado ✓\" e ficavam sem o botão. Nelas, a conversão que aparece é reconstituída pela quantidade que está no estoque hoje — confira item a item antes de confirmar.",
+    "resumo": "A correção de produto/conversão agora vale também para as notas antigas (conferidas até 27/07), que não mostravam o selo \"Estoque somado ✓\" e ficavam sem o botão. E a nota que nunca somou estoque — conferida sem vincular nenhum item — ganhou o botão \"Lançar entrada de estoque\": vincule os itens e a quantidade entra agora, sem mexer na despesa.",
     "data": "2026-08-04"
   },
   {
