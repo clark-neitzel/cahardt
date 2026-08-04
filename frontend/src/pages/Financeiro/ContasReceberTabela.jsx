@@ -18,6 +18,7 @@ import BoletosAsaasModal from './BoletosAsaasModal';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '-';
@@ -44,6 +45,88 @@ const FORMAS = ['Dinheiro', 'Pix', 'Boleto', 'Cartão Crédito', 'Cartão Débit
 // Conciliação Bancária (é lá que o dinheiro é confrontado com o banco).
 const FORMAS_BAIXA_MANUAL = ['Dinheiro', 'Cheque'];
 
+// Menu de seleção MÚLTIPLA usado em todos os filtros da tela.
+// Fica em escopo de MÓDULO de propósito: declarado dentro da página, o React o
+// recriava a cada render (novo tipo de componente) e o menu fechava sozinho a cada
+// clique — na prática dava para marcar só uma opção por caixa.
+// `options`: array de strings OU de { valor, label }.
+const FiltroMulti = ({ label, options, value, onChange }) => {
+    const [open, setOpen] = useState(false);
+    const [busca, setBusca] = useState('');
+    const ref = useRef(null);
+
+    useEffect(() => {
+        if (!open) return;
+        const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+        document.addEventListener('mousedown', h);
+        return () => document.removeEventListener('mousedown', h);
+    }, [open]);
+
+    const val = (opt) => (typeof opt === 'string' ? opt : opt.valor);
+    const lab = (opt) => (typeof opt === 'string' ? opt : opt.label);
+
+    // Valor já escolhido que não está (mais) na lista de opções continua aparecendo:
+    // sem isso o usuário não consegue desmarcar o que ele mesmo marcou.
+    const todas = useMemo(() => {
+        const conhecidos = new Set(options.map(o => (typeof o === 'string' ? o : o.valor)));
+        return [...options, ...value.filter(v => !conhecidos.has(v))];
+    }, [options, value]);
+
+    const q = busca.trim().toLowerCase();
+    const visiveis = q ? todas.filter(o => String(lab(o)).toLowerCase().includes(q)) : todas;
+    const labelDoValor = (v) => lab(todas.find(o => val(o) === v) ?? v);
+    const toggle = (opt) => {
+        const v = val(opt);
+        onChange(value.includes(v) ? value.filter(x => x !== v) : [...value, v]);
+    };
+    const resumo = value.length === 0 ? label : value.length === 1 ? labelDoValor(value[0]) : `${value.length} selec.`;
+
+    return (
+        <div className="relative" ref={ref}>
+            <button
+                type="button"
+                onClick={() => { setOpen(v => !v); setBusca(''); }}
+                className={`w-full min-h-[38px] flex items-center justify-between gap-1.5 border rounded-lg px-2.5 py-1.5 text-sm bg-white text-left hover:bg-gray-50 focus:outline-none ${open || value.length ? 'border-primary' : 'border-gray-300'}`}
+            >
+                <span className={`truncate ${value.length === 0 ? 'text-gray-400' : 'text-gray-800 font-medium'}`}>{resumo}</span>
+                <ChevronDown className={`w-3.5 h-3.5 text-gray-400 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+            </button>
+            {open && (
+                <div className="absolute z-30 mt-1 w-full min-w-[200px] bg-white border border-gray-200 rounded-lg shadow-lg max-h-72 overflow-y-auto">
+                    {todas.length > 8 && (
+                        <div className="sticky top-0 bg-white p-1.5 border-b border-gray-100">
+                            <input
+                                autoFocus
+                                value={busca}
+                                onChange={e => setBusca(e.target.value)}
+                                placeholder="Buscar…"
+                                className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                            />
+                        </div>
+                    )}
+                    {value.length > 0 && (
+                        <button type="button" onClick={() => onChange([])} className="w-full text-left text-xs text-primary font-medium px-2.5 py-1.5 border-b border-gray-100 hover:bg-gray-50">
+                            Limpar seleção ({value.length})
+                        </button>
+                    )}
+                    {visiveis.length === 0 && <div className="px-2.5 py-2 text-xs text-gray-400">Sem opções</div>}
+                    {visiveis.map(opt => (
+                        <label key={val(opt)} className="flex items-center gap-2 px-2.5 py-2 text-sm hover:bg-gray-50 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={value.includes(val(opt))}
+                                onChange={() => toggle(opt)}
+                                className="cursor-pointer accent-[#00754A]"
+                            />
+                            <span className="truncate">{lab(opt)}</span>
+                        </label>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
 const ContasReceberTabela = () => {
     const { user } = useAuth();
     const podeBaixar = user?.permissoes?.admin || user?.permissoes?.Pode_Baixar_Contas_Receber;
@@ -68,25 +151,29 @@ const ContasReceberTabela = () => {
 
     // Busca por texto livre — não persiste (useState normal)
     const [busca, setBusca] = useState('');
-    // Filtros — status/statusParcela/condicao/forma são ARRAYS (multi-select).
-    // Persistidos por usuário/tela via useFiltrosSalvos.
-    const [filtros, setFiltros] = useFiltrosSalvos('contas-receber-tabela', {
+    // Filtros — TODOS são ARRAYS (seleção múltipla): dá para escolher mais de uma
+    // opção em cada caixa e combinar quantas caixas quiser.
+    // Persistidos por usuário/tela via useFiltrosSalvos (chave v2: o formato mudou —
+    // datas saíram daqui para o FiltroPeriodo e origem/vendedor/categoria viraram lista).
+    const [filtros, setFiltros] = useFiltrosSalvos('contas-receber-tabela-v2', {
         status: [],
         statusParcela: [],
-        origem: '',
-        vendedorId: '',
-        categoriaClienteId: '',
+        origem: [],
+        vendedorId: [],
+        categoriaClienteId: [],
         condicaoPagamento: [],
         tipoCobranca: [],
         formaPagamentoEntrega: [],
         formaPagamento: [],
-        baixadoPorId: [],
-        vencDe: '',
-        vencAte: '',
-        pagDe: '',
-        pagAte: ''
+        baixadoPorId: []
     });
-    const [relatorioFiltros, setRelatorioFiltros] = useState({ vencDe: '', vencAte: '', categoriaClienteId: '' });
+    // Datas no padrão do sistema (FiltroPeriodo). Padrão 'todo' = sem recorte de data,
+    // que é como a tela sempre abriu.
+    const [periodoVenc, periodoVencCtl] = usePeriodoSalvo('contas-receber-tabela:venc', 'todo');
+    const [periodoPag, periodoPagCtl] = usePeriodoSalvo('contas-receber-tabela:pag', 'todo');
+    const { de: vencDe, ate: vencAte } = periodoVenc;
+    const { de: pagDe, ate: pagAte } = periodoPag;
+    const [relatorioFiltros, setRelatorioFiltros] = useState({ vencDe: '', vencAte: '', categoriaClienteId: [] });
 
     // Ordenação client-side (persistida)
     const [sort, setSort] = useFiltrosSalvos('contas-receber-tabela:sort', { col: 'vencimento', dir: 'asc' });
@@ -117,34 +204,28 @@ const ContasReceberTabela = () => {
     const [relatorioLoading, setRelatorioLoading] = useState(false);
     const [relatorioAgrupamento, setRelatorioAgrupamento] = useFiltroSalvo('contas-receber-tabela:relatorioAgrupamento', 'pedido'); // pedido | cliente | vendedor | nenhum
 
+    // Opções fixas dos menus (condição, condição na entrega, forma da baixa).
+    // Vêm do banco INTEIRO, uma vez só. Antes eram deduzidas das linhas já filtradas:
+    // ao escolher uma opção as demais sumiam do menu — inclusive a escolhida — e não
+    // dava para desmarcar; a lista só voltava limpando todos os filtros.
+    const [opcoes, setOpcoes] = useState({ condicoes: [], formasEntrega: [], formasBaixa: [] });
+
     // Carrega aux
     useEffect(() => {
         vendedorService.listarAtivos().then(setVendedores).catch(() => {});
         categoriaClienteService.listar().then(setCategorias).catch(() => {});
         contasReceberService.tiposCobranca().then(setTiposCobranca).catch(() => {});
         contasReceberService.baixadoPor().then(setUsuariosBaixa).catch(() => {});
+        contasReceberService.opcoesFiltros().then(setOpcoes).catch(() => {});
     }, []);
 
-    // Condições distintas, derivadas das contas carregadas
-    const condicoes = useMemo(() => {
-        const set = new Set();
-        linhas.forEach(l => { if (l.condicaoPagamento) set.add(l.condicaoPagamento); });
-        return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    }, [linhas]);
-
-    // Formas de pagamento distintas (das baixas existentes)
-    const formasUsadas = useMemo(() => {
-        const set = new Set();
-        linhas.forEach(l => { if (l.formaPagamento) set.add(l.formaPagamento); });
-        return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    }, [linhas]);
-
-    // Formas de pagamento registradas na entrega
-    const formasEntregaUsadas = useMemo(() => {
-        const set = new Set();
-        linhas.forEach(l => { (l.pagamentosEntrega || []).forEach(p => { if (p.formaPagamentoNome) set.add(p.formaPagamentoNome); }); });
-        return [...set].sort((a, b) => a.localeCompare(b, 'pt-BR'));
-    }, [linhas]);
+    const condicoes = opcoes.condicoes;
+    const formasEntregaUsadas = opcoes.formasEntrega;
+    // Formas da baixa: as fixas do sistema + o que já foi usado historicamente
+    const formasUsadas = useMemo(
+        () => [...new Set([...FORMAS, ...opcoes.formasBaixa])],
+        [opcoes.formasBaixa]
+    );
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -157,18 +238,18 @@ const ContasReceberTabela = () => {
                 : filtros.status;
             if (statusQuery.length) params.status = statusQuery.join(',');
             if (filtros.statusParcela.length) params.statusParcela = filtros.statusParcela.join(',');
-            if (filtros.origem) params.origem = filtros.origem;
-            if (filtros.vendedorId) params.vendedorId = filtros.vendedorId;
-            if (filtros.categoriaClienteId) params.categoriaClienteId = filtros.categoriaClienteId;
+            if (filtros.origem.length) params.origem = filtros.origem.join(',');
+            if (filtros.vendedorId.length) params.vendedorId = filtros.vendedorId.join(',');
+            if (filtros.categoriaClienteId.length) params.categoriaClienteId = filtros.categoriaClienteId.join(',');
             if (filtros.condicaoPagamento.length) params.condicaoPagamento = filtros.condicaoPagamento.join(',');
             if (filtros.tipoCobranca.length) params.tipoCobranca = filtros.tipoCobranca.join(',');
             if (filtros.formaPagamentoEntrega.length) params.formaPagamentoEntrega = filtros.formaPagamentoEntrega.join(',');
             if (filtros.formaPagamento.length) params.formaPagamento = filtros.formaPagamento.join(',');
             if (filtros.baixadoPorId.length) params.baixadoPorId = filtros.baixadoPorId.join(',');
-            if (filtros.vencDe) params.vencimentoDe = filtros.vencDe;
-            if (filtros.vencAte) params.vencimentoAte = filtros.vencAte;
-            if (filtros.pagDe) params.pagamentoDe = filtros.pagDe;
-            if (filtros.pagAte) params.pagamentoAte = filtros.pagAte;
+            if (vencDe) params.vencimentoDe = vencDe;
+            if (vencAte) params.vencimentoAte = vencAte;
+            if (pagDe) params.pagamentoDe = pagDe;
+            if (pagAte) params.pagamentoAte = pagAte;
 
             const data = await contasReceberService.listar(params);
             // Flatten: uma linha por parcela
@@ -212,7 +293,7 @@ const ContasReceberTabela = () => {
                 // Visão padrão de "Contas a Receber": mostra apenas o que falta receber.
                 // Os filtros de data de pagamento / forma da baixa miram justamente parcelas
                 // pagas, então quando ativos não escondemos nada (os filtros abaixo refinam).
-                const filtrandoPagas = !!filtros.pagDe || !!filtros.pagAte || filtros.formaPagamento.length > 0 || filtros.baixadoPorId.length > 0;
+                const filtrandoPagas = !!pagDe || !!pagAte || filtros.formaPagamento.length > 0 || filtros.baixadoPorId.length > 0;
                 if (!filtrandoPagas) {
                     filtered = filtered.filter(l => {
                         // Sempre mostra o que ainda falta receber (inclui parcelas com baixa parcial).
@@ -230,10 +311,10 @@ const ContasReceberTabela = () => {
             if (filtros.baixadoPorId.length) filtered = filtered.filter(l => filtros.baixadoPorId.includes(l.baixadoPorId || ''));
             // Refino de data no nível da PARCELA: o backend filtra a CONTA (some), então sem
             // isto uma conta entraria trazendo parcelas com vencimento/pagamento fora do range.
-            if (filtros.vencDe) filtered = filtered.filter(l => toYMD(l.dataVencimento) >= filtros.vencDe);
-            if (filtros.vencAte) filtered = filtered.filter(l => toYMD(l.dataVencimento) <= filtros.vencAte);
-            if (filtros.pagDe) filtered = filtered.filter(l => l.dataPagamento && toYMD(l.dataPagamento) >= filtros.pagDe);
-            if (filtros.pagAte) filtered = filtered.filter(l => l.dataPagamento && toYMD(l.dataPagamento) <= filtros.pagAte);
+            if (vencDe) filtered = filtered.filter(l => toYMD(l.dataVencimento) >= vencDe);
+            if (vencAte) filtered = filtered.filter(l => toYMD(l.dataVencimento) <= vencAte);
+            if (pagDe) filtered = filtered.filter(l => l.dataPagamento && toYMD(l.dataPagamento) >= pagDe);
+            if (pagAte) filtered = filtered.filter(l => l.dataPagamento && toYMD(l.dataPagamento) <= pagAte);
             setLinhas(filtered);
             setIndicadores(data.indicadores || {});
         } catch (e) {
@@ -241,22 +322,14 @@ const ContasReceberTabela = () => {
         } finally {
             setLoading(false);
         }
-    }, [filtros, busca]);
+    }, [filtros, busca, vencDe, vencAte, pagDe, pagAte]);
 
     useEffect(() => { fetchData(); }, []); // eslint-disable-line
 
     // Auto-refresh quando qualquer filtro muda (exceto "busca", que usa Enter/botão).
     // Stringifica arrays/strings pra evitar trigger por nova ref a cada render.
     const didMount = useRef(false);
-    const filtrosKey = JSON.stringify({
-        status: filtros.status, statusParcela: filtros.statusParcela, origem: filtros.origem,
-        vendedorId: filtros.vendedorId, categoriaClienteId: filtros.categoriaClienteId,
-        condicaoPagamento: filtros.condicaoPagamento, tipoCobranca: filtros.tipoCobranca,
-        formaPagamentoEntrega: filtros.formaPagamentoEntrega,
-        formaPagamento: filtros.formaPagamento, baixadoPorId: filtros.baixadoPorId,
-        vencDe: filtros.vencDe, vencAte: filtros.vencAte,
-        pagDe: filtros.pagDe, pagAte: filtros.pagAte
-    });
+    const filtrosKey = JSON.stringify({ ...filtros, vencDe, vencAte, pagDe, pagAte });
     useEffect(() => {
         if (!didMount.current) { didMount.current = true; return; }
         fetchData();
@@ -266,11 +339,12 @@ const ContasReceberTabela = () => {
     const limparFiltros = () => {
         setBusca('');
         setFiltros({
-            status: [], statusParcela: [], origem: '', vendedorId: '', categoriaClienteId: '',
+            status: [], statusParcela: [], origem: [], vendedorId: [], categoriaClienteId: [],
             condicaoPagamento: [], tipoCobranca: [], formaPagamentoEntrega: [], formaPagamento: [],
-            baixadoPorId: [],
-            vencDe: '', vencAte: '', pagDe: '', pagAte: ''
+            baixadoPorId: []
         });
+        periodoVencCtl.limpar();
+        periodoPagCtl.limpar();
         // fetchData é disparado pelo useEffect acima quando filtrosKey muda.
     };
 
@@ -317,6 +391,12 @@ const ContasReceberTabela = () => {
 
     const valorSel = useMemo(() =>
         linhasOrdenadas.filter(l => sel.has(l.parcelaId)).reduce((s, l) => s + Number(l.valor || 0), 0)
+    , [linhasOrdenadas, sel]);
+
+    // Selecionou título cobrado em boleto/Pix? Só avisa (cliente pode ter pago em espécie),
+    // mas o aviso evita quitar na mão o que a conciliação já vai baixar sozinha.
+    const selTemCobrancaEletronica = useMemo(() =>
+        linhasOrdenadas.some(l => sel.has(l.parcelaId) && /boleto|pix/i.test(l.condicaoPagamento || ''))
     , [linhasOrdenadas, sel]);
 
     // Baixa individual — abre modal com valor recebido/desconto (aceita parcial e 100% desconto)
@@ -461,19 +541,19 @@ const ContasReceberTabela = () => {
                 : filtros.status;
             if (statusQueryRel.length) params.status = statusQueryRel.join(',');
             if (filtros.statusParcela.length) params.statusParcela = filtros.statusParcela.join(',');
-            if (filtros.origem) params.origem = filtros.origem;
-            if (filtros.vendedorId) params.vendedorId = filtros.vendedorId;
+            if (filtros.origem.length) params.origem = filtros.origem.join(',');
+            if (filtros.vendedorId.length) params.vendedorId = filtros.vendedorId.join(',');
             if (filtros.condicaoPagamento.length) params.condicaoPagamento = filtros.condicaoPagamento.join(',');
             if (filtros.tipoCobranca.length) params.tipoCobranca = filtros.tipoCobranca.join(',');
             if (filtros.formaPagamentoEntrega.length) params.formaPagamentoEntrega = filtros.formaPagamentoEntrega.join(',');
             if (filtros.formaPagamento.length) params.formaPagamento = filtros.formaPagamento.join(',');
             if (filtros.baixadoPorId.length) params.baixadoPorId = filtros.baixadoPorId.join(',');
-            if (filtros.pagDe) params.pagamentoDe = filtros.pagDe;
-            if (filtros.pagAte) params.pagamentoAte = filtros.pagAte;
+            if (pagDe) params.pagamentoDe = pagDe;
+            if (pagAte) params.pagamentoAte = pagAte;
             // Filtros do próprio modal de relatório
             if (rf.vencDe) params.vencimentoDe = rf.vencDe;
             if (rf.vencAte) params.vencimentoAte = rf.vencAte;
-            if (rf.categoriaClienteId) params.categoriaClienteId = rf.categoriaClienteId;
+            if (rf.categoriaClienteId?.length) params.categoriaClienteId = rf.categoriaClienteId.join(',');
             const data = await contasReceberService.relatorioItens(params);
             setRelatorioData(data);
         } catch (e) {
@@ -484,7 +564,7 @@ const ContasReceberTabela = () => {
     };
 
     const abrirRelatorio = () => {
-        const rf = { vencDe: filtros.vencDe, vencAte: filtros.vencAte, categoriaClienteId: filtros.categoriaClienteId || '' };
+        const rf = { vencDe, vencAte, categoriaClienteId: filtros.categoriaClienteId };
         setRelatorioFiltros(rf);
         setRelatorioOpen(true);
         buscarRelatorio(rf);
@@ -651,9 +731,14 @@ const ContasReceberTabela = () => {
         setTimeout(() => win.print(), 400);
     };
 
+    // Conta cada caixa com alguma escolha (não cada opção) + a busca + cada período
+    // fora do padrão — mesma regra do resto do sistema.
     const filtrosAtivos = useMemo(() =>
-        (busca ? 1 : 0) + Object.values(filtros).filter(v => Array.isArray(v) ? v.length > 0 : Boolean(v)).length
-    , [filtros, busca]);
+        (busca ? 1 : 0)
+        + Object.values(filtros).filter(v => Array.isArray(v) ? v.length > 0 : Boolean(v)).length
+        + (periodoVenc.padrao ? 0 : 1)
+        + (periodoPag.padrao ? 0 : 1)
+    , [filtros, busca, periodoVenc.padrao, periodoPag.padrao]);
 
     const abrirPedido = async (pedidoId) => {
         if (!pedidoId) return;
@@ -678,47 +763,6 @@ const ContasReceberTabela = () => {
         } catch (e) {
             toast.error('Erro ao buscar cliente');
         }
-    };
-
-    // options: array de strings OU de { valor, label }
-    const MultiSelect = ({ label, options, value, onChange }) => {
-        const [open, setOpen] = useState(false);
-        const ref = React.useRef(null);
-        useEffect(() => {
-            const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-            document.addEventListener('mousedown', h);
-            return () => document.removeEventListener('mousedown', h);
-        }, []);
-        const val = (opt) => (typeof opt === 'string' ? opt : opt.valor);
-        const lab = (opt) => (typeof opt === 'string' ? opt : opt.label);
-        const labelDoValor = (v) => lab(options.find(o => val(o) === v) ?? v);
-        const toggle = (opt) => {
-            const v = val(opt);
-            onChange(value.includes(v) ? value.filter(x => x !== v) : [...value, v]);
-        };
-        const summary = value.length === 0 ? label : value.length === 1 ? labelDoValor(value[0]) : `${value.length} selec.`;
-        return (
-            <div className="relative" ref={ref}>
-                <button type="button" onClick={() => setOpen(v => !v)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm text-left flex items-center justify-between hover:bg-gray-50 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none">
-                    <span className={value.length === 0 ? 'text-gray-500' : 'text-gray-900'}>{summary}</span>
-                    <ChevronDown className="w-3 h-3 text-gray-400" />
-                </button>
-                {open && (
-                    <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
-                        {value.length > 0 && (
-                            <button type="button" onClick={() => onChange([])} className="w-full text-left text-xs text-blue-600 px-2 py-1 border-b hover:bg-gray-50">Limpar seleção</button>
-                        )}
-                        {options.length === 0 && <div className="px-2 py-2 text-xs text-gray-400">Sem opções</div>}
-                        {options.map(opt => (
-                            <label key={val(opt)} className="flex items-center gap-2 px-2 py-1.5 text-sm hover:bg-gray-50 cursor-pointer">
-                                <input type="checkbox" checked={value.includes(val(opt))} onChange={() => toggle(opt)} className="cursor-pointer" />
-                                <span className="truncate">{lab(opt)}</span>
-                            </label>
-                        ))}
-                    </div>
-                )}
-            </div>
-        );
     };
 
     const Th = ({ col, children, className = '' }) => (
@@ -820,7 +864,7 @@ const ContasReceberTabela = () => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Status Conta</label>
-                        <MultiSelect
+                        <FiltroMulti
                             label="Todos"
                             options={['ABERTO', 'QUITADO', 'CANCELADO']}
                             value={filtros.status}
@@ -829,7 +873,7 @@ const ContasReceberTabela = () => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Status Parcela</label>
-                        <MultiSelect
+                        <FiltroMulti
                             label="Todas"
                             options={['PENDENTE', 'PARCIAL', 'PAGO', 'VENCIDO', 'CANCELADO']}
                             value={filtros.statusParcela}
@@ -838,29 +882,34 @@ const ContasReceberTabela = () => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Origem</label>
-                        <SelectBusca value={filtros.origem} onChange={e => setFiltros(f => ({ ...f, origem: e.target.value }))} className="w-full">
-                            <option value="">Todas</option>
-                            <option value="FATURADO_CA">Faturado CA</option>
-                            <option value="ESPECIAL">Especial</option>
-                        </SelectBusca>
+                        <FiltroMulti
+                            label="Todas"
+                            options={[{ valor: 'FATURADO_CA', label: 'Faturado CA' }, { valor: 'ESPECIAL', label: 'Especial' }]}
+                            value={filtros.origem}
+                            onChange={(v) => setFiltros(f => ({ ...f, origem: v }))}
+                        />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Vendedor</label>
-                        <SelectBusca value={filtros.vendedorId} onChange={e => setFiltros(f => ({ ...f, vendedorId: e.target.value }))} className="w-full">
-                            <option value="">Todos</option>
-                            {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
-                        </SelectBusca>
+                        <FiltroMulti
+                            label="Todos"
+                            options={vendedores.map(v => ({ valor: v.id, label: v.nome }))}
+                            value={filtros.vendedorId}
+                            onChange={(v) => setFiltros(f => ({ ...f, vendedorId: v }))}
+                        />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Categoria Cliente</label>
-                        <SelectBusca value={filtros.categoriaClienteId} onChange={e => setFiltros(f => ({ ...f, categoriaClienteId: e.target.value }))} className="w-full">
-                            <option value="">Todas</option>
-                            {categorias.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                        </SelectBusca>
+                        <FiltroMulti
+                            label="Todas"
+                            options={categorias.map(c => ({ valor: c.id, label: c.nome }))}
+                            value={filtros.categoriaClienteId}
+                            onChange={(v) => setFiltros(f => ({ ...f, categoriaClienteId: v }))}
+                        />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Condição Pgto</label>
-                        <MultiSelect
+                        <FiltroMulti
                             label="Todas"
                             options={condicoes}
                             value={filtros.condicaoPagamento}
@@ -869,7 +918,7 @@ const ContasReceberTabela = () => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Cobrança</label>
-                        <MultiSelect
+                        <FiltroMulti
                             label="Todas"
                             options={tiposCobranca}
                             value={filtros.tipoCobranca}
@@ -878,7 +927,7 @@ const ContasReceberTabela = () => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Condição na Entrega</label>
-                        <MultiSelect
+                        <FiltroMulti
                             label="Todas"
                             options={formasEntregaUsadas}
                             value={filtros.formaPagamentoEntrega}
@@ -887,37 +936,29 @@ const ContasReceberTabela = () => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Forma Pgto (baixa)</label>
-                        <MultiSelect
+                        <FiltroMulti
                             label="Todas"
-                            options={[...new Set([...FORMAS, ...formasUsadas])]}
+                            options={formasUsadas}
                             value={filtros.formaPagamento}
                             onChange={(v) => setFiltros(f => ({ ...f, formaPagamento: v }))}
                         />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Baixado por</label>
-                        <MultiSelect
+                        <FiltroMulti
                             label="Todos"
                             options={usuariosBaixa}
                             value={filtros.baixadoPorId}
                             onChange={(v) => setFiltros(f => ({ ...f, baixadoPorId: v }))}
                         />
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Venc. de</label>
-                        <input type="date" value={filtros.vencDe} onChange={e => setFiltros(f => ({ ...f, vencDe: e.target.value }))} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                    <div className="col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Vencimento</label>
+                        <FiltroPeriodo periodo={periodoVenc} controle={periodoVencCtl} className="w-full" />
                     </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Venc. até</label>
-                        <input type="date" value={filtros.vencAte} onChange={e => setFiltros(f => ({ ...f, vencAte: e.target.value }))} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Pgto de</label>
-                        <input type="date" value={filtros.pagDe} onChange={e => setFiltros(f => ({ ...f, pagDe: e.target.value }))} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Pgto até</label>
-                        <input type="date" value={filtros.pagAte} onChange={e => setFiltros(f => ({ ...f, pagAte: e.target.value }))} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+                    <div className="col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Pagamento (baixa)</label>
+                        <FiltroPeriodo periodo={periodoPag} controle={periodoPagCtl} className="w-full" />
                     </div>
                 </div>
                 <div className="flex items-center justify-end gap-3 mt-4">
@@ -1174,6 +1215,7 @@ const ContasReceberTabela = () => {
                                 <Wallet className="w-4 h-4 text-amber-700 mt-0.5 flex-shrink-0" />
                                 <p className="text-xs text-amber-800">
                                     <strong>R$ {fmt(valorSel)} vai entrar no seu caixa de hoje</strong> e some no seu “a prestar”.
+                                    {selTemCobrancaEletronica && <><br /><strong>Atenção:</strong> há título cobrado em boleto/Pix na seleção — só siga se o cliente pagou em espécie.</>}
                                     Boleto, Pix, cartão e transferência não entram por aqui — esses são baixados na Conciliação Bancária.
                                 </p>
                             </div>
@@ -1627,8 +1669,8 @@ const ContasReceberTabela = () => {
                         <div className="px-4 py-2 border-b bg-gray-50 flex flex-wrap items-center gap-x-3 gap-y-2">
                             <span className="text-xs text-gray-500">
                                 Reflete a tabela
-                                {(filtros.vencDe || filtros.vencAte) && (
-                                    <> · Venc. {filtros.vencDe ? filtros.vencDe.split('-').reverse().join('/') : '…'} até {filtros.vencAte ? filtros.vencAte.split('-').reverse().join('/') : '…'}</>
+                                {(vencDe || vencAte) && (
+                                    <> · Venc. {vencDe ? vencDe.split('-').reverse().join('/') : '…'} até {vencAte ? vencAte.split('-').reverse().join('/') : '…'}</>
                                 )}
                             </span>
                             <div className="flex items-center gap-1 ml-auto">
@@ -2004,6 +2046,10 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
     const novoStatusPreview = totalLancado <= 0 ? null : (saldoDepois <= 0.01 ? 'PAGO' : 'PARCIAL');
     const motivoObrigatorioFaltando = aplicarDesconto && descontoReais > 0 && !motivoDesconto.trim();
     const podeConfirmar = totalLancado > 0 && totalLancado <= saldo + 0.01 && !motivoObrigatorioFaltando;
+    // Título cobrado em boleto/Pix sendo quitado em espécie: acontece de verdade (cliente paga
+    // no balcão), então só avisa — mas avisa, porque se ele pagou o boleto a baixa certa vem da
+    // conciliação e esta aqui deixaria o crédito do banco sem par.
+    const cobrancaEletronica = /boleto|pix/i.test(l.condicaoPagamento || '');
 
     // Motivo pelo qual o botão está travado (ajuda o usuário a entender)
     const bloqueio = totalLancado <= 0
@@ -2145,6 +2191,17 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
                             <input type="date" value={dataPagamento} onChange={e => setDataPagamento(e.target.value)} className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                         </div>
                     </div>
+
+                    {recebido > 0 && cobrancaEletronica && (
+                        <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 flex items-start gap-2">
+                            <ShieldAlert className="w-4 h-4 text-blue-700 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs text-blue-800">
+                                Este título é cobrado em <strong>{l.condicaoPagamento}</strong>. Só continue se o cliente
+                                pagou mesmo <strong>em espécie</strong> — se ele pagou o boleto/Pix, a baixa certa vem
+                                sozinha pela <strong>Conciliação Bancária</strong> (dar baixa aqui deixa o crédito do banco órfão).
+                            </p>
+                        </div>
+                    )}
 
                     {recebido > 0 && (
                         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 flex items-start gap-2">
