@@ -27,6 +27,17 @@ const contasReceberService = {
         const response = await api.get('/contas-receber/baixado-por');
         return response.data?.usuarios || [];
     },
+    // Opções fixas dos filtros (condição, condição na entrega, forma da baixa).
+    // Vêm do banco inteiro — se saíssem das linhas já filtradas, as opções sumiriam
+    // conforme o usuário filtra e o filtro ficaria impossível de desmarcar.
+    opcoesFiltros: async () => {
+        const response = await api.get('/contas-receber/opcoes-filtros');
+        return {
+            condicoes: response.data?.condicoes || [],
+            formasEntrega: response.data?.formasEntrega || [],
+            formasBaixa: response.data?.formasBaixa || []
+        };
+    },
     darBaixaLote: async (dados) => {
         const response = await api.post('/contas-receber/baixa-lote', dados);
         return response.data;

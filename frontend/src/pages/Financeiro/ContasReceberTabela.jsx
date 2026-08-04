@@ -954,11 +954,11 @@ const ContasReceberTabela = () => {
                     </div>
                     <div className="col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Vencimento</label>
-                        <FiltroPeriodo periodo={periodoVenc} controle={periodoVencCtl} className="w-full" />
+                        <FiltroPeriodo periodo={periodoVenc} controle={periodoVencCtl} className="w-full md:w-auto" />
                     </div>
                     <div className="col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Pagamento (baixa)</label>
-                        <FiltroPeriodo periodo={periodoPag} controle={periodoPagCtl} className="w-full" />
+                        <FiltroPeriodo periodo={periodoPag} controle={periodoPagCtl} className="w-full md:w-auto" />
                     </div>
                 </div>
                 <div className="flex items-center justify-end gap-3 mt-4">
