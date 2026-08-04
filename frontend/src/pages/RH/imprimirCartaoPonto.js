@@ -39,16 +39,56 @@ const CLASSE_SITUACAO = {
     SEM_VINCULO: 'cp-futuro'
 };
 
+// Valor por extenso em pt-BR (mesmo modelo do recibo do Contas a Pagar)
+const extensoAte999 = (n) => {
+    const U = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove', 'dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+    const D = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+    const C = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+    if (n === 0) return '';
+    if (n === 100) return 'cem';
+    const c = Math.floor(n / 100), rr = n % 100;
+    const dezenas = rr < 20 ? U[rr] : `${D[Math.floor(rr / 10)]}${rr % 10 ? ` e ${U[rr % 10]}` : ''}`;
+    return [c ? C[c] : '', rr ? dezenas : ''].filter(Boolean).join(' e ');
+};
+const valorPorExtenso = (valor) => {
+    const cents = Math.round(Number(valor || 0) * 100);
+    const inteiro = Math.floor(cents / 100);
+    const centavos = cents % 100;
+    const partes = [];
+    const milhoes = Math.floor(inteiro / 1000000);
+    const milhares = Math.floor((inteiro % 1000000) / 1000);
+    const resto = inteiro % 1000;
+    if (milhoes) partes.push(milhoes === 1 ? 'um milhão' : `${extensoAte999(milhoes)} milhões`);
+    if (milhares) partes.push(milhares === 1 ? 'mil' : `${extensoAte999(milhares)} mil`);
+    if (resto) partes.push(extensoAte999(resto));
+    const reais = inteiro > 0 ? `${partes.join(' e ')} ${inteiro === 1 ? 'real' : 'reais'}` : '';
+    const centTxt = centavos > 0 ? `${extensoAte999(centavos)} ${centavos === 1 ? 'centavo' : 'centavos'}` : '';
+    const texto = [reais, centTxt].filter(Boolean).join(' e ') || 'zero real';
+    return texto.charAt(0).toUpperCase() + texto.slice(1);
+};
+const brl = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
 export const montarCartaoHtml = (cartao) => {
     const f = cartao.funcionario || {};
     const r = cartao.resumo || {};
     const p = cartao.periodo || {};
+    const prestador = cartao.folha?.modo === 'PRESTADOR';
 
     const linhas = (cartao.linhas || []).map((l) => {
         const d = new Date(`${l.data}T12:00:00`);
         const batidas = l.batidas.length
             ? l.batidas.map(b => `<span class="cp-bat ${b.tipo === 'SAIDA' ? 'cp-saida' : 'cp-entrada'}">${b.hora}</span>`).join('')
             : '<span class="cp-vazio">—</span>';
+        // Prestador: só dia, batidas e horas — sem previsto/saldo/situação
+        if (prestador) {
+            if (!l.batidas.length) return '';
+            return `
+        <tr>
+            <td class="cp-dia">${DIA_CURTO[l.diaSemana]} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}</td>
+            <td class="cp-batidas">${batidas}</td>
+            <td class="cp-num">${l.trabalhado}</td>
+        </tr>`;
+        }
         return `
         <tr class="${l.situacao === 'FALTA' ? 'cp-linha-falta' : ''}">
             <td class="cp-dia">${DIA_CURTO[l.diaSemana]} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}</td>
@@ -77,17 +117,29 @@ export const montarCartaoHtml = (cartao) => {
                 <div>CNPJ: ${EMPRESA.cnpj} &nbsp;IE: ${EMPRESA.ie} &nbsp;·&nbsp; ${escapeHtml(EMPRESA.endereco)} — CEP ${EMPRESA.cep}</div>
             </div>
             <div class="cp-titulo">
-                <h1>Folha de ponto</h1>
+                <h1>${prestador ? 'Folha de horas' : 'Folha de ponto'}</h1>
                 <div class="cp-periodo">${dmy(p.de)} a ${dmy(p.ate)}</div>
             </div>
         </div>
         <div class="cp-rule"></div>
 
         <div class="cp-func">
-            <div><b>${escapeHtml(f.nome || '')}</b>${f.cargo ? ` · ${escapeHtml(f.cargo)}` : ''}</div>
-            <div>CPF: ${escapeHtml(fmtCpf(f.cpf))} &nbsp;·&nbsp; Admissão: ${dmy(f.dataAdmissao)}</div>
+            <div><b>${escapeHtml(f.nome || '')}</b>${f.cargo ? ` · ${escapeHtml(f.cargo)}` : ''}${prestador ? ' · Prestador de serviços' : ''}</div>
+            <div>CPF: ${escapeHtml(fmtCpf(f.cpf))}${prestador ? '' : ` &nbsp;·&nbsp; Admissão: ${dmy(f.dataAdmissao)}`}</div>
         </div>
 
+        ${prestador ? `
+        <div class="cp-resumo">
+            <span><i>Horas prestadas</i><b>${r.trabalhado}</b></span>
+            <span><i>Dias com serviço</i><b>${r.diasTrabalhados}</b></span>
+        </div>
+
+        <table class="cp-tab">
+            <thead><tr>
+                <th class="cp-esq">Dia</th><th class="cp-esq">Horários</th><th>Horas</th>
+            </tr></thead>
+            <tbody>${linhas}</tbody>
+        </table>` : `
         <div class="cp-resumo">
             <span><i>Horas trabalhadas</i><b>${r.trabalhado}</b></span>
             <span><i>Previsto</i><b>${r.previsto}</b></span>
@@ -103,16 +155,63 @@ export const montarCartaoHtml = (cartao) => {
                 <th>Previsto</th><th>Trabalhado</th><th>Saldo</th><th class="cp-esq">Situação</th>
             </tr></thead>
             <tbody>${linhas}</tbody>
-        </table>
+        </table>`}
 
         <p class="cp-declaracao">
-            Declaro que conferi as marcações de ponto acima e que elas correspondem aos horários
-            efetivamente trabalhados no período.
+            ${prestador
+            ? 'Declaro que os horários acima correspondem aos serviços efetivamente prestados no período.'
+            : 'Declaro que conferi as marcações de ponto acima e que elas correspondem aos horários efetivamente trabalhados no período.'}
         </p>
         <p class="cp-data">${EMPRESA.cidadeUf}, ${new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' })}</p>
         <div class="cp-assinaturas">
-            <div><div class="cp-linha"></div><div class="cp-nome">${escapeHtml(String(f.nome || '').toUpperCase())}</div><div class="cp-doc">Funcionário</div></div>
-            <div><div class="cp-linha"></div><div class="cp-nome">${escapeHtml(EMPRESA.nome)}</div><div class="cp-doc">Empregador</div></div>
+            <div><div class="cp-linha"></div><div class="cp-nome">${escapeHtml(String(f.nome || '').toUpperCase())}</div><div class="cp-doc">${prestador ? 'Prestador' : 'Funcionário'}</div></div>
+            <div><div class="cp-linha"></div><div class="cp-nome">${escapeHtml(EMPRESA.nome)}</div><div class="cp-doc">${prestador ? 'Contratante' : 'Empregador'}</div></div>
+        </div>
+    </div>`;
+};
+
+// ─── Recibo de prestação de serviços (só para prestador por hora) ────────────
+const montarReciboHtml = (cartao) => {
+    const f = cartao.funcionario || {};
+    const fo = cartao.folha || {};
+    const p = cartao.periodo || {};
+    const dataExtenso = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'America/Sao_Paulo' });
+
+    return `
+    <div class="cp cp-recibo">
+        <div class="cp-rule"></div>
+        <div class="cp-header">
+            <img src="/logo-hardt.png" alt="Hardt" class="cp-logo" />
+            <div class="cp-emp">
+                <div><b>${escapeHtml(EMPRESA.nome)}</b></div>
+                <div>CNPJ: ${EMPRESA.cnpj} &nbsp;IE: ${EMPRESA.ie} &nbsp;·&nbsp; ${escapeHtml(EMPRESA.endereco)} — CEP ${EMPRESA.cep}</div>
+            </div>
+        </div>
+        <div class="cp-rule"></div>
+
+        <div class="rc-titulo">
+            <h1>Recibo</h1>
+            <div class="rc-valor"><span>R$</span>${Number(fo.liquido || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+        </div>
+        <div class="rc-dash"></div>
+
+        <p class="rc-texto">
+            Recebi de <b>${escapeHtml(EMPRESA.nome)}</b> a importância de
+            <b>${escapeHtml(valorPorExtenso(fo.liquido))}</b>, referente a
+            <b>${fo.horas}</b> de serviços prestados entre <b>${dmy(p.de)}</b> e <b>${dmy(p.ate)}</b>,
+            ao valor de <b>${brl(fo.valorHora)}</b> por hora${fo.outrosProventos > 0 ? `, mais ${brl(fo.outrosProventos)} de outros valores` : ''}${fo.outrosDescontos > 0 ? `, com desconto de ${brl(fo.outrosDescontos)}${fo.obsAjuste ? ` (${escapeHtml(fo.obsAjuste)})` : ''}` : ''}.
+        </p>
+        <p class="rc-texto">
+            Para confirmar a veracidade deste documento e da quantia recebida, assino o presente recibo nesta data.
+        </p>
+
+        <p class="cp-data">${EMPRESA.cidadeUf}, ${dataExtenso}</p>
+        <div class="cp-assinaturas">
+            <div>
+                <div class="cp-linha"></div>
+                <div class="cp-nome">${escapeHtml(String(f.nome || '').toUpperCase())}</div>
+                <div class="cp-doc">CPF: ${escapeHtml(fmtCpf(f.cpf))}</div>
+            </div>
         </div>
     </div>`;
 };
@@ -161,6 +260,18 @@ export const CARTAO_ESTILOS = `
     .cp-feriado { background: #e3e8f5; color: #2b3f7a; }
     .cp-folga { background: #eeeeee; color: #666; }
     .cp-futuro { background: #f7f7f7; color: #999; }
+
+    /* Recibo do prestador (folha própria, mais arejada) */
+    .cp-recibo .rc-titulo { display: flex; align-items: baseline; justify-content: space-between; margin: 6mm 0 2mm; }
+    .cp-recibo .rc-titulo h1 { font-size: 24pt; font-weight: 800; margin: 0; color: #111; }
+    .cp-recibo .rc-valor { font-size: 22pt; font-weight: 500; color: #777; white-space: nowrap; }
+    .cp-recibo .rc-valor span { font-size: 12pt; margin-right: 1mm; }
+    .cp-recibo .rc-dash { border-top: 1.2pt dashed #999; margin: 3mm 0 9mm; }
+    .cp-recibo .rc-texto { font-size: 11.5pt; line-height: 1.6; margin: 0 0 7mm; }
+    .cp-recibo .cp-data { font-size: 11pt; margin: 14mm 0 16mm; }
+    .cp-recibo .cp-nome { font-size: 11pt; }
+    .cp-recibo .cp-doc { font-size: 10pt; }
+    .cp-recibo .cp-linha { width: 70%; }
 
     .cp-declaracao { font-size: 7.5pt; line-height: 1.4; margin: 3mm 0 0; }
     .cp-data { text-align: center; font-size: 7.5pt; margin: 2mm 0 6mm; }
@@ -211,6 +322,9 @@ const imprimirNaPagina = (corpoHtml) => {
 
 /** Imprime a folha de ponto de UM funcionário (só o ponto — sem valores da folha). */
 export const imprimirCartaoPonto = (cartao) => imprimirNaPagina(montarCartaoHtml(cartao));
+
+/** Imprime o recibo de prestação de serviços (prestador por hora). */
+export const imprimirReciboPrestador = (cartao) => imprimirNaPagina(montarReciboHtml(cartao));
 
 /** Imprime várias folhas de ponto — uma por folha de papel. */
 export const imprimirCartoesLote = (cartoes) =>

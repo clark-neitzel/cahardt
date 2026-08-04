@@ -197,6 +197,13 @@ const funcionarioController = {
                 data.divisorHoras = !dv || dv < 1 ? 220 : dv;
             }
             if (descontarDsrFalta !== undefined) data.descontarDsrFalta = !!descontarDsrFalta;
+            if (req.body.tipoContrato !== undefined) {
+                data.tipoContrato = String(req.body.tipoContrato).toUpperCase() === 'PRESTADOR' ? 'PRESTADOR' : 'CLT';
+            }
+            if (req.body.valorHora !== undefined) {
+                const v = Number(String(req.body.valorHora).replace(/\./g, '').replace(',', '.'));
+                data.valorHora = isNaN(v) ? 0 : Math.max(0, v);
+            }
             if (registraPontoEm !== undefined) {
                 const m = String(registraPontoEm).toUpperCase();
                 data.registraPontoEm = ['APP', 'RELOGIO', 'NAO_REGISTRA'].includes(m) ? m : 'APP';

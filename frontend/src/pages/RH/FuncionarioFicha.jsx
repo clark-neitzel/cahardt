@@ -6,7 +6,7 @@ import funcionarioService from '../../services/funcionarioService';
 import configService from '../../services/configService';
 import SelectBusca from '../../components/SelectBusca';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
-import { imprimirCartaoPonto } from './imprimirCartaoPonto';
+import { imprimirCartaoPonto, imprimirReciboPrestador } from './imprimirCartaoPonto';
 import { API_URL } from '../../services/api';
 
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -83,8 +83,10 @@ function AbaDados({ f, onSaved }) {
     percentualHoraExtra: f.percentualHoraExtra ?? 50, divisorHoras: f.divisorHoras ?? 220,
     descontarDsrFalta: f.descontarDsrFalta !== false,
     registraPontoEm: f.registraPontoEm || 'APP',
+    tipoContrato: f.tipoContrato || 'CLT', valorHora: f.valorHora ?? '',
     jornadaMovel: f.jornadaMovel, ativo: f.ativo
   });
+  const ehPrestador = form.tipoContrato === 'PRESTADOR';
   const [jornadas, setJornadas] = useState(() => {
     const map = {};
     (f.jornadas || []).forEach(j => { map[j.diaSemana] = j; });
@@ -140,15 +142,33 @@ function AbaDados({ f, onSaved }) {
     <div className="space-y-5">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <label className="block"><span className="text-sm font-medium text-gray-700">Cargo</span><input value={form.cargo} onChange={set('cargo')} className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" /></label>
-        <label className="block"><span className="text-sm font-medium text-gray-700">Salário mensal (R$)</span>
-          <input inputMode="decimal" value={form.salario} onChange={set('salario')} placeholder="0,00" className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
-          <span className="text-xs text-gray-500">Base do cálculo da folha: valor da hora = salário ÷ {form.divisorHoras || 220}; valor do dia = salário ÷ 30.</span>
-        </label>
-        <label className="block"><span className="text-sm font-medium text-gray-700">Hora extra</span>
-          <SelectBusca value={form.tipoHoraExtra} onChange={set('tipoHoraExtra')} className="mt-1 w-full">
-            <option value="BANCO">Banco de horas</option><option value="PAGA">Hora extra paga</option>
+        <label className="block"><span className="text-sm font-medium text-gray-700">Tipo de contrato</span>
+          <SelectBusca value={form.tipoContrato} onChange={set('tipoContrato')} className="mt-1 w-full">
+            <option value="CLT">Funcionário (CLT)</option>
+            <option value="PRESTADOR">Prestador (por hora)</option>
           </SelectBusca>
+          <span className="text-xs text-gray-500">
+            {ehPrestador ? 'Sem jornada, falta ou DSR: paga-se só as horas prestadas.' : 'Salário mensal, jornada, faltas e DSR.'}
+          </span>
         </label>
+        {ehPrestador ? (
+          <label className="block"><span className="text-sm font-medium text-gray-700">Valor da hora (R$)</span>
+            <input inputMode="decimal" value={form.valorHora} onChange={set('valorHora')} placeholder="0,00" className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+            <span className="text-xs text-gray-500">O total do período é horas prestadas × este valor (minuto exato).</span>
+          </label>
+        ) : (
+          <label className="block"><span className="text-sm font-medium text-gray-700">Salário mensal (R$)</span>
+            <input inputMode="decimal" value={form.salario} onChange={set('salario')} placeholder="0,00" className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
+            <span className="text-xs text-gray-500">Base do cálculo da folha: valor da hora = salário ÷ {form.divisorHoras || 220}; valor do dia = salário ÷ 30.</span>
+          </label>
+        )}
+        {!ehPrestador && (
+          <label className="block"><span className="text-sm font-medium text-gray-700">Hora extra</span>
+            <SelectBusca value={form.tipoHoraExtra} onChange={set('tipoHoraExtra')} className="mt-1 w-full">
+              <option value="BANCO">Banco de horas</option><option value="PAGA">Hora extra paga</option>
+            </SelectBusca>
+          </label>
+        )}
       </div>
 
       <label className="block max-w-md"><span className="text-sm font-medium text-gray-700">Como registra o ponto</span>
@@ -166,8 +186,8 @@ function AbaDados({ f, onSaved }) {
         </span>
       </label>
 
-      {/* parâmetros do cálculo da folha */}
-      <div className="border border-gray-200 rounded-lg">
+      {/* parâmetros do cálculo da folha — só fazem sentido para CLT */}
+      <div className={`border border-gray-200 rounded-lg ${ehPrestador ? 'hidden' : ''}`}>
         <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border-b border-gray-100">
           <DollarSign className="h-4 w-4 text-blue-600" />
           <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Cálculo da folha</span>
@@ -188,8 +208,8 @@ function AbaDados({ f, onSaved }) {
         </div>
       </div>
 
-      {/* escala */}
-      <div className="border border-gray-200 rounded-lg">
+      {/* escala — prestador não tem jornada prevista */}
+      <div className={`border border-gray-200 rounded-lg ${ehPrestador ? 'hidden' : ''}`}>
         <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-100">
           <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Escala semanal</span>
           <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
@@ -448,6 +468,7 @@ function AbaCartao({ f }) {
 
   const primeiroDia = periodo.de || `${mesAtual()}-01`;
   const dias = cartao?.linhas || [];
+  const prestador = cartao?.folha?.modo === 'PRESTADOR';
 
   // Clique com Shift pega o intervalo inteiro desde o último dia clicado
   const alternarDia = (data, comShift) => {
@@ -476,8 +497,18 @@ function AbaCartao({ f }) {
             className="flex-1 md:flex-none px-3 py-2 min-h-[40px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-semibold inline-flex items-center justify-center gap-1 disabled:opacity-50"
             title="Imprime a folha de ponto do período (uma folha A4, para o funcionário assinar)"
           >
-            <Printer className="h-4 w-4" /> Imprimir ponto
+            <Printer className="h-4 w-4" /> {prestador ? 'Imprimir horas' : 'Imprimir ponto'}
           </button>
+          {prestador && (
+            <button
+              onClick={() => cartao && imprimirReciboPrestador(cartao)}
+              disabled={!cartao}
+              className="flex-1 md:flex-none px-3 py-2 min-h-[40px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-semibold inline-flex items-center justify-center gap-1 disabled:opacity-50"
+              title="Recibo de prestação de serviços, com o valor por extenso"
+            >
+              <Printer className="h-4 w-4" /> Recibo
+            </button>
+          )}
           <button onClick={() => setModal('novo')} className="flex-1 md:flex-none px-3 py-2 min-h-[40px] bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold inline-flex items-center justify-center gap-1">
             <Plus className="h-4 w-4" /> Adicionar batida
           </button>
@@ -486,13 +517,21 @@ function AbaCartao({ f }) {
 
       {carregando ? <div className="py-10 text-center"><Loader2 className="h-6 w-6 text-blue-600 animate-spin mx-auto" /></div> : cartao && (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3 mb-4">
-            <Kpi v={cartao.resumo.trabalhado} l="Trabalhadas" />
-            <Kpi v={cartao.resumo.previsto} l="Previsto" />
-            <Kpi v={cartao.resumo.saldo} l="Banco de horas" cor={cartao.resumo.saldoMin >= 0 ? 'text-green-600' : 'text-red-600'} />
-            <Kpi v={cartao.resumo.extra} l="Hora extra" cor="text-amber-600" />
-            <Kpi v={String(cartao.resumo.faltas)} l="Faltas" cor={cartao.resumo.faltas ? 'text-red-600' : 'text-gray-900'} />
-          </div>
+          {prestador ? (
+            <div className="grid grid-cols-3 gap-2 md:gap-3 mb-4">
+              <Kpi v={cartao.resumo.trabalhado} l="Horas prestadas" />
+              <Kpi v={String(cartao.resumo.diasTrabalhados)} l="Dias com serviço" />
+              <Kpi v={moeda(cartao.folha.valorHora)} l="Valor da hora" cor="text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3 mb-4">
+              <Kpi v={cartao.resumo.trabalhado} l="Trabalhadas" />
+              <Kpi v={cartao.resumo.previsto} l="Previsto" />
+              <Kpi v={cartao.resumo.saldo} l="Banco de horas" cor={cartao.resumo.saldoMin >= 0 ? 'text-green-600' : 'text-red-600'} />
+              <Kpi v={cartao.resumo.extra} l="Hora extra" cor="text-amber-600" />
+              <Kpi v={String(cartao.resumo.faltas)} l="Faltas" cor={cartao.resumo.faltas ? 'text-red-600' : 'text-gray-900'} />
+            </div>
+          )}
 
           <BarraSelecao
             funcionarioId={f.id}
@@ -538,9 +577,18 @@ function AbaCartao({ f }) {
                 </th>
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Dia</th>
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Batidas</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Previsto</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Trabalhado</th>
-                <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Saldo</th>
+                {prestador ? (
+                  <>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Horas</th>
+                    <th className="px-3 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor do dia</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Previsto</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Trabalhado</th>
+                    <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Saldo</th>
+                  </>
+                )}
                 <th className="px-3 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Situação</th>
               </tr></thead>
               <tbody className="bg-white divide-y divide-gray-200 text-sm">
@@ -558,9 +606,18 @@ function AbaCartao({ f }) {
                     </td>
                     <td className="px-3 py-2.5 font-medium capitalize whitespace-nowrap">{rotuloDia(l.data)}</td>
                     <td className="px-3 py-2.5"><Batidas linha={l} onEditar={(b) => setModal({ ...b, data: l.data })} /></td>
-                    <td className="px-3 py-2.5 tabular-nums">{l.previsto}</td>
-                    <td className="px-3 py-2.5 tabular-nums font-semibold">{l.trabalhado}</td>
-                    <td className={`px-3 py-2.5 tabular-nums font-semibold ${l.saldoMin > 0 ? 'text-green-700' : l.saldoMin < 0 ? 'text-red-700' : 'text-gray-500'}`}>{l.saldo}</td>
+                    {prestador ? (
+                      <>
+                        <td className="px-3 py-2.5 tabular-nums font-semibold">{l.trabalhado}</td>
+                        <td className="px-3 py-2.5 tabular-nums text-right">{l.batidas.length ? moeda(l.valorDia) : '—'}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-3 py-2.5 tabular-nums">{l.previsto}</td>
+                        <td className="px-3 py-2.5 tabular-nums font-semibold">{l.trabalhado}</td>
+                        <td className={`px-3 py-2.5 tabular-nums font-semibold ${l.saldoMin > 0 ? 'text-green-700' : l.saldoMin < 0 ? 'text-red-700' : 'text-gray-500'}`}>{l.saldo}</td>
+                      </>
+                    )}
                     <td className="px-3 py-2.5">
                       <button
                         onClick={() => setModalDia(l)}
@@ -717,10 +774,12 @@ function PainelFolha({ f, cartao, onSaved }) {
     <div className="mt-5 bg-white rounded-xl border border-gray-200 shadow-sm">
       <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
         <DollarSign className="h-4 w-4 text-blue-600" />
-        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Folha do período</span>
+        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">
+          {fo.modo === 'PRESTADOR' ? 'Fechamento do prestador' : 'Folha do período'}
+        </span>
       </div>
       <div className="p-5">
-        {!fo.mesCheio && (
+        {fo.modo !== 'PRESTADOR' && !fo.mesCheio && (
           <p className="mb-4 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">
             O período escolhido não fecha um mês inteiro. O salário base entra cheio mesmo assim — use “Este mês” para o fechamento da folha.
           </p>
@@ -739,6 +798,22 @@ function PainelFolha({ f, cartao, onSaved }) {
           </p>
         )}
 
+        {/* Prestador: horas × valor da hora, e nada mais */}
+        {fo.modo === 'PRESTADOR' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500 border-b border-gray-200 pb-1.5 mb-1">A receber</p>
+              <LinhaFolha rotulo={`Horas prestadas (${fo.horas})`} detalhe={`${fo.diasComServico} dia(s) · hora ${moeda(fo.valorHora)}`} valor={fo.valorHoras} />
+              <LinhaFolha rotulo="Outros valores" valor={fo.outrosProventos} detalhe="material, deslocamento…" />
+              <LinhaFolha rotulo="Total" valor={fo.totalProventos} forte />
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-500 border-b border-gray-200 pb-1.5 mb-1">Descontos</p>
+              <LinhaFolha rotulo="Descontos" valor={fo.outrosDescontos} detalhe={fo.obsAjuste || 'adiantamento…'} negativo />
+              <LinhaFolha rotulo="Total de descontos" valor={fo.totalDescontos} forte negativo />
+            </div>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Proventos */}
           <div>
@@ -763,12 +838,17 @@ function PainelFolha({ f, cartao, onSaved }) {
             <LinhaFolha rotulo="Total de descontos" valor={fo.totalDescontos} forte negativo />
           </div>
         </div>
+        )}
 
         <div className="mt-4 flex items-center justify-between bg-mint/40 border border-primary/30 rounded-xl px-4 py-3">
           <span className="text-xs font-bold uppercase tracking-widest text-primaryDark">Total a pagar</span>
           <span className="text-2xl font-bold tabular-nums text-primaryDark">{moeda(fo.liquido)}</span>
         </div>
-        <p className="mt-1.5 text-xs text-gray-500">Valor bruto: não inclui INSS, IRRF, FGTS nem vale-transporte — esses ficam com a contabilidade.</p>
+        <p className="mt-1.5 text-xs text-gray-500">
+          {fo.modo === 'PRESTADOR'
+            ? 'Prestador: horas × valor da hora, no minuto exato. Retenções (ISS, INSS) ficam com a contabilidade.'
+            : 'Valor bruto: não inclui INSS, IRRF, FGTS nem vale-transporte — esses ficam com a contabilidade.'}
+        </p>
 
         {/* Ajustes manuais */}
         <div className="mt-4 border-t border-gray-100 pt-4 grid grid-cols-1 md:grid-cols-4 gap-3">

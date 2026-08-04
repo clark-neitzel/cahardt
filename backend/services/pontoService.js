@@ -316,6 +316,7 @@ const ROTULO_SITUACAO = {
     FUTURO: 'A cumprir',        // dia de hoje ainda em aberto ou dia futuro do período
     AGUARDANDO: 'Aguardando importação', // bate no relógio e o arquivo ainda não entrou
     SEM_CONTROLE: 'Sem controle de ponto',
+    SEM_SERVICO: 'Sem serviço',          // prestador: dia em que não prestou serviço
     SEM_VINCULO: 'Fora do contrato'
 };
 
@@ -356,6 +357,7 @@ const montarCartao = async (funcionarioId, filtro) => {
     }
     if (de > ate) { const t = de; de = ate; ate = t; }
 
+    const ehPrestador = funcionario.tipoContrato === 'PRESTADOR';
     const hoje = getDataReferencia();
     const admissao = funcionario.dataAdmissao ? getDataReferencia(funcionario.dataAdmissao) : null;
     const demissao = funcionario.dataDemissao ? getDataReferencia(funcionario.dataDemissao) : null;
@@ -412,6 +414,8 @@ const montarCartao = async (funcionarioId, filtro) => {
         // Situação do dia — a marcação manual do RH manda em tudo
         let situacao;
         if (foraDoContrato) situacao = 'SEM_VINCULO';
+        // Prestador por hora: não tem jornada, falta nem DSR — só prestou ou não prestou
+        else if (ehPrestador) situacao = batidas.length ? 'TRABALHADO' : 'SEM_SERVICO';
         else if (ocor && TIPOS_MARCACAO.includes(ocor.tipo)) situacao = ocor.tipo;
         else if (feriadoNome) situacao = 'FERIADO';
         else if (diasAtestado.has(d)) situacao = 'ATESTADO';
@@ -430,10 +434,12 @@ const montarCartao = async (funcionarioId, filtro) => {
 
         // Carga que o dia exigia (mostrada na coluna "Previsto"): só nos dias em que
         // ele devia trabalhar — feriado, abono e folga não exigem nada.
-        const cargaExigida = ['TRABALHADO', 'FALTA', 'FUTURO', 'AGUARDANDO'].includes(situacao) ? cargaEscala : 0;
+        // Prestador não tem carga prevista: tudo o que ele bate é serviço prestado
+        const cargaExigida = ehPrestador ? 0
+            : (['TRABALHADO', 'FALTA', 'FUTURO', 'AGUARDANDO'].includes(situacao) ? cargaEscala : 0);
         // Já o SALDO (banco de horas) só desconta a carga do dia efetivamente trabalhado:
         // falta não vira hora negativa — ela é descontada em dinheiro na folha.
-        const previsto = situacao === 'TRABALHADO' ? cargaEscala : 0;
+        const previsto = (!ehPrestador && situacao === 'TRABALHADO') ? cargaEscala : 0;
         const saldo = trabalhado - previsto;
 
         // Sem janela móvel, marca atraso quando a 1ª batida passa da entrada prevista
@@ -489,6 +495,7 @@ const montarCartao = async (funcionarioId, filtro) => {
             trabalhado: batidas.length ? minToHM(trabalhado) : '—',
             saldoMin: saldo,
             saldo: batidas.length || previsto ? minToHM(saldo) : '—',
+            valorDia: ehPrestador ? cent((trabalhado / 60) * (Number(funcionario.valorHora) || 0)) : null,
             abonado: SITUACOES_ABONADAS.includes(situacao),
             atraso,
             folga: situacao === 'FOLGA' || situacao === 'COMPENSADO',
@@ -496,7 +503,61 @@ const montarCartao = async (funcionarioId, filtro) => {
         };
     });
 
-    // ── Folha do período ─────────────────────────────────────────────────────
+    // ── Fechamento do PRESTADOR: horas × valor da hora, e nada mais ──────────
+    const outrosProventosAj = Number(ajuste?.outrosProventos || 0);
+    const outrosDescontosAj = Number(ajuste?.outrosDescontos || 0);
+
+    if (ehPrestador) {
+        const valorHora = Number(funcionario.valorHora) || 0;
+        const valorHoras = (trabalhadoTotal / 60) * valorHora;
+        const totalProventosP = valorHoras + outrosProventosAj;
+        const liquidoP = totalProventosP - outrosDescontosAj;
+
+        return {
+            funcionario: {
+                id: funcionario.id,
+                nome: funcionario.nome,
+                cargo: funcionario.cargo || '',
+                cpf: funcionario.cpf || '',
+                dataAdmissao: funcionario.dataAdmissao,
+                tipoContrato: 'PRESTADOR',
+                valorHora: cent(valorHora),
+                registraPontoEm: funcionario.registraPontoEm
+            },
+            periodo: { de, ate, mesCheio: false },
+            mes: de.slice(0, 7),
+            resumo: {
+                trabalhadoMin: trabalhadoTotal,
+                trabalhado: minToHM(trabalhadoTotal),
+                previstoMin: 0, previsto: '—',
+                saldoMin: 0, saldo: '—',
+                extraMin: 0, extra: '—',
+                negativoMin: 0, negativo: '—',
+                extraValor: 0,
+                faltas: 0,
+                diasTrabalhados,
+                diasUteis: 0, diasRepouso: 0,
+                diasFerias: 0, diasAtestado: 0, diasAbonados: 0, diasAguardando: 0
+            },
+            folha: {
+                modo: 'PRESTADOR',
+                valorHora: cent(valorHora),
+                horasMin: trabalhadoTotal,
+                horas: minToHM(trabalhadoTotal),
+                diasComServico: diasTrabalhados,
+                valorHoras: cent(valorHoras),
+                outrosProventos: cent(outrosProventosAj),
+                outrosDescontos: cent(outrosDescontosAj),
+                obsAjuste: ajuste?.obs || '',
+                totalProventos: cent(totalProventosP),
+                totalDescontos: cent(outrosDescontosAj),
+                liquido: cent(liquidoP)
+            },
+            linhas
+        };
+    }
+
+    // ── Folha do período (CLT) ───────────────────────────────────────────────
     const salario = Number(funcionario.salario) || 0;
     const divisor = Number(funcionario.divisorHoras) || 220;
     const percHE = Number(funcionario.percentualHoraExtra ?? 50);
@@ -512,8 +573,8 @@ const montarCartao = async (funcionarioId, filtro) => {
     const descontoFaltas = faltas * valorDia;
     const descontoDsr = dsrPerdidos * valorDia;
 
-    const outrosProventos = Number(ajuste?.outrosProventos || 0);
-    const outrosDescontos = Number(ajuste?.outrosDescontos || 0);
+    const outrosProventos = outrosProventosAj;
+    const outrosDescontos = outrosDescontosAj;
 
     const totalProventos = salario + valorHoraExtra + dsrSobreExtra + outrosProventos;
     const totalDescontos = descontoFaltas + descontoDsr + outrosDescontos;
@@ -532,6 +593,7 @@ const montarCartao = async (funcionarioId, filtro) => {
             dataAdmissao: funcionario.dataAdmissao,
             salario: cent(salario),
             registraPontoEm: funcionario.registraPontoEm,
+            tipoContrato: 'CLT',
             tipoHoraExtra: funcionario.tipoHoraExtra,
             percentualHoraExtra: percHE,
             divisorHoras: divisor,
@@ -561,6 +623,7 @@ const montarCartao = async (funcionarioId, filtro) => {
             diasAguardando
         },
         folha: {
+            modo: 'CLT',
             salarioBase: cent(salario),
             valorHora: cent(valorHora),
             valorDia: cent(valorDia),

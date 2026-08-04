@@ -804,6 +804,10 @@ model Funcionario {
   tipoHoraExtra String  @default("BANCO") @map("tipo_hora_extra") // BANCO | PAGA
   jornadaMovel  Boolean @default(true) @map("jornada_movel") // desloca mantendo a carga
 
+  // CLT = salário mensal, jornada, falta, DSR · PRESTADOR = só horas × valor da hora
+  tipoContrato String  @default("CLT") @map("tipo_contrato")
+  valorHora    Decimal @default(0) @map("valor_hora") @db.Decimal(10, 2)
+
   // Parâmetros do cálculo da folha
   percentualHoraExtra Decimal @default(50) @map("percentual_hora_extra") @db.Decimal(5, 2) // adicional da hora extra (%)
   divisorHoras        Int     @default(220) @map("divisor_horas") // divisor do salário p/ achar o valor da hora
