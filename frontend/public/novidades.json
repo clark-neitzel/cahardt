@@ -1,5 +1,11 @@
 [
   {
+    "slug": "cancelar-pedido",
+    "titulo": "Cancelar pedido",
+    "resumo": "Cliente com CNPJ baixado, desistência ou pedido lançado errado? Agora dá para cancelar o pedido: ele sai da fila de faturamento, nunca mais tenta emitir NF-e, devolve o estoque e cancela a cobrança — e continua no histórico com o motivo. Só enquanto a nota não foi emitida.",
+    "data": "2026-08-04"
+  },
+  {
     "slug": "ponto-folha",
     "titulo": "Cartão de ponto + folha",
     "resumo": "Todos os dias do período aparecem no cartão de ponto, inclusive fim de semana: quem não veio fica como falta, sábado é compensado. Dá para marcar vários dias de uma vez (férias, atestado, folga), imprimir a folha de ponto do mês em uma folha A4 e o app já calcula hora extra, DSR, desconto de falta e o total a pagar.",

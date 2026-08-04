@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: cancelar pedido que não vira venda — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp -->
+<meta property="og:title" content="🚫 Novidade no Hardt App: cancelar pedido que não vai virar venda">
+<meta property="og:description" content="Cliente com CNPJ baixado, desistência, pedido lançado errado? Agora dá para cancelar o pedido: ele sai da fila de faturamento, trava a NF-e, devolve o estoque e cancela a cobrança — sem sumir do histórico.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --cream: #f2f0eb; --gold: #cba258;
+    --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); line-height:1.55;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased; font-variant-numeric: tabular-nums; }
+  .wrap { max-width:620px; margin:0 auto; padding:0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background:linear-gradient(168deg, var(--house) 0%, #16302a 100%); color:#fff;
+    padding:40px 16px 96px; text-align:center; }
+  .hero .chip { display:inline-block; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);
+    color:#d4e9e2; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+    border-radius:999px; padding:6px 14px; margin-bottom:14px; }
+  .hero h1 { font-size:28px; margin:0 0 10px; font-weight:800; }
+  .hero p { color:#c8d6d0; max-width:470px; margin:0 auto; font-size:15.5px; }
+
+  .cartao { background:#fff; border:1px solid #e5e7eb; border-radius:16px;
+    box-shadow:0 8px 24px rgba(30,57,50,.10); padding:20px; margin-top:-64px; }
+  .cartao + .cartao, .sec { margin-top:16px; }
+  .sec-titulo { font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+
+  /* ── ACCORDION (sempre abertos) ── */
+  details { background:#fff; border:1px solid #e5e7eb; border-radius:14px; margin-top:10px; overflow:hidden; }
+  summary { list-style:none; cursor:pointer; padding:15px 18px; font-weight:800; font-size:15px; color:var(--house);
+    display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  summary::-webkit-details-marker { display:none; }
+  summary .mais { color:var(--primary); font-size:20px; font-weight:800; transition:transform .2s; flex:none; }
+  details[open] summary .mais { transform:rotate(45deg); }
+  .det-corpo { padding:0 18px 16px; font-size:14.5px; color:#3f4a46; }
+  .det-corpo b { color:var(--house); }
+  .det-corpo ul { margin:8px 0 0; padding-left:20px; }
+  .det-corpo li { margin-top:6px; }
+
+  /* ── PASSOS ── */
+  .passo { display:flex; gap:12px; margin-top:14px; }
+  .passo .num { flex:none; width:28px; height:28px; border-radius:999px; background:var(--primary); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+  .passo p { margin:3px 0 0; font-size:14.5px; color:#3f4a46; }
+  .passo b { color:var(--house); }
+  .rodape { text-align:center; color:var(--ink-soft); font-size:12.5px; margin-top:34px; }
+
+  /* ── MOCKUP DA TELA ── */
+  .tela { background:#f7f6f2; border:1px solid #e5e7eb; border-radius:14px; padding:14px; margin-top:12px; }
+  .app-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px; }
+  .app-card + .app-card { margin-top:10px; }
+  .mock-label { font-size:9.5px; font-weight:800; color:#6b7280; text-transform:uppercase; letter-spacing:.05em; margin:0 0 4px; }
+  .mock-topo { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+  .mock-titulo { font-size:14px; font-weight:800; color:var(--house); }
+  .mock-sub { font-size:11.5px; color:#6b7280; margin-top:2px; }
+  .btn-verde { background:var(--primary); color:#fff; font-size:11.5px; font-weight:800;
+    border-radius:999px; padding:7px 13px; display:inline-block; white-space:nowrap; }
+  .btn-branco { background:#fff; border:1px solid #d1d5db; color:#374151; font-size:11.5px; font-weight:700;
+    border-radius:999px; padding:6px 12px; display:inline-block; white-space:nowrap; }
+  .btn-ambar { background:#fffbeb; border:1px solid #f59e0b; color:#b45309; font-size:11.5px; font-weight:800;
+    border-radius:999px; padding:6px 12px; display:inline-block; white-space:nowrap; }
+  .btn-vermelho { background:#fef2f2; border:1px solid #fecaca; color:#dc2626; font-size:11.5px; font-weight:800;
+    border-radius:999px; padding:6px 12px; display:inline-block; white-space:nowrap; }
+  .btn-ambar-cheio { background:#d97706; color:#fff; font-size:11.5px; font-weight:800;
+    border-radius:999px; padding:7px 13px; display:inline-block; }
+  .badge { font-size:10.5px; font-weight:800; border-radius:999px; padding:4px 9px; display:inline-block; white-space:nowrap; }
+  .b-verde { background:#dcfce7; color:#166534; }
+  .b-vermelho { background:#fee2e2; color:#b91c1c; }
+  .b-cinza { background:#f3f4f6; color:#374151; }
+  .linha-badges { display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:9px; }
+  .acoes { display:flex; gap:8px; justify-content:flex-start; margin-top:11px; flex-wrap:wrap; }
+
+  .trava { border:1px solid rgba(0,117,74,.25); background:var(--mint); border-radius:12px;
+    padding:11px 12px; margin-top:11px; font-size:12.5px; color:var(--primary-dark); position:relative; }
+  .trava b { color:var(--house); }
+  .aviso-vermelho { border:1px solid #fecaca; background:#fef2f2; border-radius:12px;
+    padding:11px 12px; margin-top:11px; font-size:12.5px; color:#991b1b; position:relative; }
+  .aviso-vermelho b { color:#7f1d1d; }
+  .aviso-ambar { border:1px solid #fcd34d; background:#fffbeb; border-radius:12px;
+    padding:11px 12px; margin-top:11px; font-size:12.5px; color:#92400e; position:relative; }
+  .aviso-ambar b { color:#78350f; }
+
+  /* caixinha de pergunta (prompt do navegador) */
+  .prompt-box { border:1px solid #d1d5db; background:#fff; border-radius:10px; padding:11px; margin-top:11px;
+    box-shadow:0 6px 18px rgba(0,0,0,.10); position:relative; }
+  .prompt-box .t { font-size:12.5px; color:#3f4a46; }
+  .prompt-box .campo-txt { border:1px solid #d1d5db; border-radius:7px; background:#f9fafb; padding:8px 9px;
+    font-size:12.5px; color:var(--house); font-weight:700; margin-top:9px; }
+
+  /* antes × depois */
+  .comparativo { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  .comparativo .col { flex:1; min-width:150px; border:1px solid #e5e7eb; border-radius:12px; padding:11px; background:#fff; }
+  .comparativo .col.erro { border-color:#fecaca; background:#fef2f2; }
+  .comparativo .col.ok { border-color:rgba(0,117,74,.3); background:#f0fdf4; }
+  .comparativo .cap { font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; color:#6b7280; }
+  .comparativo .big { font-size:16px; font-weight:800; color:var(--house); margin-top:4px; line-height:1.3; }
+  .comparativo .col.erro .big { color:#b91c1c; }
+  .comparativo .col.ok .big { color:var(--primary-dark); }
+  .comparativo .det { font-size:11.5px; color:#4b5563; margin-top:5px; }
+
+  .pin { position:absolute; top:50%; transform:translateY(-50%); right:-7px; width:22px; height:22px; border-radius:999px;
+    background:var(--gold); color:#fff; display:flex; align-items:center; justify-content:center;
+    font-size:12px; font-weight:800; box-shadow:0 2px 6px rgba(0,0,0,.25); z-index:5; }
+  .pin.topo { top:-9px; transform:none; }
+  .legenda { margin-top:14px; }
+  .legenda .item { display:flex; gap:10px; margin-top:9px; font-size:13.5px; color:#3f4a46; }
+  .legenda .item b { color:var(--house); }
+  .legenda .num { flex:none; width:22px; height:22px; border-radius:999px; background:var(--gold); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; margin-top:1px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="chip">✨ Novidade no app</span>
+  <h1>🚫 Cancelar pedido que não vai virar venda</h1>
+  <p>Cliente com <b>CNPJ baixado na Receita</b>, desistência, pedido lançado errado que já ganhou número? Agora dá para <b>cancelar</b> o pedido: ele para de cobrar faturamento, nunca mais tenta emitir NF-e — e continua no histórico.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao">
+    <p class="sec-titulo">😤 O problema</p>
+    <p style="margin:0; font-size:14.5px; color:#3f4a46">
+      Um pedido do dia 03/08 ficou <b>preso</b>: o CNPJ do cliente tinha sido baixado na Receita, a SEFAZ recusou a nota
+      (<i>"Destinatário bloqueado na UF"</i>) e não adiantava reemitir — nunca ia passar. Só que o pedido também
+      <b>não podia ser excluído</b> e continuava aparecendo no aviso de "pedidos a faturar", todo dia.
+    </p>
+    <div class="comparativo">
+      <div class="col erro">
+        <div class="cap">Antes</div>
+        <div class="big">Pedido travado</div>
+        <div class="det">Excluir dava erro. A nota rejeitada ficava grudada no pedido, e ele seguia cobrando faturamento para sempre.</div>
+      </div>
+      <div class="col ok">
+        <div class="cap">Agora</div>
+        <div class="big">Cancelar em 2 cliques</div>
+        <div class="det">O pedido some da fila, trava a NF-e, devolve o estoque e cancela a cobrança — e fica registrado no histórico.</div>
+      </div>
+    </div>
+    <div class="trava" style="margin-top:12px">
+      <b>Cancelar não é o mesmo que excluir.</b> Excluir apaga o pedido de vez.
+      Cancelar <b>mantém o pedido na lista</b>, com a tarja vermelha CANCELADO, o motivo e o nome de quem cancelou —
+      o número da venda continua reservado e ninguém fica sem saber o que aconteceu.
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">📱 Tela 1 — o botão novo, na lista de Pedidos</p>
+    <div class="tela">
+      <div class="app-card">
+        <div class="mock-topo">
+          <div>
+            <span class="mock-titulo">#2428 &nbsp; BETE DOCES</span>
+            <div class="mock-sub">Entrega: 04/08/2026 · Criação: 03/08/2026 16:18 · por: Leticia Piske</div>
+          </div>
+          <span class="mock-titulo">R$ 349,31</span>
+        </div>
+        <div class="linha-badges">
+          <span class="badge b-verde">RECEBIDO</span>
+          <span style="flex:1"></span>
+          <span class="btn-branco">💬 WhatsApp</span>
+          <span class="btn-branco">PIX</span>
+          <span style="position:relative"><span class="btn-ambar">🚫 Cancelar</span><span class="pin">1</span></span>
+          <span style="position:relative"><span class="btn-vermelho">🗑 Excluir</span><span class="pin">2</span></span>
+          <span class="btn-branco">Detalhes</span>
+        </div>
+      </div>
+
+      <div class="app-card">
+        <div class="mock-topo">
+          <div>
+            <span class="mock-titulo">#2428 &nbsp; BETE DOCES</span>
+            <div class="mock-sub">Entrega: 04/08/2026 · Criação: 03/08/2026 16:18 · por: Leticia Piske</div>
+          </div>
+          <span class="mock-titulo">R$ 349,31</span>
+        </div>
+        <div class="linha-badges">
+          <span style="position:relative"><span class="badge b-vermelho">🚫 CANCELADO</span><span class="pin">3</span></span>
+          <span class="badge b-verde">RECEBIDO</span>
+          <span style="flex:1"></span>
+          <span style="position:relative"><span class="btn-branco">Detalhes</span><span class="pin">4</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span><b>Pílula âmbar "Cancelar"</b> — o botão novo. Só aparece em pedido <b>sem NF-e emitida</b>, fora de carga e ainda não entregue.</span></div>
+      <div class="item"><span class="num">2</span><span><b>"Excluir" continua existindo</b> para apagar de vez — e agora funciona também em pedido cuja nota foi rejeitada (antes dava erro).</span></div>
+      <div class="item"><span class="num">3</span><span><b>Tarja CANCELADO</b> na linha. Passando o mouse aparece a data e o motivo. O pedido não some da lista.</span></div>
+      <div class="item"><span class="num">4</span><span><b>Os botões de cobrança somem</b> (PIX, boleto Asaas) — ninguém gera cobrança de um pedido cancelado por engano.</span></div>
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">📱 Tela 2 — perguntando o motivo</p>
+    <div class="tela">
+      <div class="app-card">
+        <div class="prompt-box">
+          <span class="pin topo">1</span>
+          <div class="t">
+            <b>Cancelar o pedido #2428 de BETE DOCES?</b><br><br>
+            O pedido continua no histórico, mas sai da fila de faturamento e não vai mais emitir NF-e.<br><br>
+            Motivo do cancelamento:
+          </div>
+          <div class="campo-txt" style="position:relative">CNPJ baixado na Receita — nota rejeitada<span class="pin">2</span></div>
+          <div class="acoes">
+            <span class="btn-verde">OK</span>
+            <span class="btn-branco">Cancelar</span>
+          </div>
+        </div>
+
+        <div class="aviso-vermelho" style="margin-top:14px">
+          <span class="pin topo">3</span>
+          <b>🚫 Pedido cancelado</b><br>
+          Não entra mais na fila de faturamento e não pode emitir NF-e.
+          Cancelado em 04/08/2026 09:12 por Clarkson.<br>
+          <b>Motivo:</b> CNPJ baixado na Receita — nota rejeitada
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span><b>O app pergunta antes</b> — e explica o que vai acontecer. Clicar em "Cancelar" nessa caixinha <b>desiste</b> da operação; nada é alterado.</span></div>
+      <div class="item"><span class="num">2</span><span><b>O motivo é digitado por você</b> e fica gravado no pedido e no log de auditoria. Daqui a seis meses ainda dá para saber por que aquele pedido não virou venda.</span></div>
+      <div class="item"><span class="num">3</span><span><b>Nos Detalhes do pedido</b> aparece a tarja vermelha com data, quem cancelou e o motivo.</span></div>
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">📱 Tela 3 — cancelar direto da aba Notas Fiscais</p>
+    <div class="tela">
+      <div class="app-card">
+        <p class="mock-label">Financeiro → Notas Fiscais · fila de emissão</p>
+        <div class="mock-topo" style="margin-top:6px">
+          <div>
+            <span class="mock-titulo">2428 · BETE DOCES</span>
+            <div class="mock-sub">CNPJ 18.702.231/0001-02 · R$ 349,31</div>
+          </div>
+          <span class="badge b-vermelho">✕ Rejeitada</span>
+        </div>
+
+        <div class="aviso-vermelho" style="font-size:12px">
+          Rejeição: Destinatário bloqueado na UF
+          <div style="margin-top:6px; text-decoration:underline; font-weight:700">❓ O que fazer?</div>
+        </div>
+
+        <div class="acoes">
+          <span class="btn-verde">📨 Reemitir NF-e</span>
+          <span style="position:relative"><span class="btn-ambar">🚫 Cancelar pedido</span><span class="pin">1</span></span>
+        </div>
+
+        <div class="trava" style="margin-top:13px">
+          <span class="pin topo">2</span>
+          Depois de cancelar, o pedido <b>desaparece desta fila</b> — e se alguém tentar emitir a nota mesmo assim,
+          o app recusa: <i>"Pedido cancelado — não é possível emitir NF-e."</i>
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span><b>Botão "Cancelar pedido" ao lado do emitir</b> — é aqui que a rejeição aparece, então é aqui que se resolve, sem precisar ir até a aba Pedidos.</span></div>
+      <div class="item"><span class="num">2</span><span><b>A trava vale para sempre:</b> pedido cancelado nunca mais tenta emitir nota, nem por engano, nem na emissão em lote.</span></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <p class="sec-titulo">❓ Perguntas rápidas</p>
+
+    <details open class="acc aberto">
+      <summary>O que exatamente o cancelamento faz? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        <ul>
+          <li><b>Sai da fila de faturamento</b> — para de aparecer no aviso de pedidos a faturar e na fila da aba Notas Fiscais.</li>
+          <li><b>Trava a NF-e</b> — qualquer tentativa de emitir a nota desse pedido é recusada.</li>
+          <li><b>Devolve o estoque</b> que o pedido tinha baixado.</li>
+          <li><b>Cancela a conta a receber</b> e as parcelas que estavam em aberto.</li>
+          <li><b>Cancela PIX/boleto do Asaas</b> que ainda estavam abertos — para o cliente não pagar um pedido cancelado.</li>
+          <li><b>Grava o motivo</b> e quem cancelou, no pedido e no log de auditoria.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details open class="acc aberto">
+      <summary>E se a NF-e já tiver sido emitida? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        <b>Aí não dá para cancelar o pedido</b> — e é de propósito. Se a nota já foi autorizada, o documento fiscal existe na SEFAZ:
+        o caminho certo é <b>cancelar a NF-e na SEFAZ</b> (dentro do prazo) ou registrar uma <b>devolução</b>, que gera a nota de devolução.
+        <br><br>
+        O app avisa com todas as letras: <i>"Não é possível cancelar: a NF-e deste pedido já foi emitida (nº 84xxx). Cancele a nota na SEFAZ ou emita uma devolução."</i>
+        <br><br>
+        O mesmo vale se a nota estiver <b>em processamento</b> — nesse caso é só esperar o retorno da SEFAZ e tentar de novo.
+      </div>
+    </details>
+
+    <details open class="acc aberto">
+      <summary>Quando o app NÃO deixa cancelar? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        Em cinco situações — e sempre explicando o que fazer:
+        <ul>
+          <li><b>NF-e já emitida</b> (autorizada ou processando, do app ou do Conta Azul) → cancelar na SEFAZ ou fazer devolução.</li>
+          <li><b>Conta a receber quitada</b> ou <b>parcela já paga</b> → estorne a baixa primeiro.</li>
+          <li><b>Cobrança Asaas já recebida</b> → o dinheiro entrou; devolva o valor antes.</li>
+          <li><b>Pedido numa carga/embarque</b> → tire da carga primeiro.</li>
+          <li><b>Pedido já entregue</b> → a mercadoria saiu; registre uma <b>devolução</b> em vez de cancelar.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details open class="acc aberto">
+      <summary>Cancelar ou excluir — qual eu uso? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        <ul>
+          <li><b>Excluir</b> apaga o pedido de vez. Bom para pedido lançado errado que ainda nem tinha número, ou duplicado.</li>
+          <li><b>Cancelar</b> mantém tudo registrado. Melhor quando o pedido <b>já ganhou número de venda</b>, já foi impresso ou já foi comentado com o cliente — o histórico continua contando a verdade.</li>
+        </ul>
+        Na dúvida, <b>cancele</b>: dá para excluir depois, mas não dá para "desexcluir".
+      </div>
+    </details>
+
+    <details open class="acc aberto">
+      <summary>Dá para desfazer um cancelamento? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        <b>Ainda não.</b> Se cancelou por engano, o caminho hoje é <b>lançar o pedido de novo</b> (ele vai pegar um número novo).
+        Por isso o app pergunta antes e pede o motivo.
+        <br><br>
+        Se isso acontecer com frequência, avise que a gente cria o "reabrir".
+      </div>
+    </details>
+
+    <details open class="acc aberto">
+      <summary>Quem pode cancelar? <span class="mais">+</span></summary>
+      <div class="det-corpo">
+        <b>Quem já podia excluir aquele tipo de pedido</b> — nenhuma permissão nova para configurar.
+        Pedido normal usa "Excluir Pedido", especial usa "Excluir Especial", bonificação usa "Excluir Bonificação".
+        Na aba Notas Fiscais, o botão aparece para quem tem "Excluir Pedido".
+      </div>
+    </details>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">🚀 Para começar a usar</p>
+    <div class="passo">
+      <span class="num">1</span>
+      <p>Na aba <b>Pedidos</b>, ache o pedido que não vai virar venda (ou vá em <b>Financeiro → Notas Fiscais</b>, se a nota foi rejeitada).</p>
+    </div>
+    <div class="passo">
+      <span class="num">2</span>
+      <p>Clique na pílula âmbar <b>Cancelar</b> (na aba Notas Fiscais o botão se chama <b>Cancelar pedido</b>).</p>
+    </div>
+    <div class="passo">
+      <span class="num">3</span>
+      <p>Escreva o <b>motivo</b> — ex.: "CNPJ baixado na Receita" — e confirme.</p>
+    </div>
+    <div class="passo">
+      <span class="num">4</span>
+      <p>Pronto. O pedido fica com a tarja <b>CANCELADO</b>, sai da fila de faturamento e não pede mais nota.</p>
+    </div>
+  </div>
+
+  <p class="rodape">Hardt App · Pedidos e Notas Fiscais · agosto de 2026</p>
+</div>
+
+</body>
+</html>
