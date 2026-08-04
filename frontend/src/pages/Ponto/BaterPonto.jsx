@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { Clock, ArrowRight, ArrowLeft, MapPin, AlertCircle, Loader2, Lock } from 'lucide-react';
-import { obterMeta, loginPonto, obterEstado, registrarPonto } from '../../services/pontoPublicoService';
+import { Clock, ArrowRight, ArrowLeft, MapPin, AlertCircle, Loader2, Lock, CheckCircle2, RefreshCw } from 'lucide-react';
+import { obterMeta, loginPonto, obterEstado, registrarPonto, corrigirUltima } from '../../services/pontoPublicoService';
 
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -17,10 +17,12 @@ export default function BaterPonto() {
   const [senha, setSenha] = useState('');
   const [entrando, setEntrando] = useState(false);
   const [erroSenha, setErroSenha] = useState(null);
-  const [registrando, setRegistrando] = useState(false);
+  const [registrando, setRegistrando] = useState(false);   // false | 'ENTRADA' | 'SAIDA'
   const [aviso, setAviso] = useState(null);
   const [agora, setAgora] = useState(new Date());
   const [mapaAberto, setMapaAberto] = useState(null);
+  const [confirmacao, setConfirmacao] = useState(null);    // batida recém-registrada
+  const [corrigindo, setCorrigindo] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setAgora(new Date()), 1000);
@@ -82,14 +84,15 @@ export default function BaterPonto() {
     }
   };
 
-  const bater = async () => {
-    setRegistrando(true);
+  // Registra a batida do tipo que a PESSOA escolheu (não é mais adivinhado)
+  const bater = async (tipo) => {
+    setRegistrando(tipo);
     setAviso(null);
     try {
       const latLng = await pegarLocalizacao();
-      const resp = await registrarPonto(token, sessao, latLng);
+      const resp = await registrarPonto(token, sessao, latLng, tipo);
       setEstado((prev) => ({ ...prev, ...resp }));
-      setAviso({ tipo: 'ok', texto: `Ponto registrado às ${resp.batida?.hora}` });
+      setConfirmacao(resp.batida);
     } catch (e) {
       if (e?.response?.status === 401) {
         salvarSessao('');
@@ -100,6 +103,22 @@ export default function BaterPonto() {
       }
     } finally {
       setRegistrando(false);
+    }
+  };
+
+  // "Não era isso?" — troca entrada↔saída da batida que acabou de registrar
+  const corrigir = async () => {
+    const oposto = confirmacao?.tipo === 'ENTRADA' ? 'SAIDA' : 'ENTRADA';
+    setCorrigindo(true);
+    try {
+      const resp = await corrigirUltima(token, sessao, oposto);
+      setEstado((prev) => ({ ...prev, ...resp }));
+      setConfirmacao(resp.batida);
+      setAviso({ tipo: 'ok', texto: 'Corrigido!' });
+    } catch (e) {
+      setAviso({ tipo: 'erro', texto: e?.response?.data?.erro || 'Não foi possível corrigir.' });
+    } finally {
+      setCorrigindo(false);
     }
   };
 
@@ -183,8 +202,56 @@ export default function BaterPonto() {
     );
   }
 
+  // ── Confirmação depois de bater ─────────────────────────────────────────────
+  if (confirmacao) {
+    const foiEntrada = confirmacao.tipo === 'ENTRADA';
+    const podeCorrigir = (estado.ultimaBatida?.minutosAtras ?? 99) <= (estado.minutosCorrigirUltima ?? 10);
+    return (
+      <Casca>
+        <div className="p-6 text-center">
+          <CheckCircle2 className={`h-14 w-14 mx-auto ${foiEntrada ? 'text-green-600' : 'text-orange-500'}`} />
+          <p className="mt-2 text-lg font-bold text-gray-900">{foiEntrada ? 'Entrada registrada' : 'Saída registrada'}</p>
+          <p className="text-4xl font-bold text-gray-900 tabular-nums tracking-tight mt-1">{confirmacao.hora}</p>
+          {confirmacao.dentroCerca != null && (
+            <p className="mt-1 text-xs text-gray-500 flex items-center justify-center gap-1">
+              <MapPin className="h-3.5 w-3.5" />
+              {confirmacao.dentroCerca ? 'na empresa' : 'fora da área'}
+              {confirmacao.distanciaMetros != null ? ` · ${confirmacao.distanciaMetros} m` : ''}
+            </p>
+          )}
+
+          <div className="mt-4 bg-mint/50 border border-primary/30 rounded-xl px-4 py-3">
+            <p className="text-xs text-gray-600">Total de hoje até agora</p>
+            <p className="text-2xl font-bold text-primaryDark tabular-nums">{estado.total}</p>
+          </div>
+
+          {aviso && <p className={`mt-2 text-xs font-semibold ${aviso.tipo === 'ok' ? 'text-green-700' : 'text-red-600'}`}>{aviso.texto}</p>}
+
+          {podeCorrigir && (
+            <button
+              onClick={corrigir}
+              disabled={corrigindo}
+              className="mt-4 w-full min-h-[48px] bg-white border border-gray-300 text-gray-700 rounded-xl font-semibold text-sm inline-flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {corrigindo ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Não era isso? Registrar como {foiEntrada ? 'saída' : 'entrada'}
+            </button>
+          )}
+
+          <button
+            onClick={() => { setConfirmacao(null); setAviso(null); }}
+            className="mt-2 w-full min-h-[52px] bg-primary hover:bg-primaryDark text-white rounded-xl font-bold"
+          >
+            OK
+          </button>
+        </div>
+      </Casca>
+    );
+  }
+
   // ── Tela de bater ponto ─────────────────────────────────────────────────────
   const dentro = estado.status === 'DENTRO';
+  const sugerido = estado.proximaAcao; // 'ENTRADA' | 'SAIDA'
   return (
     <Casca>
       <div className="px-5 pt-5 text-center">
@@ -205,27 +272,51 @@ export default function BaterPonto() {
         </div>
       </div>
 
-      <div className="p-5">
-        <button
-          onClick={bater}
-          disabled={registrando}
-          className={`w-full min-h-[64px] rounded-xl shadow-sm font-bold text-lg flex items-center justify-center gap-2 text-white disabled:opacity-60 ${dentro ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-blue-700'}`}
-        >
-          {registrando ? <Loader2 className="h-6 w-6 animate-spin" /> : (dentro ? <ArrowLeft className="h-6 w-6" /> : <ArrowRight className="h-6 w-6" />)}
-          {registrando ? 'Registrando…' : (dentro ? 'Registrar Saída' : 'Registrar Entrada')}
-        </button>
+      {/* Os DOIS botões sempre visíveis — o sugerido em destaque.
+          É o que impede o dia de inverter quando alguém esquece uma batida. */}
+      <div className="p-5 space-y-2">
+        {['ENTRADA', 'SAIDA'].sort((a) => (a === sugerido ? -1 : 1)).map((t) => {
+          const eEntrada = t === 'ENTRADA';
+          const destaque = t === sugerido;
+          return (
+            <button
+              key={t}
+              onClick={() => bater(t)}
+              disabled={!!registrando}
+              className={`w-full rounded-xl shadow-sm font-bold flex items-center justify-center gap-2 text-white disabled:opacity-60
+                ${destaque ? 'min-h-[64px] text-lg' : 'min-h-[54px] text-base opacity-95'}
+                ${eEntrada ? 'bg-primary hover:bg-primaryDark' : 'bg-orange-600 hover:bg-orange-700'}`}
+            >
+              {registrando === t
+                ? <Loader2 className="h-6 w-6 animate-spin" />
+                : (eEntrada ? <ArrowRight className="h-6 w-6" /> : <ArrowLeft className="h-6 w-6" />)}
+              {registrando === t ? 'Registrando…' : (eEntrada ? 'ENTRADA' : 'SAÍDA')}
+            </button>
+          );
+        })}
 
         {aviso ? (
-          <p className={`mt-2 text-center text-xs font-semibold ${aviso.tipo === 'ok' ? 'text-green-700' : 'text-red-600'}`}>{aviso.texto}</p>
+          <p className={`text-center text-xs font-semibold ${aviso.tipo === 'ok' ? 'text-green-700' : 'text-red-600'}`}>{aviso.texto}</p>
         ) : (
-          <p className="mt-2 text-center text-xs text-gray-400 flex items-center justify-center gap-1">
+          <p className="text-center text-xs text-gray-400 flex items-center justify-center gap-1">
             <MapPin className="h-3.5 w-3.5" /> Localização será registrada na batida
           </p>
         )}
       </div>
 
+      {/* Confere o dia: avisa na hora quando ficou estranho */}
+      {estado.alerta && (
+        <div className="mx-5 mb-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <p className="text-xs font-bold text-amber-900">⚠️ Confere o seu dia</p>
+          <p className="text-xs text-amber-800 mt-0.5">{estado.alerta.texto}</p>
+        </div>
+      )}
+
       <div className="border-t border-gray-100 px-5 py-4">
-        <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-3">Hoje</p>
+        <div className="flex items-baseline justify-between mb-3">
+          <p className="text-xs font-bold uppercase tracking-widest text-gray-500">Hoje</p>
+          <p className="text-xs text-gray-500">total <span className="font-bold text-gray-800 tabular-nums">{estado.total}</span></p>
+        </div>
         {estado.batidasHoje?.length ? (
           <ul className="space-y-2 text-sm">
             {estado.batidasHoje.map((b) => (

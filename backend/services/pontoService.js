@@ -85,24 +85,73 @@ const mapBatida = (b) => ({
 
 // ─── Status / batidas do dia ─────────────────────────────────────────────────
 
+// Minutos entre a última batida e agora
+const minutosDesde = (data) => Math.round((Date.now() - new Date(data).getTime()) / 60000);
+
+const minutosParaTexto = (min) => {
+    if (min < 60) return `${min} min`;
+    const h = Math.floor(min / 60), m = min % 60;
+    return m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`;
+};
+
+// Olha o dia e diz se tem algo estranho (o funcionário vê isso na tela do ponto).
+// É o que faz o erro aparecer no MESMO DIA em vez de só no fechamento.
+const conferirDia = (batidas) => {
+    if (!batidas.length) return null;
+    const ult = batidas[batidas.length - 1];
+    const penult = batidas.length > 1 ? batidas[batidas.length - 2] : null;
+    const desdeUlt = minutosDesde(ult.hora);
+
+    if (penult && penult.tipo === ult.tipo) {
+        const rot = ult.tipo === 'ENTRADA' ? 'entradas' : 'saídas';
+        return {
+            tipo: 'SEQUENCIA',
+            texto: `Você registrou duas ${rot} seguidas (${horaLocalHM(penult.hora)} e ${horaLocalHM(ult.hora)}). Faltou registrar a outra ponta?`
+        };
+    }
+    if (penult && Math.abs(new Date(ult.hora) - new Date(penult.hora)) < 2 * 60000) {
+        return {
+            tipo: 'DUPLICADA',
+            texto: `Duas batidas em menos de 2 minutos (${horaLocalHM(penult.hora)} e ${horaLocalHM(ult.hora)}). Se foi toque repetido, peça o acerto.`
+        };
+    }
+    if (batidas.length % 2 === 1 && desdeUlt >= 360) {
+        return {
+            tipo: 'ABERTO',
+            texto: `Você está com entrada às ${horaLocalHM(ult.hora)} sem saída há ${minutosParaTexto(desdeUlt)}. Se esqueceu de bater, peça o acerto.`
+        };
+    }
+    return null;
+};
+
 const statusDoDia = async (funcionarioId, dataRef) => {
     const ref = dataRef || getDataReferencia();
     const batidas = await prisma.pontoRegistro.findMany({
         where: { funcionarioId, dataReferencia: ref },
         orderBy: { hora: 'asc' }
     });
-    const dentro = batidas.length % 2 === 1; // ímpar = a última foi ENTRADA
+    const ultima = batidas.length ? batidas[batidas.length - 1] : null;
+    // O estado vem do TIPO da última batida (não da contagem) — se alguém
+    // esqueceu uma batida, o dia não fica invertido daqui pra frente.
+    const dentro = !!ultima && ultima.tipo === 'ENTRADA';
+    const trabalhadoMin = trabalhadoDasBatidas(batidas);
+
     return {
+        data: ref,
         status: dentro ? 'DENTRO' : 'FORA',
         proximaAcao: dentro ? 'SAIDA' : 'ENTRADA',
-        desde: dentro ? horaLocalHM(batidas[batidas.length - 1].hora) : null,
+        desde: dentro ? horaLocalHM(ultima.hora) : null,
+        totalMin: trabalhadoMin,
+        total: minToHM(trabalhadoMin),
+        alerta: conferirDia(batidas),
+        ultimaBatida: ultima ? { ...mapBatida(ultima), minutosAtras: minutosDesde(ultima.hora) } : null,
         batidasHoje: batidas.map(mapBatida)
     };
 };
 
 // ─── Registrar batida (link público) ─────────────────────────────────────────
 
-const registrarBatida = async (funcionario, { latLng, origem = 'LINK', ajustadoPor = null } = {}) => {
+const registrarBatida = async (funcionario, { latLng, origem = 'LINK', ajustadoPor = null, tipo = null } = {}) => {
     const ref = getDataReferencia();
     const geo = await getGeofence();
     const ponto = parseLatLng(latLng);
@@ -130,20 +179,71 @@ const registrarBatida = async (funcionario, { latLng, origem = 'LINK', ajustadoP
         dentroCerca = distanciaMetros != null ? distanciaMetros <= geo.raioMetros : null;
     }
 
-    const count = await prisma.pontoRegistro.count({ where: { funcionarioId: funcionario.id, dataReferencia: ref } });
-    const tipo = count % 2 === 0 ? 'ENTRADA' : 'SAIDA';
+    // O TIPO vem de quem bateu (a pessoa escolhe Entrada ou Saída na tela).
+    // Sem tipo informado (importação CSV antiga), cai na alternância pela ordem.
+    const doDia = await prisma.pontoRegistro.findMany({
+        where: { funcionarioId: funcionario.id, dataReferencia: ref },
+        orderBy: { hora: 'asc' }
+    });
+    const escolhido = String(tipo || '').toUpperCase();
+    const tipoFinal = escolhido === 'ENTRADA' || escolhido === 'SAIDA'
+        ? escolhido
+        : (doDia.length % 2 === 0 ? 'ENTRADA' : 'SAIDA');
+
+    // Trava do toque repetido: mesma pessoa, mesmo tipo, menos de 2 minutos.
+    const ultima = doDia[doDia.length - 1];
+    if (ultima && ultima.tipo === tipoFinal && Date.now() - new Date(ultima.hora).getTime() < 2 * 60000) {
+        const err = new Error(`Você já registrou ${tipoFinal === 'ENTRADA' ? 'entrada' : 'saída'} às ${horaLocalHM(ultima.hora)}. Se precisar corrigir, use "pedir acerto".`);
+        err.status = 409;
+        throw err;
+    }
 
     return prisma.pontoRegistro.create({
         data: {
             funcionarioId: funcionario.id,
             dataReferencia: ref,
-            tipo,
+            tipo: tipoFinal,
             latLng: ponto ? `${ponto.lat},${ponto.lng}` : null,
             distanciaMetros,
             dentroCerca,
             origem,
             ajustadoPor
         }
+    });
+};
+
+// ─── Corrigir a última batida (janela curta, o próprio funcionário) ──────────
+// Só a ÚLTIMA batida do dia e só nos primeiros minutos — é para consertar o
+// toque errado na hora, não para mexer no ponto depois (isso é pedido de acerto).
+const MINUTOS_CORRIGIR_ULTIMA = 10;
+
+const corrigirUltimaBatida = async (funcionarioId, novoTipo) => {
+    const tipo = String(novoTipo || '').toUpperCase();
+    if (tipo !== 'ENTRADA' && tipo !== 'SAIDA') {
+        const err = new Error('Tipo inválido.');
+        err.status = 400;
+        throw err;
+    }
+    const ref = getDataReferencia();
+    const ultima = await prisma.pontoRegistro.findFirst({
+        where: { funcionarioId, dataReferencia: ref },
+        orderBy: { hora: 'desc' }
+    });
+    if (!ultima) {
+        const err = new Error('Você ainda não bateu o ponto hoje.');
+        err.status = 404;
+        throw err;
+    }
+    if (minutosDesde(ultima.hora) > MINUTOS_CORRIGIR_ULTIMA) {
+        const err = new Error(`A correção rápida vale só nos primeiros ${MINUTOS_CORRIGIR_ULTIMA} minutos. Use "pedir acerto".`);
+        err.status = 403;
+        throw err;
+    }
+    if (ultima.tipo === tipo) return ultima;
+
+    return prisma.pontoRegistro.update({
+        where: { id: ultima.id },
+        data: { tipo, obs: [ultima.obs, 'corrigido pelo funcionário'].filter(Boolean).join(' · ') }
     });
 };
 
@@ -490,6 +590,8 @@ module.exports = {
     mapBatida,
     statusDoDia,
     registrarBatida,
+    corrigirUltimaBatida,
+    MINUTOS_CORRIGIR_ULTIMA,
     listarDias,
     getFeriados,
     montarCartao,

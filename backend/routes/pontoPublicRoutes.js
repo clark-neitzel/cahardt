@@ -38,6 +38,7 @@ async function estadoCompleto(funcionario) {
     return {
         nome: funcionario.nome,
         empresa: { geofenceAtivo: geo.ativo, raioMetros: geo.raioMetros, bloquear: geo.bloquear },
+        minutosCorrigirUltima: pontoService.MINUTOS_CORRIGIR_ULTIMA,
         ...estado
     };
 }
@@ -102,8 +103,8 @@ router.post('/:token/registrar', async (req, res) => {
         if (!funcionario.ativo) return res.status(403).json({ erro: 'Acesso bloqueado. Fale com o RH.' });
         if (!sessaoValida(req, funcionario)) return res.status(401).json({ erro: 'Sessão expirada. Entre novamente.' });
 
-        const { latLng } = req.body || {};
-        const batida = await pontoService.registrarBatida(funcionario, { latLng, origem: 'LINK' });
+        const { latLng, tipo } = req.body || {};
+        const batida = await pontoService.registrarBatida(funcionario, { latLng, origem: 'LINK', tipo });
         const estado = await estadoCompleto(funcionario);
 
         res.status(201).json({ batida: pontoService.mapBatida(batida), ...estado });
@@ -113,6 +114,25 @@ router.post('/:token/registrar', async (req, res) => {
         }
         console.error('[PontoPublico] registrar:', error);
         res.status(500).json({ erro: 'Erro ao registrar o ponto.' });
+    }
+});
+
+// POST /api/ponto-publico/:token/corrigir-ultima → troca entrada↔saída da última
+// batida, só nos primeiros minutos (o "não era isso?" da tela de confirmação)
+router.post('/:token/corrigir-ultima', async (req, res) => {
+    try {
+        const funcionario = await buscarPorToken(req.params.token);
+        if (!funcionario) return res.status(404).json({ erro: 'Link não encontrado. Fale com o RH.' });
+        if (!funcionario.ativo) return res.status(403).json({ erro: 'Acesso bloqueado. Fale com o RH.' });
+        if (!sessaoValida(req, funcionario)) return res.status(401).json({ erro: 'Sessão expirada. Entre novamente.' });
+
+        const batida = await pontoService.corrigirUltimaBatida(funcionario.id, req.body?.tipo);
+        const estado = await estadoCompleto(funcionario);
+        res.json({ batida: pontoService.mapBatida(batida), ...estado });
+    } catch (error) {
+        if (error.status) return res.status(error.status).json({ erro: error.message });
+        console.error('[PontoPublico] corrigir última:', error);
+        res.status(500).json({ erro: 'Erro ao corrigir a batida.' });
     }
 });
 

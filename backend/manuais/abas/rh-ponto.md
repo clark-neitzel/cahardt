@@ -8,7 +8,12 @@ Controle de ponto eletrônico da equipe. O funcionário bate o ponto por um **li
 - Cada funcionário tem um **link fixo** (`/ponto/<token>`), gerado na ficha dele em Funcionários → aba Dados.
 - O acesso exige **senha** (definida pelo RH na ficha → aba Dados → "Senha de acesso ao ponto"). Sem senha definida, o link mostra "acesso ainda não liberado". A sessão fica salva no aparelho por alguns dias para não pedir a senha toda vez.
 - **Bloquear acesso:** na ficha → aba Dados, desmarque **"Acesso liberado"** (campo `ativo`) quando a pessoa deixar de ser funcionário/prestador — o link recusa o login na hora.
-- Ao entrar, o funcionário vê o relógio ao vivo, o status (Fora / Trabalhando) e um **botão único que alterna**: 1º toque = Entrada, 2º = Saída, 3º = Entrada… (modelo livre).
+- Ao entrar, o funcionário vê o relógio ao vivo, o status (Fora / Trabalhando) e **DOIS botões: ENTRADA e SAÍDA** — ele escolhe o que está fazendo. O botão que o sistema espera vem em destaque (maior, em cima), mas o outro está sempre disponível.
+  - **Por que dois botões:** antes o app decidia pelo número de batidas do dia (1ª = entrada, 2ª = saída…). Bastava **esquecer uma batida** para **todas as seguintes do dia ficarem invertidas** (a saída gravada como entrada). Agora o tipo é o que a pessoa escolheu — esquecer uma batida não contamina o resto do dia.
+- **Confirmação depois de bater:** tela grande com o tipo, o horário, se estava na empresa e o **total de horas do dia**. Nos **primeiros 10 minutos** aparece **"Não era isso? Registrar como saída/entrada"**, que troca o tipo da última batida — o próprio funcionário conserta o toque errado, sem pedir nada a ninguém. Passados os 10 min, só por pedido de acerto.
+- **Trava de toque repetido:** bater o **mesmo tipo** duas vezes em menos de 2 minutos é recusado, com aviso de que já foi registrado.
+- **Aviso "Confere o seu dia":** a tela avisa na hora quando o dia está estranho — entrada sem saída há mais de 6h, **duas entradas (ou duas saídas) seguidas**, ou duas batidas em menos de 2 minutos. O erro aparece no mesmo dia, não no fechamento.
+- O funcionário vê **somente o dia de hoje** (batidas + total). Espelho do mês, saldo, banco de horas e faltas **não aparecem** para ele — isso é só do escritório.
 - Cada batida registra a **localização (GPS)**. Tocando no horário de uma batida, abre o **mapa** do local.
 - **Geofence:** se houver ponto da empresa configurado, o ponto só pode ser batido dentro do **raio** definido (ex.: 10 m). Fora da área, o registro é bloqueado com aviso da distância.
 

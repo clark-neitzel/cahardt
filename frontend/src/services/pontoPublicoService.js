@@ -24,8 +24,14 @@ export async function obterEstado(token, sessao) {
     return data;
 }
 
-// Registrar batida (requer sessão)
-export async function registrarPonto(token, sessao, latLng) {
-    const { data } = await apiPublica.post(`/ponto-publico/${token}/registrar`, { latLng }, auth(sessao));
+// Registrar batida — o tipo é ESCOLHIDO pela pessoa ('ENTRADA' | 'SAIDA')
+export async function registrarPonto(token, sessao, latLng, tipo) {
+    const { data } = await apiPublica.post(`/ponto-publico/${token}/registrar`, { latLng, tipo }, auth(sessao));
+    return data;
+}
+
+// Corrigir a última batida (troca entrada↔saída, só nos primeiros minutos)
+export async function corrigirUltima(token, sessao, tipo) {
+    const { data } = await apiPublica.post(`/ponto-publico/${token}/corrigir-ultima`, { tipo }, auth(sessao));
     return data;
 }
