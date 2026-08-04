@@ -7,7 +7,7 @@ import { formatarDoc } from '../../utils/documento';
 import { explicarRejeicao } from '../../utils/rejeicaoNfe';
 import clienteService from '../../services/clienteService';
 import {
-    FileText, Loader2, RefreshCw, Send, FileDown, FileCode2, AlertTriangle, HelpCircle, Search
+    FileText, Loader2, RefreshCw, Send, FileDown, FileCode2, AlertTriangle, HelpCircle, Search, Ban
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -146,6 +146,7 @@ const BadgeDoc = ({ cliente }) => {
 const NotasFiscais = () => {
     const { hasPermission } = useAuth();
     const podeEmitir = hasPermission('Pode_Emitir_NF');
+    const podeCancelarPedido = hasPermission('Pode_Excluir_Pedido');
 
     const [periodo, periodoCtl] = usePeriodoSalvo('notas-fiscais', 'hoje');
     const [filtroStatus, setFiltroStatus] = useFiltroSalvo('notas-fiscais:status', 'a-emitir');
@@ -156,6 +157,7 @@ const NotasFiscais = () => {
     const [consultando, setConsultando] = useState(null); // notaId em consulta
     const [baixando, setBaixando] = useState(null);       // `${notaId}:danfe|xml`
     const [progressoLote, setProgressoLote] = useState(null); // { atual, total }
+    const [cancelando, setCancelando] = useState(null);   // pedidoId em cancelamento
     const [selecionados, setSelecionados] = useState(() => new Set()); // pedidoIds marcados p/ emitir
     const loteAtivoRef = useRef(false);
 
@@ -245,6 +247,27 @@ const NotasFiscais = () => {
             toast.error(msgErroApi(e, 'Erro ao emitir a NF-e.'));
         } finally {
             setEmitindo(null);
+        }
+    };
+
+    // Cancelar o pedido quando a venda não vai acontecer (cliente baixado na Receita,
+    // desistência): sai desta fila e nunca mais emite NF-e. Só enquanto não há nota emitida.
+    const cancelarPedido = async (pedido) => {
+        const motivo = window.prompt(
+            `Cancelar o pedido ${pedido.numero != null ? `nº ${pedido.numero}` : ''} de ${pedido.cliente?.nome || 'cliente'}?\n\n` +
+            'O pedido continua no histórico, mas sai desta fila e não vai mais emitir NF-e.\n\n' +
+            'Motivo do cancelamento:'
+        );
+        if (motivo === null) return;
+        setCancelando(pedido.id);
+        try {
+            await api.put(`/pedidos/${pedido.id}/cancelar`, { motivo });
+            toast.success('Pedido cancelado — saiu da fila de emissão.');
+            await carregar(true);
+        } catch (e) {
+            toast.error(msgErroApi(e, 'Erro ao cancelar o pedido.'));
+        } finally {
+            setCancelando(null);
         }
     };
 
@@ -365,17 +388,32 @@ const NotasFiscais = () => {
         const btnCinza = 'inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-xs disabled:opacity-50';
 
         if (!nota || nota.status === 'ERRO') {
-            if (!podeEmitir) return <span className="text-xs text-gray-500">—</span>;
+            if (!podeEmitir && !podeCancelarPedido) return <span className="text-xs text-gray-500">—</span>;
             const ocupado = emitindo === pedido.id || progressoLote != null;
             return (
-                <button
-                    onClick={() => emitir(pedido)}
-                    disabled={ocupado}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-xs disabled:opacity-50"
-                >
-                    {emitindo === pedido.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                    {nota ? 'Reemitir NF-e' : 'Emitir NF-e'}
-                </button>
+                <div className="flex items-center gap-2 flex-wrap">
+                    {podeEmitir && (
+                        <button
+                            onClick={() => emitir(pedido)}
+                            disabled={ocupado}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-xs disabled:opacity-50"
+                        >
+                            {emitindo === pedido.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                            {nota ? 'Reemitir NF-e' : 'Emitir NF-e'}
+                        </button>
+                    )}
+                    {podeCancelarPedido && (
+                        <button
+                            onClick={() => cancelarPedido(pedido)}
+                            disabled={cancelando === pedido.id || progressoLote != null}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] bg-white border border-amber-500 text-amber-700 hover:bg-amber-50 rounded-full font-medium text-xs disabled:opacity-50"
+                            title="A venda não vai acontecer: tira o pedido da fila e trava a emissão da NF-e"
+                        >
+                            {cancelando === pedido.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ban className="h-3.5 w-3.5" />}
+                            Cancelar pedido
+                        </button>
+                    )}
+                </div>
             );
         }
         if (nota.status === 'PROCESSANDO') {

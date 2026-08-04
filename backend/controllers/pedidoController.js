@@ -1280,6 +1280,59 @@ const pedidoController = {
         }
     },
 
+    // Cancelar pedido: a venda não vai acontecer, mas o registro fica no histórico.
+    // Some da fila de faturamento/NF e trava a emissão da nota. Mesma permissão da exclusão
+    // (quem pode apagar o pedido pode cancelá-lo) — o cancelamento é a opção menos destrutiva.
+    cancelar: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const permissoes = req.user?.permissoes || {};
+            const motivo = (req.body?.motivo || '').trim();
+
+            const pedido = await prisma.pedido.findUnique({
+                where: { id },
+                select: { id: true, numero: true, especial: true, bonificacao: true }
+            });
+            if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+
+            const podeCancelar = permissoes.admin || (
+                pedido.bonificacao ? permissoes.Pode_Excluir_Bonificacao
+                    : pedido.especial ? permissoes.Pode_Excluir_Especial
+                        : permissoes.Pode_Excluir_Pedido
+            );
+            if (!podeCancelar) {
+                return res.status(403).json({ error: 'Você não tem permissão para cancelar pedidos.' });
+            }
+
+            const cancelado = await pedidoService.cancelar(id, {
+                motivo,
+                usuarioId: req.user?.id || null,
+                usuarioNome: req.user?.nome || req.user?.login || null,
+            });
+
+            // Auditoria fora do fluxo crítico — log lento não pode derrubar o cancelamento
+            try {
+                await prisma.auditLog.create({
+                    data: {
+                        acao: 'CANCELAR_PEDIDO',
+                        entidade: 'Pedido',
+                        entidadeId: id,
+                        detalhes: `Pedido #${pedido.numero || id} cancelado por ${req.user?.nome || req.user?.login || '-'}${motivo ? ` — motivo: ${motivo}` : ''}`,
+                        usuarioId: req.user?.id,
+                        usuarioNome: req.user?.nome || req.user?.login || '-'
+                    }
+                });
+            } catch (logErr) {
+                console.error('Falha no log de cancelamento (pedido já cancelado):', logErr.message);
+            }
+
+            res.json({ message: 'Pedido cancelado com sucesso.', pedido: cancelado });
+        } catch (error) {
+            console.error('Erro ao cancelar pedido:', error);
+            res.status(400).json({ error: error.message });
+        }
+    },
+
     reatribuirVendedor: async (req, res) => {
         try {
             const id = req.params.id;
@@ -1448,6 +1501,7 @@ const pedidoController = {
                 where: {
                     dataVenda: { gte: hoje, lte: hojeFim },
                     bonificacao: false,
+                    cancelado: false, // pedido cancelado não cobra faturamento
                     AND: [
                         // situacaoCA != FATURADO incluindo nulls (NULL != 'FATURADO' é NULL/falsy em SQL)
                         { OR: [{ situacaoCA: null }, { situacaoCA: { not: 'FATURADO' } }] },

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck, CircleDollarSign, Zap, MapPin, Clock } from 'lucide-react';
+import { Search, X, AlertCircle, Package, ChevronDown, ChevronUp, Printer, CheckSquare, Square, Trash2, Calendar, User, Filter, Pencil, CheckCircle, RotateCcw, MessageCircle, XCircle, Loader2, List, FileEdit, Send, RefreshCw, FileCheck, Receipt, Bell, FileText, ExternalLink, Truck, CircleDollarSign, Zap, MapPin, Clock, Ban } from 'lucide-react';
 import pedidoService from '../../services/pedidoService';
 import api, { API_URL } from '../../services/api';
 import amostraService from '../../services/amostraService';
@@ -21,6 +21,13 @@ const fmtNumero = (pedido) => pedido.bonificacao ? `BN#${pedido.numero}` : pedid
 // Pedido "faturado" = RECEBIDO no app (faturamento local/especial aprovado) ou FATURADO no CA.
 // Enquanto não faturar, a linha leva a pílula dourada NOVO (pedido do dono, 07/2026).
 const pedidoFaturado = (p) => p.statusEnvio === 'RECEBIDO' || p.situacaoCA === 'FATURADO';
+
+// Pedido com NF-e viva — autorizada ou em processamento na SEFAZ (nota do app) ou emitida
+// no Conta Azul. Nesse caso não dá mais para cancelar nem excluir: o documento fiscal já
+// existe e o caminho é cancelar a NF-e na SEFAZ / emitir devolução.
+const notaFiscalViva = (p) => !!p.nfeChave || (p.notasFiscaisApp || []).some(
+    n => n.tipo !== 'DEVOLUCAO' && ['AUTORIZADO', 'PROCESSANDO'].includes(n.status)
+);
 
 const fmtMoeda = (v) => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtDataHora = (d) => d ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
@@ -173,6 +180,7 @@ const ListaPedidos = () => {
     const [novoVendedorId, setNovoVendedorId] = useState('');
     
     const [revertendo, setRevertendo] = useState(null);
+    const [cancelando, setCancelando] = useState(null); // pedidoId em cancelamento
     const [selecionados, setSelecionados] = useState(new Set());
     const [pendencias, setPendencias] = useState(null);
 
@@ -466,6 +474,33 @@ const ListaPedidos = () => {
             if (selectedPedido?.id === pedido.id) setSelectedPedido(null);
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao excluir pedido.');
+        }
+    };
+
+    // Cancelar pedido: a venda não vai acontecer, mas o registro fica no histórico.
+    // Sai da fila de faturamento/NF e a emissão da nota passa a ser recusada.
+    const handleCancelarPedido = async (pedido) => {
+        const motivo = window.prompt(
+            `Cancelar o pedido #${pedido.numero || '—'} de ${pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'cliente'}?\n\n` +
+            'O pedido continua no histórico, mas sai da fila de faturamento e não vai mais emitir NF-e.\n\n' +
+            'Motivo do cancelamento:'
+        );
+        if (motivo === null) return; // desistiu
+        setCancelando(pedido.id);
+        try {
+            const res = await pedidoService.cancelar(pedido.id, motivo);
+            toast.success('Pedido cancelado.');
+            const patch = {
+                cancelado: true,
+                canceladoEm: res?.pedido?.canceladoEm || new Date().toISOString(),
+                motivoCancelamento: motivo || null,
+            };
+            setPedidos(prev => prev.map(p => p.id === pedido.id ? { ...p, ...patch } : p));
+            if (selectedPedido?.id === pedido.id) setSelectedPedido(prev => ({ ...prev, ...patch }));
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao cancelar pedido.');
+        } finally {
+            setCancelando(null);
         }
     };
 
@@ -1153,6 +1188,14 @@ const ListaPedidos = () => {
                                     {/* Linha 3: badges de status + botões de ação */}
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="flex flex-wrap items-center gap-1 min-w-0">
+                                            {pedido.cancelado && (
+                                                <span
+                                                    className="px-2 py-1 flex-shrink-0 inline-flex items-center gap-1 text-[10px] leading-tight font-semibold rounded-full bg-red-100 text-red-700 cursor-help"
+                                                    title={`Cancelado${pedido.canceladoEm ? ` em ${new Date(pedido.canceladoEm).toLocaleDateString('pt-BR')}` : ''}${pedido.motivoCancelamento ? ` — ${pedido.motivoCancelamento}` : ''}`}
+                                                >
+                                                    <Ban className="h-2.5 w-2.5" /> CANCELADO
+                                                </span>
+                                            )}
                                             <StatusBadge status={pedido.statusEnvio} title={pedido.statusEnvio === 'ERRO' ? (pedido.erroEnvio || 'Sem detalhes do erro') : undefined} />
                                             {pedido.statusEnvio === 'ERRO' && pedido.erroEnvio && (
                                                 <span className="text-[9px] text-red-700 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded max-w-[220px] truncate" title={pedido.erroEnvio}>
@@ -1270,7 +1313,7 @@ const ListaPedidos = () => {
                                                 </div>
                                             )}
                                             {/* Boleto Asaas (a prazo, faturado) — check verde = boleto já emitido */}
-                                            {asaasDisponivel && podeBoletoAsaas && !pedido.bonificacao && !pedido.especial
+                                            {asaasDisponivel && podeBoletoAsaas && !pedido.bonificacao && !pedido.especial && !pedido.cancelado
                                                 && pedido.situacaoCA === 'FATURADO' && pedido.tipoPagamento === 'BOLETO_BANCARIO' && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setBoletosModal({ pedidoId: pedido.id, clienteNome: pedido.cliente?.NomeFantasia || pedido.cliente?.Nome, pedidoNumero: pedido.numero }); }}
@@ -1285,7 +1328,7 @@ const ListaPedidos = () => {
                                                 </button>
                                             )}
                                             {/* PIX Asaas (à vista e especiais) — cobrança na hora / link de pagamento */}
-                                            {asaasDisponivel && podeBoletoAsaas && !pedido.bonificacao
+                                            {asaasDisponivel && podeBoletoAsaas && !pedido.bonificacao && !pedido.cancelado
                                                 && pedido.tipoPagamento !== 'BOLETO_BANCARIO'
                                                 && (pedido.especial || pedido.situacaoCA === 'FATURADO' || pedido.statusEnvio === 'RECEBIDO') && (
                                                 <button
@@ -1313,6 +1356,21 @@ const ListaPedidos = () => {
                                                 >
                                                     {gerandoDanfe === pedido.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileCheck className="h-3.5 w-3.5" />}
                                                     <span className="hidden lg:inline">DANFE</span>
+                                                </button>
+                                            )}
+                                            {/* Cancelar: mantém o pedido no histórico, tira da fila de faturamento
+                                                e trava a NF-e. Só enquanto não houver nota emitida. */}
+                                            {(pedido.bonificacao ? podeExcluirBonificacao : pedido.especial ? podeExcluirEspecial : podeExcluirPedido)
+                                                && !pedido.cancelado && !notaFiscalViva(pedido)
+                                                && !pedido.embarqueId && (!pedido.statusEntrega || pedido.statusEntrega === 'PENDENTE') && (
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleCancelarPedido(pedido); }}
+                                                    disabled={cancelando === pedido.id}
+                                                    className="flex items-center gap-1 px-2 lg:px-2.5 py-1.5 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-50"
+                                                    title="Cancelar pedido (mantém no histórico, sem NF e sem faturar)"
+                                                >
+                                                    {cancelando === pedido.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Ban className="h-3.5 w-3.5" />}
+                                                    <span className="hidden lg:inline">Cancelar</span>
                                                 </button>
                                             )}
                                             {(pedido.bonificacao ? podeExcluirBonificacao : pedido.especial ? podeExcluirEspecial : podeExcluirPedido) && (pedido.especial || (!pedido.embarqueId && (!pedido.statusEntrega || pedido.statusEntrega === 'PENDENTE'))) && !['FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA) && (
@@ -1376,6 +1434,38 @@ const ListaPedidos = () => {
                             <button onClick={() => setSelectedPedido(null)} className="p-2 text-gray-400 hover:text-gray-700 shrink-0"><X className="h-6 w-6" /></button>
                         </div>
                         <div className="p-3 sm:p-4 overflow-y-auto flex-1 space-y-3 sm:space-y-4">
+                            {/* Pedido cancelado — some da fila de faturamento e não emite NF-e */}
+                            {selectedPedido.cancelado && (
+                                <div className="bg-red-50 p-3 rounded border border-red-200">
+                                    <div className="flex items-center gap-2 text-sm font-bold text-red-800">
+                                        <Ban className="h-4 w-4 shrink-0" /> Pedido cancelado
+                                    </div>
+                                    <p className="mt-1 text-xs text-red-700">
+                                        Não entra mais na fila de faturamento e não pode emitir NF-e.
+                                        {selectedPedido.canceladoEm ? ` Cancelado em ${fmtDataHora(selectedPedido.canceladoEm)}` : ''}
+                                        {selectedPedido.canceladoPorNome ? ` por ${selectedPedido.canceladoPorNome}` : ''}.
+                                    </p>
+                                    {selectedPedido.motivoCancelamento && (
+                                        <p className="mt-1 text-xs text-red-700"><strong>Motivo:</strong> {selectedPedido.motivoCancelamento}</p>
+                                    )}
+                                </div>
+                            )}
+                            {/* Cancelar pelo modal (mesma regra da lista: sem NF, sem carga, não entregue) */}
+                            {!selectedPedido.cancelado && !notaFiscalViva(selectedPedido)
+                                && !selectedPedido.embarqueId
+                                && (!selectedPedido.statusEntrega || selectedPedido.statusEntrega === 'PENDENTE')
+                                && (selectedPedido.bonificacao ? podeExcluirBonificacao : selectedPedido.especial ? podeExcluirEspecial : podeExcluirPedido) && (
+                                <div className="bg-amber-50 p-3 rounded border border-amber-200 flex flex-wrap justify-between items-center gap-2">
+                                    <span className="text-sm font-bold text-amber-900">A venda não vai acontecer?</span>
+                                    <button
+                                        onClick={() => handleCancelarPedido(selectedPedido)}
+                                        disabled={cancelando === selectedPedido.id}
+                                        className="px-4 py-2 bg-white border border-amber-500 text-amber-700 hover:bg-amber-100 rounded-full font-semibold text-sm flex items-center gap-1 disabled:opacity-50"
+                                    >
+                                        <Ban className="h-4 w-4" /> {cancelando === selectedPedido.id ? 'Cancelando…' : 'Cancelar pedido'}
+                                    </button>
+                                </div>
+                            )}
                             {/* Actions area inside modal */}
                             {selectedPedido.especial && selectedPedido.statusEnvio === 'ENVIAR' && (
                                 <div className="bg-purple-50 p-3 rounded border border-purple-200 flex flex-wrap justify-between items-center gap-2">

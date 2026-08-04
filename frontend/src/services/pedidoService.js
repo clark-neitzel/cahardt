@@ -99,6 +99,12 @@ const pedidoService = {
         return response.data;
     },
 
+    // Cancelar Pedido (venda não vai acontecer) — só enquanto não houver NF-e emitida
+    cancelar: async (id, motivo) => {
+        const response = await api.put(`/pedidos/${id}/cancelar`, { motivo });
+        return response.data;
+    },
+
     // Enviar pedido via WhatsApp
     enviarWhatsapp: async (id) => {
         const response = await api.post(`/pedidos/${id}/enviar-whatsapp`);

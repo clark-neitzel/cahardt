@@ -45,6 +45,7 @@ router.get('/fila', checkVer, async (req, res) => {
             where: {
                 especial: false,
                 bonificacao: false,
+                cancelado: false, // pedido cancelado não entra na fila de emissão
                 numero: { not: null },
                 ...(de || ate ? { dataVenda: { ...(de ? { gte: de } : {}), ...(ate ? { lte: ate } : {}) } } : {}),
             },

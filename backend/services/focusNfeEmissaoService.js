@@ -236,6 +236,7 @@ async function emitirVenda(pedidoId) {
         include: { cliente: { include: { fiscal: true } }, itens: { include: { produto: true } } },
     });
     if (!pedido) throw new Error('Pedido não encontrado.');
+    if (pedido.cancelado) throw new Error('Pedido cancelado — não é possível emitir NF-e.');
     if (pedido.especial) throw new Error('Pedido especial não gera nota fiscal.');
     if (pedido.bonificacao) throw new Error('Bonificação ainda não é emitida pelo app.');
     if (!pedido.numero) throw new Error('Pedido ainda sem número de venda.');

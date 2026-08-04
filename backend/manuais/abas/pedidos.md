@@ -36,6 +36,7 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - Baixar a **DANFE (PDF da NF-e)** de pedido faturado (ícone de recibo) — o app busca o XML autorizado na API do Conta Azul e gera o PDF na hora, sem precisar entrar no CA
 - Reatribuir pedido para outro vendedor (quem tem permissão)
 - Excluir pedidos (quem tem permissão específica por tipo)
+- **Cancelar pedido** (pílula âmbar **Cancelar**) — quando a venda não vai acontecer (cliente baixado na Receita, desistência) mas o registro precisa continuar no histórico
 - Avançar status de amostras (Solicitada → Preparação → Liberado)
 
 ---
@@ -86,9 +87,31 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - O worker fatura sozinho em até ~1 minuto: gera o **número da venda no próprio app** (continua a sequência), muda o status para **RECEBIDO** e baixa o estoque — nada é enviado ao Conta Azul (somente leitura desde 23/07/2026)
 - A NF-e é emitida pelo app na aba **Notas Fiscais**
 
+### Cancelar um pedido (a venda não vai acontecer)
+Use quando o pedido **não vai virar venda** — cliente com CNPJ baixado na Receita (a NF-e é rejeitada e nunca vai passar), desistência, pedido lançado errado que já ganhou número — mas você quer o registro no histórico em vez de apagar tudo.
+
+1. Na lista de **Pedidos**, clique na pílula âmbar **Cancelar** (ou abra os **Detalhes** do pedido e use **Cancelar pedido**). Também dá para cancelar direto da aba **Notas Fiscais**, ao lado do botão de emitir.
+2. Escreva o **motivo** (fica gravado no pedido e no log de auditoria).
+3. Pronto. O pedido continua na lista com a tarja vermelha **CANCELADO**.
+
+O que o cancelamento faz:
+- **Sai da fila de faturamento** — para de aparecer no aviso de pedidos a faturar e na fila da aba Notas Fiscais
+- **Trava a NF-e**: qualquer tentativa de emitir a nota desse pedido passa a ser recusada
+- **Devolve o estoque** que o pedido tinha baixado
+- **Cancela a conta a receber** e as parcelas em aberto
+- **Cancela cobranças PIX/boleto do Asaas** que ainda estavam em aberto (para o cliente não pagar um pedido cancelado)
+
+Quando **não** é possível cancelar (o app avisa e explica):
+- A **NF-e já foi emitida** (autorizada ou em processamento na SEFAZ, do app ou do Conta Azul) → o caminho é cancelar a nota na SEFAZ ou registrar uma **devolução**
+- A conta a receber está **quitada** ou há **parcela paga** / cobrança Asaas paga → estorne a baixa antes
+- O pedido está numa **carga/embarque** ou já foi **entregue** → tire da carga, ou registre uma devolução
+
+> Cancelar **não apaga** o pedido: o número da venda continua reservado e o histórico fica. Para apagar de vez, use **Excluir** (só funciona em pedido sem NF-e emitida, fora de carga e não entregue).
+
 ### Acompanhar pedidos pendentes
 - O painel no topo da lista mostra alertas coloridos: quantos pedidos estão em **Enviar**, **Aprovados** e **Erro**
 - Clique no alerta para ir direto àquele grupo
+- Pedido **cancelado** não conta como pendência aqui
 
 ### Imprimir em lote (DANFEs + boletos / recibos)
 1. Marque os pedidos pelos checkboxes (ou clique **"Selecionar faturados"**) → clique **Imprimir N**
@@ -223,6 +246,7 @@ Desde 23/07/2026 o acerto financeiro da devolução acontece **nas parcelas do p
 | Excluir pedido especial | `Pode_Excluir_Especial` ou `admin` |
 | Excluir bonificação | `Pode_Excluir_Bonificacao` ou `admin` |
 | Excluir amostra | `Pode_Excluir_Amostra` ou `admin` |
+| Cancelar pedido (normal / especial / bonificação) | mesma permissão de excluir do tipo: `Pode_Excluir_Pedido` / `Pode_Excluir_Especial` / `Pode_Excluir_Bonificacao` ou `admin` |
 | Ver pedidos de todos os vendedores | `pedidos.clientes = "todos"` ou `admin` |
 | Reatribuir vendedor | `Pode_Reatribuir_Vendedor` ou `admin` |
 | Ver sub-aba Devoluções | `Pode_Fazer_Devolucao` ou `admin` |

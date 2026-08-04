@@ -14,6 +14,7 @@ const pedidoService = {
         // `not` NÃO inclui null, e pedidos ENVIAR/ABERTO têm situacaoCA null — sem o
         // OR explícito, os avisos de "Enviar"/"Erro" ficavam zerados (bug antigo).
         const where = {
+            cancelado: false, // pedido cancelado não é pendência
             OR: [
                 { situacaoCA: null },
                 { situacaoCA: { not: 'FATURADO' } },
@@ -216,7 +217,9 @@ const pedidoService = {
                     notaDevolucaoCA: true, pdfDevolucaoUrl: true, pdfBoletoUrl: true, processadoCA: true,
                     itens: { select: { quantidade: true, valorUnitario: true, produto: { select: { nome: true } } } }
                 }
-            }
+            },
+            // Estado da NF-e do app — a lista usa para saber se o pedido ainda pode ser cancelado
+            notasFiscaisApp: { select: { id: true, tipo: true, status: true, numero: true } }
         };
 
         // Modo LEGADO (sem paginação): retorna ARRAY com TODOS os itens. Mantém compatíveis
@@ -755,7 +758,11 @@ const pedidoService = {
     excluir: async (id) => {
         const pedido = await prisma.pedido.findUnique({
             where: { id },
-            include: { contaReceber: { include: { parcelas: { select: { status: true } } } } }
+            include: {
+                contaReceber: { include: { parcelas: { select: { status: true } } } },
+                notasFiscaisApp: { select: { id: true, status: true, numero: true } },
+                cobrancasAsaas: { select: { id: true, status: true, tipo: true } },
+            }
         });
         if (!pedido) throw new Error("Pedido não encontrado");
 
@@ -774,6 +781,22 @@ const pedidoService = {
         }
         if (pedido.contaReceber?.parcelas?.some(p => p.status === 'PAGO')) {
             throw new Error("Não é possível excluir: existem parcelas já pagas nesta conta a receber.");
+        }
+        // NF-e: pedido com nota viva (autorizada ou em processamento) NUNCA pode ser apagado —
+        // o documento fiscal existe na SEFAZ e o XML/DANFE tem que continuar rastreável.
+        // Tentativas rejeitadas (ERRO/DENEGADO) e nota já cancelada podem ir junto com o pedido.
+        const notaViva = pedido.notasFiscaisApp?.find(n => ['AUTORIZADO', 'PROCESSANDO'].includes(n.status));
+        if (notaViva) {
+            throw new Error(notaViva.status === 'AUTORIZADO'
+                ? `Não é possível excluir: este pedido já tem NF-e emitida (nº ${notaViva.numero || '—'}). Cancele a NF-e na SEFAZ antes.`
+                : 'Não é possível excluir: a NF-e deste pedido está em processamento na SEFAZ. Aguarde o retorno.');
+        }
+        if (pedido.nfeChave) {
+            throw new Error(`Não é possível excluir: este pedido já tem NF-e emitida no Conta Azul (nº ${pedido.nfeNumero || '—'}).`);
+        }
+        // Cobrança Asaas paga trava a exclusão (dinheiro entrou); pendente só é desvinculada.
+        if (pedido.cobrancasAsaas?.some(c => c.status === 'RECEBIDO')) {
+            throw new Error('Não é possível excluir: existe cobrança Asaas já paga vinculada a este pedido.');
         }
 
         // Coleta produtos afetados antes de excluir (para recalcular estoque depois)
@@ -838,6 +861,14 @@ const pedidoService = {
             }
             // Remove conferência de caixa se existir
             await tx.caixaEntregaConferida.deleteMany({ where: { pedidoId: id } });
+            // Remove tentativas de NF-e rejeitadas/canceladas (as vivas já barraram acima).
+            // Sem isso o delete estoura em `notas_fiscais_app_pedido_id_fkey`.
+            await tx.notaFiscalApp.deleteMany({ where: { pedidoId: id } });
+            // Desvincula cobranças Asaas pendentes (o registro do Asaas continua existindo lá)
+            await tx.cobrancaAsaas.updateMany({ where: { pedidoId: id }, data: { pedidoId: null } });
+            // Desvincula pedidos do site (Kit Festa / Congelados) que geraram este pedido
+            await tx.kitFestaPedido.updateMany({ where: { pedidoId: id }, data: { pedidoId: null } });
+            await tx.congeladosPedido.updateMany({ where: { pedidoId: id }, data: { pedidoId: null } });
             // Remove pedido
             return await tx.pedido.delete({ where: { id } });
         }, { timeout: 20000, maxWait: 10000 });
@@ -851,7 +882,111 @@ const pedidoService = {
             }
         }
 
+        // Cancela no Asaas as cobranças que ficaram órfãs (fora da transação — é rede)
+        for (const cob of (pedido.cobrancasAsaas || [])) {
+            if (!['PENDENTE', 'EXPIRADO'].includes(cob.status)) continue;
+            try {
+                await require('./asaasService').cancelarCobranca(cob.id);
+            } catch (err) {
+                console.error(`[Asaas] Não cancelou a cobrança ${cob.id} do pedido excluído ${id}:`, err.message);
+            }
+        }
+
         return resultado;
+    },
+
+    // 6. Cancelar pedido — a venda não vai acontecer (cliente baixado na Receita, desistência),
+    // mas o registro precisa ficar no histórico. Sai da fila de faturamento/NF e nunca mais
+    // emite nota. Só é permitido ENQUANTO NÃO EXISTE NF-e: com nota autorizada o caminho é
+    // cancelar a NF-e na SEFAZ (ou emitir devolução), não cancelar o pedido aqui.
+    cancelar: async (id, { motivo, usuarioId, usuarioNome } = {}) => {
+        const pedido = await prisma.pedido.findUnique({
+            where: { id },
+            include: {
+                contaReceber: { include: { parcelas: { select: { status: true } } } },
+                notasFiscaisApp: { select: { id: true, status: true, numero: true } },
+                cobrancasAsaas: { select: { id: true, status: true } },
+            }
+        });
+        if (!pedido) throw new Error('Pedido não encontrado.');
+        if (pedido.cancelado) throw new Error('Este pedido já está cancelado.');
+
+        // Mercadoria que já saiu não se cancela — o caminho é a devolução (que ajusta
+        // estoque e cobrança pelo fluxo certo). Aqui o estoque volta integral.
+        if (pedido.embarqueId) {
+            throw new Error('Não é possível cancelar: o pedido está numa carga/embarque. Tire-o da carga primeiro.');
+        }
+        if (pedido.statusEntrega && pedido.statusEntrega !== 'PENDENTE') {
+            throw new Error('Não é possível cancelar: o pedido já foi entregue. Registre uma devolução em vez de cancelar.');
+        }
+
+        // Trava principal: NF-e já emitida (app ou Conta Azul)
+        const notaViva = pedido.notasFiscaisApp?.find(n => ['AUTORIZADO', 'PROCESSANDO'].includes(n.status));
+        if (notaViva) {
+            throw new Error(notaViva.status === 'AUTORIZADO'
+                ? `Não é possível cancelar: a NF-e deste pedido já foi emitida (nº ${notaViva.numero || '—'}). Cancele a nota na SEFAZ ou emita uma devolução.`
+                : 'Não é possível cancelar: a NF-e deste pedido está em processamento na SEFAZ. Aguarde o retorno e tente de novo.');
+        }
+        if (pedido.nfeChave) {
+            throw new Error(`Não é possível cancelar: este pedido já tem NF-e emitida no Conta Azul (nº ${pedido.nfeNumero || '—'}).`);
+        }
+        // Dinheiro já recebido: estornar antes
+        if (pedido.contaReceber?.status === 'QUITADO') {
+            throw new Error('Não é possível cancelar: a conta a receber já está quitada. Estorne a baixa primeiro.');
+        }
+        if (pedido.contaReceber?.parcelas?.some(p => p.status === 'PAGO')) {
+            throw new Error('Não é possível cancelar: existem parcelas já pagas. Estorne a baixa primeiro.');
+        }
+        if (pedido.cobrancasAsaas?.some(c => c.status === 'RECEBIDO')) {
+            throw new Error('Não é possível cancelar: existe cobrança Asaas já paga neste pedido. Faça a devolução do valor antes.');
+        }
+
+        const atualizado = await prisma.$transaction(async (tx) => {
+            // Cancela conta a receber e parcelas ainda em aberto
+            if (pedido.contaReceber) {
+                await tx.parcela.updateMany({
+                    where: { contaReceberId: pedido.contaReceber.id, status: { not: 'PAGO' } },
+                    data: { status: 'CANCELADO' }
+                });
+                await tx.contaReceber.update({
+                    where: { id: pedido.contaReceber.id },
+                    data: { status: 'CANCELADO' }
+                });
+            }
+            return await tx.pedido.update({
+                where: { id },
+                data: {
+                    cancelado: true,
+                    canceladoEm: new Date(),
+                    canceladoPorId: usuarioId || null,
+                    canceladoPorNome: usuarioNome || null,
+                    motivoCancelamento: motivo || null,
+                    revisaoPendente: false,
+                }
+            });
+        }, { timeout: 20000, maxWait: 10000 });
+
+        // Devolve ao estoque o que o pedido baixou (idempotente — credita só o saldo baixado)
+        try {
+            await estoqueService.cancelarPedido(id, {
+                motivo: 'CANCELAMENTO',
+                observacao: `Estorno por cancelamento do pedido #${pedido.numero || id}`
+            });
+        } catch (err) {
+            console.error(`[Estoque] Falha ao estornar estoque do pedido cancelado ${id}:`, err.message);
+        }
+
+        // Cancela cobranças Asaas em aberto (rede — fora da transação, melhor esforço)
+        for (const cob of (pedido.cobrancasAsaas || [])) {
+            if (!['PENDENTE', 'EXPIRADO'].includes(cob.status)) continue;
+            try {
+                await require('./asaasService').cancelarCobranca(cob.id);
+            } catch (err) {
+                console.error(`[Asaas] Não cancelou a cobrança ${cob.id} do pedido cancelado ${id}:`, err.message);
+            }
+        }
+
+        return atualizado;
     }
 };
 

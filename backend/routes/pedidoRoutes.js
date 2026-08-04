@@ -68,6 +68,9 @@ router.put('/:id/aprovar-bonificacao', pedidoController.aprovarBonificacao);
 // Reverter Pedido Bonificação (desfazer aprovação → volta para ABERTO)
 router.put('/:id/reverter-bonificacao', pedidoController.reverterBonificacao);
 
+// Cancelar Pedido (venda não vai acontecer) — só enquanto NÃO houver NF-e emitida
+router.put('/:id/cancelar', pedidoController.cancelar);
+
 // Excluir Pedido Existente (Apenas Rascunho/ABERTO/ERRO)
 router.delete('/:id', pedidoController.excluir);
 

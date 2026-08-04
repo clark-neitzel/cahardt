@@ -34,7 +34,8 @@ const syncPedidosService = {
                         in: ['ENVIAR', 'SINCRONIZANDO']
                     },
                     especial: false, // Pedidos especiais não são enviados ao CA
-                    bonificacao: false // Pedidos bonificação não são enviados ao CA
+                    bonificacao: false, // Pedidos bonificação não são enviados ao CA
+                    cancelado: false // Pedido cancelado não é faturado
                 },
                 include: {
                     cliente: true,

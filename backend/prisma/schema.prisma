@@ -381,6 +381,15 @@ model Pedido {
   whatsappEnviado    Boolean   @default(false) @map("whatsapp_enviado")
   whatsappErro       String?   @map("whatsapp_erro")
 
+  // Cancelamento do pedido (venda que não vai acontecer — cliente baixado na Receita,
+  // desistência...). Só é permitido enquanto NÃO existe NF-e emitida (nem do app nem do CA).
+  // Pedido cancelado sai da fila de faturamento/NF e não pode mais emitir nota.
+  cancelado          Boolean   @default(false)
+  canceladoEm        DateTime? @map("cancelado_em")
+  canceladoPorId     String?   @map("cancelado_por_id")
+  canceladoPorNome   String?   @map("cancelado_por_nome")
+  motivoCancelamento String?   @map("motivo_cancelamento") @db.Text
+
   canalOrigem         String?   @map("canal_origem") // Ex: VISITA, WHATSAPP, LIGACAO
   usuarioLancamentoId String?   @map("usuario_lancamento_id")
   usuarioLancamento   Vendedor? @relation("UsuarioLancamento", fields: [usuarioLancamentoId], references: [id])
