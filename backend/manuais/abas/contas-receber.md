@@ -19,7 +19,7 @@ Também existem **contas importadas do Conta Azul** (origem IMPORTADO_CA): são 
 - Ver todas as parcelas de contas a receber em formato de tabela
 - Filtrar por: busca (cliente/pedido), status da conta, status da parcela, origem, vendedor, categoria de cliente, condição de pagamento, cobrança (boleto/pix/dinheiro/cartão), forma de pagamento de entrega, forma de pagamento da baixa e período de vencimento/pagamento
 - Ordenar por qualquer coluna (clique no cabeçalho)
-- Selecionar parcelas em lote e dar baixa coletiva (sempre pelo valor cheio de cada parcela)
+- Selecionar parcelas em lote e dar baixa coletiva (sempre pelo valor cheio de cada parcela) — precisa da permissão de baixa manual
 - Dar baixa em uma parcela individual — pode ser o valor total, um valor parcial (o restante fica pendente como PARCIAL) e/ou um desconto (em R$ ou %, incluindo 100% do saldo, sem precisar receber nada)
 - Ver o histórico de cada pagamento recebido numa parcela (data, valor, desconto, quem registrou) e estornar um pagamento específico sem mexer nos outros
 - Sincronizar situação de uma conta específica ou de todas as contas com o Conta Azul
@@ -67,19 +67,34 @@ Também existem **contas importadas do Conta Azul** (origem IMPORTADO_CA): são 
    - **Período de vencimento / período de pagamento**
 3. Os filtros são salvos no localStorage por usuário
 
+### De onde pode vir a baixa de um título (regra do dono, 08/2026)
+
+Uma parcela só deve virar PAGA por um destes caminhos:
+
+1. **Conciliação Bancária** — o dinheiro apareceu no extrato (boleto, Pix, transferência, cartão) ou o Asaas confirmou o pagamento. A baixa nasce do lançamento do banco, então o valor está conferido.
+2. **Caixa** — quem recebeu (motorista na rua ou quem atende no balcão) põe no caixa dela; ao processar o caixa a parcela é baixada e o valor entra no **valor a prestar** dessa pessoa.
+3. **Baixa manual aqui na tela** — é a **exceção**, e por isso:
+   - exige a permissão **Pode_Baixar_Contas_Receber_Manual** (separada de "Dar Baixa em Parcelas"); sem ela os botões de baixa nem aparecem;
+   - aceita **somente Dinheiro ou Cheque**. Boleto, Pix, cartão e transferência são recusados com a mensagem apontando a Conciliação Bancária — esses caem no extrato e é lá que o dinheiro é confrontado com o banco;
+   - o valor **entra no caixa do dia de quem baixou**, somando no "a prestar" dela (aparece no card "Títulos Recebidos" da tela do Caixa). Quem baixa fica responsável por entregar o dinheiro no fechamento;
+   - não existe mais o campo "Banco/caixa" com a opção "Não informar" — o sistema lança sozinho na conta em espécie (Caixinha);
+   - se o caixa do dia já estiver **fechado ou conferido**, o app recusa a baixa e pede para reabrir o caixa (senão o lançamento entraria num dia já prestado).
+
+Desconto sem dinheiro (perdoar saldo) continua na mesma permissão de desconto e **não** passa por caixa — não há valor a prestar.
+
 ### Dar baixa em uma parcela (total, parcial ou com desconto)
 1. Localize a parcela na tabela (ou abra "Ver detalhes" e clique em **Dar baixa**)
 2. Clique no botão de baixa (ícone de cheque) na linha
 3. O modal abre já com o **valor recebido** preenchido com o saldo restante — reduza esse valor para registrar um pagamento parcial
 4. Opcionalmente marque **Aplicar desconto no saldo restante** (só aparece habilitado para quem tem a permissão `Pode_Dar_Desconto_Baixa`): escolha R$ ou % e informe o motivo (obrigatório). Um desconto de 100% do saldo quita a parcela sem receber nada
-5. Informe forma de pagamento, data, o **banco/caixa** em que o dinheiro entrou (vem pré-selecionado com a conta padrão; alimenta o relatório "Saldos por Conta") e observação (opcionais além do valor)
+5. Informe a forma (**Dinheiro** ou **Cheque** — só essas), a data do pagamento e a observação (opcional). Não existe mais escolher o banco/caixa: o sistema lança na conta em espécie e um aviso mostra que o valor vai para o **seu caixa de hoje**
 6. O modal mostra ao vivo se a parcela vai ficar **PARCIAL** (com o saldo que ainda falta) ou **PAGO** (quitada)
 7. Confirme — cada baixa fica registrada no histórico de pagamentos da parcela (visível em "Ver detalhes"), permitindo estornar só aquele pagamento depois, sem afetar os demais
 
 ### Dar baixa em lote
 1. Marque os checkboxes das parcelas desejadas (só aparecem parcelas ainda sem nenhum pagamento — Pendente/Vencido)
 2. Clique em **Baixa em Lote** (botão no topo da tabela)
-3. Informe a forma de pagamento, a data e o **banco/caixa** em que o dinheiro entrou (vem pré-selecionado com a conta padrão; alimenta o relatório "Saldos por Conta") para todas
+3. Informe a forma (**Dinheiro** ou **Cheque**) e a data para todas — o total vai para o **seu caixa de hoje** e some no seu valor a prestar
 4. Confirme — todas as parcelas selecionadas são baixadas de uma vez pelo valor cheio (baixa em lote não aceita valor parcial nem desconto — para isso, use a baixa individual)
 
 ### Emitir boleto pelo app (Asaas)
@@ -115,7 +130,8 @@ Também existem **contas importadas do Conta Azul** (origem IMPORTADO_CA): são 
 | Ação | Permissão necessária |
 |------|----------------------|
 | Ver a tela | `Pode_Acessar_Contas_Receber` |
-| Dar baixa (individual ou em lote), estornar (tudo ou um pagamento específico) | `Pode_Baixar_Contas_Receber` ou `admin` |
+| Ver a tela e estornar (tudo ou um pagamento específico) | `Pode_Baixar_Contas_Receber` ou `admin` |
+| **Dar baixa manual** (individual ou em lote) — só dinheiro/cheque, entra no caixa do dia de quem baixou | `Pode_Baixar_Contas_Receber_Manual` ou `admin` (além de `Pode_Baixar_Contas_Receber`) |
 | Aplicar desconto numa baixa (parcial ou 100%) | `Pode_Dar_Desconto_Baixa` ou `admin` (além de ter `Pode_Baixar_Contas_Receber`) |
 | Sincronizar com o CA | `Pode_Acessar_Contas_Receber` (acesso à tela permite sync) |
 | Ver contas de todos os vendedores | Qualquer usuário com acesso à tela (a tela não filtra por vendedor automaticamente) |

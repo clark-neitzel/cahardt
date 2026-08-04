@@ -1,5 +1,11 @@
 [
   {
+    "slug": "baixa-caixa",
+    "titulo": "Baixa vai pro seu caixa",
+    "resumo": "Quitar título em dinheiro na tela de Contas a Receber agora entra no seu caixa do dia e soma no seu valor a prestar — igual à cobrança da rua. A baixa manual passa a exigir permissão e só aceita dinheiro ou cheque: boleto, Pix e cartão são baixados pela Conciliação Bancária, quando o dinheiro aparece no extrato.",
+    "data": "2026-08-04"
+  },
+  {
     "slug": "cancelar-pedido",
     "titulo": "Cancelar pedido",
     "resumo": "Cliente com CNPJ baixado, desistência ou pedido lançado errado? Agora dá para cancelar o pedido: ele sai da fila de faturamento, nunca mais tenta emitir NF-e, devolve o estoque e cancela a cobrança — e continua no histórico com o motivo. Só enquanto a nota não foi emitida.",

@@ -34,6 +34,7 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 - **Conferir devoluções fisicamente** (cartão "Conferência de Devoluções"): contar a mercadoria que voltou no caminhão, comparar com o que o motorista marcou como devolvido, registrar sobras e cobrar faltas do motorista
 - **Autorizar desconsiderar falta de devolução** com senha do responsável (ex.: produto que não foi carregado de manhã)
 - **Baixar as cobranças da rota** (cartão "Cobranças da Rota"): títulos que o motorista/vendedor cobrou na rua chegam como "Aberto"; marcar o box e baixar dá a baixa oficial na parcela
+- **Ver os títulos recebidos** (cartão "Títulos Recebidos"): baixas em dinheiro/cheque feitas na tela de Contas a Receber com o seu login, que somam no valor a prestar
 
 ---
 
@@ -84,6 +85,15 @@ O cartão **Cobranças da Rota** aparece quando o motorista/vendedor registrou a
 5. O que foi cobrado em **dinheiro** entra na linha "+ Cobranças da rota (dinheiro)" do **valor a prestar**; PIX/cartão não passam pela mão do motorista e não somam
 6. **O caixa não fecha** com cobrança de rota ainda em "Aberto" — baixe todas antes de fechar o dia
 7. Clicar duas vezes não duplica: cobrança já baixada devolve "já estava baixada" e é ignorada
+
+### Títulos recebidos (baixa manual do Contas a Receber)
+O cartão **Títulos Recebidos** aparece quando alguém quitou um título **em dinheiro ou cheque** pela tela **Financeiro → Contas a Receber** usando o seu login. Como o valor ficou fisicamente com essa pessoa, ele entra no caixa dela **do dia em que a baixa foi feita**.
+
+1. Cada linha mostra o cliente, o pedido/parcela e o valor recebido
+2. O total soma na linha **"+ Títulos recebidos (Contas a Receber)"** do **valor a prestar** — a pessoa entrega esse dinheiro no fechamento, igual à cobrança da rota
+3. A baixa manual só aceita **Dinheiro ou Cheque** e exige a permissão `Pode_Baixar_Contas_Receber_Manual`. Boleto/Pix/cartão/transferência não entram por ali — são baixados na **Conciliação Bancária**, quando o dinheiro aparece no extrato
+4. Se o caixa do dia já estiver **fechado ou conferido**, a baixa é recusada até o caixa ser reaberto (senão o dinheiro entraria num dia já prestado)
+5. Estornar o pagamento no Contas a Receber tira o valor do caixa automaticamente
 
 ### Registrar uma despesa
 1. Clique em **+ Despesa** (botão no topo ou no card do veículo)

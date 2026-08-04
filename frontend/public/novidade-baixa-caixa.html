@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Baixa de título vai para o seu caixa — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem: cartão compacto) -->
+<meta property="og:title" content="💵 Novidade no Hardt App: recebeu em dinheiro, entra no seu caixa">
+<meta property="og:description" content="Quitar título na tela de Contas a Receber agora é só para dinheiro/cheque, com permissão, e o valor entra no seu caixa do dia. Boleto e Pix passam a ser baixados pela Conciliação Bancária.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .aviso-caixa {
+    background: #fdf6e7;
+    border: 1px solid #edd9a8;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: #7a5c14;
+  }
+  .aviso-caixa b { display: block; color: #5c4409; font-size: 14px; margin-bottom: 3px; }
+
+  /* ── CAMINHOS ── */
+  .caminhos { display: grid; gap: 10px; margin-bottom: 6px; }
+  .caminho {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-left: 5px solid var(--primary);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .caminho.excecao { border-left-color: var(--gold); }
+  .caminho-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px;
+    flex-shrink: 0;
+  }
+  .caminho.excecao .caminho-ico { background: #fdf1d8; }
+  .caminho strong { display: block; font-size: 15px; margin-bottom: 2px; }
+  .caminho span { font-size: 13.5px; color: var(--ink-soft); }
+
+  .sec-label {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-select { display: flex; align-items: center; justify-content: space-between; }
+  .app-select em { font-style: normal; color: #9aa5a0; font-size: 11px; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-linha {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; padding: 9px 12px;
+    border: 1px solid #eceae3; border-radius: 10px;
+    margin-bottom: 7px; background: #fff;
+    font-size: 12.5px;
+  }
+  .app-linha small { display: block; color: #8e9a94; font-size: 10.5px; }
+  .app-linha b { white-space: nowrap; }
+  .app-total {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 11px 12px; border-radius: 10px;
+    background: #fdf6e7; border: 1px solid #edd9a8;
+    font-size: 13px; font-weight: 800; color: #5c4409;
+  }
+  .app-soma { display: flex; justify-content: space-between; font-size: 12.5px; padding: 3px 0; color: #2f6b52; }
+  .app-soma.neg { color: #b3261e; }
+  .app-soma.destaque { background: var(--mint); border-radius: 8px; padding: 6px 8px; font-weight: 700; }
+  .app-bloqueio {
+    background: #fdecea; border: 1px solid #f5c6c2; border-radius: 10px;
+    padding: 10px 12px; font-size: 12.5px; color: #8c2f27;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Recebeu em dinheiro?<br>Entra no seu caixa.</h1>
+    <p>Quitar um título na tela de Contas a Receber deixou de ser só marcar "recebi". Agora o valor cai no seu caixa do dia e você presta contas dele — igual à cobrança da rua.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do aviso no modal de baixa -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">💵</span>
+      <div>
+        <small>Contas a Receber · Dar baixa</small>
+        <strong>Parcela 1/2 · R$ 662,30</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="aviso-caixa">
+        <b>R$ 662,30 vai entrar no SEU caixa de hoje.</b>
+        O valor soma no seu “a prestar” e você entrega no fechamento do caixa.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ OS TRÊS CAMINHOS ══════════ -->
+  <div class="sec-label">Por onde um título pode ser quitado</div>
+  <div class="caminhos">
+    <div class="caminho">
+      <span class="caminho-ico">🏦</span>
+      <div>
+        <strong>Conciliação Bancária</strong>
+        <span>Boleto, Pix, cartão e transferência. O dinheiro aparece no extrato e a baixa nasce dali — já conferida com o banco.</span>
+      </div>
+    </div>
+    <div class="caminho">
+      <span class="caminho-ico">🚚</span>
+      <div>
+        <strong>Caixa</strong>
+        <span>O que é recebido na rua ou no balcão entra no caixa de quem recebeu e some no valor a prestar dela.</span>
+      </div>
+    </div>
+    <div class="caminho excecao">
+      <span class="caminho-ico">✍️</span>
+      <div>
+        <strong>Baixa manual no Contas a Receber — a exceção</strong>
+        <span>Só com permissão, só em dinheiro ou cheque, e o valor entra no caixa do dia de quem baixou.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou na prática</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">💵</span>
+      <strong>O dinheiro agora tem dono</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Ao dar baixa em <b>dinheiro ou cheque</b>, o valor entra no <b>seu caixa do dia</b> e aparece no cartão <b>"Títulos Recebidos"</b>.</li>
+        <li>Ele soma na linha <b>"+ Títulos recebidos (Contas a Receber)"</b> do seu <b>valor a prestar</b> — você entrega esse dinheiro no fechamento, exatamente como a cobrança da rua.</li>
+        <li>Se você <b>estornar</b> o pagamento depois, o valor sai do caixa sozinho.</li>
+        <li>Não tem mais o campo "Banco / caixa" com a opção <b>"Não informar"</b> — antes dava para quitar sem dizer onde o dinheiro entrou.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🏦</span>
+      <strong>Boleto e Pix saem dessa tela</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Na baixa manual agora só existem <b>Dinheiro</b> e <b>Cheque</b> na lista de formas.</li>
+        <li>Boleto, Pix, cartão e transferência caem no extrato do banco — eles são baixados na <b>Conciliação Bancária</b>, onde o valor é confrontado com o que entrou de verdade.</li>
+        <li>Boleto e Pix do Asaas continuam baixando <b>sozinhos</b> quando o cliente paga; ninguém precisa fazer nada.</li>
+        <li>Isso vale também para a <b>baixa em lote</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔐</span>
+      <strong>Baixa manual virou permissão separada</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quem não tiver a permissão <b>"Baixa Manual no Contas a Receber"</b> continua vendo a tela normalmente, mas <b>sem os botões de baixa</b>.</li>
+        <li>Ver a tela, consultar o histórico e estornar seguem com a permissão de sempre.</li>
+        <li>Precisa dar baixa e o botão não aparece para você? Fale com o Clarkson — é ele quem libera.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔒</span>
+      <strong>Caixa fechado não recebe lançamento</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Se o seu caixa de hoje já estiver <b>fechado ou conferido</b>, a baixa é recusada com um aviso.</li>
+        <li>É proposital: senão o dinheiro entraria num dia que você já prestou contas.</li>
+        <li>Nesse caso, peça para <b>reabrir o caixa</b> ou registre a baixa no dia seguinte.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔎</span>
+      <strong>Filtro "Baixado por"</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Na tabela de Contas a Receber tem um filtro novo: <b>Baixado por</b>, para ver as baixas de uma pessoa (ou de várias).</li>
+        <li>Ao usá-lo a tela já mostra as parcelas <b>pagas</b> automaticamente — não precisa mexer no status.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">📄 Tela 1 · Contas a Receber → Dar baixa</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">💵 Dar baixa — Parcela 1/2</div>
+        <div class="app-card-body">
+          <div class="app-input"><small>Valor recebido agora</small>R$ 662,30</div>
+          <div class="app-input app-select"><small>Forma de pagamento</small><span>Dinheiro</span><em>Dinheiro · Cheque<span class="pin">1</span></em></div>
+          <div class="app-input"><small>Data do pagamento</small>04/08/2026</div>
+          <div class="aviso-caixa" style="margin-top:4px;">
+            <b>R$ 662,30 vai entrar no SEU caixa de hoje.<span class="pin">2</span></b>
+            O valor soma no seu “a prestar”. Boleto, Pix, cartão ou transferência não entram por aqui — são baixados na Conciliação Bancária.
+          </div>
+          <div style="text-align:right; margin-top:10px;"><span class="app-btn">✔️ Confirmar baixa</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>A lista de formas agora só tem <b>Dinheiro</b> e <b>Cheque</b>. O campo "Banco / caixa" sumiu — o app lança sozinho na Caixinha.</span></div>
+      <div><span class="pin">2</span><span>O aviso mostra, antes de confirmar, que <b>o valor vai para o seu caixa</b> e que você vai prestar contas dele.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">🧾 Tela 2 · Caixa → cartão "Títulos Recebidos"</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">💰 Títulos Recebidos · 2 <span style="margin-left:auto; color:#2f6b52;">R$ 833,66</span></div>
+        <div class="app-card-body">
+          <div class="app-linha">
+            <span>POSTO MAIOCHI JARAGUA<small>Pedido #1577 · Parcela 1 · Dinheiro</small></span>
+            <b>R$ 662,30</b>
+          </div>
+          <div class="app-linha">
+            <span>PADARIA BENTHIN<small>Pedido #1839 · Parcela 1 · Dinheiro</small></span>
+            <b>R$ 171,36</b>
+          </div>
+          <span class="pin" style="margin:0;">3</span>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">🧮 Valor a prestar</div>
+        <div class="app-card-body">
+          <div class="app-soma"><span>+ Adiantamento</span><span>R$ 200,00</span></div>
+          <div class="app-soma"><span>+ À vista - Dinheiro</span><span>R$ 1.240,00</span></div>
+          <div class="app-soma"><span>+ Cobranças da rota (dinheiro)</span><span>R$ 310,00</span></div>
+          <div class="app-soma destaque"><span>+ Títulos recebidos (Contas a Receber)<span class="pin">4</span></span><span>R$ 833,66</span></div>
+          <div class="app-soma neg"><span>− Despesas</span><span>R$ 180,00</span></div>
+          <div class="app-total"><span>VALOR A PRESTAR</span><span>R$ 2.403,66</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">3</span><span>Cada título que você quitou em dinheiro aparece aqui com <b>cliente, pedido e parcela</b> — é a sua conferência do que está na mão.</span></div>
+      <div><span class="pin">4</span><span>O total entra na conta do <b>valor a prestar</b>, junto com o adiantamento, as entregas e as cobranças da rua.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-titulo">🚫 Tela 3 · O que o app recusa agora</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="app-bloqueio" style="margin-bottom:9px;">
+            Baixa manual aceita apenas <b>Dinheiro ou Cheque</b>. Recebimento em <b>Boleto</b> entra pela Conciliação Bancária (quando cair no extrato) ou pelo Caixa.<span class="pin">5</span>
+          </div>
+          <div class="app-bloqueio" style="margin-bottom:9px;">
+            Seu caixa de hoje já está <b>fechado</b> — reabra o caixa para lançar este recebimento (ou registre a baixa amanhã).<span class="pin">6</span>
+          </div>
+          <div class="app-bloqueio">
+            Baixa manual não liberada para você. Recebimento em boleto/Pix entra pela <b>Conciliação Bancária</b>; dinheiro recebido na rua entra pelo <b>Caixa</b>.<span class="pin">7</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">5</span><span>Escolheu boleto/Pix/cartão? O app explica <b>por onde aquele recebimento entra</b> em vez de simplesmente recusar.</span></div>
+      <div><span class="pin">6</span><span>Caixa já fechado ou conferido: o lançamento é barrado para não mexer num dia já prestado.</span></div>
+      <div><span class="pin">7</span><span>Sem a permissão de baixa manual, os botões nem aparecem — e a mensagem indica o caminho certo.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ NA PRÁTICA ══════════ -->
+  <div class="sec-label">No dia a dia</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Cliente pagou <b>em dinheiro</b> um título? Dê a baixa normalmente em <b>Financeiro → Contas a Receber</b>.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Confira no <b>Caixa</b> que o valor apareceu em <b>"Títulos Recebidos"</b> e entrou no seu valor a prestar.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Pagou em <b>boleto ou Pix</b>? Não faça nada: a baixa sai sozinha ou pela <b>Conciliação Bancária</b>.</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece as regras novas.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.closest('.acc');
+    const aberto = acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
