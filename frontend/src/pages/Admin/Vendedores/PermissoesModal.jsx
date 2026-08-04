@@ -91,6 +91,7 @@ const DEFAULT_PERMISSIONS = {
     // Financeiro
     Pode_Acessar_Contas_Receber: false,
     Pode_Baixar_Contas_Receber: false,
+    Pode_Baixar_Contas_Receber_Manual: false,
     Pode_Dar_Desconto_Baixa: false,
     Pode_Vender_Inadimplente: false,
     Pode_Acessar_Contas_Pagar: false,
@@ -287,6 +288,7 @@ const BOOL_INDEX = [
     // Financeiro
     { sec: 'financeiro', path: 'Pode_Acessar_Contas_Receber', nome: 'Contas a Receber', desc: 'Parcelas em aberto, boletos, inadimplência', kw: 'receber boleto parcela menu inadimplencia' },
     { sec: 'financeiro', path: 'Pode_Baixar_Contas_Receber', nome: 'Dar Baixa em Parcelas', desc: 'Registrar pagamentos (inclusive parciais) e estornar baixas', kw: 'baixa quitar pagamento estorno receber' },
+    { sec: 'financeiro', path: 'Pode_Baixar_Contas_Receber_Manual', nome: 'Baixa Manual no Contas a Receber', desc: 'Quitar título digitando na tela (só dinheiro/cheque, e o valor cai no caixa do dia de quem baixou). Sem isto, o recebimento entra pela Conciliação Bancária ou pelo Caixa', kw: 'baixa manual mao dinheiro cheque caixa conciliacao excecao', danger: true },
     { sec: 'financeiro', path: 'Pode_Dar_Desconto_Baixa', nome: 'Dar Desconto na Baixa', desc: 'Reduz o valor a receber (até 100%) sem confirmação de pagamento', kw: 'desconto abater perdoar reduzir baixa', danger: true },
     { sec: 'financeiro', path: 'Pode_Acessar_Cobranca', nome: 'Régua de Cobrança', desc: 'Cobranças automáticas por WhatsApp/e-mail (desligar aqui desliga o editar junto)', kw: 'regua cobranca whatsapp lembrete automatico menu' },
     { sec: 'financeiro', path: 'Pode_Editar_Cobranca', nome: 'Editar Régua de Cobrança', desc: 'Ligar/desligar a régua, configurar mensagens/canais, executar e cobrar manualmente', kw: 'regua editar configurar executar cobrar' },
@@ -370,7 +372,7 @@ const PERFIS = {
     },
     escritorio: {
         rotulo: '🏢 Escritório / Financeiro', hint: 'Contas, notas, cobrança, caixa e fornecedores',
-        chaves: ['clientes.view', 'Pode_Ver_Atendimentos', 'Pode_Acessar_Contas_Receber', 'Pode_Baixar_Contas_Receber', 'Pode_Acessar_Contas_Pagar', 'Pode_Baixar_Contas_Pagar', 'Pode_Acessar_Notas_Recebidas', 'Pode_Acessar_Fornecedores', 'Pode_Acessar_Cobranca', 'Pode_Acessar_Notas_Fiscais', 'Pode_Emitir_NF', 'Pode_Acessar_Caixa', 'Pode_Baixar_Caixa', 'Pode_Fechar_Caixa', 'Pode_Conferir_Devolucao_Caixa', 'Pode_Ver_Historico_Caixa'],
+        chaves: ['clientes.view', 'Pode_Ver_Atendimentos', 'Pode_Acessar_Contas_Receber', 'Pode_Baixar_Contas_Receber', 'Pode_Baixar_Contas_Receber_Manual', 'Pode_Acessar_Contas_Pagar', 'Pode_Baixar_Contas_Pagar', 'Pode_Acessar_Notas_Recebidas', 'Pode_Acessar_Fornecedores', 'Pode_Acessar_Cobranca', 'Pode_Acessar_Notas_Fiscais', 'Pode_Emitir_NF', 'Pode_Acessar_Caixa', 'Pode_Baixar_Caixa', 'Pode_Fechar_Caixa', 'Pode_Conferir_Devolucao_Caixa', 'Pode_Ver_Historico_Caixa'],
     },
     producao: {
         rotulo: '🏭 Produção / PCP', hint: 'Telas do PCP (sem cancelar ordens)',
@@ -1126,6 +1128,10 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                 <div className="border-t mt-3 pt-3">
                     <Toggle checked={!!permissoes.Pode_Baixar_Contas_Receber} onChange={() => toggleBool('Pode_Baixar_Contas_Receber')}
                         label="Dar Baixa em Parcelas" sublabel="Registrar pagamentos (inclusive parciais) e estornar baixas" />
+                    {permissoes.Pode_Baixar_Contas_Receber && (
+                        <Toggle checked={!!permissoes.Pode_Baixar_Contas_Receber_Manual} onChange={() => toggleBool('Pode_Baixar_Contas_Receber_Manual')}
+                            label="Baixa Manual no Contas a Receber" sublabel="Quitar título digitando na tela — só dinheiro/cheque, e o valor cai no caixa do dia de quem baixou. Desligado: o recebimento entra pela Conciliação Bancária ou pelo Caixa" danger />
+                    )}
                     {permissoes.Pode_Baixar_Contas_Receber && (
                         <Toggle checked={!!permissoes.Pode_Dar_Desconto_Baixa} onChange={() => toggleBool('Pode_Dar_Desconto_Baixa')}
                             label="Dar Desconto na Baixa" sublabel="Reduz o valor a receber (até 100%) sem confirmação de pagamento — use com critério" danger />

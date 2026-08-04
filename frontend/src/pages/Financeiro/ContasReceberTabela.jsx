@@ -39,11 +39,17 @@ const STATUS_PARC = {
 };
 
 const FORMAS = ['Dinheiro', 'Pix', 'Boleto', 'Cartão Crédito', 'Cartão Débito', 'Transferência', 'Cheque', 'Outro'];
+// Baixa manual só aceita o que fica fisicamente com alguém — o valor vai para o caixa
+// do dia de quem baixou e é cobrado no fechamento. O resto cai no extrato e entra pela
+// Conciliação Bancária (é lá que o dinheiro é confrontado com o banco).
+const FORMAS_BAIXA_MANUAL = ['Dinheiro', 'Cheque'];
 
 const ContasReceberTabela = () => {
     const { user } = useAuth();
     const podeBaixar = user?.permissoes?.admin || user?.permissoes?.Pode_Baixar_Contas_Receber;
     const podeDarDesconto = user?.permissoes?.admin || user?.permissoes?.Pode_Dar_Desconto_Baixa;
+    // Baixa digitada aqui é a exceção (o normal é conciliação ou caixa) — permissão própria
+    const podeBaixaManual = user?.permissoes?.admin || user?.permissoes?.Pode_Baixar_Contas_Receber_Manual;
 
     const [linhas, setLinhas] = useState([]);
     const [indicadores, setIndicadores] = useState({});
@@ -104,8 +110,7 @@ const ContasReceberTabela = () => {
 
     // Modais
     const [baixaLoteOpen, setBaixaLoteOpen] = useState(false);
-    const [baixaLoteForm, setBaixaLoteForm] = useState({ formaPagamento: '', dataPagamento: '', observacao: '', contaFinanceiraCaId: '' });
-    const [contasFinanceiras, setContasFinanceiras] = useState([]);
+    const [baixaLoteForm, setBaixaLoteForm] = useState({ formaPagamento: '', dataPagamento: '', observacao: '' });
     const [salvando, setSalvando] = useState(false);
     const [relatorioOpen, setRelatorioOpen] = useState(false);
     const [relatorioData, setRelatorioData] = useState(null);
@@ -118,13 +123,6 @@ const ContasReceberTabela = () => {
         categoriaClienteService.listar().then(setCategorias).catch(() => {});
         contasReceberService.tiposCobranca().then(setTiposCobranca).catch(() => {});
         contasReceberService.baixadoPor().then(setUsuariosBaixa).catch(() => {});
-        contasReceberService.contasFinanceiras()
-            .then(cf => {
-                setContasFinanceiras(cf);
-                const padrao = cf.find(c => c.padrao);
-                if (padrao) setBaixaLoteForm(f => ({ ...f, contaFinanceiraCaId: f.contaFinanceiraCaId || padrao.id }));
-            })
-            .catch(() => {});
     }, []);
 
     // Condições distintas, derivadas das contas carregadas
@@ -323,7 +321,7 @@ const ContasReceberTabela = () => {
 
     // Baixa individual — abre modal com valor recebido/desconto (aceita parcial e 100% desconto)
     const handleBaixar = (l) => {
-        if (!podeBaixar) return;
+        if (!podeBaixaManual) return;
         setBaixaModalLinha(l);
     };
 
@@ -416,7 +414,7 @@ const ContasReceberTabela = () => {
                 formaPagamento: baixaLoteForm.formaPagamento || null,
                 dataPagamento: baixaLoteForm.dataPagamento || null,
                 observacao: baixaLoteForm.observacao || null,
-                contaFinanceiraCaId: baixaLoteForm.contaFinanceiraCaId || null
+                contaFinanceiraCaId: null // servidor lança na conta em espécie (Caixinha)
             });
             toast.success(r.message);
             setBaixaLoteOpen(false);
@@ -941,7 +939,7 @@ const ContasReceberTabela = () => {
                     </div>
                     <div className="flex gap-2">
                         <button onClick={() => setSel(new Set())} className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm">Limpar</button>
-                        {podeBaixar && (
+                        {podeBaixaManual && (
                             <button
                                 onClick={() => {
                                     setBaixaLoteForm({ formaPagamento: '', dataPagamento: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }), observacao: '' });
@@ -1082,8 +1080,8 @@ const ContasReceberTabela = () => {
                                         <td className="px-2 pt-2 pb-0.5 whitespace-nowrap tabular-nums">{fmtData(l.dataVencimento)}</td>
                                         <td className="px-2 pt-2 pb-0.5">
                                             <div className="flex items-center justify-end gap-1">
-                                                {podeBaixar && elegivelBaixa(l) && (
-                                                    <button onClick={() => handleBaixar(l)} title="Dar baixa" className="p-1 rounded hover:bg-green-100 text-green-700">
+                                                {podeBaixaManual && elegivelBaixa(l) && (
+                                                    <button onClick={() => handleBaixar(l)} title="Dar baixa manual (dinheiro/cheque) — vai para o seu caixa de hoje" className="p-1 rounded hover:bg-green-100 text-green-700">
                                                         <CheckCircle className="w-4 h-4" />
                                                     </button>
                                                 )}
@@ -1165,19 +1163,19 @@ const ContasReceberTabela = () => {
                                 <label className="text-xs text-gray-500">Forma de pagamento</label>
                                 <SelectBusca value={baixaLoteForm.formaPagamento} onChange={e => setBaixaLoteForm(f => ({ ...f, formaPagamento: e.target.value }))} className="w-full">
                                     <option value="">—</option>
-                                    {FORMAS.map(f => <option key={f}>{f}</option>)}
+                                    {FORMAS_BAIXA_MANUAL.map(f => <option key={f}>{f}</option>)}
                                 </SelectBusca>
                             </div>
                             <div>
                                 <label className="text-xs text-gray-500">Data do pagamento</label>
                                 <input type="date" value={baixaLoteForm.dataPagamento} onChange={e => setBaixaLoteForm(f => ({ ...f, dataPagamento: e.target.value }))} className="w-full border rounded px-2 py-1.5 text-sm" />
                             </div>
-                            <div>
-                                <label className="text-xs text-gray-500">Banco / caixa (em qual conta entrou)</label>
-                                <SelectBusca value={baixaLoteForm.contaFinanceiraCaId} onChange={e => setBaixaLoteForm(f => ({ ...f, contaFinanceiraCaId: e.target.value }))} className="w-full">
-                                    <option value="">Não informar</option>
-                                    {contasFinanceiras.map(c => <option key={c.id} value={c.id}>{c.nome}{c.padrao ? ' (padrão)' : ''}</option>)}
-                                </SelectBusca>
+                            <div className="rounded-lg border border-amber-200 bg-amber-50 p-2.5 flex items-start gap-2">
+                                <Wallet className="w-4 h-4 text-amber-700 mt-0.5 flex-shrink-0" />
+                                <p className="text-xs text-amber-800">
+                                    <strong>R$ {fmt(valorSel)} vai entrar no seu caixa de hoje</strong> e some no seu “a prestar”.
+                                    Boleto, Pix, cartão e transferência não entram por aqui — esses são baixados na Conciliação Bancária.
+                                </p>
                             </div>
                             <div>
                                 <label className="text-xs text-gray-500">Observação</label>
@@ -1263,6 +1261,7 @@ const ContasReceberTabela = () => {
                     linha={detalheLinha}
                     onClose={() => setDetalheLinha(null)}
                     podeBaixar={podeBaixar}
+                    podeBaixaManual={podeBaixaManual}
                     onBaixar={(l) => { setDetalheLinha(null); handleBaixar(l); }}
                     onEstornarTudo={(l) => { handleEstornar(l); setDetalheLinha(null); }}
                     onSyncCA={(contaId, idCA) => { handleSyncCA(contaId, idCA); setDetalheLinha(null); }}
@@ -1775,7 +1774,7 @@ const ContasReceberTabela = () => {
 
 // ── Modal de detalhes da parcela (histórico de pagamentos + ações) ──
 const DetalheParcelaModal = ({
-    linha, onClose, podeBaixar, onBaixar, onEstornarTudo, onSyncCA, syncing,
+    linha, onClose, podeBaixar, podeBaixaManual, onBaixar, onEstornarTudo, onSyncCA, syncing,
     onAbrirPedido, onEstornoPagamento, elegivelBaixa, saldoRestante, fmt, fmtData
 }) => {
     const l = linha;
@@ -1958,7 +1957,7 @@ const DetalheParcelaModal = ({
                             <Undo2 className="w-4 h-4" /> Estornar tudo
                         </button>
                     )}
-                    {podeBaixar && elegivelBaixa(l) && (
+                    {podeBaixaManual && elegivelBaixa(l) && (
                         <button
                             onClick={() => onBaixar(l)}
                             className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-sm text-sm inline-flex items-center gap-1.5 font-semibold"
@@ -1985,18 +1984,9 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
     const [dataPagamento, setDataPagamento] = useState(new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }));
     const [observacao, setObservacao] = useState('');
     const [salvando, setSalvando] = useState(false);
-    const [contaFinanceiraCaId, setContaFinanceiraCaId] = useState('');
-    const [contasFinanceiras, setContasFinanceiras] = useState([]);
-
-    useEffect(() => {
-        contasReceberService.contasFinanceiras()
-            .then(cf => {
-                setContasFinanceiras(cf);
-                const padrao = cf.find(c => c.padrao);
-                if (padrao) setContaFinanceiraCaId(padrao.id);
-            })
-            .catch(() => {});
-    }, []);
+    // Sem seletor de banco/caixa: baixa manual é sempre em espécie e o servidor a lança
+    // na conta em dinheiro (a Caixinha) — antes dava para deixar "Não informar" e o
+    // dinheiro sumia do relatório Saldos por Conta.
 
     const parseNum = (v) => parseFloat(String(v).replace(',', '.')) || 0;
     const fmtInput = (n) => n.toFixed(2).replace('.', ',');
@@ -2049,7 +2039,6 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
                 valorDesconto: aplicarDesconto ? descontoReais : 0,
                 motivoDesconto: aplicarDesconto && descontoReais > 0 ? motivoDesconto.trim() : undefined,
                 formaPagamento,
-                contaFinanceiraCaId: contaFinanceiraCaId || undefined,
                 dataPagamento,
                 observacao: observacao || undefined
             });
@@ -2148,7 +2137,7 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Forma de pagamento</label>
                             <SelectBusca value={formaPagamento} onChange={e => setFormaPagamento(e.target.value)} className="w-full">
-                                {FORMAS.map(f => <option key={f}>{f}</option>)}
+                                {FORMAS_BAIXA_MANUAL.map(f => <option key={f}>{f}</option>)}
                             </SelectBusca>
                         </div>
                         <div>
@@ -2157,14 +2146,19 @@ const BaixaModal = ({ linha, podeDarDesconto, onClose, onSuccess, saldoRestante,
                         </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Banco / caixa <span className="text-gray-400 font-normal">(em qual conta entrou)</span></label>
-                        <SelectBusca value={contaFinanceiraCaId} onChange={e => setContaFinanceiraCaId(e.target.value)} className="w-full">
-                            <option value="">Não informar</option>
-                            {contasFinanceiras.map(c => <option key={c.id} value={c.id}>{c.nome}{c.padrao ? ' (padrão)' : ''}</option>)}
-                        </SelectBusca>
-                        <p className="text-xs text-gray-400 mt-1">Alimenta o relatório “Saldos por Conta”.</p>
-                    </div>
+                    {recebido > 0 && (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 flex items-start gap-2">
+                            <Wallet className="w-4 h-4 text-amber-700 mt-0.5 flex-shrink-0" />
+                            <div className="text-xs text-amber-800">
+                                <p className="font-semibold">R$ {fmt(recebido)} vai entrar no SEU caixa de hoje.</p>
+                                <p className="mt-0.5">
+                                    O valor soma no seu “a prestar” e você presta contas dele no fechamento do caixa.
+                                    Recebimento em boleto, Pix, cartão ou transferência não entra por aqui — ele é baixado
+                                    na <strong>Conciliação Bancária</strong>, quando o dinheiro aparece no extrato.
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Observação (opcional)</label>

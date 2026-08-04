@@ -2008,6 +2008,22 @@ router.get('/relatorio', async (req, res) => {
             }
         }
 
+        // Componentes do "valor a prestar" que a folha impressa não enxergava (ela só somava
+        // entregas + adiantamento − despesas, ficando menor que a tela do caixa).
+        const cobrancasRotaRel = await prisma.cobrancaRota.findMany({
+            where: { cobradoPorId: targetVendedor, dataReferencia: data },
+            select: { status: true, valorCobrado: true, formaPagamentoNome: true }
+        });
+        const cobrancasRotaDinheiroRel = Math.round(cobrancasRotaRel
+            .filter(c => ['COBRADA', 'BAIXADA'].includes(c.status) && (c.formaPagamentoNome || '').toLowerCase().includes('dinheiro'))
+            .reduce((sum, c) => sum + Number(c.valorCobrado || 0), 0) * 100) / 100;
+        const recebimentosTitulosRel = caixa
+            ? Math.round(Number((await prisma.pagamentoParcela.aggregate({
+                where: { caixaDiarioId: caixa.id, estornado: false },
+                _sum: { valorRecebido: true }
+            }))._sum.valorRecebido || 0) * 100) / 100
+            : 0;
+
         // Média combustível
         const mediaCombustivel = diario?.veiculoId ? await calcularMediaCombustivel(diario.veiculoId) : null;
 
@@ -2171,6 +2187,10 @@ router.get('/relatorio', async (req, res) => {
             faltasDevolucao: caixa?.conferenciaDevolucao?.status === 'CONFERIDA'
                 ? Number(caixa.conferenciaDevolucao.totalCobrado || 0)
                 : 0,
+            // Mesmos componentes do /resumo — sem isto a folha impressa recalculava por
+            // conta própria e saía menor que a tela (faltavam cobranças de rota e títulos).
+            cobrancasRotaDinheiro: cobrancasRotaDinheiroRel,
+            recebimentosTitulos: recebimentosTitulosRel,
             // Impressão só mostra o VALOR A PRESTAR quando o dia está pronto:
             // conferência de devoluções feita + KM final + sem entregas pendentes.
             valorLiberado: await (async () => {

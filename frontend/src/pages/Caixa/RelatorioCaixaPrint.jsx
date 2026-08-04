@@ -93,7 +93,12 @@ const RelatorioCaixaPrint = () => {
     const adiantamento = Number(relatorio.caixa?.adiantamento || 0);
     const totalDesp = Number(relatorio.totalDespesas || 0);
     const faltasDevolucao = Number(relatorio.faltasDevolucao || 0);
-    const valorAPrestar = relatorio.valorAPrestar ?? (adiantamento + recCaixa + faltasDevolucao - totalDesp);
+    // Cobranças cobradas na rua e títulos baixados em espécie também ficaram com quem
+    // fechou o caixa — sem eles a folha saía com valor menor que a tela.
+    const cobrancasRotaDinheiro = Number(relatorio.cobrancasRotaDinheiro || 0);
+    const recebimentosTitulos = Number(relatorio.recebimentosTitulos || 0);
+    const valorAPrestar = relatorio.valorAPrestar
+        ?? (adiantamento + recCaixa + faltasDevolucao + cobrancasRotaDinheiro + recebimentosTitulos - totalDesp);
     // Enquanto o dia não está pronto (conferência de devoluções pendente, KM/entregas em aberto),
     // a impressão NÃO revela o valor a prestar — evita imprimir sem conferir.
     const valorLiberado = relatorio.valorLiberado !== false;
@@ -361,6 +366,12 @@ const RelatorioCaixaPrint = () => {
                                     )}
                                     {faltasDevolucao > 0 && (
                                         <tr><td className="sinal">+</td><td>Faltas de devolução (cobradas)</td><td className="r">R$ {fmt(faltasDevolucao)}</td></tr>
+                                    )}
+                                    {cobrancasRotaDinheiro > 0 && (
+                                        <tr><td className="sinal">+</td><td>Cobranças da rota (dinheiro)</td><td className="r">R$ {fmt(cobrancasRotaDinheiro)}</td></tr>
+                                    )}
+                                    {recebimentosTitulos > 0 && (
+                                        <tr><td className="sinal">+</td><td>Títulos recebidos (Contas a Receber)</td><td className="r">R$ {fmt(recebimentosTitulos)}</td></tr>
                                     )}
                                     <tr><td className="sinal neg">−</td><td>Despesas do dia</td><td className="r">R$ {fmt(totalDesp)}</td></tr>
                                     <tr className="tot"><td></td><td>VALOR A PRESTAR</td><td className="r">{valorLiberado ? `R$ ${fmt(valorAPrestar)}` : 'Conferir devoluções'}</td></tr>

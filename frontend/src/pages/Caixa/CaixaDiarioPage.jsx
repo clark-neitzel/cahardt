@@ -858,6 +858,45 @@ const CaixaDiarioPage = () => {
                         onChanged={fetchResumo}
                     />
 
+                    {/* Card Títulos recebidos — baixa manual de Contas a Receber em espécie.
+                        O dinheiro ficou com quem baixou, então entra no "a prestar" deste caixa. */}
+                    {(resumo.recebimentosTitulos?.itens?.length > 0) && (
+                        <div className="bg-white rounded-lg shadow-sm border border-green-200 p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center space-x-2">
+                                    <DollarSign className="h-5 w-5 text-green-600" />
+                                    <h3 className="text-sm font-semibold text-gray-700">Títulos Recebidos</h3>
+                                    <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                                        {resumo.recebimentosTitulos.itens.length}
+                                    </span>
+                                </div>
+                                <span className="text-sm font-bold text-green-700">
+                                    R$ {Number(resumo.recebimentosTitulos.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                </span>
+                            </div>
+                            <p className="text-xs text-gray-500 mb-2">
+                                Baixas em dinheiro/cheque feitas em Contas a Receber. O valor entra no que você tem a prestar.
+                            </p>
+                            <div className="space-y-2">
+                                {resumo.recebimentosTitulos.itens.map(r => (
+                                    <div key={r.id} className="flex items-center justify-between gap-2 border border-gray-100 rounded-lg px-3 py-2">
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 truncate">{r.clienteNome}</p>
+                                            <p className="text-xs text-gray-500">
+                                                {r.pedidoNumero ? `Pedido #${r.pedidoNumero} · ` : ''}
+                                                {r.numeroParcela ? `Parcela ${r.numeroParcela}` : 'Parcela'}
+                                                {r.formaPagamento ? ` · ${r.formaPagamento}` : ''}
+                                            </p>
+                                        </div>
+                                        <span className="text-sm font-bold text-gray-900 whitespace-nowrap tabular-nums">
+                                            R$ {Number(r.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Card Amostras */}
                     {(resumo.amostrasCount > 0) && (
                         <div className="bg-white rounded-lg shadow-sm border border-orange-200 p-4">
@@ -1131,6 +1170,14 @@ const CaixaDiarioPage = () => {
                                 <div className="flex justify-between text-green-700">
                                     <span>+ Cobranças da rota (dinheiro)</span>
                                     <span className="font-medium">R$ {Number(resumo.cobrancasRota.totalDinheiro).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                            )}
+
+                            {/* Títulos quitados na tela de Contas a Receber (dinheiro/cheque em mãos) */}
+                            {Number(resumo.recebimentosTitulos?.total || 0) > 0 && (
+                                <div className="flex justify-between text-green-700">
+                                    <span>+ Títulos recebidos (Contas a Receber)</span>
+                                    <span className="font-medium">R$ {Number(resumo.recebimentosTitulos.total).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                                 </div>
                             )}
 

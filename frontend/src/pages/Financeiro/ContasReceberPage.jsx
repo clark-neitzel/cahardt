@@ -9,6 +9,10 @@ import toast from 'react-hot-toast';
 import { API_URL } from '../../services/api';
 import SelectBusca from '../../components/SelectBusca';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+
+// Baixa manual só aceita o que fica fisicamente com quem recebeu — o valor cai no caixa
+// do dia dela. Boleto/Pix/cartão entram pela Conciliação Bancária (lastro no extrato).
+const FORMAS_BAIXA_MANUAL = ['Dinheiro', 'Cheque'];
 import asaasService from '../../services/asaasService';
 import BoletosAsaasModal from './BoletosAsaasModal';
 
@@ -31,6 +35,8 @@ const PARCELA_BADGES = {
 const ContasReceberPage = () => {
     const { user } = useAuth();
     const podeBaixar = user?.permissoes?.admin || user?.permissoes?.Pode_Baixar_Contas_Receber;
+    // Baixa digitada aqui é exceção (o normal é conciliação bancária ou caixa) — permissão própria
+    const podeBaixaManual = user?.permissoes?.admin || user?.permissoes?.Pode_Baixar_Contas_Receber_Manual;
     const podeReverter = user?.permissoes?.admin || user?.permissoes?.Pode_Reverter_Especial;
     const podeReverterCancelamento = user?.permissoes?.admin || user?.permissoes?.Pode_Reverter_Cancelamento_CR;
 
@@ -451,7 +457,7 @@ const ContasReceberPage = () => {
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
                         <span className="text-xs text-gray-400">{contas.length} conta{contas.length !== 1 ? 's' : ''}</span>
-                        {podeBaixar && todasParcelasElegiveis.length > 0 && (
+                        {podeBaixaManual && todasParcelasElegiveis.length > 0 && (
                             <button
                                 onClick={toggleTodasContas}
                                 className="flex items-center gap-1 text-xs text-gray-500 hover:text-green-700 font-medium"
@@ -496,7 +502,7 @@ const ContasReceberPage = () => {
                                     {/* Mobile layout */}
                                     <div className="sm:hidden">
                                         <div className="flex items-start justify-between gap-2">
-                                            {podeBaixar && contaTemElegivel(conta) && (
+                                            {podeBaixaManual && contaTemElegivel(conta) && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); toggleContaParcelas(conta); }}
                                                     className="mt-0.5 flex-shrink-0"
@@ -558,7 +564,7 @@ const ContasReceberPage = () => {
 
                                     {/* Desktop layout */}
                                     <div className="hidden sm:flex items-center justify-between">
-                                        {podeBaixar && contaTemElegivel(conta) && (
+                                        {podeBaixaManual && contaTemElegivel(conta) && (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); toggleContaParcelas(conta); }}
                                                 className="mr-3 flex-shrink-0"
@@ -621,7 +627,7 @@ const ContasReceberPage = () => {
                                 {/* Parcelas expandidas */}
                                 {isExpanded && (
                                     <div className="border-t border-gray-100 p-3 sm:p-4 bg-gray-50">
-                                        {podeBaixar && contaTemElegivel(conta) && (
+                                        {podeBaixaManual && contaTemElegivel(conta) && (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); toggleContaParcelas(conta); }}
                                                 className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-green-700 mb-2 font-medium"
@@ -642,7 +648,7 @@ const ContasReceberPage = () => {
                                                         <div className="sm:hidden">
                                                             <div className="flex items-center justify-between">
                                                                 <div className="flex items-center gap-2">
-                                                                    {podeBaixar && (p.status === 'PENDENTE' || p.status === 'VENCIDO') && (
+                                                                    {podeBaixaManual && (p.status === 'PENDENTE' || p.status === 'VENCIDO') && (
                                                                         <button
                                                                             onClick={(e) => { e.stopPropagation(); toggleSelecionada(p.id); }}
                                                                             className="text-gray-400 hover:text-green-600 flex-shrink-0"
@@ -678,7 +684,7 @@ const ContasReceberPage = () => {
                                                                     {p.formaPagamento && <span className="ml-1">({p.formaPagamento})</span>}
                                                                 </div>
                                                                 <div className="flex items-center gap-1.5">
-                                                                    {podeBaixar && (p.status === 'PENDENTE' || p.status === 'VENCIDO') && (
+                                                                    {podeBaixaManual && (p.status === 'PENDENTE' || p.status === 'VENCIDO') && (
                                                                         <button
                                                                             onClick={(e) => { e.stopPropagation(); abrirBaixa(p); }}
                                                                             className="px-2.5 py-1 text-[11px] bg-green-600 text-white rounded-md font-medium hover:bg-green-700 active:bg-green-800"
@@ -702,7 +708,7 @@ const ContasReceberPage = () => {
                                                         {/* Desktop parcela */}
                                                         <div className="hidden sm:flex items-center justify-between">
                                                             <div className="flex items-center gap-3">
-                                                                {podeBaixar && (p.status === 'PENDENTE' || p.status === 'VENCIDO') && (
+                                                                {podeBaixaManual && (p.status === 'PENDENTE' || p.status === 'VENCIDO') && (
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); toggleSelecionada(p.id); }}
                                                                         className="text-gray-400 hover:text-green-600 flex-shrink-0"
@@ -740,7 +746,7 @@ const ContasReceberPage = () => {
                                                                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pBadge.class}`}>
                                                                     {pBadge.label}
                                                                 </span>
-                                                                {podeBaixar && (p.status === 'PENDENTE' || p.status === 'VENCIDO') && (
+                                                                {podeBaixaManual && (p.status === 'PENDENTE' || p.status === 'VENCIDO') && (
                                                                     <button
                                                                         onClick={(e) => { e.stopPropagation(); abrirBaixa(p); }}
                                                                         className="px-3 py-1 text-xs bg-green-600 text-white rounded-md font-medium hover:bg-green-700"
@@ -861,13 +867,14 @@ const ContasReceberPage = () => {
                         <div className="space-y-3">
                             <div>
                                 <label className="text-xs text-gray-500 font-medium">Forma de Pagamento</label>
-                                <input
-                                    type="text"
+                                <SelectBusca
                                     value={baixaLoteForm.formaPagamento}
                                     onChange={(e) => setBaixaLoteForm(prev => ({ ...prev, formaPagamento: e.target.value }))}
-                                    placeholder="Dinheiro, PIX, Transferência..."
-                                    className="w-full mt-1 px-3 py-2.5 text-sm border rounded-md bg-white text-gray-900"
-                                />
+                                    className="w-full mt-1"
+                                >
+                                    <option value="">—</option>
+                                    {FORMAS_BAIXA_MANUAL.map(fp => <option key={fp} value={fp}>{fp}</option>)}
+                                </SelectBusca>
                             </div>
                             <div>
                                 <label className="text-xs text-gray-500 font-medium">Data do Pagamento</label>
@@ -940,13 +947,14 @@ const ContasReceberPage = () => {
                             </div>
                             <div>
                                 <label className="text-xs text-gray-500 font-medium">Forma de Pagamento</label>
-                                <input
-                                    type="text"
+                                <SelectBusca
                                     value={baixaForm.formaPagamento}
                                     onChange={(e) => setBaixaForm(prev => ({ ...prev, formaPagamento: e.target.value }))}
-                                    placeholder="Dinheiro, PIX, Transferência..."
-                                    className="w-full mt-1 px-3 py-2.5 text-sm border rounded-md bg-white text-gray-900"
-                                />
+                                    className="w-full mt-1"
+                                >
+                                    <option value="">—</option>
+                                    {FORMAS_BAIXA_MANUAL.map(fp => <option key={fp} value={fp}>{fp}</option>)}
+                                </SelectBusca>
                             </div>
                             <div>
                                 <label className="text-xs text-gray-500 font-medium">Data do Pagamento</label>
