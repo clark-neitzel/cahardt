@@ -7303,7 +7303,12 @@ router.get('/diag-baixas-origem', async (req, res) => {
                 parcela: {
                     select: {
                         id: true, numeroParcela: true,
-                        contaReceber: { select: { pedido: { select: { numero: true } }, cliente: { select: { NomeFantasia: true, Nome: true } } } }
+                        contaReceber: {
+                            select: {
+                                pedido: { select: { numero: true, statusEntrega: true, dataEntrega: true, especial: true } },
+                                cliente: { select: { NomeFantasia: true, Nome: true } }
+                            }
+                        }
                     }
                 }
             },
@@ -7345,6 +7350,11 @@ router.get('/diag-baixas-origem', async (req, res) => {
         const porPessoa = {};
         const semLastro = [];
         const vindasDoCA = []; // baixa feita DENTRO do Conta Azul e só copiada pelo app
+        // Title quitado sem a mercadoria ter sido entregue: entrega ainda PENDENTE ou
+        // DEVOLVIDA. É o padrão que mais chama atenção — cobrança some da tela do cliente
+        // sem a venda ter se concretizado. Conta ESPECIAL sem pedido não entra (não tem entrega).
+        const semEntrega = [];
+        const porStatusEntrega = {};
 
         for (const p of pagamentos) {
             if (p.estornado) continue;
@@ -7358,6 +7368,29 @@ router.get('/diag-baixas-origem', async (req, res) => {
             if (!conciliados.has(p.id)) o.semLastroBancario++;
             const f = p.formaPagamento || 'N/I';
             o.formas[f] = r2((o.formas[f] || 0) + valor);
+
+            const ped = p.parcela?.contaReceber?.pedido;
+            const statusEntrega = ped ? (ped.statusEntrega || 'PENDENTE') : 'SEM_PEDIDO';
+            if (valor > 0) {
+                const se = porStatusEntrega[statusEntrega] || (porStatusEntrega[statusEntrega] = { baixas: 0, valor: 0 });
+                se.baixas++;
+                se.valor = r2(se.valor + valor);
+                if (ped && (statusEntrega === 'PENDENTE' || statusEntrega === 'DEVOLVIDO')) {
+                    semEntrega.push({
+                        data: p.dataPagamento.toISOString().slice(0, 10),
+                        statusEntrega,
+                        origem,
+                        cliente: p.parcela?.contaReceber?.cliente?.NomeFantasia || p.parcela?.contaReceber?.cliente?.Nome || 'N/I',
+                        pedido: ped.numero,
+                        especial: ped.especial,
+                        parcela: p.parcela?.numeroParcela || null,
+                        valor: r2(valor),
+                        forma: p.formaPagamento || 'N/I',
+                        baixadoPor: p.registradoPor?.nome || 'N/I',
+                        temLastroNoExtrato: conciliados.has(p.id)
+                    });
+                }
+            }
 
             if ((origem === 'SYNC_CA' || origem === 'CA_EXTRATO') && valor > 0) {
                 vindasDoCA.push({
@@ -7418,6 +7451,16 @@ router.get('/diag-baixas-origem', async (req, res) => {
                 valor: r2(semLastro.reduce((s, x) => s + x.valor, 0)),
                 itens: semLastro.slice(0, 200)
             },
+            // Quitado sem entrega concluída — a pergunta "sumiu da cobrança do cliente
+            // sem a mercadoria ter ficado com ele?"
+            porStatusEntrega,
+            quitadoSemEntrega: {
+                total: semEntrega.length,
+                valor: r2(semEntrega.reduce((s, x) => s + x.valor, 0)),
+                devolvidos: semEntrega.filter(x => x.statusEntrega === 'DEVOLVIDO').length,
+                pendentes: semEntrega.filter(x => x.statusEntrega === 'PENDENTE').length,
+                itens: semEntrega.sort((a, b) => b.data.localeCompare(a.data)).slice(0, 150)
+            },
             // Baixa feita DENTRO do Conta Azul e só copiada para cá — não passa por caixa
             // nem por conciliação. O app não consegue impedir; serve para enxergar.
             vindasDoCA: {
@@ -7467,7 +7510,7 @@ router.get('/diag-pedido-financeiro/:numero', async (req, res) => {
         const conta = await prisma.contaReceber.findFirst({
             where: { pedidoId: pedido.id },
             select: {
-                id: true, status: true, valorTotal: true, origem: true, condicaoPagamento: true,
+                id: true, status: true, valorTotal: true, origem: true, observacao: true,
                 parcelas: {
                     orderBy: { numeroParcela: 'asc' },
                     select: {
@@ -7562,7 +7605,7 @@ router.get('/diag-pedido-financeiro/:numero', async (req, res) => {
                 motivo: d.motivo, data: d.dataDevolucao, notaCA: d.notaDevolucaoCA,
                 registradoPor: d.registradoPor?.nome || null
             })),
-            conta: conta ? { status: conta.status, valorTotal: r2(conta.valorTotal), origem: conta.origem, condicao: conta.condicaoPagamento } : null,
+            conta: conta ? { status: conta.status, valorTotal: r2(conta.valorTotal), origem: conta.origem, observacao: conta.observacao || null } : null,
             parcelas,
             veredito: {
                 recebidoTotal,
