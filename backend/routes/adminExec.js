@@ -7284,4 +7284,131 @@ router.get('/diag-embarque-historico', async (req, res) => {
     }
 });
 
+// ── GET /diag-baixas-origem?dias=90 — por qual CAMINHO cada baixa de contas a receber entrou ──
+// Responde "está sendo baixado sem receber?": separa o que veio de caminho com lastro
+// (conciliação bancária, caixa/rota, Asaas, sync do CA) do que foi digitado na mão na tela
+// de Contas a Receber — e, dentro da mão, quanto é dinheiro, quem baixou e o que nunca
+// apareceu no extrato. Só leitura.
+router.get('/diag-baixas-origem', async (req, res) => {
+    try {
+        const dias = Math.min(400, Math.max(1, parseInt(req.query.dias) || 90));
+        const desde = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
+
+        const pagamentos = await prisma.pagamentoParcela.findMany({
+            where: { dataPagamento: { gte: desde } },
+            select: {
+                id: true, valorRecebido: true, valorDesconto: true, formaPagamento: true,
+                contaFinanceiraCaId: true, dataPagamento: true, observacao: true, estornado: true,
+                registradoPor: { select: { id: true, nome: true } },
+                parcela: {
+                    select: {
+                        id: true, numeroParcela: true,
+                        contaReceber: { select: { pedido: { select: { numero: true } }, cliente: { select: { NomeFantasia: true, Nome: true } } } }
+                    }
+                }
+            },
+            orderBy: { dataPagamento: 'desc' }
+        });
+
+        // Lastro bancário: o pagamento aparece amarrado a um lançamento do extrato (1↔1 ou em grupo)
+        const ids = pagamentos.map(p => p.id);
+        const conciliados = new Set();
+        for (let i = 0; i < ids.length; i += 500) {
+            const fatia = ids.slice(i, i + 500);
+            const [diretos, emGrupo] = await Promise.all([
+                prisma.extratoLancamento.findMany({ where: { pagamentoParcelaId: { in: fatia } }, select: { pagamentoParcelaId: true } }),
+                prisma.conciliacaoGrupoItem.findMany({ where: { pagamentoParcelaId: { in: fatia } }, select: { pagamentoParcelaId: true } })
+            ]);
+            diretos.forEach(d => conciliados.add(d.pagamentoParcelaId));
+            emGrupo.forEach(g => conciliados.add(g.pagamentoParcelaId));
+        }
+
+        // Caminho de origem — inferido pela observação que cada rotina grava (não existe
+        // coluna de origem ainda; é exatamente o que a trava vai passar a carimbar).
+        const classificar = (p) => {
+            const obs = p.observacao || '';
+            if (/^Cobran[çc]a em rota/i.test(obs)) return 'CAIXA_ROTA';
+            if (/^Motorista:.*\| Caixa:/i.test(obs) || /^Baixa caixa - /i.test(obs)) return 'CAIXA_BAIXA_CA';
+            if (/conciliação bancária/i.test(obs)) return 'CONCILIACAO';
+            if (/^Pago via .*\(pay_/i.test(obs)) return 'ASAAS';
+            if (/Baixa sincronizada do Conta Azul/i.test(obs) || /Baixa espelhada do Conta Azul/i.test(obs)) return 'SYNC_CA';
+            if (Number(p.valorRecebido) <= 0 && Number(p.valorDesconto) > 0) return 'DESCONTO_DEVOLUCAO';
+            return 'MANUAL_CONTAS_RECEBER';
+        };
+
+        const ehDinheiro = (f) => /dinheiro|especie|espécie/i.test(String(f || ''));
+        const r2 = (n) => Math.round(n * 100) / 100;
+
+        const porOrigem = {};
+        const porPessoa = {};
+        const semLastro = [];
+
+        for (const p of pagamentos) {
+            if (p.estornado) continue;
+            const origem = classificar(p);
+            const valor = Number(p.valorRecebido);
+            const o = porOrigem[origem] || (porOrigem[origem] = { baixas: 0, valor: 0, dinheiro: 0, semContaFinanceira: 0, semLastroBancario: 0, formas: {} });
+            o.baixas++;
+            o.valor = r2(o.valor + valor);
+            if (ehDinheiro(p.formaPagamento)) o.dinheiro = r2(o.dinheiro + valor);
+            if (!p.contaFinanceiraCaId) o.semContaFinanceira++;
+            if (!conciliados.has(p.id)) o.semLastroBancario++;
+            const f = p.formaPagamento || 'N/I';
+            o.formas[f] = r2((o.formas[f] || 0) + valor);
+
+            if (origem !== 'MANUAL_CONTAS_RECEBER') continue;
+
+            const nome = p.registradoPor?.nome || 'N/I';
+            const q = porPessoa[nome] || (porPessoa[nome] = { baixas: 0, valor: 0, dinheiro: 0, semContaFinanceira: 0, semLastroBancario: 0, formas: {} });
+            q.baixas++;
+            q.valor = r2(q.valor + valor);
+            if (ehDinheiro(p.formaPagamento)) q.dinheiro = r2(q.dinheiro + valor);
+            if (!p.contaFinanceiraCaId) q.semContaFinanceira++;
+            if (!conciliados.has(p.id)) q.semLastroBancario++;
+            q.formas[f] = r2((q.formas[f] || 0) + valor);
+
+            // O que preocupa: baixa na mão, sem dinheiro conferido no extrato
+            if (!conciliados.has(p.id) && valor > 0) {
+                semLastro.push({
+                    data: p.dataPagamento.toISOString().slice(0, 10),
+                    cliente: p.parcela?.contaReceber?.cliente?.NomeFantasia || p.parcela?.contaReceber?.cliente?.Nome || 'N/I',
+                    pedido: p.parcela?.contaReceber?.pedido?.numero || null,
+                    parcela: p.parcela?.numeroParcela || null,
+                    valor: r2(valor),
+                    forma: p.formaPagamento || 'N/I',
+                    contaInformada: !!p.contaFinanceiraCaId,
+                    baixadoPor: nome,
+                    obs: (p.observacao || '').slice(0, 120) || null
+                });
+            }
+        }
+
+        const manual = porOrigem.MANUAL_CONTAS_RECEBER || { baixas: 0, valor: 0, dinheiro: 0, semLastroBancario: 0 };
+        const totalValor = r2(Object.values(porOrigem).reduce((s, o) => s + o.valor, 0));
+
+        res.json({
+            ok: true,
+            periodo: { dias, desde: desde.toISOString().slice(0, 10) },
+            totalBaixas: pagamentos.filter(p => !p.estornado).length,
+            totalValor,
+            veredito: {
+                valorNaMao: r2(manual.valor),
+                percentualNaMao: totalValor > 0 ? Math.round((manual.valor / totalValor) * 1000) / 10 : 0,
+                dinheiroNaMao: r2(manual.dinheiro),
+                naMaoSemLastroBancario: manual.semLastroBancario
+            },
+            porOrigem,
+            manualPorPessoa: porPessoa,
+            manualSemLastro: {
+                total: semLastro.length,
+                valor: r2(semLastro.reduce((s, x) => s + x.valor, 0)),
+                itens: semLastro.slice(0, 200)
+            }
+        });
+    } catch (e) {
+        console.error('[admin-exec] diag-baixas-origem:', e.message);
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;
