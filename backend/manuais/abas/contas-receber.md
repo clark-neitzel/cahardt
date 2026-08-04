@@ -82,6 +82,8 @@ Uma parcela só deve virar PAGA por um destes caminhos:
 
 Desconto sem dinheiro (perdoar saldo) continua na mesma permissão de desconto e **não** passa por caixa — não há valor a prestar.
 
+**Título cobrado em boleto/Pix quitado em espécie:** é permitido (o cliente pode ter pago em dinheiro no balcão), mas o app **avisa** antes de confirmar — tanto na baixa individual quanto na em lote. Se o cliente pagou o boleto de verdade, não dê baixa aqui: ela vem sozinha pela Conciliação Bancária, e a baixa manual deixaria o crédito do banco sem par no extrato.
+
 ### Dar baixa em uma parcela (total, parcial ou com desconto)
 1. Localize a parcela na tabela (ou abra "Ver detalhes" e clique em **Dar baixa**)
 2. Clique no botão de baixa (ícone de cheque) na linha
