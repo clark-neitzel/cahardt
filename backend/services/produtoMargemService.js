@@ -370,6 +370,142 @@ async function detalhe(produtoId, meses = 6, mes = null) {
 }
 
 /**
+ * Árvore de custo de um produto de produção própria: a ficha técnica ativa aberta
+ * nível por nível (ingrediente → subproduto → ingredientes dele…), com a variação
+ * de custo de cada insumo na janela analisada, vinda do histórico de COMPRAS
+ * (compras_itens — as notas de entrada conferidas). Responde "o que aumentou
+ * dentro deste produto?".
+ *
+ * Variação por nó:
+ *  - Insumo comprado (MP/EMB…): custo médio ponderado das compras do 1º mês com
+ *    compra na janela × custo atual usado na ficha.
+ *  - Subproduto (SUB com receita): recalculado de baixo para cima — o custo "antes"
+ *    é a soma dos custos "antes" dos filhos ÷ rendimento líquido (quem não tem
+ *    compra na janela entra com o custo atual, ou seja, variação zero).
+ */
+async function arvoreCusto(produtoId, meses = 6, mes = null) {
+    const produto = await prisma.produto.findUnique({
+        where: { id: produtoId },
+        select: { id: true, codigo: true, nome: true, unidade: true }
+    });
+    if (!produto) return null;
+
+    const custoAtualMap = await custoAtualDeProdutos([produtoId]);
+    const c = custoAtualMap.get(produtoId);
+    if (!c || c.fonteCusto !== 'FICHA' || !c.receitaId) {
+        return { produto: { produtoId: produto.id, nome: produto.nome, codigo: produto.codigo }, arvore: null, motivo: 'sem_ficha' };
+    }
+
+    const mesAtual = ymNowSP();
+    const mesSel = (typeof mes === 'string' && /^\d{4}-\d{2}$/.test(mes) && mes <= mesAtual) ? mes : mesAtual;
+    const mesesArr = listaMeses(mesSel, meses);
+
+    const detalhado = await pcpReceitaService.calcularCustoDetalhado(c.receitaId);
+
+    // ── Coleta todos os insumos da árvore para buscar as compras de uma vez ──
+    const itemIds = new Set();
+    const prodIds = new Set();
+    const coletar = (no) => {
+        for (const it of no.itens || []) {
+            if (it.itemPcpId) itemIds.add(it.itemPcpId);
+            if (it.produtoId) prodIds.add(it.produtoId);
+            if (it.filhos) coletar(it.filhos);
+        }
+    };
+    coletar(detalhado);
+
+    // Compras válidas na janela (não estornadas), médias mensais ponderadas por quantidade
+    const compras = (itemIds.size || prodIds.size) ? await prisma.compraItem.findMany({
+        where: {
+            estornado: false,
+            dataCompra: { gte: inicioMesSP(mesesArr[0]), lte: fimMesSP(mesSel) },
+            OR: [
+                ...(itemIds.size ? [{ itemPcpId: { in: [...itemIds] } }] : []),
+                ...(prodIds.size ? [{ produtoId: { in: [...prodIds] } }] : [])
+            ]
+        },
+        select: { itemPcpId: true, produtoId: true, dataCompra: true, valorTotal: true, quantidade: true }
+    }) : [];
+
+    // chave → Map(mes → { valor, qtd })
+    const porChave = new Map();
+    const acumular = (chave, mesYm, valor, qtd) => {
+        if (!porChave.has(chave)) porChave.set(chave, new Map());
+        const m = porChave.get(chave);
+        if (!m.has(mesYm)) m.set(mesYm, { valor: 0, qtd: 0 });
+        const a = m.get(mesYm);
+        a.valor += valor; a.qtd += qtd;
+    };
+    for (const compra of compras) {
+        const mesYm = compra.dataCompra.toLocaleDateString('en-CA', { timeZone: TZ }).slice(0, 7);
+        if (compra.itemPcpId) acumular(`i:${compra.itemPcpId}`, mesYm, num(compra.valorTotal), num(compra.quantidade));
+        if (compra.produtoId) acumular(`p:${compra.produtoId}`, mesYm, num(compra.valorTotal), num(compra.quantidade));
+    }
+
+    // Série mensal (média ponderada) de um insumo — junta compras do item PCP e do produto vinculado
+    const serieComprasDe = (itemPcpId, produtoIdIns) => {
+        const serie = [];
+        for (const m of mesesArr) {
+            let valor = 0, qtd = 0;
+            for (const chave of [itemPcpId ? `i:${itemPcpId}` : null, produtoIdIns ? `p:${produtoIdIns}` : null]) {
+                if (!chave) continue;
+                const a = porChave.get(chave)?.get(m);
+                if (a) { valor += a.valor; qtd += a.qtd; }
+            }
+            serie.push({ mes: m, custo: qtd > 0 ? round4(valor / qtd) : null });
+        }
+        return serie;
+    };
+
+    const variacaoDe = (custoAntes, custoAtualNo) => {
+        if (custoAntes == null || !(custoAntes > 0) || custoAtualNo == null) return null;
+        return {
+            custoAntes: round4(custoAntes),
+            custoAtual: round4(custoAtualNo),
+            pct: Math.round(((custoAtualNo - custoAntes) / custoAntes) * 1000) / 10
+        };
+    };
+
+    // ── Anota a árvore de baixo para cima (variação e % do pai) ──
+    // Devolve o custo unitário "antes" do nó (null = sem referência → tratar como atual)
+    const anotarItem = (it) => {
+        if (it.filhos) {
+            const antesSub = anotarReceita(it.filhos);
+            it.variacao = variacaoDe(antesSub, it.custoUnitario);
+            it.serieCompras = null;
+            return antesSub;
+        }
+        const serie = serieComprasDe(it.itemPcpId, it.produtoId);
+        const comCompra = serie.filter((s) => s.custo != null);
+        it.serieCompras = comCompra.length ? serie : null;
+        const custoAntes = comCompra.length ? comCompra[0].custo : null;
+        it.variacao = variacaoDe(custoAntes, it.custoUnitario);
+        return custoAntes;
+    };
+    // Devolve o custo POR UNIDADE "antes" da receita (para o pai usar)
+    const anotarReceita = (rec) => {
+        let totalAntes = 0;
+        for (const it of rec.itens || []) {
+            const antesUnit = anotarItem(it);
+            totalAntes += (antesUnit != null ? antesUnit : (it.custoUnitario || 0)) * (it.quantidade || 0);
+            it.pct = rec.custoTotal > 0 ? Math.round((it.custoTotal / rec.custoTotal) * 1000) / 10 : 0;
+        }
+        rec.itens = [...(rec.itens || [])].sort((a, b) => b.pct - a.pct);
+        const antesUnidade = rec.rendimentoLiquido > 0 ? totalAntes / rec.rendimentoLiquido : null;
+        rec.variacao = variacaoDe(antesUnidade, rec.custoPorUnidade);
+        return antesUnidade;
+    };
+    anotarReceita(detalhado);
+
+    return {
+        produto: { produtoId: produto.id, nome: produto.nome, codigo: produto.codigo, unidade: produto.unidade || null },
+        mesSelecionado: mesSel,
+        janela: { de: mesesArr[0], ate: mesSel, meses: mesesArr.length },
+        arvore: detalhado
+    };
+}
+
+/**
  * Captura o custo/preço atual de TODOS os produtos ativos no mês informado
  * (upsert). Roda diariamente para o mês corrente; o passado fica congelado.
  */
@@ -415,6 +551,7 @@ module.exports = {
     custoAtualDeProdutos,
     listar,
     detalhe,
+    arvoreCusto,
     capturarMes,
     backfillInicial,
     // puras

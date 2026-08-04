@@ -134,8 +134,12 @@ const ProdutosMargemCusto = () => {
         if (!detalhes[produtoId]) {
             setLoadingDet(produtoId);
             try {
-                const r = await api.get(`/produtos-margem/${produtoId}`, { params: { meses: filtros.meses, mes } });
-                setDetalhes((d) => ({ ...d, [produtoId]: r.data }));
+                // Detalhe + árvore de custo em paralelo (a árvore é opcional: só produção própria)
+                const [r, ra] = await Promise.all([
+                    api.get(`/produtos-margem/${produtoId}`, { params: { meses: filtros.meses, mes } }),
+                    api.get(`/produtos-margem/${produtoId}/arvore`, { params: { meses: filtros.meses, mes } }).catch(() => null)
+                ]);
+                setDetalhes((d) => ({ ...d, [produtoId]: { ...r.data, arvoreCusto: ra?.data?.arvore || null } }));
             } catch {
                 toast.error('Não foi possível carregar o detalhe.');
                 setExpandido(null);
@@ -329,6 +333,102 @@ const ProdutosMargemCusto = () => {
     );
 };
 
+/* ── Árvore de custo (composição navegável, nível por nível) ── */
+const VariacaoNo = ({ v }) => {
+    if (!v || v.pct == null) return null;
+    if (Math.abs(v.pct) <= 0.5) return <span className="text-[11px] font-bold text-gray-400 whitespace-nowrap">▬</span>;
+    const subiu = v.pct > 0;
+    return (
+        <span className={`text-[11px] font-extrabold whitespace-nowrap ${subiu ? 'text-red-700' : 'text-green-700'}`}>
+            {subiu ? '▲' : '▼'} {fmtBR(Math.abs(v.pct), 0)}%
+        </span>
+    );
+};
+
+// Um componente da ficha. `contrib` = quanto este item custa POR UNIDADE do produto final.
+const NoArvore = ({ it, contrib, nivel }) => {
+    const [aberto, setAberto] = useState(false);
+    const filhos = it.filhos?.itens || [];
+    const compras = (it.serieCompras || []).filter((s) => s.custo != null);
+    const expansivel = filhos.length > 0 || compras.length > 0;
+    return (
+        <div>
+            <button
+                type="button"
+                onClick={expansivel ? () => setAberto((a) => !a) : undefined}
+                className={`w-full text-left rounded-lg px-1.5 py-1 -mx-1.5 ${expansivel ? 'hover:bg-gray-50 cursor-pointer' : 'cursor-default'}`}
+            >
+                <div className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 items-center">
+                    <span className="flex items-center gap-1.5 min-w-0">
+                        {expansivel
+                            ? <ChevronRight className={`h-3.5 w-3.5 flex-none text-gray-400 transition-transform ${aberto ? 'rotate-90' : ''}`} />
+                            : <span className="w-3.5 flex-none" />}
+                        <span className="text-sm font-semibold text-gray-800 truncate">{it.nome}</span>
+                        <VariacaoNo v={it.variacao} />
+                    </span>
+                    <span className="text-sm font-bold text-gray-900 text-right whitespace-nowrap tabular-nums">
+                        {it.semCusto ? <span className="text-amber-700 text-xs font-semibold">sem custo</span> : <>{fmtRS(contrib)} · {fmtBR(it.pct, 0)}%</>}
+                    </span>
+                    <span className="text-[11px] text-gray-500 font-medium pl-5 truncate">
+                        {fmtBR(it.quantidade, it.quantidade % 1 ? 3 : 0)} {it.unidade || ''} × {fmtRS(it.custoUnitario)}
+                        {it.variacao && Math.abs(it.variacao.pct) > 0.5 && <> · era {fmtRS(it.variacao.custoAntes)}</>}
+                    </span>
+                    <span />
+                    <span className="col-span-2 h-1.5 ml-5 bg-gray-100 rounded overflow-hidden">
+                        <i className="block h-full rounded" style={{ width: `${Math.min(100, it.pct || 0)}%`, background: it.tipo === 'MP' ? '#cba258' : '#00754A' }} />
+                    </span>
+                </div>
+            </button>
+            {aberto && filhos.length > 0 && (
+                <div className="mt-1.5 ml-2.5 pl-3 border-l-2 border-mint space-y-2">
+                    <p className="text-[11px] text-gray-500 font-medium">
+                        Receita rende {fmtBR(it.filhos.rendimentoLiquido, it.filhos.rendimentoLiquido % 1 ? 2 : 0)} {it.unidade || 'un'} · custo {fmtRS(it.filhos.custoPorUnidade)} por {it.unidade || 'un'}
+                    </p>
+                    {filhos.map((f, i) => (
+                        <NoArvore key={f.itemPcpId || i} it={f} contrib={contrib * ((f.pct || 0) / 100)} nivel={nivel + 1} />
+                    ))}
+                </div>
+            )}
+            {aberto && filhos.length === 0 && compras.length > 0 && (
+                <div className="mt-1.5 ml-2.5 pl-3 border-l-2 border-gray-200">
+                    <p className="text-[11px] text-gray-500 font-medium mb-1">Compras na janela (média do mês):</p>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                        {compras.map((s) => (
+                            <span key={s.mes} className="text-[11px] font-semibold text-gray-600 tabular-nums whitespace-nowrap">
+                                {rotuloMes(s.mes)} {fmtRS(s.custo)}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const ArvoreCusto = ({ arv }) => {
+    const itens = arv.itens || [];
+    const maiorAlta = itens.filter((i) => i.variacao && i.variacao.pct > 0.5).sort((a, b) => b.variacao.pct - a.variacao.pct)[0];
+    return (
+        <>
+            <div className="space-y-2.5">
+                {itens.map((it, i) => (
+                    <NoArvore key={it.itemPcpId || i} it={it} contrib={arv.custoPorUnidade * ((it.pct || 0) / 100)} nivel={0} />
+                ))}
+            </div>
+            {maiorAlta ? (
+                <div className="bg-amber-100 text-amber-700 rounded-lg px-3.5 py-2.5 text-sm font-semibold mt-3">
+                    O que mais subiu na janela: <b>{maiorAlta.nome}</b> (▲ {fmtBR(maiorAlta.variacao.pct, 0)}%, {fmtRS(maiorAlta.variacao.custoAntes)} → {fmtRS(maiorAlta.variacao.custoAtual)}).
+                </div>
+            ) : itens[0] ? (
+                <div className="bg-mint text-primaryDark rounded-lg px-3.5 py-2.5 text-sm font-semibold mt-3">
+                    <b>{itens[0].nome}</b> é {fmtBR(itens[0].pct, 0)}% do custo. Vem da ficha técnica ativa do PCP.
+                </div>
+            ) : null}
+            <p className="text-xs text-gray-500 font-medium mt-2">Toque num componente com <ChevronRight className="inline h-3 w-3 -mt-0.5" /> para abrir o que tem dentro dele — a variação ▲/▼ é do custo do insumo nas compras da janela.</p>
+        </>
+    );
+};
+
 /* ── Detalhe expandido de um produto ── */
 const DetalheProduto = ({ det, carregando }) => {
     if (carregando || !det) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
@@ -359,7 +459,13 @@ const DetalheProduto = ({ det, carregando }) => {
             {/* Composição */}
             <div className="bg-white border border-gray-200 rounded-xl p-4">
                 <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Composição do custo — o que mais pesa</div>
-                {comp && comp.itens?.length > 0 ? (
+                {det.arvoreCusto && det.arvoreCusto.itens?.length > 0 ? (
+                    <>
+                        <ArvoreCusto arv={det.arvoreCusto} />
+                        {det.arvoreCusto.temCustoFaltando && <p className="text-xs text-amber-700 font-semibold mt-2">Alguns ingredientes estão sem custo cadastrado — o custo pode estar subestimado.</p>}
+                        {det.composicaoAtual && <p className="text-xs text-gray-500 font-medium mt-2">Composição da <b>ficha técnica atual</b> (a receita de meses passados não fica guardada).</p>}
+                    </>
+                ) : comp && comp.itens?.length > 0 ? (
                     <>
                         <div className="space-y-2.5">
                             {comp.itens.slice(0, 6).map((it, i) => (
