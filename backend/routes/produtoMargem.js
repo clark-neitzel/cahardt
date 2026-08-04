@@ -56,6 +56,21 @@ router.get('/categorias', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// GET /:produtoId/arvore?meses=6&mes=YYYY-MM — árvore de custo da ficha técnica
+// (componente por componente, com a variação de cada insumo pelas compras da janela)
+router.get('/:produtoId/arvore', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const meses = Math.min(12, Math.max(3, Number(req.query.meses) || 6));
+        const mes = /^\d{4}-\d{2}$/.test(String(req.query.mes)) ? String(req.query.mes) : null;
+        const dados = await produtoMargemService.arvoreCusto(req.params.produtoId, meses, mes);
+        if (!dados) return res.status(404).json({ error: 'Produto não encontrado.' });
+        res.json(dados);
+    } catch (error) {
+        console.error('[ProdutoMargem] Erro na árvore de custo:', error);
+        res.status(500).json({ error: 'Erro ao montar a árvore de custo.' });
+    }
+});
+
 // GET /:produtoId?meses=6 — detalhe (variação no tempo + composição do custo)
 router.get('/:produtoId', verificarAuth, checkAcesso, async (req, res) => {
     try {

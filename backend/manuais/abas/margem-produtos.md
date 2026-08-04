@@ -24,8 +24,14 @@ Colunas: Produto, **Origem** (própria/revenda/sem custo), **Custo unitário**, 
 ### Detalhe do produto (toque na linha)
 Abre no lugar, com:
 - **Gráfico preço praticado × custo** mês a mês — mostra na hora quando a margem está sendo espremida.
-- **Composição do custo** — os ingredientes que mais pesam, em R$ e %, vindos da ficha técnica ativa do PCP (só produção própria).
+- **Composição do custo em ÁRVORE** (produção própria) — a ficha técnica ativa do PCP aberta **camada por camada**: componente com setinha `▸` tem coisa dentro (é um subproduto com receita própria) — toque para abrir a massa, o recheio, a embalagem… e continue descendo até o insumo cru (farinha, ovo). Cada linha mostra:
+  - quanto o componente custa **por unidade do produto final** e o **% que pesa** no componente de cima (barra);
+  - a **variação do custo na janela** (▲ vermelho subiu / ▼ verde caiu / ▬ estável) — nos insumos comprados vem do preço das **notas de compra conferidas** (média do primeiro mês com compra na janela × custo atual); nos subprodutos é recalculada de baixo para cima somando os ingredientes;
+  - `qtd × custo atual · era R$ …` quando o insumo mudou de preço.
+- **Toque num insumo comprado** (sem filhos) para abrir o **preço médio pago mês a mês** na janela.
+- Aviso amarelo aponta **o que mais subiu** dentro do produto (com de → para em R$); se nada subiu, mostra o componente que mais pesa.
 - Alerta automático ("o custo subiu X%, a margem caiu Y pontos").
+- A janela da variação acompanha o filtro de período (3/6/12 meses) e o mês selecionado; a árvore é sempre a da **ficha técnica atual**.
 
 ### Destaques (embaixo)
 - **Margem espremida** — custo subindo e preço parado.

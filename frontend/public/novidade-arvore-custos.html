@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Árvore de Custos — o que aumentou dentro do produto — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<meta property="og:title" content="🌳 Novidade no Hardt App: Árvore de Custos do produto">
+<meta property="og:description" content="Na Margem & Custo, agora dá pra abrir o produto camada por camada — empanado, massa, recheio, embalagem — e ver o que aumentou em cada insumo, com ▲/▼ vindo das compras.">
+<meta property="og:type" content="website">
+<style>
+  :root{ --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66; letter-spacing:-0.01em; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--cream);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:620px;margin:0 auto;padding:0 16px 56px}
+  .hero{background:linear-gradient(168deg,var(--house) 0%,#16302a 100%);color:#fff;padding:40px 16px 96px;text-align:center}
+  .hero .tag{display:inline-block;background:var(--gold);color:#3b2f14;font-weight:800;font-size:12px;letter-spacing:.08em;text-transform:uppercase;border-radius:999px;padding:6px 14px}
+  .hero h1{font-size:27px;line-height:1.2;margin:14px auto 8px;max-width:480px;font-weight:800}
+  .hero p{color:#bcd3c9;font-weight:600;font-size:15px;max-width:460px;margin:0 auto}
+
+  .mock{background:#fff;border-radius:18px;box-shadow:0 14px 36px rgba(0,0,0,.22);margin:-72px auto 24px;overflow:hidden;border:1px solid #e3e0d8;position:relative}
+  .mock .mtop{padding:14px 16px;border-bottom:1px solid #efece6}
+  .mock .mt1{font-weight:800;font-size:15px}
+  .mock .mt2{font-size:12px;color:#8a8580;font-weight:600}
+  .arv{padding:12px 16px 16px;font-size:13px}
+  .lin{display:flex;align-items:center;gap:6px;padding:5px 0}
+  .lin .chev{color:#a8a29e;font-size:11px;width:12px;flex:none}
+  .lin .nm{font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lin .var{font-size:11px;font-weight:800;white-space:nowrap}
+  .var.up{color:#b91c1c}.var.dw{color:#166534}.var.eq{color:#a8a29e}
+  .lin .rs{margin-left:auto;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .bar{height:5px;background:#f1efe9;border-radius:99px;margin:0 0 4px 18px;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:99px;background:var(--primary)}
+  .bar i.mp{background:var(--gold)}
+  .niv{margin-left:14px;padding-left:12px;border-left:2px solid var(--mint)}
+  .sub{font-size:10.5px;color:#8a8580;font-weight:600;margin-left:18px}
+  .alerta{background:#fef3c7;color:#b45309;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:700;margin-top:10px}
+
+  .pin{position:absolute;width:22px;height:22px;border-radius:50%;background:var(--gold);color:#3b2f14;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.25);z-index:2}
+  .legenda{background:#fff;border:1px solid #e3e0d8;border-radius:14px;padding:14px 16px;margin-bottom:24px}
+  .legenda .li{display:flex;gap:10px;margin-bottom:10px;font-size:13.5px}
+  .legenda .li:last-child{margin-bottom:0}
+  .legenda .ln{flex:none;width:22px;height:22px;border-radius:50%;background:var(--gold);color:#3b2f14;font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center}
+
+  h2.secao{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#5f6b66;font-weight:800;margin:30px 4px 12px}
+  details{background:#fff;border:1px solid #e3e0d8;border-radius:14px;margin-bottom:10px;overflow:hidden}
+  summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:15px 16px;font-weight:800;font-size:15px;min-height:44px}
+  summary::-webkit-details-marker{display:none}
+  summary .emoji{flex:none;width:36px;height:36px;border-radius:10px;background:var(--mint);display:flex;align-items:center;justify-content:center;font-size:17px}
+  summary .seta{margin-left:auto;color:#a8a29e;transition:transform .18s}
+  details[open] summary .seta{transform:rotate(180deg)}
+  .dbody{padding:0 16px 16px 62px;font-size:14px;color:#44403c}
+  .dbody ul{margin:6px 0 0;padding-left:18px}
+  .dbody li{margin-bottom:6px}
+  .dbody b{color:var(--ink)}
+
+  .passos{background:#fff;border:1px solid #e3e0d8;border-radius:14px;padding:18px 16px}
+  .passo{display:flex;gap:12px;margin-bottom:14px}
+  .passo:last-child{margin-bottom:0}
+  .passo .num{flex:none;width:28px;height:28px;border-radius:50%;background:var(--primary);color:#fff;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center}
+  .passo p{margin:2px 0 0;font-size:14px}
+  .rodape{text-align:center;color:#8a8580;font-size:12.5px;font-weight:600;margin-top:28px}
+  @media(prefers-reduced-motion:reduce){summary .seta{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="tag">Novidade no Hardt App</span>
+  <h1>🌳 Árvore de Custos: veja o que aumentou dentro do produto</h1>
+  <p>A composição do custo agora abre camada por camada — empanado, massa, recheio, embalagem — e cada insumo mostra se subiu ou desceu, direto das notas de compra.</p>
+</div>
+
+<div class="wrap">
+  <h2 class="secao" style="margin-top:0">A tela do app</h2>
+  <div class="mock">
+    <div class="pin" style="top:66px;left:6px">1</div>
+    <div class="pin" style="top:96px;right:6px">2</div>
+    <div class="pin" style="top:206px;left:6px">3</div>
+    <div class="mtop">
+      <div class="mt1">Composição do custo — o que mais pesa</div>
+      <div class="mt2">1-G-RISOLES PIZZA C/10 · janela mar–ago</div>
+    </div>
+    <div class="arv">
+      <div class="lin"><span class="chev">▼</span><span class="nm">UN-EMPANADO SALSICHA 140GR</span><span class="var up">▲ 12%</span><span class="rs">R$ 8,83 · 96%</span></div>
+      <div class="bar"><i style="width:96%"></i></div>
+      <div class="niv">
+        <div class="sub" style="margin-left:0;margin-bottom:4px">Receita rende 100 UN · custo R$ 8,83 por UN</div>
+        <div class="lin"><span class="chev">▼</span><span class="nm">MASSA SALGADO</span><span class="var up">▲ 17%</span><span class="rs">R$ 4,90 · 55%</span></div>
+        <div class="bar"><i style="width:55%"></i></div>
+        <div class="niv">
+          <div class="lin"><span class="chev">▸</span><span class="nm">FARINHA DE TRIGO</span><span class="var up">▲ 25%</span><span class="rs">R$ 2,60 · 53%</span></div>
+          <div class="sub">5 KG × R$ 5,20 · era R$ 4,15</div>
+          <div class="bar"><i class="mp" style="width:53%"></i></div>
+          <div class="lin"><span class="chev">&nbsp;</span><span class="nm">OVOS</span><span class="var eq">▬</span><span class="rs">R$ 0,90 · 18%</span></div>
+          <div class="bar"><i class="mp" style="width:18%"></i></div>
+        </div>
+        <div class="lin"><span class="chev">▸</span><span class="nm">SALSICHA KG</span><span class="var dw">▼ 4%</span><span class="rs">R$ 2,40 · 27%</span></div>
+        <div class="bar"><i class="mp" style="width:27%"></i></div>
+      </div>
+      <div class="lin"><span class="chev">▸</span><span class="nm">SACO 27X38 HARDT</span><span class="var eq">▬</span><span class="rs">R$ 0,31 · 3%</span></div>
+      <div class="bar"><i style="width:3%"></i></div>
+      <div class="alerta">O que mais subiu na janela: <b>MASSA SALGADO</b> (▲ 17%, R$ 4,20 → R$ 4,90).</div>
+    </div>
+  </div>
+  <div class="legenda">
+    <div class="li"><span class="ln">1</span><div>Componente com <b>▼/▸</b> tem coisa dentro: toque para abrir a receita dele (massa, recheio, embalagem…) — e dá pra continuar descendo, nível por nível.</div></div>
+    <div class="li"><span class="ln">2</span><div>Cada linha mostra <b>quanto ele custa por unidade do produto final</b> e o <b>% que pesa</b> no componente de cima. A setinha vermelha ▲ é o que subiu na janela; verde ▼ é o que caiu.</div></div>
+    <div class="li"><span class="ln">3</span><div>Nos insumos comprados aparece <b>quantidade × custo atual e o "era R$ …"</b> (preço das compras no começo da janela). Tocando no insumo, abre o preço médio de compra mês a mês.</div></div>
+  </div>
+
+  <h2 class="secao">O que mudou</h2>
+
+  <details class="acc aberto" open>
+    <summary><span class="emoji">🌳</span> A composição virou uma árvore <span class="seta">▾</span></summary>
+    <div class="dbody">
+      <ul>
+        <li>Antes a tela mostrava só o primeiro nível ("empanado é 96% do custo") — <b>muito genérico</b> para produto montado.</li>
+        <li>Agora o componente abre e mostra <b>o que tem dentro</b>: a massa, o recheio, cada ingrediente — até chegar na farinha e no ovo.</li>
+        <li>Funciona em qualquer profundidade: subproduto dentro de subproduto continua abrindo.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary><span class="emoji">📈</span> O que aumentou, em cada camada <span class="seta">▾</span></summary>
+    <div class="dbody">
+      <ul>
+        <li>Cada insumo comprado compara o <b>preço das compras do começo da janela</b> (as notas de entrada) com o custo de hoje: ▲ subiu, ▼ caiu, ▬ estável.</li>
+        <li>Subproduto (massa, empanado…) soma a variação dos ingredientes dele — dá pra ver <b>qual camada puxou a alta</b>.</li>
+        <li>O aviso amarelo aponta direto <b>o que mais subiu</b> no produto, com o de → para em R$.</li>
+        <li>A janela acompanha o filtro da tela (3, 6 ou 12 meses) e o mês selecionado.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="acc aberto" open>
+    <summary><span class="emoji">🧾</span> Compras mês a mês <span class="seta">▾</span></summary>
+    <div class="dbody">
+      <ul>
+        <li>Tocando num insumo comprado (farinha, salsicha, saco…), abre o <b>preço médio pago em cada mês</b> da janela.</li>
+        <li>Os números vêm das <b>notas de compra conferidas</b> no app — não é estimativa.</li>
+      </ul>
+    </div>
+  </details>
+
+  <h2 class="secao">Para começar a usar</h2>
+  <div class="passos">
+    <div class="passo"><span class="num">1</span><p>Menu <b>Financeiro → Margem &amp; Custo dos Produtos</b>, filtro em <b>Produção própria</b>.</p></div>
+    <div class="passo"><span class="num">2</span><p>Toque num produto → card <b>Composição do custo</b>.</p></div>
+    <div class="passo"><span class="num">3</span><p>Toque no componente com <b>▸</b> para abrir o que tem dentro — e siga descendo até achar o insumo que subiu.</p></div>
+  </div>
+
+  <p class="rodape">Hardt Salgados · qualquer dúvida, pergunte ao Clippy 📎 dentro do app</p>
+</div>
+</body>
+</html>

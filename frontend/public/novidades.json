@@ -1,5 +1,11 @@
 [
   {
+    "slug": "arvore-custos",
+    "titulo": "Árvore de custos do produto",
+    "resumo": "Na Margem & Custo, a composição do custo agora abre camada por camada: toque no empanado e veja a massa e o recheio; toque na massa e veja a farinha e o ovo. Cada insumo mostra se subiu ou desceu (▲/▼) pelas notas de compra da janela — dá pra achar exatamente o que puxou a alta do custo.",
+    "data": "2026-08-04"
+  },
+  {
     "slug": "filtros-contas-receber",
     "titulo": "Filtros que combinam",
     "resumo": "No Contas a Receber dá para marcar várias opções na mesma caixa (Aberto E Quitado), cruzar quantos filtros quiser e a lista atualiza na hora — o menu não fecha mais a cada clique e as opções não somem. Os quatro campos de data viraram duas pílulas com Este mês, Últimos 30 dias e setas para navegar.",
