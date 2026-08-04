@@ -6972,4 +6972,99 @@ router.post('/estoque-trava-zero/corrigir', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-embarque-disponiveis?ate=YYYY-MM-DD
+// Só leitura. Lista as "notas" (pedidos) que estão livres para entrar num embarque
+// com data de entrega ATÉ a data informada (padrão: ontem, fuso SP) — mesma regra
+// da tela Expedição → Nova Carga (GET /api/embarques/pedidos-disponiveis):
+// sem embarque, fora do Kanban de Delivery, e FATURADO / especial ENVIAR / bonificação ENVIAR.
+router.get('/diag-embarque-disponiveis', async (req, res) => {
+    try {
+        const ate = String(req.query.ate || '').match(/^\d{4}-\d{2}-\d{2}$/)
+            ? String(req.query.ate)
+            : new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const limite = new Date(ate + 'T23:59:59-03:00');
+
+        const noDelivery = await prisma.deliveryStatus.findMany({ select: { pedidoId: true } });
+        const idsNoDelivery = noDelivery.map(d => d.pedidoId);
+
+        const pedidos = await prisma.pedido.findMany({
+            where: {
+                embarqueId: null,
+                dataVenda: { lte: limite },
+                ...(idsNoDelivery.length > 0 ? { id: { notIn: idsNoDelivery } } : {}),
+                OR: [
+                    { situacaoCA: 'FATURADO' },
+                    { especial: true, statusEnvio: 'ENVIAR' },
+                    { bonificacao: true, statusEnvio: 'ENVIAR' }
+                ]
+            },
+            orderBy: { dataVenda: 'asc' },
+            select: {
+                id: true, numero: true, dataVenda: true, createdAt: true,
+                especial: true, bonificacao: true, cancelado: true,
+                situacaoCA: true, statusEnvio: true, statusEntrega: true,
+                nfeNumero: true, nfeChave: true,
+                cliente: { select: { Nome: true, NomeFantasia: true, End_Cidade: true } },
+                vendedor: { select: { nome: true } },
+                itens: { select: { quantidade: true, valor: true } },
+                notasFiscaisApp: {
+                    where: { status: 'AUTORIZADO', tipo: 'VENDA' },
+                    select: { numero: true, serie: true, criadoEm: true }
+                }
+            }
+        });
+
+        const hojeSP = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const lista = pedidos.map(p => {
+            const data = p.dataVenda?.toISOString?.().slice(0, 10) || null;
+            const total = p.itens.reduce((s, i) => s + Number(i.quantidade) * Number(i.valor), 0);
+            const nfApp = p.notasFiscaisApp[0];
+            return {
+                id: p.id,
+                numero: p.numero,
+                nota: nfApp?.numero || p.nfeNumero || null,
+                origemNota: nfApp ? 'APP' : (p.nfeNumero ? 'CA' : null),
+                dataEntrega: data,
+                diasParado: data ? Math.round((new Date(hojeSP) - new Date(data)) / 86400000) : null,
+                cliente: p.cliente?.NomeFantasia || p.cliente?.Nome || '—',
+                cidade: p.cliente?.End_Cidade || '—',
+                vendedor: p.vendedor?.nome || '—',
+                tipo: p.especial ? 'ESPECIAL' : p.bonificacao ? 'BONIFICACAO' : 'NORMAL',
+                situacaoCA: p.situacaoCA,
+                statusEnvio: p.statusEnvio,
+                statusEntrega: p.statusEntrega,
+                cancelado: p.cancelado,
+                itens: p.itens.length,
+                valorTotal: Math.round(total * 100) / 100
+            };
+        });
+
+        const porData = {};
+        for (const p of lista) {
+            const k = p.dataEntrega || '(sem data)';
+            if (!porData[k]) porData[k] = { qtd: 0, valor: 0 };
+            porData[k].qtd++;
+            porData[k].valor = Math.round((porData[k].valor + p.valorTotal) * 100) / 100;
+        }
+
+        res.json({
+            ok: true,
+            ate,
+            total: lista.length,
+            valorTotal: Math.round(lista.reduce((s, p) => s + p.valorTotal, 0) * 100) / 100,
+            canceladosNaLista: lista.filter(p => p.cancelado).length,
+            porTipo: {
+                NORMAL: lista.filter(p => p.tipo === 'NORMAL').length,
+                ESPECIAL: lista.filter(p => p.tipo === 'ESPECIAL').length,
+                BONIFICACAO: lista.filter(p => p.tipo === 'BONIFICACAO').length
+            },
+            porData,
+            pedidos: lista
+        });
+    } catch (e) {
+        console.error('[admin-exec] diag-embarque-disponiveis:', e.message);
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;
