@@ -1,5 +1,11 @@
 [
   {
+    "slug": "filtros-contas-receber",
+    "titulo": "Filtros que combinam",
+    "resumo": "No Contas a Receber dá para marcar várias opções na mesma caixa (Aberto E Quitado), cruzar quantos filtros quiser e a lista atualiza na hora — o menu não fecha mais a cada clique e as opções não somem. Os quatro campos de data viraram duas pílulas com Este mês, Últimos 30 dias e setas para navegar.",
+    "data": "2026-08-04"
+  },
+  {
     "slug": "baixa-caixa",
     "titulo": "Baixa vai pro seu caixa",
     "resumo": "Quitar título em dinheiro na tela de Contas a Receber agora entra no seu caixa do dia e soma no seu valor a prestar — igual à cobrança da rua. A baixa manual passa a exigir permissão e só aceita dinheiro ou cheque: boleto, Pix e cartão são baixados pela Conciliação Bancária, quando o dinheiro aparece no extrato.",

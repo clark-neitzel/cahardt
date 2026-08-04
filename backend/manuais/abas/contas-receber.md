@@ -53,19 +53,29 @@ Também existem **contas importadas do Conta Azul** (origem IMPORTADO_CA): são 
 
 ### Filtrar contas
 1. Clique no painel de filtros (ou use os filtros rápidos no topo)
-2. Escolha um ou mais dos filtros disponíveis:
-   - **Status da conta**: Aberto, Fechado, Cancelado
-   - **Status da parcela**: Pendente, Vencido, Pago, Cancelado
-   - **Origem**: de onde a conta veio (ex: pedido normal, especial)
-   - **Vendedor**: filtra contas dos clientes de um vendedor
+2. **Todos os filtros aceitam mais de uma opção** (08/2026): cada caixa abre um menu com
+   caixinhas de marcar, o menu **fica aberto** enquanto você marca (dá para escolher, por
+   exemplo, Aberto **e** Quitado de uma vez) e fecha ao clicar fora. Dentro do menu há
+   "Limpar seleção (N)" para desmarcar tudo daquela caixa; menus longos ganham um campo de
+   busca no topo. A caixa mostra o nome da opção quando é uma só, ou "N selec." quando são
+   várias. Marcar mais de uma opção na mesma caixa significa **ou** (Aberto ou Quitado);
+   caixas diferentes se combinam com **e** (vendedor X **e** condição à vista).
+   A lista se atualiza sozinha a cada marcação — não precisa clicar em Filtrar.
+3. Filtros disponíveis:
+   - **Cliente**: busca por texto (aperte Enter ou clique em Filtrar)
+   - **Status da conta**: Aberto, Quitado, Cancelado
+   - **Status da parcela**: Pendente, Parcial, Pago, Vencido, Cancelado
+   - **Origem**: de onde a conta veio (Faturado CA, Especial)
+   - **Vendedor**: filtra contas dos clientes de um ou mais vendedores
    - **Categoria de cliente**: segmento do cliente
    - **Condição de pagamento**: a condição exata do pedido (ex: 14 dias - Boleto, À vista - Pix)
    - **Cobrança**: como o título é cobrado — Boleto, Pix, Dinheiro ou Cartão. Vem da condição do pedido, então **funciona com contas ainda em aberto** (ex.: Status Conta = Aberto + Cobrança = Boleto lista tudo que está para receber em boleto, sem precisar marcar uma a uma as condições "7 dias - Boleto", "14 dias - Boleto"...)
-   - **Forma de pagamento entrega**: forma registrada pelo motorista
+   - **Condição na Entrega**: forma registrada pelo motorista
    - **Forma Pgto (baixa)**: como a parcela foi quitada — só encontra parcela **já baixada** (parcela em aberto ainda não tem forma de pagamento). Para filtrar boleto em aberto, use o filtro **Cobrança**
-   - **Baixado por**: quem registrou a baixa (usuário do app). Aceita marcar mais de um. Como só parcela baixada tem responsável, ao usar este filtro a tela passa a mostrar também as parcelas já pagas (não é preciso mudar Status Conta/Parcela). A lista traz só quem já deu baixa em alguma parcela. É o mesmo nome que aparece em "Baixado por" embaixo de cada linha
-   - **Período de vencimento / período de pagamento**
-3. Os filtros são salvos no localStorage por usuário
+   - **Baixado por**: quem registrou a baixa (usuário do app). Como só parcela baixada tem responsável, ao usar este filtro a tela passa a mostrar também as parcelas já pagas (não é preciso mudar Status Conta/Parcela). A lista traz só quem já deu baixa em alguma parcela. É o mesmo nome que aparece em "Baixado por" embaixo de cada linha
+   - **Vencimento** e **Pagamento (baixa)**: filtro de período no padrão do sistema — uma pílula `‹ Todo o período ›` com os presets Hoje, Últimos 7 dias, Últimos 30 dias, Este mês, Este ano, Todo o período e Período personalizado (De/Até dentro do próprio menu). As setas pulam o período inteiro (mês anterior, mês seguinte...). Começa em "Todo o período" (sem recorte de data)
+4. As escolhas ficam salvas por usuário e voltam ao reabrir a tela. Nos períodos o que fica salvo é o **preset** — "Este mês" salvo em julho abre agosto em agosto, ninguém fica preso numa data velha
+5. **Limpar** zera todas as caixas e os dois períodos de uma vez
 
 ### De onde pode vir a baixa de um título (regra do dono, 08/2026)
 

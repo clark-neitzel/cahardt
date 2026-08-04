@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: filtros do Contas a Receber — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem: cartão compacto) -->
+<meta property="og:title" content="🔎 Novidade no Hardt App: filtros do Contas a Receber que combinam de verdade">
+<meta property="og:description" content="Agora dá para marcar várias opções na mesma caixa (Aberto E Quitado), combinar quantos filtros quiser e a lista atualiza na hora. O filtro de data virou pílula com Este mês, Últimos 30 dias e setas para navegar.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* ── DEMO (mock flutuando sobre o hero) ── */
+  .mock {
+    max-width: 440px;
+    margin: -68px auto 12px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+
+  .demo-campo { margin-bottom: 12px; }
+  .demo-campo > label {
+    display: block;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: #9aa5a0;
+    margin-bottom: 4px;
+  }
+  .caixa {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    background: #fff;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #9aa5a0;
+    cursor: pointer;
+    font-family: inherit;
+    text-align: left;
+  }
+  .caixa.tem { border-color: var(--primary); color: var(--ink); }
+  .caixa .seta { color: #9aa5a0; font-size: 10px; transition: transform .2s; }
+  .caixa.aberta .seta { transform: rotate(180deg); }
+  .menu {
+    display: none;
+    margin-top: 4px;
+    border: 1px solid #e3e1da;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 8px 20px rgba(20,40,34,.12);
+    overflow: hidden;
+  }
+  .menu.aberto { display: block; }
+  .menu .limpar {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid #f0efe9;
+    padding: 8px 12px;
+    font-size: 11.5px;
+    font-weight: 700;
+    color: var(--primary);
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .opt {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 12px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .opt:hover { background: #f7f6f2; }
+  .opt input { accent-color: var(--primary); width: 15px; height: 15px; }
+
+  .pilula {
+    display: inline-flex;
+    align-items: stretch;
+    border: 1.5px solid #d8d5cc;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #fff;
+  }
+  .pilula.tem { border-color: var(--primary); }
+  .pilula button {
+    background: none;
+    border: 0;
+    font-family: inherit;
+    cursor: pointer;
+    color: var(--primary);
+    padding: 8px 11px;
+    font-size: 13px;
+  }
+  .pilula .meio {
+    border-left: 1px solid #eceae3;
+    border-right: 1px solid #eceae3;
+    color: var(--house);
+    font-weight: 800;
+    font-size: 12.5px;
+    min-width: 160px;
+    text-align: center;
+  }
+  .pilula.tem .meio { color: var(--primary-dark); }
+
+  .resultado {
+    margin-top: 4px;
+    background: var(--mint);
+    border-radius: 12px;
+    padding: 11px 14px;
+    font-size: 13px;
+    color: #1b4b3c;
+    font-weight: 600;
+  }
+  .resultado b { font-size: 16px; }
+  .demo-hint {
+    text-align: center;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    margin: 0 0 26px;
+  }
+
+  /* ── ANTES x DEPOIS ── */
+  .comparativo { display: grid; gap: 10px; margin-bottom: 6px; }
+  @media (min-width: 560px) { .comparativo { grid-template-columns: 1fr 1fr; } }
+  .comp {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .comp.antes { border-left: 5px solid #d97a6c; }
+  .comp.depois { border-left: 5px solid var(--primary); }
+  .comp h3 {
+    margin: 0 0 8px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #9aa5a0;
+  }
+  .comp.antes h3 { color: #b5604f; }
+  .comp.depois h3 { color: var(--primary); }
+  .comp ul { margin: 0; padding-left: 18px; }
+  .comp li { font-size: 13.5px; color: var(--ink-soft); margin-bottom: 6px; }
+  .comp b { color: var(--ink); }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: #9aa5a0;
+    margin: 34px 0 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px 16px;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    color: var(--ink);
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    flex-shrink: 0;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* ── MOCKUPS DAS TELAS ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .grade { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .campo small {
+    display: block;
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: #9aa5a0;
+    margin-bottom: 3px;
+  }
+  .falso {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+    color: #9aa5a0;
+    background: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .falso.tem { border-color: var(--primary); color: var(--ink); font-weight: 600; }
+  .falso .seta { font-size: 9px; color: #9aa5a0; }
+  .menu-mock {
+    margin-top: 4px;
+    border: 1px solid #e3e1da;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 6px 16px rgba(20,40,34,.1);
+    overflow: hidden;
+  }
+  .menu-mock .lim { padding: 6px 10px; font-size: 10.5px; font-weight: 700; color: var(--primary); border-bottom: 1px solid #f0efe9; }
+  .menu-mock .li { display: flex; align-items: center; gap: 7px; padding: 6px 10px; font-size: 12px; }
+  .quadro { width: 13px; height: 13px; border-radius: 3px; border: 1.5px solid #c9c6bd; flex-shrink: 0; }
+  .quadro.on { background: var(--primary); border-color: var(--primary); position: relative; }
+  .quadro.on::after { content: '✓'; color: #fff; font-size: 9px; position: absolute; top: -2px; left: 1.5px; font-weight: 900; }
+  .pilula-mock {
+    display: inline-flex;
+    align-items: center;
+    border: 1.5px solid var(--primary);
+    border-radius: 999px;
+    overflow: hidden;
+    background: #fff;
+    font-size: 12px;
+  }
+  .pilula-mock span { padding: 7px 10px; color: var(--primary); }
+  .pilula-mock .m {
+    border-left: 1px solid #eceae3;
+    border-right: 1px solid #eceae3;
+    color: var(--primary-dark);
+    font-weight: 800;
+    padding: 7px 12px;
+  }
+  .pilula-mock .m em { font-style: normal; color: #9aa5a0; font-weight: 600; margin-left: 6px; }
+  .chip-cont {
+    display: inline-block;
+    background: var(--primary);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    border-radius: 999px;
+    padding: 1px 7px;
+    margin-left: 6px;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* ── PASSOS ── */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 13px; margin-bottom: 15px; }
+  .passo:last-child { margin-bottom: 0; }
+  .num {
+    width: 28px; height: 28px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .passo p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Filtros do Contas a Receber<br>que combinam de verdade</h1>
+    <p>Agora dá para marcar várias opções na mesma caixa, cruzar quantos filtros quiser — e a lista responde na hora, sem precisar limpar tudo para voltar ao normal.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- DEMO INTERATIVA -->
+  <div class="mock">
+    <div class="mock-top">
+      <span class="mock-ico">🔎</span>
+      <div>
+        <small>Contas a Receber · Filtros</small>
+        <strong>Experimente aqui</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="demo-campo">
+        <label>Status Conta</label>
+        <button class="caixa" id="cxBtn" onclick="alternarMenu()">
+          <span id="cxTexto">Todos</span>
+          <span class="seta">▼</span>
+        </button>
+        <div class="menu" id="cxMenu">
+          <button class="limpar" id="cxLimpar" onclick="limparStatus()" style="display:none;">Limpar seleção</button>
+          <label class="opt"><input type="checkbox" value="ABERTO" onchange="marcou()"> Aberto</label>
+          <label class="opt"><input type="checkbox" value="QUITADO" onchange="marcou()"> Quitado</label>
+          <label class="opt"><input type="checkbox" value="CANCELADO" onchange="marcou()"> Cancelado</label>
+        </div>
+      </div>
+
+      <div class="demo-campo">
+        <label>Vencimento</label>
+        <div class="pilula" id="pil">
+          <button onclick="navegar(-1)" aria-label="Período anterior">‹</button>
+          <button class="meio" id="pilTexto" onclick="trocarPreset()">Todo o período</button>
+          <button onclick="navegar(1)" aria-label="Próximo período">›</button>
+        </div>
+      </div>
+
+      <div class="resultado" id="res">Nenhum filtro: <b>422</b> parcelas na lista</div>
+    </div>
+  </div>
+  <p class="demo-hint">Demonstração com números fictícios — marque as duas opções e veja que o menu <b>não fecha</b>.</p>
+
+  <!-- ══════════ ANTES x DEPOIS ══════════ -->
+  <div class="sec-label">O problema que sumiu</div>
+  <div class="comparativo">
+    <div class="comp antes">
+      <h3>❌ Como era</h3>
+      <ul>
+        <li>O menu <b>fechava a cada clique</b> — na prática só dava para escolher uma opção por caixa.</li>
+        <li>Ao filtrar, as opções das outras caixas <b>sumiam da lista</b> — inclusive a que você mesmo tinha marcado.</li>
+        <li>Aí a tela <b>não voltava</b>: só limpando todos os filtros de uma vez.</li>
+        <li>Data era quatro campinhos soltos: <i>Venc. de</i>, <i>Venc. até</i>, <i>Pgto de</i>, <i>Pgto até</i>.</li>
+      </ul>
+    </div>
+    <div class="comp depois">
+      <h3>✅ Como ficou</h3>
+      <ul>
+        <li>O menu <b>fica aberto</b> enquanto você marca — várias opções na mesma caixa.</li>
+        <li>As opções são <b>sempre as mesmas</b>, filtrando ou não. Dá para desmarcar quando quiser.</li>
+        <li>A lista se atualiza <b>a cada marcação</b>.</li>
+        <li>Data virou <b>uma pílula só</b>, com Este mês, Últimos 30 dias e setas para navegar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou, em detalhe</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">☑️</span>
+      <strong>Todo filtro aceita mais de uma opção</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Cada caixa abre um menu com <b>caixinhas de marcar</b>. Marque quantas quiser — o menu só fecha quando você clica fora.</li>
+        <li>Vale para <b>todas</b>: Status Conta, Status Parcela, <b>Origem</b>, <b>Vendedor</b>, <b>Categoria de Cliente</b>, Condição Pgto, Cobrança, Condição na Entrega, Forma Pgto (baixa) e Baixado por. (Origem, Vendedor e Categoria só aceitavam uma opção antes.)</li>
+        <li>Dentro do menu tem <b>"Limpar seleção (N)"</b> para zerar só aquela caixa. Menus longos ganharam <b>busca</b> no topo.</li>
+        <li>A caixa mostra o nome da opção quando é uma só, ou <b>"N selec."</b> quando são várias.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔗</span>
+      <strong>Como as combinações funcionam</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Várias opções <b>na mesma caixa</b> = <b>ou</b>. Ex.: Status Conta = Aberto <b>ou</b> Quitado traz os dois.</li>
+        <li>Caixas <b>diferentes</b> = <b>e</b>. Ex.: Vendedor = Jociel <b>e</b> Cobrança = Boleto traz só o que é dos dois ao mesmo tempo.</li>
+        <li>Exemplo do dia a dia: <b>Vendedor = Jociel + Edilson</b>, <b>Cobrança = Boleto</b>, <b>Vencimento = Este mês</b> → tudo que esses dois têm para receber em boleto no mês.</li>
+        <li>Não precisa clicar em <b>Filtrar</b>: a lista atualiza a cada marcação. O botão continua lá para a busca por nome do cliente (ou aperte Enter).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📅</span>
+      <strong>Data agora é uma pílula só</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Os quatro campos de data viraram <b>dois controles</b>: <b>Vencimento</b> e <b>Pagamento (baixa)</b>.</p>
+      <ul>
+        <li>Clique no meio da pílula e escolha: <b>Hoje</b>, <b>Últimos 7 dias</b>, <b>Últimos 30 dias</b>, <b>Este mês</b>, <b>Este ano</b>, <b>Todo o período</b> ou <b>Período personalizado</b> (De/Até dentro do próprio menu).</li>
+        <li>As <b>setas ‹ ›</b> pulam o período inteiro: em "Este mês" vão para o mês anterior e o seguinte; em "Últimos 7 dias", de semana em semana.</li>
+        <li>Começa em <b>Todo o período</b> — sem recorte de data, como a tela sempre abriu.</li>
+        <li>É o mesmo controle que já existe no <b>Contas a Pagar</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">💾</span>
+      <strong>O app lembra o que você escolheu</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>As escolhas ficam salvas <b>por pessoa</b> e voltam quando você reabre a tela.</li>
+        <li>Nos períodos o que fica salvo é o <b>preset</b>, não a data: "Este mês" salvo em agosto abre <b>setembro</b> em setembro. Ninguém fica preso numa data velha.</li>
+        <li>O botão <b>Limpar</b> zera todas as caixas e os dois períodos de uma vez.</li>
+        <li>O contador ao lado de "FILTROS" mostra <b>quantas caixas</b> estão em uso (não quantas opções).</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · O painel de filtros</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">▽ Filtros <span class="chip-cont">2</span><span class="pin">1</span></div>
+        <div class="app-card-body">
+          <div class="grade" style="margin-bottom:9px;">
+            <div class="campo">
+              <small>Status Conta</small>
+              <div class="falso tem">2 selec. <span class="seta">▼</span></div>
+            </div>
+            <div class="campo">
+              <small>Status Parcela</small>
+              <div class="falso">Todas <span class="seta">▼</span></div>
+            </div>
+            <div class="campo">
+              <small>Origem<span class="pin">2</span></small>
+              <div class="falso">Todas <span class="seta">▼</span></div>
+            </div>
+            <div class="campo">
+              <small>Vendedor<span class="pin">2</span></small>
+              <div class="falso tem">Jociel <span class="seta">▼</span></div>
+            </div>
+          </div>
+          <div class="campo" style="margin-bottom:9px;">
+            <small>Vencimento<span class="pin">3</span></small>
+            <div class="pilula-mock"><span>‹</span><span class="m">Este mês <em>01/08 – 31/08</em></span><span>›</span></div>
+          </div>
+          <div class="campo">
+            <small>Pagamento (baixa)<span class="pin">3</span></small>
+            <div class="pilula-mock" style="border-color:#d8d5cc;"><span style="color:#9aa5a0;">‹</span><span class="m" style="color:var(--house);">Todo o período</span><span style="color:#9aa5a0;">›</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O <b>número ao lado de "Filtros"</b> conta quantas caixas estão em uso — serve para lembrar por que a lista está curta.</span></div>
+      <div><span class="pin">2</span><span><b>Origem, Vendedor e Categoria de Cliente</b> agora também aceitam mais de uma opção (antes era só uma).</span></div>
+      <div><span class="pin">3</span><span>Os quatro campos de data viraram estas <b>duas pílulas</b>: Vencimento e Pagamento (baixa).</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · O menu aberto, marcando várias</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="campo" style="max-width:260px;">
+            <small>Status Conta</small>
+            <div class="falso tem">2 selec.<span class="pin">1</span> <span class="seta">▲</span></div>
+            <div class="menu-mock">
+              <div class="lim">Limpar seleção (2)<span class="pin">2</span></div>
+              <div class="li"><span class="quadro on"></span> ABERTO</div>
+              <div class="li"><span class="quadro on"></span> QUITADO</div>
+              <div class="li"><span class="quadro"></span> CANCELADO<span class="pin">3</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Com mais de uma marcada, a caixa mostra <b>"N selec."</b>. Com uma só, mostra o nome dela.</span></div>
+      <div><span class="pin">2</span><span><b>"Limpar seleção (N)"</b> desmarca tudo daquela caixa — sem mexer nos outros filtros.</span></div>
+      <div><span class="pin">3</span><span>O menu <b>continua aberto</b> a cada clique. Para fechar, clique fora dele.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · O menu do período</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="pilula-mock" style="margin-bottom:8px;"><span>‹<span class="pin">1</span></span><span class="m">Este mês <em>01/08 – 31/08</em></span><span>›<span class="pin">1</span></span></div>
+          <div class="menu-mock" style="max-width:220px;">
+            <div class="li">Hoje</div>
+            <div class="li">Últimos 7 dias</div>
+            <div class="li">Últimos 30 dias</div>
+            <div class="li" style="background:var(--mint);font-weight:800;color:var(--primary-dark);">Este mês ✓<span class="pin">2</span></div>
+            <div class="li">Este ano</div>
+            <div class="li">Todo o período</div>
+            <div class="li">Período personalizado<span class="pin">3</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>As <b>setas</b> pulam o período inteiro — mês anterior, mês seguinte. Em "Todo o período" ficam apagadas.</span></div>
+      <div><span class="pin">2</span><span>O preset marcado é o que fica <b>salvo</b> — e é recalculado toda vez que você abre a tela.</span></div>
+      <div><span class="pin">3</span><span><b>Período personalizado</b> abre os campos De/Até dentro do próprio menu.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMEÇAR A USAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="num">1</span>
+      <p>Abra <b>Financeiro → Contas a Receber</b> (a tela em tabela).</p>
+    </div>
+    <div class="passo">
+      <span class="num">2</span>
+      <p>Clique numa caixa de filtro e <b>marque quantas opções quiser</b>. Repare que o menu não fecha.</p>
+    </div>
+    <div class="passo">
+      <span class="num">3</span>
+      <p>Combine com outra caixa — <b>vendedor + cobrança</b>, por exemplo — e veja a lista se ajustar sozinha.</p>
+    </div>
+    <div class="passo">
+      <span class="num">4</span>
+      <p>No <b>Vencimento</b>, escolha <b>Este mês</b> e use as setas <b>‹ ›</b> para andar de mês em mês.</p>
+    </div>
+    <div class="passo">
+      <span class="num">5</span>
+      <p>Perdeu-se? <b>Limpar</b> zera tudo de uma vez e a lista volta ao normal.</p>
+    </div>
+  </div>
+
+  <p class="rodape">
+    Dúvida? Chame o <strong>Clippy</strong> dentro do app 📎 — ele já sabe explicar os filtros novos.
+  </p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+
+  // ── demo dos filtros (mesma lógica de período do app) ──
+  const PRESETS = ['todo', 'mes', '30d', 'hoje'];
+  const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+  let preset = 0;
+  let off = 0;
+
+  const dm = (d) => String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+  const maisDias = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+
+  function rotuloPeriodo() {
+    const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+    if (PRESETS[preset] === 'todo') return 'Todo o período';
+    if (PRESETS[preset] === 'hoje') {
+      const d = maisDias(hoje, off);
+      return off === 0 ? 'Hoje · ' + dm(d) : dm(d);
+    }
+    if (PRESETS[preset] === '30d') {
+      const fim = maisDias(hoje, off * 30);
+      const ini = maisDias(fim, -29);
+      return (off === 0 ? 'Últimos 30 dias · ' : '') + dm(ini) + ' – ' + dm(fim);
+    }
+    const ini = new Date(hoje.getFullYear(), hoje.getMonth() + off, 1);
+    const fim = new Date(ini.getFullYear(), ini.getMonth() + 1, 0);
+    const nome = off === 0 ? 'Este mês' : MESES[ini.getMonth()] + '/' + ini.getFullYear();
+    return nome + ' · ' + dm(ini) + ' – ' + dm(fim);
+  }
+
+  function alternarMenu() {
+    document.getElementById('cxMenu').classList.toggle('aberto');
+    document.getElementById('cxBtn').classList.toggle('aberta');
+  }
+
+  function marcados() {
+    return [...document.querySelectorAll('#cxMenu input:checked')];
+  }
+
+  function limparStatus() {
+    document.querySelectorAll('#cxMenu input').forEach(i => { i.checked = false; });
+    marcou();
+  }
+
+  function marcou() {
+    const m = marcados();
+    const btn = document.getElementById('cxBtn');
+    const txt = document.getElementById('cxTexto');
+    const rotulo = { ABERTO: 'Aberto', QUITADO: 'Quitado', CANCELADO: 'Cancelado' };
+    txt.textContent = m.length === 0 ? 'Todos' : m.length === 1 ? rotulo[m[0].value] : m.length + ' selec.';
+    btn.classList.toggle('tem', m.length > 0);
+    document.getElementById('cxLimpar').style.display = m.length > 0 ? 'block' : 'none';
+    document.getElementById('cxLimpar').textContent = 'Limpar seleção (' + m.length + ')';
+    atualizarResultado();
+  }
+
+  function trocarPreset() {
+    preset = (preset + 1) % PRESETS.length;
+    off = 0;
+    pintarPeriodo();
+    atualizarResultado();
+  }
+
+  function navegar(d) {
+    if (preset === 0) return;   // "Todo o período": setas desligadas
+    off += d;
+    pintarPeriodo();
+    atualizarResultado();
+  }
+
+  const NOME_PRESET = { todo: 'todo o período', mes: 'este mês', '30d': 'últimos 30 dias', hoje: 'hoje' };
+
+  function pintarPeriodo() {
+    document.getElementById('pilTexto').textContent = rotuloPeriodo();
+    document.getElementById('pil').classList.toggle('tem', preset !== 0);
+  }
+
+  function atualizarResultado() {
+    const m = marcados().map(i => i.value);
+    const base = { ABERTO: 422, QUITADO: 1542, CANCELADO: 18 };
+    let total = m.length === 0 ? 422 : m.reduce((s, v) => s + base[v], 0);
+    if (preset !== 0) {
+      const divisor = preset === 3 ? 40 : preset === 1 ? 6 : 8;
+      total = Math.max(3, Math.round(total / divisor) - Math.abs(off) * 4);
+    }
+    const partes = [];
+    if (m.length) partes.push(m.length === 1 ? '1 status' : m.length + ' status');
+    if (preset !== 0) partes.push(off === 0 ? NOME_PRESET[PRESETS[preset]] : 'período anterior');
+    const txt = partes.length ? partes.join(' + ') : 'Nenhum filtro';
+    document.getElementById('res').innerHTML = txt + ': <b>' + Math.max(3, total).toLocaleString('pt-BR') + '</b> parcelas na lista';
+  }
+
+  // fecha o menu ao clicar fora — igual ao app
+  document.addEventListener('mousedown', (e) => {
+    const campo = document.getElementById('cxMenu').parentElement;
+    if (!campo.contains(e.target)) {
+      document.getElementById('cxMenu').classList.remove('aberto');
+      document.getElementById('cxBtn').classList.remove('aberta');
+    }
+  });
+
+  pintarPeriodo();
+</script>
+</body>
+</html>
