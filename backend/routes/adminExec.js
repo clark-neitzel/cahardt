@@ -6330,6 +6330,64 @@ router.get('/diag-catalogo-condicoes', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-pedido-cancelamento?numero=2428 — SOMENTE LEITURA
+// Diz por que um pedido pode (ou não) ser cancelado/excluído: notas fiscais do app,
+// nota do CA, parcelas, cobranças Asaas, carga e entrega. Usado quando alguém reclama
+// que "não consigo excluir o pedido" ou que ele fica cobrando faturamento.
+router.get('/diag-pedido-cancelamento', async (req, res) => {
+    try {
+        const numero = parseInt(req.query.numero, 10);
+        if (!numero) return res.status(400).json({ error: 'Informe ?numero=' });
+
+        const pedido = await prisma.pedido.findFirst({
+            where: { numero },
+            include: {
+                cliente: { select: { Nome: true, Documento: true } },
+                notasFiscaisApp: { select: { id: true, ref: true, tipo: true, status: true, numero: true, mensagemSefaz: true } },
+                cobrancasAsaas: { select: { id: true, tipo: true, status: true, valor: true } },
+                contaReceber: { include: { parcelas: { select: { numeroParcela: true, status: true, valor: true } } } },
+            },
+        });
+        if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+
+        const notaViva = pedido.notasFiscaisApp.find(n => ['AUTORIZADO', 'PROCESSANDO'].includes(n.status)) || null;
+        const parcelaPaga = pedido.contaReceber?.parcelas?.some(p => p.status === 'PAGO') || false;
+        const asaasPago = pedido.cobrancasAsaas.some(c => c.status === 'RECEBIDO');
+
+        const impedimentos = [];
+        if (notaViva) impedimentos.push(`NF-e do app está ${notaViva.status}${notaViva.numero ? ` (nº ${notaViva.numero})` : ''}`);
+        if (pedido.nfeChave) impedimentos.push(`NF-e emitida no Conta Azul (nº ${pedido.nfeNumero || '—'})`);
+        if (pedido.contaReceber?.status === 'QUITADO') impedimentos.push('conta a receber QUITADA');
+        if (parcelaPaga) impedimentos.push('existe parcela PAGA');
+        if (asaasPago) impedimentos.push('existe cobrança Asaas RECEBIDA');
+        if (pedido.embarqueId) impedimentos.push('pedido está numa carga/embarque');
+        if (pedido.statusEntrega && pedido.statusEntrega !== 'PENDENTE') impedimentos.push(`entrega em ${pedido.statusEntrega}`);
+
+        res.json({
+            ok: true,
+            pedido: {
+                id: pedido.id, numero: pedido.numero, cliente: pedido.cliente?.Nome, documento: pedido.cliente?.Documento,
+                statusEnvio: pedido.statusEnvio, situacaoCA: pedido.situacaoCA, statusEntrega: pedido.statusEntrega,
+                embarqueId: pedido.embarqueId, especial: pedido.especial, bonificacao: pedido.bonificacao,
+                cancelado: pedido.cancelado, canceladoEm: pedido.canceladoEm,
+                canceladoPorNome: pedido.canceladoPorNome, motivoCancelamento: pedido.motivoCancelamento,
+                nfeChave: pedido.nfeChave, nfeNumero: pedido.nfeNumero,
+            },
+            notasFiscaisApp: pedido.notasFiscaisApp,
+            cobrancasAsaas: pedido.cobrancasAsaas,
+            contaReceber: pedido.contaReceber && {
+                status: pedido.contaReceber.status,
+                parcelas: pedido.contaReceber.parcelas,
+            },
+            podeCancelar: !pedido.cancelado && impedimentos.length === 0,
+            podeExcluir: impedimentos.length === 0 && !['FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA),
+            impedimentos,
+        });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // GET /api/admin-exec/diag-pedido-site-condicao?numero=2213 — SOMENTE LEITURA
 // Investiga por que um pedido vindo do Site Congelados saiu com determinada condição
 // de pagamento e de onde veio o preço de cada item (base + acréscimo vs. último preço pago).
