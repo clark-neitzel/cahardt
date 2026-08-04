@@ -58,6 +58,7 @@ const ContasReceberTabela = () => {
     const [vendedores, setVendedores] = useState([]);
     const [categorias, setCategorias] = useState([]);
     const [tiposCobranca, setTiposCobranca] = useState([]); // [{ valor, label }] — Boleto, Pix, ...
+    const [usuariosBaixa, setUsuariosBaixa] = useState([]); // [{ valor, label }] — quem já deu baixa
 
     // Busca por texto livre — não persiste (useState normal)
     const [busca, setBusca] = useState('');
@@ -73,6 +74,7 @@ const ContasReceberTabela = () => {
         tipoCobranca: [],
         formaPagamentoEntrega: [],
         formaPagamento: [],
+        baixadoPorId: [],
         vencDe: '',
         vencAte: '',
         pagDe: '',
@@ -115,6 +117,7 @@ const ContasReceberTabela = () => {
         vendedorService.listarAtivos().then(setVendedores).catch(() => {});
         categoriaClienteService.listar().then(setCategorias).catch(() => {});
         contasReceberService.tiposCobranca().then(setTiposCobranca).catch(() => {});
+        contasReceberService.baixadoPor().then(setUsuariosBaixa).catch(() => {});
         contasReceberService.contasFinanceiras()
             .then(cf => {
                 setContasFinanceiras(cf);
@@ -163,6 +166,7 @@ const ContasReceberTabela = () => {
             if (filtros.tipoCobranca.length) params.tipoCobranca = filtros.tipoCobranca.join(',');
             if (filtros.formaPagamentoEntrega.length) params.formaPagamentoEntrega = filtros.formaPagamentoEntrega.join(',');
             if (filtros.formaPagamento.length) params.formaPagamento = filtros.formaPagamento.join(',');
+            if (filtros.baixadoPorId.length) params.baixadoPorId = filtros.baixadoPorId.join(',');
             if (filtros.vencDe) params.vencimentoDe = filtros.vencDe;
             if (filtros.vencAte) params.vencimentoAte = filtros.vencAte;
             if (filtros.pagDe) params.pagamentoDe = filtros.pagDe;
@@ -197,6 +201,7 @@ const ContasReceberTabela = () => {
                         dataPagamento: p.dataPagamento,
                         valorPago: p.valorPago,
                         formaPagamento: p.formaPagamento,
+                        baixadoPorId: p.baixadoPorId,
                         baixadoPorNome: p.baixadoPorNome
                     });
                 });
@@ -209,7 +214,7 @@ const ContasReceberTabela = () => {
                 // Visão padrão de "Contas a Receber": mostra apenas o que falta receber.
                 // Os filtros de data de pagamento / forma da baixa miram justamente parcelas
                 // pagas, então quando ativos não escondemos nada (os filtros abaixo refinam).
-                const filtrandoPagas = !!filtros.pagDe || !!filtros.pagAte || filtros.formaPagamento.length > 0;
+                const filtrandoPagas = !!filtros.pagDe || !!filtros.pagAte || filtros.formaPagamento.length > 0 || filtros.baixadoPorId.length > 0;
                 if (!filtrandoPagas) {
                     filtered = filtered.filter(l => {
                         // Sempre mostra o que ainda falta receber (inclui parcelas com baixa parcial).
@@ -223,6 +228,8 @@ const ContasReceberTabela = () => {
                 }
             }
             if (filtros.formaPagamento.length) filtered = filtered.filter(l => filtros.formaPagamento.includes(l.formaPagamento || ''));
+            // O backend filtra a CONTA (some) — aqui refina para a parcela baixada por quem foi pedido
+            if (filtros.baixadoPorId.length) filtered = filtered.filter(l => filtros.baixadoPorId.includes(l.baixadoPorId || ''));
             // Refino de data no nível da PARCELA: o backend filtra a CONTA (some), então sem
             // isto uma conta entraria trazendo parcelas com vencimento/pagamento fora do range.
             if (filtros.vencDe) filtered = filtered.filter(l => toYMD(l.dataVencimento) >= filtros.vencDe);
@@ -248,7 +255,8 @@ const ContasReceberTabela = () => {
         vendedorId: filtros.vendedorId, categoriaClienteId: filtros.categoriaClienteId,
         condicaoPagamento: filtros.condicaoPagamento, tipoCobranca: filtros.tipoCobranca,
         formaPagamentoEntrega: filtros.formaPagamentoEntrega,
-        formaPagamento: filtros.formaPagamento, vencDe: filtros.vencDe, vencAte: filtros.vencAte,
+        formaPagamento: filtros.formaPagamento, baixadoPorId: filtros.baixadoPorId,
+        vencDe: filtros.vencDe, vencAte: filtros.vencAte,
         pagDe: filtros.pagDe, pagAte: filtros.pagAte
     });
     useEffect(() => {
@@ -262,6 +270,7 @@ const ContasReceberTabela = () => {
         setFiltros({
             status: [], statusParcela: [], origem: '', vendedorId: '', categoriaClienteId: '',
             condicaoPagamento: [], tipoCobranca: [], formaPagamentoEntrega: [], formaPagamento: [],
+            baixadoPorId: [],
             vencDe: '', vencAte: '', pagDe: '', pagAte: ''
         });
         // fetchData é disparado pelo useEffect acima quando filtrosKey muda.
@@ -460,6 +469,7 @@ const ContasReceberTabela = () => {
             if (filtros.tipoCobranca.length) params.tipoCobranca = filtros.tipoCobranca.join(',');
             if (filtros.formaPagamentoEntrega.length) params.formaPagamentoEntrega = filtros.formaPagamentoEntrega.join(',');
             if (filtros.formaPagamento.length) params.formaPagamento = filtros.formaPagamento.join(',');
+            if (filtros.baixadoPorId.length) params.baixadoPorId = filtros.baixadoPorId.join(',');
             if (filtros.pagDe) params.pagamentoDe = filtros.pagDe;
             if (filtros.pagAte) params.pagamentoAte = filtros.pagAte;
             // Filtros do próprio modal de relatório
@@ -884,6 +894,15 @@ const ContasReceberTabela = () => {
                             options={[...new Set([...FORMAS, ...formasUsadas])]}
                             value={filtros.formaPagamento}
                             onChange={(v) => setFiltros(f => ({ ...f, formaPagamento: v }))}
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Baixado por</label>
+                        <MultiSelect
+                            label="Todos"
+                            options={usuariosBaixa}
+                            value={filtros.baixadoPorId}
+                            onChange={(v) => setFiltros(f => ({ ...f, baixadoPorId: v }))}
                         />
                     </div>
                     <div>

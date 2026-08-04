@@ -79,6 +79,25 @@ router.get('/tipos-cobranca', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// ── GET /baixado-por — quem já deu baixa em alguma parcela (opções do filtro "Baixado por") ──
+router.get('/baixado-por', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const rows = await prisma.parcela.findMany({
+            where: { baixadoPorId: { not: null } },
+            distinct: ['baixadoPorId'],
+            select: { baixadoPorId: true, baixadoPor: { select: { id: true, nome: true } } }
+        });
+        const usuarios = rows
+            .map(r => r.baixadoPor)
+            .filter(Boolean)
+            .map(u => ({ valor: u.id, label: u.nome }))
+            .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+        res.json({ usuarios });
+    } catch (e) {
+        res.json({ usuarios: [] });
+    }
+});
+
 // ── GET /contas-financeiras — bancos/caixas do CA para o seletor da baixa ──
 router.get('/contas-financeiras', verificarAuth, checkBaixa, async (req, res) => {
     try {
@@ -115,7 +134,8 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         const {
             status, clienteId, vencimentoDe, vencimentoAte, origem, busca, ordenarPor,
             vendedorId, condicaoPagamento, formaPagamento, statusParcela,
-            pagamentoDe, pagamentoAte, categoriaClienteId, formaPagamentoEntrega, tipoCobranca
+            pagamentoDe, pagamentoAte, categoriaClienteId, formaPagamentoEntrega, tipoCobranca,
+            baixadoPorId
         } = req.query;
 
         const toList = (v) => (Array.isArray(v) ? v : String(v || '').split(',')).map(s => s.trim()).filter(Boolean);
@@ -195,6 +215,11 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             const arr = toList(formaPagamento);
             parcelaSome.formaPagamento = arr.length > 1 ? { in: arr } : arr[0];
         }
+        // Quem deu a baixa (só faz sentido em parcela já baixada)
+        if (baixadoPorId) {
+            const arr = toList(baixadoPorId);
+            parcelaSome.baixadoPorId = arr.length > 1 ? { in: arr } : arr[0];
+        }
         if (Object.keys(parcelaSome).length > 0) {
             where.parcelas = { some: parcelaSome };
         }
@@ -206,7 +231,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         // cliente escondê-las. Provado equivalente ao comportamento antigo (mesmas parcelas
         // visíveis) e ~80% menos contas carregadas. Com qualquer filtro explícito acima, não
         // entra (aí o cliente pode querer ver parcelas pagas/canceladas).
-        const filtrandoPagas = !!pagamentoDe || !!pagamentoAte || !!formaPagamento;
+        const filtrandoPagas = !!pagamentoDe || !!pagamentoAte || !!formaPagamento || !!baixadoPorId;
         if (!status && !statusParcela && !filtrandoPagas) {
             where.AND = [
                 ...(where.AND || []),
@@ -365,7 +390,7 @@ router.get('/relatorio-itens', verificarAuth, checkAcesso, async (req, res) => {
         const {
             status, clienteId, vencimentoDe, vencimentoAte, origem, busca,
             vendedorId, condicaoPagamento, formaPagamento, statusParcela,
-            pagamentoDe, pagamentoAte, categoriaClienteId, tipoCobranca
+            pagamentoDe, pagamentoAte, categoriaClienteId, tipoCobranca, baixadoPorId
         } = req.query;
 
         const toList = (v) => (Array.isArray(v) ? v : String(v || '').split(',')).map(s => s.trim()).filter(Boolean);
@@ -408,6 +433,7 @@ router.get('/relatorio-itens', verificarAuth, checkAcesso, async (req, res) => {
         }
         if (statusParcela) { const arr = toList(statusParcela); parcelaSome.status = arr.length > 1 ? { in: arr } : arr[0]; }
         if (formaPagamento) { const arr = toList(formaPagamento); parcelaSome.formaPagamento = arr.length > 1 ? { in: arr } : arr[0]; }
+        if (baixadoPorId) { const arr = toList(baixadoPorId); parcelaSome.baixadoPorId = arr.length > 1 ? { in: arr } : arr[0]; }
         if (Object.keys(parcelaSome).length > 0) where.parcelas = { some: parcelaSome };
 
         const contas = await prisma.contaReceber.findMany({

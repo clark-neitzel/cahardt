@@ -63,6 +63,7 @@ Também existem **contas importadas do Conta Azul** (origem IMPORTADO_CA): são 
    - **Cobrança**: como o título é cobrado — Boleto, Pix, Dinheiro ou Cartão. Vem da condição do pedido, então **funciona com contas ainda em aberto** (ex.: Status Conta = Aberto + Cobrança = Boleto lista tudo que está para receber em boleto, sem precisar marcar uma a uma as condições "7 dias - Boleto", "14 dias - Boleto"...)
    - **Forma de pagamento entrega**: forma registrada pelo motorista
    - **Forma Pgto (baixa)**: como a parcela foi quitada — só encontra parcela **já baixada** (parcela em aberto ainda não tem forma de pagamento). Para filtrar boleto em aberto, use o filtro **Cobrança**
+   - **Baixado por**: quem registrou a baixa (usuário do app). Aceita marcar mais de um. Como só parcela baixada tem responsável, ao usar este filtro a tela passa a mostrar também as parcelas já pagas (não é preciso mudar Status Conta/Parcela). A lista traz só quem já deu baixa em alguma parcela. É o mesmo nome que aparece em "Baixado por" embaixo de cada linha
    - **Período de vencimento / período de pagamento**
 3. Os filtros são salvos no localStorage por usuário
 
