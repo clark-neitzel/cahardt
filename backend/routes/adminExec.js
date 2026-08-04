@@ -72,8 +72,20 @@ router.get('/diag-cartao-ponto', async (req, res) => {
         // As tabelas/colunas novas existem? (se o db push do deploy não passou, cai aqui)
         const tabelas = {
             ocorrencias: await prisma.pontoOcorrencia.count(),
-            folhaPeriodos: await prisma.folhaPeriodo.count()
+            folhaPeriodos: await prisma.folhaPeriodo.count(),
+            acertos: await prisma.pontoAcerto.count(),
+            acertosPendentes: await prisma.pontoAcerto.count({ where: { status: 'PENDENTE' } }),
+            acertoItens: await prisma.pontoAcertoItem.count()
         };
+        // como cada pessoa registra o ponto (app / relógio / não registra)
+        const porRegistro = {};
+        for (const g of await prisma.funcionario.groupBy({ by: ['registraPontoEm'], where: { ativo: true }, _count: true })) {
+            porRegistro[g.registraPontoEm] = g._count;
+        }
+        const porContrato = {};
+        for (const g of await prisma.funcionario.groupBy({ by: ['tipoContrato'], where: { ativo: true }, _count: true })) {
+            porContrato[g.tipoContrato] = g._count;
+        }
         const feriados = await pontoService.getFeriados();
 
         let funcionarioId = req.query.funcionarioId;
@@ -90,6 +102,8 @@ router.get('/diag-cartao-ponto', async (req, res) => {
         res.json({
             ok: true,
             tabelas,
+            porRegistro,
+            porContrato,
             feriados,
             funcionario: cartao.funcionario,
             periodo: cartao.periodo,
