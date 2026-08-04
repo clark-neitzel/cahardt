@@ -145,7 +145,10 @@ router.get('/pedidos-disponiveis', verificarAuth, checkAcessoEmbarque, async (re
         const idsNoDelivery = noDelivery.map(d => d.pedidoId);
 
         // Regra de Ouro: FATURADOS, Especiais prontos (ENVIAR) ou Bonificações prontas (ENVIAR), sem Embarque.
-        // Pedido cancelado ou já devolvido NUNCA pode aparecer aqui — a mercadoria não vai sair.
+        // Pedido cancelado NUNCA pode aparecer aqui — cancelar não mexe em situacaoCA/statusEnvio,
+        // então sem este filtro ele continuava listado como se estivesse livre.
+        // devolucaoFinalizada/EXCLUIDO são cinto de segurança: devolução só existe depois da entrega
+        // (pedido preso na carga), então na prática nem chegariam nesta consulta.
         const pedidosLivres = await prisma.pedido.findMany({
             where: {
                 embarqueId: null,
@@ -300,6 +303,8 @@ router.patch('/:id', verificarAuth, async (req, res) => {
 
 // Trava única de quem pode entrar numa carga — usada ao criar o embarque e ao
 // adicionar pedidos depois. Devolve a lista de bloqueados com o motivo em texto.
+// O caso que acontece de verdade é o pedido CANCELADO; devolvido/excluído ficam
+// aqui só como rede de segurança (devolução só nasce de pedido já preso na carga).
 async function bloqueadosParaEmbarque(pedidosIds) {
     const candidatos = await prisma.pedido.findMany({
         where: { id: { in: pedidosIds } },
