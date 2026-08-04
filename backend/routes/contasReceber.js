@@ -32,6 +32,74 @@ const checkBaixa = async (req, res, next) => {
     next();
 };
 
+// ── Baixa MANUAL (digitada aqui na tela) — permissão própria ──
+// Regra do dono (08/2026): título vira PAGO por um destes caminhos, nesta ordem de
+// preferência: (1) conciliação bancária — o dinheiro apareceu no extrato/Asaas;
+// (2) caixa — quem recebeu põe no caixa dela e presta contas; (3) esta tela, que é a
+// exceção. Por isso ela exige permissão separada, só aceita espécie e joga o valor no
+// caixa do dia de quem baixou. Antes disso, bastava marcar "recebi" e a conta quitava
+// sem ninguém ficar responsável pelo dinheiro.
+const checkBaixaManual = async (req, res, next) => {
+    const perms = req._perms || await getPerms(req.user.id);
+    req._perms = perms;
+    if (!perms.admin && !perms.Pode_Baixar_Contas_Receber_Manual) {
+        return res.status(403).json({
+            error: 'Baixa manual não liberada para você. Recebimento em boleto/Pix entra pela Conciliação Bancária; dinheiro recebido na rua entra pelo Caixa.'
+        });
+    }
+    next();
+};
+
+// Formas aceitas na baixa manual: só o que fica FISICAMENTE com alguém (e por isso pode
+// ser cobrado no caixa). Boleto/Pix/cartão/transferência caem no extrato — têm que entrar
+// pela conciliação, senão o dinheiro nunca é confrontado com o banco.
+const FORMAS_ESPECIE = ['Dinheiro', 'Cheque'];
+const ehEspecie = (f) => FORMAS_ESPECIE.some(x => x.toLowerCase() === String(f || '').trim().toLowerCase());
+
+const validarFormaManual = (formaPagamento) => {
+    const f = String(formaPagamento || '').trim();
+    if (!f) return 'Escolha a forma de pagamento.';
+    if (ehEspecie(f)) return null;
+    return `Baixa manual aceita apenas ${FORMAS_ESPECIE.join(' ou ')}. Recebimento em ${f} entra pela Conciliação Bancária (quando cair no extrato) ou pelo Caixa.`;
+};
+
+// Conta financeira em espécie (a "Caixinha") — usada quando a baixa manual em dinheiro
+// não vem com conta escolhida, para nunca sobrar baixa sem dizer onde o dinheiro entrou.
+const contaEspeciePadrao = async () => {
+    try {
+        const c = await prisma.contaFinanceira.findFirst({
+            where: { tipoUso: 'DINHEIRO', ativo: true },
+            select: { id: true },
+            orderBy: { nomeBanco: 'asc' }
+        });
+        return c?.id || null;
+    } catch (_) {
+        return null;
+    }
+};
+
+// Caixa do dia de quem está baixando — é para lá que vai o dinheiro em espécie recebido
+// aqui, virando "valor a prestar" dela. Abre o caixa do dia se ainda não existir.
+// Caixa já fechado/conferido não recebe lançamento novo (senão muda um dia já prestado).
+const caixaDeHojeParaBaixa = async (usuarioId) => {
+    const hoje = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    const existente = await prisma.caixaDiario.findUnique({
+        where: { vendedorId_dataReferencia: { vendedorId: usuarioId, dataReferencia: hoje } },
+        select: { id: true, status: true }
+    });
+    if (existente && existente.status !== 'ABERTO') {
+        const e = new Error(`Seu caixa de hoje já está ${existente.status === 'CONFERIDO' ? 'conferido' : 'fechado'} — reabra o caixa para lançar este recebimento (ou registre a baixa amanhã).`);
+        e.status = 400;
+        throw e;
+    }
+    if (existente) return existente.id;
+    const novo = await prisma.caixaDiario.create({
+        data: { vendedorId: usuarioId, dataReferencia: hoje, status: 'ABERTO' },
+        select: { id: true }
+    });
+    return novo.id;
+};
+
 // ── Cobrança (como o título é cobrado: Boleto, Pix, Dinheiro, Cartão) ──
 // Vem da CONDIÇÃO do pedido (tabela_precos.tipo_pagamento), não da baixa. É o único jeito de
 // filtrar boleto/pix numa conta AINDA EM ABERTO — parcela.formaPagamento só é preenchido na baixa.
@@ -513,7 +581,7 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
 });
 
 // ── POST /baixa-lote — Dar baixa em várias parcelas de uma vez ──
-router.post('/baixa-lote', verificarAuth, checkBaixa, async (req, res) => {
+router.post('/baixa-lote', verificarAuth, checkBaixa, checkBaixaManual, async (req, res) => {
     try {
         const { parcelaIds, formaPagamento, dataPagamento, observacao, contaFinanceiraCaId } = req.body;
 
@@ -525,6 +593,11 @@ router.post('/baixa-lote', verificarAuth, checkBaixa, async (req, res) => {
             return res.status(400).json({ error: 'Máximo de 200 parcelas por vez.' });
         }
 
+        // Mesma regra da baixa individual: só espécie, e o total vai para o caixa de hoje
+        // de quem baixou (aqui é sempre pelo valor cheio, não existe desconto no lote).
+        const erroForma = validarFormaManual(formaPagamento);
+        if (erroForma) return res.status(400).json({ error: erroForma });
+
         const parcelas = await prisma.parcela.findMany({
             where: { id: { in: parcelaIds } },
             include: { contaReceber: true }
@@ -534,6 +607,14 @@ router.post('/baixa-lote', verificarAuth, checkBaixa, async (req, res) => {
         if (elegiveis.length === 0) {
             return res.status(400).json({ error: 'Nenhuma parcela elegível para baixa.' });
         }
+
+        let caixaDiarioId;
+        try {
+            caixaDiarioId = await caixaDeHojeParaBaixa(req.user.id);
+        } catch (e) {
+            return res.status(e.status || 500).json({ error: e.message });
+        }
+        const contaFinanceiraFinal = contaFinanceiraCaId || await contaEspeciePadrao();
 
         const dataPgto = dataPagamento ? new Date(dataPagamento) : new Date();
 
@@ -547,7 +628,7 @@ router.post('/baixa-lote', verificarAuth, checkBaixa, async (req, res) => {
                         status: 'PAGO',
                         valorPago: parcela.valor,
                         formaPagamento: formaPagamento || null,
-                        contaFinanceiraCaId: contaFinanceiraCaId || parcela.contaFinanceiraCaId,
+                        contaFinanceiraCaId: contaFinanceiraFinal || parcela.contaFinanceiraCaId,
                         dataPagamento: dataPgto,
                         baixadoPorId: req.user.id,
                         observacao: observacao || null
@@ -558,9 +639,11 @@ router.post('/baixa-lote', verificarAuth, checkBaixa, async (req, res) => {
                         parcelaId: parcela.id,
                         valorRecebido: parcela.valor,
                         formaPagamento: formaPagamento || null,
-                        contaFinanceiraCaId: contaFinanceiraCaId || null,
+                        contaFinanceiraCaId: contaFinanceiraFinal,
                         dataPagamento: dataPgto,
                         observacao: observacao || null,
+                        origem: 'MANUAL',
+                        caixaDiarioId,
                         registradoPorId: req.user.id
                     }
                 });
@@ -630,7 +713,7 @@ router.get('/:parcelaId/pagamentos', verificarAuth, checkAcesso, async (req, res
 });
 
 // ── POST /:parcelaId/baixa — Dar baixa em parcela (total, parcial, com ou sem desconto) ──
-router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => {
+router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, checkBaixaManual, async (req, res) => {
     try {
         const { parcelaId } = req.params;
         const { valorRecebido, valorDesconto, motivoDesconto, formaPagamento, dataPagamento, observacao, contaFinanceiraCaId } = req.body;
@@ -663,6 +746,22 @@ router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => 
             return res.status(400).json({ error: `Valor informado (R$ ${(recebido + desconto).toFixed(2)}) é maior que o saldo restante (R$ ${saldoRestante.toFixed(2)}).` });
         }
 
+        // Dinheiro entrando aqui: só espécie, e vai para o caixa de HOJE de quem baixou —
+        // é o que obriga a pessoa a entregar o valor no fechamento. Desconto puro
+        // (sem dinheiro) não passa por caixa: não há o que prestar.
+        let caixaDiarioId = null;
+        let contaFinanceiraFinal = contaFinanceiraCaId || null;
+        if (recebido > 0) {
+            const erroForma = validarFormaManual(formaPagamento);
+            if (erroForma) return res.status(400).json({ error: erroForma });
+            try {
+                caixaDiarioId = await caixaDeHojeParaBaixa(req.user.id);
+            } catch (e) {
+                return res.status(e.status || 500).json({ error: e.message });
+            }
+            if (!contaFinanceiraFinal) contaFinanceiraFinal = await contaEspeciePadrao();
+        }
+
         const dataPgto = dataPagamento ? new Date(dataPagamento) : new Date();
         const novoValorPago = Number(parcela.valorPago || 0) + recebido;
         const novoValorDescontoTotal = Number(parcela.valorDescontoTotal || 0) + desconto;
@@ -677,9 +776,11 @@ router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => 
                     valorDesconto: desconto,
                     motivoDesconto: desconto > 0 ? motivoDesconto.trim() : null,
                     formaPagamento: formaPagamento || null,
-                    contaFinanceiraCaId: contaFinanceiraCaId || null,
+                    contaFinanceiraCaId: contaFinanceiraFinal,
                     dataPagamento: dataPgto,
                     observacao: observacao || null,
+                    origem: 'MANUAL',
+                    caixaDiarioId,
                     registradoPorId: req.user.id
                 }
             });
@@ -691,7 +792,7 @@ router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => 
                     valorPago: novoValorPago,
                     valorDescontoTotal: novoValorDescontoTotal,
                     formaPagamento: formaPagamento || parcela.formaPagamento,
-                    contaFinanceiraCaId: contaFinanceiraCaId || parcela.contaFinanceiraCaId,
+                    contaFinanceiraCaId: contaFinanceiraFinal || parcela.contaFinanceiraCaId,
                     dataPagamento: novoStatusParcela === 'PAGO' ? dataPgto : parcela.dataPagamento,
                     baixadoPorId: req.user.id,
                     observacao: observacao || parcela.observacao
@@ -741,7 +842,9 @@ router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) => 
             message: novoStatusParcela === 'PAGO' ? 'Parcela quitada com sucesso!' : 'Baixa parcial registrada com sucesso!',
             novoStatusParcela,
             novoStatusConta,
-            saldoRestante: Math.max(0, Number(parcela.valor) - novoValorPago - novoValorDescontoTotal)
+            saldoRestante: Math.max(0, Number(parcela.valor) - novoValorPago - novoValorDescontoTotal),
+            // Avisa a tela de que o valor caiu no caixa de quem baixou (vira "a prestar")
+            lancadoNoCaixa: caixaDiarioId ? { valor: recebido, forma: formaPagamento } : null
         });
     } catch (error) {
         console.error('Erro ao dar baixa:', error);

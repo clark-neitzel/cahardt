@@ -93,6 +93,7 @@ const asaasBaixaService = {
                                 contaFinanceiraCaId: contaCaId,
                                 dataPagamento: dataPgto,
                                 observacao: obs,
+                                origem: 'ASAAS',
                                 registradoPorId
                             }
                         });

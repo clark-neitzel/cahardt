@@ -233,6 +233,7 @@ async function sincronizarConta(contaId, opts = {}) {
                             contaFinanceiraCaId: cfB ? (typeof cfB === 'string' ? cfB : cfB.id || null) : contaFinanceiraCaId,
                             dataPagamento: b?.data_pagamento ? new Date(b.data_pagamento + 'T12:00:00-03:00') : dataPgto,
                             observacao: `Baixa sincronizada do Conta Azul [${origem}]`,
+                            origem: 'SYNC_CA',
                             registradoPorId: baixadoPorId
                         }
                     });

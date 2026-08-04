@@ -512,7 +512,41 @@ router.get('/resumo', async (req, res) => {
         cobrancasRotaOutros = Math.round(cobrancasRotaOutros * 100) / 100;
         const cobrancasRotaSemBaixa = cobrancasRotaDia.filter(c => c.status === 'COBRADA').length;
 
-        const valorAPrestar = Math.round((Number(caixa.adiantamento) + totalRecebidoCaixa + faltasDevolucao + cobrancasRotaDinheiro - totalDespesas) * 100) / 100;
+        // Recebimentos de títulos lançados NESTE caixa: baixa manual em espécie feita na
+        // tela de Contas a Receber por este usuário. O dinheiro ficou com ele, então soma
+        // ao valor a prestar igual à cobrança de rota (é o que impede baixar sem repassar).
+        const recebimentosTitulosDia = await prisma.pagamentoParcela.findMany({
+            where: { caixaDiarioId: caixa.id, estornado: false },
+            select: {
+                id: true, valorRecebido: true, formaPagamento: true, dataPagamento: true, createdAt: true,
+                parcela: {
+                    select: {
+                        numeroParcela: true,
+                        contaReceber: {
+                            select: {
+                                cliente: { select: { NomeFantasia: true, Nome: true } },
+                                pedido: { select: { numero: true } }
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: { createdAt: 'asc' }
+        });
+        const recebimentosTitulosFormatados = recebimentosTitulosDia.map(r => ({
+            id: r.id,
+            clienteNome: r.parcela?.contaReceber?.cliente?.NomeFantasia || r.parcela?.contaReceber?.cliente?.Nome || 'Cliente',
+            pedidoNumero: r.parcela?.contaReceber?.pedido?.numero || null,
+            numeroParcela: r.parcela?.numeroParcela || null,
+            valor: Number(r.valorRecebido),
+            formaPagamento: r.formaPagamento || null,
+            lancadoEm: r.createdAt
+        }));
+        const recebimentosTitulosTotal = Math.round(
+            recebimentosTitulosFormatados.reduce((s, r) => s + r.valor, 0) * 100
+        ) / 100;
+
+        const valorAPrestar = Math.round((Number(caixa.adiantamento) + totalRecebidoCaixa + faltasDevolucao + cobrancasRotaDinheiro + recebimentosTitulosTotal - totalDespesas) * 100) / 100;
 
         // Atendimentos do dia: registrados pelo vendedor OU em clientes que foram entregues na rota
         const clienteIdsEntreguesRes = [...new Set(entregas.filter(e => e.clienteId).map(e => e.clienteId))];
@@ -674,6 +708,10 @@ router.get('/resumo', async (req, res) => {
                 totalDinheiro: cobrancasRotaDinheiro,
                 totalOutros: cobrancasRotaOutros,
                 semBaixa: cobrancasRotaSemBaixa
+            },
+            recebimentosTitulos: {
+                itens: recebimentosTitulosFormatados,
+                total: recebimentosTitulosTotal
             },
             pendencias: {
                 devolucoesNaoFeitas,
@@ -922,13 +960,20 @@ router.post('/fechar', async (req, res) => {
         });
 
         // Snapshot do valor a prestar — mesma fórmula do /resumo:
-        // adiantamento + recebido em caixa + faltas de devolução + cobranças de rota em dinheiro − despesas
+        // adiantamento + recebido em caixa + faltas de devolução + cobranças de rota em dinheiro
+        // + recebimentos de títulos lançados neste caixa − despesas
         const adiantamentoFechar = Number(caixaExistente?.adiantamento || 0);
         const faltasDevolucaoFechar = confDevFechar?.status === 'CONFERIDA' ? Number(confDevFechar.totalCobrado) : 0;
         const cobrancasDinheiroFechar = cobrancasRotaFecharDia
             .filter(c => ['COBRADA', 'BAIXADA'].includes(c.status) && (c.formaPagamentoNome || '').toLowerCase().includes('dinheiro'))
             .reduce((s, c) => s + Number(c.valorCobrado || 0), 0);
-        const valorAPrestarFechar = Math.round((adiantamentoFechar + totalRecebidoCaixa + faltasDevolucaoFechar + cobrancasDinheiroFechar - totalDespesas) * 100) / 100;
+        const recebimentosTitulosFechar = caixaExistente
+            ? (await prisma.pagamentoParcela.aggregate({
+                where: { caixaDiarioId: caixaExistente.id, estornado: false },
+                _sum: { valorRecebido: true }
+            }))._sum.valorRecebido || 0
+            : 0;
+        const valorAPrestarFechar = Math.round((adiantamentoFechar + totalRecebidoCaixa + faltasDevolucaoFechar + cobrancasDinheiroFechar + Number(recebimentosTitulosFechar) - totalDespesas) * 100) / 100;
 
         const caixa = await prisma.caixaDiario.upsert({
             where: { vendedorId_dataReferencia: { vendedorId: targetVendedor, dataReferencia: data } },
@@ -2238,6 +2283,7 @@ router.post('/cobrancas-rota/baixar', async (req, res) => {
                             formaPagamento: cobranca.formaPagamentoNome || null,
                             dataPagamento: dataPgto,
                             observacao: obsBaixa,
+                            origem: 'CAIXA_ROTA',
                             registradoPorId: req.user.id
                         }
                     });
@@ -2756,6 +2802,7 @@ router.post('/quitar-ca', async (req, res) => {
                                         contaFinanceiraCaId: fila.contaCaId,
                                         dataPagamento,
                                         observacao: obsBase,
+                                        origem: 'CAIXA_BAIXA_CA',
                                         registradoPorId: req.user.id
                                     }
                                 });
@@ -2778,6 +2825,7 @@ router.post('/quitar-ca', async (req, res) => {
                                         formaPagamento: formasParcela.join(', ') || null,
                                         dataPagamento,
                                         observacao: obsBase,
+                                        origem: 'DEVOLUCAO',
                                         registradoPorId: req.user.id
                                     }
                                 });

@@ -2475,6 +2475,7 @@ async function conciliarUnificado({
                     parcelaId: a.parcela.id,
                     valorRecebido: a.valorRecebido,
                     valorDesconto: 0,
+                    origem: 'CONCILIACAO',
                     dataPagamento,
                     formaPagamento: metodo,
                     contaFinanceiraCaId, // o banco do extrato é a verdade

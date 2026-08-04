@@ -7297,7 +7297,7 @@ router.get('/diag-baixas-origem', async (req, res) => {
         const pagamentos = await prisma.pagamentoParcela.findMany({
             where: { dataPagamento: { gte: desde } },
             select: {
-                id: true, valorRecebido: true, valorDesconto: true, formaPagamento: true,
+                id: true, valorRecebido: true, valorDesconto: true, formaPagamento: true, origem: true,
                 contaFinanceiraCaId: true, dataPagamento: true, observacao: true, estornado: true,
                 registradoPor: { select: { id: true, nome: true } },
                 parcela: {
@@ -7326,13 +7326,15 @@ router.get('/diag-baixas-origem', async (req, res) => {
         // Caminho de origem — inferido pela observação que cada rotina grava (não existe
         // coluna de origem ainda; é exatamente o que a trava vai passar a carimbar).
         const classificar = (p) => {
+            if (p.origem) return p.origem === 'MANUAL' ? 'MANUAL_CONTAS_RECEBER' : p.origem;
             const obs = p.observacao || '';
             if (/^Cobran[çc]a em rota/i.test(obs)) return 'CAIXA_ROTA';
             if (/^Motorista:.*\| Caixa:/i.test(obs) || /^Baixa caixa - /i.test(obs)) return 'CAIXA_BAIXA_CA';
             if (/conciliação bancária/i.test(obs)) return 'CONCILIACAO';
             if (/^Pago via .*\(pay_/i.test(obs)) return 'ASAAS';
-            if (/Baixa sincronizada do Conta Azul/i.test(obs) || /Baixa espelhada do Conta Azul/i.test(obs)) return 'SYNC_CA';
-            if (Number(p.valorRecebido) <= 0 && Number(p.valorDesconto) > 0) return 'DESCONTO_DEVOLUCAO';
+            if (/Baixa espelhada do Conta Azul/i.test(obs)) return 'CA_EXTRATO';
+            if (/Baixa sincronizada do Conta Azul/i.test(obs)) return 'SYNC_CA';
+            if (Number(p.valorRecebido) <= 0 && Number(p.valorDesconto) > 0) return 'DEVOLUCAO';
             return 'MANUAL_CONTAS_RECEBER';
         };
 
@@ -7342,6 +7344,7 @@ router.get('/diag-baixas-origem', async (req, res) => {
         const porOrigem = {};
         const porPessoa = {};
         const semLastro = [];
+        const vindasDoCA = []; // baixa feita DENTRO do Conta Azul e só copiada pelo app
 
         for (const p of pagamentos) {
             if (p.estornado) continue;
@@ -7355,6 +7358,17 @@ router.get('/diag-baixas-origem', async (req, res) => {
             if (!conciliados.has(p.id)) o.semLastroBancario++;
             const f = p.formaPagamento || 'N/I';
             o.formas[f] = r2((o.formas[f] || 0) + valor);
+
+            if ((origem === 'SYNC_CA' || origem === 'CA_EXTRATO') && valor > 0) {
+                vindasDoCA.push({
+                    data: p.dataPagamento.toISOString().slice(0, 10),
+                    origem,
+                    cliente: p.parcela?.contaReceber?.cliente?.NomeFantasia || p.parcela?.contaReceber?.cliente?.Nome || 'N/I',
+                    pedido: p.parcela?.contaReceber?.pedido?.numero || null,
+                    valor: r2(valor),
+                    forma: p.formaPagamento || 'N/I'
+                });
+            }
 
             if (origem !== 'MANUAL_CONTAS_RECEBER') continue;
 
@@ -7403,10 +7417,166 @@ router.get('/diag-baixas-origem', async (req, res) => {
                 total: semLastro.length,
                 valor: r2(semLastro.reduce((s, x) => s + x.valor, 0)),
                 itens: semLastro.slice(0, 200)
+            },
+            // Baixa feita DENTRO do Conta Azul e só copiada para cá — não passa por caixa
+            // nem por conciliação. O app não consegue impedir; serve para enxergar.
+            vindasDoCA: {
+                total: vindasDoCA.length,
+                valor: r2(vindasDoCA.reduce((s, x) => s + x.valor, 0)),
+                dinheiro: r2(vindasDoCA.filter(x => ehDinheiro(x.forma)).reduce((s, x) => s + x.valor, 0)),
+                ultimas: vindasDoCA.sort((a, b) => b.data.localeCompare(a.data)).slice(0, 40)
             }
         });
     } catch (e) {
         console.error('[admin-exec] diag-baixas-origem:', e.message);
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// ── GET /diag-pedido-financeiro/:numero — histórico completo do dinheiro de um pedido ──
+// Para o caso "entrega devolvida mas conta quitada": mostra a entrega, as devoluções, cada
+// parcela e CADA lançamento do ledger (quem registrou, por qual caminho, se foi estornado,
+// se tem lastro no extrato). Só leitura.
+router.get('/diag-pedido-financeiro/:numero', async (req, res) => {
+    try {
+        const numero = parseInt(String(req.params.numero).replace(/[^0-9]/g, ''), 10);
+        if (!numero) return res.status(400).json({ ok: false, error: 'Informe o número do pedido.' });
+        const pedido = await prisma.pedido.findFirst({
+            where: { numero },
+            select: {
+                id: true, numero: true, especial: true, dataVenda: true,
+                statusEntrega: true, dataEntrega: true, motivoDevolucao: true,
+                statusEnvio: true, situacaoCA: true, idVendaContaAzul: true,
+                devolucaoFinalizada: true, baixaCaRealizada: true, baixaCaValor: true, baixaCaEm: true,
+                itens: { select: { quantidade: true, valor: true } },
+                cliente: { select: { NomeFantasia: true, Nome: true } },
+                vendedor: { select: { nome: true } },
+                itensDevolvidos: { select: { quantidade: true, valorBaseItem: true, produto: { select: { nome: true } } } },
+                devolucoes: {
+                    select: {
+                        numero: true, escopo: true, status: true, valorTotal: true, motivo: true,
+                        dataDevolucao: true, notaDevolucaoCA: true,
+                        registradoPor: { select: { nome: true } }
+                    }
+                },
+                pagamentosReais: { select: { formaPagamentoNome: true, valor: true, escritorioResponsavel: true, vendedorResponsavelId: true } }
+            }
+        });
+        if (!pedido) return res.status(404).json({ ok: false, error: `Pedido ${numero} não encontrado.` });
+
+        const conta = await prisma.contaReceber.findFirst({
+            where: { pedidoId: pedido.id },
+            select: {
+                id: true, status: true, valorTotal: true, origem: true, condicaoPagamento: true,
+                parcelas: {
+                    orderBy: { numeroParcela: 'asc' },
+                    select: {
+                        id: true, numeroParcela: true, valor: true, dataVencimento: true, status: true,
+                        valorPago: true, valorDescontoTotal: true, dataPagamento: true, formaPagamento: true,
+                        contaFinanceiraCaId: true, observacao: true,
+                        baixadoPor: { select: { nome: true } },
+                        pagamentos: {
+                            orderBy: { createdAt: 'asc' },
+                            select: {
+                                id: true, valorRecebido: true, valorDesconto: true, motivoDesconto: true,
+                                formaPagamento: true, dataPagamento: true, observacao: true, origem: true,
+                                caixaDiarioId: true, estornado: true, estornadoEm: true, createdAt: true,
+                                registradoPor: { select: { nome: true } },
+                                estornadoPor: { select: { nome: true } }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Lastro: algum lançamento do extrato aponta para estes pagamentos?
+        const pagIds = (conta?.parcelas || []).flatMap(p => p.pagamentos.map(x => x.id));
+        const comLastro = new Set();
+        if (pagIds.length) {
+            const [diretos, emGrupo] = await Promise.all([
+                prisma.extratoLancamento.findMany({ where: { pagamentoParcelaId: { in: pagIds } }, select: { pagamentoParcelaId: true, descricao: true, data: true } }),
+                prisma.conciliacaoGrupoItem.findMany({ where: { pagamentoParcelaId: { in: pagIds } }, select: { pagamentoParcelaId: true } })
+            ]);
+            diretos.forEach(d => comLastro.add(d.pagamentoParcelaId));
+            emGrupo.forEach(g => comLastro.add(g.pagamentoParcelaId));
+        }
+
+        const r2 = (n) => Math.round(Number(n || 0) * 100) / 100;
+        const parcelas = (conta?.parcelas || []).map(p => ({
+            numero: p.numeroParcela,
+            valor: r2(p.valor),
+            vencimento: p.dataVencimento?.toISOString().slice(0, 10),
+            status: p.status,
+            valorPago: r2(p.valorPago),
+            valorDesconto: r2(p.valorDescontoTotal),
+            dataPagamento: p.dataPagamento?.toISOString().slice(0, 10) || null,
+            formaPagamento: p.formaPagamento,
+            baixadoPor: p.baixadoPor?.nome || null,
+            observacao: p.observacao || null,
+            lancamentos: p.pagamentos.map(x => ({
+                data: x.dataPagamento?.toISOString().slice(0, 10),
+                lancadoEm: x.createdAt?.toISOString().slice(0, 16).replace('T', ' '),
+                recebido: r2(x.valorRecebido),
+                desconto: r2(x.valorDesconto),
+                motivoDesconto: x.motivoDesconto || null,
+                forma: x.formaPagamento || null,
+                origem: x.origem || '(antes do carimbo — ver observação)',
+                porQuem: x.registradoPor?.nome || null,
+                noCaixaDe: x.caixaDiarioId || null,
+                temLastroNoExtrato: comLastro.has(x.id),
+                estornado: x.estornado,
+                estornadoPor: x.estornadoPor?.nome || null,
+                observacao: x.observacao || null
+            }))
+        }));
+
+        const recebidoTotal = r2(parcelas.reduce((s, p) => s + p.valorPago, 0));
+        const descontoTotal = r2(parcelas.reduce((s, p) => s + p.valorDesconto, 0));
+        const devolvidoTotal = r2((pedido.devolucoes || []).filter(d => d.status === 'ATIVA').reduce((s, d) => s + Number(d.valorTotal || 0), 0));
+
+        res.json({
+            ok: true,
+            pedido: {
+                numero: pedido.numero,
+                cliente: pedido.cliente?.NomeFantasia || pedido.cliente?.Nome,
+                vendedor: pedido.vendedor?.nome,
+                dataVenda: pedido.dataVenda,
+                valorTotal: r2(pedido.itens.reduce((t, i) => t + Number(i.quantidade) * Number(i.valor), 0)),
+                baixaCa: pedido.baixaCaRealizada ? { valor: r2(pedido.baixaCaValor), em: pedido.baixaCaEm } : null,
+                especial: pedido.especial,
+                idVendaContaAzul: pedido.idVendaContaAzul,
+                situacaoCA: pedido.situacaoCA,
+                statusEnvio: pedido.statusEnvio
+            },
+            entrega: {
+                status: pedido.statusEntrega,
+                dataEntrega: pedido.dataEntrega,
+                motivoDevolucao: pedido.motivoDevolucao,
+                devolucaoFinalizada: pedido.devolucaoFinalizada,
+                itensDevolvidos: pedido.itensDevolvidos.map(i => ({ produto: i.produto?.nome || null, qtd: Number(i.quantidade), valorBase: r2(i.valorBaseItem) })),
+                pagamentosRegistradosNaEntrega: pedido.pagamentosReais.map(p => ({ forma: p.formaPagamentoNome, valor: r2(p.valor), escritorio: p.escritorioResponsavel, vendedorResp: p.vendedorResponsavelId }))
+            },
+            devolucoes: pedido.devolucoes.map(d => ({
+                numero: d.numero, escopo: d.escopo, status: d.status, valor: r2(d.valorTotal),
+                motivo: d.motivo, data: d.dataDevolucao, notaCA: d.notaDevolucaoCA,
+                registradoPor: d.registradoPor?.nome || null
+            })),
+            conta: conta ? { status: conta.status, valorTotal: r2(conta.valorTotal), origem: conta.origem, condicao: conta.condicaoPagamento } : null,
+            parcelas,
+            veredito: {
+                recebidoTotal,
+                descontoTotal,
+                devolvidoAtivoTotal: devolvidoTotal,
+                entregaDevolvida: pedido.statusEntrega === 'DEVOLVIDO',
+                // O que acende a luz: mercadoria voltou, mas a conta foi quitada com
+                // dinheiro (não com desconto de devolução) e sem lastro no extrato.
+                quitadoComDinheiroMesmoDevolvido: pedido.statusEntrega === 'DEVOLVIDO' && recebidoTotal > 0,
+                semLastroNoExtrato: parcelas.every(p => p.lancamentos.every(l => !l.temLastroNoExtrato))
+            }
+        });
+    } catch (e) {
+        console.error('[admin-exec] diag-pedido-financeiro:', e.message);
         res.status(500).json({ ok: false, error: e.message });
     }
 });

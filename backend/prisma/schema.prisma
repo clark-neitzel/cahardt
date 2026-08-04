@@ -1464,6 +1464,8 @@ model CaixaDiario {
   vendedor             Vendedor                   @relation(fields: [vendedorId], references: [id])
   entregasConferidas   CaixaEntregaConferida[]
   conferenciaDevolucao CaixaConferenciaDevolucao?
+  // Baixas de títulos em espécie lançadas neste caixa (somam no valor a prestar)
+  recebimentosTitulos PagamentoParcela[] @relation("RecebimentosTitulos")
 
   @@unique([vendedorId, dataReferencia])
   @@index([vendedorId])
@@ -1970,6 +1972,18 @@ model PagamentoParcela {
   registradoPorId String   @map("registrado_por_id")
   registradoPor   Vendedor @relation("PagamentosParcelaRegistrados", fields: [registradoPorId], references: [id])
 
+  // Por qual CAMINHO a baixa entrou. Só CONCILIACAO/CAIXA_*/ASAAS têm lastro (dinheiro
+  // conferido no extrato ou prestado no caixa); MANUAL é digitada na tela de Contas a
+  // Receber e por isso exige permissão própria e cai no caixa de quem baixou.
+  // MANUAL | CAIXA_ROTA | CAIXA_BAIXA_CA | CONCILIACAO | ASAAS | SYNC_CA | DEVOLUCAO
+  origem String? @map("origem")
+
+  // Caixa do dia em que este dinheiro foi lançado (baixa manual em espécie). Enquanto
+  // preenchido, o valor entra no "a prestar" desse caixa — é o que obriga quem baixou
+  // a entregar o dinheiro. Null = não passou por caixa (conciliação, Asaas, sync…).
+  caixaDiarioId String?      @map("caixa_diario_id")
+  caixaDiario   CaixaDiario? @relation("RecebimentosTitulos", fields: [caixaDiarioId], references: [id])
+
   estornado      Boolean   @default(false)
   estornadoEm    DateTime? @map("estornado_em")
   estornadoPorId String?   @map("estornado_por_id")
@@ -1979,6 +1993,7 @@ model PagamentoParcela {
 
   @@index([parcelaId])
   @@index([dataPagamento])
+  @@index([caixaDiarioId])
   @@map("pagamentos_parcela")
 }
 

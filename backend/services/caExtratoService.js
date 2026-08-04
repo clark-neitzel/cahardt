@@ -487,7 +487,8 @@ async function sincronizarRecebimentos({ dias = 2, de = null, ate = null, limite
                             formaPagamento: mapMetodoCA(b?.metodo_pagamento) || 'Outro',
                             contaFinanceiraCaId: cfB ? (typeof cfB === 'string' ? cfB : cfB.id || null) : contaP,
                             dataPagamento: b?.data_pagamento ? new Date(b.data_pagamento + 'T12:00:00-03:00') : dataP,
-                            observacao: 'Baixa espelhada do Conta Azul (recebimento em conta importada)'
+                            observacao: 'Baixa espelhada do Conta Azul (recebimento em conta importada)',
+                            origem: 'CA_EXTRATO'
                         }
                     });
                 }

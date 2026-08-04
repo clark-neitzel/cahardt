@@ -46,6 +46,7 @@ const aplicarDevolucaoLocalApp = async (devolucao, pedido) => {
                     motivoDesconto: `Devolução ${devolucao.escopo} #${devolucao.numero}`,
                     dataPagamento: new Date(),
                     observacao: (devolucao.motivo || '').substring(0, 200) || null,
+                    origem: 'DEVOLUCAO',
                     registradoPorId: devolucao.registradoPorId
                 }
             });
