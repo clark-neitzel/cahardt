@@ -60,6 +60,70 @@ router.get('/ping', (req, res) => {
     });
 });
 
+// GET /api/admin-exec/diag-conferencia-caixa
+// Confere EM PRODUÇÃO que a conferência do dinheiro subiu inteira: colunas novas
+// no banco (caixa_diario + vendedores.quebra_caixa), estado da chave que liga a
+// regra, quem tem cada permissão e o que está na fila. Não altera nada.
+router.get('/diag-conferencia-caixa', async (req, res) => {
+    try {
+        const cfgConferencia = require('../config/caixaConferenciaConfig');
+        const conf = require('../services/caixaConferenciaService');
+
+        // 1. Colunas novas existem mesmo no banco de produção?
+        const colunas = await prisma.$queryRawUnsafe(`
+            SELECT column_name FROM information_schema.columns
+            WHERE (table_name = 'caixa_diario' AND column_name IN
+                    ('dinheiro_conferido','dinheiro_conferido_por_id','valor_contado','contagem_dinheiro',
+                     'diferenca_conferencia','quebra_aplicada','enviado_conferencia_em','fechado_por_id','reaberto_motivo'))
+               OR (table_name = 'vendedores' AND column_name = 'quebra_caixa')
+        `);
+        const nomes = colunas.map(c => c.column_name).sort();
+
+        // 2. Chave que liga a exigência
+        const cfg = await cfgConferencia.get();
+
+        // 3. Quem pode conferir / autorizar / fechar
+        const equipe = await prisma.vendedor.findMany({
+            where: { ativo: true },
+            select: { id: true, nome: true, permissoes: true, quebraCaixa: true, telefone: true },
+        });
+        const papel = (filtro) => equipe.filter(v => filtro(conf.permsDe(v)))
+            .map(v => ({ nome: v.nome, quebraCaixa: Number(v.quebraCaixa || 0), temTelefone: !!v.telefone }));
+
+        // 4. Situação atual dos caixas
+        const [aguardando, conferidos, fechados] = await Promise.all([
+            prisma.caixaDiario.count({ where: { status: 'ABERTO', enviadoConferenciaEm: { not: null }, dinheiroConferido: false } }),
+            prisma.caixaDiario.count({ where: { dinheiroConferido: true } }),
+            prisma.caixaDiario.count({ where: { status: 'FECHADO', fechadoPorId: { not: null } } }),
+        ]);
+
+        res.json({
+            ok: nomes.length === 10,
+            colunasNoBanco: nomes,
+            colunasEsperadas: 10,
+            regra: {
+                exigeConferenciaParaFechar: cfg.ativo,
+                valendoDesde: cfg.desde,
+                instaladoEm: cfg.instaladoEm,
+                caixaSoDiasUteis: cfg.soDiasUteis,
+                whatsappAtrasoDias: cfg.whatsappAtrasoDias,
+                tarefaNaDiferenca: cfg.tarefaDiferenca,
+            },
+            quemConfere: papel(p => !p.admin && p.Pode_Conferir_Dinheiro_Caixa),
+            quemAutorizaDiferenca: papel(p => !p.admin && p.Pode_Autorizar_Diferenca_Caixa),
+            quemFecha: papel(p => !p.admin && (p.Pode_Fechar_Caixa || p.Pode_Editar_Caixa)),
+            admins: equipe.filter(v => conf.permsDe(v).admin).map(v => v.nome),
+            caixas: { aguardandoConferencia: aguardando, jaConferidos: conferidos, fechadosComAutor: fechados },
+            aviso: cfg.ativo
+                ? 'Regra LIGADA: nenhum caixa fecha sem o dinheiro conferido.'
+                : 'Regra DESLIGADA: a tela de conferência já funciona, mas o fechamento ainda não está travado.',
+        });
+    } catch (error) {
+        console.error('[diag-conferencia-caixa]', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /api/admin-exec/diag-cartao-ponto?funcionarioId=&de=&ate=
 // Confere em produção o cartão de ponto por período + folha (tabelas novas de
 // 08/2026: ponto_ocorrencias e folha_periodos, e as colunas de cálculo da folha).
