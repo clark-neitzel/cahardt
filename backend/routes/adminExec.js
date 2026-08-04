@@ -7518,6 +7518,7 @@ router.get('/diag-pedido-financeiro/:numero', async (req, res) => {
                         valorPago: true, valorDescontoTotal: true, dataPagamento: true, formaPagamento: true,
                         contaFinanceiraCaId: true, observacao: true,
                         baixadoPor: { select: { nome: true } },
+                        cobrancasAsaas: { select: { asaasPaymentId: true, tipo: true, status: true, valor: true, vencimento: true } },
                         pagamentos: {
                             orderBy: { createdAt: 'asc' },
                             select: {
@@ -7557,6 +7558,12 @@ router.get('/diag-pedido-financeiro/:numero', async (req, res) => {
             formaPagamento: p.formaPagamento,
             baixadoPor: p.baixadoPor?.nome || null,
             observacao: p.observacao || null,
+            // Boleto/PIX Asaas da parcela: PENDENTE depois de quitada = cliente ainda
+            // consegue pagar (risco de recebimento em dobro).
+            cobrancasAsaas: p.cobrancasAsaas.map(c => ({
+                paymentId: c.asaasPaymentId, tipo: c.tipo, status: c.status,
+                valor: r2(c.valor), vencimento: c.vencimento?.toISOString().slice(0, 10) || null
+            })),
             lancamentos: p.pagamentos.map(x => ({
                 data: x.dataPagamento?.toISOString().slice(0, 10),
                 lancadoEm: x.createdAt?.toISOString().slice(0, 16).replace('T', ' '),

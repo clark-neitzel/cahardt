@@ -2344,6 +2344,14 @@ router.post('/cobrancas-rota/baixar', async (req, res) => {
                     console.error('[CobrancaRota] Falha no histórico da baixa (baixa já efetivada):', logErr.message);
                 }
 
+                // Cobrada em dinheiro na rua → o boleto/PIX Asaas daquela parcela precisa morrer,
+                // senão fica vivo e o cliente ainda pode pagá-lo (recebimento em dobro).
+                if (novoStatusParcela === 'PAGO') {
+                    const asaasService = require('../services/asaasService');
+                    asaasService.cancelarCobrancasDaParcela(parcela.id, 'cobrada na rota e baixada no caixa')
+                        .catch(e => console.error('[CobrancaRota] Falha ao cancelar cobrança Asaas (baixa já efetivada):', e.message));
+                }
+
                 resultados.push({ id, cliente: clienteNome, status: 'OK', novoStatusParcela });
             } catch (e) {
                 console.error(`[CobrancaRota] Erro ao baixar cobrança ${id}:`, e);

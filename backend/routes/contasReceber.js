@@ -166,6 +166,35 @@ router.get('/baixado-por', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// ── GET /opcoes-filtros — opções FIXAS dos filtros (condição, entrega, forma da baixa) ──
+// Precisam vir do banco INTEIRO, não das linhas já filtradas na tela: antes a tela montava
+// essas listas a partir do resultado atual, então ao escolher uma opção as outras sumiam do
+// menu — e a opção escolhida também, deixando o filtro impossível de desmarcar (a lista só
+// voltava limpando tudo).
+router.get('/opcoes-filtros', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const nomes = (rows) => [...new Set(rows.map(r => (r.nome || '').trim()).filter(Boolean))]
+            .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        const [condicoes, entrega, baixa] = await Promise.all([
+            prisma.$queryRaw`SELECT DISTINCT nome_condicao_pagamento AS nome FROM pedidos WHERE nome_condicao_pagamento IS NOT NULL`,
+            prisma.$queryRaw`SELECT DISTINCT forma_pagamento_nome AS nome FROM pedido_pagamentos_reais WHERE forma_pagamento_nome IS NOT NULL`,
+            prisma.$queryRaw`SELECT DISTINCT forma_pagamento AS nome FROM parcelas WHERE forma_pagamento IS NOT NULL`
+        ]);
+        // Baixas antigas (vindas do CA) gravaram a forma com o valor colado —
+        // "À vista - Dinheiro: R$ 250,36". Cada uma dessas casa com UMA parcela só:
+        // como opção de filtro não serve para nada e ainda enterraria as formas de
+        // verdade numa lista de centenas de itens.
+        res.json({
+            condicoes: nomes(condicoes),
+            formasEntrega: nomes(entrega),
+            formasBaixa: nomes(baixa).filter(f => !/R\$/i.test(f))
+        });
+    } catch (e) {
+        console.error('Erro em /contas-receber/opcoes-filtros:', e);
+        res.json({ condicoes: [], formasEntrega: [], formasBaixa: [] });
+    }
+});
+
 // ── GET /contas-financeiras — bancos/caixas do CA para o seletor da baixa ──
 router.get('/contas-financeiras', verificarAuth, checkBaixa, async (req, res) => {
     try {
@@ -207,13 +236,12 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         } = req.query;
 
         const toList = (v) => (Array.isArray(v) ? v : String(v || '').split(',')).map(s => s.trim()).filter(Boolean);
+        // Todo filtro de lista aceita valor único OU vários separados por vírgula
+        const igual = (v) => { const arr = toList(v); return arr.length > 1 ? { in: arr } : arr[0]; };
 
         const where = {};
-        if (status) {
-            const arr = toList(status);
-            where.status = arr.length > 1 ? { in: arr } : arr[0];
-        }
-        if (origem) where.origem = origem;
+        if (status) where.status = igual(status);
+        if (origem) where.origem = igual(origem);
         if (clienteId) where.clienteId = clienteId;
 
         // Filtro por busca no nome do cliente
@@ -228,7 +256,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
 
         // Filtro por categoria de cliente
         if (categoriaClienteId) {
-            where.cliente = { ...(where.cliente || {}), categoriaClienteId };
+            where.cliente = { ...(where.cliente || {}), categoriaClienteId: igual(categoriaClienteId) };
         }
 
         // Sempre esconde contas cujo pedido foi excluído/cancelado no CA.
@@ -247,14 +275,10 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         // Filtros via pedido (vendedor, condição de pagamento e condição na entrega)
         if (vendedorId || condicaoPagamento || formaPagamentoEntrega) {
             where.pedido = {};
-            if (vendedorId) where.pedido.vendedorId = vendedorId;
-            if (condicaoPagamento) {
-                const arr = toList(condicaoPagamento);
-                where.pedido.nomeCondicaoPagamento = arr.length > 1 ? { in: arr } : arr[0];
-            }
+            if (vendedorId) where.pedido.vendedorId = igual(vendedorId);
+            if (condicaoPagamento) where.pedido.nomeCondicaoPagamento = igual(condicaoPagamento);
             if (formaPagamentoEntrega) {
-                const arr = toList(formaPagamentoEntrega);
-                where.pedido.pagamentosReais = { some: { formaPagamentoNome: arr.length > 1 ? { in: arr } : arr[0], valor: { gt: 0 } } };
+                where.pedido.pagamentosReais = { some: { formaPagamentoNome: igual(formaPagamentoEntrega), valor: { gt: 0 } } };
             }
         }
 
@@ -275,19 +299,10 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             if (pagamentoDe) parcelaSome.dataPagamento.gte = new Date(pagamentoDe + 'T00:00:00.000Z');
             if (pagamentoAte) parcelaSome.dataPagamento.lte = new Date(pagamentoAte + 'T23:59:59.999Z');
         }
-        if (statusParcela) {
-            const arr = toList(statusParcela);
-            parcelaSome.status = arr.length > 1 ? { in: arr } : arr[0];
-        }
-        if (formaPagamento) {
-            const arr = toList(formaPagamento);
-            parcelaSome.formaPagamento = arr.length > 1 ? { in: arr } : arr[0];
-        }
+        if (statusParcela) parcelaSome.status = igual(statusParcela);
+        if (formaPagamento) parcelaSome.formaPagamento = igual(formaPagamento);
         // Quem deu a baixa (só faz sentido em parcela já baixada)
-        if (baixadoPorId) {
-            const arr = toList(baixadoPorId);
-            parcelaSome.baixadoPorId = arr.length > 1 ? { in: arr } : arr[0];
-        }
+        if (baixadoPorId) parcelaSome.baixadoPorId = igual(baixadoPorId);
         if (Object.keys(parcelaSome).length > 0) {
             where.parcelas = { some: parcelaSome };
         }
@@ -462,10 +477,11 @@ router.get('/relatorio-itens', verificarAuth, checkAcesso, async (req, res) => {
         } = req.query;
 
         const toList = (v) => (Array.isArray(v) ? v : String(v || '').split(',')).map(s => s.trim()).filter(Boolean);
+        const igual = (v) => { const arr = toList(v); return arr.length > 1 ? { in: arr } : arr[0]; };
 
         const where = {};
-        if (status) { const arr = toList(status); where.status = arr.length > 1 ? { in: arr } : arr[0]; }
-        if (origem) where.origem = origem;
+        if (status) where.status = igual(status);
+        if (origem) where.origem = igual(origem);
         if (clienteId) where.clienteId = clienteId;
         if (busca) {
             where.cliente = { OR: [
@@ -474,7 +490,7 @@ router.get('/relatorio-itens', verificarAuth, checkAcesso, async (req, res) => {
             ]};
         }
         if (categoriaClienteId) {
-            where.cliente = { ...(where.cliente || {}), categoriaClienteId };
+            where.cliente = { ...(where.cliente || {}), categoriaClienteId: igual(categoriaClienteId) };
         }
         where.OR = [
             { pedidoId: null },
@@ -482,8 +498,8 @@ router.get('/relatorio-itens', verificarAuth, checkAcesso, async (req, res) => {
         ];
         if (vendedorId || condicaoPagamento) {
             where.pedido = {};
-            if (vendedorId) where.pedido.vendedorId = vendedorId;
-            if (condicaoPagamento) { const arr = toList(condicaoPagamento); where.pedido.nomeCondicaoPagamento = arr.length > 1 ? { in: arr } : arr[0]; }
+            if (vendedorId) where.pedido.vendedorId = igual(vendedorId);
+            if (condicaoPagamento) where.pedido.nomeCondicaoPagamento = igual(condicaoPagamento);
         }
         if (tipoCobranca) {
             where.AND = [...(where.AND || []), await filtroTipoCobranca(toList(tipoCobranca))];
@@ -499,9 +515,9 @@ router.get('/relatorio-itens', verificarAuth, checkAcesso, async (req, res) => {
             if (pagamentoDe) parcelaSome.dataPagamento.gte = new Date(pagamentoDe + 'T00:00:00.000Z');
             if (pagamentoAte) parcelaSome.dataPagamento.lte = new Date(pagamentoAte + 'T23:59:59.999Z');
         }
-        if (statusParcela) { const arr = toList(statusParcela); parcelaSome.status = arr.length > 1 ? { in: arr } : arr[0]; }
-        if (formaPagamento) { const arr = toList(formaPagamento); parcelaSome.formaPagamento = arr.length > 1 ? { in: arr } : arr[0]; }
-        if (baixadoPorId) { const arr = toList(baixadoPorId); parcelaSome.baixadoPorId = arr.length > 1 ? { in: arr } : arr[0]; }
+        if (statusParcela) parcelaSome.status = igual(statusParcela);
+        if (formaPagamento) parcelaSome.formaPagamento = igual(formaPagamento);
+        if (baixadoPorId) parcelaSome.baixadoPorId = igual(baixadoPorId);
         if (Object.keys(parcelaSome).length > 0) where.parcelas = { some: parcelaSome };
 
         const contas = await prisma.contaReceber.findMany({
@@ -680,6 +696,17 @@ router.post('/baixa-lote', verificarAuth, checkBaixa, checkBaixaManual, async (r
             }
         } catch (logErr) {
             console.error('Falha ao registrar histórico da baixa em lote (baixa já efetivada):', logErr);
+        }
+
+        // Parcela quitada na mão → cancela boleto/PIX Asaas pendente dela, igual à baixa
+        // individual. Sem isto o boleto continuava vivo no Asaas depois do lote e o cliente
+        // ainda podia pagá-lo = recebimento em dobro. Melhor esforço, fora da resposta.
+        {
+            const asaasService = require('../services/asaasService');
+            for (const parcela of elegiveis) {
+                asaasService.cancelarCobrancasDaParcela(parcela.id, 'baixa em lote no app')
+                    .catch(e => console.error('[Baixa lote] Falha ao cancelar cobrança Asaas (baixa já efetivada):', e.message));
+            }
         }
 
         res.json({
