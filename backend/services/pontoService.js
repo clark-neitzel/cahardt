@@ -314,6 +314,8 @@ const ROTULO_SITUACAO = {
     FOLGA: 'Folga',
     COMPENSADO: 'Compensado',
     FUTURO: 'A cumprir',        // dia de hoje ainda em aberto ou dia futuro do período
+    AGUARDANDO: 'Aguardando importação', // bate no relógio e o arquivo ainda não entrou
+    SEM_CONTROLE: 'Sem controle de ponto',
     SEM_VINCULO: 'Fora do contrato'
 };
 
@@ -394,7 +396,7 @@ const montarCartao = async (funcionarioId, filtro) => {
     // ── Linha a linha (TODOS os dias do período) ─────────────────────────────
     let trabalhadoTotal = 0, previstoTotal = 0, saldoTotal = 0, extraMin = 0, negativoMin = 0;
     let faltas = 0, diasUteis = 0, domingos = 0, feriadosNaoDomingo = 0, diasTrabalhados = 0;
-    let diasFerias = 0, diasAtestadoTotal = 0, diasAbonados = 0;
+    let diasFerias = 0, diasAtestadoTotal = 0, diasAbonados = 0, diasAguardando = 0;
     const semanasComFalta = new Set();
 
     const linhas = listarDias(de, ate).map((d) => {
@@ -419,11 +421,16 @@ const montarCartao = async (funcionarioId, filtro) => {
         // O DIA DE HOJE nunca vira falta sozinho — a pessoa ainda pode bater o ponto.
         // Falta automática só em dia já fechado; hoje o RH marca à mão se quiser.
         else if (d >= hoje) situacao = 'FUTURO';
+        // Quem não registra ponto nunca acumula falta pelo cartão
+        else if (funcionario.registraPontoEm === 'NAO_REGISTRA') situacao = 'SEM_CONTROLE';
+        // Quem bate no relógio da empresa: sem NENHUMA batida no período, o
+        // arquivo ainda não foi importado — não é falta, é dado que falta chegar
+        else if (funcionario.registraPontoEm === 'RELOGIO' && !registros.length) situacao = 'AGUARDANDO';
         else situacao = 'FALTA';
 
         // Carga que o dia exigia (mostrada na coluna "Previsto"): só nos dias em que
         // ele devia trabalhar — feriado, abono e folga não exigem nada.
-        const cargaExigida = ['TRABALHADO', 'FALTA', 'FUTURO'].includes(situacao) ? cargaEscala : 0;
+        const cargaExigida = ['TRABALHADO', 'FALTA', 'FUTURO', 'AGUARDANDO'].includes(situacao) ? cargaEscala : 0;
         // Já o SALDO (banco de horas) só desconta a carga do dia efetivamente trabalhado:
         // falta não vira hora negativa — ela é descontada em dinheiro na folha.
         const previsto = situacao === 'TRABALHADO' ? cargaEscala : 0;
@@ -451,6 +458,7 @@ const montarCartao = async (funcionarioId, filtro) => {
             else if (cargaEscala > 0) diasUteis++;
         }
 
+        if (situacao === 'AGUARDANDO') diasAguardando++;
         if (situacao === 'FERIAS') diasFerias++;
         else if (situacao === 'ATESTADO') diasAtestadoTotal++;
         else if (situacao === 'ABONO') diasAbonados++;
@@ -523,6 +531,7 @@ const montarCartao = async (funcionarioId, filtro) => {
             cpf: funcionario.cpf || '',
             dataAdmissao: funcionario.dataAdmissao,
             salario: cent(salario),
+            registraPontoEm: funcionario.registraPontoEm,
             tipoHoraExtra: funcionario.tipoHoraExtra,
             percentualHoraExtra: percHE,
             divisorHoras: divisor,
@@ -548,7 +557,8 @@ const montarCartao = async (funcionarioId, filtro) => {
             diasRepouso,
             diasFerias,
             diasAtestado: diasAtestadoTotal,
-            diasAbonados
+            diasAbonados,
+            diasAguardando
         },
         folha: {
             salarioBase: cent(salario),

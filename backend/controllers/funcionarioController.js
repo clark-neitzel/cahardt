@@ -80,6 +80,7 @@ const funcionarioController = {
                     foto: f.foto,
                     ativo: f.ativo,
                     pontoToken: f.pontoToken,
+                    registraPontoEm: f.registraPontoEm || 'APP',
                     trabalhando,
                     desde: trabalhando ? pontoService.horaLocalHM(bts[bts.length - 1].hora) : null,
                     alertaAso
@@ -172,7 +173,7 @@ const funcionarioController = {
     atualizar: async (req, res) => {
         try {
             const { nome, cpf, telefone, email, endereco, cargo, dataAdmissao, dataDemissao, salario, tipoHoraExtra, jornadaMovel, ativo, observacao,
-                percentualHoraExtra, divisorHoras, descontarDsrFalta } = req.body || {};
+                percentualHoraExtra, divisorHoras, descontarDsrFalta, registraPontoEm } = req.body || {};
             const data = {};
             if (nome !== undefined) data.nome = nome;
             if (cpf !== undefined) data.cpf = cpf ? soDigitos(cpf) : null;
@@ -196,6 +197,10 @@ const funcionarioController = {
                 data.divisorHoras = !dv || dv < 1 ? 220 : dv;
             }
             if (descontarDsrFalta !== undefined) data.descontarDsrFalta = !!descontarDsrFalta;
+            if (registraPontoEm !== undefined) {
+                const m = String(registraPontoEm).toUpperCase();
+                data.registraPontoEm = ['APP', 'RELOGIO', 'NAO_REGISTRA'].includes(m) ? m : 'APP';
+            }
 
             const f = await prisma.funcionario.update({ where: { id: req.params.id }, data });
             res.json(f);
@@ -484,6 +489,88 @@ const funcionarioController = {
             if (error.status) return res.status(error.status).json({ erro: error.message });
             console.error('[RH] responder acerto:', error);
             res.status(500).json({ erro: 'Erro ao responder o pedido.' });
+        }
+    },
+
+    // ─── Painel: pendências (o que precisa de atenção hoje) ───────────────────
+    // Dias em aberto = dia passado com número ímpar de batidas (faltou uma ponta).
+    // Não bateu hoje = quem tinha jornada prevista e não registrou nada —
+    // quem bate no relógio da empresa (ou não bate) fica de fora.
+    pendencias: async (req, res) => {
+        try {
+            const dias = Math.max(1, Math.min(60, parseInt(req.query.dias) || 15));
+            const hoje = pontoService.getDataReferencia();
+            const desde = new Date(`${hoje}T12:00:00`);
+            desde.setDate(desde.getDate() - dias);
+            const de = desde.toLocaleDateString('en-CA');
+
+            const funcionarios = await prisma.funcionario.findMany({
+                where: { ativo: true },
+                include: { jornadas: true },
+                orderBy: { nome: 'asc' }
+            });
+            const ids = funcionarios.map(f => f.id);
+            const registros = ids.length
+                ? await prisma.pontoRegistro.findMany({
+                    where: { funcionarioId: { in: ids }, dataReferencia: { gte: de, lte: hoje } },
+                    orderBy: { hora: 'asc' }
+                })
+                : [];
+            const ocorrencias = ids.length
+                ? await prisma.pontoOcorrencia.findMany({ where: { funcionarioId: { in: ids }, data: { gte: de, lte: hoje } } })
+                : [];
+            const feriados = await pontoService.getFeriados();
+
+            // batidas por funcionário+dia
+            const porChave = {};
+            for (const r of registros) (porChave[`${r.funcionarioId}|${r.dataReferencia}`] = porChave[`${r.funcionarioId}|${r.dataReferencia}`] || []).push(r);
+            const marcado = new Set(ocorrencias.map(o => `${o.funcionarioId}|${o.data}`));
+
+            const emAberto = [];
+            const naoBateuHoje = [];
+
+            for (const f of funcionarios) {
+                const modo = f.registraPontoEm || 'APP';
+                const jornadaPorDia = {};
+                for (const j of f.jornadas) jornadaPorDia[j.diaSemana] = j;
+
+                for (const d of pontoService.listarDias(de, hoje)) {
+                    const bts = porChave[`${f.id}|${d}`] || [];
+                    const diaSemana = new Date(`${d}T12:00:00`).getDay();
+                    const jornada = jornadaPorDia[diaSemana];
+                    const temCarga = !!(jornada && !jornada.folga && (jornada.entrada1 || jornada.entrada2));
+
+                    // dia com ponta faltando (vale para todo mundo que tem batida)
+                    if (d < hoje && bts.length % 2 === 1) {
+                        emAberto.push({
+                            funcionarioId: f.id, nome: f.nome, cargo: f.cargo, data: d,
+                            batidas: bts.length, ultima: pontoService.horaLocalHM(bts[bts.length - 1].hora)
+                        });
+                    }
+
+                    // não bateu hoje — só para quem registra pelo app
+                    if (d === hoje && modo === 'APP' && temCarga && !bts.length && !marcado.has(`${f.id}|${d}`) && !feriados[d]) {
+                        naoBateuHoje.push({
+                            funcionarioId: f.id, nome: f.nome, cargo: f.cargo,
+                            previsto: jornada.entrada1 || jornada.entrada2 || null
+                        });
+                    }
+                }
+            }
+
+            emAberto.sort((a, b) => b.data.localeCompare(a.data));
+            res.json({
+                data: hoje,
+                diasAnalisados: dias,
+                emAberto: emAberto.slice(0, 100),
+                totalEmAberto: emAberto.length,
+                naoBateuHoje,
+                acertosPendentes: await acertoService.contarPendentes(),
+                noRelogio: funcionarios.filter(f => (f.registraPontoEm || 'APP') === 'RELOGIO').length
+            });
+        } catch (error) {
+            console.error('[RH] pendências do ponto:', error);
+            res.status(500).json({ erro: 'Erro ao carregar as pendências.' });
         }
     },
 

@@ -209,6 +209,23 @@ export default function BaterPonto() {
       </Casca>
     );
   }
+  // Quem bate no relógio da empresa (ou não bate) não usa este link
+  if (meta?.registraPontoEm && meta.registraPontoEm !== 'APP') {
+    const noRelogio = meta.registraPontoEm === 'RELOGIO';
+    return (
+      <Casca>
+        <div className="p-6 text-center">
+          <Clock className="h-10 w-10 text-gray-400 mx-auto" />
+          <p className="mt-3 font-bold text-gray-900">{noRelogio ? 'Seu ponto é no relógio da empresa' : 'Você não registra ponto pelo app'}</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {noRelogio
+              ? 'Continue batendo no equipamento, como sempre. O escritório importa as batidas para o sistema.'
+              : 'Se precisar registrar ponto, fale com o RH.'}
+          </p>
+        </div>
+      </Casca>
+    );
+  }
   if (!meta?.temSenha) {
     return (
       <Casca>

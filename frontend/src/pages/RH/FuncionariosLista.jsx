@@ -79,9 +79,7 @@ export default function FuncionariosLista() {
                 <button key={f.id} onClick={() => navigate(`/rh/funcionarios/${f.id}`)} className="w-full text-left bg-white rounded-xl border border-gray-200 shadow-sm p-4">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-gray-900">{f.nome}</span>
-                    {f.trabalhando
-                      ? <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Trabalhando</span>
-                      : <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Fora</span>}
+                    <SeloPonto f={f} />
                   </div>
                   <div className="text-sm text-gray-500">{f.cargo || 'Sem cargo'}{f.desde ? ` · desde ${f.desde}` : ''}</div>
                   {f.alertaAso && <div className="text-xs text-amber-700 mt-1">⚠ {f.alertaAso.texto}</div>}
@@ -107,9 +105,7 @@ export default function FuncionariosLista() {
                       <td className="px-5 py-3 font-medium text-gray-900">{f.nome}</td>
                       <td className="px-5 py-3 text-gray-600">{f.cargo || '—'}</td>
                       <td className="px-5 py-3">
-                        {f.trabalhando
-                          ? <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Trabalhando{f.desde ? ` · ${f.desde}` : ''}</span>
-                          : <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Fora</span>}
+                        <SeloPonto f={f} comHora />
                       </td>
                       <td className="px-5 py-3">
                         {f.alertaAso
@@ -127,4 +123,15 @@ export default function FuncionariosLista() {
       </div>
     </div>
   );
+}
+
+// Status do ponto de hoje — quem bate no relógio (ou não bate) não mostra
+// "Fora", que pareceria cobrança de uma batida que não vem pelo app.
+function SeloPonto({ f, comHora }) {
+  const base = 'px-2 py-1 text-xs font-semibold rounded-full';
+  if (f.registraPontoEm === 'RELOGIO') return <span className={`${base} bg-indigo-100 text-indigo-700`}>Bate no relógio</span>;
+  if (f.registraPontoEm === 'NAO_REGISTRA') return <span className={`${base} bg-gray-100 text-gray-500`}>Não registra ponto</span>;
+  return f.trabalhando
+    ? <span className={`${base} bg-green-100 text-green-800`}>Trabalhando{comHora && f.desde ? ` · ${f.desde}` : ''}</span>
+    : <span className={`${base} bg-gray-100 text-gray-700`}>Fora</span>;
 }

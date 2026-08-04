@@ -26,9 +26,21 @@ Controle de ponto eletrônico da equipe. O funcionário bate o ponto por um **li
 - Na mesma tela **Configurar** (`/rh/ponto/config`), o bloco **Feriados da empresa**: adicione a **data** + um **nome** (ex.: "Aniversário da cidade"). Cada inclusão/exclusão já é gravada na hora.
 - Efeito no cartão de ponto de **todos** os funcionários: quem não vem no feriado **não fica com falta** (o dia aparece com o nome do feriado), e o feriado entra como **dia de descanso** no cálculo do DSR sobre as horas extras.
 
+## Quem registra o ponto onde (App · Relógio · Não registra)
+- Na ficha do funcionário → aba **Dados** → **Como registra o ponto**:
+  - **App (link pessoal)** — padrão: bate no celular, com GPS.
+  - **Relógio da empresa** — usa o equipamento de ponto. O **link pessoal fica bloqueado** (quem abrir vê "seu ponto é no relógio da empresa"), a pessoa **não entra** no alerta de "não bateu hoje", e as batidas chegam pela **importação do arquivo do relógio**.
+  - **Não registra ponto** — não bate de jeito nenhum (ex.: gerência). Fica fora de todos os alertas e o cartão dela **nunca acusa falta** (os dias aparecem como *Sem controle de ponto*).
+- Na **lista de funcionários** e no **Painel de Ponto**, quem é relógio/não registra aparece com essa etiqueta no lugar de "Fora".
+- **Enquanto o arquivo do relógio não é importado**, os dias úteis daquela pessoa aparecem como **"Aguardando importação"** (azul) — **não contam falta e não descontam nada**. Assim que **qualquer batida** daquele período for importada, os dias vazios voltam a ser tratados como falta normalmente. O cartão mostra um aviso com quantos dias estão aguardando.
+
 ## Painel de Ponto (admin)
-- KPIs do dia: **trabalhando agora**, total de ativos e fora.
-- Tabela com as **batidas de hoje** de cada funcionário, com link do mapa em cada horário e status (Trabalhando / Fora).
+- KPIs do dia: **trabalhando agora**, total de ativos, **pedidos de acerto**, **dias em aberto** e **não bateu hoje**.
+- Bloco **Precisa de atenção** (últimos 15 dias):
+  - **Dias em aberto** — dia passado com número **ímpar** de batidas (faltou entrada ou saída), com o nome, a data e a última batida. É o que vira dor de cabeça no fechamento.
+  - **Não bateu hoje** — quem tinha jornada prevista, registra pelo app e ainda não bateu nada (quem bate no relógio não entra nessa conta).
+- Bloco **Pedidos de acerto** para aprovar/recusar (ver seção acima).
+- Tabela com as **batidas de hoje** de cada funcionário, com link do mapa em cada horário e status.
 - Botão **Ajustar** leva à ficha do funcionário (aba Cartão de ponto) para corrigir/adicionar batidas.
 
 ## Pedido de acerto — "Esqueci de bater" (o funcionário pede, o RH aprova)

@@ -35,6 +35,8 @@ const funcionarioService = {
     marcarDia: async (dados) => (await api.post('/rh/ponto/marcar-dia', dados)).data,
     // vários dias de uma vez: { funcionarioId, datas: [...], tipo, obs }
     marcarDias: async (dados) => (await api.post('/rh/ponto/marcar-dias', dados)).data,
+    // pendências do painel: dias em aberto, quem não bateu hoje, acertos pendentes
+    pontoPendencias: async (dias = 15) => (await api.get('/rh/ponto/pendencias', { params: { dias } })).data,
     // pedidos de acerto ("esqueci de bater") feitos pelo funcionário
     listarAcertos: async (status = 'PENDENTE') => (await api.get('/rh/ponto/acertos', { params: { status } })).data,
     // itens: [{ id, aprovado: bool, motivoRecusa? }]

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, RefreshCw, Loader2, Upload, MapPin, Hand, Check, X } from 'lucide-react';
+import { Clock, RefreshCw, Loader2, Upload, MapPin, Hand, Check, X, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import funcionarioService from '../../services/funcionarioService';
 
@@ -10,17 +10,20 @@ export default function PontoPainel() {
   const navigate = useNavigate();
   const [dados, setDados] = useState(null);
   const [acertos, setAcertos] = useState([]);
+  const [pendencias, setPendencias] = useState(null);
   const [carregando, setCarregando] = useState(true);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
     try {
-      const [hoje, pedidos] = await Promise.all([
+      const [hoje, pedidos, pend] = await Promise.all([
         funcionarioService.pontoHoje(),
-        funcionarioService.listarAcertos('PENDENTE').catch(() => [])
+        funcionarioService.listarAcertos('PENDENTE').catch(() => []),
+        funcionarioService.pontoPendencias().catch(() => null)
       ]);
       setDados(hoje);
       setAcertos(pedidos);
+      setPendencias(pend);
     }
     catch { toast.error('Erro ao carregar painel.'); }
     finally { setCarregando(false); }
@@ -45,13 +48,20 @@ export default function PontoPainel() {
         <div className="py-16 text-center"><Loader2 className="h-7 w-7 text-blue-600 animate-spin mx-auto" /></div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center"><p className="text-2xl font-bold text-green-600">{dados.trabalhando}</p><p className="text-xs text-gray-500">Trabalhando agora</p></div>
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center"><p className="text-2xl font-bold text-gray-700">{dados.totalAtivos}</p><p className="text-xs text-gray-500">Total ativos</p></div>
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-center"><p className="text-2xl font-bold text-gray-400">{dados.totalAtivos - dados.trabalhando}</p><p className="text-xs text-gray-500">Fora</p></div>
             <div className={`rounded-xl border shadow-sm p-4 text-center ${acertos.length ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-200'}`}>
               <p className={`text-2xl font-bold ${acertos.length ? 'text-amber-600' : 'text-gray-400'}`}>{acertos.length}</p>
               <p className="text-xs text-gray-500">Pedidos de acerto</p>
+            </div>
+            <div className={`rounded-xl border shadow-sm p-4 text-center ${pendencias?.totalEmAberto ? 'bg-red-50 border-red-200' : 'bg-white border-gray-200'}`}>
+              <p className={`text-2xl font-bold ${pendencias?.totalEmAberto ? 'text-red-600' : 'text-gray-400'}`}>{pendencias?.totalEmAberto ?? '—'}</p>
+              <p className="text-xs text-gray-500">Dias em aberto</p>
+            </div>
+            <div className={`rounded-xl border shadow-sm p-4 text-center ${pendencias?.naoBateuHoje?.length ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-200'}`}>
+              <p className={`text-2xl font-bold ${pendencias?.naoBateuHoje?.length ? 'text-amber-600' : 'text-gray-400'}`}>{pendencias?.naoBateuHoje?.length ?? '—'}</p>
+              <p className="text-xs text-gray-500">Não bateu hoje</p>
             </div>
           </div>
 
@@ -63,6 +73,51 @@ export default function PontoPainel() {
               </div>
               <div className="p-3 md:p-5 space-y-3">
                 {acertos.map((a) => <CardAcerto key={a.id} acerto={a} onRespondido={carregar} />)}
+              </div>
+            </div>
+          )}
+
+          {/* Furos que dão trabalho no fechamento — resolver no mesmo dia */}
+          {(pendencias?.emAberto?.length > 0 || pendencias?.naoBateuHoje?.length > 0) && (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-4">
+              <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <span className="text-xs font-bold uppercase tracking-widest text-gray-600">
+                  Precisa de atenção · últimos {pendencias.diasAnalisados} dias
+                </span>
+              </div>
+              <div className="p-3 md:p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Dias em aberto (faltou entrada ou saída)</p>
+                  {pendencias.emAberto.length === 0 ? <p className="text-sm text-gray-400">Nenhum. 👌</p> : (
+                    <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg max-h-56 overflow-y-auto">
+                      {pendencias.emAberto.map((p) => (
+                        <li key={`${p.funcionarioId}-${p.data}`} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                          <span className="min-w-0 truncate"><b>{p.nome}</b> <span className="text-gray-500">· {dmy(p.data)} · última {p.ultima}</span></span>
+                          <button onClick={() => navigate(`/rh/funcionarios/${p.funcionarioId}`)} className="text-xs text-primary font-semibold shrink-0">Ajustar</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-gray-500 mb-1.5">Não bateu hoje (tinha jornada prevista)</p>
+                  {pendencias.naoBateuHoje.length === 0 ? <p className="text-sm text-gray-400">Todo mundo bateu. 👌</p> : (
+                    <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg">
+                      {pendencias.naoBateuHoje.map((p) => (
+                        <li key={p.funcionarioId} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                          <span className="min-w-0 truncate"><b>{p.nome}</b>{p.previsto ? <span className="text-gray-500"> · previsto {p.previsto}</span> : ''}</span>
+                          <button onClick={() => navigate(`/rh/funcionarios/${p.funcionarioId}`)} className="text-xs text-primary font-semibold shrink-0">Ver</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {pendencias.noRelogio > 0 && (
+                    <p className="mt-2 text-xs text-gray-500">
+                      {pendencias.noRelogio} pessoa{pendencias.noRelogio !== 1 ? 's' : ''} bate no <b>relógio da empresa</b> e não entra nesta conta.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -89,7 +144,13 @@ export default function PontoPainel() {
                         ))}
                       </td>
                       <td className="px-5 py-3">
-                        {l.trabalhando ? <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Trabalhando</span> : <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Fora</span>}
+                        {l.registraPontoEm === 'RELOGIO'
+                          ? <span className="px-2 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-700">Bate no relógio</span>
+                          : l.registraPontoEm === 'NAO_REGISTRA'
+                            ? <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-500">Não registra</span>
+                            : l.trabalhando
+                              ? <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Trabalhando</span>
+                              : <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Fora</span>}
                       </td>
                       <td className="px-5 py-3 text-right"><button onClick={() => navigate(`/rh/funcionarios/${l.id}`)} className="text-xs text-primary font-semibold">Ajustar</button></td>
                     </tr>

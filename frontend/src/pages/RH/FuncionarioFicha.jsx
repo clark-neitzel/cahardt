@@ -82,6 +82,7 @@ function AbaDados({ f, onSaved }) {
     cargo: f.cargo || '', salario: f.salario ?? '', tipoHoraExtra: f.tipoHoraExtra || 'BANCO',
     percentualHoraExtra: f.percentualHoraExtra ?? 50, divisorHoras: f.divisorHoras ?? 220,
     descontarDsrFalta: f.descontarDsrFalta !== false,
+    registraPontoEm: f.registraPontoEm || 'APP',
     jornadaMovel: f.jornadaMovel, ativo: f.ativo
   });
   const [jornadas, setJornadas] = useState(() => {
@@ -149,6 +150,21 @@ function AbaDados({ f, onSaved }) {
           </SelectBusca>
         </label>
       </div>
+
+      <label className="block max-w-md"><span className="text-sm font-medium text-gray-700">Como registra o ponto</span>
+        <SelectBusca value={form.registraPontoEm} onChange={set('registraPontoEm')} className="mt-1 w-full">
+          <option value="APP">App (link pessoal)</option>
+          <option value="RELOGIO">Relógio da empresa</option>
+          <option value="NAO_REGISTRA">Não registra ponto</option>
+        </SelectBusca>
+        <span className="text-xs text-gray-500">
+          {form.registraPontoEm === 'RELOGIO'
+            ? 'O link de ponto fica desligado. As batidas entram pela importação do arquivo do relógio — enquanto o arquivo não vem, os dias aparecem como “aguardando importação” e não contam falta.'
+            : form.registraPontoEm === 'NAO_REGISTRA'
+              ? 'Não bate ponto: fica fora dos alertas e o cartão nunca acusa falta.'
+              : 'Bate pelo link pessoal, no celular, com GPS.'}
+        </span>
+      </label>
 
       {/* parâmetros do cálculo da folha */}
       <div className="border border-gray-200 rounded-lg">
@@ -386,6 +402,8 @@ function AbaAtestados({ f, onSaved }) {
 // ─── Aba Cartão de ponto ──────────────────────────────────────────────────────
 // Selo de cada situação do dia (as cores seguem os badges de status do sistema)
 const SELO_SITUACAO = {
+  AGUARDANDO: 'bg-indigo-100 text-indigo-700',
+  SEM_CONTROLE: 'bg-gray-50 text-gray-400',
   TRABALHADO: 'bg-green-100 text-green-800',
   FALTA: 'bg-red-100 text-red-700',
   ABONO: 'bg-amber-100 text-amber-700',
@@ -705,6 +723,13 @@ function PainelFolha({ f, cartao, onSaved }) {
         {!fo.mesCheio && (
           <p className="mb-4 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2">
             O período escolhido não fecha um mês inteiro. O salário base entra cheio mesmo assim — use “Este mês” para o fechamento da folha.
+          </p>
+        )}
+        {cartao.resumo.diasAguardando > 0 && (
+          <p className="mb-4 text-xs bg-indigo-50 border border-indigo-200 text-indigo-800 rounded-lg px-3 py-2">
+            <b>{cartao.resumo.diasAguardando} dia{cartao.resumo.diasAguardando !== 1 ? 's' : ''} aguardando importação</b> —
+            esta pessoa bate no <b>relógio da empresa</b> e o arquivo do período ainda não foi importado.
+            Esses dias <b>não contam falta</b> nem descontam nada até o arquivo entrar (RH → Funcionários → Importar).
           </p>
         )}
         {fo.diasFerias > 0 && (

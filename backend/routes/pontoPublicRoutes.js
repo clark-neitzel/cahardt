@@ -59,7 +59,9 @@ router.get('/:token', async (req, res) => {
         res.json({
             nome: funcionario.nome,
             temSenha: !!funcionario.senhaHash,
-            bloqueado: !funcionario.ativo
+            bloqueado: !funcionario.ativo,
+            // Quem bate no relógio da empresa (ou não bate) não usa este link
+            registraPontoEm: funcionario.registraPontoEm || 'APP'
         });
     } catch (error) {
         console.error('[PontoPublico] meta:', error);
@@ -110,6 +112,14 @@ router.post('/:token/registrar', async (req, res) => {
         if (!funcionario) return res.status(404).json({ erro: 'Link não encontrado. Fale com o RH.' });
         if (!funcionario.ativo) return res.status(403).json({ erro: 'Acesso bloqueado. Fale com o RH.' });
         if (!sessaoValida(req, funcionario)) return res.status(401).json({ erro: 'Sessão expirada. Entre novamente.' });
+
+        if (funcionario.registraPontoEm && funcionario.registraPontoEm !== 'APP') {
+            return res.status(403).json({
+                erro: funcionario.registraPontoEm === 'RELOGIO'
+                    ? 'Seu ponto é registrado no relógio da empresa, não por aqui.'
+                    : 'Você não registra ponto pelo app. Fale com o RH.'
+            });
+        }
 
         const { latLng, tipo } = req.body || {};
         const batida = await pontoService.registrarBatida(funcionario, { latLng, origem: 'LINK', tipo });
