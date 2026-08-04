@@ -7067,4 +7067,184 @@ router.get('/diag-embarque-disponiveis', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-embarque-historico?ate=YYYY-MM-DD
+// Só leitura. Para cada nota livre de embarque (mesma regra do diag acima), mostra
+// o histórico completo: devoluções, cancelamento, NF-e do app (qualquer status),
+// entrega/conferência de caixa e o Contas a Receber com as parcelas e as baixas
+// (forma, data, quem baixou, estorno). Serve para saber por que a nota ficou parada.
+router.get('/diag-embarque-historico', async (req, res) => {
+    try {
+        const ate = String(req.query.ate || '').match(/^\d{4}-\d{2}-\d{2}$/)
+            ? String(req.query.ate)
+            : new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const limite = new Date(ate + 'T23:59:59-03:00');
+
+        const noDelivery = await prisma.deliveryStatus.findMany({ select: { pedidoId: true } });
+        const idsNoDelivery = noDelivery.map(d => d.pedidoId);
+
+        const pedidos = await prisma.pedido.findMany({
+            where: {
+                embarqueId: null,
+                dataVenda: { lte: limite },
+                ...(idsNoDelivery.length > 0 ? { id: { notIn: idsNoDelivery } } : {}),
+                OR: [
+                    { situacaoCA: 'FATURADO' },
+                    { especial: true, statusEnvio: 'ENVIAR' },
+                    { bonificacao: true, statusEnvio: 'ENVIAR' }
+                ]
+            },
+            orderBy: { dataVenda: 'asc' },
+            select: {
+                id: true, numero: true, dataVenda: true, createdAt: true,
+                especial: true, bonificacao: true,
+                cancelado: true, canceladoEm: true, canceladoPorNome: true, motivoCancelamento: true,
+                situacaoCA: true, statusEnvio: true, statusEntrega: true, dataEntrega: true,
+                devolucaoFinalizada: true, motivoDevolucao: true, observacaoEntrega: true,
+                baixaCaRealizada: true, baixaCaValor: true, baixaCaEm: true,
+                nfeNumero: true, nfeChave: true,
+                cliente: { select: { Nome: true, NomeFantasia: true } },
+                vendedor: { select: { nome: true } },
+                itens: { select: { quantidade: true, valor: true } },
+                notasFiscaisApp: {
+                    select: { numero: true, serie: true, tipo: true, status: true, ambiente: true, criadoEm: true, mensagemSefaz: true },
+                    orderBy: { criadoEm: 'asc' }
+                },
+                devolucoes: {
+                    select: {
+                        numero: true, tipo: true, escopo: true, status: true, motivo: true,
+                        valorTotal: true, dataDevolucao: true, notaDevolucaoCA: true
+                    },
+                    orderBy: { dataDevolucao: 'asc' }
+                },
+                itensDevolvidos: { select: { quantidade: true, valorBaseItem: true } },
+                pagamentosReais: { select: { formaPagamentoNome: true, valor: true, createdAt: true } },
+                caixaConferencias: { select: { conferido: true, conferidoEm: true, conferidoPor: true } },
+                contaReceber: {
+                    select: {
+                        id: true, origem: true, status: true, valorTotal: true, observacao: true, createdAt: true,
+                        parcelas: {
+                            orderBy: { numeroParcela: 'asc' },
+                            select: {
+                                numeroParcela: true, valor: true, dataVencimento: true, status: true,
+                                dataPagamento: true, valorPago: true, valorDescontoTotal: true,
+                                formaPagamento: true, observacao: true,
+                                baixadoPor: { select: { nome: true } },
+                                pagamentos: {
+                                    orderBy: { dataPagamento: 'asc' },
+                                    select: {
+                                        valorRecebido: true, valorDesconto: true, motivoDesconto: true,
+                                        formaPagamento: true, dataPagamento: true, estornado: true, estornadoEm: true,
+                                        registradoPor: { select: { nome: true } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const d10 = (v) => v?.toISOString?.().slice(0, 10) || null;
+        const n2 = (v) => v == null ? null : Math.round(Number(v) * 100) / 100;
+
+        const lista = pedidos.map(p => {
+            const nfVenda = p.notasFiscaisApp.filter(n => n.tipo === 'VENDA');
+            const nfAutorizada = nfVenda.find(n => n.status === 'AUTORIZADO');
+            const cr = p.contaReceber;
+            const parcelas = cr?.parcelas || [];
+            const totalPago = parcelas.reduce((s, x) => s + Number(x.valorPago || 0), 0);
+            const totalDesconto = parcelas.reduce((s, x) => s + Number(x.valorDescontoTotal || 0), 0);
+
+            return {
+                pedido: p.numero,
+                dataEntrega: d10(p.dataVenda),
+                cliente: p.cliente?.NomeFantasia || p.cliente?.Nome || '—',
+                vendedor: p.vendedor?.nome || '—',
+                valorPedido: n2(p.itens.reduce((s, i) => s + Number(i.quantidade) * Number(i.valor), 0)),
+                nota: nfAutorizada?.numero || p.nfeNumero || null,
+                origemNota: nfAutorizada ? 'APP' : (p.nfeNumero ? 'CA' : null),
+
+                cancelamento: p.cancelado
+                    ? { cancelado: true, em: d10(p.canceladoEm), por: p.canceladoPorNome, motivo: p.motivoCancelamento }
+                    : { cancelado: false },
+
+                nfeApp: p.notasFiscaisApp.map(n => ({
+                    tipo: n.tipo, status: n.status, numero: n.numero, serie: n.serie,
+                    ambiente: n.ambiente, em: d10(n.criadoEm), msg: n.mensagemSefaz?.slice(0, 120) || null
+                })),
+
+                devolucoes: p.devolucoes.map(dv => ({
+                    numero: dv.numero, tipo: dv.tipo, escopo: dv.escopo, status: dv.status,
+                    valor: n2(dv.valorTotal), em: d10(dv.dataDevolucao),
+                    notaDevolucaoCA: dv.notaDevolucaoCA, motivo: dv.motivo?.slice(0, 120) || null
+                })),
+                devolucaoFinalizada: p.devolucaoFinalizada,
+                itensDevolvidosNaEntrega: p.itensDevolvidos.length,
+                motivoDevolucao: p.motivoDevolucao?.slice(0, 120) || null,
+
+                entrega: {
+                    status: p.statusEntrega,
+                    em: d10(p.dataEntrega),
+                    observacao: p.observacaoEntrega?.slice(0, 120) || null,
+                    pagamentosNaEntrega: p.pagamentosReais.map(x => ({ forma: x.formaPagamentoNome, valor: n2(x.valor), em: d10(x.createdAt) })),
+                    conferidoNoCaixa: p.caixaConferencias.some(c => c.conferido),
+                    baixaCaRealizada: p.baixaCaRealizada,
+                    baixaCaValor: n2(p.baixaCaValor),
+                    baixaCaEm: d10(p.baixaCaEm)
+                },
+
+                contaReceber: cr ? {
+                    origem: cr.origem,
+                    status: cr.status,
+                    valorTotal: n2(cr.valorTotal),
+                    criadaEm: d10(cr.createdAt),
+                    observacao: cr.observacao?.slice(0, 160) || null,
+                    totalPago: n2(totalPago),
+                    totalDesconto: n2(totalDesconto),
+                    saldoAberto: n2(Number(cr.valorTotal) - totalPago - totalDesconto),
+                    parcelas: parcelas.map(x => ({
+                        n: x.numeroParcela,
+                        valor: n2(x.valor),
+                        vencimento: d10(x.dataVencimento),
+                        status: x.status,
+                        pagoEm: d10(x.dataPagamento),
+                        valorPago: n2(x.valorPago),
+                        desconto: n2(x.valorDescontoTotal),
+                        forma: x.formaPagamento,
+                        baixadoPor: x.baixadoPor?.nome || null,
+                        observacao: x.observacao?.slice(0, 120) || null,
+                        baixas: x.pagamentos.map(g => ({
+                            valor: n2(g.valorRecebido), desconto: n2(g.valorDesconto), motivoDesconto: g.motivoDesconto,
+                            forma: g.formaPagamento, em: d10(g.dataPagamento),
+                            por: g.registradoPor?.nome || null,
+                            estornado: g.estornado, estornadoEm: d10(g.estornadoEm)
+                        }))
+                    }))
+                } : null
+            };
+        });
+
+        res.json({
+            ok: true,
+            ate,
+            total: lista.length,
+            resumo: {
+                comDevolucao: lista.filter(x => x.devolucoes.length > 0).length,
+                canceladas: lista.filter(x => x.cancelamento.cancelado).length,
+                comNfeCancelada: lista.filter(x => x.nfeApp.some(n => n.status === 'CANCELADO')).length,
+                jaEntregues: lista.filter(x => x.entrega.status !== 'PENDENTE').length,
+                semContaReceber: lista.filter(x => !x.contaReceber).length,
+                contaQuitada: lista.filter(x => x.contaReceber?.status === 'QUITADO').length,
+                contaParcial: lista.filter(x => x.contaReceber?.status === 'PARCIAL').length,
+                contaAberta: lista.filter(x => x.contaReceber?.status === 'ABERTO').length,
+                contaCancelada: lista.filter(x => x.contaReceber?.status === 'CANCELADO').length
+            },
+            notas: lista
+        });
+    } catch (e) {
+        console.error('[admin-exec] diag-embarque-historico:', e.message);
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 module.exports = router;
