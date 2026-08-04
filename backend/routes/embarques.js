@@ -144,10 +144,14 @@ router.get('/pedidos-disponiveis', verificarAuth, checkAcessoEmbarque, async (re
         const noDelivery = await prisma.deliveryStatus.findMany({ select: { pedidoId: true } });
         const idsNoDelivery = noDelivery.map(d => d.pedidoId);
 
-        // Regra de Ouro: FATURADOS, Especiais prontos (ENVIAR) ou Bonificações prontas (ENVIAR), sem Embarque
+        // Regra de Ouro: FATURADOS, Especiais prontos (ENVIAR) ou Bonificações prontas (ENVIAR), sem Embarque.
+        // Pedido cancelado ou já devolvido NUNCA pode aparecer aqui — a mercadoria não vai sair.
         const pedidosLivres = await prisma.pedido.findMany({
             where: {
                 embarqueId: null,
+                cancelado: false,
+                devolucaoFinalizada: false,
+                statusEnvio: { not: 'EXCLUIDO' },
                 ...(idsNoDelivery.length > 0 ? { id: { notIn: idsNoDelivery } } : {}),
                 OR: [
                     { situacaoCA: 'FATURADO' },
@@ -294,6 +298,32 @@ router.patch('/:id', verificarAuth, async (req, res) => {
     }
 });
 
+// Trava única de quem pode entrar numa carga — usada ao criar o embarque e ao
+// adicionar pedidos depois. Devolve a lista de bloqueados com o motivo em texto.
+async function bloqueadosParaEmbarque(pedidosIds) {
+    const candidatos = await prisma.pedido.findMany({
+        where: { id: { in: pedidosIds } },
+        select: {
+            id: true, numero: true, embarqueId: true, situacaoCA: true, statusEnvio: true,
+            especial: true, bonificacao: true, cancelado: true, devolucaoFinalizada: true
+        }
+    });
+
+    const bloqueados = [];
+    for (const p of candidatos) {
+        const etiqueta = `${p.bonificacao ? 'BN#' : p.especial ? 'ZZ#' : '#'}${p.numero || p.id.slice(0, 8)}`;
+        if (p.cancelado) { bloqueados.push({ pedido: etiqueta, motivo: 'pedido cancelado' }); continue; }
+        if (p.devolucaoFinalizada) { bloqueados.push({ pedido: etiqueta, motivo: 'pedido já devolvido' }); continue; }
+        if (p.statusEnvio === 'EXCLUIDO') { bloqueados.push({ pedido: etiqueta, motivo: 'pedido excluído' }); continue; }
+        if (p.embarqueId) { bloqueados.push({ pedido: etiqueta, motivo: 'já está em outra carga' }); continue; }
+        if (p.situacaoCA === 'FATURADO') continue;                     // OK: faturado
+        if (p.especial && p.statusEnvio === 'ENVIAR') continue;        // OK: especial pronto
+        if (p.bonificacao && p.statusEnvio === 'ENVIAR') continue;     // OK: bonificação pronta
+        bloqueados.push({ pedido: etiqueta, motivo: 'não está faturado nem pronto para envio' });
+    }
+    return bloqueados;
+}
+
 // ==========================================
 // 4. CRIAR UM EMBARQUE
 // ==========================================
@@ -303,6 +333,17 @@ router.post('/', verificarAuth, checkAcessoEmbarque, async (req, res) => {
 
         if (!dataSaida || !responsavelId) {
             return res.status(400).json({ error: 'Data de saída e Usuário Responsável são obrigatórios.' });
+        }
+
+        // Mesma trava do "adicionar pedidos": cancelado/devolvido não entra em carga
+        if (pedidosIds && pedidosIds.length > 0) {
+            const bloqueados = await bloqueadosParaEmbarque(pedidosIds);
+            if (bloqueados.length > 0) {
+                return res.status(400).json({
+                    error: `Não dá para embarcar: ${bloqueados.map(b => `${b.pedido} (${b.motivo})`).join(', ')}.`,
+                    bloqueados
+                });
+            }
         }
 
         // Criar o embarque e opcionalmente atrelar pedidos iniciais (se vierem)
@@ -353,23 +394,13 @@ router.post('/:id/pedidos', verificarAuth, checkAcessoEmbarque, async (req, res)
         }
 
         // Trava: Validar se os pedidos realmente estão livres e aptos para embarque
-        const pedidosCandidatos = await prisma.pedido.findMany({
-            where: { id: { in: pedidosIds } },
-            select: { id: true, numero: true, embarqueId: true, situacaoCA: true, especial: true, statusEnvio: true }
-        });
-
-        const pedidosBloqueados = pedidosCandidatos.filter(p => {
-            if (p.embarqueId) return true; // Já em outro embarque
-            if (p.situacaoCA === 'FATURADO') return false; // OK: faturado
-            if (p.especial && p.statusEnvio === 'ENVIAR') return false; // OK: especial pronto
-            if (p.bonificacao && p.statusEnvio === 'ENVIAR') return false; // OK: bonificação pronta
-            return true; // Bloqueado
-        });
+        // (cancelado e devolvido ficam de fora — a mercadoria não vai sair)
+        const pedidosBloqueados = await bloqueadosParaEmbarque(pedidosIds);
 
         if (pedidosBloqueados.length > 0) {
             return res.status(400).json({
-                error: 'Restrição Estrutural: Um ou mais pedidos selecionados não estão aptos para embarque (necessário FATURADO ou Especial pronto).',
-                bloqueados: pedidosBloqueados.map(p => p.numero || p.id)
+                error: `Não dá para embarcar: ${pedidosBloqueados.map(b => `${b.pedido} (${b.motivo})`).join(', ')}.`,
+                bloqueados: pedidosBloqueados
             });
         }
 

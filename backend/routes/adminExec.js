@@ -6991,6 +6991,10 @@ router.get('/diag-embarque-disponiveis', async (req, res) => {
             where: {
                 embarqueId: null,
                 dataVenda: { lte: limite },
+                // Mesmos filtros da tela (embarques.js): cancelado/devolvido não entra em carga
+                cancelado: false,
+                devolucaoFinalizada: false,
+                statusEnvio: { not: 'EXCLUIDO' },
                 ...(idsNoDelivery.length > 0 ? { id: { notIn: idsNoDelivery } } : {}),
                 OR: [
                     { situacaoCA: 'FATURADO' },
@@ -7047,12 +7051,45 @@ router.get('/diag-embarque-disponiveis', async (req, res) => {
             porData[k].valor = Math.round((porData[k].valor + p.valorTotal) * 100) / 100;
         }
 
+        // Quem a trava nova está segurando (deveria aparecer na tela antes do fix)
+        const barrados = await prisma.pedido.findMany({
+            where: {
+                embarqueId: null,
+                dataVenda: { lte: limite },
+                OR: [
+                    { cancelado: true },
+                    { devolucaoFinalizada: true },
+                    { statusEnvio: 'EXCLUIDO' }
+                ],
+                AND: [{
+                    OR: [
+                        { situacaoCA: 'FATURADO' },
+                        { especial: true, statusEnvio: 'ENVIAR' },
+                        { bonificacao: true, statusEnvio: 'ENVIAR' }
+                    ]
+                }]
+            },
+            select: {
+                numero: true, dataVenda: true, especial: true, bonificacao: true,
+                cancelado: true, devolucaoFinalizada: true, statusEnvio: true,
+                motivoCancelamento: true, cliente: { select: { Nome: true, NomeFantasia: true } }
+            },
+            orderBy: { dataVenda: 'asc' }
+        });
+
         res.json({
             ok: true,
             ate,
             total: lista.length,
             valorTotal: Math.round(lista.reduce((s, p) => s + p.valorTotal, 0) * 100) / 100,
             canceladosNaLista: lista.filter(p => p.cancelado).length,
+            barradosPelaTrava: barrados.map(b => ({
+                pedido: `${b.bonificacao ? 'BN#' : b.especial ? 'ZZ#' : '#'}${b.numero}`,
+                data: b.dataVenda?.toISOString?.().slice(0, 10) || null,
+                cliente: b.cliente?.NomeFantasia || b.cliente?.Nome || '—',
+                motivo: b.cancelado ? `cancelado (${b.motivoCancelamento || 'sem motivo'})`
+                    : b.devolucaoFinalizada ? 'devolvido' : 'excluído'
+            })),
             porTipo: {
                 NORMAL: lista.filter(p => p.tipo === 'NORMAL').length,
                 ESPECIAL: lista.filter(p => p.tipo === 'ESPECIAL').length,

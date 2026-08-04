@@ -44,6 +44,7 @@ Painel de expedição logística. Aqui são criados os "embarques" (cargas), que
 2. No modal de detalhes, clique em **+ Adicionar Pedidos** (ou equivalente)
 3. O modal `AdicionarPedidosModal` abre com a lista de pedidos FATURADOS disponíveis
 4. Selecione os pedidos e confirme — eles entram na carga
+5. **Não aparecem na lista** (e o sistema recusa se tentar atrelar): pedido **cancelado**, pedido que **já teve devolução registrada**, pedido excluído, pedido que já está em outra carga e pedido que está no Kanban do Delivery (esse é entregue por outro fluxo)
 
 ### Remover pedido da carga
 1. Abra o detalhe do embarque
@@ -113,7 +114,7 @@ Apenas usuários com a permissão `Pode_Executar_Entregas` ou `admin` e com stat
 
 ## Depende de / Interfere em
 
-- **Pedidos** — somente pedidos com `situacaoCA = FATURADO` podem ser incluídos em um embarque
+- **Pedidos** — só entram no embarque pedidos FATURADOS (ou especial/bonificação prontos para envio). Pedido **cancelado** ou com **devolução registrada** fica fora da lista de disponíveis e é recusado se alguém tentar atrelar
 - **Entregas (Rota e Minhas Entregas)** — após criado, cada pedido do embarque se torna uma entrega pendente para o motorista
 - **Caixa Diário** — as baixas de entrega (pagamentos recebidos) registradas pelo motorista alimentam o caixa do dia; as **cobranças da rota** cobradas em dinheiro somam no valor a prestar e são baixadas no cartão "Cobranças da Rota"
 - **Contas a Receber** — as cobranças inseridas na carga são parcelas em aberto; a baixa acontece no Caixa, não aqui
