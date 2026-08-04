@@ -1,5 +1,11 @@
 [
   {
+    "slug": "corrigir-entrada-estoque",
+    "titulo": "Corrigir conversão da nota",
+    "resumo": "A correção de produto/conversão agora vale também para as notas antigas (conferidas até 27/07): 58 notas que não mostravam o selo \"Estoque somado ✓\" e ficavam sem o botão. Nelas, a conversão que aparece é reconstituída pela quantidade que está no estoque hoje — confira item a item antes de confirmar.",
+    "data": "2026-08-04"
+  },
+  {
     "slug": "arvore-custos",
     "titulo": "Árvore de custos do produto",
     "resumo": "Na Margem & Custo, a composição do custo agora abre camada por camada: toque no empanado e veja a massa e o recheio; toque na massa e veja a farinha e o ovo. Cada insumo mostra se subiu ou desceu (▲/▼) pelas notas de compra da janela — dá pra achar exatamente o que puxou a alta do custo.",
@@ -27,12 +33,6 @@
     "slug": "ponto-folha",
     "titulo": "Cartão de ponto + folha",
     "resumo": "Todos os dias do período aparecem no cartão de ponto, inclusive fim de semana: quem não veio fica como falta, sábado é compensado. Dá para marcar vários dias de uma vez (férias, atestado, folga), imprimir a folha de ponto do mês em uma folha A4 e o app já calcula hora extra, DSR, desconto de falta e o total a pagar.",
-    "data": "2026-08-03"
-  },
-  {
-    "slug": "corrigir-entrada-estoque",
-    "titulo": "Corrigir conversão da nota",
-    "resumo": "Lançou a caixa como se fosse quilo e o custo do produto ficou errado? Agora dá para arrumar o produto e a conversão de uma nota já lançada e já paga — sem cancelar a despesa nem estornar a baixa.",
     "data": "2026-08-03"
   },
   {
