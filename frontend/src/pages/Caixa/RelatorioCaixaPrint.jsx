@@ -318,6 +318,25 @@ const RelatorioCaixaPrint = () => {
                     </table>
                 )}
 
+                {/* Conferência do dinheiro: quem contou, quanto e a diferença.
+                    Sai impresso para a folha valer como comprovante da prestação. */}
+                {relatorio.conferenciaDinheiro && (
+                    <div style={{ border: '1px solid #000', padding: '4px 6px', margin: '6px 0', fontSize: '10px' }}>
+                        <b>DINHEIRO CONFERIDO</b> por {relatorio.conferenciaDinheiro.conferidoPorNome || '—'}
+                        {relatorio.conferenciaDinheiro.conferidoEm
+                            ? ` em ${new Date(relatorio.conferenciaDinheiro.conferidoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                            : ''}
+                        {' · contado R$ '}{fmt(relatorio.conferenciaDinheiro.valorContado || 0)}
+                        {Math.abs(Number(relatorio.conferenciaDinheiro.diferenca || 0)) > 0.009
+                            ? ` · ${Number(relatorio.conferenciaDinheiro.diferenca) < 0 ? 'FALTOU' : 'SOBROU'} R$ ${fmt(Math.abs(Number(relatorio.conferenciaDinheiro.diferenca)))}`
+                            : ' · sem diferença'}
+                        {relatorio.conferenciaDinheiro.motivoDiferenca
+                            ? ` — ${relatorio.conferenciaDinheiro.motivoDiferenca}` : ''}
+                        {relatorio.conferenciaDinheiro.autorizadoPorNome
+                            ? ` (autorizado por ${relatorio.conferenciaDinheiro.autorizadoPorNome})` : ''}
+                    </div>
+                )}
+
                 <div className="assin">
                     <div>Assinatura Motorista</div>
                     <div>Assinatura Conferente</div>

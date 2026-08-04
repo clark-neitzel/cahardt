@@ -55,6 +55,8 @@ const DEFAULT_PERMISSIONS = {
     Pode_Reverter_Caixa: false,
     Pode_Conferir_Devolucao_Caixa: false,
     Pode_Autorizar_Desconsiderar_Devolucao: false,
+    Pode_Conferir_Dinheiro_Caixa: false,
+    Pode_Autorizar_Diferenca_Caixa: false,
     // Módulo de Veículos
     Pode_Acessar_Veiculos: false,
     Pode_Editar_Veiculos: false,
@@ -315,6 +317,8 @@ const BOOL_INDEX = [
     { sec: 'caixa', path: 'Pode_Ver_Historico_Caixa', nome: 'Ver Caixas de Outros Dias', desc: 'Navegar por datas passadas ou futuras', kw: 'datas passadas navegar historico caixa' },
     { sec: 'caixa', path: 'Pode_Reverter_Caixa', nome: 'Reverter Caixa', desc: 'Reverter conferência e reabrir caixas fechados', kw: 'reabrir reverter conferencia caixa', danger: true },
     { sec: 'caixa', path: 'Pode_Conferir_Devolucao_Caixa', nome: 'Conferir Devoluções no Caixa', desc: 'Recebe a mercadoria que voltou e digita a contagem física', kw: 'contagem conferir devolucao mercadoria fisica' },
+    { sec: 'caixa', path: 'Pode_Conferir_Dinheiro_Caixa', nome: 'Conferir Dinheiro do Caixa', desc: 'Recebe o dinheiro, conta na calculadora e assina a conferência que libera o fechamento', kw: 'conferir dinheiro contar cedulas notas caixa prestacao' },
+    { sec: 'caixa', path: 'Pode_Autorizar_Diferenca_Caixa', nome: 'Autorizar Diferença no Caixa', desc: 'A senha desta pessoa libera diferença acima da quebra de quem está conferindo', kw: 'autorizar diferenca quebra falta sobra dinheiro senha', danger: true },
     { sec: 'caixa', path: 'Pode_Autorizar_Desconsiderar_Devolucao', nome: 'Autorizar Desconsiderar Devolução', desc: 'A senha desta pessoa libera falta de devolução sem cobrança ao motorista', kw: 'senha autorizar liberar falta perdoar motorista', danger: true },
     // Administração
     { sec: 'admin', path: 'produtos.view', nome: 'Ver Produtos (Admin)', desc: 'Menu Produtos visível', kw: 'menu produtos admin cadastro' },
@@ -396,6 +400,9 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     const [todasCategoriasComerciais, setTodasCategoriasComerciais] = useState([]);
     // Caixa: tabela de preço usada para cobrar faltas na conferência de devoluções
     const [tabelaCobrancaFaltaId, setTabelaCobrancaFaltaId] = useState('');
+    // Caixa: quebra de caixa desta pessoa — diferença que ela fecha sozinha ao
+    // conferir o dinheiro. Acima disso, exige senha de quem autoriza.
+    const [quebraCaixa, setQuebraCaixa] = useState('0');
 
     // ── UX nova (só apresentação) ──
     const [secAtiva, setSecAtiva] = useState('acesso');
@@ -424,7 +431,8 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
             }
             setPermissoes(parsedPermissoes);
             setTabelaCobrancaFaltaId(vendedor.tabelaCobrancaFaltaId || '');
-            inicialRef.current = JSON.stringify({ p: parsedPermissoes, l: vendedor.login || '', t: vendedor.tabelaCobrancaFaltaId || '' });
+            setQuebraCaixa(String(vendedor.quebraCaixa ?? 0));
+            inicialRef.current = JSON.stringify({ p: parsedPermissoes, l: vendedor.login || '', t: vendedor.tabelaCobrancaFaltaId || '', q: String(vendedor.quebraCaixa ?? 0) });
         }
         configService.getCategorias().then(cats => setTodasCategorias(cats || [])).catch(() => {});
         tabelaPrecoService.listar(true).then(conds => setTodasCondicoes(conds || [])).catch(() => {});
@@ -562,7 +570,11 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     const handleSave = async () => {
         try {
             setSaving(true);
-            const data = { login, permissoes, tabelaCobrancaFaltaId: tabelaCobrancaFaltaId || null };
+            const data = {
+                login, permissoes,
+                tabelaCobrancaFaltaId: tabelaCobrancaFaltaId || null,
+                quebraCaixa: Number(String(quebraCaixa).replace(',', '.')) || 0,
+            };
             if (senha && senha.trim() !== '') data.senha = senha;
             await vendedorService.atualizar(vendedor.id, data);
             toast.success('Permissões e acessos salvos!');
@@ -576,7 +588,7 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
     };
 
     // ── alterações pendentes ──
-    const atualJson = JSON.stringify({ p: permissoes, l: login, t: tabelaCobrancaFaltaId || '' });
+    const atualJson = JSON.stringify({ p: permissoes, l: login, t: tabelaCobrancaFaltaId || '', q: String(quebraCaixa) });
     const dirty = (inicialRef.current && atualJson !== inicialRef.current) || (senha && senha.trim() !== '');
     const numBoolAlterados = useMemo(() => {
         if (!inicialRef.current) return 0;
@@ -1200,6 +1212,31 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                         label="Conferir Devoluções no Caixa" sublabel="Recebe a mercadoria que voltou e digita a contagem física na conferência" />
                     <Toggle checked={!!permissoes.Pode_Autorizar_Desconsiderar_Devolucao} onChange={() => toggleBool('Pode_Autorizar_Desconsiderar_Devolucao')}
                         label="Autorizar Desconsiderar Devolução" sublabel="A senha desta pessoa libera falta de devolução sem cobrança ao motorista" danger />
+                    <Toggle checked={!!permissoes.Pode_Conferir_Dinheiro_Caixa} onChange={() => toggleBool('Pode_Conferir_Dinheiro_Caixa')}
+                        label="Conferir Dinheiro do Caixa" sublabel="Recebe o dinheiro, conta na calculadora e assina a conferência que libera o fechamento" />
+
+                    {/* Quebra de caixa: só faz sentido para quem conta o dinheiro */}
+                    {!!permissoes.Pode_Conferir_Dinheiro_Caixa && (
+                        <div className="px-2 mt-2 mb-1">
+                            <label className="text-sm font-medium text-gray-700 block mb-1">Quebra de caixa desta pessoa</label>
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-500">R$</span>
+                                <input
+                                    type="number" min="0" step="0.01" inputMode="decimal"
+                                    value={quebraCaixa}
+                                    onChange={(e) => setQuebraCaixa(e.target.value)}
+                                    className="w-32 border border-gray-300 rounded px-3 py-2 text-sm text-right font-semibold focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                />
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Diferença (falta ou sobra) que esta pessoa pode fechar sozinha ao conferir o dinheiro, sempre com motivo.
+                                Acima disso, exige a senha de quem tem “Autorizar Diferença no Caixa”. Zero = qualquer diferença pede senha.
+                            </p>
+                        </div>
+                    )}
+
+                    <Toggle checked={!!permissoes.Pode_Autorizar_Diferenca_Caixa} onChange={() => toggleBool('Pode_Autorizar_Diferenca_Caixa')}
+                        label="Autorizar Diferença no Caixa" sublabel="A senha desta pessoa libera diferença acima da quebra de quem está conferindo" danger />
 
                     {/* Tabela usada para cobrar faltas de devolução deste motorista */}
                     <div className="px-2 mt-2">

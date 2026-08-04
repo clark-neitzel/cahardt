@@ -13,6 +13,7 @@ import VeiculoFicha from '../Veiculos/VeiculoFicha';
 import ModalDevolucao from '../Pedidos/ModalDevolucao';
 import SelectBusca from '../../components/SelectBusca';
 import ConferenciaDevolucaoCard from './ConferenciaDevolucaoCard';
+import ConferenciaDinheiroCard from './ConferenciaDinheiroCard';
 import CobrancasRotaCard from './CobrancasRotaCard';
 
 const SESSION_KEY = '@CAHardt:CaixaFiltros';
@@ -46,7 +47,10 @@ const SeloGps = ({ selo }) => {
 const STATUS_BADGES = {
     ABERTO: { label: 'Aberto', class: 'bg-green-100 text-green-800' },
     FECHADO: { label: 'Fechado', class: 'bg-yellow-100 text-yellow-800' },
-    CONFERIDO: { label: 'Conferido', class: 'bg-blue-100 text-blue-800' }
+    CONFERIDO: { label: 'Conferido', class: 'bg-blue-100 text-blue-800' },
+    // Passos da conferência do dinheiro (só aparecem com a regra ligada)
+    A_CONFERIR: { label: 'A conferir', class: 'bg-amber-100 text-amber-700' },
+    A_FECHAR: { label: 'A fechar', class: 'bg-mint text-primaryDark' }
 };
 
 const CaixaDiarioPage = () => {
@@ -75,12 +79,19 @@ const CaixaDiarioPage = () => {
     };
 
     const session = restoreSession();
+    // Vindo da agenda ("Conferir"/"Fechar" de um caixa): a URL manda o dia e a pessoa.
+    const urlParams = new URLSearchParams(window.location.search);
+    const dataUrl = urlParams.get('data');
+    const vendedorUrl = urlParams.get('vendedorId');
     // Se pode ver histórico, restaura data salva; caso contrário, sempre hoje
-    const [data, setData] = useState(podeVerHistorico ? (session?.data || today) : today);
+    const [data, setData] = useState(
+        podeVerHistorico ? (dataUrl || session?.data || today) : today
+    );
     const [vendedorId, setVendedorId] = useState(
         // Não-admin: SEMPRE o próprio user.id — nunca restaura da sessão
-        // Admin: restaura da sessão para manter o vendedor que estava visualizando
-        isAdmin ? (session?.vendedorId || '') : (user?.id || '')
+        // Admin (ou quem veio da agenda conferir/fechar): usa o da URL/sessão
+        isAdmin ? (vendedorUrl || session?.vendedorId || '')
+            : (vendedorUrl && podeVerHistorico ? vendedorUrl : (user?.id || ''))
     );
     const [vendedores, setVendedores] = useState([]);
     const [resumo, setResumo] = useState(null);
@@ -125,6 +136,12 @@ const CaixaDiarioPage = () => {
         try {
             setLoading(true);
             const res = await caixaService.getResumo(data, vendedorId);
+            // Sábado/domingo não têm caixa: o dia cai no caixa da segunda seguinte.
+            if (res?.diaSemCaixa && res.dataSugerida) {
+                toast(res.mensagem || 'Sábado e domingo não têm caixa.', { icon: '📅', duration: 6000 });
+                setData(res.dataSugerida);
+                return;
+            }
             setResumo(res);
             setAdiantamento(String(res.caixa?.adiantamento || '0'));
         } catch (error) {
@@ -228,14 +245,51 @@ const CaixaDiarioPage = () => {
     };
 
     const handleReabrirCaixa = async () => {
-        if (!confirm('Reabrir este caixa? O status voltará para ABERTO e os totais serão recalculados ao fechar novamente.')) return;
+        // Caixa fechado não se altera: reabrir exige motivo e devolve o caixa
+        // para quem confere o dinheiro (a conferência anterior perde a validade).
+        const exigeConf = !!resumo?.conferenciaDinheiro?.exigida;
+        let motivo = null;
+        if (exigeConf) {
+            motivo = window.prompt(
+                'Reabrir o caixa cancela a conferência do dinheiro — ele volta para quem confere.\n\nMotivo da reabertura:'
+            );
+            if (motivo === null) return;
+            if (!motivo.trim()) { toast.error('Informe o motivo da reabertura.'); return; }
+        } else if (!confirm('Reabrir este caixa? O status voltará para ABERTO e os totais serão recalculados ao fechar novamente.')) {
+            return;
+        }
         try {
-            await caixaService.reabrirCaixa(resumo.caixa.id);
-            toast.success('Caixa reaberto!');
+            await caixaService.reabrirCaixa(resumo.caixa.id, motivo);
+            toast.success(exigeConf ? 'Caixa reaberto — voltou para conferência do dinheiro.' : 'Caixa reaberto!');
             fetchResumo();
         } catch (error) {
             toast.error(error.response?.data?.error || 'Erro ao reabrir caixa.');
         }
+    };
+
+    // Imprimir a folha = prestação de contas: manda o caixa para a fila de
+    // conferência do dinheiro. 2ª via não reenvia (idempotente no backend).
+    const handleImprimir = async () => {
+        const conf = resumo?.conferenciaDinheiro;
+        const irParaImpressao = () => navigate(`/caixa/impressao?data=${data}&vendedorId=${vendedorId}`);
+
+        if (!conf || conf.conferido || conf.enviadoEm) { irParaImpressao(); return; }
+
+        const enviar = window.confirm(
+            'Ao imprimir, este caixa vai para a conferência do dinheiro.\n\n' +
+            'OK = imprimir e enviar para conferência\n' +
+            'Cancelar = só imprimir (2ª via, não envia)'
+        );
+        if (enviar) {
+            try {
+                await caixaService.enviarParaConferencia({ vendedorId: vendedorId || user?.id, data, origem: 'IMPRESSAO' });
+                toast.success('Caixa enviado para conferência do dinheiro.');
+            } catch (e) {
+                // Impressão nunca pode ser bloqueada por isso
+                console.error('Falha ao enviar para conferência:', e);
+            }
+        }
+        irParaImpressao();
     };
 
     // Abre a lista de entregas e rola até ela (usado pelos avisos de pendência,
@@ -322,7 +376,13 @@ const CaixaDiarioPage = () => {
     }
 
     const caixa = resumo?.caixa;
-    const statusBadge = caixa ? STATUS_BADGES[caixa.status] || STATUS_BADGES.ABERTO : null;
+    // Com a conferência do dinheiro ligada, o selo mostra o passo real do dia
+    // (A CONFERIR / A FECHAR) em vez de só "Aberto".
+    const estadoConf = resumo?.conferenciaDinheiro?.estado;
+    const statusBadge = caixa
+        ? (resumo?.conferenciaDinheiro?.ativa && STATUS_BADGES[estadoConf])
+            || STATUS_BADGES[caixa.status] || STATUS_BADGES.ABERTO
+        : null;
     const isAberto = caixa?.status === 'ABERTO';
     // Dia "pronto" = KM/entregas/atendimentos OK + conferência de devoluções feita.
     // Só então mostramos o VALOR A PRESTAR e liberamos a impressão (senão o pessoal
@@ -851,6 +911,18 @@ const CaixaDiarioPage = () => {
                         onChanged={fetchResumo}
                     />
 
+                    {/* Card Conferência do DINHEIRO — quem recebe o dinheiro conta e assina.
+                        Sem essa assinatura o caixa não fecha (com a regra ligada). */}
+                    <ConferenciaDinheiroCard
+                        conferencia={resumo.conferenciaDinheiro}
+                        vendedorId={vendedorId || user?.id}
+                        vendedorNome={vendedores.find(v => v.id === (vendedorId || user?.id))?.nome || user?.nome}
+                        data={data}
+                        valorAPrestar={resumo.valorAPrestar}
+                        caixaStatus={caixa?.status}
+                        onAtualizar={fetchResumo}
+                    />
+
                     {/* Card Cobranças da Rota (títulos cobrados na rua — baixa pelo box) */}
                     <CobrancasRotaCard
                         cobrancas={resumo.cobrancasRota}
@@ -1235,13 +1307,28 @@ const CaixaDiarioPage = () => {
                                 {resumo.pendencias.conferenciaDevolucaoPendente && (
                                     <li>• Conferência de devoluções pendente (conte a mercadoria que voltou no cartão acima)</li>
                                 )}
+                                {resumo.pendencias.conferenciaDinheiroPendente && (
+                                    <li>
+                                        • {resumo.conferenciaDinheiro?.desatualizada
+                                            ? 'O valor mudou depois da conferência — o dinheiro precisa ser conferido de novo'
+                                            : 'Dinheiro ainda não conferido — alguém precisa contar e confirmar o valor (cartão acima)'}
+                                    </li>
+                                )}
                             </ul>
+                        </div>
+                    )}
+
+                    {/* Quem conferiu o dinheiro não fecha o mesmo caixa (dois pares de olhos) */}
+                    {isAberto && resumo?.conferenciaDinheiro?.souQuemConferiu && (
+                        <div className="bg-mint/50 border border-primary/30 rounded-lg p-3 mb-2 text-sm text-primaryDark">
+                            Você conferiu o dinheiro deste caixa — <b>o fechamento é de outra pessoa</b>.
+                            Ele já está na agenda de quem tem a permissão de fechar.
                         </div>
                     )}
 
                     {/* Ações */}
                     <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                        {isAberto && podeFecharCaixa && (
+                        {isAberto && podeFecharCaixa && !resumo?.conferenciaDinheiro?.souQuemConferiu && (
                             <button
                                 onClick={handleFechar}
                                 disabled={resumo?.pendencias && !resumo.pendencias.podeFechar}
@@ -1256,17 +1343,20 @@ const CaixaDiarioPage = () => {
                             </button>
                         )}
 
-                        {/* Imprimir só quando o dia está pronto (conferência feita etc.) — senão o valor sairia no papel */}
+                        {/* Imprimir só quando o dia está pronto (conferência feita etc.) — senão o valor sairia no papel.
+                            Imprimir também manda o caixa para a conferência do dinheiro (a folha é a prestação de contas). */}
                         {diaPronto && (
                             <button
-                                onClick={() => navigate(`/caixa/impressao?data=${data}&vendedorId=${vendedorId}`)}
+                                onClick={handleImprimir}
                                 className="inline-flex items-center justify-center px-6 py-3 bg-gray-600 text-white rounded-md font-medium hover:bg-gray-700"
                             >
                                 <Printer className="h-5 w-5 mr-2" /> Imprimir
                             </button>
                         )}
 
-                        {isAdmin && caixa?.status === 'FECHADO' && (
+                        {/* Conferência pós-fechamento (modelo antigo): sai de cena quando a
+                            conferência do DINHEIRO está ligada — ali quem confere é antes de fechar. */}
+                        {isAdmin && caixa?.status === 'FECHADO' && !resumo?.conferenciaDinheiro?.ativa && (
                             <div className="flex flex-col sm:flex-row items-center gap-2">
                                 <input
                                     type="text"

@@ -482,6 +482,31 @@ function startSchedulers() {
     };
     setTimeout(_runBackupUploads, 600000);          // 10min após o start (cobre restart de madrugada)
     setInterval(_runBackupUploads, 3600000);        // tick de 60 min (a trava de dia controla a cadência real)
+
+    // === 14. CONFERÊNCIA DO DINHEIRO DO CAIXA ===
+    // Virada do dia: caixa que ficou aberto entra sozinho na fila de conferência
+    // (quem imprimiu a folha já entrou antes). Às 8h, avisa no WhatsApp quem
+    // confere sobre caixas parados. Isolado: nunca derruba nada.
+    console.log('⏰ Iniciando Worker da conferência do dinheiro do caixa...');
+    const caixaConfWorker = require('../services/caixaConferenciaWorker');
+    const _runCaixaVirada = () => {
+        caixaConfWorker.enviarCaixasDaVirada()
+            .catch(err => console.error('⚠️ Caixa (virada do dia) Error:', err.message));
+    };
+    setTimeout(_runCaixaVirada, 150000);            // 2min30 após o start
+    setInterval(_runCaixaVirada, 30 * 60 * 1000);   // a cada 30 min (idempotente: só pega quem não foi enviado)
+
+    const _runCaixaAviso = () => {
+        caixaConfWorker.avisarCaixasAtrasados()
+            .catch(err => console.error('⚠️ Caixa (aviso de atraso) Error:', err.message));
+    };
+    const scheduleCaixaAviso = () => {
+        const now = new Date();
+        const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 8, 0, 0);
+        if (target <= now) target.setDate(target.getDate() + 1);
+        setTimeout(() => { _runCaixaAviso(); scheduleCaixaAviso(); }, target.getTime() - now.getTime());
+    };
+    scheduleCaixaAviso();
 }
 
 module.exports = { startSchedulers };

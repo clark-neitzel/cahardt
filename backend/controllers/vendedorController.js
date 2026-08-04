@@ -151,7 +151,7 @@ const vendedorController = {
                 return res.status(403).json({ error: 'Sem permissão para editar usuários.' });
             }
 
-            const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, percentualFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento, alertaPedidoConvertido, tabelaCobrancaFaltaId, clienteUuid } = req.body;
+            const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, percentualFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento, alertaPedidoConvertido, tabelaCobrancaFaltaId, quebraCaixa, clienteUuid } = req.body;
 
             // Campos sensíveis (permissões, login, senha, status) só por admin — evita
             // escalonamento de privilégio e sequestro de conta por um gestor não-admin.
@@ -175,6 +175,13 @@ const vendedorController = {
             if (alertaFaturamento !== undefined) dataToUpdate.alertaFaturamento = alertaFaturamento;
             if (alertaPedidoConvertido !== undefined) dataToUpdate.alertaPedidoConvertido = alertaPedidoConvertido;
             if (tabelaCobrancaFaltaId !== undefined) dataToUpdate.tabelaCobrancaFaltaId = tabelaCobrancaFaltaId || null;
+            // Quebra de caixa: diferença que a pessoa fecha sozinha ao conferir o
+            // dinheiro do caixa (acima disso exige senha de quem autoriza).
+            // Só admin mexe — é limite de tolerância a diferença de dinheiro.
+            if (quebraCaixa !== undefined) {
+                if (!isAdmin) return res.status(403).json({ error: 'Apenas administradores podem definir a quebra de caixa.' });
+                dataToUpdate.quebraCaixa = Math.max(0, Number(quebraCaixa) || 0);
+            }
 
             // Vincular usuário antigo ao cadastro de pessoas (um cadastro por usuário)
             if (clienteUuid !== undefined) {

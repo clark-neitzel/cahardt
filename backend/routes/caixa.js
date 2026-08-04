@@ -4,6 +4,12 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const verificarAuth = require('../middlewares/authMiddleware');
 const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
+// Conferência do dinheiro (passo antes de fechar). A trava só vale com a chave
+// ligada em Configurações → Caixa; ver backend/config/caixaConferenciaConfig.js.
+const confService = require('../services/caixaConferenciaService');
+const cfgConferencia = require('../config/caixaConferenciaConfig');
+// Caixa só de segunda a sexta: o movimento de sáb/dom é prestado na segunda.
+const { intervaloDoCaixa, ehFimDeSemana, dataCaixaDe } = require('../utils/diasUteisCaixa');
 
 // ── Helpers ──
 const getPerms = async (userId) => {
@@ -154,6 +160,97 @@ router.post('/autorizacoes-devolucao/:id/responder', async (req, res) => {
     }
 });
 
+// ─────────────────────────────────────────────────────────────────────────
+// CONFERÊNCIA DO DINHEIRO — filas da agenda e configuração.
+// Registradas ANTES do checkAcessoCaixa de propósito: quem confere ou fecha
+// pode não ter o menu do Caixa Diário liberado, mas precisa ver a fila na
+// própria agenda. A permissão é checada dentro de cada rota.
+// ─────────────────────────────────────────────────────────────────────────
+
+// ── GET /conferencia-dinheiro/a-conferir — caixas esperando contagem ──
+// O aviso só nasce no dia seguinte ao do caixa (?hoje=1 traz também os de hoje,
+// usado pela própria tela do Caixa).
+router.get('/conferencia-dinheiro/a-conferir', async (req, res) => {
+    try {
+        const perms = await getPerms(req.user.id);
+        const fila = await confService.listarAConferir({
+            usuario: req.user, perms, incluirHoje: req.query.hoje === '1',
+        });
+        res.json(fila);
+    } catch (e) {
+        console.error('Erro na fila de conferência:', e);
+        res.json([]); // fila nunca derruba a agenda
+    }
+});
+
+// ── GET /conferencia-dinheiro/a-fechar — conferidos, esperando fechamento ──
+router.get('/conferencia-dinheiro/a-fechar', async (req, res) => {
+    try {
+        const perms = await getPerms(req.user.id);
+        res.json(await confService.listarAFechar({ usuario: req.user, perms }));
+    } catch (e) {
+        console.error('Erro na fila de fechamento:', e);
+        res.json([]);
+    }
+});
+
+// ── GET /conferencia-dinheiro/minhas — "o que eu conferi" ──
+router.get('/conferencia-dinheiro/minhas', async (req, res) => {
+    try {
+        res.json(await confService.minhasConferencias({
+            usuario: req.user, de: req.query.de || null, ate: req.query.ate || null,
+        }));
+    } catch (e) {
+        console.error('Erro no histórico de conferências:', e);
+        res.json([]);
+    }
+});
+
+// ── GET /conferencia-dinheiro/autorizadores — quem pode liberar diferença ──
+router.get('/conferencia-dinheiro/autorizadores', async (req, res) => {
+    try {
+        const vendedores = await prisma.vendedor.findMany({
+            where: { ativo: true },
+            select: { id: true, nome: true, permissoes: true },
+            orderBy: { nome: 'asc' },
+        });
+        res.json(vendedores
+            .filter(v => v.id !== req.user.id && confService.podeAutorizarDiferenca(confService.permsDe(v)))
+            .map(v => ({ id: v.id, nome: v.nome })));
+    } catch (e) {
+        console.error('Erro ao listar autorizadores:', e);
+        res.json([]);
+    }
+});
+
+// ── GET /conferencia-dinheiro/config — estado da regra (qualquer logado) ──
+router.get('/conferencia-dinheiro/config', async (req, res) => {
+    try {
+        res.json(await cfgConferencia.get());
+    } catch (e) {
+        res.json(cfgConferencia.PADRAO);
+    }
+});
+
+// ── PUT /conferencia-dinheiro/config — liga/desliga a regra (só admin) ──
+router.put('/conferencia-dinheiro/config', async (req, res) => {
+    try {
+        const perms = await getPerms(req.user.id);
+        if (!perms.admin) return res.status(403).json({ error: 'Só o administrador muda a regra do caixa.' });
+        const { ativo, soDiasUteis, whatsappAtrasoDias, tarefaDiferenca, desde } = req.body || {};
+        const parcial = {};
+        if (ativo !== undefined) parcial.ativo = !!ativo;
+        if (soDiasUteis !== undefined) parcial.soDiasUteis = !!soDiasUteis;
+        if (tarefaDiferenca !== undefined) parcial.tarefaDiferenca = !!tarefaDiferenca;
+        if (whatsappAtrasoDias !== undefined) parcial.whatsappAtrasoDias = Math.max(0, Number(whatsappAtrasoDias) || 0);
+        if (desde !== undefined) parcial.desde = desde || null;
+        res.json(await cfgConferencia.salvar(parcial));
+    } catch (e) {
+        console.error('Erro ao salvar config da conferência:', e);
+        res.status(500).json({ error: 'Erro ao salvar a configuração.' });
+    }
+});
+
 router.use(checkAcessoCaixa);
 
 // ── Cálculo de Média de Combustível (últimos 3 meses) ──
@@ -200,9 +297,25 @@ router.get('/resumo', async (req, res) => {
 
         const targetVendedor = vendedorId || req.user.id;
 
-        if (targetVendedor !== req.user.id && !req._perms.admin && !req._perms.Pode_Editar_Caixa) {
+        // Quem confere o dinheiro ou fecha o caixa precisa abrir o caixa da outra
+        // pessoa (é o que o botão "Conferir"/"Fechar" da agenda faz).
+        if (targetVendedor !== req.user.id && !req._perms.admin && !req._perms.Pode_Editar_Caixa
+            && !confService.podeConferir(req._perms) && !confService.podeFechar(req._perms)) {
             return res.status(403).json({ error: 'Sem permissão para ver caixa de outro usuário.' });
         }
+
+        // Sábado e domingo não têm caixa: a tela avisa e leva para a segunda,
+        // senão o movimento do fim de semana apareceria em dois caixas.
+        const cfgDias = await cfgConferencia.get();
+        if (cfgDias.soDiasUteis && ehFimDeSemana(data)) {
+            return res.json({
+                diaSemCaixa: true,
+                dataSugerida: dataCaixaDe(data),
+                mensagem: 'Sábado e domingo não abrem caixa — o movimento do fim de semana entra no caixa da segunda-feira.'
+            });
+        }
+        // Dias que compõem este caixa (segunda = sáb + dom + seg, com a regra ligada)
+        const { dias: diasDoCaixaAtual, inicio: inicioDia, fim: fimDia } = intervaloDoCaixa(data, cfgDias.soDiasUteis);
 
         // 1. Buscar ou criar CaixaDiario
         let caixa = await prisma.caixaDiario.findUnique({
@@ -239,16 +352,15 @@ router.get('/resumo', async (req, res) => {
 
         // 4. Buscar despesas do dia
         const despesas = await prisma.despesa.findMany({
-            where: { vendedorId: targetVendedor, dataReferencia: data },
+            where: { vendedorId: targetVendedor, dataReferencia: { in: diasDoCaixaAtual } },
             include: { veiculo: { select: { placa: true, modelo: true } } },
             orderBy: { createdAt: 'asc' }
         });
 
         const totalDespesas = despesas.reduce((sum, d) => sum + Number(d.valor), 0);
 
-        // 5. Buscar entregas do dia (via dataEntrega + embarque.responsavelId)
-        const inicioDia = new Date(data + 'T00:00:00.000Z');
-        const fimDia = new Date(data + 'T23:59:59.999Z');
+        // 5. Buscar entregas do dia (via dataEntrega + embarque.responsavelId).
+        //    inicioDia/fimDia vêm do intervalo do caixa (fim de semana entra na segunda).
 
         const entregas = await prisma.pedido.findMany({
             where: {
@@ -459,7 +571,7 @@ router.get('/resumo', async (req, res) => {
         // Dinheiro cobrado soma ao valor a prestar; a baixa da parcela sai pelo box
         // (POST /cobrancas-rota/baixar). NAO_COBRADA é só registro (não soma nada).
         const cobrancasRotaDia = await prisma.cobrancaRota.findMany({
-            where: { cobradoPorId: targetVendedor, dataReferencia: data },
+            where: { cobradoPorId: targetVendedor, dataReferencia: { in: diasDoCaixaAtual } },
             include: {
                 parcela: {
                     include: {
@@ -643,6 +755,41 @@ router.get('/resumo', async (req, res) => {
         }).length;
         const conferenciaDevolucaoPendente = temDevolucoesDia && confDev?.status !== 'CONFERIDA';
 
+        // ── Conferência do dinheiro (passo antes de fechar) ──
+        const cfgConf = await cfgConferencia.get();
+        const exigeConf = await cfgConferencia.exigeConferencia(data);
+        const confDesatualizada = confService.conferenciaDesatualizada(caixa, valorAPrestar);
+        const dinheiroConferidoValido = !!caixa.dinheiroConferido && !confDesatualizada;
+        const souDono = targetVendedor === req.user.id;
+        const conferenciaDinheiro = {
+            exigida: exigeConf,
+            ativa: !!cfgConf.ativo,
+            estado: confService.estadoDoCaixa(caixa, valorAPrestar),
+            enviadoEm: caixa.enviadoConferenciaEm,
+            enviadoPorNome: caixa.enviadoConferenciaPorNome,
+            enviadoOrigem: caixa.enviadoConferenciaOrigem,
+            conferido: dinheiroConferidoValido,
+            conferidoPorId: dinheiroConferidoValido ? caixa.dinheiroConferidoPorId : null,
+            conferidoPorNome: dinheiroConferidoValido ? caixa.dinheiroConferidoPorNome : null,
+            conferidoEm: dinheiroConferidoValido ? caixa.dinheiroConferidoEm : null,
+            valorContado: dinheiroConferidoValido && caixa.valorContado != null ? Number(caixa.valorContado) : null,
+            contagem: dinheiroConferidoValido ? caixa.contagemDinheiro : null,
+            diferenca: dinheiroConferidoValido && caixa.diferencaConferencia != null ? Number(caixa.diferencaConferencia) : null,
+            motivoDiferenca: dinheiroConferidoValido ? caixa.motivoDiferenca : null,
+            autorizadoPorNome: dinheiroConferidoValido ? caixa.autorizadorDiferencaNome : null,
+            observacao: dinheiroConferidoValido ? caixa.obsConferenciaDinheiro : null,
+            // Conferência caiu porque o valor mudou depois de assinada
+            desatualizada: confDesatualizada,
+            valorNaConferencia: confDesatualizada && caixa.valorEsperadoConferencia != null ? Number(caixa.valorEsperadoConferencia) : null,
+            // O que ESTE usuário pode fazer aqui
+            podeConferir: confService.podeConferir(req._perms) && (!souDono || !!req._perms.admin),
+            bloqueadoPorSerDono: souDono && confService.podeConferir(req._perms) && !req._perms.admin,
+            minhaQuebra: Number((await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { quebraCaixa: true } }))?.quebraCaixa || 0),
+            // Quem conferiu não fecha o mesmo caixa
+            souQuemConferiu: dinheiroConferidoValido && caixa.dinheiroConferidoPorId === req.user.id && !req._perms.admin
+        };
+        const conferenciaDinheiroPendente = exigeConf && !dinheiroConferidoValido;
+
         res.json({
             caixa: {
                 id: caixa.id,
@@ -654,8 +801,11 @@ router.get('/resumo', async (req, res) => {
                 dataReferencia: caixa.dataReferencia,
                 conferidoPor: caixa.conferidoPor,
                 conferidoEm: caixa.conferidoEm,
-                obsAdmin: caixa.obsAdmin
+                obsAdmin: caixa.obsAdmin,
+                fechadoPorNome: caixa.fechadoPorNome,
+                fechadoEm: caixa.fechadoEm
             },
+            conferenciaDinheiro,
             diario: diarioInfo,
             mediaCombustivel3Meses: mediaCombustivel3Meses,
             despesas,
@@ -718,7 +868,9 @@ router.get('/resumo', async (req, res) => {
                 quitacoesNaoFeitas,
                 conferenciaDevolucaoPendente,
                 cobrancasRotaSemBaixa,
-                podeFechar: devolucoesNaoFeitas === 0 && quitacoesNaoFeitas === 0 && !conferenciaDevolucaoPendente && cobrancasRotaSemBaixa === 0
+                conferenciaDinheiroPendente,
+                podeFechar: devolucoesNaoFeitas === 0 && quitacoesNaoFeitas === 0 && !conferenciaDevolucaoPendente
+                    && cobrancasRotaSemBaixa === 0 && !conferenciaDinheiroPendente
             },
             finalizacaoDia
         });
@@ -829,6 +981,86 @@ router.patch('/adiantamento', async (req, res) => {
 });
 
 // ── POST /fechar — Fechar caixa do dia (snapshot) ──
+// ─────────────────────────────────────────────────────────────────────────
+// CONFERÊNCIA DO DINHEIRO — ações (dentro do acesso ao Caixa)
+// ─────────────────────────────────────────────────────────────────────────
+
+// ── POST /conferencia-dinheiro/enviar — manda o caixa para a fila ──
+// Chamado pela impressão da folha (a folha é a prestação de contas) e pelo
+// botão manual. Idempotente: reimprimir não reenvia nem muda nada.
+router.post('/conferencia-dinheiro/enviar', async (req, res) => {
+    try {
+        const { vendedorId, data, origem } = req.body;
+        if (!data) return res.status(400).json({ error: 'Campo "data" obrigatório.' });
+        const targetVendedor = vendedorId || req.user.id;
+        if (targetVendedor !== req.user.id && !req._perms.admin && !req._perms.Pode_Editar_Caixa
+            && !confService.podeConferir(req._perms) && !confService.podeFechar(req._perms)) {
+            return res.status(403).json({ error: 'Sem permissão para enviar o caixa de outro usuário.' });
+        }
+        const r = await confService.enviarParaConferencia({
+            vendedorId: targetVendedor, data,
+            usuario: { id: req.user.id, nome: req.user.nome },
+            origem: origem || 'MANUAL',
+        });
+        res.json(r);
+    } catch (e) {
+        console.error('Erro ao enviar caixa para conferência:', e);
+        res.status(e.status || 500).json({ error: e.message || 'Erro ao enviar para conferência.' });
+    }
+});
+
+// ── POST /conferencia-dinheiro/conferir — quem recebe o dinheiro assina ──
+router.post('/conferencia-dinheiro/conferir', async (req, res) => {
+    try {
+        const { vendedorId, data, contagem, valorContado, observacao,
+            motivoDiferenca, autorizadorId, autorizadorSenha } = req.body;
+        if (!vendedorId || !data) return res.status(400).json({ error: 'Informe o caixa (vendedor e data).' });
+
+        const r = await confService.conferirDinheiro({
+            vendedorId, data,
+            usuario: { id: req.user.id, nome: req.user.nome },
+            perms: req._perms || await getPerms(req.user.id),
+            contagem: contagem || null,
+            valorContadoManual: valorContado,
+            observacao, motivoDiferenca, autorizadorId, autorizadorSenha,
+        });
+
+        // Diferença vira aviso na agenda — o VALE em si é lançado à mão no
+        // Contas a Pagar (decisão do dono). Nunca derruba a conferência.
+        let tarefa = null;
+        if (Math.abs(r.diferenca) > 0.009) {
+            try {
+                tarefa = await confService.sugerirTarefaDiferenca({
+                    caixa: r.caixa, diferenca: r.diferenca, criadoPor: req.user,
+                });
+            } catch (tErr) {
+                console.error('Falha ao criar tarefa da diferença (conferência já registrada):', tErr.message);
+            }
+        }
+        res.json({ ...r, tarefa });
+    } catch (e) {
+        if (!e.status) console.error('Erro ao conferir o dinheiro:', e);
+        res.status(e.status || 500).json({ error: e.message || 'Erro ao conferir o dinheiro.' });
+    }
+});
+
+// ── POST /conferencia-dinheiro/desfazer — só quem conferiu (ou admin) ──
+router.post('/conferencia-dinheiro/desfazer', async (req, res) => {
+    try {
+        const { vendedorId, data } = req.body;
+        if (!vendedorId || !data) return res.status(400).json({ error: 'Informe o caixa (vendedor e data).' });
+        const caixa = await confService.desfazerConferencia({
+            vendedorId, data,
+            usuario: { id: req.user.id, nome: req.user.nome },
+            perms: req._perms || await getPerms(req.user.id),
+        });
+        res.json(caixa);
+    } catch (e) {
+        if (!e.status) console.error('Erro ao desfazer conferência:', e);
+        res.status(e.status || 500).json({ error: e.message || 'Erro ao desfazer a conferência.' });
+    }
+});
+
 router.post('/fechar', async (req, res) => {
     try {
         const perms = req._perms || await getPerms(req.user.id);
@@ -841,15 +1073,22 @@ router.post('/fechar', async (req, res) => {
 
         const targetVendedor = vendedorId || req.user.id;
 
+        // Sábado e domingo não têm caixa (com a regra ligada): o movimento é
+        // prestado no caixa da segunda, então não há o que fechar aqui.
+        const cfgDiasFechar = await cfgConferencia.get();
+        if (cfgDiasFechar.soDiasUteis && ehFimDeSemana(data)) {
+            return res.status(400).json({
+                error: 'Sábado e domingo não têm caixa — o movimento do fim de semana é prestado no caixa da segunda-feira.'
+            });
+        }
+        const { dias: diasFechar, inicio: inicioDia, fim: fimDia } = intervaloDoCaixa(data, cfgDiasFechar.soDiasUteis);
+
         // Buscar resumo para snapshot
         // Reutilizar lógica do resumo internamente
         const despesas = await prisma.despesa.findMany({
-            where: { vendedorId: targetVendedor, dataReferencia: data }
+            where: { vendedorId: targetVendedor, dataReferencia: { in: diasFechar } }
         });
         const totalDespesas = despesas.reduce((s, d) => s + Number(d.valor), 0);
-
-        const inicioDia = new Date(data + 'T00:00:00.000Z');
-        const fimDia = new Date(data + 'T23:59:59.999Z');
 
         const entregas = await prisma.pedido.findMany({
             where: {
@@ -909,12 +1148,37 @@ router.post('/fechar', async (req, res) => {
 
         // 4. Cobranças em Rota do dia sem baixa: precisam ser baixadas pelo box antes de fechar
         const cobrancasRotaFecharDia = await prisma.cobrancaRota.findMany({
-            where: { cobradoPorId: targetVendedor, dataReferencia: data },
+            where: { cobradoPorId: targetVendedor, dataReferencia: { in: diasFechar } },
             select: { status: true, valorCobrado: true, formaPagamentoNome: true }
         });
         const cobrancasSemBaixaFechar = cobrancasRotaFecharDia.filter(c => c.status === 'COBRADA').length;
         if (cobrancasSemBaixaFechar > 0) {
             pendencias.push(`${cobrancasSemBaixaFechar} cobrança(s) de rota sem baixa: baixe os títulos cobrados na rua antes de fechar o caixa.`);
+        }
+
+        // 5. Conferência do DINHEIRO: alguém tem que ter contado e assinado.
+        //    Vale inclusive para caixa de R$ 0,00. Só é exigido com a chave ligada
+        //    (Configurações → Caixa) — sem isso o fechamento segue como sempre foi.
+        const exigeConfDinheiro = await cfgConferencia.exigeConferencia(data);
+        if (exigeConfDinheiro) {
+            const calcConf = await confService.calcularValorAPrestar(targetVendedor, data);
+            const confValida = caixaExistente?.dinheiroConferido
+                && !confService.conferenciaDesatualizada(caixaExistente, calcConf.valorAPrestar);
+
+            if (!caixaExistente?.dinheiroConferido) {
+                pendencias.push('Dinheiro ainda não conferido: alguém precisa contar e confirmar o valor antes de fechar o caixa.');
+            } else if (!confValida) {
+                pendencias.push(
+                    `O valor mudou depois da conferência (era R$ ${Number(caixaExistente.valorEsperadoConferencia).toFixed(2)}, ` +
+                    `agora é R$ ${calcConf.valorAPrestar.toFixed(2)}): o dinheiro precisa ser conferido de novo.`
+                );
+            } else if (caixaExistente.dinheiroConferidoPorId === req.user.id && !perms.admin) {
+                // Dois pares de olhos: quem contou o dinheiro não é quem fecha.
+                return res.status(403).json({
+                    error: 'Você conferiu o dinheiro deste caixa — o fechamento é de outra pessoa.',
+                    pendencias: [],
+                });
+            }
         }
 
         if (pendencias.length > 0) {
@@ -979,6 +1243,9 @@ router.post('/fechar', async (req, res) => {
             where: { vendedorId_dataReferencia: { vendedorId: targetVendedor, dataReferencia: data } },
             update: {
                 status: 'FECHADO',
+                fechadoPorId: req.user.id,
+                fechadoPorNome: req.user.nome || null,
+                fechadoEm: new Date(),
                 totalDespesas: Math.round(totalDespesas * 100) / 100,
                 totalRecebidoCaixa: Math.round(totalRecebidoCaixa * 100) / 100,
                 totalRecebidoOutros: Math.round(totalRecebidoOutros * 100) / 100,
@@ -988,6 +1255,9 @@ router.post('/fechar', async (req, res) => {
                 vendedorId: targetVendedor,
                 dataReferencia: data,
                 status: 'FECHADO',
+                fechadoPorId: req.user.id,
+                fechadoPorNome: req.user.nome || null,
+                fechadoEm: new Date(),
                 totalDespesas: Math.round(totalDespesas * 100) / 100,
                 totalRecebidoCaixa: Math.round(totalRecebidoCaixa * 100) / 100,
                 totalRecebidoOutros: Math.round(totalRecebidoOutros * 100) / 100,
@@ -1088,7 +1358,7 @@ router.post('/reabrir', async (req, res) => {
             return res.status(403).json({ error: 'Sem permissão para reabrir caixa.' });
         }
 
-        const { id } = req.body;
+        const { id, motivo } = req.body;
         if (!id) return res.status(400).json({ error: 'ID do caixa obrigatório.' });
 
         const caixaAtual = await prisma.caixaDiario.findUnique({
@@ -1100,6 +1370,13 @@ router.post('/reabrir', async (req, res) => {
             return res.status(400).json({ error: 'Caixa não está fechado.' });
         }
 
+        // Caixa fechado não se altera: para mexer, reabre — e aí o dinheiro tem
+        // que ser conferido de novo antes de fechar (a conferência cai aqui).
+        const exigeConfReabrir = await cfgConferencia.exigeConferencia(caixaAtual.dataReferencia);
+        if (exigeConfReabrir && !String(motivo || '').trim()) {
+            return res.status(400).json({ error: 'Explique o motivo da reabertura (fica registrado e volta para quem conferiu).' });
+        }
+
         const [caixa] = await prisma.$transaction([
             prisma.caixaDiario.update({
                 where: { id },
@@ -1108,7 +1385,24 @@ router.post('/reabrir', async (req, res) => {
                     totalDespesas: null,
                     totalRecebidoCaixa: null,
                     totalRecebidoOutros: null,
-                    valorAPrestar: null
+                    valorAPrestar: null,
+                    reabertoMotivo: String(motivo || '').trim() || null,
+                    fechadoPorId: null,
+                    fechadoPorNome: null,
+                    fechadoEm: null,
+                    // Devolve para a fila de quem confere (conferência anterior perde a validade)
+                    ...(exigeConfReabrir ? {
+                        dinheiroConferido: false,
+                        dinheiroConferidoPorId: null,
+                        dinheiroConferidoPorNome: null,
+                        dinheiroConferidoEm: null,
+                        valorEsperadoConferencia: null,
+                        valorContado: null,
+                        contagemDinheiro: null,
+                        diferencaConferencia: null,
+                        autorizadorDiferencaId: null,
+                        autorizadorDiferencaNome: null,
+                    } : {})
                 }
             }),
             prisma.auditLog.create({
@@ -1121,7 +1415,10 @@ router.post('/reabrir', async (req, res) => {
                         vendedorId: caixaAtual.vendedorId,
                         data: caixaAtual.dataReferencia,
                         statusAnterior: 'FECHADO',
-                        statusNovo: 'ABERTO'
+                        statusNovo: 'ABERTO',
+                        motivo: String(motivo || '').trim() || null,
+                        conferenciaCancelada: exigeConfReabrir && caixaAtual.dinheiroConferido
+                            ? caixaAtual.dinheiroConferidoPorNome : null
                     }),
                     usuarioId: req.user.id,
                     usuarioNome: req.user.nome || 'Admin'
@@ -2093,10 +2390,22 @@ router.get('/relatorio', async (req, res) => {
             mapaClientes = Object.fromEntries(clientes.map(c => [c.UUID, c.NomeFantasia || c.Nome]));
         }
 
+        // Assinatura da conferência do dinheiro (sai na folha, junto do "a prestar")
+        const conferenciaDinheiroImpressao = caixa?.dinheiroConferido ? {
+            conferidoPorNome: caixa.dinheiroConferidoPorNome,
+            conferidoEm: caixa.dinheiroConferidoEm,
+            valorContado: caixa.valorContado != null ? Number(caixa.valorContado) : null,
+            diferenca: caixa.diferencaConferencia != null ? Number(caixa.diferencaConferencia) : 0,
+            motivoDiferenca: caixa.motivoDiferenca,
+            autorizadoPorNome: caixa.autorizadorDiferencaNome,
+            contagem: caixa.contagemDinheiro,
+        } : null;
+
         res.json({
             vendedorNome: vendedor?.nome || 'Usuário',
             data,
             caixa: caixa || { adiantamento: 0, status: 'ABERTO' },
+            conferenciaDinheiro: conferenciaDinheiroImpressao,
             diario: diario ? {
                 placa: diario.veiculo?.placa,
                 modelo: diario.veiculo?.modelo,

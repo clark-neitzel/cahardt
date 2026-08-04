@@ -25,7 +25,8 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 - Ver e editar KM inicial do veículo do dia
 - Ver o VALOR A PRESTAR — só aparece quando o dia está "certo"; senão mostra um checklist do que falta (KM final, entregas pendentes, clientes sem atendimento)
 - Acessar ficha completa do veículo
-- Fechar o caixa do dia (muda status para FECHADO)
+- **Conferir o dinheiro do dia** (cartão "Conferência do Dinheiro"): quem recebe o dinheiro conta cédula por cédula na calculadora do app e assina — é o passo que libera o fechamento
+- Fechar o caixa do dia (muda status para FECHADO) — **só depois do dinheiro conferido, e nunca por quem conferiu**
 - Imprimir relatório do caixa (`/caixa/impressao`)
 - Conferir o caixa (admin: após revisão, marca como CONFERIDO)
 - Reverter a conferência (admin: volta CONFERIDO → FECHADO)
@@ -43,8 +44,13 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 | Status | Significado |
 |--------|-------------|
 | ABERTO | Em andamento, ainda pode ser editado |
-| FECHADO | Encerrado pelo motorista/vendedor |
-| CONFERIDO | Revisado e confirmado pelo admin |
+| A CONFERIR | A folha foi impressa (ou o dia virou) e o dinheiro está esperando alguém contar |
+| A FECHAR | Dinheiro conferido e assinado; falta só o fechamento |
+| FECHADO | Encerrado. **Não aceita mais lançamento nenhum** naquele dia (despesa, baixa, devolução, adiantamento) |
+| CONFERIDO | Status antigo (conferência pós-fechamento). Fica só nos caixas antigos; hoje a conferência é antes de fechar |
+
+> **A CONFERIR** e **A FECHAR** só aparecem com a regra da conferência do dinheiro ligada
+> (Configurações → Caixa — conferência do dinheiro). Com ela desligada, o caixa se comporta como antes.
 
 ---
 
@@ -121,10 +127,33 @@ O valor a prestar de contas fica **escondido** enquanto o dia não estiver compl
 
 Observação: devoluções e baixas de dinheiro **não** entram nesse checklist (são tratadas na parte financeira/fechar caixa, mais abaixo).
 
+### Conferir o dinheiro (passo antes de fechar)
+
+O caixa entra na fila de conferência **ao imprimir a folha** (a folha é a prestação de contas: ao clicar em Imprimir o app pergunta se é para enviar; "2ª via" não reenvia). Quem não imprimir entra sozinho **na virada do dia**, à meia-noite.
+
+1. Quem tem `Pode_Conferir_Dinheiro_Caixa` abre o caixa daquela pessoa (pela agenda ou pelo seletor) e clica em **Conferir o dinheiro**
+2. Abre a **calculadora**: digite quantas notas de R$ 200, 100, 50, 20, 10, 5 e 2 e quantas moedas de R$ 1,00 / 0,50 / 0,25 / 0,10 / 0,05. O total sai da contagem (não é digitado à mão). Cheque ou vale entram em "+ outro valor"
+3. O app compara com o valor a prestar na hora:
+   - **Bate certo** → confirme e pronto
+   - **Diferença dentro da sua quebra de caixa** → você mesmo fecha, com **motivo obrigatório**
+   - **Diferença acima da sua quebra** → precisa escolher quem autoriza e digitar a **senha** dessa pessoa
+4. Caixa de **R$ 0,00** (dia sem movimento) também precisa de conferência — é um clique só ("Conferi: não havia dinheiro a receber")
+5. Se houver diferença, o app oferece **criar uma tarefa na agenda** para cobrar a pessoa. O **vale não é lançado automaticamente**: se for descontar, lance à mão no Contas a Pagar
+6. Fica gravado quem conferiu, quanto contou, a hora, a contagem nota a nota, a diferença, o motivo e quem autorizou — e isso sai também na folha impressa
+
+**Regras que o app não deixa furar:**
+- O dono do caixa **nunca** confere o próprio dinheiro
+- **Quem conferiu não fecha** o mesmo caixa (o botão Fechar some para essa pessoa)
+- Se o valor a prestar mudar depois da conferência (despesa lançada atrasada, baixa nova), a conferência **cai sozinha** e o caixa volta para "A conferir"
+- Quem conferiu (ou o admin) pode **Desfazer conferência** enquanto o caixa não estiver fechado
+
 ### Fechar o caixa
 1. Verifique as pendências — se houver, o botão fica desabilitado e as pendências aparecem listadas
-2. Clique em **Fechar Caixa** — o sistema pode alertar sobre entregas sem conferência de assinatura (mas não bloqueia)
-3. Confirme — o status muda para FECHADO
+2. Com a regra ligada, **"Dinheiro ainda não conferido"** é uma das pendências: sem a assinatura de quem contou, não fecha
+3. Clique em **Fechar Caixa** — o sistema pode alertar sobre entregas sem conferência de assinatura (mas não bloqueia)
+4. Confirme — o status muda para FECHADO e fica gravado **quem fechou**
+
+> **Caixa fechado não se altera.** Depois de fechado, aquele dia não aceita despesa, baixa, devolução nem mudança de adiantamento — nem para o admin. Para mexer, é preciso reabrir.
 
 ### Imprimir relatório do caixa
 > **Atenção:** o botão **Imprimir** só aparece quando o dia está pronto — KM final informado, sem entregas pendentes e **conferência de devoluções confirmada**. Antes disso o botão fica escondido e a folha impressa não mostra o valor a prestar (evita imprimir sem conferir).
@@ -148,7 +177,8 @@ O relatório sai em **2 folhas A4**:
 
 ### Reabrir caixa (admin)
 - Clique em **Reabrir Caixa** no caixa com status FECHADO
-- O status volta para ABERTO e os totais são recalculados ao fechar novamente
+- Com a conferência do dinheiro ligada, o app **exige o motivo** da reabertura
+- O status volta para ABERTO, os totais são recalculados ao fechar novamente e a **conferência do dinheiro é cancelada**: o caixa volta para a fila de quem confere, que precisa contar de novo antes de o caixa poder ser fechado
 
 ### Registrar devolução
 - Na linha de uma entrega, clique no botão de devolução (ícone de retorno)
@@ -195,7 +225,11 @@ Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de 
 | Ver caixas de outros vendedores | `Pode_Editar_Caixa` ou `admin` |
 | Ver caixas de outros dias | `Pode_Ver_Historico_Caixa` ou `Pode_Editar_Caixa` ou `admin` |
 | Registrar adiantamento | `Pode_Definir_Adiantamento` ou `Pode_Editar_Caixa` ou `admin` |
-| Fechar caixa | `Pode_Fechar_Caixa` ou `Pode_Editar_Caixa` ou `admin` |
+| Fechar caixa | `Pode_Fechar_Caixa` ou `Pode_Editar_Caixa` ou `admin` — **só com o dinheiro conferido, e nunca quem conferiu** |
+| Conferir o dinheiro do caixa | `Pode_Conferir_Dinheiro_Caixa` ou `admin` (nunca no próprio caixa) |
+| Fechar conferência com diferença até o limite | o próprio conferente, pela **quebra de caixa** definida no usuário (motivo obrigatório) |
+| Autorizar diferença acima da quebra | `Pode_Autorizar_Diferenca_Caixa` ou `admin` — autoriza com a **própria senha** |
+| Ligar/desligar a regra da conferência | `admin`, em Configurações → Caixa |
 | Registrar baixa no Conta Azul | `Pode_Baixar_Caixa` ou `Pode_Editar_Caixa` ou `admin` |
 | Baixar cobranças da rota | `Pode_Baixar_Caixa` ou `Pode_Editar_Caixa` ou `admin` (com o caixa ABERTO) |
 | Conferir e reverter conferência | `Pode_Reverter_Caixa` ou `admin` (reverter); `admin` ou `Pode_Editar_Caixa` (conferir) |
@@ -226,6 +260,13 @@ Quando a falta não é culpa do motorista (ex.: o produto não foi carregado de 
 | `frontend/src/pages/Caixa/CaixaDiarioPage.jsx` | Tela principal do caixa com todos os fluxos |
 | `frontend/src/pages/Caixa/NovaDespesaModal.jsx` | Modal de nova despesa |
 | `frontend/src/pages/Caixa/ConferenciaDevolucaoCard.jsx` | Cartão de conferência de devoluções + modal de autorização com senha |
+| `frontend/src/pages/Caixa/ConferenciaDinheiroCard.jsx` | Cartão da conferência do dinheiro + calculadora de cédulas e moedas |
+| `frontend/src/pages/Tarefas/CaixasPendentesAgenda.jsx` | Blocos "Caixas a conferir", "Caixas a fechar" e "Conferi hoje" na agenda |
+| `frontend/src/pages/Admin/Configuracoes/ConferenciaCaixaConfigCard.jsx` | Liga/desliga a regra da conferência e a regra de segunda a sexta |
+| `backend/services/caixaConferenciaService.js` | Regras da conferência: valor esperado, contagem, quebra de caixa, filas |
+| `backend/services/caixaConferenciaWorker.js` | Virada do dia (envia para conferência) e aviso de caixa atrasado no WhatsApp |
+| `backend/config/caixaConferenciaConfig.js` | Chave que liga a exigência (e a regra de dias úteis) |
+| `backend/utils/diasUteisCaixa.js` | Caixa só de segunda a sexta: sáb/dom entram no caixa da segunda |
 | `frontend/src/pages/Caixa/CobrancasRotaCard.jsx` | Cartão "Cobranças da Rota" com seleção por box e baixa das parcelas |
 | `frontend/src/pages/Pedidos/ModalDevolucao.jsx` | Modal de devolução acessível pelo caixa |
 | `frontend/src/pages/Veiculos/VeiculoFicha.jsx` | Ficha do veículo embutida no caixa |
@@ -242,3 +283,19 @@ Cada entrega listada na conferência do dia mostra um emoji ao lado do nome do c
 - **📍❓** cliente sem ponto GPS cadastrado.
 
 Cliente balcão não mostra selo. Tocar no emoji abre o detalhe com a distância. Entregas concluídas no ponto vão, com a repetição, gerando o selo "ponto confirmado" do cliente automaticamente.
+
+---
+
+## Caixa só de segunda a sexta (opcional, em Configurações)
+
+Com a chave **"Caixa só de segunda a sexta"** ligada (Configurações → Caixa):
+
+- Sábado e domingo **não abrem caixa**. Quem tentar abrir o caixa nesses dias é levado para a segunda seguinte, com aviso na tela
+- O caixa de **segunda-feira soma sábado + domingo + segunda**: entregas, despesas e cobranças de rota do fim de semana entram nele
+- O **registro** da entrega/despesa não muda: a data real continua sendo o sábado. Muda só **em qual caixa ela é prestada**
+- Caixas de fim de semana que já existiam no banco continuam como estão (só leitura)
+
+## Avisos automáticos da conferência
+
+- **Agenda (aba Tarefas):** quem confere vê o bloco **"Caixas a conferir"** — o aviso nasce **no dia seguinte** ao do caixa (conferindo no mesmo dia, nunca vira cobrança). Quem fecha vê **"Caixas a fechar"** assim que o dinheiro é conferido. E **"Conferi hoje"** mostra o que a pessoa já conferiu
+- **WhatsApp:** caixa parado sem conferir por N dias (padrão 2, configurável) gera **uma mensagem por dia** para quem confere, juntando todos os caixas atrasados. Mensagem interna, pelo bot da Ana

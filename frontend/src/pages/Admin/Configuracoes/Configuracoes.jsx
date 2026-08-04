@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import ConferenciaCaixaConfigCard from './ConferenciaCaixaConfigCard';
 import configService from '../../../services/configService';
 import { Save, AlertCircle, CheckCircle, Plus, X, ClipboardList, Trash2, Loader2, ScrollText, MapPin, Zap, Target, ChevronDown, ChevronUp, Eye, EyeOff, MessageSquare } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -771,6 +772,9 @@ const Configuracoes = () => {
                     </div>
                 </div>
             )}
+
+            {/* ── Caixa: conferência do dinheiro (liga/desliga a regra) ── */}
+            {isAdmin && <ConferenciaCaixaConfigCard />}
 
             {/* ── Notificação WhatsApp (bot da Hardt) ── */}
             {isAdmin && (

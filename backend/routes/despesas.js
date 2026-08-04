@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const verificarAuth = require('../middlewares/authMiddleware');
+// Caixa fechado não se altera (08/2026) — a trava só vale com a chave ligada.
+const confService = require('../services/caixaConferenciaService');
 
 // ── Helpers ──
 const getPerms = async (userId) => {
@@ -89,6 +91,10 @@ router.post('/', async (req, res) => {
 
         const targetVendedor = vendedorId || req.user.id;
 
+        // Caixa fechado não se altera: sem reabrir, não entra despesa nesse dia.
+        const bloqueio = await confService.bloqueioPorCaixaFechado(targetVendedor, dataReferencia);
+        if (bloqueio) return res.status(400).json({ error: bloqueio });
+
         const despesa = await prisma.despesa.create({
             data: {
                 vendedorId: targetVendedor,
@@ -137,6 +143,10 @@ router.put('/:id', async (req, res) => {
                 return res.status(400).json({ error: 'Caixa já fechado. Não é possível editar.' });
             }
         }
+
+        // Caixa fechado não se altera — vale também para admin/auditor: reabra o caixa.
+        const bloqueioEdit = await confService.bloqueioPorCaixaFechado(despesa.vendedorId, despesa.dataReferencia);
+        if (bloqueioEdit) return res.status(400).json({ error: bloqueioEdit });
 
         const { categoria, descricao, valor, veiculoId, litros, kmNoAbastecimento, tipoManutencao } = req.body;
         const catFinal = categoria || despesa.categoria;
@@ -206,6 +216,10 @@ router.delete('/:id', async (req, res) => {
                 return res.status(400).json({ error: 'Caixa já fechado. Não é possível excluir.' });
             }
         }
+
+        // Caixa fechado não se altera — vale também para admin/auditor: reabra o caixa.
+        const bloqueioDel = await confService.bloqueioPorCaixaFechado(despesa.vendedorId, despesa.dataReferencia);
+        if (bloqueioDel) return res.status(400).json({ error: bloqueioDel });
 
         await prisma.despesa.delete({ where: { id } });
         res.json({ ok: true });

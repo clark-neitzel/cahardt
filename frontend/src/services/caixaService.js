@@ -33,8 +33,56 @@ const caixaService = {
         return response.data;
     },
 
-    reabrirCaixa: async (id) => {
-        const response = await api.post('/caixa/reabrir', { id });
+    reabrirCaixa: async (id, motivo) => {
+        const response = await api.post('/caixa/reabrir', { id, motivo });
+        return response.data;
+    },
+
+    // ── Conferência do DINHEIRO (passo antes de fechar) ──
+    enviarParaConferencia: async (dados) => {
+        const response = await api.post('/caixa/conferencia-dinheiro/enviar', dados);
+        return response.data;
+    },
+
+    conferirDinheiro: async (dados) => {
+        const response = await api.post('/caixa/conferencia-dinheiro/conferir', dados);
+        return response.data;
+    },
+
+    desfazerConferenciaDinheiro: async (dados) => {
+        const response = await api.post('/caixa/conferencia-dinheiro/desfazer', dados);
+        return response.data;
+    },
+
+    getCaixasAConferir: async (incluirHoje = false) => {
+        const response = await api.get('/caixa/conferencia-dinheiro/a-conferir', {
+            params: incluirHoje ? { hoje: 1 } : {},
+        });
+        return response.data;
+    },
+
+    getCaixasAFechar: async () => {
+        const response = await api.get('/caixa/conferencia-dinheiro/a-fechar');
+        return response.data;
+    },
+
+    getMinhasConferencias: async (de, ate) => {
+        const response = await api.get('/caixa/conferencia-dinheiro/minhas', { params: { de, ate } });
+        return response.data;
+    },
+
+    getAutorizadoresDiferenca: async () => {
+        const response = await api.get('/caixa/conferencia-dinheiro/autorizadores');
+        return response.data;
+    },
+
+    getConfigConferencia: async () => {
+        const response = await api.get('/caixa/conferencia-dinheiro/config');
+        return response.data;
+    },
+
+    salvarConfigConferencia: async (dados) => {
+        const response = await api.put('/caixa/conferencia-dinheiro/config', dados);
         return response.data;
     },
 

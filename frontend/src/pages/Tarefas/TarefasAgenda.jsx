@@ -10,6 +10,7 @@ import SelectBusca from '../../components/SelectBusca';
 import AnexosTarefa from '../../components/AnexosTarefa';
 import tarefaService, { hojeStr, horaStr, labelRecorrencia } from '../../services/tarefaService';
 import TarefaFormModal from './TarefaFormModal';
+import CaixasPendentesAgenda from './CaixasPendentesAgenda';
 
 // ── helpers de data (sempre no fuso local do aparelho) ──
 const p2 = (n) => String(n).padStart(2, '0');
@@ -271,6 +272,10 @@ const TarefasAgenda = () => {
                     </button>
                 </div>
             </div>
+
+            {/* ── Caixas pendentes (conferir o dinheiro / fechar) — só aparece para
+                   quem tem a permissão; sem pendência, o bloco nem existe ── */}
+            <CaixasPendentesAgenda />
 
             {/* ── Barra de navegação/filtros ── */}
             <div className="flex flex-wrap items-center gap-2 px-3 md:px-6 py-2.5 bg-gray-50 border-b border-gray-100">

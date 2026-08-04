@@ -25,6 +25,7 @@ Agenda de tarefas com alerta sonoro, estilo Google Agenda, para toda a equipe. C
 - Repetição: não repete, todo dia, dias úteis (seg a sex), **dias da semana escolhidos** (ex.: seg/qua/sex — botões de Dom a Sáb no formulário), toda semana ou todo mês — com data final opcional
 - Clicar num horário vazio da grade semanal cria tarefa já naquele dia/hora
 - Abrir o **Parecer do dia** (botão no topo) — exige **Pode ver o parecer do dia**
+- Ver e resolver os **caixas pendentes** (blocos no topo da agenda, ver abaixo)
 
 ---
 
@@ -73,3 +74,20 @@ Excluir uma tarefa recorrente apaga **todas** as repetições.
 | admin | Tudo acima + editar/excluir qualquer tarefa |
 
 As permissões são configuradas em Administração → Usuários → escudo (Acessos e Permissões) → seção "Tarefas da Equipe".
+
+---
+
+## Caixas pendentes no topo da agenda (08/2026)
+
+Acima das tarefas aparecem blocos de caixa — cada um só para quem tem a permissão correspondente. Sem pendência, o bloco não aparece.
+
+**💵 Caixas a conferir** — para quem tem `Pode_Conferir_Dinheiro_Caixa`. Lista os caixas cujo dinheiro ainda não foi contado, com o nome da pessoa, o dia, quantas entregas e o valor a prestar. O botão **Conferir** abre o caixa daquele dia já na pessoa certa.
+- O aviso nasce **no dia seguinte** ao do caixa: quem confere no mesmo dia nunca chega a ser cobrado aqui
+- Caixa parado há 2 dias ou mais fica em vermelho (e gera o aviso no WhatsApp)
+- O próprio dono do caixa nunca vê o caixa dele nesta lista (ninguém confere o próprio dinheiro)
+- Se o valor mudou depois de conferido, o caixa volta para cá com a marca "valor mudou — conferir de novo"
+
+**🔒 Caixas a fechar** — para quem tem `Pode_Fechar_Caixa`. Aparece assim que o dinheiro é conferido (não espera o dia seguinte), mostrando quem conferiu, a hora e a diferença, se houve. O botão **Fechar** abre o caixa para encerrar.
+- Quem conferiu aquele caixa **não** o vê nesta lista — o fechamento é sempre de outra pessoa
+
+**✓ Conferi hoje** — histórico do que a própria pessoa conferiu no dia (valor contado, diferença e se o caixa já foi fechado). É a resposta para "o que eu conferi de caixa".

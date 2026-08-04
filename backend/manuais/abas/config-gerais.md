@@ -82,6 +82,14 @@ Desde 07/2026 **todas** as mensagens de WhatsApp do sistema saem pelo **WhatsApp
 4. Se aparecer o aviso de **modo de emergência**, o WhatsApp da empresa está sob risco de bloqueio e o bot passou a entregar só para quem já conversou com a gente — o resto fica na fila até o modo ser desligado no painel do bot.
 5. O domínio e a chave do bot **não ficam nesta tela** — são configurados no servidor (EasyPanel), por segurança. Se aparecer "Sem conexão", é aí que se resolve.
 
+### Caixa — conferência do dinheiro (só admin)
+Cartão **"Caixa — conferência do dinheiro"**. Quatro controles:
+
+1. **Exigir conferência do dinheiro para fechar** — trava o botão Fechar Caixa até alguém contar e assinar o dinheiro, e impede lançar em dia já fechado. **Nasce desligado**: ligue só depois de dar a permissão "Conferir Dinheiro do Caixa" a quem recebe o dinheiro (com ninguém podendo conferir, nenhum caixa fecharia). Ao ligar, a regra passa a valer **daquele dia em diante** — caixas anteriores não travam
+2. **Caixa só de segunda a sexta** — sábado e domingo deixam de ter caixa; o movimento do fim de semana entra no caixa da segunda seguinte
+3. **Tarefa na agenda quando houver diferença** — falta ou sobra no dinheiro vira lembrete para cobrar a pessoa (o vale continua sendo lançado à mão no Contas a Pagar)
+4. **Avisar no WhatsApp caixa parado** — quantos dias sem conferir até o bot avisar quem confere (0 = não avisar). Uma mensagem por pessoa por dia, às 8h
+
 ### Backup automático — só admin (somente leitura)
 O sistema faz backup sozinho para o **Google Drive** (a mesma conta conectada para os XMLs da contabilidade): o **banco de dados a cada 15 minutos** e os **arquivos anexados (PDFs, XMLs, fotos) 1x por dia** de madrugada. A janela máxima de perda de dados do banco é de 15 minutos.
 

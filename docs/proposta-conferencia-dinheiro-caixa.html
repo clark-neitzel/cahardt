@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proposta — Conferência do dinheiro no Caixa (v2)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#00754A; --primaryDark:#006241; --house:#1E3932; --mint:#d4e9e2;
+  --bg:#f2f0eb; --surface:#fff; --ink:rgba(0,0,0,.87); --ink2:#4b5563; --ink3:#6b7280;
+  --line:#e5e7eb; --gold:#cba258;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Manrope,-apple-system,"SF Pro Text",sans-serif;
+  letter-spacing:-.01em;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:0 16px 80px}
+h1,h2,h3{margin:0}
+a{color:var(--primary)}
+
+.hero{background:var(--house);color:#fff;padding:44px 16px 52px;margin-bottom:-28px}
+.hero .in{max-width:1080px;margin:0 auto}
+.tag{display:inline-block;background:rgba(255,255,255,.12);color:#cfe6dd;font-size:11px;font-weight:800;
+  letter-spacing:.14em;text-transform:uppercase;padding:6px 12px;border-radius:999px;margin-bottom:14px}
+.hero h1{font-size:30px;font-weight:800;line-height:1.15}
+.hero p{color:#bcd4cc;font-size:15px;line-height:1.6;margin:12px 0 0;max-width:660px}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,.05);margin-bottom:20px;overflow:hidden}
+.card>header{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid #f3f4f6}
+.card>header .t{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:var(--ink3)}
+.card .body{padding:20px}
+.num{width:24px;height:24px;border-radius:999px;background:var(--primary);color:#fff;font-size:12px;font-weight:800;
+  display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+p{line-height:1.65;color:var(--ink2);font-size:14.5px}
+.lead{font-size:15.5px;color:var(--ink)}
+ul{margin:8px 0;padding-left:20px}li{line-height:1.7;font-size:14.5px;color:var(--ink2);margin-bottom:4px}
+b,strong{color:var(--ink)}
+code{background:#f3f4f6;border-radius:5px;padding:1px 6px;font-size:12.5px;font-family:ui-monospace,Menlo,monospace;color:#374151}
+
+.regras{display:grid;grid-template-columns:1fr;gap:10px}
+@media(min-width:760px){.regras{grid-template-columns:1fr 1fr}}
+.regra{display:flex;gap:12px;align-items:flex-start;background:#fbfaf8;border:1px solid var(--line);border-radius:12px;padding:14px}
+.regra .ic{font-size:18px;line-height:1}
+.regra h4{margin:0 0 3px;font-size:14px;font-weight:800}
+.regra p{margin:0;font-size:13.5px}
+
+.ad{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:760px){.ad{grid-template-columns:1fr 1fr}}
+.ad>div{border-radius:12px;padding:16px;border:1px solid var(--line)}
+.ad .hoje{background:#fef2f2;border-color:#fecaca}
+.ad .fica{background:#f0fdf4;border-color:#bbf7d0}
+.ad h4{font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;margin:0 0 8px}
+.ad .hoje h4{color:#b91c1c}.ad .fica h4{color:var(--primaryDark)}
+.ad li{font-size:13.5px}
+
+.fluxo{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:4px 0}
+.passo{background:#fff;border:1.5px solid var(--line);border-radius:999px;padding:8px 14px;font-size:13px;font-weight:700;color:var(--ink2);white-space:nowrap}
+.passo.on{border-color:var(--primary);background:var(--mint);color:var(--primaryDark)}
+.passo.stop{border-color:#fca5a5;background:#fef2f2;color:#b91c1c}
+.seta{color:#9ca3af;font-weight:800}
+
+.tela{margin:26px 0 6px}
+.tela-h{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.tela-h .n{width:28px;height:28px;border-radius:999px;background:var(--house);color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.tela-h h3{font-size:17px;font-weight:800}
+.tela-h .sub{font-size:12.5px;color:var(--ink3)}
+.app{background:var(--bg);border:1px solid #dcd8d0;border-radius:14px;padding:14px;overflow-x:auto}
+.app.mobile{max-width:390px;margin:0 auto;padding:10px}
+.topbar{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;gap:10px}
+.topbar .l{display:flex;align-items:center;gap:9px;min-width:0}
+.chipmod{background:var(--mint);border-radius:9px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:15px;flex:0 0 auto}
+.topbar .tt{font-weight:800;font-size:15px}
+.topbar .dt{font-size:12px;color:var(--ink3)}
+.appcard{background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:10px}
+.appcard .h{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid #f3f4f6}
+.appcard .h .t{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.13em;color:var(--ink3)}
+.appcard .c{padding:14px}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:700}
+.b-amber{background:#fef3c7;color:#b45309}.b-green{background:#dcfce7;color:#166534}.b-gray{background:#f3f4f6;color:#374151}
+.b-red{background:#fee2e2;color:#b91c1c}.b-mint{background:var(--mint);color:var(--primaryDark)}.b-blue{background:#dbeafe;color:#1e40af}
+.b-purple{background:#f3e8ff;color:#6b21a8}
+.linha{display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:13.5px;color:var(--ink2);border-bottom:1px dashed #f0f0f0}
+.linha:last-child{border-bottom:0}
+.linha b{font-weight:700;color:var(--ink)}
+.total{display:flex;justify-content:space-between;align-items:center;background:var(--house);color:#fff;border-radius:10px;padding:12px 14px;margin-top:8px}
+.total .lb{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#a7c3ba}
+.total .vl{font-size:22px;font-weight:800}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:999px;padding:11px 18px;
+  font-size:13.5px;font-weight:700;cursor:default}
+.btn.pri{background:var(--primary);color:#fff}
+.btn.sec{background:#fff;border:1px solid var(--primary);color:var(--primary)}
+.btn.dis{background:#e5e7eb;color:#9ca3af}
+.btn.dan{background:#dc2626;color:#fff}
+.btn.gold{background:var(--gold);color:#fff}
+.btn.full{width:100%}
+.alerta{border-radius:10px;padding:11px 13px;font-size:13px;line-height:1.55;margin:8px 0}
+.al-amber{background:#fffbeb;border:1px solid #fde68a;color:#92400e}
+.al-red{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.al-green{background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d}
+.al-gray{background:#f9fafb;border:1px solid var(--line);color:#374151}
+.al-blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a}
+.campo{margin-bottom:11px}
+.campo label{display:block;font-size:12.5px;font-weight:600;color:#374151;margin-bottom:4px}
+.input{border:1px solid #d1d5db;border-radius:8px;padding:9px 11px;font-size:14px;background:#fff;color:var(--ink)}
+.input.big{font-size:20px;font-weight:800;padding:12px}
+.input.w{width:100%}
+.modal{max-width:440px;margin:0 auto;background:#fff;border-radius:18px;overflow:hidden;box-shadow:0 20px 45px rgba(0,0,0,.22)}
+.modal.wide{max-width:560px}
+.modal .mh{background:var(--house);color:#fff;padding:15px 18px;display:flex;align-items:center;gap:10px}
+.modal .mh .ti{font-weight:800;font-size:15.5px}
+.modal .mh .st{font-size:10.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#a7c3ba}
+.modal .mb{padding:18px}
+.toggle{width:40px;height:23px;border-radius:999px;background:#d1d5db;position:relative;flex:0 0 auto}
+.toggle:after{content:"";position:absolute;top:2.5px;left:3px;width:18px;height:18px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.toggle.on{background:var(--primary)}.toggle.on:after{left:19px}
+.permrow{display:flex;align-items:center;gap:12px;padding:11px 12px;border:1px solid var(--line);border-radius:11px;margin-bottom:8px;background:#fff}
+.permrow .tx{flex:1;min-width:0}
+.permrow .tx .n{font-size:13.5px;font-weight:700}
+.permrow .tx .d{font-size:12px;color:var(--ink3);line-height:1.45}
+.permrow.novo{border-color:var(--gold);background:#fffdf6}
+
+/* calculadora de cédulas */
+.ced{width:100%;border-collapse:collapse;font-size:13px}
+.ced th{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);text-align:right;padding:5px 6px;font-weight:800}
+.ced th:first-child{text-align:left}
+.ced td{padding:4px 6px;border-bottom:1px solid #f5f5f5;text-align:right;color:var(--ink2)}
+.ced td:first-child{text-align:left;font-weight:700;color:var(--ink)}
+.ced .qt{width:56px;border:1px solid #d1d5db;border-radius:7px;padding:5px 7px;text-align:center;font-size:13.5px;font-weight:700;background:#fff}
+.ced .qt.z{color:#c4c4c4;font-weight:500}
+.ced tr.sub td{background:#fbfaf8;font-weight:800;color:var(--ink);border-bottom:1px solid var(--line)}
+.cedwrap{border:1px solid var(--line);border-radius:11px;padding:10px 12px;background:#fff}
+.cedgrp{font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);padding:8px 6px 2px}
+
+.pin{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:999px;
+  background:var(--gold);color:#fff;font-size:11px;font-weight:800;flex:0 0 auto;vertical-align:middle}
+.legendas{margin-top:12px;display:grid;gap:7px}
+.legenda{display:flex;gap:9px;align-items:flex-start;font-size:13.5px;color:var(--ink2);line-height:1.5}
+.legenda b{color:var(--ink)}
+
+.acc{border:1px solid var(--line);border-radius:12px;background:#fff;margin-bottom:10px;overflow:hidden}
+.acc>summary{cursor:pointer;list-style:none;padding:14px 18px;font-weight:800;font-size:14.5px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.acc>summary::-webkit-details-marker{display:none}
+.acc>summary:after{content:"▾";color:var(--ink3);font-size:13px}
+.acc[open]>summary{border-bottom:1px solid #f3f4f6}
+.acc .ab{padding:16px 18px}
+.mini{font-size:12.5px;color:var(--ink3);line-height:1.6}
+.dupla{display:grid;gap:14px;grid-template-columns:1fr}
+@media(min-width:820px){.dupla{grid-template-columns:1fr 1fr}}
+table.tb{width:100%;border-collapse:collapse;font-size:13.5px}
+table.tb th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink3);padding:8px 10px;background:#f9fafb;border-bottom:1px solid var(--line)}
+table.tb td{padding:9px 10px;border-bottom:1px solid #f3f4f6;color:var(--ink2);vertical-align:top}
+.zap{max-width:340px;background:#e5ddd5;border-radius:14px;padding:14px;margin:0 auto}
+.zap .msg{background:#fff;border-radius:10px;padding:11px 13px;font-size:13px;line-height:1.55;color:#111;box-shadow:0 1px 1px rgba(0,0,0,.12)}
+.zap .hora{font-size:10px;color:#8b8b8b;text-align:right;margin-top:5px}
+.rodape{text-align:center;color:var(--ink3);font-size:12.5px;padding:26px 0 0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="in">
+    <span class="tag">Proposta v2 · Caixa · atualizada com os seus ajustes</span>
+    <h1>Conferência do dinheiro antes de fechar o caixa</h1>
+    <p>O caixa vai para conferência <b style="color:#fff">quando a folha é impressa</b> (ou na virada do dia).
+      Quem recebe o dinheiro conta <b style="color:#fff">nota por nota na calculadora do app</b> e assina.
+      Só depois disso o responsável consegue fechar — e caixa fechado não se mexe mais.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ───────── regra em 1 minuto ───────── -->
+  <div class="card">
+    <header><span class="num">✓</span><span class="t">A regra em 1 minuto</span></header>
+    <div class="body">
+      <div class="regras">
+        <div class="regra"><span class="ic">🖨️</span><div><h4>Imprimiu a folha, foi para conferência</h4>
+          <p>A impressão do caixa é a prestação de contas. Quem não imprimir, entra sozinho <b>na virada do dia</b>.</p></div></div>
+        <div class="regra"><span class="ic">🧮</span><div><h4>Calculadora de cédulas e moedas</h4>
+          <p>Quem confere digita quantas notas de 200, 100, 50… e as moedas. O app soma e compara com o esperado.</p></div></div>
+        <div class="regra"><span class="ic">🔐</span><div><h4>Quebra de caixa por pessoa</h4>
+          <p>Cada conferente tem o <b>limite de quebra</b> dele. Dentro do limite, resolve sozinho; acima, só com senha de quem autoriza.</p></div></div>
+        <div class="regra"><span class="ic">📝</span><div><h4>Diferença vira aviso na agenda</h4>
+          <p>O app já cria a tarefa para cobrar o responsável. O <b>vale é lançado à mão</b> no Contas a Pagar, quando for o caso.</p></div></div>
+        <div class="regra"><span class="ic">📅</span><div><h4>Agenda cobra no dia seguinte</h4>
+          <p>Caixa de segunda cobra na agenda de terça. Conferiu no mesmo dia? <b>Nem chega a virar aviso.</b></p></div></div>
+        <div class="regra"><span class="ic">📤</span><div><h4>Conferiu → volta para quem fecha</h4>
+          <p>O caixa cai na agenda do responsável como <b>“a fechar”</b>. Ele pode baixar e devolver antes; fechar, só depois.</p></div></div>
+        <div class="regra"><span class="ic">🔒</span><div><h4>Fechado não se altera</h4>
+          <p>Despesa, baixa, devolução: tudo travado no dia fechado. Para mexer, reabre — e volta para conferência.</p></div></div>
+        <div class="regra"><span class="ic">💬</span><div><h4>WhatsApp em caixa atrasado</h4>
+          <p>Passou do dia sem conferir, o bot avisa quem confere. Um aviso por dia, sem encher o saco.</p></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ───────── ciclo ───────── -->
+  <div class="card">
+    <header><span class="num">1</span><span class="t">O caminho completo do caixa</span></header>
+    <div class="body">
+      <div class="fluxo" style="margin-bottom:14px">
+        <span class="passo">Motorista roda o dia</span><span class="seta">→</span>
+        <span class="passo on">🖨️ Imprime a folha</span><span class="seta">→</span>
+        <span class="passo on">💵 Conferência do dinheiro</span><span class="seta">→</span>
+        <span class="passo on">📤 Vai para quem fecha</span><span class="seta">→</span>
+        <span class="passo">🔒 Fechado (não altera)</span>
+      </div>
+      <table class="tb">
+        <tr><th style="width:150px">Estado</th><th>O que significa</th><th style="width:200px">Aparece na agenda de</th></tr>
+        <tr><td><span class="badge b-gray">ABERTO</span></td><td>Dia rolando. Motorista entrega, escritório baixa, devolução é conferida.</td><td>ninguém</td></tr>
+        <tr><td><span class="badge b-amber">A CONFERIR</span></td><td>Folha impressa (ou virou o dia). O dinheiro está esperando alguém contar.</td><td><b>quem confere</b> — a partir do dia seguinte</td></tr>
+        <tr><td><span class="badge b-mint">A FECHAR</span></td><td>Dinheiro conferido e assinado. Só falta o fechamento.</td><td><b>quem fecha</b> — na hora</td></tr>
+        <tr><td><span class="badge b-green">FECHADO</span></td><td>Dia encerrado. Nada mais entra nem sai nesse dia.</td><td>ninguém</td></tr>
+        <tr><td><span class="badge b-red">REABERTO</span></td><td>Alguém precisou mexer. Cai a conferência e o caixa volta para o começo da fila.</td><td><b>quem confere</b> — na hora, com aviso</td></tr>
+      </table>
+      <div class="alerta al-gray" style="margin-top:12px">
+        <b>Por que a impressão é o gatilho:</b> a folha impressa é o papel que vai junto com o dinheiro. Quando ela sai da impressora,
+        na prática o motorista já está prestando contas — então é o momento certo de o caixa entrar na fila de quem recebe.
+        Quem não imprime (dia sem movimento, vendedor de balcão) entra automático na virada da meia-noite.
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ TELAS ═══════════ -->
+  <div class="card">
+    <header><span class="num">2</span><span class="t">As telas do app</span></header>
+    <div class="body">
+      <p class="lead" style="margin-top:0">Cada tela nova ou alterada, do jeito que vai ficar, com as legendas numeradas explicando cada pedaço.</p>
+
+      <!-- TELA 1 -->
+      <div class="tela">
+        <div class="tela-h"><span class="n">1</span><div><h3>Imprimir a folha manda o caixa para conferência</h3>
+          <div class="sub">Caixa &rsaquo; botão Imprimir</div></div></div>
+        <div class="dupla">
+          <div class="app">
+            <div class="appcard">
+              <div class="h"><span class="t">Caixa de João Motorista · 04/08</span><span class="badge b-gray" style="margin-left:auto">ABERTO</span></div>
+              <div class="c">
+                <div class="total"><div><div class="lb">Valor a prestar</div></div><div class="vl">R$ 3.695,10</div></div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+                  <button class="btn sec">🖨️ Imprimir folha do caixa <span class="pin" style="margin-left:4px">1</span></button>
+                  <button class="btn dis">🔒 Fechar Caixa</button>
+                </div>
+              </div>
+            </div>
+            <div class="modal" style="max-width:none;margin-top:14px">
+              <div class="mh" style="padding:13px 16px">🖨️ <div><div class="st">Antes de imprimir</div><div class="ti">Enviar para conferência?</div></div></div>
+              <div class="mb">
+                <div class="alerta al-blue" style="margin-top:0">Ao imprimir, este caixa entra na fila de <b>conferência do dinheiro</b>.
+                  Confira se lançou todas as despesas antes. <span class="pin">2</span></div>
+                <button class="btn pri full">Imprimir e enviar para conferência</button>
+                <button class="btn sec full" style="margin-top:8px">Só imprimir (2ª via, não envia) <span class="pin" style="margin-left:4px">3</span></button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="appcard">
+              <div class="h"><span class="t">Depois de imprimir</span></div>
+              <div class="c">
+                <div class="alerta al-amber" style="margin-top:0"><b>📤 Enviado para conferência</b><br>
+                  por João Motorista · 04/08 às 18:10 · valor a prestar R$ 3.695,10</div>
+                <div class="linha"><span>Status do caixa</span><span class="badge b-amber">A CONFERIR</span></div>
+                <div class="linha"><span>Na fila de</span><b>Ana Financeiro, Carlos Gerente</b></div>
+                <div class="linha"><span>Vai cobrar na agenda</span><b>a partir de terça, 05/08 <span class="pin">4</span></b></div>
+              </div>
+            </div>
+            <div class="alerta al-gray"><b>Sem impressão?</b> À meia-noite todo caixa do dia que ainda estiver ABERTO entra na fila sozinho,
+              com a etiqueta “entrou pela virada do dia”. Nenhum dia escapa.</div>
+            <div class="legendas">
+              <div class="legenda"><span class="pin">1</span><span>O botão de imprimir que já existe ganha essa pergunta antes.</span></div>
+              <div class="legenda"><span class="pin">2</span><span>Último momento de lembrar de lançar despesa — depois de conferido, mudar derruba a conferência.</span></div>
+              <div class="legenda"><span class="pin">3</span><span>2ª via não reenvia nem muda nada — para quando a folha rasgou ou sumiu.</span></div>
+              <div class="legenda"><span class="pin">4</span><span>Aviso na agenda só no dia seguinte. Conferindo hoje, ninguém é incomodado.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TELA 2 -->
+      <div class="tela">
+        <div class="tela-h"><span class="n">2</span><div><h3>Caixa aguardando conferência</h3>
+          <div class="sub">Caixa &rsaquo; visão de quem recebe o dinheiro</div></div></div>
+        <div class="app">
+          <div class="topbar">
+            <div class="l"><div class="chipmod">💰</div>
+              <div><div class="tt">Caixa Diário</div><div class="dt">Segunda, 04/08/2026 · João Motorista</div></div></div>
+            <span class="badge b-amber">● A CONFERIR <span class="pin" style="margin-left:4px">1</span></span>
+          </div>
+          <div class="appcard">
+            <div class="h"><span class="t">Resumo do dia</span></div>
+            <div class="c">
+              <div class="linha"><span>Adiantamento (troco)</span><b>R$ 200,00</b></div>
+              <div class="linha"><span>Recebido em espécie nas entregas</span><b>R$ 3.140,00</b></div>
+              <div class="linha"><span>Cobranças de rota em dinheiro</span><b>R$ 480,00</b></div>
+              <div class="linha"><span>Faltas de devolução cobradas</span><b>R$ 62,50</b></div>
+              <div class="linha"><span>Despesas do dia</span><b style="color:#b91c1c">− R$ 187,40</b></div>
+              <div class="total"><div><div class="lb">Valor a prestar</div><div style="font-size:11.5px;color:#a7c3ba">o que o João tem que entregar em dinheiro</div></div>
+                <div class="vl">R$ 3.695,10</div></div>
+            </div>
+          </div>
+          <div class="appcard" style="border-color:#fde68a">
+            <div class="h" style="background:#fffbeb;border-bottom-color:#fde68a"><span class="t" style="color:#b45309">💵 Conferência do dinheiro <span class="pin">2</span></span></div>
+            <div class="c">
+              <div class="alerta al-amber" style="margin-top:0">
+                <b>Enviado para conferência às 18:10 pelo João.</b> Ninguém contou o dinheiro ainda —
+                enquanto isso o caixa não pode ser fechado.</div>
+              <button class="btn pri">🧮 Conferir o dinheiro</button>
+              <span style="font-size:12px;color:var(--ink3);margin-left:10px">só para quem tem <b>Conferir Dinheiro do Caixa</b> <span class="pin">3</span></span>
+            </div>
+          </div>
+          <div class="appcard">
+            <div class="c" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <button class="btn dis">🔒 Fechar Caixa <span class="pin" style="margin-left:4px">4</span></button>
+              <span style="font-size:12.5px;color:#b45309">Aguardando a conferência do dinheiro.</span>
+              <span style="font-size:12.5px;color:var(--ink3);margin-left:auto">Baixas e devoluções continuam liberadas <span class="pin">5</span></span>
+            </div>
+          </div>
+        </div>
+        <div class="legendas">
+          <div class="legenda"><span class="pin">1</span><span><b>Selo “A CONFERIR”</b> — o dinheiro está na mão de alguém e ninguém assinou por ele ainda.</span></div>
+          <div class="legenda"><span class="pin">2</span><span>Cartão novo, no mesmo lugar onde já fica a conferência de devoluções.</span></div>
+          <div class="legenda"><span class="pin">3</span><span>Quem não tem a permissão vê o cartão, mas sem botão — serve de informação.</span></div>
+          <div class="legenda"><span class="pin">4</span><span>Fechar travado, com o motivo escrito ao lado — mesmo padrão das pendências que já existem.</span></div>
+          <div class="legenda"><span class="pin">5</span><span>Como você pediu: nesse meio-tempo o responsável ainda pode <b>dar baixas e resolver devoluções</b>. Só o fechar é que espera.</span></div>
+        </div>
+      </div>
+
+      <!-- TELA 3 — CALCULADORA -->
+      <div class="tela">
+        <div class="tela-h"><span class="n">3</span><div><h3>A calculadora de cédulas e moedas</h3>
+          <div class="sub">O coração da conferência — contar e registrar o que veio</div></div></div>
+        <div class="app" style="padding:22px 14px">
+          <div class="modal wide">
+            <div class="mh">🧮 <div><div class="st">Caixa de João Motorista · 04/08</div><div class="ti">Conferência do dinheiro</div></div></div>
+            <div class="mb">
+              <div class="alerta al-gray" style="margin-top:0;display:flex;justify-content:space-between;align-items:center">
+                <span>Valor a prestar segundo o sistema</span><b style="font-size:16px">R$ 3.695,10</b>
+              </div>
+
+              <div class="cedwrap">
+                <div class="cedgrp">Cédulas <span class="pin" style="margin-left:4px">1</span></div>
+                <table class="ced">
+                  <tr><th>Nota</th><th>Quantas</th><th>Subtotal</th></tr>
+                  <tr><td>R$ 200</td><td><span class="qt">2</span></td><td>R$ 400,00</td></tr>
+                  <tr><td>R$ 100</td><td><span class="qt">18</span></td><td>R$ 1.800,00</td></tr>
+                  <tr><td>R$ 50</td><td><span class="qt">21</span></td><td>R$ 1.050,00</td></tr>
+                  <tr><td>R$ 20</td><td><span class="qt">14</span></td><td>R$ 280,00</td></tr>
+                  <tr><td>R$ 10</td><td><span class="qt">12</span></td><td>R$ 120,00</td></tr>
+                  <tr><td>R$ 5</td><td><span class="qt">7</span></td><td>R$ 35,00</td></tr>
+                  <tr><td>R$ 2</td><td><span class="qt">3</span></td><td>R$ 6,00</td></tr>
+                  <tr class="sub"><td>Total em cédulas</td><td>77 notas</td><td>R$ 3.691,00</td></tr>
+                </table>
+                <div class="cedgrp" style="margin-top:6px">Moedas</div>
+                <table class="ced">
+                  <tr><td>R$ 1,00</td><td><span class="qt">3</span></td><td>R$ 3,00</td></tr>
+                  <tr><td>R$ 0,50</td><td><span class="qt">2</span></td><td>R$ 1,00</td></tr>
+                  <tr><td>R$ 0,25</td><td><span class="qt z">0</span></td><td>—</td></tr>
+                  <tr><td>R$ 0,10</td><td><span class="qt">1</span></td><td>R$ 0,10</td></tr>
+                  <tr><td>R$ 0,05</td><td><span class="qt z">0</span></td><td>—</td></tr>
+                  <tr class="sub"><td>Total em moedas</td><td>6 moedas</td><td>R$ 4,10</td></tr>
+                </table>
+              </div>
+
+              <div class="total" style="margin-top:12px"><div><div class="lb">Total contado <span class="pin" style="margin-left:4px">2</span></div>
+                <div style="font-size:11.5px;color:#a7c3ba">83 peças de dinheiro</div></div><div class="vl">R$ 3.695,10</div></div>
+
+              <div class="alerta al-green" style="display:flex;gap:8px"><span>✓</span><span><b>Bate certo com o esperado.</b> Diferença: R$ 0,00 <span class="pin">3</span></span></div>
+
+              <div class="campo" style="margin-top:10px"><label>Observação (opcional)</label>
+                <input class="input w" value="Recebido no balcão, notas conferidas na frente do João."></div>
+
+              <div class="alerta al-gray" style="font-size:12.5px">
+                Vai ficar gravado: <b>Ana Financeiro · 04/08 às 18:42 · R$ 3.695,10</b> — com a contagem nota a nota. <span class="pin">4</span>
+              </div>
+              <button class="btn pri full" style="margin-top:4px">🖐️ Confirmo que conferi o dinheiro</button>
+              <button class="btn sec full" style="margin-top:8px">Cancelar</button>
+            </div>
+          </div>
+        </div>
+        <div class="legendas">
+          <div class="legenda"><span class="pin">1</span><span><b>Todas as cédulas e moedas do real.</b> Só digitar a quantidade — o subtotal e o total saem sozinhos.
+            Campo em branco conta como zero, ninguém precisa preencher a linha toda.</span></div>
+          <div class="legenda"><span class="pin">2</span><span><b>Total contado</b> é o que a conferência assina — não é digitado à mão, sai da contagem. Isso evita “bater” o valor no olho.</span></div>
+          <div class="legenda"><span class="pin">3</span><span>A comparação com o esperado aparece na hora, a cada tecla.</span></div>
+          <div class="legenda"><span class="pin">4</span><span><b>A composição fica guardada</b>: dá para saber depois que naquele dia vieram 21 notas de 50 — útil quando falta dinheiro
+            ou quando o banco reclama de nota rasgada. Também sai no relatório impresso.</span></div>
+          <div class="legenda"><span class="pin">5</span><span>Se parte do valor não é dinheiro vivo (cheque, por exemplo), tem uma linha “outros” para lançar o restante com descrição.</span></div>
+        </div>
+      </div>
+
+      <!-- TELA 4 — DIFERENÇA / QUEBRA DE CAIXA -->
+      <div class="tela">
+        <div class="tela-h"><span class="n">4</span><div><h3>Quando falta ou sobra dinheiro</h3>
+          <div class="sub">A quebra de caixa de cada conferente decide se precisa de senha</div></div></div>
+
+        <div class="alerta al-blue" style="margin-bottom:14px">
+          <b>Quebra de caixa</b> = o quanto de diferença aquela pessoa pode fechar por conta própria.
+          É um valor <b>configurado por usuário</b>, junto com a permissão de contar (tela 10).
+          Ex.: Ana R$ 20,00 · Bruna R$ 5,00 · Carlos (gerente) sem limite.
+        </div>
+
+        <div class="dupla">
+          <div>
+            <p style="font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--primaryDark);margin:0 0 8px">Caso 1 — dentro da quebra da Ana</p>
+            <div class="app" style="padding:16px 12px">
+              <div class="modal" style="max-width:none">
+                <div class="mh" style="background:#92400e">⚠️ <div><div class="st">João Motorista · 04/08</div><div class="ti">Diferença de R$ 12,00</div></div></div>
+                <div class="mb">
+                  <div class="linha"><span>Esperado</span><b>R$ 3.695,10</b></div>
+                  <div class="linha"><span>Contado</span><b>R$ 3.683,10</b></div>
+                  <div class="linha"><span>Diferença</span><b style="color:#b45309">− R$ 12,00 · faltou</b></div>
+                  <div class="alerta al-amber" style="margin-top:10px">
+                    <b>Dentro da sua quebra de caixa</b> (R$ 20,00). Você mesma pode fechar a conferência. <span class="pin">1</span></div>
+                  <div class="campo"><label>Motivo da diferença <span style="color:#b91c1c">*obrigatório</span></label>
+                    <input class="input w" value="Faltou troco, João já avisou"></div>
+                  <button class="btn pri full">Confirmar conferência com falta de R$ 12,00</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p style="font-weight:800;font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#b91c1c;margin:0 0 8px">Caso 2 — passou da quebra da Ana</p>
+            <div class="app" style="padding:16px 12px">
+              <div class="modal" style="max-width:none">
+                <div class="mh" style="background:#7f1d1d">🔐 <div><div class="st">João Motorista · 04/08</div><div class="ti">Diferença de R$ 45,10</div></div></div>
+                <div class="mb">
+                  <div class="linha"><span>Esperado</span><b>R$ 3.695,10</b></div>
+                  <div class="linha"><span>Contado (77 notas + 6 moedas)</span><b>R$ 3.650,00</b></div>
+                  <div class="linha"><span>Diferença</span><b style="color:#b91c1c">− R$ 45,10 · faltou</b></div>
+                  <div class="alerta al-red" style="margin-top:10px"><b>Passou da sua quebra de caixa</b> (R$ 20,00).
+                    Precisa da senha de quem autoriza. <span class="pin">2</span></div>
+                  <div class="campo"><label>Quem autoriza</label>
+                    <div class="input w" style="display:flex;justify-content:space-between;color:var(--ink2)"><span>Carlos Gerente</span><span>▾</span></div></div>
+                  <div class="campo"><label>Senha do autorizador</label><input class="input w" value="••••••••"></div>
+                  <div class="campo"><label>Motivo da diferença <span style="color:#b91c1c">*obrigatório</span></label>
+                    <input class="input w" value="João diz que pagou peça do carro e não lançou a despesa"></div>
+                  <button class="btn dan full">Confirmar com falta de R$ 45,10</button>
+                  <button class="btn sec full" style="margin-top:8px">📲 Pedir autorização à distância <span class="pin" style="margin-left:4px">3</span></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dupla" style="margin-top:16px">
+          <div class="app" style="padding:16px 12px">
+            <div class="modal" style="max-width:none;box-shadow:none;border:1px solid var(--line)">
+              <div class="mh" style="background:var(--gold)">✅ <div><div class="st">Conferência registrada</div><div class="ti">Falta de R$ 45,10</div></div></div>
+              <div class="mb">
+                <div class="alerta al-amber" style="margin-top:0">Registrada no caixa do João, autorizada por Carlos Gerente. <span class="pin">4</span></div>
+                <div class="appcard" style="margin:0 0 10px;border-color:var(--gold);background:#fffdf6">
+                  <div class="c" style="padding:12px">
+                    <div style="font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-bottom:5px">📅 Tarefa criada na agenda</div>
+                    <div style="font-weight:700;font-size:13.5px">Cobrar João sobre falta de R$ 45,10 no caixa de 04/08</div>
+                    <div style="font-size:12px;color:var(--ink3);margin-top:3px">Responsável: Carlos Gerente · amanhã 09:00 ·
+                      <i>“se for descontar, lançar o vale à mão no Contas a Pagar”</i></div>
+                  </div>
+                </div>
+                <button class="btn pri full">Criar a tarefa</button>
+                <button class="btn sec full" style="margin-top:8px;border-color:#d1d5db;color:var(--ink3)">Não criar — só deixar registrado</button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="legendas" style="margin-top:0">
+              <div class="legenda"><span class="pin">1</span><span><b>Dentro da quebra:</b> sem senha, sem chamar ninguém — mas o motivo continua obrigatório e a diferença fica registrada
+                no caixa e no relatório. Não é um valor que “some”, é um valor que a pessoa assume.</span></div>
+              <div class="legenda"><span class="pin">2</span><span><b>Acima da quebra:</b> mesmo mecanismo da falta de devolução que já funciona hoje — escolhe o autorizador, ele digita a senha dele.</span></div>
+              <div class="legenda"><span class="pin">3</span><span>Autorizador longe? Ele recebe o pedido em pop-up no app dele e libera de onde estiver, igual à devolução.</span></div>
+              <div class="legenda"><span class="pin">4</span><span><b>O encaminhamento é só o aviso na agenda</b>, como você pediu. O sistema <b>não lança vale sozinho</b> —
+                se a diferença for descontar da pessoa, alguém lança o vale à mão no <b>Contas a Pagar</b>, e a tarefa serve de lembrete.</span></div>
+            </div>
+            <div class="alerta al-gray"><b>Sobra também é diferença.</b> Se vier dinheiro a mais, vale a mesma regra —
+              dentro da quebra fecha direto, acima pede senha. Sobra sem explicação costuma ser baixa esquecida.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TELA 5 -->
+      <div class="tela">
+        <div class="tela-h"><span class="n">5</span><div><h3>Conferido — vai para quem fecha</h3>
+          <div class="sub">Caixa &rsaquo; estado “A FECHAR”</div></div></div>
+        <div class="app">
+          <div class="topbar">
+            <div class="l"><div class="chipmod">💰</div><div><div class="tt">Caixa Diário</div><div class="dt">Segunda, 04/08/2026 · João Motorista</div></div></div>
+            <span class="badge b-mint">💵 A FECHAR</span>
+          </div>
+          <div class="appcard" style="border-color:#bbf7d0">
+            <div class="h" style="background:#f0fdf4;border-bottom-color:#bbf7d0"><span class="t" style="color:var(--primaryDark)">💵 Dinheiro conferido</span></div>
+            <div class="c">
+              <div class="alerta al-green" style="margin-top:0">
+                <b>✓ Ana Financeiro conferiu</b> em 04/08 às 18:42 — R$ 3.695,10, sem diferença.
+                <span style="display:block;margin-top:4px;font-size:12px">77 cédulas + 6 moedas · ver contagem</span> <span class="pin">1</span></div>
+              <button class="btn sec">Desfazer conferência <span class="pin" style="margin-left:4px">2</span></button>
+            </div>
+          </div>
+          <div class="appcard">
+            <div class="c" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <button class="btn pri">🔒 Fechar Caixa</button>
+              <span style="font-size:12.5px;color:var(--ink3)">liberado para <b>Carlos Gerente</b> — está na agenda dele como “a fechar” <span class="pin">3</span></span>
+            </div>
+          </div>
+          <div class="alerta al-amber"><b>Se o valor mudar antes de fechar</b> (despesa lançada atrasada, baixa nova), a conferência cai
+            e o caixa volta para “A CONFERIR”: <i>“era R$ 3.695,10 quando a Ana conferiu, agora é R$ 3.712,60 — confira de novo”</i>. <span class="pin">4</span></div>
+        </div>
+        <div class="legendas">
+          <div class="legenda"><span class="pin">1</span><span>A assinatura e a contagem ficam visíveis no caixa e saem na folha impressa.</span></div>
+          <div class="legenda"><span class="pin">2</span><span>Só quem conferiu (ou admin) desfaz, e só enquanto o caixa não estiver fechado.</span></div>
+          <div class="legenda"><span class="pin">3</span><span>Quem conferiu não fecha o mesmo caixa — a Ana veria o botão recusar com esse aviso.</span></div>
+          <div class="legenda"><span class="pin">4</span><span>É o que impede conferir cedo e lançar movimento depois.</span></div>
+        </div>
+      </div>
+
+      <!-- TELA 6 — R$ 0 -->
+      <div class="tela">
+        <div class="tela-h"><span class="n">6</span><div><h3>Caixa de R$ 0,00 — também precisa de OK</h3>
+          <div class="sub">Dia sem movimento, vendedor de folga</div></div></div>
+        <div class="app" style="max-width:560px">
+          <div class="appcard">
+            <div class="h"><span class="t">Caixa de Pedro Vendedor · 04/08</span><span class="badge b-amber" style="margin-left:auto">A CONFERIR</span></div>
+            <div class="c">
+              <div class="total" style="background:#6b7280"><div><div class="lb">Valor a prestar</div></div><div class="vl">R$ 0,00</div></div>
+              <div class="alerta al-amber">Entrou na fila pela <b>virada do dia</b> (não houve impressão). Alguém precisa confirmar que
+                <b>não havia dinheiro a receber</b> — é isso que encerra o dia.</div>
+              <button class="btn pri full">🖐️ Conferi: não havia dinheiro a receber (R$ 0,00)</button>
+              <p class="mini" style="text-align:center;margin:8px 0 0">Sem calculadora de cédulas — um clique só.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TELA 7 — AGENDA -->
+      <div class="tela">
+        <div class="tela-h"><span class="n">7</span><div><h3>Minha Agenda — a conferir e a fechar</h3>
+          <div class="sub">Tarefas &rsaquo; topo da agenda, cada bloco para quem tem a permissão</div></div></div>
+        <div class="app">
+          <div class="topbar">
+            <div class="l"><div class="chipmod">📅</div><div><div class="tt">Minha Agenda</div><div class="dt">Terça, 05/08/2026</div></div></div>
+            <div style="display:flex;gap:6px"><span class="badge b-amber">2 a conferir</span><span class="badge b-mint">3 a fechar</span></div>
+          </div>
+
+          <div class="appcard" style="border-color:#fde68a">
+            <div class="h" style="background:#fffbeb;border-bottom-color:#fde68a">
+              <span class="t" style="color:#b45309">💵 Caixas a conferir <span class="pin">1</span></span>
+              <span class="badge b-amber" style="margin-left:auto">2</span></div>
+            <div class="c" style="padding:8px 10px">
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 6px;border-bottom:1px solid #f3f4f6">
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:700;font-size:14px">João Motorista</div>
+                  <div style="font-size:12.5px;color:var(--ink3)">Caixa de <b>ontem, 04/08</b> · impresso às 18:10 · 18 entregas</div></div>
+                <div style="text-align:right"><div style="font-weight:800;font-size:15px">R$ 3.695,10</div><div style="font-size:11px;color:var(--ink3)">a prestar</div></div>
+                <button class="btn pri" style="padding:9px 16px">Conferir</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 6px">
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:700;font-size:14px">Marcos Entregador <span class="badge b-red" style="margin-left:4px">3 dias parado 💬</span></div>
+                  <div style="font-size:12.5px;color:#b91c1c">Caixa de sexta, 01/08 · WhatsApp enviado hoje 08:00 <span class="pin">2</span></div></div>
+                <div style="text-align:right"><div style="font-weight:800;font-size:15px">R$ 1.204,00</div><div style="font-size:11px;color:var(--ink3)">a prestar</div></div>
+                <button class="btn pri" style="padding:9px 16px">Conferir</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="appcard" style="border-color:#bbf7d0">
+            <div class="h" style="background:#f0fdf4;border-bottom-color:#bbf7d0">
+              <span class="t" style="color:var(--primaryDark)">🔒 Caixas a fechar <span class="pin">3</span></span>
+              <span class="badge b-mint" style="margin-left:auto">3</span></div>
+            <div class="c" style="padding:8px 10px">
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 6px;border-bottom:1px solid #f3f4f6">
+                <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">Rafael Motorista · 04/08</div>
+                  <div style="font-size:12.5px;color:var(--primaryDark)">✓ conferido por Ana às 17:20 · sem diferença</div></div>
+                <b style="font-size:15px">R$ 2.180,00</b>
+                <button class="btn pri" style="padding:9px 16px">Fechar</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 6px;border-bottom:1px solid #f3f4f6">
+                <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">Ana Vendas · 04/08</div>
+                  <div style="font-size:12.5px;color:#b91c1c">✓ conferido às 16:05 · faltou R$ 45,10 (autorizado por Carlos)</div></div>
+                <b style="font-size:15px">R$ 940,00</b>
+                <button class="btn pri" style="padding:9px 16px">Fechar</button>
+              </div>
+              <div style="display:flex;align-items:center;gap:12px;padding:11px 6px">
+                <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">Pedro Vendedor · 04/08</div>
+                  <div style="font-size:12.5px;color:var(--ink3)">✓ dia sem movimento, conferido por Ana</div></div>
+                <b style="font-size:15px;color:var(--ink3)">R$ 0,00</b>
+                <button class="btn pri" style="padding:9px 16px">Fechar</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="appcard">
+            <div class="h"><span class="t">✓ Conferi hoje <span class="pin">4</span></span></div>
+            <div class="c" style="padding:8px 10px">
+              <div style="display:flex;justify-content:space-between;padding:9px 6px;font-size:13px">
+                <span><b>Rafael Motorista · 04/08</b> <span style="color:var(--ink3)">às 17:20 · sem diferença</span></span><b>R$ 2.180,00</b></div>
+              <div style="display:flex;justify-content:space-between;padding:9px 6px;font-size:13px;border-top:1px solid #f3f4f6">
+                <span><b>Ana Vendas · 04/08</b> <span style="color:#b91c1c">faltou R$ 45,10</span></span><b>R$ 940,00</b></div>
+            </div>
+          </div>
+
+          <div class="appcard"><div class="h"><span class="t">Tarefas de hoje</span></div>
+            <div class="c" style="color:var(--ink3);font-size:13px">…a agenda normal continua abaixo, sem mudança.</div></div>
+        </div>
+        <div class="legendas">
+          <div class="legenda"><span class="pin">1</span><span><b>Só entra aqui a partir do dia seguinte ao do caixa</b>, como você pediu. Conferiu no mesmo dia, nunca virou aviso.
+            Os atrasados vão subindo com contador de dias e ficam em vermelho.</span></div>
+          <div class="legenda"><span class="pin">2</span><span>Marca de que o WhatsApp de cobrança já saiu para esse caixa hoje.</span></div>
+          <div class="legenda"><span class="pin">3</span><span><b>Bloco novo “Caixas a fechar”</b>, para quem tem a permissão de fechar — aparece assim que o dinheiro é conferido,
+            sem esperar o dia seguinte (aqui o dinheiro já está resolvido, é só encerrar).</span></div>
+          <div class="legenda"><span class="pin">4</span><span><b>“Conferi hoje”</b> responde “o que eu conferi de caixa”; com filtro de período vira seu histórico de conferências.</span></div>
+        </div>
+      </div>
+
+      <!-- TELA 8 — WHATSAPP -->
+      <div class="tela">
+        <div class="tela-h"><span class="n">8</span><div><h3>WhatsApp de caixa atrasado</h3>
+          <div class="sub">Uma mensagem por dia, às 8h, pelo bot da Ana</div></div></div>
+        <div class="dupla">
+          <div class="app" style="padding:20px 14px">
+            <div class="zap">
+              <div class="msg">
+                💵 *Caixa aguardando conferência*<br><br>
+                Tem caixa esperando alguém contar o dinheiro:<br><br>
+                • *Marcos Entregador* — 01/08 — R$ 1.204,00 — _há 3 dias_<br>
+                • *João Motorista* — 04/08 — R$ 3.695,10 — _desde ontem_<br><br>
+                Enquanto não conferir, esses caixas não podem ser fechados.
+                <div class="hora">08:00 ✓✓</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="alerta al-gray" style="margin-top:0"><b>Como fica dentro das regras do bot:</b> mensagem do tipo <code>interno</code>,
+              só para quem tem a permissão de conferir, <b>no máximo uma por dia por pessoa</b>, juntando todos os caixas atrasados
+              numa mensagem só. Nada de mensagem a cada caixa.</div>
+            <div class="appcard" style="margin-top:12px">
+              <div class="h"><span class="t">Quando dispara</span></div>
+              <div class="c">
+                <div class="linha"><span>Caixa conferido no mesmo dia</span><b style="color:var(--primaryDark)">nenhuma mensagem</b></div>
+                <div class="linha"><span>Passou 1 dia sem conferir</span><b>aviso na agenda</b></div>
+                <div class="linha"><span>Passou 2 dias sem conferir</span><b>WhatsApp às 8h</b></div>
+                <div class="linha"><span>Continua parado</span><b>1 WhatsApp por dia até conferir</b></div>
+              </div>
+            </div>
+            <p class="mini">Se preferir mandar já no 1º dia de atraso, é só mudar o número — fica configurável.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- TELA 9 — FECHADO NÃO ALTERA -->
+      <div class="tela">
+        <div class="tela-h"><span class="n">9</span><div><h3>Caixa fechado não se altera</h3>
+          <div class="sub">E o que acontece quando alguém precisa mexer</div></div></div>
+        <div class="dupla">
+          <div class="app">
+            <div class="appcard">
+              <div class="h"><span class="t">Caixa de João · 04/08</span><span class="badge b-green" style="margin-left:auto">🔒 FECHADO</span></div>
+              <div class="c">
+                <div class="alerta al-green" style="margin-top:0">Fechado por <b>Carlos Gerente</b> em 05/08 às 08:12.<br>
+                  Conferido por Ana Financeiro · R$ 3.695,10 · sem diferença.</div>
+                <div class="linha"><span>Lançar despesa neste dia</span><span class="badge b-gray">🔒 bloqueado</span></div>
+                <div class="linha"><span>Dar baixa de entrega deste dia</span><span class="badge b-gray">🔒 bloqueado</span></div>
+                <div class="linha"><span>Registrar devolução deste dia</span><span class="badge b-gray">🔒 bloqueado</span></div>
+                <div class="linha"><span>Mudar adiantamento</span><span class="badge b-gray">🔒 bloqueado</span></div>
+                <div class="alerta al-gray" style="margin-top:10px;font-size:12.5px"><span class="pin">1</span>
+                  Quem tentar recebe: <i>“O caixa deste dia já está fechado. Peça a reabertura para lançar.”</i></div>
+                <button class="btn dan" style="margin-top:4px">🔓 Reabrir caixa <span class="pin" style="margin-left:4px">2</span></button>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="modal" style="max-width:none;box-shadow:none;border:1px solid #fecaca">
+              <div class="mh" style="background:#7f1d1d">🔓 <div><div class="st">Atenção</div><div class="ti">Reabrir o caixa de 04/08?</div></div></div>
+              <div class="mb">
+                <div class="alerta al-red" style="margin-top:0">Reabrir <b>cancela a conferência do dinheiro</b>.
+                  O caixa volta para <b>Ana Financeiro</b> conferir de novo antes de poder ser fechado. <span class="pin">3</span></div>
+                <div class="campo"><label>Motivo da reabertura <span style="color:#b91c1c">*obrigatório</span></label>
+                  <input class="input w" value="Faltou lançar a despesa de pedágio de R$ 32,00"></div>
+                <button class="btn dan full">Reabrir e devolver para conferência</button>
+              </div>
+            </div>
+            <div class="legendas">
+              <div class="legenda"><span class="pin">1</span><span>O bloqueio vale em todas as portas de entrada do dia: despesa, baixa, devolução, cobrança de rota, adiantamento e baixa de título no caixa.</span></div>
+              <div class="legenda"><span class="pin">2</span><span>Só quem tem <b>Reverter Caixa</b> (permissão que já existe) enxerga o botão.</span></div>
+              <div class="legenda"><span class="pin">3</span><span><b>É a sua regra:</b> mexeu, volta para o responsável. A Ana recebe de volta na agenda com o aviso
+                “reaberto por Carlos — motivo: …” e o valor novo.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TELA 10 — PERMISSÕES -->
+      <div class="tela">
+        <div class="tela-h"><span class="n">10</span><div><h3>Aba de usuários — as permissões novas</h3>
+          <div class="sub">Usuários &rsaquo; Permissões &rsaquo; Permissões do Caixa</div></div></div>
+        <div class="app" style="max-width:660px">
+          <div class="appcard">
+            <div class="h"><span class="t">Permissões do Caixa · Ana Financeiro</span></div>
+            <div class="c">
+              <div class="permrow novo"><div class="toggle on"></div><div class="tx">
+                <div class="n">Conferir Dinheiro do Caixa <span class="badge b-amber" style="margin-left:5px">NOVA</span></div>
+                <div class="d">Recebe o dinheiro, conta na calculadora e assina a conferência que libera o fechamento</div></div></div>
+
+              <div class="permrow novo" style="margin-left:22px;background:#fffdf6">
+                <span style="font-size:16px">💸</span>
+                <div class="tx"><div class="n">Quebra de caixa desta pessoa <span class="pin" style="margin-left:4px">1</span></div>
+                  <div class="d">Diferença que a Ana pode fechar sozinha. Acima disso, senha de quem autoriza.</div></div>
+                <input class="input" style="width:110px;text-align:right;font-weight:800" value="R$ 20,00">
+              </div>
+
+              <div class="permrow novo"><div class="toggle"></div><div class="tx">
+                <div class="n">Autorizar Diferença no Caixa <span class="badge b-amber" style="margin-left:5px">NOVA</span></div>
+                <div class="d">A senha desta pessoa libera diferença acima da quebra de quem está conferindo <span class="pin">2</span></div></div></div>
+
+              <div class="permrow"><div class="toggle on"></div><div class="tx"><div class="n">Fechar Caixa</div>
+                <div class="d">Fechar o caixa do dia <b>— agora só depois do dinheiro conferido</b></div></div></div>
+              <div class="permrow"><div class="toggle on"></div><div class="tx"><div class="n">Conferir Devoluções no Caixa</div>
+                <div class="d">Recebe a mercadoria que voltou e digita a contagem física</div></div></div>
+              <div class="permrow"><div class="toggle"></div><div class="tx"><div class="n">Reverter Caixa</div>
+                <div class="d">Reabrir caixa fechado — devolve para conferência</div></div></div>
+            </div>
+          </div>
+
+          <div class="appcard">
+            <div class="h"><span class="t">Como ficaria na prática <span class="pin">3</span></span></div>
+            <div class="c">
+              <div class="linha"><span><b>Ana</b> Financeiro · confere todo dia</span><b>quebra R$ 20,00</b></div>
+              <div class="linha"><span><b>Bruna</b> Balcão · confere quando a Ana falta</span><b>quebra R$ 5,00</b></div>
+              <div class="linha"><span><b>Carlos</b> Gerente · confere e autoriza</span><b>sem limite</b></div>
+              <div class="linha"><span><b>João</b> Motorista</span><span class="badge b-gray">não confere</span></div>
+            </div>
+          </div>
+
+          <div class="alerta al-amber"><b>As duas permissões nascem desligadas para todo mundo</b>, inclusive para quem já é
+            “Auditor Financeiro do Caixa”, e não entram nos perfis prontos. A quebra nasce em <b>R$ 0,00</b> —
+            ou seja, qualquer diferença pede senha até você definir o limite de cada um.</div>
+        </div>
+        <div class="legendas">
+          <div class="legenda"><span class="pin">1</span><span><b>Campo de valor por usuário</b>, dentro da própria permissão — só aparece quando o “Conferir Dinheiro” está ligado.
+            Fica no mesmo padrão da “Tabela de cobrança de faltas” que já existe por usuário.</span></div>
+          <div class="legenda"><span class="pin">2</span><span>Autorizar é permissão separada de conferir: dá para ter quem confere sem autorizar, e quem autoriza sem conferir.</span></div>
+          <div class="legenda"><span class="pin">3</span><span>Toda alteração desses campos entra no <b>histórico de permissões</b> que já existe (quem mudou, quando, com desfazer).</span></div>
+        </div>
+      </div>
+
+      <!-- TELA 11 — FIM DE SEMANA -->
+      <div class="tela">
+        <div class="tela-h"><span class="n">11</span><div><h3>Sábado e domingo não têm caixa</h3>
+          <div class="sub">O movimento do fim de semana é prestado na segunda</div></div></div>
+        <div class="dupla">
+          <div class="app">
+            <div class="appcard">
+              <div class="h"><span class="t">Caixa · escolher o dia</span></div>
+              <div class="c">
+                <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+                  <button class="btn sec" style="padding:8px 12px">‹</button>
+                  <div class="input" style="flex:1;text-align:center;font-weight:700">Segunda, 10/08/2026</div>
+                  <button class="btn sec" style="padding:8px 12px">›</button>
+                </div>
+                <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+                  <span class="badge b-gray">Qui 07</span><span class="badge b-gray">Sex 08</span>
+                  <span class="badge b-gray" style="opacity:.45;text-decoration:line-through">Sáb 09</span>
+                  <span class="badge b-gray" style="opacity:.45;text-decoration:line-through">Dom 10</span>
+                  <span class="badge b-mint">Seg 10</span>
+                </div>
+                <div class="alerta al-amber" style="margin-top:12px"><span class="pin">1</span> <b>Sábado e domingo não abrem caixa.</b>
+                  Entregas, despesas e cobranças do fim de semana entram no caixa de <b>segunda-feira</b>.</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="appcard">
+              <div class="h"><span class="t">Caixa de segunda 10/08 <span class="pin">2</span></span></div>
+              <div class="c">
+                <div class="linha"><span>Entregas de sábado 08/08</span><b>4 · R$ 820,00</b></div>
+                <div class="linha"><span>Entregas de domingo 09/08</span><b>1 · R$ 190,00</b></div>
+                <div class="linha"><span>Entregas de segunda 10/08</span><b>16 · R$ 2.940,00</b></div>
+                <div class="linha"><span>Despesas do fim de semana</span><b style="color:#b91c1c">− R$ 96,00</b></div>
+                <div class="total"><div><div class="lb">Valor a prestar</div><div style="font-size:11.5px;color:#a7c3ba">sáb + dom + seg juntos</div></div><div class="vl">R$ 3.854,00</div></div>
+              </div>
+            </div>
+            <div class="legendas">
+              <div class="legenda"><span class="pin">1</span><span>Abriu o app no sábado e foi ao Caixa? Cai direto na segunda seguinte, com esse aviso.</span></div>
+              <div class="legenda"><span class="pin">2</span><span>O movimento do fim de semana aparece <b>separado por dia</b>, para não virar um bolo só.</span></div>
+              <div class="legenda"><span class="pin">3</span><span>A entrega/despesa continua gravada com a data real (sábado). Muda só <b>em qual caixa ela é prestada</b>.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TELA 12 — MOBILE -->
+      <div class="tela">
+        <div class="tela-h"><span class="n">12</span><div><h3>No celular</h3>
+          <div class="sub">Agenda e calculadora em 390px</div></div></div>
+        <div class="dupla">
+          <div class="app mobile">
+            <div class="topbar" style="padding:8px 10px">
+              <div class="l"><div class="chipmod" style="width:28px;height:28px;font-size:13px">📅</div>
+                <div><div class="tt" style="font-size:13.5px">Minha Agenda</div><div class="dt" style="font-size:11px">Ter, 05/08</div></div></div>
+              <span class="badge b-amber" style="font-size:10px">2</span>
+            </div>
+            <div class="appcard" style="border-color:#fde68a">
+              <div class="h" style="background:#fffbeb;border-bottom-color:#fde68a;padding:9px 12px"><span class="t" style="color:#b45309;font-size:10px">💵 Caixas a conferir</span></div>
+              <div class="c" style="padding:10px">
+                <div style="border-bottom:1px solid #f3f4f6;padding-bottom:10px;margin-bottom:10px">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+                    <span style="font-weight:700;font-size:13.5px">João Motorista</span><b style="font-size:14px">R$ 3.695,10</b></div>
+                  <div style="font-size:11.5px;color:var(--ink3);margin-bottom:8px">Ontem, 04/08 · impresso 18:10</div>
+                  <button class="btn pri full" style="min-height:44px">🧮 Conferir dinheiro</button>
+                </div>
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+                    <span style="font-weight:700;font-size:13.5px">Marcos Entregador</span><b style="font-size:14px">R$ 1.204,00</b></div>
+                  <div style="font-size:11.5px;color:#b91c1c;margin-bottom:8px">01/08 · parado há 3 dias</div>
+                  <button class="btn pri full" style="min-height:44px">🧮 Conferir dinheiro</button>
+                </div>
+              </div>
+            </div>
+            <div class="appcard" style="border-color:#bbf7d0">
+              <div class="h" style="background:#f0fdf4;border-bottom-color:#bbf7d0;padding:9px 12px"><span class="t" style="color:var(--primaryDark);font-size:10px">🔒 Caixas a fechar</span></div>
+              <div class="c" style="padding:10px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+                  <span style="font-weight:700;font-size:13.5px">Rafael Motorista</span><b style="font-size:14px">R$ 2.180,00</b></div>
+                <div style="font-size:11.5px;color:var(--primaryDark);margin-bottom:8px">✓ conferido por Ana às 17:20</div>
+                <button class="btn pri full" style="min-height:44px">🔒 Fechar caixa</button>
+              </div>
+            </div>
+          </div>
+          <div class="app mobile">
+            <div class="modal" style="max-width:none;box-shadow:none;border:1px solid var(--line)">
+              <div class="mh" style="padding:12px 14px">🧮 <div><div class="st" style="font-size:9.5px">João Motorista · 04/08</div><div class="ti" style="font-size:14px">Conferir dinheiro</div></div></div>
+              <div class="mb" style="padding:14px">
+                <div class="alerta al-gray" style="margin-top:0;display:flex;justify-content:space-between;font-size:12.5px"><span>Esperado</span><b>R$ 3.695,10</b></div>
+                <div class="cedwrap" style="padding:8px 10px">
+                  <table class="ced">
+                    <tr><th>Nota</th><th>Qtd</th><th>Subtotal</th></tr>
+                    <tr><td>R$ 200</td><td><span class="qt" style="width:46px">2</span></td><td>400,00</td></tr>
+                    <tr><td>R$ 100</td><td><span class="qt" style="width:46px">18</span></td><td>1.800,00</td></tr>
+                    <tr><td>R$ 50</td><td><span class="qt" style="width:46px">21</span></td><td>1.050,00</td></tr>
+                    <tr><td>R$ 20</td><td><span class="qt" style="width:46px">14</span></td><td>280,00</td></tr>
+                    <tr><td colspan="3" style="text-align:center;color:var(--ink3);font-size:11.5px;padding:6px">▾ 10 · 5 · 2 · moedas</td></tr>
+                    <tr class="sub"><td>Contado</td><td>83</td><td>3.695,10</td></tr>
+                  </table>
+                </div>
+                <div class="alerta al-green" style="font-size:12.5px">✓ Bate certo · diferença R$ 0,00</div>
+                <button class="btn pri full" style="min-height:48px">🖐️ Confirmo que conferi</button>
+                <button class="btn sec full" style="margin-top:8px;min-height:44px">Cancelar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ───────── detalhes ───────── -->
+  <div class="card">
+    <header><span class="num">3</span><span class="t">O que fica combinado</span></header>
+    <div class="body">
+
+      <details class="acc" open><summary>Quem pode o quê</summary><div class="ab">
+        <table class="tb">
+          <tr><th>Ação</th><th>Quem faz</th><th>Trava</th></tr>
+          <tr><td>Mandar para conferência</td><td>Qualquer um que imprima a folha do caixa · ou o sistema, na virada do dia</td><td>—</td></tr>
+          <tr><td>Conferir o dinheiro</td><td><b>Conferir Dinheiro do Caixa</b> (nova)</td><td>Nunca o dono do próprio caixa</td></tr>
+          <tr><td>Fechar diferença até a própria quebra</td><td>O próprio conferente, sem senha</td><td>Limite configurado no usuário · motivo obrigatório</td></tr>
+          <tr><td>Autorizar diferença acima da quebra</td><td><b>Autorizar Diferença no Caixa</b> (nova) — por senha</td><td>Não pode ser quem está conferindo</td></tr>
+          <tr><td>Fechar o caixa</td><td><b>Fechar Caixa</b> (já existe)</td><td>Só depois de conferido; não pode ser quem conferiu</td></tr>
+          <tr><td>Desfazer a conferência</td><td>Quem conferiu, ou admin</td><td>Só enquanto não estiver fechado</td></tr>
+          <tr><td>Reabrir caixa fechado</td><td><b>Reverter Caixa</b> (já existe)</td><td>Exige motivo e devolve para conferência</td></tr>
+          <tr><td>Lançar no dia fechado</td><td>ninguém</td><td>Bloqueado até reabrir</td></tr>
+        </table>
+        <p class="mini" style="margin-top:10px">O <b>admin</b> continua passando por cima do resto, mas “quem conferiu não fecha” vale para ele também —
+        senão a separação não serve para nada. (Uma linha a mudar, se preferir liberar.)</p>
+      </div></details>
+
+      <details class="acc" open><summary>O que fica registrado em cada conferência</summary><div class="ab">
+        <ul>
+          <li>Quem conferiu, data e hora.</li>
+          <li>Valor esperado no momento da conferência (para detectar mudança depois).</li>
+          <li><b>Contagem completa</b>: quantas notas de cada valor e quantas moedas de cada valor.</li>
+          <li>Total contado, diferença, motivo da diferença e quem autorizou por senha.</li>
+          <li>Observação livre.</li>
+          <li>Se virou tarefa na agenda ou vale — com o link para o registro.</li>
+        </ul>
+        <p class="mini">Tudo isso sai também na folha impressa do caixa e fica consultável no histórico “Conferi” da agenda.</p>
+      </div></details>
+
+      <details class="acc" open><summary>O que acontece com a “conferência” que existe hoje</summary><div class="ab">
+        <p style="margin-top:0">Hoje existe um botão <b>“Conferir Caixa”</b> que só aparece <i>depois</i> de fechado e muda o status para CONFERIDO — é o que está solto.</p>
+        <ul>
+          <li>Esse botão <b>sai da tela</b>. Quem confere agora é a conferência do dinheiro, antes do fechamento.</li>
+          <li><b>FECHADO</b> passa a ser o estado final — e agora significa “dinheiro contado, assinado e dia travado”.</li>
+          <li>Caixas antigos marcados como CONFERIDO <b>ficam como estão</b>; nada é reescrito no histórico.</li>
+        </ul>
+      </div></details>
+
+      <details class="acc" open><summary>O que o sistema NÃO faz sozinho</summary><div class="ab">
+        <ul>
+          <li><b>Não lança vale.</b> O vale é um <b>Contas a Pagar lançado à mão</b>, quando o dono decidir descontar.
+            O que o sistema faz é registrar a diferença e <b>criar o aviso na agenda</b> para não deixar cair no esquecimento.</li>
+          <li><b>Não desconta em folha</b> nem mexe no RH.</li>
+          <li><b>Não perdoa diferença sozinho.</b> Mesmo dentro da quebra, a diferença fica registrada com nome, motivo e valor —
+            some da tela, não do histórico.</li>
+        </ul>
+      </div></details>
+
+      <details class="acc" open><summary>Tamanho da obra e ordem de implantação</summary><div class="ab">
+        <p style="margin-top:0">Nada aqui mexe em NF, boleto ou integração — é caixa, agenda e permissão.</p>
+        <table class="tb">
+          <tr><th style="width:130px">Etapa</th><th>O que entra</th></tr>
+          <tr><td><b>1</b></td><td>Permissões novas (desligadas) + quebra de caixa por usuário + banco: conferência, contagem de cédulas, diferença, envio para conferência.</td></tr>
+          <tr><td><b>2</b></td><td>Tela do caixa: cartão de conferência, calculadora, senha da diferença, trava do Fechar.</td></tr>
+          <tr><td><b>3</b></td><td>Impressão manda para conferência + virada do dia automática.</td></tr>
+          <tr><td><b>4</b></td><td>Agenda: “a conferir” (dia seguinte), “a fechar”, “conferi hoje” + contador no menu.</td></tr>
+          <tr><td><b>5</b></td><td>Caixa fechado travado + reabertura devolvendo para conferência.</td></tr>
+          <tr><td><b>6</b></td><td>Segunda a sexta (fim de semana na segunda).</td></tr>
+          <tr><td><b>7</b></td><td>WhatsApp de caixa atrasado + tarefa automática na agenda quando houver diferença.</td></tr>
+          <tr><td><b>8</b></td><td>Manual da aba Caixa e da Agenda (Clippy) + página de novidade para o grupo.</td></tr>
+        </table>
+        <p class="mini" style="margin-top:10px">Dá para publicar por etapas: até a 4 já resolve o essencial (“o que conferi, o que falta, só fecha depois de conferir”).</p>
+      </div></details>
+
+    </div>
+  </div>
+
+  <p class="rodape">Proposta v2 — CA-Hardt · 04/08/2026</p>
+</div>
+</body>
+</html>
