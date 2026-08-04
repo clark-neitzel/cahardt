@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Plano para aprovação — Ponto sem confusão + Prestador por hora</title>
+<link rel="icon" href="/logo-192.png">
+<style>
+  :root {
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932;
+    --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258;
+    --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66;
+    letter-spacing:-0.01em;
+  }
+  *{box-sizing:border-box}
+  html,body{max-width:100%;overflow-x:hidden}
+  body{margin:0;background:var(--cream);color:var(--ink);line-height:1.55;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;
+    overflow-wrap:break-word}
+  .wrap{max-width:680px;margin:0 auto;padding:0 16px 60px}
+  /* tabela larga rola dentro do próprio cartão, nunca empurra a página */
+  .rolar{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+  .hero{background:linear-gradient(168deg,var(--house) 0%,#16302a 100%);color:#fff;padding:38px 16px 92px;text-align:center}
+  .hero .chip{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+    color:#d4e9e2;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+    border-radius:999px;padding:6px 14px;margin-bottom:14px}
+  .hero h1{font-size:26px;margin:0 0 10px;font-weight:800}
+  .hero p{color:#c8d6d0;max-width:490px;margin:0 auto;font-size:15px}
+
+  .cartao{background:#fff;border:1px solid #e5e7eb;border-radius:16px;box-shadow:0 8px 24px rgba(30,57,50,.10);padding:20px;margin-top:-62px}
+  .cartao+.cartao,.sec{margin-top:16px}
+  .sec-titulo{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);margin:0 0 12px}
+  .texto{margin:0;font-size:14.5px;color:#3f4a46}
+  .texto b{color:var(--house)}
+  .texto+.texto{margin-top:10px}
+
+  .divisor{display:flex;align-items:center;gap:12px;margin:30px 0 4px}
+  .divisor span{flex:none;background:var(--house);color:#fff;font-size:11px;font-weight:800;letter-spacing:.12em;
+    text-transform:uppercase;padding:7px 14px;border-radius:999px}
+  .divisor hr{flex:1;border:none;border-top:1px solid #d8d5cd}
+
+  .item-plano{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin-top:14px}
+  .item-plano h2{font-size:17px;font-weight:800;color:var(--house);margin:0 0 4px;display:flex;gap:9px;align-items:flex-start}
+  .item-plano h2 .n{flex:none;width:26px;height:26px;border-radius:999px;background:var(--primary);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;margin-top:1px}
+  .item-plano .porque{font-size:13.5px;color:#6b7280;margin:0 0 10px;padding-left:35px}
+
+  .problema{border:1px solid #fecaca;background:#fef2f2;border-radius:12px;padding:12px 14px;margin-top:12px;font-size:13.5px;color:#7f1d1d}
+  .problema b{color:#991b1b}
+  .solucao{border:1px solid rgba(0,117,74,.25);background:var(--mint);border-radius:12px;padding:12px 14px;margin-top:12px;font-size:13.5px;color:var(--primary-dark)}
+  .solucao b{color:var(--house)}
+  .aviso{border:1px solid #fcd34d;background:#fffbeb;border-radius:12px;padding:12px 14px;margin-top:12px;font-size:13.5px;color:#92400e}
+  .aviso b{color:#78350f}
+
+  /* mockups */
+  .tela{background:#f7f6f2;border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin-top:12px}
+  .tela.dupla{display:flex;gap:10px;flex-wrap:wrap}
+  .tela.dupla > div{flex:1 1 210px;min-width:0}
+  .rotulo-mock{font-size:9.5px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px}
+  .rotulo-mock.ruim{color:#b91c1c}
+  .rotulo-mock.bom{color:var(--primary)}
+  .app-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px;position:relative}
+  .fone{max-width:250px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;position:relative}
+  .fone-topo{background:var(--primary);color:#fff;padding:10px 12px;display:flex;align-items:center;gap:8px}
+  .fone-topo .ic{background:rgba(255,255,255,.2);border-radius:7px;padding:4px 6px;font-size:13px}
+  .fone-topo small{display:block;font-size:8.5px;opacity:.8;line-height:1.2}
+  .fone-topo b{font-size:12.5px}
+  .fone-corpo{padding:12px;text-align:center}
+  .relogio{font-size:30px;font-weight:800;margin:6px 0 0}
+  .data-hoje{font-size:10.5px;color:#6b7280}
+  .estado{display:inline-block;font-size:10px;font-weight:800;border-radius:999px;padding:4px 10px;margin-top:8px}
+  .estado.dentro{background:#dcfce7;color:#166534}
+  .estado.fora{background:#f3f4f6;color:#4b5563}
+
+  .btn-grande{display:block;width:100%;border-radius:11px;padding:13px 8px;font-size:14.5px;font-weight:800;margin-top:9px;color:#fff;text-align:center}
+  .btn-entrada{background:var(--primary)}
+  .btn-saida{background:#c2703a}
+  .btn-menor{display:block;width:100%;border-radius:11px;padding:9px 8px;font-size:12px;font-weight:800;margin-top:7px;text-align:center;
+    background:#fff;border:1.5px solid #d1d5db;color:#4b5563}
+  .btn-verde{background:var(--primary);color:#fff;font-size:11.5px;font-weight:800;border-radius:999px;padding:7px 13px;display:inline-block}
+  .btn-branco{background:#fff;border:1px solid #d1d5db;color:#374151;font-size:11.5px;font-weight:700;border-radius:999px;padding:6px 12px;display:inline-block}
+  .btn-vermelho{background:#dc2626;color:#fff;font-size:11.5px;font-weight:800;border-radius:999px;padding:7px 13px;display:inline-block}
+
+  .lista-batidas{margin-top:12px;border-top:1px solid #f0efec;padding-top:9px;text-align:left}
+  .lista-batidas .cab{font-size:9px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+  .lb{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:3px 0}
+  .lb .tag{font-size:9.5px;font-weight:800;border-radius:999px;padding:2px 8px}
+  .tag-e{background:#dcfce7;color:#166534}
+  .tag-s{background:#fee2e2;color:#9a3412}
+  .tag-err{background:#fee2e2;color:#b91c1c}
+  .lb b{font-weight:700}
+
+  .alerta-tela{border:1px solid #fcd34d;background:#fffbeb;border-radius:10px;padding:9px 10px;margin-top:10px;font-size:11px;color:#92400e;text-align:left}
+  .alerta-tela b{color:#78350f;display:block;margin-bottom:2px}
+  .ok-tela{border:1px solid rgba(0,117,74,.3);background:#f0fdf7;border-radius:10px;padding:9px 10px;margin-top:10px;font-size:11px;color:var(--primary-dark);text-align:left}
+
+  .campo{margin-top:9px;text-align:left}
+  .campo .cap{font-size:9.5px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.05em}
+  .campo .cx{border:1px solid #d1d5db;border-radius:8px;background:#fff;padding:8px 10px;font-size:12.5px;font-weight:700;color:var(--house);margin-top:3px}
+  .campo .cx.vazio{color:#9ca3af;font-weight:500}
+  .campo .aj{font-size:10px;color:#9ca3af;margin-top:3px}
+  .campos-lado{display:flex;gap:8px}
+  .campos-lado .campo{flex:1}
+
+  .tabelinha{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:9px}
+  .tabelinha th{background:#f3f2ee;color:#6b7280;font-size:8.5px;text-transform:uppercase;letter-spacing:.05em;padding:6px 5px;text-align:left;font-weight:800;white-space:nowrap}
+  .tabelinha td{border-top:1px solid #f0efec;padding:6px 5px;color:#3f4a46}
+  .tabelinha td.n{text-align:right;white-space:nowrap;font-weight:700}
+  .tabelinha td b,.tabelinha td:first-child{white-space:nowrap}
+  .total-linha span,.total-linha b{white-space:nowrap}
+  .selo{font-size:9.5px;font-weight:800;border-radius:999px;padding:3px 8px;display:inline-block;white-space:nowrap}
+  .s-ok{background:#dcfce7;color:#166534}
+  .s-pend{background:#fef3c7;color:#b45309}
+  .s-falta{background:#fee2e2;color:#b91c1c}
+
+  .total-linha{display:flex;justify-content:space-between;align-items:center;margin-top:11px;background:var(--mint);
+    border:1px solid rgba(0,117,74,.3);border-radius:11px;padding:10px 13px}
+  .total-linha span{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--primary-dark)}
+  .total-linha b{font-size:19px;font-weight:800;color:var(--primary-dark)}
+
+  .pin{position:absolute;top:50%;transform:translateY(-50%);right:-7px;width:22px;height:22px;border-radius:999px;
+    background:var(--gold);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;
+    box-shadow:0 2px 6px rgba(0,0,0,.25);z-index:5}
+  .pin.topo{top:-9px;transform:none}
+  .legenda{margin-top:13px}
+  .legenda .item{display:flex;gap:10px;margin-top:9px;font-size:13.5px;color:#3f4a46}
+  .legenda .item b{color:var(--house)}
+  .legenda .num{flex:none;width:22px;height:22px;border-radius:999px;background:var(--gold);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;margin-top:1px}
+
+  .decisao{border:1.5px solid var(--gold);background:#fffdf7;border-radius:14px;padding:15px;margin-top:12px}
+  .decisao h3{margin:0 0 4px;font-size:15px;color:var(--house);font-weight:800}
+  .decisao p{margin:0 0 8px;font-size:13.5px;color:#6b7280}
+  .op{border:1px solid #e5e7eb;background:#fff;border-radius:10px;padding:9px 11px;margin-top:7px;font-size:13.5px;color:#3f4a46}
+  .op b{color:var(--house)}
+  .op.rec{border-color:var(--primary);background:#f0fdf7}
+  .op .marca{font-size:10px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.06em;display:block}
+
+  .etapas{margin-top:12px}
+  .etapa{display:flex;gap:12px;margin-top:12px}
+  .etapa .num{flex:none;width:28px;height:28px;border-radius:999px;background:var(--primary);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+  .etapa .txt{flex:1}
+  .etapa b{color:var(--house);font-size:14.5px}
+  .etapa p{margin:2px 0 0;font-size:13.5px;color:#3f4a46}
+  .etapa .tempo{font-size:11px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.05em}
+
+  .tec{font-size:12.5px;color:#6b7280;background:#fafaf8;border:1px solid #eee;border-radius:10px;padding:11px 13px;margin-top:11px}
+  .tec b{color:#4b5563}
+  .tec code{background:#eee;border-radius:4px;padding:1px 4px;font-size:11.5px}
+
+  .rodape{text-align:center;color:var(--ink-soft);font-size:12.5px;margin-top:34px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="chip">📋 Plano para aprovação</span>
+  <h1>Ponto sem confusão + Prestador por hora</h1>
+  <p>Duas coisas: <b>acabar com a bagunça de entrada/saída trocada</b> que a equipe está relatando, e
+  atender quem <b>presta serviço por hora</b> — mesmo cadastro, mas o que importa é hora × preço da hora.</p>
+</div>
+
+<div class="wrap">
+
+  <!-- ═══ DIAGNÓSTICO ═══ -->
+  <div class="cartao">
+    <p class="sec-titulo">🔍 Por que está dando errado (achei a causa)</p>
+    <p class="texto">
+      Hoje o app <b>não pergunta</b> se você está entrando ou saindo: ele <b>conta</b> as batidas do dia.
+      1ª = entrada, 2ª = saída, 3ª = entrada… Enquanto ninguém esquece nada, funciona.
+    </p>
+    <div class="problema">
+      <b>O problema:</b> basta <b>esquecer UMA batida</b> que <b>todas as seguintes do dia ficam invertidas</b> —
+      a saída é gravada como entrada e a entrada como saída. Foi exatamente o que a Simone descreveu:
+      <i>“bati 9:08 a saída pro café e esqueci de bater a entrada 9:30… aí ficou tudo errado lá, a entrada na saída
+      e a saída na entrada.”</i>
+    </div>
+    <p class="texto" style="margin-top:12px">
+      E aí começa o segundo problema: <b>ela não consegue arrumar sozinha</b>. Precisa mandar WhatsApp, alguém do
+      escritório abrir o app e corrigir na mão. Todo esquecimento vira uma conversa — e, se ninguém lembrar, o erro
+      só aparece no fechamento do mês.
+    </p>
+    <div class="solucao">
+      <b>O que eu proponho:</b> a pessoa <b>diz o que está batendo</b> (não é mais adivinhado), o app <b>avisa na hora</b>
+      quando o dia está estranho, e quem esqueceu <b>pede o acerto pelo próprio celular</b> — o RH só aprova com um clique,
+      dentro do app, com registro de quem pediu e quem aprovou.
+    </div>
+  </div>
+
+  <!-- ═══ PARTE 1 ═══ -->
+  <div class="divisor"><span>Parte 1 · Ponto sem confusão</span><hr></div>
+
+  <!-- 1 -->
+  <div class="item-plano">
+    <h2><span class="n">1</span> A pessoa escolhe: Entrada ou Saída</h2>
+    <p class="porque">Acaba a inversão em cadeia. Esquecer uma batida deixa de contaminar o resto do dia.</p>
+
+    <div class="tela dupla">
+      <div>
+        <p class="rotulo-mock ruim">✗ Hoje</p>
+        <div class="fone">
+          <div class="fone-topo"><span class="ic">🕐</span><div><small>Registro de Ponto</small><b>CA-Hardt</b></div></div>
+          <div class="fone-corpo">
+            <div class="relogio">09:30</div>
+            <div class="data-hoje">quinta-feira, 06 de agosto</div>
+            <span class="estado fora">● Fora do expediente</span>
+            <div class="btn-grande btn-entrada">→ Registrar Entrada</div>
+            <div class="alerta-tela"><b>O que acontece</b>
+              Ela saiu para o café e esqueceu de bater. O app acha que ela está fora e grava
+              <b>ENTRADA</b> — quando na verdade ela está <b>voltando</b>. A partir daqui inverteu tudo.</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="rotulo-mock bom">✓ Proposta</p>
+        <div class="fone">
+          <div class="fone-topo"><span class="ic">🕐</span><div><small>Registro de Ponto</small><b>CA-Hardt</b></div></div>
+          <div class="fone-corpo">
+            <div class="relogio">09:30</div>
+            <div class="data-hoje">quinta-feira, 06 de agosto</div>
+            <span class="estado fora">● Fora do expediente</span>
+            <div style="position:relative">
+              <div class="btn-grande btn-entrada">→ ENTRADA<span class="pin topo">1</span></div>
+              <div class="btn-grande btn-saida" style="opacity:.92">← SAÍDA</div>
+            </div>
+            <div class="ok-tela" style="position:relative">Os dois botões sempre visíveis. Ela toca no que está
+              realmente fazendo — <b>o app não adivinha mais</b>.<span class="pin">2</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span>O botão que o app <b>acha</b> que é o certo continua em destaque (maior/primeiro) — no dia normal é um toque só, igual hoje.</span></div>
+      <div class="item"><span class="num">2</span><span>Mas o outro está <b>sempre ali do lado</b>. Quem esqueceu de bater escolhe o correto e o dia não inverte.</span></div>
+    </div>
+  </div>
+
+  <!-- 2 -->
+  <div class="item-plano">
+    <h2><span class="n">2</span> O app avisa na hora quando o dia está estranho</h2>
+    <p class="porque">O erro deixa de aparecer só no fim do mês. Quem errou vê na hora e resolve na hora.</p>
+
+    <div class="tela">
+      <div class="fone">
+        <div class="fone-topo"><span class="ic">🕐</span><div><small>Registro de Ponto</small><b>CA-Hardt</b></div></div>
+        <div class="fone-corpo">
+          <div class="relogio">13:01</div>
+          <div class="data-hoje">quinta-feira, 06 de agosto</div>
+          <span class="estado dentro">● Trabalhando desde 09:08</span>
+
+          <div class="alerta-tela" style="position:relative">
+            <b>⚠️ Confere o seu dia</b>
+            Você está com <b>entrada às 09:08 sem saída</b> há 3h52. Se você esqueceu de bater alguma coisa,
+            peça o acerto agora — leva 20 segundos.
+            <span class="pin">1</span>
+          </div>
+          <div class="btn-menor" style="position:relative">✋ Esqueci de bater — pedir acerto<span class="pin">2</span></div>
+
+          <div class="lista-batidas">
+            <div class="cab">Hoje · total até agora 3h52</div>
+            <div class="lb"><span class="tag tag-e">Entrada</span><b>07:28 📍</b></div>
+            <div class="lb"><span class="tag tag-s">Saída</span><b>09:08 📍</b></div>
+            <div class="lb"><span class="tag tag-e">Entrada</span><b>09:08 📍</b></div>
+            <div class="lb" style="opacity:.5"><span class="tag tag-err">falta a saída</span><b>—</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span>Regras do aviso: <b>número ímpar de batidas</b> há muito tempo, <b>duas entradas seguidas</b>, <b>duas saídas seguidas</b> ou <b>duas batidas em menos de 2 minutos</b> (toque duplo sem querer).</span></div>
+      <div class="item"><span class="num">2</span><span>O <b>total de horas do dia</b> aparece ali embaixo — ela mesma percebe se está fechando certo.</span></div>
+    </div>
+
+    <div class="aviso">
+      <b>Não vou mandar lembrete automático no WhatsApp.</b> O número da empresa já foi banido uma vez por automação,
+      e mensagem que não é resposta a um ato da pessoa é justamente o tipo de envio que derruba o número.
+      O aviso fica <b>na tela do ponto</b> e no <b>painel do RH</b> (item 4).
+    </div>
+  </div>
+
+  <!-- 3 -->
+  <div class="item-plano">
+    <h2><span class="n">3</span> “Esqueci de bater” — o pedido sai do WhatsApp</h2>
+    <p class="porque">Hoje isso é conversa no WhatsApp e correção manual. Vira um pedido dentro do app, com rastro.</p>
+
+    <div class="tela dupla">
+      <div>
+        <p class="rotulo-mock">📱 No celular de quem esqueceu</p>
+        <div class="fone">
+          <div class="fone-topo"><span class="ic">✋</span><div><small>Pedir acerto</small><b>Ponto</b></div></div>
+          <div class="fone-corpo" style="text-align:left">
+            <div class="campo"><div class="cap">Dia</div><div class="cx">Hoje · 06/08</div></div>
+            <div class="campos-lado">
+              <div class="campo"><div class="cap">Horário</div><div class="cx">09:30</div></div>
+              <div class="campo"><div class="cap">O que era</div><div class="cx">Entrada ▾</div></div>
+            </div>
+            <div class="campo"><div class="cap">Motivo</div><div class="cx">Esqueci ao voltar do café</div></div>
+            <div class="btn-grande btn-entrada" style="font-size:13px;position:relative">Enviar pedido<span class="pin">1</span></div>
+            <div class="ok-tela">Fica marcado como <b>“aguardando o RH”</b> na tela dela até ser aprovado.</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="rotulo-mock">💻 No app do escritório</p>
+        <div class="app-card">
+          <p class="rotulo-mock" style="margin:0 0 6px">Ponto → Pedidos de acerto <span class="selo s-pend">3 pendentes</span></p>
+          <div style="border:1px solid #f0efec;border-radius:9px;padding:9px;margin-top:6px;position:relative">
+            <div style="font-size:12px"><b>Simone</b> <span style="color:#9ca3af;font-size:10px">· pediu hoje 13:01</span></div>
+            <div style="font-size:11.5px;color:#3f4a46">06/08 · <b>09:30 Entrada</b></div>
+            <div style="font-size:10.5px;color:#6b7280">“Esqueci ao voltar do café”</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">
+              <span class="btn-verde">Aprovar</span><span class="btn-branco">Recusar</span>
+            </div>
+            <span class="pin">2</span>
+          </div>
+          <div style="border:1px solid #f0efec;border-radius:9px;padding:9px;margin-top:7px">
+            <div style="font-size:12px"><b>Rafael</b> <span style="color:#9ca3af;font-size:10px">· pediu ontem 17:40</span></div>
+            <div style="font-size:11.5px;color:#3f4a46">05/08 · <b>16:35 Saída</b></div>
+            <div style="font-size:10.5px;color:#6b7280">“Bateria do celular acabou”</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">
+              <span class="btn-verde">Aprovar</span><span class="btn-branco">Recusar</span>
+            </div>
+          </div>
+          <div class="ok-tela" style="position:relative">Aprovou → a batida entra no cartão marcada como <b>ajuste</b>,
+            guardando <b>quem pediu, o motivo, quem aprovou e quando</b>.<span class="pin">3</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span>Ela escolhe o dia (hoje ou um dia anterior, dentro de um limite que você define), o horário, se era entrada ou saída, e o motivo.</span></div>
+      <div class="item"><span class="num">2</span><span>O escritório resolve <b>com um clique</b>, sem abrir a ficha nem digitar horário — some o vaivém de WhatsApp.</span></div>
+      <div class="item"><span class="num">3</span><span><b>Isso também te protege:</b> em qualquer discussão trabalhista, cada ajuste tem pedido, motivo e aprovação registrados — muito melhor que “alguém pediu no WhatsApp e eu mudei”.</span></div>
+    </div>
+  </div>
+
+  <!-- 4 -->
+  <div class="item-plano">
+    <h2><span class="n">4</span> Painel do RH mostra o que precisa de atenção</h2>
+    <p class="porque">Em vez de descobrir os furos no fechamento, o escritório vê todo dia o que está pendente.</p>
+
+    <div class="tela">
+      <div class="app-card">
+        <p class="rotulo-mock" style="margin:0 0 8px">Painel de Ponto · hoje</p>
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
+          <div style="flex:1;min-width:78px;background:#faf9f6;border:1px solid #e9e7e1;border-radius:9px;padding:8px 5px;text-align:center">
+            <div style="font-size:17px;font-weight:800;color:var(--house)">8</div><div style="font-size:8.5px;color:#6b7280;text-transform:uppercase">Trabalhando</div></div>
+          <div style="flex:1;min-width:78px;background:#fffbeb;border:1px solid #fcd34d;border-radius:9px;padding:8px 5px;text-align:center;position:relative">
+            <div style="font-size:17px;font-weight:800;color:#b45309">3</div><div style="font-size:8.5px;color:#92400e;text-transform:uppercase">Pedidos de acerto</div><span class="pin topo">1</span></div>
+          <div style="flex:1;min-width:78px;background:#fef2f2;border:1px solid #fecaca;border-radius:9px;padding:8px 5px;text-align:center;position:relative">
+            <div style="font-size:17px;font-weight:800;color:#b91c1c">2</div><div style="font-size:8.5px;color:#991b1b;text-transform:uppercase">Dias em aberto</div><span class="pin topo">2</span></div>
+          <div style="flex:1;min-width:78px;background:#faf9f6;border:1px solid #e9e7e1;border-radius:9px;padding:8px 5px;text-align:center;position:relative">
+            <div style="font-size:17px;font-weight:800;color:#4b5563">1</div><div style="font-size:8.5px;color:#6b7280;text-transform:uppercase">Não bateu hoje</div><span class="pin topo">3</span></div>
+        </div>
+        <table class="tabelinha">
+          <tr><th>Funcionário</th><th>Situação</th></tr>
+          <tr><td><b>Simone</b></td><td><span class="selo s-pend">Pediu acerto · 06/08 09:30</span></td></tr>
+          <tr><td><b>Rafael</b></td><td><span class="selo s-falta">04/08 com batida ímpar</span></td></tr>
+          <tr><td><b>Cleusa</b></td><td><span class="selo s-falta">Não bateu hoje (previsto 07:30)</span></td></tr>
+          <tr><td><b>Marcos</b></td><td><span class="selo s-ok">Trabalhando desde 07:28</span></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span>Pedidos esperando aprovação — clica e resolve.</span></div>
+      <div class="item"><span class="num">2</span><span><b>Dias em aberto</b> = dias passados com número ímpar de batidas (faltou entrada ou saída). É o que vira dor de cabeça no fechamento.</span></div>
+      <div class="item"><span class="num">3</span><span>Quem tinha jornada prevista hoje e ainda não bateu — dá para ligar e resolver <b>no mesmo dia</b>.</span></div>
+    </div>
+  </div>
+
+  <!-- 5 -->
+  <div class="item-plano">
+    <h2><span class="n">5</span> Confirmação clara depois de bater</h2>
+    <p class="porque">Detalhe pequeno que evita a batida repetida (“não sei se registrou, vou bater de novo”).</p>
+    <div class="tela">
+      <div class="fone" style="max-width:230px">
+        <div class="fone-topo"><span class="ic">✓</span><div><small>Registro de Ponto</small><b>CA-Hardt</b></div></div>
+        <div class="fone-corpo">
+          <div style="font-size:40px;line-height:1;margin:6px 0 4px">✅</div>
+          <div style="font-size:15px;font-weight:800;color:var(--house)">Saída registrada</div>
+          <div style="font-size:26px;font-weight:800;margin-top:2px">13:01</div>
+          <div style="font-size:11px;color:#6b7280">📍 na empresa · 12 m</div>
+          <div class="ok-tela">Total de hoje até agora: <b>5h33</b></div>
+          <div class="btn-menor">Não era isso? Corrigir</div>
+        </div>
+      </div>
+    </div>
+    <p class="texto" style="margin-top:11px">
+      Hoje aparece só uma linha pequena de texto. Passa a ter uma <b>confirmação grande</b>, com o tipo, a hora, se estava
+      na empresa e o total do dia. E um <b>“não era isso?”</b> para trocar entrada↔saída nos primeiros minutos, sem precisar
+      pedir nada a ninguém.
+    </p>
+  </div>
+
+  <!-- ═══ PARTE 2 ═══ -->
+  <div class="divisor"><span>Parte 2 · Prestador por hora</span><hr></div>
+
+  <div class="cartao" style="margin-top:14px">
+    <p class="sec-titulo">🧾 O caso</p>
+    <p class="texto">
+      Pessoa que <b>não é funcionário</b>: registra o horário em que prestou o serviço e recebe por <b>hora trabalhada</b>.
+      Cadastro igual, ponto igual — mas <b>não faz sentido</b> nada do que é CLT: não tem jornada prevista, não tem falta,
+      não tem DSR, não tem banco de horas, não tem férias. <b>Só horas × preço da hora.</b>
+    </p>
+    <div class="solucao">
+      <b>Proposta:</b> um campo <b>Tipo de contrato</b> no cadastro. Marcando <b>“Prestador (por hora)”</b>, a ficha e o
+      fechamento <b>mudam de cara sozinhos</b> — some tudo que é de CLT e aparece o <b>valor da hora</b>.
+      Mesma tela, mesmo link de ponto, mesma impressão de horas.
+    </div>
+  </div>
+
+  <div class="item-plano">
+    <h2><span class="n">6</span> No cadastro: um campo decide tudo</h2>
+    <div class="tela dupla">
+      <div>
+        <p class="rotulo-mock">Funcionário (CLT) — como é hoje</p>
+        <div class="app-card">
+          <div class="campo"><div class="cap">Tipo de contrato</div><div class="cx">Funcionário (CLT) ▾</div></div>
+          <div class="campo"><div class="cap">Salário mensal (R$)</div><div class="cx">2.400,00</div></div>
+          <div class="campo"><div class="cap">Hora extra</div><div class="cx">Hora extra paga ▾</div></div>
+          <div class="campo"><div class="cap">Adicional / divisor / DSR</div><div class="cx vazio">50% · 220 · desconta DSR</div></div>
+          <div class="campo"><div class="cap">Escala semanal</div><div class="cx vazio">seg–sex 07:30–17:48</div></div>
+        </div>
+      </div>
+      <div>
+        <p class="rotulo-mock bom">Prestador (por hora) — proposta</p>
+        <div class="app-card">
+          <div class="campo" style="position:relative"><div class="cap">Tipo de contrato</div><div class="cx">Prestador (por hora) ▾</div><span class="pin">1</span></div>
+          <div class="campo" style="position:relative"><div class="cap">Valor da hora (R$)</div><div class="cx">45,00</div><span class="pin">2</span></div>
+          <div class="ok-tela" style="position:relative">
+            Some da tela: salário mensal, hora extra, adicional, divisor, DSR e a escala semanal —
+            <b>nada disso se aplica</b>.<span class="pin">3</span>
+          </div>
+          <div class="campo"><div class="cap">Arredondamento das horas</div><div class="cx">Minuto exato ▾</div><div class="aj">ou 15 em 15 min / 30 em 30 min</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span>Um seletor no topo da aba Dados. É ele que muda o comportamento de toda a ficha.</span></div>
+      <div class="item"><span class="num">2</span><span>O único número que importa: <b>quanto vale a hora dele</b>.</span></div>
+      <div class="item"><span class="num">3</span><span>Menos campo na tela = menos chance de alguém preencher errado e a conta sair torta.</span></div>
+    </div>
+  </div>
+
+  <div class="item-plano">
+    <h2><span class="n">7</span> A tela vira “Horas prestadas”</h2>
+    <p class="porque">Mesma tabela de dias, mas sem previsto, sem saldo, sem falta — e com o valor de cada dia.</p>
+    <div class="tela">
+      <div class="app-card">
+        <p class="rotulo-mock" style="margin:0 0 6px">JOÃO PEREIRA · Prestador · julho/2026</p>
+        <div style="display:flex;gap:7px;flex-wrap:wrap">
+          <div style="flex:1;min-width:80px;background:#faf9f6;border:1px solid #e9e7e1;border-radius:9px;padding:8px 5px;text-align:center">
+            <div style="font-size:16px;font-weight:800;color:var(--house)">38:20</div><div style="font-size:8.5px;color:#6b7280;text-transform:uppercase">Horas prestadas</div></div>
+          <div style="flex:1;min-width:80px;background:#faf9f6;border:1px solid #e9e7e1;border-radius:9px;padding:8px 5px;text-align:center">
+            <div style="font-size:16px;font-weight:800;color:var(--house)">7</div><div style="font-size:8.5px;color:#6b7280;text-transform:uppercase">Dias com serviço</div></div>
+          <div style="flex:1;min-width:80px;background:#faf9f6;border:1px solid #e9e7e1;border-radius:9px;padding:8px 5px;text-align:center">
+            <div style="font-size:16px;font-weight:800;color:var(--house)">R$ 45,00</div><div style="font-size:8.5px;color:#6b7280;text-transform:uppercase">Valor da hora</div></div>
+        </div>
+        <div class="rolar">
+          <table class="tabelinha" style="min-width:330px">
+            <tr><th>Dia</th><th>Batidas</th><th style="text-align:right">Horas</th><th style="text-align:right">Valor</th></tr>
+            <tr><td><b>Qua 01/07</b></td><td>08:02 · 12:05</td><td class="n">04:03</td><td class="n">R$ 182,25</td></tr>
+            <tr><td><b>Qui 02/07</b></td><td>08:00 · 12:10 · 13:00 · 17:05</td><td class="n">08:15</td><td class="n">R$ 371,25</td></tr>
+            <tr style="opacity:.45"><td><b>Sex 03/07</b></td><td>—</td><td class="n">—</td><td class="n">—</td></tr>
+            <tr><td><b>Sáb 04/07</b></td><td>08:00 · 12:00</td><td class="n">04:00</td><td class="n">R$ 180,00</td></tr>
+          </table>
+        </div>
+        <div class="ok-tela" style="position:relative">
+          Dia sem batida é só um <b>dia sem serviço</b> — não é falta, não desconta nada, não fica vermelho.
+          <span class="pin">1</span>
+        </div>
+        <div class="total-linha" style="position:relative;flex-wrap:wrap;gap:4px">
+          <span>Total a pagar<br><span style="font-weight:600;text-transform:none;letter-spacing:0;font-size:10.5px;color:#4b5563">38:20 × R$ 45,00</span></span>
+          <b>R$ 1.725,00</b><span class="pin">2</span>
+        </div>
+        <div class="campos-lado" style="margin-top:9px">
+          <div class="campo"><div class="cap">Outros valores (R$)</div><div class="cx vazio">0,00</div></div>
+          <div class="campo"><div class="cap">Descontos (R$)</div><div class="cx vazio">0,00</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span>Sem “falta”, sem “compensado”, sem DSR: para prestador, dia sem batida é <b>simplesmente um dia que ele não prestou serviço</b>.</span></div>
+      <div class="item"><span class="num">2</span><span>A conta é uma só: <b>horas do período × valor da hora</b>. Com espaço para material, deslocamento ou adiantamento, se precisar.</span></div>
+    </div>
+  </div>
+
+  <div class="item-plano">
+    <h2><span class="n">8</span> Impressão: dois documentos</h2>
+    <div class="tela dupla">
+      <div>
+        <p class="rotulo-mock">🖨 Folha de horas (para assinar)</p>
+        <div class="app-card" style="font-size:11px">
+          <div style="border-top:2px solid #111;margin-bottom:6px"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <b style="font-size:10px">HARDT DOCES E SALGADOS</b><b style="font-size:13px">Folha de horas</b>
+          </div>
+          <div style="border-top:2px solid #111;margin:6px 0"></div>
+          <div style="font-size:10px;color:#6b7280">JOÃO PEREIRA · Prestador · 01/07 a 31/07</div>
+          <table class="tabelinha" style="margin-top:6px">
+            <tr><th>Dia</th><th>Batidas</th><th style="text-align:right">Horas</th></tr>
+            <tr><td>Qua 01/07</td><td>08:02 · 12:05</td><td class="n">04:03</td></tr>
+            <tr><td>Qui 02/07</td><td>08:00 · 17:05</td><td class="n">08:15</td></tr>
+            <tr><td colspan="2"><b>Total</b></td><td class="n"><b>38:20</b></td></tr>
+          </table>
+          <div style="border-top:1px solid #111;width:70%;margin:16px auto 3px"></div>
+          <div style="text-align:center;font-size:9px">JOÃO PEREIRA</div>
+        </div>
+      </div>
+      <div>
+        <p class="rotulo-mock">🖨 Recibo de prestação (com valor)</p>
+        <div class="app-card" style="font-size:11px">
+          <div style="border-top:2px solid #111;margin-bottom:6px"></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline">
+            <b style="font-size:13px">Recibo</b><span style="font-size:14px;color:#6b7280">R$ 1.725,00</span>
+          </div>
+          <div style="border-top:1px dashed #999;margin:6px 0"></div>
+          <div style="font-size:10.5px;line-height:1.5">
+            Recebi de <b>HARDT DOCES E SALGADOS LTDA</b> a importância de
+            <b>mil setecentos e vinte e cinco reais</b>, referente a <b>38h20</b> de serviços prestados
+            entre 01/07 e 31/07/2026, ao valor de R$ 45,00 por hora.
+          </div>
+          <div style="border-top:1px solid #111;width:70%;margin:20px auto 3px"></div>
+          <div style="text-align:center;font-size:9px">JOÃO PEREIRA<br><span style="color:#6b7280">CPF 000.000.000-00</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="texto" style="margin-top:11px">
+      A <b>folha de horas</b> segue a mesma regra da folha de ponto que você aprovou: <b>sem valores</b>, mês inteiro em uma folha,
+      para o prestador conferir e assinar. O <b>recibo</b> é o documento do pagamento — usa o mesmo modelo do recibo do Contas a Pagar,
+      com o valor por extenso.
+    </p>
+  </div>
+
+  <!-- ═══ DECISÕES ═══ -->
+  <div class="divisor"><span>Preciso da sua decisão</span><hr></div>
+
+  <div class="decisao">
+    <h3>A) Os dois botões (Entrada / Saída) na tela do funcionário</h3>
+    <p>É a mudança que resolve a inversão. Como você prefere?</p>
+    <div class="op rec"><span class="marca">✓ Recomendo</span><b>Botão sugerido em destaque + o outro logo abaixo.</b>
+      No dia normal continua sendo um toque só; quem esqueceu escolhe o certo.</div>
+    <div class="op"><b>Dois botões iguais, lado a lado.</b> Mais explícito, mas aumenta a chance de tocar no errado com pressa.</div>
+  </div>
+
+  <div class="decisao">
+    <h3>B) Até quantos dias atrás a pessoa pode pedir acerto?</h3>
+    <p>Precisa de um limite, senão vira pedido de mês fechado.</p>
+    <div class="op rec"><span class="marca">✓ Recomendo</span><b>Até 7 dias.</b> Cobre o esquecimento da semana sem reabrir fechamento.</div>
+    <div class="op"><b>Só o dia de hoje</b> — mais rígido, mas manda de volta pro WhatsApp o que passou de ontem.</div>
+    <div class="op"><b>Até 30 dias</b> — mais folgado, mas mexe em período já conferido.</div>
+  </div>
+
+  <div class="decisao">
+    <h3>C) Quem aprova os pedidos de acerto?</h3>
+    <div class="op rec"><span class="marca">✓ Recomendo</span><b>Quem já tem <i>Pode_Editar_Ponto</i></b> — mesma gente que hoje corrige a batida na mão. Não cria permissão nova.</div>
+    <div class="op"><b>Só admin</b> — mais controle, mas concentra em pouca gente.</div>
+  </div>
+
+  <div class="decisao">
+    <h3>D) O prestador registra as horas como?</h3>
+    <div class="op rec"><span class="marca">✓ Recomendo</span><b>Pelo mesmo link de ponto</b> (entrada/saída, com GPS). Não muda nada para ele e o registro tem prova de local.</div>
+    <div class="op"><b>Lançando o total de horas do dia</b> (ex.: “dia 02/07 = 8h”) — mais simples de digitar, mas sem horário nem prova.</div>
+  </div>
+
+  <div class="decisao">
+    <h3>E) Arredondamento das horas do prestador</h3>
+    <div class="op rec"><span class="marca">✓ Recomendo</span><b>Minuto exato</b> — 4h03 é 4h03. Sem discussão.</div>
+    <div class="op"><b>De 15 em 15 minutos</b> (ou 30) — mais “redondo” para pagar, mas gera diferença a favor de um dos lados.</div>
+  </div>
+
+  <!-- ═══ ETAPAS ═══ -->
+  <div class="divisor"><span>Ordem de entrega</span><hr></div>
+
+  <div class="cartao" style="margin-top:14px">
+    <div class="etapas">
+      <div class="etapa"><span class="num">1</span><div class="txt">
+        <span class="tempo">Primeiro — resolve a dor de hoje</span>
+        <b>Os dois botões + confirmação + aviso do dia estranho</b>
+        <p>É o que para de gerar erro novo. Sozinho já corta a maior parte das mensagens de WhatsApp.</p>
+      </div></div>
+      <div class="etapa"><span class="num">2</span><div class="txt">
+        <span class="tempo">Depois</span>
+        <b>Pedido de acerto + aprovação no painel do RH</b>
+        <p>Tira a correção do WhatsApp e cria o rastro (quem pediu, motivo, quem aprovou).</p>
+      </div></div>
+      <div class="etapa"><span class="num">3</span><div class="txt">
+        <span class="tempo">Depois</span>
+        <b>Painel de pendências (dias em aberto, não bateu hoje)</b>
+        <p>Fecha o ciclo: o escritório enxerga o furo no mesmo dia, não no fechamento.</p>
+      </div></div>
+      <div class="etapa"><span class="num">4</span><div class="txt">
+        <span class="tempo">Em seguida</span>
+        <b>Prestador por hora</b>
+        <p>Tipo de contrato, valor da hora, tela de horas prestadas, fechamento e os dois documentos.</p>
+      </div></div>
+    </div>
+
+    <div class="tec">
+      <b>Por baixo (resumo técnico):</b> a batida passa a gravar o tipo <b>escolhido</b> em vez de contar a paridade
+      (<code>pontoService.registrarBatida</code>); entra uma tabela de <b>pedidos de acerto</b> (quem, dia, hora, tipo,
+      motivo, status, quem aprovou); o <b>Funcionario</b> ganha <code>tipoContrato</code> e <code>valorHora</code>; e o
+      motor do cartão passa a ter dois modos — <b>CLT</b> (o de hoje: previsto, saldo, falta, DSR) e
+      <b>Prestador</b> (horas × valor). Nada do que já está funcionando é removido.
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">✅ Como aprovar</p>
+    <p class="texto">
+      Me responde no chat: <b>quais itens (1 a 8) você quer</b> e <b>as letras A a E</b> com a sua escolha.
+      Se estiver tudo bom do jeito que está aqui, pode responder só <b>“pode fazer tudo, com as recomendadas”</b>
+      que eu sigo com as opções marcadas em verde.
+    </p>
+  </div>
+
+  <p class="rodape">Plano · Hardt App · agosto/2026 — nada foi alterado no sistema ainda.</p>
+</div>
+
+</body>
+</html>
