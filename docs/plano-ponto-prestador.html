@@ -19,7 +19,6 @@
     -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;
     overflow-wrap:break-word}
   .wrap{max-width:680px;margin:0 auto;padding:0 16px 60px}
-  /* tabela larga rola dentro do próprio cartão, nunca empurra a página */
   .rolar{overflow-x:auto;-webkit-overflow-scrolling:touch}
 
   .hero{background:linear-gradient(168deg,var(--house) 0%,#16302a 100%);color:#fff;padding:38px 16px 92px;text-align:center}
@@ -45,7 +44,10 @@
   .item-plano h2{font-size:17px;font-weight:800;color:var(--house);margin:0 0 4px;display:flex;gap:9px;align-items:flex-start}
   .item-plano h2 .n{flex:none;width:26px;height:26px;border-radius:999px;background:var(--primary);color:#fff;
     display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;margin-top:1px}
+  .item-plano h2 .n.novo{background:var(--gold)}
   .item-plano .porque{font-size:13.5px;color:#6b7280;margin:0 0 10px;padding-left:35px}
+  .tag-novo{display:inline-block;background:#fef3c7;color:#92400e;font-size:9.5px;font-weight:800;
+    text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:3px 8px;margin-left:6px;vertical-align:2px}
 
   .problema{border:1px solid #fecaca;background:#fef2f2;border-radius:12px;padding:12px 14px;margin-top:12px;font-size:13.5px;color:#7f1d1d}
   .problema b{color:#991b1b}
@@ -54,7 +56,6 @@
   .aviso{border:1px solid #fcd34d;background:#fffbeb;border-radius:12px;padding:12px 14px;margin-top:12px;font-size:13.5px;color:#92400e}
   .aviso b{color:#78350f}
 
-  /* mockups */
   .tela{background:#f7f6f2;border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin-top:12px}
   .tela.dupla{display:flex;gap:10px;flex-wrap:wrap}
   .tela.dupla > div{flex:1 1 210px;min-width:0}
@@ -81,7 +82,6 @@
     background:#fff;border:1.5px solid #d1d5db;color:#4b5563}
   .btn-verde{background:var(--primary);color:#fff;font-size:11.5px;font-weight:800;border-radius:999px;padding:7px 13px;display:inline-block}
   .btn-branco{background:#fff;border:1px solid #d1d5db;color:#374151;font-size:11.5px;font-weight:700;border-radius:999px;padding:6px 12px;display:inline-block}
-  .btn-vermelho{background:#dc2626;color:#fff;font-size:11.5px;font-weight:800;border-radius:999px;padding:7px 13px;display:inline-block}
 
   .lista-batidas{margin-top:12px;border-top:1px solid #f0efec;padding-top:9px;text-align:left}
   .lista-batidas .cab{font-size:9px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
@@ -90,11 +90,15 @@
   .tag-e{background:#dcfce7;color:#166534}
   .tag-s{background:#fee2e2;color:#9a3412}
   .tag-err{background:#fee2e2;color:#b91c1c}
-  .lb b{font-weight:700}
+  .tag-aj{background:#e0e7ff;color:#3730a3}
+  .lb b{font-weight:700;white-space:nowrap}
 
   .alerta-tela{border:1px solid #fcd34d;background:#fffbeb;border-radius:10px;padding:9px 10px;margin-top:10px;font-size:11px;color:#92400e;text-align:left}
-  .alerta-tela b{color:#78350f;display:block;margin-bottom:2px}
+  .alerta-tela b{color:#78350f}
   .ok-tela{border:1px solid rgba(0,117,74,.3);background:#f0fdf7;border-radius:10px;padding:9px 10px;margin-top:10px;font-size:11px;color:var(--primary-dark);text-align:left}
+  .ok-tela b{color:var(--house)}
+  .neg-tela{border:1px solid #fecaca;background:#fef2f2;border-radius:10px;padding:9px 10px;margin-top:10px;font-size:11px;color:#991b1b;text-align:left}
+  .cadeado{border:1px dashed #d1d5db;background:#fafaf8;border-radius:10px;padding:11px 10px;margin-top:10px;font-size:11px;color:#6b7280;text-align:center}
 
   .campo{margin-top:9px;text-align:left}
   .campo .cap{font-size:9.5px;font-weight:800;color:#6b7280;text-transform:uppercase;letter-spacing:.05em}
@@ -102,21 +106,26 @@
   .campo .cx.vazio{color:#9ca3af;font-weight:500}
   .campo .aj{font-size:10px;color:#9ca3af;margin-top:3px}
   .campos-lado{display:flex;gap:8px}
-  .campos-lado .campo{flex:1}
+  .campos-lado .campo{flex:1;min-width:0}
+
+  .linha-pedido{display:flex;gap:6px;align-items:flex-end;margin-top:7px}
+  .linha-pedido .campo{margin-top:0}
+  .linha-pedido .x{flex:none;color:#9ca3af;font-size:14px;padding-bottom:8px}
 
   .tabelinha{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:9px}
   .tabelinha th{background:#f3f2ee;color:#6b7280;font-size:8.5px;text-transform:uppercase;letter-spacing:.05em;padding:6px 5px;text-align:left;font-weight:800;white-space:nowrap}
   .tabelinha td{border-top:1px solid #f0efec;padding:6px 5px;color:#3f4a46}
   .tabelinha td.n{text-align:right;white-space:nowrap;font-weight:700}
   .tabelinha td b,.tabelinha td:first-child{white-space:nowrap}
-  .total-linha span,.total-linha b{white-space:nowrap}
   .selo{font-size:9.5px;font-weight:800;border-radius:999px;padding:3px 8px;display:inline-block;white-space:nowrap}
   .s-ok{background:#dcfce7;color:#166534}
   .s-pend{background:#fef3c7;color:#b45309}
   .s-falta{background:#fee2e2;color:#b91c1c}
+  .s-relogio{background:#e0e7ff;color:#3730a3}
 
   .total-linha{display:flex;justify-content:space-between;align-items:center;margin-top:11px;background:var(--mint);
-    border:1px solid rgba(0,117,74,.3);border-radius:11px;padding:10px 13px}
+    border:1px solid rgba(0,117,74,.3);border-radius:11px;padding:10px 13px;flex-wrap:wrap;gap:4px}
+  .total-linha span,.total-linha b{white-space:nowrap}
   .total-linha span{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--primary-dark)}
   .total-linha b{font-size:19px;font-weight:800;color:var(--primary-dark)}
 
@@ -138,7 +147,6 @@
   .op.rec{border-color:var(--primary);background:#f0fdf7}
   .op .marca{font-size:10px;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.06em;display:block}
 
-  .etapas{margin-top:12px}
   .etapa{display:flex;gap:12px;margin-top:12px}
   .etapa .num{flex:none;width:28px;height:28px;border-radius:999px;background:var(--primary);color:#fff;
     display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
@@ -157,10 +165,11 @@
 <body>
 
 <div class="hero">
-  <span class="chip">📋 Plano para aprovação</span>
+  <span class="chip">📋 Plano v2 · para aprovação</span>
   <h1>Ponto sem confusão + Prestador por hora</h1>
-  <p>Duas coisas: <b>acabar com a bagunça de entrada/saída trocada</b> que a equipe está relatando, e
-  atender quem <b>presta serviço por hora</b> — mesmo cadastro, mas o que importa é hora × preço da hora.</p>
+  <p>Atualizado com os seus 3 pedidos: o funcionário <b>só enxerga o dia de hoje</b>, quem bate no
+  <b>relógio da empresa</b> ganha uma marcação própria, e o pedido de acerto passa a aceitar
+  <b>vários horários de uma vez</b> — com a <b>resposta da aprovação aparecendo na tela dele</b>.</p>
 </div>
 
 <div class="wrap">
@@ -179,15 +188,10 @@
       e a saída na entrada.”</i>
     </div>
     <p class="texto" style="margin-top:12px">
-      E aí começa o segundo problema: <b>ela não consegue arrumar sozinha</b>. Precisa mandar WhatsApp, alguém do
+      E aí vem o segundo problema: <b>ela não consegue arrumar sozinha</b>. Precisa mandar WhatsApp, alguém do
       escritório abrir o app e corrigir na mão. Todo esquecimento vira uma conversa — e, se ninguém lembrar, o erro
       só aparece no fechamento do mês.
     </p>
-    <div class="solucao">
-      <b>O que eu proponho:</b> a pessoa <b>diz o que está batendo</b> (não é mais adivinhado), o app <b>avisa na hora</b>
-      quando o dia está estranho, e quem esqueceu <b>pede o acerto pelo próprio celular</b> — o RH só aprova com um clique,
-      dentro do app, com registro de quem pediu e quem aprovou.
-    </div>
   </div>
 
   <!-- ═══ PARTE 1 ═══ -->
@@ -208,9 +212,9 @@
             <div class="data-hoje">quinta-feira, 06 de agosto</div>
             <span class="estado fora">● Fora do expediente</span>
             <div class="btn-grande btn-entrada">→ Registrar Entrada</div>
-            <div class="alerta-tela"><b>O que acontece</b>
+            <div class="alerta-tela"><b>O que acontece</b><br>
               Ela saiu para o café e esqueceu de bater. O app acha que ela está fora e grava
-              <b>ENTRADA</b> — quando na verdade ela está <b>voltando</b>. A partir daqui inverteu tudo.</div>
+              <b>ENTRADA</b> — quando na verdade ela está <b>voltando</b>. Daqui pra frente inverteu tudo.</div>
           </div>
         </div>
       </div>
@@ -234,7 +238,7 @@
     </div>
 
     <div class="legenda">
-      <div class="item"><span class="num">1</span><span>O botão que o app <b>acha</b> que é o certo continua em destaque (maior/primeiro) — no dia normal é um toque só, igual hoje.</span></div>
+      <div class="item"><span class="num">1</span><span>O botão que o app <b>acha</b> que é o certo continua em destaque — no dia normal é um toque só, igual hoje.</span></div>
       <div class="item"><span class="num">2</span><span>Mas o outro está <b>sempre ali do lado</b>. Quem esqueceu de bater escolhe o correto e o dia não inverte.</span></div>
     </div>
   </div>
@@ -253,15 +257,15 @@
           <span class="estado dentro">● Trabalhando desde 09:08</span>
 
           <div class="alerta-tela" style="position:relative">
-            <b>⚠️ Confere o seu dia</b>
-            Você está com <b>entrada às 09:08 sem saída</b> há 3h52. Se você esqueceu de bater alguma coisa,
+            <b>⚠️ Confere o seu dia</b><br>
+            Você está com <b>entrada às 09:08 sem saída</b> há 3h52. Se esqueceu de bater alguma coisa,
             peça o acerto agora — leva 20 segundos.
             <span class="pin">1</span>
           </div>
-          <div class="btn-menor" style="position:relative">✋ Esqueci de bater — pedir acerto<span class="pin">2</span></div>
+          <div class="btn-menor">✋ Esqueci de bater — pedir acerto</div>
 
           <div class="lista-batidas">
-            <div class="cab">Hoje · total até agora 3h52</div>
+            <div class="cab" style="position:relative">Hoje · total até agora 3h52<span class="pin">2</span></div>
             <div class="lb"><span class="tag tag-e">Entrada</span><b>07:28 📍</b></div>
             <div class="lb"><span class="tag tag-s">Saída</span><b>09:08 📍</b></div>
             <div class="lb"><span class="tag tag-e">Entrada</span><b>09:08 📍</b></div>
@@ -272,76 +276,197 @@
     </div>
 
     <div class="legenda">
-      <div class="item"><span class="num">1</span><span>Regras do aviso: <b>número ímpar de batidas</b> há muito tempo, <b>duas entradas seguidas</b>, <b>duas saídas seguidas</b> ou <b>duas batidas em menos de 2 minutos</b> (toque duplo sem querer).</span></div>
-      <div class="item"><span class="num">2</span><span>O <b>total de horas do dia</b> aparece ali embaixo — ela mesma percebe se está fechando certo.</span></div>
+      <div class="item"><span class="num">1</span><span>Regras do aviso: <b>batida ímpar</b> há muito tempo, <b>duas entradas seguidas</b>, <b>duas saídas seguidas</b> ou <b>duas batidas em menos de 2 minutos</b> (toque duplo sem querer).</span></div>
+      <div class="item"><span class="num">2</span><span>O <b>total de horas do dia</b> aparece ali — ela mesma percebe se está fechando certo.</span></div>
     </div>
 
     <div class="aviso">
       <b>Não vou mandar lembrete automático no WhatsApp.</b> O número da empresa já foi banido uma vez por automação,
       e mensagem que não é resposta a um ato da pessoa é justamente o tipo de envio que derruba o número.
-      O aviso fica <b>na tela do ponto</b> e no <b>painel do RH</b> (item 4).
+      O aviso fica <b>na tela do ponto</b> e no <b>painel do RH</b>.
     </div>
   </div>
 
-  <!-- 3 -->
+  <!-- 3 — NOVO -->
   <div class="item-plano">
-    <h2><span class="n">3</span> “Esqueci de bater” — o pedido sai do WhatsApp</h2>
-    <p class="porque">Hoje isso é conversa no WhatsApp e correção manual. Vira um pedido dentro do app, com rastro.</p>
+    <h2><span class="n novo">3</span> O funcionário só enxerga o dia de hoje <span class="tag-novo">seu pedido</span></h2>
+    <p class="porque">Ele bate o ponto e confere o dia dele. Nada de espelho do mês, saldo, banco de horas ou faltas.</p>
+
+    <div class="tela dupla">
+      <div>
+        <p class="rotulo-mock bom">✓ O que ele vê</p>
+        <div class="fone">
+          <div class="fone-topo"><span class="ic">🕐</span><div><small>Registro de Ponto</small><b>CA-Hardt</b></div></div>
+          <div class="fone-corpo">
+            <div class="relogio">13:01</div>
+            <div class="data-hoje">quinta-feira, 06 de agosto</div>
+            <div class="lista-batidas">
+              <div class="cab">Hoje · 06/08 · total 3h52</div>
+              <div class="lb"><span class="tag tag-e">Entrada</span><b>07:28 📍</b></div>
+              <div class="lb"><span class="tag tag-s">Saída</span><b>09:08 📍</b></div>
+              <div class="lb"><span class="tag tag-e">Entrada</span><b>09:30 📍</b></div>
+            </div>
+            <div class="cadeado" style="position:relative">🔒 Só o dia de hoje.<br>
+              Dias anteriores, saldo e faltas <b>não aparecem aqui</b>.<span class="pin">1</span></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="rotulo-mock ruim">✗ O que ele NÃO vê</p>
+        <div class="app-card" style="opacity:.55">
+          <p class="rotulo-mock" style="margin:0 0 6px">Espelho do mês · fica só com o escritório</p>
+          <table class="tabelinha">
+            <tr><th>Dia</th><th>Prev.</th><th>Saldo</th><th>Situação</th></tr>
+            <tr><td>Qua 01/07</td><td>08:48</td><td>01:22</td><td><span class="selo s-ok">Trabalhado</span></td></tr>
+            <tr><td>Sex 03/07</td><td>08:48</td><td>—</td><td><span class="selo s-falta">Falta</span></td></tr>
+          </table>
+          <div style="text-align:center;font-size:34px;margin-top:8px">🚫</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span><b>Já é assim hoje</b> — a tela do link só carrega as batidas do dia. Vou <b>manter e reforçar</b>: no pedido de acerto de um dia anterior ele <b>digita</b> o horário, mas <b>não vê</b> o que já tem lançado naquele dia.</span></div>
+    </div>
+    <div class="solucao">
+      <b>Por que isso é bom para você:</b> ele não fica “auditando” o próprio saldo pelo celular nem discutindo
+      número de banco de horas fora do fechamento. Cobrança de acerto vira <b>pedido formal</b>, não conversa solta.
+    </div>
+  </div>
+
+  <!-- 4 — ATUALIZADO -->
+  <div class="item-plano">
+    <h2><span class="n novo">4</span> “Esqueci de bater” — vários horários num pedido só <span class="tag-novo">seu pedido</span></h2>
+    <p class="porque">Quem esqueceu o dia inteiro (ou vários dias) manda tudo de uma vez, e o escritório aprova de uma vez.</p>
 
     <div class="tela dupla">
       <div>
         <p class="rotulo-mock">📱 No celular de quem esqueceu</p>
-        <div class="fone">
-          <div class="fone-topo"><span class="ic">✋</span><div><small>Pedir acerto</small><b>Ponto</b></div></div>
+        <div class="fone" style="max-width:270px">
+          <div class="fone-topo"><span class="ic">✋</span><div><small>Pedir acerto de ponto</small><b>Ponto</b></div></div>
           <div class="fone-corpo" style="text-align:left">
-            <div class="campo"><div class="cap">Dia</div><div class="cx">Hoje · 06/08</div></div>
-            <div class="campos-lado">
-              <div class="campo"><div class="cap">Horário</div><div class="cx">09:30</div></div>
-              <div class="campo"><div class="cap">O que era</div><div class="cx">Entrada ▾</div></div>
+            <div class="linha-pedido" style="position:relative">
+              <div class="campo" style="flex:1.2"><div class="cap">Dia</div><div class="cx">06/08</div></div>
+              <div class="campo" style="flex:1"><div class="cap">Hora</div><div class="cx">09:30</div></div>
+              <div class="campo" style="flex:1.1"><div class="cap">Tipo</div><div class="cx">Entrada ▾</div></div>
+              <span class="x">✕</span>
+              <span class="pin">1</span>
             </div>
-            <div class="campo"><div class="cap">Motivo</div><div class="cx">Esqueci ao voltar do café</div></div>
-            <div class="btn-grande btn-entrada" style="font-size:13px;position:relative">Enviar pedido<span class="pin">1</span></div>
-            <div class="ok-tela">Fica marcado como <b>“aguardando o RH”</b> na tela dela até ser aprovado.</div>
+            <div class="linha-pedido">
+              <div class="campo" style="flex:1.2"><div class="cx">06/08</div></div>
+              <div class="campo" style="flex:1"><div class="cx">16:35</div></div>
+              <div class="campo" style="flex:1.1"><div class="cx">Saída ▾</div></div>
+              <span class="x">✕</span>
+            </div>
+            <div class="linha-pedido">
+              <div class="campo" style="flex:1.2"><div class="cx">05/08</div></div>
+              <div class="campo" style="flex:1"><div class="cx">13:00</div></div>
+              <div class="campo" style="flex:1.1"><div class="cx">Entrada ▾</div></div>
+              <span class="x">✕</span>
+            </div>
+            <div class="btn-menor" style="position:relative">+ Adicionar outro horário<span class="pin">2</span></div>
+
+            <div class="campo"><div class="cap">Motivo (vale para todos)</div><div class="cx">Esqueci de bater, celular sem bateria</div></div>
+            <div class="btn-grande btn-entrada" style="font-size:13px">Enviar 3 acertos</div>
+            <div class="alerta-tela" style="position:relative">⏳ <b>Aguardando o RH</b> — você recebe a resposta
+              aqui nesta tela.<span class="pin">3</span></div>
           </div>
         </div>
       </div>
       <div>
         <p class="rotulo-mock">💻 No app do escritório</p>
         <div class="app-card">
-          <p class="rotulo-mock" style="margin:0 0 6px">Ponto → Pedidos de acerto <span class="selo s-pend">3 pendentes</span></p>
-          <div style="border:1px solid #f0efec;border-radius:9px;padding:9px;margin-top:6px;position:relative">
+          <p class="rotulo-mock" style="margin:0 0 6px">Ponto → Pedidos de acerto <span class="selo s-pend">1 pendente</span></p>
+          <div style="border:1px solid #f0efec;border-radius:9px;padding:9px;position:relative">
             <div style="font-size:12px"><b>Simone</b> <span style="color:#9ca3af;font-size:10px">· pediu hoje 13:01</span></div>
-            <div style="font-size:11.5px;color:#3f4a46">06/08 · <b>09:30 Entrada</b></div>
-            <div style="font-size:10.5px;color:#6b7280">“Esqueci ao voltar do café”</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">
-              <span class="btn-verde">Aprovar</span><span class="btn-branco">Recusar</span>
+            <div style="font-size:10.5px;color:#6b7280;margin-bottom:5px">“Esqueci de bater, celular sem bateria”</div>
+            <div class="lb" style="border-top:1px solid #f5f4f1;padding-top:5px"><span>06/08 · <b>09:30</b></span><span class="tag tag-e">Entrada</span></div>
+            <div class="lb"><span>06/08 · <b>16:35</b></span><span class="tag tag-s">Saída</span></div>
+            <div class="lb"><span>05/08 · <b>13:00</b></span><span class="tag tag-e">Entrada</span></div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;position:relative">
+              <span class="btn-verde">Aprovar os 3</span><span class="btn-branco">Recusar</span>
+              <span class="pin">4</span>
             </div>
-            <span class="pin">2</span>
+            <div style="font-size:10px;color:#9ca3af;margin-top:6px">…ou aprovar linha por linha, se só uma estiver errada.</div>
           </div>
-          <div style="border:1px solid #f0efec;border-radius:9px;padding:9px;margin-top:7px">
-            <div style="font-size:12px"><b>Rafael</b> <span style="color:#9ca3af;font-size:10px">· pediu ontem 17:40</span></div>
-            <div style="font-size:11.5px;color:#3f4a46">05/08 · <b>16:35 Saída</b></div>
-            <div style="font-size:10.5px;color:#6b7280">“Bateria do celular acabou”</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:7px">
-              <span class="btn-verde">Aprovar</span><span class="btn-branco">Recusar</span>
-            </div>
-          </div>
-          <div class="ok-tela" style="position:relative">Aprovou → a batida entra no cartão marcada como <b>ajuste</b>,
-            guardando <b>quem pediu, o motivo, quem aprovou e quando</b>.<span class="pin">3</span></div>
         </div>
       </div>
     </div>
 
     <div class="legenda">
-      <div class="item"><span class="num">1</span><span>Ela escolhe o dia (hoje ou um dia anterior, dentro de um limite que você define), o horário, se era entrada ou saída, e o motivo.</span></div>
-      <div class="item"><span class="num">2</span><span>O escritório resolve <b>com um clique</b>, sem abrir a ficha nem digitar horário — some o vaivém de WhatsApp.</span></div>
-      <div class="item"><span class="num">3</span><span><b>Isso também te protege:</b> em qualquer discussão trabalhista, cada ajuste tem pedido, motivo e aprovação registrados — muito melhor que “alguém pediu no WhatsApp e eu mudei”.</span></div>
+      <div class="item"><span class="num">1</span><span>Cada linha é <b>um horário esquecido</b>: dia, hora e se era entrada ou saída.</span></div>
+      <div class="item"><span class="num">2</span><span><b>“+ Adicionar outro horário”</b> quantas vezes precisar — dá para lançar um dia inteiro ou vários dias no mesmo pedido.</span></div>
+      <div class="item"><span class="num">3</span><span>Enquanto não responderem, fica <b>“aguardando o RH”</b> na tela dele. Ele não precisa cobrar ninguém.</span></div>
+      <div class="item"><span class="num">4</span><span>O escritório <b>aprova tudo de uma vez</b> ou linha por linha. Cada batida aprovada entra no cartão marcada como <b>ajuste</b>, guardando quem pediu, o motivo, quem aprovou e quando.</span></div>
     </div>
   </div>
 
-  <!-- 4 -->
+  <!-- 5 — NOVO -->
   <div class="item-plano">
-    <h2><span class="n">4</span> Painel do RH mostra o que precisa de atenção</h2>
+    <h2><span class="n novo">5</span> A resposta aparece na tela dele — mesmo dias depois <span class="tag-novo">seu pedido</span></h2>
+    <p class="porque">Pediu hoje, aprovaram amanhã: quando ele abrir o ponto amanhã, o aviso está lá esperando.</p>
+
+    <div class="tela dupla">
+      <div>
+        <p class="rotulo-mock bom">✓ Aprovado (mesmo dia ou depois)</p>
+        <div class="fone">
+          <div class="fone-topo"><span class="ic">🕐</span><div><small>Registro de Ponto</small><b>CA-Hardt</b></div></div>
+          <div class="fone-corpo">
+            <div class="ok-tela" style="position:relative;margin-top:0">
+              <b>✅ Seu pedido foi aprovado</b><br>
+              <span style="color:#4b5563">aprovado por <b>Josiane</b> hoje 08:12</span>
+              <div style="margin-top:6px;border-top:1px solid rgba(0,117,74,.2);padding-top:5px">
+                <div class="lb"><span>06/08 · 09:30</span><span class="tag tag-e">Entrada</span></div>
+                <div class="lb"><span>06/08 · 16:35</span><span class="tag tag-s">Saída</span></div>
+                <div class="lb"><span>05/08 · 13:00</span><span class="tag tag-e">Entrada</span></div>
+              </div>
+              <span class="pin">1</span>
+            </div>
+            <div class="btn-menor">OK, entendi</div>
+
+            <div class="relogio" style="font-size:26px;margin-top:12px">07:29</div>
+            <div class="data-hoje">sexta-feira, 07 de agosto</div>
+            <div class="btn-grande btn-entrada" style="font-size:13px">→ ENTRADA</div>
+            <div class="btn-grande btn-saida" style="font-size:13px;opacity:.92">← SAÍDA</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <p class="rotulo-mock">Recusado ou aprovado em parte</p>
+        <div class="fone">
+          <div class="fone-topo"><span class="ic">🕐</span><div><small>Registro de Ponto</small><b>CA-Hardt</b></div></div>
+          <div class="fone-corpo">
+            <div class="neg-tela" style="position:relative;margin-top:0">
+              <b>Pedido respondido — 2 de 3 aprovados</b>
+              <div style="margin-top:6px;border-top:1px solid #fecaca;padding-top:5px">
+                <div class="lb"><span>✅ 06/08 · 09:30</span><span class="tag tag-e">Entrada</span></div>
+                <div class="lb"><span>✅ 06/08 · 16:35</span><span class="tag tag-s">Saída</span></div>
+                <div class="lb"><span>❌ 05/08 · 13:00</span><span class="tag tag-err">recusado</span></div>
+              </div>
+              <div style="margin-top:5px;font-size:10.5px">Motivo: <i>“Dia 05 você estava de folga”</i></div>
+              <span class="pin">2</span>
+            </div>
+            <div class="btn-menor">OK, entendi</div>
+            <div class="cadeado" style="position:relative">O aviso fica no topo da tela até ele tocar em
+              <b>OK, entendi</b> (e some sozinho depois de 7 dias).<span class="pin">3</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span>Aprovaram no dia seguinte? O aviso <b>espera por ele</b>: na próxima vez que abrir o ponto, aparece no topo do dia atual — com o <b>resumo do que entrou</b> e quem aprovou.</span></div>
+      <div class="item"><span class="num">2</span><span>Se recusarem (ou aprovarem só parte), ele vê <b>exatamente o que entrou, o que não entrou e o motivo</b> — sem precisar perguntar no WhatsApp.</span></div>
+      <div class="item"><span class="num">3</span><span>Ele confirma a leitura no <b>“OK, entendi”</b>. Isso também fica registrado: dá para provar que a pessoa foi avisada.</span></div>
+    </div>
+    <div class="solucao">
+      Repare que o aviso mostra <b>só o que ele mesmo pediu</b> — continua sem abrir o espelho do mês (item 3).
+    </div>
+  </div>
+
+  <!-- 6 -->
+  <div class="item-plano">
+    <h2><span class="n">6</span> Painel do RH mostra o que precisa de atenção</h2>
     <p class="porque">Em vez de descobrir os furos no fechamento, o escritório vê todo dia o que está pendente.</p>
 
     <div class="tela">
@@ -359,24 +484,24 @@
         </div>
         <table class="tabelinha">
           <tr><th>Funcionário</th><th>Situação</th></tr>
-          <tr><td><b>Simone</b></td><td><span class="selo s-pend">Pediu acerto · 06/08 09:30</span></td></tr>
+          <tr><td><b>Simone</b></td><td><span class="selo s-pend">Pediu acerto · 3 horários</span></td></tr>
           <tr><td><b>Rafael</b></td><td><span class="selo s-falta">04/08 com batida ímpar</span></td></tr>
           <tr><td><b>Cleusa</b></td><td><span class="selo s-falta">Não bateu hoje (previsto 07:30)</span></td></tr>
-          <tr><td><b>Marcos</b></td><td><span class="selo s-ok">Trabalhando desde 07:28</span></td></tr>
+          <tr><td><b>Marcos</b></td><td><span class="selo s-relogio">Bate no relógio</span></td></tr>
         </table>
       </div>
     </div>
 
     <div class="legenda">
       <div class="item"><span class="num">1</span><span>Pedidos esperando aprovação — clica e resolve.</span></div>
-      <div class="item"><span class="num">2</span><span><b>Dias em aberto</b> = dias passados com número ímpar de batidas (faltou entrada ou saída). É o que vira dor de cabeça no fechamento.</span></div>
-      <div class="item"><span class="num">3</span><span>Quem tinha jornada prevista hoje e ainda não bateu — dá para ligar e resolver <b>no mesmo dia</b>.</span></div>
+      <div class="item"><span class="num">2</span><span><b>Dias em aberto</b> = dias passados com número ímpar de batidas (faltou entrada ou saída).</span></div>
+      <div class="item"><span class="num">3</span><span>Quem tinha jornada hoje e ainda não bateu — dá para resolver <b>no mesmo dia</b>. <b>Quem bate no relógio não entra nessa conta</b> (item 8).</span></div>
     </div>
   </div>
 
-  <!-- 5 -->
+  <!-- 7 -->
   <div class="item-plano">
-    <h2><span class="n">5</span> Confirmação clara depois de bater</h2>
+    <h2><span class="n">7</span> Confirmação clara depois de bater</h2>
     <p class="porque">Detalhe pequeno que evita a batida repetida (“não sei se registrou, vou bater de novo”).</p>
     <div class="tela">
       <div class="fone" style="max-width:230px">
@@ -393,13 +518,64 @@
     </div>
     <p class="texto" style="margin-top:11px">
       Hoje aparece só uma linha pequena de texto. Passa a ter uma <b>confirmação grande</b>, com o tipo, a hora, se estava
-      na empresa e o total do dia. E um <b>“não era isso?”</b> para trocar entrada↔saída nos primeiros minutos, sem precisar
-      pedir nada a ninguém.
+      na empresa e o total do dia. E um <b>“não era isso?”</b> para trocar entrada↔saída nos primeiros minutos.
     </p>
   </div>
 
-  <!-- ═══ PARTE 2 ═══ -->
-  <div class="divisor"><span>Parte 2 · Prestador por hora</span><hr></div>
+  <!-- ═══ PARTE 2 — NOVA ═══ -->
+  <div class="divisor"><span>Parte 2 · Quem bate no relógio da empresa</span><hr></div>
+
+  <div class="item-plano">
+    <h2><span class="n novo">8</span> Marcação “bate no relógio, não no app” <span class="tag-novo">seu pedido</span></h2>
+    <p class="porque">Quem usa o equipamento de ponto não pode ser cobrado por não bater no celular — nem entrar nos alertas.</p>
+
+    <div class="tela dupla">
+      <div>
+        <p class="rotulo-mock">No cadastro</p>
+        <div class="app-card">
+          <div class="campo" style="position:relative"><div class="cap">Como registra o ponto</div>
+            <div class="cx">Relógio da empresa ▾</div>
+            <div class="aj">App (link pessoal) · Relógio da empresa · Não registra ponto</div>
+            <span class="pin">1</span></div>
+          <div class="ok-tela" style="position:relative">Com <b>Relógio da empresa</b>:
+            <div style="margin-top:4px">• o <b>link de ponto fica desligado</b> (ele não usa)<br>
+            • <b>não entra</b> em “não bateu hoje”<br>
+            • as batidas chegam pela <b>importação do arquivo do relógio</b></div>
+            <span class="pin">2</span></div>
+        </div>
+      </div>
+      <div>
+        <p class="rotulo-mock">Na lista de funcionários</p>
+        <div class="app-card">
+          <table class="tabelinha" style="margin-top:0">
+            <tr><th>Funcionário</th><th>Ponto</th></tr>
+            <tr><td><b>Simone</b><br><span style="color:#9ca3af;font-size:10px">Auxiliar de produção</span></td><td><span class="selo s-ok">App</span></td></tr>
+            <tr><td><b>Marcos</b><br><span style="color:#9ca3af;font-size:10px">Produção</span></td><td><span class="selo s-relogio">Relógio</span></td></tr>
+            <tr><td><b>Cleusa</b><br><span style="color:#9ca3af;font-size:10px">Limpeza</span></td><td><span class="selo s-relogio">Relógio</span></td></tr>
+            <tr><td><b>João</b><br><span style="color:#9ca3af;font-size:10px">Prestador</span></td><td><span class="selo s-ok">App</span></td></tr>
+          </table>
+          <div class="ok-tela" style="position:relative">Dá para <b>filtrar por “Relógio”</b> e saber de quem
+            você precisa importar o arquivo.<span class="pin">3</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legenda">
+      <div class="item"><span class="num">1</span><span>Três opções: <b>App</b> (como é hoje), <b>Relógio da empresa</b> (o arquivo do equipamento é a fonte) e <b>Não registra ponto</b> — para quem não bate de jeito nenhum (ex.: gerência), que some de todos os alertas.</span></div>
+      <div class="item"><span class="num">2</span><span>O cartão de ponto dele <b>continua funcionando igual</b> — previsto, saldo, hora extra, folha. Só muda de onde vêm as batidas.</span></div>
+      <div class="item"><span class="num">3</span><span>Etiqueta visível na lista, para ninguém cobrar batida de quem não bate no celular.</span></div>
+    </div>
+
+    <div class="aviso">
+      <b>Um detalhe que precisa da sua decisão (letra F):</b> enquanto você não importar o arquivo do relógio,
+      os dias daquela pessoa ficam <b>sem batida nenhuma</b> — hoje isso vira <b>falta</b> e derruba a folha dela.
+      Proponho que, para quem é “Relógio”, o dia sem batida apareça como <b>“aguardando importação”</b> (cinza, sem descontar)
+      até o arquivo daquele mês entrar.
+    </div>
+  </div>
+
+  <!-- ═══ PARTE 3 ═══ -->
+  <div class="divisor"><span>Parte 3 · Prestador por hora</span><hr></div>
 
   <div class="cartao" style="margin-top:14px">
     <p class="sec-titulo">🧾 O caso</p>
@@ -411,12 +587,11 @@
     <div class="solucao">
       <b>Proposta:</b> um campo <b>Tipo de contrato</b> no cadastro. Marcando <b>“Prestador (por hora)”</b>, a ficha e o
       fechamento <b>mudam de cara sozinhos</b> — some tudo que é de CLT e aparece o <b>valor da hora</b>.
-      Mesma tela, mesmo link de ponto, mesma impressão de horas.
     </div>
   </div>
 
   <div class="item-plano">
-    <h2><span class="n">6</span> No cadastro: um campo decide tudo</h2>
+    <h2><span class="n">9</span> No cadastro: um campo decide tudo</h2>
     <div class="tela dupla">
       <div>
         <p class="rotulo-mock">Funcionário (CLT) — como é hoje</p>
@@ -449,7 +624,7 @@
   </div>
 
   <div class="item-plano">
-    <h2><span class="n">7</span> A tela vira “Horas prestadas”</h2>
+    <h2><span class="n">10</span> A tela vira “Horas prestadas”</h2>
     <p class="porque">Mesma tabela de dias, mas sem previsto, sem saldo, sem falta — e com o valor de cada dia.</p>
     <div class="tela">
       <div class="app-card">
@@ -475,7 +650,7 @@
           Dia sem batida é só um <b>dia sem serviço</b> — não é falta, não desconta nada, não fica vermelho.
           <span class="pin">1</span>
         </div>
-        <div class="total-linha" style="position:relative;flex-wrap:wrap;gap:4px">
+        <div class="total-linha" style="position:relative">
           <span>Total a pagar<br><span style="font-weight:600;text-transform:none;letter-spacing:0;font-size:10.5px;color:#4b5563">38:20 × R$ 45,00</span></span>
           <b>R$ 1.725,00</b><span class="pin">2</span>
         </div>
@@ -487,19 +662,19 @@
     </div>
     <div class="legenda">
       <div class="item"><span class="num">1</span><span>Sem “falta”, sem “compensado”, sem DSR: para prestador, dia sem batida é <b>simplesmente um dia que ele não prestou serviço</b>.</span></div>
-      <div class="item"><span class="num">2</span><span>A conta é uma só: <b>horas do período × valor da hora</b>. Com espaço para material, deslocamento ou adiantamento, se precisar.</span></div>
+      <div class="item"><span class="num">2</span><span>A conta é uma só: <b>horas do período × valor da hora</b>. Com espaço para material, deslocamento ou adiantamento.</span></div>
     </div>
   </div>
 
   <div class="item-plano">
-    <h2><span class="n">8</span> Impressão: dois documentos</h2>
+    <h2><span class="n">11</span> Impressão: dois documentos</h2>
     <div class="tela dupla">
       <div>
         <p class="rotulo-mock">🖨 Folha de horas (para assinar)</p>
         <div class="app-card" style="font-size:11px">
           <div style="border-top:2px solid #111;margin-bottom:6px"></div>
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <b style="font-size:10px">HARDT DOCES E SALGADOS</b><b style="font-size:13px">Folha de horas</b>
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:6px">
+            <b style="font-size:10px">HARDT DOCES E SALGADOS</b><b style="font-size:12px;white-space:nowrap">Folha de horas</b>
           </div>
           <div style="border-top:2px solid #111;margin:6px 0"></div>
           <div style="font-size:10px;color:#6b7280">JOÃO PEREIRA · Prestador · 01/07 a 31/07</div>
@@ -517,8 +692,8 @@
         <p class="rotulo-mock">🖨 Recibo de prestação (com valor)</p>
         <div class="app-card" style="font-size:11px">
           <div style="border-top:2px solid #111;margin-bottom:6px"></div>
-          <div style="display:flex;justify-content:space-between;align-items:baseline">
-            <b style="font-size:13px">Recibo</b><span style="font-size:14px;color:#6b7280">R$ 1.725,00</span>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px">
+            <b style="font-size:13px">Recibo</b><span style="font-size:14px;color:#6b7280;white-space:nowrap">R$ 1.725,00</span>
           </div>
           <div style="border-top:1px dashed #999;margin:6px 0"></div>
           <div style="font-size:10.5px;line-height:1.5">
@@ -532,9 +707,9 @@
       </div>
     </div>
     <p class="texto" style="margin-top:11px">
-      A <b>folha de horas</b> segue a mesma regra da folha de ponto que você aprovou: <b>sem valores</b>, mês inteiro em uma folha,
-      para o prestador conferir e assinar. O <b>recibo</b> é o documento do pagamento — usa o mesmo modelo do recibo do Contas a Pagar,
-      com o valor por extenso.
+      A <b>folha de horas</b> segue a regra que você aprovou: <b>sem valores</b>, período inteiro em uma folha,
+      para o prestador conferir e assinar. O <b>recibo</b> é o documento do pagamento — mesmo modelo do recibo do
+      Contas a Pagar, com o valor por extenso.
     </p>
   </div>
 
@@ -551,7 +726,7 @@
 
   <div class="decisao">
     <h3>B) Até quantos dias atrás a pessoa pode pedir acerto?</h3>
-    <p>Precisa de um limite, senão vira pedido de mês fechado.</p>
+    <p>Ela digita o dia e a hora <b>sem ver</b> o ponto daquele dia (item 3). Precisa de um limite.</p>
     <div class="op rec"><span class="marca">✓ Recomendo</span><b>Até 7 dias.</b> Cobre o esquecimento da semana sem reabrir fechamento.</div>
     <div class="op"><b>Só o dia de hoje</b> — mais rígido, mas manda de volta pro WhatsApp o que passou de ontem.</div>
     <div class="op"><b>Até 30 dias</b> — mais folgado, mas mexe em período já conferido.</div>
@@ -575,52 +750,68 @@
     <div class="op"><b>De 15 em 15 minutos</b> (ou 30) — mais “redondo” para pagar, mas gera diferença a favor de um dos lados.</div>
   </div>
 
+  <div class="decisao">
+    <h3>F) Quem bate no relógio: dia sem batida importada vira o quê?</h3>
+    <p>Enquanto o arquivo do relógio não é importado, esses dias ficam vazios no sistema.</p>
+    <div class="op rec"><span class="marca">✓ Recomendo</span><b>“Aguardando importação”</b> — cinza, não conta falta, não desconta.
+      Vira falta normal só depois que o arquivo daquele mês entrar.</div>
+    <div class="op"><b>Falta desde já</b> — igual a quem bate no app. Mais rígido, mas a folha fica errada até você importar.</div>
+  </div>
+
+  <div class="decisao">
+    <h3>G) O funcionário pode pedir acerto de dia que ele não vê?</h3>
+    <p>Ele só enxerga hoje. Para pedir acerto de ontem, ele digita a data “no escuro”.</p>
+    <div class="op rec"><span class="marca">✓ Recomendo</span><b>Pode, digitando a data.</b> Ele sabe o que esqueceu; e o
+      escritório confere antes de aprovar — que é justamente o papel da aprovação.</div>
+    <div class="op"><b>Mostrar os dias em aberto dele</b> (só a lista de datas com batida faltando, sem horários nem saldo)
+      — ajuda ele a acertar, mas já é abrir um pouco do histórico.</div>
+  </div>
+
   <!-- ═══ ETAPAS ═══ -->
   <div class="divisor"><span>Ordem de entrega</span><hr></div>
 
   <div class="cartao" style="margin-top:14px">
-    <div class="etapas">
-      <div class="etapa"><span class="num">1</span><div class="txt">
-        <span class="tempo">Primeiro — resolve a dor de hoje</span>
-        <b>Os dois botões + confirmação + aviso do dia estranho</b>
-        <p>É o que para de gerar erro novo. Sozinho já corta a maior parte das mensagens de WhatsApp.</p>
-      </div></div>
-      <div class="etapa"><span class="num">2</span><div class="txt">
-        <span class="tempo">Depois</span>
-        <b>Pedido de acerto + aprovação no painel do RH</b>
-        <p>Tira a correção do WhatsApp e cria o rastro (quem pediu, motivo, quem aprovou).</p>
-      </div></div>
-      <div class="etapa"><span class="num">3</span><div class="txt">
-        <span class="tempo">Depois</span>
-        <b>Painel de pendências (dias em aberto, não bateu hoje)</b>
-        <p>Fecha o ciclo: o escritório enxerga o furo no mesmo dia, não no fechamento.</p>
-      </div></div>
-      <div class="etapa"><span class="num">4</span><div class="txt">
-        <span class="tempo">Em seguida</span>
-        <b>Prestador por hora</b>
-        <p>Tipo de contrato, valor da hora, tela de horas prestadas, fechamento e os dois documentos.</p>
-      </div></div>
-    </div>
+    <div class="etapa"><span class="num">1</span><div class="txt">
+      <span class="tempo">Primeiro — resolve a dor de hoje</span>
+      <b>Os dois botões + confirmação + aviso do dia estranho</b>
+      <p>É o que para de gerar erro novo. Sozinho já corta a maior parte das mensagens de WhatsApp.</p>
+    </div></div>
+    <div class="etapa"><span class="num">2</span><div class="txt">
+      <span class="tempo">Depois</span>
+      <b>Pedido de acerto com vários horários + aprovação + aviso de volta na tela dele</b>
+      <p>Tira a correção do WhatsApp, aceita o dia inteiro de uma vez e devolve a resposta para quem pediu.</p>
+    </div></div>
+    <div class="etapa"><span class="num">3</span><div class="txt">
+      <span class="tempo">Depois</span>
+      <b>Marcação “bate no relógio” + painel de pendências</b>
+      <p>Para de cobrar batida de quem usa o equipamento e mostra os furos no mesmo dia.</p>
+    </div></div>
+    <div class="etapa"><span class="num">4</span><div class="txt">
+      <span class="tempo">Em seguida</span>
+      <b>Prestador por hora</b>
+      <p>Tipo de contrato, valor da hora, horas prestadas, fechamento e os dois documentos.</p>
+    </div></div>
 
     <div class="tec">
-      <b>Por baixo (resumo técnico):</b> a batida passa a gravar o tipo <b>escolhido</b> em vez de contar a paridade
-      (<code>pontoService.registrarBatida</code>); entra uma tabela de <b>pedidos de acerto</b> (quem, dia, hora, tipo,
-      motivo, status, quem aprovou); o <b>Funcionario</b> ganha <code>tipoContrato</code> e <code>valorHora</code>; e o
-      motor do cartão passa a ter dois modos — <b>CLT</b> (o de hoje: previsto, saldo, falta, DSR) e
-      <b>Prestador</b> (horas × valor). Nada do que já está funcionando é removido.
+      <b>Por baixo (resumo técnico):</b> a batida grava o tipo <b>escolhido</b> em vez de contar a paridade
+      (<code>pontoService.registrarBatida</code>); entra uma tabela de <b>pedidos de acerto</b> (com várias linhas por
+      pedido, status por linha, motivo, quem aprovou e o aviso lido/não lido); o <b>Funcionario</b> ganha
+      <code>registraPontoEm</code> (app / relógio / não registra), <code>tipoContrato</code> e <code>valorHora</code>;
+      e o motor do cartão passa a ter dois modos — <b>CLT</b> (o de hoje) e <b>Prestador</b> (horas × valor).
+      A tela pública continua entregando <b>só o dia atual</b>. Nada do que já funciona é removido.
     </div>
   </div>
 
   <div class="cartao">
     <p class="sec-titulo">✅ Como aprovar</p>
     <p class="texto">
-      Me responde no chat: <b>quais itens (1 a 8) você quer</b> e <b>as letras A a E</b> com a sua escolha.
-      Se estiver tudo bom do jeito que está aqui, pode responder só <b>“pode fazer tudo, com as recomendadas”</b>
+      Me responde no chat: <b>quais itens (1 a 11) você quer</b> e <b>as letras A a G</b> com a sua escolha.
+      Se estiver tudo bom do jeito que está aqui, responde só <b>“pode fazer tudo, com as recomendadas”</b>
       que eu sigo com as opções marcadas em verde.
     </p>
   </div>
 
-  <p class="rodape">Plano · Hardt App · agosto/2026 — nada foi alterado no sistema ainda.</p>
+  <p class="rodape">Plano v2 · Hardt App · agosto/2026 — nada foi alterado no sistema ainda.</p>
 </div>
 
 </body>
