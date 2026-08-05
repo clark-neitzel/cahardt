@@ -289,11 +289,17 @@ const produtoController = {
             const CAMPOS_PERMITIDOS = [
                 'ativo', 'descricao', 'estoqueMinimo', 'unidade', 'custoManual',
                 'categoriaProdutoId', 'produtoSubstitutoId',
-                'permiteRecomendacao', 'prioridadeRecomendacao', 'controlaEstoque'
+                'permiteRecomendacao', 'prioridadeRecomendacao', 'controlaEstoque',
+                'validadeDias'
             ];
             const data = {};
             for (const campo of CAMPOS_PERMITIDOS) {
                 if (body[campo] !== undefined) data[campo] = body[campo];
+            }
+            // Validade em dias: número inteiro >= 1, ou null (vazio = usa a validade da etiqueta)
+            if (data.validadeDias !== undefined) {
+                const n = parseInt(data.validadeDias);
+                data.validadeDias = Number.isFinite(n) && n >= 1 ? n : null;
             }
             // Controle de estoque por produto: true/false força; null volta a seguir a categoria
             if (data.controlaEstoque !== undefined && data.controlaEstoque !== null) {

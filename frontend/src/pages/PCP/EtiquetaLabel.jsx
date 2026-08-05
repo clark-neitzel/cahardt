@@ -4,6 +4,9 @@ import JsBarcode from 'jsbarcode';
 // SKU do catálogo tem prioridade; cai para o código interno se não vinculado
 export const codExibir = (et) => et.produto?.codigo || et.codigoProduto;
 
+// Validade em dias: a do produto do catálogo manda (fonte única); cai na da etiqueta se não houver
+export const validadeDias = (et) => et.produto?.validadeDias ?? et.validadeDias ?? 90;
+
 // Impressão dentro do PWA — mesmo padrão de ReceitaDetalhe.imprimirConteudo (funciona no iPad/iOS,
 // onde imprimir via iframe sai em branco/só URL). Monta as etiquetas na própria página e usa
 // @media print para esconder o app; depois limpa tudo. print() deve rodar dentro do clique.

@@ -3,7 +3,7 @@ import { Search, Printer, X, Minus, Plus, Tag } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
-import EtiquetaLabel, { codExibir, imprimirEtiquetas } from './EtiquetaLabel';
+import EtiquetaLabel, { codExibir, imprimirEtiquetas, validadeDias } from './EtiquetaLabel';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 // ─── Utilidades de data ───────────────────────────────────────────────────────
@@ -63,7 +63,8 @@ function PrintModal({ et, onClose }) {
     const labelRef = useRef(null);
 
     const dataFabDisplay = isoParaDisplay(dataFab);
-    const dataValDisplay = somarDias(dataFab, et.validadeDias || 90);
+    const dias = validadeDias(et);
+    const dataValDisplay = somarDias(dataFab, dias);
 
     const handlePrint = () => {
         const conteudo = labelRef.current;
@@ -98,7 +99,7 @@ function PrintModal({ et, onClose }) {
                         />
                     </div>
                     <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">Validade ({et.validadeDias} dias)</label>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Validade ({dias} dias)</label>
                         <div className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 font-mono">
                             {dataValDisplay}
                         </div>
@@ -172,7 +173,7 @@ function EtiquetaCard({ et, onPrint }) {
                 <span className="text-gray-300">·</span>
                 <span>{et.quantidadeEmbalagem} un/emb</span>
                 <span className="text-gray-300">·</span>
-                <span>{et.validadeDias}d</span>
+                <span>{validadeDias(et)}d</span>
             </div>
             {et.codigoBarras && (
                 <div className="border-t pt-2">

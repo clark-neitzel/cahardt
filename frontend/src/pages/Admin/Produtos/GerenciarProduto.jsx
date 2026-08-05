@@ -646,7 +646,8 @@ const GerenciarProduto = () => {
         produtoSubstitutoId: '',
         permiteRecomendacao: true,
         prioridadeRecomendacao: 1,
-        controlaEstoque: '' // '' = segue a categoria | 'true' | 'false'
+        controlaEstoque: '', // '' = segue a categoria | 'true' | 'false'
+        validadeDias: '' // dias de validade p/ etiquetas (vazio = usa a da etiqueta)
     });
 
     useEffect(() => {
@@ -681,7 +682,8 @@ const GerenciarProduto = () => {
                     produtoSubstitutoId: data.produtoSubstitutoId || '',
                     permiteRecomendacao: data.permiteRecomendacao !== false,
                     prioridadeRecomendacao: data.prioridadeRecomendacao || 1,
-                    controlaEstoque: data.controlaEstoque === true ? 'true' : data.controlaEstoque === false ? 'false' : ''
+                    controlaEstoque: data.controlaEstoque === true ? 'true' : data.controlaEstoque === false ? 'false' : '',
+                    validadeDias: data.validadeDias != null ? String(data.validadeDias) : ''
                 });
             } catch (error) {
                 console.error('Erro ao carregar produto:', error);
@@ -728,7 +730,8 @@ const GerenciarProduto = () => {
                 produtoSubstitutoId: formData.produtoSubstitutoId || null,
                 permiteRecomendacao: formData.permiteRecomendacao,
                 prioridadeRecomendacao: parseInt(formData.prioridadeRecomendacao) || 1,
-                controlaEstoque: formData.controlaEstoque === '' ? null : formData.controlaEstoque === 'true'
+                controlaEstoque: formData.controlaEstoque === '' ? null : formData.controlaEstoque === 'true',
+                validadeDias: String(formData.validadeDias ?? '').trim() === '' ? null : parseInt(formData.validadeDias)
             });
             toast.success('Configurações comerciais salvas!');
             handleBack();
@@ -1037,6 +1040,11 @@ const GerenciarProduto = () => {
                         { key: 'unidade', label: 'Unidade', tag: 'EDITÁVEL', helper: 'Unidade de venda no app.',
                           input: <div className="flex items-center rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#D8C9FB',background:'#fff'}}>
                             <input type="text" value={formData.unidade} maxLength={10} onChange={e=>setFormData({...formData,unidade:e.target.value.toUpperCase()})} placeholder="Ex.: UN, KG, PT" className="flex-1 bg-transparent outline-none font-semibold uppercase" style={{fontSize:15,color:'#16192B'}}/>
+                          </div> },
+                        { key: 'validadeDias', label: 'Validade (dias)', tag: 'EDITÁVEL', helper: 'Dias de validade usados nas etiquetas deste produto. Vazio = usa a validade da própria etiqueta.',
+                          input: <div className="flex items-center gap-2.5 rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#D8C9FB',background:'#fff'}}>
+                            <input type="number" min="1" max="3650" value={formData.validadeDias} onChange={e=>setFormData({...formData,validadeDias:e.target.value})} placeholder="Ex.: 180" className="flex-1 bg-transparent outline-none font-semibold font-mono" style={{fontSize:15,color:'#16192B'}}/>
+                            <span className="text-sm font-medium" style={{color:'#9AA0B4'}}>dias</span>
                           </div> },
                       ].map(f => (
                         <div key={f.key}>

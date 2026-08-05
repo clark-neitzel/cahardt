@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Printer, Minus, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
-import EtiquetaLabel, { codExibir, imprimirEtiquetas } from './EtiquetaLabel';
+import EtiquetaLabel, { codExibir, imprimirEtiquetas, validadeDias } from './EtiquetaLabel';
 
 function hojeIso() { return new Date().toISOString().split('T')[0]; }
 
@@ -42,7 +42,8 @@ export default function EtiquetaImprimir() {
     if (!et) return null;
 
     const dataFabDisplay = isoParaDisplay(dataFab);
-    const dataValDisplay = somarDias(dataFab, et.validadeDias || 90);
+    const dias = validadeDias(et);
+    const dataValDisplay = somarDias(dataFab, dias);
 
     const handlePrint = () => {
         const conteudo = printRef.current;
@@ -77,7 +78,7 @@ export default function EtiquetaImprimir() {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Validade</label>
                         <div className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600">
-                            {dataValDisplay} <span className="text-gray-400">({et.validadeDias} dias)</span>
+                            {dataValDisplay} <span className="text-gray-400">({dias} dias{et.produto?.validadeDias != null ? ' · do produto' : ''})</span>
                         </div>
                     </div>
                     <div>
