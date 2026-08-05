@@ -74,6 +74,17 @@ export const montarCartaoHtml = (cartao) => {
     const p = cartao.periodo || {};
     const prestador = cartao.folha?.modo === 'PRESTADOR';
 
+    // CADA DIA EM UMA LINHA: a pílula encolhe conforme o dia mais cheio do
+    // período, para as batidas nunca quebrarem para a linha de baixo.
+    // Medido na régua: uma pílula ocupa ~1,45 mm por ponto de fonte, e a coluna
+    // de batidas tem ~110 mm úteis numa A4 com margem de 10 mm.
+    const maxBatidas = (cartao.linhas || []).reduce((m, l) => Math.max(m, l.batidas.length), 0);
+    const fonteIdeal = maxBatidas > 0 ? 110 / (1.45 * maxBatidas) : 7.5;
+    const fonteBatida = Math.max(5, Math.min(7.5, Math.round(fonteIdeal * 10) / 10));
+    // Abaixo de 5pt ficaria ilegível: aí é melhor deixar quebrar do que vazar
+    // por cima das outras colunas (dia com 15+ batidas é caso extremo).
+    const quebrar = fonteIdeal < 5;
+
     const linhas = (cartao.linhas || []).map((l) => {
         const d = new Date(`${l.data}T12:00:00`);
         const batidas = l.batidas.length
@@ -108,7 +119,7 @@ export const montarCartaoHtml = (cartao) => {
     ].filter(Boolean).join(' · ');
 
     return `
-    <div class="cp">
+    <div class="cp${quebrar ? ' cp-bat-quebra' : ''}" style="--bat: ${fonteBatida}pt">
         <div class="cp-rule"></div>
         <div class="cp-header">
             <img src="/logo-hardt.png" alt="Hardt" class="cp-logo" />
@@ -150,6 +161,10 @@ export const montarCartaoHtml = (cartao) => {
         </div>
 
         <table class="cp-tab">
+            <colgroup>
+                <col style="width:16mm"><col><col style="width:13mm">
+                <col style="width:15mm"><col style="width:13mm"><col style="width:21mm">
+            </colgroup>
             <thead><tr>
                 <th class="cp-esq">Dia</th><th class="cp-esq">Batidas</th>
                 <th>Previsto</th><th>Trabalhado</th><th>Saldo</th><th class="cp-esq">Situação</th>
@@ -237,7 +252,7 @@ export const CARTAO_ESTILOS = `
     .cp-marcados { flex: 2 !important; }
     .cp-marcados b { font-size: 7.5pt; font-weight: 700; }
 
-    .cp-tab { width: 100%; border-collapse: collapse; font-size: 7.5pt; line-height: 1.25; }
+    .cp-tab { width: 100%; border-collapse: collapse; font-size: 7.5pt; line-height: 1.25; table-layout: fixed; }
     .cp-tab thead th { background: #f1efe9; border-bottom: 0.8pt solid #bbb; padding: 0.8mm 1.2mm; font-size: 6pt;
         text-transform: uppercase; letter-spacing: 0.04em; color: #555; text-align: center; }
     .cp-tab th.cp-esq { text-align: left; }
@@ -246,9 +261,14 @@ export const CARTAO_ESTILOS = `
     .cp-linha-falta td { background: #fdeeee; }
     .cp-dia { white-space: nowrap; font-weight: 700; text-transform: capitalize; }
     .cp-num { text-align: center; font-variant-numeric: tabular-nums; white-space: nowrap; }
-    .cp-batidas { line-height: 1.5; }
-    .cp-bat { display: inline-block; border: 0.4pt solid #ccc; border-radius: 5pt; padding: 0.1mm 1.1mm; margin-right: 1mm;
-        font-size: 7.5pt; font-variant-numeric: tabular-nums; }
+    /* Cada dia em UMA linha: as pílulas nunca quebram para a linha de baixo.
+       O tamanho (--bat) é calculado pelo dia mais cheio do período; o padding e
+       a margem vão em em, para encolherem junto. */
+    .cp-batidas { line-height: 1.35; white-space: nowrap; }
+    .cp-bat { display: inline-block; border: 0.4pt solid #ccc; border-radius: 5pt;
+        font-size: var(--bat, 7.5pt); padding: 0.02em 0.28em; margin-right: 0.22em;
+        font-variant-numeric: tabular-nums; }
+    .cp-bat-quebra .cp-batidas { white-space: normal; }
     .cp-entrada { border-left: 1.6pt solid #00754A; }
     .cp-saida { border-left: 1.6pt solid #c2703a; }
     .cp-vazio { color: #aaa; }
