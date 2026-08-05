@@ -1,5 +1,11 @@
 [
   {
+    "slug": "atendimentos-pedidos",
+    "titulo": "Pedido também é atendimento",
+    "resumo": "Toda venda agora entra no Painel de Atendimentos junto com os contatos registrados, na ordem da hora, com o canal que o vendedor marcou no próprio pedido (presencial, WhatsApp, ligação). Quem vende direto pelo app não termina mais o dia com 'zero pedido'. Tem cartão novo Pedidos, filtro 'Só pedidos' e o CSV ganhou as colunas Pedido e Valor.",
+    "data": "2026-08-05"
+  },
+  {
     "slug": "conferencia-dinheiro",
     "titulo": "Conferir o dinheiro do caixa",
     "resumo": "Quem recebe o dinheiro agora conta nota por nota na calculadora do app e assina — e só depois disso o caixa pode ser fechado, nunca pela mesma pessoa que conferiu. Vale até para caixa de R$ 0,00. Na sua agenda aparecem os caixas a conferir e a fechar; falta ou sobra acima da sua quebra de caixa pede senha de quem autoriza. Caixa fechado não aceita mais lançamento.",

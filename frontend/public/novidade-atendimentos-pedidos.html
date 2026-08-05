@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: os pedidos entram no Painel de Atendimentos — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
+<meta property="og:title" content="📋 Novidade no Hardt App: todo pedido agora aparece no Painel de Atendimentos">
+<meta property="og:description" content="A venda entra na lista junto com os atendimentos, na ordem da hora, com o canal que o vendedor informou no pedido (presencial, WhatsApp, ligação). Quem vende direto pelo app não fica mais com o dia zerado.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932;
+    --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258;
+    --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66;
+    letter-spacing:-0.01em;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); line-height:1.55;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums; }
+  .wrap { max-width:640px; margin:0 auto; padding:0 16px 56px; }
+
+  .hero { background:linear-gradient(168deg, var(--house) 0%, #16302a 100%); color:#fff;
+    padding:40px 16px 96px; text-align:center; }
+  .hero .chip { display:inline-block; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);
+    color:#d4e9e2; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+    border-radius:999px; padding:6px 14px; margin-bottom:14px; }
+  .hero h1 { font-size:28px; margin:0 0 10px; font-weight:800; }
+  .hero p { color:#c8d6d0; max-width:490px; margin:0 auto; font-size:15.5px; }
+
+  .cartao { background:#fff; border:1px solid #e5e7eb; border-radius:16px;
+    box-shadow:0 8px 24px rgba(30,57,50,.10); padding:20px; margin-top:-64px; }
+  .cartao + .cartao, .sec { margin-top:16px; }
+  .sec-titulo { font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+  .texto { margin:0; font-size:14.5px; color:#3f4a46; }
+  .texto b { color:var(--house); }
+
+  .resumo { display:grid; gap:10px; margin-top:14px; }
+  .resumo div { display:flex; gap:10px; align-items:flex-start; background:#fbfaf8; border:1px solid #eceae4;
+    border-radius:12px; padding:12px 14px; font-size:14px; color:#3f4a46; }
+  .resumo .ic { font-size:17px; line-height:1.2; }
+  .resumo b { color:var(--house); }
+
+  details { background:#fff; border:1px solid #e5e7eb; border-radius:14px; margin-top:10px; overflow:hidden; }
+  summary { list-style:none; cursor:pointer; padding:15px 18px; font-weight:800; font-size:15px; color:var(--house);
+    display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  summary::-webkit-details-marker { display:none; }
+  summary .mais { color:var(--primary); font-size:20px; font-weight:800; transition:transform .2s; flex:none; }
+  details[open] summary .mais { transform:rotate(45deg); }
+  .det-corpo { padding:0 18px 16px; font-size:14.5px; color:#3f4a46; }
+  .det-corpo b { color:var(--house); }
+  .det-corpo ul { margin:8px 0 0; padding-left:20px; }
+  .det-corpo li { margin-top:6px; }
+
+  /* ── MOCK DE TELA ── */
+  .tela { border:1px solid #e3e1da; border-radius:16px; overflow:hidden; background:#fff; margin-top:14px; }
+  .tela-titulo { background:var(--house); color:#fff; padding:10px 14px; font-size:12px; font-weight:800;
+    letter-spacing:.08em; text-transform:uppercase; display:flex; align-items:center; gap:8px; }
+  .tela-corpo { padding:14px; background:#f7f6f2; }
+  .app-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; margin-bottom:10px; overflow:hidden; }
+  .app-card:last-child { margin-bottom:0; }
+  .app-head { display:flex; align-items:center; gap:8px; padding:10px 13px; border-bottom:1px solid #f1f0ec; }
+  .app-head .t { font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); }
+  .app-body { padding:13px; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:999px;
+    padding:9px 15px; font-size:13px; font-weight:700; }
+  .btn.pri { background:var(--primary); color:#fff; }
+  .btn.sec { background:#fff; border:1px solid var(--primary); color:var(--primary); }
+  .selo { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:999px;
+    font-size:10.5px; font-weight:700; white-space:nowrap; }
+  .s-wpp { background:#dcfce7; color:#15803d; } .s-pres { background:#f3e8ff; color:#7e22ce; }
+  .s-ped { background:#e0f2fe; color:#0369a1; } .s-acao { background:#f3f4f6; color:#374151; }
+  .s-acao-ped { background:#dcfce7; color:#166534; }
+  .aviso { border-radius:10px; padding:10px 12px; font-size:12.5px; line-height:1.5; margin:8px 0; }
+  .a-green { background:#f0fdf4; border:1px solid #bbf7d0; color:#14532d; }
+  .a-gray { background:#f9fafb; border:1px solid #e5e7eb; color:#374151; }
+
+  /* linha da lista de atendimentos */
+  .row { display:grid; grid-template-columns:56px 1fr; gap:10px; padding:10px 12px;
+    border-bottom:1px solid #f1f0ec; font-size:13px; }
+  .row:last-child { border-bottom:0; }
+  .row.pedido { background:#f3fbf6; }
+  .row .hora { color:var(--ink-soft); font-size:11.5px; font-weight:700; line-height:1.35; }
+  .row .nome { font-weight:800; color:#1d4ed8; font-size:13px; }
+  .row .cid { color:var(--ink-soft); font-size:11.5px; }
+  .row .badges { display:flex; gap:5px; flex-wrap:wrap; margin:4px 0 5px; }
+  .row .vlr { font-weight:800; color:var(--ink); font-size:12.5px; }
+  .row .obs { color:#5b6763; font-size:12px; }
+
+  .kpis { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .kpi { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:10px 6px; text-align:center; }
+  .kpi .n { font-size:20px; font-weight:800; line-height:1.1; }
+  .kpi .l { font-size:10px; font-weight:700; margin-top:2px; }
+  .kpi.on { border-color:#7dd3fc; box-shadow:0 0 0 1px #7dd3fc inset; background:#f0f9ff; }
+
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:19px; height:19px; flex:none;
+    border-radius:999px; background:var(--gold); color:#fff; font-size:10.5px; font-weight:800; vertical-align:middle; }
+  .legenda { padding:12px 14px 14px; background:#fff; border-top:1px solid #f1f0ec; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda div:last-child { margin-bottom:0; }
+  .legenda b { color:var(--ink); }
+
+  .passos { background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:18px 16px; margin-top:16px; }
+  .passo { display:flex; gap:12px; margin-top:14px; }
+  .passo:first-of-type { margin-top:10px; }
+  .passo .num { flex:none; width:28px; height:28px; border-radius:999px; background:var(--primary); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+  .passo p { margin:3px 0 0; font-size:14.5px; color:#3f4a46; }
+  .passo b { color:var(--house); }
+  .rodape { text-align:center; color:var(--ink-soft); font-size:12.5px; margin-top:34px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="chip">Novidade nos Atendimentos</div>
+  <h1>Agora o pedido também é um atendimento</h1>
+  <p>Toda venda entra no Painel de Atendimentos junto com os contatos registrados, na ordem da hora —
+     com o canal que o vendedor informou no próprio pedido.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao">
+    <p class="sec-titulo">📋 O que muda</p>
+    <p class="texto">Antes o painel só mostrava o que era lançado à mão no modal de atendimento da Rota.
+      Quem atendia e <b>vendia direto pelo app</b> terminava o dia com “0 com pedido”, como se não tivesse
+      feito nada. Agora <b>o pedido entra na lista sozinho</b>.</p>
+    <div class="resumo">
+      <div><span class="ic">🛒</span><span>Cada pedido vira uma <b>linha verde com o selo PEDIDO</b>, no meio dos atendimentos, na ordem em que aconteceu.</span></div>
+      <div><span class="ic">💬</span><span>O tipo da linha é o <b>Tipo de Atendimento que o vendedor escolheu na venda</b> — presencial, WhatsApp, ligação. Aquele campo obrigatório do Novo Pedido agora tem uso.</span></div>
+      <div><span class="ic">💰</span><span>Na linha aparecem o <b>número do pedido, o valor e a condição de pagamento</b>. Especial sai como ZZ#, bonificação como BN#.</span></div>
+      <div><span class="ic">🔢</span><span>Cartão novo <b>Pedidos</b> no resumo: quantas vendas saíram no período. Clicou, a lista fica só com elas.</span></div>
+      <div><span class="ic">📊</span><span>Filtrar por <b>WhatsApp</b> (ou presencial) traz os atendimentos <b>e</b> as vendas daquele canal — dá para ver o dia inteiro por onde o contato aconteceu.</span></div>
+      <div><span class="ic">🔒</span><span>Linha de pedido <b>não pode ser excluída</b> pelo painel: ela é o espelho da venda, não um lançamento solto.</span></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ TELAS ═══════════ -->
+  <p class="sec-titulo sec" style="margin-top:22px">📱 As telas do app</p>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">1 · Painel de Atendimentos — o dia inteiro numa lista só</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-head"><span class="t">Data/hora · Vendedor · Tipo · Cliente · Ação · Valor</span></div>
+        <div>
+          <div class="row">
+            <div class="hora">12/05<br>16:37</div>
+            <div>
+              <div class="badges"><span class="selo s-wpp">💬 WHATSAPP</span></div>
+              <div class="nome">PADARIA E CONFEITARIA NUBIA</div>
+              <div class="cid">Guaramirim</div>
+              <div class="badges"><span class="selo s-acao">Sem resposta / Ausente</span></div>
+            </div>
+          </div>
+          <div class="row pedido">
+            <div class="hora">12/05<br>16:38</div>
+            <div>
+              <div class="badges"><span class="selo s-wpp">💬 WHATSAPP</span><span class="selo s-ped">🛒 PEDIDO <span class="pin">1</span></span></div>
+              <div class="nome">PANIFICADORA E CONFEITARIA ITALIA</div>
+              <div class="cid">Joinville</div>
+              <div class="badges"><span class="selo s-acao-ped">Pedido #920 <span class="pin">2</span></span></div>
+              <div class="vlr">R$ 1.178,11 <span style="font-weight:500;color:#6b7280">· 14 dias - Boleto</span> <span class="pin">3</span></div>
+              <div class="obs">ENCAIXE DE ENTREGA</div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="hora">12/05<br>16:41</div>
+            <div>
+              <div class="badges"><span class="selo s-pres">👤 PRESENCIAL</span></div>
+              <div class="nome">CASA DA SOGRA</div>
+              <div class="cid">Jaraguá do Sul</div>
+              <div class="badges"><span class="selo s-acao">Atendido sem pedido</span></div>
+              <div class="obs">Deixou pra semana que vem</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Selo PEDIDO</b> ao lado do canal: essa linha é uma venda, não um contato digitado. A linha inteira fica com fundo verde.</span></div>
+      <div><span class="pin">2</span><span><b>Número do pedido no lugar da ação</b> — <b>#</b> normal, <b>ZZ#</b> especial, <b>BN#</b> bonificação. Pedido cancelado aparece marcado.</span></div>
+      <div><span class="pin">3</span><span><b>Valor e condição de pagamento</b>, com a observação do pedido logo abaixo.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">2 · Resumo do período — cartão “Pedidos”</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-head"><span class="t">Resumo do dia · clique para filtrar</span></div>
+        <div class="app-body">
+          <div class="kpis" style="margin-bottom:9px">
+            <div class="kpi"><div class="n">87</div><div class="l" style="color:#6b7280">Total</div></div>
+            <div class="kpi"><div class="n">73</div><div class="l" style="color:#15803d">WHATSAPP</div></div>
+            <div class="kpi"><div class="n">13</div><div class="l" style="color:#7e22ce">PRESENCIAL</div></div>
+            <div class="kpi"><div class="n">1</div><div class="l" style="color:#7e22ce">VISITA</div></div>
+          </div>
+          <div class="kpis">
+            <div class="kpi on"><div class="n" style="color:#0369a1">51</div><div class="l" style="color:#0369a1">Pedidos <span class="pin">1</span></div></div>
+            <div class="kpi"><div class="n" style="color:#15803d">52</div><div class="l" style="color:#15803d">Com Pedido <span class="pin">2</span></div></div>
+            <div class="kpi"><div class="n" style="color:#c2410c">27</div><div class="l" style="color:#c2410c">Sem Pedido</div></div>
+            <div class="kpi"><div class="n" style="color:#7e22ce">8</div><div class="l" style="color:#7e22ce">Lead</div></div>
+          </div>
+          <div class="aviso a-green" style="margin-top:10px">87 atendimentos encontrados · <b>51 com pedido registrado</b></div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-body" style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
+          <span class="btn sec">Só pedidos <span class="pin">3</span></span>
+          <span style="font-size:12px;color:#5f6b66">no menu “Todos os tipos”</span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Pedidos</b>: quantas vendas saíram no período. Clique nele para a lista mostrar só as vendas — clique de novo para voltar.</span></div>
+      <div><span class="pin">2</span><span><b>Com Pedido</b> agora soma as vendas mais os atendimentos de cliente que comprou no período. <b>Sem Pedido</b> é quem foi atendido e não comprou.</span></div>
+      <div><span class="pin">3</span><span>Mesma coisa pelo menu de tipo: <b>“Só pedidos”</b>. E escolher <b>WhatsApp</b> traz conversas e vendas feitas por WhatsApp juntas.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-titulo">3 · Clicando na linha do pedido</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-head" style="background:#f3fbf6"><span class="t">Detalhe · Pedido #920 · Leticia</span></div>
+        <div class="app-body">
+          <div class="aviso a-gray" style="margin-top:0"><b>Observação:</b> ENCAIXE DE ENTREGA</div>
+          <div style="font-size:13px;color:#3f4a46">
+            <p style="margin:0 0 3px"><b>Pedido</b> <span class="pin">1</span></p>
+            <p style="margin:0;font-weight:800">#920 · R$ 1.178,11</p>
+            <p style="margin:0;color:#6b7280">14 dias - Boleto</p>
+            <p style="margin:2px 0 0;color:#6b7280">Tipo de atendimento informado na venda: WHATSAPP · RECEBIDO <span class="pin">2</span></p>
+            <p style="margin:8px 0 0"><b>GPS</b> · 📍 Ver no mapa <span class="pin">3</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Todos os dados da venda sem sair do painel: número, valor e condição de pagamento.</span></div>
+      <div><span class="pin">2</span><span><b>O canal que o vendedor marcou na venda</b> e a situação do pedido (enviado ao Conta Azul, cancelado…).</span></div>
+      <div><span class="pin">3</span><span><b>Onde o pedido foi lançado</b>, quando o celular capturou o GPS — o mesmo mapa dos atendimentos.</span></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ DETALHES ═══════════ -->
+  <p class="sec-titulo sec" style="margin-top:22px">📌 Detalhes</p>
+
+  <details open>
+    <summary>De onde sai o “presencial ou WhatsApp” do pedido <span class="mais">+</span></summary>
+    <div class="det-corpo">
+      <p style="margin:0">É o campo <b>Tipo de Atendimento</b> que já existe na tela de Novo Pedido — aquele que o app
+        exige preencher antes de enviar a venda.</p>
+      <ul>
+        <li><b>Visita Presencial</b> → a linha aparece como PRESENCIAL.</li>
+        <li><b>WhatsApp</b> → WHATSAPP. <b>Ligação</b> → TELEFONE.</li>
+        <li>Pedido vindo do <b>site ou do Kit Festa</b> aparece como SITE.</li>
+        <li>Se o campo ficou vazio (pedido antigo), a linha entra só como PEDIDO.</li>
+      </ul>
+      <p style="margin-top:10px">Ou seja: quanto mais certo o vendedor marca esse campo na venda, mais fiel fica o
+        painel do dia dele.</p>
+    </div>
+  </details>
+
+  <details open>
+    <summary>Continua valendo registrar o atendimento na Rota <span class="mais">+</span></summary>
+    <div class="det-corpo">
+      <p style="margin:0">O pedido entrar sozinho <b>não substitui</b> o registro de atendimento — ele mostra a venda.</p>
+      <ul>
+        <li>Cliente que <b>não comprou</b> só aparece se o atendimento for registrado (“sem resposta”, “atendido sem pedido”, “reagendado”…).</li>
+        <li>É esse registro que alimenta retorno agendado, transferência para outro vendedor, alerta visual e o histórico do cliente.</li>
+        <li>Atendeu e vendeu no mesmo contato? Aparecem <b>as duas linhas</b>, uma seguida da outra — o contato e a venda.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details open>
+    <summary>O que mudou no CSV e nos filtros <span class="mais">+</span></summary>
+    <div class="det-corpo">
+      <ul>
+        <li>O <b>CSV ganhou as colunas Pedido e Valor</b> — dá para somar as vendas do vendedor direto na planilha.</li>
+        <li>No menu de ações, todo pedido conta como uma opção só: <b>“Pedido”</b>.</li>
+        <li>O menu de tipos agora mostra <b>os tipos que existem de verdade</b> no cadastro (por isso aparece TELEFONE, PRESENCIAL…).</li>
+        <li>Busca por cliente, cidade e vendedor funcionam igual nas duas — atendimento e pedido.</li>
+      </ul>
+    </div>
+  </details>
+
+  <div class="passos">
+    <p class="sec-titulo" style="margin:0">✅ Para começar a usar</p>
+    <div class="passo"><div class="num">1</div>
+      <p>Abra <b>Atendimentos</b> e escolha o dia. As vendas já aparecem misturadas aos atendimentos, em verde.</p></div>
+    <div class="passo"><div class="num">2</div>
+      <p>Quer ver só o que foi vendido? Clique no cartão <b>Pedidos</b>. Quer o dia por canal? Escolha
+        <b>WhatsApp</b> ou <b>Presencial</b> no menu de tipos.</p></div>
+    <div class="passo"><div class="num">3</div>
+      <p>Vendedor: continue <b>marcando certo o Tipo de Atendimento</b> ao lançar o pedido — é ele que diz se
+        aquela venda foi na loja, no WhatsApp ou no telefone.</p></div>
+    <div class="passo"><div class="num">4</div>
+      <p>E siga <b>registrando o atendimento de quem não comprou</b>: é o único jeito de esse contato existir no painel.</p></div>
+  </div>
+
+  <p class="rodape">Hardt App · Painel de Atendimentos — pedidos na lista · agosto/2026</p>
+</div>
+
+</body>
+</html>

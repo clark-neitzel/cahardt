@@ -10,32 +10,67 @@ permissao: todos (admin vê todos os vendedores; vendedor vê os próprios)
 
 Painel de consulta e auditoria de todos os atendimentos registrados no sistema. Um atendimento é qualquer contato feito com um cliente ou lead: visita, WhatsApp, ligação, pedido, amostra, retorno ou financeiro. A tela permite filtrar por período, tipo, vendedor e outras dimensões, e visualizar os detalhes de cada registro.
 
+**A tela mostra DUAS coisas na mesma linha do tempo:**
+
+1. **Atendimentos registrados à mão** — o que o vendedor lançou no modal de atendimento da Rota (ou no modal de lead).
+2. **Os PEDIDOS do período** — toda venda vira uma linha automaticamente, porque ao criar o pedido o
+   vendedor já informa o **Tipo de Atendimento** que gerou a venda (Visita Presencial / Ligação /
+   WhatsApp / Outros). Antes disso, quem vendia direto pelo app não aparecia no painel e o dia dele
+   ficava com "0 com pedido".
+
+A linha de pedido tem fundo verde, o selo **PEDIDO** ao lado do tipo, o número da venda na coluna Ação
+(`Pedido #920`, `ZZ#` para especial, `BN#` para bonificação) e o valor na coluna Observação. Ela **não
+é um lançamento de atendimento**: não pode ser excluída pelo painel (para tirá-la, é o pedido que
+precisa ser cancelado/excluído).
+
 ---
 
 ## O que dá pra fazer aqui
 
-- Ver todos os atendimentos com paginação (50 por vez)
+- Ver todos os atendimentos e todos os pedidos do período, misturados por hora (50 por vez)
 - Filtrar por: data (período), tipo de atendimento, vendedor, cidade, ação e filtros especiais
+- Filtrar **"Só pedidos"** no menu de tipo (ou clicar no cartão **Pedidos**) para ver apenas as vendas
+- Filtrar por canal (ex.: WhatsApp) — traz os atendimentos **e** os pedidos feitos por aquele canal
 - Navegar entre períodos com as setas (avança/recua o mesmo número de dias)
 - Buscar por nome do cliente ou texto nas observações
-- Expandir um atendimento para ver todos os detalhes
+- Expandir uma linha para ver todos os detalhes (na linha de pedido: valor, condição de pagamento,
+  canal informado na venda, status de envio e GPS de onde o pedido foi feito)
 - Abrir o popup do cliente diretamente do atendimento
-- Excluir um atendimento (admin)
-- Ver resumo: total de atendimentos, por tipo, por vendedor, com/sem pedido
+- Excluir um atendimento (admin) — **não vale para linha de pedido**
+- Ver resumo: total, por tipo, por vendedor, pedidos, com/sem pedido, lead
+- Exportar CSV (inclui as colunas Pedido e Valor)
 
 ---
 
 ## Tipos de atendimento
 
+A lista de tipos é **configurável** em Configurações → Gerais, então o menu do filtro mostra a lista
+fixa mais os tipos que realmente aparecem nos dados (hoje o cadastro usa PRESENCIAL e TELEFONE).
+
 | Tipo | Cor | Quando usar |
 |------|-----|-------------|
-| VISITA | Roxo | Visita presencial ao cliente |
+| PRESENCIAL / VISITA | Roxo | Visita presencial ao cliente |
 | WHATSAPP | Verde | Contato via WhatsApp |
-| LIGACAO | Azul | Ligação telefônica |
-| PEDIDO | Azul claro | Pedido registrado |
+| LIGACAO / TELEFONE | Azul | Ligação telefônica |
+| PEDIDO | Azul claro | Venda cujo canal não foi informado; no filtro, "Só pedidos" |
+| SITE | Verde-água | Pedido nascido no site (Kit Festa / Congelados) |
 | AMOSTRA | Âmbar | Envio de amostra |
 | RETORNO | Índigo | Retorno agendado cumprido |
-| FINANCEIRO | Cinza | Cobrança ou assunto financeiro |
+| FINANCEIRO | Cinza | Cobrança ou assunto financeiro (fica escondido por padrão) |
+
+O tipo da linha de pedido vem do canal informado na venda: Visita Presencial → PRESENCIAL,
+WhatsApp → WHATSAPP, Ligação → TELEFONE, Kit Festa/site → SITE.
+
+---
+
+## Cartões de resumo
+
+| Cartão | O que conta |
+|--------|-------------|
+| **Pedidos** | Quantas vendas foram feitas no período (clicar filtra só elas) |
+| **Com Pedido** | Linhas ligadas a venda: os próprios pedidos + atendimentos de cliente que comprou no período |
+| **Sem Pedido** | Atendimentos de cliente que não comprou no período |
+| **Lead** | Atendimentos de lead (ainda não é cliente) |
 
 ---
 
@@ -57,9 +92,16 @@ Painel de consulta e auditoria de todos os atendimentos registrados no sistema. 
 ### Ver detalhes de um atendimento
 - Clique na linha do atendimento para expandir
 - Você vê: hora, observações, ação registrada, data de retorno (se houver) e dados do cliente
+- Na linha de **pedido**: número, valor, condição de pagamento, tipo de atendimento informado na
+  venda, status de envio ao Conta Azul e GPS de onde a venda foi lançada
+
+### Ver só as vendas do dia
+1. Clique no cartão **Pedidos** (ou escolha "Só pedidos" no menu de tipo)
+2. A lista fica só com as vendas do período, na ordem em que foram feitas
+3. Clique de novo no cartão para voltar a ver tudo
 
 ### Exportar (download)
-- O botão de download (ícone) exporta os atendimentos filtrados em CSV
+- O botão de download (ícone) exporta os atendimentos filtrados em CSV, com as colunas Pedido e Valor
 
 ---
 
@@ -74,8 +116,11 @@ Painel de consulta e auditoria de todos os atendimentos registrados no sistema. 
 
 ## Depende de / Interfere em
 
-- **Rota** — os atendimentos são criados pela Rota (modal de atendimento)
+- **Rota** — os atendimentos registrados à mão são criados pela Rota (modal de atendimento)
+- **Pedidos** — toda venda do período vira linha aqui; o canal vem do campo "Tipo de Atendimento"
+  preenchido na tela de Novo Pedido (é obrigatório para enviar o pedido)
 - **Leads** — atendimentos de leads também aparecem aqui
+- **Configurações → Gerais** — a lista de tipos de atendimento sai de lá
 - **Dashboard** — o número de atendimentos do dia é usado em análises de desempenho
 - **Análise IA** — cada atendimento pode disparar uma análise da IA
 
@@ -87,4 +132,5 @@ Painel de consulta e auditoria de todos os atendimentos registrados no sistema. 
 |---------|-------|
 | `frontend/src/pages/Atendimentos/PainelAtendimentos.jsx` | Componente principal |
 | `frontend/src/services/atendimentoService.js` | Chamadas de API |
-| `backend/src/routes/atendimentos.js` | Rotas do backend |
+| `backend/routes/atendimentoRoutes.js` + `controllers/atendimentoController.js` | Rotas do backend |
+| `backend/services/atendimentoService.js` (`listarComFiltros`) | Junta atendimentos + pedidos na mesma lista |

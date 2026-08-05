@@ -1,6 +1,78 @@
 const prisma = require('../config/database');
 const clienteInsightService = require('./clienteInsightService');
 
+// Teto de segurança do painel: período muito largo não pode varrer a tabela inteira
+// (a mesclagem atendimento + pedido é feita em memória para ordenar pela hora).
+const TETO_LINHAS = 3000;
+
+// Canal informado no pedido (campo "Tipo de Atendimento" do NovoPedido) → tipo do painel.
+// VISITA vira PRESENCIAL só se a configuração de tipos_atendimento usar esse nome
+// (a lista de tipos é editável em Configurações) — quem decide é criarResolvedorDeTipo.
+const CANAL_PEDIDO_TIPO = {
+    VISITA: ['PRESENCIAL', 'VISITA'],
+    PRESENCIAL: ['PRESENCIAL', 'VISITA'],
+    WHATSAPP: ['WHATSAPP'],
+    LIGACAO: ['LIGACAO', 'TELEFONE'],
+    KIT_FESTA: ['SITE'],
+    SITE_CONGELADOS: ['SITE'],
+};
+
+/**
+ * Devolve uma função canal → tipo, casando com o vocabulário configurado em
+ * `tipos_atendimento` (o dono edita essa lista; hoje usa PRESENCIAL, não VISITA).
+ * Sem config, fica o primeiro nome de cada lista acima.
+ */
+function criarResolvedorDeTipo(tiposConfig) {
+    const configurados = new Set(
+        (Array.isArray(tiposConfig) ? tiposConfig : [])
+            .map(t => String(t?.value || t || '').toUpperCase())
+            .filter(Boolean)
+    );
+    return (canal) => {
+        const candidatos = CANAL_PEDIDO_TIPO[String(canal || '').toUpperCase()];
+        if (!candidatos) return 'PEDIDO';                       // canal em branco ou desconhecido
+        return candidatos.find(c => configurados.has(c)) || candidatos[0];
+    };
+}
+
+/** Pedido → linha de atendimento (mesmo formato que a tela já sabe desenhar). */
+function montarLinhaPedido(p, resolverTipo) {
+    const valor = (p.itens || []).reduce(
+        (soma, i) => soma + Number(i.valor || 0) * Number(i.quantidade || 0), 0
+    );
+    const prefixo = p.especial ? 'ZZ#' : p.bonificacao ? 'BN#' : '#';
+    const numero = p.numero != null ? `${prefixo}${p.numero}` : '(sem número)';
+    return {
+        id: `pedido:${p.id}`,
+        origemPedido: true,
+        pedidoId: p.id,
+        numeroPedido: p.numero,
+        rotuloPedido: numero,
+        valorPedido: Math.round(valor * 100) / 100,
+        canalOrigem: p.canalOrigem || null,
+        condicaoPagamento: p.nomeCondicaoPagamento || null,
+        statusEnvio: p.statusEnvio || null,
+        cancelado: !!p.cancelado,
+        especial: !!p.especial,
+        bonificacao: !!p.bonificacao,
+        criadoEm: p.createdAt,
+        tipo: resolverTipo(p.canalOrigem),
+        acaoKey: 'PEDIDO',
+        acaoLabel: `Pedido ${numero}`,
+        observacao: p.observacoes || null,
+        gpsVendedor: p.latLng || null,
+        vendedor: p.vendedor || null,
+        cliente: p.cliente || null,
+        clienteId: p.clienteId,
+        lead: null,
+        leadId: null,
+        // Campos que a tela lê mas não existem num pedido
+        transferidoParaId: null, transferidoPara: null,
+        dataRetorno: null, assuntoRetorno: null,
+        alertaVisualAtivo: false, etapaNova: null, amostra: null,
+    };
+}
+
 const atendimentoService = {
 
     // Registra um atendimento (para Lead ou Cliente)
@@ -370,6 +442,13 @@ const atendimentoService = {
     },
 
     // Lista atendimentos com filtros completos (para página admin)
+    //
+    // O painel mistura DUAS fontes na mesma linha do tempo:
+    //   1) atendimentos registrados à mão (Rota / lead);
+    //   2) os PEDIDOS do período, como linha virtual — o vendedor já informa no pedido
+    //      o "Tipo de Atendimento" que gerou a venda (canalOrigem), então a venda é o
+    //      atendimento. Sem isso, quem vende direto pelo app não aparecia no painel.
+    // Linha de pedido tem id `pedido:<uuid>` e `origemPedido: true` (não é editável/excluível).
     listarComFiltros: async ({ vendedorId, clienteId, leadId, tipo, dataInicio, dataFim, page = 1, limit = 50 }) => {
         const where = {};
         if (vendedorId) where.idVendedor = vendedorId;
@@ -388,18 +467,21 @@ const atendimentoService = {
             if (dataFim) where.criadoEm.lte = new Date(dataFim + 'T23:59:59.999-03:00');
         }
 
-        // Busca pedidos no mesmo período/vendedor para cruzar "com pedido"
+        // Busca pedidos no mesmo período/vendedor (viram linha e cruzam o "com pedido")
         // Usa createdAt (quando o pedido foi criado), não dataVenda (data de entrega futura)
         const wherePedido = {};
         if (vendedorId) wherePedido.vendedorId = vendedorId;
+        if (clienteId) wherePedido.clienteId = clienteId;
         if (dataInicio || dataFim) {
             wherePedido.createdAt = {};
             if (dataInicio) wherePedido.createdAt.gte = new Date(dataInicio + 'T00:00:00-03:00');
             if (dataFim) wherePedido.createdAt.lte = new Date(dataFim + 'T23:59:59.999-03:00');
         }
 
-        const [total, data, pedidosDoPeriodo, todosParaResumo] = await Promise.all([
-            prisma.atendimento.count({ where }),
+        // Filtro de lead nunca casa com pedido (pedido é sempre de cliente)
+        const trazPedidos = !leadId;
+
+        const [atendimentos, pedidosDoPeriodo, tiposConfig] = await Promise.all([
             prisma.atendimento.findMany({
                 where,
                 include: {
@@ -410,46 +492,66 @@ const atendimentoService = {
                     amostra: { select: { id: true, numero: true, status: true } },
                 },
                 orderBy: { criadoEm: 'desc' },
-                skip: (page - 1) * limit,
-                take: limit,
+                take: TETO_LINHAS,
             }),
-            prisma.pedido.findMany({
+            trazPedidos ? prisma.pedido.findMany({
                 where: wherePedido,
-                select: { clienteId: true },
-            }),
-            // Busca leve de TODOS os registros do período para cálculo correto do resumo
-            prisma.atendimento.findMany({
-                where,
                 select: {
-                    tipo: true,
-                    clienteId: true,
-                    leadId: true,
-                    vendedor: { select: { nome: true } },
+                    id: true, numero: true, createdAt: true, canalOrigem: true,
+                    especial: true, bonificacao: true, cancelado: true,
+                    statusEnvio: true, nomeCondicaoPagamento: true, observacoes: true,
+                    clienteId: true, latLng: true,
+                    vendedor: { select: { id: true, nome: true } },
+                    cliente: { select: { UUID: true, NomeFantasia: true, Nome: true, End_Cidade: true } },
+                    itens: { select: { quantidade: true, valor: true } },
                 },
-            }),
+                orderBy: { createdAt: 'desc' },
+                take: TETO_LINHAS,
+            }) : Promise.resolve([]),
+            prisma.appConfig.findUnique({ where: { key: 'tipos_atendimento' } }).catch(() => null),
         ]);
 
         // Set de clienteIds que fizeram pedido no período
         const clientesComPedidoSet = new Set(pedidosDoPeriodo.map(p => p.clienteId).filter(Boolean));
         const clientesComPedido = [...clientesComPedidoSet];
 
+        // Converte cada pedido numa linha de atendimento
+        const resolverTipo = criarResolvedorDeTipo(tiposConfig?.value);
+        let linhasPedido = pedidosDoPeriodo.map(p => montarLinhaPedido(p, resolverTipo));
+
+        // O filtro de tipo do painel também vale para as linhas de pedido:
+        // 'PEDIDO' = só as vendas; canal (WHATSAPP, PRESENCIAL...) = vendas daquele canal.
+        if (tipo) {
+            linhasPedido = tipo === 'PEDIDO'
+                ? linhasPedido
+                : linhasPedido.filter(l => l.tipo === tipo);
+        }
+
+        // Linha do tempo única (atendimento e pedido lado a lado), mais recente primeiro
+        const todas = [...atendimentos, ...linhasPedido]
+            .sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm));
+
+        const total = todas.length;
+        const data = todas.slice((page - 1) * limit, page * limit);
+
         // Resumo agregado sobre TODOS os registros (não só a página atual)
         const porTipo = {};
         const porVendedor = {};
-        let comPedido = 0, semPedido = 0, lead = 0;
+        let comPedido = 0, semPedido = 0, lead = 0, pedidos = 0;
 
-        todosParaResumo.forEach(a => {
+        todas.forEach(a => {
             porTipo[a.tipo] = (porTipo[a.tipo] || 0) + 1;
             const vn = a.vendedor?.nome || 'Sem vendedor';
             porVendedor[vn] = (porVendedor[vn] || 0) + 1;
-            if (a.leadId) lead++;
+            if (a.origemPedido) { pedidos++; comPedido++; }
+            else if (a.leadId) lead++;
             else if (a.clienteId && clientesComPedidoSet.has(a.clienteId)) comPedido++;
             else if (a.clienteId) semPedido++;
         });
 
-        const resumo = { total, porTipo, porVendedor, comPedido, semPedido, lead };
+        const resumo = { total, porTipo, porVendedor, comPedido, semPedido, lead, pedidos };
 
-        return { data, total, page, limit, totalPages: Math.ceil(total / limit), clientesComPedido, resumo };
+        return { data, total, page, limit, totalPages: Math.ceil(total / limit) || 1, clientesComPedido, resumo };
     }
 };
 

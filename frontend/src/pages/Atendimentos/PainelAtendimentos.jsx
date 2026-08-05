@@ -11,36 +11,42 @@ import {
     User, MapPin, ArrowLeftRight, Bell, Clock,
     X, Download,
     ClipboardList, Eye, MessageCircle, Phone, Truck, Trash2,
-    Building2
+    Building2, ShoppingCart
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const TIPOS_ATENDIMENTO = [
     { value: '', label: 'Todos os tipos' },
+    { value: 'PRESENCIAL', label: 'Presencial' },
     { value: 'VISITA', label: 'Visita' },
     { value: 'WHATSAPP', label: 'WhatsApp' },
     { value: 'LIGACAO', label: 'Ligação' },
-    { value: 'PEDIDO', label: 'Pedido' },
+    { value: 'PEDIDO', label: 'Só pedidos' },
+    { value: 'SITE', label: 'Site / Kit Festa' },
     { value: 'AMOSTRA', label: 'Amostra' },
     { value: 'RETORNO', label: 'Retorno' },
     { value: 'FINANCEIRO', label: 'Financeiro' },
 ];
 
 const TIPO_BADGE = {
+    PRESENCIAL: 'bg-purple-100 text-purple-700',
     VISITA: 'bg-purple-100 text-purple-700',
     WHATSAPP: 'bg-green-100 text-green-700',
     LIGACAO: 'bg-blue-100 text-blue-700',
     PEDIDO: 'bg-sky-100 text-sky-700',
+    SITE: 'bg-teal-100 text-teal-700',
     AMOSTRA: 'bg-amber-100 text-amber-700',
     RETORNO: 'bg-indigo-100 text-indigo-700',
     FINANCEIRO: 'bg-gray-100 text-gray-600',
 };
 
 const TIPO_ICON = {
+    PRESENCIAL: User,
     VISITA: User,
     WHATSAPP: MessageCircle,
     LIGACAO: Phone,
-    PEDIDO: ClipboardList,
+    PEDIDO: ShoppingCart,
+    SITE: Building2,
     AMOSTRA: Truck,
     RETORNO: Clock,
     FINANCEIRO: ClipboardList,
@@ -49,6 +55,11 @@ const TIPO_ICON = {
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '-';
 const fmtHora = (d) => d ? new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }) : '';
 const fmtDataHora = (d) => d ? `${fmtData(d)} ${fmtHora(d)}` : '-';
+const fmtMoeda = (v) => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+// No select de ações, todo pedido conta como uma opção só ("Pedido") — senão cada
+// venda viraria uma opção diferente ("Pedido #123", "Pedido #124"...).
+const rotuloAcao = (a) => a.origemPedido ? 'Pedido' : a.acaoLabel;
 
 const PainelAtendimentos = () => {
     const { user } = useAuth();
@@ -67,6 +78,10 @@ const PainelAtendimentos = () => {
     const [clientePopup, setClientePopup] = useState(null);
     const [confirmDelete, setConfirmDelete] = useState(null);
     const [deletando, setDeletando] = useState(false);
+    // Tipos de atendimento são configuráveis (Configurações), então o select junta a lista
+    // fixa com o que realmente aparece. Acumula ao longo da sessão: se limpasse a cada
+    // busca, ao filtrar por um tipo os outros sumiriam do menu e não daria para trocar.
+    const [tiposVistos, setTiposVistos] = useState([]);
 
     // Filtros persistidos por usuário (busca livre, datas — padrão "hoje" — e paginação ficam de fora)
     const [filtrosSalvos, setFiltrosSalvos] = useFiltrosSalvos('painel-atendimentos', {
@@ -112,7 +127,11 @@ const PainelAtendimentos = () => {
             setClientesComPedido(new Set(result.clientesComPedido || []));
             setTotal(result.total || 0);
             setTotalPages(result.totalPages || 1);
-            if (result.resumo) setResumo(result.resumo);
+            if (result.resumo) {
+                setResumo(result.resumo);
+                const vistos = Object.keys(result.resumo.porTipo || {});
+                setTiposVistos(prev => (vistos.every(t => prev.includes(t)) ? prev : [...new Set([...prev, ...vistos])]));
+            }
         } catch (error) {
             console.error(error);
             toast.error('Erro ao carregar atendimentos.');
@@ -180,10 +199,17 @@ const PainelAtendimentos = () => {
         return `${di.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} - ${df.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
     }, [filtros.dataInicio, filtros.dataFim]);
 
+    // Opções do select de tipo: lista fixa + tipos configurados que apareceram
+    const opcoesTipo = useMemo(() => {
+        const fixos = TIPOS_ATENDIMENTO.map(t => t.value);
+        const extras = tiposVistos.filter(t => t && !fixos.includes(t)).sort();
+        return [...TIPOS_ATENDIMENTO, ...extras.map(v => ({ value: v, label: v.charAt(0) + v.slice(1).toLowerCase() }))];
+    }, [tiposVistos]);
+
     // Valores únicos de ação para o select
     const acoesDisponiveis = useMemo(() => {
         const set = new Set();
-        data.forEach(a => { if (a.acaoLabel) set.add(a.acaoLabel); });
+        data.forEach(a => { const r = rotuloAcao(a); if (r) set.add(r); });
         return [...set].sort();
     }, [data]);
 
@@ -205,10 +231,10 @@ const PainelAtendimentos = () => {
             lista = lista.filter(a => (a.cliente?.End_Cidade || '').toLowerCase().includes(termo));
         }
         if (filtros.acao) {
-            lista = lista.filter(a => a.acaoLabel === filtros.acao);
+            lista = lista.filter(a => rotuloAcao(a) === filtros.acao);
         }
-        if (filtros.filtroEspecial === 'com_pedido') lista = lista.filter(a => a.clienteId && clientesComPedido.has(a.clienteId));
-        if (filtros.filtroEspecial === 'sem_pedido') lista = lista.filter(a => a.clienteId && !clientesComPedido.has(a.clienteId));
+        if (filtros.filtroEspecial === 'com_pedido') lista = lista.filter(a => a.origemPedido || (a.clienteId && clientesComPedido.has(a.clienteId)));
+        if (filtros.filtroEspecial === 'sem_pedido') lista = lista.filter(a => !a.origemPedido && a.clienteId && !clientesComPedido.has(a.clienteId));
         if (filtros.filtroEspecial === 'lead') lista = lista.filter(a => !!a.leadId);
         return lista;
     }, [data, filtros.busca, filtros.cidade, filtros.acao, filtros.filtroEspecial, clientesComPedido]);
@@ -231,7 +257,7 @@ const PainelAtendimentos = () => {
 
     const exportarCSV = () => {
         if (dataFiltrada.length === 0) return;
-        const headers = ['Data', 'Hora', 'Vendedor', 'Tipo', 'Cliente/Lead', 'Cidade', 'Acao', 'Observacao', 'Data Retorno', 'Assunto Retorno', 'Transferido Para', 'GPS'];
+        const headers = ['Data', 'Hora', 'Vendedor', 'Tipo', 'Cliente/Lead', 'Cidade', 'Acao', 'Pedido', 'Valor', 'Observacao', 'Data Retorno', 'Assunto Retorno', 'Transferido Para', 'GPS'];
         const rows = dataFiltrada.map(a => [
             fmtData(a.criadoEm),
             fmtHora(a.criadoEm),
@@ -240,6 +266,8 @@ const PainelAtendimentos = () => {
             a.cliente ? (a.cliente.NomeFantasia || a.cliente.Nome) : (a.lead?.nomeEstabelecimento || ''),
             a.cliente?.End_Cidade || '',
             a.acaoLabel || '',
+            a.origemPedido ? a.rotuloPedido : '',
+            a.origemPedido ? Number(a.valorPedido || 0).toFixed(2).replace('.', ',') : '',
             (a.observacao || '').replace(/[\n\r]/g, ' '),
             a.dataRetorno ? fmtData(a.dataRetorno) : '',
             a.assuntoRetorno || '',
@@ -274,6 +302,7 @@ const PainelAtendimentos = () => {
                     </h1>
                     <p className="text-sm text-gray-500 mt-0.5">
                         {total} atendimento{total !== 1 ? 's' : ''} encontrado{total !== 1 ? 's' : ''}
+                        {resumo.pedidos > 0 && <span className="text-green-700 font-medium"> · {resumo.pedidos} com pedido registrado</span>}
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -341,7 +370,7 @@ const PainelAtendimentos = () => {
                         {/* Tipo */}
                         <SelectBusca value={filtros.tipo} onChange={e => handleFiltro('tipo', e.target.value)}
                             className="min-w-[120px] flex-1">
-                            {TIPOS_ATENDIMENTO.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                            {opcoesTipo.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                         </SelectBusca>
 
                         {/* Limpar filtros */}
@@ -403,8 +432,13 @@ const PainelAtendimentos = () => {
                 ))}
             </div>
 
-            {/* Resumo cards - com/sem pedido e lead */}
-            <div className="grid grid-cols-3 gap-2">
+            {/* Resumo cards - pedidos, com/sem pedido e lead */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className={`border rounded-lg p-3 text-center cursor-pointer transition-colors ${filtros.tipo === 'PEDIDO' ? 'border-sky-400 bg-sky-50 ring-1 ring-sky-400' : 'bg-white border-gray-200 hover:border-sky-300'}`}
+                    onClick={() => handleFiltro('tipo', filtros.tipo === 'PEDIDO' ? '' : 'PEDIDO')}>
+                    <p className="text-2xl font-bold text-sky-700">{resumo.pedidos || 0}</p>
+                    <p className="text-[11px] font-semibold text-sky-600">Pedidos</p>
+                </div>
                 <div className={`border rounded-lg p-3 text-center cursor-pointer transition-colors ${filtros.filtroEspecial === 'com_pedido' ? 'border-green-400 bg-green-50 ring-1 ring-green-400' : 'bg-white border-gray-200 hover:border-green-300'}`}
                     onClick={() => handleFiltro('filtroEspecial', filtros.filtroEspecial === 'com_pedido' ? '' : 'com_pedido')}>
                     <p className="text-2xl font-bold text-green-700">{resumo.comPedido}</p>
@@ -475,7 +509,7 @@ const PainelAtendimentos = () => {
                             const isExpanded = expandedRow === a.id;
                             return (
                                 <React.Fragment key={a.id}>
-                                    <tr className={`hover:bg-gray-50 cursor-pointer transition-colors ${a.transferidoParaId ? 'bg-indigo-50/30' : ''} ${a.alertaVisualAtivo ? 'bg-amber-50/30' : ''}`}
+                                    <tr className={`hover:bg-gray-50 cursor-pointer transition-colors ${a.origemPedido ? 'bg-green-50/50' : ''} ${a.transferidoParaId ? 'bg-indigo-50/30' : ''} ${a.alertaVisualAtivo ? 'bg-amber-50/30' : ''}`}
                                         onClick={() => setExpandedRow(isExpanded ? null : a.id)}>
                                         <td className="px-3 py-2.5">
                                             <div className="text-xs font-medium text-gray-900">{fmtData(a.criadoEm)}</div>
@@ -488,6 +522,11 @@ const PainelAtendimentos = () => {
                                             <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded ${TIPO_BADGE[a.tipo] || 'bg-gray-100 text-gray-600'}`}>
                                                 <TipoIcon tipo={a.tipo} /> {a.tipo}
                                             </span>
+                                            {a.origemPedido && (
+                                                <span className="mt-0.5 inline-flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-100 text-sky-700">
+                                                    <ShoppingCart className="h-3 w-3" /> PEDIDO
+                                                </span>
+                                            )}
                                         </td>
                                         <td className="px-3 py-2.5">
                                             <button
@@ -506,12 +545,25 @@ const PainelAtendimentos = () => {
                                             {a.cliente?.End_Cidade || '-'}
                                         </td>
                                         <td className="px-3 py-2.5">
-                                            {a.acaoLabel ? (
+                                            {a.origemPedido ? (
+                                                <div>
+                                                    <span className="text-[10px] font-bold text-green-800 bg-green-100 px-1.5 py-0.5 rounded block truncate">
+                                                        Pedido {a.rotuloPedido}
+                                                    </span>
+                                                    {a.cancelado && <span className="text-[10px] font-bold text-red-700">cancelado</span>}
+                                                </div>
+                                            ) : a.acaoLabel ? (
                                                 <span className="text-[10px] font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded block truncate">{a.acaoLabel}</span>
                                             ) : <span className="text-xs text-gray-400">-</span>}
                                         </td>
                                         <td className="px-3 py-2.5">
-                                            <p className="text-xs text-gray-600 line-clamp-2 leading-tight">{a.observacao || <span className="text-gray-400">-</span>}</p>
+                                            {a.origemPedido && (
+                                                <p className="text-xs font-bold text-gray-900 tabular-nums">
+                                                    {a.bonificacao ? 'Bonificação' : fmtMoeda(a.valorPedido)}
+                                                    {!a.bonificacao && a.condicaoPagamento && <span className="font-normal text-gray-500"> · {a.condicaoPagamento}</span>}
+                                                </p>
+                                            )}
+                                            <p className="text-xs text-gray-600 line-clamp-2 leading-tight">{a.observacao || (!a.origemPedido && <span className="text-gray-400">-</span>)}</p>
                                         </td>
                                         <td className="px-3 py-2.5">
                                             {a.dataRetorno ? (
@@ -538,6 +590,20 @@ const PainelAtendimentos = () => {
                                                             <p className="text-xs font-bold text-gray-500 uppercase mb-1">Vendedor</p>
                                                             <p className="text-gray-700">{a.vendedor?.nome || '-'}</p>
                                                         </div>
+                                                        {a.origemPedido && (
+                                                            <div>
+                                                                <p className="text-xs font-bold text-gray-500 uppercase mb-1">Pedido</p>
+                                                                <p className="text-gray-700 font-semibold">
+                                                                    {a.rotuloPedido} · {a.bonificacao ? 'Bonificação' : fmtMoeda(a.valorPedido)}
+                                                                </p>
+                                                                {!a.bonificacao && a.condicaoPagamento && <p className="text-[12px] text-gray-500">{a.condicaoPagamento}</p>}
+                                                                <p className="text-[12px] text-gray-500">
+                                                                    Tipo de atendimento informado na venda: {a.canalOrigem || 'não informado'}
+                                                                    {a.statusEnvio ? ` · ${a.statusEnvio}` : ''}
+                                                                    {a.cancelado ? ' · CANCELADO' : ''}
+                                                                </p>
+                                                            </div>
+                                                        )}
                                                         {a.transferidoParaId && (
                                                             <div>
                                                                 <p className="text-xs font-bold text-gray-500 uppercase mb-1">Transferido para</p>
@@ -591,8 +657,8 @@ const PainelAtendimentos = () => {
                                                                 <p className="text-gray-700">{a.etapaAnterior || '?'} &rarr; {a.etapaNova}</p>
                                                             </div>
                                                         )}
-                                                        {/* Botão desfazer (admin) */}
-                                                        {isAdmin && (
+                                                        {/* Botão desfazer (admin) — linha de pedido não é lançamento de atendimento */}
+                                                        {isAdmin && !a.origemPedido && (
                                                             <div className="pt-2 border-t border-gray-200">
                                                                 {confirmDelete === a.id ? (
                                                                     <div className="flex items-center gap-2 flex-wrap">
@@ -641,7 +707,7 @@ const PainelAtendimentos = () => {
                     const nomeItem = a.cliente ? (a.cliente.NomeFantasia || a.cliente.Nome) : (a.lead ? `Lead #${a.lead.numero} - ${a.lead.nomeEstabelecimento}` : '-');
                     const isExpanded = expandedRow === a.id;
                     return (
-                        <div key={a.id} className={`bg-white border rounded-xl overflow-hidden ${a.transferidoParaId ? 'border-indigo-200' : 'border-gray-200'}`}>
+                        <div key={a.id} className={`bg-white border rounded-xl overflow-hidden ${a.origemPedido ? 'border-green-200' : a.transferidoParaId ? 'border-indigo-200' : 'border-gray-200'}`}>
                             <button className="w-full text-left p-3 space-y-2" onClick={() => setExpandedRow(isExpanded ? null : a.id)}>
                                 <div className="flex items-center justify-between gap-2">
                                     <div className="flex items-center gap-2 min-w-0">
@@ -651,13 +717,24 @@ const PainelAtendimentos = () => {
                                         <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${TIPO_BADGE[a.tipo] || 'bg-gray-100 text-gray-600'}`}>
                                             <TipoIcon tipo={a.tipo} /> {a.tipo}
                                         </span>
+                                        {a.origemPedido && (
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 bg-sky-100 text-sky-700">
+                                                <ShoppingCart className="h-2.5 w-2.5" /> PEDIDO
+                                            </span>
+                                        )}
                                     </div>
                                     <span className="text-[11px] text-gray-500 shrink-0">{fmtData(a.criadoEm)} {fmtHora(a.criadoEm)}</span>
                                 </div>
                                 <p className="text-sm font-bold text-gray-900 truncate">{nomeItem}</p>
                                 {a.cliente?.End_Cidade && <p className="text-[11px] text-gray-500">{a.cliente.End_Cidade}</p>}
+                                {a.origemPedido && (
+                                    <p className="text-[12px] font-bold text-green-800 tabular-nums">
+                                        {a.rotuloPedido} · {a.bonificacao ? 'Bonificação' : fmtMoeda(a.valorPedido)}
+                                        {a.cancelado && <span className="text-red-700 font-bold"> · cancelado</span>}
+                                    </p>
+                                )}
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    {a.acaoLabel && <span className="text-[10px] font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">{a.acaoLabel}</span>}
+                                    {!a.origemPedido && a.acaoLabel && <span className="text-[10px] font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">{a.acaoLabel}</span>}
                                     {a.transferidoParaId && (
                                         <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded flex items-center gap-0.5">
                                             <ArrowLeftRight className="h-2.5 w-2.5" /> {a.transferidoPara?.nome?.split(' ')[0] || '?'}
@@ -721,8 +798,8 @@ const PainelAtendimentos = () => {
                                     }} className="w-full text-center text-[12px] font-semibold text-blue-600 bg-blue-50 rounded-lg py-1.5 hover:bg-blue-100 transition-colors">
                                         <Eye className="h-3.5 w-3.5 inline mr-1" /> Ver detalhes do cliente
                                     </button>
-                                    {/* Desfazer mobile (admin) */}
-                                    {isAdmin && (
+                                    {/* Desfazer mobile (admin) — não vale para linha de pedido */}
+                                    {isAdmin && !a.origemPedido && (
                                         <div className="pt-1">
                                             {confirmDelete === a.id ? (
                                                 <div className="flex gap-2">
