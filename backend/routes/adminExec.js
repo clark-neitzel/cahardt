@@ -90,6 +90,24 @@ router.get('/diag-conferencia-caixa', async (req, res) => {
         const papel = (filtro) => equipe.filter(v => filtro(conf.permsDe(v)))
             .map(v => ({ nome: v.nome, quebraCaixa: Number(v.quebraCaixa || 0), temTelefone: !!v.telefone }));
 
+        // 4a. Quais caixas estão esperando contagem (nome, dia e valor)
+        const filaCaixas = await prisma.caixaDiario.findMany({
+            where: { status: 'ABERTO', enviadoConferenciaEm: { not: null }, dinheiroConferido: false },
+            include: { vendedor: { select: { nome: true } } },
+            orderBy: { dataReferencia: 'desc' },
+            take: 20,
+        });
+        const fila = [];
+        for (const c of filaCaixas) {
+            let valor = null;
+            try { valor = (await conf.calcularValorAPrestar(c.vendedorId, c.dataReferencia, cfg)).valorAPrestar; } catch { /* informativo */ }
+            fila.push({
+                vendedor: c.vendedor?.nome, data: c.dataReferencia, valorAPrestar: valor,
+                entrouPor: c.enviadoConferenciaOrigem === 'IMPRESSAO' ? 'folha impressa'
+                    : c.enviadoConferenciaOrigem === 'VIRADA_DIA' ? 'virada do dia' : 'manual',
+            });
+        }
+
         // 4. Situação atual dos caixas
         const [aguardando, conferidos, fechados] = await Promise.all([
             prisma.caixaDiario.count({ where: { status: 'ABERTO', enviadoConferenciaEm: { not: null }, dinheiroConferido: false } }),
@@ -114,6 +132,7 @@ router.get('/diag-conferencia-caixa', async (req, res) => {
             quemFecha: papel(p => !p.admin && (p.Pode_Fechar_Caixa || p.Pode_Editar_Caixa)),
             admins: equipe.filter(v => conf.permsDe(v).admin).map(v => v.nome),
             caixas: { aguardandoConferencia: aguardando, jaConferidos: conferidos, fechadosComAutor: fechados },
+            filaDeConferencia: fila,
             aviso: cfg.ativo
                 ? 'Regra LIGADA: nenhum caixa fecha sem o dinheiro conferido.'
                 : 'Regra DESLIGADA: a tela de conferência já funciona, mas o fechamento ainda não está travado.',

@@ -786,7 +786,7 @@ router.get('/resumo', async (req, res) => {
             bloqueadoPorSerDono: souDono && confService.podeConferir(req._perms) && !req._perms.admin,
             minhaQuebra: Number((await prisma.vendedor.findUnique({ where: { id: req.user.id }, select: { quebraCaixa: true } }))?.quebraCaixa || 0),
             // Quem conferiu não fecha o mesmo caixa
-            souQuemConferiu: dinheiroConferidoValido && caixa.dinheiroConferidoPorId === req.user.id && !req._perms.admin
+            souQuemConferiu: exigeConf && dinheiroConferidoValido && caixa.dinheiroConferidoPorId === req.user.id && !req._perms.admin
         };
         const conferenciaDinheiroPendente = exigeConf && !dinheiroConferidoValido;
 

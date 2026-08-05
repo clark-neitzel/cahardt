@@ -391,7 +391,29 @@ const ConferenciaDinheiroCard = ({ conferencia, vendedorId, vendedorNome, data, 
         );
     }
 
-    if (fechado) return null; // caixa fechado sem conferência (regra desligada na época)
+    // Caixa fechado SEM conferência do dinheiro (acontece enquanto a regra está
+    // desligada, ou em caixa antigo). Some o botão de contar — o dinheiro se
+    // confere antes de fechar — mas o cartão continua dizendo isso na cara,
+    // senão o usuário procura a contagem e só acha o botão antigo.
+    if (fechado) {
+        return (
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm mb-4">
+                <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
+                    <Banknote className="h-4 w-4 text-gray-400" />
+                    <span className="text-xs font-bold uppercase tracking-widest text-gray-500">Conferência do dinheiro</span>
+                </div>
+                <div className="p-4 md:p-5">
+                    <div className="rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-gray-600">
+                        <b>Este caixa foi fechado sem a conferência do dinheiro.</b>
+                        <div className="text-xs mt-1">
+                            A contagem é feita <b>antes</b> de fechar, no botão “Conferir o dinheiro” deste cartão.
+                            Para contar agora, é preciso <b>reabrir o caixa</b> (botão abaixo, para quem tem permissão).
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>

@@ -101,7 +101,6 @@ const CaixaDiarioPage = () => {
     const [expandedEntregas, setExpandedEntregas] = useState(false);
     const [expandedAmostras, setExpandedAmostras] = useState(false);
     const [expandedAtendimentos, setExpandedAtendimentos] = useState(false);
-    const [obsAdmin, setObsAdmin] = useState('');
     const [showDespesaModal, setShowDespesaModal] = useState(false);
     const [veiculoFichaId, setVeiculoFichaId] = useState(null);
     const [editandoKm, setEditandoKm] = useState(false);
@@ -210,17 +209,6 @@ const CaixaDiarioPage = () => {
             } else {
                 toast.error(resp?.error || 'Erro ao fechar caixa.');
             }
-        }
-    };
-
-    const handleConferir = async () => {
-        if (!confirm('Confirmar conferência deste caixa?')) return;
-        try {
-            await caixaService.conferirCaixa({ id: resumo.caixa.id, obsAdmin });
-            toast.success('Caixa conferido!');
-            fetchResumo();
-        } catch (error) {
-            toast.error(error.response?.data?.error || 'Erro ao conferir.');
         }
     };
 
@@ -1352,26 +1340,6 @@ const CaixaDiarioPage = () => {
                             >
                                 <Printer className="h-5 w-5 mr-2" /> Imprimir
                             </button>
-                        )}
-
-                        {/* Conferência pós-fechamento (modelo antigo): sai de cena quando a
-                            conferência do DINHEIRO está ligada — ali quem confere é antes de fechar. */}
-                        {isAdmin && caixa?.status === 'FECHADO' && !resumo?.conferenciaDinheiro?.ativa && (
-                            <div className="flex flex-col sm:flex-row items-center gap-2">
-                                <input
-                                    type="text"
-                                    value={obsAdmin}
-                                    onChange={(e) => setObsAdmin(e.target.value)}
-                                    placeholder="Observação (opcional)"
-                                    className="border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm w-full sm:w-48 bg-white text-gray-900"
-                                />
-                                <button
-                                    onClick={handleConferir}
-                                    className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-md font-medium hover:bg-blue-700 whitespace-nowrap"
-                                >
-                                    <ClipboardCheck className="h-5 w-5 mr-2" /> Conferir Caixa
-                                </button>
-                            </div>
                         )}
 
                         {podeReverter && caixa?.status === 'CONFERIDO' && (
