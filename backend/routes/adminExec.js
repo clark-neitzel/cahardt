@@ -7750,4 +7750,42 @@ router.get('/diag-pedido-financeiro/:numero', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-categorias-produto — lista categorias do CA com contagem
+router.get('/diag-categorias-produto', async (req, res) => {
+    try {
+        const rows = await prisma.produto.groupBy({
+            by: ['categoria'],
+            _count: { _all: true },
+        });
+        const lista = rows
+            .map(r => ({ categoria: r.categoria, total: r._count._all }))
+            .sort((a, b) => b.total - a.total);
+        return res.json({ ok: true, categorias: lista });
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/admin-exec/set-validade-produtos — seta validadeDias por categoria (CA)
+// Body: { categorias: ["Produto Acabado","Revenda"], dias: 180 }
+router.post('/set-validade-produtos', async (req, res) => {
+    try {
+        const { categorias, dias } = req.body;
+        if (!Array.isArray(categorias) || !categorias.length)
+            return res.status(400).json({ error: 'Informe categorias[].' });
+        const n = parseInt(dias);
+        if (!Number.isFinite(n) || n < 1)
+            return res.status(400).json({ error: 'Informe dias >= 1.' });
+
+        const r = await prisma.produto.updateMany({
+            where: { categoria: { in: categorias } },
+            data: { validadeDias: n },
+        });
+        return res.json({ ok: true, atualizados: r.count, categorias, dias: n });
+    } catch (err) {
+        console.error('[set-validade-produtos]', err.message);
+        return res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
