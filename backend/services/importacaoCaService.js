@@ -23,6 +23,7 @@
 
 const crypto = require('crypto');
 const prisma = require('../config/database');
+const categoriaDespesaService = require('./categoriaDespesaService');
 
 const round2 = (v) => Math.round(Number(v) * 100) / 100;
 const num = (v) => Number(v || 0);
@@ -567,6 +568,7 @@ async function importar(texto, { dryRun = false, userId = null } = {}) {
 
     // ── Grava ──
     await garantirCategorias(nomesCat);
+    const catIds = await categoriaDespesaService.garantirIds(nomesCat); // nome → id (Fase 0 Contabilidade)
     const cacheForn = new Map();
 
     for (const c of contas) {
@@ -584,14 +586,16 @@ async function importar(texto, { dryRun = false, userId = null } = {}) {
                     fornecedorId,
                     descricao: c.descricao,
                     categoria: c.rateios.length === 1 ? c.rateios[0].categoria : null,
+                    categoriaDespesaId: c.rateios.length === 1 ? (catIds.get(c.rateios[0].categoria) || null) : null,
                     origem: 'IMPORTADO_CA',
                     hashImportacao: c.hash,
                     valorTotal: c.valorTotal,
                     status: c.status,
-                    competencia: c.competencia,
+                    competencia: c.competencia || c.vencimento,
+                    dataEmissao: c.competencia || c.vencimento,
                     statusEnvioCA: 'NAO_ENVIAR',
                     criadoPorId: userId,
-                    rateios: { create: c.rateios.map((r) => ({ categoria: r.categoria, valor: r.valor })) },
+                    rateios: { create: c.rateios.map((r) => ({ categoria: r.categoria, categoriaDespesaId: catIds.get(r.categoria) || null, valor: r.valor })) },
                     parcelas: {
                         create: [{
                             numeroParcela: 1,

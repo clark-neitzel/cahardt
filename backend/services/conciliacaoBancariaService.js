@@ -21,6 +21,7 @@ const crypto = require('crypto');
 const prisma = require('../config/database');
 const contasPagarCaSyncService = require('./contasPagarCaSyncService');
 const contaAzulService = require('./contaAzulService');
+const categoriaDespesaService = require('./categoriaDespesaService');
 
 const BASE = 'https://api-v2.contaazul.com';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -1288,9 +1289,12 @@ async function _criarDespesaTarifaTx(tx, lanc, valorTarifa, grupoId, userId, ref
             descricao: `Tarifa de boleto Conta Azul — ${String(lanc.descricao || 'recebimento').slice(0, 180)}`,
             categoria: refs.categoria?.nome || 'Tarifas de Boletos',
             categoriaCaId: refs.categoria?.id || null,
+            categoriaDespesaId: await categoriaDespesaService.idPorNome(refs.categoria?.nome || 'Tarifas de Boletos', tx),
             origem: 'MANUAL',
             valorTotal: valorTarifa,
             status: 'ABERTO',
+            competencia: lanc.data,
+            dataEmissao: lanc.data,
             statusEnvioCA: 'NAO_ENVIAR', // no CA o crédito já entra líquido — não duplicar lá
             contaFinanceiraCaId: lanc.contaFinanceiraCaId,
             criadoPorId: userId || null,
@@ -2620,8 +2624,10 @@ async function criarDespesaDoLancamento({
                 descricao: descricao.trim(),
                 categoria: categoria?.trim() || null,
                 categoriaCaId: categoriaCaId || null,
+                categoriaDespesaId: await categoriaDespesaService.idPorNome(categoria?.trim(), tx),
                 numeroNota: numeroNota?.trim() || null,
-                competencia: comp,
+                competencia: comp || dataPagamento,
+                dataEmissao: comp || dataPagamento,
                 observacoes: [observacoes?.trim(), `Lançada pela conciliação bancária (extrato: ${l.descricao || 'sem descrição'}).`]
                     .filter(Boolean).join(' · '),
                 origem: 'MANUAL',
@@ -2705,6 +2711,7 @@ async function criarDespesasLoteEConciliar({
     let criadas = 0;
     let totalValor = 0;
     const falhas = [];
+    const categoriaDespesaIdLote = await categoriaDespesaService.idPorNome(categoria?.trim());
 
     // Sequencial de propósito: cada item é uma transação curta; o banco compartilhado
     // não gosta de 50 transações simultâneas. Falha de um não derruba os demais.
@@ -2728,7 +2735,10 @@ async function criarDespesasLoteEConciliar({
                         descricao,
                         categoria: categoria?.trim() || null,
                         categoriaCaId: categoriaCaId || null,
+                        categoriaDespesaId: categoriaDespesaIdLote,
                         numeroNota,
+                        competencia: dataPagamento,
+                        dataEmissao: dataPagamento,
                         observacoes: `Lançada em lote pela conciliação bancária (extrato: ${l.descricao || 'sem descrição'}).`,
                         origem: 'MANUAL',
                         valorTotal: valor,

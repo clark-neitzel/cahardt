@@ -7807,4 +7807,245 @@ router.post('/set-validade-produtos', async (req, res) => {
     }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// CONTABILIDADE — FASE 0 (fundação): diagnóstico e backfill
+// Objetivo: deixar os dados prontos para os relatórios contábeis —
+// contas financeiras órfãs corrigidas (pré-requisito das FKs), categoria
+// de despesa ligada por ID, datas de emissão/entrada preenchidas e
+// forma de pagamento normalizada.
+// ═══════════════════════════════════════════════════════════════════
+
+// Tabelas que guardam contaFinanceiraCaId (coluna → tabela). Usado no diag e na correção.
+const TABELAS_CONTA_FINANCEIRA = [
+    { tabela: 'parcelas', coluna: 'conta_financeira_ca_id' },
+    { tabela: 'pagamentos_parcela', coluna: 'conta_financeira_ca_id' },
+    { tabela: 'contas_pagar', coluna: 'conta_financeira_ca_id' },
+    { tabela: 'pagamentos_parcela_pagar', coluna: 'conta_financeira_ca_id' },
+    { tabela: 'extrato_importacoes', coluna: 'conta_financeira_ca_id' },
+    { tabela: 'extrato_lancamentos', coluna: 'conta_financeira_ca_id' },
+    { tabela: 'conciliacao_grupos', coluna: 'conta_financeira_ca_id' },
+    { tabela: 'ajustes_saldo_conta', coluna: 'conta_financeira_ca_id' },
+    { tabela: 'transferencias_conta', coluna: 'conta_origem_id' },
+    { tabela: 'transferencias_conta', coluna: 'conta_destino_id' },
+];
+
+// GET /api/admin-exec/contabilidade-diag-fase0
+// Fotografia do que precisa de acerto. Não altera nada.
+router.get('/contabilidade-diag-fase0', async (req, res) => {
+    try {
+        // 1) Valores de conta financeira que não existem em contas_financeiras (órfãos)
+        const orfaos = [];
+        for (const { tabela, coluna } of TABELAS_CONTA_FINANCEIRA) {
+            const rows = await prisma.$queryRawUnsafe(`
+                SELECT t."${coluna}" AS valor, COUNT(*)::int AS qtd
+                FROM "${tabela}" t
+                WHERE t."${coluna}" IS NOT NULL
+                  AND NOT EXISTS (SELECT 1 FROM contas_financeiras cf WHERE cf.id = t."${coluna}")
+                GROUP BY t."${coluna}" ORDER BY qtd DESC`);
+            for (const r of rows) orfaos.push({ tabela, coluna, valor: r.valor, qtd: r.qtd });
+        }
+
+        // 2) Categorias usadas em contas/rateios/itens sem linha em categorias_despesa
+        const categoriasSemLinha = await prisma.$queryRawUnsafe(`
+            SELECT nome, SUM(qtd)::int AS qtd FROM (
+                SELECT cp.categoria AS nome, COUNT(*)::int AS qtd FROM contas_pagar cp
+                  WHERE cp.categoria IS NOT NULL AND cp.categoria NOT IN ('Vários','Sem categoria')
+                    AND NOT EXISTS (SELECT 1 FROM categorias_despesa cd WHERE cd.nome = cp.categoria)
+                  GROUP BY cp.categoria
+                UNION ALL
+                SELECT r.categoria, COUNT(*)::int FROM contas_pagar_rateio r
+                  WHERE r.categoria IS NOT NULL
+                    AND NOT EXISTS (SELECT 1 FROM categorias_despesa cd WHERE cd.nome = r.categoria)
+                  GROUP BY r.categoria
+                UNION ALL
+                SELECT i.categoria, COUNT(*)::int FROM notas_entrada_itens i
+                  WHERE i.categoria IS NOT NULL
+                    AND NOT EXISTS (SELECT 1 FROM categorias_despesa cd WHERE cd.nome = i.categoria)
+                  GROUP BY i.categoria
+            ) u GROUP BY nome ORDER BY qtd DESC`);
+
+        // 3) categoria_despesa_id ainda vazio (com categoria preenchida e resolvível)
+        const [catContas, catRateios, catItens] = await Promise.all([
+            prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS n FROM contas_pagar WHERE categoria IS NOT NULL AND categoria NOT IN ('Vários','Sem categoria') AND categoria_despesa_id IS NULL`),
+            prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS n FROM contas_pagar_rateio WHERE categoria IS NOT NULL AND categoria_despesa_id IS NULL`),
+            prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS n FROM notas_entrada_itens WHERE categoria IS NOT NULL AND categoria_despesa_id IS NULL`),
+        ]);
+
+        // 4) Datas faltando
+        const [emissao, compet, entrada] = await Promise.all([
+            prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS n FROM contas_pagar WHERE data_emissao IS NULL`),
+            prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS n FROM contas_pagar WHERE competencia IS NULL`),
+            prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS n FROM notas_entrada WHERE data_entrada IS NULL AND status IN ('CONFERIDA','VINCULADA','ENTRADA_REGISTRADA')`),
+        ]);
+
+        // 5) Forma de pagamento suja (valor colado / prefixo de condição)
+        const [formasParcela, formasLedger] = await Promise.all([
+            prisma.$queryRawUnsafe(`SELECT forma_pagamento AS forma, COUNT(*)::int AS qtd FROM parcelas WHERE forma_pagamento ~* 'R\\$|à vista|a vista|a prazo' GROUP BY forma_pagamento ORDER BY qtd DESC LIMIT 30`),
+            prisma.$queryRawUnsafe(`SELECT forma_pagamento AS forma, COUNT(*)::int AS qtd FROM pagamentos_parcela WHERE forma_pagamento ~* 'R\\$|à vista|a vista|a prazo' GROUP BY forma_pagamento ORDER BY qtd DESC LIMIT 30`),
+        ]);
+
+        res.json({
+            ok: true,
+            orfaosContaFinanceira: orfaos,
+            totalOrfaos: orfaos.reduce((s, o) => s + o.qtd, 0),
+            prontoParaFK: orfaos.length === 0,
+            categoriasSemLinha,
+            categoriaDespesaIdFaltando: {
+                contasPagar: catContas[0].n, rateios: catRateios[0].n, itensNota: catItens[0].n
+            },
+            datasFaltando: {
+                dataEmissaoContasPagar: emissao[0].n,
+                competenciaContasPagar: compet[0].n,
+                dataEntradaNotas: entrada[0].n
+            },
+            formasSujas: { parcelas: formasParcela, ledgerReceber: formasLedger }
+        });
+    } catch (err) {
+        console.error('[contabilidade-diag-fase0]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/admin-exec/contabilidade-backfill-fase0
+// Preenche o histórico (idempotente — pode rodar quantas vezes precisar):
+//   1. cria linhas de CategoriaDespesa que faltam (contas/rateios/itens)
+//   2. liga categoria_despesa_id por nome nas 3 tabelas
+//   3. contas_pagar.data_emissao: emissão da NF → competência → criado_em
+//   4. contas_pagar.competencia nula ← data_emissao
+//   5. notas_entrada.data_entrada: entrada_registrada_em → criação da conta gerada
+//      → 1º vínculo de parcela → criado_em (só p/ notas que deram entrada)
+//   6. normaliza forma_pagamento suja (parcelas + ledger receber)
+// Body opcional: { dryRun: true } — só conta, não grava.
+router.post('/contabilidade-backfill-fase0', async (req, res) => {
+    const dryRun = !!req.body?.dryRun;
+    const passos = {};
+    try {
+        const categoriaDespesaService = require('../services/categoriaDespesaService');
+        const { normalizarFormaPagamento } = require('../utils/formaPagamentoUtil');
+
+        // 1) Categorias que faltam
+        const nomesFaltando = await prisma.$queryRawUnsafe(`
+            SELECT DISTINCT nome FROM (
+                SELECT categoria AS nome FROM contas_pagar WHERE categoria IS NOT NULL
+                UNION SELECT categoria FROM contas_pagar_rateio WHERE categoria IS NOT NULL
+                UNION SELECT categoria FROM notas_entrada_itens WHERE categoria IS NOT NULL
+            ) u WHERE nome NOT IN ('Vários','Sem categoria')
+              AND NOT EXISTS (SELECT 1 FROM categorias_despesa cd WHERE cd.nome = u.nome)`);
+        passos.categoriasCriadas = nomesFaltando.length;
+        if (!dryRun && nomesFaltando.length) {
+            await categoriaDespesaService.garantirIds(nomesFaltando.map((r) => r.nome));
+        }
+
+        // 2) categoria_despesa_id por nome
+        const sqlLigar = [
+            `UPDATE contas_pagar cp SET categoria_despesa_id = cd.id FROM categorias_despesa cd
+               WHERE cd.nome = cp.categoria AND cp.categoria_despesa_id IS NULL AND cp.categoria IS NOT NULL`,
+            `UPDATE contas_pagar_rateio r SET categoria_despesa_id = cd.id FROM categorias_despesa cd
+               WHERE cd.nome = r.categoria AND r.categoria_despesa_id IS NULL AND r.categoria IS NOT NULL`,
+            `UPDATE notas_entrada_itens i SET categoria_despesa_id = cd.id FROM categorias_despesa cd
+               WHERE cd.nome = i.categoria AND i.categoria_despesa_id IS NULL AND i.categoria IS NOT NULL`,
+        ];
+        passos.categoriaIdLigada = 0;
+        if (!dryRun) for (const sql of sqlLigar) passos.categoriaIdLigada += await prisma.$executeRawUnsafe(sql);
+
+        // 3+4) Datas das contas a pagar
+        if (!dryRun) {
+            passos.dataEmissaoDaNota = await prisma.$executeRawUnsafe(`
+                UPDATE contas_pagar cp SET data_emissao = ne.emissao
+                FROM notas_entrada ne WHERE ne.conta_pagar_id = cp.id
+                  AND cp.data_emissao IS NULL AND ne.emissao IS NOT NULL`);
+            passos.dataEmissaoDaCompetencia = await prisma.$executeRawUnsafe(`
+                UPDATE contas_pagar SET data_emissao = competencia
+                WHERE data_emissao IS NULL AND competencia IS NOT NULL`);
+            passos.dataEmissaoDaCriacao = await prisma.$executeRawUnsafe(`
+                UPDATE contas_pagar SET data_emissao = criado_em WHERE data_emissao IS NULL`);
+            passos.competenciaPreenchida = await prisma.$executeRawUnsafe(`
+                UPDATE contas_pagar SET competencia = data_emissao WHERE competencia IS NULL`);
+        }
+
+        // 5) data_entrada das notas que deram entrada
+        if (!dryRun) {
+            passos.dataEntradaRegistro = await prisma.$executeRawUnsafe(`
+                UPDATE notas_entrada SET data_entrada = entrada_registrada_em
+                WHERE data_entrada IS NULL AND entrada_registrada_em IS NOT NULL`);
+            passos.dataEntradaDaConta = await prisma.$executeRawUnsafe(`
+                UPDATE notas_entrada ne SET data_entrada = cp.criado_em
+                FROM contas_pagar cp WHERE cp.id = ne.conta_pagar_id
+                  AND ne.data_entrada IS NULL AND ne.status = 'CONFERIDA'`);
+            passos.dataEntradaDoVinculo = await prisma.$executeRawUnsafe(`
+                UPDATE notas_entrada ne SET data_entrada = v.primeiro
+                FROM (SELECT nota_entrada_id, MIN(criado_em) AS primeiro FROM nota_entrada_parcelas GROUP BY nota_entrada_id) v
+                WHERE v.nota_entrada_id = ne.id AND ne.data_entrada IS NULL AND ne.status = 'VINCULADA'`);
+            passos.dataEntradaDaCriacao = await prisma.$executeRawUnsafe(`
+                UPDATE notas_entrada SET data_entrada = criado_em
+                WHERE data_entrada IS NULL AND status IN ('CONFERIDA','VINCULADA','ENTRADA_REGISTRADA')`);
+        }
+
+        // 6) Normalização das formas sujas (em JS, para reusar exatamente a mesma regra do app)
+        for (const alvo of [
+            { tabela: 'parcelas', chave: 'formasParcelas' },
+            { tabela: 'pagamentos_parcela', chave: 'formasLedger' },
+        ]) {
+            const sujas = await prisma.$queryRawUnsafe(
+                `SELECT DISTINCT forma_pagamento AS forma FROM "${alvo.tabela}" WHERE forma_pagamento ~* 'R\\$|à vista|a vista|a prazo'`);
+            const mapa = sujas.map((r) => ({ de: r.forma, para: normalizarFormaPagamento(r.forma) }))
+                .filter((m) => m.para && m.para !== m.de);
+            let atualizadas = 0;
+            if (!dryRun) {
+                for (const m of mapa) {
+                    atualizadas += await prisma.$executeRawUnsafe(
+                        `UPDATE "${alvo.tabela}" SET forma_pagamento = $1 WHERE forma_pagamento = $2`, m.para, m.de);
+                }
+            }
+            passos[alvo.chave] = { distintas: mapa.length, linhasAtualizadas: atualizadas, mapa: mapa.slice(0, 20) };
+        }
+
+        res.json({ ok: true, dryRun, passos });
+    } catch (err) {
+        console.error('[contabilidade-backfill-fase0]', err);
+        res.status(500).json({ error: err.message, passosConcluidos: passos });
+    }
+});
+
+// POST /api/admin-exec/contabilidade-corrigir-conta-orfa
+// Corrige UM valor órfão de conta financeira em todas as tabelas.
+// Body: { de: "<valor órfão>", para: "<id de conta existente>" }
+//    ou { de: "<valor órfão>", criarInativa: { nome: "Conta legada X" } }
+router.post('/contabilidade-corrigir-conta-orfa', async (req, res) => {
+    try {
+        const de = String(req.body?.de || '').trim();
+        const para = req.body?.para ? String(req.body.para).trim() : null;
+        const criarInativa = req.body?.criarInativa || null;
+        if (!de) return res.status(400).json({ error: 'Informe "de" (o valor órfão).' });
+        if (!para && !criarInativa?.nome) {
+            return res.status(400).json({ error: 'Informe "para" (conta destino) OU criarInativa: { nome }.' });
+        }
+
+        if (para) {
+            const destino = await prisma.contaFinanceira.findUnique({ where: { id: para } });
+            if (!destino) return res.status(400).json({ error: `Conta destino ${para} não existe.` });
+        } else {
+            // Mantém o próprio id órfão, criando a conta como inativa (preserva o histórico sem remapear)
+            await prisma.contaFinanceira.upsert({
+                where: { id: de },
+                update: {},
+                create: { id: de, nomeBanco: String(criarInativa.nome).trim(), tipoUso: 'LEGADO', ativo: false, obs: 'Criada pela correção de órfãos (Fase 0 Contabilidade).' }
+            });
+        }
+
+        const resultado = {};
+        if (para) {
+            for (const { tabela, coluna } of TABELAS_CONTA_FINANCEIRA) {
+                const n = await prisma.$executeRawUnsafe(
+                    `UPDATE "${tabela}" SET "${coluna}" = $1 WHERE "${coluna}" = $2`, para, de);
+                if (n > 0) resultado[`${tabela}.${coluna}`] = n;
+            }
+        }
+        res.json({ ok: true, de, para: para || de, criadaInativa: !para, atualizadas: resultado });
+    } catch (err) {
+        console.error('[contabilidade-corrigir-conta-orfa]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

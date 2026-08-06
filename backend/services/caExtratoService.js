@@ -19,6 +19,7 @@
 
 const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
+const categoriaDespesaService = require('./categoriaDespesaService');
 
 const round2 = (v) => Math.round(Number(v) * 100) / 100;
 const num = (v) => Number(v || 0);
@@ -302,8 +303,10 @@ async function sincronizarDespesas({ dias = 2, de = null, ate = null, limite = 4
             })).filter(r => r.valor > 0);
             const nomesCat = [...new Set(rateios.map(r => r.categoria))];
             if (nomesCat.length) await garantirCategorias(nomesCat);
+            const catIds = await categoriaDespesaService.garantirIds(nomesCat);
 
             const valorTotal = round2(parcelasCA.reduce((s, p) => s + Number(p?.valor_composicao?.valor_bruto || 0), 0)) || round2(item.total);
+            const competenciaCa = evento?.data_competencia ? dataSP(String(evento.data_competencia).slice(0, 10)) : dataSP(vencYmd);
 
             await prisma.contaPagar.create({
                 data: {
@@ -311,14 +314,16 @@ async function sincronizarDespesas({ dias = 2, de = null, ate = null, limite = 4
                     descricao: item.descricao || det.descricao || 'Despesa (Conta Azul)',
                     categoria: rateios.length === 1 ? rateios[0].categoria : null,
                     categoriaCaId: (evento?.rateio || [])[0]?.id_categoria || null,
+                    categoriaDespesaId: rateios.length === 1 ? (catIds.get(rateios[0].categoria) || null) : null,
                     origem: 'IMPORTADO_CA',
                     valorTotal,
                     status: 'ABERTO', // as baixas chegam pelo worker conferirBaixasCA e recalculam
-                    competencia: evento?.data_competencia ? dataSP(String(evento.data_competencia).slice(0, 10)) : null,
+                    competencia: competenciaCa,
+                    dataEmissao: competenciaCa,
                     statusEnvioCA: 'NAO_ENVIAR',
                     idEventoCA: evento?.id || null,
                     observacoes: 'Importada automaticamente do Conta Azul (extrato CA).',
-                    rateios: rateios.length ? { create: rateios } : undefined,
+                    rateios: rateios.length ? { create: rateios.map(r => ({ ...r, categoriaDespesaId: catIds.get(r.categoria) || null })) } : undefined,
                     parcelas: {
                         create: parcelasCA.map((p, i) => ({
                             numeroParcela: p.indice || (i + 1),

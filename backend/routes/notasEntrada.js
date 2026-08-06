@@ -21,6 +21,7 @@ const sefazDfeService = require('../services/sefazDfeService');
 const nfseAdnService = require('../services/nfseAdnService');
 const { montarDanfeHtml } = require('../services/danfeHtmlService');
 const contasPagarCaSyncService = require('../services/contasPagarCaSyncService');
+const categoriaDespesaService = require('../services/categoriaDespesaService');
 const googleDriveService = require('../services/googleDriveService');
 // Toda nota conferida SOMA no estoque (decisão do dono, 07/2026) — ledger + aplicação/estorno.
 const notaEstoqueService = require('../services/notaEstoqueService');
@@ -1023,7 +1024,10 @@ router.post('/:id/vincular-parcelas', verificarAuth, checkEscrita, async (req, r
             }
 
             // A nota vira VINCULADA. contaPagarId NÃO é tocado (é do fluxo "gerou despesa nova").
-            await tx.notaEntrada.update({ where: { id: nota.id }, data: { status: 'VINCULADA' } });
+            await tx.notaEntrada.update({
+                where: { id: nota.id },
+                data: { status: 'VINCULADA', ...(nota.dataEntrada ? {} : { dataEntrada: new Date() }) }
+            });
         }, { timeout: 20000, maxWait: 10000 });
 
         // Total vinculado a esta nota DEPOIS da operação (pode incluir vínculos anteriores).
@@ -1076,7 +1080,7 @@ router.post('/:id/desvincular-parcelas', verificarAuth, checkEscrita, async (req
             if (restantes === 0) {
                 await tx.notaEntrada.update({
                     where: { id: nota.id },
-                    data: { status: nota.xmlPath ? 'NOVA' : 'AGUARDANDO_XML' }
+                    data: { status: nota.xmlPath ? 'NOVA' : 'AGUARDANDO_XML', dataEntrada: null }
                 });
             }
         }, { timeout: 20000, maxWait: 10000 });
@@ -1178,7 +1182,11 @@ const processarItensConferencia = async (tx, nota, itensBody, itensNota, { catPa
         if (gravarCategoria) {
             await tx.notaEntradaItem.update({
                 where: { id: itemNota.id },
-                data: { categoria: catItem, categoriaCaId: catItemCaId }
+                data: {
+                    categoria: catItem,
+                    categoriaCaId: catItemCaId,
+                    categoriaDespesaId: await categoriaDespesaService.idPorNome(catItem, tx)
+                }
             });
         }
 
@@ -1360,16 +1368,19 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
             });
 
             // 2) Cria a conta a pagar + parcelas + rateio
+            const catIds = await categoriaDespesaService.garantirIds(rateio.map((g) => g.categoria), tx);
             contaCriada = await tx.contaPagar.create({
                 data: {
                     fornecedorId: fornecedor?.id || null,
                     descricao: `${nota.tipo === 'NFSE' ? 'NFS-e' : 'NF-e'} ${nota.numero || 's/nº'} — ${fornecedor?.razaoSocial || nota.fornecedorNome}`,
                     categoria: categoriaConta,
                     categoriaCaId: categoriaContaCaId,
+                    categoriaDespesaId: rateio.length === 1 ? (catIds.get(rateio[0].categoria) || null) : null,
                     numeroNota: nota.numero,
                     chaveNfe: nota.chave,
                     origem: nota.tipo === 'NFSE' ? 'NFSE' : 'NFE',
-                    competencia: nota.emissao,
+                    competencia: nota.emissao || new Date(),
+                    dataEmissao: nota.emissao || new Date(),
                     observacoes: observacoes?.trim() || null,
                     valorTotal: somaParcelas,
                     status: 'ABERTO',
@@ -1388,6 +1399,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
                         create: rateio.map((g) => ({
                             categoria: g.categoria || null,
                             categoriaCaId: g.categoriaCaId || null,
+                            categoriaDespesaId: catIds.get(g.categoria) || null,
                             valor: round2(g.valor)
                         }))
                     }
@@ -1432,7 +1444,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
             // 4) Nota conferida e vinculada à conta
             await tx.notaEntrada.update({
                 where: { id: nota.id },
-                data: { status: 'CONFERIDA', contaPagarId: contaCriada.id, fornecedorId: fornecedor?.id || nota.fornecedorId }
+                data: { status: 'CONFERIDA', contaPagarId: contaCriada.id, fornecedorId: fornecedor?.id || nota.fornecedorId, dataEntrada: new Date() }
             });
 
             // 5) TODA nota conferida SOMA no estoque (decisão do dono, 07/2026):
@@ -1531,7 +1543,8 @@ router.post('/:id/registrar-entrada', verificarAuth, checkEscrita, async (req, r
                     motivoEntrada: motivo,
                     observacaoEntrada: req.body?.observacao?.trim() || null,
                     entradaRegistradaEm: new Date(),
-                    entradaRegistradaPorId: req.user.id
+                    entradaRegistradaPorId: req.user.id,
+                    dataEntrada: new Date()
                 }
             });
 
@@ -1587,7 +1600,8 @@ router.post('/:id/desfazer-entrada', verificarAuth, checkEscrita, async (req, re
                     motivoEntrada: null,
                     observacaoEntrada: null,
                     entradaRegistradaEm: null,
-                    entradaRegistradaPorId: null
+                    entradaRegistradaPorId: null,
+                    dataEntrada: null
                 }
             });
             // Se a entrada tinha somado estoque, sai de volta na mesma transação.
@@ -1682,7 +1696,7 @@ router.post('/:id/cancelar-conferencia', verificarAuth, checkEscrita, async (req
             }
             await tx.notaEntrada.update({
                 where: { id: nota.id },
-                data: { status: nota.xmlPath ? 'NOVA' : 'AGUARDANDO_XML', contaPagarId: null }
+                data: { status: nota.xmlPath ? 'NOVA' : 'AGUARDANDO_XML', contaPagarId: null, dataEntrada: null }
             });
             // Estorna as entradas do LEDGER na mesma transação (quantidade sai de volta;
             // custo é restaurado para o valor anterior quando ninguém mexeu no meio).

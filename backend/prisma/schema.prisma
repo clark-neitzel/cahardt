@@ -3114,8 +3114,17 @@ model ContaPagar {
   valorTotal     Decimal     @map("valor_total") @db.Decimal(12, 2)
   status         String      @default("ABERTO") // ABERTO | PARCIAL | QUITADO | CANCELADO
   competencia    DateTime?
+  // Data de emissão do documento (NF: emissão da nota; manual: competência informada;
+  // conciliação: data do lançamento no extrato). Fase 0 Contabilidade — sempre preenchida
+  // nos caminhos novos; histórico via backfill (contabilidade-backfill-fase0).
+  dataEmissao    DateTime?   @map("data_emissao")
   observacoes    String?     @db.Text
   pdfPath        String?     @map("pdf_path") @db.Text // Caminho do PDF anexado (boleto, NF, contrato…)
+
+  // Vínculo por ID com a categoria de despesa (o campo `categoria` texto fica como legado —
+  // o CA identifica categoria por nome; aqui o relatório contábil passa a ligar por FK).
+  categoriaDespesaId String?           @map("categoria_despesa_id")
+  categoriaDespesa   CategoriaDespesa? @relation("ContasPagarCategoria", fields: [categoriaDespesaId], references: [id], onDelete: SetNull)
 
   // Integração Conta Azul (POST contas-a-pagar é assíncrono: 202 + protocolo)
   idEventoCA    String? @unique @map("id_evento_ca")
@@ -3142,6 +3151,7 @@ model ContaPagar {
   @@index([status])
   @@index([statusEnvioCA])
   @@index([hashImportacao])
+  @@index([categoriaDespesaId])
   @@map("contas_pagar")
 }
 
@@ -3151,11 +3161,15 @@ model ContaPagarRateio {
   id            String     @id @default(uuid())
   contaPagarId  String     @map("conta_pagar_id")
   contaPagar    ContaPagar @relation(fields: [contaPagarId], references: [id], onDelete: Cascade)
-  categoria     String? // nome da categoria de despesa (CA)
+  categoria     String? // nome da categoria de despesa (CA) — legado, vínculo oficial é categoriaDespesaId
   categoriaCaId String?    @map("categoria_ca_id") // UUID da categoria no CA
   valor         Decimal    @db.Decimal(12, 2)
 
+  categoriaDespesaId String?           @map("categoria_despesa_id")
+  categoriaDespesa   CategoriaDespesa? @relation("RateiosCategoria", fields: [categoriaDespesaId], references: [id], onDelete: SetNull)
+
   @@index([contaPagarId])
+  @@index([categoriaDespesaId])
   @@map("contas_pagar_rateio")
 }
 
@@ -3242,6 +3256,11 @@ model CategoriaDespesa {
 
   grupoDre GrupoDre? @relation(fields: [grupoDreId], references: [id], onDelete: SetNull)
 
+  // Fase 0 Contabilidade: vínculos por ID (o nome continua sendo a chave de negócio p/ o CA)
+  contasPagar ContaPagar[]       @relation("ContasPagarCategoria")
+  rateios     ContaPagarRateio[] @relation("RateiosCategoria")
+  itensNota   NotaEntradaItem[]  @relation("ItensNotaCategoria")
+
   @@map("categorias_despesa")
 }
 
@@ -3299,6 +3318,10 @@ model NotaEntrada {
   fornecedorId    String?     @map("fornecedor_id")
   fornecedor      Fornecedor? @relation(fields: [fornecedorId], references: [id])
   emissao         DateTime?
+  // Data em que a nota DEU ENTRADA de fato (conferida/vinculada/entrada sem pagamento).
+  // Fase 0 Contabilidade: preenchida nesses três fluxos e zerada quando o registro é desfeito;
+  // fica null enquanto a nota está só capturada (NOVA/AGUARDANDO_XML) ou ignorada.
+  dataEntrada     DateTime?   @map("data_entrada")
   valorTotal      Decimal?    @map("valor_total") @db.Decimal(12, 2)
   status          String      @default("AGUARDANDO_XML") // AGUARDANDO_XML | NOVA | CONFERIDA | VINCULADA | ENTRADA_REGISTRADA | IGNORADA | CANCELADA_EMITENTE
   manifestada     Boolean     @default(false) // Ciência da Operação (210210) já enviada?
@@ -3371,9 +3394,12 @@ model NotaEntradaItem {
   valorUnitario    Decimal     @map("valor_unitario") @db.Decimal(12, 6) // vUnCom
   valorTotal       Decimal     @map("valor_total") @db.Decimal(12, 2) // vProd
   cfop             String? // CFOP do item (base da detecção de bonificação/amostra/remessa/comodato)
-  categoria        String? // categoria de despesa (CA) efetiva escolhida na conferência
+  categoria        String? // categoria de despesa (CA) efetiva escolhida na conferência — legado, vínculo oficial é categoriaDespesaId
   categoriaCaId    String?     @map("categoria_ca_id") // UUID da categoria no CA
   infAdProd        String?     @map("inf_ad_prod") @db.Text // infAdProd do item (informações adicionais)
+
+  categoriaDespesaId String?           @map("categoria_despesa_id")
+  categoriaDespesa   CategoriaDespesa? @relation("ItensNotaCategoria", fields: [categoriaDespesaId], references: [id], onDelete: SetNull)
 
   @@index([notaEntradaId])
   @@map("notas_entrada_itens")

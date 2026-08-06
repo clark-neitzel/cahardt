@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Contabilidade — mockup v2 — CA-Hardt</title>
+<style>
+  :root{
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --bg:#f2f0eb;
+    font-feature-settings:"tnum";
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Manrope','SF Pro Text',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    background:var(--bg);color:rgba(0,0,0,.87);letter-spacing:-0.01em;font-size:13.5px}
+
+  .faixa-mock{background:#4b5563;color:#fff;text-align:center;font-size:11px;font-weight:700;
+    padding:5px 12px;letter-spacing:.08em;text-transform:uppercase}
+
+  /* ===== Topo (compacto) ===== */
+  .topo{background:var(--house);color:#fff;padding:14px 20px 0}
+  .topo-inner{max-width:1320px;margin:0 auto}
+  .topo h1{font-size:17px;font-weight:800}
+  .topo p{font-size:12px;opacity:.7;margin:2px 0 10px}
+  .abas{display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .abas::-webkit-scrollbar{display:none}
+  .aba{border:0;background:transparent;color:rgba(255,255,255,.7);font:inherit;font-weight:600;
+    padding:9px 14px;cursor:pointer;white-space:nowrap;border-radius:8px 8px 0 0;font-size:12.5px}
+  .aba:hover{color:#fff}
+  .aba.ativa{background:var(--bg);color:var(--primary-dark);font-weight:800}
+
+  main{max-width:1320px;margin:0 auto;padding:14px 10px 60px}
+  @media(min-width:768px){main{padding:16px 20px 70px}}
+  section[hidden]{display:none}
+
+  /* ===== Barra de exportação (padrão de TODAS as abas) ===== */
+  .barra-export{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+  .barra-export .rot{font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.08em;margin-right:4px}
+  .btn{display:inline-flex;align-items:center;gap:5px;border:0;cursor:pointer;font:inherit;
+    font-weight:600;font-size:12.5px;padding:6px 14px;border-radius:9999px}
+  .btn-prim{background:var(--primary);color:#fff}
+  .btn-prim:hover{background:var(--primary-dark)}
+  .btn-sec{background:#fff;border:1px solid var(--primary);color:var(--primary)}
+  .btn-sec:hover{background:rgba(212,233,226,.4)}
+  .btn-ghost{background:#fff;border:1px solid #d1d5db;color:#374151}
+
+  /* ===== Cards ===== */
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 1px 2px rgba(0,0,0,.04);margin-bottom:12px}
+  .card-header{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid #f3f4f6;flex-wrap:wrap}
+  .card-header .tit{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#4b5563}
+  .card-body{padding:12px 16px}
+  .acoes-header{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+
+  .kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
+  @media(min-width:768px){.kpis{grid-template-columns:repeat(4,1fr)}}
+  .kpi{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 14px}
+  .kpi .rot{font-size:10.5px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em}
+  .kpi .val{font-size:17px;font-weight:800;margin-top:2px}
+  .kpi .val.verde{color:var(--primary-dark)} .kpi .val.verm{color:#dc2626} .kpi .val.amb{color:#b45309}
+
+  /* ===== Filtros ===== */
+  .filtros{display:grid;grid-template-columns:1fr;gap:8px}
+  @media(min-width:768px){.filtros{grid-template-columns:repeat(4,1fr)}}
+  .campo label{display:block;font-size:11.5px;font-weight:600;color:#374151;margin-bottom:3px}
+  .fake-select,.fake-input{width:100%;border:1px solid #d1d5db;border-radius:6px;padding:6px 9px;
+    font-size:12.5px;background:#fff;color:#111827;display:flex;justify-content:space-between;align-items:center;min-height:32px}
+  .fake-select::after{content:"▾";color:#9ca3af;font-size:10px}
+  .periodo-pill{display:inline-flex;align-items:center;border:1px solid var(--primary);border-radius:9999px;overflow:hidden;background:#fff}
+  .periodo-pill .seta{padding:6px 10px;color:var(--primary);cursor:pointer;font-weight:700;font-size:12px}
+  .periodo-pill .meio{padding:6px 12px;font-weight:700;color:var(--primary-dark);border-left:1px solid var(--mint);border-right:1px solid var(--mint);font-size:12px}
+  .periodo-pill .meio small{font-weight:500;color:#6b7280}
+  .nota-filtro{font-size:11.5px;color:#6b7280;margin-top:6px}
+
+  /* ===== Pílulas de colunas ===== */
+  .colunas-pills{display:flex;flex-wrap:wrap;gap:5px}
+  .pill-col{border:1px solid #d1d5db;background:#fff;color:#6b7280;border-radius:9999px;
+    padding:4px 11px;font-size:11.5px;font-weight:600;cursor:pointer;user-select:none}
+  .pill-col.on{background:var(--mint);border-color:var(--primary);color:var(--primary-dark)}
+  .dica{font-size:11.5px;color:#9ca3af;margin-top:6px}
+
+  /* ===== Toggle de visão ===== */
+  .visao{display:inline-flex;background:#e5e7eb;border-radius:9999px;padding:2px}
+  .visao button{border:0;background:transparent;font:inherit;font-size:11.5px;font-weight:700;
+    padding:5px 12px;border-radius:9999px;cursor:pointer;color:#4b5563;white-space:nowrap}
+  .visao button.on{background:#fff;color:var(--primary-dark);box-shadow:0 1px 2px rgba(0,0,0,.1)}
+
+  /* ===== Tabelas ===== */
+  .tabela-wrap{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:860px}
+  thead th{background:#f9fafb;text-align:left;font-size:10.5px;font-weight:700;color:#6b7280;
+    text-transform:uppercase;letter-spacing:.04em;padding:8px 10px;border-bottom:1px solid #e5e7eb;white-space:nowrap}
+  thead th.num, td.num{text-align:right}
+  tbody td{padding:7px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top}
+  tbody tr:hover{background:#f9fafb}
+  tfoot td{padding:8px 10px;font-weight:800;background:#f9fafb;border-top:2px solid #e5e7eb}
+  .cliente-nome{font-weight:700;color:#111827}
+  .sub{font-size:11px;color:#6b7280;margin-top:1px}
+  .col-oculta{display:none}
+  tr.rateio td{background:#fafaf9;border-bottom:1px solid #f3f4f6;padding:4px 10px;font-size:12px;color:#4b5563}
+  tr.rateio td:first-child{padding-left:26px}
+  tr.parcela-sub td{background:#fafaf9;padding:4px 10px;font-size:12px;color:#4b5563}
+  tr.parcela-sub td:first-child{padding-left:26px}
+
+  /* ===== Badges ===== */
+  .badge{display:inline-block;padding:1px 8px;font-size:10.5px;font-weight:700;border-radius:9999px;white-space:nowrap}
+  .b-verde{background:#dcfce7;color:#166534}
+  .b-azul{background:#dbeafe;color:#1e40af}
+  .b-cinza{background:#f3f4f6;color:#374151}
+  .b-amarelo{background:#fef9c3;color:#854d0e}
+  .b-verm{background:#fee2e2;color:#b91c1c}
+  .b-roxo{background:#f3e8ff;color:#7e22ce}
+  .b-mint{background:var(--mint);color:var(--primary-dark)}
+
+  .conc{font-size:11.5px;margin-top:1px}
+  .conc .seta-c{color:#9ca3af}
+
+  .grid2{display:grid;grid-template-columns:1fr;gap:12px}
+  @media(min-width:768px){.grid2{grid-template-columns:1fr 1fr}}
+  .lista-check{list-style:none}
+  .lista-check li{display:flex;gap:9px;padding:7px 0;border-bottom:1px solid #f3f4f6;align-items:flex-start}
+  .lista-check li:last-child{border-bottom:0}
+  .chk{width:18px;height:18px;border-radius:5px;background:var(--mint);color:var(--primary-dark);
+    display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;margin-top:1px}
+  .lista-check b{display:block;font-size:12.5px}
+  .lista-check small{color:#6b7280;font-size:11.5px}
+
+  .obs{display:flex;gap:8px;align-items:flex-start;font-size:12px;color:#374151;padding:4px 0}
+  .obs .n{display:inline-flex;width:17px;height:17px;border-radius:50%;background:#e5e7eb;color:#374151;
+    font-size:10.5px;font-weight:800;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+
+  /* ===== Mobile: tabela vira cards ===== */
+  @media(max-width:767px){
+    .so-desktop{display:none!important}
+    table.responsiva{min-width:0;display:block}
+    table.responsiva thead{display:none}
+    table.responsiva tbody{display:block}
+    table.responsiva tfoot{display:block}
+    table.responsiva tfoot tr{display:flex;justify-content:space-between}
+    table.responsiva tr{display:block;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:8px;padding:8px 10px;background:#fff}
+    table.responsiva tr.rateio,table.responsiva tr.parcela-sub{border-style:dashed;margin-top:-4px;background:#fafaf9}
+    table.responsiva td{display:flex;justify-content:space-between;gap:10px;border:0;padding:3px 0;text-align:right}
+    table.responsiva td::before{content:attr(data-rot);font-size:10.5px;font-weight:700;color:#9ca3af;
+      text-transform:uppercase;letter-spacing:.04em;text-align:left;flex-shrink:0;padding-top:2px}
+    table.responsiva td[data-rot=""]::before{display:none}
+    tr.rateio td:first-child,tr.parcela-sub td:first-child{padding-left:0}
+  }
+</style>
+</head>
+<body>
+
+<div class="faixa-mock">Mockup v2 para aprovação — nenhuma tela foi criada ainda</div>
+
+<div class="topo">
+  <div class="topo-inner">
+    <h1>Contabilidade</h1>
+    <p>Administração → Contabilidade · acesso por permissão (o contador terá um cadastro próprio, somente consulta)</p>
+    <div class="abas">
+      <button class="aba ativa" data-alvo="tab-receber">Contas a Receber</button>
+      <button class="aba" data-alvo="tab-pagar">Contas a Pagar</button>
+      <button class="aba" data-alvo="tab-extrato">Extratos</button>
+      <button class="aba" data-alvo="tab-notas">Notas de Entrada</button>
+      <button class="aba" data-alvo="tab-pacote">Pacote do Mês</button>
+    </div>
+  </div>
+</div>
+
+<main>
+
+<!-- ════════════════════ ABA 1: CONTAS A RECEBER ════════════════════ -->
+<section id="tab-receber">
+
+  <div class="barra-export">
+    <span class="rot">Exportar</span>
+    <button class="btn btn-sec">CSV</button>
+    <button class="btn btn-sec">PDF</button>
+    <button class="btn btn-ghost">Imprimir</button>
+    <span class="dica" style="margin:0 0 0 6px">— padrão em todas as abas; respeita filtros e colunas escolhidas</span>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="rot">Criadas no período</div><div class="val">184 títulos</div></div>
+    <div class="kpi"><div class="rot">Valor total</div><div class="val verde">R$ 38.020,33</div></div>
+    <div class="kpi"><div class="rot">Com nota fiscal</div><div class="val">R$ 31.410,12</div></div>
+    <div class="kpi"><div class="rot">Sem nota (especial)</div><div class="val amb">R$ 6.610,21</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="tit">Filtros</span>
+      <div class="acoes-header">
+        <span class="visao">
+          <button class="on">Títulos (competência)</button>
+          <button>Recebimentos (caixa)</button>
+        </span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="filtros">
+        <div class="campo">
+          <label>Data de criação</label>
+          <span class="periodo-pill"><span class="seta">‹</span><span class="meio">julho/2026 <small>01/07 – 31/07 ▾</small></span><span class="seta">›</span></span>
+        </div>
+        <div class="campo"><label>Vencimento</label><div class="fake-select">Todo o período</div></div>
+        <div class="campo"><label>Pagamento (baixa)</label><div class="fake-select">Todo o período</div></div>
+        <div class="campo"><label>Cliente</label><div class="fake-input" style="color:#9ca3af">Buscar…</div></div>
+        <div class="campo"><label>Documento fiscal</label><div class="fake-select">Todos</div></div>
+        <div class="campo"><label>Forma de recebimento</label><div class="fake-select">Todas</div></div>
+        <div class="campo"><label>Banco da baixa</label><div class="fake-select">Todos</div></div>
+        <div class="campo"><label>Status</label><div class="fake-select">Todos</div></div>
+      </div>
+      <p class="nota-filtro">Períodos com presets ‹ Este mês › e filtros salvos por usuário, como no resto do sistema.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="tit">Colunas — clique para ligar/desligar (funcional neste mockup)</span></div>
+    <div class="card-body">
+      <div class="colunas-pills" id="pills-receber">
+        <span class="pill-col on" data-col="pedido">Pedido</span>
+        <span class="pill-col on" data-col="criacao">Criação</span>
+        <span class="pill-col on" data-col="cliente">Cliente / CNPJ</span>
+        <span class="pill-col on" data-col="nf">Nota fiscal</span>
+        <span class="pill-col on" data-col="venc">Vencimento</span>
+        <span class="pill-col on" data-col="valor">Valor</span>
+        <span class="pill-col on" data-col="forma">Forma receb.</span>
+        <span class="pill-col on" data-col="banco">Banco da baixa</span>
+        <span class="pill-col on" data-col="baixa">Data baixa</span>
+        <span class="pill-col on" data-col="status">Status</span>
+        <span class="pill-col" data-col="vendedor">Vendedor</span>
+        <span class="pill-col" data-col="baixadopor">Baixado por</span>
+        <span class="pill-col" data-col="desconto">Desconto</span>
+        <span class="pill-col" data-col="conciliado">Conciliado?</span>
+        <span class="pill-col" data-col="origem">Origem</span>
+        <span class="pill-col" data-col="condicao">Condição pgto</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="tit">Resultado — 184 títulos</span>
+    </div>
+    <div class="tabela-wrap">
+      <table class="responsiva" id="tbl-receber">
+        <thead>
+          <tr>
+            <th data-col="pedido">Pedido</th>
+            <th data-col="criacao">Criação</th>
+            <th data-col="cliente">Cliente</th>
+            <th data-col="nf">Nota fiscal</th>
+            <th data-col="venc">Venc.</th>
+            <th data-col="valor" class="num">Valor</th>
+            <th data-col="forma">Forma receb.</th>
+            <th data-col="banco">Banco da baixa</th>
+            <th data-col="baixa">Baixa</th>
+            <th data-col="status">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-col="pedido" data-rot="Pedido">#1876</td>
+            <td data-col="criacao" data-rot="Criação">01/07/2026</td>
+            <td data-col="cliente" data-rot=""><span class="cliente-nome">SALTY COFFEE</span><div class="sub">12.345.678/0001-90</div></td>
+            <td data-col="nf" data-rot="Nota fiscal"><span class="badge b-azul">NF-e 4.812</span><div class="sub">chave …5541</div></td>
+            <td data-col="venc" data-rot="Vencimento">04/07/2026</td>
+            <td data-col="valor" data-rot="Valor" class="num"><b>R$ 431,69</b></td>
+            <td data-col="forma" data-rot="Forma">Boleto Asaas</td>
+            <td data-col="banco" data-rot="Banco">Conta Asaas</td>
+            <td data-col="baixa" data-rot="Baixa">06/07/2026</td>
+            <td data-col="status" data-rot="Status"><span class="badge b-verde">PAGO</span></td>
+          </tr>
+          <tr>
+            <td data-col="pedido" data-rot="Pedido">ZZ#564</td>
+            <td data-col="criacao" data-rot="Criação">03/07/2026</td>
+            <td data-col="cliente" data-rot=""><span class="cliente-nome">Clarkson Neitzel</span><div class="sub">CPF 000.000.000-00</div></td>
+            <td data-col="nf" data-rot="Nota fiscal"><span class="badge b-roxo">Especial — sem nota</span></td>
+            <td data-col="venc" data-rot="Vencimento">10/07/2026</td>
+            <td data-col="valor" data-rot="Valor" class="num"><b>R$ 126,09</b></td>
+            <td data-col="forma" data-rot="Forma">Dinheiro</td>
+            <td data-col="banco" data-rot="Banco">Caixinha</td>
+            <td data-col="baixa" data-rot="Baixa">10/07/2026 <div class="sub">parcial R$ 116,09</div></td>
+            <td data-col="status" data-rot="Status"><span class="badge b-amarelo">PARCIAL</span></td>
+          </tr>
+          <tr>
+            <td data-col="pedido" data-rot="Pedido">#1889</td>
+            <td data-col="criacao" data-rot="Criação">05/07/2026</td>
+            <td data-col="cliente" data-rot=""><span class="cliente-nome">ALDORI PANIFICADORA</span><div class="sub">98.765.432/0001-10</div></td>
+            <td data-col="nf" data-rot="Nota fiscal"><span class="badge b-mint">NF-e app 128</span><div class="sub">série 1 · chave …8890</div></td>
+            <td data-col="venc" data-rot="Vencimento">10/07/2026</td>
+            <td data-col="valor" data-rot="Valor" class="num"><b>R$ 661,86</b></td>
+            <td data-col="forma" data-rot="Forma">PIX Asaas</td>
+            <td data-col="banco" data-rot="Banco">Conta Asaas</td>
+            <td data-col="baixa" data-rot="Baixa">11/07/2026</td>
+            <td data-col="status" data-rot="Status"><span class="badge b-verde">PAGO</span></td>
+          </tr>
+          <tr>
+            <td data-col="pedido" data-rot="Pedido">—</td>
+            <td data-col="criacao" data-rot="Criação">08/07/2026</td>
+            <td data-col="cliente" data-rot=""><span class="cliente-nome">MERCADO ROSA DOS VENTOS</span><div class="sub">55.111.222/0001-33</div></td>
+            <td data-col="nf" data-rot="Nota fiscal"><span class="badge b-cinza">Importada do CA</span><div class="sub">venda CA nº 1791</div></td>
+            <td data-col="venc" data-rot="Vencimento">14/07/2026</td>
+            <td data-col="valor" data-rot="Valor" class="num"><b>R$ 195,21</b></td>
+            <td data-col="forma" data-rot="Forma">—</td>
+            <td data-col="banco" data-rot="Banco">—</td>
+            <td data-col="baixa" data-rot="Baixa">—</td>
+            <td data-col="status" data-rot="Status"><span class="badge b-verm">VENCIDO</span></td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td data-col="pedido" data-rot="" class="so-desktop"></td>
+            <td data-col="criacao" data-rot="" class="so-desktop"></td>
+            <td data-col="cliente" data-rot="">Total (4 de 184)</td>
+            <td data-col="nf" data-rot="" class="so-desktop"></td>
+            <td data-col="venc" data-rot="" class="so-desktop"></td>
+            <td data-col="valor" data-rot="" class="num">R$ 1.414,85</td>
+            <td data-col="forma" data-rot="" class="so-desktop"></td>
+            <td data-col="banco" data-rot="" class="so-desktop"></td>
+            <td data-col="baixa" data-rot="" class="so-desktop"></td>
+            <td data-col="status" data-rot="" class="so-desktop"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <div class="card-body" style="border-top:1px solid #f3f4f6">
+      <div class="obs"><span class="n">1</span><span><b>Títulos (competência)</b> = o que foi lançado no mês, pela data de criação. <b>Recebimentos (caixa)</b> = o que entrou de dinheiro, uma linha por baixa (parcela paga metade PIX, metade dinheiro = 2 linhas, cada uma no banco certo).</span></div>
+      <div class="obs"><span class="n">2</span><span>Coluna <b>Nota fiscal</b>: <span class="badge b-azul">NF-e do CA</span> <span class="badge b-mint">NF-e do app</span> <span class="badge b-roxo">Especial — sem nota</span> <span class="badge b-cinza">Importada do CA</span>, com número e chave.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ ABA 2: CONTAS A PAGAR ════════════════════ -->
+<section id="tab-pagar" hidden>
+
+  <div class="barra-export">
+    <span class="rot">Exportar</span>
+    <button class="btn btn-sec">CSV</button>
+    <button class="btn btn-sec">PDF</button>
+    <button class="btn btn-ghost">Imprimir</button>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="rot">Lançadas no período</div><div class="val">96 contas</div></div>
+    <div class="kpi"><div class="rot">Valor total</div><div class="val verm">R$ 61.284,90</div></div>
+    <div class="kpi"><div class="rot">Com NF de entrada</div><div class="val">R$ 48.930,45</div></div>
+    <div class="kpi"><div class="rot">Pagas no período</div><div class="val verde">R$ 52.110,08</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="tit">Filtros</span>
+      <div class="acoes-header">
+        <span class="visao">
+          <button class="on">Contas (competência)</button>
+          <button>Pagamentos (caixa)</button>
+          <button>Por categoria (DRE)</button>
+        </span>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="filtros">
+        <div class="campo">
+          <label>Competência / criação</label>
+          <span class="periodo-pill"><span class="seta">‹</span><span class="meio">julho/2026 <small>▾</small></span><span class="seta">›</span></span>
+        </div>
+        <div class="campo"><label>Fornecedor</label><div class="fake-input" style="color:#9ca3af">Buscar…</div></div>
+        <div class="campo"><label>Categoria (DRE)</label><div class="fake-select">Todas</div></div>
+        <div class="campo"><label>Documento</label><div class="fake-select">Todos — NF-e / NFS-e / Sem nota / Importada CA</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Resumo por categoria DRE -->
+  <div class="card">
+    <div class="card-header"><span class="tit">Resumo por categoria (DRE) — julho/2026</span></div>
+    <div class="tabela-wrap">
+      <table class="responsiva" style="min-width:640px">
+        <thead>
+          <tr><th>Categoria</th><th>Classificação</th><th class="num">Contas</th><th class="num">Valor</th><th class="num">% do total</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-rot=""><b>Matéria-prima</b></td>
+            <td data-rot="Classificação"><span class="badge b-mint">Operacional · Variável</span></td>
+            <td data-rot="Contas" class="num">31</td>
+            <td data-rot="Valor" class="num"><b>R$ 28.410,00</b></td>
+            <td data-rot="%" class="num">46,4%</td>
+          </tr>
+          <tr>
+            <td data-rot=""><b>Uso e consumo</b></td>
+            <td data-rot="Classificação"><span class="badge b-mint">Operacional · Variável</span></td>
+            <td data-rot="Contas" class="num">18</td>
+            <td data-rot="Valor" class="num"><b>R$ 6.982,50</b></td>
+            <td data-rot="%" class="num">11,4%</td>
+          </tr>
+          <tr>
+            <td data-rot=""><b>Energia / utilidades</b></td>
+            <td data-rot="Classificação"><span class="badge b-mint">Operacional · Fixa</span></td>
+            <td data-rot="Contas" class="num">4</td>
+            <td data-rot="Valor" class="num"><b>R$ 3.100,20</b></td>
+            <td data-rot="%" class="num">5,1%</td>
+          </tr>
+          <tr>
+            <td data-rot=""><b>Aluguel</b></td>
+            <td data-rot="Classificação"><span class="badge b-mint">Operacional · Fixa</span></td>
+            <td data-rot="Contas" class="num">1</td>
+            <td data-rot="Valor" class="num"><b>R$ 4.200,00</b></td>
+            <td data-rot="%" class="num">6,9%</td>
+          </tr>
+          <tr>
+            <td data-rot=""><b>Tarifas bancárias / taxas</b></td>
+            <td data-rot="Classificação"><span class="badge b-cinza">Financeiro</span></td>
+            <td data-rot="Contas" class="num">12</td>
+            <td data-rot="Valor" class="num"><b>R$ 812,40</b></td>
+            <td data-rot="%" class="num">1,3%</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="tit">Contas do período — 96 (rateio DRE aberto por linha)</span></div>
+    <div class="tabela-wrap">
+      <table class="responsiva">
+        <thead>
+          <tr>
+            <th>Fornecedor</th><th>Documento</th><th>Categoria (DRE)</th><th>Venc.</th>
+            <th class="num">Valor</th><th>Pagamento</th><th>Banco</th><th>Status</th><th>Anexo</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-rot=""><span class="cliente-nome">BR FOODS DISTRIBUIDORA</span><div class="sub">34.222.111/0001-09 · vínculo com o cadastro de fornecedor</div></td>
+            <td data-rot="Documento"><span class="badge b-azul">NF-e 45.123</span><div class="sub">chave …7731</div></td>
+            <td data-rot="Categoria"><span class="badge b-amarelo">RATEADA — 2 categorias</span></td>
+            <td data-rot="Vencimento">15/07/2026</td>
+            <td data-rot="Valor" class="num"><b>R$ 8.412,50</b></td>
+            <td data-rot="Pagamento">Boleto · 15/07</td>
+            <td data-rot="Banco">Sicoob</td>
+            <td data-rot="Status"><span class="badge b-verde">QUITADO</span></td>
+            <td data-rot="Anexo">PDF</td>
+          </tr>
+          <tr class="rateio">
+            <td data-rot="Rateio">↳ Matéria-prima (massas, recheios)</td>
+            <td data-rot="" class="so-desktop"></td>
+            <td data-rot="" class="so-desktop"></td>
+            <td data-rot="" class="so-desktop"></td>
+            <td data-rot="Valor" class="num">R$ 6.000,00</td>
+            <td data-rot="" class="so-desktop"></td><td class="so-desktop"></td><td class="so-desktop"></td><td class="so-desktop"></td>
+          </tr>
+          <tr class="rateio">
+            <td data-rot="Rateio">↳ Uso e consumo (embalagens, descartáveis)</td>
+            <td data-rot="" class="so-desktop"></td>
+            <td data-rot="" class="so-desktop"></td>
+            <td data-rot="" class="so-desktop"></td>
+            <td data-rot="Valor" class="num">R$ 2.412,50</td>
+            <td data-rot="" class="so-desktop"></td><td class="so-desktop"></td><td class="so-desktop"></td><td class="so-desktop"></td>
+          </tr>
+          <tr>
+            <td data-rot=""><span class="cliente-nome">CONTABILIDADE MODELO LTDA</span><div class="sub">11.222.333/0001-44</div></td>
+            <td data-rot="Documento"><span class="badge b-mint">NFS-e 88</span><div class="sub">serviço</div></td>
+            <td data-rot="Categoria">Serviços contábeis</td>
+            <td data-rot="Vencimento">10/07/2026</td>
+            <td data-rot="Valor" class="num"><b>R$ 1.850,00</b></td>
+            <td data-rot="Pagamento">PIX · 10/07</td>
+            <td data-rot="Banco">Sicoob</td>
+            <td data-rot="Status"><span class="badge b-verde">QUITADO</span></td>
+            <td data-rot="Anexo">PDF</td>
+          </tr>
+          <tr>
+            <td data-rot=""><span class="cliente-nome">IMOBILIÁRIA CENTRAL</span><div class="sub">aluguel galpão</div></td>
+            <td data-rot="Documento"><span class="badge b-cinza">Sem nota (manual)</span></td>
+            <td data-rot="Categoria">Aluguel</td>
+            <td data-rot="Vencimento">05/07/2026</td>
+            <td data-rot="Valor" class="num"><b>R$ 4.200,00</b></td>
+            <td data-rot="Pagamento">Transferência · 05/07</td>
+            <td data-rot="Banco">Conta PJ CA</td>
+            <td data-rot="Status"><span class="badge b-verde">QUITADO</span></td>
+            <td data-rot="Anexo">Recibo</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body" style="border-top:1px solid #f3f4f6">
+      <div class="obs"><span class="n">1</span><span>Nota com itens de categorias diferentes aparece como <b>RATEADA</b> e abre as linhas do rateio logo abaixo (matéria-prima × uso e consumo × outros) — a soma sempre fecha com o valor da nota. A visão <b>Por categoria (DRE)</b> e o CSV usam o rateio, nunca só a categoria "principal".</span></div>
+      <div class="obs"><span class="n">2</span><span>A classificação (Operacional/Financeiro, Fixa/Variável) vem da tela Categorias de Despesa que já existe — aqui só é exibida e exportada.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ ABA 3: EXTRATOS ════════════════════ -->
+<section id="tab-extrato" hidden>
+
+  <div class="barra-export">
+    <span class="rot">Exportar</span>
+    <button class="btn btn-sec">CSV com conciliação</button>
+    <button class="btn btn-sec">PDF</button>
+    <button class="btn btn-sec">OFX</button>
+    <button class="btn btn-ghost">Imprimir</button>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="tit">Filtros</span></div>
+    <div class="card-body">
+      <div class="filtros">
+        <div class="campo"><label>Conta</label><div class="fake-select">Sicoob — ag. 3007 c/c 41.220-1</div></div>
+        <div class="campo">
+          <label>Período</label>
+          <span class="periodo-pill"><span class="seta">‹</span><span class="meio">julho/2026 <small>▾</small></span><span class="seta">›</span></span>
+        </div>
+        <div class="campo"><label>Situação</label><div class="fake-select">Todas — Conciliado / Pendente / Ignorado</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="tit">Extrato Sicoob — julho/2026 · 212 lançamentos · 94% conciliados</span></div>
+    <div class="tabela-wrap">
+      <table class="responsiva">
+        <thead>
+          <tr><th>Data</th><th>Lançamento no banco</th><th class="num">Valor</th><th>Situação</th><th>Identificação (conciliação)</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-rot="Data">04/07</td>
+            <td data-rot=""><b>PIX RECEBIDO ALDORI PANIF</b><div class="sub">doc 887712</div></td>
+            <td data-rot="Valor" class="num" style="color:var(--primary-dark)"><b>+ R$ 661,86</b></td>
+            <td data-rot="Situação"><span class="badge b-verde">CONCILIADO</span></td>
+            <td data-rot=""><div class="conc">Recebimento pedido <b>#1889 — ALDORI PANIFICADORA</b> <span class="seta-c">·</span> NF-e app 128 <span class="seta-c">·</span> baixado por Leticia</div></td>
+          </tr>
+          <tr>
+            <td data-rot="Data">08/07</td>
+            <td data-rot=""><b>PIX RECEBIDO MERCADO BOM PRECO</b></td>
+            <td data-rot="Valor" class="num" style="color:var(--primary-dark)"><b>+ R$ 1.240,00</b></td>
+            <td data-rot="Situação"><span class="badge b-verde">CONCILIADO</span></td>
+            <td data-rot=""><div class="conc"><b>Grupo:</b> 1 PIX pagou 3 títulos (#1852, #1861, #1874) <span class="seta-c">·</span> diferença R$ 0,00</div></td>
+          </tr>
+          <tr>
+            <td data-rot="Data">15/07</td>
+            <td data-rot=""><b>PAGTO BOLETO BR FOODS</b><div class="sub">doc 1129</div></td>
+            <td data-rot="Valor" class="num" style="color:#b91c1c"><b>− R$ 8.412,50</b></td>
+            <td data-rot="Situação"><span class="badge b-verde">CONCILIADO</span></td>
+            <td data-rot=""><div class="conc">Pagamento <b>NF-e 45.123 — BR FOODS</b> <span class="seta-c">·</span> Matéria-prima + Uso e consumo (rateio)</div></td>
+          </tr>
+          <tr>
+            <td data-rot="Data">18/07</td>
+            <td data-rot=""><b>TRANSF ENTRE CONTAS</b></td>
+            <td data-rot="Valor" class="num" style="color:#b91c1c"><b>− R$ 5.000,00</b></td>
+            <td data-rot="Situação"><span class="badge b-azul">TRANSFERÊNCIA</span></td>
+            <td data-rot=""><div class="conc">Transferência interna Sicoob → Conta Asaas (não entra na DRE)</div></td>
+          </tr>
+          <tr>
+            <td data-rot="Data">22/07</td>
+            <td data-rot=""><b>TARIFA PACOTE SERVICOS</b></td>
+            <td data-rot="Valor" class="num" style="color:#b91c1c"><b>− R$ 89,90</b></td>
+            <td data-rot="Situação"><span class="badge b-cinza">IGNORADO</span></td>
+            <td data-rot=""><div class="conc">Motivo: tarifa bancária (lançada como despesa em Tarifas)</div></td>
+          </tr>
+          <tr>
+            <td data-rot="Data">29/07</td>
+            <td data-rot=""><b>DEP DINHEIRO AG 3007</b></td>
+            <td data-rot="Valor" class="num" style="color:var(--primary-dark)"><b>+ R$ 310,00</b></td>
+            <td data-rot="Situação"><span class="badge b-amarelo">PENDENTE</span></td>
+            <td data-rot=""><div class="conc" style="color:#9ca3af">Ainda sem identificação — aparece na lista de pendências</div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body" style="border-top:1px solid #f3f4f6">
+      <div class="obs"><span class="n">1</span><span>É o extrato que já importamos (OFX dos bancos, Asaas e Conta Azul) com a coluna <b>Identificação</b>: cada linha diz de qual pedido/nota/fornecedor veio e quem registrou.</span></div>
+      <div class="obs"><span class="n">2</span><span><b>OFX</b> disponível aqui (re-exportar o extrato no formato que sistemas contábeis importam). Nas outras abas o OFX não se aplica — lá vale CSV/PDF/impressão.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ ABA 4: NOTAS DE ENTRADA ════════════════════ -->
+<section id="tab-notas" hidden>
+
+  <div class="barra-export">
+    <span class="rot">Exportar</span>
+    <button class="btn btn-sec">CSV</button>
+    <button class="btn btn-sec">PDF</button>
+    <button class="btn btn-prim">ZIP dos XMLs</button>
+    <button class="btn btn-ghost">Imprimir</button>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="rot">NF-e produto</div><div class="val">63 notas</div></div>
+    <div class="kpi"><div class="rot">NFS-e serviço</div><div class="val">9 notas</div></div>
+    <div class="kpi"><div class="rot">Valor total</div><div class="val">R$ 47.310,88</div></div>
+    <div class="kpi"><div class="rot">Sem pagamento (bonif./amostra)</div><div class="val amb">4 notas</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="tit">Notas de entrada — julho/2026 (com as parcelas a pagar de cada nota)</span>
+      <div class="acoes-header">
+        <span class="visao"><button class="on">Todas</button><button>Produto (NF-e)</button><button>Serviço (NFS-e)</button></span>
+      </div>
+    </div>
+    <div class="tabela-wrap">
+      <table class="responsiva">
+        <thead>
+          <tr>
+            <th>Nota</th><th>Fornecedor (cadastro)</th><th>Emissão</th><th>Entrada</th>
+            <th class="num">Valor</th><th>Financeiro</th><th>XML</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td data-rot=""><span class="badge b-azul">NF-e 45.123</span><div class="sub">série 1 · chave …7731</div></td>
+            <td data-rot="Fornecedor"><span class="cliente-nome">BR FOODS DISTRIBUIDORA</span><div class="sub">34.222.111/0001-09</div></td>
+            <td data-rot="Emissão">12/07/2026</td>
+            <td data-rot="Entrada">13/07/2026</td>
+            <td data-rot="Valor" class="num"><b>R$ 8.412,50</b></td>
+            <td data-rot="Financeiro"><span class="badge b-verde">GEROU CONTAS A PAGAR</span></td>
+            <td data-rot="XML">Baixar</td>
+          </tr>
+          <tr class="parcela-sub">
+            <td data-rot="Parcela">↳ Parcela 1/2 · venc. 15/07</td>
+            <td data-rot="" class="so-desktop"></td><td class="so-desktop"></td><td class="so-desktop"></td>
+            <td data-rot="Valor" class="num">R$ 4.206,25</td>
+            <td data-rot="Situação"><span class="badge b-verde">PAGA 15/07 · Sicoob</span></td>
+            <td class="so-desktop"></td>
+          </tr>
+          <tr class="parcela-sub">
+            <td data-rot="Parcela">↳ Parcela 2/2 · venc. 15/08</td>
+            <td data-rot="" class="so-desktop"></td><td class="so-desktop"></td><td class="so-desktop"></td>
+            <td data-rot="Valor" class="num">R$ 4.206,25</td>
+            <td data-rot="Situação"><span class="badge b-cinza">PENDENTE</span></td>
+            <td class="so-desktop"></td>
+          </tr>
+          <tr>
+            <td data-rot=""><span class="badge b-mint">NFS-e 88</span><div class="sub">serviço</div></td>
+            <td data-rot="Fornecedor"><span class="cliente-nome">CONTABILIDADE MODELO LTDA</span><div class="sub">11.222.333/0001-44</div></td>
+            <td data-rot="Emissão">08/07/2026</td>
+            <td data-rot="Entrada">08/07/2026</td>
+            <td data-rot="Valor" class="num"><b>R$ 1.850,00</b></td>
+            <td data-rot="Financeiro"><span class="badge b-azul">VINCULADA A PARCELAS JÁ LANÇADAS</span></td>
+            <td data-rot="XML">Baixar</td>
+          </tr>
+          <tr class="parcela-sub">
+            <td data-rot="Parcela">↳ Vinculada à parcela de 10/07 (contrato mensal)</td>
+            <td data-rot="" class="so-desktop"></td><td class="so-desktop"></td><td class="so-desktop"></td>
+            <td data-rot="Valor" class="num">R$ 1.850,00</td>
+            <td data-rot="Situação"><span class="badge b-verde">PAGA 10/07 · Sicoob</span></td>
+            <td class="so-desktop"></td>
+          </tr>
+          <tr>
+            <td data-rot=""><span class="badge b-azul">NF-e 9.881</span><div class="sub">chave …4402</div></td>
+            <td data-rot="Fornecedor"><span class="cliente-nome">DOCES DA SERRA LTDA</span><div class="sub">77.888.999/0001-22</div></td>
+            <td data-rot="Emissão">21/07/2026</td>
+            <td data-rot="Entrada">22/07/2026</td>
+            <td data-rot="Valor" class="num"><b>R$ 640,00</b></td>
+            <td data-rot="Financeiro"><span class="badge b-amarelo">SEM PAGAMENTO — BONIFICAÇÃO</span></td>
+            <td data-rot="XML">Baixar</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card-body" style="border-top:1px solid #f3f4f6">
+      <div class="obs"><span class="n">1</span><span>Cada nota mostra <b>suas parcelas a pagar</b> logo abaixo: vencimento, valor e situação (paga em qual banco / pendente). Cobre os 3 casos: nota que <b>gerou</b> contas a pagar, nota <b>vinculada</b> a parcelas já lançadas (contrato) e nota <b>sem pagamento</b> (bonificação/amostra/comodato).</span></div>
+      <div class="obs"><span class="n">2</span><span>O fornecedor vem do <b>cadastro</b> (vínculo que já existe) — nome padronizado e CNPJ, não o texto solto do XML.</span></div>
+      <div class="obs"><span class="n">3</span><span>Notas de <b>saída</b> (vendas + devoluções) ficam no Pacote do Mês e na tela de Notas Fiscais que já existe — aqui é só entrada.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════ ABA 5: PACOTE DO MÊS ════════════════════ -->
+<section id="tab-pacote" hidden>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-header"><span class="tit">Pacote de julho/2026 — um clique, um ZIP</span></div>
+      <div class="card-body">
+        <ul class="lista-check">
+          <li><span class="chk">✓</span><span><b>Contas a Receber (CSV + PDF)</b><small>Criadas no mês + recebimentos, com NF, forma e banco</small></span></li>
+          <li><span class="chk">✓</span><span><b>Contas a Pagar (CSV + PDF)</b><small>Com rateio DRE por categoria, documento e pagamentos</small></span></li>
+          <li><span class="chk">✓</span><span><b>Extrato de cada conta com conciliação (CSV + OFX)</b><small>Sicoob · Conta Asaas · Conta PJ CA · Caixinha</small></span></li>
+          <li><span class="chk">✓</span><span><b>XMLs de saída</b><small>Vendas + devoluções (app e CA)</small></span></li>
+          <li><span class="chk">✓</span><span><b>XMLs de entrada</b><small>Produto (NF-e) e serviço (NFS-e), com a lista de parcelas</small></span></li>
+          <li><span class="chk">✓</span><span><b>Transferências entre contas e ajustes de saldo (CSV)</b><small>Para o extrato de uma conta fechar com o da outra</small></span></li>
+          <li><span class="chk">✓</span><span><b>Tarifas e taxas do Asaas (CSV)</b><small>Taxa de boleto/PIX é despesa dedutível</small></span></li>
+          <li><span class="chk">✓</span><span><b>Posição de estoque no fim do mês (CSV)</b><small>Custo médio por produto, para balanço/inventário</small></span></li>
+          <li><span class="chk">✓</span><span><b>Devoluções do mês (CSV)</b><small>Com a NF-e de devolução própria (abate faturamento)</small></span></li>
+        </ul>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-prim" style="padding:9px 20px">Gerar pacote de julho/2026 (ZIP)</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="tit">Acesso do contador — permissão nova em Usuários</span></div>
+      <div class="card-body">
+        <p style="font-size:12.5px;color:#4b5563;margin-bottom:10px">Você cria um cadastro para o escritório de contabilidade e liga só esta permissão. Ele enxerga <b>apenas a área Contabilidade</b>, somente consulta e exportação — nenhum botão de baixa, edição ou cadastro.</p>
+        <div style="border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px">
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:#6b7280;margin-bottom:8px">Usuários → Permissões → grupo Financeiro</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f3f4f6">
+            <span style="font-size:12.5px"><b>Contabilidade (consulta)</b><div class="sub">Acessa Administração → Contabilidade: relatórios, extratos, notas e pacote do mês. Somente leitura.</div></span>
+            <span style="width:36px;height:20px;border-radius:9999px;background:var(--primary);position:relative;flex-shrink:0"><span style="position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff"></span></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0">
+            <span style="font-size:12.5px;color:#9ca3af"><b>Demais permissões</b><div class="sub">Pedidos, caixa, financeiro… tudo desligado para esse cadastro</div></span>
+            <span style="width:36px;height:20px;border-radius:9999px;background:#d1d5db;position:relative;flex-shrink:0"><span style="position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff"></span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+  document.querySelectorAll('.aba').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.aba').forEach(b => b.classList.remove('ativa'));
+      btn.classList.add('ativa');
+      document.querySelectorAll('main > section').forEach(s => s.hidden = (s.id !== btn.dataset.alvo));
+      window.scrollTo({top:0});
+    });
+  });
+  document.querySelectorAll('#pills-receber .pill-col').forEach(pill => {
+    pill.addEventListener('click', () => {
+      pill.classList.toggle('on');
+      const col = pill.dataset.col;
+      document.querySelectorAll('#tbl-receber [data-col="' + col + '"]')
+        .forEach(cel => cel.classList.toggle('col-oculta', !pill.classList.contains('on')));
+    });
+  });
+  document.querySelectorAll('.visao').forEach(v => {
+    v.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      v.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+    }));
+  });
+</script>
+</body>
+</html>

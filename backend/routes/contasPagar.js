@@ -16,6 +16,7 @@ const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const contasPagarCaSyncService = require('../services/contasPagarCaSyncService');
 const importacaoCaService = require('../services/importacaoCaService');
+const categoriaDespesaService = require('../services/categoriaDespesaService');
 const contaAzulService = require('../services/contaAzulService');
 // App é o dono do financeiro: com esta chave ligada, Contas a Pagar não envia mais ao CA
 // (a despesa/baixa nasce "só no app"). A forma/banco continuam sendo capturados p/ os saldos.
@@ -671,6 +672,10 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
             parcelas: { orderBy: { numeroParcela: 'asc' }, include: { pagamentos: true } }
         };
 
+        // Resolve o ID da categoria fora da transação (cria a linha se for nova)
+        const categoriaDespesaId = await categoriaDespesaService.idPorNome(categoria?.trim());
+        const dataEmissaoManual = competencia ? parseVencimento(competencia) : new Date();
+
         let conta;
         await prisma.$transaction(async (tx) => {
             conta = await tx.contaPagar.create({
@@ -679,8 +684,10 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
                     descricao: descricao.trim(),
                     categoria: categoria?.trim() || null,
                     categoriaCaId: categoriaCaId || null,
+                    categoriaDespesaId,
                     numeroNota: numeroNota?.trim() || null,
-                    competencia: competencia ? parseVencimento(competencia) : null,
+                    competencia: dataEmissaoManual,
+                    dataEmissao: dataEmissaoManual,
                     observacoes: observacoes?.trim() || null,
                     origem: 'MANUAL',
                     valorTotal,
@@ -780,10 +787,16 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
             dadosConta.descricao = descricao.trim();
         }
         if (fornecedorId !== undefined) dadosConta.fornecedorId = fornecedorId || null;
-        if (categoria !== undefined) dadosConta.categoria = categoria?.trim() || null;
+        if (categoria !== undefined) {
+            dadosConta.categoria = categoria?.trim() || null;
+            dadosConta.categoriaDespesaId = await categoriaDespesaService.idPorNome(categoria?.trim());
+        }
         if (categoriaCaId !== undefined) dadosConta.categoriaCaId = categoriaCaId || null;
         if (numeroNota !== undefined) dadosConta.numeroNota = numeroNota?.trim() || null;
-        if (competencia !== undefined) dadosConta.competencia = competencia ? parseVencimento(competencia) : null;
+        if (competencia !== undefined) {
+            dadosConta.competencia = competencia ? parseVencimento(competencia) : null;
+            if (dadosConta.competencia) dadosConta.dataEmissao = dadosConta.competencia;
+        }
         if (observacoes !== undefined) dadosConta.observacoes = observacoes?.trim() || null;
 
         // Edição de parcelas.
