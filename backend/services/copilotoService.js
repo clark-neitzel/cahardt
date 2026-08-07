@@ -78,6 +78,7 @@ const ABAS = [
     { slug: 'mensagens-agendadas',nome: 'Mensagens Agendadas',          rota: '/admin/mensagens',                    perm: 'admin' },
     { slug: 'veiculos',           nome: 'Veículos',                     rota: '/admin/veiculos',                     perm: ['Pode_Acessar_Veiculos'] },
     { slug: 'sincronizar',        nome: 'Sincronizar',                  rota: '/admin/sync',                         perm: 'sync' },
+    { slug: 'contabilidade',      nome: 'Contabilidade',                rota: '/admin/contabilidade',                perm: 'Pode_Acessar_Contabilidade' },
     // ── RH ───────────────────────────────────────
     { slug: 'curriculos',         nome: 'Currículos',                   rota: '/rh/curriculos',                      perm: ['Pode_Ver_RH', 'Pode_Editar_RH'] },
     { slug: 'rh-funcionarios',    nome: 'Funcionários (RH)',            rota: '/rh/funcionarios',                    perm: ['Pode_Ver_Ponto', 'Pode_Editar_Ponto'] },

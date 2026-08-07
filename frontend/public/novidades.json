@@ -1,5 +1,11 @@
 [
   {
+    "slug": "contabilidade",
+    "titulo": "Área Contabilidade",
+    "resumo": "Nova tela Administração → Contabilidade com o relatório completo de Contas a Receber para o contador: data de criação, nota fiscal ou especial, forma de recebimento e em qual banco caiu cada baixa. Duas visões (títulos e recebimentos), colunas do seu jeito (ficam salvas), exportação em CSV e impressão/PDF. Dá para criar um cadastro só de consulta para o escritório de contabilidade.",
+    "data": "2026-08-07"
+  },
+  {
     "slug": "atendimentos-pedidos",
     "titulo": "Pedido também é atendimento",
     "resumo": "Toda venda agora entra no Painel de Atendimentos junto com os contatos registrados, na ordem da hora, com o canal que o vendedor marcou no próprio pedido (presencial, WhatsApp, ligação). Quem vende direto pelo app não termina mais o dia com 'zero pedido'. Tem cartão novo Pedidos, filtro 'Só pedidos' e o CSV ganhou as colunas Pedido e Valor.",

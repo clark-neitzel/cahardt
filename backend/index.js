@@ -184,6 +184,7 @@ app.use('/api/fornecedores', fornecedoresRoutes); // Fornecedores (auth inside)
 app.use('/api/config-notas', configNotasRoutes); // Certificado Digital p/ notas (auth inside)
 app.use('/api/notas-entrada', notasEntradaRoutes); // Notas Recebidas — NF-e capturadas na SEFAZ (auth inside)
 app.use('/api/financeiro-gerencial', financeiroGerencialRoutes); // Fluxo de Caixa e DRE (auth inside)
+app.use('/api/contabilidade', require('./routes/contabilidadeRoutes')); // Relatórios p/ contabilidade — consulta (auth inside)
 app.use('/api/conciliacao-bancaria', conciliacaoBancariaRoutes); // Conciliação bancária — extrato OFX (auth inside)
 app.use('/api/estoque', authMiddleware, estoqueRoutes); // Módulo de Estoque
 app.use('/api/categorias-estoque', authMiddleware, categoriaEstoqueRoutes); // Categorias de Estoque

@@ -9,6 +9,7 @@ const DetalheProduto = lazyComRetry(() => import('./pages/Produtos/DetalheProdut
 const ListaProdutos = lazyComRetry(() => import('./pages/Admin/Produtos/ListaProdutos'));
 const GerenciarProduto = lazyComRetry(() => import('./pages/Admin/Produtos/GerenciarProduto'));
 const PainelSync = lazyComRetry(() => import('./pages/Admin/Sync/PainelSync'));
+const ContabilidadePage = lazyComRetry(() => import('./pages/Admin/Contabilidade/ContabilidadePage'));
 const ListaClientes = lazyComRetry(() => import('./pages/Clientes/ListaClientes'));
 const DetalheCliente = lazyComRetry(() => import('./pages/Clientes/DetalheCliente'));
 const NovoCliente = lazyComRetry(() => import('./pages/Clientes/NovoCliente'));
@@ -364,6 +365,7 @@ const Layout = ({ children }) => {
       isAdmin && { to: '/admin/mensagens', icon: BellRing, label: 'Mensagens' },
       (user?.permissoes?.admin || hasPermission('Pode_Acessar_Veiculos')) && { to: '/admin/veiculos', icon: Car, label: 'Veículos' },
       hasPermission('sync') && { to: '/admin/sync', icon: RefreshCw, label: 'Sincronizar' },
+      hasPermission('Pode_Acessar_Contabilidade') && { to: '/admin/contabilidade', icon: Landmark, label: 'Contabilidade' },
     ].filter(Boolean) },
     { label: 'RH', icon: UserCheck, items: [
       showRH && { to: '/rh/curriculos', icon: UserCheck, label: 'Currículos' },
@@ -775,6 +777,7 @@ function App() {
               <Route path="/admin/vendedores" element={<PrivateRoute tab="vendedores"><ListaVendedores /></PrivateRoute>} />
               <Route path="/admin/mensagens" element={<PrivateRoute><MensagensAgendadas /></PrivateRoute>} />
               <Route path="/admin/veiculos" element={<PrivateRoute tab="Pode_Acessar_Veiculos"><Veiculos /></PrivateRoute>} />
+              <Route path="/admin/contabilidade" element={<PrivateRoute tab="Pode_Acessar_Contabilidade"><ContabilidadePage /></PrivateRoute>} />
               <Route path="/admin/config" element={<PrivateRoute tab="configuracoes"><Configuracoes /></PrivateRoute>} />
               <Route path="/config/tabela-precos" element={<PrivateRoute tab="configuracoes"><TabelaPrecos /></PrivateRoute>} />
               <Route path="/config/contas-financeiras" element={<PrivateRoute tab="configuracoes"><ContasFinanceiras /></PrivateRoute>} />
