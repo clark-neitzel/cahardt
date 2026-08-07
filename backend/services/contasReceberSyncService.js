@@ -1,5 +1,6 @@
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const contaAzulService = require('./contaAzulService');
+const { garantirContaFinanceira } = require('./contaFinanceiraGuardService');
 
 const mapMetodoCA = (metodo) => {
     if (!metodo) return null;
@@ -197,6 +198,7 @@ async function sincronizarConta(contaId, opts = {}) {
                 : `Baixa sincronizada do Conta Azul (${caPar.status}) [${origem}]`;
 
             if (!soLedger) {
+                await garantirContaFinanceira(contaFinanceiraCaId, tx); // conta vinda do CA pode não existir aqui (FK)
                 await tx.parcela.update({
                     where: { id: local.id },
                     data: {
@@ -224,13 +226,15 @@ async function sincronizarConta(contaId, opts = {}) {
                     const valorB = b ? Math.round(Number(b?.valor_composicao?.valor_bruto || 0) * 100) / 100 : valorPagoArredondado;
                     if (valorB <= 0) continue;
                     const cfB = b ? (b.conta_financeira ?? caPar.conta_financeira ?? caPar.id_conta_financeira) : null;
+                    const contaLedger = cfB ? (typeof cfB === 'string' ? cfB : cfB.id || null) : contaFinanceiraCaId;
+                    await garantirContaFinanceira(contaLedger, tx); // conta vinda do CA pode não existir aqui (FK)
                     await tx.pagamentoParcela.create({
                         data: {
                             parcelaId: local.id,
                             valorRecebido: valorB,
                             valorDesconto: Math.round(Number(b?.valor_composicao?.valor_desconto || 0) * 100) / 100,
                             formaPagamento: b ? (mapMetodoCA(b.metodo_pagamento) || forma) : forma,
-                            contaFinanceiraCaId: cfB ? (typeof cfB === 'string' ? cfB : cfB.id || null) : contaFinanceiraCaId,
+                            contaFinanceiraCaId: contaLedger,
                             dataPagamento: b?.data_pagamento ? new Date(b.data_pagamento + 'T12:00:00-03:00') : dataPgto,
                             observacao: `Baixa sincronizada do Conta Azul [${origem}]`,
                             origem: 'SYNC_CA',

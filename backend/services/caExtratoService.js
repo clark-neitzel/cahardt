@@ -20,6 +20,7 @@
 const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
 const categoriaDespesaService = require('./categoriaDespesaService');
+const { garantirContaFinanceira } = require('./contaFinanceiraGuardService');
 
 const round2 = (v) => Math.round(Number(v) * 100) / 100;
 const num = (v) => Number(v || 0);
@@ -480,17 +481,20 @@ async function sincronizarRecebimentos({ dias = 2, de = null, ate = null, limite
             const dataP = principal?.data_pagamento ? new Date(principal.data_pagamento + 'T12:00:00-03:00') : new Date();
 
             await prisma.$transaction(async (tx) => {
+                await garantirContaFinanceira(contaP, tx); // conta vinda do CA pode não existir aqui (FK)
                 for (const b of baixas) {
                     const valorB = round2(num(b?.valor_composicao?.valor_bruto));
                     if (valorB <= 0) continue;
                     const cfB = b?.conta_financeira ?? det?.conta_financeira;
+                    const contaB = cfB ? (typeof cfB === 'string' ? cfB : cfB.id || null) : contaP;
+                    await garantirContaFinanceira(contaB, tx);
                     await tx.pagamentoParcela.create({
                         data: {
                             parcelaId: parcela.id,
                             valorRecebido: valorB,
                             valorDesconto: round2(num(b?.valor_composicao?.valor_desconto)),
                             formaPagamento: mapMetodoCA(b?.metodo_pagamento) || 'Outro',
-                            contaFinanceiraCaId: cfB ? (typeof cfB === 'string' ? cfB : cfB.id || null) : contaP,
+                            contaFinanceiraCaId: contaB,
                             dataPagamento: b?.data_pagamento ? new Date(b.data_pagamento + 'T12:00:00-03:00') : dataP,
                             observacao: 'Baixa espelhada do Conta Azul (recebimento em conta importada)',
                             origem: 'CA_EXTRATO'

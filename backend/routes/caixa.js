@@ -7,6 +7,7 @@ const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
 // Conferência do dinheiro (passo antes de fechar). A trava só vale com a chave
 // ligada em Configurações → Caixa; ver backend/config/caixaConferenciaConfig.js.
 const confService = require('../services/caixaConferenciaService');
+const { garantirContaFinanceira } = require('../services/contaFinanceiraGuardService');
 const cfgConferencia = require('../config/caixaConferenciaConfig');
 // Caixa só de segunda a sexta: o movimento de sáb/dom é prestado na segunda.
 const { intervaloDoCaixa, ehFimDeSemana, dataCaixaDe } = require('../utils/diasUteisCaixa');
@@ -3130,6 +3131,7 @@ router.post('/quitar-ca', async (req, res) => {
                                 if (saldo <= 0.001) break;
                                 const usa = round2(Math.min(saldo, fila.restante));
                                 if (usa <= 0) continue;
+                                await garantirContaFinanceira(fila.contaCaId, tx); // conta da lista do CA pode não existir no cadastro local (FK)
                                 await tx.pagamentoParcela.create({
                                     data: {
                                         parcelaId: parcela.id,

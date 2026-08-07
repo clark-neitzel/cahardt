@@ -7833,6 +7833,11 @@ const TABELAS_CONTA_FINANCEIRA = [
 // Fotografia do que precisa de acerto. Não altera nada.
 router.get('/contabilidade-diag-fase0', async (req, res) => {
     try {
+        // 0) FKs de conta financeira já aplicadas no banco? (10 = deploy das FKs concluído)
+        const fkRows = await prisma.$queryRawUnsafe(
+            `SELECT COUNT(*)::int AS n FROM pg_constraint WHERE contype='f' AND confrelid='contas_financeiras'::regclass`);
+        const fksContaFinanceira = fkRows[0]?.n ?? 0;
+
         // 1) Valores de conta financeira que não existem em contas_financeiras (órfãos)
         const orfaos = [];
         for (const { tabela, coluna } of TABELAS_CONTA_FINANCEIRA) {
@@ -7886,6 +7891,7 @@ router.get('/contabilidade-diag-fase0', async (req, res) => {
 
         res.json({
             ok: true,
+            fksContaFinanceira, // 10 = FKs no ar
             orfaosContaFinanceira: orfaos,
             totalOrfaos: orfaos.reduce((s, o) => s + o.qtd, 0),
             prontoParaFK: orfaos.length === 0,

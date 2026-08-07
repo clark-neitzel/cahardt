@@ -12,6 +12,7 @@
 const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
 const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
+const { garantirContaFinanceira } = require('./contaFinanceiraGuardService');
 
 // Espelho de backend/routes/contasReceber.js:47 (recalcular status da parcela)
 const calcularStatusParcela = (valor, valorPago, valorDescontoTotal) => {
@@ -84,6 +85,7 @@ const asaasBaixaService = {
                     const obs = `Pago via ${forma} (${cobranca.asaasPaymentId})${valorPagoAsaas > recebido + 0.01 ? ` — recebido R$ ${valorPagoAsaas.toFixed(2)} (juros/multa R$ ${(valorPagoAsaas - recebido).toFixed(2)})` : ''}`;
 
                     await prisma.$transaction(async (tx) => {
+                        await garantirContaFinanceira(contaCaId, tx); // conta configurada pode não existir no cadastro (FK)
                         await tx.pagamentoParcela.create({
                             data: {
                                 parcelaId: parcela.id,

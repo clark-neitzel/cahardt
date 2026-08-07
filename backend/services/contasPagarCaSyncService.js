@@ -14,6 +14,7 @@
 
 const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
+const { garantirContaFinanceira } = require('./contaFinanceiraGuardService');
 // CNPJ ALFANUMÉRICO: normalizar documento preservando letras (nunca replace(/\D/g,'')).
 const { normalizarDoc } = require('../utils/documento');
 // App é o dono do financeiro (desde 07/2026): com esta chave ligada, Contas a Pagar
@@ -1139,6 +1140,9 @@ async function conferirBaixasCA() {
 
                         // Na RESPOSTA o campo chama valor_composicao (no request é composicao_valor — literal na spec)
                         const comp = baixa.valor_composicao || baixa.composicao_valor || {};
+                        // De qual banco/caixa saiu o pagamento (na baixa do CA é UUID; às vezes objeto)
+                        const contaBaixaCA = extrairContaFinanceiraId(baixa.conta_financeira);
+                        await garantirContaFinanceira(contaBaixaCA); // conta vinda do CA pode não existir aqui (FK)
                         await prisma.pagamentoParcelaPagar.create({
                             data: {
                                 parcelaPagarId: parcela.id,
@@ -1148,8 +1152,7 @@ async function conferirBaixasCA() {
                                 desconto: Number(comp.desconto || 0),
                                 formaPagamento: mapMetodoCA(baixa.metodo_pagamento),
                                 dataPagamento: parseDataCA(baixa.data_pagamento) || new Date(),
-                                // De qual banco/caixa saiu o pagamento (na baixa do CA é UUID; às vezes objeto)
-                                contaFinanceiraCaId: extrairContaFinanceiraId(baixa.conta_financeira),
+                                contaFinanceiraCaId: contaBaixaCA,
                                 observacao: baixa.observacao || 'Baixa sincronizada do Conta Azul',
                                 origem: 'CA',
                                 idBaixaCA: baixa.id
@@ -1246,6 +1249,7 @@ async function backfillContasFinanceirasPagar(limiteParcelas = 300) {
                 for (const baixa of baixas) {
                     const contaFin = extrairContaFinanceiraId(baixa.conta_financeira);
                     if (!baixa?.id || !contaFin) continue;
+                    await garantirContaFinanceira(contaFin); // conta vinda do CA pode não existir aqui (FK)
                     const r = await prisma.pagamentoParcelaPagar.updateMany({
                         where: { idBaixaCA: baixa.id, contaFinanceiraCaId: null },
                         data: { contaFinanceiraCaId: contaFin }
