@@ -394,6 +394,12 @@
 .cg-card .tagrow{ position:absolute; top:8px; left:8px; z-index:2; display:flex; gap:5px; }
 .cg-card .tg{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.04em; font-size:.62rem; font-weight:600; padding:.3em .55em; border-radius:6px; }
 .cg-card .tg.bought{ background:var(--yellow); color:var(--green-dd); }
+.cg-card .tg.indisp{ background:var(--tomato); color:#fff; }
+/* produto sem estoque: foto acinzentada + selo no lugar do botão */
+.cg-card.cg-indisp .ph img{ filter:grayscale(.75); opacity:.7; }
+.cg-card.cg-indisp .cg-card-body h3{ color:var(--chalk-dim); }
+.cg-semestoque{ font-family:var(--f-display); text-transform:uppercase; letter-spacing:.04em; font-size:.66rem; font-weight:700;
+  color:var(--tomato); background:rgba(200,73,47,.14); border:1px solid rgba(200,73,47,.3); padding:.45em .7em; border-radius:999px; white-space:nowrap; }
 .cg-card-body{ padding:12px 13px 13px; display:flex; flex-direction:column; gap:4px; flex:1; }
 .cg-card-body h3{ font-family:var(--f-display); text-transform:uppercase; color:var(--chalk); font-weight:600; font-size:.98rem; line-height:1.08; margin:0; }
 .cg-card-body .cx{ color:var(--chalk-dim); font-size:.78rem; }

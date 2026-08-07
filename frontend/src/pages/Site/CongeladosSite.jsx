@@ -110,6 +110,7 @@ export default function CongeladosSite() {
   const limparCarrinho = () => { if (window.confirm('Esvaziar o carrinho?')) { setCart({}); setOpen(false); } };
   const addItem = (id) => {
     if (!logado) { setLoginModal(true); return; }
+    if (produtos.find(p => p.id === id)?.indisponivel) return; // sem estoque: não adiciona
     setCart(c => ({ ...c, [id]: (c[id] || 0) + 1 }));
   };
   const removeItem = (id) => setCart(c => { const n = { ...c }; const v = (n[id] || 0) - 1; if (v <= 0) delete n[id]; else n[id] = v; return n; });
@@ -129,6 +130,8 @@ export default function CongeladosSite() {
   }, [cart, produtos]);
 
   const below = minimo > 0 && totals.subtotal < minimo;
+  // Item sem estoque parado no carrinho (ex.: ficou indisponível depois de adicionado) — bloqueia o envio.
+  const carrinhoIndisp = Object.keys(cart).some(id => produtos.find(p => p.id === id)?.indisponivel);
 
   // ── Data de entrega: sugere o próximo dia regular do cadastro; senão, calendário ──
   const amanhaISO = useMemo(() => { const d = new Date(); d.setDate(d.getDate() + 1); return ISO(d); }, []);
@@ -468,9 +471,10 @@ export default function CongeladosSite() {
             <div className="cg-totrow"><span>Subtotal ({totals.boxes} {totals.boxes === 1 ? 'item' : 'itens'})</span><b>{money(totals.subtotal)}</b></div>
             <div className="cg-totrow grand"><span>Total</span><b>{money(totals.subtotal)}</b></div>
             {below && <p className="cg-minwarn"><Icon n="tag" w={13} /> Pedido mínimo de {money(minimo)} para esta condição — faltam {money(minimo - totals.subtotal)}.</p>}
+            {carrinhoIndisp && <p className="cg-minwarn"><Icon n="tag" w={13} /> Há item <b>sem estoque</b> no carrinho. Remova-o para continuar.</p>}
             {erroEnvio && <p className="cg-minwarn"><Icon n="tag" w={13} /> {erroEnvio}</p>}
-            <button className="btn btn-wa btn-block cg-cta" disabled={below || enviando || !hdr.dataEntrega} onClick={finalizar}>
-              <Icon n="check" w={18} /> {enviando ? 'Enviando…' : !hdr.dataEntrega ? 'Escolha a data de entrega' : 'Enviar pedido pelo WhatsApp'}
+            <button className="btn btn-wa btn-block cg-cta" disabled={below || enviando || !hdr.dataEntrega || carrinhoIndisp} onClick={finalizar}>
+              <Icon n="check" w={18} /> {enviando ? 'Enviando…' : carrinhoIndisp ? 'Remova itens sem estoque' : !hdr.dataEntrega ? 'Escolha a data de entrega' : 'Enviar pedido pelo WhatsApp'}
             </button>
             <p className="cg-login-note" style={{ marginTop: 10 }}>Pagamento combinado depois, conforme sua condição — nada é cobrado online.</p>
           </div>
@@ -651,11 +655,15 @@ function Card({ p, preco, qty, add, dec, onAbrir }) {
   }, [imgs.length]);
   const cur = imgs.length ? idx % imgs.length : 0;
   const emb = p.embalagem || 'caixa';
+  const indisp = !!p.indisponivel;
   return (
-    <article className="cg-card">
+    <article className={'cg-card' + (indisp ? ' cg-indisp' : '')}>
       <div className="ph" style={!imgs.length ? { background: tileGradient(p.codigo || p.nome) } : undefined}
         onClick={() => onAbrir && onAbrir(p)} role="button" title="Ver detalhes do produto">
-        {(p.comprado) && <div className="tagrow"><span className="tg bought">Você compra</span></div>}
+        <div className="tagrow">
+          {indisp && <span className="tg indisp">Indisponível</span>}
+          {p.comprado && !indisp && <span className="tg bought">Você compra</span>}
+        </div>
         {imgs.length ? (
           <div className="cg-slides" style={{ transform: `translateX(-${cur * 100}%)` }}>
             {imgs.map((u, i) => <img key={i} src={u} alt={p.nome} loading="lazy" />)}
@@ -672,7 +680,9 @@ function Card({ p, preco, qty, add, dec, onAbrir }) {
         {p.preparo && <span className="cg-prep">{p.preparo}</span>}
         <div className="cg-card-foot">
           <div className="price"><b>{money(preco != null ? preco : p.preco)}</b></div>
-          {qty === 0 ? (
+          {indisp ? (
+            <span className="cg-semestoque">Sem estoque</span>
+          ) : qty === 0 ? (
             <button className="cg-add" onClick={() => add(p.id)} aria-label="Adicionar"><Icon n="plus" w={20} /></button>
           ) : (
             <div className="cg-step">
