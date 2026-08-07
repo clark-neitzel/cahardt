@@ -167,7 +167,8 @@ export default function CongeladosSite() {
 
   const repetirUltimo = () => {
     const novo = {};
-    ultimoPedido.forEach(it => { if (produtos.some(p => p.id === it.congeladosProdutoId)) novo[it.congeladosProdutoId] = it.quantidade; });
+    // ignora produto fora do site ou sem estoque (indisponível)
+    ultimoPedido.forEach(it => { const p = produtos.find(x => x.id === it.congeladosProdutoId); if (p && !p.indisponivel) novo[it.congeladosProdutoId] = it.quantidade; });
     setCart(novo);
     setOpen(true);
   };

@@ -67,17 +67,11 @@ function imagensProduto(produto) {
         .filter(Boolean);
 }
 
-// Categorias (de estoque) que controlam saldo — para marcar "Indisponível" no site.
-async function categoriasControlamEstoque() {
-    const cats = await prisma.categoriaEstoque.findMany({ where: { controlaEstoque: true }, select: { nome: true } }).catch(() => []);
-    return new Set(cats.map(c => c.nome));
-}
-// Produto sem estoque disponível — só quando ele realmente CONTROLA estoque
-// (produto.controlaEstoque força; null segue a categoria). Sem controle → nunca indisponível.
-function produtoIndisponivel(produto, controlaSet) {
+// Produto sem estoque disponível fica "Indisponível" no site (regra simples do dono:
+// o site só tem os produtos selecionados; estoque 0 = não tem).
+function produtoIndisponivel(produto) {
     if (!produto) return false;
-    const controla = produto.controlaEstoque === true || (produto.controlaEstoque == null && controlaSet.has(produto.categoria));
-    return controla && Number(produto.estoqueDisponivel || 0) <= 0;
+    return Number(produto.estoqueDisponivel || 0) <= 0;
 }
 
 // Monta o objeto de produto pro site (preço base — a condição não altera o preço na v1)
@@ -373,14 +367,13 @@ const congeladosService = {
 
     // ───────── Catálogo / grupos ─────────
     async catalogoPublico() {
-        const [produtos, cfgRow, controlaSet] = await Promise.all([
+        const [produtos, cfgRow] = await Promise.all([
             prisma.congeladosProduto.findMany({
                 where: { ativo: true },
                 include: { produto: { include: { imagens: true, categoriaProduto: true } } },
                 orderBy: [{ ordem: 'asc' }],
             }),
             prisma.congeladosConfig.findUnique({ where: { chave: 'categoriasNomes' } }).catch(() => null),
-            categoriasControlamEstoque(),
         ]);
         const overrides = (cfgRow && cfgRow.valor) || {}; // { [categoriaId]: { nome, ordem, oculto, preparo } }
         return produtos
@@ -390,8 +383,8 @@ const congeladosService = {
                 const ov = overrides[o.grupo];
                 // "preparo": rótulo por categoria que aparece no card (ex.: "Para fritar")
                 o.preparo = (ov && typeof ov === 'object' && ov.preparo) ? String(ov.preparo).trim() : '';
-                // "indisponivel": sem estoque disponível (só p/ produtos que controlam estoque)
-                o.indisponivel = produtoIndisponivel(cp.produto, controlaSet);
+                // "indisponivel": sem estoque disponível
+                o.indisponivel = produtoIndisponivel(cp.produto);
                 return o;
             });
     },
@@ -682,7 +675,6 @@ const congeladosService = {
         });
         const cpMap = {};
         cps.forEach(k => { cpMap[k.id] = k; });
-        const controlaSet = await categoriasControlamEstoque(); // p/ bloquear item sem estoque
 
         // Preço idêntico ao do vendedor, usando a condição PADRÃO do cliente.
         const cliente = auth.clienteUuid
@@ -702,7 +694,7 @@ const congeladosService = {
         for (const it of itens) {
             const cp = cpMap[it.congeladosProdutoId];
             if (!cp) throw new Error('Produto indisponível no carrinho.');
-            if (produtoIndisponivel(cp.produto, controlaSet)) throw new Error(`"${cp.produto?.nome || 'Produto'}" está indisponível (sem estoque). Remova-o do carrinho.`);
+            if (produtoIndisponivel(cp.produto)) throw new Error(`"${cp.produto?.nome || 'Produto'}" está indisponível (sem estoque). Remova-o do carrinho.`);
             const qtd = parseInt(it.quantidade) || 0;
             if (qtd <= 0) continue;
             const base = cp.precoCongelados != null ? dec(cp.precoCongelados) : dec(cp.produto?.valorVenda);
