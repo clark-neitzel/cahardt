@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Produtos no comando do app — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito — preview compacto) -->
+<meta property="og:title" content="📦 Novidade no Hardt App: produtos no comando do app">
+<meta property="og:description" content="Agora dá para ativar/inativar produto com um clique e trocar ou criar categorias direto no app — sem depender do Conta Azul. Veja onde fica cada botão!">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .badge-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: none;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 7px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    background: #E6F7EE;
+    color: #15A05A;
+    transition: background .25s, color .25s;
+  }
+  .badge-status.off { background: #fee2e2; color: #ef4444; }
+  .badge-status .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .mock-produto { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .mock-foto {
+    width: 46px; height: 46px; flex-shrink: 0;
+    border-radius: 12px;
+    background: #f6f5f1;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    border: 1px solid #e5e3dc;
+  }
+  .mock-produto strong { display: block; font-size: 14.5px; line-height: 1.2; }
+  .mock-produto small { color: var(--ink-soft); font-size: 12px; }
+  .mock-site {
+    margin-top: 14px;
+    background: #f6f5f1;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    transition: background .25s;
+  }
+  .mock-site b { color: var(--primary-dark); }
+  .mock-site.sumiu b { color: #b91c1c; }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-lista-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+    margin-bottom: 6px;
+  }
+  .app-lista-item small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .tag-editavel {
+    font-size: 9px;
+    font-weight: 800;
+    color: #7C3AED;
+    background: #F1EAFF;
+    padding: 2px 7px;
+    border-radius: 999px;
+  }
+  .tag-inativo {
+    font-size: 10px;
+    font-weight: 800;
+    color: #b91c1c;
+    background: #fee2e2;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  .tag-ativo {
+    font-size: 10px;
+    font-weight: 800;
+    color: #15A05A;
+    background: #E6F7EE;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Produtos no<br>comando do app</h1>
+    <p>Como não importamos mais nada do Conta Azul, o cadastro de produtos agora é 100% nosso: dá para ativar e inativar qualquer produto com um clique e trocar (ou criar) a categoria direto na tela do produto.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock interativo: ativar/inativar -->
+  <div class="mock">
+    <div class="mock-top">
+      <span class="mock-ico">📦</span>
+      <div>
+        <small>Produtos · Detalhe do produto</small>
+        <strong>Coxinha Kibe C/20 75gr</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-produto">
+        <span class="mock-foto">🥟</span>
+        <div>
+          <strong>7-M-COXINHA KIBE C/20 75GR</strong>
+          <small>Cód. 5560 · Congelados</small>
+        </div>
+      </div>
+      <button class="badge-status" id="mockBadge" onclick="alternarStatus()">
+        <span class="dot"></span><span id="mockBadgeTexto">Ativo</span> ⏻
+      </button>
+      <div class="mock-site" id="mockSite">🌐 <span>No site de congelados: <b id="mockSiteTexto">aparecendo para os clientes ✅</b></span></div>
+    </div>
+  </div>
+
+  <button class="demo-cta" onclick="alternarStatus(true)">⏻ Toque aqui e inative o produto de mentirinha</button>
+  <p class="demo-hint">É uma demonstração — pode clicar sem medo, nada é salvo.</p>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⏻</span>
+      <strong>Ativar e inativar com um clique</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Na tela do produto (Produtos → toque no produto), a etiqueta <b>Ativo/Inativo</b> do topo virou um <b>botão</b> — é só clicar e confirmar.</li>
+        <li>Produto <b>inativo some do site de congelados, dos catálogos e das listas de venda</b>. Nada do histórico é apagado: pedidos, compras e estoque continuam lá.</li>
+        <li>Para reativar, é o mesmo caminho: clique de novo e confirme. Sem mexer no Conta Azul, sem esperar sincronização.</li>
+        <li>Na lista de produtos, quem está inativo aparece com o <b>selo vermelho "Inativo"</b> (use a aba "Todos" ou "Inativo" para encontrá-los).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🏷️</span>
+      <strong>Categoria agora se edita (e se cria) aqui</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>O campo <b>Categoria</b>, que era travado ("vinha do Conta Azul"), agora é <b>editável</b> na tela do produto — com busca e a opção <b>"+ Criar categoria nova…"</b>.</li>
+        <li>A categoria é importante: ela agrupa o produto no <b>controle de estoque</b>, nos <b>relatórios</b> e no cálculo de <b>flex</b>.</li>
+        <li>No cadastro de produto novo (botão "Novo produto") também dá para escolher ou criar a categoria na hora.</li>
+        <li>Em <b>Configurações → Cat. Estoque</b> (tela "Categorias de Produto") tem o botão <b>"Nova categoria"</b> e os controles de estoque/flex de cada uma.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔁</span>
+      <strong>Conta Azul saiu de cena (nos produtos)</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Antes, mesmo mudando algo aqui, a sincronização com o Conta Azul podia <b>desfazer</b> a mudança de categoria ou de status. <b>Isso acabou</b>: o que você define no app, fica.</li>
+        <li>O app é a <b>fonte oficial</b> do cadastro de produtos — categoria e ativo/inativo não são mais lidos do CA.</li>
+        <li>Nome, código, EAN, NCM e peso do cadastro original continuam aparecendo na tela, somente leitura.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1: detalhe do produto — status -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Detalhe do produto — ativar/inativar</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="width:38px;height:38px;border-radius:10px;background:#f6f5f1;border:1px solid #e5e3dc;display:flex;align-items:center;justify-content:center;font-size:20px;">🥟</span>
+            <div style="flex:1;">
+              <div style="font-size:13px;font-weight:800;">7-M-COXINHA KIBE C/20 75GR</div>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap;">
+                <span class="tag-ativo">● Ativo ⏻</span><span class="pin">1</span>
+                <span style="font-size:11px;color:#9aa5a0;">Cód. 5560</span>
+                <span style="font-size:11px;font-weight:700;color:#b91c1c;text-decoration:underline;">Inativar produto</span><span class="pin">2</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>A etiqueta <b>Ativo/Inativo</b> no topo da tela virou botão — clique nela para trocar o status. O app pede confirmação antes.</span></div>
+      <div><span class="pin">2</span><span>No computador também aparece o link <b>"Inativar produto"</b> (ou "Ativar produto") ao lado do código. A mudança salva na hora, sem precisar do botão Salvar.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: categoria editável -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Cartão "Dados do Produto" — categoria editável</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">📄 Dados do Produto</div>
+        <div class="app-card-body">
+          <div class="app-input"><small>Nome (somente leitura)</small>7-M-COXINHA KIBE C/20 75GR</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+            <span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;color:#9aa5a0;">Categoria</span>
+            <span class="tag-editavel">EDITÁVEL</span><span class="pin">1</span>
+          </div>
+          <div class="app-input ok" style="display:flex;align-items:center;justify-content:space-between;">Produto Acabado <span>▾</span></div>
+          <div style="background:#fff;border:1px solid #e5e3dc;border-radius:8px;padding:8px 10px;font-size:12px;">
+            <div style="color:#9aa5a0;">🔍 Digite para buscar…</div>
+            <div style="padding:6px 0;border-bottom:1px solid #f0efe9;font-weight:700;color:var(--primary-dark);">Produto Acabado ✓</div>
+            <div style="padding:6px 0;border-bottom:1px solid #f0efe9;">Matéria Prima</div>
+            <div style="padding:6px 0;color:var(--primary);font-weight:700;">+ Criar categoria nova…<span class="pin">2</span></div>
+          </div>
+          <div style="text-align:right;margin-top:10px;"><span class="app-btn">💾 Salvar e Voltar<span class="pin">3</span></span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O campo <b>Categoria</b> ganhou a tag roxa <b>EDITÁVEL</b>. Clique nele para abrir a lista com busca.</span></div>
+      <div><span class="pin">2</span><span><b>"+ Criar categoria nova…"</b>: digite o nome (ex.: "Bebidas") e ela já fica selecionada no produto.</span></div>
+      <div><span class="pin">3</span><span>A troca de categoria é gravada quando você toca em <b>Salvar e Voltar</b> — junto com os outros campos editáveis.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3: config categorias -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Configurações → Categorias de Produto</div>
+    <div class="tela-corpo">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <div style="font-size:13px;font-weight:800;">Categorias de Produto</div>
+        <span class="app-btn">➕ Nova categoria<span class="pin">1</span></span>
+      </div>
+      <div class="app-lista-item">
+        <span style="flex:1;"><b>Produto Acabado</b></span>
+        <span style="font-size:10px;color:#9aa5a0;">Estoque</span><span class="app-toggle"></span><span class="pin">2</span>
+      </div>
+      <div class="app-lista-item">
+        <span style="flex:1;"><b>Bebidas</b><small>Detectada nos produtos — ainda não configurada</small></span>
+        <span style="font-size:10px;color:#9aa5a0;">Estoque</span><span class="app-toggle" style="background:#d8d5cc;"></span><span class="pin">3</span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Botão <b>"Nova categoria"</b>: cria uma categoria vazia, que já aparece para escolher em todos os produtos.</span></div>
+      <div><span class="pin">2</span><span>Os toggles de <b>Estoque</b> e <b>Flex</b> por categoria continuam iguais — categoria com estoque ligado movimenta quantidade nos pedidos e compras.</span></div>
+      <div><span class="pin">3</span><span>Categoria criada direto num produto aparece aqui automaticamente, marcada como "ainda não configurada".</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PARA COMEÇAR ══════════ -->
+  <div class="sec-label">Para usar agora</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra <b>Produtos</b> e toque no produto que quer mexer.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Para tirar do ar: clique na etiqueta <b>Ativo</b> (ou em "Inativar produto") e confirme.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Para trocar a categoria: clique no campo <b>Categoria</b>, escolha ou crie uma nova, e toque em <b>Salvar e Voltar</b>. ✅</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece as telas novas.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+
+  function alternarStatus(scroll) {
+    const badge = document.getElementById('mockBadge');
+    const texto = document.getElementById('mockBadgeTexto');
+    const site = document.getElementById('mockSite');
+    const siteTexto = document.getElementById('mockSiteTexto');
+    const ficouInativo = !badge.classList.contains('off');
+    if (scroll === true) badge.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    badge.classList.toggle('off', ficouInativo);
+    texto.textContent = ficouInativo ? 'Inativo' : 'Ativo';
+    site.classList.toggle('sumiu', ficouInativo);
+    siteTexto.textContent = ficouInativo ? 'escondido dos clientes 🙈' : 'aparecendo para os clientes ✅';
+  }
+</script>
+</body>
+</html>

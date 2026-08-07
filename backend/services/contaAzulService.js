@@ -438,13 +438,12 @@ const contaAzulService = {
                         // unidade NÃO é atualizada do CA — editável no app (só definida na criação)
                         ean: dadosProduto.ean,
                         ncm: dadosProduto.ncm,
-                        status: dadosProduto.status,
-                        categoria: dadosProduto.categoria,
+                        // categoria, status e ativo NÃO são atualizados do CA desde 08/2026 —
+                        // o cadastro de produtos é do app (categoria e ativar/inativar na tela de Produtos)
                         descricao: dadosProduto.descricao,
                         // Custo zerado no app: o dono descartou o custo do CA — nunca mais sobrescrever
                         ...(produtoLocal?.custoCaZerado ? {} : { custoMedio: dadosProduto.custoMedio }),
                         pesoLiquido: dadosProduto.pesoLiquido,
-                        ativo: dadosProduto.ativo,
                         contaAzulUpdatedAt: dadosProduto.contaAzulUpdatedAt,
                         updatedAt: new Date()
                     },

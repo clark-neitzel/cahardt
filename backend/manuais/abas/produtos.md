@@ -8,7 +8,7 @@ permissao: admin
 
 ## O que é
 
-Gestão completa do cadastro de produtos da empresa. Permite criar, editar, ativar/desativar produtos e sincronizar o catálogo com o Conta Azul. Os produtos cadastrados aqui aparecem no Catálogo de vendas e podem ser adicionados aos pedidos.
+Gestão completa do cadastro de produtos da empresa. Permite criar, editar, ativar/inativar produtos e controlar as categorias. Desde 08/2026 o cadastro é **100% do app**: a categoria e o status (ativo/inativo) são editados aqui e **não são mais sobrescritos pela sincronização com o Conta Azul**. Os produtos cadastrados aqui aparecem no Catálogo de vendas, no site de congelados e podem ser adicionados aos pedidos.
 
 ---
 
@@ -18,8 +18,9 @@ Gestão completa do cadastro de produtos da empresa. Permite criar, editar, ativ
 - Filtrar por categoria de produto (interna) e por categoria comercial
 - Acessar o detalhe de cada produto para editar dados completos
 - Ver imagem do produto
-- Ativar ou desativar um produto
-- Navegar para a tela de Sincronização para importar produtos do Conta Azul
+- **Ativar ou inativar um produto direto na tela de detalhe** (badge Ativo/Inativo no topo — clique nela ou no link "Inativar/Ativar produto"). Produto inativo some do site de congelados, dos catálogos de venda e das listas; o histórico é mantido e dá para reativar quando quiser. Na lista, produtos inativos aparecem com o selo vermelho "Inativo"
+- **Editar a Categoria do produto** (campo "Categoria" no cartão Dados do Produto, marcado como EDITÁVEL): escolha uma categoria existente ou use "+ Criar categoria nova…" para digitar um nome novo. A categoria agrupa estoque, relatórios, margem e flex — desde 08/2026 ela é controlada no app (o sync do CA não a sobrescreve mais)
+- Navegar para a tela de Sincronização (legado — o CA é somente leitura e não manda mais categoria nem status)
 - **(Fase 6) Criar produto novo** pelo botão "Novo produto" (nome, código SKU, EAN, unidade, valor de venda e categoria) — desde 23/07/2026 o produto nasce **só no app** (o Conta Azul virou somente leitura e não recebe mais cadastros)
 - **(Fase 6) Aba "Compras"** no detalhe do produto: histórico de compras vindo das Notas Recebidas (data, fornecedor, nota, quantidade na nota × entrada convertida, custo unitário e total). O **custo manual** do produto é atualizado por média ponderada a cada compra conferida
 - **(Fase 6) Controle de estoque por produto**: no detalhe do produto (campo "Controle de estoque") escolha entre **Seguir a categoria** (padrão — vale a configuração de Categorias de Estoque), **Controlar SEMPRE** ou **NÃO controlar**. Produto que não controla estoque **continua recebendo custo e histórico de preços a cada compra** — só não movimenta quantidade (ex.: combustível, gás)
@@ -38,9 +39,22 @@ Gestão completa do cadastro de produtos da empresa. Permite criar, editar, ativ
 ### Editar um produto
 1. Clique no nome ou na linha do produto
 2. A tela de detalhe abre
-3. Campos que vêm do Conta Azul (nome, código, preço, custo médio, categoria fiscal, EAN, NCM, peso, descrição) são **somente leitura** — não dá para editar no app, pois são sincronizados do CA
-4. Campos editáveis no app: **unidade de medida**, **custo manual**, categoria comercial, produto substituto, prioridade de recomendação, permitir sugestão e imagens
-5. Clique em **Salvar** (botão da seção roxa "Inteligência Comercial") para gravar as alterações
+3. Campos do cadastro original (nome, código, preço, custo médio, EAN, NCM, peso, descrição) são **somente leitura**
+4. Campos editáveis no app: **categoria**, **status (ativo/inativo)**, **unidade de medida**, **custo manual**, categoria comercial, produto substituto, prioridade de recomendação, permitir sugestão e imagens
+5. Clique em **Salvar** (botão da seção roxa "Inteligência Comercial") para gravar as alterações — exceto o ativar/inativar, que salva na hora ao confirmar
+
+### Ativar ou inativar um produto
+1. Abra o detalhe do produto
+2. No topo, clique na badge **Ativo/Inativo** (ou no link "Inativar produto"/"Ativar produto" ao lado)
+3. Confirme na mensagem — a mudança salva na hora, sem precisar clicar em Salvar
+4. Inativo = some do site de congelados, dos catálogos e das listas de venda; nada do histórico é apagado
+
+### Trocar ou criar a categoria de um produto
+1. Abra o detalhe do produto
+2. No cartão "Dados do Produto", clique no campo **Categoria** (tem a tag EDITÁVEL)
+3. Escolha uma categoria da lista (dá para buscar digitando) ou clique em **"+ Criar categoria nova…"** e digite o nome
+4. Clique em **Salvar e Voltar** para confirmar
+5. A categoria também pode ser escolhida (ou criada) já no cadastro pelo botão "Novo produto"
 
 ### Custo do produto (Receita × Custo Médio CA × Custo Manual)
 - **Custo pela Receita (PCP)**: se o produto está vinculado a um item do PCP com **receita ativa**, o custo exibido no detalhe do produto é o **custo calculado pela receita** (ingredientes + perda ÷ rendimento) — ele **substitui qualquer outro custo** na tela e é o usado no cálculo da margem. O cartão de custo passa a mostrar "Custo (Receita)".

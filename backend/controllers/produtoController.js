@@ -285,10 +285,11 @@ const produtoController = {
             const body = req.body;
 
             // Whitelist: apenas campos gerenciados localmente
-            // 'unidade' é editável no app e NÃO é mais sobrescrita pelo sync do CA
+            // 'unidade', 'categoria' e 'ativo' são editáveis no app e NÃO são mais
+            // sobrescritos pelo sync do CA (cadastro de produtos é do app desde 08/2026)
             const CAMPOS_PERMITIDOS = [
                 'ativo', 'descricao', 'estoqueMinimo', 'unidade', 'custoManual',
-                'categoriaProdutoId', 'produtoSubstitutoId',
+                'categoria', 'categoriaProdutoId', 'produtoSubstitutoId',
                 'permiteRecomendacao', 'prioridadeRecomendacao', 'controlaEstoque',
                 'validadeDias'
             ];
@@ -304,6 +305,14 @@ const produtoController = {
             // Controle de estoque por produto: true/false força; null volta a seguir a categoria
             if (data.controlaEstoque !== undefined && data.controlaEstoque !== null) {
                 data.controlaEstoque = data.controlaEstoque === true || data.controlaEstoque === 'true';
+            }
+            // Categoria: texto livre (agrupa estoque/relatórios/flex); vazio = sem categoria
+            if (data.categoria !== undefined) {
+                data.categoria = String(data.categoria || '').trim() || null;
+            }
+            // Ativo: só true/false de verdade
+            if (data.ativo !== undefined) {
+                data.ativo = data.ativo === true || data.ativo === 'true';
             }
             // Unidade nunca pode ficar vazia (campo obrigatório no schema)
             if (data.unidade !== undefined) {
@@ -438,11 +447,11 @@ const produtoController = {
         }
     },
 
-    // Ativar/Inativar produto
+    // Ativar/Inativar produto (controle 100% do app — o sync do CA não mexe mais no ativo)
     alterarStatus: async (req, res) => {
         try {
             const { id } = req.params;
-            const { ativo } = req.body;
+            const ativo = req.body?.ativo === true || req.body?.ativo === 'true';
 
             const produto = await prisma.produto.update({
                 where: { id },

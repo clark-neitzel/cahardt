@@ -8,20 +8,30 @@ permissao: admin
 
 ## O que é
 
-Define quais categorias de produto têm controle de estoque ativo no sistema. Somente produtos das categorias ativadas aqui terão os campos de estoque calculados (reservado, disponível). Categorias desativadas não movimentam estoque.
+Tela "Categorias de Produto": controla as categorias dos produtos (desde 08/2026 elas são do app — o Conta Azul não manda mais categoria) e define quais têm controle de estoque ativo. Somente produtos das categorias ativadas aqui terão os campos de estoque calculados (reservado, disponível). Categorias desativadas não movimentam estoque.
 
 ---
 
 ## O que dá pra fazer aqui
 
-- Ver todas as categorias do Conta Azul detectadas nos produtos cadastrados
+- **Criar categoria nova** pelo botão "Nova categoria" (ela já aparece para escolher no detalhe de cada produto, em Produtos Admin)
+- Ver todas as categorias em uso, detectadas nos produtos cadastrados
 - Ativar/desativar controle de **Estoque** por categoria (toggle verde)
 - Ativar/desativar **Flex** por categoria (toggle roxo) — se desativado, produtos dessa categoria são excluídos do cálculo de flex
 - Ver quais categorias ainda não foram configuradas (detectadas nos produtos mas sem configuração salva)
 
+### Como uma categoria "existe"
+Uma categoria existe quando foi criada aqui **ou** quando algum produto a usa. Para colocar produtos numa categoria, abra o produto em Produtos (Admin) e troque o campo Categoria (lá também dá para criar categoria nova na hora). Categoria sem nenhum produto e sem configuração não some — fica listada aqui se foi criada pelo botão.
+
 ---
 
 ## Como fazer (passo a passo real)
+
+### Criar uma categoria nova
+1. Abra Config — Cat. Estoque (tela "Categorias de Produto")
+2. Clique no botão verde **"Nova categoria"**
+3. Digite o nome (ex.: "Bebidas") e confirme
+4. Ela já aparece na lista e no campo Categoria do detalhe dos produtos
 
 ### Ativar controle de estoque para uma categoria
 1. Abra a aba Config — Categorias Estoque

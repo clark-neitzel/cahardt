@@ -8,10 +8,11 @@ import { API_URL } from '../../../services/api';
 import categoriaProdutoService from '../../../services/categoriaProdutoService';
 import toast from 'react-hot-toast';
 import SelectBusca from '../../../components/SelectBusca';
+import ComboBusca from '../../../components/ComboBusca';
 import {
     ArrowLeft, Loader, AlertCircle, Camera, Tag, Plus, X,
     CheckCircle, XCircle, Clock, ChevronDown, ChevronUp, Trash2, Search, Save, Sparkles,
-    Star, ArrowUp, ArrowDown, Upload, ShoppingCart
+    Star, ArrowUp, ArrowDown, Upload, ShoppingCart, Power
 } from 'lucide-react';
 
 // Componente autocomplete de produto por nome
@@ -623,8 +624,10 @@ const GerenciarProduto = () => {
     const [uploadingImagem, setUploadingImagem] = useState(false);
     const fileInputRef = useRef(null);
     const [categoriasProduto, setCategoriasProduto] = useState([]);
+    const [categoriasCA, setCategoriasCA] = useState([]);
     const [todosProdutos, setTodosProdutos] = useState([]);
     const [salvandoComercial, setSalvandoComercial] = useState(false);
+    const [alterandoStatus, setAlterandoStatus] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -653,16 +656,18 @@ const GerenciarProduto = () => {
     useEffect(() => {
         const fetchDetalhe = async () => {
             try {
-                const [data, cats, todos] = await Promise.all([
+                const [data, cats, todos, catsCA] = await Promise.all([
                     produtoService.detalhar(id),
                     categoriaProdutoService.listar().catch(() => []),
-                    produtoService.listar({ limit: 1000, ativo: true }).catch(() => ({ data: [] }))
+                    produtoService.listar({ limit: 1000, ativo: true }).catch(() => ({ data: [] })),
+                    configService.getCategorias().catch(() => [])
                 ]);
 
                 setProduto(data);
                 setImagensLocal(data.imagens || []);
                 setCategoriasProduto(cats);
                 setTodosProdutos(todos.data || todos || []);
+                setCategoriasCA(catsCA || []);
 
                 setFormData({
                     nome: data.nome || '',
@@ -713,6 +718,36 @@ const GerenciarProduto = () => {
         }
     };
 
+    // Ativar/Inativar direto na tela (o sync do CA não mexe mais nesse campo)
+    const handleToggleAtivo = async () => {
+        const novo = !formData.ativo;
+        const msg = novo
+            ? `Ativar "${formData.nome}"?\n\nEle volta a aparecer no site, nos catálogos e nas listas de venda.`
+            : `Inativar "${formData.nome}"?\n\nEle some do site e dos catálogos de venda. O histórico (pedidos, compras, estoque) é mantido e dá para reativar quando quiser.`;
+        if (!confirm(msg)) return;
+        setAlterandoStatus(true);
+        try {
+            await produtoService.alterarStatus(id, novo);
+            setFormData(prev => ({ ...prev, ativo: novo }));
+            toast.success(novo ? 'Produto ativado!' : 'Produto inativado.');
+        } catch (error) {
+            console.error(error);
+            toast.error('Erro ao alterar o status do produto.');
+        } finally {
+            setAlterandoStatus(false);
+        }
+    };
+
+    // Categoria nova: basta digitar — ela passa a existir ao salvar o produto
+    const criarCategoriaNova = () => {
+        const nome = window.prompt('Nome da nova categoria:');
+        const limpo = (nome || '').trim();
+        if (!limpo) return;
+        setCategoriasCA(prev => (prev.includes(limpo) ? prev : [...prev, limpo].sort((a, b) => a.localeCompare(b))));
+        setFormData(prev => ({ ...prev, categoria: limpo }));
+        toast.success(`Categoria "${limpo}" selecionada — clique em Salvar para confirmar.`);
+    };
+
     const handleSaveComercial = async () => {
         setSalvandoComercial(true);
         try {
@@ -725,6 +760,7 @@ const GerenciarProduto = () => {
             const custoManualVal = String(formData.custoManual ?? '').trim();
             await produtoService.atualizar(id, {
                 unidade: unidadeLimpa,
+                categoria: (formData.categoria || '').trim() || null,
                 custoManual: custoManualVal === '' ? null : parseFloat(custoManualVal.replace(',', '.')),
                 categoriaProdutoId: formData.categoriaProdutoId || null,
                 produtoSubstitutoId: formData.produtoSubstitutoId || null,
@@ -842,9 +878,13 @@ const GerenciarProduto = () => {
                   <div className="flex-1 min-w-0">
                     <div className="font-extrabold truncate" style={{ fontSize: 15, color: '#16192B' }}>{formData.nome || 'Produto'}</div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full" style={{ fontSize: 11, ...(formData.ativo ? { color: '#15A05A', background: '#E6F7EE' } : { color: '#ef4444', background: '#fee2e2' }) }}>
+                      <button onClick={handleToggleAtivo} disabled={alterandoStatus}
+                        title={formData.ativo ? 'Toque para inativar o produto' : 'Toque para ativar o produto'}
+                        className="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full disabled:opacity-50"
+                        style={{ fontSize: 11, ...(formData.ativo ? { color: '#15A05A', background: '#E6F7EE' } : { color: '#ef4444', background: '#fee2e2' }) }}>
                         <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'currentColor' }} />{formData.ativo ? 'Ativo' : 'Inativo'}
-                      </span>
+                        <Power className="h-3 w-3 flex-shrink-0" style={{ opacity: .7 }} />
+                      </button>
                       <span className="text-xs font-mono" style={{ color: '#8A90A2' }}>Cód. {formData.codigo}</span>
                     </div>
                   </div>
@@ -876,11 +916,20 @@ const GerenciarProduto = () => {
                         <div className="min-w-0">
                             <h1 className="font-extrabold leading-tight truncate" style={{ fontSize: 19, color: '#16192B' }}>{formData.nome || 'Produto'}</h1>
                             <div className="flex items-center gap-2.5 mt-1">
-                                <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full" style={formData.ativo ? { color: '#15A05A', background: '#E6F7EE' } : { color: '#ef4444', background: '#fee2e2' }}>
+                                <button onClick={handleToggleAtivo} disabled={alterandoStatus}
+                                    title={formData.ativo ? 'Clique para inativar o produto' : 'Clique para ativar o produto'}
+                                    className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full transition-opacity hover:opacity-80 disabled:opacity-50"
+                                    style={formData.ativo ? { color: '#15A05A', background: '#E6F7EE' } : { color: '#ef4444', background: '#fee2e2' }}>
                                     <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'currentColor' }} />
                                     {formData.ativo ? 'Ativo' : 'Inativo'}
-                                </span>
+                                    <Power className="h-3 w-3 flex-shrink-0" style={{ opacity: .7 }} />
+                                </button>
                                 <span className="text-sm font-mono" style={{ color: '#8A90A2' }}>Cód. {formData.codigo}</span>
+                                <button onClick={handleToggleAtivo} disabled={alterandoStatus}
+                                    className="text-xs font-semibold underline underline-offset-2 disabled:opacity-50"
+                                    style={{ color: formData.ativo ? '#B4232C' : '#15A05A' }}>
+                                    {alterandoStatus ? 'Alterando…' : (formData.ativo ? 'Inativar produto' : 'Ativar produto')}
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -997,7 +1046,6 @@ const GerenciarProduto = () => {
                         { k: 'Nome', v: formData.nome },
                         { k: 'Código', v: formData.codigo, mono: true },
                         { k: 'EAN', v: formData.ean || '—', mono: true },
-                        { k: 'Categoria', v: formData.categoria || '—' },
                         { k: 'NCM', v: formData.ncm || '—', mono: true },
                         { k: 'Peso', v: `${formData.pesoLiquido||'0'} kg`, mono: true },
                         ...(formData.contaAzulUpdatedAt ? [{ k: 'Atualizado', v: new Date(formData.contaAzulUpdatedAt).toLocaleDateString('pt-BR'), mono: true }] : []),
@@ -1007,8 +1055,23 @@ const GerenciarProduto = () => {
                           <span className={`text-sm font-semibold text-right ${row.mono?'font-mono':''}`} style={{ color: '#16192B' }}>{row.v}</span>
                         </div>
                       ))}
+                      <div className="mt-3 pt-3" style={{ borderTop: '1px solid #F2F3F8' }}>
+                        <div className="flex items-center mb-1.5">
+                          <span className="text-sm" style={{ color: '#8A90A2' }}>Categoria</span>
+                          <span className="ml-2 font-bold rounded-full" style={{ fontSize: 10, color: '#7C3AED', background: '#F1EAFF', padding: '2px 7px' }}>EDITÁVEL</span>
+                        </div>
+                        <ComboBusca
+                          value={formData.categoria}
+                          onChange={val => setFormData(prev => ({ ...prev, categoria: val }))}
+                          options={(categoriasCA.includes(formData.categoria) || !formData.categoria ? categoriasCA : [...categoriasCA, formData.categoria]).map(c => ({ value: c, label: c }))}
+                          placeholder="Sem categoria"
+                          extraAction={{ label: '+ Criar categoria nova…', onClick: criarCategoriaNova }}
+                          className="w-full"
+                        />
+                        <div className="mt-1 text-xs" style={{ color: '#9AA0B4' }}>Agrupa estoque, relatórios e flex. Salve para confirmar.</div>
+                      </div>
                       <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px dashed #EEF0F7', color: '#9AA0B4', fontSize: 11.5 }}>
-                        <AlertCircle className="h-3.5 w-3.5 flex-shrink-0"/>Sincronizado da Conta Azul — somente leitura.
+                        <AlertCircle className="h-3.5 w-3.5 flex-shrink-0"/>Nome, código, EAN, NCM e peso vêm do cadastro original — somente leitura.
                       </div>
                     </div>
                   </div>
@@ -1267,12 +1330,23 @@ const GerenciarProduto = () => {
                                                 <div className="font-semibold font-mono" style={{ fontSize: 14, color: '#16192B' }}>{formData.ncm || '—'}</div>
                                             </div>
                                             <div>
-                                                <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Categoria</div>
-                                                <div className="font-semibold" style={{ fontSize: 14, color: '#16192B' }}>{formData.categoria || '—'}</div>
-                                            </div>
-                                            <div>
                                                 <div className="font-bold tracking-[.05em] uppercase mb-1" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Peso</div>
                                                 <div className="font-semibold font-mono" style={{ fontSize: 14, color: '#16192B' }}>{formData.pesoLiquido || '0'} <span className="font-sans" style={{ fontSize: 11, color: '#9AA0B4' }}>kg</span></div>
+                                            </div>
+                                            <div style={{ gridColumn: 'span 2' }}>
+                                                <div className="flex items-center mb-1">
+                                                    <span className="font-bold tracking-[.05em] uppercase" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Categoria</span>
+                                                    <span className="ml-2 font-bold rounded-full" style={{ fontSize: 10, color: '#7C3AED', background: '#F1EAFF', padding: '2px 7px' }}>EDITÁVEL</span>
+                                                </div>
+                                                <ComboBusca
+                                                    value={formData.categoria}
+                                                    onChange={val => setFormData(prev => ({ ...prev, categoria: val }))}
+                                                    options={(categoriasCA.includes(formData.categoria) || !formData.categoria ? categoriasCA : [...categoriasCA, formData.categoria]).map(c => ({ value: c, label: c }))}
+                                                    placeholder="Sem categoria"
+                                                    extraAction={{ label: '+ Criar categoria nova…', onClick: criarCategoriaNova }}
+                                                    className="w-full"
+                                                />
+                                                <div className="mt-1 text-xs" style={{ color: '#9AA0B4' }}>Agrupa estoque, relatórios e flex. Salve para confirmar.</div>
                                             </div>
                                             {formData.contaAzulUpdatedAt && (
                                                 <div style={{ gridColumn: 'span 2' }}>
@@ -1283,7 +1357,7 @@ const GerenciarProduto = () => {
                                         </div>
                                         <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px dashed #EEF0F7', color: '#9AA0B4', fontSize: 11.5 }}>
                                             <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
-                                            Sincronizado da Conta Azul — somente leitura.
+                                            Nome, código, EAN, NCM e peso vêm do cadastro original — somente leitura.
                                         </div>
                                     </div>
                                 </div>

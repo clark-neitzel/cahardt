@@ -1,5 +1,11 @@
 [
   {
+    "slug": "produtos-categorias",
+    "titulo": "Produtos no comando do app",
+    "resumo": "Como não importamos mais nada do Conta Azul, o cadastro de produtos agora é do app: a etiqueta Ativo/Inativo virou botão (um clique tira ou devolve o produto ao site e aos catálogos, com o histórico preservado) e o campo Categoria ficou editável, com busca e '+ Criar categoria nova'. A sincronização com o CA não desfaz mais essas mudanças. Em Configurações → Categorias de Produto tem o botão Nova categoria.",
+    "data": "2026-08-07"
+  },
+  {
     "slug": "contabilidade",
     "titulo": "Área Contabilidade",
     "resumo": "Nova tela Administração → Contabilidade com o relatório completo de Contas a Receber para o contador: data de criação, nota fiscal ou especial, forma de recebimento e em qual banco caiu cada baixa. Duas visões (títulos e recebimentos), colunas do seu jeito (ficam salvas), exportação em CSV e impressão/PDF. Dá para criar um cadastro só de consulta para o escritório de contabilidade.",

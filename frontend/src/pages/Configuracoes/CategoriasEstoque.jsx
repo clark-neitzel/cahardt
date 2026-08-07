@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
-import { Package, Loader2 } from 'lucide-react';
+import { Package, Loader2, Plus } from 'lucide-react';
 import api from '../../services/api';
 
 export default function CategoriasEstoque() {
     const [categorias, setCategorias] = useState([]);
     const [loading, setLoading] = useState(true);
     const [salvando, setSalvando] = useState(null); // nome da categoria sendo salva
+    const [criando, setCriando] = useState(false);
 
     useEffect(() => { carregar(); }, []);
 
@@ -19,6 +20,29 @@ export default function CategoriasEstoque() {
             toast.error('Erro ao carregar categorias.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Nova categoria: nasce aqui e já aparece para escolher na tela de Produtos
+    const criarCategoria = async () => {
+        const nome = window.prompt('Nome da nova categoria (ex.: Produto Acabado, Matéria Prima):');
+        const limpo = (nome || '').trim();
+        if (!limpo) return;
+        if (categorias.some(c => c.nome.toLowerCase() === limpo.toLowerCase())) {
+            toast.error(`A categoria "${limpo}" já existe.`);
+            return;
+        }
+        setCriando(true);
+        try {
+            const res = await api.patch(`/categorias-estoque/${encodeURIComponent(limpo)}`, {
+                controlaEstoque: false
+            }).then(r => r.data);
+            setCategorias(prev => [...prev, res].sort((a, b) => a.nome.localeCompare(b.nome)));
+            toast.success(`Categoria "${limpo}" criada! Agora é só escolher ela nos produtos.`);
+        } catch (err) {
+            toast.error(err.response?.data?.error || 'Erro ao criar a categoria.');
+        } finally {
+            setCriando(false);
         }
     };
 
@@ -60,11 +84,21 @@ export default function CategoriasEstoque() {
 
     return (
         <div className="w-full px-4 py-8 max-w-2xl">
-            <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-800">Categorias do Conta Azul</h1>
-                <p className="text-gray-500 text-sm mt-1">
-                    Configure o controle de estoque e as regras de flex por categoria (ex: Produto Acabado, Materia Prima).
-                </p>
+            <div className="mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800">Categorias de Produto</h1>
+                    <p className="text-gray-500 text-sm mt-1">
+                        As categorias agora são controladas aqui no app. Configure o controle de estoque e as regras de flex por categoria (ex: Produto Acabado, Matéria Prima).
+                    </p>
+                </div>
+                <button
+                    onClick={criarCategoria}
+                    disabled={criando}
+                    className="shrink-0 px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
+                >
+                    {criando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                    Nova categoria
+                </button>
             </div>
 
             {categorias.length === 0 ? (

@@ -8,7 +8,7 @@ import { API_URL } from '../../../services/api';
 import { Search, ArrowLeft, Plus, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MultiSelect from '../../../components/MultiSelect';
-import SelectBusca from '../../../components/SelectBusca';
+import ComboBusca from '../../../components/ComboBusca';
 import { useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
 
 const ListaProdutos = () => {
@@ -41,17 +41,26 @@ const ListaProdutos = () => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Fase 6: criar produto novo (nasce no Conta Azul primeiro)
+    // Criar produto novo (nasce direto no app — o CA não recebe mais cadastros)
     const [modalNovo, setModalNovo] = useState(false);
     const [novoProduto, setNovoProduto] = useState({ nome: '', codigo: '', ean: '', unidade: 'UN', categoria: '', valorVenda: '' });
     const [criando, setCriando] = useState(false);
+
+    // Categoria nova: basta digitar o nome — ela passa a existir junto com o produto
+    const criarCategoriaNova = () => {
+        const nome = window.prompt('Nome da nova categoria:');
+        const limpo = (nome || '').trim();
+        if (!limpo) return;
+        setAvailableCategories(prev => (prev.includes(limpo) ? prev : [...prev, limpo].sort((a, b) => a.localeCompare(b))));
+        setNovoProduto(prev => ({ ...prev, categoria: limpo }));
+    };
 
     const criarProduto = async () => {
         if (!novoProduto.nome.trim()) { toast.error('Informe o nome do produto.'); return; }
         setCriando(true);
         try {
             const criado = await produtoService.criar(novoProduto);
-            toast.success('Produto criado no app e na Conta Azul!');
+            toast.success('Produto criado!');
             setModalNovo(false);
             setNovoProduto({ nome: '', codigo: '', ean: '', unidade: 'UN', categoria: '', valorVenda: '' });
             navigate(`/admin/produtos/${criado.id}`);
@@ -175,7 +184,7 @@ const ListaProdutos = () => {
                 </div>
             </div>
 
-            {/* Modal: novo produto (criado também na Conta Azul) */}
+            {/* Modal: novo produto (criado direto no app) */}
             {modalNovo && (
                 <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 p-0 md:p-4" onClick={() => !criando && setModalNovo(false)}>
                     <div className="bg-white rounded-t-2xl md:rounded-2xl w-full max-w-lg p-5 space-y-4" onClick={e => e.stopPropagation()}>
@@ -184,7 +193,7 @@ const ListaProdutos = () => {
                             <button onClick={() => !criando && setModalNovo(false)} className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"><X className="h-5 w-5" /></button>
                         </div>
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-900">
-                            O produto é criado <span className="font-semibold">na Conta Azul e no app ao mesmo tempo</span> — já sai pronto para vender e para receber compras.
+                            O produto é criado <span className="font-semibold">direto no app</span> — já sai pronto para vender e para receber compras.
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div className="md:col-span-2">
@@ -216,19 +225,22 @@ const ListaProdutos = () => {
                                     className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none" />
                             </div>
                             <div className="md:col-span-2">
-                                <label className="text-sm font-medium text-gray-700">Categoria (do Conta Azul)</label>
-                                <SelectBusca value={novoProduto.categoria} onChange={e => setNovoProduto({ ...novoProduto, categoria: e.target.value })}
-                                    className="mt-1 w-full">
-                                    <option value="">Sem categoria</option>
-                                    {availableCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                </SelectBusca>
+                                <label className="text-sm font-medium text-gray-700">Categoria</label>
+                                <ComboBusca
+                                    value={novoProduto.categoria}
+                                    onChange={val => setNovoProduto(prev => ({ ...prev, categoria: val }))}
+                                    options={availableCategories.map(c => ({ value: c, label: c }))}
+                                    placeholder="Sem categoria"
+                                    extraAction={{ label: '+ Criar categoria nova…', onClick: criarCategoriaNova }}
+                                    className="mt-1 w-full"
+                                />
                             </div>
                         </div>
                         <div className="flex flex-col md:flex-row gap-3 pt-1">
                             <button onClick={criarProduto} disabled={criando}
                                 className="w-full md:w-auto px-4 py-3 md:py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2">
                                 {criando && <Loader2 className="h-4 w-4 animate-spin" />}
-                                {criando ? 'Criando na Conta Azul…' : 'Criar produto'}
+                                {criando ? 'Criando…' : 'Criar produto'}
                             </button>
                             <button onClick={() => setModalNovo(false)} disabled={criando}
                                 className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm disabled:opacity-50">
@@ -330,6 +342,9 @@ const ListaProdutos = () => {
                                         <div className="ml-3 flex-1 min-w-0">
                                             <div className="text-sm font-medium text-gray-900 line-clamp-2 leading-snug">
                                                 {produto.nome}
+                                                {produto.ativo === false && (
+                                                    <span className="ml-1.5 inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 align-middle">Inativo</span>
+                                                )}
                                             </div>
                                             <div className="text-xs text-gray-500">
                                                 {produto.codigo} • {produto.categoria || 'Sem Cat.'}
@@ -414,6 +429,9 @@ const ListaProdutos = () => {
                                                     <div className="ml-4">
                                                         <div className="text-sm font-medium text-gray-900 group-hover:text-primary transition-colors">
                                                             {produto.nome}
+                                                            {produto.ativo === false && (
+                                                                <span className="ml-2 inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 align-middle">Inativo</span>
+                                                            )}
                                                         </div>
                                                         <div className="text-sm text-gray-500">
                                                             Cód: {produto.codigo}
