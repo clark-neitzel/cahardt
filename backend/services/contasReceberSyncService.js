@@ -5,10 +5,14 @@ const { garantirContaFinanceira } = require('./contaFinanceiraGuardService');
 const mapMetodoCA = (metodo) => {
     if (!metodo) return null;
     const m = String(metodo).toUpperCase();
+    // Mesmo mapa do contasPagarCaSyncService — faltava PIX_PAGAMENTO_INSTANTANEO e
+    // afins aqui, e o enum cru do CA vazava para a forma de pagamento da baixa.
     const map = {
         DINHEIRO: 'Dinheiro', BOLETO: 'Boleto', BOLETO_BANCARIO: 'Boleto',
-        PIX: 'Pix', CARTAO_CREDITO: 'Cartão Crédito', CARTAO_DEBITO: 'Cartão Débito',
-        TRANSFERENCIA_BANCARIA: 'Transferência', CHEQUE: 'Cheque', OUTRO: 'Outro'
+        PIX: 'Pix', PIX_PAGAMENTO_INSTANTANEO: 'Pix',
+        CARTAO_CREDITO: 'Cartão Crédito', CARTAO_DEBITO: 'Cartão Débito',
+        TRANSFERENCIA_BANCARIA: 'Transferência', DEPOSITO_BANCARIO: 'Depósito',
+        CHEQUE: 'Cheque', DEBITO_AUTOMATICO: 'Débito Automático', OUTRO: 'Outro'
     };
     return map[m] || metodo;
 };

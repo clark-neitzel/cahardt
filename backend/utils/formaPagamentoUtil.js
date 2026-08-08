@@ -17,6 +17,17 @@ const CANONICAS = [
     'Transferência', 'Outro', 'PIX Asaas', 'Boleto Asaas'
 ];
 
+// Enums crus do CA que vazaram para o banco antes do mapa ficar completo.
+// Conferidos ANTES das heurísticas por palavra (senão DEBITO_AUTOMATICO viraria
+// "Cartão Débito"). Mesmo dicionário do mapMetodoCA dos syncs.
+const ENUMS_CA = {
+    DINHEIRO: 'Dinheiro', BOLETO: 'Boleto', BOLETO_BANCARIO: 'Boleto',
+    PIX: 'Pix', PIX_PAGAMENTO_INSTANTANEO: 'Pix',
+    CARTAO_CREDITO: 'Cartão Crédito', CARTAO_DEBITO: 'Cartão Débito',
+    TRANSFERENCIA_BANCARIA: 'Transferência', DEPOSITO_BANCARIO: 'Depósito',
+    CHEQUE: 'Cheque', DEBITO_AUTOMATICO: 'Débito Automático', OUTRO: 'Outro'
+};
+
 function normalizarFormaPagamento(valor) {
     if (valor == null) return null;
     let s = String(valor).trim();
@@ -25,6 +36,9 @@ function normalizarFormaPagamento(valor) {
     // Já é canônica? Não mexe (preserva "PIX Asaas"/"Boleto Asaas").
     const exata = CANONICAS.find((c) => c.toLowerCase() === s.toLowerCase());
     if (exata) return exata;
+
+    // Enum cru do CA ("PIX_PAGAMENTO_INSTANTANEO") — dicionário antes das heurísticas
+    if (ENUMS_CA[s.toUpperCase()]) return ENUMS_CA[s.toUpperCase()];
 
     // Tira o valor colado ("…: R$ 250,36" ou "… R$ 250,36") e prefixos de condição.
     s = s.replace(/[:\s]*R\$\s*[\d.,]+.*$/i, '').trim();

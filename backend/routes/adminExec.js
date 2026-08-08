@@ -7883,10 +7883,11 @@ router.get('/contabilidade-diag-fase0', async (req, res) => {
             prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS n FROM notas_entrada WHERE data_entrada IS NULL AND status IN ('CONFERIDA','VINCULADA','ENTRADA_REGISTRADA')`),
         ]);
 
-        // 5) Forma de pagamento suja (valor colado / prefixo de condição)
+        // 5) Forma de pagamento suja (valor colado / prefixo de condição / enum cru do CA)
+        const REGEX_SUJA = `forma_pagamento ~* 'R\\$|à vista|a vista|a prazo' OR forma_pagamento ~ '^[A-Z][A-Z_]{3,}$'`;
         const [formasParcela, formasLedger] = await Promise.all([
-            prisma.$queryRawUnsafe(`SELECT forma_pagamento AS forma, COUNT(*)::int AS qtd FROM parcelas WHERE forma_pagamento ~* 'R\\$|à vista|a vista|a prazo' GROUP BY forma_pagamento ORDER BY qtd DESC LIMIT 30`),
-            prisma.$queryRawUnsafe(`SELECT forma_pagamento AS forma, COUNT(*)::int AS qtd FROM pagamentos_parcela WHERE forma_pagamento ~* 'R\\$|à vista|a vista|a prazo' GROUP BY forma_pagamento ORDER BY qtd DESC LIMIT 30`),
+            prisma.$queryRawUnsafe(`SELECT forma_pagamento AS forma, COUNT(*)::int AS qtd FROM parcelas WHERE ${REGEX_SUJA} GROUP BY forma_pagamento ORDER BY qtd DESC LIMIT 30`),
+            prisma.$queryRawUnsafe(`SELECT forma_pagamento AS forma, COUNT(*)::int AS qtd FROM pagamentos_parcela WHERE ${REGEX_SUJA} GROUP BY forma_pagamento ORDER BY qtd DESC LIMIT 30`),
         ]);
 
         res.json({
@@ -7993,7 +7994,7 @@ router.post('/contabilidade-backfill-fase0', async (req, res) => {
             { tabela: 'pagamentos_parcela', chave: 'formasLedger' },
         ]) {
             const sujas = await prisma.$queryRawUnsafe(
-                `SELECT DISTINCT forma_pagamento AS forma FROM "${alvo.tabela}" WHERE forma_pagamento ~* 'R\\$|à vista|a vista|a prazo'`);
+                `SELECT DISTINCT forma_pagamento AS forma FROM "${alvo.tabela}" WHERE forma_pagamento ~* 'R\\$|à vista|a vista|a prazo' OR forma_pagamento ~ '^[A-Z][A-Z_]{3,}$'`);
             const mapa = sujas.map((r) => ({ de: r.forma, para: normalizarFormaPagamento(r.forma) }))
                 .filter((m) => m.para && m.para !== m.de);
             let atualizadas = 0;
@@ -8010,6 +8011,36 @@ router.post('/contabilidade-backfill-fase0', async (req, res) => {
     } catch (err) {
         console.error('[contabilidade-backfill-fase0]', err);
         res.status(500).json({ error: err.message, passosConcluidos: passos });
+    }
+});
+
+// GET /api/admin-exec/contabilidade-diag-nfe-pedidos
+// Pedidos FATURADOS no CA que estão sem o número/chave da NF-e no cache
+// (o relatório da Contabilidade mostra "Sem NF registrada" para eles).
+// Correção: POST nfe-vincular-xmls (XMLs já baixados) e POST nfe-backup-ca-xml
+// { meses: N } (baixa do CA o que falta e vincula).
+router.get('/contabilidade-diag-nfe-pedidos', async (req, res) => {
+    try {
+        const porMes = await prisma.$queryRawUnsafe(`
+            SELECT to_char(date_trunc('month', data_venda), 'YYYY-MM') AS mes,
+                   COUNT(*)::int AS sem_nf,
+                   ARRAY_AGG(numero ORDER BY numero DESC) FILTER (WHERE numero IS NOT NULL) AS numeros
+            FROM pedidos
+            WHERE id_venda_contaazul IS NOT NULL
+              AND situacao_ca = 'FATURADO'
+              AND nfe_chave IS NULL
+              AND status_envio != 'EXCLUIDO'
+              AND bonificacao = false AND especial = false
+            GROUP BY 1 ORDER BY 1 DESC LIMIT 24`);
+        const total = porMes.reduce((s, m) => s + m.sem_nf, 0);
+        res.json({
+            ok: true,
+            totalPedidosFaturadosSemNF: total,
+            porMes: porMes.map((m) => ({ mes: m.mes, semNF: m.sem_nf, exemplos: (m.numeros || []).slice(0, 8) }))
+        });
+    } catch (err) {
+        console.error('[contabilidade-diag-nfe-pedidos]', err);
+        res.status(500).json({ error: err.message });
     }
 });
 
