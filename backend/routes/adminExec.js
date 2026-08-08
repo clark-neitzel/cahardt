@@ -8044,6 +8044,87 @@ router.get('/contabilidade-diag-nfe-pedidos', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/contabilidade-backfill-nfe-por-venda
+// Para cada pedido FATURADO sem nfe_chave, pergunta ao CA "esta venda tem NF-e?"
+// (GET /v1/notas-fiscais?id_venda=...) e preenche o cache do pedido. É a correção
+// PRECISA do "Sem NF registrada" falso — o vínculo por texto do XML só pega nota
+// cujo infCpl diz "Referente ao pedido #N". Roda em segundo plano (sequencial,
+// educado com a API). Body: { limite: 300, meses: 6 } — GET mostra o progresso.
+const _backfillNfe = { rodando: false, progresso: null };
+router.post('/contabilidade-backfill-nfe-por-venda', async (req, res) => {
+    if (_backfillNfe.rodando) return res.json({ ok: false, motivo: 'Já está rodando.', progresso: _backfillNfe.progresso });
+    const limite = Math.min(parseInt(req.body?.limite, 10) || 300, 1000);
+    const meses = Math.min(parseInt(req.body?.meses, 10) || 6, 36);
+    const contaAzul = require('../services/contaAzulService');
+    const xmlNfeService = require('../services/xmlNfeService');
+    const fmt = (d) => new Date(d).toISOString().slice(0, 10);
+    const somaDias = (d, n) => new Date(new Date(d).getTime() + n * 86400000);
+
+    _backfillNfe.rodando = true;
+    _backfillNfe.progresso = { total: 0, feitos: 0, comNota: 0, semNota: 0, erros: 0, iniciadoEm: new Date().toISOString(), terminou: null };
+    res.json({ ok: true, mensagem: `Rodando em segundo plano (até ${limite} pedidos, ${meses} meses). GET nesta rota mostra o progresso.` });
+
+    (async () => {
+        const p = _backfillNfe.progresso;
+        try {
+            const pedidos = await prisma.pedido.findMany({
+                where: {
+                    idVendaContaAzul: { not: null },
+                    situacaoCA: 'FATURADO',
+                    nfeChave: null,
+                    statusEnvio: { not: 'EXCLUIDO' },
+                    bonificacao: false,
+                    especial: false,
+                    dataVenda: { gte: somaDias(new Date(), -meses * 30) }
+                },
+                select: { id: true, numero: true, idVendaContaAzul: true, dataVenda: true },
+                orderBy: { dataVenda: 'desc' },
+                take: limite
+            });
+            p.total = pedidos.length;
+            for (const ped of pedidos) {
+                try {
+                    // A API exige janela ≤7 dias — a NF sai no faturamento, perto da venda.
+                    let nota = null;
+                    for (let j = 0; j < 4 && !nota; j++) {
+                        const ini = somaDias(ped.dataVenda, j * 7);
+                        const itens = await contaAzul.listarNotasFiscais({
+                            dataInicial: fmt(ini), dataFinal: fmt(somaDias(ini, 6)), idVenda: ped.idVendaContaAzul
+                        });
+                        nota = (itens || []).find((n) => n.chave_acesso) || null;
+                        await new Promise((r) => setTimeout(r, 250));
+                    }
+                    if (nota) {
+                        const chave = String(nota.chave_acesso).replace(/\D/g, '');
+                        const numero = parseInt(nota.numero ?? chave.slice(25, 34), 10) || null;
+                        await prisma.pedido.update({
+                            where: { id: ped.id },
+                            data: { nfeChave: chave, nfeNumero: numero, nfeConsultadoEm: new Date() }
+                        });
+                        p.comNota++;
+                        // Guarda o XML no backup local (best-effort — a contabilidade vai querer)
+                        try { await xmlNfeService.obterXmlNotaCA(chave); } catch (_) { /* sem XML agora, tudo bem */ }
+                    } else {
+                        p.semNota++; // a venda realmente não tem NF-e no CA
+                    }
+                } catch (e) {
+                    p.erros++;
+                    if (p.erros <= 5) console.error(`[BackfillNfe] pedido #${ped.numero}:`, e.message);
+                }
+                p.feitos++;
+            }
+        } catch (e) {
+            console.error('[BackfillNfe] falha geral:', e.message);
+        } finally {
+            p.terminou = new Date().toISOString();
+            _backfillNfe.rodando = false;
+        }
+    })();
+});
+router.get('/contabilidade-backfill-nfe-por-venda', (req, res) => {
+    res.json({ rodando: _backfillNfe.rodando, progresso: _backfillNfe.progresso });
+});
+
 // POST /api/admin-exec/contabilidade-corrigir-conta-orfa
 // Corrige UM valor órfão de conta financeira em todas as tabelas.
 // Body: { de: "<valor órfão>", para: "<id de conta existente>" }
