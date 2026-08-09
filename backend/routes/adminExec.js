@@ -8044,6 +8044,42 @@ router.get('/contabilidade-diag-nfe-pedidos', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/contabilidade-diag-nfe-venda/:numero
+// Investiga UM pedido: pergunta ao CA, janela a janela (de -28d a +28d da venda),
+// que notas existem — com o filtro id_venda e sem ele (total da janela). Mostra o
+// retorno cru. Serve para descobrir POR QUE uma venda aparece "sem NF".
+router.get('/contabilidade-diag-nfe-venda/:numero', async (req, res) => {
+    try {
+        const contaAzul = require('../services/contaAzulService');
+        const ped = await prisma.pedido.findFirst({
+            where: { numero: parseInt(req.params.numero, 10) },
+            select: { numero: true, dataVenda: true, idVendaContaAzul: true, situacaoCA: true, nfeChave: true, nfeNumero: true, createdAt: true }
+        });
+        if (!ped) return res.status(404).json({ error: 'Pedido não encontrado.' });
+        const fmt = (d) => new Date(d).toISOString().slice(0, 10);
+        const somaDias = (d, n) => new Date(new Date(d).getTime() + n * 86400000);
+        const janelas = [];
+        for (let j = -4; j < 4; j++) {
+            const ini = somaDias(ped.dataVenda, j * 7);
+            const fim = somaDias(ini, 6);
+            const [comFiltro, semFiltro] = await Promise.all([
+                contaAzul.listarNotasFiscais({ dataInicial: fmt(ini), dataFinal: fmt(fim), idVenda: ped.idVendaContaAzul }),
+                contaAzul.listarNotasFiscais({ dataInicial: fmt(ini), dataFinal: fmt(fim) })
+            ]);
+            janelas.push({
+                janela: `${fmt(ini)} a ${fmt(fim)}`,
+                comFiltroIdVenda: (comFiltro || []).map((n) => ({ numero: n.numero, chave: n.chave_acesso, situacao: n.situacao || n.status, data: n.data_emissao || n.data, campos: Object.keys(n) })),
+                totalNaJanelaSemFiltro: (semFiltro || []).length
+            });
+            await new Promise((r) => setTimeout(r, 200));
+        }
+        res.json({ ok: true, pedido: ped, janelas });
+    } catch (err) {
+        console.error('[contabilidade-diag-nfe-venda]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // POST /api/admin-exec/contabilidade-backfill-nfe-por-venda
 // Para cada pedido FATURADO sem nfe_chave, pergunta ao CA "esta venda tem NF-e?"
 // (GET /v1/notas-fiscais?id_venda=...) e preenche o cache do pedido. É a correção
