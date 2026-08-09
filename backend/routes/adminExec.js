@@ -8168,9 +8168,15 @@ router.post('/contabilidade-conciliar-nfe-por-xml', async (req, res) => {
             const doc = soDoc(mDest[2]);
             const valor = Number(mVal[1]);
             const dEmi = new Date(`${mData[1]}T12:00:00-03:00`);
-            const casam = candidatos.filter((p) => p.doc === doc
-                && Math.abs(p.valor - valor) <= 0.02
-                && Math.abs(p.dataVenda - dEmi) <= tolDias * 86400000);
+            const base = candidatos.filter((p) => p.doc === doc && Math.abs(p.valor - valor) <= 0.02);
+            // 1º passe APERTADO (±4 dias): separa cliente de pedido semanal com valor repetido
+            // (pedidos irmãos ficam 7 dias distantes). Se ainda empatar, tenta a janela larga.
+            let casam = base.filter((p) => Math.abs(p.dataVenda - dEmi) <= 4 * 86400000);
+            if (casam.length !== 1) {
+                const larga = base.filter((p) => Math.abs(p.dataVenda - dEmi) <= tolDias * 86400000);
+                if (casam.length === 0) casam = larga;
+                else if (casam.length > 1) casam = larga.length === 1 ? larga : casam;
+            }
             if (casam.length === 1) {
                 const p = casam[0];
                 resumo.casadosUnicos++;
