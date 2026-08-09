@@ -8075,6 +8075,7 @@ router.get('/contabilidade-diag-nfe-venda/:numero', async (req, res) => {
         }
         // A própria venda no CA (GET /venda/{id}) — estrutura pode revelar a NF sem depender de janela de datas
         let vendaCA = null;
+        let janelasIdLegado = null;
         try {
             const axios = require('axios');
             const token = await contaAzul.getAccessToken();
@@ -8082,17 +8083,67 @@ router.get('/contabilidade-diag-nfe-venda/:numero', async (req, res) => {
             const bruto = resp.data || {};
             const texto = JSON.stringify(bruto);
             vendaCA = {
+                idLegado: bruto.venda?.id_legado ?? null,
                 chavesTopo: Object.keys(bruto),
                 chavesVenda: bruto.venda ? Object.keys(bruto.venda) : null,
                 trechosComNota: (texto.match(/"[^"]*nota[^"]*"\s*:\s*("[^"]*"|\{[^}]{0,200}|\[[^\]]{0,200}|[^,}]{0,80})/gi) || []).slice(0, 10),
                 trechosComFiscal: (texto.match(/"[^"]*(fiscal|nfe|nf_e)[^"]*"\s*:\s*("[^"]*"|\{[^}]{0,200}|\[[^\]]{0,200}|[^,}]{0,80})/gi) || []).slice(0, 10)
             };
+            // Repete a busca de notas usando o id_legado como id_venda (suspeita: o filtro quer o id numérico antigo)
+            if (vendaCA.idLegado != null) {
+                janelasIdLegado = [];
+                for (let j = -4; j < 4; j++) {
+                    const ini = somaDias(ped.dataVenda, j * 7);
+                    const itens = await contaAzul.listarNotasFiscais({
+                        dataInicial: fmt(ini), dataFinal: fmt(somaDias(ini, 6)), idVenda: String(vendaCA.idLegado)
+                    });
+                    if ((itens || []).length) {
+                        janelasIdLegado.push({ janela: `${fmt(ini)} a ${fmt(somaDias(ini, 6))}`, notas: itens.map((n) => ({ numero: n.numero, chave: n.chave_acesso, situacao: n.situacao || n.status, data: n.data_emissao || n.data })) });
+                    }
+                    await new Promise((r) => setTimeout(r, 150));
+                }
+            }
         } catch (e) {
             vendaCA = { erro: e.response?.status ? `HTTP ${e.response.status}` : e.message };
         }
-        res.json({ ok: true, pedido: ped, vendaCA, janelas });
+        res.json({ ok: true, pedido: ped, vendaCA, janelasIdLegado, janelas });
     } catch (err) {
         console.error('[contabilidade-diag-nfe-venda]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/admin-exec/contabilidade-verifica-nfe-cache?horas=48
+// AUDITORIA dos vínculos de NF feitos recentemente: para cada pedido cujo
+// nfe_consultado_em está na janela, abre o XML local da chave e confere se o
+// infCpl diz "Referente ao pedido #<numero>". Pega vínculo errado (nota de
+// outra venda) e vínculo sem XML para conferir.
+router.get('/contabilidade-verifica-nfe-cache', async (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const horas = Math.min(parseInt(req.query.horas, 10) || 48, 24 * 14);
+        const pedidos = await prisma.pedido.findMany({
+            where: { nfeChave: { not: null }, nfeConsultadoEm: { gte: new Date(Date.now() - horas * 3600000) } },
+            select: { numero: true, nfeChave: true, nfeNumero: true },
+            orderBy: { nfeConsultadoEm: 'desc' },
+            take: 2000
+        });
+        const DIR = path.join(__dirname, '../uploads/xml-nfe');
+        const resultado = { conferidos: 0, divergentes: [], semReferenciaNoXml: 0, xmlAusente: 0, total: pedidos.length };
+        for (const p of pedidos) {
+            const arq = path.join(DIR, `${p.nfeChave}.xml`);
+            if (!fs.existsSync(arq)) { resultado.xmlAusente++; continue; }
+            const xml = fs.readFileSync(arq, 'utf8');
+            const mPed = xml.match(/Referente ao pedido #?(\d+)/);
+            if (!mPed) { resultado.semReferenciaNoXml++; continue; }
+            if (parseInt(mPed[1], 10) === p.numero) resultado.conferidos++;
+            else resultado.divergentes.push({ pedido: p.numero, nfeNumero: p.nfeNumero, xmlDizPedido: parseInt(mPed[1], 10) });
+        }
+        resultado.divergentes = resultado.divergentes.slice(0, 50);
+        res.json({ ok: true, horas, ...resultado });
+    } catch (err) {
+        console.error('[contabilidade-verifica-nfe-cache]', err);
         res.status(500).json({ error: err.message });
     }
 });
