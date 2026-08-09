@@ -151,7 +151,7 @@ const vendedorController = {
                 return res.status(403).json({ error: 'Sem permissão para editar usuários.' });
             }
 
-            const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, percentualFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento, alertaPedidoConvertido, tabelaCobrancaFaltaId, quebraCaixa, clienteUuid } = req.body;
+            const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, percentualFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento, alertaPedidoConvertido, tabelaCobrancaFaltaId, quebraCaixa, clienteUuid, nomeVendedorBotHardt } = req.body;
 
             // Campos sensíveis (permissões, login, senha, status) só por admin — evita
             // escalonamento de privilégio e sequestro de conta por um gestor não-admin.
@@ -175,6 +175,9 @@ const vendedorController = {
             if (alertaFaturamento !== undefined) dataToUpdate.alertaFaturamento = alertaFaturamento;
             if (alertaPedidoConvertido !== undefined) dataToUpdate.alertaPedidoConvertido = alertaPedidoConvertido;
             if (tabelaCobrancaFaltaId !== undefined) dataToUpdate.tabelaCobrancaFaltaId = tabelaCobrancaFaltaId || null;
+            // Integração site ↔ Bot Hardt: acentos e espaços contam na comparação do bot,
+            // então só apara as pontas — nunca "normalizar" o valor digitado.
+            if (nomeVendedorBotHardt !== undefined) dataToUpdate.nomeVendedorBotHardt = String(nomeVendedorBotHardt || '').trim() || null;
             // Quebra de caixa: diferença que a pessoa fecha sozinha ao conferir o
             // dinheiro do caixa (acima disso exige senha de quem autoriza).
             // Só admin mexe — é limite de tolerância a diferença de dinheiro.

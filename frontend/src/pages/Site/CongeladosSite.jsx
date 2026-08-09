@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import publicApi, { getToken, setToken } from './api';
 import { Icon, WhatsIcon } from './icons';
 import Login from './Login';
+import FalarVendedor from './FalarVendedor';
 import './site.css';
 import { API_URL } from '../../services/api';
 import { useVisitorPing } from '../../hooks/useVisitorPing';
@@ -305,6 +306,7 @@ export default function CongeladosSite() {
             </div>
           </div>
           <div className="cg-top-actions">
+            <FalarVendedor cliente={cliente} whatsapp={whatsapp} variant="pill" />
             <Link to="/inicio" className="cg-pill" title="Página inicial">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
               <span className="lbl">Início</span>

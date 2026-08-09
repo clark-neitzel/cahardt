@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Pencil, Save, X, Search, Plus, Mail, Shield, UserX, UserCheck, User, MessageCircle, Phone, Bell, BellOff, Repeat, Check, Link2 } from 'lucide-react';
+import { Pencil, Save, X, Search, Plus, Mail, Shield, UserX, UserCheck, User, MessageCircle, Phone, Bell, BellOff, Repeat, Check, Link2, Bot } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import PermissoesModal from './PermissoesModal';
 import NovoUsuarioModal from './NovoUsuarioModal';
@@ -84,7 +84,8 @@ const ListaVendedores = () => {
             email: vendedor.email || '',
             telefone: vendedor.telefone || '',
             percentualFlex: vendedor.percentualFlex !== undefined ? Number(vendedor.percentualFlex) : 0,
-            maxDescontoFlex: vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100
+            maxDescontoFlex: vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100,
+            nomeVendedorBotHardt: vendedor.nomeVendedorBotHardt || ''
         });
     };
 
@@ -142,6 +143,15 @@ const ListaVendedores = () => {
             <Plus className="h-3 w-3" /> Vincular cadastro
         </button>
     );
+
+    // Nome usado no Bot Hardt (integração do site com o WhatsApp) — mostrado sob o nome
+    const BotNome = ({ vendedor }) => vendedor.nomeVendedorBotHardt ? (
+        <span className="inline-flex items-center gap-1 text-[11px] text-gray-500 mt-0.5 truncate max-w-full" title={`Nome usado no Bot Hardt: ${vendedor.nomeVendedorBotHardt}`}>
+            <Bot className="h-3 w-3 flex-shrink-0" /> {vendedor.nomeVendedorBotHardt}
+        </span>
+    ) : null;
+
+    const AJUDA_BOT = 'Copie exatamente o valor mostrado no cadastro da pessoa em Painel Hardt → Equipe → Editar → Nome usado no Bot Hardt.';
 
     // Formas de atendimento como controle segmentado uniforme (mesma largura em todas as linhas)
     const FormasSegmento = ({ vendedor }) => (
@@ -247,6 +257,10 @@ const ListaVendedores = () => {
                                                 <div className="flex-shrink-0 w-9 h-9 rounded-full bg-mint text-primaryDark flex items-center justify-center text-xs font-bold">{iniciais(vendedor.nome)}</div>
                                                 <span className="font-bold text-sm text-gray-900 truncate">{vendedor.nome}</span>
                                             </div>
+                                            <div className="mt-2">
+                                                <label className="text-[10px] text-gray-500 block mb-0.5" title={AJUDA_BOT}>Nome usado no Bot Hardt</label>
+                                                <input className={inputEditCls} value={editForm.nomeVendedorBotHardt} onChange={e => setEditForm({ ...editForm, nomeVendedorBotHardt: e.target.value })} placeholder="ex.: João" title={AJUDA_BOT} />
+                                            </div>
                                         </td>
                                         <td className="px-4 py-3"><input className={inputEditCls} value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} type="email" /></td>
                                         <td className="px-4 py-3"><input className={inputEditCls} value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: e.target.value })} type="tel" placeholder="(xx) xxxxx-xxxx" /></td>
@@ -271,7 +285,10 @@ const ListaVendedores = () => {
                                                         <span className="font-bold text-sm text-gray-900 truncate">{vendedor.nome}</span>
                                                         {vendedor.ativo === false && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">INATIVO</span>}
                                                     </div>
-                                                    <Vinculo vendedor={vendedor} />
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <Vinculo vendedor={vendedor} />
+                                                        <BotNome vendedor={vendedor} />
+                                                    </div>
                                                 </div>
                                             </div>
                                         </td>
@@ -317,7 +334,10 @@ const ListaVendedores = () => {
                                             <p className="font-bold text-sm text-gray-900 truncate">{vendedor.nome}</p>
                                             {vendedor.ativo === false && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">INATIVO</span>}
                                         </div>
-                                        <Vinculo vendedor={vendedor} />
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <Vinculo vendedor={vendedor} />
+                                            <BotNome vendedor={vendedor} />
+                                        </div>
                                     </div>
                                     <div className="flex gap-0.5 flex-shrink-0">
                                         <button onClick={() => setPermissionsModalVendedor(vendedor)} className="p-2 rounded-full text-indigo-500 hover:bg-gray-100" title="Acessos e Permissões"><Shield className="h-4 w-4" /></button>
@@ -329,6 +349,11 @@ const ListaVendedores = () => {
                                     <div className="space-y-2 mt-3 pt-3 border-t border-gray-100">
                                         <input className={inputEditCls} value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} type="email" placeholder="E-mail" />
                                         <input className={inputEditCls} value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: e.target.value })} type="tel" placeholder="Telefone (xx) xxxxx-xxxx" />
+                                        <div>
+                                            <label className="text-[10px] text-gray-500 block mb-0.5">Nome usado no Bot Hardt</label>
+                                            <input className={inputEditCls} value={editForm.nomeVendedorBotHardt} onChange={e => setEditForm({ ...editForm, nomeVendedorBotHardt: e.target.value })} placeholder="ex.: João" title={AJUDA_BOT} />
+                                            <p className="text-[10px] text-gray-400 mt-0.5">{AJUDA_BOT}</p>
+                                        </div>
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
                                                 <label className="text-[10px] text-gray-500 block mb-0.5">% Flex (sobre vendas 30d)</label>

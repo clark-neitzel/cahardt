@@ -22,7 +22,7 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 - **Vincular um usuário antigo ao cadastro** (link "Vincular cadastro" sob o nome, quando ainda não tem vínculo)
 - Listar todos os usuários (ativos e inativos)
 - Buscar por nome
-- Editar: e-mail, telefone, **% Flex** (percentual sobre vendas 30 dias), % máximo de desconto por item
+- Editar: e-mail, telefone, **% Flex** (percentual sobre vendas 30 dias), % máximo de desconto por item e **Nome usado no Bot Hardt** (integração do site com o WhatsApp)
 - Ver o **Flex Disponível (30d)**: calculado automaticamente — não é mais editável manualmente (detalhes de orçamento/usado aparecem ao pousar o mouse sobre o valor)
 - Ativar ou inativar um usuário
 - Configurar quais formas de atendimento aparecem para o vendedor (Presencial, WhatsApp, Telefone)
@@ -47,8 +47,15 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 
 ### Editar dados de um vendedor
 1. Clique no ícone de lápis na linha do vendedor
-2. Campos editáveis aparecem: e-mail, telefone, **% Flex** (orçamento dinâmico sobre vendas 30 dias), **% Máx Desc.** (limite por item)
+2. Campos editáveis aparecem: e-mail, telefone, **% Flex** (orçamento dinâmico sobre vendas 30 dias), **% Máx Desc.** (limite por item) e **Nome usado no Bot Hardt**
 3. Salve com o ícone de check
+
+### Nome usado no Bot Hardt (integração do site com o WhatsApp)
+- Campo na edição do usuário que liga o vendedor do sistema à pessoa correspondente no **Painel Hardt** (bot de WhatsApp)
+- **Copie exatamente** o valor mostrado no cadastro da pessoa em Painel Hardt → Equipe → Editar → "Nome usado no Bot Hardt" (maiúsculas/minúsculas não importam, mas acentos e espaços contam)
+- Com o campo preenchido (e a pessoa ativa e marcada no Painel Hardt para **receber novos clientes do site**), o cliente logado no site de congelados vê o botão **"Falar com [nome]"** — a conversa abre no WhatsApp oficial da empresa e o bot entrega direto para o vendedor, pausando a Ana
+- Quem aparece sob o nome do usuário com o ícone de robô já tem o vínculo preenchido
+- Se o vendedor do cliente não tiver o vínculo (ou não estiver liberado no Painel Hardt), o site oferece ao cliente a escolha de outro vendedor da lista oficial — ou "Falar com a equipe" se não houver ninguém disponível
 
 ### Configurar permissões (painel repaginado em 25/07/2026)
 1. Clique no ícone de escudo (permissões) na linha do vendedor

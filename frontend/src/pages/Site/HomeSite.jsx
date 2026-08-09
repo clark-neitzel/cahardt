@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import publicApi from './api';
 import { WhatsIcon, InstagramIcon, FacebookIcon } from './icons';
+import FalarVendedor from './FalarVendedor';
 import './site.css';
 import { API_URL } from '../../services/api';
 import { useVisitorPing } from '../../hooks/useVisitorPing';
@@ -247,10 +248,8 @@ export default function HomeSite() {
         </div>
       </footer>
 
-      {/* WhatsApp flutuante (acompanha o scroll) */}
-      <a className="wa-float" href={waMsg} target="_blank" rel="noopener noreferrer" aria-label="Falar no WhatsApp">
-        <WhatsIcon />
-      </a>
+      {/* WhatsApp flutuante (acompanha o scroll) — abre a escolha de vendedor (integração Bot Hardt) */}
+      <FalarVendedor whatsapp={loja.whatsapp} variant="float" />
     </div>
   );
 }

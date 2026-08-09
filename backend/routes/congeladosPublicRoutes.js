@@ -32,6 +32,7 @@ router.get('/catalogo', ctrl.catalogo);
 router.get('/grupos', ctrl.grupos);
 router.get('/config', ctrl.config);
 router.get('/produto/:id/ficha', ctrl.ficha);
+router.get('/vendedores-site', ctrl.vendedoresSite); // lista oficial do Bot Hardt (só nome + setor)
 
 // ── Pedido (visitante ou cliente logado) ──
 router.post('/pedido', clienteAuth(false), ctrl.criarPedido);

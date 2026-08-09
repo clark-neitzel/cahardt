@@ -1,5 +1,11 @@
 [
   {
+    "slug": "falar-vendedor",
+    "titulo": "Falar com o vendedor pelo site",
+    "resumo": "O site de congelados ganhou o botão 'Falar com [vendedor]': o cliente escolhe o vendedor e a conversa abre no WhatsApp oficial da Hardt já endereçada — o bot entrega direto para a pessoa e pausa a Ana. Para funcionar, preencha o campo novo 'Nome usado no Bot Hardt' em Administração → Usuários (copiando o valor do Painel Hardt → Equipe).",
+    "data": "2026-08-09"
+  },
+  {
     "slug": "produtos-categorias",
     "titulo": "Produtos no comando do app",
     "resumo": "Como não importamos mais nada do Conta Azul, o cadastro de produtos agora é do app: a etiqueta Ativo/Inativo virou botão (um clique tira ou devolve o produto ao site e aos catálogos, com o histórico preservado) e o campo Categoria ficou editável, com busca e '+ Criar categoria nova'. A sincronização com o CA não desfaz mais essas mudanças. Em Configurações → Categorias de Produto tem o botão Nova categoria.",

@@ -59,6 +59,14 @@ const congeladosController = {
         try { res.json(await svc.configPublico()); }
         catch (e) { erro(res, e, 'config'); }
     },
+    // Lista oficial do Bot Hardt de quem pode receber clientes escolhidos no site
+    // (proxy autenticado com cache de 5 min — o front nunca fala com o bot direto).
+    vendedoresSite: async (req, res) => {
+        try {
+            const { listarVendedoresSite } = require('../services/botSiteVendedoresService');
+            res.json({ vendedores: await listarVendedoresSite() });
+        } catch (e) { erro(res, e, 'vendedoresSite'); }
+    },
     criarPedido: async (req, res) => {
         try {
             const clienteId = req.congelados?.id || null;

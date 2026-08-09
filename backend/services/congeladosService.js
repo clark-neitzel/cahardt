@@ -341,7 +341,12 @@ const congeladosService = {
         if (auth.clienteUuid) {
             cliente = await prisma.cliente.findUnique({
                 where: { UUID: auth.clienteUuid },
-                include: { categoriaCliente: { select: { semLimiteDesconto: true } } },
+                include: {
+                    categoriaCliente: { select: { semLimiteDesconto: true } },
+                    // Integração site ↔ Bot Hardt: só nome de exibição e nome usado no bot.
+                    // Telefone/e-mail do vendedor NUNCA saem para o site.
+                    vendedor: { select: { nome: true, ativo: true, nomeVendedorBotHardt: true } },
+                },
             }).catch(() => null);
         }
         const ctx = await contextoPreco(cliente);
@@ -356,6 +361,12 @@ const congeladosService = {
             diasEntregaNums: diasEntregaNums(cliente?.Dia_de_entrega), // dias regulares como números da semana
 
             condicaoPadrao: ctx.condicaoPadrao, // o site usa SÓ a condição padrão do cliente
+
+            // Vendedor do cliente para o botão "Falar com meu vendedor" (WhatsApp da empresa).
+            // vendedorBotNome é o "Nome usado no Bot Hardt" — o site confere se ele está na
+            // lista oficial (/vendedores-site) antes de oferecer o atalho direto.
+            vendedorNome: (cliente?.vendedor?.ativo !== false && cliente?.vendedor?.nome) || null,
+            vendedorBotNome: (cliente?.vendedor?.ativo !== false && cliente?.vendedor?.nomeVendedorBotHardt) || null,
         };
     },
 

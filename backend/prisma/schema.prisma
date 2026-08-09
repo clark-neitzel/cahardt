@@ -545,6 +545,11 @@ model Vendedor {
   // usuários antigos (vindos do CA) ainda não têm vínculo e são vinculados aos poucos.
   clienteUuid String? @map("cliente_uuid")
 
+  // Integração site ↔ Bot Hardt: valor copiado de Painel Hardt → Equipe → Editar →
+  // "Nome usado no Bot Hardt". É por esse nome (comparação sem diferenciar maiúsculas)
+  // que o site vincula o vendedor do cliente à lista oficial do bot.
+  nomeVendedorBotHardt String? @map("nome_vendedor_bot_hardt")
+
   clientes                 Cliente[]
   pedidos                  Pedido[]
   pedidosLancados          Pedido[]         @relation("UsuarioLancamento")
