@@ -103,7 +103,8 @@ async function backupXmlsCA(meses = 24) {
                 const ini = new Date(fim.getTime() - 6 * 24 * 3600 * 1000);
                 backup.periodoAtual = `${fmt(ini)} a ${fmt(fim)}`;
                 try {
-                    const itens = await contaAzulService.listarNotasFiscais({ dataInicial: fmt(ini), dataFinal: fmt(fim) });
+                    // TODAS as páginas — a listagem simples devolve só 10 e deixava XML para trás
+                    const itens = await contaAzulService.listarNotasFiscaisTodas({ dataInicial: fmt(ini), dataFinal: fmt(fim) });
                     for (const n of itens || []) {
                         const chave = n.chave_acesso;
                         if (!chave) continue;

@@ -1934,6 +1934,28 @@ const contaAzulService = {
         return response.data?.itens || [];
     },
 
+    // TODAS as notas da janela, paginando até o fim (a versão acima devolve só a
+    // 1ª página de 10 — suficiente com id_venda, mas o backup de XMLs perdia nota
+    // em janela com mais de 10 emissões; descoberto em 08/2026 na Contabilidade).
+    listarNotasFiscaisTodas: async ({ dataInicial, dataFinal }) => {
+        const todas = [];
+        for (let pagina = 1; pagina <= 30; pagina++) {
+            const params = new URLSearchParams({
+                pagina: String(pagina),
+                tamanho_pagina: '50',
+                data_inicial: dataInicial,
+                data_final: dataFinal
+            });
+            const url = `https://api-v2.contaazul.com/v1/notas-fiscais?${params.toString()}`;
+            const response = await contaAzulService._axiosGet(url, 'NOTA_FISCAL_LISTA');
+            const itens = response.data?.itens || [];
+            todas.push(...itens);
+            const total = Number(response.data?.itens_totais || 0);
+            if (itens.length === 0 || (total && todas.length >= total)) break;
+        }
+        return todas;
+    },
+
     /**
      * Boletos (solicitações de cobrança) de uma venda no CA.
      * Retorna [{ id, numeroParcela, status, vencimento, dataQuitacao, valor, url, pago }].
