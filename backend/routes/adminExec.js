@@ -8113,6 +8113,90 @@ router.get('/contabilidade-diag-nfe-venda/:numero', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/contabilidade-conciliar-nfe-por-xml
+// PROVA POR EXAUSTÃO: temos TODAS as notas do CA baixadas (backup paginado).
+// Casa os XMLs "órfãos" (nota que nenhum pedido usa) com os pedidos faturados
+// sem NF, por CNPJ/CPF do destinatário + valor da venda + proximidade de data.
+// Body: { dryRun: true (padrão), toleranciaDias: 35 }. Só grava com dryRun:false
+// e casamento ÚNICO (1 nota ↔ 1 pedido); ambíguos são listados, nunca gravados.
+router.post('/contabilidade-conciliar-nfe-por-xml', async (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const dryRun = req.body?.dryRun !== false;
+        const tolDias = Math.min(parseInt(req.body?.toleranciaDias, 10) || 35, 90);
+        const DIR = path.join(__dirname, '../uploads/xml-nfe');
+
+        const chavesUsadas = new Set(
+            (await prisma.pedido.findMany({ where: { nfeChave: { not: null } }, select: { nfeChave: true } })).map((p) => p.nfeChave)
+        );
+        // Pedidos candidatos: faturados no CA, sem NF no cache
+        const pedidos = await prisma.pedido.findMany({
+            where: {
+                idVendaContaAzul: { not: null }, nfeChave: null, situacaoCA: 'FATURADO',
+                statusEnvio: { not: 'EXCLUIDO' }, bonificacao: false, especial: false
+            },
+            select: {
+                id: true, numero: true, dataVenda: true,
+                cliente: { select: { Documento: true } },
+                contaReceber: { select: { valorTotal: true } }
+            }
+        });
+        const soDoc = (s) => String(s || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+        const candidatos = pedidos.map((p) => ({
+            id: p.id, numero: p.numero, dataVenda: new Date(p.dataVenda),
+            doc: soDoc(p.cliente?.Documento), valor: Number(p.contaReceber?.valorTotal || 0)
+        })).filter((p) => p.doc && p.valor > 0);
+
+        let arquivos = [];
+        try { arquivos = fs.readdirSync(DIR).filter((n) => n.endsWith('.xml')); } catch (_) {}
+        const resumo = { xmlsNoDisco: arquivos.length, orfaos: 0, devolucoes: 0, casadosUnicos: 0, ambiguos: [], semCandidato: 0, gravados: 0, dryRun, exemplos: [] };
+
+        for (const arq of arquivos) {
+            const chave = arq.replace('.xml', '');
+            if (chavesUsadas.has(chave)) continue; // nota já pertence a um pedido
+            const xml = fs.readFileSync(path.join(DIR, arq), 'utf8');
+            if (!xml.includes('<CNPJ>08766459000102</CNPJ>')) continue; // não é emissão nossa
+            const mTp = xml.match(/<tpNF>(\d)<\/tpNF>/);
+            if (mTp && mTp[1] === '0') { resumo.devolucoes++; continue; } // nota de entrada/devolução
+            resumo.orfaos++;
+            const mDest = xml.match(/<dest>[\s\S]*?<(CNPJ|CPF)>([^<]+)<\/\1>/);
+            const mVal = xml.match(/<vNF>([\d.]+)<\/vNF>/);
+            const mData = xml.match(/<dhEmi>([\d-]{10})/) || xml.match(/<dEmi>([\d-]{10})/);
+            const mNum = xml.match(/<nNF>(\d+)<\/nNF>/);
+            if (!mDest || !mVal || !mData) { resumo.semCandidato++; continue; }
+            const doc = soDoc(mDest[2]);
+            const valor = Number(mVal[1]);
+            const dEmi = new Date(`${mData[1]}T12:00:00-03:00`);
+            const casam = candidatos.filter((p) => p.doc === doc
+                && Math.abs(p.valor - valor) <= 0.02
+                && Math.abs(p.dataVenda - dEmi) <= tolDias * 86400000);
+            if (casam.length === 1) {
+                const p = casam[0];
+                resumo.casadosUnicos++;
+                if (resumo.exemplos.length < 15) resumo.exemplos.push({ pedido: p.numero, nfe: mNum ? parseInt(mNum[1], 10) : null, valor, emissao: mData[1] });
+                if (!dryRun) {
+                    await prisma.pedido.update({
+                        where: { id: p.id },
+                        data: { nfeChave: chave, nfeNumero: mNum ? parseInt(mNum[1], 10) : null, nfeConsultadoEm: new Date() }
+                    });
+                    resumo.gravados++;
+                    candidatos.splice(candidatos.indexOf(p), 1); // cada pedido casa com uma nota só
+                    chavesUsadas.add(chave);
+                }
+            } else if (casam.length > 1) {
+                if (resumo.ambiguos.length < 30) resumo.ambiguos.push({ nfe: mNum ? parseInt(mNum[1], 10) : null, valor, emissao: mData[1], pedidos: casam.map((c) => c.numero) });
+            } else {
+                resumo.semCandidato++;
+            }
+        }
+        res.json({ ok: true, ...resumo, ambiguosTotal: resumo.ambiguos.length });
+    } catch (err) {
+        console.error('[contabilidade-conciliar-nfe-por-xml]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /api/admin-exec/contabilidade-verifica-nfe-cache?horas=48
 // AUDITORIA dos vínculos de NF feitos recentemente: para cada pedido cujo
 // nfe_consultado_em está na janela, abre o XML local da chave e confere se o
