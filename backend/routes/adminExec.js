@@ -8073,7 +8073,24 @@ router.get('/contabilidade-diag-nfe-venda/:numero', async (req, res) => {
             });
             await new Promise((r) => setTimeout(r, 200));
         }
-        res.json({ ok: true, pedido: ped, janelas });
+        // A própria venda no CA (GET /venda/{id}) — estrutura pode revelar a NF sem depender de janela de datas
+        let vendaCA = null;
+        try {
+            const axios = require('axios');
+            const token = await contaAzul.getAccessToken();
+            const resp = await axios.get(`https://api-v2.contaazul.com/v1/venda/${ped.idVendaContaAzul}`, { headers: { Authorization: `Bearer ${token}` } });
+            const bruto = resp.data || {};
+            const texto = JSON.stringify(bruto);
+            vendaCA = {
+                chavesTopo: Object.keys(bruto),
+                chavesVenda: bruto.venda ? Object.keys(bruto.venda) : null,
+                trechosComNota: (texto.match(/"[^"]*nota[^"]*"\s*:\s*("[^"]*"|\{[^}]{0,200}|\[[^\]]{0,200}|[^,}]{0,80})/gi) || []).slice(0, 10),
+                trechosComFiscal: (texto.match(/"[^"]*(fiscal|nfe|nf_e)[^"]*"\s*:\s*("[^"]*"|\{[^}]{0,200}|\[[^\]]{0,200}|[^,}]{0,80})/gi) || []).slice(0, 10)
+            };
+        } catch (e) {
+            vendaCA = { erro: e.response?.status ? `HTTP ${e.response.status}` : e.message };
+        }
+        res.json({ ok: true, pedido: ped, vendaCA, janelas });
     } catch (err) {
         console.error('[contabilidade-diag-nfe-venda]', err);
         res.status(500).json({ error: err.message });
