@@ -8136,6 +8136,70 @@ router.get('/contabilidade-diag-notas-janela', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/contabilidade-diag-xml-chave/:chave
+// O arquivo desta chave existe? Tamanho e começo do conteúdo (pega download corrompido).
+router.get('/contabilidade-diag-xml-chave/:chave', (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const chave = String(req.params.chave).replace(/\D/g, '');
+        const arq = path.join(__dirname, '../uploads/xml-nfe', `${chave}.xml`);
+        if (!fs.existsSync(arq)) return res.json({ ok: true, chave, existe: false });
+        const conteudo = fs.readFileSync(arq, 'utf8');
+        res.json({
+            ok: true, chave, existe: true, bytes: conteudo.length,
+            pareceXmlDeNfe: conteudo.includes('<NFe') || conteudo.includes('<nfeProc'),
+            contemAChave: conteudo.includes(chave),
+            inicio: conteudo.slice(0, 200)
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/admin-exec/contabilidade-reparar-xmls
+// Varre o acervo e RE-BAIXA do CA os arquivos inválidos (vazio, corpo de erro,
+// chave não bate). Body: { dryRun: true } só lista. Sequencial e educado.
+router.post('/contabilidade-reparar-xmls', async (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const contaAzul = require('../services/contaAzulService');
+        const dryRun = req.body?.dryRun !== false;
+        const DIR = path.join(__dirname, '../uploads/xml-nfe');
+        const arquivos = fs.readdirSync(DIR).filter((n) => n.endsWith('.xml'));
+        const invalidos = [];
+        for (const arq of arquivos) {
+            const chave = arq.replace('.xml', '');
+            const conteudo = fs.readFileSync(path.join(DIR, arq), 'utf8');
+            const valido = conteudo.length > 500 && (conteudo.includes('<NFe') || conteudo.includes('<nfeProc')) && conteudo.includes(chave);
+            if (!valido) invalidos.push({ chave, bytes: conteudo.length, inicio: conteudo.slice(0, 80) });
+        }
+        const resumo = { total: arquivos.length, invalidos: invalidos.length, rebaixados: 0, falhas: [], dryRun, amostra: invalidos.slice(0, 10) };
+        if (!dryRun) {
+            for (const inv of invalidos) {
+                try {
+                    const xml = await contaAzul.buscarXmlNotaFiscal(inv.chave);
+                    if (xml && String(xml).includes(inv.chave)) {
+                        fs.writeFileSync(path.join(DIR, `${inv.chave}.xml`), String(xml), 'utf8');
+                        resumo.rebaixados++;
+                    } else {
+                        resumo.falhas.push({ chave: inv.chave, motivo: 'retorno sem a chave' });
+                    }
+                    await new Promise((r) => setTimeout(r, 400));
+                } catch (e) {
+                    resumo.falhas.push({ chave: inv.chave, motivo: e.response?.status ? `HTTP ${e.response.status}` : e.message });
+                }
+            }
+            resumo.falhas = resumo.falhas.slice(0, 20);
+        }
+        res.json({ ok: true, ...resumo });
+    } catch (err) {
+        console.error('[contabilidade-reparar-xmls]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /api/admin-exec/contabilidade-diag-xml-nnf/:numero
 // Procura no acervo local o XML da NF número N: mostra chave, destinatário,
 // valor, emissão, referência de pedido no texto e QUEM (qual pedido) usa a chave.
