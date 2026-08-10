@@ -48,6 +48,10 @@ router.use((req, res, next) => {
 router.get('/ping', (req, res) => {
     res.json({
         ok: true,
+        // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
+        // em produção (não há outro jeito de saber de fora qual versão está no ar).
+        deployMarker: 'notas-fila-cancelados-ca-2026-08-10',
+        uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
         jwtConfigurada: !!process.env.JWT_SECRET,          // termômetro: JWT_SECRET setado no ambiente?
