@@ -8125,9 +8125,9 @@ router.get('/contabilidade-diag-notas-janela', async (req, res) => {
             total: itens.length,
             camposDoPrimeiro: itens[0] ? Object.keys(itens[0]) : [],
             notas: itens.map((n) => ({
-                numero: n.numero ?? null, serie: n.serie ?? null,
-                temChave: !!n.chave_acesso, situacao: n.situacao || n.status || null,
-                data: n.data_emissao || n.data || null, tipo: n.tipo || n.tipo_nota || null
+                numero: n.numero_nota ?? n.numero ?? null, serie: n.serie ?? null,
+                chave: n.chave_acesso || null, situacao: n.situacao || n.status || null,
+                data: n.data_emissao || n.data || null, destinatario: n.nome_destinatario || null
             })).slice(0, 200)
         });
     } catch (err) {
