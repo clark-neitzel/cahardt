@@ -849,6 +849,27 @@ router.get('/diag-consulta-cnpj', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-cliente-doc?doc=XXXXXXXXXXXXXX — mostra como um CNPJ/CPF está
+// cadastrado: linha na tabela clientes (ativo ou não, perfis) e na tabela fornecedores.
+// Serve para diagnosticar "não aparece na lista mas diz que já tem cadastro".
+router.get('/diag-cliente-doc', async (req, res) => {
+    try {
+        const doc = String(req.query.doc || '').replace(/[^\dA-Za-z]/g, '').toUpperCase();
+        if (!doc) return res.status(400).json({ error: 'Informe ?doc=' });
+        const clientes = await prisma.cliente.findMany({
+            where: { Documento: doc },
+            select: { UUID: true, Codigo: true, Nome: true, NomeFantasia: true, Ativo: true, Documento: true, idVendedor: true, Perfis: true }
+        });
+        const fornecedores = await prisma.fornecedor.findMany({
+            where: { cnpjCpf: doc },
+            select: { id: true, razaoSocial: true, nomeFantasia: true, ativo: true, origem: true }
+        });
+        res.json({ doc, clientes, fornecedores });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // POST /api/admin-exec/clientes-preencher-ie-sefaz — consulta a IE na SEFAZ (certificado A1)
 // para clientes PJ ATIVOS sem inscrição estadual e grava em cliente_fiscal.
 // Só grava IE HABILITADA (IE baixada/não habilitada na nota causa rejeição — o certo é isento).
