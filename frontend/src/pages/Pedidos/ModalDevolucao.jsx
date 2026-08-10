@@ -13,9 +13,13 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
     const [itensQtd, setItensQtd] = useState({}); // produtoId → quantidade devolvida
     const [motivo, setMotivo] = useState('');
     const [observacao, setObservacao] = useState('');
-    // Campos CA
-    const isCA = !!entrega.idVendaContaAzul && !entrega.especial;
-    const isBoleto = isCA && (entrega.condicaoPagamento || '').toLowerCase().includes('boleto');
+    // Devolução COM nota = pedido não-especial (e não-bonificação). Desde o faturamento
+    // local (23/07/2026) pedido novo NÃO tem idVendaContaAzul — usar isso como critério
+    // mandava pedido normal pro caminho ESPECIAL, que nunca emite a NF de devolução.
+    const isCA = !entrega.especial && !entrega.bonificacao;
+    // Wizard de boleto só para pedido da era CA (a parcela a cancelar vive no CA);
+    // boleto local (Asaas) não tem o que processar lá.
+    const isBoleto = isCA && !!entrega.idVendaContaAzul && (entrega.condicaoPagamento || '').toLowerCase().includes('boleto');
     const [notaDevolucaoCA, setNotaDevolucaoCA] = useState('');
     const [pdfFile, setPdfFile] = useState(null);
     const [wizardDevolucao, setWizardDevolucao] = useState(null); // devolução criada, abre wizard
@@ -159,7 +163,7 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                             <h2 className="text-sm font-bold text-gray-900">Registrar Devolução</h2>
                             <p className="text-xs text-gray-500">
                                 {entrega.numero ? `Pedido #${entrega.numero}` : entrega.pedidoId.slice(0, 8)} · {entrega.clienteNome}
-                                {isCA && <span className="ml-1 text-blue-600 font-medium">(Conta Azul)</span>}
+                                {isCA && <span className="ml-1 text-blue-600 font-medium">(com nota fiscal)</span>}
                             </p>
                         </div>
                     </div>

@@ -8540,8 +8540,10 @@ router.get('/contabilidade-diag-virada-focus', async (req, res) => {
             select: { ref: true, status: true, numero: true, mensagemSefaz: true }
         });
         const notaDevPorRef = new Map(notasDevApp.map(n => [n.ref, n]));
+        // Critério pelo PEDIDO (não pelo tipo gravado): o ModalDevolucao classificava por
+        // idVendaContaAzul e gravou devolução de pedido local como ESPECIAL (ex.: dev 126).
         const semNF = devolucoes
-            .filter(d => d.status === 'ATIVA' && !d.notaDevolucaoCA && !d.pedidoOriginal?.especial && d.tipo !== 'ESPECIAL')
+            .filter(d => d.status === 'ATIVA' && !d.notaDevolucaoCA && !d.pedidoOriginal?.especial)
             .map(d => {
                 const nApp = notaDevPorRef.get(`nfd-p-${d.id}`) || null;
                 return { d, nApp };
@@ -8550,6 +8552,7 @@ router.get('/contabilidade-diag-virada-focus', async (req, res) => {
             .map(({ d, nApp }) => ({
                 devolucao: d.numero,
                 pedido: d.pedidoOriginal?.numero || null,
+                tipoGravado: d.tipo, // 'ESPECIAL' aqui = classificada errado (pedido não é especial)
                 escopo: d.escopo,
                 valor: Number(d.valorTotal),
                 em: d10(d.dataDevolucao),
@@ -8594,6 +8597,42 @@ router.get('/contabilidade-diag-virada-focus', async (req, res) => {
         });
     } catch (err) {
         console.error('[contabilidade-diag-virada-focus]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/admin-exec/contabilidade-corrigir-devolucao-tipo
+// Reclassifica devoluções gravadas como ESPECIAL cujo pedido NÃO é especial nem
+// bonificação (bug do ModalDevolucao: classificava por idVendaContaAzul, que pedido
+// faturado localmente desde 23/07 não tem). Com o tipo certo (CONTA_AZUL) o botão
+// "Emitir NF de devolução" da aba Devoluções volta a aparecer e a emissão é aceita.
+// Body: { somenteListar: true } só lista; { numero: 126 } corrige uma; vazio corrige todas.
+router.post('/contabilidade-corrigir-devolucao-tipo', async (req, res) => {
+    try {
+        const alvo = req.body?.numero ? { numero: parseInt(req.body.numero, 10) } : {};
+        const erradas = await prisma.devolucao.findMany({
+            where: { tipo: 'ESPECIAL', pedidoOriginal: { especial: false, bonificacao: false }, ...alvo },
+            select: {
+                id: true, numero: true, status: true, dataDevolucao: true,
+                valorTotal: true, notaDevolucaoCA: true,
+                pedidoOriginal: { select: { numero: true, nfeNumero: true } }
+            },
+            orderBy: { numero: 'asc' }
+        });
+        const lista = erradas.map(d => ({
+            devolucao: d.numero, status: d.status,
+            pedido: d.pedidoOriginal?.numero || null,
+            notaOriginal: d.pedidoOriginal?.nfeNumero || null,
+            valor: Number(d.valorTotal),
+            em: d.dataDevolucao ? new Date(d.dataDevolucao).toISOString().slice(0, 10) : null
+        }));
+        if (req.body?.somenteListar) return res.json({ ok: true, encontradas: lista.length, corrigidas: 0, devolucoes: lista });
+        const r = erradas.length
+            ? await prisma.devolucao.updateMany({ where: { id: { in: erradas.map(d => d.id) } }, data: { tipo: 'CONTA_AZUL' } })
+            : { count: 0 };
+        res.json({ ok: true, encontradas: lista.length, corrigidas: r.count, devolucoes: lista });
+    } catch (err) {
+        console.error('[contabilidade-corrigir-devolucao-tipo]', err);
         res.status(500).json({ error: err.message });
     }
 });
