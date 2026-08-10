@@ -65,7 +65,8 @@ const fmtNumCsv = (v) => (v == null ? '' : Number(v).toFixed(2).replace('.', ','
 // Valor "cru" de cada coluna (ordenar + CSV + impressão)
 function valorColuna(l, id) {
     switch (id) {
-        case 'pedido': return l.especial && l.pedidoNumero ? `ZZ#${l.pedidoNumero}` : (l.pedidoNumero ? `#${l.pedidoNumero}` : '—');
+        case 'pedido': return l.especial && l.pedidoNumero ? `ZZ#${l.pedidoNumero}`
+            : (l.pedidoNumero ? `#${l.pedidoNumero}` : (l.numeroVendaCA ? `CA #${l.numeroVendaCA}` : '—'));
         case 'criacao': return l.criacao;
         case 'cliente': return l.clienteNome;
         case 'documento': {

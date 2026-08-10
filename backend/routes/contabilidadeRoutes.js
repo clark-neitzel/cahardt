@@ -101,6 +101,28 @@ function resolverDocumento(conta) {
     return { tipo: 'SEM_NF', numero: null, serie: null, chave: null };
 }
 
+/**
+ * Conta IMPORTADA do CA (sem pedido no app) não é caixa-preta: o arquivo da
+ * importação (ca_receber_importado) guarda o nº da venda no CA e a descrição
+ * ("Venda 554 / NF-e:83197"). Devolve Map contaReceberId → { numeroVendaCA, nfNumero }.
+ */
+async function infoImportadas(contaIds) {
+    if (contaIds.length === 0) return new Map();
+    const rows = await prisma.caReceberImportado.findMany({
+        where: { contaReceberId: { in: contaIds } },
+        select: { contaReceberId: true, numeroVendaCA: true, descricao: true }
+    });
+    const mapa = new Map();
+    for (const r of rows) {
+        const mNf = String(r.descricao || '').match(/NF-?S?e?\s*[.:]?\s*(\d{4,7})/i);
+        mapa.set(r.contaReceberId, {
+            numeroVendaCA: r.numeroVendaCA,
+            nfNumero: mNf ? parseInt(mNf[1], 10) : null
+        });
+    }
+    return mapa;
+}
+
 /** Situação de conciliação (extrato) de um conjunto de baixas: ids → Set dos conciliados. */
 async function idsConciliados(pagamentoIds) {
     if (pagamentoIds.length === 0) return new Set();
@@ -183,19 +205,25 @@ router.get('/relatorio-receber', verificarAuth, checkAcesso, async (req, res) =>
             });
             truncado = pagamentos.length > LIMITE_LINHAS;
             const conciliados = await idsConciliados(pagamentos.slice(0, LIMITE_LINHAS).map((p) => p.id));
+            const importadas = await infoImportadas([...new Set(
+                pagamentos.slice(0, LIMITE_LINHAS).filter((p) => !p.parcela.contaReceber.pedido).map((p) => p.parcela.contaReceber.id)
+            )]);
 
             for (const pg of pagamentos.slice(0, LIMITE_LINHAS)) {
                 const conta = pg.parcela.contaReceber;
-                const doc = resolverDocumento(conta);
+                const extra = !conta.pedido ? importadas.get(conta.id) : null;
+                let doc = resolverDocumento(conta);
+                if (extra?.nfNumero) doc = { tipo: 'NF_CA', numero: extra.nfNumero, serie: null, chave: null };
                 if (docFiltro.length && !docFiltro.includes(doc.tipo)) continue;
                 linhas.push({
                     id: pg.id,
                     pedidoNumero: conta.pedido?.numero ?? null,
+                    numeroVendaCA: extra?.numeroVendaCA ?? null,
                     especial: !!conta.pedido?.especial,
                     criacao: conta.createdAt,
                     clienteNome: conta.cliente?.Nome || '—',
                     clienteDoc: conta.cliente?.Documento || null,
-                    documento: doc,
+                    documento: doc, // importada com NF na descrição já vem como NF_CA
                     numeroParcela: pg.parcela.numeroParcela,
                     vencimento: pg.parcela.dataVencimento,
                     valor: round2(pg.parcela.valor),
@@ -258,14 +286,20 @@ router.get('/relatorio-receber', verificarAuth, checkAcesso, async (req, res) =>
             truncado = parcelas.length > LIMITE_LINHAS;
             const idsPg = parcelas.slice(0, LIMITE_LINHAS).flatMap((p) => p.pagamentos.map((x) => x.id));
             const conciliados = await idsConciliados(idsPg);
+            const importadas = await infoImportadas([...new Set(
+                parcelas.slice(0, LIMITE_LINHAS).filter((p) => !p.contaReceber.pedido).map((p) => p.contaReceber.id)
+            )]);
 
             for (const par of parcelas.slice(0, LIMITE_LINHAS)) {
                 const conta = par.contaReceber;
-                const doc = resolverDocumento(conta);
+                const extra = !conta.pedido ? importadas.get(conta.id) : null;
+                let doc = resolverDocumento(conta);
+                if (extra?.nfNumero) doc = { tipo: 'NF_CA', numero: extra.nfNumero, serie: null, chave: null };
                 if (docFiltro.length && !docFiltro.includes(doc.tipo)) continue;
                 linhas.push({
                     id: par.id,
                     pedidoNumero: conta.pedido?.numero ?? null,
+                    numeroVendaCA: extra?.numeroVendaCA ?? null,
                     especial: !!conta.pedido?.especial,
                     criacao: conta.createdAt,
                     clienteNome: conta.cliente?.Nome || '—',
