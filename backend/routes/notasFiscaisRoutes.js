@@ -69,7 +69,12 @@ router.get('/fila', checkVer, async (req, res) => {
             where: {
                 especial: false,
                 bonificacao: false,
-                cancelado: false, // pedido cancelado não entra na fila de emissão
+                cancelado: false, // pedido cancelado no app não entra na fila de emissão
+                // Cancelado/excluído na era Conta Azul também não (venda que não aconteceu
+                // aparecia como "Sem nota" com botão de emitir). situacaoCA é nullable e
+                // notIn excluiria as linhas null — por isso o OR explícito.
+                statusEnvio: { not: 'EXCLUIDO' },
+                OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }],
                 numero: { not: null },
                 ...(de || ate ? { dataVenda: { ...(de ? { gte: de } : {}), ...(ate ? { lte: ate } : {}) } } : {}),
             },

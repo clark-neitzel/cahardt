@@ -31,7 +31,7 @@ Quando a nota é **autorizada**, o pedido correspondente vira **FATURADO** na ab
 
 - **Nunca emite em dobro:** pedido com nota já autorizada (do app ou do CA) é bloqueado. Para pedidos antigos da era CA sem registro local, o app **confere no Conta Azul antes** de emitir.
 - **Pedido especial e bonificação não aparecem** na fila (não geram nota).
-- **Pedido cancelado não aparece** na fila e a emissão é recusada ("Pedido cancelado — não é possível emitir NF-e").
+- **Pedido cancelado não aparece** na fila e a emissão é recusada ("Pedido cancelado — não é possível emitir NF-e"). Vale tanto para o cancelamento feito pelo app quanto para pedidos **cancelados/excluídos na época do Conta Azul** — venda que não aconteceu não gera nota.
 - Nota rejeitada pode ser reenviada à vontade — a referência única na Focus impede duplicidade.
 - Pedido faturado pelo app fica **imune ao sync do Conta Azul** (o status FATURADO não é revertido).
 - **Venda para outro estado (interestadual):** o app ajusta a nota sozinho pela UF do cliente — usa **CFOP 6101/6102** e marca a operação como **interestadual** (dentro de SC continua 5101/5102). Para sair certa, o cliente precisa estar cadastrado com a **UF correta** e, se for contribuinte de ICMS, com a **Inscrição Estadual** preenchida. Os impostos do Simples (CSOSN 101 + crédito) e os demais campos são os mesmos da venda interna.

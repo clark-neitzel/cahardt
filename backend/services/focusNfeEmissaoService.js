@@ -237,6 +237,9 @@ async function emitirVenda(pedidoId) {
     });
     if (!pedido) throw new Error('Pedido não encontrado.');
     if (pedido.cancelado) throw new Error('Pedido cancelado — não é possível emitir NF-e.');
+    if (pedido.statusEnvio === 'EXCLUIDO' || ['CANCELADO', 'EXCLUIDO'].includes(pedido.situacaoCA)) {
+        throw new Error('Pedido cancelado/excluído na época do Conta Azul — não é possível emitir NF-e.');
+    }
     if (pedido.especial) throw new Error('Pedido especial não gera nota fiscal.');
     if (pedido.bonificacao) throw new Error('Bonificação ainda não é emitida pelo app.');
     if (!pedido.numero) throw new Error('Pedido ainda sem número de venda.');
