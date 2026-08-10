@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Novidade: Contabilidade completa</title>
+<meta property="og:title" content="Contabilidade completa no app 🧾📦">
+<meta property="og:description" content="A área Contabilidade ganhou as 4 abas que faltavam: Contas a Pagar com o rateio da DRE, Extratos com a identificação da conciliação, Notas de Entrada com as parcelas e o Pacote do Mês — um clique gera o ZIP inteiro para o contador.">
+<style>
+  :root{ --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --bg:#f2f0eb; --gold:#cba258; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Manrope','SF Pro Text',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:rgba(0,0,0,.87);font-size:15px;letter-spacing:-0.01em}
+  .hero{background:var(--house);color:#fff;padding:34px 20px 30px;text-align:center}
+  .hero .tag{display:inline-block;background:rgba(255,255,255,.14);border-radius:9999px;padding:4px 14px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+  .hero h1{font-size:26px;font-weight:800;margin-bottom:8px}
+  .hero p{font-size:15px;opacity:.85;max-width:560px;margin:0 auto}
+  main{max-width:680px;margin:0 auto;padding:20px 14px 60px}
+  .acc{background:#fff;border:1px solid #e5e7eb;border-radius:14px;margin-bottom:12px;overflow:hidden}
+  .acc-cab{padding:14px 18px;font-weight:800;font-size:15px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:var(--primary-dark)}
+  .acc-cab::after{content:"▾";color:#9ca3af;transition:transform .2s}
+  .acc:not(.aberto) .acc-cab::after{transform:rotate(-90deg)}
+  .acc-corpo{padding:0 18px 16px;display:none}
+  .acc.aberto .acc-corpo{display:block}
+  .acc-corpo p{margin-bottom:10px;color:#374151;line-height:1.55}
+  .acc-corpo ul{margin:0 0 10px 18px;color:#374151;line-height:1.6}
+  .destaque{background:var(--mint);border-radius:10px;padding:10px 14px;font-size:14px;color:var(--primary-dark);font-weight:600;margin-bottom:10px}
+  .tela{background:#f2f0eb;border:1px solid #d1d5db;border-radius:14px;padding:12px;margin:8px 0 4px;position:relative}
+  .app-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative}
+  .pin{position:absolute;top:-8px;left:-8px;width:22px;height:22px;border-radius:50%;background:var(--gold);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .legenda{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;color:#374151;padding:5px 0}
+  .legenda .n{display:inline-flex;width:20px;height:20px;border-radius:50%;background:var(--gold);color:#fff;font-size:11px;font-weight:800;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+  .mrow{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap}
+  .badge{display:inline-block;padding:2px 9px;font-size:11px;font-weight:700;border-radius:9999px;white-space:nowrap}
+  .b-azul{background:#dbeafe;color:#1e40af}.b-verde{background:#dcfce7;color:#166534}.b-mint{background:var(--mint);color:var(--primary-dark)}.b-amarelo{background:#fef9c3;color:#854d0e}.b-cinza{background:#e5e7eb;color:#6b7280}
+  .pill{display:inline-block;background:var(--primary);color:#fff;border-radius:9999px;padding:4px 12px;font-size:11px;font-weight:700;margin:2px 2px 0 0}
+  .pill.off{background:#fff;border:1px solid #d1d5db;color:#6b7280}
+  .sub{font-size:11.5px;color:#6b7280}
+  .btn-mock{display:inline-block;background:var(--primary);color:#fff;border-radius:9999px;padding:5px 14px;font-size:12px;font-weight:700}
+  .btn-mock.sec{background:#fff;border:1px solid var(--primary);color:var(--primary)}
+  .passo{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start}
+  .passo .num{width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="tag">Novidade no app</span>
+  <h1>🧾 Contabilidade completa</h1>
+  <p>A área Contabilidade ganhou as 4 abas que faltavam. Agora o contador tem tudo num lugar só — e o fechamento do mês vira um clique.</p>
+</div>
+
+<main>
+
+<div class="acc aberto">
+  <div class="acc-cab" onclick="this.parentElement.classList.toggle('aberto')">O que chegou</div>
+  <div class="acc-corpo">
+    <div class="destaque">5 abas: Receber · Pagar · Extratos · Notas de Entrada · Pacote do Mês</div>
+    <ul>
+      <li><b>Contas a Pagar</b> — três visões: contas (competência), pagamentos (com juros/multa/desconto) e <b>Por categoria da DRE</b>, sempre pelo rateio da nota (matéria-prima × uso e consumo abertos linha a linha);</li>
+      <li><b>Extratos</b> — o extrato de cada banco com a coluna <b>Identificação</b>: cada linha diz de qual pedido/nota/fornecedor veio. Exporta CSV e <b>OFX</b>;</li>
+      <li><b>Notas de Entrada</b> — NF-e de produto e NFS-e de serviço com <b>as parcelas de cada nota</b>, XML individual e ZIP do período;</li>
+      <li><b>Pacote do Mês</b> — um clique gera o <b>ZIP completo</b> (7 planilhas + XMLs de saída e entrada) para anexar no e-mail da contabilidade.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="acc aberto">
+  <div class="acc-cab" onclick="this.parentElement.classList.toggle('aberto')">As telas do app</div>
+  <div class="acc-corpo">
+    <div class="tela">
+      <div class="app-card">
+        <span class="pin">1</span>
+        <span class="pill">Contas a Receber</span><span class="pill off">Contas a Pagar</span><span class="pill off">Extratos</span><span class="pill off">Notas de Entrada</span><span class="pill off">Pacote do Mês</span>
+      </div>
+      <div class="app-card">
+        <span class="pin">2</span>
+        <div class="mrow"><b style="font-size:13px">Contas a Pagar — Por categoria (DRE)</b><span class="sub">rateio sempre respeitado</span></div>
+        <div class="mrow" style="margin-top:6px"><span>Matéria-prima <span class="badge b-mint">Operacional</span></span><b>R$ 74.674 · 26,5%</b></div>
+        <div class="mrow"><span>Salários <span class="badge b-mint">Operacional</span></span><b>R$ 33.594 · 11,9%</b></div>
+        <div class="mrow"><span>Empréstimos <span class="badge b-cinza">Fora da DRE</span></span><b>R$ 34.505</b></div>
+      </div>
+      <div class="app-card">
+        <span class="pin">3</span>
+        <div class="mrow"><b style="font-size:13px">Extrato Sicoob</b><span class="sub">94% identificado</span></div>
+        <div class="sub" style="margin-top:4px">04/07 · PIX RECEBIDO ALDORI → <b>Recebimento pedido #1889 · NF-e 128 · baixado por Leticia</b></div>
+        <div class="sub">18/07 · TRANSF → <b>Transferência interna Sicoob → Asaas (não entra na DRE)</b></div>
+      </div>
+      <div class="app-card">
+        <span class="pin">4</span>
+        <div class="mrow"><b style="font-size:13px">Pacote do Mês — julho/2026</b><span class="btn-mock">📦 Gerar pacote</span></div>
+        <div class="sub" style="margin-top:4px">7 planilhas + XMLs de saída e entrada, num ZIP só</div>
+      </div>
+    </div>
+    <div class="legenda"><span class="n">1</span><span><b>Abas no topo</b> — a área agora é completa; a aba escolhida fica salva para o próximo acesso.</span></div>
+    <div class="legenda"><span class="n">2</span><span><b>DRE pelo rateio</b> — nota com itens de categorias diferentes conta cada parte na categoria certa; a classificação (Operacional/Financeiro/Fora da DRE) vem da tela Categorias de Despesa.</span></div>
+    <div class="legenda"><span class="n">3</span><span><b>Extrato identificado</b> — acabou o "que lançamento é esse?": cada linha do banco diz de onde veio.</span></div>
+    <div class="legenda"><span class="n">4</span><span><b>Fechamento em um clique</b> — escolha o mês e baixe o ZIP pronto para a contabilidade.</span></div>
+  </div>
+</div>
+
+<div class="acc aberto">
+  <div class="acc-cab" onclick="this.parentElement.classList.toggle('aberto')">Para começar a usar</div>
+  <div class="acc-corpo">
+    <div class="passo"><span class="num">1</span><span>Abra <b>Administração → Contabilidade</b> e navegue pelas abas do topo.</span></div>
+    <div class="passo"><span class="num">2</span><span>Acesso do contador: em <b>Administração → Usuários → Permissões</b>, grupo <b>Financeiro</b>, ligue <b>"Contabilidade (consulta)"</b> (digite "contabilidade" na busca do painel). Ele enxerga só esta área, sem botões de edição.</span></div>
+    <div class="passo"><span class="num">3</span><span>No fim do mês: aba <b>Pacote do Mês</b> → escolha o mês → <b>Gerar</b> → anexe o ZIP no e-mail do contador.</span></div>
+  </div>
+</div>
+
+</main>
+</body>
+</html>

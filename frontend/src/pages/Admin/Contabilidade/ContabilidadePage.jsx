@@ -18,6 +18,10 @@ import api from '../../../services/api';
 import SelectBusca from '../../../components/SelectBusca';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../../components/FiltroPeriodo';
 import { useFiltrosSalvos } from '../../../hooks/useFiltrosSalvos';
+import AbaPagar from './AbaPagar';
+import AbaExtratos from './AbaExtratos';
+import AbaNotas from './AbaNotas';
+import AbaPacote from './AbaPacote';
 
 // ── Colunas disponíveis (id estável = chave salva por usuário) ──
 const COLUNAS = [
@@ -124,7 +128,19 @@ function imprimirConteudo(estilos, corpoHtml) {
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+const ABAS = [
+    ['receber', 'Contas a Receber'],
+    ['pagar', 'Contas a Pagar'],
+    ['extratos', 'Extratos'],
+    ['notas', 'Notas de Entrada'],
+    ['pacote', 'Pacote do Mês'],
+];
+
 export default function ContabilidadePage() {
+    // ── Aba ativa (salva por usuário) ──
+    const [abaSel, setAbaSel] = useFiltrosSalvos('contabilidade:aba', { atual: 'receber' });
+    const abaAtual = ABAS.some(([id]) => id === abaSel.atual) ? abaSel.atual : 'receber';
+
     // ── Visão + filtros (salvos por usuário) ──
     const [filtros, setFiltros] = useFiltrosSalvos('contabilidade-receber', {
         visao: 'titulos', documento: 'todos', forma: 'todos', banco: 'todos', status: 'todos', origem: 'todos'
@@ -316,29 +332,39 @@ export default function ContabilidadePage() {
                         <p className="text-xs text-gray-500 hidden md:block">Relatórios de consulta para o escritório de contabilidade</p>
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button onClick={exportarCSV} disabled={!dados.linhas.length}
-                        className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-xs md:text-sm inline-flex items-center gap-1.5 disabled:opacity-40">
-                        <Download className="h-4 w-4" /> CSV
-                    </button>
-                    <button onClick={imprimir} disabled={!dados.linhas.length}
-                        className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-gray-300 text-gray-700 rounded-full font-medium text-xs md:text-sm inline-flex items-center gap-1.5 disabled:opacity-40">
-                        <Printer className="h-4 w-4" /> Imprimir / PDF
-                    </button>
-                    <button onClick={buscar} className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100" title="Atualizar">
-                        <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                    </button>
-                </div>
+                {abaAtual === 'receber' && (
+                    <div className="flex items-center gap-2">
+                        <button onClick={exportarCSV} disabled={!dados.linhas.length}
+                            className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-xs md:text-sm inline-flex items-center gap-1.5 disabled:opacity-40">
+                            <Download className="h-4 w-4" /> CSV
+                        </button>
+                        <button onClick={imprimir} disabled={!dados.linhas.length}
+                            className="px-3 py-1.5 md:px-4 md:py-2 bg-white border border-gray-300 text-gray-700 rounded-full font-medium text-xs md:text-sm inline-flex items-center gap-1.5 disabled:opacity-40">
+                            <Printer className="h-4 w-4" /> Imprimir / PDF
+                        </button>
+                        <button onClick={buscar} className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100" title="Atualizar">
+                            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                        </button>
+                    </div>
+                )}
             </div>
 
             <div className="p-3 md:p-6 space-y-4">
-                {/* Sub-abas (fases futuras) */}
+                {/* Abas da área */}
                 <div className="flex gap-2 overflow-x-auto hide-scrollbar">
-                    <span className="px-3 py-1.5 rounded-full bg-primary text-white text-xs font-semibold whitespace-nowrap">Contas a Receber</span>
-                    {['Contas a Pagar', 'Extratos', 'Notas de Entrada', 'Pacote do Mês'].map((t) => (
-                        <span key={t} className="px-3 py-1.5 rounded-full bg-gray-100 text-gray-400 text-xs font-semibold whitespace-nowrap" title="Em breve">{t} · em breve</span>
+                    {ABAS.map(([id, rotulo]) => (
+                        <button key={id} onClick={() => setAbaSel({ atual: id })}
+                            className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap min-h-[36px] ${abaAtual === id ? 'bg-primary text-white' : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'}`}>
+                            {rotulo}
+                        </button>
                     ))}
                 </div>
+
+                {abaAtual === 'pagar' && <AbaPagar />}
+                {abaAtual === 'extratos' && <AbaExtratos />}
+                {abaAtual === 'notas' && <AbaNotas />}
+                {abaAtual === 'pacote' && <AbaPacote />}
+                {abaAtual === 'receber' && (<>
 
                 {/* KPIs */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
@@ -568,6 +594,7 @@ export default function ContabilidadePage() {
                         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-400 text-sm">Nada encontrado com esses filtros.</div>
                     )}
                 </div>
+                </>)}
             </div>
         </div>
     );

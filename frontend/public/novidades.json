@@ -1,5 +1,11 @@
 [
   {
+    "slug": "contabilidade-completa",
+    "titulo": "Contabilidade completa",
+    "resumo": "A área Administração → Contabilidade ganhou as 4 abas que faltavam: Contas a Pagar com as despesas por categoria da DRE (rateio respeitado), Extratos com a identificação da conciliação linha a linha (e exportação OFX), Notas de Entrada com as parcelas de cada nota e XMLs, e o Pacote do Mês — um clique gera o ZIP completo (7 planilhas + XMLs de saída e entrada) para mandar ao contador.",
+    "data": "2026-08-10"
+  },
+  {
     "slug": "whatsapps-cliente",
     "titulo": "WhatsApps no cadastro do cliente",
     "resumo": "A ficha do cliente ganhou a lista 'WhatsApps do cliente' (card Contato/Fiscal, e também no cadastro novo): cadastre os números do sócio, do comprador, do caixa. Qualquer um deles que mandar mensagem para a empresa já é reconhecido pelo atendimento automático como aquele cliente — sem vincular nada na mão.",
