@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import api from '../../services/api';
-import { TrendingDown, TrendingUp, ChevronDown, ChevronUp, Percent } from 'lucide-react';
+import { TrendingDown, TrendingUp, ChevronDown, ChevronUp, Percent, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 
@@ -67,6 +67,16 @@ export default function RelatorioFlex() {
                 </div>
             </div>
 
+            {/* Aviso: a análise só lista pedidos que usaram flex */}
+            <div className="flex items-start gap-2 bg-violet-50 border border-violet-200 rounded-lg px-3 py-2.5 mb-5">
+                <Info className="h-4 w-4 text-violet-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-violet-800">
+                    Esta análise mostra <strong>apenas os pedidos em que o preço foi alterado</strong> (venda acima ou
+                    abaixo da tabela), ou seja, que geraram flex positivo ou negativo. Pedidos vendidos no preço de
+                    tabela não aparecem aqui — eles não movimentam o saldo de flex.
+                </p>
+            </div>
+
             {loading && (
                 <div className="flex justify-center items-center py-20">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600 mr-3" />
@@ -108,7 +118,9 @@ export default function RelatorioFlex() {
 
                     {/* Por vendedor */}
                     {vendedores.length === 0 ? (
-                        <p className="text-center text-gray-400 py-10">Nenhum pedido com flex no período.</p>
+                        <p className="text-center text-gray-400 py-10">
+                            Nenhum pedido com alteração de preço (flex) no período — vendas no preço de tabela não aparecem aqui.
+                        </p>
                     ) : (
                         <div className="space-y-2">
                             {vendedores.map(v => {
@@ -179,7 +191,7 @@ export default function RelatorioFlex() {
                                         {isOpen && (
                                             <div className="border-t border-gray-100 divide-y divide-gray-50">
                                                 {v.pedidos.length === 0 ? (
-                                                    <p className="text-sm text-gray-400 px-4 py-3">Nenhum pedido com flex no período.</p>
+                                                    <p className="text-sm text-gray-400 px-4 py-3">Nenhum pedido com alteração de preço (flex) no período.</p>
                                                 ) : v.pedidos.map(p => {
                                                     const pedIsOpen = expandidoPedido === p.id;
                                                     return (

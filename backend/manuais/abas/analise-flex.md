@@ -10,6 +10,8 @@ permissao: pedidos (view) — vendedor vê o próprio; admin vê todos
 
 Painel dedicado a analisar o uso do orçamento de flex (descontos e acréscimos) por vendedor. Mostra quais pedidos geraram flex negativo (desconto dado) ou positivo (acréscimo), o saldo líquido do período e quanto cada vendedor consumiu do seu orçamento mensal.
 
+**Importante:** a análise lista **apenas os pedidos em que o preço foi alterado** em relação à tabela (flex diferente de zero). Pedido vendido 100% no preço de tabela **não aparece aqui** — ele não movimenta o saldo de flex. Não é erro: se um pedido do dia não está na lista, provavelmente todos os itens foram vendidos no preço cheio. Há um aviso fixo na própria tela explicando isso.
+
 ---
 
 ## O que dá pra fazer aqui
