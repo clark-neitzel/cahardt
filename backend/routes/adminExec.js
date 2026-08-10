@@ -8113,6 +8113,29 @@ router.get('/contabilidade-diag-nfe-venda/:numero', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/contabilidade-diag-notas-janela?de=YYYY-MM-DD&ate=YYYY-MM-DD
+// O que a listagem paginada de notas do CA devolve numa janela: números, situação,
+// tem chave? Serve para conferir se uma nota conhecida aparece na resposta.
+router.get('/contabilidade-diag-notas-janela', async (req, res) => {
+    try {
+        const contaAzul = require('../services/contaAzulService');
+        const itens = await contaAzul.listarNotasFiscaisTodas({ dataInicial: String(req.query.de), dataFinal: String(req.query.ate) });
+        res.json({
+            ok: true,
+            total: itens.length,
+            camposDoPrimeiro: itens[0] ? Object.keys(itens[0]) : [],
+            notas: itens.map((n) => ({
+                numero: n.numero ?? null, serie: n.serie ?? null,
+                temChave: !!n.chave_acesso, situacao: n.situacao || n.status || null,
+                data: n.data_emissao || n.data || null, tipo: n.tipo || n.tipo_nota || null
+            })).slice(0, 200)
+        });
+    } catch (err) {
+        console.error('[contabilidade-diag-notas-janela]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // GET /api/admin-exec/contabilidade-diag-xml-nnf/:numero
 // Procura no acervo local o XML da NF número N: mostra chave, destinatário,
 // valor, emissão, referência de pedido no texto e QUEM (qual pedido) usa a chave.
