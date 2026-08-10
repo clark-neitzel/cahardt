@@ -8113,6 +8113,41 @@ router.get('/contabilidade-diag-nfe-venda/:numero', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/contabilidade-diag-xml-nnf/:numero
+// Procura no acervo local o XML da NF número N: mostra chave, destinatário,
+// valor, emissão, referência de pedido no texto e QUEM (qual pedido) usa a chave.
+router.get('/contabilidade-diag-xml-nnf/:numero', async (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const alvo = `<nNF>${parseInt(req.params.numero, 10)}</nNF>`;
+        const DIR = path.join(__dirname, '../uploads/xml-nfe');
+        const achados = [];
+        for (const arq of fs.readdirSync(DIR).filter((n) => n.endsWith('.xml'))) {
+            const xml = fs.readFileSync(path.join(DIR, arq), 'utf8');
+            if (!xml.includes(alvo)) continue;
+            const chave = arq.replace('.xml', '');
+            const mDest = xml.match(/<dest>[\s\S]*?<(CNPJ|CPF)>([^<]+)<\/\1>/);
+            const mNome = xml.match(/<dest>[\s\S]*?<xNome>([^<]+)<\/xNome>/);
+            const mVal = xml.match(/<vNF>([\d.]+)<\/vNF>/);
+            const mData = xml.match(/<dhEmi>([\d-]{10})/) || xml.match(/<dEmi>([\d-]{10})/);
+            const mTp = xml.match(/<tpNF>(\d)<\/tpNF>/);
+            const mRef = xml.match(/Referente ao pedido #?(\d+)/);
+            const dono = await prisma.pedido.findFirst({ where: { nfeChave: chave }, select: { numero: true } });
+            achados.push({
+                chave, tpNF: mTp?.[1] ?? null, destDoc: mDest?.[2] ?? null, destNome: mNome?.[1] ?? null,
+                vNF: mVal?.[1] ?? null, emissao: mData?.[1] ?? null,
+                referenciaPedidoNoXml: mRef ? parseInt(mRef[1], 10) : null,
+                pedidoQueUsaAChave: dono?.numero ?? null
+            });
+        }
+        res.json({ ok: true, numero: parseInt(req.params.numero, 10), achados, noAcervo: achados.length > 0 });
+    } catch (err) {
+        console.error('[contabilidade-diag-xml-nnf]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // POST /api/admin-exec/contabilidade-conciliar-nfe-por-xml
 // PROVA POR EXAUSTÃO: temos TODAS as notas do CA baixadas (backup paginado).
 // Casa os XMLs "órfãos" (nota que nenhum pedido usa) com os pedidos faturados
