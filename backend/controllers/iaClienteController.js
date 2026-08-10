@@ -18,4 +18,12 @@ module.exports = {
         try { res.json(await svc.criarLead(req.body)); }
         catch (e) { erro(res, e, 'criarLead'); }
     },
+    buscar: async (req, res) => {
+        try { res.json(await svc.buscarClientes(req.body.busca, req.body.limite)); }
+        catch (e) { erro(res, e, 'buscar'); }
+    },
+    ficha: async (req, res) => {
+        try { res.json(await svc.fichaPorDocumento(req.body.documento)); }
+        catch (e) { erro(res, e, 'ficha'); }
+    },
 };

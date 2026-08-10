@@ -56,7 +56,7 @@ mencionada na mensagem. Assim a mudança nunca pega o app de surpresa.
 | GET | `/congelados/grupos` | — | Categorias/grupos do catálogo de congelados |
 | GET | `/congelados/config` | — | Dados da loja, mínimo padrão, se atende sábado/domingo (`entregas.sabado/domingo`) |
 | GET | `/congelados/produto/:id/ficha` | `:id` = id do produto no site | Ficha técnica/nutricional do produto |
-| POST | `/congelados/reconhecer-telefone` | `{ telefone }` | Se o telefone bater com um cliente cadastrado: catálogo já com preço/condição/dias de entrega REAIS dele. **(v1.4)** cada produto traz `comprado:true/false` e a resposta traz `ultimoPedido:[{id,congeladosProdutoId,produtoId,nome,unidade,quantidade,precoUnit}]` (o "de sempre"). Senão: `{ reconhecido: false }` |
+| POST | `/congelados/reconhecer-telefone` | `{ telefone }` | Se o telefone bater com um cliente cadastrado: catálogo já com preço/condição/dias de entrega REAIS dele. **(v1.4)** cada produto traz `comprado:true/false` e a resposta traz `ultimoPedido:[{id,congeladosProdutoId,produtoId,nome,unidade,quantidade,precoUnit}]` (o "de sempre"). **(v1.5)** o telefone também casa com os WhatsApps cadastrados na lista do cliente. Senão: `{ reconhecido: false }` |
 | POST | `/congelados/criar-senha-telefone` | `{ telefone, senha }` | Cria a senha do site (mesma conta do login) — só funciona se `telefone` bater com um cadastro. Devolve `{ token, cliente }` |
 | POST | `/congelados/check-doc` | `{ documento }` (CPF/CNPJ) | `{ situacao, temCadastroApp, nome }` — descobre se o documento já tem cadastro/senha |
 | POST | `/congelados/login` | `{ documento, senha }` | `{ token, cliente }` se a senha bater |
@@ -65,9 +65,11 @@ mencionada na mensagem. Assim a mudança nunca pega o app de surpresa.
 | POST | `/congelados/reset-senha` | `{ documento, codigo, novaSenha }` | Confirma o código e define a nova senha. Devolve `{ token, cliente }` |
 | GET | `/congelados/meu-catalogo` | header `Authorization: Bearer <token>` | Catálogo com preço/condição/dias de entrega do cliente autenticado |
 | GET | `/congelados/perfil` | header `Authorization: Bearer <token>` | Dados do cliente autenticado (nome, dias de entrega, condição padrão) |
-| POST | `/cliente/reconhecer-telefone` | `{ telefone }` | **Geral, qualquer linha.** Se bater com um cadastro: `{ reconhecido:true, cliente:{nome,documento,cidade,vendedor}, diasEntrega:[...], diasVenda:[...], condicaoPagamento:{nome,valorMinimo} }`. Senão: `{ reconhecido:false }` |
+| POST | `/cliente/reconhecer-telefone` | `{ telefone }` | **Geral, qualquer linha.** Se bater com um cadastro: `{ reconhecido:true, cliente:{nome,documento,cidade,vendedor}, diasEntrega:[...], diasVenda:[...], condicaoPagamento:{nome,valorMinimo} }`. **(v1.5)** o telefone também casa com os WhatsApps cadastrados na lista do cliente. Senão: `{ reconhecido:false }` |
 | POST | `/cliente/historico-pedidos` | `{ telefone, limite?, comItens? }` (limite padrão 10, máx 30) | Se o telefone bater: `{ reconhecido:true, cliente:{nome}, pedidos:[{numero,data,dataEntrega,statusEntrega,tipo,total}] }`. **(v1.4)** com `comItens:true`, cada pedido também traz `itens:[{produtoId,nome,quantidade,unidade,precoUnit}]`. Senão: `{ reconhecido:false }` |
 | POST | `/cliente/criar-lead` | `{ nomeEstabelecimento, whatsapp, contato?, cidade?, observacoes? }` | Cria um prospect no CRM interno (mesma tabela que os vendedores veem). Retorna `{ id, numero, etapa }`. `origemLead` é sempre fixado como `"WHATSAPP_IA"` |
+| POST | `/cliente/buscar` | `{ busca, limite? }` (mín. 3 caracteres; padrão 10, máx 20) | **(v1.5, só painel da equipe)** Busca parcial por Razão Social, Nome Fantasia ou CPF/CNPJ (11+ dígitos = documento). Retorna `{ clientes:[{documento,nome,nomeFantasia,cidade,vendedor,ativo,telefones,whatsapps}] }`. Ver seção "Busca e ficha para o painel". |
+| POST | `/cliente/ficha` | `{ documento }` (com ou sem pontuação) | **(v1.5, só painel da equipe)** Ficha de UM cliente pela chave `documento`. Retorna `{ encontrado, cliente:{nome,nomeFantasia,documento,cidade,vendedor,ativo}, diasEntrega, diasVenda, condicaoPagamento, whatsapps, telefones }`. |
 | POST | `/congelados/pedido` | `{ telefone, itens:[{id,quantidade}], data?, modo?, observacoes?, idempotencyKey?, visitante?:{nome,telefone,cpf?} }` | **(v1.4)** Cria pedido de Congelados na fila de aprovação (`AGUARDANDO`; `PENDENTE_CADASTRO` se telefone novo). Preço recalculado no servidor. Retorna `{ id, numero, status, total }`. Ver "Fase 2". |
 | POST | `/kitfesta/pedido` | `{ telefone, itens:[{id,quantidade,opcao?}], modo, data, horario, enderecoEntrega?, cep?, cupomCodigo?, observacoes?, idempotencyKey?, visitante?:{nome,telefone,cpf?} }` | **(v1.4)** Cria pedido de Kit Festa na fila de aprovação. Webhook automático desligado (a Ana confirma). Retorna `{ id, numero, status, total }`. Ver "Fase 2". |
 
@@ -125,6 +127,71 @@ a própria pessoa está fornecendo na conversa), mas ainda exige nome e WhatsApp
 **Se o bot precisar de mais alguma informação de cliente/pedido/preço que não está listada aqui, a
 resposta certa é pedir um endpoint novo nesta API — nunca reintroduzir acesso direto ao banco.**
 
+### Busca e ficha para o PAINEL da equipe (v1.5) — `/cliente/buscar` e `/cliente/ficha`
+
+Estes dois endpoints existem para a **tela logada da equipe de atendimento** no painel do bot
+(vincular manualmente uma conversa ao cadastro do CA-Hardt). **Não entram nas tools da IA nem são
+expostos a cliente final** — quem chama é o backend do painel. Por isso podem buscar por
+nome/documento; a IA continua identificando cliente SÓ pelo telefone autenticado do WhatsApp.
+A busca não devolve preço/condição negociada — só identificação de cadastro.
+
+**`POST /cliente/buscar`** — body `{ "busca": "panificadora joao", "limite": 10 }`:
+- `busca` (obrigatório, mín. 3 caracteres): casa com Razão Social, Nome Fantasia ou CPF/CNPJ,
+  parcial, sem diferenciar maiúsculas/acentos. Com 11+ dígitos (ignorando pontuação), vira busca
+  por documento (comparada ignorando pontuação — CNPJ alfanumérico incluído).
+- `limite` (opcional): padrão 10, máx. 20. Inativos aparecem (com `ativo:false`), depois dos ativos.
+
+Resposta em `dados`:
+
+```json
+{
+  "clientes": [
+    {
+      "documento": "12345678000190",
+      "nome": "Panificadora Joao Ltda",
+      "nomeFantasia": "Padaria do Joao",
+      "cidade": "Joinville",
+      "vendedor": "Jociel",
+      "ativo": true,
+      "telefones": ["4733331234"],
+      "whatsapps": ["47999991234"]
+    }
+  ]
+}
+```
+
+**`POST /cliente/ficha`** — body `{ "documento": "12345678000190" }` (com ou sem pontuação).
+Resposta em `dados` (mesmo shape do `reconhecer-telefone`, com `encontrado` no lugar de
+`reconhecido` + os campos novos):
+
+```json
+{
+  "encontrado": true,
+  "cliente": {
+    "nome": "Panificadora Joao Ltda",
+    "nomeFantasia": "Padaria do Joao",
+    "documento": "12345678000190",
+    "cidade": "Joinville",
+    "vendedor": "Jociel",
+    "ativo": true
+  },
+  "diasEntrega": ["Terça"],
+  "diasVenda": ["Segunda"],
+  "condicaoPagamento": { "nome": "Boleto 28d", "valorMinimo": 400 },
+  "whatsapps": ["47999991234"],
+  "telefones": ["4733331234"]
+}
+```
+
+Não achando o documento: `{ "encontrado": false }`. Observações de formato: `documento` vem como
+está gravado no cadastro (normalizado, sem pontuação); `telefones`/`whatsapps` vêm só dígitos, sem
+DDI 55; `nomeFantasia`, `cidade`, `vendedor` e `condicaoPagamento` podem ser `null`.
+
+**WhatsApps no cadastro (v1.5):** o cadastro de cliente do CA-Hardt ganhou uma lista de números de
+WhatsApp (campo "WhatsApps" na tela de cliente, tabela `cliente_whatsapps`). Os dois
+`reconhecer-telefone` (geral e Congelados) casam também por esses números, com a mesma tolerância
+de sempre (com/sem 9º dígito, com/sem DDI 55, ignorando pontuação).
+
 ## Regra de contrato — NUNCA quebrar o app consumidor sem aviso
 
 Esta API tem consumidor externo fora deste repositório. As regras abaixo são obrigatórias para
@@ -174,6 +241,12 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
 curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   -d '{"telefone":"5547999998888","visitante":{"nome":"Maria","cpf":"12345678909"},"itens":[{"id":"<kitFestaProdutoId>","quantidade":4,"opcao":"Frango"}],"modo":"retirada","data":"2026-07-15","horario":"10:00","idempotencyKey":"xyz-789"}' \
   https://<dominio>/api/ia-consulta/v1/kitfesta/pedido
+# v1.5 — busca de cliente para o painel da equipe (razão/fantasia/documento)
+curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
+  -d '{"busca":"panificadora joao","limite":10}' https://<dominio>/api/ia-consulta/v1/cliente/buscar
+# v1.5 — ficha completa pela chave documento
+curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
+  -d '{"documento":"12345678000190"}' https://<dominio>/api/ia-consulta/v1/cliente/ficha
 ```
 
 ## Histórico de versões
@@ -196,6 +269,12 @@ curl -H "x-ia-api-key: SUACHAVE" -X POST -H "Content-Type: application/json" \
   `POST /congelados/pedido` e `POST /kitfesta/pedido` (caem na fila de aprovação do CA-Hardt, preço
   recalculado no servidor, `idempotencyKey`, webhook do Kit Festa desligado para pedidos do bot). Tudo
   aditivo — nenhum campo removido/renomeado.
+- **1.5.0** (2026-08-10) — Busca e ficha de cliente para o PAINEL da equipe do bot:
+  `POST /cliente/buscar` (parcial por razão social/fantasia/documento) e `POST /cliente/ficha`
+  (por documento). Cadastro de cliente ganha lista de **WhatsApps** (tabela `cliente_whatsapps`,
+  editável na tela de cliente do app) e os dois `reconhecer-telefone` (geral e Congelados) passam a
+  casar também por esses números (mesma tolerância de 9º dígito/DDI 55). Tudo aditivo — nenhum campo
+  removido/renomeado.
 
 ## Fase 2 — Criação de pedido pela IA (IMPLEMENTADA na v1.4)
 

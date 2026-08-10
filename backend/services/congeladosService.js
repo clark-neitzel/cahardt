@@ -596,14 +596,21 @@ const congeladosService = {
         const candidatos = await prisma.cliente.findMany({
             where: {
                 Ativo: true,
-                OR: [{ Telefone: { not: null } }, { Telefone_Celular: { not: null } }, { Telefone_Comercial: { not: null } }],
+                OR: [
+                    { Telefone: { not: null } }, { Telefone_Celular: { not: null } },
+                    { Telefone_Comercial: { not: null } }, { whatsapp: { isNot: null } },
+                ],
             },
-            include: { categoriaCliente: { select: { semLimiteDesconto: true } } },
+            include: {
+                categoriaCliente: { select: { semLimiteDesconto: true } },
+                whatsapp: { select: { numeros: true } },
+            },
         });
         return candidatos.find(c =>
             chaveTelefone(c.Telefone) === chaveAlvo ||
             chaveTelefone(c.Telefone_Celular) === chaveAlvo ||
-            chaveTelefone(c.Telefone_Comercial) === chaveAlvo
+            chaveTelefone(c.Telefone_Comercial) === chaveAlvo ||
+            (c.whatsapp?.numeros || []).some(n => chaveTelefone(n) === chaveAlvo)
         ) || null;
     },
 

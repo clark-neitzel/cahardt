@@ -4,9 +4,15 @@
 // rodava SQL direto no banco de produção (ver backend/docs/ia-consulta-api.md, seção de segurança).
 const prisma = require('../config/database');
 const leadService = require('./leadService');
+const { normalizarDoc } = require('../utils/documento');
 
 const soDigitos = (s) => String(s || '').replace(/\D/g, '');
 const dec = (v) => (v == null ? 0 : Number(v));
+const semAcento = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+// Listas de contato achatadas — vão na busca/ficha do painel do bot para conferência de vínculo
+const listaTelefones = (c) => [c.Telefone, c.Telefone_Celular, c.Telefone_Comercial].map(soDigitos).filter(Boolean);
+const listaWhatsapps = (c) => c.whatsapp?.numeros || [];
 
 // Mesma normalização usada em congeladosService.js — mantida como cópia pequena e independente
 // aqui de propósito (é só ~5 linhas; acoplar os dois serviços por isso não compensa o risco).
@@ -34,14 +40,18 @@ async function _clientePorTelefone(telefoneRaw) {
     const candidatos = await prisma.cliente.findMany({
         where: {
             Ativo: true,
-            OR: [{ Telefone: { not: null } }, { Telefone_Celular: { not: null } }, { Telefone_Comercial: { not: null } }],
+            OR: [
+                { Telefone: { not: null } }, { Telefone_Celular: { not: null } },
+                { Telefone_Comercial: { not: null } }, { whatsapp: { isNot: null } },
+            ],
         },
-        include: { vendedor: { select: { nome: true } } },
+        include: { vendedor: { select: { nome: true } }, whatsapp: { select: { numeros: true } } },
     });
     return candidatos.find(c =>
         chaveTelefone(c.Telefone) === chaveAlvo ||
         chaveTelefone(c.Telefone_Celular) === chaveAlvo ||
-        chaveTelefone(c.Telefone_Comercial) === chaveAlvo
+        chaveTelefone(c.Telefone_Comercial) === chaveAlvo ||
+        listaWhatsapps(c).some(n => chaveTelefone(n) === chaveAlvo)
     ) || null;
 }
 
@@ -115,6 +125,95 @@ const iaClienteService = {
                     })),
                 } : {}),
             })),
+        };
+    },
+
+    // ── Busca/ficha para o PAINEL da equipe do bot (v1.5.0) ─────────────────────────────────
+    // Estes dois endpoints NÃO são expostos à IA nem a cliente final: quem chama é o backend do
+    // bot, a partir da tela logada da equipe de atendimento, para vincular manualmente uma
+    // conversa ao cadastro. Por isso podem buscar por nome/documento (a regra "só telefone
+    // autenticado" continua valendo para a IA — ver reconhecerPorTelefone acima). Não devolvem
+    // preço/condição negociada na busca — só identificação de cadastro.
+
+    // Busca parcial por Razão Social, Nome Fantasia ou CPF/CNPJ (11+ caracteres úteis = documento).
+    // Sem diferenciar maiúsculas/acentos; documento casa por dígitos/letras ignorando pontuação.
+    async buscarClientes(buscaRaw, limiteRaw) {
+        const busca = String(buscaRaw || '').trim();
+        if (busca.length < 3) throw new Error('Informe pelo menos 3 caracteres para buscar.');
+        const limite = Math.min(Math.max(parseInt(limiteRaw) || 10, 1), 20);
+
+        // Só cadastros com documento — é a chave que o painel usa depois no /cliente/ficha
+        const clientes = await prisma.cliente.findMany({
+            where: { Documento: { not: null } },
+            include: { vendedor: { select: { nome: true } }, whatsapp: { select: { numeros: true } } },
+        });
+
+        let achados;
+        if (soDigitos(busca).length >= 11) {
+            const docAlvo = normalizarDoc(busca);
+            achados = clientes.filter(c => normalizarDoc(c.Documento).includes(docAlvo));
+        } else {
+            const alvo = semAcento(busca);
+            achados = clientes.filter(c =>
+                semAcento(c.Nome).includes(alvo) || semAcento(c.NomeFantasia).includes(alvo));
+        }
+        achados.sort((a, b) => (b.Ativo - a.Ativo) || String(a.Nome).localeCompare(b.Nome, 'pt-BR'));
+
+        return {
+            clientes: achados.slice(0, limite).map(c => ({
+                documento: c.Documento,
+                nome: c.Nome,
+                nomeFantasia: c.NomeFantasia,
+                cidade: c.End_Cidade,
+                vendedor: c.vendedor?.nome || null,
+                ativo: c.Ativo,
+                telefones: listaTelefones(c),
+                whatsapps: listaWhatsapps(c),
+            })),
+        };
+    },
+
+    // Ficha completa de UM cliente pela chave documento (vinda da busca acima). Mesmo shape do
+    // reconhecerPorTelefone + nomeFantasia/ativo/telefones/whatsapps, com `encontrado` no lugar
+    // de `reconhecido` (aqui não há reconhecimento — a equipe já escolheu o cliente).
+    async fichaPorDocumento(documentoRaw) {
+        const docAlvo = normalizarDoc(documentoRaw);
+        if (!docAlvo || docAlvo.length < 11) throw new Error('Informe o CPF/CNPJ completo do cliente.');
+
+        // Documento é gravado normalizado, mas cadastros antigos podem ter pontuação — tenta
+        // direto e, não achando, compara todo mundo já normalizado.
+        let cliente = await prisma.cliente.findUnique({
+            where: { Documento: docAlvo },
+            include: { vendedor: { select: { nome: true } }, whatsapp: { select: { numeros: true } } },
+        });
+        if (!cliente) {
+            const todos = await prisma.cliente.findMany({
+                where: { Documento: { not: null } },
+                include: { vendedor: { select: { nome: true } }, whatsapp: { select: { numeros: true } } },
+            });
+            cliente = todos.find(c => normalizarDoc(c.Documento) === docAlvo) || null;
+        }
+        if (!cliente) return { encontrado: false };
+
+        const condicao = cliente.Condicao_de_pagamento
+            ? await prisma.tabelaPreco.findUnique({ where: { id: cliente.Condicao_de_pagamento } })
+            : null;
+
+        return {
+            encontrado: true,
+            cliente: {
+                nome: cliente.Nome,
+                nomeFantasia: cliente.NomeFantasia,
+                documento: cliente.Documento,
+                cidade: cliente.End_Cidade,
+                vendedor: cliente.vendedor?.nome || null,
+                ativo: cliente.Ativo,
+            },
+            diasEntrega: diasLabels(cliente.Dia_de_entrega),
+            diasVenda: diasLabels(cliente.Dia_de_venda),
+            condicaoPagamento: condicao ? { nome: condicao.nomeCondicao, valorMinimo: dec(condicao.valorMinimo) } : null,
+            whatsapps: listaWhatsapps(cliente),
+            telefones: listaTelefones(cliente),
         };
     },
 

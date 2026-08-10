@@ -14,8 +14,11 @@
 // (2026-07-07) Fase 2 (criação de pedido pela IA): congelados/reconhecer-telefone ganha ultimoPedido[]
 // + flag comprado; cliente/historico-pedidos aceita comItens; novos POST congelados/pedido e
 // kitfesta/pedido (caem na fila de aprovação, preço recalculado, idempotencyKey, webhook do Kit
-// Festa desligado). Tudo aditivo — nenhum campo removido/renomeado.
-const VERSAO_API = '1.4.0';
+// Festa desligado). Tudo aditivo — nenhum campo removido/renomeado. · 1.5.0 (2026-08-10) busca e
+// ficha de cliente para o PAINEL da equipe do bot: POST cliente/buscar (razão/fantasia/documento)
+// e POST cliente/ficha (por documento); cadastro ganha lista de WhatsApps (cliente_whatsapps) e
+// os reconhecer-telefone (geral e congelados) passam a casar também por esses números. Tudo aditivo.
+const VERSAO_API = '1.5.0';
 
 const AVISOS = [
     // Exemplo (remover quando o aviso deixar de ser válido):

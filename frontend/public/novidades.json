@@ -1,5 +1,11 @@
 [
   {
+    "slug": "whatsapps-cliente",
+    "titulo": "WhatsApps no cadastro do cliente",
+    "resumo": "A ficha do cliente ganhou a lista 'WhatsApps do cliente' (card Contato/Fiscal, e também no cadastro novo): cadastre os números do sócio, do comprador, do caixa. Qualquer um deles que mandar mensagem para a empresa já é reconhecido pelo atendimento automático como aquele cliente — sem vincular nada na mão.",
+    "data": "2026-08-10"
+  },
+  {
     "slug": "nf-devolucao-caixa",
     "titulo": "NF de devolução impressa no Caixa",
     "resumo": "Registrou a devolução no Caixa? A NF-e de devolução sai sozinha na SEFAZ (devolução parcial ou total) e o botão verde '🧾 NF dev.' aparece na própria linha da entrega — clique, imprima a DANFE e arquive junto com o movimento do dia. Se a SEFAZ estiver fora, a devolução fica registrada e a nota pode ser emitida depois em Pedidos → Devoluções.",

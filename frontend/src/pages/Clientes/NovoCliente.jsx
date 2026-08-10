@@ -5,6 +5,7 @@ import vendedorService from '../../services/vendedorService';
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, UserPlus, Search, Building, MapPin, Mail, Save, X, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
+import CampoWhatsapps from '../../components/CampoWhatsapps';
 import ModalPontoGps from '../../components/ModalPontoGps';
 import { mascaraDoc, normalizarDoc, validarDoc } from '../../utils/documento';
 
@@ -18,6 +19,7 @@ const CAMPOS_VAZIOS = {
     Email: '',
     Telefone_Celular: '',
     Telefone: '',
+    Whatsapps: [],
     End_Logradouro: '',
     End_Numero: '',
     End_Complemento: '',
@@ -315,6 +317,11 @@ const NovoCliente = () => {
                             <input type="tel" inputMode="numeric" maxLength={10} className={inputCls} placeholder="4733334444"
                                 value={form.Telefone} onChange={(e) => set('Telefone', e.target.value.replace(/\D/g, ''))} />
                         </Campo>
+                        <div className="md:col-span-3">
+                            <Campo label="WhatsApps do cliente">
+                                <CampoWhatsapps numeros={form.Whatsapps} onChange={(nums) => set('Whatsapps', nums)} inputClassName={`${inputCls} flex-1`} />
+                            </Campo>
+                        </div>
                     </div>
                 </SectionCard>
 

@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: WhatsApps no cadastro do cliente — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito — preview compacto) -->
+<meta property="og:title" content="💬 Novidade no Hardt App: WhatsApps no cadastro do cliente">
+<meta property="og:description" content="Cadastre os WhatsApps do cliente (sócio, comprador, caixa...) na ficha dele — e o atendimento automático da empresa reconhece o cliente na hora, por qualquer um desses números.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 34px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--mint);
+    color: var(--primary-dark);
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 999px;
+  }
+  .chip .x { color: #8aa79c; font-weight: 800; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-busca { display: flex; align-items: center; gap: 8px; }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>WhatsApps do cliente<br>direto no cadastro</h1>
+    <p>Agora a ficha do cliente tem uma lista de números de WhatsApp — do sócio, do comprador, do caixa. Qualquer um desses números que mandar mensagem para a empresa já é reconhecido pelo atendimento automático como sendo aquele cliente.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock da tela flutuando -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">💬</span>
+      <div>
+        <small>Clientes · Ficha do cliente</small>
+        <strong>WhatsApps do cliente</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-label">Contato / Fiscal</div>
+      <div class="chips">
+        <span class="chip">💬 47999991234 <span class="x">✕</span></span>
+        <span class="chip">💬 47988885678 <span class="x">✕</span></span>
+        <span class="chip">💬 47997770000 <span class="x">✕</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">💬</span>
+      <strong>Campo novo: "WhatsApps do cliente"</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Na ficha do cliente (card <b>Contato / Fiscal</b>) e no <b>cadastro novo</b> (seção Contato) agora existe a lista <b>"WhatsApps do cliente"</b>.</li>
+        <li>É além do celular e do fixo que já existiam: dá para cadastrar <b>vários números</b> — o do sócio, o do comprador, o do caixa da loja.</li>
+        <li>Digite o número com DDD e toque em <b>Adicionar</b>. Cada número vira um "chip" verde, com ✕ para remover.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🤖</span>
+      <strong>Para que serve: o atendimento automático reconhece o cliente</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quando alguém manda mensagem para o WhatsApp da empresa, o atendimento automático tenta descobrir <b>qual cliente é</b> pelo número.</li>
+        <li>Antes, só reconhecia pelo celular/fixo do cadastro. <b>Agora reconhece por qualquer número da lista de WhatsApps também.</b></li>
+        <li>Resultado: o comprador da panificadora manda mensagem do número dele e o atendimento já sabe que é aquele cliente — com os dias de entrega, a condição e o histórico certos. Sem ninguém precisar vincular na mão.</li>
+        <li>A equipe de atendimento também ganhou uma <b>busca de cliente por nome ou CNPJ</b> no painel do WhatsApp, para vincular conversas ao cadastro certo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🎯</span>
+      <strong>O que a equipe precisa fazer</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quando descobrir que o cliente usa <b>outro número</b> de WhatsApp (além do que está no cadastro), <b>cadastre na lista</b> — leva 10 segundos e melhora o atendimento automático para sempre.</li>
+        <li>Vale especialmente para clientes onde <b>quem pede não é o dono</b>: comprador, gerente, caixa.</li>
+        <li>Número errado? É só tocar no ✕ do chip e salvar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1: ficha do cliente -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Ficha do cliente — card Contato / Fiscal</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">✉️ Contato / Fiscal</div>
+        <div class="app-card-body">
+          <div class="app-input"><small>Celular</small>47999126739</div>
+          <div class="app-input"><small>Telefone fixo</small>4733334444</div>
+          <div class="app-input" style="margin-bottom:6px;"><small>WhatsApps do cliente<span class="pin">1</span></small>
+            <div class="app-busca" style="margin-top:4px;">
+              <div class="app-input" style="margin-bottom:0;color:#9aa5a0;">47999998888</div>
+              <span class="app-btn claro">➕ Adicionar<span class="pin">2</span></span>
+            </div>
+            <div class="chips" style="margin-top:8px;">
+              <span class="chip">💬 47999991234 <span class="x">✕</span><span class="pin">3</span></span>
+              <span class="chip">💬 47988885678 <span class="x">✕</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:right;"><span class="app-btn">💾 Salvar Alterações<span class="pin">4</span></span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O campo novo fica no card <b>Contato / Fiscal</b>, ao lado do telefone fixo.</span></div>
+      <div><span class="pin">2</span><span><b>Digite o número com DDD</b> (só números) e toque em <b>Adicionar</b>. Dá para adicionar quantos precisar.</span></div>
+      <div><span class="pin">3</span><span>Cada número vira um <b>chip verde</b>. Errou? Toque no <b>✕</b> para remover.</span></div>
+      <div><span class="pin">4</span><span>Só grava ao tocar em <b>Salvar Alterações</b> — o reconhecimento automático passa a valer na hora.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: novo cadastro -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Novo Cadastro — seção Contato</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">✉️ Contato</div>
+        <div class="app-card-body">
+          <div class="app-input"><small>E-mail</small>cliente@email.com</div>
+          <div class="app-input"><small>Celular / WhatsApp</small>47999998888</div>
+          <div class="app-input" style="margin-bottom:0;"><small>WhatsApps do cliente<span class="pin">1</span></small>
+            <div class="chips" style="margin-top:6px;">
+              <span class="chip">💬 47991112222 <span class="x">✕</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>No <b>cadastro novo</b> o campo já aparece na seção <b>Contato</b> — dá para cadastrar o cliente já com todos os WhatsApps dele.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PARA COMEÇAR ══════════ -->
+  <div class="sec-label">Para cadastrar um WhatsApp</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra <b>Clientes</b>, entre na ficha do cliente e vá ao card <b>Contato / Fiscal</b>.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Em <b>"WhatsApps do cliente"</b>, digite o número com DDD e toque em <b>Adicionar</b>.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Toque em <b>Salvar Alterações</b>. Pronto — o atendimento automático já reconhece esse número. ✅</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece o campo novo.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const aberto = acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  }
+</script>
+
+</body>
+</html>

@@ -15,6 +15,7 @@ Cadastro de fornecedores da empresa, usado pelo módulo de Contas a Pagar. Desde
 ## O que dá pra fazer aqui
 
 - Ver e buscar fornecedores (por nome, nome fantasia ou CNPJ/CPF). A busca por CNPJ/CPF funciona com ou sem pontuação (tanto faz digitar `08.766.459/0001-02` ou `08766459000102`).
+- **A busca da tela de Clientes também encontra fornecedores**: se alguém procurar um cadastro na aba Clientes e ele existir só como fornecedor (ex.: importado do Conta Azul), aparece um bloco "Encontrado nos Fornecedores" embaixo da lista, com atalho que abre esta aba já filtrada. Só aparece para quem tem a permissão `Pode_Acessar_Fornecedores`.
 - Cadastrar fornecedor: CNPJ/CPF, razão social, nome fantasia, inscrição estadual, e-mail, telefone, cidade/UF e observações. O campo CNPJ/CPF **já aplica a máscara enquanto você digita** e **confere o dígito verificador** — se o número estiver errado, o app avisa e não salva. Aceita o **CNPJ alfanumérico novo** (com letras, ex.: `12.ABC.345/01DE-35`) que a Receita passa a emitir a partir de 07/2026.
 - Editar um fornecedor
 - **Importar do Conta Azul**: busca todos os cadastros com perfil "Fornecedor" no CA e cria/atualiza aqui (casa por vínculo com o CA ou, se não houver, pelo CNPJ/CPF). Mostra quantos foram importados e quantos atualizados

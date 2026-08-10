@@ -115,6 +115,7 @@ Aba padrão ao abrir o detalhe. Contém tudo que é editável pelo time comercia
 - Inscrição Estadual (em SC: 9 dígitos) + link para consultar Sintegra SC
 - Indicador de IE (Contribuinte, Não Contribuinte, Isento)
 - Telefone fixo (editável)
+- **WhatsApps do cliente** (lista): números de WhatsApp extras vinculados ao cadastro (sócio, comprador, caixa...), além do celular/fixo. Digita-se o número com DDD e clica em "Adicionar"; cada número vira um chip com X para remover. O **atendimento automático da empresa (bot de WhatsApp)** reconhece o cliente por qualquer número desta lista — quando um desses números manda mensagem, o painel de atendimento já mostra a ficha certa do cliente sem ninguém precisar vincular na mão. O mesmo campo existe no cadastro novo (seção Contato)
 
 **Observações Gerais**
 - Campo de texto livre com anotações sobre o cliente

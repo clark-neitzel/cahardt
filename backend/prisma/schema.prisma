@@ -223,6 +223,9 @@ model Cliente {
   // Dados fiscais em tabela separada (a tabela `clientes` atingiu o limite de colunas do Postgres)
   fiscal ClienteFiscal?
 
+  // WhatsApps vinculados ao cadastro (tabela lateral — mesma razão da ClienteFiscal)
+  whatsapp ClienteWhatsapp?
+
   // GPS: selo de confiança, cliente balcão, auditoria e sinais (tabelas laterais)
   gps       ClienteGps?
   gpsLogs   ClienteGpsLog[]
@@ -255,6 +258,17 @@ model ClienteFiscal {
   cliente           Cliente @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
 
   @@map("cliente_fiscal")
+}
+
+// WhatsApps do cliente (lista) em tabela lateral — a `clientes` está no teto de colunas do
+// Postgres, mesma razão da ClienteFiscal. Usados pelo painel do bot de WhatsApp (Antigravity)
+// para vincular a conversa ao cadastro: reconhecer-telefone também casa por esses números.
+model ClienteWhatsapp {
+  clienteUuid String   @id @map("cliente_uuid")
+  numeros     String[] @default([])
+  cliente     Cliente  @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
+
+  @@map("cliente_whatsapps")
 }
 
 // Dados de GPS do cliente em tabela lateral (a tabela `clientes` está no teto de

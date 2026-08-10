@@ -4,7 +4,8 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import clienteService from '../../services/clienteService';
 import vendedorService from '../../services/vendedorService';
 import tabelaPrecoService from '../../services/tabelaPrecoService';
-import { Search, MapPin, Phone, User, Filter, Settings, X, Save, AlertTriangle, MessageCircle, AlertCircle, UserPlus } from 'lucide-react';
+import fornecedorService from '../../services/fornecedorService';
+import { Search, MapPin, Phone, User, Filter, Settings, X, Save, AlertTriangle, MessageCircle, AlertCircle, UserPlus, Building2, ArrowRight } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -16,6 +17,7 @@ const ListaClientes = () => {
     const { user } = useAuth();
     const permsUser = user?.permissoes || {};
     const podeCadastrar = permsUser.admin || permsUser.clientes?.edit;
+    const podeVerFornecedores = permsUser.admin || permsUser.Pode_Acessar_Fornecedores;
 
     const getSaved = (key, defaultVal) => {
         const saved = localStorage.getItem(`clientesFiltro_${key}`);
@@ -149,6 +151,25 @@ const ListaClientes = () => {
         const t = setTimeout(fetchClientes, 300);
         return () => clearTimeout(t);
     }, [page, limit, search, activeTab, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil]);
+
+    // Busca também na tabela de fornecedores (cadastros que só existem como fornecedor —
+    // ex.: importados do Conta Azul — não aparecem na lista de clientes; sem isso o usuário
+    // procura, não acha, tenta cadastrar de novo e é barrado pela duplicidade).
+    const [fornecedoresExtras, setFornecedoresExtras] = useState([]);
+    useEffect(() => {
+        if (!podeVerFornecedores || search.trim().length < 2) { setFornecedoresExtras([]); return; }
+        let cancelado = false;
+        const t = setTimeout(async () => {
+            try {
+                const lista = await fornecedorService.listar(search.trim());
+                if (!cancelado) setFornecedoresExtras(Array.isArray(lista) ? lista : []);
+            } catch { if (!cancelado) setFornecedoresExtras([]); }
+        }, 400);
+        return () => { cancelado = true; clearTimeout(t); };
+    }, [search, podeVerFornecedores]);
+    // Se o mesmo documento já aparece como cliente na página, não repete no bloco de fornecedores
+    const docsClientes = new Set(clientes.map(c => c.Documento).filter(Boolean));
+    const fornecedoresParaMostrar = fornecedoresExtras.filter(f => !f.cnpjCpf || !docsClientes.has(f.cnpjCpf));
 
     const handleSearch = (e) => { setSearch(e.target.value); setPage(1); };
 
@@ -711,6 +732,41 @@ const ListaClientes = () => {
                     </div>
                 ))}
             </div>
+
+            {/* Fornecedores que batem com a busca (cadastro só de fornecedor não entra na lista acima) */}
+            {search.trim().length >= 2 && fornecedoresParaMostrar.length > 0 && (
+                <div className="mt-3 bg-white rounded-xl border border-gray-200 shadow-sm">
+                    <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-100">
+                        <Building2 className="h-4 w-4 text-gray-500" />
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Encontrado nos Fornecedores</span>
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                        {fornecedoresParaMostrar.slice(0, 5).map(f => (
+                            <button
+                                key={f.id}
+                                onClick={() => navigate(`/fornecedores?busca=${encodeURIComponent(search.trim())}`)}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-gray-50 min-h-[44px]"
+                            >
+                                <div className="flex-1 min-w-0">
+                                    <div className="text-sm font-semibold text-gray-900 truncate">{f.nomeFantasia || f.razaoSocial}</div>
+                                    <div className="text-xs text-gray-500 truncate">
+                                        {f.nomeFantasia && f.nomeFantasia !== f.razaoSocial ? `${f.razaoSocial} · ` : ''}
+                                        {f.cnpjCpf || 'Sem documento'}{f.cidade ? ` · ${f.cidade}` : ''}
+                                    </div>
+                                </div>
+                                <span className={`shrink-0 px-2 py-1 text-xs font-semibold rounded-full ${f.ativo ? 'bg-gray-100 text-gray-700' : 'bg-red-100 text-red-700'}`}>
+                                    {f.ativo ? 'Fornecedor' : 'Fornecedor inativo'}
+                                </span>
+                                <ArrowRight className="h-4 w-4 text-gray-400 shrink-0" />
+                            </button>
+                        ))}
+                    </div>
+                    <div className="px-4 py-2 border-t border-gray-100 text-[11px] text-gray-500">
+                        Este cadastro é de fornecedor — toque para abrir na aba Fornecedores.
+                        {fornecedoresParaMostrar.length > 5 ? ` (+${fornecedoresParaMostrar.length - 5} outros)` : ''}
+                    </div>
+                </div>
+            )}
 
             {/* Paginação */}
             <div className="flex justify-between items-center mt-3 gap-3 px-1">

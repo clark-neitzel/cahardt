@@ -15,6 +15,7 @@ import { API_URL } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft, MapPin, Phone, Mail, Calendar, FileText, Save, X, User, Building, DollarSign, MessageCircle, Clock, ClipboardList, ShoppingCart, Package, Sparkles, RefreshCw, Image, UserPlus, Search, ExternalLink, Truck, CreditCard, AlertTriangle } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
+import CampoWhatsapps from '../../components/CampoWhatsapps';
 import { normalizarDoc, formatarDoc, mascaraDoc, validarDoc } from '../../utils/documento'; // inclui CNPJ ALFANUMÉRICO
 import toast from 'react-hot-toast';
 import gpsClientesService from '../../services/gpsClientesService';
@@ -128,6 +129,7 @@ const DetalheCliente = () => {
         // Cadastro (contato/fiscal)
         Email: '',
         Telefone_Celular: '',
+        Whatsapps: [],
         Inscricao_Estadual: '',
         Indicador_Inscricao_Estadual: '',
         // Cadastro (identificação/endereço) — editável 100% pelo app
@@ -232,6 +234,7 @@ const DetalheCliente = () => {
                 recebeAvisoPedido: clienteData.recebeAvisoPedido !== undefined ? clienteData.recebeAvisoPedido : true,
                 Email: clienteData.Email || '',
                 Telefone_Celular: clienteData.Telefone_Celular || '',
+                Whatsapps: clienteData.Whatsapps || [],
                 Inscricao_Estadual: clienteData.Inscricao_Estadual || '',
                 Indicador_Inscricao_Estadual: clienteData.Indicador_Inscricao_Estadual || '',
                 Nome: clienteData.Nome || '',
@@ -1205,7 +1208,7 @@ const DetalheCliente = () => {
                             </SelectBusca>
                         </div>
                     </div>
-                    {/* Telefone fixo */}
+                    {/* Telefone fixo + WhatsApps vinculados */}
                     <div className="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Telefone Fixo</label>
@@ -1214,6 +1217,14 @@ const DetalheCliente = () => {
                                 placeholder="4733334444"
                                 value={formData.Telefone}
                                 onChange={(e) => setFormData({ ...formData, Telefone: e.target.value.replace(/\D/g, '') })}
+                            />
+                        </div>
+                        <div className="sm:col-span-2">
+                            <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">WhatsApps do cliente</label>
+                            <CampoWhatsapps
+                                numeros={formData.Whatsapps}
+                                onChange={(nums) => setFormData({ ...formData, Whatsapps: nums })}
+                                inputClassName="block w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             />
                         </div>
                     </div>

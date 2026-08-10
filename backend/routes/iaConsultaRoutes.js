@@ -68,6 +68,12 @@ v1.post('/cliente/reconhecer-telefone', iaClienteCtrl.reconhecerTelefone);
 v1.post('/cliente/historico-pedidos', iaClienteCtrl.historicoPedidos);
 v1.post('/cliente/criar-lead', iaClienteCtrl.criarLead);
 
+// Cliente — busca/ficha para o PAINEL da equipe do bot (v1.5.0). NÃO entram nas tools da IA:
+// quem chama é o backend do bot a partir da tela logada da equipe, para vincular a conversa ao
+// cadastro. A IA continua identificando cliente só pelo telefone autenticado (regra acima).
+v1.post('/cliente/buscar', iaClienteCtrl.buscar);
+v1.post('/cliente/ficha', iaClienteCtrl.ficha);
+
 router.use('/v1', v1);
 
 module.exports = router;

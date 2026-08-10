@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import fornecedorService from '../../services/fornecedorService';
 import { Building2, X, Download, Loader2 } from 'lucide-react';
@@ -37,10 +38,14 @@ const FornecedoresPage = () => {
     const { hasPermission } = useAuth();
     const podeEditar = hasPermission('Pode_Editar_Fornecedores');
 
+    // ?busca= na URL chega da tela de Clientes (atalho "Encontrado nos Fornecedores")
+    const [searchParams] = useSearchParams();
+    const buscaInicial = searchParams.get('busca') || '';
+
     const [fornecedores, setFornecedores] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [busca, setBusca] = useState('');
-    const [buscaInput, setBuscaInput] = useState('');
+    const [busca, setBusca] = useState(buscaInicial);
+    const [buscaInput, setBuscaInput] = useState(buscaInicial);
     const [importando, setImportando] = useState(false);
     const [modal, setModal] = useState(null); // { fornecedor: null } = novo | { fornecedor }
 

@@ -3,6 +3,20 @@ const prisma = require('../config/database');
 const consultaCnpjService = require('../services/consultaCnpjService');
 const { normalizarDoc, validarDoc, ehCnpj } = require('../utils/documento');
 
+// WhatsApps vinculados ao cadastro (tabela lateral cliente_whatsapps — usados pelo painel do
+// bot de WhatsApp para achar o cliente). Normaliza para só dígitos, sem vazios nem repetidos.
+// Devolve null quando o campo não veio no body (= não mexer no que está salvo).
+function normalizarWhatsapps(lista, erros) {
+    if (!Array.isArray(lista)) return null;
+    const nums = [...new Set(lista.map(v => String(v ?? '').replace(/\D/g, '')).filter(Boolean))];
+    for (const n of nums) {
+        if (n.length < 10 || n.length > 13) {
+            erros.push(`WhatsApp "${n}" inválido — informe DDD + número (10 a 13 dígitos)`);
+        }
+    }
+    return nums;
+}
+
 // IE varia por UF; em SC são 9 dígitos. Devolve mensagem de erro ou null se ok.
 function validarIe(ie, uf) {
     if (!ie) return null;
@@ -287,6 +301,7 @@ const clienteController = {
                 include: {
                     arquivos: true,
                     fiscal: true,
+                    whatsapp: true,
                     indicacao: {
                         select: { UUID: true, Nome: true, NomeFantasia: true }
                     }
@@ -299,6 +314,8 @@ const clienteController = {
 
             // Achata a IE (tabela separada) para o front continuar usando cliente.Inscricao_Estadual
             cliente.Inscricao_Estadual = cliente.fiscal?.inscricaoEstadual ?? null;
+            // Achata os WhatsApps vinculados (tabela separada) — front usa cliente.Whatsapps
+            cliente.Whatsapps = cliente.whatsapp?.numeros ?? [];
 
             // Este cadastro também é fornecedor? (tabela fornecedores, por documento)
             const docNorm = normalizarDoc(cliente.Documento);
@@ -358,6 +375,7 @@ const clienteController = {
             const ieNorm = soDigitos(b.Inscricao_Estadual);
             const erroIe = validarIe(ieNorm, ufNorm);
             if (erroIe) erros.push(erroIe);
+            const whatsappsNorm = normalizarWhatsapps(b.Whatsapps, erros);
             if (erros.length) return res.status(400).json({ error: erros.join('; ') });
 
             const criaCliente = perfil === 'CLIENTE' || perfil === 'AMBOS';
@@ -485,6 +503,13 @@ const clienteController = {
                 });
             }
 
+            if (whatsappsNorm && whatsappsNorm.length) {
+                await prisma.clienteWhatsapp.create({
+                    data: { clienteUuid: cliente.UUID, numeros: whatsappsNorm }
+                });
+            }
+            cliente.Whatsapps = whatsappsNorm || [];
+
             // "Os dois": espelha também na tabela de fornecedores (best-effort, não derruba a criação)
             if (criaFornecedor) {
                 try { await upsertFornecedorDoCadastro(dadosComuns); }
@@ -524,6 +549,7 @@ const clienteController = {
                 // Cadastro (contato/fiscal)
                 Email,
                 Telefone_Celular,
+                Whatsapps,
                 Inscricao_Estadual,
                 Indicador_Inscricao_Estadual,
                 // Cadastro (identificação/endereço)
@@ -592,6 +618,7 @@ const clienteController = {
                 const erroIe = validarIe(ieNorm, ufFinal);
                 if (erroIe) erros.push(erroIe);
             }
+            const whatsappsNorm = normalizarWhatsapps(Whatsapps, erros);
             if (erros.length) return res.status(400).json({ error: erros.join('; ') });
 
             const cadastro = podeEditarCadastro ? {
@@ -678,6 +705,16 @@ const clienteController = {
                     ...cadastro
                 }
             });
+
+            // WhatsApps vinculados em tabela separada (cliente_whatsapps), fora da tabela clientes
+            if (podeEditarCadastro && whatsappsNorm) {
+                await prisma.clienteWhatsapp.upsert({
+                    where: { clienteUuid: uuid },
+                    create: { clienteUuid: uuid, numeros: whatsappsNorm },
+                    update: { numeros: whatsappsNorm }
+                });
+                cliente.Whatsapps = whatsappsNorm;
+            }
 
             // Número da IE em tabela separada (cliente_fiscal), fora da tabela clientes
             if (podeEditarCadastro && ieNorm !== undefined) {
