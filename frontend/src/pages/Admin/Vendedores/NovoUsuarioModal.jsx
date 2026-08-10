@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Search, UserPlus, Link2, Loader2, CheckCircle } from 'lucide-react';
+import { X, Search, UserPlus, Link2, Loader2, CheckCircle, Building2 } from 'lucide-react';
 import clienteService from '../../../services/clienteService';
 import vendedorService from '../../../services/vendedorService';
+import fornecedorService from '../../../services/fornecedorService';
 import toast from 'react-hot-toast';
 
 // Modal de 2 passos: busca a pessoa no cadastro de clientes (futuro cadastro de pessoas)
@@ -12,6 +13,7 @@ const NovoUsuarioModal = ({ modo = 'criar', vendedor = null, onClose, onDone }) 
     const navigate = useNavigate();
     const [busca, setBusca] = useState('');
     const [resultados, setResultados] = useState([]);
+    const [fornecedores, setFornecedores] = useState([]);
     const [buscando, setBuscando] = useState(false);
     const [pessoa, setPessoa] = useState(null); // cadastro selecionado
     const [form, setForm] = useState({ nome: '', email: '', telefone: '', login: '', senha: '' });
@@ -25,17 +27,24 @@ const NovoUsuarioModal = ({ modo = 'criar', vendedor = null, onClose, onDone }) 
     useEffect(() => {
         clearTimeout(debounceRef.current);
         const termo = busca.trim();
-        if (termo.length < 2) { setResultados([]); setBuscando(false); return; }
+        if (termo.length < 2) { setResultados([]); setFornecedores([]); setBuscando(false); return; }
         setBuscando(true);
         debounceRef.current = setTimeout(async () => {
+            let pessoas = [];
             try {
                 const r = await clienteService.buscarGlobal(termo, 15);
-                setResultados(r.data || []);
-            } catch {
-                setResultados([]);
-            } finally {
-                setBuscando(false);
-            }
+                pessoas = r.data || [];
+            } catch { pessoas = []; }
+            // Fornecedor importado do CA pode não ter cadastro de pessoa ainda — busca também lá.
+            let forns = [];
+            try {
+                const lista = await fornecedorService.listar(termo);
+                const docs = new Set(pessoas.map(p => p.Documento).filter(Boolean));
+                forns = (Array.isArray(lista) ? lista : []).filter(f => !f.cnpjCpf || !docs.has(f.cnpjCpf));
+            } catch { forns = []; } // sem permissão de fornecedores: segue só com pessoas
+            setResultados(pessoas);
+            setFornecedores(forns);
+            setBuscando(false);
         }, 300);
         return () => clearTimeout(debounceRef.current);
     }, [busca]);
@@ -71,6 +80,19 @@ const NovoUsuarioModal = ({ modo = 'criar', vendedor = null, onClose, onDone }) 
             login: (c.Nome || '').split(' ')[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''),
             senha: ''
         });
+    };
+
+    // Fornecedor sem cadastro de pessoa: o backend cria (desativado p/ vendas) e o fluxo segue igual
+    const selecionarFornecedor = async (f) => {
+        setSalvando(true);
+        try {
+            const { cliente } = await fornecedorService.criarCadastroPessoa(f.id);
+            await selecionar(cliente);
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao preparar o cadastro do fornecedor');
+        } finally {
+            setSalvando(false);
+        }
     };
 
     const criar = async () => {
@@ -142,7 +164,7 @@ const NovoUsuarioModal = ({ modo = 'criar', vendedor = null, onClose, onDone }) 
                                 </div>
                             ) : busca.trim().length < 2 ? (
                                 <div className="p-4 text-center text-sm text-gray-400">Digite pelo menos 2 letras para buscar.</div>
-                            ) : resultados.length === 0 ? (
+                            ) : resultados.length === 0 && fornecedores.length === 0 ? (
                                 <div className="p-4 text-center text-sm text-gray-500">Ninguém encontrado com “{busca.trim()}”.</div>
                             ) : resultados.map(c => (
                                 <button
@@ -160,6 +182,25 @@ const NovoUsuarioModal = ({ modo = 'criar', vendedor = null, onClose, onDone }) 
                                             {formatarDoc(c.Documento)}{c.End_Cidade ? ` · ${c.End_Cidade}${c.End_Estado ? ` · ${c.End_Estado}` : ''}` : ''}
                                         </div>
                                     </div>
+                                </button>
+                            ))}
+                            {!buscando && busca.trim().length >= 2 && fornecedores.map(f => (
+                                <button
+                                    key={f.id}
+                                    onClick={() => selecionarFornecedor(f)}
+                                    disabled={salvando}
+                                    className="w-full flex items-center gap-3 px-4 py-3 text-left border-b border-gray-100 last:border-b-0 hover:bg-mint/30 disabled:opacity-50 min-h-[44px]"
+                                >
+                                    <div className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center">
+                                        <Building2 className="h-4 w-4" />
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="text-sm font-semibold text-gray-900 truncate">{f.nomeFantasia || f.razaoSocial}</div>
+                                        <div className="text-xs text-gray-500 truncate">
+                                            {formatarDoc(f.cnpjCpf)}{f.cidade ? ` · ${f.cidade}` : ''}
+                                        </div>
+                                    </div>
+                                    <span className="shrink-0 px-2 py-1 text-[11px] font-semibold rounded-full bg-gray-100 text-gray-700">Fornecedor</span>
                                 </button>
                             ))}
                             <div className="flex items-center justify-between gap-2 px-4 py-3 bg-secondary/60 border-t border-gray-100">

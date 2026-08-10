@@ -209,6 +209,48 @@ router.post('/:id/excluir', verificarAuth, checkEscrita, async (req, res) => {
     }
 });
 
+// ── POST /:id/cadastro-pessoa — cria (ou devolve) o cadastro de pessoa deste fornecedor ──
+// Usado pelo "Novo Usuário"/"Vincular cadastro" da tela de Usuários: usuário só se vincula a
+// um cadastro de pessoa (tabela clientes), e fornecedor importado do CA não tem um. Cria a
+// pessoa DESATIVADA para vendas (Ativo=false, perfil FORNECEDOR) — padrão "só fornecedor":
+// não aparece em rota, pedido nem catálogo. Idempotente pelo documento.
+router.post('/:id/cadastro-pessoa', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const fornecedor = await prisma.fornecedor.findUnique({ where: { id: req.params.id } });
+        if (!fornecedor) return res.status(404).json({ error: 'Fornecedor não encontrado.' });
+
+        if (fornecedor.cnpjCpf) {
+            const existente = await prisma.cliente.findUnique({ where: { Documento: fornecedor.cnpjCpf } });
+            if (existente) return res.json({ cliente: existente, jaExistia: true });
+        }
+
+        const [{ max }] = await prisma.$queryRaw`
+            SELECT COALESCE(MAX(NULLIF(regexp_replace("Codigo", '[^0-9]', '', 'g'), '')::bigint), 0) AS max
+            FROM clientes`;
+
+        const cliente = await prisma.cliente.create({
+            data: {
+                Codigo: String(Number(max) + 1),
+                Nome: fornecedor.razaoSocial,
+                NomeFantasia: fornecedor.nomeFantasia || null,
+                Documento: fornecedor.cnpjCpf || null,
+                Tipo_Pessoa: fornecedor.cnpjCpf ? (fornecedor.cnpjCpf.length === 11 ? 'FISICA' : 'JURIDICA') : null,
+                Email: fornecedor.email || null,
+                Telefone: fornecedor.telefone || null,
+                End_Cidade: fornecedor.cidade || null,
+                End_Estado: fornecedor.uf || null,
+                Ativo: false, // só fornecedor: fora das telas de venda
+                Perfis: JSON.stringify([{ perfil: 'FORNECEDOR' }]),
+                Data_Criacao: new Date()
+            }
+        });
+        res.status(201).json({ cliente });
+    } catch (error) {
+        console.error('Erro ao criar cadastro de pessoa do fornecedor:', error);
+        res.status(500).json({ error: 'Erro ao criar o cadastro de pessoa do fornecedor.' });
+    }
+});
+
 // ── POST /importar-ca — importa fornecedores do Conta Azul (paginado, upsert) ──
 router.post('/importar-ca', verificarAuth, checkEscrita, async (req, res) => {
     try {

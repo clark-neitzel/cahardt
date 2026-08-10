@@ -35,14 +35,14 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 
 ### Criar um usuário novo (só admin)
 1. Clique em **"+ Novo Usuário"** no topo da tela
-2. **Passo 1 — buscar a pessoa**: digite o nome (ou documento/código) — a busca é no cadastro de clientes. Se a pessoa não existir ainda, use "Cadastrar nova pessoa" (abre o Novo Cadastro de clientes) e volte aqui depois
+2. **Passo 1 — buscar a pessoa**: digite o nome (ou documento/código) — a busca é no cadastro de clientes **e também nos fornecedores**. Fornecedor aparece com o selo cinza "Fornecedor"; ao selecionar, o app cria automaticamente o cadastro de pessoa dele (desativado para vendas — não entra em rota, pedido nem catálogo) e segue o fluxo normal. Se a pessoa não existir em lugar nenhum, use "Cadastrar nova pessoa" (abre o Novo Cadastro de clientes) e volte aqui depois
 3. **Passo 2 — dados de acesso**: nome completo, e-mail e telefone vêm do cadastro (dá pra ajustar); defina **login** e **senha** (mínimo 4 caracteres)
 4. Clique em "Criar usuário" — o painel de **permissões abre sozinho** para configurar os acessos
 5. O usuário já nasce ativo e vinculado ao cadastro selecionado
 
 ### Vincular um usuário antigo ao cadastro
 1. Na linha do usuário, sob o nome, clique em **"Vincular cadastro"** (aparece só para quem ainda não tem vínculo)
-2. Busque e selecione a pessoa no cadastro — o vínculo é salvo na hora
+2. Busque e selecione a pessoa no cadastro — o vínculo é salvo na hora. A busca também encontra **fornecedores** (selo cinza): ao selecionar um, o app cria o cadastro de pessoa dele (desativado para vendas) e vincula em seguida
 3. Um cadastro só pode estar vinculado a um usuário (o sistema avisa se já estiver em uso)
 
 ### Editar dados de um vendedor

@@ -17,6 +17,12 @@ const fornecedorService = {
         const response = await api.post('/fornecedores/importar-ca');
         return response.data;
     },
+    // Cria (ou devolve, se já existir pelo documento) o cadastro de pessoa deste fornecedor —
+    // usado pelo Novo Usuário/Vincular cadastro. Retorna { cliente, jaExistia? }.
+    criarCadastroPessoa: async (id) => {
+        const response = await api.post(`/fornecedores/${id}/cadastro-pessoa`);
+        return response.data;
+    },
     // Exclui um fornecedor. Se tiver despesas/notas ligadas, passe mesclarComId (destino, mesmo CNPJ).
     excluir: async (id, mesclarComId) => {
         const response = await api.post(`/fornecedores/${id}/excluir`, mesclarComId ? { mesclarComId } : {});
