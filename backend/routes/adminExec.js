@@ -8256,6 +8256,52 @@ router.get('/contabilidade-diag-xml-nnf/:numero', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/contabilidade-diag-receber-filtro?de=YYYY-MM-DD&ate=YYYY-MM-DD
+// Prova dos nove do relatório de Receber: quantas parcelas de contas criadas no
+// período existem, e quantas cada motivo de exclusão esconde (inclusive a
+// armadilha do notIn com situacaoCA NULL).
+router.get('/contabilidade-diag-receber-filtro', async (req, res) => {
+    try {
+        const de = String(req.query.de || '');
+        const ate = String(req.query.ate || '');
+        const ini = new Date(`${de}T00:00:00-03:00`);
+        const fim = new Date(`${ate}T23:59:59.999-03:00`);
+        const baseWhere = { contaReceber: { createdAt: { gte: ini, lte: fim } } };
+        const conta = (extra) => prisma.parcela.count({ where: { ...baseWhere, contaReceber: { ...baseWhere.contaReceber, ...extra } } });
+        const [total, semPedido, bonificacao, excluido, canceladoCA, situacaoNull] = await Promise.all([
+            conta({}),
+            conta({ pedidoId: null }),
+            conta({ pedido: { bonificacao: true } }),
+            conta({ pedido: { statusEnvio: 'EXCLUIDO' } }),
+            conta({ pedido: { situacaoCA: { in: ['CANCELADO', 'EXCLUIDO'] } } }),
+            conta({ pedido: { situacaoCA: null } }),
+        ]);
+        // como o relatório filtra HOJE (pós-correção: null passa)
+        const passamAgora = await prisma.parcela.count({
+            where: {
+                ...baseWhere,
+                contaReceber: {
+                    ...baseWhere.contaReceber,
+                    OR: [
+                        { pedidoId: null },
+                        { pedido: { statusEnvio: { notIn: ['EXCLUIDO'] }, bonificacao: false, OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }] } }
+                    ]
+                }
+            }
+        });
+        res.json({
+            ok: true, periodo: { de, ate },
+            totalParcelasCriadasNoPeriodo: total,
+            escondidasPorMotivo: { bonificacao, pedidoExcluido: excluido, canceladoNoCA: canceladoCA },
+            info: { contasSemPedido: semPedido, pedidosComSituacaoVazia: situacaoNull },
+            aparecemNoRelatorio: passamAgora
+        });
+    } catch (err) {
+        console.error('[contabilidade-diag-receber-filtro]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // POST /api/admin-exec/contabilidade-conciliar-nfe-por-xml
 // PROVA POR EXAUSTÃO: temos TODAS as notas do CA baixadas (backup paginado).
 // Casa os XMLs "órfãos" (nota que nenhum pedido usa) com os pedidos faturados

@@ -59,13 +59,19 @@ const LIMITE_LINHAS = 8000; // trava de sanidade (um mês tem centenas de linhas
 
 // Mesmo filtro de ruído da tela de Contas a Receber (contasReceber.js):
 // esconde conta de pedido excluído/cancelado/bonificação; conta sem pedido passa livre.
+// ⚠️ Prisma deste projeto: `notIn` EXCLUI linhas com o campo NULL. situacaoCA é
+// anulável (pedido nunca sincronizado / faturado local) — sem o OR explícito com
+// null, esses pedidos sumiam do relatório e o mês vinha "faltando linhas".
 const SEM_RUIDO_OR = [
     { pedidoId: null },
     {
         pedido: {
             statusEnvio: { notIn: ['EXCLUIDO'] },
-            situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] },
-            bonificacao: false
+            bonificacao: false,
+            OR: [
+                { situacaoCA: null },
+                { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }
+            ]
         }
     }
 ];

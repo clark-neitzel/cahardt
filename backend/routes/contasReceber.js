@@ -261,13 +261,18 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
 
         // Sempre esconde contas cujo pedido foi excluído/cancelado no CA.
         // pedidoId é nullable (contas ESPECIAL sem pedido vinculado) — aquelas passam livres.
+        // ⚠️ `notIn` do Prisma EXCLUI null: situacaoCA vazia (pedido nunca sincronizado /
+        // faturado local) precisa do OR explícito, senão o pedido some da lista.
         where.OR = [
             { pedidoId: null },
             {
                 pedido: {
                     statusEnvio: { notIn: ['EXCLUIDO'] },
-                    situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] },
-                    bonificacao: false
+                    bonificacao: false,
+                    OR: [
+                        { situacaoCA: null },
+                        { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }
+                    ]
                 }
             }
         ];
