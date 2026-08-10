@@ -124,7 +124,11 @@ async function backupXmlsCA(meses = 24) {
                     backup.erros++;
                     console.error(`[XmlNfe] Backup: falha no período ${backup.periodoAtual}:`, e.message);
                 }
-                fim = new Date(ini.getTime() - 24 * 3600 * 1000);
+                // Janela seguinte COMEÇA no dia inicial desta (sobreposição de 1 dia):
+                // o CA trata data_final como 00:00 — nota emitida no dia da fronteira
+                // depois da meia-noite caía no vão entre janelas (caso NF 84487, 06/07 14:42).
+                // O existsSync torna a sobreposição gratuita.
+                fim = ini;
             }
         } finally {
             backup.rodando = false;
