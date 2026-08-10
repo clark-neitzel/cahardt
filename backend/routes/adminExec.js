@@ -8418,4 +8418,106 @@ router.post('/contabilidade-corrigir-conta-orfa', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/contabilidade-diag-virada-focus — SOMENTE LEITURA
+// Responde duas dúvidas da contabilidade sobre a virada CA → Focus NFe:
+//  1) Qual foi a PRIMEIRA NF-e emitida pelo app (Focus, produção) e existe nota
+//     emitida no CA DEPOIS dela? A numeração é uma sequência única (a Focus
+//     continuou a numeração do CA), então nota do CA com número MAIOR que a
+//     primeira do app = emitida depois do início da Focus.
+//  2) Quais devoluções ATIVAS de pedido com nota estão SEM NF-e de devolução
+//     (nem número do CA, nem nota do app) — ex.: caso do pedido #2374.
+router.get('/contabilidade-diag-virada-focus', async (req, res) => {
+    try {
+        const notasApp = await prisma.notaFiscalApp.findMany({
+            where: { ambiente: 'producao', status: 'AUTORIZADO', numero: { not: null } },
+            select: {
+                tipo: true, numero: true, serie: true, chave: true, criadoEm: true,
+                pedido: { select: { numero: true } }
+            },
+            orderBy: { numero: 'asc' }
+        });
+        const vendasApp = notasApp.filter(n => n.tipo === 'VENDA');
+        const primeiraApp = notasApp[0] || null;
+        const d10 = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
+        const resumoNota = (n) => n && ({
+            numero: n.numero, tipo: n.tipo, pedido: n.pedido?.numero || null, emitidaEm: d10(n.criadoEm)
+        });
+
+        // Notas de VENDA do CA = cache do pedido cuja chave NÃO é de nota do app
+        const chavesApp = new Set(notasApp.map(n => n.chave).filter(Boolean));
+        const pedidosComNota = await prisma.pedido.findMany({
+            where: { nfeChave: { not: null } },
+            select: { numero: true, nfeNumero: true, nfeChave: true, dataVenda: true }
+        });
+        const notasCA = pedidosComNota.filter(p => !chavesApp.has(p.nfeChave));
+        const maxCA = notasCA.reduce((m, p) => (p.nfeNumero > (m?.nfeNumero || 0) ? p : m), null);
+
+        // Devoluções com nota do CA (número digitado na época do CA)
+        const devolucoes = await prisma.devolucao.findMany({
+            select: {
+                id: true, numero: true, status: true, tipo: true, escopo: true,
+                notaDevolucaoCA: true, dataDevolucao: true, valorTotal: true, motivo: true,
+                registradoPor: { select: { nome: true } },
+                pedidoOriginal: { select: { numero: true, especial: true, nfeChave: true } }
+            }
+        });
+        const devCA = devolucoes.filter(d => d.notaDevolucaoCA);
+        const numDevCA = (d) => parseInt(String(d.notaDevolucaoCA).replace(/\D/g, ''), 10) || 0;
+        const maxDevCA = devCA.reduce((m, d) => (numDevCA(d) > (m ? numDevCA(m) : 0) ? d : m), null);
+
+        // Nota do CA emitida DEPOIS da 1ª nota do app? (número maior = depois)
+        const corte = primeiraApp?.numero || null;
+        const violacoesVenda = corte ? notasCA.filter(p => p.nfeNumero != null && p.nfeNumero >= corte) : [];
+        const violacoesDevolucao = corte ? devCA.filter(d => numDevCA(d) >= corte) : [];
+
+        // Devoluções ATIVAS sem NENHUMA nota de devolução (CA ou app)
+        const notasDevApp = await prisma.notaFiscalApp.findMany({
+            where: { tipo: 'DEVOLUCAO' },
+            select: { ref: true, status: true, numero: true, mensagemSefaz: true }
+        });
+        const notaDevPorRef = new Map(notasDevApp.map(n => [n.ref, n]));
+        const semNF = devolucoes
+            .filter(d => d.status === 'ATIVA' && !d.notaDevolucaoCA && !d.pedidoOriginal?.especial && d.tipo !== 'ESPECIAL')
+            .map(d => {
+                const nApp = notaDevPorRef.get(`nfd-p-${d.id}`) || null;
+                return { d, nApp };
+            })
+            .filter(({ nApp }) => !nApp || !['AUTORIZADO', 'PROCESSANDO'].includes(nApp.status))
+            .map(({ d, nApp }) => ({
+                devolucao: d.numero,
+                pedido: d.pedidoOriginal?.numero || null,
+                escopo: d.escopo,
+                valor: Number(d.valorTotal),
+                em: d10(d.dataDevolucao),
+                registradoPor: d.registradoPor?.nome || null,
+                motivo: d.motivo?.slice(0, 80) || null,
+                notaApp: nApp ? { status: nApp.status, erro: nApp.mensagemSefaz?.slice(0, 160) || null } : 'NUNCA_EMITIDA'
+            }));
+
+        res.json({
+            ok: true,
+            focus: {
+                primeiraNotaApp: resumoNota(primeiraApp),
+                primeiraVendaApp: resumoNota(vendasApp[0]),
+                totalNotasApp: notasApp.length,
+                ultimaNotaApp: resumoNota(notasApp[notasApp.length - 1])
+            },
+            contaAzul: {
+                totalNotasVendaCA: notasCA.length,
+                ultimaVendaCA: maxCA ? { numero: maxCA.nfeNumero, pedido: maxCA.numero, dataVenda: d10(maxCA.dataVenda) } : null,
+                totalNotasDevolucaoCA: devCA.length,
+                ultimaDevolucaoCA: maxDevCA ? { numero: numDevCA(maxDevCA), devolucao: maxDevCA.numero, em: d10(maxDevCA.dataDevolucao) } : null
+            },
+            notaCAdepoisDaFocus: {
+                vendas: violacoesVenda.map(p => ({ pedido: p.numero, numeroNota: p.nfeNumero, dataVenda: d10(p.dataVenda) })),
+                devolucoes: violacoesDevolucao.map(d => ({ devolucao: d.numero, numeroNota: numDevCA(d), em: d10(d.dataDevolucao) }))
+            },
+            devolucoesAtivasSemNF: semNF
+        });
+    } catch (err) {
+        console.error('[contabilidade-diag-virada-focus]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
