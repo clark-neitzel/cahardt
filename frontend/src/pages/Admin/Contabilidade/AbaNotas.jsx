@@ -23,6 +23,8 @@ export default function AbaNotas() {
     const [dados, setDados] = useState({ resumo: null, linhas: [] });
     const [loading, setLoading] = useState(false);
     const [erro, setErro] = useState('');
+    const [qtdVisivel, setQtdVisivel] = useState(50); // 50 + Carregar mais (CSV/ZIP saem completos)
+    useEffect(() => { setQtdVisivel(50); }, [dados.linhas]);
 
     const buscar = useCallback(async () => {
         setLoading(true); setErro('');
@@ -141,7 +143,7 @@ export default function AbaNotas() {
                             <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">XML</th>
                         </tr></thead>
                         <tbody className="bg-white divide-y divide-gray-200 text-sm">
-                            {dados.linhas.map((l) => {
+                            {dados.linhas.slice(0, qtdVisivel).map((l) => {
                                 const d = DESTINO_BADGE[l.destino] || { label: l.destino, cls: 'bg-gray-100 text-gray-700' };
                                 return [
                                     <tr key={l.id} className="hover:bg-gray-50">
@@ -189,11 +191,19 @@ export default function AbaNotas() {
                         </tbody>
                     </table>
                 </div>
+                {dados.linhas.length > qtdVisivel && (
+                    <div className="p-4 text-center border-t border-gray-100">
+                        <button onClick={() => setQtdVisivel((q) => q + 50)}
+                            className="px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm">
+                            Carregar mais — mostrando {qtdVisivel} de {dados.linhas.length}
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* Mobile */}
             <div className="md:hidden space-y-3">
-                {dados.linhas.map((l) => {
+                {dados.linhas.slice(0, qtdVisivel).map((l) => {
                     const d = DESTINO_BADGE[l.destino] || { label: l.destino, cls: 'bg-gray-100 text-gray-700' };
                     return (
                         <div key={l.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">

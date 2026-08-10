@@ -146,8 +146,8 @@ export default function ContabilidadePage() {
         visao: 'titulos', documento: 'todos', forma: 'todos', banco: 'todos', status: 'todos', origem: 'todos'
     });
     const [perCriacao, ctlCriacao] = usePeriodoSalvo('contabilidade-receber-criacao', 'mes');
-    const [perVenc, ctlVenc] = usePeriodoSalvo('contabilidade-receber-venc', 'todos');
-    const [perPag, ctlPag] = usePeriodoSalvo('contabilidade-receber-pag', 'todos');
+    const [perVenc, ctlVenc] = usePeriodoSalvo('contabilidade-receber-venc', 'todo');
+    const [perPag, ctlPag] = usePeriodoSalvo('contabilidade-receber-pag', 'todo');
     const [cliente, setCliente] = useState(''); // busca livre: não persiste (regra do projeto)
 
     // ── Colunas (escolha + ordem salvas — o gap do Relatório de Vendas, corrigido aqui) ──
@@ -165,6 +165,9 @@ export default function ContabilidadePage() {
     const [dados, setDados] = useState({ resumo: null, linhas: [], bancos: [] });
     const [loading, setLoading] = useState(false);
     const [erro, setErro] = useState('');
+    // Padrão do sistema: renderizar 50 linhas + "Carregar mais" (o CSV/impressão saem completos)
+    const [qtdVisivel, setQtdVisivel] = useState(50);
+    useEffect(() => { setQtdVisivel(50); }, [dados.linhas]);
 
     const buscar = useCallback(async () => {
         setLoading(true); setErro('');
@@ -534,7 +537,7 @@ export default function ContabilidadePage() {
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200 text-sm">
-                                {linhasOrdenadas.map((l) => (
+                                {linhasOrdenadas.slice(0, qtdVisivel).map((l) => (
                                     <tr key={l.id} className="hover:bg-gray-50">
                                         {colunasAtivas.map((c) => (
                                             <td key={c.id} className={`px-4 py-2.5 text-gray-900 align-top ${c.tipo === 'num' ? 'text-right' : ''}`}>
@@ -563,11 +566,19 @@ export default function ContabilidadePage() {
                             )}
                         </table>
                     </div>
+                    {linhasOrdenadas.length > qtdVisivel && (
+                        <div className="p-4 text-center border-t border-gray-100">
+                            <button onClick={() => setQtdVisivel((q) => q + 50)}
+                                className="px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm">
+                                Carregar mais — mostrando {qtdVisivel} de {linhasOrdenadas.length}
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Resultado — mobile (cards) */}
                 <div className="md:hidden space-y-3">
-                    {linhasOrdenadas.map((l) => {
+                    {linhasOrdenadas.slice(0, qtdVisivel).map((l) => {
                         const b = DOC_BADGE[l.documento?.tipo] || DOC_BADGE.SEM_NF;
                         return (
                             <div key={l.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">

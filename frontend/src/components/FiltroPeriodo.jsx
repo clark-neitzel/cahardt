@@ -89,8 +89,11 @@ function rotuloPeriodo(preset, off, de, ate) {
  */
 export function usePeriodoSalvo(chave, presetPadrao = 'mes') {
     const [salvo, setSalvo] = useFiltrosSalvos(`${chave}:periodo`, { preset: presetPadrao, de: '', ate: '' });
+    // Preset salvo que não existe (tela antiga / chave digitada errada no código) volta
+    // ao padrão — senão resolveria como "mes" para sempre e o Limpar parecia não limpar.
+    const presetValido = PRESETS_PERIODO.some((p) => p.id === salvo.preset) ? salvo.preset : presetPadrao;
     const [estado, setEstado] = useState({
-        preset: salvo.preset || presetPadrao,
+        preset: presetValido,
         off: 0,
         deBase: salvo.de || '',
         ateBase: salvo.ate || '',
