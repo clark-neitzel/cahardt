@@ -62,6 +62,9 @@ router.get('/fila', checkVer, async (req, res) => {
         const ambiente = focusNfe.ambiente();
         const prefixo = `nf-${ambiente === 'producao' ? 'p' : 'h'}-`;
 
+        // Backstop bem acima de qualquer mês real (~600 pedidos/mês) — um mês inteiro
+        // precisa caber, senão as notas do começo do período somem da tela sem aviso.
+        const LIMITE = 2000;
         const pedidos = await prisma.pedido.findMany({
             where: {
                 especial: false,
@@ -76,7 +79,7 @@ router.get('/fila', checkVer, async (req, res) => {
                 notasFiscaisApp: true,
             },
             orderBy: { numero: 'desc' },
-            take: 300,
+            take: LIMITE,
         });
 
         const resposta = pedidos.map(p => {
@@ -106,7 +109,9 @@ router.get('/fila', checkVer, async (req, res) => {
                 },
             };
         });
-        res.json({ ambiente, pedidos: resposta });
+        // truncado: o período pediu mais pedidos do que o backstop — a tela avisa o
+        // usuário para escolher um período menor em vez de esconder notas em silêncio.
+        res.json({ ambiente, truncado: pedidos.length === LIMITE, pedidos: resposta });
     } catch (e) {
         console.error('[NotasFiscais] fila:', e);
         res.status(500).json({ error: e.message });

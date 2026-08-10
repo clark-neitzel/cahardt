@@ -10,7 +10,8 @@ Desde 23/07/2026 a NF-e de venda é emitida **pelo próprio app**, via Focus NFe
 ## A tela (fila de emissão)
 
 - **Cartões no topo:** Sem nota · Processando · Autorizadas · Com erro (contagens do período filtrado).
-- **Filtro de período** (pílula "Hoje", com presets) e **filtro de status**: "A emitir" (sem nota + com erro + processando), "Emitidas", "Todas". Os filtros ficam salvos por usuário — a tela reabre do jeito que a pessoa deixou. Padrão: Hoje + A emitir.
+- **Filtro de período** (pílula "Hoje", com presets) e **filtro de status**: "A emitir" (sem nota + com erro + processando), "Emitidas" (autorizadas pelo app + as antigas "Emitida no CA" — o número da aba conta as duas), "Todas". Os filtros ficam salvos por usuário — a tela reabre do jeito que a pessoa deixou. Padrão: Hoje + A emitir.
+- A lista mostra **todos os pedidos do período** (um mês inteiro cabe com folga). Só num período gigante (ex.: "Todo o período" com milhares de pedidos) a tela corta nos mais recentes — e nesse caso aparece um **aviso amarelo** pedindo para escolher um período menor.
 - **Lista de pedidos** com cliente (badge CPF/CNPJ), valor e status da nota:
   - **Sem nota** (cinza) — ainda não emitida; botão "Emitir NF-e" (e, ao lado, **"Cancelar pedido"** para quem tem permissão de excluir pedido).
   - **⏳ Processando** (azul) — enviada, aguardando a SEFAZ (segundos); a tela atualiza sozinha a cada 10s; botão "Atualizar" força a consulta.

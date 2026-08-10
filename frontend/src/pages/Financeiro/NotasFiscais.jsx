@@ -151,6 +151,7 @@ const NotasFiscais = () => {
     const [periodo, periodoCtl] = usePeriodoSalvo('notas-fiscais', 'hoje');
     const [filtroStatus, setFiltroStatus] = useFiltroSalvo('notas-fiscais:status', 'a-emitir');
     const [ambiente, setAmbiente] = useState(null);
+    const [truncado, setTruncado] = useState(false);
     const [pedidos, setPedidos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [emitindo, setEmitindo] = useState(null);       // pedidoId em emissão
@@ -169,6 +170,7 @@ const NotasFiscais = () => {
             if (periodo.ate) params.ate = periodo.ate;
             const resp = await api.get('/notas-fiscais/fila', { params });
             setAmbiente(resp.data?.ambiente || null);
+            setTruncado(Boolean(resp.data?.truncado));
             setPedidos(Array.isArray(resp.data?.pedidos) ? resp.data.pedidos : []);
         } catch (e) {
             if (!silencioso) toast.error(msgErroApi(e, 'Erro ao carregar a fila de notas.'));
@@ -191,6 +193,12 @@ const NotasFiscais = () => {
         }
         return { semNota, processando, autorizadas, comErro };
     }, [pedidos]);
+
+    // Contador da aba "Emitidas": mesmo critério do filtro (inclui as antigas do CA)
+    const totalEmitidas = useMemo(
+        () => pedidos.filter(p => p.notaCA || p.nota?.status === 'AUTORIZADO').length,
+        [pedidos]
+    );
 
     const pedidosSemNota = useMemo(
         () => pedidos.filter(p => !p.notaCA && !p.nota),
@@ -474,6 +482,14 @@ const NotasFiscais = () => {
                 </div>
             )}
 
+            {/* Período grande demais: a lista veio cortada — avisar em vez de esconder notas */}
+            {truncado && (
+                <div className="mx-3 md:mx-6 mt-3 md:mt-4 flex items-start gap-2 bg-amber-100 border border-amber-300 text-amber-800 rounded-lg px-4 py-3 text-sm font-medium">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>O período escolhido tem pedidos demais — mostrando só os {pedidos.length} mais recentes. Escolha um período menor (ex.: um mês) para ver tudo.</span>
+                </div>
+            )}
+
             <div className="p-3 md:p-6 space-y-4">
                 {/* KPIs */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -501,7 +517,7 @@ const NotasFiscais = () => {
                     <div className="flex gap-1.5 overflow-x-auto hide-scrollbar">
                         {[
                             ['a-emitir', `A emitir (${kpis.semNota + kpis.comErro + kpis.processando})`],
-                            ['emitidas', `Emitidas (${kpis.autorizadas})`],
+                            ['emitidas', `Emitidas (${totalEmitidas})`],
                             ['todas', 'Todas'],
                         ].map(([valor, rotulo]) => (
                             <button
