@@ -8558,8 +8558,22 @@ router.get('/contabilidade-diag-virada-focus', async (req, res) => {
                 notaApp: nApp ? { status: nApp.status, erro: nApp.mensagemSefaz?.slice(0, 160) || null } : 'NUNCA_EMITIDA'
             }));
 
+        // ?dev=126 → mostra o registro cru de uma devolução e a nota do app dela (depuração)
+        let debugDev = null;
+        if (req.query.dev) {
+            const d = devolucoes.find(x => x.numero === parseInt(req.query.dev, 10)) || null;
+            debugDev = d && {
+                ...d,
+                valorTotal: Number(d.valorTotal),
+                refEsperada: `nfd-p-${d.id}`,
+                notaAppDaRef: notaDevPorRef.get(`nfd-p-${d.id}`) || null,
+                notasDevComEsseId: notasDevApp.filter(n => n.ref.includes(d.id))
+            };
+        }
+
         res.json({
             ok: true,
+            ...(req.query.dev ? { debugDev } : {}),
             focus: {
                 primeiraNotaApp: resumoNota(primeiraApp),
                 primeiraVendaApp: resumoNota(vendasApp[0]),
