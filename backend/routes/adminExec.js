@@ -8522,7 +8522,7 @@ router.get('/contabilidade-diag-virada-focus', async (req, res) => {
                 id: true, numero: true, status: true, tipo: true, escopo: true,
                 notaDevolucaoCA: true, dataDevolucao: true, valorTotal: true, motivo: true,
                 registradoPor: { select: { nome: true } },
-                pedidoOriginal: { select: { numero: true, especial: true, nfeChave: true } }
+                pedidoOriginal: { select: { numero: true, especial: true, bonificacao: true, nfeChave: true } }
             }
         });
         const devCA = devolucoes.filter(d => d.notaDevolucaoCA);
@@ -8543,7 +8543,7 @@ router.get('/contabilidade-diag-virada-focus', async (req, res) => {
         // Critério pelo PEDIDO (não pelo tipo gravado): o ModalDevolucao classificava por
         // idVendaContaAzul e gravou devolução de pedido local como ESPECIAL (ex.: dev 126).
         const semNF = devolucoes
-            .filter(d => d.status === 'ATIVA' && !d.notaDevolucaoCA && !d.pedidoOriginal?.especial)
+            .filter(d => d.status === 'ATIVA' && !d.notaDevolucaoCA && !d.pedidoOriginal?.especial && !d.pedidoOriginal?.bonificacao)
             .map(d => {
                 const nApp = notaDevPorRef.get(`nfd-p-${d.id}`) || null;
                 return { d, nApp };
