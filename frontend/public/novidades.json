@@ -1,5 +1,11 @@
 [
   {
+    "slug": "nf-devolucao-caixa",
+    "titulo": "NF de devolução impressa no Caixa",
+    "resumo": "Registrou a devolução no Caixa? A NF-e de devolução sai sozinha na SEFAZ (devolução parcial ou total) e o botão verde '🧾 NF dev.' aparece na própria linha da entrega — clique, imprima a DANFE e arquive junto com o movimento do dia. Se a SEFAZ estiver fora, a devolução fica registrada e a nota pode ser emitida depois em Pedidos → Devoluções.",
+    "data": "2026-08-10"
+  },
+  {
     "slug": "falar-vendedor",
     "titulo": "Falar com o vendedor pelo site",
     "resumo": "O site de congelados ganhou o botão 'Falar com [vendedor]': o cliente escolhe o vendedor e a conversa abre no WhatsApp oficial da Hardt já endereçada — o bot entrega direto para a pessoa e pausa a Ana. Para funcionar, preencha o campo novo 'Nome usado no Bot Hardt' em Administração → Usuários (copiando o valor do Painel Hardt → Equipe).",

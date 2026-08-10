@@ -183,6 +183,12 @@ O relatório sai em **2 folhas A4**:
 ### Registrar devolução
 - Na linha de uma entrega, clique no botão de devolução (ícone de retorno)
 - O modal de devolução abre vinculado àquele pedido e àquele caixa
+- Ao salvar, o app **emite a NF-e de devolução automaticamente** (pedido com nota; especial e bonificação não geram NF). Se a emissão falhar, a devolução fica registrada e dá para emitir depois em Pedidos → aba Devoluções
+
+### Imprimir a NF de devolução (DANFE) no próprio Caixa
+- Assim que a NF-e de devolução é **autorizada** pela SEFAZ (leva segundos), aparece na linha da entrega o botão verde **"🧾 NF dev. `<número>`"** — clique para abrir o PDF da DANFE, imprimir e arquivar junto com o caixa do dia
+- Enquanto a nota ainda está na SEFAZ aparece "NF dev. emitindo…" — recarregue a tela em instantes
+- O botão aparece para quem tem `Pode_Fazer_Devolucao` (ou acesso a Notas Fiscais)
 
 ### Conferir devoluções (mercadoria que voltou fisicamente)
 O cartão **Conferência de Devoluções** aparece automaticamente quando o dia tem alguma devolução registrada nas entregas. Ele lista cada produto que **deveria voltar** no caminhão, com o número do pedido e o cliente de origem.

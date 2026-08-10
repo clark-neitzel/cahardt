@@ -30,6 +30,27 @@ const checkEmitir = async (req, res, next) => {
     next();
 };
 
+// A NF de DEVOLUÇÃO faz parte do fluxo de devolução: quem pode registrar a devolução
+// (Caixa) precisa poder disparar a emissão automática e imprimir a DANFE dela — senão
+// o registro passa e a nota fica presa num 403 silencioso.
+const checkEmitirDevolucao = async (req, res, next) => {
+    const perms = req._perms || await getPerms(req.user.id);
+    req._perms = perms;
+    if (!perms.admin && !perms.Pode_Emitir_NF && !perms.Pode_Fazer_Devolucao) {
+        return res.status(403).json({ error: 'Sem permissão para emitir a NF de devolução.' });
+    }
+    next();
+};
+
+const checkVerOuDevolucao = async (req, res, next) => {
+    const perms = req._perms || await getPerms(req.user.id);
+    req._perms = perms;
+    if (!perms.admin && !perms.Pode_Acessar_Notas_Fiscais && !perms.Pode_Fazer_Devolucao) {
+        return res.status(403).json({ error: 'Sem permissão para acessar as notas fiscais.' });
+    }
+    next();
+};
+
 // GET /api/notas-fiscais/fila?de=YYYY-MM-DD&ate=YYYY-MM-DD — pedidos do período com o
 // estado da nota de cada um (sem nota / processando / autorizada / erro / emitida no CA).
 router.get('/fila', checkVer, async (req, res) => {
@@ -104,7 +125,7 @@ router.post('/emitir/:pedidoId', checkEmitir, async (req, res) => {
 
 // POST /api/notas-fiscais/emitir-devolucao/:devolucaoId — NF-e de devolução de venda
 // (só devolução de pedido COM nota; especial não gera NF).
-router.post('/emitir-devolucao/:devolucaoId', checkEmitir, async (req, res) => {
+router.post('/emitir-devolucao/:devolucaoId', checkEmitirDevolucao, async (req, res) => {
     try {
         const nota = await emissao.emitirDevolucao(req.params.devolucaoId);
         res.json({ ok: true, nota });
@@ -199,7 +220,7 @@ async function baixar(req, res, qual) {
     doc.pipe(res);
 }
 
-router.get('/:id/danfe', checkVer, (req, res) => {
+router.get('/:id/danfe', checkVerOuDevolucao, (req, res) => {
     baixar(req, res, 'danfe').catch(e => res.status(500).json({ error: e.message }));
 });
 router.get('/:id/xml', checkVer, (req, res) => {

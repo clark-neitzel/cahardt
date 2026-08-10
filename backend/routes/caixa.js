@@ -377,7 +377,10 @@ router.get('/resumo', async (req, res) => {
                 // Ignora pagamentos com valor 0 (gerados por cliques duplicados de motorista)
                 pagamentosReais: { where: { valor: { gt: 0 } } },
                 itensDevolvidos: { include: { produto: { select: { nome: true } } } },
-                contaReceber: { select: { status: true } }
+                contaReceber: { select: { status: true } },
+                // NF de devolução p/ impressão no Caixa (nota do app casa com a devolução pela ref nfd-p-<devId>)
+                devolucoes: { where: { status: 'ATIVA' }, select: { id: true, numero: true, notaDevolucaoCA: true }, orderBy: { numero: 'desc' } },
+                notasFiscaisApp: { where: { tipo: 'DEVOLUCAO' }, select: { id: true, ref: true, status: true, numero: true } }
             },
             orderBy: { dataEntrega: 'asc' }
         });
@@ -520,7 +523,22 @@ router.get('/resumo', async (req, res) => {
                     return 'ALTERADO'; // só pix comum/cartão: condição alterada
                 })(),
                 devolucaoFinalizada: e.devolucaoFinalizada || false,
-                idVendaContaAzul: e.idVendaContaAzul || null
+                bonificacao: e.bonificacao || false,
+                idVendaContaAzul: e.idVendaContaAzul || null,
+                // NF de devolução da devolução ativa mais recente (para o botão DANFE do Caixa)
+                notaDevolucao: (() => {
+                    const dev = e.devolucoes?.[0];
+                    if (!dev) return null;
+                    const nota = e.notasFiscaisApp?.find(n => n.ref === `nfd-p-${dev.id}`) || null;
+                    return {
+                        devolucaoId: dev.id,
+                        devolucaoNumero: dev.numero,
+                        notaCA: dev.notaDevolucaoCA || null,
+                        notaId: nota?.id || null,
+                        numero: nota?.numero || null,
+                        status: nota?.status || null
+                    };
+                })()
             };
         });
 

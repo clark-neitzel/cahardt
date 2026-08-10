@@ -8637,4 +8637,122 @@ router.post('/contabilidade-corrigir-devolucao-tipo', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/contabilidade-emitir-devolucoes-pendentes
+// Emite a NF-e de devolução (Focus) de toda devolução ATIVA sem nota — pedido com
+// nota original, não-especial/não-bonificação. Usa o MESMO serviço do botão da aba
+// Devoluções (todas as travas valem: idempotência por ref, revertida não emite…).
+// Sequencial; erro em uma não trava as demais. Body: { numero: 126 } emite só uma;
+// { somenteListar: true } só mostra o que seria emitido.
+router.post('/contabilidade-emitir-devolucoes-pendentes', async (req, res) => {
+    try {
+        const emissao = require('../services/focusNfeEmissaoService');
+        const alvo = req.body?.numero ? { numero: parseInt(req.body.numero, 10) } : {};
+        const candidatas = await prisma.devolucao.findMany({
+            where: {
+                status: 'ATIVA', notaDevolucaoCA: null, ...alvo,
+                pedidoOriginal: { especial: false, bonificacao: false }
+            },
+            select: { id: true, numero: true, valorTotal: true, pedidoOriginal: { select: { numero: true, nfeNumero: true } } },
+            orderBy: { numero: 'asc' }
+        });
+        const notasDev = await prisma.notaFiscalApp.findMany({
+            where: { tipo: 'DEVOLUCAO', status: { in: ['AUTORIZADO', 'PROCESSANDO'] } },
+            select: { ref: true }
+        });
+        const jaTem = new Set(notasDev.map(n => n.ref));
+        const pendentes = candidatas.filter(d => !jaTem.has(`nfd-p-${d.id}`));
+        if (req.body?.somenteListar) {
+            return res.json({ ok: true, pendentes: pendentes.map(d => ({ devolucao: d.numero, pedido: d.pedidoOriginal?.numero, valor: Number(d.valorTotal) })) });
+        }
+        const resultados = [];
+        for (const d of pendentes) {
+            try {
+                const nota = await emissao.emitirDevolucao(d.id);
+                resultados.push({ devolucao: d.numero, pedido: d.pedidoOriginal?.numero, ok: true, status: nota?.status, numero: nota?.numero || null });
+            } catch (e) {
+                resultados.push({ devolucao: d.numero, pedido: d.pedidoOriginal?.numero, ok: false, erro: e.message });
+            }
+            await new Promise(r => setTimeout(r, 300));
+        }
+        res.json({ ok: true, emitidas: resultados.filter(r => r.ok).length, falhas: resultados.filter(r => !r.ok).length, resultados });
+    } catch (err) {
+        console.error('[contabilidade-emitir-devolucoes-pendentes]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/admin-exec/contabilidade-diag-mes?mes=2026-08 — SOMENTE LEITURA
+// Raio-X fiscal de um mês: vendas faturadas sem NF, notas do app emitidas no mês
+// (faixa de números) e devoluções do mês com a situação da NF de cada uma.
+router.get('/contabilidade-diag-mes', async (req, res) => {
+    try {
+        const mes = /^\d{4}-\d{2}$/.test(String(req.query.mes || '')) ? req.query.mes : new Date().toISOString().slice(0, 7);
+        const ini = new Date(`${mes}-01T00:00:00-03:00`);
+        const fim = new Date(new Date(ini).setMonth(ini.getMonth() + 1) - 1);
+
+        const pedidos = await prisma.pedido.findMany({
+            where: {
+                dataVenda: { gte: ini, lte: fim },
+                especial: false, bonificacao: false, cancelado: false,
+                statusEnvio: { not: 'EXCLUIDO' }, situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] }
+            },
+            select: {
+                numero: true, dataVenda: true, situacaoCA: true, nfeNumero: true, nfeChave: true,
+                cliente: { select: { Nome: true } },
+                notasFiscaisApp: { where: { tipo: 'VENDA' }, select: { status: true, numero: true } }
+            }
+        });
+        const comNota = (p) => p.nfeChave || p.notasFiscaisApp.some(n => n.status === 'AUTORIZADO');
+        const faturados = pedidos.filter(p => p.situacaoCA === 'FATURADO');
+        const semNF = faturados.filter(p => !comNota(p) && !p.notasFiscaisApp.some(n => n.status === 'PROCESSANDO'));
+
+        const notasMes = await prisma.notaFiscalApp.findMany({
+            where: { ambiente: 'producao', status: 'AUTORIZADO', criadoEm: { gte: ini, lte: fim } },
+            select: { tipo: true, numero: true }
+        });
+        const nums = notasMes.map(n => n.numero).filter(Boolean);
+
+        const devs = await prisma.devolucao.findMany({
+            where: { dataDevolucao: { gte: ini, lte: fim } },
+            select: {
+                id: true, numero: true, status: true, escopo: true, valorTotal: true,
+                dataDevolucao: true, notaDevolucaoCA: true,
+                pedidoOriginal: { select: { numero: true, especial: true, bonificacao: true } }
+            },
+            orderBy: { numero: 'asc' }
+        });
+        const notasDev = await prisma.notaFiscalApp.findMany({ where: { tipo: 'DEVOLUCAO' }, select: { ref: true, status: true, numero: true } });
+        const notaDevPorRef = new Map(notasDev.map(n => [n.ref, n]));
+        const situacaoDev = (d) => {
+            if (d.pedidoOriginal?.especial || d.pedidoOriginal?.bonificacao) return 'SEM_NOTA_DE_PROPOSITO';
+            if (d.status !== 'ATIVA') return 'REVERTIDA';
+            if (d.notaDevolucaoCA) return `NF_CA_${d.notaDevolucaoCA}`;
+            const n = notaDevPorRef.get(`nfd-p-${d.id}`);
+            return n ? `${n.status}${n.numero ? `_${n.numero}` : ''}` : 'SEM_NF';
+        };
+
+        res.json({
+            ok: true, mes,
+            vendas: {
+                pedidosFaturados: faturados.length,
+                comNF: faturados.length - semNF.length,
+                semNF: semNF.map(p => ({ pedido: p.numero, cliente: p.cliente?.Nome || '—', dataVenda: p.dataVenda?.toISOString().slice(0, 10) }))
+            },
+            notasAppNoMes: {
+                total: notasMes.length,
+                vendas: notasMes.filter(n => n.tipo === 'VENDA').length,
+                devolucoes: notasMes.filter(n => n.tipo === 'DEVOLUCAO').length,
+                faixaNumeros: nums.length ? [Math.min(...nums), Math.max(...nums)] : null
+            },
+            devolucoesNoMes: devs.map(d => ({
+                devolucao: d.numero, pedido: d.pedidoOriginal?.numero || null, escopo: d.escopo,
+                valor: Number(d.valorTotal), em: d.dataDevolucao?.toISOString().slice(0, 10), nf: situacaoDev(d)
+            }))
+        });
+    } catch (err) {
+        console.error('[contabilidade-diag-mes]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

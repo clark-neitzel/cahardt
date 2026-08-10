@@ -114,6 +114,23 @@ const CaixaDiarioPage = () => {
     // Devolução
     const podeFazerDevolucao = user?.permissoes?.admin || user?.permissoes?.Pode_Fazer_Devolucao;
     const [modalDevolucao, setModalDevolucao] = useState(null); // { pedidoId, ... }
+    const [baixandoDanfeDev, setBaixandoDanfeDev] = useState(null); // notaId da DANFE sendo aberta
+
+    // DANFE da NF de devolução (emitida pelo app) — abre o PDF para imprimir e arquivar.
+    // Mesmo padrão da aba Pedidos → Devoluções (PDF em blob).
+    const abrirDanfeDevolucao = async (nota) => {
+        setBaixandoDanfeDev(nota.notaId);
+        try {
+            const resp = await api.get(`/notas-fiscais/${nota.notaId}/danfe`, { responseType: 'blob' });
+            const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
+            window.open(url, '_blank');
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (e) {
+            toast.error('Erro ao abrir a DANFE da devolução.');
+        } finally {
+            setBaixandoDanfeDev(null);
+        }
+    };
 
     // Persistir filtros na sessão sempre que mudarem
     useEffect(() => {
@@ -771,14 +788,29 @@ const CaixaDiarioPage = () => {
                                                         </div>
                                                     </td>
                                                     <td className="py-2 px-2 text-right">
-                                                        {podeDev && (
-                                                            <button
-                                                                onClick={() => setModalDevolucao(e)}
-                                                                className="text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-1.5 py-0.5 rounded border border-red-200 whitespace-nowrap"
-                                                            >
-                                                                Devolução
-                                                            </button>
-                                                        )}
+                                                        <div className="flex flex-col items-end gap-1">
+                                                            {podeDev && (
+                                                                <button
+                                                                    onClick={() => setModalDevolucao(e)}
+                                                                    className="text-[10px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-1.5 py-0.5 rounded border border-red-200 whitespace-nowrap"
+                                                                >
+                                                                    Devolução
+                                                                </button>
+                                                            )}
+                                                            {e.notaDevolucao?.status === 'AUTORIZADO' && e.notaDevolucao.notaId && (
+                                                                <button
+                                                                    onClick={() => abrirDanfeDevolucao(e.notaDevolucao)}
+                                                                    disabled={baixandoDanfeDev === e.notaDevolucao.notaId}
+                                                                    className="text-[10px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 whitespace-nowrap"
+                                                                    title={`Imprimir a DANFE da NF de devolução nº ${e.notaDevolucao.numero}`}
+                                                                >
+                                                                    {baixandoDanfeDev === e.notaDevolucao.notaId ? 'Abrindo…' : `🧾 NF dev. ${e.notaDevolucao.numero}`}
+                                                                </button>
+                                                            )}
+                                                            {e.notaDevolucao?.status === 'PROCESSANDO' && (
+                                                                <span className="text-[10px] text-gray-400 whitespace-nowrap">NF dev. emitindo…</span>
+                                                            )}
+                                                        </div>
                                                     </td>
                                                 </tr>
                                                 );
@@ -845,7 +877,7 @@ const CaixaDiarioPage = () => {
                                             )}
 
                                             {/* Ações */}
-                                            {(isAdmin || (podeBaixarCaixa && elegivel) || podeDev) && (
+                                            {(isAdmin || (podeBaixarCaixa && elegivel) || podeDev || e.notaDevolucao?.status === 'AUTORIZADO') && (
                                                 <div className="flex items-center justify-between gap-2 mt-3 pt-2 border-t border-gray-100">
                                                     <div className="flex items-center gap-3 text-xs">
                                                         {isAdmin && (
@@ -871,14 +903,25 @@ const CaixaDiarioPage = () => {
                                                             </label>
                                                         )}
                                                     </div>
-                                                    {podeDev && (
-                                                        <button
-                                                            onClick={() => setModalDevolucao(e)}
-                                                            className="text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded border border-red-200 whitespace-nowrap"
-                                                        >
-                                                            Fazer Devolução
-                                                        </button>
-                                                    )}
+                                                    <div className="flex items-center gap-2">
+                                                        {e.notaDevolucao?.status === 'AUTORIZADO' && e.notaDevolucao.notaId && (
+                                                            <button
+                                                                onClick={() => abrirDanfeDevolucao(e.notaDevolucao)}
+                                                                disabled={baixandoDanfeDev === e.notaDevolucao.notaId}
+                                                                className="text-[11px] font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded border border-emerald-200 whitespace-nowrap"
+                                                            >
+                                                                {baixandoDanfeDev === e.notaDevolucao.notaId ? 'Abrindo…' : `🧾 NF dev. ${e.notaDevolucao.numero}`}
+                                                            </button>
+                                                        )}
+                                                        {podeDev && (
+                                                            <button
+                                                                onClick={() => setModalDevolucao(e)}
+                                                                className="text-[11px] font-bold text-red-600 bg-red-50 hover:bg-red-100 px-2 py-1 rounded border border-red-200 whitespace-nowrap"
+                                                            >
+                                                                Fazer Devolução
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
