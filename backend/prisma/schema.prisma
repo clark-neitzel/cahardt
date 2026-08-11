@@ -2626,6 +2626,7 @@ model ComissaoConfig {
   mesReferencia String @map("mes_referencia") // Formato "YYYY-MM"
 
   // Faixas de comissão — cada faixa tem um LIMITE (fronteira em % da meta) e uma TAXA (% de comissão)
+  percMinimoMeta Float @default(0) @map("perc_minimo_meta") // % mínimo da meta para ter comissão (abaixo disso, comissão zerada; 0 = sem mínimo)
   faixaAbaixo    Float @default(0) @map("faixa_abaixo") // fronteira inferior: acima de X% abaixo da meta começa a faixa "abaixo" (0 = qualquer valor abaixo da meta)
   percAbaixoMeta Float @default(0) @map("perc_abaixo_meta") // comissão % quando realizado < (meta - faixaAbaixo%)
   percNaMeta     Float @default(0) @map("perc_na_meta") // comissão % quando realizado está entre (meta - faixaAbaixo%) e meta

@@ -65,7 +65,7 @@ const GerenciarComissoes = () => {
 
     const abrirModal = (vendedorId, nome, configExistente) => {
         const base = {
-            percAbaixoMeta: 0, percNaMeta: 0, percAcimaMeta: 0,
+            percMinimoMeta: 0, percAbaixoMeta: 0, percNaMeta: 0, percAcimaMeta: 0,
             bonusCidades: 0, bonusProdutos: 0, bonusFlex: 0, limiteFlexPerc: 100
         };
         setEditando({ vendedorId, nome, ...(configExistente || base) });
@@ -153,7 +153,14 @@ const GerenciarComissoes = () => {
                                 {linhasConfig.map(({ vendedorId, nome, config }) => (
                                     <div key={vendedorId} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
                                         <div className="flex items-center justify-between mb-2">
-                                            <span className="font-semibold text-gray-900">{nome}</span>
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="font-semibold text-gray-900">{nome}</span>
+                                                {config?.herdadaDe && (
+                                                    <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 text-blue-800">
+                                                        herdada de {dayjs(config.herdadaDe + '-01').format('MMM/YY')}
+                                                    </span>
+                                                )}
+                                            </div>
                                             {podeGerenciar && (
                                                 <button
                                                     onClick={() => abrirModal(vendedorId, nome, config)}
@@ -166,6 +173,7 @@ const GerenciarComissoes = () => {
                                         </div>
                                         {config ? (
                                             <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
+                                                <div className="flex justify-between"><span className="text-gray-500">Mínimo p/ comissão</span><span className="font-medium text-gray-700">{config.percMinimoMeta > 0 ? fmtPerc(config.percMinimoMeta) : '—'}</span></div>
                                                 <div className="flex justify-between"><span className="text-gray-500">Abaixo</span><span className="font-medium text-gray-700">{fmtPerc(config.percAbaixoMeta)}</span></div>
                                                 <div className="flex justify-between"><span className="text-gray-500">Na meta</span><span className="font-medium text-gray-700">{fmtPerc(config.percNaMeta)}</span></div>
                                                 <div className="flex justify-between"><span className="text-gray-500">Excedente</span><span className="font-medium text-gray-700">{fmtPerc(config.percAcimaMeta)}</span></div>
@@ -187,6 +195,7 @@ const GerenciarComissoes = () => {
                                     <thead className="bg-gray-50">
                                         <tr>
                                             <th className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">Vendedor</th>
+                                            <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Mínimo</th>
                                             <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">% Abaixo</th>
                                             <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">% Na Meta</th>
                                             <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">% Excedente</th>
@@ -200,9 +209,17 @@ const GerenciarComissoes = () => {
                                     <tbody className="bg-white divide-y divide-gray-200 text-sm">
                                         {linhasConfig.map(({ vendedorId, nome, config }) => (
                                             <tr key={vendedorId} className="hover:bg-gray-50">
-                                                <td className="px-5 py-3 font-medium text-gray-900">{nome}</td>
+                                                <td className="px-5 py-3 font-medium text-gray-900">
+                                                    {nome}
+                                                    {config?.herdadaDe && (
+                                                        <span className="ml-2 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-blue-100 text-blue-800">
+                                                            herdada de {dayjs(config.herdadaDe + '-01').format('MMM/YY')}
+                                                        </span>
+                                                    )}
+                                                </td>
                                                 {config ? (
                                                     <>
+                                                        <td className="px-5 py-3 text-right text-gray-700">{config.percMinimoMeta > 0 ? fmtPerc(config.percMinimoMeta) : '—'}</td>
                                                         <td className="px-5 py-3 text-right text-gray-700">{fmtPerc(config.percAbaixoMeta)}</td>
                                                         <td className="px-5 py-3 text-right text-gray-700">{fmtPerc(config.percNaMeta)}</td>
                                                         <td className="px-5 py-3 text-right text-gray-700">{fmtPerc(config.percAcimaMeta)}</td>
@@ -212,7 +229,7 @@ const GerenciarComissoes = () => {
                                                         <td className="px-5 py-3 text-right text-gray-500">{fmtPerc(config.limiteFlexPerc)}</td>
                                                     </>
                                                 ) : (
-                                                    <td colSpan={7} className="px-5 py-3 text-right">
+                                                    <td colSpan={8} className="px-5 py-3 text-right">
                                                         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">sem configuração</span>
                                                     </td>
                                                 )}
@@ -271,6 +288,7 @@ const GerenciarComissoes = () => {
                                         + (a.calculo?.bonusProdutos?.valor || 0)
                                         + (a.calculo?.bonusFlex?.valor || 0);
                                     const percMeta = a.percRealizado ?? 0;
+                                    const semMinimo = a.calculo?.minimoNaoAtingido;
                                     const percEfetiva = a.realizado > 0
                                         ? (a.calculo?.totalComissao / a.realizado) * 100
                                         : 0;
@@ -279,10 +297,15 @@ const GerenciarComissoes = () => {
                                         <div key={a.vendedorId} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
                                             <div className="flex items-center justify-between mb-2">
                                                 <span className="font-semibold text-gray-900">{a.vendedor?.nome}</span>
-                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${percMeta >= 100 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${semMinimo ? 'bg-red-100 text-red-700' : percMeta >= 100 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
                                                     {percMeta.toFixed(1)}% da meta
                                                 </span>
                                             </div>
+                                            {semMinimo && (
+                                                <p className="text-xs text-red-600 mb-2">
+                                                    Abaixo do mínimo de {fmtPerc(a.calculo?.percMinimoMeta)} da meta — sem comissão
+                                                </p>
+                                            )}
                                             <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs mb-2">
                                                 <div className="flex justify-between"><span className="text-gray-500">Realizado</span><span className="font-medium text-gray-700">{fmt(a.realizado)}</span></div>
                                                 <div className="flex justify-between"><span className="text-gray-500">Base</span><span className="font-medium text-gray-700">{fmt(a.calculo?.comissaoBase)}</span></div>
@@ -342,6 +365,7 @@ const GerenciarComissoes = () => {
                                                 + (a.calculo?.bonusProdutos?.valor || 0)
                                                 + (a.calculo?.bonusFlex?.valor || 0);
                                             const percMeta = a.percRealizado ?? 0;
+                                            const semMinimo = a.calculo?.minimoNaoAtingido;
                                             const percEfetiva = a.realizado > 0
                                                 ? (a.calculo?.totalComissao / a.realizado) * 100
                                                 : 0;
@@ -357,8 +381,11 @@ const GerenciarComissoes = () => {
                                                         <td className="px-5 py-3 font-medium text-gray-900">{a.vendedor?.nome}</td>
                                                         <td className="px-5 py-3 text-right text-gray-700">{fmt(a.realizado)}</td>
                                                         <td className="px-5 py-3 text-right">
-                                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${percMeta >= 100 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                                                {percMeta.toFixed(1)}%
+                                                            <span
+                                                                className={`px-2 py-1 text-xs font-semibold rounded-full ${semMinimo ? 'bg-red-100 text-red-700' : percMeta >= 100 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}
+                                                                title={semMinimo ? `Abaixo do mínimo de ${fmtPerc(a.calculo?.percMinimoMeta)} da meta — sem comissão` : undefined}
+                                                            >
+                                                                {percMeta.toFixed(1)}%{semMinimo ? ' · sem comissão' : ''}
                                                             </span>
                                                         </td>
                                                         <td className="px-5 py-3 text-right text-gray-600">{fmt(a.calculo?.comissaoBase)}</td>
@@ -441,6 +468,7 @@ const DetalheApuracao = ({ data, onVoltar, fmt, fmtPerc }) => {
         abaixo: 'abaixo do limite — faixa abaixo',
         na_meta: 'dentro da faixa na meta',
         acima: 'acima do kicker — faixa acima',
+        abaixo_minimo: 'abaixo do mínimo — sem comissão',
     }[c?.faixaAplicada] || c?.faixaAplicada;
 
     return (
@@ -449,6 +477,16 @@ const DetalheApuracao = ({ data, onVoltar, fmt, fmtPerc }) => {
                 <ArrowLeft size={14} /> Voltar
             </button>
             <h2 className="text-lg font-bold text-gray-900 mb-4">{data.vendedor?.nome}</h2>
+
+            {c?.minimoNaoAtingido && (
+                <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-4 mb-6 text-sm text-red-700">
+                    <XCircle size={16} className="shrink-0 mt-0.5" />
+                    <span>
+                        Não atingiu o mínimo de <strong>{fmtPerc(c.percMinimoMeta)}</strong> da meta
+                        (realizado: {(data.percRealizado ?? 0).toFixed(1)}%) — comissão e bônus zerados neste mês.
+                    </span>
+                </div>
+            )}
 
             {/* Resumo */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">

@@ -16,6 +16,7 @@ Tela para configurar e calcular as comissões dos vendedores a cada mês.
 Mostra a tabela de comissão de cada vendedor que tem meta cadastrada no mês selecionado.
 
 **Colunas:**
+- **Mínimo**: percentual mínimo da meta que o vendedor precisa atingir para ter direito a qualquer comissão no mês. Abaixo desse mínimo, a comissão inteira (faixas e bônus) fica zerada. "—" significa sem mínimo (comissiona qualquer valor).
 - **% Abaixo**: percentual aplicado sobre o total vendido quando o vendedor não atingiu a meta
 - **% Na Meta**: percentual aplicado sobre o valor integral da meta quando bate ou supera
 - **% Excedente**: percentual aplicado apenas sobre o valor que ultrapassou a meta
@@ -25,6 +26,8 @@ Mostra a tabela de comissão de cada vendedor que tem meta cadastrada no mês se
 - **Limite Flex**: percentual máximo de uso do flex para ganhar o bônus flex
 
 Clique no lápis para editar as configurações de um vendedor. As configurações são salvas por vendedor + mês.
+
+**Herança do mês anterior:** ao abrir um mês novo, a configuração do último mês configurado já vale automaticamente — aparece com o selo azul **"herdada de mês/ano"**. Não é preciso reconfigurar todo mês; só editar quando algo mudar (ao salvar, a configuração passa a ser própria do mês selecionado e o selo some).
 
 ---
 
@@ -44,7 +47,13 @@ Clique no ícone de gráfico para ver o **detalhamento** de um vendedor:
 
 ---
 
+Na apuração, quem ficou abaixo do **mínimo da meta** aparece com o selo vermelho "% · sem comissão" e total R$ 0,00; o detalhamento mostra um aviso explicando.
+
+---
+
 ## Fórmula de cálculo
+
+**Mínimo para comissionar (se configurado):** se o realizado ficar abaixo de X% da meta, a comissão inteira do mês é zerada (faixas e todos os bônus). Só passando do mínimo as regras abaixo se aplicam.
 
 **Se realizado < meta:**
 > Comissão = realizado × % abaixo

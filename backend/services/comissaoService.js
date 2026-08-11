@@ -27,11 +27,12 @@ const comissaoService = {
     salvarConfig: async (dados, usuarioLogadoId) => {
         const {
             vendedorId, mesReferencia,
-            faixaAbaixo, percAbaixoMeta, percNaMeta, faixaAcima, percAcimaMeta,
+            percMinimoMeta, faixaAbaixo, percAbaixoMeta, percNaMeta, faixaAcima, percAcimaMeta,
             bonusCidades, bonusProdutos, bonusFlex, limiteFlexPerc
         } = dados;
 
         const campos = {
+            percMinimoMeta: percMinimoMeta ?? 0,
             faixaAbaixo: faixaAbaixo ?? 0,
             percAbaixoMeta: percAbaixoMeta ?? 0,
             percNaMeta: percNaMeta ?? 0,
@@ -50,11 +51,32 @@ const comissaoService = {
         });
     },
 
+    // Config "vigente" de um vendedor: a do próprio mês ou, na falta, a mais
+    // recente de um mês anterior (a configuração vale até ser alterada).
+    buscarConfigVigente: async (vendedorId, mesReferencia) => {
+        return prisma.comissaoConfig.findFirst({
+            where: { vendedorId, mesReferencia: { lte: mesReferencia } },
+            orderBy: { mesReferencia: 'desc' }
+        });
+    },
+
     listarConfigs: async (mesReferencia) => {
-        return prisma.comissaoConfig.findMany({
-            where: { mesReferencia },
+        const configs = await prisma.comissaoConfig.findMany({
+            where: { mesReferencia: { lte: mesReferencia } },
+            orderBy: { mesReferencia: 'desc' },
             include: { vendedor: { select: { id: true, nome: true } } }
         });
+        // 1ª ocorrência por vendedor = mais recente; marca de onde veio quando herdada
+        const porVendedor = new Map();
+        for (const c of configs) {
+            if (!porVendedor.has(c.vendedorId)) {
+                porVendedor.set(c.vendedorId, {
+                    ...c,
+                    herdadaDe: c.mesReferencia !== mesReferencia ? c.mesReferencia : null
+                });
+            }
+        }
+        return [...porVendedor.values()];
     },
 
     // -------------------------------------------------------
@@ -74,10 +96,8 @@ const comissaoService = {
             }
         });
 
-        // Config de comissão
-        const config = await prisma.comissaoConfig.findUnique({
-            where: { vendedorId_mesReferencia: { vendedorId, mesReferencia } }
-        });
+        // Config de comissão (vigente: do mês ou herdada do último mês configurado)
+        const config = await comissaoService.buscarConfigVigente(vendedorId, mesReferencia);
 
         const vendedor = await prisma.vendedor.findUnique({
             where: { id: vendedorId },
@@ -157,7 +177,14 @@ const comissaoService = {
         const limiteAbaixo = valorMeta * (1 - (config.faixaAbaixo ?? 0) / 100);
         const limiteAcima  = valorMeta * (1 + (config.faixaAcima  ?? 0) / 100);
 
-        const { valor: comissaoBase, faixa: faixaAplicada } = calcularComissaoBase(totalVendidoMes, valorMeta, config);
+        // Mínimo para comissionar: abaixo de X% da meta, comissão zerada por inteiro
+        const percMinimoMeta = config.percMinimoMeta ?? 0;
+        const percRealizadoMes = valorMeta > 0 ? (totalVendidoMes / valorMeta) * 100 : 0;
+        const minimoNaoAtingido = percMinimoMeta > 0 && percRealizadoMes < percMinimoMeta;
+
+        const { valor: comissaoBase, faixa: faixaAplicada } = minimoNaoAtingido
+            ? { valor: 0, faixa: 'abaixo_minimo' }
+            : calcularComissaoBase(totalVendidoMes, valorMeta, config);
 
         // Bônus cidades: proporção cidades batidas / total cidades × taxa × total vendido
         // Ex: 7 de 10 cidades = 70% do bônus; todas = 100%
@@ -165,18 +192,18 @@ const comissaoService = {
         const cidadesBatidas = progressoCidades.filter(c => c.bateu).length;
         const todasCidadesBateram = totalCidades > 0 && cidadesBatidas === totalCidades;
         const ratioCidades = totalCidades > 0 ? cidadesBatidas / totalCidades : 0;
-        const bonusCidadesValor = totalVendidoMes * (config.bonusCidades / 100) * ratioCidades;
+        const bonusCidadesValor = minimoNaoAtingido ? 0 : totalVendidoMes * (config.bonusCidades / 100) * ratioCidades;
 
         // Bônus produtos: proporção produtos batidos / total produtos × taxa × total vendido
         const totalProdutos = progressoProdutos.length;
         const produtosBatidos = progressoProdutos.filter(p => p.bateu).length;
         const ratioProdutos = totalProdutos > 0 ? produtosBatidos / totalProdutos : 0;
-        const bonusProdutosValor = totalVendidoMes * (config.bonusProdutos / 100) * ratioProdutos;
+        const bonusProdutosValor = minimoNaoAtingido ? 0 : totalVendidoMes * (config.bonusProdutos / 100) * ratioProdutos;
 
         // Bônus flex: % de comissão sobre o saldo não usado do flex (se uso <= limite configurado)
         const flexDentroDoLimite = percFlexUsado <= config.limiteFlexPerc;
         const saldoFlex = Math.max(0, flexMeta - flexUsadoMes);
-        const bonusFlexValor = flexDentroDoLimite
+        const bonusFlexValor = (flexDentroDoLimite && !minimoNaoAtingido)
             ? saldoFlex * (config.bonusFlex / 100)
             : 0;
 
@@ -195,23 +222,28 @@ const comissaoService = {
         const valorProjetado = totalVendidoMes + (mediaDiaria * qtdRestantes);
 
         // Calcula comissão sobre o valor projetado (mantém bônus cidades/produtos como estão agora)
-        const { valor: comissaoBaseProj } = calcularComissaoBase(valorProjetado, valorMeta, config);
+        const percMetaProj = valorMeta > 0 ? (valorProjetado / valorMeta) * 100 : 0;
+        const minimoNaoAtingidoProj = percMinimoMeta > 0 && percMetaProj < percMinimoMeta;
+        const { valor: comissaoBaseProj } = minimoNaoAtingidoProj
+            ? { valor: 0 }
+            : calcularComissaoBase(valorProjetado, valorMeta, config);
         // Bônus sobre projeção (cidades/produtos mantidos na proporção atual; flex projetado)
         const flexUsadoProj = flexUsadoMes + (mediaDiaria > 0 && flexMeta > 0
             ? (flexUsadoMes / Math.max(totalVendidoMes, 1)) * (mediaDiaria * qtdRestantes)
             : 0);
         const saldoFlexProj = Math.max(0, flexMeta - flexUsadoProj);
         const percFlexUsadoProj = flexMeta > 0 ? (flexUsadoProj / flexMeta) * 100 : 0;
-        const bonusFlexProj = percFlexUsadoProj <= config.limiteFlexPerc
+        const bonusFlexProj = (percFlexUsadoProj <= config.limiteFlexPerc && !minimoNaoAtingidoProj)
             ? saldoFlexProj * (config.bonusFlex / 100)
             : 0;
-        const bonusCidadesProj = valorProjetado * (config.bonusCidades / 100) * ratioCidades;
-        const bonusProdutosProj = valorProjetado * (config.bonusProdutos / 100) * ratioProdutos;
+        const bonusCidadesProj = minimoNaoAtingidoProj ? 0 : valorProjetado * (config.bonusCidades / 100) * ratioCidades;
+        const bonusProdutosProj = minimoNaoAtingidoProj ? 0 : valorProjetado * (config.bonusProdutos / 100) * ratioProdutos;
         const totalComissaoProj = comissaoBaseProj + bonusCidadesProj + bonusProdutosProj + bonusFlexProj;
 
         const projecao = {
             valorProjetado,
-            percMeta: valorMeta > 0 ? (valorProjetado / valorMeta) * 100 : 0,
+            percMeta: percMetaProj,
+            minimoNaoAtingido: minimoNaoAtingidoProj,
             mediaDiaria,
             diasPassados: qtdPassados,
             diasRestantes: qtdRestantes,
@@ -236,6 +268,9 @@ const comissaoService = {
             percRealizado: valorMeta > 0 ? (totalVendidoMes / valorMeta) * 100 : 0,
             flex: { usado: flexUsadoMes, total: flexMeta, percUsado: percFlexUsado, dentroDoLimite: flexDentroDoLimite },
             config: {
+                percMinimoMeta,
+                mesReferenciaConfig: config.mesReferencia,
+                herdadaDe: config.mesReferencia !== mesReferencia ? config.mesReferencia : null,
                 faixaAbaixo: config.faixaAbaixo ?? 0,
                 percAbaixoMeta: config.percAbaixoMeta,
                 percNaMeta: config.percNaMeta,
@@ -250,6 +285,8 @@ const comissaoService = {
             },
             calculo: {
                 faixaAplicada,
+                minimoNaoAtingido,
+                percMinimoMeta,
                 comissaoBase,
                 bonusCidades: { valor: bonusCidadesValor, conquistado: todasCidadesBateram, cidadesBatidas, totalCidades, ratio: ratioCidades },
                 bonusProdutos: { valor: bonusProdutosValor, produtosBatidos, totalProdutos, ratio: ratioProdutos },

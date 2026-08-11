@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 const ConfigModal = ({ dados, onClose, onSalvar }) => {
     const [form, setForm] = useState({
         vendedorId: dados.vendedorId,
+        percMinimoMeta: dados.percMinimoMeta ?? 0,
         faixaAbaixo:    dados.faixaAbaixo    ?? 0,
         percAbaixoMeta: dados.percAbaixoMeta ?? 0,
         percNaMeta:     dados.percNaMeta     ?? 0,
@@ -47,6 +48,25 @@ const ConfigModal = ({ dados, onClose, onSalvar }) => {
                 </div>
 
                 <form onSubmit={handleSalvar} className="px-5 py-4 space-y-4">
+
+                    {/* ── MÍNIMO PARA COMISSIONAR ── */}
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Mínimo para ter comissão</p>
+                    <Faixa
+                        cor="gray"
+                        titulo="Mínimo da meta"
+                        descricao={form.percMinimoMeta > 0
+                            ? `Abaixo de ${form.percMinimoMeta}% da meta, não recebe comissão nenhuma`
+                            : 'Sem mínimo — comissiona qualquer valor vendido'}
+                        campos={[
+                            {
+                                label: 'Mínimo da meta (%)',
+                                hint: 'Só recebe comissão (faixas e bônus) se atingir pelo menos X% da meta. Ex: 70 = quem vender menos de 70% da meta fica sem comissão. 0 = sem mínimo.',
+                                value: form.percMinimoMeta,
+                                onChange: set('percMinimoMeta'),
+                                fullWidth: true,
+                            },
+                        ]}
+                    />
 
                     {/* ── FAIXAS DE COMISSÃO ── */}
                     <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Faixas de comissão</p>
@@ -171,6 +191,7 @@ const ConfigModal = ({ dados, onClose, onSalvar }) => {
 
 // Bloco colorido por faixa
 const COR = {
+    gray:   { border: 'border-gray-200',   bg: 'bg-gray-50',   dot: 'bg-gray-400',   text: 'text-gray-700' },
     red:    { border: 'border-red-200',    bg: 'bg-red-50',    dot: 'bg-red-400',    text: 'text-red-700' },
     yellow: { border: 'border-yellow-200', bg: 'bg-yellow-50', dot: 'bg-yellow-400', text: 'text-yellow-700' },
     green:  { border: 'border-green-200',  bg: 'bg-green-50',  dot: 'bg-green-400',  text: 'text-green-700' },
