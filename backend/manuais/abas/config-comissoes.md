@@ -49,6 +49,8 @@ Clique no ícone de gráfico para ver o **detalhamento** de um vendedor:
 
 Na apuração, quem ficou abaixo do **mínimo da meta** aparece com o selo vermelho "% · sem comissão" e total R$ 0,00; o detalhamento mostra um aviso explicando.
 
+**Projeção por dia da semana:** a projeção do fim do mês usa os dias de trabalho selecionados na meta. Cada dia de venda que ainda falta é estimado pela média das últimas ocorrências daquele mesmo dia da semana (últimas segundas para projetar segundas, últimas terças para terças…), olhando os dias trabalhados do mês atual e dos 2 meses anteriores com meta. Dia da semana sem histórico suficiente usa a média diária simples. O vendedor vê a própria comissão e essa projeção no dashboard dele (card "Minha comissão" + popup às 08:00/18:00).
+
 ---
 
 ## Fórmula de cálculo

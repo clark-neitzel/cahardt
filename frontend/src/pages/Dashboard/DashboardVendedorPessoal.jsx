@@ -9,6 +9,7 @@ import {
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import SelectBusca from '../../components/SelectBusca';
+import { CardComissao } from '../../components/ComissaoVendedor';
 import {
     Card, BarraMeta, Gauge, BadgeRecompra, Carregando, fmtRS, fmtRS0, fmtBR, fmtInt,
     useAtualizaAoVoltar
@@ -236,6 +237,9 @@ const DashboardVendedorPessoal = ({ vendedorInicial = '' }) => {
                         <p className="text-sm text-gray-600">Você ainda não tem meta cadastrada para este mês.</p>
                     </Card>
                 )}
+
+                {/* Minha comissão (só o próprio vendedor — gestor acompanha pela tela de Comissões) */}
+                {!isGestor && !vendedorSelecionado && <CardComissao />}
 
                 {/* Hoje */}
                 <div className="grid grid-cols-3 gap-2.5">

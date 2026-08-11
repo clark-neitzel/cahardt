@@ -9,4 +9,7 @@ export const comissaoService = {
 
     apurar: (mesReferencia, vendedorId) =>
         api.get('/comissoes/apuracao', { params: { mesReferencia, vendedorId } }).then(r => r.data),
+
+    minha: () =>
+        api.get('/comissoes/minha').then(r => r.data),
 };

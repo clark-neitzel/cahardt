@@ -5,6 +5,9 @@ const verificarAuth = require('../middlewares/authMiddleware');
 
 router.use(verificarAuth);
 
+// GET  /api/comissoes/minha — comissão do vendedor logado no mês atual
+router.get('/minha', comissaoController.minha);
+
 // GET  /api/comissoes/config?mesReferencia=YYYY-MM
 router.get('/config', comissaoController.listarConfigs);
 

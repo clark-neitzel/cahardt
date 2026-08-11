@@ -1,6 +1,26 @@
+const dayjs = require('dayjs');
 const comissaoService = require('../services/comissaoService');
 
 module.exports = {
+
+    // Comissão do próprio vendedor logado (dashboard/popup) — sempre o mês atual
+    // por padrão. Gestor pode consultar outro vendedor via ?vendedorId=.
+    minha: async (req, res) => {
+        try {
+            const isGestor = !!req.user?.permissoes?.admin
+                || !!req.user?.permissoes?.Pode_Gerenciar_Metas
+                || !!req.user?.permissoes?.Pode_Ver_Dashboard_Admin;
+            const vendedorId = (isGestor && req.query.vendedorId) ? req.query.vendedorId : req.user?.id;
+            const mesReferencia = /^\d{4}-\d{2}$/.test(req.query.mesReferencia || '')
+                ? req.query.mesReferencia
+                : dayjs().format('YYYY-MM');
+            const resultado = await comissaoService.apurarVendedor(vendedorId, mesReferencia);
+            res.json(resultado);
+        } catch (err) {
+            console.error('[comissaoController.minha]', err);
+            res.status(500).json({ error: err.message });
+        }
+    },
 
     listarConfigs: async (req, res) => {
         try {

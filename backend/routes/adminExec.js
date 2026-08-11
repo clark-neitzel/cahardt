@@ -50,7 +50,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'comissao-minimo-heranca-2026-08-11',
+        deployMarker: 'comissao-projecao-dias-semana-2026-08-11',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -62,6 +62,43 @@ router.get('/ping', (req, res) => {
         botWhatsappConfigurado: !!(process.env.BOT_WHATSAPP_URL && process.env.BOT_WHATSAPP_API_KEY),
         node: process.version,
     });
+});
+
+// GET /api/admin-exec/diag-comissao-projecao?mes=YYYY-MM[&vendedorId=xxx]
+// Confere EM PRODUÇÃO a apuração de comissão com a projeção por dia da semana
+// e a regra do % mínimo. Não altera nada.
+router.get('/diag-comissao-projecao', async (req, res) => {
+    try {
+        const comissaoService = require('../services/comissaoService');
+        const dayjs = require('dayjs');
+        const mes = /^\d{4}-\d{2}$/.test(req.query.mes || '') ? req.query.mes : dayjs().format('YYYY-MM');
+        const resultados = req.query.vendedorId
+            ? [await comissaoService.apurarVendedor(req.query.vendedorId, mes)]
+            : await comissaoService.apurarTodos(mes);
+        res.json({
+            mes,
+            vendedores: resultados.map(r => ({
+                vendedor: r.vendedor?.nome,
+                temMeta: r.temMeta,
+                temConfig: r.temConfig,
+                configHerdadaDe: r.config?.herdadaDe || null,
+                percMinimoMeta: r.config?.percMinimoMeta,
+                realizado: r.realizado != null ? Math.round(r.realizado) : null,
+                percRealizado: r.percRealizado != null ? Math.round(r.percRealizado) : null,
+                minimoNaoAtingido: r.calculo?.minimoNaoAtingido,
+                totalComissao: r.calculo ? Math.round(r.calculo.totalComissao) : null,
+                projecao: r.projecao ? {
+                    metodo: r.projecao.metodo,
+                    diasRestantes: r.projecao.diasRestantes,
+                    valorProjetado: Math.round(r.projecao.valorProjetado),
+                    comissaoProjetada: Math.round(r.projecao.comissao.total),
+                    minimoNaoAtingido: r.projecao.minimoNaoAtingido,
+                } : null,
+            })),
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
 });
 
 // GET /api/admin-exec/diag-conferencia-caixa

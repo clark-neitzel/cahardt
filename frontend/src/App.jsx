@@ -118,6 +118,7 @@ import PendenciaRotaGateway from './components/PendenciaRotaGateway';
 import AlertaFaturamento from './components/AlertaFaturamento';
 import AlertaPedidoConvertido from './components/AlertaPedidoConvertido';
 import AlertaPedidosNaoEnviados from './components/AlertaPedidosNaoEnviados';
+import AlertaComissao from './components/ComissaoVendedor';
 import AlertaTarefas from './components/AlertaTarefas';
 import AlertaPedidosSite from './components/AlertaPedidosSite';
 import AlertaAutorizacaoDevolucao from './components/AlertaAutorizacaoDevolucao';
@@ -618,6 +619,9 @@ const Layout = ({ children }) => {
 
         {/* LEMBRETE DE PEDIDOS SALVOS SEM ENVIAR (popup a cada 30 min p/ o vendedor) */}
         <AlertaPedidosNaoEnviados />
+
+        {/* COMISSÃO DO VENDEDOR — popup às 08:00 e 18:00 (1x por janela, só comissão ativa) */}
+        <AlertaComissao />
 
         {/* ALERTA DE TAREFAS DA EQUIPE (pop-up + som no horário; insiste a cada 5 min) */}
         <AlertaTarefas />
