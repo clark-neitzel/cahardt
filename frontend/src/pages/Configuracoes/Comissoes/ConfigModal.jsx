@@ -14,6 +14,9 @@ const ConfigModal = ({ dados, onClose, onSalvar }) => {
         bonusProdutos:  dados.bonusProdutos  ?? 0,
         bonusFlex:      dados.bonusFlex      ?? 0,
         limiteFlexPerc: dados.limiteFlexPerc ?? 100,
+        popupAtivo:     dados.popupAtivo !== false,
+        popupManha:     dados.popupManha ?? '08:00',
+        popupTarde:     dados.popupTarde ?? '18:00',
     });
 
     const set = (field) => (e) => setForm(f => ({ ...f, [field]: parseFloat(e.target.value) || 0 }));
@@ -171,6 +174,49 @@ const ConfigModal = ({ dados, onClose, onSalvar }) => {
                                 </p>
                             )}
                         </div>
+                    </div>
+
+                    {/* ── POPUP NO APP ── */}
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-1">Popup no app do vendedor</p>
+                    <div className="rounded-lg border border-dashed border-gray-200 p-3 space-y-3 bg-gray-50">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 cursor-pointer min-h-[24px]">
+                            <input
+                                type="checkbox"
+                                checked={form.popupAtivo}
+                                onChange={e => setForm(f => ({ ...f, popupAtivo: e.target.checked }))}
+                                className="h-4 w-4 accent-[#00754A]"
+                            />
+                            Mostrar popup com a comissão e a projeção
+                        </label>
+                        {form.popupAtivo ? (
+                            <>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Manhã</label>
+                                        <input
+                                            type="time"
+                                            value={form.popupManha}
+                                            onChange={e => setForm(f => ({ ...f, popupManha: e.target.value }))}
+                                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Tarde</label>
+                                        <input
+                                            type="time"
+                                            value={form.popupTarde}
+                                            onChange={e => setForm(f => ({ ...f, popupTarde: e.target.value }))}
+                                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-white focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                        />
+                                    </div>
+                                </div>
+                                <p className="text-[10px] text-gray-400 leading-tight">
+                                    Aparece 1x por período, a partir do horário, com o app aberto. Apague um horário para não mostrar naquele período.
+                                </p>
+                            </>
+                        ) : (
+                            <p className="text-[10px] text-gray-400 leading-tight">O vendedor continua vendo o card "Minha comissão" no dashboard — só o popup fica desligado.</p>
+                        )}
                     </div>
 
                     <div className="flex gap-3 pt-2">

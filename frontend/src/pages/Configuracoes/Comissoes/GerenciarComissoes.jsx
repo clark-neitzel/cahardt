@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import dayjs from 'dayjs';
 import 'dayjs/locale/pt-br';
-import { Pencil, BarChart2, CheckCircle, XCircle, AlertCircle, Percent, TrendingUp, MapPin, List, ArrowLeft } from 'lucide-react';
+import { Pencil, BarChart2, CheckCircle, XCircle, AlertCircle, Percent, TrendingUp, MapPin, List, ArrowLeft, Info, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import { comissaoService } from '../../../services/comissaoService';
@@ -181,6 +181,7 @@ const GerenciarComissoes = () => {
                                                 <div className="flex justify-between"><span className="text-gray-500">Bônus cidades</span><span className="font-medium text-green-700">{fmtPerc(config.bonusCidades)}</span></div>
                                                 <div className="flex justify-between"><span className="text-gray-500">Bônus produto</span><span className="font-medium text-green-700">{fmtPerc(config.bonusProdutos)}</span></div>
                                                 <div className="flex justify-between"><span className="text-gray-500">Bônus flex</span><span className="font-medium text-green-700">{fmtPerc(config.bonusFlex)}</span></div>
+                                                <div className="flex justify-between"><span className="text-gray-500">Popup</span><span className="font-medium text-gray-700">{config.popupAtivo === false ? 'desligado' : [config.popupManha, config.popupTarde].filter(Boolean).join(' · ') || '—'}</span></div>
                                             </div>
                                         ) : (
                                             <span className="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">sem configuração</span>
@@ -203,6 +204,7 @@ const GerenciarComissoes = () => {
                                             <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Bônus/Produto</th>
                                             <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Bônus Flex</th>
                                             <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Limite Flex</th>
+                                            <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Popup</th>
                                             <th className="px-5 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide">Ações</th>
                                         </tr>
                                     </thead>
@@ -227,9 +229,14 @@ const GerenciarComissoes = () => {
                                                         <td className="px-5 py-3 text-right text-green-700">{fmtPerc(config.bonusProdutos)}</td>
                                                         <td className="px-5 py-3 text-right text-green-700">{fmtPerc(config.bonusFlex)}</td>
                                                         <td className="px-5 py-3 text-right text-gray-500">{fmtPerc(config.limiteFlexPerc)}</td>
+                                                        <td className="px-5 py-3 text-right text-gray-500 whitespace-nowrap">
+                                                            {config.popupAtivo === false
+                                                                ? <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-500">desligado</span>
+                                                                : [config.popupManha, config.popupTarde].filter(Boolean).join(' · ') || '—'}
+                                                        </td>
                                                     </>
                                                 ) : (
-                                                    <td colSpan={8} className="px-5 py-3 text-right">
+                                                    <td colSpan={9} className="px-5 py-3 text-right">
                                                         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">sem configuração</span>
                                                     </td>
                                                 )}
@@ -439,6 +446,36 @@ const GerenciarComissoes = () => {
                     />
                 )}
             </div>
+
+            {/* Como a projeção é calculada */}
+            <details className="bg-white rounded-xl border border-gray-200 shadow-sm group mb-6" open>
+                <summary className="flex items-center gap-2 px-5 py-3.5 cursor-pointer list-none min-h-[44px]">
+                    <Info className="h-4 w-4 text-blue-600" />
+                    <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Como a projeção é calculada</span>
+                    <ChevronDown className="h-4 w-4 text-gray-400 ml-auto transition-transform group-open:rotate-180" />
+                </summary>
+                <div className="px-5 pb-5 pt-3 border-t border-gray-100 space-y-3 text-sm text-gray-600">
+                    <div className="flex gap-3">
+                        <span className="flex-none w-6 h-6 rounded-full bg-mint text-primaryDark text-xs font-extrabold flex items-center justify-center">1</span>
+                        <p><b className="text-gray-800">Só os dias de venda contam.</b> A projeção usa os dias de trabalho marcados na meta do vendedor — ela só projeta os dias de venda que ainda faltam no mês.</p>
+                    </div>
+                    <div className="flex gap-3">
+                        <span className="flex-none w-6 h-6 rounded-full bg-mint text-primaryDark text-xs font-extrabold flex items-center justify-center">2</span>
+                        <p><b className="text-gray-800">Segunda projeta segunda, terça projeta terça.</b> Para cada dia que falta, o sistema pega as <b>últimas 4 vezes daquele mesmo dia da semana</b> em que o vendedor trabalhou (neste mês e nos 2 meses anteriores com meta) e faz a média do que ele vendeu nelas. Dia trabalhado sem venda conta como R$ 0 — é sinal real, não é descartado.</p>
+                    </div>
+                    <div className="flex gap-3">
+                        <span className="flex-none w-6 h-6 rounded-full bg-mint text-primaryDark text-xs font-extrabold flex items-center justify-center">3</span>
+                        <p><b className="text-gray-800">Pouco histórico? Usa a média simples.</b> Se um dia da semana tem menos de 2 ocorrências no histórico, aquele dia é projetado pela média diária do mês (total vendido ÷ dias já trabalhados).</p>
+                    </div>
+                    <div className="flex gap-3">
+                        <span className="flex-none w-6 h-6 rounded-full bg-mint text-primaryDark text-xs font-extrabold flex items-center justify-center">4</span>
+                        <p><b className="text-gray-800">Da venda projetada à comissão projetada.</b> Venda projetada = o que já vendeu + a soma dos dias projetados. Sobre ela aplicam-se as mesmas regras da comissão (mínimo da meta, faixas e bônus). Se a projeção termina abaixo do mínimo, a comissão projetada é zero — e o vendedor vê o alerta para acelerar.</p>
+                    </div>
+                    <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
+                        Exemplo: faltam 3 segundas e 2 sábados → projeção = 3 × média das últimas segundas + 2 × média dos últimos sábados. Assim um vendedor forte no fim de semana não é projetado como se todo dia fosse igual.
+                    </p>
+                </div>
+            </details>
 
             {/* Modal de configuração */}
             {modalAberto && editando && (

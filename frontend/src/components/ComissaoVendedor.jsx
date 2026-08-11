@@ -115,43 +115,65 @@ export const CardComissao = () => {
     );
 };
 
-// ── Popup das 08:00 e das 18:00 ────────────────────────────────────────────
-// Aparece uma vez por janela (manhã/tarde) por dia, só para quem tem comissão
+// ── Popup da manhã e da tarde ──────────────────────────────────────────────
+// Horários e liga/desliga vêm da configuração de comissão do vendedor
+// (Config → Comissões → lápis → "Popup no app do vendedor"; padrão 08:00 e
+// 18:00). Aparece uma vez por período por dia, só para quem tem comissão
 // ativa. Gestores/admin não recebem.
-const JANELAS = [
-    { id: 'manha', de: 8, ate: 12 },
-    { id: 'tarde', de: 18, ate: 24 },
-];
+const HORA_VALIDA = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const AlertaComissao = () => {
     const { user } = useAuth();
     const [dados, setDados] = useState(null);
     const [visivel, setVisivel] = useState(false);
+    const cfgRef = useRef(null);      // config carregada na abertura do app
     const chaveRef = useRef(null);
+    const buscandoRef = useRef(false);
 
     const verificar = useCallback(async () => {
-        const h = new Date().getHours();
-        const janela = JANELAS.find(j => h >= j.de && h < j.ate);
-        if (!janela) return;
-        const chave = `comissao_popup:${user.id}:${dayjs().format('YYYY-MM-DD')}:${janela.id}`;
+        const cfg = cfgRef.current;
+        if (!cfg || cfg.popupAtivo === false || buscandoRef.current) return;
+        const agora = dayjs();
+        const janelas = [
+            { id: 'manha', hora: cfg.popupManha ?? '08:00' },
+            { id: 'tarde', hora: cfg.popupTarde ?? '18:00' },
+        ].filter(j => HORA_VALIDA.test(j.hora)); // horário vazio = período desligado
+        const elegiveis = janelas.filter(j => agora.format('HH:mm') >= j.hora);
+        if (elegiveis.length === 0) return;
+        const prefixo = `comissao_popup:${user.id}:${agora.format('YYYY-MM-DD')}:`;
+        // Abriu o app depois dos dois horários? Mostra só o mais recente
+        elegiveis.slice(0, -1).forEach(j => localStorage.setItem(prefixo + j.id, '1'));
+        const janela = elegiveis[elegiveis.length - 1];
+        const chave = prefixo + janela.id;
         if (localStorage.getItem(chave)) return;
+        buscandoRef.current = true;
         try {
-            const r = await comissaoService.minha();
-            if (!comissaoAtiva(r)) {
-                localStorage.setItem(chave, '1'); // sem comissão ativa: não insistir hoje
+            const r = await comissaoService.minha(); // números frescos na hora de mostrar
+            if (!comissaoAtiva(r) || r.config?.popupAtivo === false) {
+                localStorage.setItem(chave, '1'); // sem comissão ativa/popup desligado: não insistir
                 return;
             }
+            cfgRef.current = r.config || cfgRef.current;
             chaveRef.current = chave;
             setDados(r);
             setVisivel(true);
         } catch { /* rede/backend fora: tenta na próxima checagem */ }
+        finally { buscandoRef.current = false; }
     }, [user?.id]);
 
     useEffect(() => {
         if (!user || gestorPerms(user)) return;
-        const timer = setTimeout(verificar, 8000);          // deixa o app abrir primeiro
-        const interval = setInterval(verificar, 60 * 1000); // pega a virada das 08h/18h com o app aberto
-        return () => { clearTimeout(timer); clearInterval(interval); };
+        let vivo = true;
+        const timer = setTimeout(async () => {           // deixa o app abrir primeiro
+            try {
+                const r = await comissaoService.minha();
+                if (!vivo || !comissaoAtiva(r)) return;
+                cfgRef.current = r.config || {};
+                verificar();
+            } catch { /* sem config carregada, o interval não dispara */ }
+        }, 8000);
+        const interval = setInterval(verificar, 60 * 1000); // pega a virada do horário com o app aberto
+        return () => { vivo = false; clearTimeout(timer); clearInterval(interval); };
     }, [user, verificar]);
 
     if (!visivel || !dados) return null;

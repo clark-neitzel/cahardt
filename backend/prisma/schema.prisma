@@ -2639,6 +2639,11 @@ model ComissaoConfig {
   bonusFlex      Float @default(0) @map("bonus_flex") // % adicional se uso de flex <= limiteFlexPerc
   limiteFlexPerc Float @default(100) @map("limite_flex_perc") // % máximo de uso do flex para ganhar bônus flex
 
+  // Popup de comissão no app do vendedor (1x por período; horário "" = não mostra no período)
+  popupAtivo Boolean @default(true) @map("popup_ativo")
+  popupManha String  @default("08:00") @map("popup_manha") // formato HH:MM
+  popupTarde String  @default("18:00") @map("popup_tarde") // formato HH:MM
+
   criadoPor String   @map("criado_por")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

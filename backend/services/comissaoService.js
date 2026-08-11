@@ -28,10 +28,20 @@ const comissaoService = {
         const {
             vendedorId, mesReferencia,
             percMinimoMeta, faixaAbaixo, percAbaixoMeta, percNaMeta, faixaAcima, percAcimaMeta,
-            bonusCidades, bonusProdutos, bonusFlex, limiteFlexPerc
+            bonusCidades, bonusProdutos, bonusFlex, limiteFlexPerc,
+            popupAtivo, popupManha, popupTarde
         } = dados;
 
+        // Horário do popup: HH:MM válido ou '' (não mostra no período)
+        const hora = (v, padrao) => {
+            if (v === '' || v == null) return v === '' ? '' : padrao;
+            return /^([01]\d|2[0-3]):[0-5]\d$/.test(String(v)) ? String(v) : padrao;
+        };
+
         const campos = {
+            popupAtivo: popupAtivo !== false,
+            popupManha: hora(popupManha, '08:00'),
+            popupTarde: hora(popupTarde, '18:00'),
             percMinimoMeta: percMinimoMeta ?? 0,
             faixaAbaixo: faixaAbaixo ?? 0,
             percAbaixoMeta: percAbaixoMeta ?? 0,
@@ -330,6 +340,9 @@ const comissaoService = {
             flex: { usado: flexUsadoMes, total: flexMeta, percUsado: percFlexUsado, dentroDoLimite: flexDentroDoLimite },
             config: {
                 percMinimoMeta,
+                popupAtivo: config.popupAtivo !== false,
+                popupManha: config.popupManha ?? '08:00',
+                popupTarde: config.popupTarde ?? '18:00',
                 mesReferenciaConfig: config.mesReferencia,
                 herdadaDe: config.mesReferencia !== mesReferencia ? config.mesReferencia : null,
                 faixaAbaixo: config.faixaAbaixo ?? 0,
