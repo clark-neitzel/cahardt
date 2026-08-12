@@ -1,5 +1,11 @@
 [
   {
+    "slug": "vendedor-inativo-filtros",
+    "titulo": "Filtrar por quem já saiu",
+    "resumo": "Os filtros de vendedor mostravam só quem está na ativa — e o histórico de um ex-vendedor (títulos em aberto, pedidos, clientes, leads, entregas) ficava impossível de consultar. Agora o menu Vendedor traz também os inativos, no fim da lista e marcados '(inativo)': serve para cobrar a carteira de quem saiu e levantar o que ele vendeu. Vale em Contas a Receber (tabela), Pedidos, Clientes, Leads, Entregas e nos Relatórios de Pedidos e de Vendas. Onde se ATRIBUI alguém (pedido novo, reatribuir vendedor, troca em lote) continua aparecendo só quem está na ativa.",
+    "data": "2026-08-12"
+  },
+  {
     "slug": "acesso-externo",
     "titulo": "Acesso externo",
     "resumo": "Quem é de fora da operação — o escritório de contabilidade, por exemplo — agora pode ser marcado como 'Acesso externo' em Administração → Usuários: a pessoa continua entrando no app com as permissões dela, mas o nome some do seletor de vendedor do Caixa Diário, dos filtros de Pedidos e Relatórios, da lista de motorista do Embarque, das metas, das comissões e do 'para quem' das Tarefas. Na tela Usuários ela fica com o selo roxo EXTERNO.",

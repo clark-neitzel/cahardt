@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: vendedor inativo nos filtros — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
+<meta property="og:title" content="🔎 Novidade no Hardt App: vendedor que saiu volta a aparecer nos filtros">
+<meta property="og:description" content="Agora dá para filtrar pedidos, títulos, clientes, leads e relatórios pelo nome de um ex-vendedor. Ele aparece no fim da lista, marcado (inativo).">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 96px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block; background: var(--gold); color: #2b230f;
+    font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em;
+    padding: 6px 14px; border-radius: 999px; margin-bottom: 18px;
+  }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 420px; margin: -68px auto 28px; background: #fff; border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28); overflow: hidden; text-align: left;
+  }
+  .mock-top { background: var(--house); color: #fff; padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+  .mock-top small { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; color: rgba(255,255,255,.55); }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-soft); margin-bottom: 4px; }
+  .menu { border: 1.5px solid var(--primary); border-radius: 12px; overflow: hidden; }
+  .menu-busca { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid #efeee8; font-size: 13px; color: #9aa5a0; }
+  .menu-item { display: flex; align-items: center; gap: 9px; padding: 10px 12px; font-size: 14px; border-top: 1px solid #f4f3ee; }
+  .menu-item:first-of-type { border-top: none; }
+  .menu-item .box { width: 16px; height: 16px; border-radius: 5px; border: 1.5px solid #cfcdc4; flex-shrink: 0; }
+  .menu-item.on .box { background: var(--primary); border-color: var(--primary); }
+  .menu-item.velho { background: #fbfaf6; color: var(--ink-soft); }
+  .menu-item .tag { margin-left: auto; font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #98a29c; }
+  .menu-grupo {
+    padding: 7px 12px; background: #f4f3ee; font-size: 10px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .12em; color: #8a938e; border-top: 1px solid #eceae3;
+  }
+  .destaque { outline: 2px dashed var(--gold); outline-offset: -2px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; color: var(--primary-dark); margin: 34px 4px 12px; }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit; text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+  .app-card-head { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid #f0efe9; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: #6b756f; }
+  .app-card-body { padding: 12px; }
+  .app-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .app-input { border: 1px solid #d8d5cc; border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: var(--ink); background: #fff; }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.aberto { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.12); }
+  .app-input .vazio { color: #9aa5a0; }
+  .app-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--primary); color: #fff; font-size: 12.5px; font-weight: 700; padding: 9px 16px; border-radius: 999px; }
+  .app-linha { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 9px 12px; border-top: 1px solid #f0efe9; }
+  .app-linha b { color: var(--ink); }
+  .app-linha .dim { color: #8a938e; }
+  .app-linha .val { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .telas-lista { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 6px 16px 12px; }
+  .telas-lista div { font-size: 14px; color: var(--ink-soft); padding: 9px 0; display: flex; gap: 9px; align-items: flex-start; }
+  .telas-lista div + div { border-top: 1px dashed #e9e7e0; }
+  .telas-lista b { color: var(--ink); }
+
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Vendedor que saiu<br>voltou para os filtros</h1>
+    <p>Título, pedido, cliente e entrega de quem já não trabalha mais aqui continuam no nome dele — mas o filtro só listava quem está na ativa. Agora o ex-vendedor aparece também, no fim da lista e marcado <b>(inativo)</b>.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do menu de vendedor -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🔎</span>
+      <div>
+        <small>Contas a Receber · Filtros</small>
+        <strong>Vendedor</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-label">Vendedor</div>
+      <div class="menu">
+        <div class="menu-busca">🔍 Buscar…</div>
+        <div class="menu-item"><span class="box"></span> Ana Souza</div>
+        <div class="menu-item"><span class="box"></span> Carlos Lima</div>
+        <div class="menu-item"><span class="box"></span> Jociel</div>
+        <div class="menu-grupo">↓ quem já saiu da empresa</div>
+        <div class="menu-item velho on destaque"><span class="box"></span> João Antigo <span class="tag">inativo</span></div>
+        <div class="menu-item velho"><span class="box"></span> Marta Ferreira <span class="tag">inativo</span></div>
+      </div>
+      <p style="font-size:12px;color:#8a938e;margin:10px 0 0">Exemplo com nomes fictícios — na sua tela aparecem os nomes reais da equipe.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔎</span>
+      <strong>O ex-vendedor volta a ser pesquisável</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Quando alguém é desligado, o cadastro dele é desativado — e era isso que sumia o nome dos filtros. Só que o histórico não some junto: os títulos em aberto, os pedidos, os clientes e as entregas continuam registrados no nome de quem atendeu na época.</p>
+      <p>Agora o menu de vendedor dos filtros traz <b>os ativos primeiro e os inativos no fim</b>, com o aviso <b>(inativo)</b> ao lado do nome. É só marcar e filtrar, igual a qualquer outro vendedor.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧾</span>
+      <strong>Serve para cobrar a carteira de quem saiu</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O caso mais comum: no <b>Contas a Receber</b>, filtrar Status Conta = <b>Aberto</b> + Vendedor = o ex-vendedor. Sai a lista exata do que ficou para receber na carteira dele — para dividir entre a equipe ou passar para a cobrança.</p>
+      <p>O mesmo vale para conferir quanto ele vendeu, quais clientes eram dele e quais entregas passaram pela mão dele.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚫</span>
+      <strong>O que NÃO mudou (de propósito)</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Inativo aparece só onde se <b>consulta</b>. Onde se <b>atribui</b> alguém, continua saindo só quem está na ativa:</p>
+      <ul>
+        <li>Novo pedido e novo cliente/lead</li>
+        <li>Reatribuir vendedor de um pedido</li>
+        <li>Trocar o vendedor de clientes em lote</li>
+      </ul>
+      <p>Ou seja: não tem risco de passar cliente ou pedido novo para quem não trabalha mais aqui.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ TELAS ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">🧾 Tela 1 · Contas a Receber → Tabela → Filtros</div>
+    <div class="tela-corpo" aria-hidden="true">
+      <div class="app-card">
+        <div class="app-card-head">▽ Filtros</div>
+        <div class="app-card-body">
+          <div class="app-grid">
+            <div class="app-input"><small>Status Conta</small> ABERTO</div>
+            <div class="app-input aberto"><small>Vendedor</small> João Antigo (inativo) <span class="pin">1</span></div>
+          </div>
+          <div style="margin-top:10px"><span class="app-btn">▽ Filtrar</span></div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">Resultado <span class="pin">2</span></div>
+        <div class="app-linha"><b>#770</b> <span class="dim">Panificadora Exemplo</span> <span class="val">R$ 248,12</span></div>
+        <div class="app-linha"><b>#849</b> <span class="dim">Mercado do Bairro</span> <span class="val">R$ 274,52</span></div>
+        <div class="app-linha"><b>#905</b> <span class="dim">Padaria Central</span> <span class="val">R$ 140,03</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>No menu <b>Vendedor</b>, role até o fim: depois dos ativos vêm os que saíram, com <b>(inativo)</b> no nome. Dá para marcar mais de um.</span></div>
+      <div><span class="pin">2</span><span>A lista mostra os títulos daquele vendedor. Combine com <b>Status Conta = Aberto</b> para ver só o que falta receber, e use o botão <b>Relatório</b> ou <b>CSV</b> para levar a lista.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📊 Tela 2 · Relatórios → Vendas / Pedidos</div>
+    <div class="tela-corpo" aria-hidden="true">
+      <div class="app-card">
+        <div class="app-card-head">▽ Filtros do relatório</div>
+        <div class="app-card-body">
+          <div class="app-grid">
+            <div class="app-input"><small>Período</small> 01/01/2026 – 31/07/2026</div>
+            <div class="app-input aberto"><small>Vendedor</small> João Antigo (inativo) <span class="pin">3</span></div>
+          </div>
+          <div style="margin-top:10px"><span class="app-btn">Gerar relatório</span></div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">Resumo</div>
+        <div class="app-linha"><span class="dim">Pedidos</span> <span class="val">128</span></div>
+        <div class="app-linha"><span class="dim">Valor vendido</span> <span class="val">R$ 96.430,00</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">3</span><span>Mesmo menu, mesma marcação. Serve para levantar o que um ex-vendedor vendeu em qualquer período — inclusive para conferir comissão antiga.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ ONDE FUNCIONA ══════════ -->
+  <div class="sec-label">Onde já está valendo</div>
+  <div class="telas-lista">
+    <div><b>Financeiro → Contas a Receber (Tabela)</b> — filtro Vendedor (várias escolhas)</div>
+    <div><b>Pedidos</b> — filtro Vendedor</div>
+    <div><b>Clientes</b> — filtro Vendedor</div>
+    <div><b>Leads</b> — filtro Vendedor</div>
+    <div><b>Administração → Entregas</b> — filtros Vendedor e Entregador</div>
+    <div><b>Relatórios → Pedidos</b> e <b>Relatórios → Vendas</b> — filtro Vendedor</div>
+  </div>
+
+  <!-- ══════════ PASSOS ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><div class="passo-n">1</div><div>Abra a tela (ex.: <b>Financeiro → Contas a Receber → Tabela</b>) e toque em <b>Filtros</b>.</div></div>
+    <div class="passo"><div class="passo-n">2</div><div>Abra o menu <b>Vendedor</b> e <b>role até o fim da lista</b> — ou digite o nome na busca do menu.</div></div>
+    <div class="passo"><div class="passo-n">3</div><div>Escolha o nome marcado com <b>(inativo)</b> e toque em <b>Filtrar</b>.</div></div>
+    <div class="passo"><div class="passo-n">4</div><div>Se quiser a lista fora do app, use <b>Relatório</b> ou <b>CSV</b> no topo da tela.</div></div>
+  </div>
+
+  <p class="rodape">Dúvida em alguma tela? Chame o <strong>Clippy</strong> 📎 no canto da tela — ele já sabe explicar isso.</p>
+</div>
+
+<script>
+  function alternar(botao) {
+    var acc = botao.parentElement;
+    var aberto = acc.classList.toggle('aberto');
+    botao.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
