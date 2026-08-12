@@ -16,7 +16,7 @@ const NovoUsuarioModal = ({ modo = 'criar', vendedor = null, onClose, onDone }) 
     const [fornecedores, setFornecedores] = useState([]);
     const [buscando, setBuscando] = useState(false);
     const [pessoa, setPessoa] = useState(null); // cadastro selecionado
-    const [form, setForm] = useState({ nome: '', email: '', telefone: '', login: '', senha: '' });
+    const [form, setForm] = useState({ nome: '', email: '', telefone: '', login: '', senha: '', acessoExterno: false });
     const [salvando, setSalvando] = useState(false);
     const debounceRef = useRef(null);
     const inputRef = useRef(null);
@@ -78,7 +78,8 @@ const NovoUsuarioModal = ({ modo = 'criar', vendedor = null, onClose, onDone }) 
             email: c.Email || '',
             telefone: c.Telefone_Celular || c.Telefone || '',
             login: (c.Nome || '').split(' ')[0].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''),
-            senha: ''
+            senha: '',
+            acessoExterno: false
         });
     };
 
@@ -109,7 +110,8 @@ const NovoUsuarioModal = ({ modo = 'criar', vendedor = null, onClose, onDone }) 
                 telefone: form.telefone.trim() || null,
                 login: form.login.trim(),
                 senha: form.senha,
-                clienteUuid: pessoa?.UUID || null
+                clienteUuid: pessoa?.UUID || null,
+                acessoExterno: form.acessoExterno === true
             });
             toast.success(`Usuário ${criado.nome} criado! Agora defina as permissões.`);
             onDone?.(criado);
@@ -250,6 +252,18 @@ const NovoUsuarioModal = ({ modo = 'criar', vendedor = null, onClose, onDone }) 
                                 <input className={inputCls} type="password" placeholder="Mínimo 4 caracteres" value={form.senha} onChange={(e) => setForm(f => ({ ...f, senha: e.target.value }))} />
                             </div>
                         </div>
+                        <label className="flex items-start gap-2 mt-3 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={form.acessoExterno}
+                                onChange={(e) => setForm(f => ({ ...f, acessoExterno: e.target.checked }))}
+                                className="mt-0.5 h-4 w-4 flex-shrink-0 rounded border-gray-300 text-primary focus:ring-primary"
+                            />
+                            <span className="text-xs leading-tight text-gray-600">
+                                <span className="font-semibold text-gray-800">Acesso externo</span> (contabilidade, parceiro) — entra no app pelo que a permissão liberar,
+                                mas não aparece em nenhum seletor de vendedor, motorista ou equipe.
+                            </span>
+                        </label>
                         <p className="text-xs text-gray-400 mt-3">As permissões são definidas no próximo passo — o painel abre sozinho após criar.</p>
                     </div>
                 )}

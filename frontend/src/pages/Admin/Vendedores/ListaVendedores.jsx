@@ -67,7 +67,9 @@ const ListaVendedores = () => {
     const fetchVendedores = async () => {
         try {
             setLoading(true);
-            const data = await vendedorService.listar();
+            // listarTodos: esta é a tela de administração — precisa mostrar também quem
+            // tem acesso externo (contabilidade/parceiro), que some dos demais seletores.
+            const data = await vendedorService.listarTodos();
             setVendedores(data);
         } catch (error) {
             console.error('Erro ao buscar vendedores:', error);
@@ -85,7 +87,9 @@ const ListaVendedores = () => {
             telefone: vendedor.telefone || '',
             percentualFlex: vendedor.percentualFlex !== undefined ? Number(vendedor.percentualFlex) : 0,
             maxDescontoFlex: vendedor.maxDescontoFlex !== undefined ? vendedor.maxDescontoFlex : 100,
-            nomeVendedorBotHardt: vendedor.nomeVendedorBotHardt || ''
+            nomeVendedorBotHardt: vendedor.nomeVendedorBotHardt || '',
+            // Só admin pode gravar este campo — para os demais o PUT nem envia
+            ...(isAdmin ? { acessoExterno: vendedor.acessoExterno === true } : {})
         });
     };
 
@@ -152,6 +156,28 @@ const ListaVendedores = () => {
     ) : null;
 
     const AJUDA_BOT = 'Copie exatamente o valor mostrado no cadastro da pessoa em Painel Hardt → Equipe → Editar → Nome usado no Bot Hardt.';
+
+    const AJUDA_EXTERNO = 'Acesso externo (contabilidade, parceiro): a pessoa continua entrando no app e usando o que a permissão liberar, mas some de todo seletor de vendedor, motorista e equipe — caixa, pedidos, clientes, metas, tarefas, cobrança e delivery.';
+
+    // Selo na linha: avisa que a pessoa não faz parte da operação
+    const SeloExterno = ({ vendedor }) => vendedor.acessoExterno ? (
+        <span className="text-[9px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0" title={AJUDA_EXTERNO}>EXTERNO</span>
+    ) : null;
+
+    // Só admin grava o campo (o backend recusa os demais) — para os outros nem aparece
+    const CampoExterno = () => isAdmin ? (
+        <label className="flex items-start gap-2 mt-2 cursor-pointer" title={AJUDA_EXTERNO}>
+            <input
+                type="checkbox"
+                checked={!!editForm.acessoExterno}
+                onChange={e => setEditForm({ ...editForm, acessoExterno: e.target.checked })}
+                className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 rounded border-gray-300 text-primary focus:ring-primary"
+            />
+            <span className="text-[10px] leading-tight text-gray-600">
+                <span className="font-semibold text-gray-800">Acesso externo</span> (contabilidade/parceiro) — não aparece como vendedor
+            </span>
+        </label>
+    ) : null;
 
     // Formas de atendimento como controle segmentado uniforme (mesma largura em todas as linhas)
     const FormasSegmento = ({ vendedor }) => (
@@ -261,6 +287,7 @@ const ListaVendedores = () => {
                                                 <label className="text-[10px] text-gray-500 block mb-0.5" title={AJUDA_BOT}>Nome usado no Bot Hardt</label>
                                                 <input className={inputEditCls} value={editForm.nomeVendedorBotHardt} onChange={e => setEditForm({ ...editForm, nomeVendedorBotHardt: e.target.value })} placeholder="ex.: João" title={AJUDA_BOT} />
                                             </div>
+                                            <CampoExterno />
                                         </td>
                                         <td className="px-4 py-3"><input className={inputEditCls} value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} type="email" /></td>
                                         <td className="px-4 py-3"><input className={inputEditCls} value={editForm.telefone} onChange={e => setEditForm({ ...editForm, telefone: e.target.value })} type="tel" placeholder="(xx) xxxxx-xxxx" /></td>
@@ -284,6 +311,7 @@ const ListaVendedores = () => {
                                                     <div className="flex items-center gap-1.5">
                                                         <span className="font-bold text-sm text-gray-900 truncate">{vendedor.nome}</span>
                                                         {vendedor.ativo === false && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">INATIVO</span>}
+                                                        <SeloExterno vendedor={vendedor} />
                                                     </div>
                                                     <div className="flex items-center gap-2 min-w-0">
                                                         <Vinculo vendedor={vendedor} />
@@ -333,6 +361,7 @@ const ListaVendedores = () => {
                                         <div className="flex items-center gap-1.5">
                                             <p className="font-bold text-sm text-gray-900 truncate">{vendedor.nome}</p>
                                             {vendedor.ativo === false && <span className="text-[9px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">INATIVO</span>}
+                                            <SeloExterno vendedor={vendedor} />
                                         </div>
                                         <div className="flex items-center gap-2 min-w-0">
                                             <Vinculo vendedor={vendedor} />
@@ -354,6 +383,7 @@ const ListaVendedores = () => {
                                             <input className={inputEditCls} value={editForm.nomeVendedorBotHardt} onChange={e => setEditForm({ ...editForm, nomeVendedorBotHardt: e.target.value })} placeholder="ex.: João" title={AJUDA_BOT} />
                                             <p className="text-[10px] text-gray-400 mt-0.5">{AJUDA_BOT}</p>
                                         </div>
+                                        <CampoExterno />
                                         <div className="grid grid-cols-2 gap-2">
                                             <div>
                                                 <label className="text-[10px] text-gray-500 block mb-0.5">% Flex (sobre vendas 30d)</label>

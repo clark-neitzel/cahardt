@@ -5,11 +5,15 @@ const { calcularFlexBulk } = require('../services/flexService');
 
 const vendedorController = {
     // Listar todos os vendedores (inclui flex dinâmico computado dos últimos 30 dias)
+    // Por padrão OMITE quem tem acesso externo (contabilidade/parceiro) — esta rota
+    // alimenta praticamente todo seletor de vendedor do app. Só a tela Usuários e o
+    // painel de permissões pedem ?incluirExternos=true.
     listar: async (req, res) => {
         try {
             const where = {};
             if (req.query.ativo === 'true') where.ativo = true;
             if (req.query.ativo === 'false') where.ativo = false;
+            if (req.query.incluirExternos !== 'true') where.acessoExterno = false;
 
             const vendedores = await prisma.vendedor.findMany({
                 where,
@@ -83,7 +87,7 @@ const vendedorController = {
                 return res.status(403).json({ error: 'Apenas administradores podem criar usuários.' });
             }
 
-            const { nome, email, telefone, login, senha, clienteUuid, permissoes, percentualFlex, maxDescontoFlex } = req.body;
+            const { nome, email, telefone, login, senha, clienteUuid, permissoes, percentualFlex, maxDescontoFlex, acessoExterno } = req.body;
 
             if (!nome || !String(nome).trim()) return res.status(400).json({ error: 'Informe o nome completo.' });
             if (!login || !String(login).trim()) return res.status(400).json({ error: 'Informe o login.' });
@@ -120,6 +124,7 @@ const vendedorController = {
                     permissoes: permissoes !== undefined ? permissoes : {},
                     percentualFlex: percentualFlex !== undefined ? percentualFlex : 0,
                     maxDescontoFlex: maxDescontoFlex !== undefined ? maxDescontoFlex : 100,
+                    acessoExterno: acessoExterno === true,
                     ativo: true
                 }
             });
@@ -151,7 +156,7 @@ const vendedorController = {
                 return res.status(403).json({ error: 'Sem permissão para editar usuários.' });
             }
 
-            const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, percentualFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento, alertaPedidoConvertido, tabelaCobrancaFaltaId, quebraCaixa, clienteUuid, nomeVendedorBotHardt } = req.body;
+            const { email, telefone, flexMensal, flexDisponivel, login, senha, permissoes, maxDescontoFlex, percentualFlex, ativo, formasAtendimentoVisiveis, alertaFaturamento, alertaPedidoConvertido, tabelaCobrancaFaltaId, quebraCaixa, clienteUuid, nomeVendedorBotHardt, acessoExterno } = req.body;
 
             // Campos sensíveis (permissões, login, senha, status) só por admin — evita
             // escalonamento de privilégio e sequestro de conta por um gestor não-admin.
@@ -184,6 +189,13 @@ const vendedorController = {
             if (quebraCaixa !== undefined) {
                 if (!isAdmin) return res.status(403).json({ error: 'Apenas administradores podem definir a quebra de caixa.' });
                 dataToUpdate.quebraCaixa = Math.max(0, Number(quebraCaixa) || 0);
+            }
+
+            // Acesso externo (contabilidade/parceiro): tira a pessoa de todo seletor de
+            // vendedor/motorista/equipe. Só admin — muda o que a operação inteira enxerga.
+            if (acessoExterno !== undefined) {
+                if (!isAdmin) return res.status(403).json({ error: 'Apenas administradores podem marcar acesso externo.' });
+                dataToUpdate.acessoExterno = acessoExterno === true;
             }
 
             // Vincular usuário antigo ao cadastro de pessoas (um cadastro por usuário)

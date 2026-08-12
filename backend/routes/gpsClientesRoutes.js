@@ -250,7 +250,7 @@ router.get('/minhas-divergencias', async (req, res) => {
 router.get('/autorizadores', async (req, res) => {
     try {
         const vendedores = await prisma.vendedor.findMany({
-            where: { ativo: true },
+            where: { ativo: true, acessoExterno: false },
             select: { id: true, nome: true, permissoes: true }
         });
         const lista = vendedores.filter(v => {

@@ -1,5 +1,11 @@
 [
   {
+    "slug": "acesso-externo",
+    "titulo": "Acesso externo",
+    "resumo": "Quem é de fora da operação — o escritório de contabilidade, por exemplo — agora pode ser marcado como 'Acesso externo' em Administração → Usuários: a pessoa continua entrando no app com as permissões dela, mas o nome some do seletor de vendedor do Caixa Diário, dos filtros de Pedidos e Relatórios, da lista de motorista do Embarque, das metas, das comissões e do 'para quem' das Tarefas. Na tela Usuários ela fica com o selo roxo EXTERNO.",
+    "data": "2026-08-12"
+  },
+  {
     "slug": "contabilidade-completa",
     "titulo": "Contabilidade completa",
     "resumo": "A área Administração → Contabilidade ganhou as 4 abas que faltavam: Contas a Pagar com as despesas por categoria da DRE (rateio respeitado), Extratos com a identificação da conciliação linha a linha (e exportação OFX), Notas de Entrada com as parcelas de cada nota e XMLs, e o Pacote do Mês — um clique gera o ZIP completo (7 planilhas + XMLs de saída e entrada) para mandar ao contador.",

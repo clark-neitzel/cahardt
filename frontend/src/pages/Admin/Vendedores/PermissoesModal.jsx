@@ -438,7 +438,9 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
         configService.getCategorias().then(cats => setTodasCategorias(cats || [])).catch(() => {});
         tabelaPrecoService.listar(true).then(conds => setTodasCondicoes(conds || [])).catch(() => {});
         categoriaProdutoService.listar().then(cats => setTodasCategoriasComerciais((cats || []).filter(c => c.ativo !== false))).catch(() => {});
-        vendedorService.listar().then(data => {
+        // listarTodos: aqui a lista é de administração (copiar permissões / aplicar em lote),
+        // então inclui quem tem acesso externo — não é um seletor de vendedor.
+        vendedorService.listarTodos().then(data => {
             const list = Array.isArray(data) ? data : (data?.vendedores || []);
             setTodosVendedores(list.filter(v => v.id !== vendedor?.id && v.ativo !== false));
         }).catch(() => {});

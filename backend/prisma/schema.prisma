@@ -564,6 +564,12 @@ model Vendedor {
   // que o site vincula o vendedor do cliente à lista oficial do bot.
   nomeVendedorBotHardt String? @map("nome_vendedor_bot_hardt")
 
+  // Acesso externo (contabilidade, parceiro): a pessoa loga e usa o que a permissão
+  // liberar (ex.: Administração → Contabilidade), mas NÃO faz parte da operação —
+  // some de toda lista de vendedor/motorista/equipe (caixa, pedidos, clientes, metas,
+  // tarefas, cobrança, delivery). Só a tela Usuários e o painel de permissões mostram.
+  acessoExterno Boolean @default(false) @map("acesso_externo")
+
   clientes                 Cliente[]
   pedidos                  Pedido[]
   pedidosLancados          Pedido[]         @relation("UsuarioLancamento")

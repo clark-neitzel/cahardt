@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Novidade: acesso externo (contabilidade)</title>
+<meta property="og:title" content="Novidade no app: acesso externo 🏢">
+<meta property="og:description" content="A contabilidade (e qualquer parceiro de fora) agora entra no app sem aparecer como vendedor: o nome some do seletor do Caixa, dos filtros de Pedidos, do motorista do Embarque, das metas e das tarefas.">
+<style>
+  :root{ --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2; --bg:#f2f0eb; --gold:#cba258; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Manrope','SF Pro Text',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:rgba(0,0,0,.87);font-size:15px;letter-spacing:-0.01em}
+  .hero{background:var(--house);color:#fff;padding:34px 20px 30px;text-align:center}
+  .hero .tag{display:inline-block;background:rgba(255,255,255,.14);border-radius:9999px;padding:4px 14px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+  .hero h1{font-size:26px;font-weight:800;margin-bottom:8px}
+  .hero p{font-size:15px;opacity:.85;max-width:560px;margin:0 auto}
+  main{max-width:680px;margin:0 auto;padding:20px 14px 60px}
+  .acc{background:#fff;border:1px solid #e5e7eb;border-radius:14px;margin-bottom:12px;overflow:hidden}
+  .acc-cab{padding:14px 18px;font-weight:800;font-size:15px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:var(--primary-dark)}
+  .acc-cab::after{content:"▾";color:#9ca3af;transition:transform .2s}
+  .acc:not(.aberto) .acc-cab::after{transform:rotate(-90deg)}
+  .acc-corpo{padding:0 18px 16px;display:none}
+  .acc.aberto .acc-corpo{display:block}
+  .acc-corpo p{margin-bottom:10px;color:#374151;line-height:1.55}
+  .acc-corpo ul{margin:0 0 10px 18px;color:#374151;line-height:1.6}
+  .destaque{background:var(--mint);border-radius:10px;padding:10px 14px;font-size:14px;color:var(--primary-dark);font-weight:600;margin-bottom:10px}
+  .aviso{background:#fef3c7;border-radius:10px;padding:10px 14px;font-size:14px;color:#92400e;font-weight:600;margin-bottom:10px}
+  /* Mock da tela */
+  .tela{background:#f2f0eb;border:1px solid #d1d5db;border-radius:14px;padding:12px;margin:8px 0 4px;position:relative}
+  .tela-tit{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:#6b7280;margin-bottom:8px}
+  .app-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px 12px;margin-bottom:8px;position:relative}
+  .app-card:last-child{margin-bottom:0}
+  .pin{position:absolute;top:-8px;left:-8px;width:22px;height:22px;border-radius:50%;background:var(--gold);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+  .legenda{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;color:#374151;padding:5px 0}
+  .legenda .n{display:inline-flex;width:20px;height:20px;border-radius:50%;background:var(--gold);color:#fff;font-size:11px;font-weight:800;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+  .mrow{display:flex;justify-content:space-between;align-items:center;gap:6px;flex-wrap:wrap}
+  .badge{display:inline-block;padding:2px 9px;font-size:11px;font-weight:700;border-radius:9999px;white-space:nowrap}
+  .b-roxo{background:#f3e8ff;color:#7e22ce}
+  .b-cinza{background:#e5e7eb;color:#6b7280}
+  .sub{font-size:11.5px;color:#6b7280}
+  .av{width:30px;height:30px;border-radius:50%;background:var(--mint);color:var(--primary-dark);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .lin{display:flex;align-items:center;gap:9px}
+  .chk{display:flex;gap:8px;align-items:flex-start;background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;margin-top:8px}
+  .cbox{width:15px;height:15px;border-radius:3px;border:1.5px solid var(--primary);background:var(--primary);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;line-height:1}
+  .menu{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:6px 0;font-size:13px}
+  .menu div{padding:6px 12px}
+  .menu .risca{color:#c4c4c4;text-decoration:line-through}
+  .passo{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start}
+  .passo .num{width:24px;height:24px;border-radius:50%;background:var(--primary);color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="tag">Novidade no app</span>
+  <h1>🏢 Acesso externo</h1>
+  <p>Quem é de fora da operação — o escritório de contabilidade, por exemplo — agora entra no app sem virar mais um nome na lista de vendedores.</p>
+</div>
+
+<main>
+
+<div class="acc aberto">
+  <div class="acc-cab" onclick="this.parentElement.classList.toggle('aberto')">O que mudou</div>
+  <div class="acc-corpo">
+    <div class="destaque">Cadastro de fora não aparece mais como vendedor.</div>
+    <p>Desde que a área <b>Contabilidade</b> nasceu, o escritório tem cadastro próprio no app para consultar os relatórios. Só que esse cadastro caía na mesma lista de todo mundo: aparecia no seletor de vendedor do <b>Caixa Diário</b>, nos filtros de <b>Pedidos</b> e <b>Relatórios</b>, na lista de motorista do <b>Embarque</b>, nas <b>metas</b> e no "para quem" das <b>Tarefas</b>.</p>
+    <p>Agora o admin marca a pessoa como <b>Acesso externo</b> e ela sai de todas essas listas de uma vez — <b>sem perder o acesso</b>. Ela continua entrando normalmente e usando tudo o que a permissão dela liberar.</p>
+    <ul>
+      <li>Some do <b>seletor de vendedor do Caixa Diário</b></li>
+      <li>Some dos <b>filtros de vendedor</b> (Pedidos, Relatórios, Clientes, Leads, Atendimentos)</li>
+      <li>Some da lista de <b>motorista</b> do Embarque e das permissões do Delivery</li>
+      <li>Some das <b>metas</b>, das <b>comissões</b>, do "para quem" das <b>Tarefas da Equipe</b> e do responsável da <b>Régua de Cobrança</b></li>
+      <li><b>Continua</b> aparecendo só em Administração → Usuários, com o selo roxo <b>EXTERNO</b></li>
+    </ul>
+    <div class="aviso">Serve para qualquer parceiro de fora, não só a contabilidade — e dá para desmarcar a qualquer momento.</div>
+  </div>
+</div>
+
+<div class="acc aberto">
+  <div class="acc-cab" onclick="this.parentElement.classList.toggle('aberto')">As telas do app</div>
+  <div class="acc-corpo">
+
+    <div class="tela">
+      <div class="tela-tit">Tela 1 — Administração → Usuários</div>
+      <div class="app-card">
+        <span class="pin">1</span>
+        <div class="lin">
+          <span class="av">KC</span>
+          <div style="min-width:0">
+            <div class="mrow"><b style="font-size:13px">KONTISA CONTABILIDADE</b> <span class="badge b-roxo">EXTERNO</span></div>
+            <div class="sub">contato@kontisa.com.br · Contabilidade (consulta)</div>
+          </div>
+        </div>
+      </div>
+      <div class="app-card">
+        <span class="pin">2</span>
+        <div class="lin">
+          <span class="av">LP</span>
+          <div style="min-width:0">
+            <div class="mrow"><b style="font-size:13px">Leticia Piske</b></div>
+            <div class="sub">Vendedora · aparece em todas as listas, como sempre</div>
+          </div>
+        </div>
+      </div>
+      <div class="app-card">
+        <span class="pin">3</span>
+        <div class="sub" style="margin-bottom:4px">EDITANDO — ✏️ na linha da pessoa</div>
+        <div class="chk">
+          <span class="cbox">✓</span>
+          <span style="font-size:12.5px;color:#374151;line-height:1.4"><b>Acesso externo</b> (contabilidade/parceiro) — não aparece como vendedor</span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda"><span class="n">1</span><span><b>Selo EXTERNO:</b> o roxo ao lado do nome avisa que aquele cadastro é de fora da operação. Esta é a única tela do app que continua mostrando essas pessoas.</span></div>
+    <div class="legenda"><span class="n">2</span><span><b>Quem é da casa não muda nada:</b> vendedor, motorista e escritório seguem aparecendo em todas as listas, do mesmo jeito de sempre.</span></div>
+    <div class="legenda"><span class="n">3</span><span><b>A caixinha nova:</b> clique no lápis da linha, marque <b>Acesso externo</b> e salve. Só admin enxerga e grava esse campo. A mesma caixinha está no passo 2 do <b>"+ Novo Usuário"</b>, para já criar o cadastro assim.</span></div>
+
+    <div class="tela" style="margin-top:18px">
+      <div class="tela-tit">Tela 2 — Caixa Diário → seletor de vendedor</div>
+      <div class="app-card">
+        <span class="pin">4</span>
+        <div class="sub" style="margin-bottom:6px">ANTES</div>
+        <div class="menu">
+          <div>Josiane</div>
+          <div>Junior</div>
+          <div style="background:#fee2e2;color:#b91c1c;font-weight:700">KONTISA CONTABILIDADE</div>
+          <div>Leticia Piske</div>
+        </div>
+      </div>
+      <div class="app-card">
+        <span class="pin">5</span>
+        <div class="sub" style="margin-bottom:6px">AGORA</div>
+        <div class="menu">
+          <div>Josiane</div>
+          <div>Junior</div>
+          <div>Leticia Piske</div>
+          <div>Patrik Moraes Coutinho</div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda"><span class="n">4</span><span><b>Antes:</b> a contabilidade aparecia junto com a equipe — dava para escolher e abrir um caixa de quem nunca vai ter caixa.</span></div>
+    <div class="legenda"><span class="n">5</span><span><b>Agora:</b> a lista mostra só gente da operação. Vale para o Caixa e para todos os outros filtros de vendedor do app.</span></div>
+
+  </div>
+</div>
+
+<div class="acc aberto">
+  <div class="acc-cab" onclick="this.parentElement.classList.toggle('aberto')">Para começar a usar</div>
+  <div class="acc-corpo">
+    <div class="passo"><span class="num">1</span><span>Abra <b>Administração → Usuários</b> (só admin).</span></div>
+    <div class="passo"><span class="num">2</span><span>Clique no <b>lápis</b> na linha da pessoa de fora e marque <b>"Acesso externo (contabilidade/parceiro) — não aparece como vendedor"</b>.</span></div>
+    <div class="passo"><span class="num">3</span><span><b>Salve.</b> Na hora ela ganha o selo <b>EXTERNO</b> e some das listas de vendedor do app inteiro.</span></div>
+    <div class="passo"><span class="num">4</span><span>Confira as <b>permissões</b> dela no ícone de escudo — para a contabilidade, o normal é deixar só <b>"Contabilidade (consulta)"</b>, que é somente leitura.</span></div>
+    <div class="aviso">Não marque quem vende, entrega ou tem caixa: marcado, o nome some do seletor do Caixa Diário e não dá para abrir nem fechar o caixa dessa pessoa.</div>
+  </div>
+</div>
+
+<div class="acc aberto">
+  <div class="acc-cab" onclick="this.parentElement.classList.toggle('aberto')">Acesso externo × inativar — qual usar?</div>
+  <div class="acc-corpo">
+    <p><b>Inativar</b> (o boneco com X) <b>tira o acesso</b>: a pessoa não entra mais no app. É para quem saiu da empresa.</p>
+    <p><b>Acesso externo</b> <b>mantém o acesso</b> e só tira o nome das listas de vendedor. É para quem precisa entrar mas não faz parte da operação — contabilidade, consultor, parceiro.</p>
+  </div>
+</div>
+
+</main>
+</body>
+</html>

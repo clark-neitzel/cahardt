@@ -46,6 +46,7 @@ A área tem 5 abas: **Contas a Receber**, **Contas a Pagar**, **Extratos**, **No
 - **"Como sei se um recebimento é de nota fiscal ou de especial?"** → coluna Nota fiscal (o selo roxo "Especial — sem nota" indica venda sem NF).
 - **"Conciliado?" significa o quê?** → a baixa foi casada com uma linha do extrato bancário na Conciliação Bancária (dinheiro conferido no banco).
 - **O contador não encontra a tela** → o cadastro dele precisa da permissão "Contabilidade (consulta)" em Administração → Usuários → Permissões (grupo Financeiro).
+- **O nome do escritório está aparecendo como vendedor (no Caixa, nos filtros de pedidos…)** → marque o cadastro dele como **Acesso externo** em Administração → Usuários (lápis na linha, caixinha "Acesso externo (contabilidade/parceiro)"). Ele continua entrando e vendo esta tela, mas some de todos os seletores de vendedor/motorista/equipe do app.
 
 ## O que esta tela NÃO faz
 - Não dá baixa, não edita títulos, não emite nota — é só consulta/exportação.

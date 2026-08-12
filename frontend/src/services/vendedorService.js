@@ -11,6 +11,13 @@ const vendedorService = {
         return response.data;
     },
 
+    // Inclui quem tem acesso externo (contabilidade/parceiro), que o listar() omite.
+    // Só para as telas de administração de usuários — nunca para seletor de vendedor.
+    listarTodos: async () => {
+        const response = await api.get('/vendedores', { params: { incluirExternos: 'true' } });
+        return response.data;
+    },
+
     obter: async (id) => {
         const response = await api.get(`/vendedores/${id}`);
         return response.data;

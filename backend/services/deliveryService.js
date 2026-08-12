@@ -47,7 +47,7 @@ const deliveryService = {
     listarPermissoes: async () => {
         const [vendedores, permissoes] = await Promise.all([
             prisma.vendedor.findMany({
-                where: { ativo: true },
+                where: { ativo: true, acessoExterno: false },
                 select: { id: true, nome: true, login: true },
                 orderBy: { nome: 'asc' }
             }),

@@ -151,7 +151,7 @@ router.get('/formas', async (req, res) => {
 router.get('/equipe', async (req, res) => {
     try {
         const equipe = await prisma.vendedor.findMany({
-            where: { ativo: true },
+            where: { ativo: true, acessoExterno: false },
             select: { id: true, nome: true },
             orderBy: { nome: 'asc' }
         });

@@ -122,7 +122,7 @@ async function carregarComPermissaoDeEdicao(req, res) {
 router.get('/equipe', async (req, res) => {
     try {
         const vendedores = await prisma.vendedor.findMany({
-            where: { ativo: true, login: { not: null } },
+            where: { ativo: true, login: { not: null }, acessoExterno: false },
             select: { id: true, nome: true },
             orderBy: { nome: 'asc' },
         });

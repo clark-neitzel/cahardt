@@ -211,7 +211,7 @@ router.get('/conferencia-dinheiro/minhas', async (req, res) => {
 router.get('/conferencia-dinheiro/autorizadores', async (req, res) => {
     try {
         const vendedores = await prisma.vendedor.findMany({
-            where: { ativo: true },
+            where: { ativo: true, acessoExterno: false },
             select: { id: true, nome: true, permissoes: true },
             orderBy: { nome: 'asc' },
         });
@@ -1802,7 +1802,7 @@ router.get('/conferencia-devolucao', async (req, res) => {
 
         // Quem pode autorizar desconsiderar (lista do modal de autorização)
         const vendedoresAtivos = await prisma.vendedor.findMany({
-            where: { ativo: true },
+            where: { ativo: true, acessoExterno: false },
             select: { id: true, nome: true, permissoes: true },
             orderBy: { nome: 'asc' }
         });
@@ -2196,7 +2196,8 @@ router.post('/conferencia-devolucao/reabrir', async (req, res) => {
 });
 
 // ── GET /vendedores-do-dia — Vendedores do seletor do caixa ──
-// Só ativos; inativo aparece apenas se tiver movimento no dia (caixa fechado/adiantamento,
+// Só ativos e de dentro da operação (acesso externo, tipo contabilidade, não tem caixa);
+// inativo aparece apenas se tiver movimento no dia (caixa fechado/adiantamento,
 // despesa, diário de veículo ou embarque como responsável).
 router.get('/vendedores-do-dia', async (req, res) => {
     try {
@@ -2207,7 +2208,7 @@ router.get('/vendedores-do-dia', async (req, res) => {
         const fimDia = new Date(data + 'T23:59:59.999Z');
 
         const [ativos, caixas, despesas, diarios, embarques] = await Promise.all([
-            prisma.vendedor.findMany({ where: { ativo: true }, select: { id: true, nome: true }, orderBy: { nome: 'asc' } }),
+            prisma.vendedor.findMany({ where: { ativo: true, acessoExterno: false }, select: { id: true, nome: true }, orderBy: { nome: 'asc' } }),
             prisma.caixaDiario.findMany({
                 where: { dataReferencia: data, OR: [{ status: { not: 'ABERTO' } }, { adiantamento: { gt: 0 } }] },
                 select: { vendedorId: true }

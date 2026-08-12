@@ -25,6 +25,7 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 - Editar: e-mail, telefone, **% Flex** (percentual sobre vendas 30 dias), % máximo de desconto por item e **Nome usado no Bot Hardt** (integração do site com o WhatsApp)
 - Ver o **Flex Disponível (30d)**: calculado automaticamente — não é mais editável manualmente (detalhes de orçamento/usado aparecem ao pousar o mouse sobre o valor)
 - Ativar ou inativar um usuário
+- Marcar um usuário como **Acesso externo** (contabilidade, parceiro) — ele some de todos os seletores de vendedor/motorista/equipe do app
 - Configurar quais formas de atendimento aparecem para o vendedor (Presencial, WhatsApp, Telefone)
 - Ligar/desligar alerta de faturamento por WhatsApp
 - Abrir o modal de permissões para configurar as permissões detalhadas do usuário
@@ -74,9 +75,27 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 3. **"↩ Voltar como estava antes desta mudança"** re-aplica o estado anterior àquele save — revise e clique em Salvar. Nada é apagado: a restauração também vira uma entrada nova (dá para desfazer o desfazer)
 4. Guarda as últimas 50 versões por usuário; a senha nunca entra no histórico. Só admin vê o histórico
 
+### Acesso externo (contabilidade, parceiro) — só admin
+> Para quem precisa **entrar no app mas não faz parte da operação**: o escritório de contabilidade, por exemplo, que só usa Administração → Contabilidade.
+
+1. Clique no ícone de lápis na linha da pessoa
+2. Marque **"Acesso externo (contabilidade/parceiro) — não aparece como vendedor"**
+3. Salve
+
+O que muda com a caixinha marcada:
+- A pessoa **continua entrando normalmente** e usando tudo o que a permissão dela liberar (ex.: `Pode_Acessar_Contabilidade`)
+- Ela **desaparece de todo seletor de gente** do app: vendedor do Caixa Diário, filtro de vendedor em Pedidos/Relatórios/Clientes/Leads/Atendimentos, motorista do Embarque, metas, comissões, "para quem" das Tarefas da Equipe, responsável da Régua de Cobrança e permissões do Delivery
+- Na tela Usuários ela continua aparecendo, com o selo roxo **EXTERNO** ao lado do nome (é a única tela que mostra)
+- Dá para desmarcar a qualquer momento — a pessoa volta às listas na hora
+
+> Também dá para já criar a pessoa assim: a mesma caixinha está no passo 2 do **"+ Novo Usuário"**.
+
+> **Cuidado:** não marque quem vende, entrega ou tem caixa — marcado, o nome some do seletor do Caixa Diário e não dá para abrir/fechar o caixa dessa pessoa.
+
 ### Ativar ou inativar
 - Clique no ícone de usuário com X (inativar) ou com check (reativar)
 - Confirme o alerta — usuários inativos não conseguem acessar o sistema
+- **Diferença para o "Acesso externo":** inativar **tira o acesso** da pessoa (ela não entra mais). Acesso externo **mantém o acesso** e só a tira das listas de vendedor
 
 ### Configurar formas de atendimento visíveis
 - Clique nos botões de forma (Presencial, WhatsApp, Telefone) no card do vendedor
@@ -116,7 +135,7 @@ Gerenciamento de todos os usuários do sistema (chamados de "vendedores", mas in
 | `admin` | Acesso total à aba, incluindo **criar usuário** |
 | `vendedores` (edit) | Pode editar dados não-sensíveis do usuário (e-mail, telefone, % Flex, formas de atendimento) e vincular ao cadastro |
 
-> **Segurança:** **criar usuário** e alterar **permissões, login, senha ou status (ativo/inativo)** é restrito a `admin` — o backend bloqueia (HTTP 403) quem não for admin, mesmo que consiga abrir a tela. Isso impede que alguém sem ser admin conceda privilégios a si mesmo ou troque a senha de outra pessoa.
+> **Segurança:** **criar usuário** e alterar **permissões, login, senha, status (ativo/inativo) ou acesso externo** é restrito a `admin` — o backend bloqueia (HTTP 403) quem não for admin, mesmo que consiga abrir a tela. Isso impede que alguém sem ser admin conceda privilégios a si mesmo ou troque a senha de outra pessoa.
 
 ---
 
