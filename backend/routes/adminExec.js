@@ -50,7 +50,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'diag-devolucoes-pendentes-2026-08-12',
+        deployMarker: 'diag-devolucoes-pendentes-caixa-2026-08-12',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -8890,7 +8890,7 @@ router.get('/diag-devolucoes-pendentes', async (req, res) => {
                 vendedor: { select: { nome: true } },
                 itens: { select: { quantidade: true, valor: true } },
                 itensDevolvidos: { select: { id: true } },
-                embarque: { select: { numero: true, responsavel: { select: { nome: true } } } },
+                embarque: { select: { numero: true, responsavelId: true, responsavel: { select: { nome: true } } } },
                 caixaConferencias: { select: { conferido: true, conferidoEm: true } },
                 devolucoes: { select: { numero: true, status: true } },
                 contaReceber: {
@@ -8912,6 +8912,18 @@ router.get('/diag-devolucoes-pendentes', async (req, res) => {
         const n2 = (v) => v == null ? null : Math.round(Number(v) * 100) / 100;
         const hoje = new Date().toISOString().slice(0, 10);
 
+        // Caixa do responsável na data da entrega: mostra se a trava de fechamento
+        // (que barra devolução pendente) chegou a ser exercida ou se o caixa ficou aberto.
+        const responsaveis = [...new Set(pedidos.map(p => p.embarque?.responsavelId).filter(Boolean))];
+        const datas = [...new Set(pedidos.map(p => d10(p.dataEntrega)).filter(Boolean))];
+        const caixas = responsaveis.length && datas.length
+            ? await prisma.caixaDiario.findMany({
+                where: { vendedorId: { in: responsaveis }, dataReferencia: { in: datas } },
+                select: { vendedorId: true, dataReferencia: true, status: true, fechadoEm: true, fechadoPorNome: true }
+            })
+            : [];
+        const caixaDe = new Map(caixas.map(c => [`${c.vendedorId}|${c.dataReferencia}`, c]));
+
         const lista = pedidos.map(p => {
             const cr = p.contaReceber;
             const parcelas = cr?.parcelas || [];
@@ -8932,6 +8944,13 @@ router.get('/diag-devolucoes-pendentes', async (req, res) => {
                 embarque: p.embarque ? `#${p.embarque.numero}` : null,
                 responsavelEntrega: p.embarque?.responsavel?.nome || '—',
                 conferidoNoCaixa: p.caixaConferencias.some(c => c.conferido),
+                caixaDoDia: (() => {
+                    const cx = caixaDe.get(`${p.embarque?.responsavelId}|${d10(p.dataEntrega)}`);
+                    if (!cx) return 'sem caixa nesse dia';
+                    return cx.status === 'FECHADO'
+                        ? `FECHADO em ${d10(cx.fechadoEm)} por ${cx.fechadoPorNome || '—'}`
+                        : cx.status;
+                })(),
                 especial: p.especial, bonificacao: p.bonificacao,
                 situacaoCA: p.situacaoCA, statusEnvio: p.statusEnvio,
                 devolucoesJaRegistradas: p.devolucoes.length,
