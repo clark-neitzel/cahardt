@@ -70,7 +70,7 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 | Filtro | Descrição |
 |--------|-----------|
 | Busca | Nome fantasia, razão social, CNPJ ou cidade |
-| Vendedor | Filtra por vendedor responsável |
+| Vendedor | Filtra por vendedor responsável. A lista traz também os **vendedores inativos** (quem saiu da empresa), no fim, marcados com "(inativo)" — assim dá para achar os clientes que ficaram no nome dele. Já a reatribuição em lote ("Novo Vendedor") só oferece vendedor ativo |
 | Dia de Entrega | Dia da semana em que o motorista entrega |
 | Dia de Venda | Dia da semana em que o vendedor visita |
 | Condição Padrão | Condição de pagamento padrão do cliente |

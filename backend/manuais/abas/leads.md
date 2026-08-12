@@ -16,7 +16,7 @@ Gestão completa dos leads (prospecções) do sistema. Um lead é um potencial c
 
 ## O que dá pra fazer aqui
 
-- Listar todos os leads com filtros de busca, etapa do funil e vendedor
+- Listar todos os leads com filtros de busca, etapa do funil e vendedor (o filtro de vendedor mostra também os **inativos**, no fim da lista e marcados "(inativo)", para achar lead de quem já saiu; ao criar lead novo só aparecem os ativos)
 - Ver cards resumidos com nome, endereço, telefone, etapa e data de cadastro
 - Expandir um lead para ver detalhes completos: foto da fachada, atendimentos, histórico
 - Adicionar ou trocar a foto de fachada (câmera ou galeria)

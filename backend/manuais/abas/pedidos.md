@@ -17,7 +17,7 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 ## O que dá pra fazer aqui
 
 - Visualizar pedidos separados por tipo (sub-abas: Pedidos | Especiais | Bonificação | Amostras | Devoluções)
-- Filtrar por data de entrega, data de criação, vencimento, embarque, motorista e vendedor
+- Filtrar por data de entrega, data de criação, vencimento, embarque, motorista e vendedor (o filtro de vendedor lista também os **inativos**, no fim e marcados "(inativo)"; já "Reatribuir vendedor" só oferece vendedor ativo)
 - Buscar por cliente, cidade, vendedor, documento ou número do pedido
 - Filtrar rapidamente por status (Aberto, Enviar, Sincronizando, Aprovado, Faturado, Erro — e, na aba Pedidos, **Convertidos**: só os que nasceram especiais)
 - Ver de longe o que ainda não faturou: **pílula dourada NOVO** na linha de todo pedido ainda não faturado (some sozinha quando fatura; vale para pedidos, especiais e bonificações)

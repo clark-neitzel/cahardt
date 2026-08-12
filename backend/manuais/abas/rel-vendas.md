@@ -15,6 +15,7 @@ Relatório analítico de itens vendidos (não de pedidos, mas de linhas de produ
 ## O que dá pra fazer aqui
 
 - Filtrar por data de venda, data de criação, vendedor, situação no Conta Azul e tipo de pedido (excluindo bonificações)
+- O menu de vendedor traz **também os vendedores inativos** (quem saiu da empresa), no fim da lista e marcados "(inativo)" — é assim que se levanta o que um ex-vendedor vendeu
 - **Filtrar por Condição de Pagamento (múltipla escolha)** direto no painel principal — escolha uma ou várias condições e o card "Filtrado" mostra na hora quantos itens e o valor total venderam naquelas condições
 - **Filtrar por Categoria Comercial (múltipla escolha)** direto no painel principal — escolha uma ou várias categorias de produto. As opções dos dois filtros vêm dos dados já carregados (precisa Gerar o relatório primeiro)
 - Ordenar qualquer coluna clicando no cabeçalho

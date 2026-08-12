@@ -16,6 +16,7 @@ Histórico gerencial de todas as entregas realizadas pelo sistema. Mostra cada b
 
 - Listar todas as entregas com paginação
 - Filtrar por: texto livre (cliente/CNPJ), período (data início/fim), vendedor, entregador e status de entrega
+- Os menus de **vendedor e entregador incluem os inativos** (quem saiu da empresa), no fim da lista e marcados "(inativo)" — entrega antiga continua no nome de quem atendeu na época
 - Ver status de cada entrega: Entregue, Entregue Parcial, Devolvido, Pendente
 - Abrir o detalhe de uma entrega para ver os pagamentos registrados, valor cobrado e observações
 

@@ -15,6 +15,7 @@ Relatório detalhado de pedidos com filtros avançados. Diferente da aba Pedidos
 ## O que dá pra fazer aqui
 
 - Filtrar pedidos por data de criação, data de venda, vendedor, status de envio, tipo (normal/especial), situação no Conta Azul, status de entrega e **flex (positivo/negativo/sem flex)**
+- O menu de vendedor traz **também os vendedores inativos** (quem saiu da empresa), no fim da lista e marcados "(inativo)" — é assim que se levanta o que um ex-vendedor vendeu
 - Buscar por nome do cliente ou CNPJ/CPF
 - Ver resumo quantitativo no topo: total de pedidos, itens, valor e ticket médio
 - Expandir um pedido para ver:
