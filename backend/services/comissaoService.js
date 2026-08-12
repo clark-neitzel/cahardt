@@ -1,5 +1,6 @@
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const dayjs = require('dayjs');
+const projecaoVendasService = require('./projecaoVendasService');
 
 // Calcula o valor da comissão base para um determinado valor de vendas
 function calcularComissaoBase(totalVendido, valorMeta, config) {
@@ -220,18 +221,13 @@ const comissaoService = {
         const totalComissao = comissaoBase + bonusCidadesValor + bonusProdutosValor + bonusFlexValor;
 
         // -------------------------------------------------------
-        // PROJEÇÃO — cada dia de trabalho restante é projetado pela média das
-        // últimas ocorrências daquele dia da semana (últimas segundas, últimas
-        // terças…) nos dias de trabalho do vendedor (mês atual + metas
-        // anteriores). Dia sem histórico suficiente cai na média diária simples.
+        // PROJEÇÃO — conta compartilhada (projecaoVendasService): cada dia de
+        // trabalho restante é projetado pela média das últimas ocorrências
+        // daquele dia da semana; dia sem histórico cai na média diária simples.
+        // O Dashboard Geral usa o MESMO serviço — os números batem entre telas.
         // -------------------------------------------------------
         const hoje = dayjs();
         const diasTrabalho = Array.isArray(meta.diasTrabalho) ? meta.diasTrabalho : JSON.parse(meta.diasTrabalho || '[]');
-        const diasPassados = diasTrabalho.filter(d => !dayjs(d).isAfter(hoje, 'day'));
-        const diasRestantes = diasTrabalho.filter(d => dayjs(d).isAfter(hoje, 'day'));
-        const qtdPassados = diasPassados.length;
-        const qtdRestantes = diasRestantes.length;
-        const mediaDiaria = qtdPassados > 0 ? totalVendidoMes / qtdPassados : 0;
 
         // Vendas por dia do mês atual
         const vendasPorDia = {};
@@ -240,56 +236,18 @@ const comissaoService = {
             vendasPorDia[d] = (vendasPorDia[d] || 0) + valorPedido(p);
         }
 
-        // Dias de trabalho dos 2 últimos meses com meta (histórico de mesmos dias da semana)
-        const metasAnteriores = await prisma.metaMensalVendedor.findMany({
-            where: { vendedorId, mesReferencia: { lt: mesReferencia } },
-            orderBy: { mesReferencia: 'desc' },
-            take: 2,
-            select: { diasTrabalho: true }
+        // Histórico (dias de trabalho das 2 últimas metas + vendas desses dias)
+        const hist = await projecaoVendasService.historicoVendedor(vendedorId, mesReferencia, hoje);
+        for (const [d, v] of Object.entries(hist.vendasPorDia)) {
+            vendasPorDia[d] = (vendasPorDia[d] || 0) + v;
+        }
+
+        const projCalc = projecaoVendasService.calcularProjecaoDias({
+            hoje, diasTrabalho, vendasPorDia,
+            diasAnteriores: hist.diasAnteriores,
+            totalVendidoMes
         });
-        const diasAnteriores = metasAnteriores
-            .flatMap(m => Array.isArray(m.diasTrabalho) ? m.diasTrabalho : JSON.parse(m.diasTrabalho || '[]'))
-            .filter(d => dayjs(d).isBefore(hoje, 'day'));
-
-        if (diasAnteriores.length > 0) {
-            const ordenados = [...diasAnteriores].sort();
-            const pedidosHist = await prisma.pedido.findMany({
-                where: {
-                    vendedorId,
-                    dataVenda: {
-                        gte: dayjs(ordenados[0]).startOf('day').toDate(),
-                        lte: dayjs(ordenados[ordenados.length - 1]).endOf('day').toDate()
-                    },
-                    bonificacao: false,
-                    OR: [
-                        { situacaoCA: { notIn: ['CANCELADO', 'DEVOLVIDO'] } },
-                        { situacaoCA: null }
-                    ]
-                },
-                select: { dataVenda: true, itens: { select: { quantidade: true, valor: true } } }
-            });
-            for (const p of pedidosHist) {
-                const d = dayjs(p.dataVenda).format('YYYY-MM-DD');
-                vendasPorDia[d] = (vendasPorDia[d] || 0) + valorPedido(p);
-            }
-        }
-
-        // Média por dia da semana: últimas 4 ocorrências de cada dia trabalhado
-        // (dia trabalhado sem venda conta como zero — é sinal real)
-        const diasHistorico = [...new Set([...diasPassados, ...diasAnteriores])].sort().reverse();
-        const mediaPorDiaSemana = {};
-        for (let dow = 0; dow < 7; dow++) {
-            const amostras = diasHistorico.filter(d => dayjs(d).day() === dow).slice(0, 4);
-            if (amostras.length >= 2) {
-                mediaPorDiaSemana[dow] = amostras.reduce((acc, d) => acc + (vendasPorDia[d] || 0), 0) / amostras.length;
-            }
-        }
-        const usouDiasSemana = diasRestantes.some(d => mediaPorDiaSemana[dayjs(d).day()] != null);
-        const projecaoRestante = diasRestantes.reduce((acc, d) => {
-            const m = mediaPorDiaSemana[dayjs(d).day()];
-            return acc + (m != null ? m : mediaDiaria);
-        }, 0);
-        const valorProjetado = totalVendidoMes + projecaoRestante;
+        const { projecaoRestante, valorProjetado, mediaDiaria, qtdPassados, qtdRestantes } = projCalc;
 
         // Calcula comissão sobre o valor projetado (mantém bônus cidades/produtos como estão agora)
         const percMetaProj = valorMeta > 0 ? (valorProjetado / valorMeta) * 100 : 0;
@@ -314,7 +272,7 @@ const comissaoService = {
             valorProjetado,
             percMeta: percMetaProj,
             minimoNaoAtingido: minimoNaoAtingidoProj,
-            metodo: usouDiasSemana ? 'dias_semana' : 'media_simples',
+            metodo: projCalc.metodo,
             mediaDiaria,
             diasPassados: qtdPassados,
             diasRestantes: qtdRestantes,

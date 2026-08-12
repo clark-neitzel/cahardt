@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Projeção de vendas — como está e como ficaria</title>
+<style>
+:root {
+  --bg: #f2f0eb;
+  --surface: #ffffff;
+  --surface-2: #faf9f6;
+  --ink: rgba(20, 28, 24, 0.92);
+  --ink-2: rgba(20, 28, 24, 0.64);
+  --ink-3: rgba(20, 28, 24, 0.45);
+  --line: rgba(30, 57, 50, 0.14);
+  --primary: #00754A;
+  --primary-dark: #006241;
+  --house: #1E3932;
+  --mint: #d4e9e2;
+  --mint-soft: rgba(212, 233, 226, 0.45);
+  --c-atual: #C2410C;
+  --c-atual-soft: rgba(194, 65, 12, 0.10);
+  --c-nova: #00754A;
+  --c-nova-soft: rgba(0, 117, 74, 0.10);
+  --band: rgba(30, 57, 50, 0.055);
+  --band-feriado: rgba(194, 65, 12, 0.09);
+  --grid: rgba(30, 57, 50, 0.10);
+  --hero-ink: #ffffff;
+  --hero-ink-2: rgba(255, 255, 255, 0.72);
+  --shadow: 0 1px 2px rgba(30, 57, 50, 0.06), 0 4px 16px rgba(30, 57, 50, 0.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141917;
+    --surface: #202623;
+    --surface-2: #1a201d;
+    --ink: rgba(240, 245, 242, 0.92);
+    --ink-2: rgba(240, 245, 242, 0.62);
+    --ink-3: rgba(240, 245, 242, 0.42);
+    --line: rgba(240, 245, 242, 0.12);
+    --primary: #2FA97C;
+    --primary-dark: #55C094;
+    --house: #10201b;
+    --mint: #24352f;
+    --mint-soft: rgba(47, 169, 124, 0.12);
+    --c-atual: #D0742F;
+    --c-atual-soft: rgba(208, 116, 47, 0.14);
+    --c-nova: #2FA97C;
+    --c-nova-soft: rgba(47, 169, 124, 0.14);
+    --band: rgba(240, 245, 242, 0.05);
+    --band-feriado: rgba(208, 116, 47, 0.12);
+    --grid: rgba(240, 245, 242, 0.09);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.25);
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f2f0eb; --surface: #ffffff; --surface-2: #faf9f6;
+  --ink: rgba(20,28,24,0.92); --ink-2: rgba(20,28,24,0.64); --ink-3: rgba(20,28,24,0.45);
+  --line: rgba(30,57,50,0.14); --primary: #00754A; --primary-dark: #006241;
+  --house: #1E3932; --mint: #d4e9e2; --mint-soft: rgba(212,233,226,0.45);
+  --c-atual: #C2410C; --c-atual-soft: rgba(194,65,12,0.10);
+  --c-nova: #00754A; --c-nova-soft: rgba(0,117,74,0.10);
+  --band: rgba(30,57,50,0.055); --band-feriado: rgba(194,65,12,0.09);
+  --grid: rgba(30,57,50,0.10);
+  --shadow: 0 1px 2px rgba(30,57,50,0.06), 0 4px 16px rgba(30,57,50,0.05);
+}
+:root[data-theme="dark"] {
+  --bg: #141917; --surface: #202623; --surface-2: #1a201d;
+  --ink: rgba(240,245,242,0.92); --ink-2: rgba(240,245,242,0.62); --ink-3: rgba(240,245,242,0.42);
+  --line: rgba(240,245,242,0.12); --primary: #2FA97C; --primary-dark: #55C094;
+  --house: #10201b; --mint: #24352f; --mint-soft: rgba(47,169,124,0.12);
+  --c-atual: #D0742F; --c-atual-soft: rgba(208,116,47,0.14);
+  --c-nova: #2FA97C; --c-nova-soft: rgba(47,169,124,0.14);
+  --band: rgba(240,245,242,0.05); --band-feriado: rgba(208,116,47,0.12);
+  --grid: rgba(240,245,242,0.09);
+  --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.25);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Manrope, -apple-system, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 880px; margin: 0 auto; padding: 0 16px 64px; }
+
+/* ── Hero ─────────────────────────────── */
+.hero { background: var(--house); color: var(--hero-ink); padding: 40px 16px 44px; }
+.hero-in { max-width: 880px; margin: 0 auto; }
+.eyebrow {
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.14em;
+  color: var(--hero-ink-2); margin: 0 0 14px;
+}
+.hero h1 {
+  font-size: clamp(26px, 5vw, 38px); line-height: 1.12; font-weight: 800;
+  margin: 0 0 14px; text-wrap: balance; letter-spacing: -0.02em;
+}
+.hero p { max-width: 62ch; margin: 0; color: var(--hero-ink-2); font-size: 16px; }
+.hero strong { color: var(--hero-ink); font-weight: 700; }
+
+/* ── Tiles ────────────────────────────── */
+.tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: -26px 0 36px; }
+.tile {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 14px 16px; box-shadow: var(--shadow);
+}
+.tile .lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-3); margin-bottom: 4px; }
+.tile .val { font-size: clamp(17px, 3vw, 24px); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; }
+.tile .sub { font-size: 12px; color: var(--ink-2); margin-top: 3px; }
+.val.down { color: var(--c-atual); }
+.val.ok { color: var(--primary); }
+@media (max-width: 560px) {
+  .tiles { grid-template-columns: 1fr; margin-top: -20px; }
+}
+
+/* ── Sections ─────────────────────────── */
+section { margin: 0 0 36px; }
+.kicker {
+  display: inline-block; font-size: 11px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.14em; padding: 4px 12px; border-radius: 999px; margin: 0 0 12px;
+}
+.kicker.hoje { background: var(--c-atual-soft); color: var(--c-atual); }
+.kicker.prop { background: var(--c-nova-soft); color: var(--primary); }
+.kicker.neutro { background: var(--mint-soft); color: var(--primary); }
+h2 { font-size: clamp(20px, 3.6vw, 26px); font-weight: 800; letter-spacing: -0.02em; margin: 0 0 10px; text-wrap: balance; }
+section > p { max-width: 68ch; color: var(--ink-2); margin: 0 0 14px; }
+section > p strong, li strong { color: var(--ink); font-weight: 700; }
+
+.card {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 16px;
+  padding: 20px; box-shadow: var(--shadow);
+}
+
+/* fórmula */
+.formula {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  font-weight: 700; font-size: 15px; margin: 4px 0 10px;
+}
+.formula .box {
+  padding: 8px 14px; border-radius: 999px; background: var(--surface-2);
+  border: 1px solid var(--line); white-space: nowrap;
+}
+.formula .op { color: var(--ink-3); font-size: 18px; font-weight: 600; }
+.formula.f-atual .box.res { background: var(--c-atual-soft); border-color: transparent; color: var(--c-atual); }
+.formula.f-nova .box.res { background: var(--c-nova-soft); border-color: transparent; color: var(--primary); }
+.fine { font-size: 13px; color: var(--ink-2); max-width: 66ch; }
+
+/* passos da proposta */
+.steps { display: grid; gap: 0; margin: 6px 0 0; padding: 0; list-style: none; counter-reset: p; }
+.steps li {
+  counter-increment: p; position: relative; padding: 12px 0 12px 44px;
+  border-top: 1px solid var(--line); max-width: 66ch;
+}
+.steps li:first-child { border-top: 0; }
+.steps li::before {
+  content: counter(p); position: absolute; left: 0; top: 12px;
+  width: 26px; height: 26px; border-radius: 999px; background: var(--mint);
+  color: var(--primary-dark); font-size: 13px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+:root[data-theme="dark"] .steps li::before { color: var(--ink); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .steps li::before { color: var(--ink); } }
+.steps li { color: var(--ink-2); font-size: 14.5px; }
+
+/* onde aparece */
+.spots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.spot { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; box-shadow: var(--shadow); }
+.spot .where { font-size: 13px; font-weight: 800; margin-bottom: 4px; }
+.spot .what { font-size: 12.5px; color: var(--ink-2); }
+.spot .tag { display: inline-block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; padding: 2px 8px; border-radius: 999px; margin-bottom: 8px; }
+.tag.velha { background: var(--c-atual-soft); color: var(--c-atual); }
+.tag.nova { background: var(--c-nova-soft); color: var(--primary); }
+@media (max-width: 640px) { .spots { grid-template-columns: 1fr; } }
+
+/* ── Gráfico ──────────────────────────── */
+.chart-card { padding: 20px 12px 8px; }
+.chart-head { padding: 0 8px; display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; justify-content: space-between; }
+.chart-head h3 { font-size: 16px; font-weight: 800; margin: 0; letter-spacing: -0.01em; }
+.legend { display: flex; gap: 16px; font-size: 12.5px; color: var(--ink-2); font-weight: 600; }
+.legend .sw { display: inline-block; width: 18px; height: 0; border-top: 2.5px solid; vertical-align: middle; margin-right: 6px; border-radius: 2px; }
+.legend .sw.atual { border-top-style: dashed; border-color: var(--c-atual); }
+.legend .sw.nova { border-color: var(--c-nova); }
+.chart-scroll { overflow-x: auto; }
+.chart-wrap { position: relative; min-width: 620px; }
+.chart-wrap svg { display: block; width: 100%; height: auto; }
+.tip {
+  position: absolute; pointer-events: none; opacity: 0; transition: opacity 0.12s;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: var(--shadow); padding: 8px 12px; font-size: 12px; line-height: 1.5;
+  white-space: nowrap; z-index: 2;
+}
+@media (prefers-reduced-motion: reduce) { .tip { transition: none; } }
+.tip .d { font-weight: 800; margin-bottom: 2px; }
+.tip .a { color: var(--c-atual); font-weight: 700; }
+.tip .n { color: var(--primary); font-weight: 700; }
+.chart-note { font-size: 12.5px; color: var(--ink-2); padding: 10px 8px 12px; max-width: 70ch; }
+
+/* svg internals via CSS */
+.gline { stroke: var(--grid); stroke-width: 1; }
+.gtxt { fill: var(--ink-3); font-size: 10.5px; font-weight: 600; }
+.band { fill: var(--band); }
+.band-fer { fill: var(--band-feriado); }
+.bandtxt { fill: var(--ink-3); font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; }
+.l-atual { stroke: var(--c-atual); stroke-width: 2; fill: none; stroke-dasharray: 6 4; stroke-linejoin: round; }
+.l-nova { stroke: var(--c-nova); stroke-width: 2.5; fill: none; stroke-linejoin: round; }
+.dot-nova { fill: var(--c-nova); stroke: var(--surface); stroke-width: 2; }
+.dot-atual { fill: var(--c-atual); stroke: var(--surface); stroke-width: 2; }
+.lbl-atual { fill: var(--c-atual); font-size: 11px; font-weight: 800; }
+.lbl-nova { fill: var(--c-nova); font-size: 11px; font-weight: 800; }
+.hoy { stroke: var(--ink-3); stroke-width: 1; stroke-dasharray: 2 3; }
+.cross { stroke: var(--ink-3); stroke-width: 1; opacity: 0; }
+
+/* tabela */
+details { margin-top: 4px; }
+summary {
+  cursor: pointer; font-size: 13px; font-weight: 700; color: var(--primary);
+  padding: 10px 8px; user-select: none;
+}
+.tbl-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; min-width: 540px; }
+th {
+  text-align: right; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-3); font-weight: 700; padding: 6px 10px; border-bottom: 1px solid var(--line);
+}
+th:first-child, td:first-child { text-align: left; }
+td { text-align: right; padding: 5px 10px; border-bottom: 1px solid var(--line); color: var(--ink-2); }
+tr.fds td { background: var(--band); }
+tr.fer td { background: var(--band-feriado); }
+td.a { color: var(--c-atual); font-weight: 700; }
+td.n { color: var(--primary); font-weight: 700; }
+
+/* lado a lado */
+.duel { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.duel .card { padding: 16px 18px; }
+.duel h4 { margin: 0 0 10px; font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; }
+.duel .h-atual { color: var(--c-atual); }
+.duel .h-nova { color: var(--primary); }
+.duel ul { margin: 0; padding: 0 0 0 18px; font-size: 13.5px; color: var(--ink-2); }
+.duel li { margin-bottom: 8px; }
+.duel li:last-child { margin-bottom: 0; }
+@media (max-width: 640px) { .duel { grid-template-columns: 1fr; } }
+
+/* rodapé */
+.foot {
+  border-top: 1px solid var(--line); margin-top: 44px; padding-top: 18px;
+  font-size: 13px; color: var(--ink-2); max-width: 68ch;
+}
+.foot strong { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-in">
+    <p class="eyebrow">CA-Hardt · Dashboard Admin · Proposta</p>
+    <h1>Por que a projeção de vendas fica pulando — e como ela ficaria</h1>
+    <p>Hoje o dashboard divide as vendas pelos <strong>dias corridos do calendário</strong> — sábado, domingo e feriado entram na conta como se fossem dias de venda. A proposta é usar a mesma conta que a <strong>comissão dos vendedores</strong> já usa: só os <strong>dias de trabalho</strong> de cada vendedor, com cada dia que falta estimado pelo histórico daquele dia da semana.</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="tiles">
+    <div class="tile">
+      <div class="lbl">Sexta à noite · fórmula atual</div>
+      <div class="val">R$ 252 mil</div>
+      <div class="sub">projeção do mês após uma boa sexta</div>
+    </div>
+    <div class="tile">
+      <div class="lbl">Segunda de manhã · fórmula atual</div>
+      <div class="val down">R$ 196 mil ↓</div>
+      <div class="sub">caiu R$ 56 mil sem perder nenhuma venda — só passou o fim de semana</div>
+    </div>
+    <div class="tile">
+      <div class="lbl">Mesmos dias · fórmula proposta</div>
+      <div class="val ok">R$ 234 mil =</div>
+      <div class="sub">não se mexe no fim de semana; termina o mês certeira</div>
+    </div>
+  </div>
+
+  <section>
+    <span class="kicker neutro">Onde a projeção aparece</span>
+    <h2>Três lugares mostram projeção — só um calcula certo</h2>
+    <div class="spots">
+      <div class="spot">
+        <span class="tag velha">Fórmula antiga</span>
+        <div class="where">Dashboard Admin · Visão Geral</div>
+        <div class="what">O cartão “Projeção” do mês da empresa divide por dias corridos do calendário.</div>
+      </div>
+      <div class="spot">
+        <span class="tag velha">Fórmula antiga</span>
+        <div class="where">Dashboard Admin · aba Vendas</div>
+        <div class="what">A coluna “Projeção” de cada vendedor usa a mesma divisão por dias corridos.</div>
+      </div>
+      <div class="spot">
+        <span class="tag nova">Fórmula nova</span>
+        <div class="where">Comissões</div>
+        <div class="what">Já projeta por dias de trabalho e pelo histórico de cada dia da semana.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <span class="kicker hoje">Como está</span>
+    <h2>Divide pelo dia do calendário — e o fim de semana derruba tudo</h2>
+    <div class="card">
+      <div class="formula f-atual">
+        <span class="box res">Projeção</span><span class="op">=</span>
+        <span class="box">vendido no mês</span><span class="op">÷</span>
+        <span class="box">dia do mês (corrido)</span><span class="op">×</span>
+        <span class="box">total de dias do mês</span>
+      </div>
+      <p class="fine">Exemplo: no dia 9 (um domingo), o vendido é dividido por 9 — mas 4 desses 9 dias foram sábados e domingos, em que ninguém vende. A média diária despenca e a projeção junto. Na segunda o número “se recupera” sozinho, sem nada ter mudado na operação. Feriado não trabalhado causa a mesma queda no meio da semana. Por isso o valor sobe e desce a semana inteira sem contar uma história real.</p>
+    </div>
+  </section>
+
+  <section>
+    <span class="kicker prop">Como ficaria</span>
+    <h2>A conta da comissão: dias de trabalho + histórico do dia da semana</h2>
+    <div class="card">
+      <div class="formula f-nova">
+        <span class="box res">Projeção</span><span class="op">=</span>
+        <span class="box">vendido até hoje</span><span class="op">+</span>
+        <span class="box">estimativa de cada dia de trabalho que falta</span>
+      </div>
+      <ol class="steps">
+        <li>Pega os <strong>dias de trabalho</strong> do vendedor no mês, já cadastrados na meta que a comissão usa. Sábado, domingo e <strong>feriado não trabalhado simplesmente ficam de fora</strong> — não derrubam nem inflam nada.</li>
+        <li>O que já foi vendido entra como está — passado não se estima.</li>
+        <li>Cada dia de trabalho que falta é estimado pela <strong>média das últimas 4 vezes daquele mesmo dia da semana</strong> (segunda se compara com segundas, sexta com sextas), olhando o mês atual e os 2 meses anteriores. Dia trabalhado sem venda conta como zero — é sinal real.</li>
+        <li>Dia da semana sem histórico suficiente usa a média diária simples dos dias trabalhados — nunca fica sem resposta.</li>
+        <li>A projeção da empresa é a <strong>soma das projeções de cada vendedor</strong> — cada um com seus próprios dias e seu próprio ritmo.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <span class="kicker neutro">Lado a lado</span>
+    <h2>O mesmo mês, visto pelas duas fórmulas</h2>
+    <p>Simulação de um mês típico: vendedor trabalha de segunda a sexta (20 dias de trabalho), com um feriado na 3ª quinta-feira. As vendas reais fecham o mês em <strong>R$ 233.980</strong>. A linha mostra o que o dashboard exibiria em cada dia do mês.</p>
+
+    <div class="card chart-card">
+      <div class="chart-head">
+        <h3>Projeção exibida dia a dia</h3>
+        <div class="legend">
+          <span><span class="sw atual"></span>fórmula atual</span>
+          <span><span class="sw nova"></span>fórmula proposta</span>
+        </div>
+      </div>
+      <div class="chart-scroll">
+        <div class="chart-wrap" id="cw">
+          <svg viewBox="0 0 720 300" role="img" aria-label="Gráfico de linhas comparando a projeção exibida dia a dia pelas duas fórmulas ao longo de um mês. A fórmula atual oscila entre 196 e 252 mil reais, caindo a cada fim de semana e no feriado; a proposta permanece estável entre 231 e 234 mil reais. Ambas terminam o mês em 233.980 reais.">
+            <!-- faixas: fins de semana e feriado -->
+            <rect class="band" x="56" y="24" width="32.4" height="240"/>
+            <rect class="band" x="196.4" y="24" width="43.2" height="240"/>
+            <rect class="band" x="347.6" y="24" width="43.2" height="240"/>
+            <rect class="band" x="498.8" y="24" width="43.2" height="240"/>
+            <rect class="band" x="650" y="24" width="43.2" height="240"/>
+            <rect class="band-fer" x="455.6" y="24" width="21.6" height="240"/>
+            <text class="bandtxt" x="218" y="37" text-anchor="middle">FIM DE SEMANA</text>
+            <text class="bandtxt" x="466.4" y="37" text-anchor="middle">FERIADO</text>
+            <!-- grade -->
+            <line class="gline" x1="56" y1="264" x2="704" y2="264"/>
+            <line class="gline" x1="56" y1="189" x2="704" y2="189"/>
+            <line class="gline" x1="56" y1="114" x2="704" y2="114"/>
+            <line class="gline" x1="56" y1="39" x2="704" y2="39"/>
+            <text class="gtxt" x="50" y="267" text-anchor="end">0</text>
+            <text class="gtxt" x="50" y="192" text-anchor="end">100 mil</text>
+            <text class="gtxt" x="50" y="117" text-anchor="end">200 mil</text>
+            <text class="gtxt" x="50" y="42" text-anchor="end">300 mil</text>
+            <text class="gtxt" x="56" y="282">dia 1</text>
+            <text class="gtxt" x="272" y="282" text-anchor="middle">dia 11</text>
+            <text class="gtxt" x="466.4" y="282" text-anchor="middle">dia 20</text>
+            <text class="gtxt" x="704" y="282" text-anchor="end">dia 31</text>
+            <!-- linhas -->
+            <polyline class="l-atual" points="56,264 77.6,264 99.2,155.5 120.8,124.5 142.4,115.2 164,105.1 185.6,74.7 207.2,98.3 228.8,116.8 250.4,100.2 272,94.8 293.6,94 315.2,91.7 336.8,78.5 358.4,90.8 380,101.7 401.6,91.1 423.2,87.1 444.8,86.2 466.4,95.1 488,84.5 509.6,92.7 531.2,100.1 552.8,93.1 574.4,90.5 596,89.8 617.6,88.4 639.2,81.1 660.8,87.4 682.4,93.3 704,88.5"/>
+            <polyline class="l-nova" points="56,88.5 77.6,88.5 99.2,88.5 120.8,88.6 142.4,88.6 164,88.6 185.6,88.7 207.2,88.7 228.8,88.7 250.4,89.1 272,89.5 293.6,89.8 315.2,90 336.8,90.6 358.4,90.6 380,90.6 401.6,90.1 423.2,89.7 444.8,89.5 466.4,89.5 488,89 509.6,89 531.2,89 552.8,88.8 574.4,88.7 596,88.6 617.6,88.4 639.2,88.3 660.8,88.3 682.4,88.3 704,88.5"/>
+            <!-- crosshair (hover) -->
+            <line id="cx" class="cross" x1="0" y1="24" x2="0" y2="264"/>
+            <!-- destaques -->
+            <circle class="dot-atual" cx="185.6" cy="74.7" r="4"/>
+            <circle class="dot-atual" cx="228.8" cy="116.8" r="4"/>
+            <circle class="dot-nova" cx="704" cy="88.5" r="4.5"/>
+            <text class="lbl-atual" x="185.6" y="62" text-anchor="middle">252 mil</text>
+            <text class="lbl-atual" x="228.8" y="136" text-anchor="middle">196 mil</text>
+            <text class="lbl-nova" x="700" y="76" text-anchor="end">234 mil</text>
+          </svg>
+          <div class="tip" id="tip"></div>
+        </div>
+      </div>
+      <p class="chart-note">A linha tracejada (atual) despenca a cada faixa cinza — os fins de semana — e no feriado, e “se recupera” nos dias úteis. A linha verde (proposta) fica o mês inteiro entre R$ 231 e 234 mil e termina exatamente no total real, <strong>R$ 233.980</strong>. As duas convergem no dia 31: a diferença não é o destino, é o quanto dá para confiar no número no meio do caminho.</p>
+      <details>
+        <summary>Ver a tabela dia a dia</summary>
+        <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Dia</th><th>Venda do dia</th><th>Acumulado</th><th>Projeção atual</th><th>Projeção proposta</th></tr></thead>
+          <tbody>
+            <tr class="fds"><td>1 · sáb</td><td>—</td><td>0</td><td class="a">0</td><td class="n">233.980</td></tr>
+            <tr class="fds"><td>2 · dom</td><td>—</td><td>0</td><td class="a">0</td><td class="n">233.980</td></tr>
+            <tr><td>3 · seg</td><td>14.000</td><td>14.000</td><td class="a">144.667</td><td class="n">233.952</td></tr>
+            <tr><td>4 · ter</td><td>10.000</td><td>24.000</td><td class="a">186.000</td><td class="n">233.877</td></tr>
+            <tr><td>5 · qua</td><td>8.000</td><td>32.000</td><td class="a">198.400</td><td class="n">233.817</td></tr>
+            <tr><td>6 · qui</td><td>9.000</td><td>41.000</td><td class="a">211.833</td><td class="n">233.877</td></tr>
+            <tr><td>7 · sex</td><td>16.000</td><td>57.000</td><td class="a">252.429</td><td class="n">233.757</td></tr>
+            <tr class="fds"><td>8 · sáb</td><td>—</td><td>57.000</td><td class="a">220.875</td><td class="n">233.757</td></tr>
+            <tr class="fds"><td>9 · dom</td><td>—</td><td>57.000</td><td class="a">196.333</td><td class="n">233.757</td></tr>
+            <tr><td>10 · seg</td><td>13.440</td><td>70.440</td><td class="a">218.364</td><td class="n">233.169</td></tr>
+            <tr><td>11 · ter</td><td>9.600</td><td>80.040</td><td class="a">225.567</td><td class="n">232.694</td></tr>
+            <tr><td>12 · qua</td><td>7.680</td><td>87.720</td><td class="a">226.610</td><td class="n">232.314</td></tr>
+            <tr><td>13 · qui</td><td>8.640</td><td>96.360</td><td class="a">229.782</td><td class="n">232.014</td></tr>
+            <tr><td>14 · sex</td><td>15.360</td><td>111.720</td><td class="a">247.380</td><td class="n">231.254</td></tr>
+            <tr class="fds"><td>15 · sáb</td><td>—</td><td>111.720</td><td class="a">230.888</td><td class="n">231.254</td></tr>
+            <tr class="fds"><td>16 · dom</td><td>—</td><td>111.720</td><td class="a">216.458</td><td class="n">231.254</td></tr>
+            <tr><td>17 · seg</td><td>14.700</td><td>126.420</td><td class="a">230.531</td><td class="n">231.926</td></tr>
+            <tr><td>18 · ter</td><td>10.500</td><td>136.920</td><td class="a">235.807</td><td class="n">232.351</td></tr>
+            <tr><td>19 · qua</td><td>8.400</td><td>145.320</td><td class="a">237.101</td><td class="n">232.691</td></tr>
+            <tr class="fer"><td>20 · qui (feriado)</td><td>—</td><td>145.320</td><td class="a">225.246</td><td class="n">232.691</td></tr>
+            <tr><td>21 · sex</td><td>16.800</td><td>162.120</td><td class="a">239.320</td><td class="n">233.371</td></tr>
+            <tr class="fds"><td>22 · sáb</td><td>—</td><td>162.120</td><td class="a">228.442</td><td class="n">233.371</td></tr>
+            <tr class="fds"><td>23 · dom</td><td>—</td><td>162.120</td><td class="a">218.510</td><td class="n">233.371</td></tr>
+            <tr><td>24 · seg</td><td>14.280</td><td>176.400</td><td class="a">227.850</td><td class="n">233.623</td></tr>
+            <tr><td>25 · ter</td><td>10.200</td><td>186.600</td><td class="a">231.384</td><td class="n">233.748</td></tr>
+            <tr><td>26 · qua</td><td>8.160</td><td>194.760</td><td class="a">232.214</td><td class="n">233.848</td></tr>
+            <tr><td>27 · qui</td><td>9.180</td><td>203.940</td><td class="a">234.153</td><td class="n">234.088</td></tr>
+            <tr><td>28 · sex</td><td>16.320</td><td>220.260</td><td class="a">243.859</td><td class="n">234.288</td></tr>
+            <tr class="fds"><td>29 · sáb</td><td>—</td><td>220.260</td><td class="a">235.450</td><td class="n">234.288</td></tr>
+            <tr class="fds"><td>30 · dom</td><td>—</td><td>220.260</td><td class="a">227.602</td><td class="n">234.288</td></tr>
+            <tr><td>31 · seg</td><td>13.720</td><td>233.980</td><td class="a">233.980</td><td class="n">233.980</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section>
+    <span class="kicker neutro">Resumo</span>
+    <h2>O que cada fórmula faz com o mesmo mês</h2>
+    <div class="duel">
+      <div class="card">
+        <h4 class="h-atual">Fórmula atual</h4>
+        <ul>
+          <li>Oscila entre <strong>R$ 196 mil e R$ 252 mil</strong> na primeira quinzena — R$ 56 mil de vaivém sem nenhuma venda a mais ou a menos.</li>
+          <li>Todo sábado, domingo e feriado o número <strong>cai</strong>; toda sexta-feira forte ele <strong>infla</strong>.</li>
+          <li>No dia 1º e 2 (fim de semana) mostra projeção <strong>zero</strong>.</li>
+          <li>Não sabe quais dias cada vendedor trabalha.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h4 class="h-nova">Fórmula proposta</h4>
+        <ul>
+          <li>Fica o mês inteiro entre <strong>R$ 231 mil e R$ 234 mil</strong> — só se move quando as vendas reais mudam de ritmo.</li>
+          <li>Fim de semana e feriado <strong>não mexem</strong> no número: não são dias de venda.</li>
+          <li>Já no dia 1º mostra uma estimativa honesta, baseada no histórico.</li>
+          <li>Respeita os dias de trabalho <strong>de cada vendedor</strong> — é a mesma conta da comissão, então dashboard e comissão sempre batem.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <span class="kicker prop">Se aprovar</span>
+    <h2>O que seria alterado no sistema</h2>
+    <div class="card">
+      <ol class="steps">
+        <li>O cálculo de projeção da comissão vira uma <strong>função compartilhada</strong> — um lugar só, sem conta duplicada.</li>
+        <li>O cartão <strong>“Projeção” da Visão Geral</strong> passa a ser a soma das projeções por vendedor (conta nova).</li>
+        <li>A coluna <strong>“Projeção” da aba Vendas</strong> usa a mesma conta, vendedor a vendedor.</li>
+        <li>Vendedor <strong>sem meta cadastrada</strong> (sem dias de trabalho definidos) continua na conta antiga até a meta ser cadastrada — o dashboard indica quando isso acontecer.</li>
+        <li>Feriado não precisa de cadastro novo: basta <strong>não marcar o dia</strong> nos dias de trabalho da meta do mês, como já é feito para a comissão.</li>
+      </ol>
+    </div>
+  </section>
+
+  <p class="foot"><strong>Nada foi alterado ainda</strong> — esta página é só a análise e a proposta. Os números do gráfico são uma simulação fiel às duas fórmulas do código (vendas de segunda a sexta, com um feriado), para dar para ver a diferença de comportamento. Aprovando, implemento, testo e publico.</p>
+
+</div>
+
+<script>
+(function () {
+  var rows = [
+    [1,0,0,233980],[2,0,0,233980],[3,14000,144667,233952],[4,10000,186000,233877],
+    [5,8000,198400,233817],[6,9000,211833,233877],[7,16000,252429,233757],
+    [8,0,220875,233757],[9,0,196333,233757],[10,13440,218364,233169],
+    [11,9600,225567,232694],[12,7680,226610,232314],[13,8640,229782,232014],
+    [14,15360,247380,231254],[15,0,230888,231254],[16,0,216458,231254],
+    [17,14700,230531,231926],[18,10500,235807,232351],[19,8400,237101,232691],
+    [20,0,225246,232691],[21,16800,239320,233371],[22,0,228442,233371],
+    [23,0,218510,233371],[24,14280,227850,233623],[25,10200,231384,233748],
+    [26,8160,232214,233848],[27,9180,234153,234088],[28,16320,243859,234288],
+    [29,0,235450,234288],[30,0,227602,234288],[31,13720,233980,233980]
+  ];
+  var nomes = ['dom','seg','ter','qua','qui','sex','sáb'];
+  var wrap = document.getElementById('cw');
+  var tip = document.getElementById('tip');
+  var cx = document.getElementById('cx');
+  var svg = wrap.querySelector('svg');
+  if (!wrap || !tip || !cx || !svg) return;
+  function fmt(v) { return 'R$ ' + v.toLocaleString('pt-BR'); }
+  function move(clientX) {
+    var r = svg.getBoundingClientRect();
+    var xSvg = (clientX - r.left) / r.width * 720;
+    var d = Math.round((xSvg - 56) / 21.6) + 1;
+    if (d < 1) d = 1; if (d > 31) d = 31;
+    var row = rows[d - 1];
+    var px = 56 + (d - 1) * 21.6;
+    cx.setAttribute('x1', px); cx.setAttribute('x2', px);
+    cx.style.opacity = 1;
+    var dow = nomes[new Date(Date.UTC(2026, 7, d)).getUTCDay()];
+    tip.innerHTML = '<div class="d">Dia ' + d + ' · ' + dow + '</div>' +
+      (row[1] ? 'Venda do dia: ' + fmt(row[1]) : 'Sem venda (dia não trabalhado)') +
+      '<br><span class="a">Atual: ' + fmt(row[2]) + '</span>' +
+      '<br><span class="n">Proposta: ' + fmt(row[3]) + '</span>';
+    var leftPx = px / 720 * r.width;
+    tip.style.opacity = 1;
+    tip.style.top = '30px';
+    if (leftPx > r.width * 0.62) {
+      tip.style.left = 'auto'; tip.style.right = (r.width - leftPx + 12) + 'px';
+    } else {
+      tip.style.right = 'auto'; tip.style.left = (leftPx + 12) + 'px';
+    }
+  }
+  wrap.addEventListener('mousemove', function (e) { move(e.clientX); });
+  wrap.addEventListener('touchstart', function (e) { if (e.touches[0]) move(e.touches[0].clientX); }, { passive: true });
+  wrap.addEventListener('touchmove', function (e) { if (e.touches[0]) move(e.touches[0].clientX); }, { passive: true });
+  wrap.addEventListener('mouseleave', function () { tip.style.opacity = 0; cx.style.opacity = 0; });
+})();
+</script>
+
+</body>
+</html>

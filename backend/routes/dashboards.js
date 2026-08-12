@@ -17,6 +17,7 @@ const { Prisma } = require('@prisma/client');
 const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const financeiroGerencialService = require('../services/financeiroGerencialService');
+const projecaoVendasService = require('../services/projecaoVendasService');
 
 const num = (v) => Number(v || 0);
 const round2 = (v) => Math.round(num(v) * 100) / 100;
@@ -169,11 +170,19 @@ router.get('/geral/visao-geral', verificarAuth, checkGestor, async (req, res) =>
         // Mês fechado → dia "cheio"; mês corrente → dia de hoje (para a projeção)
         const diaAtual = ehAtual ? Number(hoje.slice(8, 10)) : totalDias;
 
-        const [vendasMes, devolMes, metaAgg, margem] = await Promise.all([
+        const [vendasMes, devolMes, metaAgg, margem, projVend, vendasMesTotal, devolMesTotal] = await Promise.all([
             vendasPeriodo(inicioMes, fimMes, categoria),
             devolucoesPeriodo(inicioMes, fimMes, categoria),
             prisma.metaMensalVendedor.aggregate({ _sum: { valorMensal: true }, where: { mesReferencia: mes } }),
-            financeiroGerencialService.margemProdutos(`${mes}-01`, fimMesISO)
+            financeiroGerencialService.margemProdutos(`${mes}-01`, fimMesISO),
+            // Projeção por dias de trabalho (conta da comissão) — só no mês corrente
+            ehAtual
+                ? projecaoVendasService.projecoesMes(mes).catch((e) => { console.error('Projeção por dias de trabalho falhou (visão geral):', e); return null; })
+                : Promise.resolve(null),
+            // Com filtro de categoria, precisa do total SEM filtro para achar a fatia
+            // da categoria (a meta/comissão não é por categoria)
+            (ehAtual && categoria) ? vendasPeriodo(inicioMes, fimMes, null) : Promise.resolve(null),
+            (ehAtual && categoria) ? devolucoesPeriodo(inicioMes, fimMes, null) : Promise.resolve(0)
         ]);
 
         // Margem bruta do mês (linhas da margem filtradas pela categoria, se houver)
@@ -184,8 +193,23 @@ router.get('/geral/visao-geral', verificarAuth, checkGestor, async (req, res) =>
 
         const liquida = round2(vendasMes.total - devolMes);
         const meta = num(metaAgg._sum.valorMensal);
-        // Mês corrente projeta pelo ritmo; mês fechado = o próprio realizado
-        const projecao = ehAtual ? (diaAtual > 0 ? round2((liquida / diaAtual) * totalDias) : 0) : liquida;
+        // Mês fechado = o próprio realizado. Mês corrente: soma das projeções por
+        // vendedor pelos DIAS DE TRABALHO (mesma conta da comissão); a parcela
+        // vendida por quem não tem meta cadastrada segue no ritmo linear. Com
+        // filtro de categoria, o "que falta" é aplicado na proporção da categoria
+        // dentro das vendas do mês (meta/comissão não é por categoria).
+        let projecao = ehAtual ? (diaAtual > 0 ? round2((liquida / diaAtual) * totalDias) : 0) : liquida;
+        let projecaoMetodo = 'ritmo_linear';
+        if (ehAtual && projVend && projVend.size > 0) {
+            const liquidaTotal = categoria ? round2(num(vendasMesTotal?.total) - num(devolMesTotal)) : liquida;
+            let restanteComMeta = 0, baseComMeta = 0;
+            for (const p of projVend.values()) { restanteComMeta += p.projecaoRestante; baseComMeta += p.totalVendidoMes; }
+            const baseSemMeta = Math.max(0, liquidaTotal - baseComMeta);
+            const restanteSemMeta = diaAtual > 0 ? (baseSemMeta / diaAtual) * (totalDias - diaAtual) : 0;
+            const fatiaCategoria = categoria ? (liquidaTotal > 0 ? Math.min(1, liquida / liquidaTotal) : 0) : 1;
+            projecao = round2(liquida + (restanteComMeta + restanteSemMeta) * fatiaCategoria);
+            projecaoMetodo = 'dias_trabalho';
+        }
 
         // Widgets de "agora" (hoje, precisa de atenção, saúde do caixa) só no mês corrente
         let hojeBloco = null, alertas = null, caixa = null;
@@ -250,6 +274,7 @@ router.get('/geral/visao-geral', verificarAuth, checkGestor, async (req, res) =>
                 meta: round2(meta),
                 pctMeta: meta > 0 ? round2((liquida / meta) * 100) : null,
                 projecao,
+                projecaoMetodo,
                 projecaoBateMeta: meta > 0 ? projecao >= meta : null,
                 diaAtual,
                 totalDias,
@@ -289,7 +314,7 @@ router.get('/geral/vendas', verificarAuth, checkGestor, async (req, res) => {
         const ini60 = inicioDiaSP(somaDiasISO(ancoraISO, -59));
         const fimHoje = fimAncora; // janelas de 30/60 dias e devoluções terminam na âncora do mês
 
-        const [brutoSemanaRaw, devolSemanaRaw, realizadoVendRaw, metas, devolucoesMes, topRaw, devolProdRaw, quedaRaw, cidadesRaw] = await Promise.all([
+        const [brutoSemanaRaw, devolSemanaRaw, realizadoVendRaw, metas, devolucoesMes, topRaw, devolProdRaw, quedaRaw, cidadesRaw, projVend] = await Promise.all([
             prisma.$queryRaw`
                 SELECT to_char(date_trunc('week', (p.data_venda AT TIME ZONE 'UTC') AT TIME ZONE 'America/Sao_Paulo'), 'YYYY-MM-DD') AS semana,
                        COALESCE(SUM(i.valor * i.quantidade), 0)::float AS total
@@ -388,7 +413,11 @@ router.get('/geral/vendas', verificarAuth, checkGestor, async (req, res) => {
                   AND p.data_venda >= ${inicioMes} AND p.data_venda <= ${fimMes}
                   ${filtroCategoriaItem(categoria)}
                 GROUP BY 1 ORDER BY 2 DESC LIMIT 8
-            `
+            `,
+            // Projeção por dias de trabalho (conta da comissão) — só no mês corrente
+            ehAtual
+                ? projecaoVendasService.projecoesMes(mes).catch((e) => { console.error('Projeção por dias de trabalho falhou (aba vendas):', e); return null; })
+                : Promise.resolve(null)
         ]);
 
         // Série semanal líquida
@@ -426,7 +455,12 @@ router.get('/geral/vendas', verificarAuth, checkGestor, async (req, res) => {
             const meta = num(metas.find((m) => m.vendedorId === id)?.valorMensal);
             const real = realPorVend.get(id) || { total: 0, pedidos: 0 };
             const liquido = round2(real.total - (devolPorVend.get(id) || 0));
-            const projecao = diaAtual > 0 ? round2((liquido / diaAtual) * totalDias) : 0;
+            // Projeção pelos dias de trabalho (conta da comissão); sem meta com
+            // dias cadastrados → ritmo linear por dia corrido (conta antiga)
+            const pv = projVend?.get(id);
+            const projecao = pv
+                ? round2(liquido + pv.projecaoRestante)
+                : (diaAtual > 0 ? round2((liquido / diaAtual) * totalDias) : 0);
             return {
                 vendedorId: id,
                 nome: nomeVend.get(id)?.nome || 'Sem vendedor',
@@ -435,6 +469,7 @@ router.get('/geral/vendas', verificarAuth, checkGestor, async (req, res) => {
                 realizado: liquido,
                 pedidos: real.pedidos,
                 projecao,
+                projecaoMetodo: pv ? 'dias_trabalho' : 'ritmo_linear',
                 pctProjecao: meta > 0 ? round2((projecao / meta) * 100) : null
             };
         }).filter((v) => v.meta > 0 || v.realizado > 0)

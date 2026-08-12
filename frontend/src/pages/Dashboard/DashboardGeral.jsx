@@ -239,7 +239,9 @@ const AbaVisaoGeral = ({ d, irPara }) => {
                 <div className="mt-4">
                     <BarraMeta percent={v.pctMeta ?? 0} />
                     <p className="text-xs text-gray-500 font-medium mt-1.5">
-                        {ehAtual ? '*Projeção = ritmo atual mantido até o fim do mês. ' : ''}{v.pedidos ? `${fmtInt(v.pedidos)} pedidos no mês.` : ''}
+                        {ehAtual ? (v.projecaoMetodo === 'dias_trabalho'
+                            ? '*Projeção pelos dias de trabalho de cada vendedor e o histórico do dia da semana (mesma conta da comissão) — fim de semana e feriado não derrubam o número. '
+                            : '*Projeção = ritmo atual mantido até o fim do mês. ') : ''}{v.pedidos ? `${fmtInt(v.pedidos)} pedidos no mês.` : ''}
                     </p>
                 </div>
             </Card>
@@ -315,7 +317,12 @@ const AbaVisaoGeral = ({ d, irPara }) => {
 };
 
 /* ══════════════ ABA 2 · VENDAS & PEDIDOS ══════════════ */
-const AbaVendas = ({ d }) => (
+const AbaVendas = ({ d }) => {
+    const ehAtual = d.ehAtual !== false;
+    // marca "°" quem ainda projeta pelo ritmo linear (sem meta com dias de trabalho)
+    const fallbackLinear = (v) => ehAtual && v.projecaoMetodo === 'ritmo_linear';
+    const temFallback = (d.vendedores || []).some(fallbackLinear);
+    return (
     <>
         <Card icon={BarChart3} titulo="Vendas por semana" direita="semana atual em dourado">
             <BarrasVerticais serie={d.serieSemanal || []} />
@@ -343,7 +350,7 @@ const AbaVendas = ({ d }) => (
                                 <td className="px-5 py-3 text-right text-gray-700 tabular-nums">{v.meta > 0 ? fmtRS0(v.meta) : '—'}</td>
                                 <td className="px-5 py-3 text-right font-bold text-gray-900 tabular-nums">{fmtRS0(v.realizado)}</td>
                                 <td className="px-5 py-3"><BarraMeta percent={v.meta > 0 ? (v.realizado / v.meta) * 100 : 0} /></td>
-                                <td className="px-5 py-3 text-right text-gray-700 tabular-nums">{fmtRS0(v.projecao)}{v.pctProjecao != null ? ` (${Math.round(v.pctProjecao)}%)` : ''}</td>
+                                <td className="px-5 py-3 text-right text-gray-700 tabular-nums">{fmtRS0(v.projecao)}{fallbackLinear(v) ? '°' : ''}{v.pctProjecao != null ? ` (${Math.round(v.pctProjecao)}%)` : ''}</td>
                                 <td className="px-5 py-3"><SituacaoVendedor pct={v.pctProjecao} /></td>
                             </tr>
                         ))}
@@ -361,11 +368,17 @@ const AbaVendas = ({ d }) => (
                         <BarraMeta percent={v.meta > 0 ? (v.realizado / v.meta) * 100 : 0} />
                         <div className="flex justify-between mt-1.5 text-xs font-semibold text-gray-600 tabular-nums">
                             <span>{fmtRS0(v.realizado)} de {v.meta > 0 ? fmtRS0(v.meta) : '—'}</span>
-                            <span>projeção {fmtRS0(v.projecao)}{v.pctProjecao != null ? ` (${Math.round(v.pctProjecao)}%)` : ''}</span>
+                            <span>projeção {fmtRS0(v.projecao)}{fallbackLinear(v) ? '°' : ''}{v.pctProjecao != null ? ` (${Math.round(v.pctProjecao)}%)` : ''}</span>
                         </div>
                     </div>
                 ))}
             </div>
+            {ehAtual && (
+                <p className="text-xs text-gray-500 font-medium px-5 py-3 border-t border-gray-100">
+                    Projeção pelos dias de trabalho de cada vendedor e o histórico do dia da semana (mesma conta da comissão).
+                    {temFallback ? ' ° Vendedor sem meta com dias de trabalho cadastrados neste mês — projeta pelo ritmo dos dias corridos até a meta ser cadastrada.' : ''}
+                </p>
+            )}
         </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
@@ -390,7 +403,8 @@ const AbaVendas = ({ d }) => (
             </div>
         </div>
     </>
-);
+    );
+};
 
 const SituacaoVendedor = ({ pct }) => {
     if (pct == null) return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">sem meta</span>;

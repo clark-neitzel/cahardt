@@ -27,13 +27,14 @@ No topo há:
 
 ### Aba Visão Geral
 - O mês até agora: vendas líquidas, meta da equipe, **projeção de fechamento** (verde quando bate a meta), ticket médio, margem bruta e devoluções
+- **Como a projeção é calculada (desde 08/2026):** é a mesma conta da comissão — usa os **dias de trabalho** cadastrados na meta de cada vendedor (sábado, domingo e feriado não trabalhado ficam de fora) e estima cada dia que falta pela média das últimas 4 ocorrências daquele dia da semana (segunda se compara com segundas). Por isso a projeção **não cai no fim de semana** nem em feriado. Vendedor sem meta cadastrada entra pelo ritmo linear dos dias corridos até a meta ser cadastrada. Com filtro de categoria, o "que falta" é aplicado na proporção da categoria nas vendas do mês.
 - O dia de hoje: vendas, pedidos, atendimentos (% que virou pedido) e clientes atendidos
 - **Precisa de atenção**: clientes em recompra crítica, retornos vencidos, clientes com parcela vencida, pedidos com erro de envio ao Conta Azul
 - Saúde do caixa: a receber vencido, a pagar em 7 dias, saldo previsto 30 dias
 
 ### Aba Vendas & Pedidos
 - Gráfico de vendas por semana (12 semanas, semana atual em dourado; no celular desliza para o lado)
-- Vendedores × meta do mês com projeção e situação (acima da meta / quase lá / precisa reagir)
+- Vendedores × meta do mês com projeção e situação (acima da meta / quase lá / precisa reagir). A projeção de cada vendedor usa a mesma conta da comissão (dias de trabalho + histórico do dia da semana); quem aparece com **°** está sem meta com dias de trabalho cadastrados no mês e projeta pelo ritmo linear
 - Top produtos dos últimos 30 dias, produtos em queda (30d vs 30 anteriores) e vendas por cidade
 - Link "ver como vendedor →" abre o dashboard individual de qualquer vendedor
 
