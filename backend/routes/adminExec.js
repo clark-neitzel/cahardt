@@ -50,7 +50,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'projecao-dias-trabalho-dashboard-2026-08-11',
+        deployMarker: 'diag-devolucoes-pendentes-2026-08-12',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -8859,6 +8859,118 @@ router.get('/contabilidade-diag-mes', async (req, res) => {
         });
     } catch (err) {
         console.error('[contabilidade-diag-mes]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/admin-exec/diag-devolucoes-pendentes[?desde=YYYY-MM-DD]
+// Entregas marcadas como DEVOLVIDO / ENTREGUE_PARCIAL pelo motorista que NUNCA tiveram
+// a devolução registrada na conferência do Caixa (devolucaoFinalizada = false).
+// Nesses casos o título continua ABERTO no Contas a Receber (e o boleto segue cobrando),
+// porque quem baixa/cancela a parcela é o registro da devolução, não o status da entrega.
+// Somente leitura.
+router.get('/diag-devolucoes-pendentes', async (req, res) => {
+    try {
+        const desde = req.query.desde ? new Date(`${req.query.desde}T00:00:00.000Z`) : null;
+
+        const pedidos = await prisma.pedido.findMany({
+            where: {
+                statusEntrega: { in: ['DEVOLVIDO', 'ENTREGUE_PARCIAL'] },
+                devolucaoFinalizada: false,
+                cancelado: false,
+                statusEnvio: { not: 'EXCLUIDO' },
+                ...(desde ? { dataEntrega: { gte: desde } } : {})
+            },
+            orderBy: { dataEntrega: 'asc' },
+            select: {
+                numero: true, dataVenda: true, dataEntrega: true, statusEntrega: true,
+                motivoDevolucao: true, observacaoEntrega: true,
+                especial: true, bonificacao: true, situacaoCA: true, statusEnvio: true,
+                cliente: { select: { Nome: true, NomeFantasia: true } },
+                vendedor: { select: { nome: true } },
+                itens: { select: { quantidade: true, valor: true } },
+                itensDevolvidos: { select: { id: true } },
+                embarque: { select: { numero: true, responsavel: { select: { nome: true } } } },
+                caixaConferencias: { select: { conferido: true, conferidoEm: true } },
+                devolucoes: { select: { numero: true, status: true } },
+                contaReceber: {
+                    select: {
+                        status: true, valorTotal: true, origem: true,
+                        parcelas: {
+                            orderBy: { numeroParcela: 'asc' },
+                            select: {
+                                numeroParcela: true, valor: true, dataVencimento: true,
+                                status: true, valorPago: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const d10 = (v) => v?.toISOString?.().slice(0, 10) || null;
+        const n2 = (v) => v == null ? null : Math.round(Number(v) * 100) / 100;
+        const hoje = new Date().toISOString().slice(0, 10);
+
+        const lista = pedidos.map(p => {
+            const cr = p.contaReceber;
+            const parcelas = cr?.parcelas || [];
+            const emAberto = parcelas.filter(x => !['PAGO', 'CANCELADO'].includes(x.status));
+            const valorEmAberto = emAberto.reduce((s, x) => s + Number(x.valor || 0), 0);
+            const vencidas = emAberto.filter(x => d10(x.dataVencimento) < hoje).length;
+
+            return {
+                pedido: p.numero,
+                cliente: p.cliente?.NomeFantasia || p.cliente?.Nome || '—',
+                vendedor: p.vendedor?.nome || '—',
+                dataVenda: d10(p.dataVenda),
+                dataEntrega: d10(p.dataEntrega),
+                statusEntrega: p.statusEntrega,
+                motivo: p.motivoDevolucao?.slice(0, 120) || p.observacaoEntrega?.slice(0, 120) || null,
+                valorPedido: n2(p.itens.reduce((s, i) => s + Number(i.quantidade) * Number(i.valor), 0)),
+                itensMarcadosNaEntrega: p.itensDevolvidos.length,
+                embarque: p.embarque ? `#${p.embarque.numero}` : null,
+                responsavelEntrega: p.embarque?.responsavel?.nome || '—',
+                conferidoNoCaixa: p.caixaConferencias.some(c => c.conferido),
+                especial: p.especial, bonificacao: p.bonificacao,
+                situacaoCA: p.situacaoCA, statusEnvio: p.statusEnvio,
+                devolucoesJaRegistradas: p.devolucoes.length,
+                contaReceber: cr ? {
+                    origem: cr.origem, status: cr.status, valorTotal: n2(cr.valorTotal),
+                    parcelasEmAberto: emAberto.length, parcelasVencidas: vencidas,
+                    valorEmAberto: n2(valorEmAberto)
+                } : null
+            };
+        });
+
+        // Só o que de fato ainda cobra o cliente
+        const comTituloAberto = lista.filter(x => x.contaReceber && x.contaReceber.valorEmAberto > 0);
+
+        const agrupa = (arr, chave) => arr.reduce((acc, x) => {
+            const k = chave(x) || '—';
+            acc[k] = acc[k] || { qtd: 0, valorEmAberto: 0 };
+            acc[k].qtd++;
+            acc[k].valorEmAberto = Math.round((acc[k].valorEmAberto + (x.contaReceber?.valorEmAberto || 0)) * 100) / 100;
+            return acc;
+        }, {});
+
+        res.json({
+            ok: true,
+            filtro: { desde: req.query.desde || 'sem limite' },
+            resumo: {
+                entregasDevolvidasSemDevolucaoRegistrada: lista.length,
+                comTituloAindaEmAberto: comTituloAberto.length,
+                valorTotalEmAberto: n2(comTituloAberto.reduce((s, x) => s + x.contaReceber.valorEmAberto, 0)),
+                semContaReceber: lista.filter(x => !x.contaReceber).length,
+                naoConferidosNoCaixa: lista.filter(x => !x.conferidoNoCaixa).length
+            },
+            porResponsavelEntrega: agrupa(comTituloAberto, x => x.responsavelEntrega),
+            porMesEntrega: agrupa(comTituloAberto, x => (x.dataEntrega || '').slice(0, 7)),
+            comTituloAberto,
+            semTituloAberto: lista.filter(x => !comTituloAberto.includes(x))
+        });
+    } catch (err) {
+        console.error('[diag-devolucoes-pendentes]', err);
         res.status(500).json({ error: err.message });
     }
 });
