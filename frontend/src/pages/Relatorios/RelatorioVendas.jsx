@@ -4,6 +4,7 @@ import api from '../../services/api';
 import { BarChart2, Filter, Download, Printer, ChevronUp, ChevronDown, ChevronsUpDown, X, ArrowLeft, ListFilter, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import SelectBusca from '../../components/SelectBusca';
+import { opcoesVendedorFiltro } from '../../utils/vendedoresFiltro';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -606,7 +607,7 @@ export default function RelatorioVendas() {
                                     <SelectBusca value={vendedorId} onChange={e => setVendedorId(e.target.value)}
                                         className="w-full mt-1">
                                         <option value="">Todos</option>
-                                        {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
+                                        {opcoesVendedorFiltro(vendedores)}
                                     </SelectBusca>
                                 </div>
                             )}

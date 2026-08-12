@@ -10,6 +10,7 @@ import ModalNovoLead from '../Rota/ModalNovoLead';
 import ModalReferenciarCliente from './ModalReferenciarCliente';
 import ModalEditarLead from './ModalEditarLead';
 import SelectBusca from '../../components/SelectBusca';
+import { opcoesVendedorFiltro, somenteAtivos } from '../../utils/vendedoresFiltro';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const ETAPA_COLORS = {
@@ -66,10 +67,11 @@ const ListaLeads = () => {
     const [expandedLeadData, setExpandedLeadData] = useState(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
 
-    // Carregar vendedores para o filtro
+    // Carregar vendedores para o filtro (inclui inativos — lead antigo pode ser deles;
+    // o modal de novo lead recebe só os ativos)
     useEffect(() => {
         if (podeEscolherVendedor) {
-            vendedorService.listarAtivos().then(setVendedores).catch(() => { });
+            vendedorService.listarParaFiltro().then(setVendedores).catch(() => { });
         }
     }, [podeEscolherVendedor]);
 
@@ -462,9 +464,7 @@ const ListaLeads = () => {
                             className="flex-1 md:flex-none"
                         >
                             <option value="">Todos vend.</option>
-                            {vendedores.map(v => (
-                                <option key={v.id} value={v.id}>{v.nome}</option>
-                            ))}
+                            {opcoesVendedorFiltro(vendedores)}
                         </SelectBusca>
                     )}
                     <SelectBusca
@@ -716,7 +716,7 @@ const ListaLeads = () => {
                     onClose={() => setModalNovoLead(false)}
                     onCriado={() => { setModalNovoLead(false); fetchLeads(); }}
                     podeEscolherVendedor={podeEscolherVendedor}
-                    vendedores={vendedores}
+                    vendedores={somenteAtivos(vendedores)}
                     vendedorId={user?.id}
                 />
             )}

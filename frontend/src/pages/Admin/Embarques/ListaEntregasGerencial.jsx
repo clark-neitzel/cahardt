@@ -4,6 +4,7 @@ import { Search, Filter, RefreshCw, X, Truck, Calendar, User, AlertTriangle } fr
 import entregasService from '../../../services/entregasService';
 import vendedorService from '../../../services/vendedorService';
 import SelectBusca from '../../../components/SelectBusca';
+import { opcoesVendedorFiltro } from '../../../utils/vendedoresFiltro';
 import ModalDetalheEntrega from './ModalDetalheEntrega';
 import { useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
 
@@ -44,7 +45,8 @@ const ListaEntregasGerencial = () => {
     useEffect(() => {
         const fetchVendedores = async () => {
             try {
-                const dados = await vendedorService.listarAtivos();
+                // Filtro de consulta: inclui inativos (entrega antiga é do vendedor de antes).
+                const dados = await vendedorService.listarParaFiltro();
                 setVendedores(dados);
                 // Temporário: Usar os mesmos na lista de entregadores caso haja coincidencia,
                 // Idealmente teríamos usuarioService.listarEntregadores()
@@ -194,7 +196,7 @@ const ListaEntregasGerencial = () => {
                             onChange={(e) => { setVendedorId(e.target.value); setPage(1); }}
                         >
                             <option value="">Todos</option>
-                            {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
+                            {opcoesVendedorFiltro(vendedores)}
                         </SelectBusca>
                     </div>
 
@@ -206,7 +208,7 @@ const ListaEntregasGerencial = () => {
                             onChange={(e) => { setEntregadorId(e.target.value); setPage(1); }}
                         >
                             <option value="">Todos</option>
-                            {entregadores.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                            {opcoesVendedorFiltro(entregadores)}
                         </SelectBusca>
                     </div>
 

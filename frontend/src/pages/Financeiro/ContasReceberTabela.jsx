@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
+import { opcoesVendedorMulti } from '../../utils/vendedoresFiltro';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '-';
@@ -212,7 +213,8 @@ const ContasReceberTabela = () => {
 
     // Carrega aux
     useEffect(() => {
-        vendedorService.listarAtivos().then(setVendedores).catch(() => {});
+        // Filtro de consulta: inclui vendedor inativo (título antigo continua no nome dele).
+        vendedorService.listarParaFiltro().then(setVendedores).catch(() => {});
         categoriaClienteService.listar().then(setCategorias).catch(() => {});
         contasReceberService.tiposCobranca().then(setTiposCobranca).catch(() => {});
         contasReceberService.baixadoPor().then(setUsuariosBaixa).catch(() => {});
@@ -893,7 +895,7 @@ const ContasReceberTabela = () => {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Vendedor</label>
                         <FiltroMulti
                             label="Todos"
-                            options={vendedores.map(v => ({ valor: v.id, label: v.nome }))}
+                            options={opcoesVendedorMulti(vendedores)}
                             value={filtros.vendedorId}
                             onChange={(v) => setFiltros(f => ({ ...f, vendedorId: v }))}
                         />

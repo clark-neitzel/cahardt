@@ -7,6 +7,7 @@ import tabelaPrecoService from '../../services/tabelaPrecoService';
 import fornecedorService from '../../services/fornecedorService';
 import { Search, MapPin, Phone, User, Filter, Settings, X, Save, AlertTriangle, MessageCircle, AlertCircle, UserPlus, Building2, ArrowRight } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
+import { opcoesVendedorFiltro, somenteAtivos } from '../../utils/vendedoresFiltro';
 import { useAuth } from '../../contexts/AuthContext';
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
@@ -83,7 +84,8 @@ const ListaClientes = () => {
         const load = async () => {
             try {
                 const [vends, conds] = await Promise.all([
-                    vendedorService.listarAtivos(),
+                    // Filtro: inclui inativos (cliente antigo pode estar no nome deles).
+                    vendedorService.listarParaFiltro(),
                     tabelaPrecoService.listar(true)
                 ]);
                 setVendedores(vends);
@@ -374,9 +376,7 @@ const ListaClientes = () => {
                             onChange={(e) => { setIdVendedor(e.target.value); setPage(1); }}
                         >
                             <option value="">Todos os Vendedores</option>
-                            {vendedores.map(v => (
-                                <option key={v.id} value={v.id}>{v.nome}</option>
-                            ))}
+                            {opcoesVendedorFiltro(vendedores)}
                         </SelectBusca>
                     </div>
 
@@ -868,7 +868,8 @@ const ListaClientes = () => {
                                     onChange={(e) => setBatchData({ ...batchData, idVendedor: e.target.value })}
                                 >
                                     <option value="">Não alterar</option>
-                                    {vendedores.map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
+                                    {/* Atribuição: só vendedor na ativa */}
+                                    {somenteAtivos(vendedores).map(v => <option key={v.id} value={v.id}>{v.nome}</option>)}
                                 </SelectBusca>
                             </div>
 

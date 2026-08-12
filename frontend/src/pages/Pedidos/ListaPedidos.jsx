@@ -6,6 +6,7 @@ import api, { API_URL } from '../../services/api';
 import amostraService from '../../services/amostraService';
 import vendedorService from '../../services/vendedorService';
 import SelectBusca from '../../components/SelectBusca';
+import { opcoesVendedorFiltro, somenteAtivos } from '../../utils/vendedoresFiltro';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import { useAuth } from '../../contexts/AuthContext';
@@ -781,9 +782,7 @@ const ListaPedidos = () => {
                                 className="w-full"
                             >
                                 <option value="">Todos</option>
-                                {todosVendedores.map(v => (
-                                    <option key={v.id} value={v.id}>{v.nome}</option>
-                                ))}
+                                {opcoesVendedorFiltro(todosVendedores)}
                             </SelectBusca>
                         </div>
                         <div>
@@ -1588,7 +1587,8 @@ const ListaPedidos = () => {
                                             className="flex-1"
                                         >
                                             <option value="">Selecionar novo vendedor…</option>
-                                            {todosVendedores.filter(v => v.id !== selectedPedido.vendedorId).map(v => (
+                                            {/* Reatribuir é atribuição: só vendedor na ativa */}
+                                            {somenteAtivos(todosVendedores).filter(v => v.id !== selectedPedido.vendedorId).map(v => (
                                                 <option key={v.id} value={v.id}>{v.nome}</option>
                                             ))}
                                         </SelectBusca>

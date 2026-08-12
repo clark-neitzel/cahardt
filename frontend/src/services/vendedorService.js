@@ -6,8 +6,17 @@ const vendedorService = {
         return response.data;
     },
 
+    // Só quem está na ativa — para FORMULÁRIO (novo pedido, atribuir cliente/lead...).
     listarAtivos: async () => {
         const response = await api.get('/vendedores', { params: { ativo: 'true' } });
+        return response.data;
+    },
+
+    // Ativos + INATIVOS — para FILTRO de tela/relatório: vendedor antigo continua
+    // nos dados históricos e precisa poder ser selecionado na consulta.
+    // Usar junto com os helpers de frontend/src/utils/vendedoresFiltro.jsx.
+    listarParaFiltro: async () => {
+        const response = await api.get('/vendedores');
         return response.data;
     },
 

@@ -8,6 +8,7 @@ import {
 import toast from 'react-hot-toast';
 import SelectBusca from '../../components/SelectBusca';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
+import { opcoesVendedorFiltro } from '../../utils/vendedoresFiltro';
 import { normalizarDoc } from '../../utils/documento'; // busca por CPF/CNPJ (inclui alfanumérico)
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
@@ -195,9 +196,7 @@ const RelatorioPedidos = () => {
                                 <SelectBusca value={vendedorId} onChange={(e) => setVendedorId(e.target.value)}
                                     className="w-full mt-1">
                                     <option value="">Todos</option>
-                                    {vendedores.map(v => (
-                                        <option key={v.id} value={v.id}>{v.nome}</option>
-                                    ))}
+                                    {opcoesVendedorFiltro(vendedores)}
                                 </SelectBusca>
                             </div>
                         )}
