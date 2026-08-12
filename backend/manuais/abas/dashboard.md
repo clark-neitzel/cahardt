@@ -60,7 +60,7 @@ No topo há:
 
 ## Dashboard do Vendedor
 
-- **Minha meta do mês**: anel de progresso, realizado, projeção e flex disponível, com a orientação "para bater a meta: vender R$ X por dia"
+- **Minha meta do mês**: anel de progresso, realizado, projeção e flex disponível, com a orientação "para bater a meta: vender R$ X por dia". Desde 08/2026 o realizado conta **só pedido faturado** (ou especial) e **desconta as devoluções** — mesma régua da comissão e do Dashboard Geral. Pedido lançado que ainda não virou nota entra no realizado quando for faturado.
 - **Minha comissão** (só para o vendedor com comissão ativa — meta + configuração no mês; gestores não veem): comissão já garantida no mês, quanto vendeu vs meta, e "se continuar nesse ritmo, fecha o mês com R$ X de comissão". Se houver mínimo configurado e ainda não atingido, mostra quanto falta vender para destravar a comissão. A projeção compara cada dia de venda que falta com as últimas segundas, terças, quartas… do próprio vendedor.
 - **Popup da comissão (manhã e tarde)**: para quem tem comissão ativa, o app mostra uma vez por período um resumo da comissão e da projeção — o mesmo conteúdo do card. Os horários (padrão 08:00 e 18:00) e o liga/desliga são configurados por vendedor em Config → Comissões (modal de edição, seção "Popup no app do vendedor"). Fechar não mostra de novo no mesmo período.
 - **Hoje**: vendi hoje (vs meta do dia), pedidos e clientes atendidos vs rota do dia

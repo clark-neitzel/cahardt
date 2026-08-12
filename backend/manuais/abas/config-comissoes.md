@@ -75,7 +75,8 @@ Na apuração, quem ficou abaixo do **mínimo da meta** aparece com o selo verme
 
 ## Observações
 
-- Pedidos cancelados e devolvidos são excluídos do cálculo
+- **O que conta como venda (desde 08/2026):** só o pedido **faturado** (ou especial, que nunca tem nota). Pedido cancelado, e pedido que ainda não virou nota, **não** entram no realizado — passam a contar quando forem faturados. É a mesma régua do Dashboard Geral, então comissão, meta e dashboard mostram o mesmo número.
+- **Devolução desconta**: toda devolução ativa é abatida do realizado do mês, da meta da cidade e da quantidade do produto, no dia em que a devolução foi registrada. O flex não volta atrás (foi concedido na venda).
 - Bonificações não contam para o realizado
 - A configuração de comissão é independente da meta — é possível apurar sem configuração, mas o resultado não será calculado
 - Precisa primeiro cadastrar as metas em **Config → Metas de Vendas**

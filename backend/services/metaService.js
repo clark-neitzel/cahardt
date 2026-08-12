@@ -3,6 +3,7 @@ const dayjs = require('dayjs');
 const isBetween = require('dayjs/plugin/isBetween');
 dayjs.extend(isBetween);
 const { calcularFlexDinamico } = require('./flexService');
+const projecaoVendasService = require('./projecaoVendasService');
 
 const metaService = {
     salvarMetaMensal: async (dados, usuarioLogadoId) => {
@@ -279,21 +280,34 @@ const metaService = {
         const dataInicioMesDb = dayjs(mesReferencia + '-01').startOf('month').toDate();
         const dataFimMesDb = dayjs(mesReferencia + '-01').endOf('month').toDate();
 
-        const pedidosMes = await prisma.pedido.findMany({
-            where: {
-                vendedorId,
-                dataVenda: { gte: dataInicioMesDb, lte: dataFimMesDb },
-                bonificacao: false,
-                OR: [
-                    { situacaoCA: { notIn: ['CANCELADO', 'DEVOLVIDO'] } },
-                    { situacaoCA: null }
-                ]
-            },
-            include: {
-                itens: true,
-                cliente: { select: { End_Cidade: true } }
-            }
-        });
+        // Venda = pedido FATURADO (ou especial), sem bonificação, menos devoluções
+        // ativas — mesma régua da comissão e do Dashboard Geral (projecaoVendasService)
+        const [pedidosMes, devolucoesMes] = await Promise.all([
+            prisma.pedido.findMany({
+                where: {
+                    vendedorId,
+                    dataVenda: { gte: dataInicioMesDb, lte: dataFimMesDb },
+                    ...projecaoVendasService.WHERE_PEDIDO_RECEITA
+                },
+                include: {
+                    itens: true,
+                    cliente: { select: { End_Cidade: true } }
+                }
+            }),
+            prisma.devolucao.findMany({
+                where: {
+                    status: 'ATIVA',
+                    dataDevolucao: { gte: dataInicioMesDb, lte: dataFimMesDb },
+                    pedidoOriginal: { vendedorId }
+                },
+                select: {
+                    valorTotal: true,
+                    dataDevolucao: true,
+                    cliente: { select: { End_Cidade: true } },
+                    itens: { select: { produtoId: true, quantidade: true } }
+                }
+            })
+        ]);
 
         let totalVendidoMes = 0;
         let totalVendidoSemana = 0;
@@ -342,6 +356,27 @@ const metaService = {
             if (!vendaPorCidadeEDia[cidade][diaSemana]) vendaPorCidadeEDia[cidade][diaSemana] = { total: 0, pedidos: 0 };
             vendaPorCidadeEDia[cidade][diaSemana].total += valorPedido;
             vendaPorCidadeEDia[cidade][diaSemana].pedidos++;
+        });
+
+        // Devoluções descontam o realizado (mês, semana, cidade e quantidade de
+        // produto). Flex e clientes visitados não voltam atrás: o flex foi
+        // concedido na venda e a visita aconteceu.
+        devolucoesMes.forEach(dev => {
+            const valorDev = Number(dev.valorTotal || 0);
+            const naSemana = dayjs(dev.dataDevolucao).isBetween(inicioSemana, fimSemana, 'day', '[]');
+            totalVendidoMes -= valorDev;
+            if (naSemana) totalVendidoSemana -= valorDev;
+
+            const cidade = dev.cliente?.End_Cidade || 'Sem cidade';
+            valorVendidoPorCidade[cidade] = (valorVendidoPorCidade[cidade] || 0) - valorDev;
+            if (naSemana) {
+                valorVendidoPorCidadeSemana[cidade] = (valorVendidoPorCidadeSemana[cidade] || 0) - valorDev;
+            }
+
+            dev.itens.forEach(item => {
+                if (!item.produtoId) return;
+                qtdVendidaPorProduto[item.produtoId] = (qtdVendidaPorProduto[item.produtoId] || 0) - Number(item.quantidade);
+            });
         });
 
         // Conta clientes ativos por cidade para este vendedor

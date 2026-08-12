@@ -118,48 +118,74 @@ const comissaoService = {
         if (!meta) return { vendedorId, vendedor, temMeta: false, temConfig: !!config };
         if (!config) return { vendedorId, vendedor, temMeta: true, temConfig: false };
 
-        // Pedidos válidos do mês — mesmo filtro do metaService
-        // (exclui cancelados/devolvidos mas mantém situacaoCA null, exclui bonificações)
-        const pedidos = await prisma.pedido.findMany({
-            where: {
-                vendedorId,
-                dataVenda: { gte: inicio, lte: fim },
-                bonificacao: false,
-                OR: [
-                    { situacaoCA: { notIn: ['CANCELADO', 'DEVOLVIDO'] } },
-                    { situacaoCA: null }
-                ]
-            },
-            include: {
-                itens: { select: { produtoId: true, quantidade: true, valor: true } },
-                cliente: { select: { End_Cidade: true } }
-            }
-        });
+        // Pedidos que contam como venda: FATURADO (ou especial), sem bonificação
+        // — regra de receita compartilhada (projecaoVendasService). Cancelado e
+        // não-faturado ficam de fora; devolução é descontada logo abaixo.
+        const [pedidos, devolucoes] = await Promise.all([
+            prisma.pedido.findMany({
+                where: {
+                    vendedorId,
+                    dataVenda: { gte: inicio, lte: fim },
+                    ...projecaoVendasService.WHERE_PEDIDO_RECEITA
+                },
+                include: {
+                    itens: { select: { produtoId: true, quantidade: true, valor: true } },
+                    cliente: { select: { End_Cidade: true } }
+                }
+            }),
+            // Devoluções ATIVAS do mês nos pedidos deste vendedor (descontam venda,
+            // cidade e quantidade de produto)
+            prisma.devolucao.findMany({
+                where: {
+                    status: 'ATIVA',
+                    dataDevolucao: { gte: inicio, lte: fim },
+                    pedidoOriginal: { vendedorId }
+                },
+                select: {
+                    valorTotal: true,
+                    dataDevolucao: true,
+                    cliente: { select: { End_Cidade: true } },
+                    itens: { select: { produtoId: true, quantidade: true } }
+                }
+            })
+        ]);
 
         // Valor de cada pedido = soma dos itens (igual ao metaService)
         const valorPedido = (p) => p.itens.reduce((acc, item) => acc + (Number(item.valor) * Number(item.quantidade)), 0);
 
-        // Total vendido no mês
-        const totalVendidoMes = pedidos.reduce((acc, p) => acc + valorPedido(p), 0);
+        const totalDevolvidoMes = devolucoes.reduce((acc, d) => acc + Number(d.valorTotal || 0), 0);
 
-        // Flex utilizado no mês
+        // Total vendido no mês, líquido de devoluções
+        const totalVendidoMes = pedidos.reduce((acc, p) => acc + valorPedido(p), 0) - totalDevolvidoMes;
+
+        // Flex utilizado no mês (flex é concedido na venda; devolução não devolve flex)
         const flexUsadoMes = pedidos.reduce((acc, p) => acc + Number(p.flexTotal || 0), 0);
         const flexMeta = Number(meta.flexMensal) || 0;
         const percFlexUsado = flexMeta > 0 ? (flexUsadoMes / flexMeta) * 100 : 0;
 
-        // Realizado por cidade
+        // Realizado por cidade (menos devoluções da cidade)
         const realizadoPorCidade = {};
         for (const p of pedidos) {
             const cidade = p.cliente?.End_Cidade;
             if (!cidade) continue;
             realizadoPorCidade[cidade] = (realizadoPorCidade[cidade] || 0) + valorPedido(p);
         }
+        for (const d of devolucoes) {
+            const cidade = d.cliente?.End_Cidade;
+            if (!cidade) continue;
+            realizadoPorCidade[cidade] = (realizadoPorCidade[cidade] || 0) - Number(d.valorTotal || 0);
+        }
 
-        // Realizado por produto (quantidade)
+        // Realizado por produto (quantidade, menos a quantidade devolvida)
         const qtdPorProduto = {};
         for (const p of pedidos) {
             for (const item of p.itens) {
                 qtdPorProduto[item.produtoId] = (qtdPorProduto[item.produtoId] || 0) + Number(item.quantidade);
+            }
+        }
+        for (const d of devolucoes) {
+            for (const item of d.itens) {
+                qtdPorProduto[item.produtoId] = (qtdPorProduto[item.produtoId] || 0) - Number(item.quantidade);
             }
         }
 
@@ -229,11 +255,16 @@ const comissaoService = {
         const hoje = dayjs();
         const diasTrabalho = Array.isArray(meta.diasTrabalho) ? meta.diasTrabalho : JSON.parse(meta.diasTrabalho || '[]');
 
-        // Vendas por dia do mês atual
+        // Vendas líquidas por dia do mês atual (devolução desconta no dia em que
+        // foi registrada — mesma regra do total do mês e do dashboard)
         const vendasPorDia = {};
         for (const p of pedidos) {
             const d = dayjs(p.dataVenda).format('YYYY-MM-DD');
             vendasPorDia[d] = (vendasPorDia[d] || 0) + valorPedido(p);
+        }
+        for (const dev of devolucoes) {
+            const d = dayjs(dev.dataDevolucao).format('YYYY-MM-DD');
+            vendasPorDia[d] = (vendasPorDia[d] || 0) - Number(dev.valorTotal || 0);
         }
 
         // Histórico (dias de trabalho das 2 últimas metas + vendas desses dias)

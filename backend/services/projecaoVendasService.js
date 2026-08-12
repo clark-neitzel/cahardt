@@ -9,18 +9,65 @@
  *
  * Usado pela apuração de comissão (comissaoService) e pelo Dashboard Geral
  * (dashboards.js). Mudança aqui muda a projeção nos DOIS lugares.
+ *
+ * REGRA DE VENDA (WHERE_PEDIDO_RECEITA + devoluções) — pedido do usuário,
+ * 08/2026: venda é só o que foi FATURADO (ou especial, que nunca tem nota),
+ * sem bonificação, DESCONTADAS as devoluções ativas e os cancelamentos. É a
+ * mesma regra de receita da DRE e do Dashboard Geral: comissão, meta e
+ * dashboard falam do mesmo número. Não afrouxar essa regra.
  */
 const prisma = require('../config/database');
 const dayjs = require('dayjs');
+
+/** Pedido que conta como venda: faturado (ou especial), sem bonificação. */
+const WHERE_PEDIDO_RECEITA = {
+    bonificacao: false,
+    OR: [
+        { situacaoCA: 'FATURADO' },
+        { especial: true }
+    ]
+};
 
 const parseDias = (v) => {
     if (Array.isArray(v)) return v;
     try { return JSON.parse(v || '[]'); } catch { return []; }
 };
 
+const valorItens = (itens) => (itens || []).reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0);
+
 /**
- * Cálculo puro (sem banco). `vendasPorDia` deve conter as vendas do mês atual
- * E dos dias históricos (`diasAnteriores`), no formato { 'YYYY-MM-DD': valor }.
+ * Devoluções ATIVAS por vendedor e por dia num intervalo.
+ * Retorna Map(vendedorId → { 'YYYY-MM-DD': valorDevolvido }).
+ * A devolução desconta no dia em que foi registrada (mesma regra do dashboard).
+ */
+async function devolucoesPorVendedorDia(vendedorIds, gte, lte) {
+    const mapa = new Map((vendedorIds || []).map(id => [id, {}]));
+    if (!vendedorIds || vendedorIds.length === 0) return mapa;
+    const devs = await prisma.devolucao.findMany({
+        where: {
+            status: 'ATIVA',
+            dataDevolucao: { gte, lte },
+            pedidoOriginal: { vendedorId: { in: vendedorIds } }
+        },
+        select: {
+            valorTotal: true,
+            dataDevolucao: true,
+            pedidoOriginal: { select: { vendedorId: true } }
+        }
+    });
+    for (const d of devs) {
+        const vid = d.pedidoOriginal?.vendedorId;
+        if (!vid || !mapa.has(vid)) continue;
+        const dia = dayjs(d.dataDevolucao).format('YYYY-MM-DD');
+        const por = mapa.get(vid);
+        por[dia] = (por[dia] || 0) + Number(d.valorTotal || 0);
+    }
+    return mapa;
+}
+
+/**
+ * Cálculo puro (sem banco). `vendasPorDia` deve conter as vendas LÍQUIDAS do mês
+ * atual E dos dias históricos (`diasAnteriores`), no formato { 'YYYY-MM-DD': valor }.
  */
 function calcularProjecaoDias({ hoje, diasTrabalho, vendasPorDia, diasAnteriores, totalVendidoMes }) {
     const diasPassados = diasTrabalho.filter(d => !dayjs(d).isAfter(hoje, 'day'));
@@ -58,8 +105,8 @@ function calcularProjecaoDias({ hoje, diasTrabalho, vendasPorDia, diasAnteriores
 
 /**
  * Histórico de UM vendedor: dias de trabalho das 2 últimas metas anteriores ao
- * mês e as vendas desses dias. Retorna { diasAnteriores, vendasPorDia } (só
- * dias históricos — o chamador mescla com as vendas do mês atual).
+ * mês e as vendas LÍQUIDAS desses dias. Retorna { diasAnteriores, vendasPorDia }
+ * (só dias históricos — o chamador mescla com as vendas do mês atual).
  */
 async function historicoVendedor(vendedorId, mesReferencia, hoje) {
     const metasAnteriores = await prisma.metaMensalVendedor.findMany({
@@ -75,25 +122,21 @@ async function historicoVendedor(vendedorId, mesReferencia, hoje) {
     const vendasPorDia = {};
     if (diasAnteriores.length > 0) {
         const ordenados = [...diasAnteriores].sort();
-        const pedidosHist = await prisma.pedido.findMany({
-            where: {
-                vendedorId,
-                dataVenda: {
-                    gte: dayjs(ordenados[0]).startOf('day').toDate(),
-                    lte: dayjs(ordenados[ordenados.length - 1]).endOf('day').toDate()
-                },
-                bonificacao: false,
-                OR: [
-                    { situacaoCA: { notIn: ['CANCELADO', 'DEVOLVIDO'] } },
-                    { situacaoCA: null }
-                ]
-            },
-            select: { dataVenda: true, itens: { select: { quantidade: true, valor: true } } }
-        });
+        const gte = dayjs(ordenados[0]).startOf('day').toDate();
+        const lte = dayjs(ordenados[ordenados.length - 1]).endOf('day').toDate();
+        const [pedidosHist, devsHist] = await Promise.all([
+            prisma.pedido.findMany({
+                where: { vendedorId, dataVenda: { gte, lte }, ...WHERE_PEDIDO_RECEITA },
+                select: { dataVenda: true, itens: { select: { quantidade: true, valor: true } } }
+            }),
+            devolucoesPorVendedorDia([vendedorId], gte, lte)
+        ]);
         for (const p of pedidosHist) {
             const d = dayjs(p.dataVenda).format('YYYY-MM-DD');
-            const valor = p.itens.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0);
-            vendasPorDia[d] = (vendasPorDia[d] || 0) + valor;
+            vendasPorDia[d] = (vendasPorDia[d] || 0) + valorItens(p.itens);
+        }
+        for (const [dia, valor] of Object.entries(devsHist.get(vendedorId) || {})) {
+            vendasPorDia[dia] = (vendasPorDia[dia] || 0) - valor;
         }
     }
     return { diasAnteriores, vendasPorDia };
@@ -102,7 +145,7 @@ async function historicoVendedor(vendedorId, mesReferencia, hoje) {
 /**
  * Versão em lote para o Dashboard Geral: projeta TODOS os vendedores que têm
  * meta com dias de trabalho no mês, com poucas queries. Retorna
- * Map(vendedorId → resultado de calcularProjecaoDias + totalVendidoMes).
+ * Map(vendedorId → resultado de calcularProjecaoDias + totalVendidoMes líquido).
  */
 async function projecoesMes(mesReferencia) {
     const hoje = dayjs();
@@ -118,13 +161,6 @@ async function projecoesMes(mesReferencia) {
 
     const inicioMes = dayjs(`${mesReferencia}-01`).startOf('month').toDate();
     const fimMes = dayjs(`${mesReferencia}-01`).endOf('month').toDate();
-    const wherePedidoValido = {
-        bonificacao: false,
-        OR: [
-            { situacaoCA: { notIn: ['CANCELADO', 'DEVOLVIDO'] } },
-            { situacaoCA: null }
-        ]
-    };
 
     // 2 últimas metas anteriores de cada vendedor (agrupa em JS — tabela pequena)
     const metasAntTodas = await prisma.metaMensalVendedor.findMany({
@@ -144,26 +180,23 @@ async function projecoesMes(mesReferencia) {
             .filter(d => dayjs(d).isBefore(hoje, 'day'))
     ]));
 
-    // Pedidos do mês atual + do intervalo histórico global, numa query cada
+    // Pedidos e devoluções do mês atual + do intervalo histórico global
     const todosDiasAnt = [...diasAnterioresPorVendedor.values()].flat().sort();
-    const [pedidosMes, pedidosHist] = await Promise.all([
+    const histGte = todosDiasAnt.length ? dayjs(todosDiasAnt[0]).startOf('day').toDate() : null;
+    const histLte = todosDiasAnt.length ? dayjs(todosDiasAnt[todosDiasAnt.length - 1]).endOf('day').toDate() : null;
+    const [pedidosMes, pedidosHist, devsMes, devsHist] = await Promise.all([
         prisma.pedido.findMany({
-            where: { vendedorId: { in: ids }, dataVenda: { gte: inicioMes, lte: fimMes }, ...wherePedidoValido },
+            where: { vendedorId: { in: ids }, dataVenda: { gte: inicioMes, lte: fimMes }, ...WHERE_PEDIDO_RECEITA },
             select: { vendedorId: true, dataVenda: true, itens: { select: { quantidade: true, valor: true } } }
         }),
-        todosDiasAnt.length > 0
+        histGte
             ? prisma.pedido.findMany({
-                where: {
-                    vendedorId: { in: ids },
-                    dataVenda: {
-                        gte: dayjs(todosDiasAnt[0]).startOf('day').toDate(),
-                        lte: dayjs(todosDiasAnt[todosDiasAnt.length - 1]).endOf('day').toDate()
-                    },
-                    ...wherePedidoValido
-                },
+                where: { vendedorId: { in: ids }, dataVenda: { gte: histGte, lte: histLte }, ...WHERE_PEDIDO_RECEITA },
                 select: { vendedorId: true, dataVenda: true, itens: { select: { quantidade: true, valor: true } } }
             })
-            : Promise.resolve([])
+            : Promise.resolve([]),
+        devolucoesPorVendedorDia(ids, inicioMes, fimMes),
+        histGte ? devolucoesPorVendedorDia(ids, histGte, histLte) : Promise.resolve(new Map())
     ]);
 
     // vendasPorDia e total do mês, por vendedor (o cálculo só consulta os dias
@@ -174,12 +207,24 @@ async function projecoesMes(mesReferencia) {
         const mapa = vendasPorVendedor.get(p.vendedorId);
         if (!mapa) continue;
         const d = dayjs(p.dataVenda).format('YYYY-MM-DD');
-        const valor = p.itens.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0);
-        mapa[d] = (mapa[d] || 0) + valor;
+        mapa[d] = (mapa[d] || 0) + valorItens(p.itens);
     }
     for (const p of pedidosMes) {
-        const valor = p.itens.reduce((acc, i) => acc + (Number(i.valor) * Number(i.quantidade)), 0);
-        totalMesPorVendedor.set(p.vendedorId, (totalMesPorVendedor.get(p.vendedorId) || 0) + valor);
+        totalMesPorVendedor.set(p.vendedorId, (totalMesPorVendedor.get(p.vendedorId) || 0) + valorItens(p.itens));
+    }
+    // devoluções descontam do dia e (as do mês) do total do mês
+    for (const fonte of [devsMes, devsHist]) {
+        for (const [vid, porDia] of fonte.entries()) {
+            const mapa = vendasPorVendedor.get(vid);
+            if (!mapa) continue;
+            for (const [dia, valor] of Object.entries(porDia)) {
+                mapa[dia] = (mapa[dia] || 0) - valor;
+            }
+        }
+    }
+    for (const [vid, porDia] of devsMes.entries()) {
+        const totalDev = Object.values(porDia).reduce((a, v) => a + v, 0);
+        totalMesPorVendedor.set(vid, (totalMesPorVendedor.get(vid) || 0) - totalDev);
     }
 
     const resultado = new Map();
@@ -197,4 +242,10 @@ async function projecoesMes(mesReferencia) {
     return resultado;
 }
 
-module.exports = { calcularProjecaoDias, historicoVendedor, projecoesMes };
+module.exports = {
+    WHERE_PEDIDO_RECEITA,
+    calcularProjecaoDias,
+    devolucoesPorVendedorDia,
+    historicoVendedor,
+    projecoesMes
+};
