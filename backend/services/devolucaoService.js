@@ -1,6 +1,25 @@
 const prisma = require('../config/database');
 const estoqueService = require('./estoqueService');
 
+// Cancela no Asaas os boletos/PIX ainda pagáveis das parcelas informadas.
+// Melhor esforço e fora de qualquer transação (é chamada de rede).
+async function cancelarCobrancasDasParcelas(parcelaIds, motivo) {
+    const resultado = { canceladas: 0, erros: [] };
+    if (!parcelaIds?.length) return resultado;
+    try {
+        const asaasService = require('./asaasService');
+        for (const parcelaId of parcelaIds) {
+            const r = await asaasService.cancelarCobrancasDaParcela(parcelaId, motivo);
+            resultado.canceladas += r.canceladas;
+            resultado.erros.push(...r.erros);
+        }
+    } catch (err) {
+        console.error('[Devolucao] Falha ao cancelar cobranças no Asaas:', err.message);
+        resultado.erros.push({ erro: err.message });
+    }
+    return resultado;
+}
+
 const devolucaoService = {
 
     listar: async (filtros = {}) => {
@@ -268,6 +287,21 @@ const devolucaoService = {
 
             return dev;
         }, { timeout: 20000, maxWait: 10000 });
+
+        // 6c-bis. Matar a cobrança que sobrou: no TOTAL as parcelas foram canceladas e no
+        // PARCIAL tiveram o valor reduzido — em qualquer dos casos o boleto/PIX emitido
+        // antes cobra um valor que o cliente não deve mais (e boleto vencido segue pagável).
+        let cobrancasCanceladas = { canceladas: 0, erros: [] };
+        if (pedido.contaReceber) {
+            const parcelasAfetadas = pedido.contaReceber.parcelas
+                .filter(p => p.status !== 'PAGO')
+                .map(p => p.id);
+            cobrancasCanceladas = await cancelarCobrancasDasParcelas(
+                parcelasAfetadas,
+                `devolução ${escopo === 'TOTAL' ? 'total' : 'parcial'} do pedido`
+            );
+        }
+        devolucao.cobrancasCanceladas = cobrancasCanceladas.canceladas;
 
         // 6d. Creditar estoque (fora da transação principal pois estoqueService tem sua própria)
         try {

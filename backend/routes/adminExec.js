@@ -8994,4 +8994,150 @@ router.get('/diag-devolucoes-pendentes', async (req, res) => {
     }
 });
 
+// POST /api/admin-exec/devolucoes-registrar-retroativo[?confirmar=1][&pedidos=2320,2360][&semNota=1]
+// Regulariza as devoluções que ficaram sem registro (ver diag acima) fazendo, por fora da tela,
+// EXATAMENTE o que a conferência do Caixa faz: registra a devolução total (todos os itens do
+// pedido), o que cancela as parcelas em aberto e os boletos/PIX, e emite a NF-e de devolução.
+//
+// Estoque: `creditarDevolucao` soma a mercadoria de volta. Como essa mercadoria voltou fisicamente
+// há dias/semanas e o estoque do dia a dia já seguiu sem ela, creditar agora FURA o saldo — por
+// isso, logo depois de registrar, esta rota lança um ajuste de SAÍDA da mesma quantidade
+// (motivo AJUSTE_MANUAL, com o número do pedido na observação), deixando o saldo como estava.
+// Use ?manterEstoque=1 para pular esse estorno (aí o crédito da devolução permanece).
+//
+// Sem ?confirmar=1 é simulação. Só mexe em pedido DEVOLVIDO (total) sem devolução registrada.
+router.post('/devolucoes-registrar-retroativo', async (req, res) => {
+    try {
+        const devolucaoService = require('../services/devolucaoService');
+        const estoqueService = require('../services/estoqueService');
+        const filtroNumeros = (req.query.pedidos || '')
+            .split(',').map(x => parseInt(x.trim(), 10)).filter(Boolean);
+        const estornarEstoque = req.query.manterEstoque !== '1';
+        const emitirNota = req.query.semNota !== '1';
+
+        // A devolução precisa de um responsável de verdade (FK obrigatória) — quem aparece
+        // como "registrado por" na aba Devoluções. Tem que ser dito explicitamente.
+        const quem = (req.query.usuario || '').trim();
+        let registradoPor = null;
+        if (quem) {
+            registradoPor = await prisma.vendedor.findFirst({
+                where: { OR: [{ id: quem }, { nome: { contains: quem, mode: 'insensitive' } }], ativo: true },
+                select: { id: true, nome: true }
+            });
+        }
+        if (!registradoPor) {
+            const candidatos = await prisma.vendedor.findMany({
+                where: { ativo: true },
+                select: { nome: true },
+                orderBy: { nome: 'asc' }
+            });
+            return res.status(400).json({
+                error: 'Informe ?usuario=<nome ou id> — é em nome dessa pessoa que a devolução fica registrada.',
+                usuariosAtivos: candidatos.map(c => c.nome)
+            });
+        }
+
+        const pedidos = await prisma.pedido.findMany({
+            where: {
+                statusEntrega: 'DEVOLVIDO',
+                devolucaoFinalizada: false,
+                cancelado: false,
+                statusEnvio: { not: 'EXCLUIDO' },
+                ...(filtroNumeros.length ? { numero: { in: filtroNumeros } } : {})
+            },
+            select: {
+                id: true, numero: true, dataEntrega: true, motivoDevolucao: true,
+                especial: true, bonificacao: true,
+                cliente: { select: { Nome: true, NomeFantasia: true } },
+                itens: { select: { produtoId: true, quantidade: true, valor: true } },
+                contaReceber: { select: { parcelas: { select: { status: true, valor: true, valorPago: true } } } }
+            },
+            orderBy: { dataEntrega: 'asc' }
+        });
+
+        const resumo = (p) => ({
+            pedido: p.numero,
+            cliente: p.cliente?.NomeFantasia || p.cliente?.Nome || '—',
+            entrega: p.dataEntrega?.toISOString().slice(0, 10) || null,
+            itens: p.itens.length,
+            valorEmAberto: Math.round((p.contaReceber?.parcelas || [])
+                .filter(x => !['PAGO', 'CANCELADO'].includes(x.status))
+                .reduce((s, x) => s + Number(x.valor) - Number(x.valorPago || 0), 0) * 100) / 100
+        });
+
+        if (req.query.confirmar !== '1') {
+            return res.json({
+                ok: true, dryRun: true,
+                aviso: 'Adicione ?confirmar=1 para registrar de verdade (cancela parcelas/boletos e emite NF-e).',
+                estornoDeEstoque: estornarEstoque ? 'sim — o crédito da devolução será desfeito por ajuste' : 'NÃO (manterEstoque=1)',
+                emitirNota,
+                registradoEmNomeDe: registradoPor.nome,
+                seriamRegistrados: pedidos.map(resumo)
+            });
+        }
+
+        const resultados = [];
+        for (const p of pedidos) {
+            const linha = { ...resumo(p), devolucao: null, nota: null, estoqueEstornado: 0, erros: [] };
+            try {
+                // 1. Registro da devolução — mesmo caminho do Caixa (total, todos os itens)
+                const dev = await devolucaoService.criarContaAzul({
+                    pedidoId: p.id,
+                    itens: p.itens.map(i => ({ produtoId: i.produtoId, quantidade: Number(i.quantidade) })),
+                    motivo: p.motivoDevolucao || 'Devolução total na entrega',
+                    observacao: 'Registro retroativo (admin) — devolução que ficou sem lançamento no Caixa.',
+                    registradoPorId: registradoPor.id
+                });
+                linha.devolucao = { numero: dev.numero, valor: Number(dev.valorTotal), escopo: dev.escopo };
+                linha.boletosCancelados = dev.cobrancasCanceladas || 0;
+
+                // 2. Estoque: desfaz o crédito, senão o saldo fura (mercadoria voltou semanas atrás)
+                if (estornarEstoque) {
+                    for (const i of p.itens) {
+                        try {
+                            await estoqueService.ajustar({
+                                produtoId: i.produtoId,
+                                pedidoId: p.id,
+                                tipo: 'SAIDA',
+                                quantidade: Number(i.quantidade),
+                                motivo: 'AJUSTE_MANUAL',
+                                observacao: `Estorno do crédito da devolução retroativa do pedido #${p.numero} (mercadoria já baixada do estoque na época).`
+                            });
+                            linha.estoqueEstornado++;
+                        } catch (e) {
+                            linha.erros.push(`estoque ${i.produtoId}: ${e.message}`);
+                        }
+                    }
+                }
+
+                // 3. NF-e de devolução — igual ao ModalDevolucao: falha aqui não desfaz o registro
+                if (emitirNota && !p.especial && !p.bonificacao) {
+                    try {
+                        const emissao = require('../services/focusNfeEmissaoService');
+                        const nota = await emissao.emitirDevolucao(dev.id);
+                        linha.nota = { numero: nota?.numero || null, status: nota?.status || null };
+                    } catch (e) {
+                        linha.erros.push(`NF-e: ${e.message}`);
+                    }
+                }
+            } catch (err) {
+                linha.erros.push(err.message);
+            }
+            resultados.push(linha);
+        }
+
+        res.json({
+            ok: true,
+            registrados: resultados.filter(r => r.devolucao).length,
+            comErro: resultados.filter(r => r.erros.length > 0).length,
+            notasEmitidas: resultados.filter(r => r.nota?.numero).length,
+            boletosCancelados: resultados.reduce((s, r) => s + (r.boletosCancelados || 0), 0),
+            resultados
+        });
+    } catch (err) {
+        console.error('[devolucoes-registrar-retroativo]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

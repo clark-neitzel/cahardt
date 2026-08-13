@@ -56,6 +56,12 @@ Escolha o que aconteceu na entrega:
 - **Entregue Parcial** → avança para registrar devoluções
 - **Devolvido** (100% devolvido) → avança para informar motivo
 
+> **Marcar "Devolvido" não mexe na cobrança do cliente.** O status da entrega é só o registro
+> do que aconteceu na porta — as parcelas e o boleto continuam como estavam. Quem encerra a
+> cobrança, devolve a mercadoria ao estoque e emite a NF-e de devolução é o **registro da
+> devolução na conferência do Caixa**. Isso é de propósito: o motorista pode marcar errado e
+> pedir para voltar atrás.
+
 **Etapa 2 — Devoluções (apenas para Entregue Parcial)**
 - Para cada produto, informe a quantidade devolvida (+ para aumentar, - para diminuir)
 - Informe o motivo da devolução (campo de texto ou gravação de voz)

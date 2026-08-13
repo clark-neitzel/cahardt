@@ -184,6 +184,14 @@ O relatório sai em **2 folhas A4**:
 - Na linha de uma entrega, clique no botão de devolução (ícone de retorno)
 - O modal de devolução abre vinculado àquele pedido e àquele caixa
 - Ao salvar, o app **emite a NF-e de devolução automaticamente** (pedido com nota; especial e bonificação não geram NF). Se a emissão falhar, a devolução fica registrada e dá para emitir depois em Pedidos → aba Devoluções
+- Ao salvar, o app também **cancela no Asaas os boletos/PIX ainda pagáveis** do pedido — na devolução total porque o cliente não deve mais nada, e na parcial porque o boleto antigo cobra um valor que mudou (reemita o boleto pelo valor novo se o cliente for pagar assim)
+
+> **É o registro da devolução aqui que encerra a cobrança — e ele não espera o caixa fechar.**
+> No mesmo clique de salvar a devolução: as parcelas são canceladas (devolução total) ou
+> reduzidas (parcial), os **boletos/PIX ainda pagáveis são cancelados no Asaas**, a mercadoria
+> volta ao estoque e a NF-e de devolução é emitida. Marcar a entrega como "Devolvido" no
+> celular do motorista **não** faz nada disso — é só o registro do que aconteceu na porta,
+> justamente para o motorista poder pedir correção se marcou errado.
 
 ### Imprimir a NF de devolução (DANFE) no próprio Caixa
 - Assim que a NF-e de devolução é **autorizada** pela SEFAZ (leva segundos), aparece na linha da entrega o botão verde **"🧾 NF dev. `<número>`"** — clique para abrir o PDF da DANFE, imprimir e arquivar junto com o caixa do dia

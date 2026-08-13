@@ -6,6 +6,12 @@
     "data": "2026-08-12"
   },
   {
+    "slug": "devolucao-cancela-cobranca",
+    "titulo": "Devolução cancela o boleto",
+    "resumo": "Registrou a devolução no Caixa? Agora, no mesmo clique, o app também cancela no banco os boletos e PIX ainda pagáveis daquele pedido — antes só as parcelas eram canceladas e o boleto continuava vivo (boleto vencido segue pagável no Asaas, e o cliente podia pagar mercadoria que devolveu). Vale para devolução total e parcial; na parcial, emita um boleto novo pelo valor que sobrou. Achamos 8 pedidos devolvidos que continuavam cobrando (R$ 3.454,48) e regularizamos todos.",
+    "data": "2026-08-12"
+  },
+  {
     "slug": "acesso-externo",
     "titulo": "Acesso externo",
     "resumo": "Quem é de fora da operação — o escritório de contabilidade, por exemplo — agora pode ser marcado como 'Acesso externo' em Administração → Usuários: a pessoa continua entrando no app com as permissões dela, mas o nome some do seletor de vendedor do Caixa Diário, dos filtros de Pedidos e Relatórios, da lista de motorista do Embarque, das metas, das comissões e do 'para quem' das Tarefas. Na tela Usuários ela fica com o selo roxo EXTERNO.",

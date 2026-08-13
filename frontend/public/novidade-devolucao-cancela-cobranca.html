@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: devolução cancela a cobrança na hora — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito — cartão compacto) -->
+<meta property="og:title" content="🧾 Novidade no Hardt App: devolveu, a cobrança morre na hora">
+<meta property="og:description" content="Entrega marcada como Devolvido agora cancela sozinha as parcelas e o boleto/PIX do cliente — sem esperar o caixa fechar. E os 8 pedidos que estavam cobrando indevidamente já foram corrigidos.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-passo {
+    background: #f6f5f1;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 8px;
+    min-height: 42px;
+    transition: background .4s, color .4s;
+  }
+  .mock-passo b { font-weight: 700; }
+  .mock-passo.feito { background: var(--mint); color: var(--primary-dark); }
+  .mock-passo .ck { opacity: 0; transition: opacity .4s; }
+  .mock-passo.feito .ck { opacity: 1; }
+  .mock-toast {
+    margin-top: 12px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: 12px;
+    padding: 11px 13px;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity .4s, transform .4s;
+  }
+  .mock-toast.on { opacity: 1; transform: none; }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* tabela dos pedidos corrigidos */
+  .tab { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 4px; }
+  .tab th {
+    text-align: left;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: #9aa5a0;
+    padding: 6px 6px 6px 0;
+    border-bottom: 1px solid #eceae3;
+  }
+  .tab td { padding: 7px 6px 7px 0; border-bottom: 1px solid #f4f3ee; color: var(--ink-soft); }
+  .tab td b { color: var(--ink); }
+  .tab .val { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .aviso {
+    background: #fff8ec;
+    border: 1px solid #f0dfba;
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 13.5px;
+    color: #6b5a33;
+    margin-top: 12px;
+  }
+  .aviso b { color: #4a3d1e; }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 12.5px;
+    padding: 7px 0;
+  }
+  .app-linha + .app-linha { border-top: 1px solid #f4f3ee; }
+  .app-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 4px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .badge.dev { background: #ede9fe; color: #6d28d9; }
+  .badge.venc { background: #fee2e2; color: #b91c1c; }
+  .badge.canc { background: #f3f4f6; color: #6b7280; }
+  .obs-conta {
+    background: #f7f6f2;
+    border: 1px dashed #ded9cc;
+    border-radius: 9px;
+    padding: 8px 10px;
+    font-size: 11.5px;
+    color: #6b756f;
+    margin-top: 8px;
+  }
+  .toast-app {
+    background: var(--primary);
+    color: #fff;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Devolução agora<br>cancela o boleto</h1>
+    <p>Ao registrar a devolução no Caixa, o app cancela <b>no banco</b> os boletos e PIX que ainda estavam pagáveis daquele pedido. Antes só as parcelas eram canceladas — e o boleto continuava lá, esperando o cliente pagar mercadoria que devolveu.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do registro da devolução no Caixa -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🧾</span>
+      <div>
+        <small>Caixa Diário · Registrar devolução</small>
+        <strong>Pedido #2360 — Panificadora</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-passo" id="p1"><span class="ck">✅</span> <span>Parcela de <b>R$ 171,98</b> cancelada</span></div>
+      <div class="mock-passo" id="p2"><span class="ck">✅</span> <span><b>Boleto cancelado no banco</b> (novo)</span></div>
+      <div class="mock-passo" id="p3"><span class="ck">✅</span> <span>Estoque de volta + <b>NF-e de devolução</b> emitida</span></div>
+      <div class="mock-toast" id="ptoast"><span>✅</span><span>Devolução registrada — o cliente não deve mais este pedido.</span></div>
+    </div>
+  </div>
+
+  <button class="demo-cta" onclick="rodarDemo()">▶️ Ver o que acontece ao salvar a devolução</button>
+  <p class="demo-hint">Demonstração com dados de exemplo — pode clicar sem medo.</p>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧾</span>
+      <strong>O boleto morre junto com a cobrança</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Ao salvar a devolução no Caixa, o app agora também <b>cancela no Asaas</b> os boletos e PIX daquele pedido que ainda estavam pagáveis.</p>
+      <ul>
+        <li><b>Devolução total:</b> parcelas canceladas + boleto/PIX cancelados. O cliente não deve mais nada.</li>
+        <li><b>Devolução parcial:</b> as parcelas são reduzidas e o boleto antigo — que cobrava o valor cheio — é cancelado. Se o cliente for pagar por boleto, <b>emita um novo</b> pelo valor que sobrou.</li>
+      </ul>
+      <p>Por que isso importa: <b>boleto vencido continua pagável no banco</b>. Sem cancelar, o cliente podia pagar uma mercadoria que devolveu — e o dinheiro entrava sem título correspondente.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📦</span>
+      <strong>Nada acontece quando o motorista marca “Devolvido”</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Isso é de propósito, e <b>não mudou</b>: o status que o motorista escolhe na porta do cliente é só o registro do que aconteceu — ele pode ter marcado errado e pedir para voltar atrás.</p>
+      <p>Quem mexe no dinheiro, no estoque e na nota é <b>o registro da devolução na conferência do Caixa</b>. É lá que se confere a mercadoria que voltou no caminhão, item a item, e só então:</p>
+      <ul>
+        <li>as parcelas são canceladas ou reduzidas;</li>
+        <li>os boletos/PIX são cancelados no banco (a novidade);</li>
+        <li>os produtos voltam ao estoque;</li>
+        <li>a <b>NF-e de devolução</b> é emitida e autorizada na SEFAZ, pronta para imprimir.</li>
+      </ul>
+      <p>Enquanto a devolução não é registrada, o título continua cobrando normalmente — por isso é importante não deixar devolução pendente no caixa do dia.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔧</span>
+      <strong>Os pedidos que estavam cobrando errado já foram corrigidos</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Varremos o sistema inteiro e achamos <b>8 pedidos devolvidos que continuavam cobrando o cliente</b>, somando <b>R$ 3.454,48</b>. Todos foram corrigidos:</p>
+      <table class="tab">
+        <thead><tr><th>Pedido</th><th>Cliente</th><th class="val">Valor</th></tr></thead>
+        <tbody>
+          <tr><td><b>#2320</b></td><td>Sinuelo Supermercado</td><td class="val">R$ 645,68</td></tr>
+          <tr><td><b>#2360</b></td><td>Panificadora Franco Soares</td><td class="val">R$ 171,98</td></tr>
+          <tr><td><b>#2458</b></td><td>Kazily Supermercado</td><td class="val">R$ 361,60</td></tr>
+          <tr><td><b>#2386</b></td><td>Lucas Figueiro Varela</td><td class="val">R$ 1.023,39</td></tr>
+          <tr><td><b>#2385</b></td><td>Lucas Figueiro Varela</td><td class="val">R$ 511,69</td></tr>
+          <tr><td><b>#2554</b></td><td>Mercado Rosa dos Ventos</td><td class="val">R$ 151,17</td></tr>
+          <tr><td><b>#2571</b></td><td>Mercado SEC</td><td class="val">R$ 245,77</td></tr>
+          <tr><td><b>#2543</b></td><td>Supermercado Verdes Mares</td><td class="val">R$ 343,20</td></tr>
+        </tbody>
+      </table>
+      <div class="aviso">
+        <b>Atenção no #2385</b> (pedido duplicado do Lucas Figueiro Varela): metade já tinha sido paga por boleto — <b>R$ 511,70</b>. A parcela restante foi cancelada, mas o valor já pago precisa ser tratado pelo financeiro (devolver ou usar como crédito).
+      </div>
+      <p style="margin-top:12px">A regularização registrou a devolução de cada um deles: título encerrado, boleto cancelado e <b>NF-e de devolução emitida</b>. O <b>estoque não foi somado de novo</b> — essa mercadoria voltou há semanas e o saldo já seguiu sem ela, então o crédito da devolução foi estornado por ajuste para o estoque não furar.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">🧾 Tela 1 — Caixa Diário: registrar a devolução</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">📦 Entregas do dia · devolução pendente</div>
+        <div class="app-card-body">
+          <div class="app-linha">
+            <div>#2360 Panificadora Franco Soares<small>Entrega marcada como Devolvido pelo motorista</small></div>
+            <span class="app-btn">↩️ Registrar devolução <span class="pin">1</span></span>
+          </div>
+          <div class="app-linha">
+            <div>Conferência de devoluções<small>Contar a mercadoria que voltou no caminhão</small></div>
+            <span class="app-btn claro">Conferir <span class="pin">2</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="toast-app"><span>✅</span><span>Devolução registrada · parcelas canceladas · boleto cancelado · NF-e de devolução emitida <span class="pin">3</span></span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>É este botão que resolve tudo. Marcar “Devolvido” no celular do motorista <b>não</b> mexe em título, boleto, estoque nem nota — o motorista pode ter errado e pedir para voltar atrás.</span></div>
+      <div><span class="pin">2</span><span>A conferência física da mercadoria continua obrigatória para fechar o caixa do dia — nada mudou aqui.</span></div>
+      <div><span class="pin">3</span><span><b>O que é novo:</b> o cancelamento do boleto/PIX no banco entrou nesse mesmo clique. O resto (parcelas, estoque, NF-e) já era assim.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">💰 Tela 2 — Financeiro: Contas a Receber</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">📄 Pedido #2360 · Panificadora Franco Soares</div>
+        <div class="app-card-body">
+          <div class="app-linha">
+            <div>Situação da conta<small>Antes: ABERTO, cobrando</small></div>
+            <span class="badge dev">DEVOLVIDO <span class="pin">4</span></span>
+          </div>
+          <div class="app-linha">
+            <div>Parcela 1 — R$ 171,98<small>Vencia em 06/08/2026</small></div>
+            <span class="badge canc">CANCELADA</span>
+          </div>
+          <div class="app-linha">
+            <div>Boleto Asaas<small>Estava vencido e ainda pagável</small></div>
+            <span class="badge venc">CANCELADO <span class="pin">5</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">4</span><span>Depois da devolução registrada, a conta passa a <b>DEVOLVIDO</b> e sai das contas em aberto — não entra mais em cobrança, régua nem inadimplência.</span></div>
+      <div><span class="pin">5</span><span>O boleto é cancelado <b>no banco</b>, não só na tela. Era esse o furo: boleto vencido continua pagável, e o cliente podia pagar o que devolveu. Em devolução <b>parcial</b>, emita um boleto novo pelo valor que sobrou.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 — Celular do motorista: o que NÃO mudou</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🚚 Etapa 1 · Status físico <span class="pin">6</span></div>
+        <div class="app-card-body">
+          <div class="app-pills">
+            <span class="app-pill">Entregue</span>
+            <span class="app-pill">Entregue Parcial</span>
+            <span class="app-pill on">Devolvido</span>
+          </div>
+          <div class="app-linha" style="margin-top:10px">
+            <div>Motivo da devolução<small>“Cliente recusou — pedido duplicado”</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">6</span><span>O motorista continua só informando <b>o que aconteceu na porta</b>. Isso não cancela título nem boleto, não mexe no estoque e não emite nota — se ele marcar errado, é só pedir a correção ao escritório. Tudo depende do registro no Caixa.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO USAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <div class="passo-n">1</div>
+      <div><b>Motorista:</b> nada muda. Marque o status de verdade na entrega — errou, peça a correção ao escritório.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">2</div>
+      <div><b>Caixa:</b> <b>não deixe devolução pendente</b>. Enquanto ela não é registrada, o título e o boleto continuam cobrando o cliente. Registrando, resolve tudo de uma vez.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">3</div>
+      <div><b>Devolução parcial:</b> o boleto antigo é cancelado porque cobrava o valor cheio. Se o cliente for pagar por boleto, <b>emita um novo</b> pelo valor que sobrou.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">4</div>
+      <div><b>Financeiro:</b> pedido devolvido aparece como <b>DEVOLVIDO</b> em Contas a Receber. Se havia valor já recebido, trate a devolução do dinheiro com o cliente.</div>
+    </div>
+  </div>
+
+  <p class="rodape">
+    Dúvida? Chame o <strong>Clippy</strong> dentro do app — ele já conhece essa mudança.
+  </p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+
+  let demoRodando = false;
+  function rodarDemo() {
+    if (demoRodando) return;
+    demoRodando = true;
+    const passos = ['p1', 'p2', 'p3'].map(id => document.getElementById(id));
+    const toast = document.getElementById('ptoast');
+    passos.forEach(p => p.classList.remove('feito'));
+    toast.classList.remove('on');
+    document.querySelector('.mock').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    setTimeout(() => passos[0].classList.add('feito'), 500);
+    setTimeout(() => passos[1].classList.add('feito'), 1200);
+    setTimeout(() => passos[2].classList.add('feito'), 1900);
+    setTimeout(() => { toast.classList.add('on'); demoRodando = false; }, 2500);
+  }
+</script>
+</body>
+</html>

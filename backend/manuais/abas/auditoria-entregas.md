@@ -45,6 +45,13 @@ Uma entrega é marcada como divergente quando os pagamentos registrados pelo mot
 4. Marque "Escritório Responsável" se o pagamento será acertado pela gerência
 5. Clique em Salvar
 
+### Corrigir o status da entrega
+Editar o lançamento e mudar o status da entrega (ex.: o motorista marcou **Devolvido** por
+engano) **não mexe no financeiro** — o título e o boleto do cliente ficam como estavam. Quem
+encerra a cobrança é o registro da devolução na conferência do Caixa Diário. Se a devolução já
+tinha sido registrada e também está errada, ela precisa ser **revertida** em Pedidos → aba
+Devoluções.
+
 ### Estornar uma entrega
 1. Clique no ícone de estorno (lixeira) na entrega
 2. Confirme o alerta — esta ação é irreversível via tela

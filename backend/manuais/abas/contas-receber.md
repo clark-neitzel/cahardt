@@ -42,6 +42,20 @@ Também existem **contas importadas do Conta Azul** (origem IMPORTADO_CA): são 
 | PAGO | Verde | Quitada — recebido + desconto cobrem o valor total |
 | CANCELADO | Cinza claro | Parcela cancelada |
 
+### Pedido devolvido: quem encerra a cobrança é a devolução registrada no Caixa
+Marcar a entrega como "Devolvido" no celular do motorista **não** mexe no título — ele continua
+em aberto até alguém **registrar a devolução na conferência do Caixa Diário**. Ao registrar:
+
+- Devolução **total**: as parcelas em aberto são canceladas e a conta passa a **DEVOLVIDO**.
+- Devolução **parcial**: as parcelas em aberto têm o valor reduzido proporcionalmente.
+- Nos dois casos, os **boletos/PIX ainda pagáveis são cancelados no Asaas** — importante porque
+  boleto vencido continua pagável no banco, e o cliente poderia pagar mercadoria que devolveu.
+  Se a devolução foi parcial e o cliente for pagar por boleto, **emita um boleto novo** pelo
+  valor que sobrou.
+
+Enquanto a devolução não é registrada, o título continua cobrando normalmente — inclusive na
+régua de cobrança.
+
 ---
 
 ## Como fazer (passo a passo real)
@@ -66,7 +80,7 @@ Também existem **contas importadas do Conta Azul** (origem IMPORTADO_CA): são 
    - **Status da conta**: Aberto, Quitado, Cancelado
    - **Status da parcela**: Pendente, Parcial, Pago, Vencido, Cancelado
    - **Origem**: de onde a conta veio (Faturado CA, Especial)
-   - **Vendedor**: filtra contas dos clientes de um ou mais vendedores
+   - **Vendedor**: filtra contas dos clientes de um ou mais vendedores. A lista traz **também os vendedores inativos** (quem saiu da empresa), no fim e marcados "(inativo)" — título antigo continua no nome de quem vendeu na época, então dá para cobrar/consultar a carteira de um ex-vendedor
    - **Categoria de cliente**: segmento do cliente
    - **Condição de pagamento**: a condição exata do pedido (ex: 14 dias - Boleto, À vista - Pix)
    - **Cobrança**: como o título é cobrado — Boleto, Pix, Dinheiro ou Cartão. Vem da condição do pedido, então **funciona com contas ainda em aberto** (ex.: Status Conta = Aberto + Cobrança = Boleto lista tudo que está para receber em boleto, sem precisar marcar uma a uma as condições "7 dias - Boleto", "14 dias - Boleto"...)
