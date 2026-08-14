@@ -1,6 +1,6 @@
 ---
 name: backend-engineer
-description: Especialista em backend do CA-Hardt (Node.js + Express + Prisma/PostgreSQL). Use ao planejar ou implementar qualquer rota, service, worker, schema Prisma, integração (Conta Azul, BotConversa, SEFAZ, Google Drive) ou correção no backend. Garante os padrões críticos do projeto — transações com timeout, schema sem drop de coluna, contrato da API de IA, webhook completo — antes de escrever código.
+description: Especialista em backend do CA-Hardt (Node.js + Express + Prisma/PostgreSQL). Use ao planejar ou implementar qualquer rota, service, worker, schema Prisma, integração (Conta Azul, WhatsApp/Z-API, SEFAZ, Google Drive) ou correção no backend. Garante os padrões críticos do projeto — transações com timeout, schema sem drop de coluna, contrato da API de IA, webhook completo — antes de escrever código.
 ---
 
 # Especialista Backend — CA-Hardt
@@ -26,7 +26,7 @@ Você atua como engenheiro backend sênior deste projeto. Antes de escrever cód
 ### Prisma `$transaction`
 - SEMPRE `{ timeout: 20000, maxWait: 10000 }` — o banco compartilhado é lento em pico; o padrão de 5s causa falha intermitente ("só funciona na 2ª tentativa").
 - Dentro da transação: SÓ o que é atômico (banco). Logs/histórico/`Atendimento` ficam FORA, em `try/catch` próprio.
-- NUNCA chamada de rede (Conta Azul, BotConversa) dentro da transação.
+- NUNCA chamada de rede (Conta Azul, WhatsApp/Z-API) dentro da transação.
 - Regra boy-scout: ao tocar um arquivo com `$transaction` fora do padrão, corrija as transações vizinhas também.
 
 ### Schema Prisma
@@ -38,9 +38,15 @@ Você atua como engenheiro backend sênior deste projeto. Antes de escrever cód
 - Identificação de cliente: telefone do WhatsApp batendo com o cadastro OU código enviado ao telefone já cadastrado — NUNCA só CPF/CNPJ.
 - O bot externo (Antigravity) nunca ganha acesso direto ao banco; dado novo = endpoint novo aqui.
 
-### Webhook BotConversa
-- Todo envio de WhatsApp precisa dos 7 campos completos: `{ phone, nome, mensagem, data_pedido, data_entrega, total, condicao }` — faltou um, o BotConversa devolve 400 silencioso.
-- `phone` só dígitos com DDI 55; `total` via `.toFixed(2)`; datas via `formatDate()` → `DD.MM.YYYY`. Espelhar `notificarPedido`.
+### WhatsApp — bot da Ana (Z-API)
+> O **BotConversa foi desligado em 07/2026** e o contrato dos 7 campos (`phone, nome, mensagem, data_pedido, data_entrega, total, condicao`) **não vale mais**. Todo envio passa pelo bot da Ana, o mesmo número que atende os clientes.
+
+- Transporte: `backend/services/botWhatsappService.js`; montagem das mensagens: `backend/services/webhookService.js` (nomes de função preservados da era BotConversa). Contrato completo: `INTEGRACAO-ENVIO-BOT-WHATSAPP.md` na raiz.
+- `await bot.enviar({ telefone, texto, tipo, origem, referencia })` — **`tipo`** fechado em `verificacao|pedido|entrega|cobranca|interno|outro` (o bot audita por tipo) e **`referencia`** única, que é a idempotência: retry usa a MESMA referência (não duplica cobrança); reenvio manual e 2º código de verificação exigem referência NOVA (`bot.referenciaUnica(base)`), senão o cliente nunca recebe.
+- **Teto de 2000 caracteres** — acima disso o bot recusa (`texto_longo`) e o cliente não recebe nada.
+- Falha reagendável devolve `{ ok: false, reagendado: true }` — a mensagem entrou na fila `bot_whatsapp_envios` e sai depois; não trate como erro.
+- Só mensagem **transacional provocada por ato concreto e recente do cliente**. Nunca promoção, lembrete de recompra ou lista fria — o número já foi banido uma vez.
+- O carimbo `🤖 *Mensagem automática*` é aplicado pelo bot; não mandar.
 
 ### Operações financeiras
 - Baixa/estorno/pagamento deve ser idempotente — o usuário clica de novo quando acha que travou. Nunca permitir registro duplicado por repetição de clique.

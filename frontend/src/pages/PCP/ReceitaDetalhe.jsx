@@ -39,33 +39,71 @@ function unidadeDe(itemPcp) {
 }
 
 // Impressão dentro do PWA — funciona no iPad/iOS (onde imprimir um iframe sai em branco/só URL).
-// Em vez de abrir aba ou iframe, montamos o conteúdo na própria página e usamos @media print
-// para esconder o app e mostrar só a folha. Depois limpamos tudo.
+// Estratégia "o que se vê é o que imprime": no momento de imprimir, o app é escondido em
+// QUALQUER media (classe no <html> com display:none, não só @media print) e a folha vira o
+// conteúdo normal e visível da página. Motivo: no iPad (AirPrint/preview, PWA standalone) o
+// snapshot de impressão às vezes usa a renderização de TELA ou aplica o @media print pela
+// metade — o padrão antigo (folha display:none em tela + inversão só no print media) fazia
+// sair a tela do app; e os irmãos colapsados a width:0 deixavam a largura do documento
+// indefinida, e o WebKit ampliava a folha no "scale to fit". Depois restauramos tudo.
+
+// Limpeza da impressão ANTERIOR que ainda não rodou (no iOS o afterprint pode nunca
+// disparar). Precisa ser desarmada antes de começar uma impressão nova: senão o
+// listener velho dispara no meio da nova (guarda de tempo dele já vencida) e tira a
+// classe modo-impressao — o app reaparece e é ELE que sai impresso.
+let limpezaPendente = null;
+
 function imprimirConteudo(estilos, corpoHtml) {
     const ID_AREA = 'area-impressao';
     const ID_ESTILO = 'estilo-impressao';
+    const MODO = 'modo-impressao';
+    limpezaPendente?.();            // desarma listeners/timer da invocação anterior
     document.getElementById(ID_AREA)?.remove();
     document.getElementById(ID_ESTILO)?.remove();
+    document.documentElement.classList.remove(MODO);
 
-    // @page precisa ficar no nível raiz (iOS não lida bem com @page dentro de @media)
+    // @page precisa ficar no nível raiz (iOS não lida bem com @page dentro de @media).
+    // Preservamos o @page da PRÓPRIA folha quando existir (ex.: custos usa margin 14mm).
     const estilosSemPage = (estilos || '').replace(/@page\s*{[^}]*}/g, '');
+    const regraPage = ((estilos || '').match(/@page\s*{[^}]*}/) || ['@page { size: A4 portrait; margin: 12mm; }'])[0];
 
     const style = document.createElement('style');
     style.id = ID_ESTILO;
     style.textContent = `
-        @page { size: A4 portrait; margin: 12mm; }
-        #${ID_AREA} { display: none; }
+        ${regraPage}
+        /* MODO IMPRESSÃO — vale em tela E impressão: o app some de verdade (display:none)
+           e a folha é o documento normal da página, com largura explícita em mm.
+           Assim, o que quer que o iPad fotografe (tela ou print media), sai a receita
+           na largura certa. */
+        html.${MODO}, html.${MODO} body {
+            margin: 0 !important; padding: 0 !important; background: #fff !important;
+            width: auto !important; min-width: 0 !important; max-width: none !important;
+            height: auto !important; min-height: 0 !important;
+            overflow: visible !important;
+        }
+        html.${MODO} body > *:not(#${ID_AREA}) { display: none !important; }
+        /* Largura da área útil A4 (210 - 2x12mm); a .folha da própria receita se centraliza dentro.
+           max-width 100% deixa a área encolher até a caixa da página quando o @page tem margem maior
+           (ex.: folha de custos, 14mm), sem estourar a área útil. */
+        html.${MODO} #${ID_AREA} { display: block; width: 186mm; max-width: 100%; margin: 0 auto; }
+        /* Imprimir fundos/cores TAMBÉM fora do @media print: no iPad o print media pode ser
+           aplicado pela metade (ou o snapshot sair da renderização de tela) e, sem o "exact",
+           o WebKit descarta os fundos — o cabeçalho de etapa (fundo #111, texto branco) sairia
+           branco no branco e o título da etapa sumiria da folha. */
+        html.${MODO} #${ID_AREA}, html.${MODO} #${ID_AREA} * {
+            -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+        }
+        /* Estilos da própria folha (valem em tela e impressão — a folha É o documento agora).
+           ATENÇÃO: estes seletores são genéricos (*, html, body, table, h1...) e entram no nível
+           do documento. Só não afetam a interface porque o app já está escondido quando o
+           navegador repinta — as linhas daqui até o classList.add(MODO) abaixo TÊM que continuar
+           SÍNCRONAS (nada de await/setTimeout no meio), senão a tela pisca com a fonte da folha. */
+        ${estilosSemPage}
+        /* Reforço para quando o @media print É aplicado normalmente (desktop e parte dos iPads) */
         @media print {
-            html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; }
-            /* iOS/iPad: 'display:none' no app às vezes é ignorado (imprime a tela do app).
-               Então escondemos por VISIBILITY (confiável no iOS) e, para não gerar página
-               em branco, tiramos o app do FLUXO colapsando a altura (position/height 0). */
-            body * { visibility: hidden !important; }
-            body > *:not(#${ID_AREA}) { position: absolute !important; top: 0; left: 0; width: 0 !important; height: 0 !important; overflow: hidden !important; }
-            #${ID_AREA} { display: block !important; }
-            #${ID_AREA}, #${ID_AREA} * { visibility: visible !important; }
+            html.${MODO} body > *:not(#${ID_AREA}) { display: none !important; visibility: hidden !important; }
+            html.${MODO} #${ID_AREA}, html.${MODO} #${ID_AREA} * { visibility: visible !important; }
             #${ID_AREA} * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            ${estilosSemPage}
         }
     `;
     document.head.appendChild(style);
@@ -74,18 +112,37 @@ function imprimirConteudo(estilos, corpoHtml) {
     area.id = ID_AREA;
     area.innerHTML = corpoHtml;
     document.body.appendChild(area);
+    document.documentElement.classList.add(MODO);
 
+    let momentoPrint = 0;
+    let timerFallback = 0;
     const limpar = () => {
         area.remove();
         style.remove();
+        document.documentElement.classList.remove(MODO);
         window.removeEventListener('afterprint', limpar);
+        window.removeEventListener('focus', aoVoltar);
+        window.removeEventListener('pointerdown', aoVoltar);
+        document.removeEventListener('visibilitychange', aoVoltar);
+        clearTimeout(timerFallback);
+        if (limpezaPendente === limpar) limpezaPendente = null; // nada mais pendente desta impressão
     };
+    // iOS nem sempre dispara afterprint. Restauramos também ao voltar do diálogo
+    // (focus/visibilitychange) e no 1º toque na tela — mas SÓ depois de o diálogo
+    // ter tido tempo de abrir (guarda de tempo: no iOS o focus pode disparar cedo,
+    // junto do próprio print(), e restaurar antes do snapshot).
+    const aoVoltar = () => { if (momentoPrint && Date.now() - momentoPrint > 1200) limpar(); };
     window.addEventListener('afterprint', limpar);
-    setTimeout(limpar, 60000); // fallback se afterprint não disparar
+    window.addEventListener('focus', aoVoltar);
+    window.addEventListener('pointerdown', aoVoltar);
+    document.addEventListener('visibilitychange', aoVoltar);
+    timerFallback = setTimeout(limpar, 60000); // rede de segurança final
+    limpezaPendente = limpar;   // se esta limpeza não rodar, a próxima impressão a executa
 
     // IMPORTANTE (iOS/iPad): chamar print() AGORA, dentro do gesto do usuário (sem setTimeout),
     // senão o Safari bloqueia com "site proibido de imprimir automaticamente".
-    void area.offsetHeight; // força o layout antes de imprimir
+    void area.offsetHeight; // força o layout com o modo aplicado antes do snapshot
+    momentoPrint = Date.now();
     try { window.print(); } catch { limpar(); }
 }
 
@@ -512,7 +569,7 @@ export default function ReceitaDetalhe() {
 
                 {/* Acoes */}
                 <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-gray-100">
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white" title="Versão da impressão (diagnóstico)">IMPR v4</span>
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white" title="Versão da impressão (diagnóstico)">IMPR v6</span>
                     {receita.status !== 'inativa' && (
                         <button
                             onClick={() => navigate(`/pcp/receitas/${id}/editar`)}

@@ -1,5 +1,79 @@
 # Diretrizes do Projeto CA-Hardt
 
+## ONDE FICA CADA COISA (definido pelo dono em 14/08/2026)
+
+Três lugares, três papéis — não confundir:
+
+| Lugar | Papel |
+|---|---|
+| **GitHub** (`clark-neitzel/cahardt`) | **O projeto mora aqui.** Fonte oficial, com todo o histórico. É de onde o EasyPanel puxa para publicar. Trabalho que não foi enviado para cá não existe. |
+| **Mac** (`~/Projetos/CA-Hardt`) | **Bancada de trabalho e teste local.** Onde se edita, builda, roda o app e testa — e de onde se envia (push) para o GitHub. Nada deve ficar só aqui. |
+| **Google Drive** (`.../Conta Azul/CA-Hardt-Backups/completo_<data>.tgz`) | **Backup de segurança.** Pacote único gerado por `scripts/backup-para-drive.sh`; guarda as 5 cópias mais recentes e leva também o que o GitHub não pode guardar (`.env`, `.admin-secret`). Espaço sobrando e fácil de abrir. |
+
+- **NUNCA trabalhar dentro da pasta do Drive.** Lá cada arquivo é baixado da nuvem na hora do uso:
+  o build do frontend levava **31 minutos** (contra ~5 segundos no disco local) e comandos de git
+  travavam por minutos. Se alguém abrir uma sessão lá, mudar para `~/Projetos/CA-Hardt` antes de
+  qualquer coisa. A pasta `Conta Azul/CA-Hardt` do Drive está **congelada** desde 14/08/2026 (só
+  arquivo morto); o backup vivo é o `.tgz` na pasta `CA-Hardt-Backups`.
+- **Nunca espelhar pasta (rsync) para o Drive**: o espelhamento precisa varrer o destino e força o
+  Drive a materializar tudo — travou 60 min sem gravar nada. Pacote único = 1 escrita = 1 segundo.
+
+---
+
+## FORMA DE TRABALHO — equipe de agentes (REGRA PERMANENTE, pedido do dono em 08/2026)
+
+> Antes era um agente só fazendo tudo e conferindo o próprio trabalho — resultado: serviço entregue
+> pela metade e bug voltando (a impressão do iPad foi "corrigida" mais de uma vez). A partir de agora o
+> projeto trabalha como uma empresa: **quem faz não é quem confere, e nada chega ao dono sem passar
+> pelo portão de entrega.**
+
+### A equipe (fichas em `.claude/agents/`)
+
+| Agente | Papel |
+|---|---|
+| **thread principal** | **Gerente de projeto.** Fala com o dono, entende o pedido, distribui, cobra e entrega. Não faz sozinho o trabalho do dev. Espera longa (build/deploy) é responsabilidade dele, não do agente. |
+| `arquiteto` | Desenha o plano antes de codificar (arquivos, ordem, riscos, critérios de aceite). Somente leitura. |
+| `dev-backend` | Implementa rota, service, worker, schema, integração. Não commita. |
+| `dev-frontend` | Implementa tela, componente, filtro, impressão. Roda o build. Não commita. |
+| `qa-testador` | Prova que funciona **clicando na tela de verdade** (app local + navegador automatizado), inclusive erro e mobile. Não corrige. |
+| `revisor-codigo` | Lê o diff procurando bug, violação das regras do projeto e efeito colateral. Não corrige. |
+| `gerente-entrega` | Portão final: confere tudo, cobra o checklist, dá o veredito e escreve a nota de entrega. |
+
+### O fluxo
+
+```
+pedido do dono → (arquiteto, se médio/grande) → dev-backend / dev-frontend
+   → qa-testador  +  revisor-codigo   (em paralelo)
+   → reprovou? volta pro dev → repete até passar
+   → gerente-entrega → entrega ao dono
+```
+
+### Porte da tarefa define o tamanho da equipe
+
+- **Pequena** (texto, cor, campo simples): `dev` → `revisor-codigo`. Sem QA, mas **nunca sem conferência**.
+- **Média** (tela nova, correção de bug, relatório): `dev` → `qa-testador` + `revisor-codigo` → `gerente-entrega`. *(padrão)*
+- **Grande** (módulo novo; qualquer coisa em fiscal, financeiro, NF-e, WhatsApp, permissões, migração): `arquiteto` antes, equipe completa depois.
+
+### Regras do fluxo
+
+1. **Quem faz não confere.** Dev não aprova o próprio trabalho.
+2. **Relatório sem evidência = não feito.** Saída de comando, estado do DOM, resposta de API, PDF, captura de tela.
+3. **Nada é entregue ao dono sem o veredito do `gerente-entrega`.**
+4. **A entrega final é a nota de entrega**: português simples — o que mudou, o que foi testado, o que ele precisa conferir, o que ficou pendente.
+5. **Quem commita é a thread principal**, e só **depois** do veredito do `gerente-entrega` (os agentes nunca commitam nem publicam). O build tem que ter passado — a regra da seção seguinte continua valendo.
+6. **Depois de commitar, rode `scripts/backup-para-drive.sh`** — o agendamento das 12h/20h só funciona se o macOS tiver dado permissão ao cron para escrever na pasta do Drive; rodar pela sessão sempre funciona.
+7. **Não vale para** pergunta, consulta ou diagnóstico que não altera arquivo — nesses casos, responda direto.
+8. **Dispensa**: se o dono escrever **"sem agentes"** (ou equivalente), execute direto, sozinho — mantendo todos os padrões deste arquivo.
+
+### Ativação automática (não depende de ninguém lembrar)
+
+1. **Hook `UserPromptSubmit`** — `.claude/hooks/equipe-agentes.py`, ligado em `.claude/settings.json`:
+   roda a cada mensagem do dono e injeta esta regra no contexto; detecta sozinho o "sem agentes".
+2. **Esta seção do `CLAUDE.md`** — lida no início de toda sessão.
+3. **As fichas em `.claude/agents/`** — carregam o papel e as regras críticas dentro de cada agente.
+
+---
+
 ## REGRA INEGOCIÁVEL — Verificação antes de todo commit
 
 **Toda alteração em arquivos frontend (JSX/JS) deve passar pelo build antes do commit.**
@@ -572,52 +646,81 @@ O app roda instalado na tela inicial (PWA standalone) e é muito usado em **iPad
 - `window.open(..., '_blank')` → abre aba/janela externa e tira o usuário de dentro do app (ele precisa fechar e reabrir).
 - `<iframe>` oculto + `iframe.contentWindow.print()` → no **iOS/iPad** sai **página em branco só com o endereço do site** (o Safari imprime a página principal, não o iframe) e às vezes trava as próximas impressões.
 
-**Padrão correto:** montar o conteúdo **na própria página** e usar `@media print` para esconder o app e mostrar só a folha; depois limpar. Funciona em desktop e iPad.
+**Padrão correto ("o que se vê é o que imprime", 08/2026):** montar o conteúdo **na própria página** e, na hora de imprimir, esconder o app em **QUALQUER media** (classe `modo-impressao` no `<html>` com `display:none`, não só `@media print`) — a folha vira o conteúdo normal e visível do documento; depois restaurar tudo. Funciona em desktop e iPad.
+
+> Por que não confiar só no `@media print`: no iPad (AirPrint/preview do Safari, PWA standalone) o snapshot de impressão às vezes usa a renderização de **TELA**, ou aplica o print media pela metade — o padrão antigo (folha `display:none` em tela + inversão só no print) fazia sair **a tela do app**; e colapsar os irmãos a `width:0` deixava a largura do documento indefinida, e o WebKit **ampliava** a folha no "scale to fit". Foi o bug real da impressão de Receitas (08/2026).
 
 ```js
 function imprimirConteudo(estilos, corpoHtml) {
+    const MODO = 'modo-impressao';
     document.getElementById('area-impressao')?.remove();
     document.getElementById('estilo-impressao')?.remove();
+    document.documentElement.classList.remove(MODO);
     const style = document.createElement('style');
     style.id = 'estilo-impressao';
     const estilosSemPage = (estilos||'').replace(/@page\s*{[^}]*}/g, ''); // @page só no nível raiz (iOS)
+    const regraPage = ((estilos||'').match(/@page\s*{[^}]*}/) || ['@page { size: A4 portrait; margin: 12mm; }'])[0];
     style.textContent = `
-        @page { size: A4 portrait; margin: 12mm; }
-        #area-impressao { display: none; }
+        ${regraPage}
+        /* MODO IMPRESSÃO — vale em tela E impressão: app some de verdade, folha é o documento */
+        html.${MODO}, html.${MODO} body {
+            margin:0!important; padding:0!important; background:#fff!important;
+            width:auto!important; min-width:0!important; max-width:none!important;
+            height:auto!important; min-height:0!important; overflow:visible!important;
+        }
+        html.${MODO} body > *:not(#area-impressao) { display:none!important; }
+        /* largura EXPLÍCITA em mm (área útil A4) — é o que impede o WebKit de re-escalar */
+        html.${MODO} #area-impressao { display:block; width:186mm; max-width:100%; margin:0 auto; }
+        ${estilosSemPage}
+        /* reforço p/ quando o @media print É aplicado normalmente */
         @media print {
-            html, body { margin:0!important; padding:0!important; background:#fff!important; height:auto!important; }
-            /* iOS ignora display:none no print (imprime a tela do app). Esconder por VISIBILITY */
-            body * { visibility: hidden !important; }
-            /* e tirar o app do FLUXO (colapsar altura) p/ não gerar página em branco */
-            body > *:not(#area-impressao) { position:absolute!important; top:0; left:0; width:0!important; height:0!important; overflow:hidden!important; }
-            #area-impressao { display: block !important; }
-            #area-impressao, #area-impressao * { visibility: visible !important; }
-            #area-impressao * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            ${estilosSemPage}
+            html.${MODO} body > *:not(#area-impressao) { display:none!important; visibility:hidden!important; }
+            html.${MODO} #area-impressao, html.${MODO} #area-impressao * { visibility:visible!important; }
+            #area-impressao * { -webkit-print-color-adjust:exact!important; print-color-adjust:exact!important; }
         }`;
     document.head.appendChild(style);
     const area = document.createElement('div');
     area.id = 'area-impressao';
     area.innerHTML = corpoHtml;
     document.body.appendChild(area);
-    const limpar = () => { area.remove(); style.remove(); window.removeEventListener('afterprint', limpar); };
+    document.documentElement.classList.add(MODO);
+    let momentoPrint = 0, timerFallback = 0;
+    const limpar = () => {
+        area.remove(); style.remove(); document.documentElement.classList.remove(MODO);
+        window.removeEventListener('afterprint', limpar);
+        window.removeEventListener('focus', aoVoltar);
+        window.removeEventListener('pointerdown', aoVoltar);
+        document.removeEventListener('visibilitychange', aoVoltar);
+        clearTimeout(timerFallback);
+    };
+    // iOS nem sempre dispara afterprint; focus/visibilidade/1º toque também restauram —
+    // com guarda de tempo (no iOS o focus pode disparar cedo, junto do print())
+    const aoVoltar = () => { if (momentoPrint && Date.now() - momentoPrint > 1200) limpar(); };
     window.addEventListener('afterprint', limpar);
-    setTimeout(limpar, 60000); // fallback
-    void area.offsetHeight;             // força layout
-    window.print();                     // SÍNCRONO no clique (senão iOS bloqueia "imprimir automaticamente")
+    window.addEventListener('focus', aoVoltar);
+    window.addEventListener('pointerdown', aoVoltar);
+    document.addEventListener('visibilitychange', aoVoltar);
+    timerFallback = setTimeout(limpar, 60000); // rede de segurança final
+    void area.offsetHeight;             // força layout com o modo aplicado
+    momentoPrint = Date.now();
+    try { window.print(); } catch { limpar(); }  // SÍNCRONO no clique (senão iOS bloqueia)
 }
 // Para HTML completo (com <style>): extrair estilos + corpo e remover <script> (não roda via innerHTML).
 ```
 
 **Regras:**
-- Impressão (folha A4, etiqueta, comprovante, recibo) → sempre `@media print` na própria página. Referência: `frontend/src/pages/PCP/ReceitaDetalhe.jsx` (`imprimirConteudo` / `imprimirHtml`).
-- Esconder o app com **`visibility:hidden`** (`body *`) — no **iOS/iPad** o `display:none` em `@media print` costuma ser ignorado e acaba imprimindo a **tela do app**. Para não sobrar **página em branco** (visibility mantém a altura), tirar o app do fluxo colapsando os irmãos do `#area-impressao` com `position:absolute;height:0;width:0;overflow:hidden`. O `#area-impressao` fica em fluxo normal (a altura do documento vira só a da folha = 1 página).
+- Impressão (folha A4, etiqueta, comprovante, recibo) → sempre na própria página, com o **modo de impressão em qualquer media** acima. Referência: `frontend/src/pages/PCP/ReceitaDetalhe.jsx` (`imprimirConteudo` / `imprimirHtml`).
+- **Não confiar só no `@media print`** para esconder o app (o iPad pode fotografar a TELA). A classe no `<html>` esconde o app com `display:none` em qualquer media; as regras de `@media print` ficam como **reforço**.
+- **Larguras explícitas e coerentes em mm**: `#area-impressao` com a largura da área útil da folha (ex.: 186mm p/ A4 com margem 12mm) e html/body sem largura forçada — irmãos colapsados a `width:0` fazem o WebKit **ampliar** a impressão (scale-to-fit sobre largura indefinida).
+- **Restauração garantida**: `afterprint` + `focus` + `pointerdown` + `visibilitychange` (todos com guarda de tempo de ~1,2s pós-`print()`, senão o iOS restaura antes do snapshot) + timeout de segurança. Restaurar sempre, inclusive se o usuário cancelar.
+- Preservar o `@page` da própria folha quando existir (margens diferentes por documento).
 - `print()` **síncrono no clique** (sem `setTimeout`) — senão o iOS bloqueia com "site proibido de imprimir automaticamente".
 - `@page` no **nível raiz**, fora do `@media` (iOS não lida bem com `@page` aninhado).
 - Incluir `print-color-adjust: exact` para imprimir fundos/cores (ex.: cabeçalhos pretos).
 - Limpar sempre o `#area-impressao` e o `<style>` no `afterprint` (+ fallback por timeout), senão sobra lixo no DOM e a próxima impressão falha.
 - `window.open` continua **OK apenas para links externos** (mapa/Google Maps, site de terceiro), que devem mesmo abrir fora do app.
 - Pontos legados ainda usando `window.open` para imprimir (migrar quando tocar neles): `frontend/src/pages/Pedidos/ImpressaoPedido.jsx`, `frontend/src/pages/Financeiro/ContasReceberTabela.jsx`.
+- Cópias do padrão ANTIGO (só `@media print` + visibility) que devem migrar para o modo de impressão acima quando forem tocadas: `Admin/Contabilidade/ContabilidadePage.jsx`, `Admin/Contabilidade/comum.js`, `Financeiro/NotasRecebidasPage.jsx`, `Financeiro/ContasPagarPage.jsx`, `RH/imprimirCartaoPonto.js`, `PCP/EtiquetaLabel.jsx`, `Tarefas/TarefasParecer.jsx`.
 
 ---
 
