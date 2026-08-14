@@ -205,9 +205,31 @@ const METODOS_PAGAMENTO_BAIXA = [
 ];
 const METODOS_BAIXA_VALIDOS = new Set(METODOS_PAGAMENTO_BAIXA.map((m) => m.value));
 
-/** Lista de bancos/caixas do CA para a tela (nunca lança; CA fora → []). */
+/**
+ * Lista de bancos/caixas para os seletores de baixa (nunca lança).
+ * Desde 08/2026 vem da tabela LOCAL contas_financeiras (o app é o dono do
+ * financeiro; sem token do CA a lista sumia das telas). A API do CA fica só
+ * como fallback se a tabela local estiver vazia. Formato preservado:
+ * { id, nome, banco, tipo, padrao }.
+ */
 async function listarContasFinanceirasSeguro() {
     try {
+        const locais = await prisma.contaFinanceira.findMany({
+            where: { ativo: true },
+            select: { id: true, nomeBanco: true, tipoUso: true },
+            orderBy: { nomeBanco: 'asc' }
+        });
+        if (locais.length > 0) {
+            let padraoId = null;
+            try { padraoId = await resolverContaFinanceiraPadrao(); } catch (_) { /* sem padrão */ }
+            return locais.map((c) => ({
+                id: c.id,
+                nome: c.nomeBanco || 'Conta',
+                banco: null,
+                tipo: c.tipoUso || null,
+                padrao: c.id === padraoId
+            }));
+        }
         if (!(await temTokenCA())) return [];
         return await contaAzulService.listarContasFinanceiras();
     } catch (error) {
@@ -241,8 +263,9 @@ async function resolverContaFinanceiraPadrao() {
         }
     } catch (_) { /* segue */ }
 
-    // 2) Conta padrão do CA
+    // 2) Conta padrão do CA (pulado sem token — evita chamada fadada + warning a cada hora)
     try {
+        if (!(await temTokenCA())) throw new Error('CA sem token');
         const url = `${BASE}/v1/conta-financeira?pagina=1&tamanho_pagina=100&apenas_ativo=true`;
         const response = await contaAzulService._axiosGet(url, 'CONTA_FINANCEIRA');
         const contas = response.data?.itens || [];

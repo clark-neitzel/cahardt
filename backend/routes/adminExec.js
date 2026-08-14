@@ -50,7 +50,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'acesso-externo-usuarios-2026-08-12',
+        deployMarker: 'bancos-locais-baixa-2026-08-14',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
