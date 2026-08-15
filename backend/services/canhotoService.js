@@ -40,6 +40,55 @@ const STATUS = {
 /** Estados em que o papel já está no escritório (não pendem mais no caixa). */
 const RESOLVIDOS = [STATUS.RECEBIDO, STATUS.ARQUIVADO, STATUS.SEM_ASSINATURA, STATUS.SEM_CANHOTO];
 
+/** Estados em que ninguém mexeu ainda (nada a desfazer). */
+const PENDENTES = [STATUS.AGUARDANDO, STATUS.DESCONHECIDO];
+
+/** Estados em que a folha já está guardada na pasta do mês. */
+const NO_ARQUIVO = [STATUS.ARQUIVADO, STATUS.SEM_ASSINATURA];
+
+/**
+ * "Bipar esta nota NESTE contexto mudaria alguma coisa?" — o `jaNoAlvo` do bipe, numa
+ * função só.
+ *
+ * Mora aqui, e não dentro do `bipar`, porque DUAS coisas dependem dele e precisam
+ * concordar sempre: o próprio bipe (que decide se dá o passo) e o texto que explica à
+ * pessoa se vale a pena bipar de novo. Enquanto isto era uma cópia literal da lista
+ * `[ARQUIVADO, SEM_ASSINATURA]`, o segundo ramo (o do Caixa) ficava de fora — e bastaria
+ * alguém ligar o bipe do Caixa para uma nota RECEBIDA receber "bipe a folha outra vez"
+ * numa tela em que bipar não faz nada. Em silêncio, que é o pior jeito de errar.
+ *
+ * `mutirao` = bipando a pasta do mês (alvo ARQUIVADO) — o único bipe que existe na tela.
+ * `false` = bipe do Caixa na volta do motorista (alvo RECEBIDO): o backend sabe fazer,
+ * nenhuma tela chama hoje, e o card do Caixa foi DISPENSADO pelo dono (08/2026).
+ */
+function bipeJaNoAlvo(status, mutirao) {
+    const alvo = mutirao ? STATUS.ARQUIVADO : STATUS.RECEBIDO;
+    return status === alvo
+        || (mutirao && NO_ARQUIVO.includes(status))
+        // No Caixa, qualquer papel que já está no escritório é "já recebido" — menos o
+        // liberado sem canhoto, que pode reaparecer e voltar para a fila do bem.
+        || (!mutirao && RESOLVIDOS.includes(status) && status !== STATUS.SEM_CANHOTO);
+}
+
+/**
+ * Para onde o Desfazer PODE devolver uma nota.
+ * `SEM_CANHOTO` está fora de propósito: é o estado da liberação com motivo fechado +
+ * senha, que NADA no sistema cria hoje (e o card do Caixa que o criaria foi dispensado
+ * pelo dono) — voltar para ele deixaria a nota num estado que ninguém sabe produzir.
+ */
+const DESTINOS_DESFAZER = [STATUS.AGUARDANDO, STATUS.DESCONHECIDO, STATUS.RECEBIDO, STATUS.ARQUIVADO, STATUS.SEM_ASSINATURA];
+
+/** Rótulo humano do status (espelha a aba, sem os emojis). */
+const ROTULOS = {
+    [STATUS.AGUARDANDO]: 'Na rua',
+    [STATUS.DESCONHECIDO]: 'Estado desconhecido',
+    [STATUS.RECEBIDO]: 'Recebido',
+    [STATUS.ARQUIVADO]: 'Arquivado',
+    [STATUS.SEM_ASSINATURA]: 'Sem assinatura',
+    [STATUS.SEM_CANHOTO]: 'Sem canhoto',
+};
+const rotuloDe = (s) => ROTULOS[s] || String(s || '—');
+
 /** Motivos FECHADOS da liberação sem canhoto (espelhados no front — Pedaço 2). */
 const MOTIVOS_LIBERACAO = ['CLIENTE_FICOU_COM_VIA', 'SEM_QUEM_ASSINASSE', 'EXTRAVIADO_DANIFICADO', 'VOLTA_AMANHA'];
 
@@ -165,6 +214,27 @@ async function gravar(dados, statusInicial) {
     }
 }
 
+/**
+ * PONTO ÚNICO do "de onde a nota veio" — todo passo dado por PESSOA (bipe, arquivar,
+ * "veio sem assinatura") mistura isto no `data` do update.
+ *
+ * Faz duas coisas, sempre juntas:
+ *   1. grava `statusAnterior` = o estado que a nota tinha antes deste passo — é para
+ *      ali que o Desfazer devolve;
+ *   2. apaga o carimbo do Desfazer — é isso que libera UM novo Desfazer depois de
+ *      cada passo (o Desfazer é de um nível só, não é histórico).
+ *
+ * Nada automático (gancho da emissão, backfill, auto-cura) passa por aqui: o Desfazer
+ * existe para corrigir o erro de quem está com o papel na mão, não para reverter o
+ * que o sistema montou sozinho.
+ */
+const passoDePessoa = (statusAtual) => ({
+    statusAnterior: statusAtual,
+    desfeitoEm: null,
+    desfeitoPorId: null,
+    desfeitoPorNome: null,
+});
+
 // ── Registro ─────────────────────────────────────────────────────────────────
 
 /**
@@ -183,6 +253,32 @@ async function gravar(dados, statusInicial) {
 const semNaRua = (tipo, status) => (
     tipo === 'DEVOLUCAO' && status === STATUS.AGUARDANDO ? STATUS.DESCONHECIDO : status
 );
+
+/**
+ * O mês corrente (competência de Brasília), lembrado por 1 minuto.
+ *
+ * `competenciaDe` usa `Intl` para acertar o fuso; sem esta memória ele rodaria uma vez
+ * POR LINHA da lista (até 2000 por carga da aba) para dar sempre a mesma resposta.
+ * Nome propositalmente diferente de qualquer variável local — ver o cuidado abaixo.
+ */
+let _competenciaCorrente = { valor: null, em: 0 };
+function competenciaCorrente() {
+    if (!_competenciaCorrente.valor || Date.now() - _competenciaCorrente.em > 60000) {
+        _competenciaCorrente = { valor: competenciaDe(new Date()), em: Date.now() };
+    }
+    return _competenciaCorrente.valor;
+}
+
+/**
+ * "Esta nota está mesmo na rua?" — critério ÚNICO de nascer AGUARDANDO: é do mês
+ * corrente E saiu num embarque.
+ *
+ * Vive aqui, num lugar só, porque duas partes distantes dependem dele: o `backfill`
+ * (que decide como a linha NASCE) e o `estadoDeNascimento` (que decide para onde o
+ * Desfazer devolve uma linha antiga, sem estado anterior gravado). Se cada um tivesse
+ * a sua cópia, mudar o critério faria o Desfazer divergir do nascimento **em silêncio**.
+ */
+const nasceNaRua = (linha) => linha.competencia === competenciaCorrente() && !!linha.saiuEm;
 
 /**
  * Registra o canhoto de uma NF-e emitida pelo APP (Focus).
@@ -374,17 +470,30 @@ async function bipar({ texto, usuario, contexto = 'MUTIRAO', origem, de, ate, ca
     }
 
     // 2) Já resolvido? Devolve sucesso "já estava" — comportamento NORMAL do mutirão.
-    const jaNoAlvo = canhoto.status === alvo
-        || (mutirao && [STATUS.ARQUIVADO, STATUS.SEM_ASSINATURA].includes(canhoto.status))
-        || (!mutirao && RESOLVIDOS.includes(canhoto.status) && canhoto.status !== STATUS.SEM_CANHOTO);
+    const jaNoAlvo = bipeJaNoAlvo(canhoto.status, mutirao);
     if (jaNoAlvo) {
-        return { ok: true, jaEstava: true, statusAnterior: canhoto.status, canhoto: publico(canhoto, diasAlerta) };
+        // ⚠️ O bipe segue idêntico (nada muda no banco) — o que muda é o QUE SE DIZ.
+        //
+        // Quem já gastou o Desfazer desta nota e bipa a folha de novo está tentando
+        // TIRÁ-LA do arquivo: é o caminho natural de quem desfez o "veio sem assinatura"
+        // e viu a nota parar em ARQUIVADO. Responder o "pode seguir para a próxima folha"
+        // de sempre manda a pessoa em frente justamente quando ela quer o contrário — e
+        // este é o ÚNICO ponto por onde ela passa, porque a linha nesse estado já não
+        // mostra o botão Desfazer. Aqui ela ouve a verdade, com a mesma frase da recusa.
+        const desfazerGasto = !!canhoto.desfeitoEm;
+        return {
+            ok: true,
+            jaEstava: true,
+            statusAnterior: canhoto.status,
+            canhoto: publico(canhoto, diasAlerta),
+            ...(desfazerGasto ? { desfazerGasto: true, aviso: RECUSA.JA_DESFEITO(canhoto, mutirao) } : {}),
+        };
     }
 
     // 3) Aplicar. Uma nota liberada "sem canhoto" cujo papel apareceu volta para a fila do bem.
     const reapareceu = canhoto.status === STATUS.SEM_CANHOTO;
     const agora = new Date();
-    const data = { status: alvo };
+    const data = { status: alvo, ...passoDePessoa(canhoto.status) };
     if (!canhoto.recebidoEm) {
         data.recebidoEm = agora;
         data.recebidoPorId = usuario?.id || null;
@@ -423,19 +532,29 @@ async function arquivar({ chaves, usuario } = {}) {
     let arquivadas = 0;
     if (alvos.length) {
         const r = await prisma.canhotoNota.updateMany({
-            where: { id: { in: alvos } },
+            // `status: RECEBIDO` também no WHERE (não só no filtro em memória acima):
+            // entre a leitura e a gravação alguém pode DESFAZER o bipe desta nota. Sem
+            // isto ela viraria ARQUIVADO carimbando `statusAnterior: 'RECEBIDO'` mentiroso
+            // e sem nenhum registro de recebimento. Com isto ela simplesmente não entra no
+            // lote — e a premissa do carimbo abaixo passa a ser verdade, não suposição.
+            where: { id: { in: alvos }, status: STATUS.RECEBIDO },
             data: {
                 status: STATUS.ARQUIVADO,
                 arquivadoEm: new Date(),
                 arquivadoPorId: usuario?.id || null,
                 arquivadoPorNome: usuario?.nome || null,
+                // TODAS as linhas atingidas estavam em RECEBIDO (garantido pelo WHERE) —
+                // por isso dá para carimbar o estado anterior num `updateMany` só.
+                ...passoDePessoa(STATUS.RECEBIDO),
             },
         });
         arquivadas = r.count;
     }
     return {
         arquivadas,
-        ignoradas: achados.length - alvos.length,
+        // Contada a partir do que REALMENTE foi arquivado: a nota que escapou na corrida
+        // acima não foi arquivada, então ela é uma ignorada — não um número sumido.
+        ignoradas: achados.length - arquivadas,
         naoEncontradas: lista.length - achados.length,
     };
 }
@@ -459,7 +578,11 @@ async function marcarSemAssinatura({ chave, usuario, observacao } = {}) {
     if (atual.status === STATUS.SEM_ASSINATURA) return { ok: true, jaEstava: true, canhoto: publico(atual) };
 
     const agora = new Date();
-    const data = { status: STATUS.SEM_ASSINATURA, observacao: observacao || atual.observacao || null };
+    const data = {
+        status: STATUS.SEM_ASSINATURA,
+        observacao: observacao || atual.observacao || null,
+        ...passoDePessoa(atual.status),
+    };
     if (!atual.recebidoEm) {
         data.recebidoEm = agora;
         data.recebidoPorId = usuario?.id || null;
@@ -473,6 +596,193 @@ async function marcarSemAssinatura({ chave, usuario, observacao } = {}) {
     }
     const atualizado = await prisma.canhotoNota.update({ where: { id: atual.id }, data });
     return { ok: true, jaEstava: false, statusAnterior: atual.status, canhoto: publico(atualizado) };
+}
+
+// ── Desfazer (um nível) ──────────────────────────────────────────────────────
+
+/**
+ * O estado em que a nota NASCERIA hoje — rede de segurança do Desfazer para as linhas
+ * gravadas ANTES deste recurso existir (as 274 de agosto), que não têm `statusAnterior`.
+ *
+ * É de propósito a mesma regra do BACKFILL — que é quem trouxe essas linhas para cá —,
+ * não uma regra nova (o gancho da emissão é outra coisa: lá a nota nasce sempre
+ * AGUARDANDO, porque acabou de ser emitida). O critério compartilhado é `nasceNaRua`:
+ *   - devolução nunca fica "na rua" (`semNaRua`) → DESCONHECIDO;
+ *   - venda do mês corrente que saiu num embarque → AGUARDANDO (está mesmo na rua);
+ *   - o resto (mês passado, nota antiga do Conta Azul, sem embarque) → DESCONHECIDO,
+ *     que é a verdade: ninguém sabe onde o papel está.
+ *
+ * Por que NÃO mandar toda venda para AGUARDANDO: a nota de julho desbipada voltaria a
+ * contar como "na rua há 40 dias" e entraria na tarja vermelha do alerta — justamente
+ * o aviso que precisa continuar confiável. DESCONHECIDO é onde o mutirão a colocou.
+ */
+function estadoDeNascimento(c) {
+    return semNaRua(c.tipo, nasceNaRua(c) ? STATUS.AGUARDANDO : STATUS.DESCONHECIDO);
+}
+
+/**
+ * Dá para desfazer esta nota? Para onde ela volta?
+ * Função PURA (só olha a linha) — a lista usa isto para saber se mostra o botão, e a
+ * rota usa a mesma resposta para aplicar. Um lugar só, sem duas verdades.
+ */
+function alvoDoDesfazer(c) {
+    if (!c) return { pode: false, motivo: 'NAO_ENCONTRADA' };
+    // Liberação "sem canhoto" (motivo fechado + senha): o Desfazer do bipe não mexe nisso.
+    // ⚓ SE um dia algo passar a criar SEM_CANHOTO, decidir aqui o que fazer com os
+    // carimbos da liberação (`motivoLiberacao`, `liberadoPor*`, `liberadoEm`,
+    // `voltaAmanha`). Hoje nada os preenche, então não há órfão possível — e o card do
+    // Caixa que os preencheria foi dispensado pelo dono, não está a caminho.
+    if (c.status === STATUS.SEM_CANHOTO) return { pode: false, motivo: 'NAO_SUPORTADO' };
+
+    // ⚠️ ORDEM IMPORTA: o carimbo vem ANTES de "está pendente".
+    // O destino mais comum do Desfazer é justamente DESCONHECIDO/AGUARDANDO — se a
+    // checagem de pendente viesse primeiro, o segundo Desfazer diria o genérico ("ela
+    // ainda está como Estado desconhecido") e a pessoa nunca saberia que foi ELA MESMA
+    // quem já desfez. É o carimbo que trava o segundo desfazer seguido: enquanto
+    // ninguém der um passo novo nesta nota, não há mais nada para voltar.
+    if (c.desfeitoEm) return { pode: false, motivo: 'NADA_A_DESFAZER', detalhe: 'JA_DESFEITO' };
+    if (PENDENTES.includes(c.status)) return { pode: false, motivo: 'NADA_A_DESFAZER', detalhe: 'NAO_BIPADA' };
+
+    const gravado = c.statusAnterior;
+    // Sem estado anterior (linha antiga), estado que não existe mais, ou apontando para
+    // o próprio status → cai no estado de nascimento em vez de recusar: quem bipou
+    // errado precisa de saída, e "voltou para o começo" é sempre melhor que "não dá".
+    const inferido = !gravado || !DESTINOS_DESFAZER.includes(gravado) || gravado === c.status;
+    return { pode: true, para: inferido ? estadoDeNascimento(c) : gravado, inferido };
+}
+
+/**
+ * Campos que precisam ser APAGADOS ao voltar para `destino`.
+ * Sem isto a linha fica se contradizendo — "não bipada" e, logo abaixo,
+ * "recebido por Fulano às 14h32".
+ */
+function camposDoEstadoDesfeito(destino) {
+    const fora = {};
+    const jaRecebeu = destino === STATUS.RECEBIDO || NO_ARQUIVO.includes(destino);
+    const jaArquivou = NO_ARQUIVO.includes(destino);
+    if (!jaRecebeu) Object.assign(fora, {
+        recebidoEm: null, recebidoPorId: null, recebidoPorNome: null, recebidoOrigem: null,
+        caixaDiarioId: null, // o bipe deixou de existir — o vínculo com o caixa do dia também
+    });
+    if (!jaArquivou) Object.assign(fora, { arquivadoEm: null, arquivadoPorId: null, arquivadoPorNome: null });
+    return fora;
+}
+
+/**
+ * Bipar de novo mudaria alguma coisa nesta nota, NESTE contexto?
+ *
+ * Sem cópia da regra: pergunta ao `bipeJaNoAlvo`, o mesmo que o bipe usa para decidir.
+ * O contexto é parâmetro porque a resposta muda com a tela — uma nota RECEBIDA ainda
+ * anda no mutirão (vira ARQUIVADO), mas não anda no bipe do Caixa (já está recebida).
+ * Existe só para a mensagem não mentir.
+ */
+const bipeAindaMexe = (c, mutirao = true) => !bipeJaNoAlvo(c.status, mutirao);
+
+const RECUSA = {
+    NAO_SUPORTADO: () => 'Esta nota foi liberada sem canhoto — isso se resolve pelo Caixa, não pelo Desfazer.',
+    NAO_BIPADA: (c) => `Não há o que desfazer nesta nota: ela ainda está como "${rotuloDe(c.status)}".`,
+    /**
+     * Duas saídas, porque "bipe a folha de novo" só é verdade em uma delas — e mandar
+     * alguém fazer o que não funciona é pior do que não dizer nada.
+     * `mutirao` decide qual: é a tela em que a pessoa está (padrão, a aba Canhotos).
+     */
+    JA_DESFEITO: (c, mutirao = true) => {
+        const base = `Não há o que desfazer nesta nota: o Desfazer já foi usado aqui e ela voltou para "${rotuloDe(c.status)}". Ele volta um passo só`;
+        if (bipeAindaMexe(c, mutirao)) return `${base} — se precisar corrigir de novo, bipe a folha outra vez.`;
+        const onde = NO_ARQUIVO.includes(c.status) ? 'já consta no arquivo do mês' : 'já foi conferida aqui';
+        return `${base}, e bipar de novo não muda nada: para o sistema esta nota ${onde}. Se ela não deveria estar assim, avise quem cuida do arquivo — pela tela não há como voltar mais.`;
+    },
+};
+
+/**
+ * DESFAZER — devolve a nota ao estado imediatamente anterior. UM nível, não histórico.
+ *
+ * Serve tanto para o bipe errado quanto para o "veio sem assinatura" na linha errada:
+ * é sempre "volta um passo". Nunca alterna estados — depois de desfazer, desfazer de
+ * novo recusa em português, porque a volta só é liberada por um passo NOVO de gente.
+ *
+ * ⚓ LIMITE CONHECIDO, E ACEITO. Um nível tem um beco: desfazer o "veio sem assinatura"
+ * devolve a nota para ARQUIVADO e gasta o Desfazer dela. Como bipar de novo no mutirão
+ * não mexe em quem já está arquivado (`jaNoAlvo`, que protege o bipe repetido), quem
+ * quiser tirar essa nota do arquivo depois disso não tem caminho pela tela — e não há
+ * nada planejado que dê esse caminho. É preferível ao Desfazer de dois níveis: reabrir a
+ * volta a partir de um bipe que não muda nada faria o bipe repetido do mutirão rearmar o
+ * Desfazer de notas corretamente arquivadas, e aí a lista viraria loteria. Se um dia
+ * "tirar do arquivo" for mesmo necessário, é ação PRÓPRIA (com motivo e registro), não
+ * afrouxar esta trava. Enquanto isso, o que a pessoa recebe é a verdade, tanto na recusa
+ * quanto no bipe repetido daquela nota (ver `RECUSA.JA_DESFEITO`).
+ *
+ * Nunca lança no caminho normal: devolve `{ ok:false, motivo, mensagem }`.
+ */
+async function desfazer({ chave, usuario, contexto = 'MUTIRAO' } = {}) {
+    const c = limpar(chave);
+    if (c.length !== 44) return { ok: false, motivo: 'INVALIDO', mensagem: 'Chave inválida.' };
+
+    // O `contexto` não muda NADA do que é gravado — ele só diz de qual tela a pessoa
+    // está falando, para a recusa não sugerir "bipe a folha de novo" onde bipar não
+    // mexe. Ausente = a aba Canhotos (mutirão), a única tela que existe hoje.
+    const mutirao = String(contexto || 'MUTIRAO').toUpperCase() !== 'CAIXA';
+
+    const { diasAlerta } = await canhotoConfig.get();
+    const atual = await prisma.canhotoNota.findUnique({ where: { chave: c } });
+    if (!atual) return { ok: false, motivo: 'NAO_ENCONTRADA', chave: c, mensagem: 'Nota não encontrada no controle de canhotos.' };
+
+    const alvo = alvoDoDesfazer(atual);
+    if (!alvo.pode) {
+        const texto = RECUSA[alvo.detalhe || alvo.motivo] || RECUSA.NAO_BIPADA;
+        return {
+            ok: false,
+            motivo: alvo.motivo,
+            detalhe: alvo.detalhe || null,
+            chave: c,
+            status: atual.status,
+            mensagem: texto(atual, mutirao),
+            canhoto: publico(atual, diasAlerta),
+        };
+    }
+
+    const data = {
+        status: alvo.para,
+        // zera o destino: o próximo Desfazer só existe depois de um passo novo
+        statusAnterior: null,
+        desfeitoEm: new Date(),
+        desfeitoPorId: usuario?.id || null,
+        desfeitoPorNome: usuario?.nome || null,
+        ...camposDoEstadoDesfeito(alvo.para),
+    };
+
+    // Update condicionado ao estado que acabamos de ler: se outra pessoa bipou/desfez a
+    // mesma nota no meio, `count` volta 0 e ninguém sobrescreve o trabalho do outro.
+    // Faz o papel de transação sem precisar de uma (é uma linha só).
+    const r = await prisma.canhotoNota.updateMany({
+        where: { id: atual.id, status: atual.status, desfeitoEm: null },
+        data,
+    });
+    if (!r.count) {
+        const relido = await prisma.canhotoNota.findUnique({ where: { id: atual.id } });
+        return {
+            ok: false,
+            motivo: 'CONFLITO',
+            chave: c,
+            status: relido?.status || null,
+            mensagem: 'Outra pessoa mexeu nesta nota agora há pouco. Confira a lista atualizada antes de desfazer.',
+            canhoto: relido ? publico(relido, diasAlerta) : null,
+        };
+    }
+
+    const atualizado = await prisma.canhotoNota.findUnique({ where: { id: atual.id } });
+    const nf = atualizado?.numero ? `NF ${atualizado.numero}` : 'A nota';
+    return {
+        ok: true,
+        chave: c,
+        statusAnterior: atual.status,   // o que foi desfeito
+        status: alvo.para,              // para onde voltou
+        rotulo: rotuloDe(alvo.para),
+        inferido: alvo.inferido,
+        mensagem: `${nf} voltou para "${rotuloDe(alvo.para)}".`
+            + (alvo.inferido ? ' (Esta nota foi bipada antes de o Desfazer existir, então voltou para o estado de origem.)' : ''),
+        canhoto: publico(atualizado, diasAlerta),
+    };
 }
 
 // ── Backfill / auto-cura ─────────────────────────────────────────────────────
@@ -601,10 +911,11 @@ async function backfill({ de, ate, statusInicial = STATUS.DESCONHECIDO, inferirN
     // O `semNaRua` no fim NÃO é redundante: a linha da nota de DEVOLUÇÃO herda o
     // `saiuEm` do embarque do pedido ORIGINAL (a entrega da venda, não da devolução),
     // então sem ele toda devolução do mês corrente cairia em AGUARDANDO por aqui.
-    const mesCorrente = competenciaDe(new Date());
+    // `nasceNaRua` é o critério compartilhado com o `estadoDeNascimento` do Desfazer —
+    // um lugar só, para os dois nunca divergirem em silêncio.
     const statusDaLinha = (l) => semNaRua(
         l.tipo,
-        inferirNaRua && l.competencia === mesCorrente && l.saiuEm ? STATUS.AGUARDANDO : statusInicial,
+        inferirNaRua && nasceNaRua(l) ? STATUS.AGUARDANDO : statusInicial,
     );
 
     // `skipDuplicates` fecha a corrida com o gancho da emissão: se a nota virou canhoto
@@ -622,6 +933,9 @@ async function backfill({ de, ate, statusInicial = STATUS.DESCONHECIDO, inferirN
 function publico(c, diasAlerta = 3) {
     const base = c.saiuEm || c.emitidaEm;
     const dias = [STATUS.AGUARDANDO, STATUS.DESCONHECIDO].includes(c.status) ? diasDesde(base) : null;
+    // Desfazer: a MESMA função que a rota usa para aplicar decide se o botão aparece —
+    // assim a tela nunca oferece um Desfazer que o backend vai recusar.
+    const und = alvoDoDesfazer(c);
     return {
         id: c.id,
         chave: c.chave,
@@ -653,6 +967,12 @@ function publico(c, diasAlerta = 3) {
         liberadoPorNome: c.liberadoPorNome,
         voltaAmanha: c.voltaAmanha,
         observacao: c.observacao,
+        // Desfazer (um nível)
+        podeDesfazer: !!und.pode,
+        desfazerPara: und.pode ? und.para : null,
+        desfazerParaRotulo: und.pode ? rotuloDe(und.para) : null,
+        desfeitoPorNome: c.desfeitoPorNome,
+        desfeitoEm: c.desfeitoEm,
     };
 }
 
@@ -760,7 +1080,7 @@ async function listarPeriodo({ de, ate, status, busca, autocura = true } = {}) {
     const filtros = { ...whereBase };
     if (status && status !== 'todos') {
         if (status === 'pendentes') filtros.status = { in: [STATUS.AGUARDANDO, STATUS.DESCONHECIDO] };
-        else if (status === 'arquivo') filtros.status = { in: [STATUS.ARQUIVADO, STATUS.SEM_ASSINATURA] };
+        else if (status === 'arquivo') filtros.status = { in: NO_ARQUIVO };
         else filtros.status = String(status).toUpperCase();
     }
     const termo = String(busca || '').trim();
@@ -800,12 +1120,19 @@ async function listarPeriodo({ de, ate, status, busca, autocura = true } = {}) {
     };
 }
 
-// ── Pedaço 2 (esqueleto — ainda NÃO implementado de propósito) ───────────────
-// `resumoDoCaixa(vendedorId, data)` e `liberarSemCanhoto({...})` entram junto com
-// o card do Caixa, a permissão `Pode_Liberar_Nota_Sem_Canhoto` e a trava do
-// fechamento. Ver `docs/plano-canhoto-nf.md`, Pedaço 2.
+// ── Conferência no Caixa — DISPENSADA pelo dono (08/2026) ───────────────────
+// O plano original (`docs/plano-canhoto-nf.md`, "Pedaço 2") previa card no Caixa,
+// trava do fechamento e liberação com senha. Ao aprovar o Desfazer, o dono disse que
+// NÃO quer essa etapa. Não é trabalho pendente nem coisa a caminho: é decisão tomada.
+//
+// O que sobrou daqui — `MOTIVOS_LIBERACAO`, `podeLiberarSemCanhoto`, o status
+// `SEM_CANHOTO` e os campos de liberação no schema — fica onde está porque não custa
+// nada e não atrapalha ninguém (nenhuma tela cria esse estado hoje), e porque estaria
+// pronto se um dia o dono mudar de ideia. Quem mexer aqui: não escreva, no código nem
+// no manual, que isso "vai entrar" — não vai, até alguém decidir o contrário.
+// `resumoDoCaixa` e `liberarSemCanhoto` nunca foram escritos.
 
-/** Quem pode liberar uma nota sem canhoto (espelhado no front — Pedaço 2). */
+/** Quem poderia liberar uma nota sem canhoto, se essa liberação existisse na tela. */
 function podeLiberarSemCanhoto(perms = {}) {
     return !!(perms.admin
         || perms.Pode_Liberar_Nota_Sem_Canhoto
@@ -816,6 +1143,9 @@ function podeLiberarSemCanhoto(perms = {}) {
 module.exports = {
     STATUS,
     RESOLVIDOS,
+    NO_ARQUIVO,
+    ROTULOS,
+    bipeJaNoAlvo, // "bipar aqui muda algo?" — quem ligar o bipe do Caixa precisa desta
     MOTIVOS_LIBERACAO,
     ORIGENS_BIPE,
     competenciaDe,
@@ -826,6 +1156,8 @@ module.exports = {
     bipar,
     arquivar,
     marcarSemAssinatura,
+    desfazer,
+    alvoDoDesfazer,
     listarPeriodo,
     backfill,
     limparMemoriaAutocura,

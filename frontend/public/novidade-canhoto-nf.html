@@ -7,7 +7,7 @@
 <link rel="icon" href="/logo-192.png">
 <!-- Preview do link no WhatsApp (sem og:image de propósito — cartão compacto) -->
 <meta property="og:title" content="🧾 Novidade no Hardt App: Canhotos das notas">
-<meta property="og:description" content="Agora dá para bipar o código de barras da nota e saber quais canhotos assinados já estão no arquivo — e quais estão faltando.">
+<meta property="og:description" content="Agora dá para bipar o código de barras da nota e saber quais canhotos assinados já estão no arquivo — e quais estão faltando. Bipou errado? Tem Desfazer.">
 <meta property="og:type" content="website">
 <style>
   :root{
@@ -43,10 +43,14 @@
   .card p:last-child{margin-bottom:0}
   .destaque{background:var(--mint); border:1px solid #b5d9cc; color:#0d4032; border-radius:12px;
             padding:13px 15px; font-size:14.5px; margin-top:12px}
-  .destaque b{display:block; margin-bottom:2px}
+  /* Só o PRIMEIRO <b> é o título do bloco. Sem o `:first-child`, um <b> usado no meio da
+     frase virava um parágrafo à parte — e a pontuação seguinte ficava órfã na linha de baixo. */
+  .destaque > b:first-child{display:block; margin-bottom:2px}
   .aviso{background:var(--amber-bg); border:1px solid #efdca8; color:#6b4c00; border-radius:12px;
          padding:13px 15px; font-size:14.5px; margin-top:12px}
-  .aviso b{display:block; margin-bottom:2px}
+  /* mesmo cuidado do `.destaque`: só o PRIMEIRO <b> é título de bloco — negrito no meio
+     da frase tem que continuar inline, senão a frase sai picotada. */
+  .aviso > b:first-child{display:block; margin-bottom:2px}
 
   /* PASSOS */
   .passos{display:flex; flex-direction:column; gap:0; margin-top:6px}
@@ -122,8 +126,27 @@
   /* LEGENDAS COM PINS */
   .legendas{margin-top:11px; display:flex; flex-direction:column; gap:8px}
   .legenda{display:flex; gap:9px; font-size:13.5px; color:#33403b}
-  .pin{flex:0 0 20px; height:20px; border-radius:50%; background:var(--gold); color:#3d2c05;
-       font-size:11px; font-weight:900; display:flex; align-items:center; justify-content:center; margin-top:1px}
+  /* O MESMO número aparece no mock e na legenda (padrão do projeto): sem o pin dentro da
+     tela, a legenda descreve um elemento que o leitor não sabe onde fica. `inline-flex`
+     para o pin servir nos dois lugares — item do flex da legenda e no meio do texto do mock. */
+  .pin{flex:0 0 20px; width:20px; height:20px; border-radius:50%; background:var(--gold); color:#3d2c05;
+       font-size:11px; font-weight:900; display:inline-flex; align-items:center; justify-content:center; margin-top:1px}
+  .pin.na-tela{margin:0 0 0 6px; vertical-align:2px}   /* colado no elemento, dentro do mock */
+
+  /* BOTÕES DOS MOCKUPS (linha de ações / desfazer) */
+  .acoes{display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; margin-top:9px}
+  .btn{display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px;
+       font-size:11.5px; font-weight:750; border:1px solid var(--line); background:#fff; color:#3f4a46}
+  /* `inline-block` (e não flex): assim o "volta para…" cai na LINHA DE BAIXO, igual ao
+     botão de verdade na tela — num flex o <small> viraria um item ao lado. */
+  .btn.fantasma{display:inline-block; border-color:transparent; background:transparent; color:#5b6763;
+                text-align:left; line-height:1.25; padding:5px 10px}
+  .btn.fantasma small{display:block; font-weight:600; color:#8a938f; font-size:10.5px}
+  .leitura{display:flex; align-items:center; gap:9px; background:var(--mint); border:1px solid #b5d9cc;
+           border-radius:10px; padding:9px 11px; font-size:12.5px; color:#0d4032; margin-top:9px}
+  .leitura .txt{min-width:0; flex:1}
+  .leitura .txt small{display:block; font-size:11px; opacity:.85}
+  .leitura .desf{font-weight:800; text-decoration:underline; font-size:11.5px; white-space:nowrap}
 
   .rodape{text-align:center; color:#8a938f; font-size:12px; margin-top:30px}
 </style>
@@ -258,6 +281,74 @@
     </div>
   </div>
 
+  <!-- TELA 3 · DESFAZER -->
+  <div class="card">
+    <div class="tela-nome" style="margin-top:0">Bipou errado? Tem Desfazer</div>
+    <p>Num maço de 200 folhas, uma hora escapa uma: você bipa a folha errada, bipa uma cujo canhoto está
+       em branco, ou clica em <b>"Veio sem assinatura"</b> na linha de baixo. Agora tem volta —
+       <b>sem pedir ajuda para ninguém</b>.</p>
+
+    <div class="app">
+      <div class="appcard">
+        <div class="apphead">
+          <span class="lb">Assim que você bipa</span>
+        </div>
+        <div class="appbody" style="padding:11px 13px 13px">
+          <div class="leitura">
+            <span>✓</span>
+            <div class="txt"><b>NF 85.142 · Mercado Silva</b>
+              <small>Arquivada em Notas Emitidas Agosto 2026.</small></div>
+            <span class="desf">↩ Desfazer<span class="pin na-tela">1</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="appcard" style="margin-top:11px">
+        <div class="apphead">
+          <span class="lb">…e na linha da nota, quando quiser</span>
+        </div>
+        <div class="appbody" style="padding:11px 13px 13px">
+          <div class="linha ok"><span class="check"></span>
+            <div class="info"><div class="nome">NF 85.142 · Mercado Silva &nbsp;<span class="badge b-green">🗄 Arquivado</span></div>
+            <div class="meta">recebido por Josiane · Notas Emitidas Agosto 2026</div></div></div>
+          <div class="acoes">
+            <span class="btn">✎ Sem assinatura</span>
+            <span class="btn fantasma">↩ Desfazer<span class="pin na-tela">2</span><small>volta para Estado desconhecido<span class="pin na-tela">3</span></small></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legendas">
+      <div class="legenda"><span class="pin">1</span><div><b>Logo depois do bipe</b> — o "Desfazer" aparece ao lado da leitura que acabou de sair, que é onde o erro é percebido. Não precisa procurar a nota no meio da lista.</div></div>
+      <div class="legenda"><span class="pin">2</span><div><b>Na linha da nota</b> — se você só notou depois. Ele só aparece nas notas que <b>têm o que desfazer</b>; nas outras nem existe.</div></div>
+      <div class="legenda"><span class="pin">3</span><div><b>O destino vem escrito no botão</b> — "volta para Estado desconhecido", "volta para Arquivado". Você sabe o que vai acontecer antes de clicar.</div></div>
+    </div>
+
+    <p style="margin-top:13px"><b>Ele não pergunta "tem certeza?"</b> — quem clica ali já percebeu que
+       errou, e parar para responder uma pergunta só atrapalharia. Por isso ele é discreto: cinza, sem
+       borda e sem cor de botão, para não ser clicado sem querer no meio do maço.</p>
+
+    <div class="destaque">
+      <b>Ele volta para onde a nota estava ANTES do clique — não para um lugar fixo</b>
+      Desfazendo o "Veio sem assinatura": se a nota <b>ainda não tinha sido bipada</b>, volta a ficar
+      pendente, como estava; se ela <b>já estava arquivada</b>, volta para "Arquivado" — continua
+      conferida, só perde o selo de canhoto em branco — <b>e ali termina</b> (ver o aviso abaixo).
+      Vale o mesmo para o bipe. Por isso o botão escreve o destino: leia nele para onde aquela nota
+      vai voltar.
+    </div>
+
+    <div class="aviso">
+      <b>Um ponto sem retorno — e o app avisa na hora</b>
+      Nesse caso da nota que já estava arquivada, o Desfazer dela <b>já foi gasto</b>: dali em diante,
+      <b>bipar de novo não muda nada</b> — bipar o que já está no arquivo nunca altera nada, e é
+      justamente isso que deixa o mutirão seguro. Ou seja, <b>não dá para tirar essa nota do arquivo
+      pela tela</b>. Se você bipar a folha outra vez para tentar, o app avisa isso na hora, em amarelo,
+      em vez do "pode seguir para a próxima folha" de sempre. Tirar nota do arquivo com motivo
+      registrado é assunto da etapa do Caixa, que ainda não está no ar.
+    </div>
+  </div>
+
   <!-- DÚVIDAS -->
   <div class="card">
     <h2>Tirando as dúvidas</h2>
@@ -287,6 +378,27 @@
         <p>A nota conta como arquivada (o papel está aqui), <b>mas não serve de prova de entrega</b>.</p>
         <p>Ela fica marcada com o selo <b>✎ Sem assinatura</b>: clicando no chip com esse nome você tem
         a lista de quem precisa assinar na próxima visita.</p>
+      </div>
+    </div>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">↩</span><strong>O Desfazer volta um passo só</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <p>Ele desmancha <b>o último passo</b> daquela nota, não um histórico. Depois de desfazer, clicar
+        de novo não faz a nota andar mais uma casa para trás: aparece o aviso
+        <i>"Não há o que desfazer nesta nota"</i>.</p>
+        <p>Para corrigir outra vez, o caminho é <b>bipar a folha de novo</b> — e isso funciona enquanto o
+        bipe ainda muda alguma coisa, ou seja, enquanto a nota estiver <b>pendente</b>. Bipando, ela volta
+        para o arquivo e o Desfazer fica disponível outra vez, para esse passo novo. <b>Com a nota já no
+        arquivo, não</b>: ali o Desfazer já foi gasto e bipar não altera nada — o app avisa isso na hora,
+        em amarelo, se você tentar (ver "Ele volta para onde a nota estava", acima).</p>
+        <p><b>Quem pode:</b> as mesmas pessoas que já bipam e arquivam. Não tem permissão nova. Quem desfez
+        e quando fica registrado na própria nota.</p>
+        <p><b>As notas do mutirão de agosto</b> foram bipadas antes de este botão existir, então elas não
+        têm o passo anterior guardado. Nelas o Desfazer devolve a nota ao <b>estado de origem</b> — e o
+        aviso na tela explica isso com todas as letras quando acontece.</p>
       </div>
     </div>
 

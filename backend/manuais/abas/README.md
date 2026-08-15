@@ -60,7 +60,7 @@
 | Despesas | `/caixa/despesas` | Registro de despesas operacionais do dia (combustível, pedágio, hotel, etc.) | [despesas.md](despesas.md) |
 | Auditoria de Entregas | `/admin/auditoria-entregas` | Revisão e correção de pagamentos registrados pelos motoristas | [auditoria-entregas.md](auditoria-entregas.md) |
 | Contas a Receber | `/financeiro/contas-receber` | Gestão de parcelas, baixas manuais e sincronização com o Conta Azul | [contas-receber.md](contas-receber.md) |
-| Notas Fiscais (emissão e canhotos) | `/notas-fiscais` | Emissão de NF-e pelo app via Focus NFe (fila do dia, emitir uma/selecionadas/todas, DANFE/XML, reemissão após rejeição) + aba **Canhotos**: bipar o código de barras da DANFE para controlar quais canhotos assinados já voltaram e estão na pasta do mês | [notas-fiscais.md](notas-fiscais.md) |
+| Notas Fiscais (emissão e canhotos) | `/notas-fiscais` | Emissão de NF-e pelo app via Focus NFe (fila do dia, emitir uma/selecionadas/todas, DANFE/XML, reemissão após rejeição) + aba **Canhotos**: bipar o código de barras da DANFE para controlar quais canhotos assinados já voltaram e estão na pasta do mês, com **Desfazer** de um passo para o bipe errado | [notas-fiscais.md](notas-fiscais.md) |
 | Régua de Cobrança | `/financeiro/cobranca` | Cobrança automática de inadimplentes por WhatsApp/e-mail/SMS com régua por forma de recebimento e tarefa automática em falha | [regua-cobranca.md](regua-cobranca.md) |
 | Contas a Pagar | `/contas-pagar` | Despesas com parcelas, envio ao Conta Azul e baixa automática quando pagas lá (DDA/conciliação) | [contas-a-pagar.md](contas-a-pagar.md) |
 | Fornecedores | `/fornecedores` | Cadastro de fornecedores sincronizado com o Conta Azul (envio automático + importação) | [fornecedores.md](fornecedores.md) |

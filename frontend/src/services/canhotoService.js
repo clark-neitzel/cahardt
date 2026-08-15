@@ -40,6 +40,24 @@ const canhotoService = {
     },
 
     /**
+     * DESFAZER — volta a nota UM passo (desfaz o bipe ou o "veio sem assinatura").
+     *
+     * Igual ao bipe, o caminho normal NUNCA é erro: recusa vem como
+     * `200 { ok:false, motivo, mensagem }` — 'NADA_A_DESFAZER' (ninguém mexeu nesta nota,
+     * ou o Desfazer já foi usado), 'NAO_ENCONTRADA', 'INVALIDO', 'NAO_SUPORTADO' ou
+     * 'CONFLITO' (outra pessoa mexeu antes). NÃO mostre `toast.error` vermelho nesses
+     * casos: a `mensagem` já vem pronta em português, e em vários deles vem junto o
+     * `canhoto` com a linha ATUAL — use-o para corrigir o que está na tela.
+     *
+     * No sucesso vem `{ statusAnterior, status, rotulo, inferido, mensagem, canhoto }`,
+     * onde `status`/`rotulo` são para ONDE a nota voltou.
+     */
+    desfazer: async (chave) => {
+        const { data } = await api.post('/canhotos/desfazer', { chave });
+        return data;
+    },
+
+    /**
      * Arquivo do período: contadores, alerta das notas paradas na rua e a lista.
      * `autocura: false` pula o backfill silencioso do backend — use nas recargas
      * rápidas (depois de bipar) para não repetir trabalho pesado a cada leitura.

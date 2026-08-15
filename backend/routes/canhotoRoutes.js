@@ -138,6 +138,9 @@ router.put('/config', checkAdmin, async (req, res) => {
  * Sempre 200 no caminho normal:
  *   { ok:true, jaEstava:false, canhoto }        → bipou agora
  *   { ok:true, jaEstava:true,  canhoto }        → já estava (bipe repetido do mutirão)
+ *      + { desfazerGasto:true, aviso }          → e o Desfazer desta nota já foi usado:
+ *        a pessoa está tentando TIRÁ-LA do arquivo. `aviso` explica que bipar não faz
+ *        isso — a tela deve mostrá-lo no lugar do "pode seguir para a próxima folha".
  *   { ok:false, motivo:'NAO_ENCONTRADA'|'DV_INVALIDO'|'INVALIDO'|'AMBIGUO', mensagem }
  */
 router.post('/bipar', checkBipar, async (req, res) => {
@@ -181,6 +184,55 @@ router.post('/sem-assinatura', checkBipar, async (req, res) => {
     } catch (e) {
         console.error('[Canhoto] sem-assinatura:', e);
         res.status(500).json({ error: e.message });
+    }
+});
+
+/**
+ * POST /api/canhotos/desfazer — { chave, contexto? }
+ *
+ * `contexto` ('MUTIRAO' | 'CAIXA', opcional, igual ao do bipe) NÃO muda o que é gravado:
+ * só afina a mensagem de recusa para a tela de quem chamou — "bipe a folha outra vez"
+ * não pode ser sugerido numa tela em que bipar aquela nota não faz nada. Ausente = a aba
+ * Canhotos, que é a única tela que existe hoje.
+ *
+ * Volta UM passo: desfaz o bipe (ou o "veio sem assinatura") da nota, devolvendo-a ao
+ * estado imediatamente anterior. Mesma permissão de quem bipa/arquiva — quem errou
+ * precisa poder consertar na hora, sem chamar ninguém.
+ *
+ * Sempre 200 no caminho normal:
+ *   { ok:true,  statusAnterior, status, rotulo, inferido, mensagem, canhoto }
+ *   { ok:false, motivo:'NADA_A_DESFAZER'|'NAO_ENCONTRADA'|'INVALIDO'|'NAO_SUPORTADO'|'CONFLITO', mensagem }
+ */
+router.post('/desfazer', checkBipar, async (req, res) => {
+    try {
+        const chave = req.body?.chave;
+        if (!chave) return res.status(400).json({ error: 'Informe a chave da nota.' });
+        const usuario = await usuarioDaRequisicao(req);
+        const r = await canhoto.desfazer({ chave, usuario, contexto: req.body?.contexto });
+
+        // Auditoria FORA do caminho crítico: o Desfazer já está gravado (inclusive quem
+        // desfez e quando, na própria linha). Log lento ou com defeito nunca pode
+        // derrubar nem desfazer a correção que a pessoa acabou de fazer.
+        if (r.ok && usuario.id) {
+            try {
+                await prisma.auditLog.create({
+                    data: {
+                        acao: 'DESFAZER_CANHOTO',
+                        entidade: 'CanhotoNota',
+                        entidadeId: r.canhoto?.id || r.chave,
+                        detalhes: `NF ${r.canhoto?.numero ?? '—'} · chave ${r.chave} · ${r.statusAnterior} → ${r.status}${r.inferido ? ' (sem estado anterior gravado — estado de origem)' : ''}`,
+                        usuarioId: usuario.id,
+                        usuarioNome: usuario.nome || '(sem nome)',
+                    },
+                });
+            } catch (logErr) {
+                console.error('[Canhoto] falha no log do desfazer (a nota JÁ voltou):', logErr.message);
+            }
+        }
+        res.json(r);
+    } catch (e) {
+        console.error('[Canhoto] desfazer:', e);
+        res.status(500).json({ ok: false, motivo: 'ERRO', error: e.message });
     }
 });
 

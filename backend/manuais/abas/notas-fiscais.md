@@ -1,7 +1,7 @@
 # Notas Fiscais (emissão de NF-e)
 
 **Rota:** `/notas-fiscais` · **Menu:** Financeiro → Notas Fiscais
-**Permissões:** `Pode_Acessar_Notas_Fiscais` (ver a tela, incluindo a aba Canhotos) · `Pode_Emitir_NF` (emitir/reemitir) · `Pode_Excluir_Pedido` (botão "Cancelar pedido") · `Pode_Configurar_NF` (reservada para o painel de configuração, em breve)
+**Permissões:** `Pode_Acessar_Notas_Fiscais` (ver a tela, incluindo a aba Canhotos) · `Pode_Emitir_NF` (emitir/reemitir) · `Pode_Excluir_Pedido` (botão "Cancelar pedido") · `Pode_Configurar_NF` (existe no cadastro, mas **nenhuma tela usa** esta permissão hoje)
 
 **Abas da tela:** A emitir · Emitidas · **Canhotos** · Todas. As três primeiras tratam de *emitir* a nota; a aba **Canhotos** trata do *papel assinado que volta com o motorista* (seção própria no fim deste manual). As abas A emitir, Emitidas e Canhotos mostram a contagem do período no próprio rótulo.
 
@@ -86,7 +86,7 @@ O canhoto é o pedaço da nota que o cliente assina na entrega. **É a prova de 
 
 Antes, ninguém sabia quais canhotos tinham voltado: a conferência era no olho, folha por folha, e a falta só aparecia semanas depois, quando o financeiro ia procurar o comprovante. Nesta aba você **bipa o código de barras da DANFE** e o sistema mostra, na hora, quais notas assinadas já estão no arquivo e quais faltam.
 
-> **Hoje esta aba não trava nada.** Ela serve para enxergar e organizar. A trava do fechamento do caixa (o caixa só fecha com todos os canhotos conferidos) está planejada para uma etapa seguinte e ainda **não existe**.
+> **Esta aba não trava nada.** Ela serve para enxergar e organizar: nenhum caixa deixa de fechar, nenhum pedido deixa de andar por causa de canhoto. Não existe trava de fechamento por canhoto conferido — e ela **não está planejada**.
 
 ## O mutirão — como colocar um mês em dia
 
@@ -122,13 +122,13 @@ Cada leitura dá um **som e uma vibração** diferentes para acerto, repetição
 | Estado | O que significa na prática |
 |---|---|
 | **⏳ Na rua** | A nota de venda foi emitida e o canhoto assinado ainda não voltou para o escritório. Quando o pedido já tinha embarque, a linha mostra também **com qual motorista** ela saiu; quando não tinha, a nota continua pendente do mesmo jeito, só sem o nome. É o que você quer ver diminuir. |
-| **✓ Recebido** | O canhoto assinado chegou ao escritório, mas ainda não foi para a pasta. Tem o botão **Arquivar**. |
+| **✓ Recebido** | Estado intermediário: o canhoto chegou ao escritório, mas ainda não foi para a pasta. Tem o botão **Arquivar**. O bipe da aba **não cria** este estado — ele arquiva direto. |
 | **🗄 Arquivado** | Guardado na pasta do mês. **É o estado final** — a linha aparece riscada. |
 | **✎ Sem assinatura** | O papel está no arquivo, mas o canhoto veio **em branco**. Ver a seção abaixo. |
-| **✕ Sem canhoto** | A nota foi liberada com justificativa: o papel não vai voltar. *(Este estado só passa a ser criado quando a etapa do Caixa entrar no ar.)* |
+| **✕ Sem canhoto** | A nota foi liberada com justificativa: o papel não vai voltar. *(O sistema entende este estado, mas **nenhuma tela o cria** — na prática você não vai vê-lo.)* |
 | **? Estado desconhecido** | O sistema não sabe onde o papel está. É como nasce tudo que já tinha sido emitido antes do controle existir — e também como nasce toda **nota de devolução**, que não sai com motorista. Some conforme você bipa o maço. |
 
-**Quem bipa no mutirão vai direto para "Arquivado"** (o papel está na pasta, na sua mão). Quando a conferência passar a ser feita no Caixa, na volta do motorista, o bipe de lá vai marcar **"Recebido"**, e o arquivamento vira um segundo passo.
+**Quem bipa na aba vai direto para "Arquivado"** (o papel está na pasta, na sua mão) — é o único caminho de bipe que existe. Os estados "✓ Recebido" e "✕ Sem canhoto" fazem parte do sistema, mas nenhuma tela os cria hoje.
 
 ## "Veio sem assinatura"
 
@@ -137,6 +137,31 @@ Botão em cada linha. Use quando **o papel voltou, mas o cliente não assinou** 
 A nota conta como arquivada (o documento está aqui, você não precisa mais procurar por ele), **mas não serve de prova de entrega**. Ela passa a mostrar o selo **"✎ Sem assinatura"** e entra no chip de mesmo nome — clicando nele você vê, de uma vez, todas as notas do mês que estão nessa situação.
 
 **Quem age com essa lista é o escritório.** O vendedor não enxerga esta tela (ela exige a permissão de Notas Fiscais), então não adianta mandá-lo consultar aqui: abra o chip "Sem assinatura" e avise o vendedor quais clientes têm canhoto em branco, para ele recolher a assinatura na próxima visita.
+
+## Errou? O "Desfazer" volta um passo
+
+Bipou a folha errada, bipou uma cujo canhoto estava em branco, ou clicou em **"Veio sem assinatura"** na linha de baixo? O **Desfazer** conserta na hora, sem precisar chamar ninguém: devolve a nota ao **estado em que ela estava imediatamente antes** daquele clique.
+
+**Onde está o botão.** Em dois lugares, para os dois momentos em que o erro é percebido:
+
+- **Logo depois de bipar**, em "Últimas leituras" (abaixo do campo de bipe): cada leitura que mudou alguma coisa ganha um **Desfazer** ao lado. É o caminho do "bipei a folha errada agora" — não precisa procurar a nota na lista, e o cursor volta sozinho para o campo, então o maço continua no ritmo.
+- **Na linha da nota**, na lista do período (e no card, no celular): botão discreto, escrito em cinza, **só nas notas que têm o que desfazer** — nas demais ele nem aparece. O rótulo diz o destino ("Desfazer · volta para Arquivado"), então você sabe o que vai acontecer antes de clicar.
+
+**Ele não pergunta "tem certeza?".** Diferente do "Veio sem assinatura" (que cria um fato e por isso pergunta), o Desfazer só desmancha um passo de quem já percebeu o próprio erro — uma pergunta ali só atrapalharia. É por isso que ele é discreto, sem cor de botão: para não ser clicado sem querer no meio do maço. Desfez sem querer? Dê o passo de novo: se você desfez um **bipe**, bipe a folha outra vez; se desfez um **"Veio sem assinatura"**, clique nele outra vez. Bipar não serve para tudo — veja a exceção no fim desta seção.
+
+- Desfazendo um **bipe do mutirão**: a nota sai de "🗄 Arquivado" e volta para onde estava (em geral "? Estado desconhecido" ou "⏳ Na rua"), e o registro de **quem recebeu e quando some junto** — a linha não fica dizendo que foi recebida por alguém e, ao mesmo tempo, que não foi bipada.
+- Desfazendo o **"Veio sem assinatura"**: **não existe destino fixo** — a nota volta para onde ela estava antes daquele clique. Se ela **já estava arquivada**, volta para "🗄 Arquivado": continua conferida, só perde o selo de canhoto em branco. Se ela **ainda não tinha sido bipada** (o caso do "cliquei na linha errada", que é o mais comum), volta a ficar pendente — "? Estado desconhecido" ou "⏳ Na rua". Os dois acontecem no dia a dia, porque o botão "Veio sem assinatura" aparece em **qualquer** linha que ainda não tenha esse selo. O rótulo do botão Desfazer diz o destino daquela nota.
+- Desfazendo um **Arquivar**: volta para "✓ Recebido", mantendo o registro do bipe.
+
+**Ele volta um passo só, e sempre o último.** Não é um histórico: depois de desfazer, clicar em Desfazer de novo **não** faz a nota andar mais uma casa para trás — o sistema responde *"Não há o que desfazer nesta nota"*. Na maioria das vezes, para corrigir outra vez basta **bipar a folha de novo**: isso conta como passo novo e o Desfazer fica disponível de novo.
+
+> **Uma exceção que vale conhecer:** se você desfez o *"Veio sem assinatura"* de uma nota que **já estava arquivada**, ela voltou para "🗄 Arquivado" e o Desfazer dela **já foi gasto**. Dali em diante, bipar de novo **não muda nada** — bipar o que já está no arquivo nunca altera nada, e é justamente isso que deixa o mutirão seguro. Ou seja: **não dá para tirar essa nota do arquivo pela tela**. Se você bipar a folha outra vez para tentar, **o app avisa isso na hora** — em vez do "pode seguir para a próxima folha" de sempre, que ali seria o oposto do que você quer. **Não existe nenhuma forma de tirar uma nota do arquivo pela tela**, e isso **não está planejado**: o Desfazer foi feito para o erro percebido na hora, que é o caso do dia a dia.
+
+**Quem pode:** as mesmas pessoas que já bipam e arquivam — quem entra no Caixa ou nas Notas Fiscais. Não há permissão nova. Quem desfez e quando fica **registrado** na própria nota e no histórico de auditoria do sistema.
+
+**Notas bipadas antes de este botão existir** (o mutirão de agosto/2026) não têm o passo anterior guardado. Nelas o Desfazer devolve a nota ao **estado de origem**: nota de venda do mês corrente que saiu com o motorista volta para "⏳ Na rua"; o resto — mês passado, nota antiga do Conta Azul e **toda devolução** — volta para "? Estado desconhecido", que é a verdade (ninguém sabe onde o papel está). Nesses casos o aviso na tela explica isso com todas as letras.
+
+> O Desfazer também **não** mexe no estado "✕ Sem canhoto" (nota liberada com justificativa). Como nenhuma tela cria esse estado, na prática isso não aparece no seu dia a dia.
 
 ## A pasta física sai sozinha
 

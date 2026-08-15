@@ -852,6 +852,17 @@ model CanhotoNota {
   // "Volta amanhã": libera o caixa de hoje mas a nota CONTINUA na fila de pendências
   voltaAmanha     Boolean   @default(false) @map("volta_amanha")
 
+  // DESFAZER (um nível só) — bipar/arquivar/sem-assinatura gravam aqui de onde a nota
+  // saiu; o Desfazer devolve a ela, apaga `statusAnterior` e carimba `desfeitoEm`.
+  // É `desfeitoEm` (não `statusAnterior`) que impede desfazer duas vezes seguidas:
+  // qualquer passo novo dado por gente limpa o carimbo e libera um Desfazer de novo.
+  // Linha gravada ANTES desta mudança tem `statusAnterior` null e cai no estado de
+  // nascimento (mesma regra do registro/backfill) — ver `estadoDeNascimento`.
+  statusAnterior  String?   @map("status_anterior")
+  desfeitoPorId   String?   @map("desfeito_por_id")
+  desfeitoPorNome String?   @map("desfeito_por_nome")
+  desfeitoEm      DateTime? @map("desfeito_em")
+
   observacao String? @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")

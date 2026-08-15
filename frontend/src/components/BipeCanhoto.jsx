@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Barcode, Camera, Loader2, Check, AlertTriangle, Info, CornerDownLeft } from 'lucide-react';
+import { Barcode, Camera, Loader2, Check, AlertTriangle, Info, CornerDownLeft, Undo2 } from 'lucide-react';
 import canhotoService from '../services/canhotoService';
 import LeitorCodigoBarras from './LeitorCodigoBarras';
 import { interpretarBipe, limpar } from '../utils/chaveNfe';
@@ -76,6 +76,7 @@ const BipeCanhoto = ({
     periodo,                        // { de, ate } — desempata o bipe por número
     caixaDiarioId,                  // Pedaço 2 (auditoria da leitura no caixa)
     onResultado,                    // (resposta, textoBipado) → a tela atualiza o que mostra
+    onDesfeito,                     // (resposta do desfazer) → idem, depois de desfazer uma leitura
     placeholder = 'Pegue o maço da pasta e vá bipando…',
     autoFoco = true,
     className = '',
@@ -85,10 +86,24 @@ const BipeCanhoto = ({
     const [ultimas, setUltimas] = useState([]);     // últimas leituras (mais nova primeiro)
     const [ambiguidade, setAmbiguidade] = useState(null); // { numero, opcoes[] }
     const [camera, setCamera] = useState(false);
+    // Chave do desfazer em andamento — serve para DESENHAR (rodinha + botão apagado).
+    // A guarda contra clique repetido é o `desfazendoRef` abaixo, nunca este estado.
+    const [desfazendo, setDesfazendo] = useState(null);
 
     const inputRef = useRef(null);
     const recentesRef = useRef(new Map());          // chave/número → instante da última leitura
     const seqRef = useRef(0);
+    /**
+     * Chaves com um Desfazer em andamento. É `ref`, e não o estado `desfazendo`, **de
+     * propósito**: dois cliques no mesmo tique de render passam por uma guarda de estado,
+     * porque o React só re-renderiza (e só aplica o `disabled`) depois do tique. O
+     * resultado eram dois envios da mesma leitura — o segundo voltava "já desfeito" e
+     * pintava um aviso amarelo *"Não deu para desfazer"* logo abaixo do "Desfeito" verde,
+     * para UM clique. O banco aguentava (o backend recusa o segundo), mas a pessoa lia
+     * duas respostas contrárias sobre o próprio clique. Um `Set` num ref muda no mesmo
+     * instante. Mesma trava da tabela da aba (`acaoDaLinha`, em `CanhotosTab`).
+     */
+    const desfazendoRef = useRef(new Set());
     // Mesma guarda de montagem usada na aba (padrão do módulo): o bipe é assíncrono e
     // a tela pode ser trocada no meio de uma leitura.
     const montadoRef = useRef(true);
@@ -105,10 +120,15 @@ const BipeCanhoto = ({
 
     useEffect(() => { focar(); }, [focar]);
 
-    const registrar = useCallback((tom, rotulo, detalhe) => {
+    /**
+     * `extra` carrega a `chave` quando aquela leitura MUDOU alguma coisa — é ela que
+     * libera o "Desfazer" na linha. Leitura que não mudou nada (repetida, de outro mês,
+     * não encontrada) fica sem chave e sem botão: não há passo para voltar.
+     */
+    const registrar = useCallback((tom, rotulo, detalhe, extra = null) => {
         if (!montadoRef.current) return;
         seqRef.current += 1;
-        const item = { id: seqRef.current, tom, rotulo, detalhe, quando: new Date() };
+        const item = { id: seqRef.current, tom, rotulo, detalhe, quando: new Date(), ...(extra || {}) };
         setUltimas(prev => [item, ...prev].slice(0, 8));
         tocar(tom);
         vibrar(tom);
@@ -172,14 +192,35 @@ const BipeCanhoto = ({
             if (r?.ok) {
                 const nota = descrever(r.canhoto);
                 if (r.jaEstava) {
-                    registrar('repetido', `${nota} — já estava`, contexto === 'MUTIRAO'
-                        ? 'Esta já constava no arquivo. Pode seguir para a próxima folha.'
-                        : 'Esta já tinha sido recebida.');
+                    /**
+                     * Bipe repetido. Quase sempre é o mutirão normal — a mesma folha
+                     * passando duas vezes pelo leitor —, e aí a resposta é a de sempre,
+                     * AZUL e tranquila: prometemos à equipe que repetir não estraga nada.
+                     *
+                     * Mas existe um caso em que o backend manda `desfazerGasto`: quem já
+                     * gastou o Desfazer daquela nota e bipa a folha de novo está tentando
+                     * TIRÁ-LA do arquivo — e a linha dela, nesse estado, já não mostra o
+                     * botão Desfazer, então este bipe é o único lugar por onde a pessoa
+                     * passa. Dizer "pode seguir para a próxima folha" ali a manda em
+                     * frente justamente quando ela quer o contrário.
+                     *
+                     * Por isso o tom muda junto com o texto: AMARELO ("pare e leia"), não
+                     * azul ("está tudo certo, siga") — o azul é parte do que induzia ao
+                     * erro. A frase vem pronta do servidor (`aviso`), a mesma da recusa do
+                     * Desfazer, para as duas portas contarem a mesma história.
+                     */
+                    registrar(r.desfazerGasto ? 'aviso' : 'repetido', `${nota} — já estava`,
+                        r.aviso || (contexto === 'MUTIRAO'
+                            ? 'Esta já constava no arquivo. Pode seguir para a próxima folha.'
+                            : 'Esta já tinha sido recebida.'));
                 } else {
+                    // Só a leitura que MUDOU a nota ganha o "Desfazer" (ver `registrar`):
+                    // é exatamente o caso do "bipei a folha errada", percebido na hora.
                     registrar('ok', nota, r.aviso
                         || (contexto === 'MUTIRAO'
                             ? `Arquivada${r.canhoto?.pastaFisica ? ` em ${r.canhoto.pastaFisica}` : ''}.`
-                            : 'Canhoto recebido.'));
+                            : 'Canhoto recebido.'),
+                    { chave: r.canhoto?.chave || null });
                 }
             } else if (r?.motivo === 'AMBIGUO') {
                 if (montadoRef.current) setAmbiguidade({ numero: r.numero, opcoes: Array.isArray(r.opcoes) ? r.opcoes : [] });
@@ -209,6 +250,54 @@ const BipeCanhoto = ({
             }
         }
     }, [caixaDiarioId, contexto, focar, onResultado, periodo?.ate, periodo?.de, registrar]);
+
+    /**
+     * DESFAZER a leitura que acabou de sair — o lugar onde o erro é percebido.
+     *
+     * "Bipei a folha errada" e "esta folha veio sem assinatura, não era para arquivar"
+     * se descobrem UM segundo depois do bip, olhando esta lista. Mandar a pessoa
+     * procurar a linha lá embaixo, no meio de 600 notas, para consertar o que ela viu
+     * aqui é fazê-la parar o mutirão.
+     *
+     * ⚠️ O FOCO VOLTA PARA O CAMPO ANTES DA REDE, não depois. O leitor USB termina cada
+     * leitura com **Enter**: se o foco ficasse neste botão enquanto a requisição roda, o
+     * Enter da próxima folha "clicaria" o Desfazer de novo em vez de bipar — e os
+     * dígitos da leitura iriam para lugar nenhum. Devolvendo o cursor no clique, o
+     * ritmo do maço não muda: quem só bipa nunca encosta neste botão.
+     */
+    const desfazerLeitura = useCallback(async (item) => {
+        const chave = item?.chave;
+        // Trava SÍNCRONA (ver `desfazendoRef`): o 2º clique do duplo clique para aqui,
+        // antes de virar rede. O estado `desfazendo` continua existindo — mas só para
+        // desenhar o rodinha no botão, nunca como guarda.
+        if (!chave || desfazendoRef.current.has(chave)) return;
+        desfazendoRef.current.add(chave);
+        focar();                       // antes da rede — ver o aviso acima
+        setDesfazendo(chave);
+        try {
+            const r = await canhotoService.desfazer(chave);
+            if (!montadoRef.current) return;
+            // Some com o botão de todas as leituras daquela nota: o Desfazer volta UM
+            // passo e o backend recusa o segundo seguido. Deixar o botão ali seria
+            // oferecer uma ação que já sabemos que vai ser negada.
+            setUltimas(prev => prev.map(u => (u.chave === chave ? { ...u, chave: null } : u)));
+            // A frase vem pronta do servidor (diz para onde a nota voltou). Recusa não é
+            // erro vermelho: é 'aviso' (amarelo), a mesma escala do resto do módulo.
+            if (r?.ok) registrar('repetido', 'Desfeito', r.mensagem || 'A nota voltou ao estado anterior.');
+            else registrar('aviso', 'Não deu para desfazer', r?.mensagem || 'Confira a linha da nota na lista abaixo.');
+            onDesfeito?.(r);
+        } catch (e) {
+            console.error('[Canhoto] Falha ao desfazer a leitura:', e);
+            registrar('erro', 'Falha de conexão', e?.response?.data?.error
+                || 'Não consegui desfazer. Confira a internet — a nota continua como está.');
+        } finally {
+            desfazendoRef.current.delete(chave);
+            if (montadoRef.current) {
+                setDesfazendo(null);
+                focar();
+            }
+        }
+    }, [focar, onDesfeito, registrar]);
 
     /**
      * O Enter do leitor USB cai aqui — e para aqui.
@@ -336,6 +425,20 @@ const BipeCanhoto = ({
                                         <div className="font-semibold truncate">{u.rotulo}</div>
                                         {u.detalhe && <div className="text-xs opacity-90">{u.detalhe}</div>}
                                     </div>
+                                    {/* Herda a cor do próprio aviso (verde do "arquivada") em vez de
+                                        ganhar uma cor de ação: é conserto, não o caminho normal. */}
+                                    {u.chave && (
+                                        <button
+                                            type="button"
+                                            onClick={() => desfazerLeitura(u)}
+                                            disabled={desfazendo === u.chave}
+                                            title="Bipou a folha errada? Volta esta nota ao estado anterior."
+                                            className="shrink-0 inline-flex items-center gap-1 px-2.5 py-1.5 min-h-[44px] rounded-full text-[11px] font-bold underline hover:bg-black/5 disabled:opacity-50"
+                                        >
+                                            {desfazendo === u.chave ? <Loader2 className="h-3 w-3 animate-spin" /> : <Undo2 className="h-3 w-3" />}
+                                            Desfazer
+                                        </button>
+                                    )}
                                     <span className="text-[11px] opacity-70 shrink-0 tabular-nums">
                                         {u.quando.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                     </span>

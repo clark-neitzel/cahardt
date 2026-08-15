@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import toast from 'react-hot-toast';
 import {
     Archive, AlertTriangle, Loader2, Search, CalendarRange, FolderOpen,
-    RefreshCw, Printer, PenLine, Truck, HelpCircle,
+    RefreshCw, Printer, PenLine, Truck, HelpCircle, Undo2,
 } from 'lucide-react';
 import BipeCanhoto from '../../components/BipeCanhoto';
 import api from '../../services/api';
@@ -33,6 +33,22 @@ import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 const fmtMoeda = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtData = (d) => (d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—');
 const fmtNum = (n) => (n == null ? '—' : Number(n).toLocaleString('pt-BR'));
+const fmtDataHora = (d) => (d
+    ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : '');
+
+/**
+ * Rótulo do Desfazer com o DESTINO ("Desfazer (volta para Arquivado)").
+ *
+ * O destino vem pronto do backend (`desfazerParaRotulo`), calculado pela MESMA função
+ * que a rota usa para aplicar — a tela não adivinha para onde a nota volta. Sem o
+ * destino no rótulo, "Desfazer" numa nota que já passou por duas etapas (recebida e
+ * depois arquivada) vira adivinhação: some da pasta? volta para a rua?
+ *
+ * O `desfazerParaRotulo` é guardado antes de entrar na string: campo opcional
+ * interpolado direto viraria "volta para undefined" na cara da equipe (regra do projeto).
+ */
+const rotuloDesfazer = (i) => (i?.desfazerParaRotulo ? `Desfazer (volta para ${i.desfazerParaRotulo})` : 'Desfazer');
 
 /**
  * Situação de cada nota. As cores seguem o significado do design system e NÃO devem
@@ -66,6 +82,45 @@ const TETO_BIPES = 10;            // ... nem por mais bipes que isto
 
 const podeReimprimirDanfe = (i) => i.tipo === 'DEVOLUCAO' && !!i.notaAppId && PRECISA_REIMPRIMIR.includes(i.status);
 
+// Tempo que a linha fica com os botões CONGELADOS depois de uma ação (ver `acaoDaLinha`).
+// Um duplo clique do sistema é ~500ms; a resposta do servidor volta em ~160ms. A conta é
+// "resposta + esta folga", então a proteção cobre o segundo clique com margem.
+const MS_CONGELAMENTO = 600;
+
+/**
+ * PRAZO DE SEGURANÇA do congelamento.
+ *
+ * O cliente HTTP do app não tem `timeout`: se a resposta nunca chega (rede caindo no meio,
+ * backend travado), a promessa fica pendurada para sempre e o `finally` que descongela a
+ * linha NUNCA roda. Sem esta válvula a linha ficaria com os quatro botões apagados até a
+ * pessoa recarregar a página — e no meio de um mutirão ela não vai desconfiar da página,
+ * vai desconfiar da nota.
+ *
+ * Antes do congelamento esse mesmo cenário travava só um botão; foi o congelamento que
+ * ampliou a consequência, então a válvula é responsabilidade dele. Ela solta a trava e o
+ * congelamento **sem** cancelar a requisição — se a resposta chegar depois, ela ainda é
+ * aplicada normalmente.
+ *
+ * 30s é generoso de propósito: o banco é compartilhado e fica lento no horário de pico
+ * (ver CLAUDE.md). Isto é rede de segurança para o que travou de vez, não impaciência.
+ */
+const MS_VALVULA = 30000;
+
+/**
+ * Quais botões esta linha mostra. É função (e não condição solta no JSX) porque a MESMA
+ * resposta é usada em três lugares que precisam concordar: o card do celular, a linha do
+ * desktop e o **congelamento** (`acaoDaLinha`), que guarda exatamente esta foto no
+ * instante do clique. Se um dos três divergir, o congelamento deixa de proteger.
+ */
+const botoesDaLinha = (i) => ({
+    danfe: podeReimprimirDanfe(i),
+    arquivar: i.status === 'RECEBIDO',
+    semAssinatura: i.status !== 'SEM_ASSINATURA',
+    desfazer: !!i.podeDesfazer,
+    // vai junto na foto: o rótulo não pode mudar no meio do congelamento
+    desfazerParaRotulo: i.desfazerParaRotulo || null,
+});
+
 const SituacaoBadge = ({ item }) => {
     const s = SITUACOES[item.status] || { rotulo: item.status || '—', classe: 'bg-gray-100 text-gray-700' };
     /**
@@ -95,6 +150,8 @@ const CanhotosTab = ({ periodo, onTotal }) => {
     const [erro, setErro] = useState('');
     const [backfilling, setBackfilling] = useState(false);
     const [agindo, setAgindo] = useState(null); // `${chave}:acao` em andamento
+    // chave → foto dos botões no instante do clique (linha com a posição congelada)
+    const [congelados, setCongelados] = useState({});
 
     // Filtro de situação fica salvo por usuário; a BUSCA por texto não (regra do projeto).
     const [filtro, setFiltro] = useFiltroSalvo('canhotos:situacao', 'todos');
@@ -104,6 +161,9 @@ const CanhotosTab = ({ periodo, onTotal }) => {
     const inicioRajadaRef = useRef(0);      // instante do 1º bipe adiado da rajada
     const bipesPendentesRef = useRef(0);    // bipes desde a última recarga
     const seqRef = useRef(0);               // nº da consulta — só a última vale (ver `carregar`)
+    const emVooRef = useRef(new Set());     // chaves com ação em andamento (trava SÍNCRONA)
+    const timersCongelamentoRef = useRef(new Map()); // chave → timer do descongelamento
+    const valvulasRef = useRef(new Map());  // chave → prazo de segurança (ver MS_VALVULA)
     const montadoRef = useRef(true);
     useEffect(() => {
         // Ligar de novo na montagem é OBRIGATÓRIO, não enfeite: em desenvolvimento o
@@ -114,6 +174,10 @@ const CanhotosTab = ({ periodo, onTotal }) => {
         return () => {
             montadoRef.current = false;
             if (recarregaRef.current) clearTimeout(recarregaRef.current);
+            timersCongelamentoRef.current.forEach(clearTimeout);
+            timersCongelamentoRef.current.clear();
+            valvulasRef.current.forEach(clearTimeout);
+            valvulasRef.current.clear();
         };
     }, []);
 
@@ -216,6 +280,18 @@ const CanhotosTab = ({ periodo, onTotal }) => {
         agendarRecarga();
     }, [agendarRecarga, aplicarCanhoto]);
 
+    /**
+     * Desfazer feito lá em cima, na lista de últimas leituras: a linha da nota aqui
+     * embaixo tem que voltar junto. Aqui aplicamos o canhoto MESMO quando a resposta é
+     * recusa — nesses casos ele traz o estado real (alguém mexeu antes), e é justamente
+     * o que a lista precisa mostrar. Quem explica o resultado em texto é o próprio
+     * campo de bipe, que já registra a frase do servidor na leitura.
+     */
+    const aoDesfazerNoBipe = useCallback((resposta) => {
+        if (resposta?.canhoto) aplicarCanhoto(resposta.canhoto);
+        agendarRecarga();
+    }, [agendarRecarga, aplicarCanhoto]);
+
     const colocarEmDia = async () => {
         if (!temPeriodo || backfilling) return;
         setBackfilling(true);
@@ -237,7 +313,87 @@ const CanhotosTab = ({ periodo, onTotal }) => {
         }
     };
 
-    const marcarSemAssinatura = async (item) => {
+    /**
+     * TODA ação de linha passa por aqui. São duas proteções, para dois defeitos reais
+     * encontrados pelo QA no duplo clique — os dois nascem do mesmo lugar: **o conjunto
+     * de botões muda no instante em que a ação termina.**
+     *
+     * 1. **A posição congela.** No desktop os botões são alinhados à direita; quando o
+     *    Desfazer some (ele deixa de existir assim que é usado), o "Sem assinatura"
+     *    desliza para EXATAMENTE onde o cursor está — e o segundo clique de um duplo
+     *    clique caía nele, marcando a nota como "não serve de prova de entrega". O
+     *    oposto do que a pessoa quis fazer, no botão que existe para corrigir erro.
+     *    Enquanto a linha está congelada ela desenha os botões pela FOTO tirada no
+     *    clique, todos desabilitados: nada aparece, nada some, nada troca de lugar.
+     *    Vale para a linha inteira (DANFE, Arquivar, Sem assinatura, Desfazer) — não
+     *    só para o par que o QA pegou, porque qualquer troca de estado remaneja a fila.
+     *
+     * 2. **A trava é SÍNCRONA (`emVooRef`), não estado.** Três cliques no mesmo tique de
+     *    render disparavam três requisições: `disabled={agindo === …}` não chega a tempo,
+     *    porque o React só re-renderiza depois do tique. O resultado eram três avisos
+     *    para o mesmo clique, um deles dizendo que "outra pessoa mexeu nesta nota" —
+     *    para alguém trabalhando sozinho. Um `Set` num ref muda no mesmo instante, então
+     *    o 2º e o 3º clique voltam antes de virar rede.
+     *
+     * Congelar é de propósito o passo mais burro possível: NÃO adivinha para onde a
+     * linha vai, só se recusa a mexer nos botões por um momento depois do clique.
+     */
+    const acaoDaLinha = useCallback(async (item, nome, executar) => {
+        if (emVooRef.current.has(item.chave)) return;   // 2º clique do mesmo tique para aqui
+        emVooRef.current.add(item.chave);
+
+        const timers = timersCongelamentoRef.current;
+        const valvulas = valvulasRef.current;
+        if (timers.has(item.chave)) { clearTimeout(timers.get(item.chave)); timers.delete(item.chave); }
+        setCongelados(prev => ({ ...prev, [item.chave]: botoesDaLinha(item) }));
+        setAgindo(`${item.chave}:${nome}`);
+
+        // Solta tudo se a resposta simplesmente não vier (ver MS_VALVULA). Sem isto uma
+        // requisição pendurada deixaria a linha morta até recarregar a página.
+        if (valvulas.has(item.chave)) clearTimeout(valvulas.get(item.chave));
+        valvulas.set(item.chave, setTimeout(() => {
+            valvulas.delete(item.chave);
+            emVooRef.current.delete(item.chave);
+            if (!montadoRef.current) return;
+            console.warn('[Canhoto] Ação sem resposta em 30s — soltando a linha:', item.chave, nome);
+            setAgindo(a => (a === `${item.chave}:${nome}` ? null : a));
+            setCongelados(prev => {
+                if (!(item.chave in prev)) return prev;
+                const proximo = { ...prev };
+                delete proximo[item.chave];
+                return proximo;
+            });
+        }, MS_VALVULA));
+
+        try {
+            await executar();
+        } finally {
+            emVooRef.current.delete(item.chave);
+            if (valvulas.has(item.chave)) { clearTimeout(valvulas.get(item.chave)); valvulas.delete(item.chave); }
+            if (montadoRef.current) {
+                setAgindo(null);
+                // Descongela só DEPOIS da folga — é esta espera que cobre o segundo
+                // clique. Sem ela, o congelamento acabaria junto com a resposta (~160ms)
+                // e o botão vizinho voltaria a deslizar para debaixo do cursor.
+                timers.set(item.chave, setTimeout(() => {
+                    timers.delete(item.chave);
+                    setCongelados(prev => {
+                        if (!(item.chave in prev)) return prev;
+                        const proximo = { ...prev };
+                        delete proximo[item.chave];
+                        return proximo;
+                    });
+                }, MS_CONGELAMENTO));
+            }
+        }
+    }, []);
+
+    const marcarSemAssinatura = (item) => {
+        // ⚠️ A pergunta vem ANTES do congelamento, de propósito. Congelando primeiro, quem
+        // abrisse o aviso e respondesse "cancelar" ficava com a linha inteira apagada por
+        // 600ms por causa de uma ação que NÃO aconteceu — e travamento sem motivo é
+        // exatamente o que faz a pessoa achar que o sistema está com defeito.
+        if (emVooRef.current.has(item.chave)) return;   // já tem ação rolando nesta linha
         const rotulo = `NF ${fmtNum(item.numero)}${item.clienteNome ? ` · ${item.clienteNome}` : ''}`;
         // Este aviso só pode prometer o que a tela faz de verdade. A versão anterior dizia
         // que a nota "entra na lista de recolher assinatura na próxima visita" — lista que
@@ -246,23 +402,64 @@ const CanhotosTab = ({ periodo, onTotal }) => {
         // O que existe de verdade é o selo "Sem assinatura" e o chip com esse nome, que
         // filtra a lista. Ao mexer aqui, prometa só isso.
         if (!window.confirm(`Marcar ${rotulo} como "veio sem assinatura"?\n\nO papel conta como arquivado (ele está aqui), mas a nota NÃO serve de prova de entrega. Ela fica com o selo "Sem assinatura" — dá para ver todas clicando no chip com esse nome.`)) return;
-        setAgindo(`${item.chave}:sem`);
-        try {
-            const r = await canhotoService.semAssinatura(item.chave);
-            if (!montadoRef.current) return;
-            if (r?.ok) {
-                if (r.canhoto) aplicarCanhoto(r.canhoto);
-                toast.success(r.jaEstava ? 'Esta nota já estava marcada como sem assinatura.' : 'Marcada como sem assinatura.');
-                agendarRecarga();
-            } else {
-                toast.error(r?.mensagem || 'Não consegui marcar esta nota.');
+        return acaoDaLinha(item, 'sem', async () => {
+            try {
+                const r = await canhotoService.semAssinatura(item.chave);
+                if (!montadoRef.current) return;
+                if (r?.ok) {
+                    if (r.canhoto) aplicarCanhoto(r.canhoto);
+                    toast.success(r.jaEstava ? 'Esta nota já estava marcada como sem assinatura.' : 'Marcada como sem assinatura.');
+                    agendarRecarga();
+                } else {
+                    toast.error(r?.mensagem || 'Não consegui marcar esta nota.');
+                }
+            } catch (e) {
+                if (montadoRef.current) toast.error(e?.response?.data?.error || 'Falha ao marcar a nota.');
             }
-        } catch (e) {
-            if (montadoRef.current) toast.error(e?.response?.data?.error || 'Falha ao marcar a nota.');
-        } finally {
-            if (montadoRef.current) setAgindo(null);
-        }
+        });
     };
+
+    /**
+     * DESFAZER — a saída de quem bipou a folha errada, bipou uma cujo canhoto está em
+     * branco, ou clicou "Veio sem assinatura" na linha de baixo. Volta UM passo.
+     *
+     * **Sem `window.confirm` de propósito.** Aqui é o oposto do "Veio sem assinatura"
+     * (que pergunta porque CRIA um fato: a nota deixa de valer como prova de entrega).
+     * O Desfazer só desmancha um passo que a pessoa acabou de perceber que errou —
+     * pôr uma pergunta no caminho de quem já se corrigiu é atrito à toa, no meio de um
+     * maço de 200 folhas. E ele próprio é reversível: se desfizer sem querer, basta
+     * bipar de novo. O que protege do clique acidental é o botão ser DISCRETO (sem
+     * borda, sem preenchimento — ver a lista), não um alerta a mais para fechar.
+     */
+    const desfazer = (item) => acaoDaLinha(item, 'desfazer', async () => {
+        try {
+            const r = await canhotoService.desfazer(item.chave);
+            if (!montadoRef.current) return;
+            // A linha ATUAL vem junto até nas recusas — em especial no CONFLITO, quando
+            // outra pessoa mexeu na nota antes. Aplicar sempre é o que faz a tela mostrar
+            // o estado real do banco em vez de insistir no que ela achava que era.
+            if (r?.canhoto) aplicarCanhoto(r.canhoto);
+            if (r?.ok) {
+                // A mensagem vem PRONTA do servidor: ela já diz para onde a nota voltou e
+                // já explica o caso das notas bipadas antes de o Desfazer existir (que
+                // voltam para o estado de origem). Escrever outra aqui criaria duas
+                // versões da mesma verdade, e uma delas ficaria desatualizada.
+                toast.success(r.mensagem || 'Pronto — a nota voltou ao estado anterior.');
+            } else {
+                // Recusa NÃO é falha do sistema (mesma regra do bipe): "não há o que
+                // desfazer" e "outra pessoa mexeu antes" são situações previstas, e vêm
+                // com a frase pronta. Vermelho de erro aqui assustaria à toa.
+                toast(r?.mensagem || 'Não há o que desfazer nesta nota.', { icon: 'ℹ️' });
+            }
+            agendarRecarga();
+        } catch (e) {
+            // Só rede/500 chega aqui — o backend responde 200 com `ok:false` para o resto.
+            console.error('[Canhoto] Falha ao desfazer:', e);
+            if (montadoRef.current) {
+                toast.error(e?.response?.data?.error || 'Não consegui desfazer. Confira a internet e tente de novo.');
+            }
+        }
+    });
 
     /**
      * Reimprimir a DANFE da nota de DEVOLUÇÃO para guardar junto na pasta do mês.
@@ -284,8 +481,7 @@ const CanhotosTab = ({ periodo, onTotal }) => {
      * pontos de uma vez. NÃO troque só este aqui — isso criaria a divergência que a
      * decisão acima quis evitar.
      */
-    const abrirDanfeDevolucao = async (item) => {
-        setAgindo(`${item.chave}:danfe`);
+    const abrirDanfeDevolucao = (item) => acaoDaLinha(item, 'danfe', async () => {
         try {
             const resp = await api.get(`/notas-fiscais/${item.notaAppId}/danfe`, { responseType: 'blob' });
             const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
@@ -295,13 +491,10 @@ const CanhotosTab = ({ periodo, onTotal }) => {
             let msg = 'Erro ao gerar a DANFE da devolução.';
             try { msg = JSON.parse(await e.response.data.text()).error || msg; } catch (_) { /* mantém genérica */ }
             if (montadoRef.current) toast.error(msg);
-        } finally {
-            if (montadoRef.current) setAgindo(null);
         }
-    };
+    });
 
-    const arquivar = async (item) => {
-        setAgindo(`${item.chave}:arquivar`);
+    const arquivar = (item) => acaoDaLinha(item, 'arquivar', async () => {
         try {
             const r = await canhotoService.arquivar([item.chave]);
             if (!montadoRef.current) return;
@@ -314,10 +507,8 @@ const CanhotosTab = ({ periodo, onTotal }) => {
             agendarRecarga();
         } catch (e) {
             if (montadoRef.current) toast.error(e?.response?.data?.error || 'Falha ao arquivar.');
-        } finally {
-            if (montadoRef.current) setAgindo(null);
         }
-    };
+    });
 
     const c = dados?.contadores || {};
     const total = Number(c.total || 0);
@@ -413,6 +604,7 @@ const CanhotosTab = ({ periodo, onTotal }) => {
                         contexto="MUTIRAO"
                         periodo={periodo}
                         onResultado={aoBipar}
+                        onDesfeito={aoDesfazerNoBipe}
                         placeholder="Pegue o maço da pasta e vá bipando…"
                     />
 
@@ -543,6 +735,11 @@ const CanhotosTab = ({ periodo, onTotal }) => {
                         <div className="md:hidden space-y-3 p-3">
                             {itensVisiveis.map(i => {
                                 const concluido = SITUACOES[i.status]?.concluido;
+                                // Linha congelada (ver `acaoDaLinha`) desenha os botões pela FOTO do
+                                // clique. O resto do card — selo, "desfeito por…" — atualiza na hora:
+                                // congelar é sobre a posição dos botões, não sobre esconder o resultado.
+                                const travada = !!congelados[i.chave];
+                                const bt = congelados[i.chave] || botoesDaLinha(i);
                                 return (
                                     <div key={i.chave} className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
                                         {/* No celular o selo da situação fica em LINHA PRÓPRIA. Lado a lado
@@ -569,39 +766,72 @@ const CanhotosTab = ({ periodo, onTotal }) => {
                                         {i.recebidoPorNome && (
                                             <div className="text-xs text-gray-500 mt-1">recebido por {i.recebidoPorNome}</div>
                                         )}
+                                        {/* Marca do Desfazer: sem ela, uma nota que voltou para "Estado
+                                            desconhecido" fica igual às que nunca foram bipadas, e quem
+                                            chega depois não entende por que ela "sumiu" do arquivo. */}
+                                        {i.desfeitoEm && (
+                                            <div className="text-xs text-gray-500 mt-1">
+                                                desfeito{i.desfeitoPorNome ? ` por ${i.desfeitoPorNome}` : ''} · {fmtDataHora(i.desfeitoEm)}
+                                            </div>
+                                        )}
                                         <div className="text-xs text-gray-500 mt-1">{i.pastaFisica || '—'}</div>
                                         <div className="flex flex-wrap gap-2 mt-3">
-                                            {podeReimprimirDanfe(i) && (
+                                            {bt.danfe && (
                                                 <button
                                                     type="button"
                                                     onClick={() => abrirDanfeDevolucao(i)}
-                                                    disabled={agindo === `${i.chave}:danfe`}
+                                                    disabled={travada || agindo === `${i.chave}:danfe`}
                                                     className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-semibold disabled:opacity-50"
                                                 >
                                                     {agindo === `${i.chave}:danfe` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Printer className="h-3.5 w-3.5" />}
                                                     Reimprimir DANFE
                                                 </button>
                                             )}
-                                            {i.status === 'RECEBIDO' && (
+                                            {bt.arquivar && (
                                                 <button
                                                     type="button"
                                                     onClick={() => arquivar(i)}
-                                                    disabled={agindo === `${i.chave}:arquivar`}
+                                                    disabled={travada || agindo === `${i.chave}:arquivar`}
                                                     className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold disabled:opacity-50"
                                                 >
                                                     {agindo === `${i.chave}:arquivar` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
                                                     Arquivar
                                                 </button>
                                             )}
-                                            {i.status !== 'SEM_ASSINATURA' && (
+                                            {bt.semAssinatura && (
                                                 <button
                                                     type="button"
                                                     onClick={() => marcarSemAssinatura(i)}
-                                                    disabled={agindo === `${i.chave}:sem`}
+                                                    disabled={travada || agindo === `${i.chave}:sem`}
                                                     className="flex items-center gap-1.5 px-3 py-2 min-h-[44px] bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full text-xs font-semibold disabled:opacity-50"
                                                 >
                                                     {agindo === `${i.chave}:sem` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PenLine className="h-3.5 w-3.5" />}
                                                     Veio sem assinatura
+                                                </button>
+                                            )}
+                                            {/* `podeDesfazer` vem do backend, da MESMA função que a rota
+                                                usa para aplicar — a tela nunca oferece um Desfazer que o
+                                                servidor vai recusar. Botão sem borda e sem cor de ação:
+                                                ele é a correção de um erro, não uma ação do dia a dia,
+                                                e não pode competir com "Arquivar" no meio do maço.
+                                                O destino vai no texto (e não num `title`, que no celular
+                                                ninguém vê); `whitespace-normal` deixa quebrar em duas
+                                                linhas em vez de empurrar o card para fora da tela. */}
+                                            {bt.desfazer && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => desfazer(i)}
+                                                    disabled={travada || agindo === `${i.chave}:desfazer`}
+                                                    title={rotuloDesfazer(bt)}
+                                                    className="flex items-center gap-1.5 max-w-full px-3 py-2 min-h-[44px] text-left whitespace-normal text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full text-xs font-semibold disabled:opacity-50"
+                                                >
+                                                    {agindo === `${i.chave}:desfazer` ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : <Undo2 className="h-3.5 w-3.5 shrink-0" />}
+                                                    <span>
+                                                        Desfazer
+                                                        {bt.desfazerParaRotulo && (
+                                                            <span className="font-normal text-gray-500"> · volta para {bt.desfazerParaRotulo}</span>
+                                                        )}
+                                                    </span>
                                                 </button>
                                             )}
                                         </div>
@@ -627,6 +857,11 @@ const CanhotosTab = ({ periodo, onTotal }) => {
                                 <tbody className="bg-white divide-y divide-gray-200 text-sm">
                                     {itensVisiveis.map(i => {
                                         const concluido = SITUACOES[i.status]?.concluido;
+                                        // É AQUI que o congelamento mais importa: no desktop os botões
+                                        // são alinhados à direita, então qualquer um que suma faz o
+                                        // vizinho deslizar para debaixo do cursor (ver `acaoDaLinha`).
+                                        const travada = !!congelados[i.chave];
+                                        const bt = congelados[i.chave] || botoesDaLinha(i);
                                         return (
                                             <tr key={i.chave} className="hover:bg-gray-50">
                                                 <td className={`px-5 py-3 font-semibold ${concluido ? 'line-through text-gray-500' : 'text-gray-900'}`}>
@@ -643,6 +878,13 @@ const CanhotosTab = ({ periodo, onTotal }) => {
                                                     {i.recebidoPorNome && (
                                                         <div className="text-xs text-gray-500">recebido por {i.recebidoPorNome}</div>
                                                     )}
+                                                    {/* Ver comentário do card mobile: a nota que voltou
+                                                        precisa dizer que voltou, e por quem. */}
+                                                    {i.desfeitoEm && (
+                                                        <div className="text-xs text-gray-500">
+                                                            desfeito{i.desfeitoPorNome ? ` por ${i.desfeitoPorNome}` : ''} · {fmtDataHora(i.desfeitoEm)}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="px-5 py-3 text-gray-600 whitespace-nowrap">{fmtData(i.emitidaEm)}</td>
                                                 <td className="px-5 py-3 text-right text-gray-900 tabular-nums whitespace-nowrap">
@@ -653,12 +895,18 @@ const CanhotosTab = ({ periodo, onTotal }) => {
                                                     <div className="max-w-[20ch] truncate" title={i.pastaFisica || ''}>{i.pastaFisica || '—'}</div>
                                                 </td>
                                                 <td className="px-5 py-3">
-                                                    <div className="flex items-center justify-end gap-1.5">
-                                                        {podeReimprimirDanfe(i) && (
+                                                    {/* `flex-wrap`: com o Desfazer (rótulo longo, porque diz o
+                                                        destino) os três botões numa linha só empurravam a tabela
+                                                        para 1407px numa tela de 1440 — nascia uma barra de rolagem
+                                                        lateral DENTRO da tabela e o botão novo ficava cortado na
+                                                        borda. Quebrando em duas linhas a tabela volta a caber
+                                                        inteira e nada fica escondido. */}
+                                                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                                                        {bt.danfe && (
                                                             <button
                                                                 type="button"
                                                                 onClick={() => abrirDanfeDevolucao(i)}
-                                                                disabled={agindo === `${i.chave}:danfe`}
+                                                                disabled={travada || agindo === `${i.chave}:danfe`}
                                                                 title="Reimprimir a DANFE desta devolução para guardar junto na pasta do mês"
                                                                 className="flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full text-xs font-semibold disabled:opacity-50"
                                                             >
@@ -666,11 +914,11 @@ const CanhotosTab = ({ periodo, onTotal }) => {
                                                                 DANFE
                                                             </button>
                                                         )}
-                                                        {i.status === 'RECEBIDO' && (
+                                                        {bt.arquivar && (
                                                             <button
                                                                 type="button"
                                                                 onClick={() => arquivar(i)}
-                                                                disabled={agindo === `${i.chave}:arquivar`}
+                                                                disabled={travada || agindo === `${i.chave}:arquivar`}
                                                                 title="Guardar na pasta do mês"
                                                                 className="flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold disabled:opacity-50"
                                                             >
@@ -678,16 +926,48 @@ const CanhotosTab = ({ periodo, onTotal }) => {
                                                                 Arquivar
                                                             </button>
                                                         )}
-                                                        {i.status !== 'SEM_ASSINATURA' && (
+                                                        {bt.semAssinatura && (
                                                             <button
                                                                 type="button"
                                                                 onClick={() => marcarSemAssinatura(i)}
-                                                                disabled={agindo === `${i.chave}:sem`}
+                                                                disabled={travada || agindo === `${i.chave}:sem`}
                                                                 title="O papel voltou, mas o canhoto está em branco"
                                                                 className="flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full text-xs font-semibold disabled:opacity-50"
                                                             >
                                                                 {agindo === `${i.chave}:sem` ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <PenLine className="h-3.5 w-3.5" />}
                                                                 Sem assinatura
+                                                            </button>
+                                                        )}
+                                                        {/* Discreto de propósito (sem borda, sem preenchimento):
+                                                            é conserto, não ação do dia a dia — não pode
+                                                            competir com "Arquivar" no meio do maço.
+
+                                                            O destino vai em DUAS LINHAS, não em uma. Numa linha
+                                                            só ("Desfazer (volta para Estado desconhecido)") o
+                                                            botão ficava com ~270px e era ele que passava a
+                                                            mandar na largura da tabela: num laptop de 1280 o
+                                                            botão nascia fora da área visível, e a pessoa
+                                                            precisava rolar a tabela de lado justamente para
+                                                            achar o Desfazer. Empilhado ele cabe em ~165px.
+                                                            A tabela ainda ficou 47px mais larga do que era
+                                                            antes do Desfazer existir (medido pelo QA: 1118 →
+                                                            1165) — não é empate, mas cabe folgado em 1440 e o
+                                                            destino continua legível em qualquer monitor. */}
+                                                        {bt.desfazer && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => desfazer(i)}
+                                                                disabled={travada || agindo === `${i.chave}:desfazer`}
+                                                                title={rotuloDesfazer(bt)}
+                                                                className="flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full text-xs font-semibold text-left leading-tight whitespace-nowrap disabled:opacity-50"
+                                                            >
+                                                                {agindo === `${i.chave}:desfazer` ? <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" /> : <Undo2 className="h-3.5 w-3.5 shrink-0" />}
+                                                                <span>
+                                                                    Desfazer
+                                                                    {bt.desfazerParaRotulo && (
+                                                                        <span className="block font-normal text-gray-500">volta para {bt.desfazerParaRotulo}</span>
+                                                                    )}
+                                                                </span>
                                                             </button>
                                                         )}
                                                     </div>

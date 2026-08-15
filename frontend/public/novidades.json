@@ -1,8 +1,14 @@
 [
   {
+    "slug": "canhoto-desfazer",
+    "titulo": "Desfazer nos Canhotos",
+    "resumo": "Bipou a folha errada no mutirão dos canhotos, bipou uma cujo canhoto está em branco, ou clicou em 'Veio sem assinatura' na linha de baixo? Agora tem volta pela tela: o botão Desfazer devolve a nota ao estado em que ela estava antes daquele clique. Ele aparece em dois lugares — ao lado da leitura que acabou de sair (onde o erro é percebido, sem tirar o ritmo do maço) e na linha da nota, só nas que têm o que desfazer. O rótulo escreve o destino ('volta para Arquivado', 'volta para Estado desconhecido'), porque não existe destino fixo: a nota volta para onde ela estava. Volta um passo só, é o mesmo pessoal que já bipa e arquiva, e fica registrado quem desfez e quando.",
+    "data": "2026-08-15"
+  },
+  {
     "slug": "canhoto-nf",
     "titulo": "Canhotos das notas",
-    "resumo": "Nova aba Canhotos em Notas Fiscais: você bipa o código de barras da nota (leitor de mesa no computador ou câmera do celular) e o sistema risca da lista — o que sobrar sem riscar é o que está faltando no arquivo. Pegue a pasta do mês, clique em 'Colocar o mês em dia' e passe o leitor no maço inteiro; bipar a mesma nota duas vezes não estraga nada. Mostra também quais notas estão na rua há mais de 3 dias, marca as que voltaram sem assinatura e diz em que pasta cada nota deve ser guardada (o mês sai de dentro do próprio código de barras). Por enquanto é só controle: o caixa continua fechando normalmente.",
+    "resumo": "Nova aba Canhotos em Notas Fiscais: você bipa o código de barras da nota (leitor de mesa no computador ou câmera do celular) e o sistema risca da lista — o que sobrar sem riscar é o que está faltando no arquivo. Pegue a pasta do mês, clique em 'Colocar o mês em dia' e passe o leitor no maço inteiro; bipar a mesma nota duas vezes não estraga nada. Bipou a folha errada, ou clicou em 'Veio sem assinatura' na linha de baixo? O botão Desfazer devolve a nota ao estado anterior na hora — ele aparece ao lado da leitura que acabou de sair e também na linha da nota, dizendo para onde ela volta. Mostra também quais notas estão na rua há mais de 3 dias, marca as que voltaram sem assinatura e diz em que pasta cada nota deve ser guardada (o mês sai de dentro do próprio código de barras). Por enquanto é só controle: o caixa continua fechando normalmente.",
     "data": "2026-08-15"
   },
   {

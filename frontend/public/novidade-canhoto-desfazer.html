@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Novidade: Desfazer nos Canhotos — Hardt App</title>
+
+<!-- Preview do link no WhatsApp (sem og:image de propósito — cartão compacto) -->
+<meta property="og:title" content="↩ Novidade no Hardt App: Desfazer nos Canhotos">
+<meta property="og:description" content="Bipou a folha errada no mutirão dos canhotos? Agora tem volta: um clique devolve a nota ao estado em que ela estava antes.">
+<meta property="og:type" content="article">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --house:#1E3932; --primary:#00754A; --primary-dark:#006241; --mint:#d4e9e2;
+    --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5b6763;
+    --line:#e3e7e5; --line-soft:#eef1f0;
+    --amber:#8a6100; --amber-bg:#fdf3d7; --red:#a3231b; --red-bg:#fdeceb;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--cream); color:var(--ink);
+    font-family:Manrope,-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;
+    letter-spacing:-.01em; font-size:16px; line-height:1.5;
+  }
+  .wrap{max-width:620px; margin:0 auto; padding:0 16px 60px}
+
+  .hero{background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:38px 16px 88px}
+  .hero-in{max-width:620px; margin:0 auto}
+  .eyebrow{font-size:11px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--gold)}
+  .hero h1{margin:10px 0 10px; font-size:28px; line-height:1.15; font-weight:800; text-wrap:balance}
+  .hero p{margin:0; color:#cfe0d8; font-size:15px}
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px; margin-top:-58px}
+  .card + .card{margin-top:14px}
+  .card h2{margin:0 0 10px; font-size:18px; font-weight:800}
+  .card p{margin:0 0 11px; font-size:15px; color:#33403b}
+  .card p:last-child{margin-bottom:0}
+  .destaque{background:var(--mint); border:1px solid #b5d9cc; color:#0d4032; border-radius:12px;
+            padding:13px 15px; font-size:14px; margin-top:13px}
+  /* Só o PRIMEIRO <b> é o título do bloco. Sem o `:first-child`, um <b> usado no meio da
+     frase virava um parágrafo à parte — e a pontuação seguinte ficava órfã na linha de baixo. */
+  .destaque > b:first-child{display:block; margin-bottom:2px}
+  .aviso{background:var(--amber-bg); border:1px solid #efdca8; color:#6b4c00; border-radius:12px;
+         padding:13px 15px; font-size:14px; margin-top:13px}
+  .aviso > b:first-child{display:block; margin-bottom:2px}
+
+  /* ACCORDIONS (já abertos — o clique só serve para recolher) */
+  .acc{border:1px solid var(--line); border-radius:12px; margin-top:10px; overflow:hidden; background:#fff}
+  .acc-head{width:100%; display:flex; align-items:center; gap:12px; padding:13px 15px; background:none;
+            border:0; cursor:pointer; text-align:left; font-family:inherit; color:inherit}
+  .acc-ico{flex:0 0 32px; height:32px; border-radius:9px; background:var(--mint); display:flex;
+           align-items:center; justify-content:center; font-size:15px}
+  .acc-head strong{flex:1; font-size:15px; font-weight:750}
+  .acc-seta{color:#9aa5a0; transition:transform .2s; font-size:12px}
+  .acc.aberto .acc-seta{transform:rotate(180deg)}
+  .acc-corpo{display:none; padding:0 15px 15px 59px}
+  .acc.aberto .acc-corpo{display:block}
+  .acc-corpo p{font-size:14px; color:var(--ink-soft); margin:0 0 9px}
+  .acc-corpo p:last-child{margin-bottom:0}
+  .acc-corpo b{color:var(--ink)}
+
+  /* MOCKUP DA TELA */
+  .tela-nome{font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+             color:var(--ink-soft); margin:0 0 9px}
+  .app{background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:11px; overflow:hidden}
+  .appcard{background:#fff; border:1px solid var(--line); border-radius:13px; overflow:hidden}
+  .apphead{display:flex; align-items:center; gap:8px; padding:10px 13px; border-bottom:1px solid var(--line-soft)}
+  .apphead .lb{font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft)}
+  .appbody{padding:11px 13px 13px}
+  .badge{display:inline-flex; align-items:center; gap:4px; padding:2px 9px; border-radius:999px;
+         font-size:10.5px; font-weight:800; white-space:nowrap}
+  .b-green{background:var(--mint); color:#0d4032}
+  .linha{display:flex; align-items:center; gap:9px; padding:9px 2px; font-size:12.5px}
+  .check{flex:0 0 19px; height:19px; border-radius:50%; border:2px solid #cfd6d2; background:var(--primary);
+         border-color:var(--primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px}
+  .check::after{content:"✓"; font-weight:900}
+  .linha .info{min-width:0; flex:1}
+  .linha .nome{font-weight:700; text-decoration:line-through; color:#7d8c86}
+  .linha .meta{font-size:11.5px; color:var(--ink-soft)}
+
+  .acoes{display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end; margin-top:9px}
+  .btn{display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border-radius:999px;
+       font-size:11.5px; font-weight:750; border:1px solid var(--line); background:#fff; color:#3f4a46}
+  /* `inline-block` (e não flex): o "volta para…" cai na LINHA DE BAIXO, igual ao botão de verdade */
+  .btn.fantasma{display:inline-block; border-color:transparent; background:transparent; color:#5b6763;
+                text-align:left; line-height:1.25; padding:5px 10px}
+  .btn.fantasma small{display:block; font-weight:600; color:#8a938f; font-size:10.5px}
+  .leitura{display:flex; align-items:center; gap:9px; background:var(--mint); border:1px solid #b5d9cc;
+           border-radius:10px; padding:9px 11px; font-size:12.5px; color:#0d4032}
+  .leitura .txt{min-width:0; flex:1}
+  .leitura .txt small{display:block; font-size:11px; opacity:.85}
+  .leitura .desf{font-weight:800; text-decoration:underline; font-size:11.5px; white-space:nowrap}
+
+  /* LEGENDAS COM PINS — o MESMO número aparece no mock e na legenda (padrão do projeto,
+     ver novidade-cadastro-clientes.html): sem o pin dentro da tela a legenda descreve algo
+     que o leitor não sabe onde fica. `inline-flex` para o pin servir nos dois lugares —
+     como item do flex da legenda e no meio do texto do mock. */
+  .legendas{margin-top:11px; display:flex; flex-direction:column; gap:8px}
+  .legenda{display:flex; gap:9px; font-size:13.5px; color:#33403b}
+  .pin{flex:0 0 20px; width:20px; height:20px; border-radius:50%; background:var(--gold); color:#3d2c05;
+       font-size:11px; font-weight:900; display:inline-flex; align-items:center; justify-content:center; margin-top:1px}
+  /* pin colado no elemento, dentro do mock */
+  .pin.na-tela{margin:0 0 0 6px; vertical-align:2px}
+
+  .rodape{text-align:center; color:#8a938f; font-size:12px; margin-top:30px}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-in">
+    <div class="eyebrow">Novidade no Hardt App</div>
+    <h1>Bipou errado? Agora tem Desfazer</h1>
+    <p>Um acréscimo na aba <b>Canhotos</b>: um clique devolve a nota ao estado em que ela estava
+       antes — sem precisar chamar ninguém.</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="card">
+    <h2>Para que serve</h2>
+    <p>Num maço de 200 folhas, uma hora escapa uma: você bipa a <b>folha errada</b>, bipa uma cujo
+       <b>canhoto está em branco</b>, ou clica em <b>"Veio sem assinatura"</b> na linha de baixo.</p>
+    <p>Até agora não tinha volta pela tela. Agora tem: o botão <b>Desfazer</b> desmancha esse passo
+       e devolve a nota para onde ela estava.</p>
+  </div>
+
+  <div class="card">
+    <div class="tela-nome" style="margin-top:0">Onde fica — em dois lugares</div>
+
+    <div class="app">
+      <div class="appcard">
+        <div class="apphead"><span class="lb">Assim que você bipa</span></div>
+        <div class="appbody">
+          <div class="leitura">
+            <span>✓</span>
+            <div class="txt"><b>NF 85.142 · Mercado Silva</b>
+              <small>Arquivada em Notas Emitidas Agosto 2026.</small></div>
+            <span class="desf">↩ Desfazer<span class="pin na-tela">1</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="appcard" style="margin-top:11px">
+        <div class="apphead"><span class="lb">…e na linha da nota, quando quiser</span></div>
+        <div class="appbody">
+          <div class="linha"><span class="check"></span>
+            <div class="info"><div class="nome">NF 85.142 · Mercado Silva &nbsp;<span class="badge b-green">🗄 Arquivado</span></div>
+            <div class="meta">recebido por Josiane · Notas Emitidas Agosto 2026</div></div></div>
+          <div class="acoes">
+            <span class="btn">✎ Sem assinatura</span>
+            <span class="btn fantasma">↩ Desfazer<span class="pin na-tela">2</span><small>volta para Estado desconhecido<span class="pin na-tela">3</span></small></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legendas">
+      <div class="legenda"><span class="pin">1</span><div><b>Logo depois do bipe</b>, em "Últimas leituras" — que é onde o erro é percebido. Não precisa procurar a nota no meio da lista, e o cursor volta sozinho para o campo: o maço continua no ritmo.</div></div>
+      <div class="legenda"><span class="pin">2</span><div><b>Na linha da nota</b> (e no card, no celular), se você só notou depois. Ele só aparece nas notas que <b>têm o que desfazer</b>; nas outras nem existe.</div></div>
+      <div class="legenda"><span class="pin">3</span><div><b>O destino vem escrito no botão</b> — "volta para Estado desconhecido", "volta para Arquivado". Leia ali para onde aquela nota vai voltar antes de clicar.</div></div>
+    </div>
+
+    <p style="margin-top:13px"><b>Ele não pergunta "tem certeza?"</b> — quem clica ali já percebeu que
+       errou, e parar para responder uma pergunta só atrapalharia. Por isso ele é discreto: cinza, sem
+       borda e sem cor de botão, para não ser clicado sem querer no meio do maço.</p>
+  </div>
+
+  <div class="card">
+    <h2>Três coisas para não errar</h2>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">📍</span><strong>Ele volta para onde a nota estava — não para um lugar fixo</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <p>Desfazendo um <b>bipe</b>: a nota sai de "🗄 Arquivado" e volta para onde estava — em geral
+        "? Estado desconhecido" ou "⏳ Na rua" —, e o registro de quem recebeu some junto.</p>
+        <p>Desfazendo o <b>"Veio sem assinatura"</b>: depende de onde ela estava. Se ela <b>ainda não
+        tinha sido bipada</b> — o caso mais comum, o de clicar na linha errada —, volta a ficar pendente,
+        como estava. Se ela <b>já estava arquivada</b>, volta para "🗄 Arquivado": continua conferida, só
+        perde o selo de canhoto em branco — <b>e ali termina</b> (ver <i>"Tem um ponto sem retorno"</i>,
+        logo abaixo).</p>
+        <p>É por isso que o botão escreve o destino: <b>o rótulo diz o que vai acontecer com aquela nota.</b></p>
+      </div>
+    </div>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">↩</span><strong>Volta um passo só, e sempre o último</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <p>Não é um histórico. Depois de desfazer, clicar de novo <b>não</b> faz a nota andar mais uma
+        casa para trás: aparece o aviso <i>"Não há o que desfazer nesta nota"</i>.</p>
+        <p>Para corrigir outra vez, o caminho é <b>bipar a folha de novo</b> — e isso funciona enquanto o
+        bipe ainda muda alguma coisa, ou seja, enquanto a nota estiver <b>pendente</b>. Bipando, ela volta
+        para o arquivo e o Desfazer fica disponível outra vez, para esse passo novo. <b>Com a nota já no
+        arquivo, não</b>: ver <i>"Tem um ponto sem retorno"</i>, logo abaixo.</p>
+        <p><b>Quem pode:</b> as mesmas pessoas que já bipam e arquivam. Não tem permissão nova. Quem
+        desfez e quando fica registrado na própria nota.</p>
+      </div>
+    </div>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">🚧</span><strong>Tem um ponto sem retorno — e o app avisa na hora</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <p>Se você desfizer o <b>"Veio sem assinatura"</b> de uma nota que <b>já estava arquivada</b>, ela
+        volta para "🗄 Arquivado" e o Desfazer dela <b>já foi gasto</b>. Dali em diante, <b>bipar de novo
+        não muda nada</b> — bipar o que já está no arquivo nunca altera nada, e é justamente isso que
+        deixa o mutirão seguro (é o mesmo motivo de passar a mesma folha duas vezes não estragar nada).</p>
+        <p>Ou seja: <b>não dá para tirar essa nota do arquivo pela tela.</b> Se você bipar a folha outra
+        vez para tentar, <b>o app avisa isso na hora</b>, num aviso amarelo — em vez do "pode seguir para
+        a próxima folha" de sempre, que ali seria o oposto do que você quer.</p>
+        <p>Tirar uma nota do arquivo com motivo registrado é assunto da etapa do Caixa, que ainda não
+        está no ar. Até lá, se acontecer, avise quem cuida do arquivo.</p>
+      </div>
+    </div>
+
+    <div class="aviso">
+      <b>As notas do primeiro mutirão</b>
+      Elas foram bipadas antes de este botão existir, então não têm o passo anterior guardado. Nelas o
+      Desfazer devolve a nota ao <b>estado de origem</b> — e o aviso na tela explica isso com todas as
+      letras quando acontece.
+    </div>
+
+    <div class="destaque">
+      <b>Onde encontrar</b>
+      Notas Fiscais → aba <b>Canhotos</b>. O resto da aba continua igual ao anúncio dos Canhotos.
+    </div>
+  </div>
+
+  <div class="rodape">Hardt App · agosto de 2026</div>
+</main>
+
+<script>
+  // Accordions nascem ABERTOS: o clique só recolhe (a equipe não clicava para expandir).
+  function alternar(botao){
+    var acc = botao.parentElement;
+    var aberto = acc.classList.toggle('aberto');
+    botao.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
