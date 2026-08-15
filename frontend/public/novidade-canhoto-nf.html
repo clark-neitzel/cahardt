@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Canhotos das notas — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito — cartão compacto) -->
+<meta property="og:title" content="🧾 Novidade no Hardt App: Canhotos das notas">
+<meta property="og:description" content="Agora dá para bipar o código de barras da nota e saber quais canhotos assinados já estão no arquivo — e quais estão faltando.">
+<meta property="og:type" content="website">
+<style>
+  :root{
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --cream:#f2f0eb; --gold:#cba258;
+    --ink:#12201c; --ink-soft:#5f6b66;
+    --line:#e2e0da; --line-soft:#eceae4;
+    --red:#b3261e; --red-bg:#fdecea; --amber:#8a6100; --amber-bg:#fdf3d9;
+    --blue:#1b5e9c; --blue-bg:#e6f0fa;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--cream); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    line-height:1.55; letter-spacing:-0.01em; -webkit-font-smoothing:antialiased;
+    font-variant-numeric:tabular-nums;
+  }
+  .wrap{max-width:620px; margin:0 auto; padding:0 16px 60px}
+
+  /* HERO */
+  .hero{background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:38px 16px 88px}
+  .hero-in{max-width:620px; margin:0 auto}
+  .eyebrow{font-size:11px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--gold)}
+  .hero h1{margin:10px 0 10px; font-size:28px; line-height:1.15; font-weight:800; text-wrap:balance}
+  .hero p{margin:0; color:#cfe0d8; font-size:15px}
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px; margin-top:-58px}
+  .card + .card{margin-top:14px}
+  .card h2{margin:0 0 10px; font-size:18px; font-weight:800}
+  .card h3{margin:18px 0 8px; font-size:15px; font-weight:750}
+  .card p{margin:0 0 11px; font-size:15px; color:#33403b}
+  .card p:last-child{margin-bottom:0}
+  .destaque{background:var(--mint); border:1px solid #b5d9cc; color:#0d4032; border-radius:12px;
+            padding:13px 15px; font-size:14.5px; margin-top:12px}
+  .destaque b{display:block; margin-bottom:2px}
+  .aviso{background:var(--amber-bg); border:1px solid #efdca8; color:#6b4c00; border-radius:12px;
+         padding:13px 15px; font-size:14.5px; margin-top:12px}
+  .aviso b{display:block; margin-bottom:2px}
+
+  /* PASSOS */
+  .passos{display:flex; flex-direction:column; gap:0; margin-top:6px}
+  .passo{display:flex; gap:13px; padding:12px 0; border-bottom:1px dashed var(--line)}
+  .passo:last-child{border-bottom:0; padding-bottom:0}
+  .passo .n{flex:0 0 28px; height:28px; border-radius:50%; background:var(--house); color:#fff;
+            display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800}
+  .passo .t{font-weight:750; font-size:15px; margin-bottom:2px}
+  .passo .d{font-size:14px; color:var(--ink-soft)}
+
+  /* ACCORDION — todos já abertos; o clique só serve para recolher */
+  .acc{border:1px solid var(--line); border-radius:12px; margin-top:10px; overflow:hidden; background:#fff}
+  .acc-head{width:100%; display:flex; align-items:center; gap:12px; padding:13px 15px; background:none;
+            border:0; font:inherit; text-align:left; cursor:pointer}
+  .acc-ico{flex:0 0 32px; height:32px; border-radius:9px; background:var(--mint); display:flex;
+           align-items:center; justify-content:center; font-size:15px}
+  .acc-head strong{flex:1; font-size:15px; font-weight:750}
+  .acc-seta{color:#9aa5a0; transition:transform .2s; font-size:12px}
+  .acc.aberto .acc-seta{transform:rotate(180deg)}
+  .acc-corpo{display:none; padding:0 15px 15px 59px}
+  .acc.aberto .acc-corpo{display:block}
+  .acc-corpo p{font-size:14px; color:var(--ink-soft); margin:0 0 9px}
+  .acc-corpo p:last-child{margin-bottom:0}
+  .acc-corpo b{color:var(--ink)}
+  .acc-corpo ul{margin:0; padding-left:17px}
+  .acc-corpo li{font-size:14px; color:var(--ink-soft); margin-bottom:6px}
+  @media (max-width:420px){ .acc-corpo{padding-left:15px} }
+
+  /* MOCKUP */
+  .tela-nome{font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+             color:var(--gold); margin:20px 0 8px}
+  .app{background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:11px; overflow:hidden}
+  .app.mobile{max-width:300px; margin:0 auto; border-radius:24px; padding:9px; background:#0e1a17; border-color:#0e1a17}
+  .app.mobile .tela-in{background:var(--cream); border-radius:17px; padding:11px}
+  .abas{display:flex; gap:6px; flex-wrap:wrap; margin-bottom:9px}
+  .aba{padding:5px 12px; border-radius:999px; font-size:11.5px; font-weight:750; background:#fff;
+       border:1px solid var(--line); color:var(--ink-soft); white-space:nowrap}
+  .aba.on{background:var(--primary); border-color:var(--primary); color:#fff}
+  .appcard{background:#fff; border:1px solid var(--line); border-radius:13px; overflow:hidden}
+  .apphead{display:flex; align-items:center; gap:8px; padding:10px 13px; border-bottom:1px solid var(--line-soft)}
+  .apphead .lb{font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft)}
+  .apphead .rt{margin-left:auto; font-size:11.5px; font-weight:800; color:var(--primary-dark)}
+  .appbody{padding:13px}
+  .prog{height:7px; border-radius:999px; background:var(--line-soft); overflow:hidden; margin-bottom:12px}
+  .prog span{display:block; height:100%; width:43%; background:var(--primary); border-radius:999px}
+  .campo{display:flex; align-items:center; gap:9px; border:2px dashed var(--primary); background:#f4faf7;
+         border-radius:11px; padding:11px 13px; font-size:13px; color:#7d8c86}
+  .chips{display:flex; gap:6px; flex-wrap:wrap; margin-top:11px}
+  .badge{display:inline-flex; align-items:center; gap:4px; padding:2px 9px; border-radius:999px;
+         font-size:10.5px; font-weight:800; white-space:nowrap}
+  .b-green{background:var(--mint); color:#0d4032}
+  .b-gray{background:#eceff0; color:#4a5451}
+  .b-amber{background:var(--amber-bg); color:var(--amber)}
+  .b-red{background:var(--red-bg); color:var(--red)}
+  .b-blue{background:var(--blue-bg); color:var(--blue)}
+  .b-gold{background:#f7edd9; color:#7a5a12}
+  .linha{display:flex; align-items:center; gap:9px; padding:9px 2px; border-bottom:1px solid var(--line-soft); font-size:12.5px}
+  .linha:last-child{border-bottom:0}
+  .check{flex:0 0 19px; height:19px; border-radius:50%; border:2px solid #cfd6d2; background:#fff;
+         display:flex; align-items:center; justify-content:center; font-size:11px; color:#fff}
+  .linha.ok .check{background:var(--primary); border-color:var(--primary)}
+  .linha.ok .check::after{content:"✓"; font-weight:900}
+  .linha .info{min-width:0; flex:1}
+  .linha .nome{font-weight:700}
+  .linha.ok .nome{color:var(--primary-dark); text-decoration:line-through; color:#7d8c86}
+  .linha .meta{font-size:11.5px; color:var(--ink-soft)}
+  .alerta-mini{background:var(--red-bg); border:1px solid #f3cdc9; color:#7a1c16; border-radius:10px;
+               padding:10px 12px; font-size:12px; margin-top:11px}
+  .cam{background:#0d1512; border-radius:12px; height:150px; display:flex; align-items:center; justify-content:center; position:relative}
+  .cam .mira{width:76%; height:66px; border:2px solid rgba(255,255,255,.85); border-radius:9px}
+  .cam .dica{position:absolute; bottom:8px; left:0; right:0; text-align:center; color:#cfe0d8; font-size:11px}
+
+  /* LEGENDAS COM PINS */
+  .legendas{margin-top:11px; display:flex; flex-direction:column; gap:8px}
+  .legenda{display:flex; gap:9px; font-size:13.5px; color:#33403b}
+  .pin{flex:0 0 20px; height:20px; border-radius:50%; background:var(--gold); color:#3d2c05;
+       font-size:11px; font-weight:900; display:flex; align-items:center; justify-content:center; margin-top:1px}
+
+  .rodape{text-align:center; color:#8a938f; font-size:12px; margin-top:30px}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-in">
+    <div class="eyebrow">Novidade no Hardt App</div>
+    <h1>Canhotos das notas: agora o sistema sabe quais voltaram</h1>
+    <p>Uma aba nova em Notas Fiscais. Você bipa o código de barras da nota e o sistema risca da lista —
+       o que sobrar sem riscar é o que está faltando no arquivo.</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="card">
+    <h2>O que mudou</h2>
+    <p>O motorista sai com as notas, o cliente assina o canhoto e o papel volta para o escritório.
+       Até hoje não existia jeito de saber se voltou <b>tudo</b> — só conferindo folha por folha, na mão.</p>
+    <p>Agora tem: em <b>Notas Fiscais</b> apareceu a aba <b>Canhotos</b>. Você pega a pasta do mês,
+       passa o leitor de código de barras no maço inteiro, e o sistema mostra na hora quais notas
+       <b>não foram bipadas</b> — essas são as que faltam.</p>
+    <div class="destaque">
+      <b>Por que isso importa de verdade</b>
+      Sem o canhoto assinado não dá para protestar um cliente que não pagou, nem provar que a mercadoria
+      foi entregue. O papel é a prova. Agora dá para saber quais provas estão em casa.
+    </div>
+  </div>
+
+  <!-- TELA 1 -->
+  <div class="card">
+    <div class="tela-nome" style="margin-top:0">A tela · Notas Fiscais → aba Canhotos</div>
+
+    <div class="app">
+      <div class="abas">
+        <span class="aba">A emitir (4)</span>
+        <span class="aba">Emitidas (214)</span>
+        <span class="aba on">Canhotos (214)</span>
+        <span class="aba">Todas</span>
+        <span class="aba">📅 Este mês · 01/08 – 31/08</span>
+      </div>
+
+      <div class="appcard">
+        <div class="apphead">
+          <span class="lb">Canhotos das notas</span>
+          <span class="rt">92 de 214 no arquivo</span>
+        </div>
+        <div class="appbody">
+          <div class="prog"><span></span></div>
+          <div class="campo"><span>📷</span> Passe o leitor na nota ou digite o nº da NF…</div>
+
+          <div class="chips">
+            <span class="badge b-green">🗄 No arquivo · 92</span>
+            <span class="badge b-amber">⏳ Na rua · 6</span>
+            <span class="badge b-red">✎ Sem assinatura · 3</span>
+            <span class="badge b-gray">? Desconhecido · 113</span>
+          </div>
+
+          <div style="margin-top:11px">
+            <div class="linha ok"><span class="check"></span>
+              <div class="info"><div class="nome">NF 85.142 · Mercado Silva</div>
+              <div class="meta">Arquivada em Notas Emitidas Agosto 2026</div></div></div>
+            <div class="linha"><span class="check"></span>
+              <div class="info"><div class="nome">NF 85.143 · Padaria Doce Pão</div>
+              <div class="meta">Estado desconhecido — bipe para confirmar</div></div></div>
+            <div class="linha"><span class="check"></span>
+              <div class="info"><div class="nome">NF 85.140 · Bar do Zé &nbsp;<span class="badge b-amber">⏳ Na rua</span> <span class="badge b-red">5d</span></div>
+              <div class="meta">Saiu com Marcos · ainda não voltou</div></div></div>
+          </div>
+
+          <div class="alerta-mini"><b>1 nota na rua há mais de 3 dias</b>
+            NF 85.140 · Bar do Zé · 5 dias · com Marcos</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legendas">
+      <div class="legenda"><span class="pin">1</span><div><b>Contador e barra</b> — quantas notas do mês já estão confirmadas no arquivo.</div></div>
+      <div class="legenda"><span class="pin">2</span><div><b>Campo de bipe</b> — fica sempre com o cursor dentro. O leitor de mesa funciona como teclado: bipou, entrou e já riscou. Dá para <b>digitar o número da nota</b> se o código estiver rasgado.</div></div>
+      <div class="legenda"><span class="pin">3</span><div><b>Os chips</b> — clicáveis: clicou em "? Desconhecido", a lista mostra só as que ainda faltam bipar.</div></div>
+      <div class="legenda"><span class="pin">4</span><div><b>A lista</b> — riscado é o que já está no arquivo. O que sobrar em pé é o que falta.</div></div>
+      <div class="legenda"><span class="pin">5</span><div><b>Aviso vermelho</b> — nota emitida há mais de 3 dias que ainda não apareceu no arquivo. Quando o sistema sabe quem levou, mostra o nome do motorista.</div></div>
+    </div>
+  </div>
+
+  <!-- PASSO A PASSO -->
+  <div class="card">
+    <h2>Para começar a usar</h2>
+    <div class="passos">
+      <div class="passo"><div class="n">1</div>
+        <div><div class="t">Abra Notas Fiscais → aba Canhotos</div>
+        <div class="d">Ela já abre no mês atual — é o normal. Para arrumar um mês passado, troque o período ali em cima.</div></div></div>
+      <div class="passo"><div class="n">2</div>
+        <div><div class="t">Clique em "Colocar o mês em dia"</div>
+        <div class="d">Isso traz todas as notas do mês para a lista. Elas entram como <b>"estado desconhecido"</b> — o sistema ainda não sabe onde o papel está. É esperado.</div></div></div>
+      <div class="passo"><div class="n">3</div>
+        <div><div class="t">Pegue a pasta do mês e bipe o maço</div>
+        <div class="d">Uma folha atrás da outra, sem parar. Cada bipe risca uma linha.</div></div></div>
+      <div class="passo"><div class="n">4</div>
+        <div><div class="t">O que sobrou é o que falta</div>
+        <div class="d">Clique no chip "? Desconhecido" e você tem a lista das notas que não estão na pasta.</div></div></div>
+    </div>
+    <div class="destaque">
+      <b>Bipar a mesma nota duas vezes NÃO estraga nada</b>
+      É a dúvida de todo mundo. O sistema avisa "essa já estava" em azul e segue. Pode passar o leitor
+      no maço inteiro sem medo, sem parar para conferir.
+    </div>
+  </div>
+
+  <!-- TELA 2 · CELULAR -->
+  <div class="card">
+    <div class="tela-nome" style="margin-top:0">Também dá pelo celular</div>
+    <div class="app mobile">
+      <div class="tela-in">
+        <div class="cam"><div class="mira"></div><div class="dica">Aponte para o código de barras</div></div>
+        <div class="appcard" style="margin-top:9px">
+          <div class="appbody" style="padding:11px">
+            <div style="display:flex; align-items:center; gap:8px">
+              <span class="badge b-green">✓ Lida</span>
+              <div><div style="font-weight:750; font-size:13px">NF 85.142</div>
+              <div style="font-size:11.5px; color:var(--ink-soft)">Mercado Silva</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legendas">
+      <div class="legenda"><span class="pin">1</span><div><b>Botão "Ler pelo celular"</b> — abre a câmera dentro do próprio app, sem instalar nada.</div></div>
+      <div class="legenda"><span class="pin">2</span><div><b>Serve para nota avulsa</b> ou para bipar longe do computador. Para um maço de 30, o leitor de mesa é bem mais rápido — o código da nota é comprido e fininho, a câmera pede luz boa e mão parada.</div></div>
+    </div>
+  </div>
+
+  <!-- DÚVIDAS -->
+  <div class="card">
+    <h2>Tirando as dúvidas</h2>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">🏷️</span><strong>O que cada estado quer dizer</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <ul>
+          <li><b>? Estado desconhecido</b> — o sistema ainda não sabe onde o papel está. Bipe para confirmar.</li>
+          <li><b>⏳ Na rua</b> — saiu com o motorista e ainda não voltou.</li>
+          <li><b>🗄 No arquivo</b> — bipada, está na pasta do mês. É o estado final.</li>
+          <li><b>✎ Sem assinatura</b> — o papel está aqui, mas o canhoto veio em branco. Não serve de prova.</li>
+          <li><b>✕ Sem canhoto</b> — vai existir quando a etapa do Caixa entrar no ar. Por enquanto não aparece.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">✎</span><strong>"Veio sem assinatura" — quando usar</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <p>Quando a folha está na pasta mas o cliente não assinou o canhoto. Clique em
+        <b>Veio sem assinatura</b> na linha da nota.</p>
+        <p>A nota conta como arquivada (o papel está aqui), <b>mas não serve de prova de entrega</b>.</p>
+        <p>Ela fica marcada com o selo <b>✎ Sem assinatura</b>: clicando no chip com esse nome você tem
+        a lista de quem precisa assinar na próxima visita.</p>
+      </div>
+    </div>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">📁</span><strong>A pasta se preenche sozinha</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <p>Ninguém digita nada. O sistema lê o mês <b>de dentro do próprio código de barras</b> e grava,
+        por exemplo, <b>"Notas Emitidas Agosto 2026"</b>.</p>
+        <p>Isso resolve dois casos chatos: nota emitida no fim de julho para entregar em agosto vai para a
+        pasta de <b>julho</b> (mês da emissão, que é o certo); e nota recusada e reemitida no mês seguinte
+        também vai para a pasta certa.</p>
+      </div>
+    </div>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">🖨️</span><strong>Reimprimir a DANFE de devolução</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <p>Nota de devolução ninguém assina — mas o papel também precisa estar na pasta. Se não estiver,
+        o botão <b>Reimprimir DANFE</b> na linha resolve.</p>
+        <p>Nas notas antigas, emitidas no Conta Azul, esse botão não aparece: a DANFE delas não é gerada
+        pelo app. Nesse caso use a aba <b>Emitidas</b>.</p>
+      </div>
+    </div>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">💬</span><strong>As mensagens que podem aparecer</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <ul>
+          <li><b>Verde</b> — "Arquivada em Notas Emitidas Agosto 2026". Deu certo, siga.</li>
+          <li><b>Azul: "já estava"</b> — a nota já tinha sido bipada. Não é erro, pode seguir.</li>
+          <li><b>"O dígito verificador não confere"</b> — o leitor leu torto. Passe de novo, mais devagar.</li>
+          <li><b>"A nota é de agosto/2026 — troque o período"</b> — a nota existe, só não é do mês que está aberto na tela.</li>
+          <li><b>"Não encontrada no sistema"</b> — aí sim a nota não existe. Confira o número.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">🚫</span><strong>O que não entra na lista</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <p>Pedido <b>especial</b>, <b>bonificação</b> e pedido <b>cancelado</b> ficam <b>fora deste
+        controle</b> — a lista é das notas de venda.</p>
+        <p>Isso quer dizer que, se aparecer uma folha desse tipo no maço e você bipar, o sistema vai
+        responder <b>"não encontrada"</b>. Não é defeito: aquela nota simplesmente não é controlada aqui.
+        Guarde na pasta do mesmo jeito.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>O que ainda NÃO mudou</h2>
+    <p>Por enquanto isto é só o <b>controle</b>: o caixa fecha normalmente, com ou sem canhoto pendente.
+       <b>Nada trava.</b></p>
+    <p>A próxima etapa é a conferência no fechamento do caixa — o caixa do dia só fechará quando as notas
+       daquele motorista tiverem voltado ou forem justificadas. Quando isso entrar, tem aviso novo.</p>
+    <div class="aviso">
+      <b>Na primeira vez, o mês inteiro vai aparecer como "desconhecido"</b>
+      É assim mesmo: o sistema não tem como adivinhar onde cada papel está até alguém bipar.
+      O mutirão da pasta resolve de uma vez, e daí para a frente é só ir bipando o que chega.
+    </div>
+  </div>
+
+  <p class="rodape">Hardt Salgados · Agosto de 2026</p>
+</main>
+
+<script>
+  function alternar(botao){
+    var acc = botao.parentElement;
+    var aberto = acc.classList.toggle('aberto');
+    botao.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

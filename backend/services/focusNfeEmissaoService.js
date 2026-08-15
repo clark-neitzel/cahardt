@@ -212,6 +212,24 @@ async function marcarPedidoFaturado(nota) {
     }
 }
 
+/**
+ * Canhoto da nota (módulo Canhoto da NF — 08/2026): toda NF-e autorizada em produção
+ * nasce esperando o papel assinado voltar.
+ *
+ * ⚠️ BEST-EFFORT E NUNCA LANÇA. A emissão de NF-e roda em produção o dia inteiro e não
+ * pode quebrar por causa de um controle acessório. Fica FORA de qualquer `$transaction`,
+ * é chamado sempre DEPOIS de `marcarPedidoFaturado`, e qualquer erro só vira log — o
+ * registro é recuperado depois pelo backfill/auto-cura da aba Canhotos.
+ * `require` preguiçoso de propósito (evita ciclo de import).
+ */
+async function registrarCanhoto(nota) {
+    try {
+        await require('./canhotoService').registrarDeNotaApp(nota);
+    } catch (e) {
+        console.error('[Canhoto] Falha ao registrar canhoto da nota (emissão não afetada):', e.message);
+    }
+}
+
 function aplicarRetornoFocus(dadosFocus) {
     return {
         status: MAPA_STATUS[dadosFocus.status] || 'PROCESSANDO',
@@ -285,6 +303,7 @@ async function emitirVenda(pedidoId) {
     }
     const atualizada = await prisma.notaFiscalApp.update({ where: { ref }, data: aplicarRetornoFocus(data) });
     await marcarPedidoFaturado(atualizada);
+    await registrarCanhoto(atualizada); // best-effort — nunca lança
     return atualizada;
 }
 
@@ -299,6 +318,7 @@ async function sincronizarEventos() {
                     const payload = typeof ev.payload === 'object' ? ev.payload : {};
                     const atualizada = await prisma.notaFiscalApp.update({ where: { ref: ev.ref }, data: aplicarRetornoFocus({ ...payload, status: ev.status || payload.status }) });
                     await marcarPedidoFaturado(atualizada);
+                    await registrarCanhoto(atualizada); // best-effort — nunca lança
                 }
             }
             await prisma.focusNfeEvento.update({ where: { id: ev.id }, data: { processado: true } });
@@ -322,7 +342,10 @@ async function sincronizarEventos() {
                 pedido: { OR: [{ situacaoCA: null }, { situacaoCA: { not: 'FATURADO' } }] },
             },
         });
-        for (const n of desalinhadas) await marcarPedidoFaturado(n);
+        for (const n of desalinhadas) {
+            await marcarPedidoFaturado(n);
+            await registrarCanhoto(n); // best-effort — nunca lança
+        }
     } catch (e) {
         console.error('[FocusNFe] Falha na reconciliação de faturados:', e.message);
     }
@@ -337,6 +360,7 @@ async function consultarAtualizar(notaId) {
     if (httpStatus === 404) return nota; // ainda não conhecida na Focus
     const atualizada = await prisma.notaFiscalApp.update({ where: { id: nota.id }, data: aplicarRetornoFocus(data) });
     await marcarPedidoFaturado(atualizada);
+    await registrarCanhoto(atualizada); // best-effort — nunca lança (caminho do `consultarPresas`)
     return atualizada;
 }
 
@@ -541,7 +565,16 @@ async function emitirDevolucao(devolucaoId) {
         await prisma.notaFiscalApp.update({ where: { ref }, data: { status: 'ERRO', mensagemSefaz: `Validação Focus: ${msg}` } });
         throw new Error(`Nota de devolução recusada na validação: ${msg}`);
     }
-    return prisma.notaFiscalApp.update({ where: { ref }, data: aplicarRetornoFocus(data) });
+    const atualizada = await prisma.notaFiscalApp.update({ where: { ref }, data: aplicarRetornoFocus(data) });
+    // Canhoto da nota de DEVOLUÇÃO: o papel dela também precisa ir para a pasta do mês,
+    // e quem registra a devolução espera ver a nota na aba Canhotos na hora.
+    // Best-effort, igual aos outros 4 pontos — e aqui o cuidado é ainda MAIOR: esta
+    // função é chamada automaticamente no mesmo clique que registra a devolução no Caixa
+    // (fluxo protegido no CLAUDE.md). Erro de canhoto não pode, em hipótese alguma, fazer
+    // a emissão parecer que falhou nem desfazer a devolução. `registrarCanhoto` engole
+    // qualquer exceção e só loga; não há `$transaction` nenhuma neste arquivo.
+    await registrarCanhoto(atualizada); // best-effort — nunca lança
+    return atualizada;
 }
 
 /** Nota do app (ambiente atual) AUTORIZADA de um pedido — usada pela DANFE da tela de pedidos. */

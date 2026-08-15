@@ -50,7 +50,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'bancos-locais-baixa-2026-08-14',
+        deployMarker: 'canhoto-nf-pedaco1-2026-08-15',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -9136,6 +9136,161 @@ router.post('/devolucoes-registrar-retroativo', async (req, res) => {
         });
     } catch (err) {
         console.error('[devolucoes-registrar-retroativo]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CANHOTO DA NOTA FISCAL — backfill e diagnóstico em produção
+// (o mutirão também roda pela aba Canhotos; estas rotas existem para rodar o mês
+//  inteiro de fora e para conferir se o gancho da emissão está registrando.)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** 'YYYY-MM' → { de: 'YYYY-MM-01', ate: último dia do mês }. Aceita de/ate direto. */
+function periodoDoMes(body) {
+    const de = String(body?.de || '').trim();
+    const ate = String(body?.ate || '').trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(de) && /^\d{4}-\d{2}-\d{2}$/.test(ate)) return { de, ate };
+    const mes = String(body?.mes || '').trim();
+    if (!/^\d{4}-\d{2}$/.test(mes)) return null;
+    const [ano, m] = mes.split('-').map(Number);
+    const ultimo = new Date(Date.UTC(ano, m, 0)).getUTCDate();
+    return { de: `${mes}-01`, ate: `${mes}-${String(ultimo).padStart(2, '0')}` };
+}
+
+// POST /api/admin-exec/canhotos-backfill  { mes: '2026-08' }  ou  { de, ate }
+// Idempotente: rodar de novo devolve criados: 0.
+router.post('/canhotos-backfill', async (req, res) => {
+    try {
+        const periodo = periodoDoMes(req.body);
+        if (!periodo) return res.status(400).json({ error: "Informe { mes: 'YYYY-MM' } ou { de, ate } em YYYY-MM-DD." });
+        const canhotoService = require('../services/canhotoService');
+        const r = await canhotoService.backfill(periodo);
+        res.json({ ok: true, ...periodo, ...r });
+    } catch (err) {
+        console.error('[canhotos-backfill]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/admin-exec/canhotos-diag?mes=2026-08
+// Mostra a config, os contadores do mês e — o que importa — o BURACO: notas
+// autorizadas no período que ainda não viraram canhoto (gancho da emissão falhando).
+router.get('/canhotos-diag', async (req, res) => {
+    try {
+        const periodo = periodoDoMes(req.query);
+        if (!periodo) return res.status(400).json({ error: "Informe ?mes=YYYY-MM (ou ?de=&ate= em YYYY-MM-DD)." });
+        const canhotoService = require('../services/canhotoService');
+        const canhotoConfig = require('../config/canhotoConfig');
+
+        const ini = new Date(`${periodo.de}T00:00:00-03:00`);
+        const fim = new Date(`${periodo.ate}T23:59:59.999-03:00`);
+
+        const cfg = await canhotoConfig.get();
+        // autocura: false de propósito — o diagnóstico mede o buraco, não o tapa.
+        const lista = await canhotoService.listarPeriodo({ ...periodo, autocura: false });
+
+        // Notas do app autorizadas no período que ainda não têm canhoto.
+        // O filtro pelo PEDIDO é essencial: nota de pedido especial/bonificação/cancelado
+        // nunca vira canhoto por regra, e sem este filtro ela apareceria eternamente como
+        // "faltando registrar" — mandando quem lê o diagnóstico caçar um buraco que não existe.
+        const notasApp = await prisma.notaFiscalApp.findMany({
+            where: {
+                status: 'AUTORIZADO',
+                ambiente: 'producao',
+                chave: { not: null },
+                criadoEm: { gte: ini, lte: fim },
+                pedido: {
+                    especial: false,
+                    bonificacao: false,
+                    cancelado: false,
+                    statusEnvio: { not: 'EXCLUIDO' },
+                    OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }],
+                },
+            },
+            select: { id: true, chave: true, numero: true, tipo: true, criadoEm: true },
+            take: 5000,
+        });
+        // Notas antigas do Conta Azul (moram em Pedido.nfeChave) no período.
+        // situacaoCA é nullable e `notIn` do Prisma EXCLUI linhas null — OR explícito.
+        const pedidosCA = await prisma.pedido.findMany({
+            where: {
+                nfeChave: { not: null },
+                dataVenda: { gte: ini, lte: fim },
+                especial: false,
+                bonificacao: false,
+                cancelado: false,
+                statusEnvio: { not: 'EXCLUIDO' },
+                OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }],
+            },
+            select: { id: true, numero: true, nfeChave: true, nfeNumero: true, dataVenda: true },
+            take: 5000,
+        });
+
+        // Nota AUTORIZADA e SEM chave: não vira canhoto (a chave é a identidade do
+        // módulo) e por isso escapava do diagnóstico — o buraco existia e não era medido.
+        // Se este número não for zero, o problema é ANTES do canhoto: a Focus autorizou
+        // e nós não gravamos a chave (webhook perdido / retorno incompleto).
+        const autorizadasSemChave = await prisma.notaFiscalApp.findMany({
+            where: {
+                status: 'AUTORIZADO',
+                ambiente: 'producao',
+                chave: null,
+                criadoEm: { gte: ini, lte: fim },
+                pedido: {
+                    especial: false,
+                    bonificacao: false,
+                    cancelado: false,
+                    statusEnvio: { not: 'EXCLUIDO' },
+                    OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }],
+                },
+            },
+            select: { id: true, ref: true, numero: true, tipo: true, criadoEm: true },
+            take: 200,
+        });
+
+        const chaves = [...new Set([
+            ...notasApp.map(n => String(n.chave).replace(/\D/g, '')),
+            ...pedidosCA.map(p => String(p.nfeChave).replace(/\D/g, '')),
+        ])].filter(c => c.length === 44);
+
+        const controladas = new Set();
+        for (let i = 0; i < chaves.length; i += 500) {
+            const bloco = await prisma.canhotoNota.findMany({
+                where: { chave: { in: chaves.slice(i, i + 500) } },
+                select: { chave: true },
+            });
+            bloco.forEach(c => controladas.add(c.chave));
+        }
+
+        const semCanhotoApp = notasApp.filter(n => !controladas.has(String(n.chave).replace(/\D/g, '')));
+        const semCanhotoCA = pedidosCA.filter(p => !controladas.has(String(p.nfeChave).replace(/\D/g, '')));
+
+        res.json({
+            ok: true,
+            ...periodo,
+            config: cfg,
+            pastaFisica: lista.pastaFisica,
+            contadores: lista.contadores,
+            universo: { notasApp: notasApp.length, pedidosComNotaCA: pedidosCA.length, chavesDistintas: chaves.length },
+            // Se estes números não forem zero, o gancho da emissão não registrou:
+            // rode POST /canhotos-backfill do mesmo mês para tapar.
+            faltandoRegistrar: {
+                app: semCanhotoApp.length,
+                ca: semCanhotoCA.length,
+                exemplosApp: semCanhotoApp.slice(0, 5).map(n => ({ chave: n.chave, numero: n.numero, tipo: n.tipo, criadoEm: n.criadoEm })),
+                exemplosCA: semCanhotoCA.slice(0, 5).map(p => ({ chave: p.nfeChave, nfeNumero: p.nfeNumero, pedido: p.numero, dataVenda: p.dataVenda })),
+            },
+            // Buraco ANTES do canhoto: a Focus autorizou e a chave não foi gravada.
+            // O backfill NÃO resolve — é preciso reconsultar a nota na Focus.
+            autorizadasSemChave: {
+                total: autorizadasSemChave.length,
+                exemplos: autorizadasSemChave.slice(0, 5).map(n => ({ ref: n.ref, numero: n.numero, tipo: n.tipo, criadoEm: n.criadoEm })),
+            },
+            alerta: lista.alerta.slice(0, 20),
+        });
+    } catch (err) {
+        console.error('[canhotos-diag]', err);
         res.status(500).json({ error: err.message });
     }
 });

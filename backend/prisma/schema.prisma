@@ -450,11 +450,24 @@ model Pedido {
   cobrancasAsaas   CobrancaAsaas[] // PIX/boleto emitidos pelo app via Asaas
   avisosConversao  PedidoConvertidoAviso[] // especial convertido em pedido com NF
   notasFiscaisApp  NotaFiscalApp[] // NF-e emitidas pelo próprio app (Focus NFe)
+  canhotos         CanhotoNota[] // Controle do canhoto assinado de cada NF-e deste pedido
 
   @@index([statusEnvio])
   @@index([vendedorId])
   @@index([clienteId])
   @@index([dataEntrega])
+  // ⚠️ OS DOIS ABAIXO PRECISAM FICAR DECLARADOS AQUI, não criados só na mão.
+  // O deploy roda `prisma db push`, que DERRUBA índice que não está no schema — um
+  // `CREATE INDEX` feito por fora some na publicação seguinte, em silêncio, e o módulo
+  // Canhoto volta a varrer `pedidos` inteira (maior tabela do sistema, banco
+  // compartilhado) a cada auto-cura.
+  //   dataVenda → janela do backfill/auto-cura dos canhotos das notas antigas do CA
+  //   nfeChave  → auto-cura do bipe que procura a nota do Conta Azul pela chave
+  // Publicação segura: criar os dois em produção com CREATE INDEX CONCURRENTLY ANTES
+  // do deploy (nomes idênticos aos que o Prisma gera: pedidos_data_venda_idx e
+  // pedidos_nfe_chave_idx). Assim o `db push` os encontra prontos e não trava escrita.
+  @@index([dataVenda])
+  @@index([nfeChave])
   @@map("pedidos")
 }
 
@@ -773,9 +786,88 @@ model NotaFiscalApp {
   criadoEm     DateTime @default(now()) @map("criado_em")
   atualizadoEm DateTime @updatedAt @map("atualizado_em")
 
+  canhoto CanhotoNota? // controle do canhoto assinado desta nota
+
   @@index([pedidoId])
   @@index([status])
   @@map("notas_fiscais_app")
+}
+
+// CANHOTO DA NOTA FISCAL (08/2026)
+// O canhoto assinado é a prova de entrega — sem ele não há protesto. Cada NF-e de
+// venda autorizada nasce aqui com status AGUARDANDO; o escritório bipa o código de
+// barras da DANFE na volta do motorista e a nota vira RECEBIDO → ARQUIVADO.
+// A `chave` é @unique DE PROPÓSITO: é ela que torna o bipe repetido do mutirão
+// idempotente no banco, não no código.
+model CanhotoNota {
+  id     String @id @default(uuid())
+  chave  String @unique // 44 dígitos da chave de acesso
+  numero Int? // nNF (posições 25..33 da chave)
+  serie  Int?
+
+  origem String @default("APP") // APP (Focus) | CA (nota antiga do Conta Azul)
+  tipo   String @default("VENDA") // VENDA | DEVOLUCAO — devolução só arquiva, nunca pede assinatura
+
+  pedidoId  String         @map("pedido_id")
+  pedido    Pedido         @relation(fields: [pedidoId], references: [id])
+  notaAppId String?        @unique @map("nota_app_id")
+  notaApp   NotaFiscalApp? @relation(fields: [notaAppId], references: [id])
+
+  // ⏳ Na rua | ✓ Recebido | 🗄 Arquivado | ✎ Sem assinatura | ✕ Sem canhoto | ? Desconhecido (mutirão)
+  status String @default("AGUARDANDO")
+
+  // AGUARDANDO | DESCONHECIDO | RECEBIDO | ARQUIVADO | SEM_ASSINATURA | SEM_CANHOTO
+
+  // Snapshots — a aba Canhotos lista SEM join (é o que a mantém rápida)
+  clienteNome String?  @map("cliente_nome")
+  valorTotal  Decimal? @map("valor_total") @db.Decimal(12, 2)
+  emitidaEm   DateTime @map("emitida_em")
+  competencia String   @map("competencia") // "2026-08" — filtro do mês
+  pastaFisica String   @map("pasta_fisica") // "Notas Emitidas Agosto 2026" (preenchido sozinho)
+
+  // Quem levou (snapshot no momento do registro; "na rua" é derivado disto)
+  embarqueId    String?   @map("embarque_id")
+  motoristaId   String?   @map("motorista_id")
+  motoristaNome String?   @map("motorista_nome")
+  saiuEm        DateTime? @map("saiu_em") // embarque.dataSaida — base do alerta de 3 dias
+
+  // Bipe
+  recebidoPorId   String?      @map("recebido_por_id")
+  recebidoPorNome String?      @map("recebido_por_nome")
+  recebidoEm      DateTime?    @map("recebido_em")
+  recebidoOrigem  String?      @map("recebido_origem") // LEITOR | CAMERA | NUMERO | MUTIRAO
+  caixaDiarioId   String?      @map("caixa_diario_id") // em qual caixa o bipe aconteceu (auditoria)
+  caixaDiario     CaixaDiario? @relation(fields: [caixaDiarioId], references: [id])
+
+  // Arquivamento
+  arquivadoPorId   String?   @map("arquivado_por_id")
+  arquivadoPorNome String?   @map("arquivado_por_nome")
+  arquivadoEm      DateTime? @map("arquivado_em")
+
+  // Liberação sem canhoto (motivo FECHADO + senha)
+  motivoLiberacao String?   @map("motivo_liberacao")
+  liberadoPorId   String?   @map("liberado_por_id")
+  liberadoPorNome String?   @map("liberado_por_nome")
+  liberadoEm      DateTime? @map("liberado_em")
+  // "Volta amanhã": libera o caixa de hoje mas a nota CONTINUA na fila de pendências
+  voltaAmanha     Boolean   @default(false) @map("volta_amanha")
+
+  observacao String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  // `emitidaEm` é o filtro de TODA consulta do período (lista, groupBy, contadores,
+  // alerta). Sem ele a aba faria seq scan da tabela inteira a cada carga.
+  @@index([emitidaEm])
+  // `competencia` vem do AAMM da própria chave = o mês da PASTA FÍSICA. É por onde se
+  // pergunta "em que pasta está esta nota" — dimensão diferente de `emitidaEm`.
+  @@index([competencia, status])
+  @@index([pedidoId])
+  @@index([numero])
+  @@index([motoristaId, saiuEm])
+  @@map("canhotos_nota")
 }
 
 model AppConfig {
@@ -1600,6 +1692,8 @@ model CaixaDiario {
   conferenciaDevolucao CaixaConferenciaDevolucao?
   // Baixas de títulos em espécie lançadas neste caixa (somam no valor a prestar)
   recebimentosTitulos PagamentoParcela[] @relation("RecebimentosTitulos")
+  // Canhotos de NF bipados durante este caixa (só auditoria — a lista do dia é por consulta)
+  canhotosBipados     CanhotoNota[]
 
   @@unique([vendedorId, dataReferencia])
   @@index([vendedorId])

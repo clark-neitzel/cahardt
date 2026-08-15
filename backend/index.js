@@ -77,6 +77,7 @@ const iaConsultaRoutes = require('./routes/iaConsultaRoutes'); // API de consult
 const asaasRoutes = require('./routes/asaasRoutes'); // Integração Asaas: PIX na entrega + webhook de pagamento
 const focusNfeWebhookRoutes = require('./routes/focusNfeWebhookRoutes'); // Focus NFe: webhook público (segredo próprio no header x-focus-secret)
 const notasFiscaisRoutes = require('./routes/notasFiscaisRoutes'); // Focus NFe: emissão de NF-e pelo app (fila/emitir/DANFE)
+const canhotoRoutes = require('./routes/canhotoRoutes'); // Canhoto da NF: bipe do código de barras da DANFE, arquivo do mês
 const contasPagarRoutes = require('./routes/contasPagar'); // Financeiro: Contas a Pagar (Fase 1)
 const fornecedoresRoutes = require('./routes/fornecedores'); // Financeiro: Fornecedores
 const configNotasRoutes = require('./routes/configNotas'); // Configurações: Certificado Digital (notas)
@@ -147,6 +148,7 @@ app.use('/api/webhooks', focusNfeWebhookRoutes); // Focus NFe: webhook público 
 
 // (Protegidas)
 app.use('/api/notas-fiscais', authMiddleware, notasFiscaisRoutes); // NF-e emitida pelo app (Focus NFe)
+app.use('/api/canhotos', authMiddleware, canhotoRoutes); // Canhoto da NF assinado (bipe da DANFE, arquivo do mês)
 app.use('/api/produtos', authMiddleware, produtoRoutes);
 app.use('/api/clientes', authMiddleware, clienteRoutes);
 app.use('/api/gps-clientes', authMiddleware, require('./routes/gpsClientesRoutes')); // Ponto GPS confiável por cliente

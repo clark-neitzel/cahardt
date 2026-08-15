@@ -6,6 +6,7 @@ import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import { formatarDoc } from '../../utils/documento';
 import { explicarRejeicao } from '../../utils/rejeicaoNfe';
 import clienteService from '../../services/clienteService';
+import CanhotosTab from './CanhotosTab';
 import {
     FileText, Loader2, RefreshCw, Send, FileDown, FileCode2, AlertTriangle, HelpCircle, Search, Ban
 } from 'lucide-react';
@@ -148,8 +149,26 @@ const NotasFiscais = () => {
     const podeEmitir = hasPermission('Pode_Emitir_NF');
     const podeCancelarPedido = hasPermission('Pode_Excluir_Pedido');
 
+    // A fila de emissão é uma tela de HOJE ("o que falta emitir agora").
     const [periodo, periodoCtl] = usePeriodoSalvo('notas-fiscais', 'hoje');
+    /**
+     * A aba Canhotos tem MEMÓRIA DE PERÍODO PRÓPRIA, com padrão 'mes'.
+     *
+     * Ela é sobre a pasta física do MÊS. Nascendo em 'hoje' (o padrão certo da fila), o
+     * mutirão quebrava de três jeitos, todos silenciosos: a barra dizia "100% no arquivo"
+     * contando só as notas do dia, enquanto o cabeçalho anunciava a pasta do mês inteiro;
+     * "Colocar o mês em dia" respondia "já estava em dia" sem trazer nada; e bipar pelo
+     * NÚMERO uma folha de anteontem voltava "não encontrada" (o backend usa de/ate como
+     * janela de busca). A pessoa abria com a pasta do mês na mão, via tudo verde e
+     * concluía que o sistema estava quebrado.
+     *
+     * São dois `usePeriodoSalvo`, mas só UM controle é renderizado por vez (o da aba
+     * ativa) — a tela continua com um seletor só, e cada contexto lembra o seu. Forçar o
+     * preset no período compartilhado mudaria o filtro das outras abas pelas costas.
+     */
+    const [periodoCanhotos, periodoCanhotosCtl] = usePeriodoSalvo('notas-fiscais-canhotos', 'mes');
     const [filtroStatus, setFiltroStatus] = useFiltroSalvo('notas-fiscais:status', 'a-emitir');
+    const [totalCanhotos, setTotalCanhotos] = useState(null); // contador da aba Canhotos
     const [ambiente, setAmbiente] = useState(null);
     const [truncado, setTruncado] = useState(false);
     const [pedidos, setPedidos] = useState([]);
@@ -235,14 +254,17 @@ const NotasFiscais = () => {
         [pedidos]
     );
 
-    // Auto-refresh: enquanto houver nota PROCESSANDO, repolla a fila a cada 10s
+    // Auto-refresh: enquanto houver nota PROCESSANDO, repolla a fila a cada 10s.
+    // NÃO roda na aba Canhotos: `/fila` é o endpoint pesado (sincroniza e traz até 2000
+    // pedidos) e ficaria batendo a cada 10s durante um mutirão de 20 minutos, sem que
+    // nada dele apareça nessa aba.
     useEffect(() => {
-        if (!temProcessando) return;
+        if (!temProcessando || filtroStatus === 'canhotos') return;
         const id = setInterval(() => {
             if (!loteAtivoRef.current) carregar(true);
         }, 10000);
         return () => clearInterval(id);
-    }, [temProcessando, carregar]);
+    }, [temProcessando, carregar, filtroStatus]);
 
     // ── Ações ──
     const emitir = async (pedido) => {
@@ -459,7 +481,7 @@ const NotasFiscais = () => {
                     </div>
                     <h1 className="text-base md:text-2xl font-bold text-gray-900 truncate">Notas Fiscais</h1>
                 </div>
-                {podeEmitir && (pedidosSemNota.length > 0 || selecionadosValidos.length > 0) && (
+                {filtroStatus !== 'canhotos' && podeEmitir && (pedidosSemNota.length > 0 || selecionadosValidos.length > 0) && (
                     <button
                         onClick={emitirTodas}
                         disabled={progressoLote != null || emitindo != null}
@@ -482,8 +504,10 @@ const NotasFiscais = () => {
                 </div>
             )}
 
-            {/* Período grande demais: a lista veio cortada — avisar em vez de esconder notas */}
-            {truncado && (
+            {/* Período grande demais: a lista veio cortada — avisar em vez de esconder notas.
+                Só nas abas da fila: a aba Canhotos mostra o aviso equivalente dela, e os
+                dois juntos viravam dois banners âmbar quase idênticos na mesma tela. */}
+            {filtroStatus !== 'canhotos' && truncado && (
                 <div className="mx-3 md:mx-6 mt-3 md:mt-4 flex items-start gap-2 bg-amber-100 border border-amber-300 text-amber-800 rounded-lg px-4 py-3 text-sm font-medium">
                     <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
                     <span>O período escolhido tem pedidos demais — mostrando só os {pedidos.length} mais recentes. Escolha um período menor (ex.: um mês) para ver tudo.</span>
@@ -491,7 +515,8 @@ const NotasFiscais = () => {
             )}
 
             <div className="p-3 md:p-6 space-y-4">
-                {/* KPIs */}
+                {/* KPIs — da fila de emissão; a aba Canhotos traz os contadores dela */}
+                {filtroStatus !== 'canhotos' && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
                         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sem nota</div>
@@ -510,14 +535,28 @@ const NotasFiscais = () => {
                         <div className="text-lg md:text-2xl font-bold text-red-600 mt-1">{kpis.comErro}</div>
                     </div>
                 </div>
+                )}
 
                 {/* Filtros */}
                 <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-3 flex flex-col md:flex-row md:items-center gap-2">
-                    <FiltroPeriodo periodo={periodo} controle={periodoCtl} className="w-full md:w-auto" />
+                    {/* UM seletor por vez — o da aba ativa. A aba Canhotos usa a memória
+                        própria dela (padrão "Este mês"); "Todo o período" fica escondido
+                        porque devolve datas vazias e o arquivo é organizado por mês. */}
+                    {filtroStatus === 'canhotos' ? (
+                        <FiltroPeriodo
+                            periodo={periodoCanhotos}
+                            controle={periodoCanhotosCtl}
+                            className="w-full md:w-auto"
+                            ocultarPresets={['todo']}
+                        />
+                    ) : (
+                        <FiltroPeriodo periodo={periodo} controle={periodoCtl} className="w-full md:w-auto" />
+                    )}
                     <div className="flex gap-1.5 overflow-x-auto hide-scrollbar">
                         {[
                             ['a-emitir', `A emitir (${kpis.semNota + kpis.comErro + kpis.processando})`],
                             ['emitidas', `Emitidas (${totalEmitidas})`],
+                            ['canhotos', totalCanhotos == null ? 'Canhotos' : `Canhotos (${totalCanhotos})`],
                             ['todas', 'Todas'],
                         ].map(([valor, rotulo]) => (
                             <button
@@ -531,6 +570,12 @@ const NotasFiscais = () => {
                             </button>
                         ))}
                     </div>
+                    {/* Some na aba Canhotos: `baixarXmlsZip` usa o período da FILA, e ali o
+                        único seletor visível é o dos Canhotos. A pessoa veria "Este mês",
+                        clicaria, e receberia o ZIP de UM DIA — mandando para a contabilidade
+                        um mês incompleto sem nada na tela denunciar. É ação da fila de
+                        emissão, então acompanha o resto da barra. */}
+                    {filtroStatus !== 'canhotos' && (
                     <button
                         onClick={baixarXmlsZip}
                         disabled={baixandoXmls}
@@ -540,9 +585,14 @@ const NotasFiscais = () => {
                         {baixandoXmls ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
                         XMLs (contabilidade)
                     </button>
+                    )}
                 </div>
 
-                {/* Lista */}
+                {/* Aba Canhotos: o arquivo do mês. Reaproveita o MESMO FiltroPeriodo acima
+                    — dois seletores de data na mesma tela fariam a equipe errar o mês. */}
+                {filtroStatus === 'canhotos' ? (
+                    <CanhotosTab periodo={periodoCanhotos} onTotal={setTotalCanhotos} />
+                ) : (
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
                     <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
                         <FileText className="h-4 w-4 text-amber-600" />
@@ -667,6 +717,7 @@ const NotasFiscais = () => {
                         </>
                     )}
                 </div>
+                )}
             </div>
         </div>
     );

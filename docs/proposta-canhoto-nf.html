@@ -1,0 +1,1029 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canhoto da Nota Fiscal</title>
+<meta name="description" content="Conferência das notas assinadas por leitura de código antes de fechar o caixa.">
+<style>
+  :root{
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --cream:#f2f0eb; --gold:#cba258;
+    --ink:#12201c; --ink-soft:#5f6b66; --ink-fade:#8a938f;
+    --line:#e2e0da; --line-soft:#eceae4; --surface:#ffffff;
+    --red:#b3261e; --red-bg:#fdecea; --amber:#8a6100; --amber-bg:#fdf3d9;
+    --blue:#1b5e9c; --blue-bg:#e6f0fa;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--cream); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    line-height:1.55; letter-spacing:-0.01em; -webkit-font-smoothing:antialiased;
+    font-variant-numeric:tabular-nums;
+  }
+  .wrap{max-width:720px; margin:0 auto; padding:0 16px 72px}
+
+  /* ── HERO ── */
+  .hero{background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:36px 16px 84px}
+  .hero-in{max-width:720px; margin:0 auto}
+  .eyebrow{font-size:11px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--gold)}
+  .hero h1{margin:10px 0 8px; font-size:30px; line-height:1.15; font-weight:800; text-wrap:balance}
+  .hero p{margin:0; color:#cfe0d8; font-size:15px; max-width:56ch}
+  .hero .tags{display:flex; flex-wrap:wrap; gap:8px; margin-top:18px}
+  .tag{background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18); color:#e8f2ee;
+       padding:5px 11px; border-radius:999px; font-size:12px; font-weight:600}
+
+  /* ── SEÇÕES ── */
+  .sec{margin-top:26px}
+  .sec > h2{font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+            color:var(--ink-soft); margin:0 0 12px; display:flex; align-items:center; gap:8px}
+  .sec > h2::after{content:""; flex:1; height:1px; background:var(--line)}
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:20px; margin-top:-56px}
+  .card + .card{margin-top:14px}
+  .sec .card{margin-top:0}
+  .card h3{margin:0 0 8px; font-size:17px; font-weight:750}
+  .card p{margin:0 0 10px; font-size:15px; color:#33403b}
+  .card p:last-child{margin-bottom:0}
+  ul.lista{margin:0; padding-left:0; list-style:none; display:flex; flex-direction:column; gap:9px}
+  ul.lista li{font-size:14.5px; color:#33403b; padding-left:22px; position:relative}
+  ul.lista li::before{content:""; position:absolute; left:6px; top:9px; width:6px; height:6px;
+                      border-radius:50%; background:var(--primary)}
+  ul.lista li b{font-weight:700; color:var(--ink)}
+  .sub{font-size:13px; color:var(--ink-soft)}
+
+  /* ── ALERTAS ── */
+  .alerta{border-radius:12px; padding:12px 14px; font-size:14px; display:flex; gap:10px; align-items:flex-start; margin-top:12px}
+  .alerta b{display:block; margin-bottom:2px}
+  .al-red{background:var(--red-bg); color:#7a1c16; border:1px solid #f3cdc9}
+  .al-amber{background:var(--amber-bg); color:#6b4c00; border:1px solid #efdca8}
+  .al-green{background:var(--mint); color:#0d4032; border:1px solid #b5d9cc}
+  .al-blue{background:var(--blue-bg); color:#14456f; border:1px solid #c6dcef}
+
+  /* ── FLUXO ── */
+  .fluxo{display:flex; flex-direction:column; gap:0}
+  .passo{display:flex; gap:14px; padding:14px 0; border-bottom:1px dashed var(--line)}
+  .passo:last-child{border-bottom:0; padding-bottom:0}
+  .passo .n{flex:0 0 30px; height:30px; border-radius:50%; background:var(--house); color:#fff;
+            display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:800}
+  .passo .t{font-weight:750; font-size:15px; margin-bottom:2px}
+  .passo .d{font-size:14px; color:var(--ink-soft)}
+  .passo .d code{background:var(--line-soft); padding:1px 5px; border-radius:4px; font-size:12.5px}
+
+  /* ── MOCKUP DE TELA ── */
+  .tela{margin-top:16px}
+  .tela-nome{font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+             color:var(--gold); margin-bottom:8px}
+  .app{background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:12px; overflow:hidden}
+  .app.mobile{max-width:340px; margin:0 auto; border-radius:26px; padding:10px; background:#0e1a17; border-color:#0e1a17}
+  .app.mobile .tela-in{background:var(--cream); border-radius:18px; padding:12px}
+  .appbar{display:flex; align-items:center; gap:8px; padding:8px 4px 12px}
+  .appbar .ic{width:30px; height:30px; border-radius:9px; background:var(--mint); display:flex;
+              align-items:center; justify-content:center; font-size:15px}
+  .appbar .tt{font-weight:800; font-size:15px}
+  .appcard{background:#fff; border:1px solid var(--line); border-radius:14px; overflow:hidden}
+  .appcard + .appcard{margin-top:10px}
+  .apphead{display:flex; align-items:center; gap:8px; padding:11px 14px; border-bottom:1px solid var(--line-soft)}
+  .apphead .lb{font-size:10.5px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-soft)}
+  .apphead .rt{margin-left:auto; font-size:12px; font-weight:800; color:var(--primary-dark)}
+  .appbody{padding:14px}
+
+  .prog{height:7px; border-radius:999px; background:var(--line-soft); overflow:hidden; margin-bottom:14px}
+  .prog span{display:block; height:100%; background:var(--primary); border-radius:999px; transition:width .35s ease}
+
+  .campo{display:flex; align-items:center; gap:10px; border:2px dashed var(--primary);
+         background:#f4faf7; border-radius:12px; padding:12px 14px}
+  .campo .ic{font-size:20px}
+  .campo input{border:0; background:transparent; outline:none; font:inherit; font-size:14px;
+               width:100%; color:var(--ink)}
+  .campo input::placeholder{color:#7d8c86}
+
+  .linha{display:flex; align-items:center; gap:10px; padding:11px 4px; border-bottom:1px solid var(--line-soft); font-size:13.5px}
+  .linha:last-child{border-bottom:0}
+  .check{flex:0 0 22px; height:22px; border-radius:50%; border:2px solid #cfd6d2; display:flex;
+         align-items:center; justify-content:center; font-size:12px; color:#fff; background:#fff}
+  .linha.ok .check{background:var(--primary); border-color:var(--primary)}
+  .linha.ok .check::after{content:"✓"; font-weight:900}
+  .linha.disp .check{background:var(--amber); border-color:var(--amber)}
+  .linha.disp .check::after{content:"!"; font-weight:900}
+  .linha .info{min-width:0; flex:1}
+  .linha .nome{font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .linha .meta{font-size:12px; color:var(--ink-soft)}
+  .linha .val{font-weight:700; white-space:nowrap}
+  .linha.ok .nome{color:var(--primary-dark)}
+  .linha.pend{background:#fffdf5}
+
+  .badge{display:inline-flex; align-items:center; gap:4px; padding:2px 9px; border-radius:999px;
+         font-size:11px; font-weight:800; white-space:nowrap}
+  .b-green{background:var(--mint); color:#0d4032}
+  .b-gray{background:#eceff0; color:#4a5451}
+  .b-amber{background:var(--amber-bg); color:var(--amber)}
+  .b-red{background:var(--red-bg); color:var(--red)}
+  .b-blue{background:var(--blue-bg); color:var(--blue)}
+  .b-gold{background:#f7edd9; color:#7a5a12}
+
+  .btn{border:0; font:inherit; font-weight:750; font-size:13.5px; padding:9px 18px; border-radius:999px;
+       cursor:pointer; display:inline-flex; align-items:center; gap:7px}
+  .btn.pri{background:var(--primary); color:#fff}
+  .btn.pri:hover{background:var(--primary-dark)}
+  .btn.sec{background:#fff; color:var(--primary); border:1px solid var(--primary)}
+  .btn.gho{background:transparent; color:var(--ink-soft); border:1px solid var(--line); font-weight:650}
+  .btn.dis{background:#e6e8e7; color:#9aa4a0; cursor:not-allowed}
+  .btn.full{width:100%; justify-content:center}
+  .btnrow{display:flex; gap:8px; flex-wrap:wrap; margin-top:12px}
+
+  /* legendas numeradas dos mockups */
+  .legendas{margin-top:12px; display:flex; flex-direction:column; gap:8px}
+  .legenda{display:flex; gap:9px; font-size:13.5px; color:#33403b}
+  .pin{flex:0 0 20px; height:20px; border-radius:50%; background:var(--gold); color:#3d2c05;
+       font-size:11px; font-weight:900; display:flex; align-items:center; justify-content:center; margin-top:1px}
+  .pin-in{display:inline-flex; width:18px; height:18px; border-radius:50%; background:var(--gold);
+          color:#3d2c05; font-size:10.5px; font-weight:900; align-items:center; justify-content:center;
+          vertical-align:middle; margin-right:5px}
+
+  /* tabela */
+  .tab{width:100%; border-collapse:collapse; font-size:13px}
+  .tab th{text-align:left; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+          color:var(--ink-soft); font-weight:800; padding:8px 10px; background:#f7f8f7; border-bottom:1px solid var(--line)}
+  .tab td{padding:9px 10px; border-bottom:1px solid var(--line-soft); white-space:nowrap}
+  .tabwrap{overflow-x:auto; -webkit-overflow-scrolling:touch}
+
+  /* câmera mock */
+  .cam{background:#0d1512; border-radius:14px; padding:0; height:190px; position:relative; overflow:hidden;
+       display:flex; align-items:center; justify-content:center}
+  .cam .mira{width:74%; height:88px; border:2px solid rgba(255,255,255,.85); border-radius:10px; position:relative}
+  .cam .mira::after{content:""; position:absolute; left:6%; right:6%; top:50%; height:2px;
+                    background:#ff5b4a; box-shadow:0 0 8px #ff5b4a; animation:scan 1.9s ease-in-out infinite}
+  @keyframes scan{0%,100%{transform:translateY(-34px)}50%{transform:translateY(34px)}}
+  @media (prefers-reduced-motion:reduce){.cam .mira::after{animation:none}}
+  .cam .dica{position:absolute; bottom:10px; left:0; right:0; text-align:center; color:#cfe0d8; font-size:11.5px}
+
+  /* fases */
+  .fase{border-left:3px solid var(--line); padding:0 0 16px 16px; position:relative}
+  .fase:last-child{padding-bottom:0}
+  .fase::before{content:""; position:absolute; left:-7px; top:4px; width:11px; height:11px; border-radius:50%;
+                background:var(--primary); border:2px solid #fff; box-shadow:0 0 0 1px var(--primary)}
+  .fase.depois::before{background:#fff}
+  .fase .ft{font-weight:800; font-size:14.5px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+  .fase .fd{font-size:13.5px; color:var(--ink-soft); margin-top:3px}
+
+  /* decisões */
+  .dec{border:1px solid var(--line); border-radius:12px; padding:13px 15px}
+  .dec + .dec{margin-top:10px}
+  .dec .q{font-weight:750; font-size:14.5px; margin-bottom:5px}
+  .dec .r{font-size:13.5px; color:#33403b}
+  .dec .r b{color:var(--primary-dark)}
+
+  .rodape{text-align:center; color:var(--ink-fade); font-size:12px; margin-top:34px}
+  @media (max-width:520px){
+    .hero h1{font-size:25px}
+    .card{padding:16px}
+    .linha .val{display:none}
+    .linha .nome{white-space:normal}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-in">
+    <div class="eyebrow">Proposta · Caixa e Financeiro</div>
+    <h1>Canhoto da nota fiscal conferido no bipe</h1>
+    <p>Toda nota que sai com o motorista tem que voltar assinada. Hoje ninguém sabe se voltou tudo —
+       a conferência é no olho, folha por folha. A proposta: bipar o código de barras da DANFE na
+       chegada e travar o fechamento do caixa enquanto faltar canhoto.</p>
+    <div class="tags">
+      <span class="tag">Leitor no PC</span>
+      <span class="tag">Câmera do celular</span>
+      <span class="tag">Trava no fechar caixa</span>
+      <span class="tag">Arquivo do mês</span>
+      <span class="tag">Selo em Pedidos e Contas a Receber</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="card">
+    <h3>O problema, do jeito que ele acontece hoje</h3>
+    <ul class="lista">
+      <li>O motorista sai com <b>20, 30 notas</b>. Volta com um maço de papel — e ninguém confere uma a uma.</li>
+      <li>Descobrimos que <b>faltou canhoto</b> só quando o cliente não paga e o financeiro vai procurar o comprovante de entrega. Aí já se passaram semanas.</li>
+      <li>Sem canhoto assinado <b>não dá para protestar</b> nem para provar a entrega numa discussão. O papel é a prova.</li>
+      <li>O caixa fecha do mesmo jeito, com ou sem as notas na mão. Não existe trava.</li>
+    </ul>
+    <div class="alerta al-green">
+      <div><b>A ideia em uma frase</b>
+      Cada DANFE já tem um código de barras com a chave da nota. Bipou = a nota assinada está aqui dentro.
+      O caixa só fecha quando todas as notas do dia forem bipadas ou justificadas.</div>
+    </div>
+  </div>
+
+  <!-- ─────────── COMO FUNCIONA ─────────── -->
+  <section class="sec">
+    <h2>Como vai funcionar</h2>
+    <div class="card">
+      <div class="fluxo">
+        <div class="passo">
+          <div class="n">1</div>
+          <div><div class="t">A nota nasce esperando o canhoto</div>
+          <div class="d">Ao autorizar a NF-e do pedido, o sistema já cria o controle do canhoto com status
+          <code>Aguardando</code>. Nada de digitar lista.</div></div>
+        </div>
+        <div class="passo">
+          <div class="n">2</div>
+          <div><div class="t">A nota sai no embarque</div>
+          <div class="d">Quando o embarque sai, as notas daquele carro passam a contar como
+          <b>“na rua com o motorista”</b> — já se sabe exatamente o que tem que voltar.</div></div>
+        </div>
+        <div class="passo">
+          <div class="n">3</div>
+          <div><div class="t">Na volta, o escritório bipa</div>
+          <div class="d">Mesma hora da conferência de devolução. Pega o maço, passa o leitor folha por folha.
+          Cada bipe dá um som e risca a linha na tela. Leva segundos por nota.</div></div>
+        </div>
+        <div class="passo">
+          <div class="n">4</div>
+          <div><div class="t">Nota que não voltou precisa de justificativa</div>
+          <div class="d">Cliente ficou com a via, canhoto rasgado, entrega sem quem assinasse — quem tem
+          permissão libera com motivo. Fica registrado quem liberou e por quê.</div></div>
+        </div>
+        <div class="passo">
+          <div class="n">5</div>
+          <div><div class="t">Só então o caixa fecha</div>
+          <div class="d">Igual à conferência de devolução e à do dinheiro que já existem: enquanto faltar
+          canhoto, o botão <b>Fechar caixa</b> fica travado.</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── TELA 1 ─────────── -->
+  <section class="sec">
+    <h2>As telas do app</h2>
+
+    <div class="card">
+      <div class="tela-nome">Tela 1 · Caixa do dia — card “Canhotos das notas” (computador)</div>
+      <p class="sub">Entra logo abaixo da conferência de devolução, no mesmo caixa. Experimente: clique em
+        <b>Simular leitor</b> ou digite os 4 últimos dígitos do número da nota no campo.</p>
+
+      <div class="app">
+        <div class="appbar">
+          <div class="ic">📄</div>
+          <div class="tt">Caixa do dia · Marcos (motorista)</div>
+          <span class="badge b-gray" style="margin-left:auto">14/08/2026</span>
+        </div>
+
+        <div class="appcard">
+          <div class="apphead">
+            <span class="lb">Canhotos das notas</span>
+            <span class="rt" id="contador">2 de 7 recebidos</span>
+          </div>
+          <div class="appbody">
+            <div class="prog"><span id="barra" style="width:28%"></span></div>
+
+            <div class="campo">
+              <span class="ic">📷</span>
+              <input id="bip" type="text" autocomplete="off"
+                     placeholder="Passe o leitor na nota ou digite o nº da NF…">
+            </div>
+            <div class="btnrow">
+              <button class="btn sec" id="btnSimular">Simular leitor</button>
+              <button class="btn gho" id="btnCelular">Ler pelo celular</button>
+            </div>
+            <div id="aviso" style="margin-top:10px"></div>
+
+            <div id="listaNotas" style="margin-top:6px"></div>
+
+            <div id="rodapeCard" style="margin-top:14px"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="legendas">
+        <div class="legenda"><span class="pin">1</span><div><b>Contador e barra</b> — quantas notas do dia já voltaram. É o número que o escritório olha primeiro.</div></div>
+        <div class="legenda"><span class="pin">2</span><div><b>Campo de bipagem</b> — fica sempre com o cursor dentro. O leitor de mesa funciona como teclado: bipou, o número entra sozinho e já marca. Também aceita digitar o número da nota, se o código estiver rasgado.</div></div>
+        <div class="legenda"><span class="pin">3</span><div><b>Lista das notas do dia</b> — cada linha mostra nota, cliente, valor e, depois de bipada, quem recebeu e a que horas.</div></div>
+        <div class="legenda"><span class="pin">4</span><div><b>“Não voltou”</b> — abre a justificativa (Tela 3). Só quem tem a permissão consegue liberar.</div></div>
+        <div class="legenda"><span class="pin">5</span><div><b>Botão Fechar caixa</b> — cinza e travado enquanto faltar canhoto; verde quando a lista zera.</div></div>
+      </div>
+    </div>
+
+    <!-- ─────────── TELA 2 ─────────── -->
+    <div class="card">
+      <div class="tela-nome">Tela 2 · Ler pelo celular (câmera)</div>
+      <p class="sub">Mesma conferência, para quem estiver com o celular na mão — ou para bipar no galpão,
+        longe do computador. Cada leitura cai na mesma lista, em tempo real.</p>
+
+      <div class="app mobile">
+        <div class="tela-in">
+          <div class="appbar" style="padding:4px 2px 10px">
+            <div class="ic">📷</div>
+            <div class="tt" style="font-size:14px">Bipar canhotos</div>
+          </div>
+
+          <div class="cam">
+            <div class="mira"></div>
+            <div class="dica">Aponte para o código de barras da nota</div>
+          </div>
+
+          <div class="appcard" style="margin-top:10px">
+            <div class="appbody" style="padding:12px">
+              <div style="display:flex; align-items:center; gap:8px">
+                <span class="badge b-green">✓ Lida</span>
+                <div style="min-width:0">
+                  <div style="font-weight:750; font-size:13.5px">NF 85.142</div>
+                  <div style="font-size:12px; color:var(--ink-soft)">Mercado Silva · R$ 1.240,00</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:10px; font-size:12.5px; color:var(--ink-soft); text-align:center">
+            <b style="color:var(--primary-dark)">3 de 7</b> canhotos recebidos hoje
+          </div>
+
+          <div class="appcard" style="margin-top:10px">
+            <div class="appbody" style="padding:8px 12px">
+              <div class="linha ok" style="padding:8px 0">
+                <span class="check"></span>
+                <div class="info"><div class="nome">NF 85.140 · Bar do Zé</div><div class="meta">17:38 · Ana</div></div>
+              </div>
+              <div class="linha ok" style="padding:8px 0">
+                <span class="check"></span>
+                <div class="info"><div class="nome">NF 85.141 · Padaria Doce Pão</div><div class="meta">17:39 · Ana</div></div>
+              </div>
+              <div class="linha ok" style="padding:8px 0">
+                <span class="check"></span>
+                <div class="info"><div class="nome">NF 85.142 · Mercado Silva</div><div class="meta">agora · você</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="legendas">
+        <div class="legenda"><span class="pin">1</span><div><b>Mira da câmera</b> — abre a câmera dentro do próprio app, sem instalar nada. Lê e já dá o retorno na tela.</div></div>
+        <div class="legenda"><span class="pin">2</span><div><b>Confirmação da última leitura</b> — mostra nota, cliente e valor, para conferir que bipou a nota certa.</div></div>
+        <div class="legenda"><span class="pin">3</span><div><b>Contador do dia</b> — o mesmo número que aparece no computador; as duas telas conversam.</div></div>
+      </div>
+
+      <div class="alerta al-amber">
+        <div><b>Um detalhe honesto sobre o celular</b>
+        O código de barras da DANFE é comprido e fininho — a câmera lê, mas exige luz boa e mão parada.
+        Para bipar 30 notas seguidas, o leitor de mesa é muito mais rápido. O celular é o plano B e o
+        atalho para uma nota avulsa. (Na Fase 2 dá para colocar um QR Code na DANFE que o app gera —
+        aí o celular fica tão rápido quanto.)</div>
+      </div>
+    </div>
+
+    <!-- ─────────── TELA 3 ─────────── -->
+    <div class="card">
+      <div class="tela-nome">Tela 3 · “Esta nota não voltou” (justificativa com senha)</div>
+      <p class="sub">Sem essa saída o caixa nunca fecharia num dia em que o cliente ficou com a via.
+        Mas ela não é livre: exige permissão, motivo e fica gravada.</p>
+
+      <div class="app">
+        <div class="appcard" style="max-width:420px; margin:0 auto">
+          <div class="apphead"><span class="lb">Nota sem canhoto</span></div>
+          <div class="appbody">
+            <div style="font-weight:750; font-size:14.5px">NF 85.145 · Restaurante Bom Prato</div>
+            <div style="font-size:12.5px; color:var(--ink-soft); margin-bottom:12px">R$ 2.180,00 · entregue 14/08 às 11:20</div>
+
+            <div style="font-size:12px; font-weight:700; color:var(--ink-soft); margin-bottom:6px">MOTIVO</div>
+            <div style="display:flex; flex-direction:column; gap:7px">
+              <label style="display:flex; gap:8px; align-items:center; font-size:13.5px; border:1px solid var(--line); border-radius:9px; padding:9px 11px">
+                <input type="radio" name="mot" checked> Cliente ficou com as duas vias
+              </label>
+              <label style="display:flex; gap:8px; align-items:center; font-size:13.5px; border:1px solid var(--line); border-radius:9px; padding:9px 11px">
+                <input type="radio" name="mot"> Entregue sem ninguém para assinar
+              </label>
+              <label style="display:flex; gap:8px; align-items:center; font-size:13.5px; border:1px solid var(--line); border-radius:9px; padding:9px 11px">
+                <input type="radio" name="mot"> Canhoto extraviado / danificado
+              </label>
+              <label style="display:flex; gap:8px; align-items:center; font-size:13.5px; border:1px solid var(--line); border-radius:9px; padding:9px 11px">
+                <input type="radio" name="mot"> Volta amanhã (motorista esqueceu no carro)
+              </label>
+            </div>
+
+            <div style="margin-top:12px; font-size:12px; font-weight:700; color:var(--ink-soft); margin-bottom:6px">SUA SENHA</div>
+            <input type="password" value="••••••" readonly
+                   style="width:100%; border:1px solid var(--line); border-radius:9px; padding:9px 11px; font:inherit; font-size:14px">
+
+            <div class="alerta al-red" style="margin-top:12px">
+              <div><b>Esta nota fica marcada como “sem comprovante”</b>
+              Em Contas a Receber ela aparece em vermelho: se o título vencer, não há canhoto assinado
+              para sustentar um protesto.</div>
+            </div>
+
+            <div class="btnrow">
+              <button class="btn pri">Liberar sem canhoto</button>
+              <button class="btn gho">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="legendas">
+        <div class="legenda"><span class="pin">1</span><div><b>Motivo fechado, não texto livre</b> — assim dá para contar depois: “no mês passado 12 notas ficaram sem canhoto e 9 foram do mesmo motivo”.</div></div>
+        <div class="legenda"><span class="pin">2</span><div><b>Senha de quem libera</b> — mesmo padrão do “desconsiderar falta” da conferência de devolução, que a equipe já conhece.</div></div>
+        <div class="legenda"><span class="pin">3</span><div><b>“Volta amanhã”</b> — libera o caixa de hoje mas a nota <b>continua na fila</b>, aparecendo na tela de pendências até ser bipada.</div></div>
+      </div>
+    </div>
+
+    <!-- ─────────── TELA 4 ─────────── -->
+    <div class="card">
+      <div class="tela-nome">Tela 4 · Aba Pedidos — o selo do canhoto</div>
+      <p class="sub">Quem abre o pedido já sabe se a nota assinada está no escritório, sem perguntar para ninguém.</p>
+
+      <div class="app">
+        <div class="appcard">
+          <div class="apphead"><span class="lb">Pedidos</span><span class="rt">14/08/2026</span></div>
+          <div class="appbody" style="padding:8px 14px">
+            <div class="linha">
+              <div class="info">
+                <div class="nome">#4821 · Mercado Silva</div>
+                <div class="meta" style="margin-top:4px; display:flex; gap:5px; flex-wrap:wrap">
+                  <span class="badge b-green">FATURADO</span>
+                  <span class="badge b-blue">NF 85.142</span>
+                  <span class="badge b-green">✓ Canhoto no escritório</span>
+                </div>
+              </div>
+              <div class="val">R$ 1.240,00</div>
+            </div>
+            <div class="linha">
+              <div class="info">
+                <div class="nome">#4822 · Padaria Doce Pão</div>
+                <div class="meta" style="margin-top:4px; display:flex; gap:5px; flex-wrap:wrap">
+                  <span class="badge b-green">FATURADO</span>
+                  <span class="badge b-blue">NF 85.143</span>
+                  <span class="badge b-amber">⏳ Canhoto na rua</span>
+                </div>
+              </div>
+              <div class="val">R$ 480,00</div>
+            </div>
+            <div class="linha">
+              <div class="info">
+                <div class="nome">#4823 · Restaurante Bom Prato</div>
+                <div class="meta" style="margin-top:4px; display:flex; gap:5px; flex-wrap:wrap">
+                  <span class="badge b-green">FATURADO</span>
+                  <span class="badge b-blue">NF 85.145</span>
+                  <span class="badge b-red">✕ Sem canhoto</span>
+                </div>
+              </div>
+              <div class="val">R$ 2.180,00</div>
+            </div>
+            <div class="linha">
+              <div class="info">
+                <div class="nome">#4824 · Bar do Zé</div>
+                <div class="meta" style="margin-top:4px; display:flex; gap:5px; flex-wrap:wrap">
+                  <span class="badge b-green">FATURADO</span>
+                  <span class="badge b-blue">NF 85.140</span>
+                  <span class="badge b-gold">🗄 Arquivada · AGO/26 pasta 3</span>
+                </div>
+              </div>
+              <div class="val">R$ 890,00</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="legendas">
+        <div class="legenda"><span class="pin">1</span><div><b>O selo entra ao lado do selo da NF</b> que já existe hoje na lista — não muda o layout, só ganha mais uma pílula.</div></div>
+        <div class="legenda"><span class="pin">2</span><div><b>Filtro novo</b> na barra de filtros: <i>Canhoto → todos / recebido / pendente / sem canhoto</i>, salvo por usuário como os outros filtros.</div></div>
+      </div>
+    </div>
+
+    <!-- ─────────── TELA 5 ─────────── -->
+    <div class="card">
+      <div class="tela-nome">Tela 5 · Contas a Receber — “tem documento para protestar?”</div>
+      <p class="sub">Aqui o selo tem outro sentido: não é logística, é <b>lastro jurídico</b>. Antes de mandar
+        para protesto ou cobrança judicial, o financeiro precisa saber se o papel assinado existe.</p>
+
+      <div class="app">
+        <div class="appcard">
+          <div class="apphead"><span class="lb">Contas a receber · vencidos</span>
+            <span class="rt">Filtro: só com canhoto</span></div>
+          <div class="tabwrap">
+            <table class="tab">
+              <thead>
+                <tr><th>Cliente</th><th>Título</th><th>Venc.</th><th>Valor</th><th>NF assinada</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Mercado Silva</td><td>85.142 / 1</td><td>10/08</td><td>R$ 620,00</td>
+                  <td><span class="badge b-green">✓ Sim · arquivada</span></td>
+                </tr>
+                <tr>
+                  <td>Bar do Zé</td><td>85.140 / 2</td><td>08/08</td><td>R$ 445,00</td>
+                  <td><span class="badge b-green">✓ Sim · arquivada</span></td>
+                </tr>
+                <tr>
+                  <td>Restaurante Bom Prato</td><td>85.145 / 1</td><td>05/08</td><td>R$ 1.090,00</td>
+                  <td><span class="badge b-red">✕ Não · cliente ficou com a via</span></td>
+                </tr>
+                <tr>
+                  <td>Padaria Doce Pão</td><td>85.143 / 1</td><td>12/08</td><td>R$ 480,00</td>
+                  <td><span class="badge b-amber">⏳ Ainda na rua</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="appbody" style="border-top:1px solid var(--line-soft)">
+            <div class="alerta al-blue" style="margin:0">
+              <div><b>2 títulos vencidos prontos para protesto</b>
+              R$ 1.065,00 com canhoto assinado arquivado. 1 título vencido <b>sem documento</b> —
+              cobrar só por acordo.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="legendas">
+        <div class="legenda"><span class="pin">1</span><div><b>Coluna “NF assinada”</b> na tabela de contas a receber, alimentada pelo mesmo controle do caixa.</div></div>
+        <div class="legenda"><span class="pin">2</span><div><b>Filtro “só com canhoto”</b> — a lista de protesto sai pronta, sem ninguém ir ao arquivo conferir papel.</div></div>
+        <div class="legenda"><span class="pin">3</span><div><b>Onde está o papel</b> — ao arquivar, quem guarda anota a caixa/pasta (ex.: <i>AGO/26 pasta 3</i>). Na hora de achar a nota, o sistema diz o lugar.</div></div>
+      </div>
+    </div>
+
+    <!-- ─────────── TELA 6 ─────────── -->
+    <div class="card">
+      <div class="tela-nome">Tela 6 · Notas Fiscais → aba “Canhotos” (o arquivo do mês)</div>
+      <p class="sub">Não é tela nova: entra como mais uma aba na tela de <b>Notas Fiscais</b> que já existe,
+        ao lado de <i>A emitir</i> e <i>Emitidas</i>. É aqui que você vê, no mesmo lugar, o que está
+        <b>no arquivo</b>, o que está <b>na rua</b> e o que está <b>sem assinatura</b>. E é aqui que dá para
+        bipar o maço que já está guardado, para colocar o mês em dia.</p>
+
+      <div class="app">
+        <div class="appbar">
+          <div class="ic">📄</div>
+          <div class="tt">Notas Fiscais</div>
+        </div>
+
+        <div class="btnrow" style="margin:0 0 10px">
+          <button class="btn gho">A emitir · 4</button>
+          <button class="btn gho">Emitidas · 214</button>
+          <button class="btn pri">Canhotos · 214</button>
+          <button class="btn gho">Todas</button>
+          <button class="btn gho">📅 Agosto 2026 ▾</button>
+        </div>
+
+        <div class="appcard">
+          <div class="apphead">
+            <span class="lb">Modo mutirão — bipar o arquivo</span>
+            <span class="rt" id="c2contador">198 de 214 no arquivo</span>
+          </div>
+          <div class="appbody">
+            <div class="prog"><span id="c2barra" style="width:93%"></span></div>
+
+            <div class="campo">
+              <span class="ic">📷</span>
+              <input id="c2bip" type="text" autocomplete="off"
+                     placeholder="Pegue o maço da pasta e vá bipando…">
+            </div>
+            <div class="btnrow">
+              <button class="btn sec" id="c2simular">Simular leitor</button>
+              <button class="btn gho" id="c2celular">Ler pelo celular</button>
+            </div>
+            <div id="c2aviso" style="margin-top:10px"></div>
+
+            <div class="btnrow" style="margin-top:14px">
+              <span class="badge b-green" id="c2bArq">🗄 No arquivo · 194</span>
+              <span class="badge b-amber">⏳ Na rua · 6</span>
+              <span class="badge b-red" id="c2bSem">✎ Sem assinatura · 1</span>
+              <span class="badge b-blue">🖨 Devolução a reimprimir · 2</span>
+            </div>
+
+            <div id="c2lista" style="margin-top:12px"></div>
+
+            <div class="alerta al-red" style="margin-top:12px">
+              <div><b>3 notas na rua há mais de 3 dias</b>
+              NF 85.109 (Mercado Bom Dia · 6 dias), 85.118 (Empório Central · 5 dias),
+              85.121 (Lanchonete Praça · 4 dias).</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="legendas">
+        <div class="legenda"><span class="pin">1</span><div><b>Bipar o que já está guardado</b> — você pega a pasta <i>Notas Emitidas Agosto 2026</i>, passa o leitor no maço inteiro e o sistema mostra na hora o que <b>não</b> foi bipado: essas são as que faltam.</div></div>
+        <div class="legenda"><span class="pin">2</span><div><b>“Veio sem assinatura”</b> — no bipe, se o canhoto estiver em branco, um clique marca a nota. Ela conta como arquivada (o papel está aqui) mas <b>sem valor de prova</b> — e vira lista de “recolher assinatura na próxima visita”.</div></div>
+        <div class="legenda"><span class="pin">3</span><div><b>Nota de devolução a reimprimir</b> — devolução com NF emitida cujo papel não está no arquivo. Um clique reimprime a DANFE para guardar junto.</div></div>
+        <div class="legenda"><span class="pin">4</span><div><b>A pasta é preenchida sozinha</b> — <i>Notas Emitidas Agosto 2026</i> vem do mês da nota. Ninguém digita nada.</div></div>
+        <div class="legenda"><span class="pin">5</span><div><b>Mesmo filtro de período</b> das outras abas: trocou para julho, vê o arquivo de julho.</div></div>
+      </div>
+
+      <div class="alerta al-green">
+        <div><b>É esse mutirão que resolve o passado</b>
+        No dia em que ligar, tudo que já foi emitido no mês entra como “estado desconhecido”.
+        Bipando a pasta uma vez, o mês inteiro fica em dia — e daí para a frente o controle é diário,
+        no caixa.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── SELOS ─────────── -->
+  <section class="sec">
+    <h2>Os cinco estados de uma nota</h2>
+    <div class="card">
+      <div style="display:flex; flex-direction:column; gap:11px">
+        <div style="display:flex; gap:10px; align-items:flex-start">
+          <span class="badge b-amber" style="flex:0 0 auto">⏳ Na rua</span>
+          <div style="font-size:13.5px; color:#33403b">Saiu com o motorista, ainda não voltou. <b>Trava o caixa do dia.</b></div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:flex-start">
+          <span class="badge b-green" style="flex:0 0 auto">✓ Recebido</span>
+          <div style="font-size:13.5px; color:#33403b">Bipado no escritório, canhoto assinado em mãos. Libera o caixa e serve de prova.</div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:flex-start">
+          <span class="badge b-gold" style="flex:0 0 auto">🗄 Arquivado</span>
+          <div style="font-size:13.5px; color:#33403b">Guardado na pasta do mês (<i>Notas Emitidas Agosto 2026</i>). É o estado final.</div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:flex-start">
+          <span class="badge b-red" style="flex:0 0 auto">✎ Sem assinatura</span>
+          <div style="font-size:13.5px; color:#33403b">O papel está no arquivo, <b>mas o canhoto veio em branco</b>. Não serve de prova — fica com esse selo, e o chip com esse nome dá a lista de quem precisa assinar na próxima visita.</div>
+        </div>
+        <div style="display:flex; gap:10px; align-items:flex-start">
+          <span class="badge b-red" style="flex:0 0 auto">✕ Sem canhoto</span>
+          <div style="font-size:13.5px; color:#33403b">Liberado com justificativa e senha. Libera o caixa, <b>mas marca o título como sem documento</b> em Contas a Receber.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── EQUIPAMENTO ─────────── -->
+  <section class="sec">
+    <h2>O que comprar</h2>
+    <div class="card">
+      <h3>Leitor de mesa USB — a peça principal</h3>
+      <p>Um leitor comum de balcão, desses de supermercado. Ele se comporta como um <b>teclado</b>:
+        você aponta, ele “digita” o número no campo que estiver selecionado. <b>Não precisa de driver,
+        nem programa, nem configuração</b> — plugou na USB, funciona no navegador.</p>
+      <ul class="lista">
+        <li><b>Tipo:</b> leitor laser ou CCD <b>1D</b> (código de barras comprido). Não precisa ser 2D.</li>
+        <li><b>Suporte de mesa</b> (aquele pezinho): deixa as duas mãos livres para passar folha por folha — é o que faz render.</li>
+        <li><b>Faixa de preço:</b> R$ 120 a R$ 300. Marcas comuns: Elgin, Bematech, Tanca, Honeywell.</li>
+        <li>Se um dia quiser ler QR Code também, um <b>2D</b> (R$ 250–450) cobre os dois — vale a pena se a Fase 2 for acontecer.</li>
+      </ul>
+      <div class="alerta al-blue">
+        <div><b>E o celular?</b>
+        Funciona sem comprar nada, dentro do próprio app, usando a câmera. Serve muito bem para bipar
+        uma nota avulsa ou conferir no galpão. Para um maço de 30, o leitor de mesa ganha fácil.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── SUGESTÕES ─────────── -->
+  <section class="sec">
+    <h2>Sugestões além do que você pediu</h2>
+
+    <div class="card">
+      <h3>1. Bipar também na <i>saída</i> — não só na volta</h3>
+      <p>Ao carregar o caminhão, bipar cada nota que entra no maço. Ganho: se o motorista sair com
+        18 notas mas o sistema esperava 20, você descobre <b>antes</b> de o caminhão andar. E a lista da
+        volta passa a ser exatamente o que saiu, não o que “deveria ter saído”.</p>
+      <p class="sub">Custo: pequeno — é a mesma tela de bipagem, ligada ao embarque.</p>
+    </div>
+
+    <div class="card">
+      <h3>2. QR Code na DANFE que o app gera</h3>
+      <p>A DANFE hoje é gerada pelo próprio sistema. Dá para imprimir, ao lado do canhoto, um
+        <b>QR Code com a chave da nota</b>. QR é muito mais fácil de ler com câmera de celular do que o
+        código de barras comprido — resolve a limitação da Tela 2.</p>
+      <p class="sub">Custo: médio (mexer no gerador da DANFE). Só vale se a leitura por celular for virar o padrão.</p>
+    </div>
+
+    <div class="card">
+      <h3>3. Foto do canhoto anexada à nota</h3>
+      <p>Na hora de bipar pelo celular, tirar a foto do canhoto assinado e anexar. Aí o comprovante
+        existe <b>digitalmente</b>: o financeiro manda por e-mail para o cliente ou para a assessoria de
+        cobrança sem ir ao arquivo, e o papel perdido deixa de ser tragédia.</p>
+      <p class="sub">Custo: médio. Atenção: arquivo tem que ir para a pasta que sobrevive ao deploy — regra que já existe no projeto.</p>
+    </div>
+
+    <div class="card">
+      <h3>4. Assinatura na tela, no ato da entrega</h3>
+      <p>O passo seguinte natural: o cliente assina com o dedo na tela do celular do motorista, com
+        data, hora e GPS. O canhoto de papel vira redundante e o comprovante nasce digital.</p>
+      <p class="sub">Custo: alto. É um projeto próprio, para depois que o controle acima estiver rodando.
+        Vale dizer: judicialmente, o canhoto de papel assinado ainda é o documento mais forte —
+        a assinatura na tela complementa, não substitui de imediato.</p>
+    </div>
+
+    <div class="card">
+      <h3>5. Cobrar o motorista pelo canhoto que não volta</h3>
+      <p>Mesmo mecanismo da conferência de devolução, que já cobra falta de mercadoria. Se o padrão de
+        “sem canhoto” se concentrar num motorista, o número aparece sozinho no relatório mensal.</p>
+      <p class="sub">Sugestão: começar só <b>medindo</b> (ranking por motorista). Cobrança em dinheiro, só se virar problema.</p>
+    </div>
+  </section>
+
+  <!-- ─────────── FASES ─────────── -->
+  <section class="sec">
+    <h2>Como eu entregaria</h2>
+    <div class="card">
+      <div class="fase">
+        <div class="ft">Fase 1 — o que você pediu <span class="badge b-green">primeira entrega</span></div>
+        <div class="fd">Controle do canhoto criado automaticamente na emissão da NF · bipagem
+          <b>no computador (leitor) e no celular (câmera)</b> · card no caixa com a
+          <b>trava no fechar caixa</b> · justificativa com senha (quem confere o caixa também libera) ·
+          aba <b>Canhotos</b> em Notas Fiscais com o mutirão do arquivo do mês · alerta de 3 dias ·
+          selo em Pedidos e coluna em Contas a Receber. Ligado por uma chave, começando em
+          <b>modo aviso</b> (mostra a pendência sem travar) e virando trava quando a equipe pegar o jeito.</div>
+      </div>
+      <div class="fase depois">
+        <div class="ft">Fase 2 — refino do arquivo</div>
+        <div class="fd">Arquivar em lote · reimpressão da DANFE de devolução direto da lista ·
+          lista de “recolher assinatura na próxima visita” por vendedor ·
+          filtro “só com canhoto” para montar a lista de protesto · aviso no WhatsApp interno das notas paradas.</div>
+      </div>
+      <div class="fase depois">
+        <div class="ft">Fase 3 — o extra</div>
+        <div class="fd">Bipagem na saída do embarque · QR Code na DANFE · foto do canhoto ·
+          indicador por motorista. (Assinatura na tela é projeto separado.)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── DECISÕES ─────────── -->
+  <section class="sec">
+    <h2>Decisões que eu já tomei — me diga se discorda</h2>
+    <div class="card">
+      <div class="dec">
+        <div class="q">Quem bipa: o escritório, não o motorista.</div>
+        <div class="r"><b>Motivo:</b> quem confere não pode ser quem entregou. É a mesma lógica da conferência
+          de devolução e da do dinheiro — o motorista traz, o escritório confere e assina.</div>
+      </div>
+      <div class="dec">
+        <div class="q">Nota sem canhoto <b>não trava o caixa para sempre</b>.</div>
+        <div class="r"><b>Motivo:</b> se travasse, num dia em que o cliente ficou com a via o caixa não fecharia
+          nunca e a equipe acharia um jeito de burlar. Melhor: libera com justificativa, senha e registro —
+          e o problema fica visível no relatório em vez de escondido.
+          <b>Quem confere o caixa pode liberar</b>, conforme você definiu.</div>
+      </div>
+      <div class="dec">
+        <div class="q">Só notas de <b>venda faturada</b> entram na conferência.</div>
+        <div class="r">Pedido especial e bonificação não têm nota, então não entram. Nota de devolução
+          também fica de fora (ela não roda com canhoto).</div>
+      </div>
+      <div class="dec">
+        <div class="q">Começa com uma chave liga/desliga, em modo aviso.</div>
+        <div class="r"><b>Motivo:</b> mesmo caminho da conferência do dinheiro. Ninguém descobre a trava nova
+          num dia corrido às 18h com o motorista esperando.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Suas respostas — já incorporadas nesta versão</h3>
+      <ul class="lista">
+        <li><b>Notas antigas:</b> entra o <b>mês inteiro</b>. Ao ligar, tudo que já foi emitido no mês vira “estado desconhecido” e a equipe bipa a pasta uma vez para colocar em dia (Tela 6).</li>
+        <li><b>Onde enxergar:</b> na tela de <b>Notas Fiscais</b>, aba nova “Canhotos” — no arquivo, na rua, sem assinatura e devolução a reimprimir, tudo no mesmo lugar.</li>
+        <li><b>Quem pode liberar sem canhoto:</b> quem tem a permissão <i>e</i> <b>quem confere o caixa</b>.</li>
+        <li><b>Alerta:</b> nota na rua há mais de <b>3 dias</b> fica vermelha.</li>
+        <li><b>Pasta física:</b> por mês, no formato <b>“Notas Emitidas Agosto 2026”</b> — preenchido sozinho pelo mês da nota, ninguém digita.</li>
+        <li><b>Fase 1 já com os dois:</b> leitor no computador <b>e</b> câmera do celular.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ─────────── RISCOS ─────────── -->
+  <section class="sec">
+    <h2>Riscos que eu enxergo</h2>
+    <div class="card">
+      <ul class="lista">
+        <li><b>Bipar sem olhar.</b> Passar o leitor no maço todo sem conferir se cada folha está mesmo assinada. A trava garante que a nota <i>voltou</i>, não que está <i>assinada</i>. Mitigação: a foto do canhoto (Sugestão 3) e conferência por amostragem.</li>
+        <li><b>Código rasgado ou molhado.</b> Por isso o campo aceita digitar o número da nota como alternativa.</li>
+        <li><b>Caixa travado no fim do expediente.</b> É por isso que existe a justificativa com senha e o modo aviso no começo.</li>
+        <li><b>Nota emitida depois da volta do motorista</b> (faturamento atrasado). Ela entra no caixa do dia seguinte — regra que preciso confirmar com você quando a gente detalhar.</li>
+      </ul>
+    </div>
+  </section>
+
+  <p class="rodape">Proposta interna — Hardt Salgados · 14/08/2026</p>
+</main>
+
+<script>
+(function(){
+  var notas = [
+    { nf:'85.140', num:'85140', cliente:'Bar do Zé',              valor:'R$ 890,00',   estado:'ok',   quem:'Ana',   hora:'17:38' },
+    { nf:'85.141', num:'85141', cliente:'Mercadinho Aurora',      valor:'R$ 335,00',   estado:'ok',   quem:'Ana',   hora:'17:39' },
+    { nf:'85.142', num:'85142', cliente:'Mercado Silva',          valor:'R$ 1.240,00', estado:'pend' },
+    { nf:'85.143', num:'85143', cliente:'Padaria Doce Pão',       valor:'R$ 480,00',   estado:'pend' },
+    { nf:'85.144', num:'85144', cliente:'Lanchonete da Praça',    valor:'R$ 720,00',   estado:'pend' },
+    { nf:'85.145', num:'85145', cliente:'Restaurante Bom Prato',  valor:'R$ 2.180,00', estado:'pend' },
+    { nf:'85.146', num:'85146', cliente:'Empório Central',        valor:'R$ 1.005,00', estado:'pend' }
+  ];
+
+  var lista   = document.getElementById('listaNotas');
+  var barra   = document.getElementById('barra');
+  var contador= document.getElementById('contador');
+  var aviso   = document.getElementById('aviso');
+  var rodape  = document.getElementById('rodapeCard');
+  var campo   = document.getElementById('bip');
+
+  function resolvidas(){ return notas.filter(function(n){ return n.estado !== 'pend'; }).length; }
+
+  function desenhar(){
+    lista.innerHTML = notas.map(function(n){
+      var cls = n.estado === 'ok' ? 'linha ok' : (n.estado === 'disp' ? 'linha disp' : 'linha pend');
+      var meta = n.estado === 'ok'   ? 'Recebido às ' + n.hora + ' por ' + n.quem
+               : n.estado === 'disp' ? 'Sem canhoto · liberado por Clark'
+               : 'Saiu com Marcos · aguardando';
+      var acao = n.estado === 'pend'
+        ? '<button class="btn gho" data-disp="'+n.num+'" style="padding:4px 10px; font-size:11.5px">Não voltou</button>'
+        : '';
+      return '<div class="'+cls+'">'
+           +   '<span class="check"></span>'
+           +   '<div class="info"><div class="nome">NF '+n.nf+' · '+n.cliente+'</div>'
+           +   '<div class="meta">'+meta+'</div></div>'
+           +   '<div class="val">'+n.valor+'</div>'
+           +   acao
+           + '</div>';
+    }).join('');
+
+    var r = resolvidas(), t = notas.length, falta = t - r;
+    barra.style.width = Math.round(r / t * 100) + '%';
+    contador.textContent = r + ' de ' + t + ' recebidos';
+
+    if (falta > 0) {
+      rodape.innerHTML = '<div class="alerta al-red" style="margin-top:0"><div><b>Faltam '+falta+
+        ' canhoto'+(falta>1?'s':'')+'</b>O caixa não pode ser fechado enquanto essas notas não voltarem '+
+        'ou forem justificadas.</div></div>'+
+        '<div class="btnrow"><button class="btn dis" disabled>🔒 Fechar caixa</button></div>';
+    } else {
+      rodape.innerHTML = '<div class="alerta al-green" style="margin-top:0"><div><b>Todas as notas do dia conferidas</b>'+
+        'Canhotos recebidos e registrados. O caixa está liberado para fechar.</div></div>'+
+        '<div class="btnrow"><button class="btn pri">✓ Fechar caixa</button></div>';
+    }
+
+    Array.prototype.forEach.call(lista.querySelectorAll('[data-disp]'), function(b){
+      b.addEventListener('click', function(){
+        var n = notas.filter(function(x){ return x.num === b.getAttribute('data-disp'); })[0];
+        if (!n) return;
+        n.estado = 'disp';
+        msg('al-amber', 'NF '+n.nf+' liberada sem canhoto', 'Fica marcada como “sem documento” em Contas a Receber.');
+        desenhar();
+      });
+    });
+  }
+
+  function msg(tipo, titulo, texto){
+    aviso.innerHTML = '<div class="alerta '+tipo+'" style="margin-top:0"><div><b>'+titulo+'</b>'+texto+'</div></div>';
+  }
+
+  function bipar(valor){
+    var v = String(valor || '').replace(/\D/g, '');
+    if (!v) return;
+    // chave de 44 dígitos: o número da nota está nas posições 26–34
+    var alvo = v.length >= 44 ? v.substr(25, 9).replace(/^0+/, '') : v.replace(/^0+/, '');
+    var n = notas.filter(function(x){
+      return x.num === alvo || x.num.slice(-4) === alvo.slice(-4);
+    })[0];
+
+    if (!n) { msg('al-red', 'Nota não encontrada', 'Esta nota não saiu no caixa de hoje. Confira o maço.'); return; }
+    if (n.estado === 'ok') { msg('al-blue', 'NF '+n.nf+' já estava bipada', 'Recebida às '+n.hora+' por '+n.quem+'. Nada mudou.'); return; }
+
+    n.estado = 'ok'; n.quem = 'você';
+    var d = new Date();
+    n.hora = ('0'+d.getHours()).slice(-2) + ':' + ('0'+d.getMinutes()).slice(-2);
+    msg('al-green', '✓ NF '+n.nf+' · '+n.cliente, 'Canhoto recebido e registrado no seu nome.');
+    desenhar();
+  }
+
+  campo.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') { e.preventDefault(); bipar(campo.value); campo.value = ''; }
+  });
+  campo.addEventListener('input', function(){
+    // leitor de mesa "digita" tudo de uma vez e manda Enter; aqui também aceitamos a chave colada
+    if (campo.value.replace(/\D/g,'').length >= 44) { bipar(campo.value); campo.value = ''; }
+  });
+
+  document.getElementById('btnSimular').addEventListener('click', function(){
+    var n = notas.filter(function(x){ return x.estado === 'pend'; })[0];
+    if (!n) { msg('al-green', 'Nada pendente', 'Todas as notas do dia já foram conferidas.'); return; }
+    // chave de acesso realista: cUF+AAMM+CNPJ+mod+serie+nNF+tpEmis+cNF+DV = 44 dígitos
+    var chave = '35' + '2608' + '08000000000000' + '55' + '001'
+              + ('000000000' + n.num).slice(-9) + '1' + '12345678' + '9';
+    bipar(chave);
+  });
+
+  document.getElementById('btnCelular').addEventListener('click', function(){
+    msg('al-blue', 'Abriria a câmera', 'No app de verdade, este botão abre a leitura pela câmera (Tela 2). Aqui é só demonstração.');
+  });
+
+  desenhar();
+})();
+
+/* ── Tela 6 · mutirão do arquivo do mês ── */
+(function(){
+  var itens = [
+    { nf:'85.140', num:'85140', cliente:'Bar do Zé',             tipo:'venda', estado:'arq',  extra:'Notas Emitidas Agosto 2026' },
+    { nf:'85.141', num:'85141', cliente:'Mercadinho Aurora',     tipo:'venda', estado:'arq',  extra:'Notas Emitidas Agosto 2026' },
+    { nf:'85.142', num:'85142', cliente:'Mercado Silva',         tipo:'venda', estado:'nao' },
+    { nf:'85.109', num:'85109', cliente:'Mercado Bom Dia',       tipo:'venda', estado:'rua',  extra:'Saiu há 6 dias com Marcos' },
+    { nf:'85.145', num:'85145', cliente:'Restaurante Bom Prato', tipo:'venda', estado:'sem',  extra:'Canhoto em branco — recolher assinatura' },
+    { nf:'85.201', num:'85201', cliente:'Padaria Doce Pão',      tipo:'devol', estado:'imp',  extra:'NF de devolução emitida — papel não está no arquivo' }
+  ];
+
+  var lista = document.getElementById('c2lista');
+  var barra = document.getElementById('c2barra');
+  var cont  = document.getElementById('c2contador');
+  var aviso = document.getElementById('c2aviso');
+  var campo = document.getElementById('c2bip');
+
+  var ROT = {
+    arq: { cls:'linha ok',   badge:'<span class="badge b-gold">🗄 No arquivo</span>' },
+    nao: { cls:'linha pend', badge:'<span class="badge b-gray">? Não bipada</span>' },
+    rua: { cls:'linha pend', badge:'<span class="badge b-amber">⏳ Na rua</span>' },
+    sem: { cls:'linha disp', badge:'<span class="badge b-red">✎ Sem assinatura</span>' },
+    imp: { cls:'linha pend', badge:'<span class="badge b-blue">🖨 Reimprimir</span>' }
+  };
+
+  function desenhar(){
+    lista.innerHTML = itens.map(function(n){
+      var r = ROT[n.estado];
+      var rot = n.tipo === 'devol' ? 'NFD ' : 'NF ';
+      var acao = '';
+      if (n.estado === 'arq') acao = '<button class="btn gho" data-sem="'+n.num+'" style="padding:4px 10px; font-size:11.5px">Veio sem assinatura</button>';
+      if (n.estado === 'imp') acao = '<button class="btn gho" data-imp="'+n.num+'" style="padding:4px 10px; font-size:11.5px">Reimprimir DANFE</button>';
+      return '<div class="'+r.cls+'">'
+           +   '<span class="check"></span>'
+           +   '<div class="info"><div class="nome">'+rot+n.nf+' · '+n.cliente+' &nbsp;'+r.badge+'</div>'
+           +   '<div class="meta">'+(n.extra || 'Estado desconhecido — bipe para confirmar que está na pasta')+'</div></div>'
+           +   acao
+           + '</div>';
+    }).join('');
+
+    var soArq = itens.filter(function(n){ return n.estado === 'arq'; }).length;
+    var soSem = itens.filter(function(n){ return n.estado === 'sem'; }).length;
+    var base = 192; // as demais notas do mês, já conferidas
+    barra.style.width = Math.round((base + soArq + soSem) / 214 * 100) + '%';
+    cont.textContent = (base + soArq + soSem) + ' de 214 no arquivo';
+    document.getElementById('c2bArq').textContent = '🗄 No arquivo · ' + (base + soArq);
+    document.getElementById('c2bSem').textContent = '✎ Sem assinatura · ' + soSem;
+
+    Array.prototype.forEach.call(lista.querySelectorAll('[data-sem]'), function(b){
+      b.addEventListener('click', function(){
+        var n = achar(b.getAttribute('data-sem')); if (!n) return;
+        n.estado = 'sem'; n.extra = 'Canhoto em branco — recolher assinatura';
+        msg('al-amber', rotulo(n)+' marcada como sem assinatura',
+            'O papel está no arquivo, mas não serve de prova. Fica com o selo “Sem assinatura”, que filtra a lista.');
+        desenhar();
+      });
+    });
+    Array.prototype.forEach.call(lista.querySelectorAll('[data-imp]'), function(b){
+      b.addEventListener('click', function(){
+        var n = achar(b.getAttribute('data-imp')); if (!n) return;
+        n.estado = 'arq'; n.extra = 'Reimpressa e arquivada · Notas Emitidas Agosto 2026';
+        msg('al-green', 'DANFE de devolução reimpressa', 'É só guardar na pasta do mês junto com as outras.');
+        desenhar();
+      });
+    });
+  }
+
+  function rotulo(n){ return (n.tipo === 'devol' ? 'NFD ' : 'NF ') + n.nf; }
+  function achar(num){ return itens.filter(function(x){ return x.num === num; })[0]; }
+  function msg(tipo, titulo, texto){
+    aviso.innerHTML = '<div class="alerta '+tipo+'" style="margin-top:0"><div><b>'+titulo+'</b>'+texto+'</div></div>';
+  }
+
+  function bipar(valor){
+    var v = String(valor || '').replace(/\D/g, '');
+    if (!v) return;
+    var alvo = v.length >= 44 ? v.substr(25, 9).replace(/^0+/, '') : v.replace(/^0+/, '');
+    var n = itens.filter(function(x){ return x.num === alvo || x.num.slice(-4) === alvo.slice(-4); })[0];
+    if (!n) { msg('al-red', 'Nota fora do período', 'Esta nota não é de agosto/2026. Troque o filtro de período.'); return; }
+    if (n.estado === 'arq' || n.estado === 'sem') {
+      msg('al-blue', rotulo(n)+' já estava conferida', 'Nada mudou — dá para bipar o maço todo sem medo de duplicar.');
+      return;
+    }
+    var antes = n.estado;
+    n.estado = 'arq'; n.extra = 'Bipada agora · Notas Emitidas Agosto 2026';
+    if (antes === 'rua')  msg('al-green', rotulo(n)+' apareceu!', 'Estava marcada como “na rua há 6 dias” e o papel estava na pasta. Regularizada.');
+    else if (antes==='imp') msg('al-green', rotulo(n)+' encontrada', 'A DANFE de devolução estava arquivada — não precisa reimprimir.');
+    else msg('al-green', '✓ '+rotulo(n)+' · '+n.cliente, 'Confirmada na pasta do mês.');
+    desenhar();
+  }
+
+  campo.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') { e.preventDefault(); bipar(campo.value); campo.value = ''; }
+  });
+  campo.addEventListener('input', function(){
+    if (campo.value.replace(/\D/g,'').length >= 44) { bipar(campo.value); campo.value = ''; }
+  });
+  document.getElementById('c2simular').addEventListener('click', function(){
+    var n = itens.filter(function(x){ return x.estado !== 'arq' && x.estado !== 'sem'; })[0];
+    if (!n) { msg('al-green', 'Arquivo do mês em dia', 'Todas as notas de agosto foram conferidas.'); return; }
+    var chave = '35' + '2608' + '08000000000000' + '55' + '001'
+              + ('000000000' + n.num).slice(-9) + '1' + '12345678' + '9';
+    bipar(chave);
+  });
+  document.getElementById('c2celular').addEventListener('click', function(){
+    msg('al-blue', 'Abriria a câmera', 'Dá para fazer o mutirão do arquivo com o celular também, sem ficar preso ao computador.');
+  });
+
+  desenhar();
+})();
+</script>
+</body>
+</html>

@@ -1,7 +1,11 @@
 # Notas Fiscais (emissão de NF-e)
 
 **Rota:** `/notas-fiscais` · **Menu:** Financeiro → Notas Fiscais
-**Permissões:** `Pode_Acessar_Notas_Fiscais` (ver a tela) · `Pode_Emitir_NF` (emitir/reemitir) · `Pode_Excluir_Pedido` (botão "Cancelar pedido") · `Pode_Configurar_NF` (reservada para o painel de configuração, em breve)
+**Permissões:** `Pode_Acessar_Notas_Fiscais` (ver a tela, incluindo a aba Canhotos) · `Pode_Emitir_NF` (emitir/reemitir) · `Pode_Excluir_Pedido` (botão "Cancelar pedido") · `Pode_Configurar_NF` (reservada para o painel de configuração, em breve)
+
+**Abas da tela:** A emitir · Emitidas · **Canhotos** · Todas. As três primeiras tratam de *emitir* a nota; a aba **Canhotos** trata do *papel assinado que volta com o motorista* (seção própria no fim deste manual). As abas A emitir, Emitidas e Canhotos mostram a contagem do período no próprio rótulo.
+
+**Cada aba lembra o próprio período.** As abas de emissão (A emitir · Emitidas · Todas) abrem em **Hoje**, porque emitir nota é tarefa do dia. A aba **Canhotos** abre em **Este mês**, porque o arquivo de canhotos é organizado por mês, igual à pasta física. O seletor de período é um só na tela — ele troca junto com a aba —, e mexer no período de uma aba **não altera** o da outra.
 
 ## O que é
 
@@ -56,6 +60,8 @@ Quando o motivo tem a ver com o cadastro do cliente (documento, inscrição esta
 
 Botão **"XMLs (contabilidade)"** na barra de filtros da fila: baixa um **ZIP com todos os XMLs do período** filtrado (notas de venda e devolução emitidas pelo app + notas antigas do CA disponíveis), com nomes amigáveis (`nfe-84844-venda-pedido-2269.xml`). Requer período com início e fim (ex.: "Este mês"). Se algum XML não puder ser incluído, vai um `_avisos.txt` dentro do ZIP explicando.
 
+**O botão não aparece na aba Canhotos** — e é de propósito. Ele exporta o período das abas de emissão (que abrem em "Hoje"), enquanto na aba Canhotos o período visível na tela é o dela (que abre no mês). Se o botão ficasse ali, você veria "Este mês" na tela e receberia o ZIP de **um dia só**, mandando um mês incompleto para a contabilidade sem nada denunciar. Para exportar os XMLs, mude para **A emitir**, **Emitidas** ou **Todas**, confira o período e baixe por lá.
+
 ## Notas antigas (era Conta Azul)
 
 Continuam disponíveis: a DANFE sai pela aba Pedidos (botão DANFE) como sempre. Os XMLs estão sendo copiados para dentro do app em segundo plano — impressão não depende mais do CA depois disso.
@@ -67,3 +73,120 @@ Na aba **Pedidos → Devoluções**, ao expandir uma devolução de pedido **com
 - Status igual ao da venda: Processando → ✓ Autorizada (com botão **DANFE**) ou ✕ Rejeitada (motivo + "Emitir novamente").
 - **Devolução de pedido ESPECIAL não gera nota** (pedido sem nota) — o botão nem aparece; o fluxo especial segue como sempre.
 - Devolução que já teve nota emitida pelo CA (campo "Nota Devolução" preenchido) também não emite de novo.
+
+---
+
+# Aba CANHOTOS — o arquivo do mês
+
+**Onde fica:** Notas Fiscais → aba **Canhotos** (mesma rota `/notas-fiscais`, mesma permissão `Pode_Acessar_Notas_Fiscais`).
+
+## Para que serve
+
+O canhoto é o pedaço da nota que o cliente assina na entrega. **É a prova de que a mercadoria chegou** — sem ele não dá para protestar um título nem para se defender numa discussão com o cliente.
+
+Antes, ninguém sabia quais canhotos tinham voltado: a conferência era no olho, folha por folha, e a falta só aparecia semanas depois, quando o financeiro ia procurar o comprovante. Nesta aba você **bipa o código de barras da DANFE** e o sistema mostra, na hora, quais notas assinadas já estão no arquivo e quais faltam.
+
+> **Hoje esta aba não trava nada.** Ela serve para enxergar e organizar. A trava do fechamento do caixa (o caixa só fecha com todos os canhotos conferidos) está planejada para uma etapa seguinte e ainda **não existe**.
+
+## O mutirão — como colocar um mês em dia
+
+É assim que se resolve o passado. Leva uma sessão e o mês inteiro fica em ordem:
+
+1. **Confira o mês** no filtro de período no topo. A aba já abre no **mês corrente**, que é o caso normal — se você quer arrumar um mês passado, troque ali. Nesta aba o preset **"Todo o período" não aparece** de propósito: o arquivo é organizado por mês, igual à pasta física, e sem mês definido não há maço para bipar.
+2. Clique em **"Colocar o mês em dia"**. Isso traz para o controle todas as notas já emitidas naquele mês. Elas entram como **"? Estado desconhecido"** — o sistema ainda não sabe onde o papel está.
+3. **Pegue a pasta física** daquele mês (ex.: *Notas Emitidas Agosto 2026*) e vá **bipando o maço inteiro**, folha por folha.
+4. **O que não riscar é o que falta.** Cada folha bipada risca a linha e vira "Arquivado". No fim, o que continuar sem riscar são exatamente as notas cujo papel não está na pasta.
+
+A barra de progresso no topo (*"X de Y no arquivo"*) mostra o quanto já foi. Os chips coloridos abaixo do campo de bipe são também **filtros**: clique em "⏳ Na rua" para ver só as que faltam.
+
+> **"Colocar o mês em dia" pode ser clicado quantas vezes quiser** — não duplica nada. Se o mês já estiver em dia, aparece *"O mês já estava em dia — nenhuma nota nova para trazer."*
+
+## Bipar a mesma folha de novo não faz mal nenhum
+
+**Esta é a dúvida nº 1 de quem usa.** Pode bipar a mesma nota dez vezes: não duplica, não estraga, não dá erro vermelho. O sistema só responde **"já estava"** em azul, com o aviso *"Esta já constava no arquivo. Pode seguir para a próxima folha."*
+
+Isso é proposital: num maço de 30 folhas é normal repetir alguma. Se repetir desse erro, ninguém confiaria no mutirão.
+
+O sistema também **ignora sozinho** a leitura repetida do leitor a laser quando o gatilho fica preso e ele dispara duas ou três vezes seguidas.
+
+## As duas formas de bipar (e a terceira, digitando)
+
+- **Leitor de mesa USB** (no computador) — é o jeito rápido, o que rende num maço grande. O leitor funciona como teclado: você aponta, ele "digita" o código no campo e já marca sozinho. Não precisa instalar nada. O campo **se re-foca sozinho** depois de cada leitura, então a mão não sai do maço.
+- **Câmera do celular** — botão **"Ler pelo celular"**. Abre a câmera dentro do próprio app, sem instalar nada. Serve bem para uma nota avulsa ou para conferir no galpão. Para um maço de 30, o leitor de mesa ganha fácil (o código da DANFE é comprido e fininho, exige luz boa e mão parada).
+- **Digitar o número da nota** — se o código de barras estiver **rasgado, sujo ou apagado**, é só digitar o número da nota (ex.: `85142`) no mesmo campo e apertar Enter.
+
+Cada leitura dá um **som e uma vibração** diferentes para acerto, repetição e erro — dá para ir bipando sem olhar a tela. As últimas leituras ficam listadas abaixo do campo para conferir depois.
+
+## Os estados de uma nota
+
+| Estado | O que significa na prática |
+|---|---|
+| **⏳ Na rua** | A nota de venda foi emitida e o canhoto assinado ainda não voltou para o escritório. Quando o pedido já tinha embarque, a linha mostra também **com qual motorista** ela saiu; quando não tinha, a nota continua pendente do mesmo jeito, só sem o nome. É o que você quer ver diminuir. |
+| **✓ Recebido** | O canhoto assinado chegou ao escritório, mas ainda não foi para a pasta. Tem o botão **Arquivar**. |
+| **🗄 Arquivado** | Guardado na pasta do mês. **É o estado final** — a linha aparece riscada. |
+| **✎ Sem assinatura** | O papel está no arquivo, mas o canhoto veio **em branco**. Ver a seção abaixo. |
+| **✕ Sem canhoto** | A nota foi liberada com justificativa: o papel não vai voltar. *(Este estado só passa a ser criado quando a etapa do Caixa entrar no ar.)* |
+| **? Estado desconhecido** | O sistema não sabe onde o papel está. É como nasce tudo que já tinha sido emitido antes do controle existir — e também como nasce toda **nota de devolução**, que não sai com motorista. Some conforme você bipa o maço. |
+
+**Quem bipa no mutirão vai direto para "Arquivado"** (o papel está na pasta, na sua mão). Quando a conferência passar a ser feita no Caixa, na volta do motorista, o bipe de lá vai marcar **"Recebido"**, e o arquivamento vira um segundo passo.
+
+## "Veio sem assinatura"
+
+Botão em cada linha. Use quando **o papel voltou, mas o cliente não assinou** — canhoto em branco.
+
+A nota conta como arquivada (o documento está aqui, você não precisa mais procurar por ele), **mas não serve de prova de entrega**. Ela passa a mostrar o selo **"✎ Sem assinatura"** e entra no chip de mesmo nome — clicando nele você vê, de uma vez, todas as notas do mês que estão nessa situação.
+
+**Quem age com essa lista é o escritório.** O vendedor não enxerga esta tela (ela exige a permissão de Notas Fiscais), então não adianta mandá-lo consultar aqui: abra o chip "Sem assinatura" e avise o vendedor quais clientes têm canhoto em branco, para ele recolher a assinatura na próxima visita.
+
+## A pasta física sai sozinha
+
+Você **nunca digita** o nome da pasta. O sistema o monta a partir do **mês em que a nota foi emitida**, no formato **"Notas Emitidas Agosto 2026"**, e mostra na linha de cada nota.
+
+O mês vem de dentro do próprio código de barras da nota, que é a informação mais confiável que existe. Por isso ele acerta em dois casos que enganariam qualquer outro critério:
+
+- nota **emitida em 31/07** para **entregar em 01/08** → vai para a pasta de **Julho** (o papel foi impresso e guardado em julho);
+- nota **recusada em 31/07 e reemitida em 01/08** → vai para a pasta do mês em que a nota que vale foi realmente emitida.
+
+Se o período escolhido no filtro **cruzar mais de um mês**, o topo avisa que são várias pastas e não inventa um nome só — cada linha continua mostrando a pasta correta dela.
+
+## Alerta de nota parada na rua
+
+Uma tarja vermelha lista as notas de venda que estão **"Na rua" há mais de 3 dias** (o prazo é configurável), com número, cliente e quantos dias. Quando o pedido tinha embarque, aparece também **com qual motorista** a nota saiu — se não tinha, a nota entra na lista do mesmo jeito, só sem esse dado. São as que precisam ser cobradas antes que o papel se perca.
+
+**Nota de devolução nunca entra nesta tarja.** Ela não pede assinatura de ninguém (a DANFE é impressa no escritório), então cobrar "não voltou há 3 dias" não faria sentido. A pendência dela é outra e tem lugar próprio: o chip **"🖨 Devolução a reimprimir"**.
+
+O **chip vermelho com os dias** ao lado da situação aparece **só nas notas "Na rua"**. Nas de "Estado desconhecido" ele não aparece — como o mutirão nasce com o mês inteiro nesse estado, todas ficariam vermelhas sem nada de errado, e vermelho em tudo faz a equipe parar de enxergar o vermelho que importa.
+
+## Notas de DEVOLUÇÃO — botão "Reimprimir DANFE"
+
+A NF-e de devolução **não precisa de assinatura de ninguém**, mas o papel dela também tem que estar na pasta do mês. Elas aparecem na lista com a pílula roxa **"devolução"** e entram no chip **"🖨 Devolução a reimprimir"**.
+
+Se a DANFE da devolução não estiver no arquivo, use o botão **"Reimprimir DANFE"** na linha: ele gera o PDF na hora, você imprime e guarda junto.
+
+**Por que o botão não aparece em algumas notas:** ele só existe nas notas emitidas **pelo próprio app**. Nas notas antigas da era **Conta Azul**, o app não gera a DANFE — nesses casos, baixe pela aba **Emitidas**. O rodapé da tela avisa isso quando há devoluções pendentes.
+
+## As mensagens que você pode ver
+
+| Mensagem | O que fazer |
+|---|---|
+| **"NF 85.142 · Cliente — já estava"** (azul) | Nada. Essa folha já constava no arquivo. Siga para a próxima. |
+| **"Arquivada em Notas Emitidas Agosto 2026"** (verde) | Nada — deu certo. |
+| **"Código inválido — o dígito verificador não confere"** | A leitura saiu torta. **Passe o leitor de novo, mais devagar.** Não é defeito do sistema nem nota errada. |
+| **"Não reconheci esse código"** | O que entrou no campo não é um código de nota. Bipe o código de barras da DANFE ou digite só o número da nota. |
+| **"Essa nota é de outro mês"** (amarelo) — *"A nota 85142 é de maio/2026. Troque o período para bipá-la."* | Não é erro seu: a nota **existe** e está tudo certo com ela, só não é do mês aberto. Troque o mês no filtro do topo e bipe de novo. *(Bipando pelo código de barras ela é aceita de qualquer mês; só a busca pelo número olha o mês escolhido.)* |
+| **"Não encontrei essa nota"** (vermelho) — *"Nota X não encontrada no sistema"* | Aí a nota realmente não existe no controle. Confira o número. Se for nota de pedido especial ou bonificação, ela **não entra** aqui mesmo (veja abaixo). |
+| **"Número X está repetido"** | Há mais de uma nota com esse número em períodos diferentes. **Bipe o código de barras** para não errar, ou escolha na lista que aparece. |
+| **"Falha de conexão"** | Problema de internet/servidor. Confira a conexão e bipe de novo — nada foi perdido. |
+
+## O que NÃO entra nesta aba
+
+- **Pedido especial** — não gera nota fiscal, então não tem canhoto.
+- **Pedido bonificação** — idem.
+- **Pedido cancelado** (no app ou na era do Conta Azul) — venda que não aconteceu.
+- Notas de **teste/homologação** — só notas de produção entram.
+
+Se você bipar uma nota desse tipo, a resposta é *"não encontrada no sistema"* — está correto, ela não deveria estar aqui. **Guarde o papel na pasta do mesmo jeito**: ele só não é cobrado por esta lista.
+
+## Notas que aparecem sozinhas
+
+Não é preciso ficar clicando em "Colocar o mês em dia" toda hora: **toda NF-e autorizada entra no controle automaticamente** assim que é emitida — a de **venda** como "Na rua" (o canhoto ainda tem que voltar) e a de **devolução** como "Estado desconhecido" (ninguém sabe se a DANFE já foi para a pasta). O botão do mutirão serve para o **passado** — o que foi emitido antes de o controle existir — e como rede de segurança caso alguma nota escape.

@@ -1,5 +1,11 @@
 [
   {
+    "slug": "canhoto-nf",
+    "titulo": "Canhotos das notas",
+    "resumo": "Nova aba Canhotos em Notas Fiscais: você bipa o código de barras da nota (leitor de mesa no computador ou câmera do celular) e o sistema risca da lista — o que sobrar sem riscar é o que está faltando no arquivo. Pegue a pasta do mês, clique em 'Colocar o mês em dia' e passe o leitor no maço inteiro; bipar a mesma nota duas vezes não estraga nada. Mostra também quais notas estão na rua há mais de 3 dias, marca as que voltaram sem assinatura e diz em que pasta cada nota deve ser guardada (o mês sai de dentro do próprio código de barras). Por enquanto é só controle: o caixa continua fechando normalmente.",
+    "data": "2026-08-15"
+  },
+  {
     "slug": "vendedor-inativo-filtros",
     "titulo": "Filtrar por quem já saiu",
     "resumo": "Os filtros de vendedor mostravam só quem está na ativa — e o histórico de um ex-vendedor (títulos em aberto, pedidos, clientes, leads, entregas) ficava impossível de consultar. Agora o menu Vendedor traz também os inativos, no fim da lista e marcados '(inativo)': serve para cobrar a carteira de quem saiu e levantar o que ele vendeu. Vale em Contas a Receber (tabela), Pedidos, Clientes, Leads, Entregas e nos Relatórios de Pedidos e de Vendas. Onde se ATRIBUI alguém (pedido novo, reatribuir vendedor, troca em lote) continua aparecendo só quem está na ativa.",

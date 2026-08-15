@@ -60,7 +60,10 @@ const ABAS = [
     { slug: 'despesas',           nome: 'Despesas',                     rota: '/despesas',                           perm: 'Pode_Acessar_Caixa' },
     { slug: 'auditoria-entregas', nome: 'Auditoria de Entregas',        rota: '/admin/auditoria-entregas',           perm: 'Pode_Ver_Todas_Entregas' },
     { slug: 'contas-receber',     nome: 'Contas a Receber',             rota: '/financeiro/contas-receber/tabela',   perm: 'Pode_Acessar_Contas_Receber' },
-    { slug: 'notas-fiscais',      nome: 'Notas Fiscais (emissão)',      rota: '/notas-fiscais',                      perm: 'Pode_Acessar_Notas_Fiscais' },
+    // "canhoto" no nome de propósito: `selecionarRelevantes` pontua o nome com peso 2 e
+    // o corpo com 1 — a aba Canhotos (arquivo do mês, bipe da DANFE) mora nesta mesma
+    // rota, com a mesma permissão, então quem pergunta "onde bipo o canhoto?" cai aqui.
+    { slug: 'notas-fiscais',      nome: 'Notas Fiscais (emissão e canhotos)', rota: '/notas-fiscais',                 perm: 'Pode_Acessar_Notas_Fiscais' },
     { slug: 'regua-cobranca',     nome: 'Régua de Cobrança',            rota: '/financeiro/cobranca',                perm: 'Pode_Acessar_Cobranca' },
     { slug: 'contas-a-pagar',     nome: 'Contas a Pagar',               rota: '/contas-pagar',                       perm: 'Pode_Acessar_Contas_Pagar' },
     { slug: 'fornecedores',       nome: 'Fornecedores',                 rota: '/fornecedores',                       perm: 'Pode_Acessar_Fornecedores' },
