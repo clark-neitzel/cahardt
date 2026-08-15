@@ -114,28 +114,62 @@ function imprimirConteudo(estilos, corpoHtml) {
     document.body.appendChild(area);
     document.documentElement.classList.add(MODO);
 
+    // ---- Restauração do app: só por sinais INEQUÍVOCOS de "a impressão acabou" ----
+    // Bug real (iPad, Safari e Chrome — os dois são WebKit): a prévia começa CERTA e, depois de
+    // alguns segundos, vira a tela do app — e é o app que sai impresso.
+    // Causa: VISIBILIDADE e FOCO não são sinais confiáveis de "terminou" no WebKit do iPad.
+    // Abrir o diálogo/prévia do AirPrint já dispara blur/visibilitychange na página, e o WebKit
+    // pode marcar a página como 'hidden' e voltar a 'visible' COM A PRÉVIA AINDA ABERTA. Como
+    // 'hidden'/'visible' vêm em par, qualquer bandeira do tipo "já saiu" é armada por esse pisca
+    // e o 'visible' seguinte restaura o app no meio da prévia. Por isso 'blur', 'focus' e
+    // 'visibilitychange' NÃO são mais gatilhos de restauração aqui — não reintroduzir.
+    // Restauram o app apenas: afterprint (sinal definitivo no desktop), interação real do
+    // usuário na página (pointerdown/keydown/wheel — enquanto a prévia está aberta o evento vai
+    // para a UI do sistema, não para a página), o media 'print' desligando, e o timeout final.
+    // CONSEQUÊNCIA ACEITA (intencional): no iPad, depois de imprimir ou cancelar, o app só volta
+    // no PRIMEIRO TOQUE na tela. Um toque a mais é melhor do que estragar a impressão.
     let momentoPrint = 0;
     let timerFallback = 0;
+    const mqPrint = typeof window.matchMedia === 'function' ? window.matchMedia('print') : null;
+
     const limpar = () => {
         area.remove();
         style.remove();
         document.documentElement.classList.remove(MODO);
         window.removeEventListener('afterprint', limpar);
-        window.removeEventListener('focus', aoVoltar);
-        window.removeEventListener('pointerdown', aoVoltar);
-        document.removeEventListener('visibilitychange', aoVoltar);
+        window.removeEventListener('pointerdown', aoInteragir);
+        window.removeEventListener('keydown', aoInteragir);
+        window.removeEventListener('wheel', aoInteragir);
+        if (mqPrint) {
+            if (mqPrint.removeEventListener) mqPrint.removeEventListener('change', aoMudarMedia);
+            else if (mqPrint.removeListener) mqPrint.removeListener(aoMudarMedia);
+        }
         clearTimeout(timerFallback);
         if (limpezaPendente === limpar) limpezaPendente = null; // nada mais pendente desta impressão
     };
-    // iOS nem sempre dispara afterprint. Restauramos também ao voltar do diálogo
-    // (focus/visibilitychange) e no 1º toque na tela — mas SÓ depois de o diálogo
-    // ter tido tempo de abrir (guarda de tempo: no iOS o focus pode disparar cedo,
-    // junto do próprio print(), e restaurar antes do snapshot).
-    const aoVoltar = () => { if (momentoPrint && Date.now() - momentoPrint > 1200) limpar(); };
-    window.addEventListener('afterprint', limpar);
-    window.addEventListener('focus', aoVoltar);
-    window.addEventListener('pointerdown', aoVoltar);
-    document.addEventListener('visibilitychange', aoVoltar);
+
+    // Ainda imprimindo? Nunca restaurar (quando o WebKit informa o media 'print', é verdade absoluta).
+    const imprimindoAgora = () => !!(mqPrint && mqPrint.matches);
+
+    // VOLTA confiável: enquanto o diálogo/prévia está aberto, toque, tecla e rolagem vão para a
+    // UI do sistema — um desses eventos chegando NA PÁGINA significa que o usuário já está de
+    // volta no app. É o caminho que garante que o app nunca fica preso escondido. A folga de
+    // 1500ms evita que o eco do próprio clique/tecla que disparou a impressão restaure na hora.
+    const aoInteragir = () => {
+        if (momentoPrint && Date.now() - momentoPrint > 1500 && !imprimindoAgora()) limpar();
+    };
+
+    // Reforço: em parte dos WebKit o media 'print' desliga quando a impressão termina.
+    const aoMudarMedia = (e) => { if (!e.matches && momentoPrint) limpar(); };
+
+    window.addEventListener('afterprint', limpar);   // sinal definitivo (desktop)
+    window.addEventListener('pointerdown', aoInteragir);
+    window.addEventListener('keydown', aoInteragir);
+    window.addEventListener('wheel', aoInteragir, { passive: true });
+    if (mqPrint) {
+        if (mqPrint.addEventListener) mqPrint.addEventListener('change', aoMudarMedia);
+        else if (mqPrint.addListener) mqPrint.addListener(aoMudarMedia);
+    }
     timerFallback = setTimeout(limpar, 60000); // rede de segurança final
     limpezaPendente = limpar;   // se esta limpeza não rodar, a próxima impressão a executa
 
@@ -569,7 +603,7 @@ export default function ReceitaDetalhe() {
 
                 {/* Acoes */}
                 <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-gray-100">
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white" title="Versão da impressão (diagnóstico)">IMPR v6</span>
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white" title="Versão da impressão (diagnóstico)">IMPR v8</span>
                     {receita.status !== 'inativa' && (
                         <button
                             onClick={() => navigate(`/pcp/receitas/${id}/editar`)}

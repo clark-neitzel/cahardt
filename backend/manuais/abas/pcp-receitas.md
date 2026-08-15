@@ -114,6 +114,8 @@ Passos: abra a receita, clique no botão desejado, a caixa de impressão abre so
 
 > A impressão abre **dentro do próprio app** (não abre outra aba/janela), funcionando normalmente mesmo com o app instalado na tela inicial (atalho/PWA).
 
+> **No iPad/iPhone:** depois de imprimir **ou de cancelar**, a folha da receita **continua na tela até você tocar** em qualquer lugar — ela não some sozinha. Se tocar logo em seguida e o app não voltar, **toque de novo**: no primeiro segundo e meio o app ignora o toque, para não confundir com o toque que mandou imprimir. O motivo: o iPad não avisa o app quando a impressão termina, e tentar adivinhar fazia sair a tela do app impressa no lugar da receita. No computador o app volta sozinho.
+
 > **Unidade dos ingredientes:** a unidade que aparece na receita e nas impressões vem da **unidade do produto** (a que você edita em Produtos → abrir o produto). Se a unidade estiver errada na impressão, corrija no cadastro do produto. Subprodutos (SUB) usam a unidade definida no próprio subproduto.
 
 ## Status da receita
