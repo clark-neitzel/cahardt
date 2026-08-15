@@ -53,7 +53,48 @@ function unidadeDe(itemPcp) {
 // classe modo-impressao — o app reaparece e é ELE que sai impresso.
 let limpezaPendente = null;
 
-function imprimirConteudo(estilos, corpoHtml) {
+// ---- Diagnóstico embarcado da impressão (v9) ----------------------------------------
+// Quatro tentativas de correção falharam porque ninguém enxerga o que o iPad faz durante a
+// impressão (não há console). Agora cada impressão grava uma linha por evento — o instante
+// (ms desde o window.print()) e o nome do evento — em memória E no localStorage, para
+// sobreviver ao PWA ser fechado. O dono abre pela pílula "IMPR v10" na tela da receita e
+// fotografa. NADA disso interfere na impressão: são gravações síncronas e minúsculas.
+const CHAVE_LOG_IMPRESSAO = 'pcp:log-impressao';
+const MAX_EVENTOS_LOG = 200;  // teto de linhas do registro (o array inteiro é reserializado a cada evento)
+let registroImpressao = [];   // [{ ms, ev }] da impressão corrente
+
+function lerLogImpressao() {
+    try { return JSON.parse(localStorage.getItem(CHAVE_LOG_IMPRESSAO) || 'null'); }
+    catch { return null; }
+}
+
+function formatarLogImpressao(log) {
+    if (!log) return 'Nenhuma impressão registrada neste aparelho ainda.';
+    const eventos = Array.isArray(log.eventos) ? log.eventos : [];
+    return [
+        `Quando: ${log.quando || '—'}`,
+        `Folha: ${log.folha || '—'}`,
+        `Do toque até o print(): ${log.latenciaGestoMs == null ? '—' : `${log.latenciaGestoMs} ms`}`,
+        `Aparelho: ${log.ua || '—'}`,
+        '',
+        ...(eventos.length
+            ? eventos.map(e => `${String(e.ms).padStart(6, ' ')} ms  ${e.ev}`)
+            : ['(sem eventos)']),
+    ].join('\n');
+}
+
+// Latência entre o gesto do usuário e a chamada de print(). É o número que encerra a dúvida
+// sobre "o print() ainda está dentro do gesto?" — se for baixo (dezenas de ms) e o Safari
+// ainda assim reclamar, o alerta não tem relação com atraso nosso.
+function latenciaDoGesto(evento) {
+    const t = evento && typeof evento.timeStamp === 'number' ? evento.timeStamp : null;
+    if (t == null || t === 0) return null;
+    // timeStamp normalmente é relativo à abertura da página (mesma base de performance.now());
+    // em navegadores antigos vem em época (ms desde 1970) — daí a segunda conta.
+    return Math.round(t > 1e12 ? Date.now() - t : performance.now() - t);
+}
+
+function imprimirConteudo(estilos, corpoHtml, evento, rotulo) {
     const ID_AREA = 'area-impressao';
     const ID_ESTILO = 'estilo-impressao';
     const MODO = 'modo-impressao';
@@ -124,19 +165,73 @@ function imprimirConteudo(estilos, corpoHtml) {
     // e o 'visible' seguinte restaura o app no meio da prévia. Por isso 'blur', 'focus' e
     // 'visibilitychange' NÃO são mais gatilhos de restauração aqui — não reintroduzir.
     // Restauram o app apenas: afterprint (sinal definitivo no desktop), interação real do
-    // usuário na página (pointerdown/keydown/wheel — enquanto a prévia está aberta o evento vai
-    // para a UI do sistema, não para a página), o media 'print' desligando, e o timeout final.
+    // usuário na página (pointerdown/keydown — enquanto a prévia está aberta o evento vai
+    // para a UI do sistema, não para a página) e o timeout final. `wheel` é só LOG (ver adiante).
     // CONSEQUÊNCIA ACEITA (intencional): no iPad, depois de imprimir ou cancelar, o app só volta
-    // no PRIMEIRO TOQUE na tela. Um toque a mais é melhor do que estragar a impressão.
+    // no TOQUE na tela (dois toques quando o aparelho não confirmou que imprimiu). Um toque a
+    // mais é melhor do que estragar a impressão.
+    //
+    // v9 — o vídeo do dono mostrou a sequência REAL no iPad e ela tem TRÊS gatilhos, não um:
+    //   1) o Safari mostra "Este site foi proibido de imprimir automaticamente" (Ignorar/Permitir)
+    //      ANTES de abrir o diálogo; o toque em "Permitir" chega na página como pointerdown e
+    //      restaurava o app — aí o Safari fotografava a tela do app;
+    //   2) o media 'print' liga e DESLIGA várias vezes enquanto a prévia se re-renderiza, com o
+    //      diálogo ainda aberto — o antigo `if (!e.matches) limpar()` (sem guarda nenhuma)
+    //      restaurava no meio da prévia;
+    //   3) com o alerta + escolha de impressora, a impressão passa fácil dos 60s do timer antigo,
+    //      que restaurava no meio.
+    // Correção: (1) toque só restaura depois do selo de impressão, senão exige DOIS toques —
+    // dispensar o alerta gera no máximo UM evento na página; (2) media print virou só selo,
+    // nunca restaura; (3) timer de 180s que se re-agenda enquanto o media print estiver ativo.
+    //
+    // v10 — ajustes da revisão de código (nenhum deles muda a folha impressa):
+    //   a) o re-agendamento do timer ganhou TETO ABSOLUTO de 10 min desde o print(): se o media
+    //      'print' travar ligado (defeito conhecido do WebKit), o app volta assim mesmo — sem
+    //      teto, nenhum toque restaurava e o timer se re-agendaria para sempre;
+    //   b) só `media:on` liga o selo — beforeprint é apenas registrado (ver comentário adiante);
+    //   c) toques contados exigem 700 ms de espaçamento e keydown com auto-repeat é ignorado,
+    //      para que uma rajada de um gesto só não vire "dois toques";
+    //   d) o log passou a registrar também os eventos descartados, e tem teto de 200 linhas;
+    //   e) `wheel` deixou de restaurar (só entra no log): rolagem contínua de 700 ms+ atravessava
+    //      a janela de colapso e virava "dois toques" com um gesto só. Detalhe em `aoInteragir`.
     let momentoPrint = 0;
     let timerFallback = 0;
+    let houvePrint = false;   // selo: o aparelho confirmou que a impressão começou (só via media 'print')
+    let toques = 0;
+    let ultimoToque = 0;
     const mqPrint = typeof window.matchMedia === 'function' ? window.matchMedia('print') : null;
 
-    const limpar = () => {
+    // --- registro de diagnóstico desta impressão ---
+    registroImpressao = [];
+    const cabecalhoLog = {
+        quando: new Date().toLocaleString('pt-BR'),
+        folha: rotulo || '—',
+        latenciaGestoMs: null,
+        ua: typeof navigator !== 'undefined' ? navigator.userAgent : '',
+    };
+    const registrar = (ev) => {
+        registroImpressao.push({ ms: momentoPrint ? Date.now() - momentoPrint : 0, ev });
+        // Teto de linhas: cada gravação reserializa o array inteiro no localStorage e eventos
+        // repetitivos (wheel/pointerdown com o media print ativo) não têm colapso — sem teto,
+        // uma impressão longa cresceria sem limite e deixaria a gravação cara. Guardamos as
+        // 200 mais RECENTES, descartando as mais antigas (o fim é o que explica a restauração).
+        if (registroImpressao.length > MAX_EVENTOS_LOG) {
+            registroImpressao.splice(0, registroImpressao.length - MAX_EVENTOS_LOG);
+        }
+        try {
+            localStorage.setItem(CHAVE_LOG_IMPRESSAO, JSON.stringify({ ...cabecalhoLog, eventos: registroImpressao }));
+        } catch { /* localStorage cheio/bloqueado: o registro em memória continua valendo */ }
+    };
+
+    // Motivos possíveis: 'afterprint' | 'toque-pos-impressao' | 'dois-toques' | 'timeout'
+    //                  | 'timeout-absoluto' | 'nova-impressao' | 'print-falhou'
+    const limpar = (motivo) => {
+        registrar(`restaurado:${motivo || 'desconhecido'}`);
         area.remove();
         style.remove();
         document.documentElement.classList.remove(MODO);
-        window.removeEventListener('afterprint', limpar);
+        window.removeEventListener('beforeprint', aoBeforePrint);
+        window.removeEventListener('afterprint', aoAfterPrint);
         window.removeEventListener('pointerdown', aoInteragir);
         window.removeEventListener('keydown', aoInteragir);
         window.removeEventListener('wheel', aoInteragir);
@@ -145,24 +240,106 @@ function imprimirConteudo(estilos, corpoHtml) {
             else if (mqPrint.removeListener) mqPrint.removeListener(aoMudarMedia);
         }
         clearTimeout(timerFallback);
-        if (limpezaPendente === limpar) limpezaPendente = null; // nada mais pendente desta impressão
+        if (limpezaPendente === limpezaDesta) limpezaPendente = null; // nada mais pendente desta impressão
     };
+    // `limpar` recebe o motivo, então add/removeEventListener precisam de referências FIXAS
+    // (as funções nomeadas abaixo) — passar `limpar` direto deixaria listener sem remoção.
+    const limpezaDesta = () => limpar('nova-impressao');
 
     // Ainda imprimindo? Nunca restaurar (quando o WebKit informa o media 'print', é verdade absoluta).
     const imprimindoAgora = () => !!(mqPrint && mqPrint.matches);
 
     // VOLTA confiável: enquanto o diálogo/prévia está aberto, toque, tecla e rolagem vão para a
     // UI do sistema — um desses eventos chegando NA PÁGINA significa que o usuário já está de
-    // volta no app. É o caminho que garante que o app nunca fica preso escondido. A folga de
-    // 1500ms evita que o eco do próprio clique/tecla que disparou a impressão restaure na hora.
-    const aoInteragir = () => {
-        if (momentoPrint && Date.now() - momentoPrint > 1500 && !imprimindoAgora()) limpar();
+    // volta no app... EXCETO o toque em "Permitir"/"Ignorar" do alerta do Safari, que é uma
+    // decisão sobre a página e chega nela. Daí a contagem de toques abaixo.
+    const aoInteragir = (ev) => {
+        if (!momentoPrint) { registrar(`${ev?.type || 'interacao'}:antes-do-print`); return; }
+        const tipo = ev?.type || 'interacao';
+        // Tecla segurada (auto-repeat, ~30 ms entre eventos) não é gesto novo: sem isto, um
+        // único dedo no teclado chegava a "2 toques" e restaurava o app no meio da impressão.
+        if (tipo === 'keydown' && ev?.repeat === true) { registrar('keydown:repeat'); return; }
+        if (imprimindoAgora()) { registrar(`${tipo}:media-print-ativo`); return; }  // imprimindo: nunca restaurar
+        const agora = Date.now();
+        // Os dois `return` abaixo REGISTRAM antes de sair: é justamente aqui que cai o toque em
+        // "Permitir" do alerta do Safari — a evidência nº 1 do diagnóstico. Sair calado deixava
+        // o log cego exatamente no instante que interessa. Registrar não restaura nada.
+        if (agora - momentoPrint < 800) { registrar(`${tipo}:ignorado:eco`); return; }   // eco do clique que abriu a impressão
+        // Espaçamento mínimo entre toques CONTADOS: 700 ms. Com os 350 ms antigos, uma fonte que
+        // repete (rolagem contínua de trackpad, tecla com auto-repeat) somava "2 toques" em ~0,4 s
+        // com UM único gesto — furava a trava de dois toques, que é o coração desta versão.
+        if (agora - ultimoToque < 700) { registrar(`${tipo}:ignorado:colapso`); return; }
+        // `wheel` DESQUALIFICADO como gatilho de restauração (v10) — NÃO reintroduzir.
+        // Uma rolagem contínua de ~700 ms+ atravessa a janela de colapso e vira "dois toques"
+        // com UM gesto só (medido: 760/900/1300/2000 ms restauravam), restaurando o app no meio
+        // da impressão — a mesma classe de furo que a trava de dois toques existe para impedir.
+        // `keydown` se defende com `ev.repeat`; `wheel` não tem flag equivalente.
+        // E ele não faz falta: no iPad a rolagem com o dedo nem gera `wheel` (só trackpad/mouse
+        // acoplado), e no desktop o `afterprint` já restaura na hora. Fica só no LOG, como
+        // diagnóstico: não conta toque, não mexe em `ultimoToque` (senão engoliria um toque real
+        // logo depois da rolagem) e nunca chama `limpar`.
+        if (tipo === 'wheel') { registrar('wheel'); return; }
+        ultimoToque = agora;
+        toques++;
+        registrar(tipo === 'pointerdown' ? `pointerdown#${toques}` : tipo);
+        if (houvePrint) { limpar('toque-pos-impressao'); return; }  // já imprimiu: 1 toque basta
+        // Sem selo (o dono tocou "Ignorar", ou este aparelho não reporta o media 'print'):
+        // exige 2 toques. Dispensar o alerta gera no máximo UM evento na página — é isto que impede
+        // que aquele toque restaure o app antes do Safari fotografar a folha.
+        if (toques >= 2 && agora - momentoPrint > 5000) limpar('dois-toques');
     };
 
-    // Reforço: em parte dos WebKit o media 'print' desliga quando a impressão termina.
-    const aoMudarMedia = (e) => { if (!e.matches && momentoPrint) limpar(); };
+    // O media 'print' LIGAR é prova de que a impressão aconteceu. DESLIGAR NÃO é prova de que
+    // terminou (no iPad a prévia re-renderiza várias vezes com o diálogo aberto) — por isso aqui
+    // NÃO se restaura mais nada. Era este o gatilho que devolvia o app no meio da prévia.
+    const aoMudarMedia = (e) => {
+        if (e.matches) { houvePrint = true; registrar('media:on'); }
+        else registrar('media:off');
+    };
 
-    window.addEventListener('afterprint', limpar);   // sinal definitivo (desktop)
+    // beforeprint foi DESQUALIFICADO como selo na v10 (só `media:on` liga o selo).
+    // Motivo: o Chrome dispara beforeprint DENTRO da chamada de window.print(), antes de
+    // qualquer impressão existir. Se algum iPad fizer o mesmo, o selo ligaria antes do alerta
+    // "site proibido de imprimir automaticamente" — e com o selo ligado UM único toque restaura,
+    // que é exatamente a sequência do vídeo: o dono toca em "Permitir", o app volta e o Safari
+    // fotografa o app no lugar da folha. Continua sendo REGISTRADO (informação valiosa: diz se
+    // e quando o aparelho dispara o evento), só não vale mais como prova de que imprimiu.
+    // Custo aceito: num aparelho que nunca reporta o media 'print', o dono precisa de 2 toques
+    // mesmo tendo impresso — o log dirá se algum aparelho está nesse caso.
+    const aoBeforePrint = () => { registrar('beforeprint'); };
+
+    // afterprint continua restaurando na hora, sem guarda: é o sinal definitivo no desktop.
+    const aoAfterPrint = () => { registrar('afterprint'); limpar('afterprint'); };
+
+    // Rede de segurança final: 180s (o alerta do Safari + escolher impressora passava dos 60s
+    // antigos) e, se o media print ainda estiver ligado na hora, re-agenda em vez de restaurar.
+    //
+    // TETO ABSOLUTO (v10) — SEMPRE EXISTE UM CAMINHO DE VOLTA.
+    // O re-agendamento sozinho era um laço sem fim: se o matchMedia('print').matches travar em
+    // `true` (defeito conhecido do WebKit), `aoInteragir` sai cedo em TODO evento (nenhum toque
+    // restaura), o afterprint no iOS pode nunca vir e o timer se re-agendaria para sempre — o
+    // app ficaria escondido em definitivo, pior do que a v8 (que restaurava incondicionalmente
+    // em 60s). Por isso: passados 10 minutos do window.print(), restaura MESMO com o media
+    // print ligado. 10 min é folgado o bastante para o pior caso real (alerta do Safari +
+    // escolher impressora + prévia lenta, que raramente passa de 2-3 min) e curto o bastante
+    // para o dono não achar que o app travou. O motivo fica no log, que é como saberemos que
+    // este caminho foi usado.
+    const TETO_ABSOLUTO_MS = 600000;   // 10 min desde o print()
+    const PASSO_FALLBACK_MS = 180000;  // 3 min entre verificações
+    const armarFallback = () => {
+        // A última espera é encurtada para cair EM CIMA dos 10 min, e não no múltiplo de 3 min
+        // seguinte (senão o teto viraria 12 min na prática).
+        const restante = momentoPrint ? TETO_ABSOLUTO_MS - (Date.now() - momentoPrint) : TETO_ABSOLUTO_MS;
+        const espera = Math.max(1000, Math.min(PASSO_FALLBACK_MS, restante));
+        timerFallback = setTimeout(() => {
+            const estourou = momentoPrint ? Date.now() - momentoPrint >= TETO_ABSOLUTO_MS : true;
+            if (imprimindoAgora() && !estourou) { registrar('timeout:adiado'); armarFallback(); return; }
+            limpar(imprimindoAgora() ? 'timeout-absoluto' : 'timeout');
+        }, espera);
+    };
+
+    window.addEventListener('beforeprint', aoBeforePrint);
+    window.addEventListener('afterprint', aoAfterPrint);   // sinal definitivo (desktop)
     window.addEventListener('pointerdown', aoInteragir);
     window.addEventListener('keydown', aoInteragir);
     window.addEventListener('wheel', aoInteragir, { passive: true });
@@ -170,25 +347,29 @@ function imprimirConteudo(estilos, corpoHtml) {
         if (mqPrint.addEventListener) mqPrint.addEventListener('change', aoMudarMedia);
         else if (mqPrint.addListener) mqPrint.addListener(aoMudarMedia);
     }
-    timerFallback = setTimeout(limpar, 60000); // rede de segurança final
-    limpezaPendente = limpar;   // se esta limpeza não rodar, a próxima impressão a executa
+    armarFallback();
+    limpezaPendente = limpezaDesta;   // se esta limpeza não rodar, a próxima impressão a executa
 
     // IMPORTANTE (iOS/iPad): chamar print() AGORA, dentro do gesto do usuário (sem setTimeout),
     // senão o Safari bloqueia com "site proibido de imprimir automaticamente".
     void area.offsetHeight; // força o layout com o modo aplicado antes do snapshot
     momentoPrint = Date.now();
-    try { window.print(); } catch { limpar(); }
+    cabecalhoLog.latenciaGestoMs = latenciaDoGesto(evento);
+    registrar('print-chamado');
+    try { window.print(); } catch { limpar('print-falhou'); }
 }
 
 // Extrai estilos + corpo de um HTML completo e imprime na própria página (sem aba/iframe).
-function imprimirHtml(htmlCompleto) {
+// `evento` é o clique original do botão — só serve para o diagnóstico medir quanto tempo passou
+// entre o gesto do usuário e o window.print().
+function imprimirHtml(htmlCompleto, evento, rotulo) {
     try {
         const doc = new DOMParser().parseFromString(htmlCompleto, 'text/html');
         const estilos = [...doc.querySelectorAll('style')].map(s => s.textContent).join('\n');
         doc.querySelectorAll('script').forEach(s => s.remove()); // scripts não rodam via innerHTML
-        imprimirConteudo(estilos, doc.body.innerHTML);
+        imprimirConteudo(estilos, doc.body.innerHTML, evento, rotulo);
     } catch {
-        imprimirConteudo('', htmlCompleto);
+        imprimirConteudo('', htmlCompleto, evento, rotulo);
     }
 }
 
@@ -456,6 +637,7 @@ export default function ReceitaDetalhe() {
     const [showHistorico, setShowHistorico] = useState(false);
     const [itensMap, setItensMap] = useState({});
     const [custo, setCusto] = useState(null);
+    const [logImpr, setLogImpr] = useState(null);   // texto do diagnóstico de impressão (null = fechado)
 
     useEffect(() => {
         setLoading(true);
@@ -506,14 +688,15 @@ export default function ReceitaDetalhe() {
         }
     };
 
-    const imprimirReceita = () => {
+    // `e` (o clique) vai junto só para o diagnóstico medir a distância entre o gesto e o print().
+    const imprimirReceita = (e) => {
         if (!receita) return;
-        imprimirHtml(montarHtmlImpressao(receita));
+        imprimirHtml(montarHtmlImpressao(receita), e, 'cozinha');
     };
 
-    const imprimirComCustos = () => {
+    const imprimirComCustos = (e) => {
         if (!receita) return;
-        imprimirHtml(montarHtmlImpressaoComCustos(receita, custo));
+        imprimirHtml(montarHtmlImpressaoComCustos(receita, custo), e, 'com custos');
     };
 
     if (loading) return <div className="text-center py-12 text-gray-400">Carregando...</div>;
@@ -603,7 +786,18 @@ export default function ReceitaDetalhe() {
 
                 {/* Acoes */}
                 <div className="flex flex-wrap items-center gap-2 mt-4 pt-4 border-t border-gray-100">
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white" title="Versão da impressão (diagnóstico)">IMPR v8</span>
+                    {/* Pílula da versão da impressão. O manual manda o dono TOCAR nela no iPad,
+                        então o alvo de toque tem os 44px exigidos pelo projeto — crescidos pelo
+                        ::after, que aumenta só a área clicável e não a altura visual da linha
+                        (os vizinhos, py-1.5 text-sm, continuam sendo os mais altos). */}
+                    <button
+                        type="button"
+                        onClick={() => setLogImpr(logImpr == null ? formatarLogImpressao(lerLogImpressao()) : null)}
+                        title="Versão da impressão — toque para ver o diagnóstico da última impressão"
+                        className="relative px-3 py-1.5 rounded-full text-[11px] font-bold bg-emerald-600 text-white hover:bg-emerald-700 after:content-[''] after:absolute after:inset-x-0 after:top-1/2 after:-translate-y-1/2 after:h-11"
+                    >
+                        IMPR v10
+                    </button>
                     {receita.status !== 'inativa' && (
                         <button
                             onClick={() => navigate(`/pcp/receitas/${id}/editar`)}
@@ -651,6 +845,23 @@ export default function ReceitaDetalhe() {
                         <Trash2 className="h-3.5 w-3.5" /> Excluir
                     </button>
                 </div>
+
+                {/* Diagnóstico da última impressão (aberto pela pílula IMPR v10) — o dono fotografa a tela */}
+                {logImpr != null && (
+                    <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                            <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Última impressão</span>
+                            <button
+                                type="button"
+                                onClick={() => setLogImpr(null)}
+                                className="px-4 py-2 min-h-[44px] text-xs font-semibold rounded-full bg-white border border-gray-300 text-gray-700 hover:bg-gray-100"
+                            >
+                                Fechar
+                            </button>
+                        </div>
+                        <pre className="text-[11px] leading-snug text-gray-800 whitespace-pre-wrap break-words max-h-72 overflow-y-auto">{logImpr}</pre>
+                    </div>
+                )}
             </div>
 
             {/* Histórico de versões */}
