@@ -179,11 +179,27 @@ const saldoParcela = (parcela) => {
     return Math.max(0, Number(parcela.valor) - quitado);
 };
 
-// ── GET /categorias — categorias de despesa do CA (cache 1h; CA fora → []) ──
+// ── GET /categorias — categorias de despesa da TABELA LOCAL (categorias_despesa).
+// A tabela é alimentada por todos os caminhos que salvam despesa (importação do CA,
+// notas de entrada, despesa manual via categoriaDespesaService.garantirIds) — não
+// depende do token do CA. O CA entra só como complemento quando estiver conectado.
 router.get('/categorias', verificarAuth, checkAcesso, async (req, res) => {
     try {
-        const categorias = await contasPagarCaSyncService.listarCategoriasDespesaSeguro();
-        res.json(categorias);
+        const locais = await prisma.categoriaDespesa.findMany({
+            select: { id: true, nome: true },
+            orderBy: { nome: 'asc' }
+        });
+        // Complemento: categoria que existe no CA mas nunca foi usada aqui (CA fora → [])
+        let doCA = [];
+        try {
+            doCA = await contasPagarCaSyncService.listarCategoriasDespesaSeguro();
+        } catch (_) {
+            doCA = [];
+        }
+        const nomesLocais = new Set(locais.map((c) => c.nome));
+        const extras = doCA.filter((c) => c?.nome && !nomesLocais.has(c.nome));
+        const todas = [...locais, ...extras].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+        res.json(todas);
     } catch (error) {
         console.error('Erro ao listar categorias de despesa:', error);
         res.json([]); // frontend tem fallback
