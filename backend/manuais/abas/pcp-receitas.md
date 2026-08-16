@@ -110,22 +110,19 @@ Há **dois botões** de impressão na tela de detalhe:
 - **Imprimir (cozinha)** — versão para a cozinha, **sem custos**. Folha A4 retrato, letra grande, ingredientes **agrupados por etapa** (Preparo, Modelagem, Fritura, Embalagem) com quantidade, unidade e observação. É a impressão do dia a dia da produção.
 - **Imprimir com custos** — versão **interna**, com o **custo unitário e o custo de cada ingrediente**, o **custo total** e o **custo por unidade**. Use para análise de custo, não para a cozinha.
 
-Passos: abra a receita, clique no botão desejado, a caixa de impressão abre — confirme (ou salve como PDF).
+Passos (**no computador**): abra a receita, clique no botão desejado, a caixa de impressão abre — confirme (ou salve como PDF). A impressão acontece **dentro do próprio app** (não abre outra aba/janela) e o app volta sozinho quando você termina ou cancela.
 
-> A impressão abre **dentro do próprio app** (não abre outra aba/janela), funcionando normalmente mesmo com o app instalado na tela inicial (atalho/PWA).
-
-> **No iPad/iPhone — o que acontece na tela, na ordem:**
-> 1. Você toca em **Imprimir**. A folha da receita aparece na tela no lugar do app. **É normal.**
-> 2. O Safari pergunta: *"Este site foi proibido de imprimir automaticamente"*, com **Ignorar** e **Permitir**. Toque em **Permitir** — só assim a caixa de impressão abre. Esse aviso é do próprio iPad, aparece **toda vez** e **não há como desligar** (já foi testado: mexer em *Ajustes → Safari* não adianta). É só tocar em **Permitir** e seguir.
-> 3. A caixa de impressão abre. Imprima ou cancele — a folha continua na tela por trás dela, **isso é proposital**.
-> 4. Terminou (ou cancelou)? A folha continua na tela — **toque uma vez** e o app volta. É assim que acontece na maioria das vezes.
->    - **Não voltou no primeiro toque?** Então **toque de novo**. Isso acontece quando o iPad não avisa o app que a impressão terminou (por exemplo, se você tocar em **Ignorar** no aviso do Safari, ou em algum aparelho que não avise). Nesse caso são **dois toques**, com um pequeno intervalo entre eles, e o app só volta depois de uns 5 segundos contados desde o clique em Imprimir — se tocar antes disso, ainda não volta.
->    - **Tocar rápido várias vezes não adianta** (os toques seguidos contam como um só). Toque, espere um instante, toque de novo.
->    - Não fique preso: se ninguém tocar, o app volta sozinho depois de alguns minutos.
+> ⚠️ **Pelo celular e pelo iPad a impressão está temporariamente indisponível — use o computador.**
 >
-> O motivo de tanto cuidado: o iPad **nem sempre avisa** o app quando a impressão termina. Quando o app voltava sozinho, ele voltava **no meio da impressão** — e saía impressa a tela do app ("Página 1 de 2") no lugar da receita. **No computador o app volta sozinho**, sem precisar tocar em nada.
+> Ao tocar em qualquer um dos dois botões de impressão em **aparelho de toque** (iPhone, iPad, tablet Android — em pé ou deitado) aparece o aviso *"Impressão pelo celular e iPad está sendo refeita — use o computador por enquanto."* e **nada mais acontece**: o app continua na tela da receita, do jeito que estava.
+>
+> **Por que:** nesses aparelhos o comando de imprimir **não funciona**. No iPhone ele simplesmente não faz nada — não abre caixa de impressão nenhuma. No iPad foi testado e também falhou: em vez da receita saía **a tela do app**. E antes deste aviso a folha da receita ficava aberta na tela e a pessoa tinha que ficar tocando para o app voltar. Não é falta de configuração do aparelho nem do Safari — não há ajuste que resolva do lado de quem usa.
+>
+> **O que fazer agora:** imprima pelo **computador**, onde funciona normalmente.
+>
+> **O que vai mudar:** a impressão está sendo refeita para **gerar a receita em PDF** — o aparelho vai abrir o arquivo no visualizador dele, de onde dá para usar **Compartilhar → Imprimir**, salvar ou enviar. Isso vai funcionar nos três (celular, iPad e computador). Ainda **não há data para ficar pronto**; enquanto isso o aviso continua aparecendo.
 
-> **Se a impressão sair errada no iPad:** na linha dos botões da receita há uma pilulinha verde **IMPR v10** (a versão da impressão). **Toque nela** — abre um quadro com o registro da última impressão: o que o aparelho fez e em que instante. **Tire uma foto dessa tela** e mande para quem cuida do sistema; é com esse registro que o problema é diagnosticado. Toque em **Fechar** para sair do quadro.
+> **Se a impressão sair errada no computador:** na linha dos botões da receita há uma pilulinha verde **IMPR v10** (a versão da impressão). **Clique nela** — abre um quadro com o registro da última impressão: o que o aparelho fez e em que instante. **Tire uma foto dessa tela** e mande para quem cuida do sistema; é com esse registro que o problema é diagnosticado. Clique em **Fechar** para sair do quadro.
 
 > **Unidade dos ingredientes:** a unidade que aparece na receita e nas impressões vem da **unidade do produto** (a que você edita em Produtos → abrir o produto). Se a unidade estiver errada na impressão, corrija no cadastro do produto. Subprodutos (SUB) usam a unidade definida no próprio subproduto.
 

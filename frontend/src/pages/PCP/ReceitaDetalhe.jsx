@@ -626,6 +626,19 @@ function montarHtmlImpressaoComCustos(receita, custo) {
 </html>`;
 }
 
+// MITIGAÇÃO (08/2026) — no iOS o window.print() é inerte: não abre diálogo nenhum, mas a folha A4
+// (186mm) já foi montada na tela e o usuário fica preso tocando para voltar. Vale para o iPhone E
+// para o iPad (a v10 foi testada no iPad e falhou; a tela de Etiquetas, com outro mecanismo, também
+// imprime a tela inteira lá). Enquanto a versão em PDF (gerada no backend) não fica pronta, em
+// aparelho de toque nem entramos no modo de impressão.
+// Corte por PONTEIRO, não por largura nem user-agent: `(pointer: coarse)` pega celular e tablet em
+// qualquer orientação — `(max-width: 767px)` deixava passar o iPhone deitado (844–932px de largura).
+const AVISO_IMPRESSAO_TOQUE = 'Impressão pelo celular e iPad está sendo refeita — use o computador por enquanto.';
+const ehAparelhoDeToque = () =>
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(pointer: coarse)').matches;
+
 export default function ReceitaDetalhe() {
     const { id } = useParams();
     const navigate = useNavigate();
@@ -691,11 +704,13 @@ export default function ReceitaDetalhe() {
     // `e` (o clique) vai junto só para o diagnóstico medir a distância entre o gesto e o print().
     const imprimirReceita = (e) => {
         if (!receita) return;
+        if (ehAparelhoDeToque()) { toast(AVISO_IMPRESSAO_TOQUE, { icon: 'ℹ️', duration: 6000 }); return; }
         imprimirHtml(montarHtmlImpressao(receita), e, 'cozinha');
     };
 
     const imprimirComCustos = (e) => {
         if (!receita) return;
+        if (ehAparelhoDeToque()) { toast(AVISO_IMPRESSAO_TOQUE, { icon: 'ℹ️', duration: 6000 }); return; }
         imprimirHtml(montarHtmlImpressaoComCustos(receita, custo), e, 'com custos');
     };
 
