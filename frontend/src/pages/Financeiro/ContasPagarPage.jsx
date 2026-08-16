@@ -506,6 +506,11 @@ const ContasPagarPage = () => {
         () => itensQuitaveis.reduce((s, { parcela }) => s + Math.max(0, Number(parcela.valor || 0) - Number(parcela.valorPago || 0)), 0),
         [itensQuitaveis]
     );
+    // Soma do valor de TODAS as parcelas marcadas (pagas ou não) — mostrado na barra de seleção
+    const valorSelecionadas = useMemo(
+        () => itensSelecionados.reduce((s, { parcela }) => s + Number(parcela.valor || 0), 0),
+        [itensSelecionados]
+    );
 
     const recarregarFornecedores = () =>
         fornecedorService.listar().then(f => setFornecedores(Array.isArray(f) ? f : [])).catch(() => {});
@@ -617,7 +622,7 @@ const ContasPagarPage = () => {
                 {selecionadas.size > 0 && (
                     <div className="sticky top-2 z-20 bg-primary text-white rounded-lg px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 shadow-md">
                         <span className="text-sm font-medium">
-                            {selecionadas.size} selecionada(s)
+                            {selecionadas.size} selecionada(s) · <span className="font-bold">R$ {fmt(valorSelecionadas)}</span>
                             {itensRecibo.length > 0 ? ` · ${itensRecibo.length} paga(s)` : ''}
                         </span>
                         <div className="flex items-center gap-2">
