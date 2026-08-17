@@ -1231,12 +1231,14 @@ async function _referenciasTarifaCA() {
             select: { id: true }
         });
     }
+    // Categoria da tarifa: procura na tabela LOCAL (categorias_despesa) — não depende do CA.
+    // O id devolvido aqui é o id LOCAL (vai para categoriaDespesaId, nunca para categoriaCaId).
     let categoria = null;
     try {
-        const cats = await contasPagarCaSyncService.listarCategoriasDespesaSeguro();
-        categoria = (cats || []).find((c) => /tarifas?\s+de\s+boletos?/i.test(c.nome || '')) ||
-            (cats || []).find((c) => /tarifa/i.test(c.nome || '')) || null;
-    } catch (_) { /* sem categoria do CA — a despesa fica sem categoriaCaId */ }
+        const cats = await prisma.categoriaDespesa.findMany({ select: { id: true, nome: true } });
+        categoria = cats.find((c) => /tarifas?\s+de\s+boletos?/i.test(c.nome || '')) ||
+            cats.find((c) => /tarifa/i.test(c.nome || '')) || null;
+    } catch (_) { /* sem categoria — a despesa usa o nome padrão e cria a linha na hora */ }
     _refTarifaCache = { em: Date.now(), fornecedorId: fornecedor.id, categoria };
     return _refTarifaCache;
 }
@@ -1288,8 +1290,8 @@ async function _criarDespesaTarifaTx(tx, lanc, valorTarifa, grupoId, userId, ref
             fornecedorId: refs.fornecedorId,
             descricao: `Tarifa de boleto Conta Azul — ${String(lanc.descricao || 'recebimento').slice(0, 180)}`,
             categoria: refs.categoria?.nome || 'Tarifas de Boletos',
-            categoriaCaId: refs.categoria?.id || null,
-            categoriaDespesaId: await categoriaDespesaService.idPorNome(refs.categoria?.nome || 'Tarifas de Boletos', tx),
+            categoriaCaId: null, // refs.categoria agora é da tabela local — id local não entra aqui
+            categoriaDespesaId: refs.categoria?.id || await categoriaDespesaService.idPorNome('Tarifas de Boletos', tx),
             origem: 'MANUAL',
             valorTotal: valorTarifa,
             status: 'ABERTO',
@@ -2606,6 +2608,7 @@ async function criarDespesaDoLancamento({
     const comp = competencia && /^\d{4}-\d{2}-\d{2}$/.test(String(competencia)) ? dataSP(String(competencia)) : null;
 
     const labelMetodo = contasPagarCaSyncService.METODOS_PAGAMENTO_BAIXA.find((m) => m.value === metodo)?.label || metodo;
+    const categoriaCaIdReal = await _categoriaCaIdSeguro(categoriaCaId); // fora da transação
 
     let conta;
     let pagamentoId;
@@ -2623,7 +2626,7 @@ async function criarDespesaDoLancamento({
                 fornecedorId: idFornecedor,
                 descricao: descricao.trim(),
                 categoria: categoria?.trim() || null,
-                categoriaCaId: categoriaCaId || null,
+                categoriaCaId: categoriaCaIdReal,
                 categoriaDespesaId: await categoriaDespesaService.idPorNome(categoria?.trim(), tx),
                 numeroNota: numeroNota?.trim() || null,
                 competencia: comp || dataPagamento,
@@ -2712,6 +2715,7 @@ async function criarDespesasLoteEConciliar({
     let totalValor = 0;
     const falhas = [];
     const categoriaDespesaIdLote = await categoriaDespesaService.idPorNome(categoria?.trim());
+    const categoriaCaIdReal = await _categoriaCaIdSeguro(categoriaCaId); // id local não vai p/ categoriaCaId
 
     // Sequencial de propósito: cada item é uma transação curta; o banco compartilhado
     // não gosta de 50 transações simultâneas. Falha de um não derruba os demais.
@@ -2734,7 +2738,7 @@ async function criarDespesasLoteEConciliar({
                         fornecedorId: idFornecedor,
                         descricao,
                         categoria: categoria?.trim() || null,
-                        categoriaCaId: categoriaCaId || null,
+                        categoriaCaId: categoriaCaIdReal,
                         categoriaDespesaId: categoriaDespesaIdLote,
                         numeroNota,
                         competencia: dataPagamento,
@@ -2797,15 +2801,40 @@ async function criarDespesasLoteEConciliar({
 
 /** Fornecedores + categorias + formas de pagamento para o modal de "criar despesa". */
 async function opcoesDespesa() {
-    const [fornecedores, categorias] = await Promise.all([
+    // Categorias saem da tabela LOCAL (categorias_despesa, a mesma da DRE) — não dependem
+    // mais do token do CA. O CA entra só como complemento quando estiver conectado
+    // (mesmo padrão do GET /contas-pagar/categorias).
+    const [fornecedores, categoriasLocais] = await Promise.all([
         prisma.fornecedor.findMany({
             where: { ativo: true },
             select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjCpf: true },
             orderBy: { razaoSocial: 'asc' }
         }),
-        contasPagarCaSyncService.listarCategoriasDespesaSeguro().catch(() => [])
+        prisma.categoriaDespesa.findMany({ select: { id: true, nome: true }, orderBy: { nome: 'asc' } })
     ]);
+    let doCA = [];
+    try {
+        doCA = await contasPagarCaSyncService.listarCategoriasDespesaSeguro();
+    } catch (_) {
+        doCA = [];
+    }
+    const nomesLocais = new Set(categoriasLocais.map((c) => c.nome));
+    const categorias = [...categoriasLocais, ...doCA.filter((c) => c?.nome && !nomesLocais.has(c.nome))]
+        .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
     return { fornecedores, categorias, metodosPagamento: contasPagarCaSyncService.METODOS_PAGAMENTO_BAIXA };
+}
+
+/**
+ * O modal manda de volta o id escolhido na lista de opcoesDespesa — que agora vem da
+ * tabela LOCAL. Esse id NÃO pode ser gravado em contaPagar.categoriaCaId, campo
+ * reservado ao UUID da categoria NO CONTA AZUL (o envio ao CA usa esse valor no
+ * rateio; um id local lá viraria rateio inválido se o envio voltar um dia).
+ * Devolve o id só quando ele não pertence à tabela local (ou seja, veio do CA).
+ */
+async function _categoriaCaIdSeguro(categoriaCaId) {
+    if (!categoriaCaId) return null;
+    const local = await prisma.categoriaDespesa.findUnique({ where: { id: categoriaCaId }, select: { id: true } });
+    return local ? null : categoriaCaId;
 }
 
 async function listarImportacoes(contaFinanceiraCaId) {
