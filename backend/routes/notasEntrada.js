@@ -1707,7 +1707,7 @@ router.post('/:id/cancelar-conferencia', verificarAuth, checkEscrita, async (req
         // (CompraItem), mas o custo lá não tem "antes/depois" gravado — refazer pelo
         // histórico de compras válidas é o que tira a compra cancelada da média.
         // Best-effort: falha não trava o cancelamento.
-        let estorno = { estornadas: 0, avisos: [] };
+        let estorno = { estornadas: 0, avisos: [], infos: [] };
         try {
             const compraEstoqueService = require('../services/compraEstoqueService');
             if (estornoLedger.legado) {
@@ -1726,14 +1726,17 @@ router.post('/:id/cancelar-conferencia', verificarAuth, checkEscrita, async (req
         }
         estorno = {
             estornadas: estorno.estornadas + estornoLedger.estornadas,
-            avisos: [...estornoLedger.avisos, ...estorno.avisos]
+            avisos: [...estornoLedger.avisos, ...estorno.avisos],
+            // Informativo (ex.: "custo devolvido ao valor de antes desta compra"): sai
+            // separado dos avisos, que são os que pedem ação do usuário.
+            infos: [...(estorno.infos || [])]
         };
 
         res.json({
             ok: true,
             message: 'Entrada cancelada. A nota voltou para conferência.',
             avisoCA: chegouCA,
-            estoque: { estornadas: estorno.estornadas, avisos: estorno.avisos }
+            estoque: { estornadas: estorno.estornadas, avisos: estorno.avisos, infos: estorno.infos }
         });
     } catch (error) {
         console.error('Erro ao cancelar conferência da nota:', error);

@@ -37,6 +37,14 @@ const contasPagarService = {
         const response = await api.put(`/contas-pagar/${id}`, dados);
         return response.data;
     },
+    // Corrigir os PRODUTOS de uma despesa já lançada (quantidade errada, produto trocado,
+    // produto a mais/a menos). Mexe SÓ em estoque, custo e histórico de compras — nunca no
+    // valor da despesa, nas parcelas ou nos pagamentos. Lista vazia = tirar todos os produtos.
+    // Exige a permissão Pode_Corrigir_Entrada_Estoque (mesma da correção de entrada de nota).
+    atualizarItens: async (id, dados) => {
+        const response = await api.put(`/contas-pagar/${id}/itens`, dados);
+        return response.data; // { ok, message, antes, depois, custos, avisos }
+    },
     cancelar: async (id) => {
         const response = await api.post(`/contas-pagar/${id}/cancelar`);
         return response.data;

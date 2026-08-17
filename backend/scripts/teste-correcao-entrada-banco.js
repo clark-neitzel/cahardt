@@ -12,13 +12,18 @@
  *   • a despesa, a parcela e o PAGAMENTO ficam exatamente como estavam;
  *   • o histórico de compras troca a linha errada pela certa (a errada fica estornada).
  *
- * Cria e APAGA os próprios dados (prefixo TESTE-CORRECAO). Roda contra o banco do
- * .env — que é o LOCAL (hardt_local), nunca produção.
+ * Cria e APAGA os próprios dados (prefixo TESTE-CORRECAO).
+ *
+ * ⛔ SÓ RODA NO BANCO LOCAL — trava dura em `exigir-banco-local.js`: o script cria
+ * nota/despesa/pagamento e APAGA linhas no final; num banco de produção isso mexeria em
+ * estoque, custo e financeiro de verdade. Se a DATABASE_URL não for local, aborta sem
+ * tocar no banco.
  *
  * Rodar: node backend/scripts/teste-correcao-entrada-banco.js
  */
 
 require('dotenv').config();
+require('./exigir-banco-local')('teste-correcao-entrada-banco.js'); // ANTES de tocar no banco
 const prisma = require('../config/database');
 const notaEstoqueService = require('../services/notaEstoqueService');
 const compraEstoqueService = require('../services/compraEstoqueService');
@@ -154,8 +159,14 @@ async function principal() {
     const certo = await prisma.produto.findUnique({ where: { id: produto.id } });
     conferir('estoque agora (KG)', certo.estoqueTotal, 160, 3);   // 40 + 120
     conferir('entraram no estoque de hoje (KG)', num(certo.estoqueTotal) - num(errado.estoqueTotal), 108, 3);
-    conferir('custo recalculado (R$/KG)', novoCusto, 20);
-    conferir('custo gravado no produto (R$/KG)', certo.custoManual, 20);
+    // 08/2026 — o replay passou a ser SEMEADO pelo estoque/custo que existiam ANTES da
+    // compra (retrato gravado agora em CompraItem). Antes ele começava em 0/0 e jogava
+    // fora os 40 KG a R$ 21,00 que já estavam no estoque: o custo dava R$ 20,00 e
+    // R$ 40,00 sumiam da conta (era o "Bug 2"). Agora:
+    //   (40 × 21 + 120 × 20) / 160 = R$ 20,25/KG   →   160 KG × 20,25 = 840 + 2.400 ✔
+    conferir('custo recalculado (R$/KG)', novoCusto, 20.25);
+    conferir('custo gravado no produto (R$/KG)', certo.custoManual, 20.25);
+    conferir('dinheiro conservado (160 KG × custo = 840 + 2.400)', num(certo.estoqueTotal) * num(certo.custoManual), 3240, 0);
     console.log(`  → o custo CAIU de R$ ${round(errado.custoManual, 2)} para R$ ${round(certo.custoManual, 2)}/KG`);
 
     console.log('\n═══ O financeiro ficou intocado? ═══');

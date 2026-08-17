@@ -42,6 +42,21 @@ Organização dos scripts auxiliares do backend.
 | `debug-ca-product.js` / `debug_products.js` | Debug de produtos Conta Azul. |
 | `test-client-payload.js` / `test-vendas-api.js` / `test_api_v2_clientes.js` | Testes manuais contra API Conta Azul. |
 
+### Seed/teste do pacote "correção de entrada / produtos da despesa"
+
+Os que escrevem no banco começam com `require('./exigir-banco-local')(...)`: se a
+`DATABASE_URL` não for de um banco local, o processo **aborta antes de ler ou escrever
+qualquer coisa** (inclusive no `--limpar`). Não existe variável de escape — dentro do
+container de produção eles simplesmente não rodam.
+
+| Script | Finalidade |
+|---|---|
+| `exigir-banco-local.js` | A trava em si. Exige host `localhost`/`127.0.0.1`/`::1` **e** banco `hardt_local` (ou nome terminado em `_local`/`_teste`/`_test`), e recusa `NODE_ENV=production`. Use em todo script novo que grave no banco. |
+| `seed-cenarios-correcao-despesa.js` | Fixtures do QA para "corrigir os produtos de uma despesa" (despesa quitada, vinda de NF-e, compra legada, cancelada) **+ 3 usuários de teste com senha conhecida**. `--limpar` apaga tudo. |
+| `teste-editar-produtos-despesa.js` | Prova no banco a edição de produtos da despesa: custo/estoque, replay fora de ordem, `dataCompra` preservada, trava de concorrência, linha legada. Cria e apaga os próprios dados. |
+| `teste-correcao-entrada-banco.js` | Prova no banco a correção da conversão de um item de nota (estoque/custo mudam, financeiro intocado). |
+| `teste-correcao-entrada-estoque.js` | Contas da correção de entrada (não grava — só aritmética de custo/quantidade). |
+
 ---
 
 ## `scripts/dev-tools/` (apenas desenvolvimento)

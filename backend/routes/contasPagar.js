@@ -100,6 +100,19 @@ const checkEscrita = async (req, res, next) => {
     next();
 };
 
+// Mexer nos PRODUTOS de uma despesa já lançada mexe em estoque e custo (às vezes de mês
+// fechado) — é a mesma natureza de "corrigir a entrada de uma nota", então usa a MESMA
+// permissão, `Pode_Corrigir_Entrada_Estoque` (decisão do gerente, 08/2026). Molde:
+// notasEntrada.js → checkCorrigirEstoque. O frontend precisa checar exatamente esta chave.
+const checkEditarItens = async (req, res, next) => {
+    const perms = req._perms || await getPerms(req.user.id);
+    req._perms = perms;
+    if (!perms.admin && !perms.Pode_Corrigir_Entrada_Estoque) {
+        return res.status(403).json({ error: 'Sem permissão para corrigir os produtos de uma despesa já lançada.' });
+    }
+    next();
+};
+
 const num = (v) => (v == null ? null : Number(v));
 const round2 = (v) => Math.round(Number(v) * 100) / 100;
 
@@ -484,7 +497,13 @@ router.get('/:id/detalhe', verificarAuth, checkAcesso, async (req, res) => {
                     valorTotal: num(c.valorTotal),
                     categoria: null,
                     infAdProd: null,
-                    produtoVinculado: c.produto?.nome || c.itemPcp?.nome || null
+                    produtoVinculado: c.produto?.nome || c.itemPcp?.nome || null,
+                    // Campos NOVOS (08/2026) — só ADICIONADOS: a tela de edição de produtos
+                    // precisa saber qual linha é (compraItemId) e para onde ela aponta
+                    // (vinculo no mesmo formato "PROD:<id>"/"PCP:<id>" do POST / e do
+                    // PUT /:id/itens). Nada foi removido nem renomeado aqui.
+                    compraItemId: c.id,
+                    vinculo: c.produtoId ? `PROD:${c.produtoId}` : (c.itemPcpId ? `PCP:${c.itemPcpId}` : null)
                 }))
         });
     } catch (error) {
@@ -600,6 +619,58 @@ const decodeVinculo = (value) => {
     return { produtoId: null, itemPcpId: null };
 };
 
+// ── Validação compartilhada dos PRODUTOS do body (POST / e PUT /:id/itens) ──
+// Uma regra só nos dois caminhos: se mudar aqui, muda nos dois. Devolve
+// { erro } ou { itens } já normalizados (alvo resolvido, nome/unidade do catálogo).
+const validarItensBody = async (itens) => {
+    const itensBody = Array.isArray(itens) ? itens : [];
+    const itensCompra = [];
+    // O MESMO produto/insumo não pode aparecer duas vezes na mesma despesa (08/2026).
+    // A idempotência de registrarCompras inclui a descrição do fornecedor, então duas
+    // descrições diferentes apontando para o mesmo produto criariam DUAS linhas de compra —
+    // e a tela usa o vínculo como identidade da linha, então o usuário editaria uma e a
+    // outra mudaria junto, em silêncio. Quem comprou o mesmo produto em duas linhas da
+    // nota soma as quantidades numa linha só (o valor da despesa não depende disto).
+    const vistos = new Set();
+    for (const it of itensBody) {
+        const { produtoId, itemPcpId } = decodeVinculo(it?.vinculo);
+        if (!produtoId && !itemPcpId) {
+            return { erro: 'Todo produto lançado precisa estar vinculado a um item do catálogo ou insumo PCP.' };
+        }
+        const chaveAlvo = produtoId ? `PROD:${produtoId}` : `PCP:${itemPcpId}`;
+        if (vistos.has(chaveAlvo)) {
+            return { erro: `O produto "${String(it?.descricao || '').trim() || 'selecionado'}" está repetido na lista. Deixe uma linha só, somando as quantidades.` };
+        }
+        vistos.add(chaveAlvo);
+        const quantidade = Number(it?.quantidade);
+        const valorTotal = Number(it?.valorTotal);
+        if (!Number.isFinite(quantidade) || quantidade <= 0) {
+            return { erro: `Produto "${it?.descricao || '?'}": informe uma quantidade maior que zero.` };
+        }
+        if (!Number.isFinite(valorTotal) || valorTotal <= 0) {
+            return { erro: `Produto "${it?.descricao || '?'}": informe um valor maior que zero.` };
+        }
+        let alvoNome = null;
+        let alvoUnidade = null;
+        if (produtoId) {
+            const p = await prisma.produto.findUnique({ where: { id: produtoId }, select: { nome: true, unidade: true } });
+            if (!p) return { erro: 'Produto não encontrado no catálogo.' };
+            alvoNome = p.nome; alvoUnidade = p.unidade;
+        } else {
+            const i = await prisma.itemPcp.findUnique({ where: { id: itemPcpId }, select: { nome: true, unidade: true } });
+            if (!i) return { erro: 'Insumo PCP não encontrado.' };
+            alvoNome = i.nome; alvoUnidade = i.unidade;
+        }
+        itensCompra.push({
+            produtoId, itemPcpId,
+            descricao: String(it?.descricao || '').trim() || alvoNome,
+            unidade: alvoUnidade,
+            quantidade, valorTotal
+        });
+    }
+    return { itens: itensCompra };
+};
+
 // ── POST / — criar conta a pagar ──
 router.post('/', verificarAuth, checkEscrita, async (req, res) => {
     try {
@@ -648,39 +719,9 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
         }
 
         // ── Produtos comprados (opcional): validação antes de criar a conta ──
-        const itensBody = Array.isArray(itens) ? itens : [];
-        const itensCompra = [];
-        for (const it of itensBody) {
-            const { produtoId, itemPcpId } = decodeVinculo(it?.vinculo);
-            if (!produtoId && !itemPcpId) {
-                return res.status(400).json({ error: 'Todo produto lançado precisa estar vinculado a um item do catálogo ou insumo PCP.' });
-            }
-            const quantidade = Number(it?.quantidade);
-            const valorTotal = Number(it?.valorTotal);
-            if (!Number.isFinite(quantidade) || quantidade <= 0) {
-                return res.status(400).json({ error: `Produto "${it?.descricao || '?'}": informe uma quantidade maior que zero.` });
-            }
-            if (!Number.isFinite(valorTotal) || valorTotal <= 0) {
-                return res.status(400).json({ error: `Produto "${it?.descricao || '?'}": informe um valor maior que zero.` });
-            }
-            let alvoNome = null;
-            let alvoUnidade = null;
-            if (produtoId) {
-                const p = await prisma.produto.findUnique({ where: { id: produtoId }, select: { nome: true, unidade: true } });
-                if (!p) return res.status(400).json({ error: 'Produto não encontrado no catálogo.' });
-                alvoNome = p.nome; alvoUnidade = p.unidade;
-            } else {
-                const i = await prisma.itemPcp.findUnique({ where: { id: itemPcpId }, select: { nome: true, unidade: true } });
-                if (!i) return res.status(400).json({ error: 'Insumo PCP não encontrado.' });
-                alvoNome = i.nome; alvoUnidade = i.unidade;
-            }
-            itensCompra.push({
-                produtoId, itemPcpId,
-                descricao: String(it?.descricao || '').trim() || alvoNome,
-                unidade: alvoUnidade,
-                quantidade, valorTotal
-            });
-        }
+        const validacaoItens = await validarItensBody(itens);
+        if (validacaoItens.erro) return res.status(400).json({ error: validacaoItens.erro });
+        const itensCompra = validacaoItens.itens;
 
         const valorTotal = round2(parcelas.reduce((s, p) => s + Number(p.valor), 0));
         const includeConta = {
@@ -979,6 +1020,121 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
     }
 });
 
+// =============================================================
+// EDITAR OS PRODUTOS DE UMA DESPESA (08/2026)
+//
+// O problema que isto resolve: despesa lançada com a QUANTIDADE errada (o caso real
+// foi PALMITO PUPUNHA 20 UN × R$ 47,50) deixa o estoque e o `custoManual` errados e
+// não havia conserto — o `PUT /:id` nem lê `itens`, e cancelar a despesa devolvia o
+// estoque mas deixava o custo torto.
+//
+// Rota SEPARADA do `PUT /:id` de propósito: produto não vai para o Conta Azul e não
+// tem relação com parcela. Se fosse no mesmo PUT, seria preciso furar a trava
+// "QUITADO não edita" — e é exatamente a despesa já quitada que precisa ser corrigida.
+//
+// Esta rota mexe SÓ em estoque, custo e histórico de compras. NUNCA em valorTotal,
+// parcelas, pagamentos ou envio ao CA. Nenhuma chamada externa.
+//
+// Corpo: { itens: [{ vinculo, descricao, quantidade, valorTotal }] } — mesmo formato
+// do POST /. Lista vazia = tirar todos os produtos da despesa.
+//
+// Permissão: EXATAMENTE o que a tela exige — `Pode_Baixar_Contas_Pagar` (checkEscrita,
+// é o que libera o botão Editar da despesa) MAIS `Pode_Corrigir_Entrada_Estoque`
+// (checkEditarItens, mexer em estoque/custo). Sem o checkEscrita, quem tinha só a segunda
+// permissão mexia em estoque e custo pela API embora a tela nunca oferecesse o botão.
+// As duas mensagens de 403 são diferentes de propósito, para dar para saber qual travou.
+// =============================================================
+router.put('/:id/itens', verificarAuth, checkAcesso, checkEscrita, checkEditarItens, async (req, res) => {
+    try {
+        const compraEstoqueService = require('../services/compraEstoqueService');
+        const conta = await prisma.contaPagar.findUnique({
+            where: { id: req.params.id },
+            include: {
+                fornecedor: { select: { id: true, razaoSocial: true, nomeFantasia: true, cnpjCpf: true } },
+                notaEntrada: { select: { id: true } }
+            }
+        });
+        if (!conta) return res.status(404).json({ error: 'Despesa não encontrada.' });
+
+        // Despesa CANCELADA: as compras já foram estornadas — relançar aqui somaria
+        // estoque numa despesa que não existe mais.
+        if (conta.status === 'CANCELADO') {
+            return res.status(400).json({ error: 'Despesa cancelada — os produtos já foram devolvidos ao estoque. Lance uma despesa nova.' });
+        }
+
+        // Despesa vinda de nota fiscal: quem manda ali é o XML (quantidade e valor saem
+        // da nota). Corrigir por aqui deixaria a despesa e a nota contando histórias
+        // diferentes — o caminho é Notas Recebidas → Corrigir entrada.
+        const temCompraDeNota = await prisma.compraItem.count({
+            where: { contaPagarId: conta.id, notaEntradaId: { not: null }, estornado: false }
+        });
+        if (conta.notaEntrada || ['NFE', 'NFSE'].includes(conta.origem) || temCompraDeNota > 0) {
+            return res.status(400).json({
+                error: 'Esta despesa veio de uma nota fiscal — corrija em Notas Recebidas → Corrigir entrada.'
+            });
+        }
+
+        const validacao = await validarItensBody(req.body?.itens);
+        if (validacao.erro) return res.status(400).json({ error: validacao.erro });
+        const itensDesejados = validacao.itens;
+
+        // Estorna tudo e relança a lista nova numa transação só (a idempotência de
+        // registrarCompras não olha quantidade/valor: sem estornar antes, o reenvio
+        // seria ignorado em silêncio e a tela mentiria "salvo").
+        let resultado;
+        await prisma.$transaction(async (tx) => {
+            resultado = await compraEstoqueService.sincronizarComprasConta(
+                tx, conta, conta.fornecedor, itensDesejados, req.user.id
+            );
+        }, { timeout: 20000, maxWait: 10000 });
+
+        // DEPOIS do commit: fecha o custo de cada alvo tocado (dos dois lados — o produto
+        // que saiu também). Ajuste secundário, em try/catch próprio: falhar aqui não
+        // desfaz o estoque, que já está efetivado.
+        let custos = [];
+        // `avisos` = o que pede ação do usuário (estoque negativo, insumo travado em zero,
+        // custo que NÃO deu para recalcular) — a tela mostra com ⚠️.
+        // `infos` = recado informativo (custo novo, custo devolvido) — sem alarme.
+        const avisos = [...resultado.avisos];
+        const infos = [...resultado.infos];
+        try {
+            const fechamento = await compraEstoqueService.fecharCustoDosAlvos({
+                produtoIds: resultado.alvos.produtoIds,
+                itemPcpIds: resultado.alvos.itemPcpIds,
+                restaurados: resultado.restaurados
+            });
+            custos = fechamento.custos;
+            avisos.push(...fechamento.avisos);
+            infos.push(...fechamento.infos);
+        } catch (e) {
+            console.error('[ContasPagar] Falha ao fechar o custo após editar os produtos:', e.message);
+            avisos.push('Não consegui recalcular o custo dos produtos — o estoque já está corrigido, confira o Custo Manual deles.');
+        }
+
+        // A soma dos produtos não precisa bater com o total da despesa (frete, imposto,
+        // serviço). Só avisa — nunca bloqueia, e o valor da despesa não é tocado.
+        const somaItens = round2(itensDesejados.reduce((s, i) => s + Number(i.valorTotal), 0));
+        if (itensDesejados.length > 0 && Math.abs(somaItens - Number(conta.valorTotal)) >= 0.01) {
+            avisos.push(`A soma dos produtos (R$ ${somaItens.toFixed(2)}) é diferente do valor da despesa (R$ ${Number(conta.valorTotal).toFixed(2)}) — o valor da despesa NÃO foi alterado.`);
+        }
+
+        res.json({
+            ok: true,
+            message: itensDesejados.length === 0
+                ? 'Produtos removidos da despesa. O estoque foi devolvido — a despesa, as parcelas e os pagamentos não mudaram.'
+                : `Produtos da despesa atualizados (${resultado.registradas} item(ns)). Estoque e custo ajustados — a despesa, as parcelas e os pagamentos não mudaram.`,
+            antes: resultado.antes,
+            depois: resultado.depois,
+            custos,
+            avisos,
+            infos
+        });
+    } catch (error) {
+        console.error('Erro ao editar os produtos da despesa:', error);
+        res.status(500).json({ error: 'Erro ao editar os produtos da despesa.' });
+    }
+});
+
 // ── POST /:id/cancelar ──
 router.post('/:id/cancelar', verificarAuth, checkEscrita, async (req, res) => {
     try {
@@ -994,16 +1150,19 @@ router.post('/:id/cancelar', verificarAuth, checkEscrita, async (req, res) => {
             return res.status(400).json({ error: 'Conta tem pagamento registrado. Estorne os pagamentos antes de cancelar.' });
         }
 
-        await prisma.$transaction([
-            prisma.parcelaPagar.updateMany({
+        // Forma interativa (callback), não a de array: só ela aceita timeout/maxWait — o
+        // banco compartilhado passa dos 5s padrão em horário de pico e o cancelamento
+        // falhava de forma intermitente ("só funciona na 2ª tentativa").
+        await prisma.$transaction(async (tx) => {
+            await tx.parcelaPagar.updateMany({
                 where: { contaPagarId: conta.id, status: { not: 'PAGO' } },
                 data: { status: 'CANCELADO' }
-            }),
-            prisma.contaPagar.update({
+            });
+            await tx.contaPagar.update({
                 where: { id: conta.id },
                 data: { status: 'CANCELADO', statusEnvioCA: conta.statusEnvioCA === 'ENVIAR' ? 'NAO_ENVIAR' : conta.statusEnvioCA }
-            })
-        ]);
+            });
+        }, { timeout: 20000, maxWait: 10000 });
 
         if (['ENVIADO', 'AGUARDANDO_PROTOCOLO', 'ENVIANDO'].includes(conta.statusEnvioCA)) {
             console.warn(`[ContasPagar] ⚠️ Conta ${conta.id} cancelada localmente mas já enviada ao CA — remover manualmente no Conta Azul se necessário.`);
@@ -1011,7 +1170,7 @@ router.post('/:id/cancelar', verificarAuth, checkEscrita, async (req, res) => {
 
         // Despesa manual com produtos lançados → estorna as entradas de estoque.
         // (Compras vindas de NF-e são estornadas pelo cancelar-conferência da nota.)
-        let estorno = { estornadas: 0, avisos: [] };
+        let estorno = { estornadas: 0, avisos: [], infos: [] };
         try {
             const compraEstoqueService = require('../services/compraEstoqueService');
             estorno = await compraEstoqueService.estornarEntradasConta(conta.id, req.user.id);
@@ -1024,7 +1183,8 @@ router.post('/:id/cancelar', verificarAuth, checkEscrita, async (req, res) => {
             message: estorno.estornadas > 0
                 ? `Conta cancelada. ${estorno.estornadas} produto(s) devolvido(s) do estoque.`
                 : 'Conta cancelada com sucesso!',
-            estoque: { estornadas: estorno.estornadas, avisos: estorno.avisos }
+            // avisos = pede ação (estoque negativo, custo não recalculado); infos = só informa.
+            estoque: { estornadas: estorno.estornadas, avisos: estorno.avisos, infos: estorno.infos || [] }
         });
     } catch (error) {
         console.error('Erro ao cancelar conta a pagar:', error);

@@ -3633,6 +3633,14 @@ model CompraItem {
   valorTotal           Decimal @map("valor_total") @db.Decimal(12, 2)
   custoUnitario        Decimal @map("custo_unitario") @db.Decimal(12, 6) // valorTotal / quantidade convertida
 
+  // Retrato do alvo ANTES/DEPOIS desta compra (08/2026) — é o que permite ao estorno
+  // devolver o custo exato de antes, em vez de tentar adivinhar pelo replay.
+  // NULL nas linhas antigas (sem backfill: não existe fonte confiável) → nesses casos
+  // o estorno cai no replay das compras válidas, como sempre foi.
+  estoqueAnterior Decimal? @map("estoque_anterior") @db.Decimal(12, 3) // saldo do produto/insumo antes desta entrada
+  custoAnterior   Decimal? @map("custo_anterior") @db.Decimal(12, 6) // custoManual (Produto) / custoUnitario (ItemPcp) antes
+  custoPosterior  Decimal? @map("custo_posterior") @db.Decimal(12, 6) // o que esta compra deixou gravado no alvo
+
   estornado   Boolean   @default(false) // entrada cancelada (cancelar-conferência)
   estornadoEm DateTime? @map("estornado_em")
 

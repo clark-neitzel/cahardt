@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Corrigir os produtos de uma despesa — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
+<meta property="og:title" content="🔧 Novidade no Hardt App: corrigir os produtos de uma despesa">
+<meta property="og:description" content="Lançou a quantidade errada e o custo do produto ficou torto? Agora dá para corrigir os produtos dentro da própria despesa — estoque e custo acertados no mesmo clique, sem mexer no valor nem nos pagamentos.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(27px, 6.6vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 30px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 9px;
+  }
+  .mock-linha b { font-size: 13.5px; }
+  .mock-linha small { display: block; font-size: 11.5px; color: var(--ink-soft); }
+  .qtd-errada {
+    text-decoration: line-through;
+    color: #b91c1c;
+    font-weight: 700;
+  }
+  .qtd-certa { color: var(--primary-dark); font-weight: 800; }
+  .selo-ambar {
+    display: inline-block;
+    background: #fef3c7;
+    color: #b45309;
+    font-size: 11px;
+    font-weight: 800;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .mock-rodape { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* quadro antes/depois */
+  .conta {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .conta-topo { font-size: 13px; color: var(--ink-soft); margin: 0 0 12px; }
+  .conta-topo b { color: var(--ink); }
+  .conta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .conta-box { border-radius: 12px; padding: 11px 12px; border: 1px solid #e5e3dc; background: #f7f6f2; }
+  .conta-box.depois { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .conta-box .tit {
+    font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em;
+    color: var(--ink-soft); margin-bottom: 6px;
+  }
+  .conta-box .val { font-size: 15px; font-weight: 800; }
+  .conta-box .val small { display: block; font-size: 11.5px; font-weight: 600; color: var(--ink-soft); }
+  .conta-box.depois .val { color: var(--primary-dark); }
+  .conta-obs { font-size: 12.5px; color: var(--ink-soft); margin: 12px 0 0; }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.destaque { background: #fff7ed; border-color: #f5c98a; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-btn.perigo { background: #fff; border: 1.5px solid #dc2626; color: #dc2626; }
+  .app-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+  .app-linha {
+    border: 1px solid #e5e3dc;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background: #fff;
+  }
+  .app-linha .nome { font-size: 12.5px; font-weight: 700; }
+  .app-linha .sub { font-size: 11.5px; color: var(--ink-soft); }
+  .app-topo-linha { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .lixeira { color: #b6bcb8; font-size: 15px; flex-shrink: 0; }
+  .app-campos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 9px; }
+  .app-campos .full { grid-column: 1 / -1; }
+  .campo-mini { border: 1px solid #d8d5cc; border-radius: 8px; padding: 6px 9px; background: #fff; }
+  .campo-mini small { display: block; font-size: 9.5px; font-weight: 700; color: #9aa5a0; margin-bottom: 1px; }
+  .campo-mini span { font-size: 13px; font-weight: 700; }
+  .campo-mini.foco { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.12); }
+  /* selo "calculado" que o app mostra no rótulo do campo recalculado */
+  .selo-calc { color: var(--primary); font-weight: 800; font-size: 9.5px; margin-left: 3px; }
+  .app-dashed {
+    border: 1px dashed #d0ccc1;
+    border-radius: 10px;
+    padding: 11px 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #6b756f;
+    text-align: center;
+    background: #fff;
+  }
+  .app-nota {
+    background: #fffbeb;
+    border: 1px solid #fbdba7;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #92400e;
+  }
+  .app-aviso {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-left: 4px solid var(--primary);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    margin-bottom: 8px;
+    box-shadow: 0 1px 3px rgba(30,57,50,.08);
+  }
+  .app-aviso.alerta { border-left-color: var(--gold); }
+  .app-aviso b { font-weight: 800; }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Corrigir os produtos<br>de uma despesa</h1>
+    <p>Lançou a compra com a quantidade errada e o custo do produto ficou torto? Agora dá para arrumar os produtos dentro da própria despesa — o estoque e o custo são acertados no mesmo clique, sem mexer no valor, nas parcelas nem nos pagamentos.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock da seção Produtos no Editar -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🔧</span>
+      <div>
+        <small>Contas a Pagar · Editar Despesa</small>
+        <strong>Produtos desta despesa</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-linha">
+        <div>
+          <b>PALMITO PUPUNHA</b>
+          <small>Qtd: <span class="qtd-errada">20,00</span> → <span class="qtd-certa">2,00 UN</span> · unitário R$ 475,00</small>
+        </div>
+        <span style="font-size:13px;font-weight:800;">R$ 950,00</span>
+      </div>
+      <div class="mock-rodape">
+        <span class="selo-ambar">⚠ Estoque será corrigido</span>
+        <span style="font-size:12.5px;font-weight:700;color:var(--primary-dark);">Salvar ➜</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🩹</span>
+      <strong>O problema que isso resolve</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Quando uma despesa era lançada com produto e a <b>quantidade saía errada</b> (20 no lugar de 2, por exemplo), o <b>custo do produto ficava errado no sistema</b> — e não tinha conserto:</p>
+      <ul>
+        <li>O <b>“Editar”</b> da despesa <b>não mexia nos produtos</b> — só nos dados e nas parcelas.</li>
+        <li><b>Cancelar</b> a despesa devolvia o estoque, mas <b>deixava o custo torto</b>.</li>
+      </ul>
+      <p>Resultado: custo errado puxava margem, preço e relatório para o lado errado, e ninguém conseguia arrumar pela tela.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✏️</span>
+      <strong>1. Editar os produtos direto na despesa</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Em <b>Financeiro → Contas a Pagar</b>, abra a despesa e clique em <b>Editar</b>: agora a seção <b>Produtos</b> aparece ali (antes só aparecia ao criar a despesa).</p>
+      <ul>
+        <li>Dá para <b>corrigir a quantidade</b>, <b>corrigir o valor</b>, <b>trocar o produto</b>, <b>adicionar</b> ou <b>remover</b>.</li>
+        <li><b>Corrigiu a quantidade? O valor total não se mexe.</b> Ele é o que o fornecedor cobrou (e você já pagou) — quem muda é o <b>custo unitário</b>, recalculado na hora. Trocando 20 por 2 numa nota de R$ 950, o total continua R$ 950,00 e o unitário vira R$ 475,00. O campo que o sistema recalculou aparece marcado com <b>calculado</b>, em verde, para você ver que não foi você que digitou.</li>
+        <li>Se o errado foi o <b>valor</b>, digite o <b>total</b> ou o <b>unitário</b> — o outro se ajusta sozinho.</li>
+        <li>Ao salvar, o sistema <b>desfaz a entrada errada e lança a certa</b>: estoque e custo acertados no mesmo clique.</li>
+        <li>O <b>valor da despesa, as parcelas e os pagamentos não mudam</b> — nada de financeiro é tocado.</li>
+        <li>Assim que você altera alguma coisa, aparece o selo âmbar <b>“Estoque será corrigido”</b>, avisando que o salvar vai mexer no estoque.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">↩️</span>
+      <strong>2. O custo volta certo ao cancelar</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Cada compra passa a <b>guardar como estava o estoque e o custo do produto antes dela</b>. Assim, ao cancelar a despesa, o sistema <b>devolve o custo exato de antes</b> — não só a quantidade.</p>
+      <p>E quando não for possível recalcular (produto sem histórico de compra válido, por exemplo), aparece um <b>aviso pedindo para conferir o Custo do produto</b>. Nunca mais fica errado em silêncio.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔔</span>
+      <strong>3. A tela avisa o que aconteceu com o estoque</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Ao cancelar uma despesa ou corrigir os produtos, aparecem mensagens na tela contando o que o sistema fez:</p>
+      <ul>
+        <li>quantos produtos <b>voltaram ao estoque</b>;</li>
+        <li>se algum <b>estoque ficou negativo</b> (a quantidade lançada já tinha sido usada);</li>
+        <li>se um <b>insumo do PCP já tinha sido consumido</b> e não pôde ser devolvido inteiro;</li>
+        <li>como ficou o <b>custo</b>: de → para.</li>
+      </ul>
+      <p>Vale a pena <b>ler os avisos</b> antes de fechar a tela — é ali que o sistema diz se sobrou algo para acertar na mão.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔑</span>
+      <strong>Quem pode usar</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>São precisas as <b>duas</b> permissões, juntas: <b>“Operar Contas a Pagar”</b> — a mesma que já libera criar, editar e dar baixa em despesa, e é ela que faz aparecer o botão <b>Editar</b> — <b>e</b> <b>“Corrigir Entrada de Estoque”</b>, a mesma já usada para corrigir a entrada de nota fiscal, porque aqui se mexe em estoque e custo. <b>Faltando qualquer uma das duas, não dá para corrigir os produtos.</b></p>
+      <p>Quem tem <b>“Operar Contas a Pagar”</b> mas não tem <b>“Corrigir Entrada de Estoque”</b> abre a despesa normalmente e continua <b>vendo</b> os produtos — eles aparecem listados <b>só para consulta</b>, e a própria tela explica que falta a permissão e manda falar com o gerente. Quem não tem <b>“Operar Contas a Pagar”</b> nem chega até aí: o botão <b>Editar</b> não aparece na despesa (os produtos continuam visíveis para consulta na tela de detalhe).</p>
+      <p>Numa despesa <b>já paga</b> aberta por quem não pode corrigir, não há mais nada para salvar: a tela vira <b>consulta</b> e o rodapé mostra só <b>“Fechar”</b> — nada de botão de salvar que não faz nada. Anexar um <b>PDF</b> continua liberado; ao escolher o arquivo, o botão de salvar reaparece.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📌</span>
+      <strong>Detalhes que a equipe precisa saber</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Despesa <b>já paga/quitada também pode</b> ter os produtos corrigidos — é justamente o caso em que o custo já está errado. <b>Nada financeiro é alterado.</b> Nela, fornecedor/descrição/nota/parcelas aparecem <b>cinzas (só leitura)</b> e o botão vira <b>“Salvar correção dos produtos”</b>.</li>
+        <li>Se a mesma despesa tinha o <b>mesmo produto lançado em duas linhas</b> (acontece em lançamentos antigos), a tela <b>junta as linhas</b> ao abrir, somando quantidade e valor, e avisa. Você corrige uma linha só — e ela fica com a <b>descrição que aparece embaixo do nome</b> (a da primeira linha), que é a mesma que será gravada.</li>
+        <li>A <b>descrição que o fornecedor usou na nota</b> (aquela linha cinza embaixo do nome do produto, tipo “PALMITO PUPUNHA”) é <b>preservada</b> ao salvar. Corrigir uma linha não reescreve as outras com o nome do catálogo.</li>
+        <li>Despesa que <b>veio de nota fiscal não se corrige por aqui</b>: continua sendo em <b>Notas Recebidas → Corrigir entrada</b> (a própria tela avisa).</li>
+        <li>Despesa <b>cancelada</b> não aceita correção — os produtos dela já voltaram ao estoque.</li>
+        <li>Cada correção deixa <b>registro no histórico do produto</b> (uma saída de estorno e uma entrada nova). É proposital: serve de <b>auditoria</b>.</li>
+        <li>Se a quantidade lançada <b>já tinha sido usada</b>, o estoque pode ficar <b>negativo</b>: o sistema conclui a correção e <b>avisa</b>, para você acertar pelo ajuste de estoque.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ A CONTA ══════════ -->
+  <div class="sec-label">A conta, na prática</div>
+  <div class="conta">
+    <p class="conta-topo">A nota do fornecedor foi de <b>R$ 950,00</b> por <b>2 UN</b> de <b>PALMITO PUPUNHA</b>, mas foi lançada como <b>20 UN</b>. Você troca só a quantidade — o resto o sistema faz:</p>
+    <div class="conta-grid">
+      <div class="conta-box">
+        <div class="tit">Antes (errado)</div>
+        <div class="val">20 UN<small>entraram no estoque</small></div>
+        <div class="val" style="margin-top:6px;">R$ 47,50<small>custo unitário gravado</small></div>
+      </div>
+      <div class="conta-box depois">
+        <div class="tit">Depois (corrigido)</div>
+        <div class="val">2 UN<small>entraram no estoque</small></div>
+        <div class="val" style="margin-top:6px;">R$ 475,00<small>custo unitário gravado</small></div>
+      </div>
+    </div>
+    <p class="conta-obs">As 18 unidades que nunca entraram <b>saem do estoque</b> e o <b>custo médio do produto é recalculado</b> (o app mostra de quanto para quanto num aviso na tela). O <b>valor total da compra continua R$ 950,00</b> — e o <b>valor da despesa e os pagamentos ficam exatamente como estavam</b>.</p>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Detalhe da despesa — onde começa</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🧾 Despesa · Nota 10082026</div>
+        <div class="app-card-body">
+          <div style="font-size:13px;font-weight:800;margin-bottom:2px;">COMPANHIA DO TEMPERO</div>
+          <div style="font-size:11.5px;color:var(--ink-soft);">Matéria-prima · venc. 10/08/2026 · <b style="color:var(--ink);">R$ 950,00</b></div>
+        </div>
+      </div>
+
+      <div class="app-card">
+        <div class="app-card-head">📦 Produtos da despesa<span class="pin">1</span></div>
+        <div class="app-card-body">
+          <div class="app-linha" style="margin-bottom:0;">
+            <div class="app-topo-linha">
+              <div>
+                <div class="nome">PALMITO PUPUNHA</div>
+                <div class="sub">20,00 UN × R$ 47,50</div>
+                <div class="sub" style="color:var(--primary-dark);">→ entrou no estoque</div>
+              </div>
+              <span style="font-size:13px;font-weight:800;white-space:nowrap;">R$ 950,00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-card">
+        <div class="app-card-head">💳 Parcelas</div>
+        <div class="app-card-body">
+          <div style="display:flex;justify-content:space-between;font-size:12.5px;">
+            <span>1/1 · 10/08/2026</span>
+            <span style="font-weight:800;">R$ 950,00 · <span style="color:#166534;">PAGO</span><span class="pin">2</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-btns">
+        <span class="app-btn">✏️ Editar<span class="pin">3</span></span>
+        <span class="app-btn claro">⧉ Duplicar</span>
+        <span class="app-btn perigo">✖ Cancelar despesa<span class="pin">4</span></span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O bloco <b>“Produtos da despesa”</b> mostra o que foi lançado no estoque por essa compra — é aqui que você percebe a quantidade errada.</span></div>
+      <div><span class="pin">2</span><span>Mesmo com a parcela <b>PAGA</b>, a correção dos produtos é permitida. O pagamento <b>não é tocado</b>.</span></div>
+      <div><span class="pin">3</span><span>O botão <b>Editar</b> é o caminho novo: é dentro dele que a seção Produtos agora aparece.</span></div>
+      <div><span class="pin">4</span><span><b>Cancelar despesa</b> continua existindo — e agora devolve <b>estoque e custo</b> ao estado de antes da compra, avisando o que fez.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Editar Despesa — a seção Produtos</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🧾 Editar Despesa</div>
+        <div class="app-card-body">
+          <div class="app-input"><small>Fornecedor</small>COMPANHIA DO TEMPERO</div>
+          <div class="app-input"><small>Descrição</small>Palmito pupunha — compra do mês</div>
+          <div class="app-input" style="margin-bottom:0;"><small>Número da nota</small>10082026</div>
+        </div>
+      </div>
+
+      <div class="app-card">
+        <div class="app-card-head">
+          📦 Produtos desta despesa
+          <span style="margin-left:auto;"><span class="selo-ambar">Estoque será corrigido</span><span class="pin">2</span></span>
+        </div>
+        <div class="app-card-body">
+          <div class="app-linha">
+            <div class="app-topo-linha">
+              <div>
+                <div class="nome">Palmito pupunha</div>
+                <div class="sub">PALMITO PUPUNHA <i>(descrição da nota do fornecedor)</i><span class="pin">6</span></div>
+              </div>
+              <span class="lixeira">🗑<span class="pin">3</span></span>
+            </div>
+            <div class="app-campos">
+              <div class="campo-mini foco"><small>QTD (UN)</small><span>2<span class="pin">1</span></span></div>
+              <div class="campo-mini"><small>VALOR UNITÁRIO <span class="selo-calc">calculado</span><span class="pin">5</span></small><span>R$ 475,00</span></div>
+              <div class="campo-mini full"><small>VALOR TOTAL</small><span>R$ 950,00</span></div>
+            </div>
+          </div>
+          <div class="app-dashed">+ Adicionar produto…<span class="pin">4</span></div>
+        </div>
+      </div>
+
+      <div class="app-nota" style="margin-bottom:10px;">
+        Corrigindo a <b>quantidade</b>, o <b>valor total</b> fica como está e o <b>valor unitário</b> é recalculado. Ao salvar, os produtos que estavam aqui <b>voltam do estoque</b> e a lista acima entra no lugar. O <b>valor da despesa, as parcelas e os pagamentos não mudam</b>.
+      </div>
+
+      <div class="app-btns" style="justify-content:flex-end;">
+        <span class="app-btn claro">Cancelar</span>
+        <span class="app-btn">💾 Salvar<span class="pin">7</span></span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Corrija só a quantidade</b> (aqui: de 20 para 2). O <b>valor total continua R$ 950,00</b> — é o que o fornecedor cobrou.</span></div>
+      <div><span class="pin">2</span><span>O selo âmbar <b>“Estoque será corrigido”</b> só acende quando você mexeu em algo. É o aviso de que salvar vai ajustar estoque e custo.</span></div>
+      <div><span class="pin">3</span><span>A <b>lixeira</b> tira o produto da despesa — salvando assim, todo o estoque lançado por ele é devolvido.</span></div>
+      <div><span class="pin">4</span><span><b>“+ Adicionar produto”</b> inclui um produto que faltou (ou o produto certo, quando foi lançado o errado).</span></div>
+      <div><span class="pin">5</span><span>O selo verde <b>“calculado”</b> mostra qual campo o sistema acabou de calcular — aqui o <b>unitário</b> (R$ 950,00 ÷ 2 = R$ 475,00). Se você digitar o unitário, o selo pula para o <b>valor total</b>.</span></div>
+      <div><span class="pin">6</span><span>A linha cinza é a <b>descrição da nota do fornecedor</b>. Ela é <b>preservada</b> ao salvar — corrigir uma linha não reescreve as outras.</span></div>
+      <div><span class="pin">7</span><span><b>Salvar</b> faz tudo de uma vez: desfaz a entrada errada, lança a certa e recalcula o custo.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 — despesa já paga -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Despesa já paga (quitada) — o que fica cinza e o que continua liberado</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🧾 Editar Despesa</div>
+        <div class="app-card-body">
+          <div class="app-nota" style="margin-bottom:10px;">
+            <b>Despesa quitada</b> — dá para corrigir os produtos, mas os dados e as parcelas não podem mais ser alterados.<span class="pin">1</span>
+          </div>
+          <div class="app-input" style="background:#f3f2ef;color:#8a8578;"><small>Fornecedor</small>COMPANHIA DO TEMPERO<span class="pin">2</span></div>
+          <div class="app-input" style="background:#f3f2ef;color:#8a8578;"><small>Descrição</small>Palmito pupunha — compra do mês</div>
+          <div class="app-input" style="margin-bottom:0;background:#f3f2ef;color:#8a8578;"><small>Parcela 1 · 20/08/2026</small>R$ 950,00 · já paga</div>
+        </div>
+      </div>
+
+      <div class="app-card">
+        <div class="app-card-head">
+          📦 Produtos desta despesa
+          <span style="margin-left:auto;"><span class="selo-ambar">Estoque será corrigido</span></span>
+        </div>
+        <div class="app-card-body">
+          <div class="app-linha">
+            <div class="app-topo-linha">
+              <div>
+                <div class="nome">Palmito pupunha</div>
+                <div class="sub">continua totalmente editável<span class="pin">3</span></div>
+              </div>
+              <span class="lixeira">🗑</span>
+            </div>
+            <div class="app-campos">
+              <div class="campo-mini foco"><small>QTD (UN)</small><span>2</span></div>
+              <div class="campo-mini"><small>VALOR UNITÁRIO <span class="selo-calc">calculado</span></small><span>R$ 475,00</span></div>
+              <div class="campo-mini full"><small>VALOR TOTAL</small><span>R$ 950,00</span></div>
+            </div>
+          </div>
+          <div class="app-dashed">+ Adicionar produto…</div>
+        </div>
+      </div>
+
+      <div class="app-btns" style="justify-content:flex-end;">
+        <span class="app-btn claro">Cancelar</span>
+        <span class="app-btn">💾 Salvar correção dos produtos<span class="pin">4</span></span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>A <b>tarja amarela</b> explica de cara por que metade da tela está cinza — a despesa já foi paga.</span></div>
+      <div><span class="pin">2</span><span><b>Fornecedor, descrição, nota, competência, observações e parcelas ficam cinzas</b> (só leitura). Não é falha: despesa quitada não muda mais de valor nem de vencimento.</span></div>
+      <div><span class="pin">3</span><span><b>Os produtos continuam editáveis</b> — é exatamente para isso que a tela serve aqui. Estoque e custo são corrigidos; <b>pagamento, parcela e valor da despesa não são tocados</b>.</span></div>
+      <div><span class="pin">4</span><span>O botão muda de nome para <b>“Salvar correção dos produtos”</b>, deixando claro que só os produtos serão salvos. Se você não mexeu em nada, ele avisa que não havia o que salvar.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3B — quitada sem permissão: só consulta -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3b · Despesa já paga, sem permissão de corrigir — só consulta</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🧾 Editar Despesa</div>
+        <div class="app-card-body">
+          <div class="app-nota" style="margin-bottom:10px;">
+            <b>Despesa quitada</b> — esta tela está só para consulta: os dados, as parcelas e os produtos não podem mais ser alterados aqui. Você ainda pode anexar um PDF.<span class="pin">1</span>
+          </div>
+          <div class="app-linha" style="margin-bottom:0;">
+            <div class="app-topo-linha">
+              <div>
+                <div class="nome">Palmito pupunha</div>
+                <div class="sub">2 UN × R$ 475,00 = <b>R$ 950,00</b><span class="pin">2</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-btns" style="justify-content:stretch;">
+        <span class="app-btn claro" style="flex:1;text-align:center;">Fechar<span class="pin">3</span></span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>A tarja diz na cara <b>que não há o que salvar</b> — antes o rodapé oferecia “Salvar correção dos produtos” e o clique só respondia “Nada foi alterado”.</span></div>
+      <div><span class="pin">2</span><span>Os produtos aparecem <b>em texto, para consulta</b>, com a conta pronta. Para editar é preciso ter as <b>duas</b> permissões: <b>“Operar Contas a Pagar”</b> e <b>“Corrigir Entrada de Estoque”</b>.</span></div>
+      <div><span class="pin">3</span><span>O rodapé tem <b>só “Fechar”</b>, ocupando a largura toda. Se você escolher um <b>PDF</b> para anexar, aí sim aparece o botão <b>“Salvar PDF”</b> ao lado.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 4 · Os avisos depois de salvar</div>
+    <div class="tela-corpo">
+      <div class="app-aviso">
+        ✅ <b>Produtos da despesa atualizados (1 item).</b> Estoque e custo ajustados — a despesa, as parcelas e os pagamentos não mudaram.<span class="pin">1</span>
+      </div>
+      <div class="app-aviso alerta">
+        ⚠️ Custo de <b>“Palmito pupunha”</b> recalculado pelas compras válidas: <b>R$ 475,00</b>.<span class="pin">2</span>
+      </div>
+      <div class="app-aviso alerta">
+        ⚠️ A soma dos produtos (R$ 880,00) é diferente do valor da despesa (R$ 950,00) — o valor da despesa <b>NÃO</b> foi alterado.<span class="pin">3</span>
+      </div>
+      <div class="app-aviso alerta" style="margin-bottom:0;">
+        ⚠️ <i>(quando é o caso)</i> O estoque de <b>“ALHO DESIDRATADO”</b> ficou negativo (−4) porque a quantidade lançada já tinha sido usada — acerte pelo ajuste manual.<span class="pin">4</span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O primeiro aviso confirma o que foi feito e <b>lembra que nada financeiro mudou</b>.</span></div>
+      <div><span class="pin">2</span><span>O aviso do <b>custo</b> mostra <b>com quanto o produto ficou</b> depois da correção — é o número que estava errado e agora está certo.</span></div>
+      <div><span class="pin">3</span><span>Se a despesa tinha <b>frete, imposto ou serviço</b> junto, a soma dos produtos não bate com o total: o sistema só <b>avisa</b>, nunca bloqueia nem mexe no valor.</span></div>
+      <div><span class="pin">4</span><span><b>Ler os avisos faz parte do serviço.</b> Quando o estoque fica negativo ou um insumo já foi consumido, é aqui que o sistema pede o acerto manual.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PARA COMEÇAR A USAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Vá em <b>Financeiro → Contas a Pagar</b> e <b>abra a despesa</b> que ficou errada.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Clique em <b>Editar</b> e desça até a seção <b>Produtos</b>.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div><b>Corrija a quantidade ou o valor</b> (ou troque/remova o produto) e toque em <b>Salvar</b>.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">5</span>
+      <div><b>Leia os avisos</b> que aparecem — eles dizem como ficou o estoque e o custo. ✅</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

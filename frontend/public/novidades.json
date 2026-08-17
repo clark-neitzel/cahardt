@@ -1,5 +1,11 @@
 [
   {
+    "slug": "corrigir-produtos-despesa",
+    "titulo": "Corrigir produtos da despesa",
+    "resumo": "Lançou a despesa com produto e a quantidade saiu errada? Até agora não tinha conserto: o Editar não mexia nos produtos e cancelar devolvia o estoque mas deixava o custo torto. Agora, em Financeiro → Contas a Pagar, abrindo a despesa e clicando em Editar, a seção Produtos aparece: dá para corrigir a quantidade, corrigir o valor, trocar o produto, adicionar ou remover. Corrigindo a quantidade, o valor total fica como está (é o que o fornecedor cobrou e você já pagou) e o custo unitário é recalculado sozinho — o campo calculado aparece marcado em verde. Ao salvar, o sistema desfaz a entrada errada e lança a certa — estoque e custo acertados no mesmo clique, sem mexer no valor da despesa, nas parcelas nem nos pagamentos (despesa já paga também pode). Cancelar uma despesa passa a devolver também o custo exato de antes da compra, e a tela avisa o que aconteceu com o estoque: quantos produtos voltaram, se algum ficou negativo, se um insumo do PCP já tinha sido consumido e como ficou o custo (de → para). Precisa das permissões de alterar contas a pagar e 'Corrigir entrada de estoque'; despesa que veio de nota fiscal continua sendo corrigida em Notas Recebidas → Corrigir entrada.",
+    "data": "2026-08-16"
+  },
+  {
     "slug": "canhoto-desfazer",
     "titulo": "Desfazer nos Canhotos",
     "resumo": "Bipou a folha errada no mutirão dos canhotos, bipou uma cujo canhoto está em branco, ou clicou em 'Veio sem assinatura' na linha de baixo? Agora tem volta pela tela: o botão Desfazer devolve a nota ao estado em que ela estava antes daquele clique. Ele aparece em dois lugares — ao lado da leitura que acabou de sair (onde o erro é percebido, sem tirar o ritmo do maço) e na linha da nota, só nas que têm o que desfazer. O rótulo escreve o destino ('volta para Arquivado', 'volta para Estado desconhecido'), porque não existe destino fixo: a nota volta para onde ela estava. Volta um passo só, é o mesmo pessoal que já bipa e arquiva, e fica registrado quem desfez e quando.",

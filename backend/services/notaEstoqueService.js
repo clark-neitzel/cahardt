@@ -163,7 +163,9 @@ async function aplicarEstoqueNota(tx, nota, itensResolvidos, { comCusto = false,
 
             // Histórico de compras (tela do produto) — só quando a entrada tem custo
             if (custoCompra != null && item.itemNota) {
-                await criarCompraItem(tx, nota, item, p.unidade, qtd, custoCompra, { produtoId: p.id }, contaPagarId);
+                await criarCompraItem(tx, nota, item, p.unidade, qtd, custoCompra, { produtoId: p.id }, contaPagarId, {
+                    estoqueAnterior: totalAntes, custoAnterior, custoPosterior
+                });
             }
 
             await tx.notaEntradaEstoqueMov.create({
@@ -217,7 +219,9 @@ async function aplicarEstoqueNota(tx, nota, itensResolvidos, { comCusto = false,
             });
 
             if (custoCompra != null && item.itemNota) {
-                await criarCompraItem(tx, nota, item, i.unidade, qtd, custoCompra, { itemPcpId: i.id }, contaPagarId);
+                await criarCompraItem(tx, nota, item, i.unidade, qtd, custoCompra, { itemPcpId: i.id }, contaPagarId, {
+                    estoqueAnterior: antes, custoAnterior, custoPosterior
+                });
             }
 
             await tx.notaEntradaEstoqueMov.create({
@@ -242,10 +246,16 @@ async function aplicarEstoqueNota(tx, nota, itensResolvidos, { comCusto = false,
 
 // Linha do histórico de compras (CompraItem) — mesmo formato da Fase 6 antiga,
 // para as telas de histórico do Produto/insumo continuarem completas.
-async function criarCompraItem(tx, nota, item, unidadeNossa, qtd, custoCompra, alvo, contaPagarId) {
+// `snapshot` = { estoqueAnterior, custoAnterior, custoPosterior } do alvo nesta entrada:
+// é o que permite ao estorno das COMPRAS (compraEstoqueService) devolver o custo exato
+// e ao replay começar do saldo certo, sem depender só do ledger da nota.
+async function criarCompraItem(tx, nota, item, unidadeNossa, qtd, custoCompra, alvo, contaPagarId, snapshot = {}) {
     const it = item.itemNota;
     await tx.compraItem.create({
         data: {
+            estoqueAnterior: snapshot.estoqueAnterior != null ? snapshot.estoqueAnterior : null,
+            custoAnterior: snapshot.custoAnterior != null ? snapshot.custoAnterior : null,
+            custoPosterior: snapshot.custoPosterior != null ? snapshot.custoPosterior : null,
             notaEntradaId: nota.id,
             contaPagarId: contaPagarId || nota.contaPagarId || null,
             produtoId: alvo.produtoId || null,

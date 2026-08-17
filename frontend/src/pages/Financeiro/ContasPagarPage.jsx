@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import contasPagarService from '../../services/contasPagarService';
 import fornecedorService from '../../services/fornecedorService';
@@ -27,6 +27,54 @@ const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: '
 const toYMD = (d) => d ? new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) : '';
 const hojeYMD = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 const parseNum = (v) => parseFloat(String(v ?? '').replace(/\./g, '').replace(',', '.')) || 0;
+// Quantidade: sem casas forçadas (20 → "20", 2,5 → "2,5") e no formato que o parseNum lê de volta
+const fmtQtd = (v) => Number(v || 0).toLocaleString('pt-BR', { maximumFractionDigits: 3 });
+
+// Assinatura da lista de produtos da despesa — serve para saber se o usuário REALMENTE
+// mexeu nos produtos antes de chamar a rota que estorna e relança o estoque. Só o que
+// importa para o estoque entra (vínculo + quantidade + valor total); a ordem é ignorada.
+const assinaturaItens = (lista) => JSON.stringify(
+    (lista || [])
+        .map((it) => [
+            it.vinculo,
+            Math.round(parseNum(it.quantidade) * 1000) / 1000,
+            Math.round(parseNum(it.valorTotal) * 100) / 100
+        ])
+        // Ordena pela TUPLA inteira (não só pelo vínculo): duas linhas do mesmo produto
+        // não deixam a ordenação ambígua, então a assinatura de uma mesma lista é sempre
+        // igual a ela mesma — nada de falso "mudou"/"não mudou".
+        .sort((a, b) => String(a).localeCompare(String(b)))
+);
+
+// Estoque: AVISO × INFORMATIVO.
+// `avisos` = o que EXIGE ação do usuário (estoque ficou negativo, insumo do PCP travou em
+// zero, custo que NÃO deu para recalcular) → ⚠️. `infos` = recado, nada a fazer ("custo de
+// X recalculado", "custo devolvido ao valor de antes desta compra") → ℹ️ neutro.
+// Tolerante de propósito: backend antigo manda só `avisos`, backend novo manda os dois —
+// e se algum vier vazio/ausente a tela não pisca nada nem quebra.
+const mostrarAvisosEstoque = (...fontes) => {
+    const avisos = [];
+    const infos = [];
+    for (const f of fontes) {
+        if (!f || typeof f !== 'object') continue;
+        if (Array.isArray(f.avisos)) avisos.push(...f.avisos);
+        if (Array.isArray(f.infos)) infos.push(...f.infos);
+    }
+    const limpar = (arr) => [...new Set(arr.map(x => String(x || '').trim()).filter(Boolean))];
+    limpar(avisos).forEach(a => toast(a, { icon: '⚠️', duration: 6000 }));
+    limpar(infos).forEach(i => toast(i, { icon: 'ℹ️', duration: 5000 }));
+};
+
+// Descrição que vai para o backend em cada produto (CompraItem.descricaoFornecedor).
+// Linha que JÁ existia na despesa devolve a descrição do FORNECEDOR: a rota estorna e
+// relança a lista INTEIRA, então mandar o nome do catálogo reescrevia a descrição de todas
+// as linhas — inclusive as que o usuário nem tocou ("PALMITO PUPUNHA" virava "Palmito
+// pupunha [QA]"). Linha nova não tem descrição de fornecedor: vai o nome do catálogo.
+const descricaoEnvio = (it) => String(it?.descOriginal || '').trim() || it?.nome;
+
+// "a", "a e b", "a, b e c" — para dizer ao usuário exatamente o que salvou e o que não salvou
+const listaPt = (arr) => (arr.length <= 1 ? (arr[0] || '') : `${arr.slice(0, -1).join(', ')} e ${arr[arr.length - 1]}`);
+const PARTE_ITENS = 'os produtos (estoque e custo)';
 
 const STATUS_PARCELA = {
     ABERTO: { label: 'Aberto', cls: 'bg-blue-100 text-blue-800' },
@@ -867,6 +915,17 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
     // `base` = despesa usada como MOLDE ao Duplicar
     const molde = !editando && base ? base : null;
 
+    // ── O que o backend aceita alterar nesta despesa ──
+    // O `PUT /:id` RECUSA despesa QUITADA ou CANCELADA (backend/routes/contasPagar.js) —
+    // então nem adianta chamá-lo: a resposta 400 derrubava o salvamento inteiro e a
+    // correção dos PRODUTOS (rota separada, que aceita quitada) nunca era chamada.
+    // Numa despesa quitada, portanto: cabeçalho e parcelas viram somente leitura e o
+    // Salvar manda SÓ o `PUT /:id/itens`.
+    const statusConta = String(conta?.status || '').toUpperCase();
+    const contaQuitada = editando && statusConta === 'QUITADO';
+    const contaCancelada = editando && statusConta === 'CANCELADO';
+    const cabecalhoTravado = contaQuitada || contaCancelada; // dados + parcelas: só leitura
+
     const [fornecedorId, setFornecedorId] = useState(conta?.fornecedor?.id || molde?.fornecedor?.id || '');
     const [descricao, setDescricao] = useState(conta?.descricao || molde?.descricao || '');
     const [categoria, setCategoria] = useState(conta?.categoria || molde?.categoria || '');
@@ -876,6 +935,10 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
     const [enviarCA, setEnviarCA] = useState(true);
     const [valorTotal, setValorTotal] = useState(conta?.valorTotal != null ? fmt(conta.valorTotal) : (molde?.valorTotal != null ? fmt(molde.valorTotal) : ''));
     const [salvando, setSalvando] = useState(false);
+    // A despesa já foi gravada nesta abertura do modal? (caso típico: os dados salvaram e a
+    // correção dos produtos falhou). Fechar no X depois disso tem que recarregar a lista,
+    // senão a tela continua mostrando o valor antigo.
+    const despesaSalvaRef = useRef(false);
     // PDF opcional: arquivo selecionado pelo usuário será enviado após salvar a despesa
     const [pdfArquivo, setPdfArquivo] = useState(null);
     const pdfInputRef = useState(null);
@@ -934,11 +997,38 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
         sub: [f.razaoSocial && f.nomeFantasia ? f.nomeFantasia : null, f.cnpjCpf].filter(Boolean).join(' · ')
     })), [fornecedores]);
 
-    // ── Produtos comprados (opcional, só ao criar): dão entrada no estoque e atualizam o custo ──
+    // ── Produtos comprados: dão entrada no estoque e atualizam o custo ──
+    // Ao CRIAR, entram junto com a despesa (POST /). Na EDIÇÃO (08/2026) podem ser
+    // corrigidos pela rota separada PUT /:id/itens — o caso real foi uma despesa lançada
+    // com a quantidade errada, que deixava estoque e custo torto sem conserto.
     const [mostraProdutos, setMostraProdutos] = useState(false);
-    const [itensCompra, setItensCompra] = useState([]); // { vinculo, nome, unidade, sub, quantidade, valorUnitario, valorTotal }
+    const [itensCompra, setItensCompra] = useState([]); // { uid, vinculo, nome, unidade, sub, quantidade, valorUnitario, valorTotal }
+    // `uid` = chave estável de cada linha na lista do React. NUNCA usar `vinculo` como key:
+    // a despesa pode ter o mesmo produto em duas CompraItem (o backend grava uma por
+    // descrição do fornecedor) e chave repetida faz o React embaralhar/perder edição.
+    const uidRef = useRef(0);
+    const novoUid = () => `linha-${++uidRef.current}`;
     const [opcoesProd, setOpcoesProd] = useState(null); // null = ainda não carregado
     const [carregandoProds, setCarregandoProds] = useState(false);
+
+    // Mexer nos produtos de uma despesa JÁ lançada mexe em estoque e custo (às vezes de mês
+    // fechado): mesma permissão da correção de entrada de nota. Chave IDÊNTICA à do backend
+    // (contasPagar.js → checkEditarItens) — se divergir, o botão aparece e a API devolve 403.
+    const { hasPermission } = useAuth();
+    // A rota PUT /:id/itens exige as DUAS chaves (contasPagar.js → checkEscrita +
+    // checkEditarItens). O gate da tela tem que ser o mesmo "e": faltando qualquer uma,
+    // o botão apareceria e a API devolveria 403.
+    const podeEditarProdutos = hasPermission('Pode_Baixar_Contas_Pagar')
+        && hasPermission('Pode_Corrigir_Entrada_Estoque');
+    // Despesa CANCELADA já teve as compras estornadas — o `PUT /:id/itens` também recusa.
+    // Aqui a lista fica só para consulta, mesmo com a permissão.
+    const podeCorrigirItens = podeEditarProdutos && !contaCancelada;
+
+    // Produtos já lançados nesta despesa (só na edição)
+    const [carregandoItens, setCarregandoItens] = useState(editando);
+    const [erroItens, setErroItens] = useState(false);
+    const [itensDeNota, setItensDeNota] = useState(null); // ≠ null → veio de NF-e/NFS-e: não edita aqui
+    const [snapshotItens, setSnapshotItens] = useState(null); // como os produtos estavam ao abrir
 
     const abrirProdutos = () => {
         setMostraProdutos(true);
@@ -966,35 +1056,161 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
             toast.error('Este produto já está na lista.');
             return;
         }
-        setItensCompra(prev => [...prev, { vinculo: op.value, nome: op.nome, unidade: op.unidade, sub: op.sub, quantidade: '', valorUnitario: '', valorTotal: '' }]);
+        setItensCompra(prev => [...prev, { uid: novoUid(), vinculo: op.value, nome: op.nome, unidade: op.unidade, sub: op.sub, descOriginal: '', quantidade: '', valorUnitario: '', valorTotal: '', derivado: null }]);
     };
-    // Cálculo automático nos dois sentidos: qtd + unitário → total, ou qtd + total → unitário
+    // Cálculo automático entre quantidade × unitário × total. Digitar o unitário sempre
+    // recalcula o total, e digitar o total sempre recalcula o unitário. O que muda é a
+    // QUANTIDADE:
+    //   • CRIAÇÃO — a verdade é o custo unitário (ainda estou montando a compra):
+    //     20 × R$ 47,50 → mudar para 2 dá R$ 95,00 de total. Comportamento antigo, mantido.
+    //   • EDIÇÃO/CORREÇÃO — a verdade é o valor TOTAL: a nota do fornecedor foi de R$ 950 e
+    //     já está paga; quem foi digitado errado é a quantidade. Trocar 20 por 2 mantém os
+    //     R$ 950 e recalcula o custo unitário (R$ 475,00) — antes o total caía sozinho para
+    //     R$ 95,00 e o usuário tinha que digitar 950 de volta toda vez.
+    // `derivado` guarda qual dos dois campos o sistema acabou de calcular, só para a tela
+    // poder dizer isso ao usuário (não vai para o backend, não entra na assinatura).
     const setItemCompra = (idx, campo, valor) =>
         setItensCompra(prev => prev.map((it, i) => {
             if (i !== idx) return it;
             const n = { ...it, [campo]: valor };
-            const qtd = parseNum(n.quantidade);
+            const qtd = parseNum(n.quantidade);      // 0 quando vazio/inválido
+            const unit = parseNum(n.valorUnitario);
+            const tot = parseNum(n.valorTotal);
+            const porUnitario = () => { n.valorTotal = fmt(qtd * unit); n.derivado = 'valorTotal'; };
+            const porTotal = () => { n.valorUnitario = fmtUnit(tot / qtd); n.derivado = 'valorUnitario'; };
             if (campo === 'valorUnitario') {
-                const unit = parseNum(valor);
-                if (qtd > 0 && unit > 0) n.valorTotal = fmt(qtd * unit);
+                if (qtd > 0 && unit > 0) porUnitario();
             } else if (campo === 'valorTotal') {
-                const tot = parseNum(valor);
-                if (qtd > 0 && tot > 0) n.valorUnitario = fmtUnit(tot / qtd);
-            } else if (campo === 'quantidade') {
-                const unit = parseNum(n.valorUnitario);
-                const tot = parseNum(n.valorTotal);
-                if (qtd > 0 && unit > 0) n.valorTotal = fmt(qtd * unit);
-                else if (qtd > 0 && tot > 0) n.valorUnitario = fmtUnit(tot / qtd);
+                if (qtd > 0 && tot > 0) porTotal();
+            } else if (campo === 'quantidade' && qtd > 0) {
+                // qtd 0/vazia (usuário apagando para redigitar): não divide por zero e não
+                // apaga nada do que já estava preenchido — o cálculo volta ao digitar o número.
+                if (editando) {
+                    if (tot > 0) porTotal();
+                    else if (unit > 0) porUnitario();   // linha nova, ainda sem total
+                } else {
+                    if (unit > 0) porUnitario();
+                    else if (tot > 0) porTotal();
+                }
             }
             return n;
         }));
     const removeItemCompra = (idx) => setItensCompra(prev => prev.filter((_, i) => i !== idx));
 
+    // Edição: carrega os produtos que já estão lançados na despesa (GET /:id/detalhe).
+    // Enquanto isso o snapshot fica null — sem saber como estava, NÃO se mexe no estoque.
+    useEffect(() => {
+        if (!editando || !conta?.id) return;
+        let vivo = true;
+        setCarregandoItens(true);
+        setErroItens(false);
+        contasPagarService.detalhe(conta.id)
+            .then(d => {
+                if (!vivo) return;
+                const origem = String(d?.origem || '').toUpperCase();
+                const veioDeNota = !!d?.nota || origem === 'NFE' || origem === 'NFSE';
+                const brutos = Array.isArray(d?.itens) ? d.itens : [];
+                // Despesa de nota fiscal: quem manda é o XML — aqui é só leitura.
+                if (veioDeNota) { setItensDeNota(brutos); return; }
+                // A despesa pode ter o MESMO produto em mais de uma CompraItem — o
+                // GET /:id/detalhe devolve uma linha por CompraItem, sem agrupar, e a
+                // idempotência do backend usa a descrição do fornecedor (duas descrições
+                // → duas linhas do mesmo produtoId). Aqui elas viram UMA linha somada:
+                //   • chave de React única (linha repetida embaralha a edição);
+                //   • comparação de assinatura sem ambiguidade;
+                //   • e, principalmente, o salvamento não perde uma delas — enviaríamos
+                //     duas linhas com a mesma descrição e o backend colapsaria as duas.
+                // O efeito no estoque/custo é idêntico: mesmo produto, quantidade e valor somados.
+                const agrupado = [];
+                const porVinculo = new Map();
+                let repetidos = 0;
+                for (const i of brutos) {
+                    if (!i.vinculo) continue;
+                    const ja = porVinculo.get(i.vinculo);
+                    if (ja) {
+                        ja.quantidade += Number(i.quantidade) || 0;
+                        ja.valorTotal += Number(i.valorTotal) || 0;
+                        repetidos++;
+                        continue; // `descOriginal` fica a da PRIMEIRA linha (ver abaixo)
+                    }
+                    const linha = {
+                        uid: i.compraItemId || novoUid(),
+                        vinculo: i.vinculo,
+                        nome: i.produtoVinculado || i.descricao || 'Produto',
+                        unidade: i.unidade || '',
+                        // Descrição QUE O FORNECEDOR USOU — é ela que volta no salvamento
+                        // (ver `descricaoEnvio`). Quando duas CompraItem do mesmo produto
+                        // viram uma linha só, fica a descrição da primeira: as duas somem
+                        // numa única CompraItem, e a palavra do fornecedor informa mais que
+                        // o nome do catálogo. A linha de baixo na tela mostra qual é.
+                        descOriginal: String(i.descricao || '').trim(),
+                        quantidade: Number(i.quantidade) || 0,
+                        valorTotal: Number(i.valorTotal) || 0
+                    };
+                    porVinculo.set(i.vinculo, linha);
+                    agrupado.push(linha);
+                }
+                const lista = agrupado.map(it => ({
+                    ...it,
+                    // Linha de baixo: a descrição do fornecedor, quando ela diz algo além do nome do catálogo
+                    sub: it.descOriginal && it.descOriginal !== it.nome ? it.descOriginal : '',
+                    quantidade: fmtQtd(it.quantidade),
+                    // Linha somada: o unitário vira a média ponderada das linhas originais
+                    valorUnitario: fmtUnit(it.quantidade > 0 ? it.valorTotal / it.quantidade : 0),
+                    valorTotal: fmt(it.valorTotal),
+                    // O unitário aqui é sempre conta feita (valor total ÷ quantidade)
+                    derivado: 'valorUnitario'
+                }));
+                if (repetidos > 0 && podeCorrigirItens) {
+                    toast(
+                        `Esta despesa tinha o mesmo produto lançado em mais de uma linha (${repetidos} repetida${repetidos > 1 ? 's' : ''}) — juntei tudo numa linha por produto para você corrigir de uma vez só. Ao salvar, cada produto fica com a descrição mostrada na linha.`,
+                        { icon: 'ℹ️', duration: 8000 }
+                    );
+                }
+                setItensCompra(lista);
+                setSnapshotItens(assinaturaItens(lista));
+                if (lista.length > 0 && podeCorrigirItens) abrirProdutos(); // já expandida
+            })
+            .catch(() => { if (vivo) setErroItens(true); })
+            .finally(() => { if (vivo) setCarregandoItens(false); });
+        return () => { vivo = false; };
+    }, [editando, conta?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Só chama a rota que estorna e relança o estoque se a lista REALMENTE mudou.
+    const assinaturaAtual = assinaturaItens(itensCompra);
+    const itensMudaram = editando && podeCorrigirItens && !itensDeNota
+        && snapshotItens !== null && assinaturaAtual !== snapshotItens;
+
+    // A seção de produtos aparece sempre na criação; na edição, só quando há o que mostrar
+    // (produtos lançados, produtos da nota) ou quando o usuário pode corrigi-los.
+    const mostrarSecaoProdutos = (() => {
+        if (!editando) return true;
+        if (carregandoItens) return true;
+        if (itensDeNota) return itensDeNota.length > 0; // veio de NF: só informa, não edita
+        if (erroItens) return podeCorrigirItens;
+        return podeCorrigirItens || itensCompra.length > 0;
+    })();
+
+    // Dá para mexer nos produtos DE VERDADE? (permissão + despesa não cancelada + não veio
+    // de nota fiscal + a lista carregou). Enquanto carrega, assume que sim para o rodapé não
+    // piscar de "Fechar" para "Salvar".
+    const produtosEditaveis = podeCorrigirItens && !itensDeNota && !erroItens;
+    // Despesa quitada/cancelada SEM nada editável = modal de consulta. Antes o rodapé
+    // continuava oferecendo "Salvar correção dos produtos" e o clique só respondia
+    // "Nada foi alterado…" — botão que não faz nada é armadilha, some.
+    const modalSomenteLeitura = editando && cabecalhoTravado && !produtosEditaveis;
+    // ...com uma exceção: anexar o comprovante em PDF continua valendo numa despesa quitada.
+    // O botão volta assim que o usuário escolhe o arquivo. Cancelada não salva nada (o
+    // `salvar` recusa de saída), por isso nem o campo de PDF aparece.
+    const podeSalvar = !modalSomenteLeitura || (!contaCancelada && !!pdfArquivo);
+
     // Já enviada ao Conta Azul: edição restrita (só vencimento/valor das parcelas em aberto).
     const statusEnvioModal = String(conta?.statusEnvioCA || '').toUpperCase();
     const enviadaCA = editando && (statusEnvioModal === 'ENVIADO' || statusEnvioModal === 'SINCRONIZADO');
     const emEnvioCA = editando && (statusEnvioModal === 'ENVIANDO' || statusEnvioModal === 'AGUARDANDO_PROTOCOLO');
-    const parcelasTravadas = enviadaCA || emEnvioCA; // não pode adicionar/remover parcela
+    // Não pode adicionar/remover parcela (já foi ao CA, está em trânsito, ou a despesa
+    // está quitada/cancelada — nesses dois últimos o backend recusa qualquer edição)
+    const parcelasTravadas = enviadaCA || emEnvioCA || cabecalhoTravado;
 
     const somaParcelas = parcelas.reduce((s, p) => s + parseNum(p.valor), 0);
     const totalInformado = parseNum(valorTotal);
@@ -1045,14 +1261,19 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
     };
 
     const salvar = async () => {
-        if (!fornecedorId) { toast.error('Selecione o fornecedor.'); return; }
-        if (!descricao.trim()) { toast.error('Informe a descrição.'); return; }
+        if (contaCancelada) { toast.error('Despesa cancelada — não é possível alterar nada por aqui.'); return; }
         const parcelasValidas = parcelas.filter(p => !p.paga);
-        if (parcelas.length === 0 || parcelas.some(p => !p.paga && (!p.dataVencimento || parseNum(p.valor) <= 0))) {
-            toast.error('Preencha data e valor de todas as parcelas.');
-            return;
+        // Numa despesa quitada nada disso é enviado (o backend recusa) — validar seria
+        // impedir o usuário de corrigir os produtos por causa de um campo que nem vai.
+        if (!cabecalhoTravado) {
+            if (!fornecedorId) { toast.error('Selecione o fornecedor.'); return; }
+            if (!descricao.trim()) { toast.error('Informe a descrição.'); return; }
+            if (parcelas.length === 0 || parcelas.some(p => !p.paga && (!p.dataVencimento || parseNum(p.valor) <= 0))) {
+                toast.error('Preencha data e valor de todas as parcelas.');
+                return;
+            }
+            if (somaDiverge) { toast.error('A soma das parcelas não bate com o valor total informado.'); return; }
         }
-        if (somaDiverge) { toast.error('A soma das parcelas não bate com o valor total informado.'); return; }
         for (const it of itensCompra) {
             if (parseNum(it.quantidade) <= 0 || parseNum(it.valorTotal) <= 0) {
                 toast.error(`Preencha a quantidade e o valor do produto "${it.nome}" (ou remova-o da lista).`);
@@ -1084,19 +1305,104 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
             if (!editando && itensCompra.length > 0) {
                 payload.itens = itensCompra.map(it => ({
                     vinculo: it.vinculo,
-                    descricao: it.nome,
+                    descricao: descricaoEnvio(it), // criando: sempre o nome do catálogo
                     quantidade: parseNum(it.quantidade),
                     valorTotal: parseNum(it.valorTotal)
                 }));
             }
             let contaId = conta?.id;
             if (editando) {
-                await contasPagarService.atualizar(conta.id, payload);
+                // Cada parte é salva por uma rota diferente. O usuário TEM que sair sabendo
+                // o que foi salvo e o que não foi — por isso cada uma tem try/catch próprio
+                // e o relatório é montado no fim, em qualquer combinação de falha.
+                const salvos = [];
+                const naoSalvos = [];
+                let motivo = '';
+                let msgItens = '';
+
+                // 1) Dados + parcelas (PUT /:id) — pulado em despesa quitada/cancelada,
+                //    que o backend recusa de saída (400).
+                if (!cabecalhoTravado) {
+                    try {
+                        await contasPagarService.atualizar(conta.id, payload);
+                        despesaSalvaRef.current = true; // fechar o modal agora recarrega a lista
+                        salvos.push('os dados e as parcelas');
+                    } catch (e) {
+                        naoSalvos.push('os dados e as parcelas');
+                        motivo = e.response?.data?.error || 'não consegui falar com o servidor.';
+                    }
+                }
+
+                // 2) Produtos (PUT /:id/itens) — rota SEPARADA: estorna as compras antigas e
+                //    relança a lista nova numa transação só. Funciona com a despesa quitada e
+                //    nunca toca em valor, parcelas ou pagamentos.
+                if (itensMudaram) {
+                    if (motivo) {
+                        // O passo anterior falhou: não mexer no estoque de uma edição pela metade.
+                        naoSalvos.push('os produtos (o estoque e o custo continuam como estavam)');
+                    } else {
+                        try {
+                            const r = await contasPagarService.atualizarItens(conta.id, {
+                                itens: itensCompra.map(it => ({
+                                    vinculo: it.vinculo,
+                                    // Preserva a descrição do fornecedor das linhas que já existiam
+                                    descricao: descricaoEnvio(it),
+                                    quantidade: parseNum(it.quantidade),
+                                    valorTotal: parseNum(it.valorTotal)
+                                }))
+                            });
+                            setSnapshotItens(assinaturaAtual);
+                            despesaSalvaRef.current = true;
+                            salvos.push(PARTE_ITENS);
+                            msgItens = r?.message || 'Produtos da despesa atualizados.';
+                            mostrarAvisosEstoque(r, r?.estoque);
+                        } catch (e) {
+                            naoSalvos.push('os produtos (o estoque e o custo continuam como estavam)');
+                            motivo = e.response?.data?.error || 'não consegui falar com o servidor.';
+                        }
+                    }
+                }
+
+                // 3) PDF anexado
+                if (pdfArquivo) {
+                    if (motivo) {
+                        naoSalvos.push('o PDF');
+                    } else {
+                        try {
+                            await contasPagarService.uploadPdf(conta.id, pdfArquivo);
+                            despesaSalvaRef.current = true;
+                            salvos.push('o PDF');
+                        } catch (e) {
+                            naoSalvos.push('o PDF');
+                            motivo = e.response?.data?.error || 'não consegui enviar o arquivo.';
+                        }
+                    }
+                }
+
+                if (!salvos.length && !naoSalvos.length) {
+                    toast(
+                        cabecalhoTravado
+                            ? 'Nada foi alterado. Nesta despesa quitada só dá para corrigir os produtos.'
+                            : 'Nada foi alterado.',
+                        { icon: 'ℹ️', duration: 5000 }
+                    );
+                    return; // modal segue aberto (o finally libera o botão)
+                }
+                if (naoSalvos.length) {
+                    toast.error(
+                        `${salvos.length ? `Salvei ${listaPt(salvos)}. ` : 'NADA foi salvo. '}`
+                        + `NÃO consegui salvar ${listaPt(naoSalvos)}. Motivo: ${motivo}`,
+                        { duration: 10000 }
+                    );
+                    return; // modal segue aberto para tentar de novo
+                }
+                if (msgItens) toast.success(msgItens, { duration: 6000 });
+                if (salvos.some(s => s !== PARTE_ITENS)) toast.success('Despesa atualizada!');
             } else {
                 const r = await contasPagarService.criar(payload);
                 contaId = r?.conta?.id || r?.id;
                 const entradas = Number(r?.estoque?.entradas || 0);
-                (r?.estoque?.avisos || []).forEach(a => toast(a, { icon: '⚠️', duration: 6000 }));
+                mostrarAvisosEstoque(r?.estoque, r);
                 // Após criar, faz upload do PDF se o usuário selecionou um arquivo
                 if (pdfArquivo && contaId) {
                     try { await contasPagarService.uploadPdf(contaId, pdfArquivo); } catch { /* não bloqueia */ }
@@ -1104,10 +1410,6 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                 toast.success(entradas > 0
                     ? `Despesa criada! ${entradas} produto(s) deram entrada no estoque.`
                     : 'Despesa criada!');
-            }
-            if (editando && pdfArquivo && contaId) {
-                try { await contasPagarService.uploadPdf(contaId, pdfArquivo); } catch { /* não bloqueia */ }
-                if (!toast.success) toast.success('PDF salvo!');
             }
             if (onFornecedoresChanged) onFornecedoresChanged();
             onSuccess();
@@ -1118,26 +1420,54 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
         }
     };
 
+    const fecharModal = () => (despesaSalvaRef.current ? onSuccess() : onClose());
+
     return (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={fecharModal}>
       <div className="bg-white rounded-t-2xl md:rounded-2xl shadow-xl max-w-2xl w-full max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                 <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
                     <h2 className="font-bold text-gray-900">{editando ? 'Editar Despesa' : 'Nova Despesa'}</h2>
-                    <button onClick={onClose} className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
+                    <button onClick={fecharModal} className="p-1.5 text-gray-400 hover:text-gray-600 rounded hover:bg-gray-100"><X className="w-5 h-5" /></button>
                 </div>
 
                 <div className="p-5 space-y-4">
+                    {/* Despesa quitada/cancelada: o backend não deixa mais mexer nos dados nem
+                        nas parcelas — mas a CORREÇÃO DOS PRODUTOS continua possível (rota
+                        separada). Sem esta explicação o usuário acha que a tela travou. */}
+                    {cabecalhoTravado && (
+                        <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                            {contaCancelada ? (
+                                <><b>Despesa cancelada</b> — não é mais possível alterar nada por aqui. Os produtos já voltaram do estoque.</>
+                            ) : modalSomenteLeitura ? (
+                                // Quitada, mas sem nada editável (sem a permissão, ou os produtos vieram
+                                // de nota fiscal): dizer isso na cara, senão o usuário procura o que salvar.
+                                <><b>Despesa quitada</b> — esta tela está só para consulta: os dados, as parcelas e os produtos não podem mais ser alterados aqui. Você ainda pode anexar um PDF.</>
+                            ) : (
+                                <><b>Despesa quitada</b> — dá para corrigir os produtos, mas os dados e as parcelas não podem mais ser alterados.</>
+                            )}
+                        </div>
+                    )}
+
                     {/* Fornecedor com busca */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Fornecedor *</label>
-                        <ComboBusca
-                            value={fornecedorId}
-                            options={opcoesFornecedor}
-                            onChange={setFornecedorId}
-                            placeholder="Selecionar fornecedor…"
-                            buscaPlaceholder="Digite o nome ou CNPJ…"
-                            vazioTexto="Nenhum fornecedor encontrado — cadastre na tela Fornecedores."
-                        />
+                        {cabecalhoTravado ? (
+                            <input
+                                value={opcoesFornecedor.find(o => String(o.value) === String(fornecedorId))?.label
+                                    || conta?.fornecedor?.razaoSocial || conta?.fornecedor?.nomeFantasia || '—'}
+                                disabled
+                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-gray-100 text-gray-500"
+                            />
+                        ) : (
+                            <ComboBusca
+                                value={fornecedorId}
+                                options={opcoesFornecedor}
+                                onChange={setFornecedorId}
+                                placeholder="Selecionar fornecedor…"
+                                buscaPlaceholder="Digite o nome ou CNPJ…"
+                                vazioTexto="Nenhum fornecedor encontrado — cadastre na tela Fornecedores."
+                            />
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1146,13 +1476,20 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                             <input
                                 value={descricao}
                                 onChange={e => setDescricao(e.target.value)}
+                                disabled={cabecalhoTravado}
                                 placeholder="Ex.: Farinha de trigo"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
                             />
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                            {categoriasErro ? (
+                            {cabecalhoTravado ? (
+                                <input
+                                    value={categoria || '—'}
+                                    disabled
+                                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm bg-gray-100 text-gray-500"
+                                />
+                            ) : categoriasErro ? (
                                 <input
                                     value={categoria}
                                     onChange={e => setCategoria(e.target.value)}
@@ -1178,8 +1515,9 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                             <input
                                 value={numeroNota}
                                 onChange={e => setNumeroNota(e.target.value)}
+                                disabled={cabecalhoTravado}
                                 placeholder="Ex.: NF-e 48.213"
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
                             />
                         </div>
                         <div>
@@ -1188,7 +1526,8 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                 type="month"
                                 value={competencia}
                                 onChange={e => setCompetencia(e.target.value)}
-                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                disabled={cabecalhoTravado}
+                className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
                             />
                         </div>
                     </div>
@@ -1199,21 +1538,71 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                             rows={2}
                             value={observacoes}
                             onChange={e => setObservacoes(e.target.value)}
-              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                            disabled={cabecalhoTravado}
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:bg-gray-100 disabled:text-gray-500"
                         />
                     </div>
 
-                    {/* Produtos comprados (opcional) — entrada de estoque + custo, como na conferência de nota */}
-                    {!editando && (
+                    {/* Produtos comprados — entrada de estoque + custo, como na conferência de nota.
+                        Ao CRIAR: opcional, entram junto com a despesa.
+                        Ao EDITAR (08/2026): correção — ao salvar, os produtos antigos voltam do
+                        estoque e a lista nova entra no lugar. Nunca mexe em valor/parcelas/pagamentos. */}
+                    {mostrarSecaoProdutos && (
                         <div>
-                            <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Produtos comprados (opcional)</div>
-                            {!mostraProdutos ? (
+                            <div className="flex items-center justify-between gap-2 mb-2">
+                                <div className="text-xs font-bold uppercase tracking-widest text-gray-600">
+                                    {editando ? 'Produtos desta despesa' : 'Produtos comprados (opcional)'}
+                                </div>
+                                {itensMudaram && (
+                                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 shrink-0">
+                                        Estoque será corrigido
+                                    </span>
+                                )}
+                            </div>
+
+                            {editando && carregandoItens ? (
+                                <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
+                                    <Loader2 className="h-4 w-4 animate-spin" /> Carregando os produtos desta despesa…
+                                </div>
+                            ) : editando && erroItens ? (
+                                <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                    Não consegui carregar os produtos desta despesa. Os outros dados podem ser salvos
+                                    normalmente — para corrigir os produtos, feche e abra a despesa de novo.
+                                </p>
+                            ) : editando && itensDeNota ? (
+                                <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                    {itensDeNota.length === 1
+                                        ? 'O produto desta despesa veio da '
+                                        : `Os ${itensDeNota.length} produtos desta despesa vieram da `}
+                                    <b>nota fiscal</b> — quem manda ali é o XML. Para corrigir quantidade, valor ou o
+                                    produto vinculado, use <b>Notas Recebidas → Corrigir entrada</b>.
+                                </p>
+                            ) : editando && !podeCorrigirItens ? (
+                                <div className="space-y-2">
+                                    {itensCompra.map(it => (
+                                        <div key={it.uid} className="border border-gray-200 rounded-lg px-3 py-2.5">
+                                            <div className="text-sm font-medium text-gray-900 truncate">{it.nome}</div>
+                                            <div className="text-xs text-gray-500">
+                                                {it.quantidade} {it.unidade || ''} × R$ {it.valorUnitario} = <b>R$ {it.valorTotal}</b>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <p className="text-xs text-gray-500">
+                                        {contaCancelada
+                                            ? 'Esta despesa foi cancelada — estes produtos já voltaram do estoque e não podem mais ser corrigidos aqui.'
+                                            : <>Estes produtos já deram entrada no estoque. Para corrigir quantidade, valor ou trocar de
+                                                produto é preciso a permissão <b>“Pode corrigir entrada de estoque”</b> — fale com o gerente.</>}
+                                    </p>
+                                </div>
+                            ) : !mostraProdutos ? (
                                 <button
                                     onClick={abrirProdutos}
-                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-gray-300 text-gray-600 hover:border-primary hover:text-primary rounded-lg text-sm font-medium"
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-gray-300 text-gray-600 hover:border-primary hover:text-primary rounded-lg text-sm font-medium min-h-[44px]"
                                 >
-                                    <Package className="h-4 w-4" />
-                                    Lançar os produtos desta compra (dá entrada no estoque e atualiza o custo)
+                                    <Package className="h-4 w-4 shrink-0" />
+                                    {editando
+                                        ? 'Lançar os produtos desta despesa (dá entrada no estoque e atualiza o custo)'
+                                        : 'Lançar os produtos desta compra (dá entrada no estoque e atualiza o custo)'}
                                 </button>
                             ) : (
                                 <div className="space-y-2">
@@ -1234,51 +1623,63 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                     )}
 
                                     {itensCompra.map((it, idx) => (
-                                        <div key={it.vinculo} className="border border-gray-200 rounded-lg px-3 py-2.5">
+                                        <div key={it.uid} className="border border-gray-200 rounded-lg px-3 py-2.5">
                                             <div className="flex items-center justify-between gap-2">
                                                 <div className="min-w-0">
                                                     <div className="text-sm font-medium text-gray-900 truncate">{it.nome}</div>
-                                                    <div className="text-xs text-gray-500 truncate">{it.sub}</div>
+                                                    {it.sub ? <div className="text-xs text-gray-500 truncate">{it.sub}</div> : null}
                                                 </div>
                                                 <button
                                                     onClick={() => removeItemCompra(idx)}
                                                     title="Remover produto"
-                                                    className="p-2 text-gray-400 hover:text-red-600 rounded hover:bg-gray-100 shrink-0"
+                                                    aria-label={`Remover ${it.nome}`}
+                                                    className="flex items-center justify-center min-h-[44px] min-w-[44px] text-gray-400 hover:text-red-600 rounded-full hover:bg-gray-100 shrink-0"
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </button>
                                             </div>
-                                            <div className="flex flex-wrap items-end gap-2 md:gap-3 mt-2">
-                                                <div>
-                                                    <label className="block text-[11px] font-medium text-gray-500 mb-0.5">Qtd ({it.unidade})</label>
+                                            {/* Mobile: 2 colunas (nunca mais que isso); desktop: tudo na mesma linha */}
+                                            {/* `justify-end` em cada campo: se o rótulo com o selo
+                                                "calculado" quebrar em duas linhas no celular, os
+                                                campos continuam alinhados por baixo. */}
+                                            <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-end md:gap-3 mt-2">
+                                                <div className="flex flex-col justify-end">
+                                                    <label className="block text-[11px] font-medium text-gray-500 mb-0.5">Qtd{it.unidade ? ` (${it.unidade})` : ''}</label>
                                                     <input
                                                         value={it.quantidade}
                                                         onChange={e => setItemCompra(idx, 'quantidade', e.target.value)}
+                                                        inputMode="decimal"
                                                         placeholder="0"
-                                                        className="w-24 border border-gray-300 rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                                        className="w-full md:w-24 border border-gray-300 rounded px-2 py-3 md:py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                                                     />
                                                 </div>
-                                                <div>
-                                                    <label className="block text-[11px] font-medium text-gray-500 mb-0.5">Valor unitário</label>
+                                                <div className="flex flex-col justify-end">
+                                                    <label className="block text-[11px] font-medium text-gray-500 mb-0.5">
+                                                        Valor unitário{it.derivado === 'valorUnitario' ? <span className="ml-1 text-primary font-semibold">calculado</span> : null}
+                                                    </label>
                                                     <div className="flex items-center gap-1">
                                                         <span className="text-sm text-gray-500">R$</span>
                                                         <input
                                                             value={it.valorUnitario}
                                                             onChange={e => setItemCompra(idx, 'valorUnitario', e.target.value)}
+                                                            inputMode="decimal"
                                                             placeholder="0,00"
-                                                            className="w-24 border border-gray-300 rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                                            className="w-full md:w-24 border border-gray-300 rounded px-2 py-3 md:py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                                                         />
                                                     </div>
                                                 </div>
-                                                <div>
-                                                    <label className="block text-[11px] font-medium text-gray-500 mb-0.5">Valor total</label>
+                                                <div className="col-span-2 md:col-span-1 flex flex-col justify-end">
+                                                    <label className="block text-[11px] font-medium text-gray-500 mb-0.5">
+                                                        Valor total{it.derivado === 'valorTotal' ? <span className="ml-1 text-primary font-semibold">calculado</span> : null}
+                                                    </label>
                                                     <div className="flex items-center gap-1">
                                                         <span className="text-sm text-gray-500">R$</span>
                                                         <input
                                                             value={it.valorTotal}
                                                             onChange={e => setItemCompra(idx, 'valorTotal', e.target.value)}
+                                                            inputMode="decimal"
                                                             placeholder="0,00"
-                                                            className="w-28 border border-gray-300 rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                                            className="w-full md:w-28 border border-gray-300 rounded px-2 py-3 md:py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
                                                         />
                                                     </div>
                                                 </div>
@@ -1286,11 +1687,23 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                         </div>
                                     ))}
 
-                                    {itensCompra.length > 0 && (
+                                    {editando ? (
+                                        <p className="text-xs text-gray-500">
+                                            Corrigindo a <b>quantidade</b>, o <b>valor total</b> fica como está (é o que o fornecedor
+                                            cobrou e você já pagou) e o <b>valor unitário</b> é recalculado — o campo recalculado
+                                            aparece marcado como <span className="text-primary font-semibold">calculado</span>.
+                                            Se o errado for o valor, digite o <b>total</b> ou o <b>unitário</b> e o outro se ajusta.
+                                            Ao salvar, os produtos que estavam aqui <b>voltam do estoque</b> e a lista acima entra no lugar;
+                                            o estoque e o custo médio são recalculados. O <b>valor da despesa, as parcelas e os pagamentos não mudam</b>.
+                                            {itensCompra.length === 0 && itensMudaram
+                                                ? ' Salvando assim (lista vazia), a despesa fica sem nenhum produto e todo o estoque lançado é devolvido.'
+                                                : ''}
+                                        </p>
+                                    ) : itensCompra.length > 0 ? (
                                         <p className="text-xs text-gray-500">
                                             Preencha a quantidade e o valor <b>unitário</b> OU o <b>total</b> — o outro é calculado sozinho. Ao criar a despesa, cada produto dá entrada no estoque, atualiza o custo médio e entra no histórico de compras.
                                         </p>
-                                    )}
+                                    ) : null}
                                 </div>
                             )}
                         </div>
@@ -1386,7 +1799,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                     <input
                                         type="date"
                                         value={p.dataVencimento}
-                                        disabled={p.paga || emEnvioCA}
+                                        disabled={p.paga || emEnvioCA || cabecalhoTravado}
                                         onChange={e => setParcela(idx, 'dataVencimento', e.target.value)}
                                         className="border border-gray-300 rounded px-2 py-2 text-sm text-gray-700 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
                                     />
@@ -1394,7 +1807,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                         <span className="text-sm text-gray-500">R$</span>
                                         <input
                                             value={p.valor}
-                                            disabled={p.paga || emEnvioCA}
+                                            disabled={p.paga || emEnvioCA || cabecalhoTravado}
                                             onChange={e => setParcela(idx, 'valor', e.target.value)}
                                             placeholder="0,00"
                                             className="w-28 border border-gray-300 rounded px-2 py-2 text-sm text-right focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none disabled:bg-gray-100 disabled:text-gray-400"
@@ -1421,7 +1834,7 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Valor total da despesa (opcional, para conferência)</label>
                                 <div className="flex items-center border border-gray-300 rounded overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary bg-white">
                                     <span className="px-3 py-2 bg-gray-50 border-r border-gray-300 text-sm text-gray-500">R$</span>
-                                    <input value={valorTotal} onChange={e => setValorTotal(e.target.value)} placeholder="0,00" className="flex-1 px-3 py-2 text-sm outline-none" />
+                                    <input value={valorTotal} onChange={e => setValorTotal(e.target.value)} disabled={cabecalhoTravado} placeholder="0,00" className="flex-1 px-3 py-2 text-sm outline-none disabled:bg-gray-100 disabled:text-gray-500" />
                                 </div>
                             </div>
                             <div className={`text-sm rounded-lg px-3 py-2 border ${somaDiverge ? 'bg-red-50 border-red-200 text-red-700 font-medium' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>
@@ -1493,7 +1906,9 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                         </div>
                     )}
 
-                    {/* Campo PDF opcional (nova despesa e edição) */}
+                    {/* Campo PDF opcional (nova despesa e edição). Em despesa CANCELADA o
+                        salvar recusa tudo de saída — oferecer o campo seria só frustração. */}
+                    {!contaCancelada && (
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
                             <FileText className="h-4 w-4 text-gray-400" />Documento (PDF opcional)
@@ -1530,18 +1945,32 @@ const DespesaModal = ({ conta, base, categorias, categoriasErro, fornecedores, o
                             </label>
                         )}
                     </div>
+                    )}
                 </div>
 
 
                 <div className="px-5 py-4 border-t border-gray-100 flex gap-3 sticky bottom-0 bg-white">
-                    <button onClick={onClose} className="flex-1 px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm">Cancelar</button>
                     <button
-                        onClick={salvar}
-                        disabled={salvando || somaDiverge}
-                        className="flex-1 px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm font-semibold text-sm disabled:opacity-50"
+                        onClick={fecharModal}
+                        className={`${podeSalvar ? 'flex-1' : 'w-full'} px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md font-medium text-sm min-h-[44px]`}
                     >
-                        {salvando ? 'Salvando…' : (editando ? 'Salvar alterações' : 'Criar despesa')}
+                        {podeSalvar ? 'Cancelar' : 'Fechar'}
                     </button>
+                    {podeSalvar && (
+                        <button
+                            onClick={salvar}
+                            disabled={salvando || contaCancelada || (!cabecalhoTravado && somaDiverge)}
+                            className="flex-1 px-4 py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm min-h-[44px] disabled:opacity-50"
+                        >
+                            {salvando
+                                ? 'Salvando…'
+                                : !editando
+                                    ? 'Criar despesa'
+                                    : modalSomenteLeitura
+                                        ? 'Salvar PDF'
+                                        : contaQuitada ? 'Salvar correção dos produtos' : 'Salvar alterações'}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>
@@ -1948,12 +2377,22 @@ const DetalheContaModal = ({ conta: contaInicial, podeBaixar, onClose, onEditar,
     const nota = detalhe?.nota;
     const itens = detalhe?.itens || [];
 
+    // Produtos lançados NA PRÓPRIA despesa (não os que vieram de nota fiscal): são estes
+    // que voltam do estoque no cancelamento — por isso o aviso do confirm muda.
+    const temProdutosManuais = itens.some(i => i.vinculo);
+
     const cancelarConta = async () => {
-        if (!window.confirm('Cancelar esta despesa? As parcelas em aberto serão canceladas.')) return;
+        const pergunta = temProdutosManuais
+            ? 'Cancelar esta despesa? As parcelas em aberto serão canceladas e os produtos lançados nela VOLTAM do estoque (o custo também é recalculado).'
+            : 'Cancelar esta despesa? As parcelas em aberto serão canceladas.';
+        if (!window.confirm(pergunta)) return;
         setExecutando('cancelar');
         try {
-            await contasPagarService.cancelar(conta.id);
-            toast.success('Despesa cancelada.');
+            const r = await contasPagarService.cancelar(conta.id);
+            toast.success(r?.message || 'Despesa cancelada.', { duration: 6000 });
+            // `avisos` (⚠️ exige ação) e `infos` (ℹ️ só recado) — nos dois formatos que o
+            // backend pode devolver: dentro de `estoque` ou na raiz.
+            mostrarAvisosEstoque(r?.estoque, r);
             onChanged();
         } catch (e) {
             toast.error(e.response?.data?.error || 'Erro ao cancelar');
