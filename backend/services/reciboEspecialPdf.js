@@ -15,11 +15,102 @@ const CINZA_CLARO = '#e3e1da';
 const fmtMoeda = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—';
 
+// CEP: se vier só dígitos (8), formata 00000-000; senão devolve como está.
+const fmtCep = (cep) => {
+    if (!cep) return null;
+    const dig = String(cep).replace(/\D/g, '');
+    return dig.length === 8 ? `${dig.slice(0, 5)}-${dig.slice(5)}` : String(cep);
+};
+
+// "Logradouro, Número — Complemento" (só com o que existir; null se nada existir)
+const montarEndereco = (c) => {
+    const log = (c.End_Logradouro || '').trim();
+    const num = (c.End_Numero || '').trim();
+    const comp = (c.End_Complemento || '').trim();
+    let s = log;
+    if (num) s = s ? `${s}, ${num}` : num;
+    if (comp) s = s ? `${s} — ${comp}` : comp;
+    return s || null;
+};
+
+// Monta os dados do quadro a partir do cliente (campos ausentes viram null → "—")
+const dadosQuadroCliente = (cliente, entrega, nomeFallback) => {
+    const c = cliente || {};
+    return {
+        nome: c.NomeFantasia || c.Nome || nomeFallback || null,
+        documento: c.Documento || null,
+        fone: c.Telefone_Celular || c.Telefone || c.Telefone_Comercial || null,
+        endereco: montarEndereco(c),
+        bairro: c.End_Bairro || null,
+        cep: fmtCep(c.End_CEP),
+        municipio: c.End_Cidade || null,
+        uf: c.End_Estado || null,
+        entrega
+    };
+};
+
+// ── Quadro "DADOS DO CLIENTE · LOCAL DE ENTREGA" ──
+// Estilo do quadro de destinatário da DANFE, no design do recibo (faixa de
+// título verde-escura, células com bordas finas, rótulos pequenos maiúsculos).
+// 3 linhas × 3 células (flex 2.2 / 1.3 / 1). Devolve o novo y (abaixo do quadro).
+function desenharQuadroCliente(doc, x0, largura, y, dados) {
+    const TITULO_H = 17;
+    const LINHA_H = 27;
+    const flex = [2.2, 1.3, 1];
+    const soma = flex.reduce((a, b) => a + b, 0);
+    const largs = flex.map(f => largura * f / soma);
+    const xs = [x0, x0 + largs[0], x0 + largs[0] + largs[1]];
+    const alturaTotal = TITULO_H + LINHA_H * 3;
+
+    // Faixa de título
+    doc.rect(x0, y, largura, TITULO_H).fill(VERDE_ESCURO);
+    doc.font('Helvetica-Bold').fontSize(7).fillColor('#ffffff')
+        .text('DADOS DO CLIENTE · LOCAL DE ENTREGA', x0 + 8, y + 5.5, { characterSpacing: 1.5, lineBreak: false });
+
+    // Células (rótulo pequeno maiúsculo + valor em negrito; valor longo sai com "…")
+    const celula = (col, linha, rotulo, valor) => {
+        const cx = xs[col] + 7;
+        const cy = y + TITULO_H + linha * LINHA_H;
+        const larg = largs[col] - 14;
+        doc.font('Helvetica-Bold').fontSize(6).fillColor('#8a938f')
+            .text(rotulo, cx, cy + 5, { characterSpacing: 1, width: larg, height: 8, ellipsis: true });
+        doc.font('Helvetica-Bold').fontSize(9.5).fillColor('#000000')
+            .text(valor || '—', cx, cy + 13, { width: larg, height: 12, ellipsis: true });
+    };
+    celula(0, 0, 'NOME / RAZÃO SOCIAL', dados.nome);
+    celula(1, 0, 'CNPJ / CPF', dados.documento);
+    celula(2, 0, 'FONE', dados.fone);
+    celula(0, 1, 'ENDEREÇO', dados.endereco);
+    celula(1, 1, 'BAIRRO', dados.bairro);
+    celula(2, 1, 'CEP', dados.cep);
+    celula(0, 2, 'MUNICÍPIO', dados.municipio);
+    celula(1, 2, 'UF', dados.uf);
+    celula(2, 2, 'ENTREGA', dados.entrega);
+
+    // Grade interna (bordas finas)
+    doc.lineWidth(0.5).strokeColor(CINZA_CLARO);
+    for (let i = 1; i <= 2; i++) {
+        const ly = y + TITULO_H + LINHA_H * i;
+        doc.moveTo(x0, ly).lineTo(x0 + largura, ly).stroke();
+    }
+    for (let c = 1; c <= 2; c++) {
+        doc.moveTo(xs[c], y + TITULO_H).lineTo(xs[c], y + alturaTotal).stroke();
+    }
+
+    // Borda externa
+    doc.rect(x0, y, largura, alturaTotal).lineWidth(1.2).strokeColor(VERDE_ESCURO).stroke();
+
+    return y + alturaTotal;
+}
+
 /**
  * Gera o recibo de UM pedido especial. Retorna Buffer do PDF (1 página).
  * pedido precisa vir com: numero, dataVenda, nomeCondicaoPagamento, observacoes,
- * createdAt, cliente { Nome, NomeFantasia, Documento }, vendedor { nome },
+ * createdAt, cliente { Nome, NomeFantasia, Documento, Telefone, Telefone_Celular,
+ * Telefone_Comercial, End_Logradouro, End_Numero, End_Complemento, End_Bairro,
+ * End_Cidade, End_Estado, End_CEP }, vendedor { nome },
  * itens [{ quantidade, valor, produto: { nome } }], valorFrete.
+ * Campo ausente sai como "—" — o recibo nunca quebra por falta de dado.
  */
 function gerarReciboEspecial(pedido) {
     return new Promise((resolve, reject) => {
@@ -42,26 +133,25 @@ function gerarReciboEspecial(pedido) {
         doc.font('Helvetica-Bold').fontSize(19).fillColor('#ffffff')
             .text(`${pedido.bonificacao ? 'BN#' : 'ZZ#'}${pedido.numero ?? '—'}`, x0 + largura - 200, 64, { width: 182, align: 'right' });
 
-        // ── Grade de dados ──
+        // ── Quadro do cliente / local de entrega (estilo destinatário da DANFE) ──
         let y = 116;
-        const col2 = x0 + largura / 2;
+        y = desenharQuadroCliente(doc, x0, largura, y,
+            dadosQuadroCliente(pedido.cliente, fmtData(pedido.dataVenda)));
+        y += 14;
+
+        // ── Grade: Vendedor | Condição | Emitido em ──
         const campo = (x, yy, rotulo, valor, larg) => {
             doc.font('Helvetica-Bold').fontSize(6.5).fillColor('#8a938f')
                 .text(rotulo.toUpperCase(), x, yy, { characterSpacing: 1, width: larg });
             doc.font('Helvetica-Bold').fontSize(10.5).fillColor('#000000')
-                .text(valor || '—', x, yy + 9, { width: larg });
+                .text(valor || '—', x, yy + 9, { width: larg, height: 13, ellipsis: true });
         };
-        const nomeCliente = pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || '—';
-        campo(x0, y, 'Cliente', nomeCliente, largura / 2 - 10);
-        campo(col2, y, 'CNPJ / CPF', pedido.cliente?.Documento || '—', largura / 2);
-        y += 32;
-        campo(x0, y, 'Entrega', fmtData(pedido.dataVenda), largura / 2 - 10);
-        campo(col2, y, 'Vendedor', pedido.vendedor?.nome || '—', largura / 2);
-        y += 32;
-        campo(x0, y, 'Condição', pedido.nomeCondicaoPagamento || '—', largura / 2 - 10);
-        campo(col2, y, 'Emitido em', new Date().toLocaleString('pt-BR', {
+        const colG = largura / 3;
+        campo(x0, y, 'Vendedor', pedido.vendedor?.nome || '—', colG - 10);
+        campo(x0 + colG, y, 'Condição', pedido.nomeCondicaoPagamento || '—', colG - 10);
+        campo(x0 + colG * 2, y, 'Emitido em', new Date().toLocaleString('pt-BR', {
             timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-        }), largura / 2);
+        }), colG);
         y += 40;
 
         // ── Tabela de itens ──
@@ -141,8 +231,11 @@ function gerarReciboEspecial(pedido) {
 
 /**
  * Recibo de AMOSTRA (mesmo layout, sem valores — amostra não tem preço).
- * amostra: { numero, dataEntrega, observacao, cliente { Nome, NomeFantasia, Documento },
+ * amostra: { numero, dataEntrega, observacao,
+ *            cliente { Nome, NomeFantasia, Documento, Telefone, Telefone_Celular,
+ *                      Telefone_Comercial, End_* (endereço) },
  *            lead { nomeEstabelecimento }, solicitadoPor { nome }, itens [{ nomeProduto, quantidade }] }
+ * Pode não haver cliente (só lead): o quadro sai com o nome do lead e os demais campos "—".
  */
 function gerarReciboAmostra(amostra) {
     return new Promise((resolve, reject) => {
@@ -165,26 +258,25 @@ function gerarReciboAmostra(amostra) {
         doc.font('Helvetica-Bold').fontSize(19).fillColor('#ffffff')
             .text(`AM#${amostra.numero ?? '—'}`, x0 + largura - 200, 64, { width: 182, align: 'right' });
 
-        // ── Grade de dados ──
+        // ── Quadro do cliente / local de entrega (estilo destinatário da DANFE) ──
+        // Sem cliente (só lead): sai o nome do lead e os demais campos "—".
         let y = 116;
-        const col2 = x0 + largura / 2;
+        y = desenharQuadroCliente(doc, x0, largura, y,
+            dadosQuadroCliente(amostra.cliente, fmtData(amostra.dataEntrega), amostra.lead?.nomeEstabelecimento));
+        y += 14;
+
+        // ── Grade: Solicitado por | Emitido em ──
         const campo = (x, yy, rotulo, valor, larg) => {
             doc.font('Helvetica-Bold').fontSize(6.5).fillColor('#8a938f')
                 .text(rotulo.toUpperCase(), x, yy, { characterSpacing: 1, width: larg });
             doc.font('Helvetica-Bold').fontSize(10.5).fillColor('#000000')
-                .text(valor || '—', x, yy + 9, { width: larg });
+                .text(valor || '—', x, yy + 9, { width: larg, height: 13, ellipsis: true });
         };
-        const nomeDestinatario = amostra.cliente?.NomeFantasia || amostra.cliente?.Nome
-            || amostra.lead?.nomeEstabelecimento || '—';
-        campo(x0, y, 'Destinatário', nomeDestinatario, largura / 2 - 10);
-        campo(col2, y, 'CNPJ / CPF', amostra.cliente?.Documento || '—', largura / 2);
-        y += 32;
-        campo(x0, y, 'Entrega', fmtData(amostra.dataEntrega), largura / 2 - 10);
-        campo(col2, y, 'Solicitado por', amostra.solicitadoPor?.nome || '—', largura / 2);
-        y += 32;
-        campo(x0, y, 'Emitido em', new Date().toLocaleString('pt-BR', {
+        const colG = largura / 3;
+        campo(x0, y, 'Solicitado por', amostra.solicitadoPor?.nome || '—', colG - 10);
+        campo(x0 + colG, y, 'Emitido em', new Date().toLocaleString('pt-BR', {
             timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-        }), largura / 2 - 10);
+        }), colG - 10);
         y += 40;
 
         // ── Tabela de itens (sem valores) ──

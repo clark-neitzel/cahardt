@@ -140,4 +140,18 @@ function gerarParcelasData({ valorTotal, qtdParcelas, intervaloDias, primeiroVen
     return parcelas;
 }
 
-module.exports = { calcularItensComFlex, calcularDiferencaFlex, gerarParcelasData };
+/**
+ * Um pedido é "a prazo/boleto"? (fonte única — usada tanto pela emissão da NF-e,
+ * para montar o quadro FATURA/DUPLICATA, quanto pela impressão em lote, para saber
+ * se deve buscar boleto). A lógica TEM que casar nos dois lugares.
+ * À vista = 1 parcela, sem intervalo e sem boleto → false → nota sem cobrança.
+ */
+function ehPedidoAPrazo(pedido) {
+    if (!pedido) return false;
+    return (pedido.tipoPagamento === 'BOLETO_BANCARIO')
+        || /boleto|prazo/i.test(pedido.nomeCondicaoPagamento || '')
+        || (parseInt(pedido.qtdParcelas) || 1) > 1
+        || (parseInt(pedido.intervaloDias) || 0) > 0;
+}
+
+module.exports = { calcularItensComFlex, calcularDiferencaFlex, gerarParcelasData, ehPedidoAPrazo };

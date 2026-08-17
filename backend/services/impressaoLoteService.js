@@ -13,9 +13,12 @@ const path = require('path');
 const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
 const { gerarReciboEspecial, gerarReciboAmostra } = require('./reciboEspecialPdf');
+const { ehPedidoAPrazo } = require('./pedidoCalculos');
 
-const A_PRAZO = (pedido) => (pedido.tipoPagamento === 'BOLETO_BANCARIO')
-    || /boleto/i.test(pedido.nomeCondicaoPagamento || '');
+// Fonte ÚNICA de "a prazo/boleto" (pedidoCalculos.ehPedidoAPrazo). A mesma regra
+// monta o quadro FATURA/DUPLICATA na emissão da NF-e — a lógica tem que casar.
+// (Antes considerava só BOLETO_BANCARIO/'boleto'; agora também parcelado/intervalo/'prazo'.)
+const A_PRAZO = ehPedidoAPrazo;
 
 // Pasta de cache dos PDFs (boletos do CA e DANFEs). Fica em uploads/, mas o
 // acesso público a ela é BLOQUEADO no index.js (são documentos de cliente).
@@ -99,7 +102,15 @@ async function carregarPedidos(pedidoIds) {
     const pedidos = await prisma.pedido.findMany({
         where: { id: { in: pedidoIds } },
         include: {
-            cliente: { select: { UUID: true, Nome: true, NomeFantasia: true, Documento: true } },
+            cliente: {
+                select: {
+                    UUID: true, Nome: true, NomeFantasia: true, Documento: true,
+                    // Quadro do cliente no recibo de conferência (especial/bonificação)
+                    Telefone: true, Telefone_Celular: true, Telefone_Comercial: true,
+                    End_Logradouro: true, End_Numero: true, End_Complemento: true,
+                    End_Bairro: true, End_Cidade: true, End_Estado: true, End_CEP: true
+                }
+            },
             vendedor: { select: { nome: true } },
             itens: { include: { produto: { select: { nome: true } } } }
         }
@@ -328,7 +339,15 @@ const impressaoLoteService = {
             const amostras = await prisma.amostra.findMany({
                 where: { id: { in: amostraIds } },
                 include: {
-                    cliente: { select: { Nome: true, NomeFantasia: true, Documento: true } },
+                    cliente: {
+                        select: {
+                            Nome: true, NomeFantasia: true, Documento: true,
+                            // Quadro do cliente no recibo de conferência da amostra
+                            Telefone: true, Telefone_Celular: true, Telefone_Comercial: true,
+                            End_Logradouro: true, End_Numero: true, End_Complemento: true,
+                            End_Bairro: true, End_Cidade: true, End_Estado: true, End_CEP: true
+                        }
+                    },
                     lead: { select: { nomeEstabelecimento: true } },
                     solicitadoPor: { select: { nome: true } },
                     itens: { include: { produto: { select: { nome: true } } } }

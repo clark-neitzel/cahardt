@@ -1,5 +1,11 @@
 [
   {
+    "slug": "recibo-endereco",
+    "titulo": "Recibo com endereço de entrega",
+    "resumo": "O Recibo de Conferência que sai na impressão em lote para pedido especial (ZZ#), bonificação (BN#) e amostra (AM#) agora traz o quadro 'Dados do Cliente · Local de Entrega', no estilo da nota fiscal: nome/razão social, CNPJ/CPF, telefone, endereço (rua, número e complemento), bairro, CEP, município, UF e a data de entrega. Antes o recibo não tinha endereço nenhum — o entregador não sabia aonde era a entrega e isso atrapalhava a montagem da carga. Campo sem cadastro sai como '—' (o recibo imprime sempre; vale completar o cadastro do cliente na aba Clientes). Nada mais mudou no recibo: mesma faixa verde, tabela de itens, total e linha de assinatura.",
+    "data": "2026-08-17"
+  },
+  {
     "slug": "corrigir-produtos-despesa",
     "titulo": "Corrigir produtos da despesa",
     "resumo": "Lançou a despesa com produto e a quantidade saiu errada? Até agora não tinha conserto: o Editar não mexia nos produtos e cancelar devolvia o estoque mas deixava o custo torto. Agora, em Financeiro → Contas a Pagar, abrindo a despesa e clicando em Editar, a seção Produtos aparece: dá para corrigir a quantidade, corrigir o valor, trocar o produto, adicionar ou remover. Corrigindo a quantidade, o valor total fica como está (é o que o fornecedor cobrou e você já pagou) e o custo unitário é recalculado sozinho — o campo calculado aparece marcado em verde. Ao salvar, o sistema desfaz a entrada errada e lança a certa — estoque e custo acertados no mesmo clique, sem mexer no valor da despesa, nas parcelas nem nos pagamentos (despesa já paga também pode). Cancelar uma despesa passa a devolver também o custo exato de antes da compra, e a tela avisa o que aconteceu com o estoque: quantos produtos voltaram, se algum ficou negativo, se um insumo do PCP já tinha sido consumido e como ficou o custo (de → para). Precisa das permissões de alterar contas a pagar e 'Corrigir entrada de estoque'; despesa que veio de nota fiscal continua sendo corrigida em Notas Recebidas → Corrigir entrada.",

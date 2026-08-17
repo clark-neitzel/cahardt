@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Recibo com endereço de entrega — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: preview compacto) -->
+<meta property="og:title" content="📦 Novidade no Hardt App: recibo com endereço de entrega">
+<meta property="og:description" content="O Recibo de Conferência de especiais, bonificações e amostras agora sai com o quadro de Dados do Cliente e Local de Entrega — o entregador sabe aonde ir só de olhar a folha.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock resumido do quadro flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 34px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+    border: 1px solid #e3e1da;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+  }
+  .mock-grid { display: grid; grid-template-columns: 2.2fr 1.3fr 1fr; }
+  .mock-cel { padding: 8px 10px; border-top: 1px solid #eceae4; min-width: 0; }
+  .mock-cel + .mock-cel { border-left: 1px solid #eceae4; }
+  .mock-cel small {
+    display: block;
+    font-size: 8.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #8a938f;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mock-cel b {
+    display: block;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    vertical-align: 1px;
+  }
+  .tag.mint { background: var(--mint); color: var(--primary-dark); }
+  .tag.escuro { background: var(--house); color: #fff; }
+
+  /* passos "para começar a usar" */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* a "folha" do recibo dentro do mockup */
+  .folha {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 1px 3px rgba(30,57,50,.08);
+  }
+  .folha-hero {
+    background: var(--house);
+    color: #fff;
+    border-radius: 6px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .folha-hero small {
+    display: block;
+    font-size: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.65);
+  }
+  .folha-hero strong { font-size: 16px; line-height: 1.2; }
+  .folha-hero .num { text-align: right; }
+
+  .quadro { border: 1.5px solid var(--house); margin-bottom: 10px; }
+  .quadro-titulo {
+    background: var(--house);
+    color: #fff;
+    font-size: 8.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    padding: 5px 8px;
+    display: flex;
+    align-items: center;
+  }
+  .quadro-grid { display: grid; grid-template-columns: 2.2fr 1.3fr 1fr; }
+  .quadro-cel { padding: 5px 7px; min-width: 0; }
+  .quadro-grid .quadro-cel:nth-child(n+4) { border-top: .5px solid #e3e1da; }
+  .quadro-grid .quadro-cel:not(:nth-child(3n+1)) { border-left: .5px solid #e3e1da; }
+  .quadro-cel small {
+    display: block;
+    font-size: 7.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #8a938f;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .quadro-cel b {
+    display: block;
+    font-size: 10.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .quadro-cel .vazio { color: #9aa5a0; font-weight: 700; }
+
+  .folha-campos { display: flex; gap: 10px; margin-bottom: 10px; }
+  .folha-campos > div { flex: 1; min-width: 0; }
+  .folha-campos small {
+    display: block;
+    font-size: 7.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #8a938f;
+  }
+  .folha-campos b { font-size: 10.5px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .folha-tab { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  .folha-tab th {
+    font-size: 7.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #8a938f;
+    text-align: left;
+    padding: 3px 4px;
+    border-bottom: 1.5px solid var(--house);
+  }
+  .folha-tab th.num, .folha-tab td.num { text-align: right; }
+  .folha-tab td {
+    font-size: 10px;
+    padding: 4px;
+    border-bottom: .5px solid #e3e1da;
+  }
+  .folha-total {
+    background: var(--mint);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .folha-total small {
+    font-size: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--primary-dark);
+  }
+  .folha-total b { font-size: 13px; color: var(--primary-dark); }
+  .folha-assin {
+    border-top: 1.5px dashed #b9c2be;
+    text-align: center;
+    font-size: 7.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: #8a938f;
+    padding-top: 6px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>O recibo agora diz<br>aonde entregar</h1>
+    <p>O Recibo de Conferência dos pedidos especiais, bonificações e amostras ganhou um quadro com os dados do cliente e o local de entrega — igual ao da nota fiscal. Chega de recibo sem endereço atrapalhando a montagem da carga.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do quadro novo flutuando sobre o hero -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">Dados do Cliente · Local de Entrega</div>
+    <div class="mock-grid">
+      <div class="mock-cel"><small>Nome / Razão social</small><b>Padaria Pão Quente Ltda</b></div>
+      <div class="mock-cel"><small>CNPJ / CPF</small><b>12.345.678/0001-90</b></div>
+      <div class="mock-cel"><small>Fone</small><b>(41) 99999-0000</b></div>
+      <div class="mock-cel"><small>Endereço</small><b>Rua das Araucárias, 1250 — Loja 2</b></div>
+      <div class="mock-cel"><small>Bairro</small><b>Centro</b></div>
+      <div class="mock-cel"><small>CEP</small><b>83005-000</b></div>
+      <div class="mock-cel"><small>Município</small><b>São José dos Pinhais</b></div>
+      <div class="mock-cel"><small>UF</small><b>PR</b></div>
+      <div class="mock-cel"><small>Entrega</small><b>18/08/2026</b></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO FUNCIONA ══════════ -->
+  <div class="sec-label">Como funciona</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📦</span>
+      <strong>O que mudou no recibo</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Logo abaixo da faixa verde, entrou o quadro <b>"Dados do Cliente · Local de Entrega"</b>, no mesmo estilo do quadro de destinatário da nota fiscal.</li>
+        <li>Ele traz <b>nome/razão social, CNPJ ou CPF, telefone, endereço</b> (rua, número e complemento), <b>bairro, CEP, município, UF e a data de entrega</b>.</li>
+        <li>Antes o recibo não tinha endereço nenhum — <b>o entregador não sabia aonde era</b> e isso atrapalhava a montagem da carga. Agora está tudo na folha.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🖨️</span>
+      <strong>Em quais recibos aparece</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O quadro sai em <b>todos os recibos de conferência</b> da impressão em lote:</p>
+      <ul>
+        <li><span class="tag escuro">ZZ#</span> pedido <b>especial</b></li>
+        <li><span class="tag escuro">BN#</span> <b>bonificação</b></li>
+        <li><span class="tag escuro">AM#</span> <b>amostra</b> (que continua saindo sem valores)</li>
+      </ul>
+      <p>Não precisa fazer nada de diferente: é a mesma impressão em lote de sempre, na aba Pedidos.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">➖</span>
+      <strong>E se faltar dado no cadastro?</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Campo sem cadastro sai como <b>"—"</b> — o recibo nunca deixa de imprimir por falta de dado.</p>
+      <p>Viu um "—" no endereço? É sinal de que vale <b>completar o cadastro do cliente</b> na aba Clientes: na próxima impressão o endereço já sai preenchido.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✅</span>
+      <strong>O resto do recibo continua igual</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Nada mais mudou: <b>mesma faixa verde</b> no topo, mesma <b>tabela de itens</b>, mesmo <b>total em destaque</b> e a mesma <b>linha de assinatura</b> do recebedor. Só entrou o quadro de endereço.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <div class="tela">
+    <div class="tela-titulo">🧾 O Recibo de Conferência — com o quadro novo</div>
+    <div class="tela-corpo">
+      <div class="folha">
+        <div class="folha-hero">
+          <div>
+            <small>Recibo de Conferência</small>
+            <strong>Pedido<span class="pin">1</span></strong>
+          </div>
+          <div class="num">
+            <small>Nº</small>
+            <strong>ZZ#4521</strong>
+          </div>
+        </div>
+
+        <div class="quadro">
+          <div class="quadro-titulo">Dados do Cliente · Local de Entrega<span class="pin">2</span></div>
+          <div class="quadro-grid">
+            <div class="quadro-cel"><small>Nome / Razão social</small><b>Padaria Pão Quente Ltda</b></div>
+            <div class="quadro-cel"><small>CNPJ / CPF</small><b>12.345.678/0001-90</b></div>
+            <div class="quadro-cel"><small>Fone</small><b>(41) 99999-0000</b></div>
+            <div class="quadro-cel"><small>Endereço</small><b>Rua das Araucárias, 1250 — Loja 2<span class="pin">3</span></b></div>
+            <div class="quadro-cel"><small>Bairro</small><b>Centro</b></div>
+            <div class="quadro-cel"><small>CEP</small><b class="vazio">—<span class="pin">4</span></b></div>
+            <div class="quadro-cel"><small>Município</small><b>São José dos Pinhais</b></div>
+            <div class="quadro-cel"><small>UF</small><b>PR</b></div>
+            <div class="quadro-cel"><small>Entrega</small><b>18/08/2026<span class="pin">5</span></b></div>
+          </div>
+        </div>
+
+        <div class="folha-campos">
+          <div><small>Vendedor</small><b>Carlos</b></div>
+          <div><small>Condição</small><b>28 dias</b></div>
+          <div><small>Emitido em</small><b>17/08/2026 09:40</b></div>
+        </div>
+
+        <table class="folha-tab" aria-hidden="true">
+          <tr><th>Produto</th><th class="num">Qtd</th><th class="num">Unit.</th><th class="num">Total</th></tr>
+          <tr><td>Coxinha de frango congelada</td><td class="num">10</td><td class="num">28,90</td><td class="num">289,00</td></tr>
+          <tr><td>Risole de carne congelado</td><td class="num">5</td><td class="num">27,50</td><td class="num">137,50</td></tr>
+        </table>
+
+        <div class="folha-total">
+          <small>Total do pedido</small>
+          <b>R$ 426,50<span class="pin">6</span></b>
+        </div>
+
+        <div class="folha-assin">Assinatura do recebedor · Data ___ /___ /____</div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>A <b>faixa verde</b> do topo continua a mesma — muda só o número conforme o tipo: <b>ZZ#</b> especial, <b>BN#</b> bonificação, <b>AM#</b> amostra.</span></div>
+      <div><span class="pin">2</span><span>O <b>quadro novo</b>, no estilo do destinatário da nota fiscal: dados do cliente e local de entrega em grade, logo abaixo da faixa.</span></div>
+      <div><span class="pin">3</span><span>O <b>endereço</b> sai completo numa linha só: rua, número e complemento. Ao lado, bairro e CEP; embaixo, município e UF.</span></div>
+      <div><span class="pin">4</span><span>Campo que não está no cadastro do cliente sai como <b>"—"</b> — o recibo imprime sempre, mesmo com cadastro incompleto.</span></div>
+      <div><span class="pin">5</span><span>A <b>data de entrega</b> do pedido fecha o quadro — o entregador vê o dia e o lugar na mesma folha.</span></div>
+      <div><span class="pin">6</span><span>Daqui para baixo <b>nada mudou</b>: tabela de itens, total em destaque e linha de assinatura seguem iguais (amostra continua sem valores).</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PARA COMEÇAR A USAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Não precisa atualizar nada:</b> o recibo é gerado pelo sistema — a partir de agora ele já sai com o endereço.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Na aba <b>Pedidos</b>, use a <b>impressão em lote</b> normalmente — especiais, bonificações e amostras saem no recibo de conferência.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Apareceu <b>"—"</b> no lugar do endereço? Complete o cadastro do cliente na aba <b>Clientes</b> — na próxima impressão sai preenchido. 📍</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a mudança.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
