@@ -14,6 +14,11 @@ const pcpReceitaService = {
     logs: (id) => api.get(`/pcp/receitas/${id}/logs`).then(r => r.data),
     calcularCusto: (id) => api.get(`/pcp/receitas/${id}/custo`).then(r => r.data),
     custosItens: () => api.get('/pcp/receitas/custos-itens').then(r => r.data),
+    // Link curto (vale 5 min) para o PDF da folha gerada NO SERVIDOR.
+    // tipo: 'cozinha' (sem custos) | 'custos' (documento interno).
+    // Devolve { url, tipo, validadeSegundos }. A `url` vem RELATIVA de propósito —
+    // quem abre resolve com API_URL (ver frontend/src/utils/abrirPdfImpressao.js).
+    linkImpressao: (id, tipo) => api.post(`/pcp/receitas/${id}/link-impressao`, { tipo }).then(r => r.data),
 };
 
 export default pcpReceitaService;

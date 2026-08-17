@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Novidade: Imprimir a receita pelo celular e pelo iPad — Hardt App</title>
+
+<!-- Preview do link no WhatsApp (sem og:image de propósito — cartão compacto) -->
+<meta property="og:title" content="🖨 Novidade no Hardt App: imprimir a receita pelo celular e pelo iPad">
+<meta property="og:description" content="A folha da receita agora vira PDF. Toca em Imprimir, toca em Abrir PDF e usa Compartilhar → Imprimir. Acabou o 'só no computador'.">
+<meta property="og:type" content="article">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --house:#1E3932; --primary:#00754A; --primary-dark:#006241; --mint:#d4e9e2;
+    --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5b6763;
+    --line:#e3e7e5; --line-soft:#eef1f0;
+    --amber:#8a6100; --amber-bg:#fdf3d7; --red:#a3231b; --red-bg:#fdeceb;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--cream); color:var(--ink);
+    font-family:Manrope,-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;
+    letter-spacing:-.01em; font-size:16px; line-height:1.5;
+  }
+  .wrap{max-width:620px; margin:0 auto; padding:0 16px 60px}
+
+  .hero{background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:38px 16px 88px}
+  .hero-in{max-width:620px; margin:0 auto}
+  .eyebrow{font-size:11px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--gold)}
+  .hero h1{margin:10px 0 10px; font-size:28px; line-height:1.15; font-weight:800; text-wrap:balance}
+  .hero p{margin:0; color:#cfe0d8; font-size:15px}
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px; margin-top:-58px}
+  .card + .card{margin-top:14px}
+  .card h2{margin:0 0 10px; font-size:18px; font-weight:800}
+  .card p{margin:0 0 11px; font-size:15px; color:#33403b}
+  .card p:last-child{margin-bottom:0}
+  .destaque{background:var(--mint); border:1px solid #b5d9cc; color:#0d4032; border-radius:12px;
+            padding:13px 15px; font-size:14px; margin-top:13px}
+  .destaque > b:first-child{display:block; margin-bottom:2px}
+  .aviso{background:var(--amber-bg); border:1px solid #efdca8; color:#6b4c00; border-radius:12px;
+         padding:13px 15px; font-size:14px; margin-top:13px}
+  .aviso > b:first-child{display:block; margin-bottom:2px}
+
+  /* ACCORDIONS (já abertos — o clique só serve para recolher) */
+  .acc{border:1px solid var(--line); border-radius:12px; margin-top:10px; overflow:hidden; background:#fff}
+  .acc-head{width:100%; display:flex; align-items:center; gap:12px; padding:13px 15px; background:none;
+            border:0; cursor:pointer; text-align:left; font-family:inherit; color:inherit}
+  .acc-ico{flex:0 0 32px; height:32px; border-radius:9px; background:var(--mint); display:flex;
+           align-items:center; justify-content:center; font-size:15px}
+  .acc-head strong{flex:1; font-size:15px; font-weight:750}
+  .acc-seta{color:#9aa5a0; transition:transform .2s; font-size:12px}
+  .acc.aberto .acc-seta{transform:rotate(180deg)}
+  .acc-corpo{display:none; padding:0 15px 15px 59px}
+  .acc.aberto .acc-corpo{display:block}
+  .acc-corpo p{font-size:14px; color:var(--ink-soft); margin:0 0 9px}
+  .acc-corpo p:last-child{margin-bottom:0}
+  .acc-corpo b{color:var(--ink)}
+
+  /* MOCKUP DAS TELAS DO APP */
+  .tela-nome{font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+             color:var(--ink-soft); margin:0 0 9px}
+  .app{background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:11px; overflow:hidden}
+  .appcard{background:#fff; border:1px solid var(--line); border-radius:13px; overflow:hidden}
+  .apphead{display:flex; align-items:center; gap:8px; padding:10px 13px; border-bottom:1px solid var(--line-soft)}
+  .apphead .lb{font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft)}
+  .appbody{padding:11px 13px 13px}
+  .titulo-receita{font-size:15px; font-weight:800; margin:0}
+  .sub-receita{font-size:11.5px; color:var(--ink-soft); margin:2px 0 0}
+
+  .barra{display:flex; flex-wrap:wrap; gap:6px; margin-top:11px; padding-top:11px; border-top:1px solid var(--line-soft)}
+  .btn{display:inline-flex; align-items:center; gap:5px; padding:7px 12px; border-radius:999px;
+       font-size:11.5px; font-weight:750; border:1px solid var(--line); background:#f4f6f5; color:#3f4a46}
+  .btn.verde{background:var(--primary); border-color:var(--primary); color:#fff}
+  .btn.contorno{background:#fff; border-color:var(--primary); color:var(--primary)}
+  .btn.ocupado{opacity:.6}
+
+  .painel{background:rgba(212,233,226,.55); border:1px solid #b5d9cc; border-radius:13px;
+          padding:12px 13px; margin-top:11px}
+  .painel .tit{font-size:12.5px; color:#22332e; margin:0}
+  .painel .sub{font-size:11px; color:#4a5a54; margin:3px 0 0}
+  .painel .par{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px}
+  .painel .par .btn{flex:1 1 46%; justify-content:center; padding:9px 12px}
+
+  .folha{background:#fff; border:1px solid var(--line); border-radius:8px; padding:11px 13px; font-size:11.5px}
+  .folha h4{margin:0 0 3px; font-size:13px; font-weight:800}
+  .folha .produz{color:var(--ink-soft); font-size:10.5px; margin:0 0 6px}
+  .folha .produz b{color:var(--ink)}
+  /* linha de meta do PDF: três colunas RENDIMENTO / PERDA PADRÃO / VERSÃO + filete preto */
+  .folha .cab{display:flex; flex-wrap:wrap; gap:6px 10px; border-bottom:2px solid var(--ink);
+              padding-bottom:6px; margin-bottom:7px}
+  .folha .cab > div{flex:1 1 70px; min-width:70px}
+  .folha .cab .rot{font-size:8.5px; font-weight:800; letter-spacing:.08em;
+                   text-transform:uppercase; color:var(--ink-soft)}
+  .folha .cab .val{font-size:11.5px; font-weight:800; color:var(--ink)}
+  .folha .ing{display:flex; justify-content:space-between; gap:10px; padding:3px 0; border-bottom:1px dotted var(--line)}
+  .folha .etapa{font-size:9.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+                color:var(--primary); margin:8px 0 3px}
+  .folha .rodape-folha{margin-top:8px; padding-top:5px; border-top:1px solid var(--line);
+                       font-size:9.5px; color:#8a938f; display:flex; flex-wrap:wrap;
+                       gap:2px 10px; justify-content:space-between}
+
+  /* LEGENDAS COM PINS — o MESMO número aparece no mock e na legenda */
+  .legendas{margin-top:11px; display:flex; flex-direction:column; gap:8px}
+  .legenda{display:flex; gap:9px; font-size:13.5px; color:#33403b}
+  .pin{flex:0 0 20px; width:20px; height:20px; border-radius:50%; background:var(--gold); color:#3d2c05;
+       font-size:11px; font-weight:900; display:inline-flex; align-items:center; justify-content:center; margin-top:1px}
+  .pin.na-tela{margin:0 0 0 5px; vertical-align:2px; flex:0 0 18px; width:18px; height:18px; font-size:10px}
+
+  .passos{margin:0; padding-left:20px}
+  .passos li{font-size:14.5px; color:#33403b; margin-bottom:7px}
+  .passos li:last-child{margin-bottom:0}
+
+  .rodape{text-align:center; color:#8a938f; font-size:12px; margin-top:30px}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-in">
+    <div class="eyebrow">Novidade no Hardt App</div>
+    <h1>A receita agora imprime no celular e no iPad</h1>
+    <p>A folha virou <b>PDF</b>. Toque em Imprimir, toque em <b>Abrir PDF</b> e use
+       <b>Compartilhar → Imprimir</b>. Acabou o "só no computador".</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="card">
+    <h2>O que mudou</h2>
+    <p>Quem tentava imprimir uma receita pelo <b>iPhone ou pelo iPad</b> esbarrava num aviso: a impressão
+       estava indisponível nesses aparelhos. Quem tentou antes do aviso lembra do pior: a folha abria na
+       tela do app, nada era impresso, e ainda era preciso ficar tocando para o app voltar.</p>
+    <p>Agora a folha é <b>gerada como PDF no servidor</b>. O aparelho abre o arquivo no visualizador dele —
+       de onde dá para <b>imprimir, salvar ou mandar por WhatsApp</b>. Funciona igual nos três:
+       <b>computador, iPad e celular</b>.</p>
+    <div class="destaque">
+      <b>Onde fica</b>
+      PCP → <b>Receitas</b> → abra a receita. Os dois botões continuam no mesmo lugar:
+      <b>Imprimir (cozinha)</b> e <b>Imprimir com custos</b>.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tela-nome" style="margin-top:0">Tela 1 — os botões, na receita aberta</div>
+
+    <div class="app">
+      <div class="appcard">
+        <div class="apphead"><span class="lb">PCP · Receitas · detalhe</span></div>
+        <div class="appbody">
+          <p class="titulo-receita">Bolinha de Queijo Padrão</p>
+          <p class="sub-receita">Produz: Bolinha de Queijo (PA) · rende 100 KG</p>
+          <div class="barra">
+            <span class="btn">✎ Editar</span>
+            <span class="btn">🕘 Histórico (3)</span>
+            <span class="btn">⧉ Clonar Receita</span>
+            <span class="btn verde">🖨 Imprimir (cozinha)<span class="pin na-tela">1</span></span>
+            <span class="btn contorno">🖨 Imprimir com custos<span class="pin na-tela">2</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="appcard" style="margin-top:11px">
+        <div class="apphead"><span class="lb">enquanto o PDF é montado</span></div>
+        <div class="appbody">
+          <div class="barra" style="margin-top:0; padding-top:0; border:0">
+            <span class="btn verde ocupado">⏳ Gerando PDF...<span class="pin na-tela">3</span></span>
+            <span class="btn contorno ocupado">🖨 Imprimir com custos</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legendas">
+      <div class="legenda"><span class="pin">1</span><div><b>Imprimir (cozinha)</b> — a folha do dia a dia da produção: letra grande, ingredientes agrupados por etapa, <b>sem custo nenhum</b>. É a que vai para a bancada.</div></div>
+      <div class="legenda"><span class="pin">2</span><div><b>Imprimir com custos</b> — a mesma receita com custo de cada ingrediente, custo total e custo por unidade. Sai marcada como <b>documento interno</b>: é para análise, não para a cozinha.</div></div>
+      <div class="legenda"><span class="pin">3</span><div>O botão avisa <b>"Gerando PDF..."</b> por um instante enquanto o servidor monta a folha. Não precisa tocar de novo.</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tela-nome" style="margin-top:0">Tela 2 — o quadro verde que aparece logo abaixo</div>
+
+    <div class="app">
+      <div class="appcard">
+        <div class="apphead"><span class="lb">PDF pronto</span></div>
+        <div class="appbody">
+          <div class="painel">
+            <p class="tit"><b>Folha da cozinha</b> pronta em PDF.<span class="pin na-tela">4</span></p>
+            <p class="sub">Abre no visualizador do aparelho — no celular/iPad use <b>Compartilhar → Imprimir</b>.
+               O link vale 5 minutos.<span class="pin na-tela">6</span></p>
+            <div class="par">
+              <span class="btn verde">🖨 Abrir PDF para imprimir<span class="pin na-tela">5</span></span>
+              <span class="btn contorno">⤓ Baixar PDF<span class="pin na-tela">7</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legendas">
+      <div class="legenda"><span class="pin">4</span><div>O quadro diz <b>qual folha</b> ficou pronta — "da cozinha" ou "com custos" —, para você não abrir a errada.</div></div>
+      <div class="legenda"><span class="pin">5</span><div><b>Abrir PDF para imprimir</b> — este é o segundo toque, e ele é de propósito. O Safari só deixa abrir uma aba nova quando o toque é seu, na hora; se o app abrisse sozinho, o iPhone bloquearia. Com o seu toque, o PDF abre <b>fora do app</b> e o app fica intacto atrás — você não fica preso no arquivo.</div></div>
+      <div class="legenda"><span class="pin">6</span><div><b>O link vale 5 minutos.</b> Se demorar, o quadro some sozinho com um aviso: é só tocar em Imprimir de novo, leva um instante.</div></div>
+      <div class="legenda"><span class="pin">7</span><div><b>Baixar PDF</b> — a saída para quando o navegador bloqueia a abertura. Salva o arquivo em vez de abrir; dá para imprimir ou mandar dele mesmo.</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tela-nome" style="margin-top:0">Tela 3 — o que sai no PDF (folha da cozinha)</div>
+
+    <div class="app">
+      <div class="folha">
+        <h4>Bolinha de Queijo Padrão</h4>
+        <p class="produz">Produz: <b>Bolinha de Queijo</b> (Produto acabado)</p>
+        <div class="cab">
+          <div><div class="rot">Rendimento</div><div class="val">100,000 KG</div></div>
+          <div><div class="rot">Perda padrão</div><div class="val">5,00%</div></div>
+          <div><div class="rot">Versão</div><div class="val">v3</div></div>
+        </div>
+        <div class="etapa">Preparo</div>
+        <div class="ing"><span>Massa base</span><b>40,000 KG</b></div>
+        <div class="ing"><span>Queijo mussarela</span><b>22,500 KG</b></div>
+        <div class="etapa">Modelagem</div>
+        <div class="ing"><span>Farinha de rosca</span><b>8,000 KG</b></div>
+        <div class="etapa">Embalagem</div>
+        <div class="ing"><span>Saco 1 KG impresso</span><b>100,000 UN</b></div>
+        <div class="rodape-folha"><span>Receita de produção — Bolinha de Queijo Padrão</span><span>Impresso em 16/08/2026</span></div>
+      </div>
+    </div>
+
+    <p style="margin-top:13px">O conteúdo é o mesmo de sempre — o que mudou foi o <b>jeito de entregar</b>:
+       em vez de tentar imprimir a tela, o app manda um arquivo pronto.</p>
+  </div>
+
+  <div class="card">
+    <h2>Para começar a usar</h2>
+    <ol class="passos">
+      <li>Abra <b>PCP → Receitas</b> e entre na receita.</li>
+      <li>Toque em <b>Imprimir (cozinha)</b> ou <b>Imprimir com custos</b>.</li>
+      <li>Espere o quadro verde e toque em <b>Abrir PDF para imprimir</b>.</li>
+      <li><b>No computador:</b> imprima pelo próprio visualizador de PDF.<br>
+          <b>No iPhone/iPad:</b> toque em <b>Compartilhar → Imprimir</b> (ou salve nos Arquivos, ou mande por WhatsApp).</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>Perguntas que já apareceram</h2>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">👆</span><strong>Por que tenho que tocar duas vezes?</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <p>Porque é o único jeito que funciona no iPhone e no iPad. O Safari <b>bloqueia</b> abas abertas
+        pelo aplicativo sozinho — ele só libera quando a abertura nasce de um toque seu, naquele instante.
+        Como montar o PDF leva um tempinho, o toque do "Imprimir" já passou quando o arquivo fica pronto.</p>
+        <p>Daí o segundo toque, no <b>Abrir PDF</b>: é ele que entrega o arquivo ao Safari, com o botão
+        <b>Compartilhar → Imprimir</b>. E é ele também que faz o app <b>não</b> ficar preso no PDF — o
+        arquivo abre por fora, o app continua na receita.</p>
+      </div>
+    </div>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">⏱</span><strong>Toquei em Abrir e apareceu "o link expirou"</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <p>O link do PDF vale <b>5 minutos</b> — é uma trava de segurança: sem ela, o endereço do arquivo
+        ficaria valendo para sempre e qualquer um com o link veria a receita (inclusive a versão com custos).</p>
+        <p>Se passar do tempo, <b>não tem problema nenhum</b>: volte ao app e toque em Imprimir de novo.
+        O quadro verde reaparece na hora com um link novo.</p>
+      </div>
+    </div>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">🚫</span><strong>Toquei em Abrir e não aconteceu nada</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <p>Provavelmente o navegador bloqueou a janela (acontece em quem tem bloqueador de pop-up
+        apertado no computador). Use o botão <b>Baixar PDF</b>, do lado: ele salva o arquivo em vez de
+        abrir, e dá para imprimir a partir dele do mesmo jeito.</p>
+      </div>
+    </div>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">🟢</span><strong>E aquela pilulinha verde "IMPR v10"?</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <p>É resto do método de impressão antigo — o que não funcionava no iPad. Ela ficou na tela por
+        segurança enquanto o PDF é aprovado no dia a dia, mas <b>não faz mais parte da impressão</b>.
+        Pode ignorar: será retirada.</p>
+      </div>
+    </div>
+
+    <div class="aviso">
+      <b>A folha com custos é documento interno</b>
+      Ela mostra custo por ingrediente, custo total e custo por unidade, e sai marcada como tal.
+      É para análise — a folha que vai para a bancada é a <b>da cozinha</b>.
+    </div>
+  </div>
+
+  <div class="rodape">Hardt App · agosto de 2026</div>
+</main>
+
+<script>
+  // Accordions nascem ABERTOS: o clique só recolhe (a equipe não clicava para expandir).
+  function alternar(botao){
+    var acc = botao.parentElement;
+    var aberto = acc.classList.toggle('aberto');
+    botao.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

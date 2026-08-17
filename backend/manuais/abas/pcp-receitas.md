@@ -22,7 +22,7 @@ Uma receita sempre produz um item do PCP (PA = Produto Acabado ou SUB = Subprodu
 - Ver o **custo** da receita: custo total e custo por unidade (por KG), calculado automaticamente
 - Simular o escalonamento (calcular ingredientes para qualquer quantidade)
 - Ver histórico de versões e o que mudou em cada uma
-- Imprimir a receita em folha A4 para a cozinha (letra grande, ingredientes por etapa)
+- Imprimir a receita em PDF (folha A4) — versão da cozinha e versão com custos; funciona no computador, no iPad e no celular
 - Excluir receita
 
 ## Como fazer (passo a passo real)
@@ -110,19 +110,25 @@ Há **dois botões** de impressão na tela de detalhe:
 - **Imprimir (cozinha)** — versão para a cozinha, **sem custos**. Folha A4 retrato, letra grande, ingredientes **agrupados por etapa** (Preparo, Modelagem, Fritura, Embalagem) com quantidade, unidade e observação. É a impressão do dia a dia da produção.
 - **Imprimir com custos** — versão **interna**, com o **custo unitário e o custo de cada ingrediente**, o **custo total** e o **custo por unidade**. Use para análise de custo, não para a cozinha.
 
-Passos (**no computador**): abra a receita, clique no botão desejado, a caixa de impressão abre — confirme (ou salve como PDF). A impressão acontece **dentro do próprio app** (não abre outra aba/janela) e o app volta sozinho quando você termina ou cancela.
+**Como funciona:** os dois botões **geram a folha em PDF no servidor** e abrem o arquivo. Funciona no **computador, no iPad e no celular** (antes só dava no computador).
 
-> ⚠️ **Pelo celular e pelo iPad a impressão está temporariamente indisponível — use o computador.**
->
-> Ao tocar em qualquer um dos dois botões de impressão em **aparelho de toque** (iPhone, iPad, tablet Android — em pé ou deitado) aparece o aviso *"Impressão pelo celular e iPad está sendo refeita — use o computador por enquanto."* e **nada mais acontece**: o app continua na tela da receita, do jeito que estava.
->
-> **Por que:** nesses aparelhos o comando de imprimir **não funciona**. No iPhone ele simplesmente não faz nada — não abre caixa de impressão nenhuma. No iPad foi testado e também falhou: em vez da receita saía **a tela do app**. E antes deste aviso a folha da receita ficava aberta na tela e a pessoa tinha que ficar tocando para o app voltar. Não é falta de configuração do aparelho nem do Safari — não há ajuste que resolva do lado de quem usa.
->
-> **O que fazer agora:** imprima pelo **computador**, onde funciona normalmente.
->
-> **O que vai mudar:** a impressão está sendo refeita para **gerar a receita em PDF** — o aparelho vai abrir o arquivo no visualizador dele, de onde dá para usar **Compartilhar → Imprimir**, salvar ou enviar. Isso vai funcionar nos três (celular, iPad e computador). Ainda **não há data para ficar pronto**; enquanto isso o aviso continua aparecendo.
+Passo a passo:
 
-> **Se a impressão sair errada no computador:** na linha dos botões da receita há uma pilulinha verde **IMPR v10** (a versão da impressão). **Clique nela** — abre um quadro com o registro da última impressão: o que o aparelho fez e em que instante. **Tire uma foto dessa tela** e mande para quem cuida do sistema; é com esse registro que o problema é diagnosticado. Clique em **Fechar** para sair do quadro.
+1. Abra a receita e toque no botão desejado (**Imprimir (cozinha)** ou **Imprimir com custos**). O botão mostra *"Gerando PDF..."* por um instante.
+2. Aparece um quadro verde com **"Abrir PDF para imprimir"**. Toque nele — o PDF abre no visualizador do aparelho.
+3. Para imprimir:
+   - **No computador:** use o botão de imprimir do próprio visualizador de PDF.
+   - **No iPhone/iPad:** toque em **Compartilhar → Imprimir** (dá também para salvar nos Arquivos ou mandar por WhatsApp/e-mail).
+
+> **Por que são dois toques (gerar e depois abrir)?** É de propósito. O Safari só deixa abrir uma aba nova quando o toque é seu, na hora — se o app abrisse sozinho depois de gerar o arquivo, o iPhone bloquearia a janela. Com os dois toques, o PDF abre **fora do app**, e o app continua exatamente como estava atrás (você não fica preso no arquivo).
+
+> **O link vale 5 minutos.** Se você demorar para tocar em "Abrir PDF", ele vence: o quadro some sozinho com um aviso e é só **tocar em Imprimir de novo** — leva um instante. Se abrir um link já vencido, a tela do PDF mostra o recado *"O link da impressão expirou (vale 5 minutos)"*; volte ao app e gere de novo.
+
+> **Se o PDF não abrir** (navegador bloqueando janelas), use o botão **Baixar PDF**, do lado — ele salva/abre o arquivo do mesmo jeito.
+
+> **Documento interno:** a folha **com custos** sai marcada como documento interno. Não é a folha da cozinha.
+
+> **A pilulinha verde "IMPR v10"** na linha dos botões é resto do método de impressão antigo (o que não funcionava no iPad). Ela só abre um quadro de diagnóstico e **não faz mais parte da impressão** — pode ignorar; será retirada da tela.
 
 > **Unidade dos ingredientes:** a unidade que aparece na receita e nas impressões vem da **unidade do produto** (a que você edita em Produtos → abrir o produto). Se a unidade estiver errada na impressão, corrija no cadastro do produto. Subprodutos (SUB) usam a unidade definida no próprio subproduto.
 
@@ -159,3 +165,6 @@ Admin (`admin: true`) tem acesso sem precisar de `pcp.receitas`.
 | `frontend/src/pages/PCP/ReceitaDetalhe.jsx` | Detalhe, histórico, clonar, excluir |
 | `frontend/src/pages/PCP/SimuladorEscalonamento.jsx` | Componente do simulador (embutido no detalhe) |
 | `frontend/src/services/pcpReceitaService.js` | Chamadas de API para receitas |
+| `frontend/src/utils/abrirPdfImpressao.js` | Abre PDF gerado no servidor (fluxo de 2 toques, para funcionar no iOS) |
+| `backend/routes/pcpImpressaoRoutes.js` | Rota do arquivo PDF (link com validade de 5 minutos) |
+| `backend/services/receitaPdfService.js` | Monta o PDF da folha da cozinha e da folha com custos |

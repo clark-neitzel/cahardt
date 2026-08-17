@@ -199,6 +199,10 @@ app.use('/api/pcp/ordens', authMiddleware, pcpOrdemRoutes);
 app.use('/api/pcp/agenda', authMiddleware, pcpAgendaRoutes);
 app.use('/api/pcp/sugestoes', authMiddleware, pcpSugestaoRoutes);
 app.use('/api/pcp/etiquetas', authMiddleware, pcpEtiquetaRoutes);
+// PDF da folha da receita — FORA do authMiddleware de propósito: o link é aberto
+// pelo navegador do aparelho (que não manda header Authorization) e carrega um
+// token curto de 5 min na URL, emitido por POST /api/pcp/receitas/:id/link-impressao.
+app.use('/api/pcp-impressao', require('./routes/pcpImpressaoRoutes'));
 app.use('/api/devolucoes', authMiddleware, devolucaoRoutes); // Devoluções
 app.use('/api/delivery', authMiddleware, deliveryRoutes); // Delivery (Kit Festa)
 app.use('/api/ia-logs', iaLogsRoutes); // Logs de Análise IA (auth interno)

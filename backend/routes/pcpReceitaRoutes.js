@@ -95,6 +95,40 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// POST /api/pcp/receitas/:id/link-impressao — link curto p/ o PDF da folha
+//
+// Quem imprime é o navegador do aparelho (o PDF é aberto como arquivo), e
+// navegador não manda `Authorization: Bearer`. Então esta rota — autenticada,
+// com a MESMA permissão que já protege a consulta da receita — emite um link
+// com um token de 5 minutos amarrado a esta receita e a este tipo de folha.
+// A folha com custos usa a mesma permissão da rota GET /:id/custo (é ela que
+// alimenta os custos na tela; não existe permissão separada de "ver custo").
+router.post('/:id/link-impressao', async (req, res) => {
+    try {
+        const permissoes = await getPermsFromDB(req.user.id);
+        if (!temPermissaoPcp(permissoes)) return res.status(403).json({ error: 'Sem permissão PCP.' });
+
+        const pcpImpressao = require('./pcpImpressaoRoutes');
+        const tipo = pcpImpressao.TIPOS.includes(req.body?.tipo) ? req.body.tipo : 'cozinha';
+
+        const receita = await prisma.receita.findUnique({ where: { id: req.params.id }, select: { id: true } });
+        if (!receita) return res.status(404).json({ error: 'Receita não encontrada.' });
+
+        const token = pcpImpressao.assinarToken({ receitaId: receita.id, tipo, usuarioId: req.user.id });
+        // URL RELATIVA de propósito. O nginx do frontend repassa /api ao backend
+        // trocando o header Host — montar aqui um endereço absoluto a partir do
+        // request devolveria o domínio interno do backend
+        // (cahardt-hardt-backend.…easypanel.host), justamente o endereço que caiu
+        // no apagão de DNS de 07/2026 e derrubou o app. O frontend abre
+        // `API_URL + url` ('' em produção = mesma origem; localhost:3000 no dev).
+        const url = `/api/pcp-impressao/receita/${receita.id}.pdf?tipo=${tipo}&t=${encodeURIComponent(token)}`;
+        return res.json({ url, caminho: url, tipo, validadeSegundos: 300 });
+    } catch (err) {
+        console.error('[PCP Receitas] Erro link-impressao:', err.message);
+        return res.status(500).json({ error: 'Não consegui gerar o link de impressão.' });
+    }
+});
+
 // POST /api/pcp/receitas — criar receita com itens
 router.post('/', async (req, res) => {
     try {

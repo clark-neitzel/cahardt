@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pencil, Copy, Calculator, Trash2, History, ChevronRight, Printer } from 'lucide-react';
+import { ArrowLeft, Pencil, Copy, Calculator, Trash2, History, ChevronRight, Printer, Download, Loader2, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpReceitaService from '../../services/pcpReceitaService';
 import pcpItemService from '../../services/pcpItemService';
 import SimuladorEscalonamento from './SimuladorEscalonamento';
+import { usePdfImpressao } from '../../utils/abrirPdfImpressao';
 
 const STATUS_CORES = {
     ativa: 'bg-green-100 text-green-800',
@@ -38,6 +39,13 @@ function unidadeDe(itemPcp) {
     return itemPcp?.produto?.unidade || itemPcp?.unidade || '';
 }
 
+// ⚠️ MECANISMO ANTIGO DE IMPRESSÃO — DE PROPÓSITO SEM USO NA TELA (08/2026).
+// Os botões passaram a abrir o PDF gerado no servidor (ver o bloco "IMPRESSÃO EM PDF" mais
+// abaixo). Todo o código a seguir — imprimirConteudo / imprimirHtml, os dois montarHtml*, o
+// registro de diagnóstico e a pílula "IMPR v10" — fica no arquivo como REDE DE SEGURANÇA até
+// o dono aprovar o PDF em produção. NÃO apagar: a limpeza é uma entrega à parte, combinada.
+// (Nada aqui roda sozinho; só o quadro de diagnóstico da pílula ainda é lido pela tela.)
+//
 // Impressão dentro do PWA — funciona no iPad/iOS (onde imprimir um iframe sai em branco/só URL).
 // Estratégia "o que se vê é o que imprime": no momento de imprimir, o app é escondido em
 // QUALQUER media (classe no <html> com display:none, não só @media print) e a folha vira o
@@ -626,18 +634,20 @@ function montarHtmlImpressaoComCustos(receita, custo) {
 </html>`;
 }
 
-// MITIGAÇÃO (08/2026) — no iOS o window.print() é inerte: não abre diálogo nenhum, mas a folha A4
-// (186mm) já foi montada na tela e o usuário fica preso tocando para voltar. Vale para o iPhone E
-// para o iPad (a v10 foi testada no iPad e falhou; a tela de Etiquetas, com outro mecanismo, também
-// imprime a tela inteira lá). Enquanto a versão em PDF (gerada no backend) não fica pronta, em
-// aparelho de toque nem entramos no modo de impressão.
-// Corte por PONTEIRO, não por largura nem user-agent: `(pointer: coarse)` pega celular e tablet em
-// qualquer orientação — `(max-width: 767px)` deixava passar o iPhone deitado (844–932px de largura).
-const AVISO_IMPRESSAO_TOQUE = 'Impressão pelo celular e iPad está sendo refeita — use o computador por enquanto.';
-const ehAparelhoDeToque = () =>
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(pointer: coarse)').matches;
+// IMPRESSÃO EM PDF (08/2026) — os dois botões agora pedem a folha ao SERVIDOR e abrem o PDF.
+// Substitui o window.print() acima, que no iOS é inerte (não abre caixa de impressão nenhuma) e
+// ainda deixava a folha A4 montada na tela, prendendo o usuário. Também some com a antiga trava
+// por `(pointer: coarse)`, que bloqueava a impressão no celular e no iPad: com PDF funciona nos
+// três (computador, iPad e celular).
+// O fluxo é de DOIS toques (gerar → abrir) por causa do bloqueio de janelas do Safari; o porquê
+// está explicado em frontend/src/utils/abrirPdfImpressao.js.
+const NOME_ARQUIVO_PDF = (receita, tipo) => {
+    const base = String(receita?.nome || 'receita')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')      // tira acento (ç → c, ã → a)
+        .replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+        .toLowerCase().slice(0, 60) || 'receita';
+    return `receita-${base}${tipo === 'custos' ? '-custos' : ''}.pdf`;
+};
 
 export default function ReceitaDetalhe() {
     const { id } = useParams();
@@ -701,18 +711,17 @@ export default function ReceitaDetalhe() {
         }
     };
 
-    // `e` (o clique) vai junto só para o diagnóstico medir a distância entre o gesto e o print().
-    const imprimirReceita = (e) => {
-        if (!receita) return;
-        if (ehAparelhoDeToque()) { toast(AVISO_IMPRESSAO_TOQUE, { icon: 'ℹ️', duration: 6000 }); return; }
-        imprimirHtml(montarHtmlImpressao(receita), e, 'cozinha');
-    };
+    // Impressão em PDF: 1º toque gera o link no servidor, 2º toque abre o arquivo.
+    // (Ver o porquê dos dois toques em utils/abrirPdfImpressao.js.)
+    const pdf = usePdfImpressao({
+        gerarLink: (tipo) => pcpReceitaService.linkImpressao(id, tipo),
+        nomeArquivo: (tipo) => NOME_ARQUIVO_PDF(receita, tipo),
+        mensagemPronto: 'Folha pronta! Toque em "Abrir PDF para imprimir".',
+        mensagemExpirou: 'O link do PDF venceu (vale 5 minutos). Toque em Imprimir de novo.',
+    });
 
-    const imprimirComCustos = (e) => {
-        if (!receita) return;
-        if (ehAparelhoDeToque()) { toast(AVISO_IMPRESSAO_TOQUE, { icon: 'ℹ️', duration: 6000 }); return; }
-        imprimirHtml(montarHtmlImpressaoComCustos(receita, custo), e, 'com custos');
-    };
+    const imprimirReceita = () => { if (receita) pdf.preparar('cozinha'); };
+    const imprimirComCustos = () => { if (receita) pdf.preparar('custos'); };
 
     if (loading) return <div className="text-center py-12 text-gray-400">Carregando...</div>;
     if (!receita) return <div className="text-center py-12 text-gray-500">Receita nao encontrada</div>;
@@ -839,19 +848,29 @@ export default function ReceitaDetalhe() {
                     >
                         <Calculator className="h-3.5 w-3.5" /> Simular Escalonamento
                     </button>
+                    {/* Impressão em PDF (gerado no servidor). Alvo de toque de 44px: estes dois
+                        botões passaram a valer no celular e no iPad, onde o dedo é o ponteiro. */}
                     <button
                         onClick={imprimirReceita}
-                        title="Versão para a cozinha, sem custos"
-                        className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-800 text-white rounded-lg hover:bg-gray-900"
+                        disabled={pdf.gerando}
+                        title="Versão para a cozinha, sem custos — abre o PDF"
+                        className="flex items-center gap-1.5 px-4 py-2 min-h-[44px] text-sm font-semibold bg-primary text-white rounded-full shadow-sm hover:bg-primaryDark disabled:opacity-60"
                     >
-                        <Printer className="h-3.5 w-3.5" /> Imprimir (cozinha)
+                        {pdf.gerandoChave === 'cozinha'
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : <Printer className="h-4 w-4" />}
+                        {pdf.gerandoChave === 'cozinha' ? 'Gerando PDF...' : 'Imprimir (cozinha)'}
                     </button>
                     <button
                         onClick={imprimirComCustos}
-                        title="Versão interna, com os custos"
-                        className="flex items-center gap-1 px-3 py-1.5 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+                        disabled={pdf.gerando}
+                        title="Versão interna, com os custos — abre o PDF"
+                        className="flex items-center gap-1.5 px-4 py-2 min-h-[44px] text-sm font-medium bg-white border border-primary text-primary rounded-full hover:bg-mint/40 disabled:opacity-60"
                     >
-                        <Printer className="h-3.5 w-3.5" /> Imprimir com custos
+                        {pdf.gerandoChave === 'custos'
+                            ? <Loader2 className="h-4 w-4 animate-spin" />
+                            : <Printer className="h-4 w-4" />}
+                        {pdf.gerandoChave === 'custos' ? 'Gerando PDF...' : 'Imprimir com custos'}
                     </button>
                     <button
                         onClick={excluirReceita}
@@ -860,6 +879,47 @@ export default function ReceitaDetalhe() {
                         <Trash2 className="h-3.5 w-3.5" /> Excluir
                     </button>
                 </div>
+
+                {/* PDF pronto — 2º passo. A abertura precisa nascer DESTE clique: se abríssemos
+                    sozinhos logo depois de gerar, o Safari bloquearia a janela (e no iPhone o app
+                    ainda ficaria preso no PDF, sem barra de endereço para voltar). O "Baixar PDF"
+                    fica sempre ao lado porque não há como saber se a abertura foi bloqueada. */}
+                {pdf.pronto && (
+                    <div className="mt-3 rounded-xl border border-primary/30 bg-mint/30 p-3">
+                        <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm text-gray-700">
+                                Folha <span className="font-semibold">{pdf.chave === 'custos' ? 'com custos' : 'da cozinha'}</span> pronta em PDF.
+                                <span className="block text-xs text-gray-600 mt-0.5">
+                                    Abre no visualizador do aparelho — no celular/iPad use <span className="font-medium">Compartilhar → Imprimir</span>. O link vale 5 minutos.
+                                </span>
+                            </p>
+                            <button
+                                type="button"
+                                onClick={pdf.limpar}
+                                title="Fechar"
+                                className="shrink-0 -m-1 min-h-[44px] min-w-[44px] flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-full hover:bg-white/70"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                        <div className="flex flex-col sm:flex-row gap-2 mt-3">
+                            <button
+                                type="button"
+                                onClick={pdf.abrir}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm"
+                            >
+                                <Printer className="h-4 w-4" /> Abrir PDF para imprimir
+                            </button>
+                            <button
+                                type="button"
+                                onClick={pdf.baixar}
+                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm"
+                            >
+                                <Download className="h-4 w-4" /> Baixar PDF
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Diagnóstico da última impressão (aberto pela pílula IMPR v10) — o dono fotografa a tela */}
                 {logImpr != null && (
