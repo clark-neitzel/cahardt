@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pencil, Copy, Calculator, Trash2, History, ChevronRight, Printer, Download, Loader2, X } from 'lucide-react';
+import { ArrowLeft, Pencil, Copy, Calculator, Trash2, History, ChevronRight, Printer, Download, Loader2, X, Share, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 import pcpReceitaService from '../../services/pcpReceitaService';
 import pcpItemService from '../../services/pcpItemService';
@@ -711,12 +711,14 @@ export default function ReceitaDetalhe() {
         }
     };
 
-    // Impressão em PDF: 1º toque gera o link no servidor, 2º toque abre o arquivo.
-    // (Ver o porquê dos dois toques em utils/abrirPdfImpressao.js.)
+    // Impressão em PDF: 1º toque gera o link no servidor (e, no celular/iPad, já
+    // baixa o arquivo); 2º toque entrega a folha — pela lista do sistema, onde
+    // "Imprimir" está a um toque. (Ver o porquê em utils/abrirPdfImpressao.js.)
     const pdf = usePdfImpressao({
         gerarLink: (tipo) => pcpReceitaService.linkImpressao(id, tipo),
         nomeArquivo: (tipo) => NOME_ARQUIVO_PDF(receita, tipo),
-        mensagemPronto: 'Folha pronta! Toque em "Abrir PDF para imprimir".',
+        tituloCompartilhar: (tipo) => `${receita?.nome || 'Receita'}${tipo === 'custos' ? ' (com custos)' : ''}`,
+        mensagemPronto: 'Folha pronta!',
         mensagemExpirou: 'O link do PDF venceu (vale 5 minutos). Toque em Imprimir de novo.',
     });
 
@@ -880,17 +882,23 @@ export default function ReceitaDetalhe() {
                     </button>
                 </div>
 
-                {/* PDF pronto — 2º passo. A abertura precisa nascer DESTE clique: se abríssemos
-                    sozinhos logo depois de gerar, o Safari bloquearia a janela (e no iPhone o app
-                    ainda ficaria preso no PDF, sem barra de endereço para voltar). O "Baixar PDF"
-                    fica sempre ao lado porque não há como saber se a abertura foi bloqueada. */}
+                {/* PDF pronto — 2º passo. A entrega precisa nascer DESTE clique: se fizéssemos
+                    sozinhos logo depois de gerar, o Safari bloquearia (e no iPhone o app ainda
+                    ficaria preso no PDF, sem barra de endereço para voltar).
+
+                    No iPhone/iPad o botão principal é "Imprimir / Compartilhar": abre DIRETO a
+                    lista do sistema, onde Imprimir é uma das opções — o dono não achava o botão
+                    de imprimir dentro do visualizador de PDF, que o iOS mostra sem barra nenhuma.
+                    No computador (sem essa lista) o principal continua sendo abrir o PDF. */}
                 {pdf.pronto && (
                     <div className="mt-3 rounded-xl border border-primary/30 bg-mint/30 p-3">
                         <div className="flex items-start justify-between gap-2">
                             <p className="text-sm text-gray-700">
                                 Folha <span className="font-semibold">{pdf.chave === 'custos' ? 'com custos' : 'da cozinha'}</span> pronta em PDF.
                                 <span className="block text-xs text-gray-600 mt-0.5">
-                                    Abre no visualizador do aparelho — no celular/iPad use <span className="font-medium">Compartilhar → Imprimir</span>. O link vale 5 minutos.
+                                    {pdf.podeCompartilhar
+                                        ? <>Toque em <span className="font-medium">Imprimir / Compartilhar</span> e escolha <span className="font-medium">Imprimir</span> na lista do aparelho.</>
+                                        : <>Abre no visualizador do computador — use o botão de imprimir de lá.</>}
                                 </span>
                             </p>
                             <button
@@ -902,22 +910,70 @@ export default function ReceitaDetalhe() {
                                 <X className="h-4 w-4" />
                             </button>
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-2 mt-3">
-                            <button
-                                type="button"
-                                onClick={pdf.abrir}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm"
-                            >
-                                <Printer className="h-4 w-4" /> Abrir PDF para imprimir
-                            </button>
-                            <button
-                                type="button"
-                                onClick={pdf.baixar}
-                                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm"
-                            >
-                                <Download className="h-4 w-4" /> Baixar PDF
-                            </button>
-                        </div>
+
+                        {pdf.podeCompartilhar ? (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={pdf.compartilhar}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] mt-3 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm"
+                                >
+                                    <Share className="h-4 w-4" /> Imprimir / Compartilhar
+                                </button>
+                                {/* Alternativas — segunda linha, para não competir com o caminho bom */}
+                                <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                                    <button
+                                        type="button"
+                                        onClick={pdf.abrir}
+                                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm"
+                                    >
+                                        <ExternalLink className="h-4 w-4" /> Abrir PDF
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={pdf.baixar}
+                                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm"
+                                    >
+                                        <Download className="h-4 w-4" /> Baixar PDF
+                                    </button>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex flex-col sm:flex-row gap-2 mt-3">
+                                <button
+                                    type="button"
+                                    onClick={pdf.abrir}
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm"
+                                >
+                                    <Printer className="h-4 w-4" /> Abrir PDF para imprimir
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={pdf.baixar}
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 min-h-[44px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm"
+                                >
+                                    <Download className="h-4 w-4" /> Baixar PDF
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Quem foi parar na tela do PDF precisa saber sair e imprimir de lá.
+                            Não dá para injetar nada dentro do visualizador do iOS — então a
+                            explicação fica aqui, no app, aparecendo quando "Abrir PDF" é usado. */}
+                        {pdf.abriu && (
+                            <div className="mt-3 pt-3 border-t border-primary/20 text-xs text-gray-700 space-y-1">
+                                <p><span className="font-semibold">Para imprimir na tela do PDF:</span> toque na tela → ícone de compartilhar → Imprimir.</p>
+                                <p><span className="font-semibold">Para voltar ao app:</span> deslize de baixo para cima.</p>
+                            </div>
+                        )}
+
+                        {/* O link do servidor venceu, mas o arquivo já está no aparelho:
+                            avisar sem assustar — os botões continuam funcionando. */}
+                        {pdf.linkVencido && (
+                            <p className="mt-2 text-xs text-gray-600">
+                                O link do servidor venceu, mas a folha já está salva no aparelho — os botões acima continuam funcionando.
+                            </p>
+                        )}
                     </div>
                 )}
 

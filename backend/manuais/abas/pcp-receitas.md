@@ -112,17 +112,22 @@ Há **dois botões** de impressão na tela de detalhe:
 
 **Como funciona:** os dois botões **geram a folha em PDF no servidor** e abrem o arquivo. Funciona no **computador, no iPad e no celular** (antes só dava no computador).
 
-Passo a passo:
+Passo a passo **no iPhone e no iPad** (2 toques):
 
 1. Abra a receita e toque no botão desejado (**Imprimir (cozinha)** ou **Imprimir com custos**). O botão mostra *"Gerando PDF..."* por um instante.
-2. Aparece um quadro verde com **"Abrir PDF para imprimir"**. Toque nele — o PDF abre no visualizador do aparelho.
-3. Para imprimir:
-   - **No computador:** use o botão de imprimir do próprio visualizador de PDF.
-   - **No iPhone/iPad:** toque em **Compartilhar → Imprimir** (dá também para salvar nos Arquivos ou mandar por WhatsApp/e-mail).
+2. Aparece um quadro verde com o botão **"Imprimir / Compartilhar"**. Toque nele — abre **direto a lista do aparelho** (a mesma de sempre: Imprimir, AirDrop, WhatsApp, Salvar em Arquivos...).
+3. Escolha **Imprimir**. Você **não sai do app**: fechar a lista devolve você à receita, exatamente onde estava.
 
-> **Por que são dois toques (gerar e depois abrir)?** É de propósito. O Safari só deixa abrir uma aba nova quando o toque é seu, na hora — se o app abrisse sozinho depois de gerar o arquivo, o iPhone bloquearia a janela. Com os dois toques, o PDF abre **fora do app**, e o app continua exatamente como estava atrás (você não fica preso no arquivo).
+Passo a passo **no computador**:
 
-> **O link vale 5 minutos.** Se você demorar para tocar em "Abrir PDF", ele vence: o quadro some sozinho com um aviso e é só **tocar em Imprimir de novo** — leva um instante. Se abrir um link já vencido, a tela do PDF mostra o recado *"O link da impressão expirou (vale 5 minutos)"*; volte ao app e gere de novo.
+1. Toque no botão desejado; o quadro verde aparece com **"Abrir PDF para imprimir"**.
+2. O PDF abre numa aba nova — imprima pelo botão do próprio visualizador de PDF.
+
+> **Por que são dois toques (gerar e depois imprimir)?** É de propósito. O Safari só deixa abrir a lista de compartilhamento (ou uma aba nova) quando o toque é seu, na hora — se o app fizesse isso sozinho depois de gerar o arquivo, o iPhone bloquearia.
+
+> **Se você preferir abrir o PDF em vez de compartilhar:** no iPhone a folha aparece em tela cheia, **sem barra nenhuma**. Para imprimir dali, **toque na tela**, depois no **ícone de compartilhar** e em **Imprimir**. Para voltar ao app, **deslize de baixo para cima**. Esse lembrete também aparece no quadro verde assim que você usa "Abrir PDF".
+
+> **O link vale 5 minutos** — mas no celular e no iPad isso deixou de atrapalhar: a folha é **guardada no aparelho** já no primeiro toque, então "Imprimir / Compartilhar", "Abrir PDF" e "Baixar PDF" continuam funcionando depois dos 5 minutos; o quadro só avisa, sem sumir da tela. No computador (onde a folha não fica guardada), o quadro some com um aviso e é só **tocar em Imprimir de novo**.
 
 > **Se o PDF não abrir** (navegador bloqueando janelas), use o botão **Baixar PDF**, do lado — ele salva/abre o arquivo do mesmo jeito.
 

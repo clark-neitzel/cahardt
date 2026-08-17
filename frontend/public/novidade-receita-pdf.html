@@ -7,7 +7,7 @@
 
 <!-- Preview do link no WhatsApp (sem og:image de propósito — cartão compacto) -->
 <meta property="og:title" content="🖨 Novidade no Hardt App: imprimir a receita pelo celular e pelo iPad">
-<meta property="og:description" content="A folha da receita agora vira PDF. Toca em Imprimir, toca em Abrir PDF e usa Compartilhar → Imprimir. Acabou o 'só no computador'.">
+<meta property="og:description" content="A folha da receita virou PDF. No iPhone e no iPad são 2 toques: Imprimir e depois Imprimir / Compartilhar — a lista do aparelho abre com Imprimir na hora. Acabou o 'só no computador'.">
 <meta property="og:type" content="article">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -86,6 +86,9 @@
   .painel .sub{font-size:11px; color:#4a5a54; margin:3px 0 0}
   .painel .par{display:flex; flex-wrap:wrap; gap:6px; margin-top:10px}
   .painel .par .btn{flex:1 1 46%; justify-content:center; padding:9px 12px}
+  .painel .btn.largo{display:flex; width:100%; justify-content:center; padding:10px 12px; margin-top:10px}
+  .painel .dica{margin:11px 0 0; padding-top:9px; border-top:1px solid #b5d9cc; font-size:11px; color:#3d4d47}
+  .painel .dica p{margin:0 0 3px}
 
   .folha{background:#fff; border:1px solid var(--line); border-radius:8px; padding:11px 13px; font-size:11.5px}
   .folha h4{margin:0 0 3px; font-size:13px; font-weight:800}
@@ -125,8 +128,9 @@
   <div class="hero-in">
     <div class="eyebrow">Novidade no Hardt App</div>
     <h1>A receita agora imprime no celular e no iPad</h1>
-    <p>A folha virou <b>PDF</b>. Toque em Imprimir, toque em <b>Abrir PDF</b> e use
-       <b>Compartilhar → Imprimir</b>. Acabou o "só no computador".</p>
+    <p>A folha virou <b>PDF</b>. No iPhone e no iPad são <b>dois toques</b>: Imprimir e depois
+       <b>Imprimir / Compartilhar</b> — a lista do aparelho abre com <b>Imprimir</b> na hora.
+       Acabou o "só no computador".</p>
   </div>
 </header>
 
@@ -137,9 +141,10 @@
     <p>Quem tentava imprimir uma receita pelo <b>iPhone ou pelo iPad</b> esbarrava num aviso: a impressão
        estava indisponível nesses aparelhos. Quem tentou antes do aviso lembra do pior: a folha abria na
        tela do app, nada era impresso, e ainda era preciso ficar tocando para o app voltar.</p>
-    <p>Agora a folha é <b>gerada como PDF no servidor</b>. O aparelho abre o arquivo no visualizador dele —
-       de onde dá para <b>imprimir, salvar ou mandar por WhatsApp</b>. Funciona igual nos três:
-       <b>computador, iPad e celular</b>.</p>
+    <p>Agora a folha é <b>gerada como PDF no servidor</b>. E no <b>iPhone/iPad</b> ela não abre mais num
+       visualizador em tela cheia onde ninguém achava o botão de imprimir: o app chama a
+       <b>lista de compartilhamento do próprio aparelho</b>, onde <b>Imprimir</b> é uma das opções —
+       um toque, sem caçar botão e <b>sem sair do app</b>. No computador, o PDF continua abrindo numa aba.</p>
     <div class="destaque">
       <b>Onde fica</b>
       PCP → <b>Receitas</b> → abra a receita. Os dois botões continuam no mesmo lugar:
@@ -189,15 +194,19 @@
 
     <div class="app">
       <div class="appcard">
-        <div class="apphead"><span class="lb">PDF pronto</span></div>
+        <div class="apphead"><span class="lb">PDF pronto — no iPhone e no iPad</span></div>
         <div class="appbody">
           <div class="painel">
             <p class="tit"><b>Folha da cozinha</b> pronta em PDF.<span class="pin na-tela">4</span></p>
-            <p class="sub">Abre no visualizador do aparelho — no celular/iPad use <b>Compartilhar → Imprimir</b>.
-               O link vale 5 minutos.<span class="pin na-tela">6</span></p>
+            <p class="sub">Toque em <b>Imprimir / Compartilhar</b> e escolha <b>Imprimir</b> na lista do aparelho.</p>
+            <span class="btn verde largo">⇪ Imprimir / Compartilhar<span class="pin na-tela">5</span></span>
             <div class="par">
-              <span class="btn verde">🖨 Abrir PDF para imprimir<span class="pin na-tela">5</span></span>
+              <span class="btn contorno">↗ Abrir PDF<span class="pin na-tela">6</span></span>
               <span class="btn contorno">⤓ Baixar PDF<span class="pin na-tela">7</span></span>
+            </div>
+            <div class="dica">
+              <p><b>Para imprimir na tela do PDF:</b> toque na tela → ícone de compartilhar → Imprimir.</p>
+              <p><b>Para voltar ao app:</b> deslize de baixo para cima.<span class="pin na-tela">8</span></p>
             </div>
           </div>
         </div>
@@ -205,10 +214,11 @@
     </div>
 
     <div class="legendas">
-      <div class="legenda"><span class="pin">4</span><div>O quadro diz <b>qual folha</b> ficou pronta — "da cozinha" ou "com custos" —, para você não abrir a errada.</div></div>
-      <div class="legenda"><span class="pin">5</span><div><b>Abrir PDF para imprimir</b> — este é o segundo toque, e ele é de propósito. O Safari só deixa abrir uma aba nova quando o toque é seu, na hora; se o app abrisse sozinho, o iPhone bloquearia. Com o seu toque, o PDF abre <b>fora do app</b> e o app fica intacto atrás — você não fica preso no arquivo.</div></div>
-      <div class="legenda"><span class="pin">6</span><div><b>O link vale 5 minutos.</b> Se demorar, o quadro some sozinho com um aviso: é só tocar em Imprimir de novo, leva um instante.</div></div>
-      <div class="legenda"><span class="pin">7</span><div><b>Baixar PDF</b> — a saída para quando o navegador bloqueia a abertura. Salva o arquivo em vez de abrir; dá para imprimir ou mandar dele mesmo.</div></div>
+      <div class="legenda"><span class="pin">4</span><div>O quadro diz <b>qual folha</b> ficou pronta — "da cozinha" ou "com custos" —, para você não imprimir a errada.</div></div>
+      <div class="legenda"><span class="pin">5</span><div><b>Imprimir / Compartilhar</b> — o botão principal no celular e no iPad. Ele abre <b>direto a lista do aparelho</b> (a mesma de sempre: Imprimir, AirDrop, WhatsApp, Salvar em Arquivos). Toque em <b>Imprimir</b> e pronto. Você <b>não sai do app</b>: fechar a lista devolve você à receita.</div></div>
+      <div class="legenda"><span class="pin">6</span><div><b>Abrir PDF</b> — para quem quiser <b>ver a folha antes</b> de imprimir. No computador este é o botão principal, porque lá não existe essa lista: o PDF abre numa aba e você imprime pelo visualizador.</div></div>
+      <div class="legenda"><span class="pin">7</span><div><b>Baixar PDF</b> — salva o arquivo no aparelho, para imprimir depois ou mandar por WhatsApp/e-mail.</div></div>
+      <div class="legenda"><span class="pin">8</span><div>Este lembrete aparece assim que você usa "Abrir PDF" — é a resposta para <b>"como saio dessa tela e onde está o botão de imprimir?"</b>. O iPhone mostra o PDF em tela cheia, sem barra nenhuma; a barra volta quando você toca na tela.</div></div>
     </div>
   </div>
 
@@ -244,9 +254,9 @@
     <ol class="passos">
       <li>Abra <b>PCP → Receitas</b> e entre na receita.</li>
       <li>Toque em <b>Imprimir (cozinha)</b> ou <b>Imprimir com custos</b>.</li>
-      <li>Espere o quadro verde e toque em <b>Abrir PDF para imprimir</b>.</li>
-      <li><b>No computador:</b> imprima pelo próprio visualizador de PDF.<br>
-          <b>No iPhone/iPad:</b> toque em <b>Compartilhar → Imprimir</b> (ou salve nos Arquivos, ou mande por WhatsApp).</li>
+      <li><b>No iPhone/iPad:</b> espere o quadro verde e toque em <b>Imprimir / Compartilhar</b>;
+          escolha <b>Imprimir</b> na lista que abrir. Fim — você continua na receita.</li>
+      <li><b>No computador:</b> toque em <b>Abrir PDF para imprimir</b> e use o botão de imprimir do visualizador.</li>
     </ol>
   </div>
 
@@ -258,35 +268,42 @@
         <span class="acc-ico">👆</span><strong>Por que tenho que tocar duas vezes?</strong><span class="acc-seta">▼</span>
       </button>
       <div class="acc-corpo">
-        <p>Porque é o único jeito que funciona no iPhone e no iPad. O Safari <b>bloqueia</b> abas abertas
-        pelo aplicativo sozinho — ele só libera quando a abertura nasce de um toque seu, naquele instante.
-        Como montar o PDF leva um tempinho, o toque do "Imprimir" já passou quando o arquivo fica pronto.</p>
-        <p>Daí o segundo toque, no <b>Abrir PDF</b>: é ele que entrega o arquivo ao Safari, com o botão
-        <b>Compartilhar → Imprimir</b>. E é ele também que faz o app <b>não</b> ficar preso no PDF — o
-        arquivo abre por fora, o app continua na receita.</p>
+        <p>Porque é o único jeito que funciona no iPhone e no iPad. O Safari <b>bloqueia</b> a lista de
+        compartilhamento (e abas novas) quando é o aplicativo que chama sozinho — ele só libera quando
+        nasce de um toque seu, naquele instante. Como montar o PDF leva um tempinho, o toque do
+        "Imprimir" já passou quando o arquivo fica pronto.</p>
+        <p>Daí o segundo toque, no <b>Imprimir / Compartilhar</b>: é ele que abre a lista com o
+        <b>Imprimir</b>. Enquanto isso o app já guardou a folha no aparelho no primeiro toque — por isso
+        o segundo toque é instantâneo.</p>
       </div>
     </div>
 
     <div class="acc aberto">
       <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
-        <span class="acc-ico">⏱</span><strong>Toquei em Abrir e apareceu "o link expirou"</strong><span class="acc-seta">▼</span>
+        <span class="acc-ico">⏱</span><strong>E aquele aviso de "o link vale 5 minutos"?</strong><span class="acc-seta">▼</span>
       </button>
       <div class="acc-corpo">
         <p>O link do PDF vale <b>5 minutos</b> — é uma trava de segurança: sem ela, o endereço do arquivo
         ficaria valendo para sempre e qualquer um com o link veria a receita (inclusive a versão com custos).</p>
-        <p>Se passar do tempo, <b>não tem problema nenhum</b>: volte ao app e toque em Imprimir de novo.
-        O quadro verde reaparece na hora com um link novo.</p>
+        <p><b>No celular e no iPad isso deixou de atrapalhar:</b> a folha já fica guardada no aparelho no
+        primeiro toque. Passados os 5 minutos, o quadro verde <b>continua na tela</b> e os botões continuam
+        funcionando — ele só avisa que o link do servidor venceu. No computador, aí sim o quadro some com
+        um aviso: é só tocar em Imprimir de novo, leva um instante.</p>
       </div>
     </div>
 
     <div class="acc aberto">
       <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
-        <span class="acc-ico">🚫</span><strong>Toquei em Abrir e não aconteceu nada</strong><span class="acc-seta">▼</span>
+        <span class="acc-ico">🚫</span><strong>Abri o PDF e fiquei preso na tela dele</strong><span class="acc-seta">▼</span>
       </button>
       <div class="acc-corpo">
-        <p>Provavelmente o navegador bloqueou a janela (acontece em quem tem bloqueador de pop-up
-        apertado no computador). Use o botão <b>Baixar PDF</b>, do lado: ele salva o arquivo em vez de
-        abrir, e dá para imprimir a partir dele do mesmo jeito.</p>
+        <p>O iPhone mostra o PDF em <b>tela cheia, sem barra nenhuma</b> — nem o botão de imprimir, nem o
+        de voltar. Eles existem, só estão escondidos: <b>toque uma vez na tela</b> (ou arraste o dedo para
+        cima) e a barra aparece. Daí é <b>ícone de compartilhar → Imprimir</b>. Para voltar ao app,
+        <b>deslize de baixo para cima</b>.</p>
+        <p>Para não passar por isso, use o botão <b>Imprimir / Compartilhar</b>: ele já abre a lista com o
+        Imprimir, sem abrir o visualizador. E se nada abrir (bloqueador de pop-up no computador), use o
+        <b>Baixar PDF</b>: salva o arquivo e dá para imprimir a partir dele.</p>
       </div>
     </div>
 
