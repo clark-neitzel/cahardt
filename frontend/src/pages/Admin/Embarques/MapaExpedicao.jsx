@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Link, useBlocker } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Map as MapIcon, Loader2, Wand2, Route as RouteIcon, X, Truck, Printer, MapPinOff, Lock } from 'lucide-react';
@@ -149,12 +149,15 @@ export default function MapaExpedicao() {
         [todas, rascunho]
     );
 
-    const blocker = useBlocker(mudancas.length > 0);
-    useEffect(() => {
-        if (blocker.state !== 'blocked') return;
-        if (window.confirm('Há alterações de carga ainda não aplicadas. Deseja sair e descartar o rascunho?')) blocker.proceed();
-        else blocker.reset();
-    }, [blocker]);
+    // O app usa BrowserRouter (roteador declarativo), no qual useBlocker não é
+    // suportado. Protegemos os links desta tela e o fechamento/reload do navegador
+    // sem depender do Data Router.
+    const confirmarSaida = useCallback((e) => {
+        if (!mudancas.length) return;
+        if (!window.confirm('Há alterações de carga ainda não aplicadas. Deseja sair e descartar o rascunho?')) {
+            e.preventDefault();
+        }
+    }, [mudancas.length]);
     useEffect(() => {
         const avisarSaida = (e) => {
             if (!mudancas.length) return;
@@ -493,6 +496,7 @@ export default function MapaExpedicao() {
                 </div>
                 <Link
                     to="/admin/embarques"
+                    onClick={confirmarSaida}
                     className="shrink-0 flex items-center gap-1.5 px-3 py-2 md:px-4 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-xs md:text-sm min-h-[44px]"
                 >
                     <Truck className="h-4 w-4" />
@@ -704,7 +708,7 @@ export default function MapaExpedicao() {
                             {(dados?.cargas || []).length === 0 && !carregando && (
                                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 text-sm text-gray-500">
                                     Nenhuma carga montada para este dia.{' '}
-                                    <Link to="/admin/embarques" className="text-primary font-semibold">Montar cargas no painel</Link>.
+                                    <Link to="/admin/embarques" onClick={confirmarSaida} className="text-primary font-semibold">Montar cargas no painel</Link>.
                                 </div>
                             )}
                             {(dados?.cargas || []).map((c, i) => {
@@ -736,7 +740,7 @@ export default function MapaExpedicao() {
                                                     <Printer className="h-3 w-3" /> ainda não impressa
                                                 </span>
                                             )}
-                                            <Link to="/admin/embarques" className="text-xs text-primary font-semibold hover:underline py-1.5">
+                                            <Link to="/admin/embarques" onClick={confirmarSaida} className="text-xs text-primary font-semibold hover:underline py-1.5">
                                                 abrir carga
                                             </Link>
                                         </div>
