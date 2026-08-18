@@ -7,6 +7,7 @@
 //     sem isso a SEFAZ rejeita (idDest incompatível com a UF de destino). Ref.: nota real 84501 do CA (SC→PR, CFOP 6101).
 const prisma = require('../config/database');
 const focusNfe = require('./focusNfeService');
+const { gerarParcelasData, ehPedidoAPrazo } = require('./pedidoCalculos');
 
 const EMITENTE = {
     cnpj_emitente: '08766459000102',
@@ -52,6 +53,68 @@ function formaPagamento(pedido) {
     if (tipo === 'CARTAO') return '03';
     if (cond.includes('boleto')) return '15';
     return '01'; // dinheiro/prazo — igual à maioria das notas do CA
+}
+
+// Data de vencimento → 'YYYY-MM-DD' no fuso de Brasília (sem cair no dia anterior).
+// Aceita Date (parcelas geradas) ou string (caBoletos já vêm 'YYYY-MM-DD' do CA).
+function fmtDataVenc(v) {
+    if (!v) return null;
+    if (v instanceof Date) return v.toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+    const s = String(v);
+    const m = s.match(/^\d{4}-\d{2}-\d{2}/);
+    if (m) return m[0];
+    return new Date(s).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+}
+
+/**
+ * Quadro FATURA/DUPLICATA das notas a prazo/boleto (campos-raiz `cobr`/`fat`/`dup` da Focus).
+ * Fonte das parcelas, nesta ordem: (1) boletos reais do CA em `pedido.caBoletos`;
+ * (2) senão, geradas pelas condições do pedido (`gerarParcelasData`).
+ * A última duplicata absorve o arredondamento para que a soma das `dup` bata EXATO
+ * com `valor_total` e com `valor_liquido_fatura` (senão a SEFAZ rejeita — erro 851).
+ * Devolve {} quando não há parcela válida (nota sai sem o quadro, como à vista).
+ */
+function montarCobranca(pedido, total) {
+    let parcelas;
+    if (Array.isArray(pedido.caBoletos) && pedido.caBoletos.length > 0) {
+        parcelas = pedido.caBoletos
+            .slice()
+            .sort((a, b) => (a.numeroParcela || 0) - (b.numeroParcela || 0))
+            .map(b => ({ vencimento: fmtDataVenc(b.vencimento), valor: round2(Number(b.valor) || 0) }));
+    } else {
+        parcelas = gerarParcelasData({
+            valorTotal: total,
+            qtdParcelas: pedido.qtdParcelas,
+            intervaloDias: pedido.intervaloDias,
+            primeiroVencimento: pedido.primeiroVencimento,
+            dataVenda: pedido.dataVenda,
+        }).map(p => ({ vencimento: fmtDataVenc(p.dataVencimento), valor: round2(Number(p.valor) || 0) }));
+    }
+    if (!parcelas.length) return {};
+
+    // Garante soma(duplicatas) === total: a última parcela absorve qualquer diferença
+    // (arredondamento do rateio, ou caBoletos que não fecham o total exato).
+    const soma = round2(parcelas.reduce((s, p) => s + p.valor, 0));
+    const dif = round2(total - soma);
+    if (dif !== 0) {
+        const ult = parcelas[parcelas.length - 1];
+        ult.valor = round2(ult.valor + dif);
+    }
+
+    const duplicatas = parcelas.map((p, i) => ({
+        numero: String(i + 1).padStart(3, '0'), // sequencial e consecutivo (001, 002, ...)
+        data_vencimento: p.vencimento,
+        valor: p.valor,
+    }));
+    const valorLiquido = round2(duplicatas.reduce((s, d) => s + d.valor, 0));
+
+    return {
+        numero_fatura: String(pedido.numero || pedido.id),
+        valor_original_fatura: valorLiquido, // sem desconto → original == líquido == total
+        valor_desconto_fatura: 0,
+        valor_liquido_fatura: valorLiquido,
+        duplicatas,
+    };
 }
 
 /**
@@ -154,6 +217,18 @@ async function montarNotaVenda(pedido) {
         linhas.push(`PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ ${fmtBR(credTotal)}, CORRESPONDENTE A ALIQUOTA DE ${String(cfg.aliquotaCreditoSimples).replace('.', ',')}%, NOS TERMOS DO ART. 23 DA LC 123/2006.`);
     }
 
+    // Cobrança (quadro FATURA/DUPLICATA) — só nas notas a prazo/boleto.
+    // À vista (1 parcela, sem intervalo, sem boleto) → aPrazo=false → nota SEM esses
+    // campos, idêntica ao comportamento de hoje. `indicador_pagamento: 1` (a prazo)
+    // vai na forma de pagamento das notas a prazo; à vista não o inclui.
+    const aPrazo = ehPedidoAPrazo(pedido);
+    const cobranca = aPrazo ? montarCobranca(pedido, total) : {};
+    const formaPag = {
+        forma_pagamento: formaPagamento(pedido),
+        valor_pagamento: total,
+        ...(aPrazo ? { indicador_pagamento: 1 } : {}),
+    };
+
     const agora = agoraBrasilia();
     return {
         natureza_operacao: ehCPF ? 'Venda a Nao Contribuinte' : 'Venda de Mercadorias / Produtos',
@@ -182,7 +257,8 @@ async function montarNotaVenda(pedido) {
         valor_outras_despesas: 0,
         valor_produtos: total,
         valor_total: total,
-        formas_pagamento: [{ forma_pagamento: formaPagamento(pedido), valor_pagamento: total }],
+        formas_pagamento: [formaPag],
+        ...cobranca, // numero_fatura/valor_*_fatura/duplicatas — só quando a prazo/boleto
         informacoes_adicionais_contribuinte: linhas.filter(Boolean).join('#'),
         items,
     };

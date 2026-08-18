@@ -53,10 +53,10 @@ index df4f2b7..1103836 100644
          .font('normal')
          .fillColor('black')
 diff --git a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-emitente.js b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-emitente.js
-index 8e40dcd..2fa8f28 100644
+index 8e40dcd..7d33823 100644
 --- a/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-emitente.js
 +++ b/node_modules/@alexssmusica/node-pdf-nfe/lib/application/helpers/generate-pdf/nfe/get-dados-emitente.js
-@@ -44,23 +44,12 @@ async function getDadosEmitente({ y, doc, ajusteX, ajusteY, margemDireita, marge
+@@ -44,32 +44,21 @@ async function getDadosEmitente({ y, doc, ajusteX, ajusteY, margemDireita, marge
          margemEsquerda,
          margemTopo
      });
@@ -74,16 +74,30 @@ index 8e40dcd..2fa8f28 100644
 -        margemTopo
 -    });
 -    const identificacaoDoEmitenteY = pathLogo !== undefined ? y + 33.7 : y + 39.7;
+-    const identificacaoDoEmitenteX = pathLogo !== undefined ? 67 : 1.5;
+-    const identificacaoDoEmitenteLargura = pathLogo !== undefined ? 172 : 237;
+-    const identificacaoDoEmitenteFonte = pathLogo !== undefined ? 0 : 1.5;
 +    // PATCH CA-Hardt: sem o título "IDENTIFICAÇÃO DO EMITENTE" (visual limpo, como o CA faz);
 +    // bloco começa mais alto, com nome/endereço maiores e mais respiro entre linhas.
 +    const identificacaoDoEmitenteY = pathLogo !== undefined ? y + 27 : y + 33;
-     const identificacaoDoEmitenteX = pathLogo !== undefined ? 67 : 1.5;
-     const identificacaoDoEmitenteLargura = pathLogo !== undefined ? 172 : 237;
--    const identificacaoDoEmitenteFonte = pathLogo !== undefined ? 0 : 1.5;
++    const identificacaoDoEmitenteX = pathLogo !== undefined ? 74 : 1.5;
++    const identificacaoDoEmitenteLargura = pathLogo !== undefined ? 165 : 237;
 +    const identificacaoDoEmitenteFonte = 1.5;
      if (pathLogo !== undefined) {
          if (folha === 0) {
-             doc.image(pathLogo, margemEsquerda + ajusteX + 4.5, margemTopo + ajusteY + default_1.DEFAULT_NFE.ajusteYDoLogotipo + 78, {
+-            doc.image(pathLogo, margemEsquerda + ajusteX + 4.5, margemTopo + ajusteY + default_1.DEFAULT_NFE.ajusteYDoLogotipo + 78, {
+-                fit: [60, 60]
++            doc.image(pathLogo, margemEsquerda + ajusteX + 4.5, margemTopo + ajusteY + default_1.DEFAULT_NFE.ajusteYDoLogotipo + 72, {
++                fit: [66, 66]
+             });
+         }
+         else {
+             doc.image(pathLogo, margemEsquerda + ajusteX + 4.5, margemTopo + ajusteY + default_1.DEFAULT_NFE.ajusteYDoLogotipo + 33, {
+-                fit: [60, 60]
++                fit: [66, 66]
+             });
+         }
+     }
 @@ -90,7 +79,7 @@ async function getDadosEmitente({ y, doc, ajusteX, ajusteY, margemDireita, marge
          doc,
          value: `${emit.enderEmit.xLgr}, ${emit.enderEmit.nro} ${emit.enderEmit.xCpl ?? ''}`,

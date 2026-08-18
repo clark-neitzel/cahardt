@@ -13,12 +13,9 @@ const path = require('path');
 const prisma = require('../config/database');
 const contaAzulService = require('./contaAzulService');
 const { gerarReciboEspecial, gerarReciboAmostra } = require('./reciboEspecialPdf');
-const { ehPedidoAPrazo } = require('./pedidoCalculos');
 
-// Fonte ÚNICA de "a prazo/boleto" (pedidoCalculos.ehPedidoAPrazo). A mesma regra
-// monta o quadro FATURA/DUPLICATA na emissão da NF-e — a lógica tem que casar.
-// (Antes considerava só BOLETO_BANCARIO/'boleto'; agora também parcelado/intervalo/'prazo'.)
-const A_PRAZO = ehPedidoAPrazo;
+const A_PRAZO = (pedido) => (pedido.tipoPagamento === 'BOLETO_BANCARIO')
+    || /boleto/i.test(pedido.nomeCondicaoPagamento || '');
 
 // Pasta de cache dos PDFs (boletos do CA e DANFEs). Fica em uploads/, mas o
 // acesso público a ela é BLOQUEADO no index.js (são documentos de cliente).
