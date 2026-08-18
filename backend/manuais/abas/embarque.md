@@ -16,6 +16,7 @@ Painel de expedição logística. Aqui são criados os "embarques" (cargas), que
 
 - Ver todos os embarques criados (número, data, motorista, quantidade de pedidos)
 - Montar uma nova carga: escolher data de saída e motorista responsável
+- Abrir o **Mapa das entregas** (botão no topo): dividir os pedidos do dia entre as cargas vendo os pinos no mapa — ver o manual próprio da aba "Mapa das Entregas" (`/admin/embarques/mapa`)
 - Abrir o detalhe de uma carga para:
   - Ver os pedidos e amostras incluídos
   - Adicionar mais pedidos à carga (modal `AdicionarPedidosModal`)

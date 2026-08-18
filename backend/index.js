@@ -30,6 +30,7 @@ const veiculoRoutes = require('./routes/veiculos'); // Módulo de Veículos
 const diarioRoutes = require('./routes/diarios'); // Módulo do Diário/Ponto
 const formasPagamentoEntregaRoutes = require('./routes/formasPagamentoEntrega'); // Módulo Pagamento Embarque
 const embarqueRoutes = require('./routes/embarques'); // Módulo de Formação de Carga/Expedição
+const embarquesMapaRoutes = require('./routes/embarquesMapa'); // Mapa de divisão de cargas (Expedição)
 const entregasRoutes = require('./routes/entregas'); // Módulo Mobile do Entregador
 const despesasRoutes = require('./routes/despesas'); // Módulo de Despesas
 const caixaRoutes = require('./routes/caixa'); // Módulo Caixa Diário
@@ -164,6 +165,7 @@ app.use('/api/atendimentos', authMiddleware, atendimentoRoutes); // CRM: Atendim
 app.use('/api/veiculos', authMiddleware, veiculoRoutes); // Módulo de Veículos
 app.use('/api/diarios', authMiddleware, diarioRoutes); // Relatório Diário / Ponto
 app.use('/api/pagamentos-entrega', formasPagamentoEntregaRoutes); // Pagamentos de Entrega
+app.use('/api/embarques', embarquesMapaRoutes); // Mapa de divisão de cargas — ANTES do router clássico (senão /mapa cai no GET /:id)
 app.use('/api/embarques', embarqueRoutes); // Montagem Cargas e Despacho Logístico
 app.use('/api/entregas', entregasRoutes); // App Motorista
 app.use('/api/despesas', despesasRoutes); // Módulo de Despesas

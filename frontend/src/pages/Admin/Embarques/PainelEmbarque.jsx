@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Truck, FileText, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Plus, Search, Truck, FileText, X, Map as MapIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
 import vendedorService from '../../../services/vendedorService';
@@ -67,13 +68,22 @@ const PainelEmbarque = () => {
                         <p className="text-xs text-gray-500 hidden sm:block">Gestão logística de romaneios, veículos e motoristas</p>
                     </div>
                 </div>
-                <button
-                    onClick={() => setIsNovaCargaOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 rounded-xl shadow-sm text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 transition-colors w-full sm:w-auto justify-center"
-                >
-                    <Plus className="h-4 w-4" />
-                    Montar Nova Carga
-                </button>
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <Link
+                        to="/admin/embarques/mapa"
+                        className="flex items-center gap-2 px-4 py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm w-full sm:w-auto justify-center min-h-[44px]"
+                    >
+                        <MapIcon className="h-4 w-4" />
+                        Mapa das entregas
+                    </Link>
+                    <button
+                        onClick={() => setIsNovaCargaOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl shadow-sm text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 transition-colors w-full sm:w-auto justify-center min-h-[44px]"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Montar Nova Carga
+                    </button>
+                </div>
             </div>
 
             {/* Desktop: Tabela */}

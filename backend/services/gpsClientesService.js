@@ -723,5 +723,6 @@ module.exports = {
     setBalcao, validarPedidoEnviar, seloEntrega,
     reavaliarCliente, saude, divergenciasDoVendedor,
     enderecoVsGps, enderecoVsGpsLote, geocodeEnderecoDoCliente,
+    geocodeEndereco, // reusado pelo mapa de divisão de cargas (posição aproximada por endereço)
     aplicarPendenciasLegadas
 };

@@ -137,31 +137,38 @@ router.get('/amostras-disponiveis', verificarAuth, checkAcessoEmbarque, async (r
 // ==========================================
 // 2b. LISTA DE PEDIDOS "FATURADOS" LIVRES
 // ==========================================
+// Pedidos que estão no Kanban de Delivery são entregues por outro fluxo
+// e não devem aparecer no agrupamento de embarque.
+const idsPedidosNoDelivery = async () => {
+    const noDelivery = await prisma.deliveryStatus.findMany({ select: { pedidoId: true } });
+    return noDelivery.map(d => d.pedidoId);
+};
+
+// Regra de Ouro: FATURADOS, Especiais prontos (ENVIAR) ou Bonificações prontas (ENVIAR), sem Embarque.
+// Pedido cancelado NUNCA pode aparecer aqui — cancelar não mexe em situacaoCA/statusEnvio,
+// então sem este filtro ele continuava listado como se estivesse livre.
+// devolucaoFinalizada/EXCLUIDO são cinto de segurança: devolução só existe depois da entrega
+// (pedido preso na carga), então na prática nem chegariam nesta consulta.
+// Helper compartilhado com o mapa de divisão de cargas (routes/embarquesMapa.js).
+const wherePedidosLivresParaEmbarque = (idsNoDelivery = []) => ({
+    embarqueId: null,
+    cancelado: false,
+    devolucaoFinalizada: false,
+    statusEnvio: { not: 'EXCLUIDO' },
+    ...(idsNoDelivery.length > 0 ? { id: { notIn: idsNoDelivery } } : {}),
+    OR: [
+        { situacaoCA: 'FATURADO' },
+        { especial: true, statusEnvio: 'ENVIAR' },
+        { bonificacao: true, statusEnvio: 'ENVIAR' }
+    ]
+});
+
 router.get('/pedidos-disponiveis', verificarAuth, checkAcessoEmbarque, async (req, res) => {
     try {
-        // Pedidos que estão no Kanban de Delivery são entregues por outro fluxo
-        // e não devem aparecer no agrupamento de embarque.
-        const noDelivery = await prisma.deliveryStatus.findMany({ select: { pedidoId: true } });
-        const idsNoDelivery = noDelivery.map(d => d.pedidoId);
+        const idsNoDelivery = await idsPedidosNoDelivery();
 
-        // Regra de Ouro: FATURADOS, Especiais prontos (ENVIAR) ou Bonificações prontas (ENVIAR), sem Embarque.
-        // Pedido cancelado NUNCA pode aparecer aqui — cancelar não mexe em situacaoCA/statusEnvio,
-        // então sem este filtro ele continuava listado como se estivesse livre.
-        // devolucaoFinalizada/EXCLUIDO são cinto de segurança: devolução só existe depois da entrega
-        // (pedido preso na carga), então na prática nem chegariam nesta consulta.
         const pedidosLivres = await prisma.pedido.findMany({
-            where: {
-                embarqueId: null,
-                cancelado: false,
-                devolucaoFinalizada: false,
-                statusEnvio: { not: 'EXCLUIDO' },
-                ...(idsNoDelivery.length > 0 ? { id: { notIn: idsNoDelivery } } : {}),
-                OR: [
-                    { situacaoCA: 'FATURADO' },
-                    { especial: true, statusEnvio: 'ENVIAR' },
-                    { bonificacao: true, statusEnvio: 'ENVIAR' }
-                ]
-            },
+            where: wherePedidosLivresParaEmbarque(idsNoDelivery),
             orderBy: { dataVenda: 'asc' }, // Prioriza as entregas mais velhas
             include: {
                 cliente: { select: { UUID: true, NomeFantasia: true, Nome: true, End_Cidade: true } },
@@ -305,7 +312,10 @@ router.patch('/:id', verificarAuth, async (req, res) => {
 // adicionar pedidos depois. Devolve a lista de bloqueados com o motivo em texto.
 // O caso que acontece de verdade é o pedido CANCELADO; devolvido/excluído ficam
 // aqui só como rede de segurança (devolução só nasce de pedido já preso na carga).
-async function bloqueadosParaEmbarque(pedidosIds) {
+// opts.cargasPermitidas (Set de embarqueIds): usado pelo aplicar-divisao do mapa —
+// pedido que já está numa das cargas DO PRÓPRIO ARRANJO não conta como "em outra carga".
+async function bloqueadosParaEmbarque(pedidosIds, opts = {}) {
+    const cargasPermitidas = opts.cargasPermitidas instanceof Set ? opts.cargasPermitidas : null;
     const candidatos = await prisma.pedido.findMany({
         where: { id: { in: pedidosIds } },
         select: {
@@ -320,7 +330,7 @@ async function bloqueadosParaEmbarque(pedidosIds) {
         if (p.cancelado) { bloqueados.push({ pedido: etiqueta, motivo: 'pedido cancelado' }); continue; }
         if (p.devolucaoFinalizada) { bloqueados.push({ pedido: etiqueta, motivo: 'pedido já devolvido' }); continue; }
         if (p.statusEnvio === 'EXCLUIDO') { bloqueados.push({ pedido: etiqueta, motivo: 'pedido excluído' }); continue; }
-        if (p.embarqueId) { bloqueados.push({ pedido: etiqueta, motivo: 'já está em outra carga' }); continue; }
+        if (p.embarqueId && !(cargasPermitidas && cargasPermitidas.has(p.embarqueId))) { bloqueados.push({ pedido: etiqueta, motivo: 'já está em outra carga' }); continue; }
         if (p.situacaoCA === 'FATURADO') continue;                     // OK: faturado
         if (p.especial && p.statusEnvio === 'ENVIAR') continue;        // OK: especial pronto
         if (p.bonificacao && p.statusEnvio === 'ENVIAR') continue;     // OK: bonificação pronta
@@ -608,3 +618,12 @@ router.post('/:id/impressao', verificarAuth, checkAcessoEmbarque, async (req, re
 });
 
 module.exports = router;
+
+// Helpers compartilhados com o mapa de divisão de cargas (routes/embarquesMapa.js).
+// Exportados como propriedades do router para não duplicar regra de negócio.
+module.exports.checkAcessoEmbarque = checkAcessoEmbarque;
+module.exports.idsPedidosNoDelivery = idsPedidosNoDelivery;
+module.exports.wherePedidosLivresParaEmbarque = wherePedidosLivresParaEmbarque;
+module.exports.bloqueadosParaEmbarque = bloqueadosParaEmbarque;
+module.exports.registrarVersaoEmbarque = registrarVersaoEmbarque;
+module.exports.registrarLogEmbarque = registrarLogEmbarque;

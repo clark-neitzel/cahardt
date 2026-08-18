@@ -53,6 +53,7 @@ const ABAS = [
     { slug: 'saude-pontos-gps',   nome: 'Saúde dos Pontos GPS',         rota: '/clientes/saude-gps',                 perm: 'clientes' },
     // ── Logística ───────────────────────────────
     { slug: 'embarque',           nome: 'Embarque',                     rota: '/admin/embarques',                    perm: 'Pode_Acessar_Embarque' },
+    { slug: 'embarques-mapa',     nome: 'Mapa das Entregas',            rota: '/admin/embarques/mapa',               perm: 'Pode_Acessar_Embarque' },
     { slug: 'entregas',           nome: 'Entregas',                     rota: '/entregas',                           perm: ['Pode_Ver_Todas_Entregas', 'Pode_Executar_Entregas'] },
     { slug: 'minhas-entregas',    nome: 'Minhas Entregas (Motorista)',   rota: '/minhas-entregas',                    perm: 'Pode_Executar_Entregas' },
     // ── Financeiro ──────────────────────────────

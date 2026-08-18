@@ -33,6 +33,7 @@ const RotaLeads = lazyComRetry(() => import('./pages/Rota/RotaLeads'));
 const ListaLeads = lazyComRetry(() => import('./pages/Leads/ListaLeads'));
 import Login from './pages/Login/Login';
 const PainelEmbarque = lazyComRetry(() => import('./pages/Admin/Embarques/PainelEmbarque'));
+const MapaExpedicao = lazyComRetry(() => import('./pages/Admin/Embarques/MapaExpedicao'));
 const AuditoriaEntregas = lazyComRetry(() => import('./pages/Admin/Embarques/AuditoriaEntregas'));
 const ListaEntregasGerencial = lazyComRetry(() => import('./pages/Admin/Embarques/ListaEntregasGerencial'));
 const FormasPagamentoEntrega = lazyComRetry(() => import('./pages/Configuracoes/FormasPagamentoEntrega'));
@@ -776,6 +777,7 @@ function App() {
 
               {/* Outros Admins */}
               <Route path="/admin/embarques" element={<PrivateRoute tab="Pode_Acessar_Embarque"><PainelEmbarque /></PrivateRoute>} />
+              <Route path="/admin/embarques/mapa" element={<PrivateRoute tab="Pode_Acessar_Embarque"><MapaExpedicao /></PrivateRoute>} />
               <Route path="/admin/auditoria-entregas" element={<PrivateRoute tab="Pode_Ver_Todas_Entregas"><AuditoriaEntregas /></PrivateRoute>} />
               <Route path="/admin/sync" element={<PrivateRoute tab="sync"><PainelSync /></PrivateRoute>} />
               <Route path="/admin/vendedores" element={<PrivateRoute tab="vendedores"><ListaVendedores /></PrivateRoute>} />

@@ -2,47 +2,21 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const verificarAuth = require('../middlewares/authMiddleware');
-const axios = require('axios');
 
-// ── OSRM URL ──────────────────────────────────────────────────────────────────
-// Se o serviço OSRM não estiver configurado, usa o servidor demo público (sem SLA)
-const OSRM_URL = process.env.OSRM_URL || 'http://router.project-osrm.org';
+// ── Motor OSRM compartilhado (URLs, lock global, GPS, base da empresa) ────────
+// Extraído para services/osrmService.js em 08/2026 — o lock agora é compartilhado
+// com a divisão de cargas da expedição (um uso do OSRM por vez; o outro leva 423).
+const osrm = require('../services/osrmService');
+const { parsePontoGPS } = osrm;
 
-// ── Lock de Roteirização (apenas 1 por vez) ───────────────────────────────────
-// Estrutura: { vendedorId, iniciadoEm }  |  null (livre)
-const LOCK_TIMEOUT_MS = 30 * 1000; // 30 segundos de proteção contra travamento
-
-let lockRoteirizador = null;
-
-const getLock = () => {
-    if (!lockRoteirizador) return null;
-    // Libera automaticamente se expirou
-    if (Date.now() - lockRoteirizador.iniciadoEm > LOCK_TIMEOUT_MS) {
-        lockRoteirizador = null;
-        return null;
-    }
-    return lockRoteirizador;
-};
-
-const setLock = (vendedorId) => {
-    lockRoteirizador = { vendedorId, iniciadoEm: Date.now() };
-};
-
-const releaseLock = () => {
-    lockRoteirizador = null;
-};
+// Coordenada da base no formato OSRM "lng,lat" (mesmo valor hardcoded de antes,
+// agora com override por env BASE_EMPRESA_GPS).
+const BASE_COORD = `${osrm.BASE_EMPRESA.lng},${osrm.BASE_EMPRESA.lat}`;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const getPerms = async (userId) => {
     const v = await prisma.vendedor.findUnique({ where: { id: userId }, select: { permissoes: true } });
     return typeof v?.permissoes === 'string' ? JSON.parse(v.permissoes) : (v?.permissoes || {});
-};
-
-const parsePontoGPS = (pontoGPS) => {
-    if (!pontoGPS || typeof pontoGPS !== 'string') return null;
-    const parts = pontoGPS.split(',').map(s => parseFloat(s.trim()));
-    if (parts.length !== 2 || isNaN(parts[0]) || isNaN(parts[1])) return null;
-    return { lat: parts[0], lng: parts[1] };
 };
 
 const formatHorario = (date) => {
@@ -51,29 +25,39 @@ const formatHorario = (date) => {
 
 // ── POST /api/roteirizar ──────────────────────────────────────────────────────
 router.post('/', verificarAuth, async (req, res) => {
-    // 1. Verificar lock
-    const lockAtual = getLock();
+    // 1. Verificar lock (compartilhado com a divisão de cargas da expedição)
+    const lockAtual = osrm.getLock();
     if (lockAtual) {
         return res.status(423).json({
             error: 'Roteirização em andamento por outro usuário. Aguarde.',
-            ocupadoPor: lockAtual.vendedorId,
+            ocupadoPor: lockAtual.ownerId,
             iniciadoEm: new Date(lockAtual.iniciadoEm).toISOString()
         });
     }
 
     const { lat, lng, horaSaida, tempoParadaMin = 10, vendedorId: vendedorIdParam } = req.body;
 
-    if (!lat || !lng) {
+    if (!osrm.coordenadaValida({ lat, lng })) {
         return res.status(400).json({ error: 'Coordenadas GPS do motorista são obrigatórias.' });
     }
+    const origemLat = Number(lat);
+    const origemLng = Number(lng);
 
     // 2. Checar permissão: admin pode escolher motorista, vendedor só vê o próprio
     const perms = await getPerms(req.user.id);
     const isAdmin = perms.admin || perms.Pode_Ver_Todos_Clientes;
     const targetVendedorId = isAdmin && vendedorIdParam ? vendedorIdParam : req.user.id;
 
-    // 3. Ativar lock
-    setLock(targetVendedorId);
+    // 3. Ativar lock (se alguém pegou entre a checagem acima e aqui, devolve 423 também)
+    const lockToken = osrm.adquirirLock(targetVendedorId);
+    if (!lockToken) {
+        const lockCorrida = osrm.getLock();
+        return res.status(423).json({
+            error: 'Roteirização em andamento por outro usuário. Aguarde.',
+            ocupadoPor: lockCorrida?.ownerId || null,
+            iniciadoEm: lockCorrida ? new Date(lockCorrida.iniciadoEm).toISOString() : null
+        });
+    }
 
     try {
         // 4. Buscar entregas pendentes do motorista — igual ao GET /api/entregas/pendentes
@@ -101,7 +85,7 @@ router.post('/', verificarAuth, async (req, res) => {
         });
 
         if (pedidos.length === 0) {
-            releaseLock();
+            osrm.liberarLock(lockToken);
             return res.json({ sequencia: [], semGPS: [], resumo: { totalParadas: 0, totalSemGPS: 0, duracaoTotalMin: 0, distanciaTotalKm: '0.0', motorista: '' } });
         }
 
@@ -152,7 +136,7 @@ router.post('/', verificarAuth, async (req, res) => {
         const comGPS = [...comPrioridade, ...semPrioridade];
 
         if (comGPS.length === 0) {
-            releaseLock();
+            osrm.liberarLock(lockToken);
             return res.json({
                 sequencia: [],
                 semGPS: semGPS.map(p => ({
@@ -187,16 +171,14 @@ router.post('/', verificarAuth, async (req, res) => {
                 const restCoords = [
                     `${ultimaPrioridade.gps.lng},${ultimaPrioridade.gps.lat}`,
                     ...semPrioridade.map(({ gps }) => `${gps.lng},${gps.lat}`),
-                    `-48.91079499767414,-26.189979385982618`
+                    BASE_COORD
                 ].join(';');
 
-                const tripUrl = `${OSRM_URL}/trip/v1/driving/${restCoords}`;
-                console.log(`[OSRM] Trip API para restante (${semPrioridade.length} paradas): ${tripUrl}`);
+                console.log(`[OSRM] Trip API para restante (${semPrioridade.length} paradas): ${osrm.tripUrl(restCoords)}`);
 
                 let tripData;
                 try {
-                    const tripRes = await axios.get(tripUrl, { timeout: 10000 });
-                    tripData = tripRes.data;
+                    tripData = await osrm.trip(restCoords);
                 } catch (err) {
                     console.error('[OSRM] Erro Trip API (restante):', err.message);
                     // Fallback: concatena sem otimização
@@ -235,30 +217,28 @@ router.post('/', verificarAuth, async (req, res) => {
         // Se listaFinalOrdenada ainda é null, usar OSRM Trip para tudo (sem prioridades)
         if (!listaFinalOrdenada) {
             const coordsString = [
-                `${lng},${lat}`,
+                `${origemLng},${origemLat}`,
                 ...comGPS.map(({ gps }) => `${gps.lng},${gps.lat}`),
-                `-48.91079499767414,-26.189979385982618`
+                BASE_COORD
             ].join(';');
 
             if (comGPS.length === 1) {
                 // Rota direta
                 listaFinalOrdenada = comGPS;
             } else {
-                const tripUrl = `${OSRM_URL}/trip/v1/driving/${coordsString}`;
-                console.log(`[OSRM] Trip API para otimizar todas (${comGPS.length} paradas): ${tripUrl}`);
+                console.log(`[OSRM] Trip API para otimizar todas (${comGPS.length} paradas): ${osrm.tripUrl(coordsString)}`);
 
                 let tripData;
                 try {
-                    const tripRes = await axios.get(tripUrl, { timeout: 10000 });
-                    tripData = tripRes.data;
+                    tripData = await osrm.trip(coordsString);
                 } catch (err) {
                     console.error('[OSRM] Erro Trip API:', err.message);
-                    releaseLock();
+                    osrm.liberarLock(lockToken);
                     return res.status(502).json({ error: 'Erro Trip API', detalhe: err.message });
                 }
 
                 if (tripData.code !== 'Ok' || !tripData.waypoints) {
-                    releaseLock();
+                    osrm.liberarLock(lockToken);
                     return res.status(502).json({ error: 'OSRM retornou Trip inválida.' });
                 }
 
@@ -286,26 +266,24 @@ router.post('/', verificarAuth, async (req, res) => {
 
         // 7. Calcular ETAs com Route API (rota exata na ordem final)
         const orderedCoords = [
-            `${lng},${lat}`,
+            `${origemLng},${origemLat}`,
             ...listaFinalOrdenada.map(({ gps }) => `${gps.lng},${gps.lat}`),
-            `-48.91079499767414,-26.189979385982618`
+            BASE_COORD
         ].join(';');
 
-        const routeUrl = `${OSRM_URL}/route/v1/driving/${orderedCoords}?overview=false&annotations=duration,distance`;
-        console.log(`[OSRM] Route API para ETAs finais (${listaFinalOrdenada.length} paradas): ${routeUrl}`);
+        console.log(`[OSRM] Route API para ETAs finais (${listaFinalOrdenada.length} paradas): ${osrm.routeUrl(orderedCoords)}`);
 
         let routeData;
         try {
-            const routeRes = await axios.get(routeUrl, { timeout: 10000 });
-            routeData = routeRes.data;
+            routeData = await osrm.route(orderedCoords);
         } catch (err) {
             console.error('[OSRM] Erro Route API:', err.message);
-            releaseLock();
+            osrm.liberarLock(lockToken);
             return res.status(502).json({ error: 'Erro Route API', detalhe: err.message });
         }
 
         if (routeData.code !== 'Ok' || !routeData.routes || routeData.routes.length === 0) {
-            releaseLock();
+            osrm.liberarLock(lockToken);
             return res.status(502).json({ error: 'OSRM não encontrou rota.' });
         }
 
@@ -374,7 +352,7 @@ router.post('/', verificarAuth, async (req, res) => {
             distanciaTotalKm: distanciaTotalRota,
             motorista: responsavelNome
         };
-        const config_final = { horaSaida, tempoParadaMin, lat, lng };
+        const config_final = { horaSaida, tempoParadaMin, lat: origemLat, lng: origemLng };
 
         // 8. Salvar no banco (Sobrescrevendo a anterior deste vendedorId)
         await prisma.roteirizacao.upsert({
@@ -394,7 +372,7 @@ router.post('/', verificarAuth, async (req, res) => {
             }
         });
 
-        releaseLock();
+        osrm.liberarLock(lockToken);
         return res.json({
             sequencia: seq_final,
             semGPS: sem_final,
@@ -402,7 +380,7 @@ router.post('/', verificarAuth, async (req, res) => {
         });
 
     } catch (error) {
-        releaseLock();
+        osrm.liberarLock(lockToken);
         console.error('[Roteirizacao] Erro:', error);
         res.status(500).json({ error: 'Erro interno na roteirização.' });
     }
@@ -411,7 +389,7 @@ router.post('/', verificarAuth, async (req, res) => {
 // ── GET /api/roteirizar/status ─────────────────────────────────────────────────
 // Permite o cliente verificar se há roteirização em andamento
 router.get('/status', verificarAuth, (req, res) => {
-    const lock = getLock();
+    const lock = osrm.getLock();
     if (lock) {
         return res.json({ ocupado: true, iniciadoEm: new Date(lock.iniciadoEm).toISOString() });
     }
