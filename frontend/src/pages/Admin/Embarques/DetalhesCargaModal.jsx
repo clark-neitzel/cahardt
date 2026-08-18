@@ -358,7 +358,10 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                                         <tr key={p.id}>
                                                             <td className="nr">{numImp}</td>
                                                             <td>
-                                                                <div className="fn">{p.cliente?.NomeFantasia || p.cliente?.Nome || '—'}</div>
+                                                                <div className="fn">
+                                                                    {p.cliente?.NomeFantasia || p.cliente?.Nome || '—'}
+                                                                    {p.cliente?.End_Cidade ? ` — ${p.cliente.End_Cidade}` : ''}
+                                                                </div>
                                                                 {p.cliente?.NomeFantasia && p.cliente?.Nome && p.cliente.NomeFantasia !== p.cliente.Nome && (
                                                                     <div className="rz">{p.cliente.Nome}</div>
                                                                 )}
