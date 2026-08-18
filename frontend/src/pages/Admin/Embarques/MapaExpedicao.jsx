@@ -385,6 +385,19 @@ export default function MapaExpedicao() {
                     { duration: 9000 }
                 );
                 await carregar();
+            } else if (Array.isArray(e.response?.data?.bloqueados) && e.response.data.bloqueados.length) {
+                // 400 com a lista do que travou: [{ pedido: '#743', motivo }] (o backend
+                // pode mandar também o cliente; senão, buscamos no que a tela já tem).
+                const linhas = e.response.data.bloqueados.map(b => {
+                    const etiq = b?.pedido || b?.etiqueta || String(b);
+                    const cliente = b?.cliente || b?.clienteNome
+                        || todas.find(t => t.etiqueta === etiq)?.clienteNome;
+                    return `${etiq}${cliente ? ` ${cliente}` : ''}${b?.motivo ? ` (${b.motivo})` : ''}`;
+                });
+                toast.error(
+                    `Nada foi aplicado. Não remanejados: ${linhas.join(' · ')}. Tire ${linhas.length === 1 ? 'esse pedido' : 'esses pedidos'} da mudança e confirme de novo.`,
+                    { duration: 12000 }
+                );
             } else {
                 toast.error(mensagemErro(e, 'Não deu para aplicar a divisão. Nada foi alterado — tente de novo.'));
             }
@@ -576,7 +589,11 @@ export default function MapaExpedicao() {
             </div>
 
             {/* Corpo: mapa + painel */}
-            <div className="relative flex flex-col md:flex-row bg-white border border-gray-200 rounded-b-xl shadow-sm overflow-hidden h-[calc(100dvh-170px)] min-h-[440px]">
+            {/* z-0 + isolate: prende os z-index internos do Leaflet (panes 200–700,
+                controles 1000) e dos overlays/legenda/bottom-sheet desta tela dentro
+                deste contêiner — para a página, tudo isso vale z-0. Sem isso eles
+                competem com o menu lateral (z-50) e forçariam gambiarra de z lá. */}
+            <div className="relative z-0 isolate flex flex-col md:flex-row bg-white border border-gray-200 rounded-b-xl shadow-sm overflow-hidden h-[calc(100dvh-170px)] min-h-[440px]">
                 {/* Mapa */}
                 <div className="relative flex-1 min-w-0">
                     <div ref={mapRef} className="absolute inset-0" />
@@ -831,18 +848,17 @@ export default function MapaExpedicao() {
                                             <div className="mt-2 pt-2 border-t border-gray-100">
                                                 <p className="text-xs text-gray-600 mb-1.5">Trocar todos os pedidos desta rota com</p>
                                                 <div className="flex gap-1.5">
-                                                    <select
+                                                    <SelectBusca
                                                         value={destinoId}
                                                         onChange={e => setTrocaDestino(prev => ({ ...prev, [c.id]: e.target.value }))}
-                                                        className="min-w-0 flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-gray-800 bg-white"
-                                                        aria-label={`Escolher rota para trocar com a carga ${c.numero}`}
+                                                        className="min-w-0 flex-1"
                                                     >
                                                         {outrasCargas.map(outra => (
                                                             <option key={outra.id} value={outra.id}>
                                                                 Carga #{outra.numero}{outra.responsavel?.nome ? ` · ${outra.responsavel.nome}` : ''}
                                                             </option>
                                                         ))}
-                                                    </select>
+                                                    </SelectBusca>
                                                     <button
                                                         type="button"
                                                         onClick={() => trocarRotas(c.id, destinoId)}

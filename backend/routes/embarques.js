@@ -144,7 +144,12 @@ const idsPedidosNoDelivery = async () => {
     return noDelivery.map(d => d.pedidoId);
 };
 
-// Regra de Ouro: FATURADOS, Especiais prontos (ENVIAR) ou Bonificações prontas (ENVIAR), sem Embarque.
+// Regra de Ouro: FATURADOS, Especiais APROVADOS ou Bonificações APROVADAS, sem Embarque.
+// Para especial/bonificação a aprovação é o equivalente do faturamento (regra do dono,
+// 08/2026): 'ENVIAR' = pendente de aprovação (é o estado que mostra "Pendente de
+// aprovação"/"Aprovar agora" na tela de Pedidos) e NÃO pode embarcar; a aprovação
+// (aprovarEspecial/aprovarBonificacao no pedidoController) grava statusEnvio 'RECEBIDO'
+// + situacaoCA 'FATURADO' — só então o pedido entra em carga.
 // Pedido cancelado NUNCA pode aparecer aqui — cancelar não mexe em situacaoCA/statusEnvio,
 // então sem este filtro ele continuava listado como se estivesse livre.
 // devolucaoFinalizada/EXCLUIDO são cinto de segurança: devolução só existe depois da entrega
@@ -158,8 +163,8 @@ const wherePedidosLivresParaEmbarque = (idsNoDelivery = []) => ({
     ...(idsNoDelivery.length > 0 ? { id: { notIn: idsNoDelivery } } : {}),
     OR: [
         { situacaoCA: 'FATURADO' },
-        { especial: true, statusEnvio: 'ENVIAR' },
-        { bonificacao: true, statusEnvio: 'ENVIAR' }
+        { especial: true, statusEnvio: 'RECEBIDO' },
+        { bonificacao: true, statusEnvio: 'RECEBIDO' }
     ]
 });
 
@@ -320,21 +325,27 @@ async function bloqueadosParaEmbarque(pedidosIds, opts = {}) {
         where: { id: { in: pedidosIds } },
         select: {
             id: true, numero: true, embarqueId: true, situacaoCA: true, statusEnvio: true,
-            especial: true, bonificacao: true, cancelado: true, devolucaoFinalizada: true
+            especial: true, bonificacao: true, cancelado: true, devolucaoFinalizada: true,
+            cliente: { select: { NomeFantasia: true, Nome: true } }
         }
     });
 
     const bloqueados = [];
     for (const p of candidatos) {
         const etiqueta = `${p.bonificacao ? 'BN#' : p.especial ? 'ZZ#' : '#'}${p.numero || p.id.slice(0, 8)}`;
-        if (p.cancelado) { bloqueados.push({ pedido: etiqueta, motivo: 'pedido cancelado' }); continue; }
-        if (p.devolucaoFinalizada) { bloqueados.push({ pedido: etiqueta, motivo: 'pedido já devolvido' }); continue; }
-        if (p.statusEnvio === 'EXCLUIDO') { bloqueados.push({ pedido: etiqueta, motivo: 'pedido excluído' }); continue; }
-        if (p.embarqueId && !(cargasPermitidas && cargasPermitidas.has(p.embarqueId))) { bloqueados.push({ pedido: etiqueta, motivo: 'já está em outra carga' }); continue; }
+        const cliente = p.cliente?.NomeFantasia || p.cliente?.Nome || null;
+        const bloquear = (motivo) => bloqueados.push({ pedido: etiqueta, cliente, motivo });
+        if (p.cancelado) { bloquear('pedido cancelado'); continue; }
+        if (p.devolucaoFinalizada) { bloquear('pedido já devolvido'); continue; }
+        if (p.statusEnvio === 'EXCLUIDO') { bloquear('pedido excluído'); continue; }
+        if (p.embarqueId && !(cargasPermitidas && cargasPermitidas.has(p.embarqueId))) { bloquear('já está em outra carga'); continue; }
         if (p.situacaoCA === 'FATURADO') continue;                     // OK: faturado
-        if (p.especial && p.statusEnvio === 'ENVIAR') continue;        // OK: especial pronto
-        if (p.bonificacao && p.statusEnvio === 'ENVIAR') continue;     // OK: bonificação pronta
-        bloqueados.push({ pedido: etiqueta, motivo: 'não está faturado nem pronto para envio' });
+        if (p.especial && p.statusEnvio === 'RECEBIDO') continue;      // OK: especial aprovado
+        if (p.bonificacao && p.statusEnvio === 'RECEBIDO') continue;   // OK: bonificação aprovada
+        // Aprovação é o "faturamento" do especial/bonificação — pendente NÃO embarca.
+        if (p.especial && p.statusEnvio === 'ENVIAR') { bloquear('especial pendente de aprovação'); continue; }
+        if (p.bonificacao && p.statusEnvio === 'ENVIAR') { bloquear('bonificação pendente de aprovação'); continue; }
+        bloquear('não está faturado nem aprovado para envio');
     }
     return bloqueados;
 }

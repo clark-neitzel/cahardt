@@ -1,4 +1,4 @@
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import VisitorBar from './components/VisitorBar';
 import { BrowserRouter as Router, Routes, Route, Link, NavLink, Navigate, useLocation } from 'react-router-dom';
 // Telas carregadas sob demanda. Usar lazyComRetry (não o lazy do React): depois de
@@ -296,6 +296,24 @@ const Layout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [visitorBar, setVisitorBar] = useState(true);
   const [sidebarAberta, setSidebarAberta] = useState(false);
+  // Expandir por estado SÓ onde existe hover de verdade (mouse/trackpad). No iPad o
+  // toque dispara mouseenter mas o mouseleave pode nunca vir — o menu ficaria preso
+  // aberto empurrando o conteúdo; lá vale o :hover do CSS (o iOS limpa ao tocar fora).
+  const temHoverReal = useMemo(
+    () => typeof window !== 'undefined' && !!window.matchMedia?.('(hover: hover) and (pointer: fine)').matches,
+    []
+  );
+  const sidebarRef = useRef(null);
+  // Rede de segurança: qualquer toque/clique fora do menu fecha (cobre híbridos
+  // tipo iPad com trackpad que passam no matchMedia mas recebem toques).
+  useEffect(() => {
+    if (!sidebarAberta) return undefined;
+    const fecharFora = (e) => {
+      if (sidebarRef.current && !sidebarRef.current.contains(e.target)) setSidebarAberta(false);
+    };
+    document.addEventListener('pointerdown', fecharFora);
+    return () => document.removeEventListener('pointerdown', fecharFora);
+  }, [sidebarAberta]);
   const { user, logout, hasPermission, loading } = useAuth();
   const { updateAvailable } = useVersionCheck();
   const { favoritos, toggle: toggleFavorito, limite: limiteFavoritos } = useMenuFavoritos(user?.id);
@@ -417,10 +435,16 @@ const Layout = ({ children }) => {
       {/* ═══════════════════════════════════════════ */}
       {/* SIDEBAR — Desktop only                     */}
       {/* ═══════════════════════════════════════════ */}
+      {/* z-50, NUNCA mais que isso: os modais do app são fixed z-50 e vêm DEPOIS no
+          DOM — com o mesmo z eles cobrem o menu. Um z maior aqui corta a beirada
+          esquerda de todo modal e da barra de visitantes (bug real de 08/2026).
+          O mapa Leaflet não compete: a tela dele isola os z internos (MapaExpedicao,
+          contêiner com z-0 + isolate). */}
       <aside
-        onMouseEnter={() => setSidebarAberta(true)}
+        ref={sidebarRef}
+        onMouseEnter={() => { if (temHoverReal) setSidebarAberta(true); }}
         onMouseLeave={() => setSidebarAberta(false)}
-        className={`hidden md:flex group fixed left-0 top-0 h-screen ${sidebarAberta ? 'w-60' : 'w-16'} bg-house border-r border-black/20 flex-col z-[100] transition-[width] duration-200 overflow-visible shadow-sm`}
+        className={`hidden md:flex group fixed left-0 top-0 h-screen ${sidebarAberta ? 'w-60' : 'w-16 hover:w-60'} bg-house border-r border-black/20 flex-col z-50 transition-[width] duration-200 overflow-visible shadow-sm`}
       >
         {/* Logo */}
         <div className="flex items-center h-14 px-4 border-b border-white/10 shrink-0">

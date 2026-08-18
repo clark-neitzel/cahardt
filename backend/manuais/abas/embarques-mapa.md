@@ -8,7 +8,7 @@ permissao: Pode_Acessar_Embarque
 
 ## O que é
 
-Mapa da expedição para dividir as entregas do dia entre as cargas/veículos. Cada pedido faturado do dia aparece como um pino colorido no mapa — a cor diz em qual carga ele está. A expedição decide **quem leva o quê**; a **ordem** da rota continua sendo decidida pelo motorista, na tela dele (Minhas Entregas). A estrela ⭐ no mapa é a saída da empresa.
+Mapa da expedição para dividir as entregas do dia entre as cargas/veículos. Cada pedido faturado do dia — e também os **especiais (ZZ#) e bonificações (BN#) já aprovados**, livres ou dentro das cargas — aparece como um pino colorido no mapa; a cor diz em qual carga ele está. Especial/bonificação **pendente de aprovação** não aparece (não pode embarcar), e pedido cancelado/devolvido/excluído dentro de uma carga não conta como entrega. A expedição decide **quem leva o quê**; a **ordem** da rota continua sendo decidida pelo motorista, na tela dele (Minhas Entregas). A estrela ⭐ no mapa é a saída da empresa.
 
 Acesso: menu Embarque → botão **"Mapa das entregas"** no topo do Painel de Expedição, ou direto pela rota `/admin/embarques/mapa`. Mesma permissão do Embarque (`Pode_Acessar_Embarque`).
 
@@ -36,6 +36,8 @@ Acesso: menu Embarque → botão **"Mapa das entregas"** no topo do Painel de Ex
 
 1. Mover um pino (ou usar "Sugerir divisão") só muda a tela — aparece a faixa **"alterações não aplicadas"** com **Confirmar** e **Descartar**.
 2. **Confirmar** grava tudo de uma vez nas cargas. Se outro operador tiver mexido nos mesmos pedidos nesse meio tempo, **nada é aplicado**: a tela avisa quais clientes mudaram, recarrega o mapa e você confirma de novo.
+   - Se o motorista **já organizou a rota** dele, o Confirmar **funciona normalmente**: o pedido remanejado é retirado automaticamente da rota organizada do motorista (ele vê a rota sem aquela parada; os horários se ajustam no próximo "recalcular" da tela dele).
+   - **Tirar da carga** segue a mesma regra da lixeira do Painel de Expedição: só o que ainda está PENDENTE de entrega pode sair — inclusive pedido cancelado, que **pode** ser tirado da carga, mas **não pode** ir para outra.
 3. **Descartar** volta ao que está salvo.
 4. Pedido movido no rascunho ganha um **anel dourado** no pino.
 

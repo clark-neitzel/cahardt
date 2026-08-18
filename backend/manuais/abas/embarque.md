@@ -45,7 +45,7 @@ Painel de expedição logística. Aqui são criados os "embarques" (cargas), que
 2. No modal de detalhes, clique em **+ Adicionar Pedidos** (ou equivalente)
 3. O modal `AdicionarPedidosModal` abre com a lista de pedidos FATURADOS disponíveis
 4. Selecione os pedidos e confirme — eles entram na carga
-5. **Não aparecem na lista** (e o sistema recusa se alguém tentar atrelar): pedido **cancelado**, pedido excluído, pedido que já está em outra carga e pedido que está no Kanban do Delivery (esse é entregue por outro fluxo)
+5. **Não aparecem na lista** (e o sistema recusa se alguém tentar atrelar): pedido **cancelado**, pedido excluído, pedido que já está em outra carga, pedido que está no Kanban do Delivery (esse é entregue por outro fluxo) e **pedido especial (ZZ#) ou bonificação (BN#) ainda pendente de aprovação** — para especial/bonificação, a aprovação é o equivalente do faturamento: só depois de clicar **Aprovar agora** (na tela de Pedidos) o pedido pode entrar em carga. Se alguém tentar atrelar um pendente, o sistema recusa com o motivo ("especial pendente de aprovação" / "bonificação pendente de aprovação")
    - Pedido **devolvido não entra nessa conta**: a devolução só pode ser registrada depois que o motorista marcou a entrega (`ENTREGUE_PARCIAL` ou `DEVOLVIDO`), e a partir daí o pedido fica preso na carga — não sai mais dela nem volta para a lista de disponíveis. Reenvio de mercadoria devolvida é **pedido novo**, nunca o mesmo
 
 ### Remover pedido da carga
@@ -116,7 +116,7 @@ Apenas usuários com a permissão `Pode_Executar_Entregas` ou `admin` e com stat
 
 ## Depende de / Interfere em
 
-- **Pedidos** — só entram no embarque pedidos FATURADOS (ou especial/bonificação prontos para envio). Pedido **cancelado** fica fora da lista de disponíveis e é recusado se alguém tentar atrelar (cancelar não muda a situação no CA, então antes ele aparecia como se estivesse livre)
+- **Pedidos** — só entram no embarque pedidos FATURADOS (ou especial/bonificação **já aprovados** — pendente de aprovação não embarca; a aprovação é o "faturamento" do especial/bonificação). Pedido **cancelado** fica fora da lista de disponíveis e é recusado se alguém tentar atrelar (cancelar não muda a situação no CA, então antes ele aparecia como se estivesse livre)
 - **Devoluções** — nascem sempre de uma carga: só é possível registrar devolução de pedido que o motorista marcou como `ENTREGUE_PARCIAL` ou `DEVOLVIDO`, e esse pedido não pode mais ser removido do romaneio
 - **Entregas (Rota e Minhas Entregas)** — após criado, cada pedido do embarque se torna uma entrega pendente para o motorista
 - **Caixa Diário** — as baixas de entrega (pagamentos recebidos) registradas pelo motorista alimentam o caixa do dia; as **cobranças da rota** cobradas em dinheiro somam no valor a prestar e são baixadas no cartão "Cobranças da Rota"

@@ -640,24 +640,39 @@ const geocodeEndereco = async ({ logradouro, numero, bairro, cidade, uf, cep }) 
     if (emCache && (Date.now() - emCache.em) < GEOCODE_TTL_MS) return emCache;
 
     let resultado = null;
+    // Distingue "endereço não encontrado" (resposta real do provedor — pode ficar
+    // 24h no cache) de falha de rede/timeout/5xx/429 (transitória — NÃO cachear,
+    // senão um blip do Nominatim deixa o endereço "sem posição" por um dia inteiro).
+    let provedorRespondeu = false;
     try {
         await esperarVezNominatim();
         const q = [[logradouro, numero].filter(Boolean).join(' '), bairro, cidade, uf, 'Brasil'].filter(Boolean).join(', ');
         const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q=${encodeURIComponent(q)}`;
-        const r = await fetch(url, { headers: { 'User-Agent': 'HardtApp/1.0' } }).then(x => x.json());
+        const resp = await fetch(url, { headers: { 'User-Agent': 'HardtApp/1.0' } });
+        if (!resp.ok) throw new Error(`Nominatim HTTP ${resp.status}`);
+        const r = await resp.json();
+        provedorRespondeu = true; // respondeu de verdade (com ou sem resultado)
         if (r?.[0]?.lat && r?.[0]?.lon) resultado = { geo: { lat: +r[0].lat, lng: +r[0].lon }, precisao: 'endereco' };
     } catch (_) { }
     if (!resultado && cep) {
         try {
-            const r = await fetch(`https://brasilapi.com.br/api/cep/v2/${String(cep).replace(/\D/g, '')}`).then(x => x.json());
-            const c = r?.location?.coordinates;
-            if (c?.latitude && c?.longitude) resultado = { geo: { lat: +c.latitude, lng: +c.longitude }, precisao: 'cep' };
+            const resp = await fetch(`https://brasilapi.com.br/api/cep/v2/${String(cep).replace(/\D/g, '')}`);
+            if (resp.ok) {
+                const r = await resp.json();
+                provedorRespondeu = true;
+                const c = r?.location?.coordinates;
+                if (c?.latitude && c?.longitude) resultado = { geo: { lat: +c.latitude, lng: +c.longitude }, precisao: 'cep' };
+            } else if (resp.status === 404) {
+                provedorRespondeu = true; // CEP inexistente = resposta real, cacheável
+            }
         } catch (_) { }
     }
 
     const salvo = { ...(resultado || { geo: null, precisao: null }), em: Date.now() };
-    geocodeCache.set(chave, salvo);
-    if (geocodeCache.size > 2000) geocodeCache.delete(geocodeCache.keys().next().value);
+    if (resultado || provedorRespondeu) {
+        geocodeCache.set(chave, salvo);
+        if (geocodeCache.size > 2000) geocodeCache.delete(geocodeCache.keys().next().value);
+    }
     return salvo;
 };
 

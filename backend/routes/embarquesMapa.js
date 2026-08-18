@@ -27,8 +27,19 @@ const {
     checkAcessoEmbarque,
     idsPedidosNoDelivery,
     wherePedidosLivresParaEmbarque,
-    bloqueadosParaEmbarque
+    bloqueadosParaEmbarque,
+    registrarVersaoEmbarque
 } = require('./embarques');
+
+// Elegibilidade de um pedido que JÁ está numa carga (mesma régua do helper de
+// livres, sem as condições de "estar livre"): faturado ou especial/bonificação
+// aprovados, nunca cancelado/devolvido/excluído. Usada para o mapa mostrar as
+// paradas reais das cargas — um ZZ#/BN# embarcado é entrega de verdade, e um
+// cancelado dentro de carga NÃO é.
+const whereElegivelNaCarga = () => {
+    const { embarqueId, ...resto } = wherePedidosLivresParaEmbarque();
+    return resto;
+};
 const osrm = require('../services/osrmService');
 const { particionarParadas } = require('../services/divisaoCargasService');
 const { geocodeEndereco } = require('../services/gpsClientesService');
@@ -126,10 +137,9 @@ async function completarComGeocode(entregas, clientePorPedido, budgetMs = GEOCOD
 // posições (Ponto_GPS → geocode do endereço). Compartilhado por /mapa e /sugerir-divisao.
 async function carregarEntregas(embarqueIds, periodoEntrega = null) {
     const idsNoDelivery = await idsPedidosNoDelivery();
+    // Livres: mesma régua do fluxo clássico (faturado, ou especial/bonificação
+    // APROVADOS — pendente de aprovação não embarca nem aparece aqui).
     const whereLivres = wherePedidosLivresParaEmbarque(idsNoDelivery);
-    // O mapa da expedição é fiscal: especiais/bonificações ainda não faturados
-    // podem existir no fluxo clássico de cargas, mas não aparecem nesta tela.
-    whereLivres.situacaoCA = 'FATURADO';
     if (periodoEntrega?.de && periodoEntrega?.ate) {
         whereLivres.dataVenda = {
             gte: new Date(`${periodoEntrega.de}T00:00:00-03:00`),
@@ -141,10 +151,12 @@ async function carregarEntregas(embarqueIds, periodoEntrega = null) {
         orderBy: { dataVenda: 'asc' },
         select: SELECT_PEDIDO_MAPA
     });
+    // Nas cargas: também inclui especial/bonificação aprovados (são paradas reais
+    // do motorista) e exclui cancelado/devolvido/excluído (não são entrega).
     const emCargas = embarqueIds.length ? await prisma.pedido.findMany({
         where: {
-            embarqueId: { in: embarqueIds },
-            situacaoCA: 'FATURADO'
+            ...whereElegivelNaCarga(),
+            embarqueId: { in: embarqueIds }
         },
         orderBy: { dataVenda: 'asc' },
         select: SELECT_PEDIDO_MAPA
@@ -265,7 +277,9 @@ router.get('/mapa', verificarAuth, checkAcessoEmbarque, async (req, res) => {
                 responsavel: { select: { id: true, nome: true } },
                 _count: {
                     select: {
-                        pedidos: { where: { situacaoCA: 'FATURADO' } }
+                        // Mesma régua das entregas do mapa: faturado ou especial/
+                        // bonificação aprovados; cancelado/devolvido/excluído não conta.
+                        pedidos: { where: whereElegivelNaCarga() }
                     }
                 }
             }
@@ -540,10 +554,12 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
             select: {
                 id: true, numero: true, embarqueId: true, situacaoCA: true, statusEnvio: true,
                 especial: true, bonificacao: true, cancelado: true, devolucaoFinalizada: true,
-                statusEntrega: true
+                statusEntrega: true,
+                cliente: { select: { NomeFantasia: true, Nome: true } }
             }
         });
         const porId = new Map(pedidos.map(p => [p.id, p]));
+        const nomeCliente = (p) => p?.cliente?.NomeFantasia || p?.cliente?.Nome || null;
 
         // 1) Trava otimista: banco divergiu da tela → 409 com a lista, NADA aplicado
         const conflitos = [];
@@ -594,7 +610,7 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
         for (const m of mudancas) {
             const p = porId.get(m.pedidoId);
             if (p.statusEntrega !== 'PENDENTE') {
-                bloqueados.push({ pedido: etiquetaPedido(p), motivo: `entrega já ${p.statusEntrega} — não sai mais da carga` });
+                bloqueados.push({ pedido: etiquetaPedido(p), cliente: nomeCliente(p), motivo: `entrega já ${p.statusEntrega} — não sai mais da carga` });
             }
         }
         const cargasArranjo = new Set([...destinos, ...pedidos.map(p => p.embarqueId).filter(Boolean)]);
@@ -609,8 +625,10 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
             });
         }
 
-        // 5) Prepara o histórico. A escrita, a revalidação, os bumps e os logs
-        //    acontecem na MESMA transação; não há rede dentro dela.
+        // 5) Prepara o histórico. Na transação ficam SÓ a revalidação e a escrita
+        //    dos pedidos (o que é atômico de verdade); versão/log das cargas e a
+        //    limpeza do cache de rota rodam DEPOIS, best-effort — falha neles
+        //    nunca desfaz o remanejo. Não há rede dentro da transação.
         const cargasAfetadas = [...new Set(mudancas.flatMap(m => [m.atual, m.embarqueId].filter(Boolean)))];
         const alteracoesPorCarga = new Map();
         for (const m of mudancas) {
@@ -624,9 +642,6 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                 alteracoesPorCarga.get(m.embarqueId).entraram.push(etiq);
             }
         }
-        const usuario = await prisma.vendedor.findUnique({
-            where: { id: req.user.id }, select: { nome: true }
-        });
 
         await prisma.$transaction(async (tx) => {
             // Revalida tudo no instante da escrita. updateMany com embarqueId esperado
@@ -636,7 +651,8 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                 select: {
                     id: true, numero: true, embarqueId: true, situacaoCA: true, statusEnvio: true,
                     especial: true, bonificacao: true, cancelado: true, devolucaoFinalizada: true,
-                    statusEntrega: true
+                    statusEntrega: true,
+                    cliente: { select: { NomeFantasia: true, Nome: true } }
                 }
             });
             const atualPorId = new Map(atuais.map(p => [p.id, p]));
@@ -645,13 +661,6 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                 where: { pedidoId: { in: pedidoIds } }, select: { pedidoId: true }
             });
             const deliveryIds = new Set(delivery.map(d => d.pedidoId));
-            const rotas = await tx.roteirizacao.findMany({ select: { sequencia: true, semGPS: true } });
-            const emRotaSalva = new Set();
-            for (const rota of rotas) {
-                for (const item of [...(Array.isArray(rota.sequencia) ? rota.sequencia : []), ...(Array.isArray(rota.semGPS) ? rota.semGPS : [])]) {
-                    if (item?.pedidoId) emRotaSalva.add(item.pedidoId);
-                }
-            }
 
             const impedimentos = [];
             for (const m of mudancas) {
@@ -663,15 +672,23 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                     throw err;
                 }
                 const etiqueta = etiquetaPedido(p);
-                if (p.statusEntrega !== 'PENDENTE') impedimentos.push({ pedido: etiqueta, motivo: `entrega já ${p.statusEntrega}` });
-                else if (deliveryIds.has(p.id)) impedimentos.push({ pedido: etiqueta, motivo: 'pedido pertence ao fluxo de Delivery' });
-                else if (emRotaSalva.has(p.id)) impedimentos.push({ pedido: etiqueta, motivo: 'pedido já consta em roteirização salva' });
-                else if (p.cancelado) impedimentos.push({ pedido: etiqueta, motivo: 'pedido cancelado' });
-                else if (p.devolucaoFinalizada) impedimentos.push({ pedido: etiqueta, motivo: 'pedido já devolvido' });
-                else if (p.statusEnvio === 'EXCLUIDO') impedimentos.push({ pedido: etiqueta, motivo: 'pedido excluído' });
-                else if (m.embarqueId && !(p.situacaoCA === 'FATURADO' ||
-                    (p.especial && p.statusEnvio === 'ENVIAR') || (p.bonificacao && p.statusEnvio === 'ENVIAR'))) {
-                    impedimentos.push({ pedido: etiqueta, motivo: 'não está faturado nem pronto para envio' });
+                const impedir = (motivo) => impedimentos.push({ pedido: etiqueta, cliente: nomeCliente(p), motivo });
+                if (p.statusEntrega !== 'PENDENTE') { impedir(`entrega já ${p.statusEntrega}`); continue; }
+                // Tirar da carga (destino null): mesma régua do DELETE clássico
+                // (/:id/pedidos/:pedidoId) — só o statusEntrega importa. Cancelado/
+                // devolvido/excluído PODE (e deve poder) sair da carga.
+                if (!m.embarqueId) continue;
+                // Entrar em carga: pedido do Delivery não entra, e vale a mesma
+                // elegibilidade da listagem (faturado ou especial/bonificação aprovados).
+                if (deliveryIds.has(p.id)) impedir('pedido pertence ao fluxo de Delivery');
+                else if (p.cancelado) impedir('pedido cancelado');
+                else if (p.devolucaoFinalizada) impedir('pedido já devolvido');
+                else if (p.statusEnvio === 'EXCLUIDO') impedir('pedido excluído');
+                else if (p.especial && p.statusEnvio === 'ENVIAR') impedir('especial pendente de aprovação');
+                else if (p.bonificacao && p.statusEnvio === 'ENVIAR') impedir('bonificação pendente de aprovação');
+                else if (!(p.situacaoCA === 'FATURADO' ||
+                    (p.especial && p.statusEnvio === 'RECEBIDO') || (p.bonificacao && p.statusEnvio === 'RECEBIDO'))) {
+                    impedir('não está faturado nem aprovado para envio');
                 }
             }
             if (impedimentos.length) {
@@ -701,19 +718,52 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                     throw err;
                 }
             }
-
-            for (const [cargaId, alteracoes] of alteracoesPorCarga) {
-                const atualizada = await tx.embarque.update({
-                    where: { id: cargaId }, data: { versao: { increment: 1 } }, select: { versao: true }
-                });
-                await tx.embarqueVersaoLog.create({
-                    data: {
-                        embarqueId: cargaId, versao: atualizada.versao, acao: 'DIVISAO_APLICADA', alteracoes,
-                        alteradoPorId: req.user.id, alteradoPorNome: usuario?.nome || null
-                    }
-                });
-            }
         }, { timeout: 20000, maxWait: 10000 });
+
+        // Versão + histórico das cargas afetadas (best-effort, fora da transação —
+        // o helper já engole a própria falha sem afetar o remanejo aplicado).
+        for (const [cargaId, alteracoes] of alteracoesPorCarga) {
+            await registrarVersaoEmbarque(cargaId, 'DIVISAO_APLICADA', alteracoes, req.user.id);
+        }
+
+        // Limpeza do cache de rota dos motoristas (best-effort): pedido remanejado
+        // sai das roteirizações salvas (Roteirizacao.sequencia/semGPS) para não
+        // deixar parada fantasma no painel de quem já tinha organizado a rota.
+        // Espelha o recalcular-etas: renumera a sequência, atualiza os totais do
+        // resumo e apaga a rota que ficou sem paradas.
+        try {
+            const movidos = new Set(mudancas.map(m => m.pedidoId));
+            const rotas = await prisma.roteirizacao.findMany();
+            for (const rota of rotas) {
+                const seq = Array.isArray(rota.sequencia) ? rota.sequencia : [];
+                const sem = Array.isArray(rota.semGPS) ? rota.semGPS : [];
+                const temMovido = [...seq, ...sem].some(i => i?.pedidoId && movidos.has(i.pedidoId));
+                if (!temMovido) continue;
+                const novaSeq = seq
+                    .filter(i => !(i?.pedidoId && movidos.has(i.pedidoId)))
+                    .map((i, idx) => ({ ...i, sequencia: idx + 1 }));
+                const novoSem = sem.filter(i => !(i?.pedidoId && movidos.has(i.pedidoId)));
+                if (novaSeq.length === 0) {
+                    // Mesma regra do recalcular-etas: rota sem paradas deixa de existir.
+                    await prisma.roteirizacao.delete({ where: { id: rota.id } });
+                } else {
+                    await prisma.roteirizacao.update({
+                        where: { id: rota.id },
+                        data: {
+                            sequencia: novaSeq,
+                            semGPS: novoSem,
+                            resumo: {
+                                ...(rota.resumo && typeof rota.resumo === 'object' ? rota.resumo : {}),
+                                totalParadas: novaSeq.length,
+                                totalSemGPS: novoSem.length
+                            }
+                        }
+                    });
+                }
+            }
+        } catch (eRota) {
+            console.error('[EmbarquesMapa] Falha ao limpar roteirizações salvas (cache — divisão JÁ aplicada):', eRota.message);
+        }
 
         res.json({
             message: `${mudancas.length} pedido(s) remanejado(s).`,
