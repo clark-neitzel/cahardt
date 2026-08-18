@@ -418,7 +418,12 @@ export default function MapaExpedicao() {
         }).addTo(map);
         map.on('click', () => setSelecionado(null));
         mapObj.current = map;
+        // A barra lateral pode alargar a área principal. Leaflet precisa ser
+        // avisado da nova largura para redesenhar sem ficar sob o menu.
+        const observarTamanho = new ResizeObserver(() => map.invalidateSize({ animate: false }));
+        observarTamanho.observe(mapRef.current);
         return () => {
+            observarTamanho.disconnect();
             map.remove();
             mapObj.current = null;
             marcadores.current = {};

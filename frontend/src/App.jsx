@@ -295,6 +295,7 @@ const MobileMenuSection = ({ label, icon: Icon, children, defaultOpen = false })
 const Layout = ({ children }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [visitorBar, setVisitorBar] = useState(true);
+  const [sidebarAberta, setSidebarAberta] = useState(false);
   const { user, logout, hasPermission, loading } = useAuth();
   const { updateAvailable } = useVersionCheck();
   const { favoritos, toggle: toggleFavorito, limite: limiteFavoritos } = useMenuFavoritos(user?.id);
@@ -416,7 +417,11 @@ const Layout = ({ children }) => {
       {/* ═══════════════════════════════════════════ */}
       {/* SIDEBAR — Desktop only                     */}
       {/* ═══════════════════════════════════════════ */}
-      <aside className="hidden md:flex group fixed left-0 top-0 h-screen w-16 hover:w-60 bg-house border-r border-black/20 flex-col z-50 transition-all duration-200 overflow-visible shadow-sm">
+      <aside
+        onMouseEnter={() => setSidebarAberta(true)}
+        onMouseLeave={() => setSidebarAberta(false)}
+        className={`hidden md:flex group fixed left-0 top-0 h-screen ${sidebarAberta ? 'w-60' : 'w-16'} bg-house border-r border-black/20 flex-col z-[100] transition-[width] duration-200 overflow-visible shadow-sm`}
+      >
         {/* Logo */}
         <div className="flex items-center h-14 px-4 border-b border-white/10 shrink-0">
           <Link to="/" className="flex items-center gap-2 text-white font-bold text-lg tracking-tight">
@@ -484,7 +489,7 @@ const Layout = ({ children }) => {
       {/* ═══════════════════════════════════════════ */}
       {/* MAIN CONTENT AREA                          */}
       {/* ═══════════════════════════════════════════ */}
-      <div className={`flex-1 md:ml-16 flex flex-col min-h-screen min-w-0${visitorBar ? ' md:pt-[38px]' : ''}`}>
+      <div className={`flex-1 ${sidebarAberta ? 'md:ml-60' : 'md:ml-16'} flex flex-col min-h-screen min-w-0 transition-[margin] duration-200${visitorBar ? ' md:pt-[38px]' : ''}`}>
         {/* ── Mobile top bar ── */}
         <nav className="no-print md:hidden bg-house shadow-sm fixed top-0 left-0 right-0 z-50">
           <div className="px-4 flex justify-between h-14 items-center">
