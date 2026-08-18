@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Map as MapIcon, Loader2, Wand2, Route as RouteIcon, X, Truck, Printer, MapPinOff, Lock, ArrowLeftRight } from 'lucide-react';
+import { Map as MapIcon, Loader2, Wand2, Route as RouteIcon, X, Truck, Printer, MapPinOff, Lock, ArrowLeftRight, Trash2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import mapaExpedicaoService from '../../../services/mapaExpedicaoService';
 import SelectBusca from '../../../components/SelectBusca';
@@ -10,10 +11,13 @@ import { useFiltrosSalvos } from '../../../hooks/useFiltrosSalvos';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../../components/FiltroPeriodo';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Mapa de divisão de cargas: a expedição vê as entregas do dia no mapa e decide
+// Mapa de divisão de cargas: a expedição vê TUDO que vai para a rua no dia —
+// pedidos, bonificações (BN#), especiais (ZZ#), amostras e cobranças — e decide
 // QUEM leva o quê (a ORDEM continua sendo do motorista, no painel dele).
-// Modelo rascunho: mover pino/pedido só recolore localmente; nada grava até o
-// operador clicar em "Confirmar". 16:30 é referência visual, nunca trava.
+// Um pino por CLIENTE: badges mostram o que vai para ele, e mover leva o
+// conjunto inteiro (itens não-travados) junto — regra do dono.
+// Modelo rascunho: mover só recolore localmente; nada grava até o operador
+// clicar em "Confirmar". 16:30 é referência visual, nunca trava.
 // A sugestão e o mapa NUNCA dependem do OSRM — sem ele, os números saem
 // aproximados (haversine local) com o selo "≈".
 // ─────────────────────────────────────────────────────────────────────────────
@@ -22,6 +26,22 @@ const CORES = ['#00754A', '#2563eb', '#d97706', '#7c3aed', '#db2777', '#0891b2',
 const COR_SEM_CARGA = '#6b7280';
 const REF_RETORNO = '16:30';
 const SEM_CARGA = 'SEM_CARGA'; // valor do SelectBusca para "tirar da carga"
+const MISTO = 'MISTO';         // itens do mesmo cliente em cargas diferentes
+
+// Marcação por tipo de item (cores semânticas dos badges do sistema:
+// roxo = especial/bonificação, âmbar = atenção/amostra, verde = dinheiro).
+const BADGE_TIPO = {
+    pedido:      { t: 'P',  cls: 'bg-white border border-gray-300 text-gray-700', bg: '#ffffff', fg: '#374151' },
+    bonificacao: { t: 'BN', cls: 'bg-purple-100 text-purple-700',                 bg: '#f3e8ff', fg: '#7e22ce' },
+    especial:    { t: 'ZZ', cls: 'bg-purple-100 text-purple-700',                 bg: '#f3e8ff', fg: '#7e22ce' },
+    amostra:     { t: 'A',  cls: 'bg-amber-100 text-amber-700',                   bg: '#fef3c7', fg: '#b45309' },
+    cobranca:    { t: '$',  cls: 'bg-green-100 text-green-800',                   bg: '#dcfce7', fg: '#166534' }
+};
+const NOME_TIPO = {
+    pedido: 'Pedido', bonificacao: 'Bonificação', especial: 'Pedido especial',
+    amostra: 'Amostra', cobranca: 'Cobrança'
+};
+const ORDEM_TIPOS = ['pedido', 'bonificacao', 'especial', 'amostra', 'cobranca'];
 
 const temChave = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
 
@@ -48,7 +68,8 @@ const distM = (a, b) => {
 };
 
 // Estimativa local (sem rede): vizinho mais próximo a partir da base, ida e
-// volta, × 1,3 de fator de estrada, 40 km/h + tempo de parada por pedido.
+// volta, × 1,3 de fator de estrada, 40 km/h + tempo de parada por CLIENTE
+// (vários itens no mesmo cliente = UMA parada).
 function estimativaLocal(base, pontos, nParadas, horaSaida, tempoParadaMin) {
     let dist = 0;
     if (base && pontos.length) {
@@ -90,14 +111,67 @@ const mensagemErro = (e, fallback) => {
     return fallback;
 };
 
+// ── Modelo de item unificado ──
+// ATENÇÃO: o backend manda SEMPRE `tipo: 'pedido'` nas entregas e sinaliza
+// bonificação/especial em campos booleanos separados (é `atribuicoes.tipo` do
+// contrato de gravação — não dá para mudar lá). O tipo VISUAL sai dos booleanos;
+// a etiqueta (BN# / ZZ#) fica como último recurso (backend antigo).
+const tipoDaEntrega = (e) => {
+    if (e.bonificacao) return 'bonificacao';
+    if (e.especial) return 'especial';
+    const et = String(e.etiqueta || e.numero || '');
+    if (/^BN/i.test(et)) return 'bonificacao';
+    if (/^ZZ/i.test(et)) return 'especial';
+    return 'pedido';
+};
+
+// Normaliza qualquer item (entrega, amostra, cobrança — inclusive vindos de
+// semGps) para o mesmo formato: { chave, tipoItem, tipoPayload, itemId, ... }.
+// tipoPayload é o tipo do contrato do backend ('pedido'|'amostra'|'cobranca' —
+// bonificação e especial SÃO pedidos para o backend).
+const normalizarItem = (raw) => {
+    if (raw.amostraId != null) {
+        return {
+            ...raw,
+            tipoItem: 'amostra', tipoPayload: 'amostra',
+            itemId: raw.amostraId, chave: `amostra:${raw.amostraId}`,
+            valorTotal: raw.valor ?? raw.valorTotal ?? null
+        };
+    }
+    if (raw.cobrancaRotaId != null) {
+        return {
+            ...raw,
+            tipoItem: 'cobranca', tipoPayload: 'cobranca',
+            itemId: raw.cobrancaRotaId, chave: `cobranca:${raw.cobrancaRotaId}`,
+            valorTotal: raw.valor ?? raw.valorTotal ?? null
+        };
+    }
+    return {
+        ...raw,
+        tipoItem: tipoDaEntrega(raw), tipoPayload: 'pedido',
+        itemId: raw.pedidoId, chave: `pedido:${raw.pedidoId}`
+    };
+};
+
+// Um pino por cliente: itens do mesmo cliente andam juntos.
+// MESMA chave do backend (`chaveLocal` em routes/embarquesMapa.js): cliente →
+// `c:id`, amostra de lead → `l:id`, item solto → um local próprio. Agrupar pelo
+// NOME juntava dois leads homônimos num pino só (e "mover levava tudo" arrastava
+// amostra do lead errado).
+const chaveCliente = (p) => (
+    p.clienteId != null ? `c:${p.clienteId}`
+        : p.leadId != null ? `l:${p.leadId}`
+            : `i:${p.chave}`
+);
+
 export default function MapaExpedicao() {
     const [data, setData] = useState(hojeISO); // padrão calculado (hoje) — NÃO persiste
     const [periodoEntrega, periodoEntregaCtl] = usePeriodoSalvo('mapa-expedicao:entrega', 'hoje');
     const [params, setParams] = useFiltrosSalvos('mapa-expedicao', { horaSaida: '08:00', tempoParadaMin: 10 });
-    const [dados, setDados] = useState(null);           // { cargas, entregas, semGps, base }
+    const [dados, setDados] = useState(null);           // { cargas, entregas, amostras, cobrancas, semGps, base }
     const [carregando, setCarregando] = useState(true);
     const [erroCarregamento, setErroCarregamento] = useState(null);
-    const [rascunho, setRascunho] = useState({});        // pedidoId -> embarqueId | null
+    const [rascunho, setRascunho] = useState({});        // chave do item -> embarqueId | null
     const [estimApi, setEstimApi] = useState(null);      // { chave, grupos: { [embarqueId]: {...} } }
     const [avisos, setAvisos] = useState([]);
     const [criterioSugestao, setCriterioSugestao] = useState(null);
@@ -105,7 +179,8 @@ export default function MapaExpedicao() {
     const [sugerindo, setSugerindo] = useState(false);
     const [recalculando, setRecalculando] = useState(false);
     const [aplicando, setAplicando] = useState(false);
-    const [selecionado, setSelecionado] = useState(null); // pedidoId do pino clicado
+    const [confirmandoApagar, setConfirmandoApagar] = useState(false); // aviso antes de apagar cobrança
+    const [selecionado, setSelecionado] = useState(null); // chave do CLIENTE do pino clicado
     const [sheetAberta, setSheetAberta] = useState(false); // bottom-sheet no celular
     const requisicaoMapa = useRef(0);
 
@@ -138,25 +213,82 @@ export default function MapaExpedicao() {
     }, [data, periodoEntrega.de, periodoEntrega.ate]);
     useEffect(() => { carregar(); }, [carregar]);
 
-    // ── Entregas do dia (dedup por pedidoId, caso semGps repita itens de entregas) ──
+    // ── Itens do dia (pedidos + amostras + cobranças), dedup por chave ──
     const todas = useMemo(() => {
         const m = new Map();
-        (dados?.entregas || []).forEach(e => m.set(e.pedidoId, e));
-        (dados?.semGps || []).forEach(e => { if (!m.has(e.pedidoId)) m.set(e.pedidoId, e); });
+        const add = (raw) => {
+            const it = normalizarItem(raw);
+            if (!m.has(it.chave)) m.set(it.chave, it);
+        };
+        (dados?.entregas || []).forEach(add);
+        (dados?.amostras || []).forEach(add);
+        (dados?.cobrancas || []).forEach(add);
+        (dados?.semGps || []).forEach(add);
         return [...m.values()];
     }, [dados]);
-    const comGps = useMemo(() => todas.filter(e => e.gps), [todas]);
     const semLocalizacao = useMemo(() => todas.filter(e => !e.gps), [todas]);
 
-    // ── Rascunho: onde cada pedido está AGORA na tela ──
+    // ── Rascunho: onde cada item está AGORA na tela ──
     const embarqueEfetivo = useCallback(
-        (p) => (temChave(rascunho, p.pedidoId) ? rascunho[p.pedidoId] : (p.embarqueId ?? null)),
+        (p) => (temChave(rascunho, p.chave) ? rascunho[p.chave] : (p.embarqueId ?? null)),
         [rascunho]
     );
     const mudancas = useMemo(
-        () => todas.filter(p => temChave(rascunho, p.pedidoId) && rascunho[p.pedidoId] !== (p.embarqueId ?? null)),
+        () => todas.filter(p => temChave(rascunho, p.chave) && rascunho[p.chave] !== (p.embarqueId ?? null)),
         [todas, rascunho]
     );
+
+    // ── Grupos por cliente (TODOS os itens do cliente andam juntos, mesmo os
+    // sem posição — regra do dono: mover leva tudo). Pino só para quem tem gps. ──
+    const gruposCliente = useMemo(() => {
+        const m = new Map();
+        todas.forEach(p => {
+            const k = chaveCliente(p);
+            if (!m.has(k)) {
+                m.set(k, {
+                    chave: k,
+                    clienteNome: p.clienteNome,
+                    cidade: p.cidade,
+                    endereco: p.endereco,
+                    itens: []
+                });
+            }
+            const g = m.get(k);
+            g.itens.push(p);
+            if (!g.cidade && p.cidade) g.cidade = p.cidade;
+            if (!g.endereco && p.endereco) g.endereco = p.endereco;
+        });
+        // posição do pino: prefere ponto GPS confirmado a posição pelo endereço
+        m.forEach(g => {
+            const conf = g.itens.find(i => i.gps && i.origemGps !== 'endereco') || g.itens.find(i => i.gps) || null;
+            g.gps = conf?.gps || null;
+            g.origemGps = conf?.origemGps;
+        });
+        return [...m.values()];
+    }, [todas]);
+    const gruposComPino = useMemo(() => gruposCliente.filter(g => g.gps), [gruposCliente]);
+
+    // "Sem localização": UM cartão por CLIENTE/local (antes o .map rodava por item e
+    // repetia o mesmo seletor duas vezes para quem tinha 2 itens sem GPS).
+    const gruposSemLocalizacao = useMemo(() => {
+        const vistos = new Set();
+        const out = [];
+        semLocalizacao.forEach(p => {
+            const k = chaveCliente(p);
+            if (vistos.has(k)) return;
+            vistos.add(k);
+            const grupo = gruposCliente.find(gr => gr.chave === k);
+            out.push({
+                chave: k,
+                grupo,
+                representante: p,
+                clienteNome: grupo?.clienteNome ?? p.clienteNome,
+                cidade: grupo?.cidade ?? p.cidade,
+                semGps: (grupo?.itens || [p]).filter(i => !i.gps)
+            });
+        });
+        return out;
+    }, [semLocalizacao, gruposCliente]);
 
     // O app usa BrowserRouter (roteador declarativo), no qual useBlocker não é
     // suportado. Protegemos os links desta tela e o fechamento/reload do navegador
@@ -184,17 +316,25 @@ export default function MapaExpedicao() {
         setData(novaData);
     };
 
+    // porCarga / semCarga / apagar — cobrança tirada da carga NÃO vira "sem carga":
+    // o backend faz hard delete do registro (mesma régua do DELETE /cobrancas-rota/:id).
+    // Contá-la em "Sem carga" prometia que ela continuaria por ali.
     const grupos = useMemo(() => {
         const porCarga = {};
         (dados?.cargas || []).forEach(c => { porCarga[c.id] = []; });
         const semCarga = [];
+        const apagar = [];
         todas.forEach(p => {
             const eid = embarqueEfetivo(p);
             if (eid != null && porCarga[eid]) porCarga[eid].push(p);
+            else if (p.tipoItem === 'cobranca' && temChave(rascunho, p.chave) && rascunho[p.chave] == null) apagar.push(p);
             else semCarga.push(p);
         });
-        return { porCarga, semCarga };
-    }, [dados, todas, embarqueEfetivo]);
+        return { porCarga, semCarga, apagar };
+    }, [dados, todas, embarqueEfetivo, rascunho]);
+
+    // Cobranças que o Confirmar vai APAGAR (irreversível pelo mapa).
+    const cobrancasApagadas = grupos.apagar;
 
     const corDaCarga = useCallback((eid) => {
         if (eid == null) return COR_SEM_CARGA;
@@ -202,16 +342,44 @@ export default function MapaExpedicao() {
         return i >= 0 ? CORES[i % CORES.length] : COR_SEM_CARGA;
     }, [dados]);
 
+    // "14 pedidos · 2 amostras · 1 cobrança" (bonificação/especial contam como pedidos)
+    const contagemTipos = (ps) => {
+        const nPed = ps.filter(p => p.tipoPayload === 'pedido').length;
+        const nAmo = ps.filter(p => p.tipoItem === 'amostra').length;
+        const nCob = ps.filter(p => p.tipoItem === 'cobranca').length;
+        const partes = [];
+        if (nPed) partes.push(`${nPed} ${nPed === 1 ? 'pedido' : 'pedidos'}`);
+        if (nAmo) partes.push(`${nAmo} ${nAmo === 1 ? 'amostra' : 'amostras'}`);
+        if (nCob) partes.push(`${nCob} ${nCob === 1 ? 'cobrança' : 'cobranças'}`);
+        return partes.length ? partes.join(' · ') : '0 itens';
+    };
+
+    // Uma PARADA por cliente (mesmo com vários itens); posição = a melhor do cliente.
+    const paradasPorCliente = useCallback((ps) => {
+        const m = new Map();
+        ps.forEach(p => {
+            const k = chaveCliente(p);
+            const atual = m.get(k);
+            const melhor = !atual ? p
+                : (!atual.gps && p.gps) ? p
+                : (atual.gps && atual.origemGps === 'endereco' && p.gps && p.origemGps !== 'endereco') ? p
+                : atual;
+            m.set(k, melhor);
+        });
+        const reps = [...m.values()];
+        return { pontos: reps.filter(r => r.gps).map(r => r.gps), nParadas: reps.length };
+    }, []);
+
     // ── Estimativas: locais (≈) sempre; as da API valem enquanto o arranjo não mudar ──
-    const montarChave = useCallback((porCargaIds) => JSON.stringify({
-        g: (dados?.cargas || []).map(c => [String(c.id), (porCargaIds[c.id] || []).map(String).sort()]),
+    const montarChave = useCallback((porCargaChaves) => JSON.stringify({
+        g: (dados?.cargas || []).map(c => [String(c.id), (porCargaChaves[c.id] || []).map(String).sort()]),
         h: params.horaSaida,
         t: String(tempoParadaMin)
     }), [dados, params.horaSaida, tempoParadaMin]);
 
     const chaveEstim = useMemo(() => {
         const ids = {};
-        Object.entries(grupos.porCarga).forEach(([eid, ps]) => { ids[eid] = ps.map(p => p.pedidoId); });
+        Object.entries(grupos.porCarga).forEach(([eid, ps]) => { ids[eid] = ps.map(p => p.chave); });
         return montarChave(ids);
     }, [grupos, montarChave]);
 
@@ -221,21 +389,36 @@ export default function MapaExpedicao() {
         (dados?.cargas || []).forEach(c => {
             const ps = grupos.porCarga[c.id] || [];
             if (!ps.length) return;
-            out[c.id] = estimativaLocal(
-                dados?.base,
-                ps.filter(p => p.gps).map(p => p.gps),
-                ps.length,
-                params.horaSaida,
-                tempoParadaMin
-            );
+            const { pontos, nParadas } = paradasPorCliente(ps);
+            out[c.id] = estimativaLocal(dados?.base, pontos, nParadas, params.horaSaida, tempoParadaMin);
         });
         return out;
-    }, [estimApi, chaveEstim, dados, grupos, params.horaSaida, tempoParadaMin]);
+    }, [estimApi, chaveEstim, dados, grupos, paradasPorCliente, params.horaSaida, tempoParadaMin]);
 
-    // ── Mover pedido (só rascunho — nada grava) ──
-    const mover = useCallback((pedido, valorSel) => {
-        if (pedido.travado) {
-            toast('Este pedido já saiu para entrega — não pode mais trocar de carga.', { icon: '🔒' });
+    // ── Mover UM item (só rascunho — nada grava) ──
+    const mover = useCallback((item, valorSel) => {
+        if (item.travado) {
+            toast('Este item já saiu para entrega — não pode mais trocar de carga.', { icon: '🔒' });
+            return;
+        }
+        if (valorSel === MISTO) return;
+        const destino = valorSel === SEM_CARGA
+            ? null
+            : ((dados?.cargas || []).find(c => String(c.id) === String(valorSel))?.id ?? null);
+        setRascunho(prev => {
+            const nx = { ...prev };
+            if (destino === (item.embarqueId ?? null)) delete nx[item.chave];
+            else nx[item.chave] = destino;
+            return nx;
+        });
+    }, [dados]);
+
+    // ── Mover o CONJUNTO do cliente (regra do dono: vai tudo junto) ──
+    const moverGrupo = useCallback((g, valorSel) => {
+        if (valorSel === MISTO) return;
+        const moviveis = g.itens.filter(i => !i.travado);
+        if (!moviveis.length) {
+            toast('Tudo deste cliente já saiu para entrega — não pode mais trocar de carga.', { icon: '🔒' });
             return;
         }
         const destino = valorSel === SEM_CARGA
@@ -243,31 +426,33 @@ export default function MapaExpedicao() {
             : ((dados?.cargas || []).find(c => String(c.id) === String(valorSel))?.id ?? null);
         setRascunho(prev => {
             const nx = { ...prev };
-            if (destino === (pedido.embarqueId ?? null)) delete nx[pedido.pedidoId];
-            else nx[pedido.pedidoId] = destino;
+            moviveis.forEach(p => {
+                if (destino === (p.embarqueId ?? null)) delete nx[p.chave];
+                else nx[p.chave] = destino;
+            });
             return nx;
         });
     }, [dados]);
 
-    // Troca dois conjuntos inteiros no rascunho. Não altera motorista/carga
-    // nem grava nada: apenas inverte os pedidos que cada motorista receberá.
+    // Troca dois conjuntos inteiros no rascunho (pedidos + amostras + cobranças —
+    // nada fica para trás). Não altera motorista/carga nem grava nada.
     const trocarRotas = useCallback((origemId, destinoId) => {
         if (!origemId || !destinoId || origemId === destinoId) return;
         const daOrigem = (grupos.porCarga[origemId] || []).filter(p => !p.travado);
         const doDestino = (grupos.porCarga[destinoId] || []).filter(p => !p.travado);
         if (!daOrigem.length && !doDestino.length) {
-            toast('Não há pedidos que possam ser trocados entre essas rotas.', { icon: 'ℹ️' });
+            toast('Não há itens que possam ser trocados entre essas rotas.', { icon: 'ℹ️' });
             return;
         }
         setRascunho(prev => {
             const nx = { ...prev };
             for (const p of daOrigem) {
-                if (p.embarqueId === destinoId) delete nx[p.pedidoId];
-                else nx[p.pedidoId] = destinoId;
+                if (p.embarqueId === destinoId) delete nx[p.chave];
+                else nx[p.chave] = destinoId;
             }
             for (const p of doDestino) {
-                if (p.embarqueId === origemId) delete nx[p.pedidoId];
-                else nx[p.pedidoId] = origemId;
+                if (p.embarqueId === origemId) delete nx[p.chave];
+                else nx[p.chave] = origemId;
             }
             return nx;
         });
@@ -276,6 +461,14 @@ export default function MapaExpedicao() {
         setAvisos([]);
         toast('Rotas trocadas no rascunho. Confira e confirme para gravar.', { icon: '↔️' });
     }, [grupos]);
+
+    // Grupos vindos do backend (sugestão): formato novo `itens: [{ tipo, id }]`
+    // ou antigo `pedidoIds: []`.
+    const itensDoGrupo = (g) => (
+        Array.isArray(g.itens) && g.itens.length
+            ? g.itens.map(i => `${i.tipo}:${i.id}`)
+            : (g.pedidoIds || []).map(id => `pedido:${id}`)
+    );
 
     // ── Sugerir divisão (carrega a proposta como rascunho) ──
     const sugerir = async () => {
@@ -294,18 +487,18 @@ export default function MapaExpedicao() {
                 tempoParadaMin
             });
             const nx = {};
-            (r.grupos || []).forEach(g => (g.pedidoIds || []).forEach(pid => {
-                const p = todas.find(t => t.pedidoId === pid);
+            (r.grupos || []).forEach(g => itensDoGrupo(g).forEach(ch => {
+                const p = todas.find(t => t.chave === ch);
                 if (!p || p.travado) return; // travado fica onde está
-                if ((p.embarqueId ?? null) !== g.embarqueId) nx[pid] = g.embarqueId;
+                if ((p.embarqueId ?? null) !== g.embarqueId) nx[ch] = g.embarqueId;
             }));
             setRascunho(nx);
             setAvisos(r.avisos || []);
             // guarda os números da sugestão presos a este arranjo
-            const porCargaIds = {};
+            const porCargaChaves = {};
             todas.forEach(p => {
-                const eid = temChave(nx, p.pedidoId) ? nx[p.pedidoId] : (p.embarqueId ?? null);
-                if (eid != null) (porCargaIds[eid] = porCargaIds[eid] || []).push(p.pedidoId);
+                const eid = temChave(nx, p.chave) ? nx[p.chave] : (p.embarqueId ?? null);
+                if (eid != null) (porCargaChaves[eid] = porCargaChaves[eid] || []).push(p.chave);
             });
             const gm = {};
             (r.grupos || []).forEach(g => {
@@ -315,7 +508,7 @@ export default function MapaExpedicao() {
                     trajeto: g.trajeto || []
                 };
             });
-            setEstimApi({ chave: montarChave(porCargaIds), grupos: gm });
+            setEstimApi({ chave: montarChave(porCargaChaves), grupos: gm });
             setCriterioSugestao(r.criterio || null);
             toast.success('Sugestão pronta — confira as linhas das rotas antes de confirmar.');
         } catch (e) {
@@ -329,10 +522,18 @@ export default function MapaExpedicao() {
     // ── Recalcular preciso (uma chamada, nunca a cada arrasto) ──
     const recalcular = async () => {
         const gruposPayload = (dados?.cargas || [])
-            .map(c => ({ embarqueId: c.id, pedidoIds: (grupos.porCarga[c.id] || []).map(p => p.pedidoId) }))
-            .filter(g => g.pedidoIds.length);
+            .map(c => {
+                const ps = grupos.porCarga[c.id] || [];
+                return {
+                    embarqueId: c.id,
+                    // formato novo (tipos) + antigo (só pedidos) para compatibilidade
+                    itens: ps.map(p => ({ tipo: p.tipoPayload, id: p.itemId })),
+                    pedidoIds: ps.filter(p => p.tipoPayload === 'pedido').map(p => p.itemId)
+                };
+            })
+            .filter(g => g.itens.length);
         if (!gruposPayload.length) {
-            toast('Nenhum pedido dentro das cargas para calcular.', { icon: 'ℹ️' });
+            toast('Nenhum item dentro das cargas para calcular.', { icon: 'ℹ️' });
             return;
         }
         setRecalculando(true);
@@ -361,33 +562,94 @@ export default function MapaExpedicao() {
         }
     };
 
+    // Acha o item da tela a partir de um conflito do backend (formato novo
+    // { tipo, id }, antigo { pedidoId } ou o id cru).
+    const acharItemConflito = useCallback((c) => {
+        if (c == null) return null;
+        if (typeof c === 'object') {
+            if (c.tipo != null && c.id != null) {
+                return todas.find(t => t.chave === `${c.tipo}:${c.id}`)
+                    || todas.find(t => t.tipoPayload === c.tipo && String(t.itemId) === String(c.id));
+            }
+            if (c.pedidoId != null) return todas.find(t => t.chave === `pedido:${c.pedidoId}`);
+            return null;
+        }
+        return todas.find(t => t.chave === `pedido:${c}`);
+    }, [todas]);
+
     // ── Confirmar / Descartar ──
-    const confirmar = async () => {
+    // Confirmar é um PORTÃO: se alguma cobrança vai ser apagada, pede confirmação
+    // explícita antes (não dá para desfazer pelo mapa — só pelo "Inserir Cobrança"
+    // na tela da carga). Sem cobrança apagada, aplica direto como antes.
+    const confirmar = () => {
         if (!mudancas.length || aplicando) return;
+        if (cobrancasApagadas.length) { setConfirmandoApagar(true); return; }
+        aplicar();
+    };
+
+    const aplicar = async () => {
+        if (!mudancas.length || aplicando) return;
+        setConfirmandoApagar(false);
+        const nApagadas = cobrancasApagadas.length;
         setAplicando(true);
         try {
             await mapaExpedicaoService.aplicarDivisao({
-                atribuicoes: mudancas.map(p => ({ pedidoId: p.pedidoId, embarqueId: rascunho[p.pedidoId] })),
-                esperado: mudancas.map(p => ({ pedidoId: p.pedidoId, embarqueIdAtual: p.embarqueId ?? null }))
+                // formato novo com tipo; pedidoId vai junto nos pedidos por compatibilidade
+                atribuicoes: mudancas.map(p => ({
+                    tipo: p.tipoPayload,
+                    id: p.itemId,
+                    ...(p.tipoPayload === 'pedido' ? { pedidoId: p.itemId } : {}),
+                    embarqueId: rascunho[p.chave]
+                })),
+                esperado: mudancas.map(p => ({
+                    tipo: p.tipoPayload,
+                    id: p.itemId,
+                    ...(p.tipoPayload === 'pedido' ? { pedidoId: p.itemId } : {}),
+                    embarqueIdAtual: p.embarqueId ?? null
+                }))
             });
-            toast.success('Divisão aplicada nas cargas.');
+            toast.success(
+                nApagadas
+                    ? `Divisão aplicada. ${nApagadas === 1 ? '1 cobrança foi apagada' : `${nApagadas} cobranças foram apagadas`} — para trazer de volta, use "Inserir Cobrança" na tela da carga.`
+                    : 'Divisão aplicada nas cargas.',
+                nApagadas ? { duration: 9000 } : undefined
+            );
             await carregar();
         } catch (e) {
             if (e.response?.status === 409) {
-                const conflitos = e.response.data?.conflitos || [];
-                const nomes = conflitos
-                    .map(c => todas.find(t => t.pedidoId === (c?.pedidoId ?? c))?.clienteNome)
-                    .filter(Boolean);
+                // O 409 cobre TRÊS causas diferentes (item sumiu · mudou de carga · mudou de
+                // situação: entrega já entregue, amostra entregue, cobrança registrada na rua).
+                // Cada conflito vem com a causa REAL pronta em `frase` (e em `motivo`), e
+                // `data.error` é o texto completo montado pelo backend. Dizer "foi movido por
+                // outro operador" em todos os casos mandava o operador procurar um colega que
+                // não existe — essa frase só vale para o conflito de mudança de carga.
+                const conflitos = Array.isArray(e.response.data?.conflitos) ? e.response.data.conflitos : [];
+                const textoBackend = typeof e.response.data?.error === 'string' ? e.response.data.error.trim() : '';
+                const descrever = (c) => {
+                    if (!c || typeof c !== 'object') return '';
+                    const cliente = c.cliente || acharItemConflito(c)?.clienteNome || '';
+                    const frase = typeof c.frase === 'string' ? c.frase.trim() : '';
+                    if (frase) return cliente ? `${frase.replace(/\s*\.\s*$/, '')} (${cliente}).` : frase;
+                    const alvo = [c.etiqueta || c.pedido, cliente].filter(Boolean).join(' ');
+                    const motivo = typeof c.motivo === 'string' ? c.motivo.trim() : '';
+                    if (!motivo) return alvo ? `${alvo} mudou desde que a tela foi carregada.` : '';
+                    return `${alvo ? `${alvo}: ` : ''}${motivo}${/[.!?]$/.test(motivo) ? '' : '.'}`;
+                };
+                const frases = conflitos.map(descrever).filter(Boolean);
+                // Uma instrução só no fim: quando usamos o texto do backend ele JÁ termina com
+                // "Nada foi aplicado — recarregue o mapa e tente de novo." (não concatenar outra).
+                const restantes = frases.length > 2 ? frases.length - 2 : 0;
                 toast.error(
-                    nomes.length
-                        ? `Nada foi aplicado: ${nomes.join(', ')} ${nomes.length === 1 ? 'foi movido' : 'foram movidos'} por outro operador. O mapa foi recarregado — confira e confirme de novo.`
-                        : 'Nada foi aplicado: pedidos mudaram de carga por outro operador. O mapa foi recarregado — confira e confirme de novo.',
+                    frases.length
+                        ? `${frases.slice(0, 2).join(' ')}${restantes ? ` E mais ${restantes === 1 ? '1 item mudou' : `${restantes} itens mudaram`}.` : ''} Nada foi aplicado. O mapa foi recarregado — confira e confirme de novo.`
+                        : textoBackend
+                            || 'O arranjo mudou desde que a tela foi carregada. Nada foi aplicado. O mapa foi recarregado — confira e confirme de novo.',
                     { duration: 9000 }
                 );
                 await carregar();
             } else if (Array.isArray(e.response?.data?.bloqueados) && e.response.data.bloqueados.length) {
-                // 400 com a lista do que travou: [{ pedido: '#743', motivo }] (o backend
-                // pode mandar também o cliente; senão, buscamos no que a tela já tem).
+                // 400 com a lista do que travou: [{ pedido: '#743', cliente, motivo }] (o
+                // backend pode mandar também o cliente; senão, buscamos no que a tela já tem).
                 const linhas = e.response.data.bloqueados.map(b => {
                     const etiq = b?.pedido || b?.etiqueta || String(b);
                     const cliente = b?.cliente || b?.clienteNome
@@ -395,7 +657,7 @@ export default function MapaExpedicao() {
                     return `${etiq}${cliente ? ` ${cliente}` : ''}${b?.motivo ? ` (${b.motivo})` : ''}`;
                 });
                 toast.error(
-                    `Nada foi aplicado. Não remanejados: ${linhas.join(' · ')}. Tire ${linhas.length === 1 ? 'esse pedido' : 'esses pedidos'} da mudança e confirme de novo.`,
+                    `Nada foi aplicado. Não remanejados: ${linhas.join(' · ')}. Tire ${linhas.length === 1 ? 'esse item' : 'esses itens'} da mudança e confirme de novo.`,
                     { duration: 12000 }
                 );
             } else {
@@ -445,7 +707,7 @@ export default function MapaExpedicao() {
         };
     }, []);
 
-    // Pinos (recriados a cada mudança de dados/rascunho — poucos por dia, é barato)
+    // Pinos por CLIENTE (recriados a cada mudança de dados/rascunho — poucos por dia, é barato)
     useEffect(() => {
         const map = mapObj.current;
         if (!map || !dados) return;
@@ -464,26 +726,44 @@ export default function MapaExpedicao() {
 
         Object.values(marcadores.current).forEach(m => m.remove());
         marcadores.current = {};
-        comGps.forEach(p => {
-            const cor = corDaCarga(embarqueEfetivo(p));
-            const mudou = temChave(rascunho, p.pedidoId) && rascunho[p.pedidoId] !== (p.embarqueId ?? null);
-            const aproximado = p.origemGps === 'endereco';
+        gruposComPino.forEach(g => {
+            // cor do círculo = carga do 1º item (se o cliente estiver repartido em
+            // cargas diferentes, os badges e o cartão mostram a situação)
+            const cor = corDaCarga(embarqueEfetivo(g.itens[0]));
+            const todosTravados = g.itens.every(i => i.travado);
+            const mudou = g.itens.some(i => temChave(rascunho, i.chave) && rascunho[i.chave] !== (i.embarqueId ?? null));
+            const aproximado = g.origemGps === 'endereco';
             // bolinha cheia = ponto GPS confirmado; anel tracejado com "≈" = posição pelo endereço
             const estilo = aproximado
                 ? `background:#fff;border:2.5px dashed ${cor};color:${cor};`
                 : `background:${cor};border:2.5px solid #fff;color:#fff;`;
-            const html = `<div style="width:26px;height:26px;border-radius:50%;${estilo}` +
-                `box-shadow:0 1px 4px rgba(0,0,0,.45);${p.travado ? 'opacity:.55;' : ''}` +
+            const conteudo = todosTravados ? '🔒' : (g.itens.length > 1 ? String(g.itens.length) : (aproximado ? '≈' : ''));
+            // badges dos tipos: pino só com pedido normal fica limpo (o mais comum);
+            // qualquer outro tipo presente aparece marcado (P junto, quando há mistura)
+            const tipos = ORDEM_TIPOS.filter(t => g.itens.some(i => i.tipoItem === t));
+            const soPedido = tipos.length === 1 && tipos[0] === 'pedido';
+            const badges = soPedido ? '' :
+                `<div style="display:flex;gap:2px;justify-content:center;margin-top:2px">${
+                    tipos.map(t => {
+                        const d = BADGE_TIPO[t];
+                        return `<span style="background:${d.bg};color:${d.fg};border:1px solid rgba(0,0,0,.18);` +
+                            `border-radius:999px;font-size:9px;font-weight:800;line-height:1;padding:2px 4px;` +
+                            `box-shadow:0 1px 2px rgba(0,0,0,.35);white-space:nowrap">${d.t}</span>`;
+                    }).join('')
+                }</div>`;
+            const html = `<div style="display:flex;flex-direction:column;align-items:center;width:56px">` +
+                `<div style="width:26px;height:26px;border-radius:50%;${estilo}` +
+                `box-shadow:0 1px 4px rgba(0,0,0,.45);${todosTravados ? 'opacity:.55;' : ''}` +
                 `${mudou ? 'outline:3px solid #cba258;outline-offset:1px;' : ''}` +
-                `display:flex;align-items:center;justify-content:center;font-size:${p.travado ? '12px' : '13px'};font-weight:800;line-height:1">` +
-                `${p.travado ? '🔒' : (aproximado ? '≈' : '')}</div>`;
-            const mk = L.marker([p.gps.lat, p.gps.lng], {
-                icon: L.divIcon({ className: '', html, iconSize: [26, 26], iconAnchor: [13, 13] }),
+                `display:flex;align-items:center;justify-content:center;font-size:${todosTravados ? '12px' : '13px'};font-weight:800;line-height:1">` +
+                `${conteudo}</div>${badges}</div>`;
+            const mk = L.marker([g.gps.lat, g.gps.lng], {
+                icon: L.divIcon({ className: '', html, iconSize: [56, badges ? 46 : 26], iconAnchor: [28, 13] }),
                 keyboard: false
-            }).addTo(map).on('click', () => setSelecionado(p.pedidoId));
-            marcadores.current[p.pedidoId] = mk;
+            }).addTo(map).on('click', () => setSelecionado(g.chave));
+            marcadores.current[g.chave] = mk;
         });
-    }, [dados, comGps, rascunho, corDaCarga, embarqueEfetivo]);
+    }, [dados, gruposComPino, rascunho, corDaCarga, embarqueEfetivo]);
 
     // Trajetos devolvidos pelo roteirizador: tornam visível por que um ponto
     // pertence a uma carga, em vez de mostrar apenas cores soltas no mapa.
@@ -507,36 +787,79 @@ export default function MapaExpedicao() {
     useEffect(() => {
         const map = mapObj.current;
         if (!map || !dados || ajustouPara.current === data) return;
-        const pts = comGps.map(p => [p.gps.lat, p.gps.lng]);
+        const pts = gruposComPino.map(g => [g.gps.lat, g.gps.lng]);
         if (dados.base?.lat != null) pts.push([dados.base.lat, dados.base.lng]);
         if (pts.length) {
             map.fitBounds(L.latLngBounds(pts).pad(0.15));
             ajustouPara.current = data;
         }
-    }, [dados, comGps, data]);
+    }, [dados, gruposComPino, data]);
 
     // ── Peças de UI ──
-    const sel = selecionado != null ? todas.find(p => p.pedidoId === selecionado) : null;
-    const focarEntrega = useCallback((p) => {
-        setSelecionado(p.pedidoId);
-        if (p.gps && mapObj.current) mapObj.current.flyTo([p.gps.lat, p.gps.lng], Math.max(mapObj.current.getZoom(), 14));
+    const sel = selecionado != null ? gruposCliente.find(g => g.chave === selecionado) : null;
+    const focarCliente = useCallback((g) => {
+        setSelecionado(g.chave);
+        if (g.gps && mapObj.current) mapObj.current.flyTo([g.gps.lat, g.gps.lng], Math.max(mapObj.current.getZoom(), 14));
     }, []);
 
-    // options inline: o SelectBusca só lê <option>/<optgroup> direto nos children
+    // `key` sempre presente: o badge é usado dentro de .map() (lista de tipos do cliente)
+    // e sem ela o React reclama "Each child in a list should have a unique key" a cada
+    // render. Como o tipo não repete na mesma lista, ele serve de chave; fora de lista
+    // o React simplesmente ignora.
+    const badgeTipo = (tipoItem, extra = '') => {
+        const d = BADGE_TIPO[tipoItem] || BADGE_TIPO.pedido;
+        return (
+            <span key={tipoItem} className={`px-1.5 py-0.5 text-[10px] font-extrabold rounded-full shrink-0 ${d.cls} ${extra}`}>
+                {d.t}
+            </span>
+        );
+    };
+
+    // ⚠️ NUNCA envolver estas <option> num Fragment (<>…</>)!
+    // O SelectBusca lê os filhos com React.Children.forEach, que ACHATA ARRAY mas NÃO
+    // ACHATA FRAGMENT — um Fragment não é 'option' nem 'optgroup' e é descartado inteiro,
+    // deixando TODOS os menus "Mover para…" vazios ("Nada encontrado."). Já aconteceu.
+    // Por isso este helper devolve um ARRAY de elementos (cada um com `key`).
+    // Para cobrança, "tirar da carga" APAGA o registro (hard delete no backend) —
+    // o rótulo tem que dizer isso, senão parece reversível como no pedido.
+    const opcoesCargas = (temCobranca = false) => ([
+        ...(dados?.cargas || []).map(c => (
+            <option key={`carga-${c.id}`} value={String(c.id)}>
+                Carga #{c.numero}{c.responsavel?.nome ? ` — ${c.responsavel.nome}` : ''}
+            </option>
+        )),
+        <option key="sem-carga" value={SEM_CARGA}>
+            {temCobranca ? 'Tirar da carga (apaga a cobrança)' : 'Tirar da carga (sem carga)'}
+        </option>
+    ]);
+
     const seletorMover = (p, larga = 'w-full') => (
         <SelectBusca
             value={embarqueEfetivo(p) == null ? SEM_CARGA : String(embarqueEfetivo(p))}
             onChange={e => mover(p, e.target.value)}
             className={larga}
         >
-            {(dados?.cargas || []).map(c => (
-                <option key={c.id} value={String(c.id)}>
-                    Carga #{c.numero}{c.responsavel?.nome ? ` — ${c.responsavel.nome}` : ''}
-                </option>
-            ))}
-            <option value={SEM_CARGA}>Tirar da carga (sem carga)</option>
+            {opcoesCargas(p.tipoItem === 'cobranca')}
         </SelectBusca>
     );
+
+    // Um seletor só para o CONJUNTO do cliente: escolher o destino move todos os
+    // itens não-travados juntos.
+    const seletorMoverGrupo = (g) => {
+        const moviveis = g.itens.filter(i => !i.travado);
+        const efetivos = [...new Set(moviveis.map(i => {
+            const e = embarqueEfetivo(i);
+            return e == null ? SEM_CARGA : String(e);
+        }))];
+        const valor = efetivos.length === 1 ? efetivos[0] : MISTO;
+        const temCobranca = moviveis.some(i => i.tipoItem === 'cobranca');
+        return (
+            <SelectBusca value={valor} onChange={e => moverGrupo(g, e.target.value)} className="w-full">
+                {valor === MISTO && <option value={MISTO} disabled>Itens em cargas diferentes — escolha o destino</option>}
+                {opcoesCargas(temCobranca)}
+            </SelectBusca>
+        );
+    };
 
     const linhaEstimativa = (est) => {
         if (!est) return null;
@@ -558,12 +881,101 @@ export default function MapaExpedicao() {
         );
     };
 
+    // Esc fecha o aviso de apagar cobrança (mesmo efeito de "Cancelar"). Não fecha
+    // enquanto está aplicando — o clique já foi dado, sair no meio confunde.
+    useEffect(() => {
+        if (!confirmandoApagar) return;
+        const aoTeclar = (ev) => {
+            if (ev.key === 'Escape' && !aplicando) {
+                ev.stopPropagation();
+                setConfirmandoApagar(false);
+            }
+        };
+        window.addEventListener('keydown', aoTeclar);
+        return () => window.removeEventListener('keydown', aoTeclar);
+    }, [confirmandoApagar, aplicando]);
+
+    // Aviso antes de apagar cobrança. Vai em portal no <body> porque o contêiner do
+    // mapa é `isolate` (prende os z-index do Leaflet) — dentro dele o diálogo ficaria
+    // atrás do menu lateral da página.
+    const dialogoApagarCobrancas = (!confirmandoApagar || !cobrancasApagadas.length) ? null : createPortal(
+        <div
+            className="fixed inset-0 z-[2000] bg-black/50 flex items-end md:items-center justify-center p-0 md:p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-apagar-cobrancas"
+            onClick={() => setConfirmandoApagar(false)}
+        >
+            <div
+                className="bg-white w-full md:max-w-md rounded-t-2xl md:rounded-2xl shadow-xl p-4 md:p-5 max-h-[85dvh] overflow-y-auto"
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex items-start gap-2.5 mb-3">
+                    <span className="bg-red-100 p-2 rounded-lg shrink-0">
+                        <AlertTriangle className="h-5 w-5 text-red-600" />
+                    </span>
+                    <div className="min-w-0">
+                        <h2 id="titulo-apagar-cobrancas" className="text-base md:text-lg font-bold text-gray-900">
+                            {cobrancasApagadas.length === 1
+                                ? '1 cobrança será apagada'
+                                : `${cobrancasApagadas.length} cobranças serão apagadas`}
+                        </h2>
+                        <p className="text-sm text-gray-600 mt-0.5">
+                            Tirar cobrança da carga não é o mesmo que tirar um pedido: o registro é
+                            apagado e <strong>não volta pelo mapa</strong>. Para recolocar, use o botão
+                            “Inserir Cobrança” na tela da carga.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="bg-red-50 border border-red-200 rounded-lg divide-y divide-red-100 mb-4 max-h-48 overflow-y-auto">
+                    {cobrancasApagadas.map(c => (
+                        <div key={c.chave} className="flex items-center gap-2 px-3 py-2">
+                            <Trash2 className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                            <span className="text-xs text-red-900 font-medium truncate flex-1">
+                                {c.clienteNome || 'Cliente'}{c.etiqueta ? ` · ${c.etiqueta}` : ''}
+                            </span>
+                            {c.valorTotal != null && (
+                                <span className="text-xs font-semibold text-red-900 shrink-0">{fmtBRL(c.valorTotal)}</span>
+                            )}
+                        </div>
+                    ))}
+                </div>
+
+                <div className="flex flex-col-reverse md:flex-row md:justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={() => setConfirmandoApagar(false)}
+                        className="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm min-h-[44px]"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        type="button"
+                        onClick={aplicar}
+                        disabled={aplicando}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full font-semibold text-sm min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-60"
+                    >
+                        {aplicando && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {cobrancasApagadas.length === 1 ? 'Apagar e aplicar' : 'Apagar as cobranças e aplicar'}
+                    </button>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+
     // Painel lateral (desktop) / bottom-sheet (celular) — renderizado uma vez só
     const toqueY = useRef(null);
     const suprimirClique = useRef(false);
 
+    const selTravados = sel ? sel.itens.filter(i => i.travado) : [];
+    const selMoviveis = sel ? sel.itens.filter(i => !i.travado) : [];
+    const selComValor = sel ? sel.itens.filter(i => i.valorTotal != null) : [];
+
     return (
         <div className="relative z-0 isolate w-full max-w-full px-3 md:px-0 py-3 md:py-6 overflow-x-hidden">
+            {dialogoApagarCobrancas}
             {/* Topbar */}
             <div className="flex items-center justify-between gap-2 bg-white p-3 md:p-4 rounded-t-xl shadow-sm border border-gray-200 border-b-0">
                 <div className="flex items-center gap-2 min-w-0">
@@ -656,41 +1068,95 @@ export default function MapaExpedicao() {
                             sem carga
                         </div>
                         <div className="flex items-center gap-1.5">
+                            <span className="w-3 h-3 rounded-full shrink-0 flex items-center justify-center text-white font-extrabold text-[8px]" style={{ background: '#00754A', border: '1.5px solid #fff', boxShadow: '0 0 0 1px rgba(0,0,0,.15)' }}>2</span>
+                            nº de itens do cliente (vão juntos)
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <span className="flex gap-0.5 shrink-0">
+                                <span className="px-1 rounded-full bg-purple-100 text-purple-700 font-extrabold text-[8px] leading-3 border border-black/10">BN</span>
+                                <span className="px-1 rounded-full bg-purple-100 text-purple-700 font-extrabold text-[8px] leading-3 border border-black/10">ZZ</span>
+                            </span>
+                            bonificação · especial
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <span className="px-1 rounded-full bg-amber-100 text-amber-700 font-extrabold text-[8px] leading-3 border border-black/10 shrink-0">A</span>
+                            amostra
+                            <span className="px-1 rounded-full bg-green-100 text-green-800 font-extrabold text-[8px] leading-3 border border-black/10 shrink-0">$</span>
+                            cobrança
+                        </div>
+                        <div className="flex items-center gap-1.5">
                             <Lock className="w-3 h-3 text-gray-500 shrink-0" />
                             já saiu — não move
                         </div>
                     </div>
 
-                    {/* Cartão do pino selecionado */}
+                    {/* Cartão do pino selecionado (cliente + tudo que vai para ele) */}
                     {sel && (
                         <div className="absolute bottom-16 left-3 right-3 md:bottom-auto md:top-3 md:right-3 md:left-auto md:w-80 z-[1050] bg-white rounded-xl border border-gray-200 shadow-lg p-3">
                             <div className="flex items-start justify-between gap-2 mb-1">
                                 <div className="min-w-0">
                                     <p className="font-semibold text-gray-900 text-sm truncate">{sel.clienteNome || 'Cliente'}</p>
                                     <p className="text-xs text-gray-500 truncate">
-                                        {sel.etiqueta || sel.numero || ''}{sel.cidade ? ` · ${sel.cidade}` : ''}
+                                        {sel.itens.length === 1
+                                            ? `${sel.itens[0].etiqueta || sel.itens[0].numero || ''}${sel.cidade ? ` · ${sel.cidade}` : ''}`
+                                            : `${sel.itens.length} itens para este cliente${sel.cidade ? ` · ${sel.cidade}` : ''}`}
                                     </p>
                                 </div>
                                 <button aria-label="Fechar detalhes da entrega" onClick={() => setSelecionado(null)} className="p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 shrink-0">
                                     <X className="h-4 w-4" />
                                 </button>
                             </div>
-                            <p className="text-sm text-gray-700 font-semibold mb-1">{fmtBRL(sel.valorTotal)}</p>
+
+                            {/* Item a item: tipo, etiqueta, valor (quando houver), cadeado */}
+                            <div className="mb-2 divide-y divide-gray-100 max-h-40 overflow-y-auto">
+                                {sel.itens.map(i => (
+                                    <div key={i.chave} className="flex items-center gap-2 py-1.5">
+                                        {badgeTipo(i.tipoItem)}
+                                        <span className="text-xs text-gray-700 truncate flex-1">
+                                            {NOME_TIPO[i.tipoItem] || 'Item'}{i.etiqueta || i.numero ? ` ${i.etiqueta || i.numero}` : ''}
+                                        </span>
+                                        {i.valorTotal != null && (
+                                            <span className="text-xs font-semibold text-gray-700 shrink-0">{fmtBRL(i.valorTotal)}</span>
+                                        )}
+                                        {i.travado && <Lock className="h-3.5 w-3.5 text-gray-500 shrink-0" />}
+                                    </div>
+                                ))}
+                                {selComValor.length > 1 && (
+                                    <div className="flex items-center justify-between gap-2 py-1.5">
+                                        <span className="text-xs text-gray-500">Total</span>
+                                        <span className="text-xs font-bold text-gray-900">
+                                            {fmtBRL(selComValor.reduce((s, i) => s + (Number(i.valorTotal) || 0), 0))}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+
                             {sel.endereco && <p className="text-xs text-gray-500 mb-2">{sel.endereco}</p>}
                             {sel.origemGps === 'endereco' && (
                                 <p className="text-[11px] text-gray-500 mb-2">
                                     📍 posição pelo endereço do cadastro (aproximada) — o ponto GPS ainda não foi confirmado
                                 </p>
                             )}
-                            {sel.travado ? (
+
+                            {selMoviveis.length === 0 ? (
                                 <div className="text-xs bg-gray-50 border border-gray-200 text-gray-600 rounded-lg px-3 py-2 flex items-start gap-1.5">
                                     <Lock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                                    <span>Este pedido já saiu para entrega{sel.statusEntrega ? ` (${sel.statusEntrega})` : ''} — ele fica na carga onde está.</span>
+                                    <span>Tudo deste cliente já saiu para entrega — fica na carga onde está.</span>
                                 </div>
                             ) : (
                                 <div>
-                                    <p className="text-[11px] font-bold uppercase tracking-widest text-gray-600 mb-1">Mover para…</p>
-                                    {seletorMover(sel)}
+                                    <p className="text-[11px] font-bold uppercase tracking-widest text-gray-600 mb-1">
+                                        Mover para… {sel.itens.length > 1 ? '(leva tudo junto)' : ''}
+                                    </p>
+                                    {seletorMoverGrupo(sel)}
+                                    {selTravados.length > 0 && (
+                                        <p className="mt-1.5 text-[11px] text-gray-500 flex items-start gap-1">
+                                            <Lock className="h-3 w-3 mt-0.5 shrink-0" />
+                                            <span>
+                                                {selTravados.length === 1 ? 'O item com cadeado já saiu para entrega e fica' : 'Os itens com cadeado já saíram para entrega e ficam'} fora da mudança.
+                                            </span>
+                                        </p>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -751,7 +1217,7 @@ export default function MapaExpedicao() {
                                         className="w-full"
                                     />
                                     <p className="mt-1.5 text-xs text-gray-600">
-                                        Mostra pedidos livres com entrega nesse período e os que já estão nas cargas deste embarque.
+                                        Mostra pedidos livres com entrega nesse período e os que já estão nas cargas deste embarque — junto com amostras e cobranças do dia.
                                     </p>
                                 </div>
                                 <label className="text-sm font-medium text-gray-700">
@@ -839,14 +1305,14 @@ export default function MapaExpedicao() {
                                             <span className="font-semibold text-gray-900 text-sm truncate flex-1">
                                                 Carga #{c.numero}{c.responsavel?.nome ? ` · ${c.responsavel.nome}` : ''}
                                             </span>
-                                            <span className="text-xs text-gray-500 shrink-0">
-                                                {ps.length} {ps.length === 1 ? 'pedido' : 'pedidos'}
+                                            <span className="text-xs text-gray-500 shrink-0 text-right">
+                                                {contagemTipos(ps)}
                                             </span>
                                         </div>
                                         {linhaEstimativa(est)}
                                         {outrasCargas.length > 0 && (
                                             <div className="mt-2 pt-2 border-t border-gray-100">
-                                                <p className="text-xs text-gray-600 mb-1.5">Trocar todos os pedidos desta rota com</p>
+                                                <p className="text-xs text-gray-600 mb-1.5">Trocar tudo desta rota (pedidos, amostras e cobranças) com</p>
                                                 <div className="flex gap-1.5">
                                                     <SelectBusca
                                                         value={destinoId}
@@ -862,7 +1328,7 @@ export default function MapaExpedicao() {
                                                     <button
                                                         type="button"
                                                         onClick={() => trocarRotas(c.id, destinoId)}
-                                                        className="shrink-0 px-2.5 py-1.5 rounded-lg border border-primary text-primary hover:bg-mint/40 text-xs font-semibold flex items-center gap-1"
+                                                        className="shrink-0 px-3 py-2 rounded-full bg-white border border-primary text-primary hover:bg-mint/40 text-xs font-semibold flex items-center justify-center gap-1 min-h-[44px]"
                                                     >
                                                         <ArrowLeftRight className="h-3.5 w-3.5" /> Trocar
                                                     </button>
@@ -893,29 +1359,54 @@ export default function MapaExpedicao() {
                             <div className="bg-gray-50 rounded-xl border border-gray-200 shadow-sm p-3 flex items-center gap-2">
                                 <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ background: COR_SEM_CARGA }} />
                                 <span className="font-semibold text-gray-700 text-sm flex-1">Sem carga</span>
-                                <span className="text-xs text-gray-500">
-                                    {grupos.semCarga.length} {grupos.semCarga.length === 1 ? 'pedido' : 'pedidos'}
+                                <span className="text-xs text-gray-500 text-right">
+                                    {contagemTipos(grupos.semCarga)}
                                 </span>
                             </div>
+
+                            {/* Cobrança tirada da carga NÃO fica "sem carga": ela é apagada no Confirmar */}
+                            {grupos.apagar.length > 0 && (
+                                <div className="bg-red-50 rounded-xl border border-red-200 shadow-sm p-3">
+                                    <div className="flex items-center gap-2">
+                                        <Trash2 className="h-3.5 w-3.5 text-red-600 shrink-0" />
+                                        <span className="font-semibold text-red-800 text-sm flex-1">Serão apagadas</span>
+                                        <span className="text-xs font-semibold text-red-700 text-right">
+                                            {contagemTipos(grupos.apagar)}
+                                        </span>
+                                    </div>
+                                    <p className="mt-1.5 text-[11px] text-red-700">
+                                        Cobrança tirada da carga é apagada ao confirmar — não volta pelo mapa.
+                                        Para recolocar, use “Inserir Cobrança” na tela da carga.
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Alternativa navegável aos marcadores do Leaflet. */}
-                        {comGps.length > 0 && (
+                        {/* Alternativa navegável aos marcadores do Leaflet — um item por CLIENTE. */}
+                        {gruposComPino.length > 0 && (
                             <div className="space-y-2">
-                                <p className="text-xs font-bold uppercase tracking-widest text-gray-600 px-1">Entregas no mapa</p>
+                                <p className="text-xs font-bold uppercase tracking-widest text-gray-600 px-1">Clientes no mapa</p>
                                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm divide-y divide-gray-100">
-                                    {comGps.map(p => (
+                                    {gruposComPino.map(g => (
                                         <button
-                                            key={p.pedidoId}
+                                            key={g.chave}
                                             type="button"
-                                            onClick={() => focarEntrega(p)}
-                                            aria-label={`Ver no mapa: ${p.clienteNome || 'Cliente'}${p.cidade ? `, ${p.cidade}` : ''}`}
+                                            onClick={() => focarCliente(g)}
+                                            aria-label={`Ver no mapa: ${g.clienteNome || 'Cliente'}${g.cidade ? `, ${g.cidade}` : ''}`}
                                             className="w-full min-h-[44px] px-3 py-2 text-left flex items-center gap-2 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary"
                                         >
-                                            <span aria-hidden="true" className="w-3 h-3 rounded-full shrink-0" style={{ background: corDaCarga(embarqueEfetivo(p)) }} />
+                                            <span aria-hidden="true" className="w-3 h-3 rounded-full shrink-0" style={{ background: corDaCarga(embarqueEfetivo(g.itens[0])) }} />
                                             <span className="min-w-0 flex-1">
-                                                <span className="block text-sm font-semibold text-gray-800 truncate">{p.clienteNome || 'Cliente'}</span>
-                                                <span className="block text-xs text-gray-500 truncate">{p.etiqueta || p.numero || ''}{p.cidade ? ` · ${p.cidade}` : ''}</span>
+                                                <span className="block text-sm font-semibold text-gray-800 truncate">{g.clienteNome || 'Cliente'}</span>
+                                                <span className="block text-xs text-gray-500 truncate">
+                                                    {g.itens.map(i => i.etiqueta || i.numero || NOME_TIPO[i.tipoItem]).join(' · ')}{g.cidade ? ` · ${g.cidade}` : ''}
+                                                </span>
+                                            </span>
+                                            <span aria-hidden="true" className="flex gap-0.5 shrink-0">
+                                                {ORDEM_TIPOS.filter(t => t !== 'pedido' && g.itens.some(i => i.tipoItem === t)).map(t => badgeTipo(t))}
+                                                {g.itens.length > 1 && (
+                                                    <span className="px-1.5 py-0.5 text-[10px] font-extrabold rounded-full bg-gray-100 text-gray-600">{g.itens.length}</span>
+                                                )}
                                             </span>
                                         </button>
                                     ))}
@@ -923,37 +1414,67 @@ export default function MapaExpedicao() {
                             </div>
                         )}
 
-                        {/* Sem localização (falhou GPS e endereço) — esses pedidos nunca somem da divisão */}
+                        {/* Sem localização (falhou GPS e endereço) — esses itens nunca somem da divisão */}
                         <div className="space-y-2">
                             <p className="text-xs font-bold uppercase tracking-widest text-gray-600 px-1 flex items-center gap-1.5">
                                 <MapPinOff className="h-3.5 w-3.5" /> Sem localização
                             </p>
                             {semLocalizacao.length === 0 ? (
                                 <p className="text-xs text-gray-500 px-1">
-                                    Todos os pedidos do dia têm posição no mapa (por GPS ou pelo endereço do cadastro).
+                                    Todos os itens do dia têm posição no mapa (por GPS ou pelo endereço do cadastro).
                                 </p>
                             ) : (
                                 <>
                                     <p className="text-xs text-gray-500 px-1">
                                         Sem ponto GPS e sem endereço localizável — atribua a carga aqui (eles entram na divisão normalmente).
                                     </p>
-                                    {semLocalizacao.map(p => (
-                                        <div key={p.pedidoId} className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
-                                            <div className="flex items-center justify-between gap-2 mb-1 min-w-0">
-                                                <span className="font-semibold text-gray-900 text-sm truncate">{p.clienteNome || 'Cliente'}</span>
-                                                <span className="text-xs text-gray-500 shrink-0">{fmtBRL(p.valorTotal)}</span>
-                                            </div>
-                                            <p className="text-xs text-gray-500 mb-2 truncate">
-                                                {p.etiqueta || p.numero || ''}{p.cidade ? ` · ${p.cidade}` : ''}
-                                            </p>
-                                            {p.travado ? (
-                                                <div className="text-xs bg-gray-50 border border-gray-200 text-gray-600 rounded-lg px-3 py-2 flex items-start gap-1.5">
-                                                    <Lock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
-                                                    <span>Já saiu para entrega — fica na carga onde está.</span>
+                                    {gruposSemLocalizacao.map(({ chave, grupo, representante, clienteNome, cidade, semGps }) => {
+                                        const conjunto = grupo && grupo.itens.length > 1;
+                                        const itensDoCliente = grupo ? grupo.itens : [representante];
+                                        const moviveis = itensDoCliente.filter(i => !i.travado);
+                                        return (
+                                            <div key={chave} className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                                                <p className="font-semibold text-gray-900 text-sm truncate">
+                                                    {clienteNome || 'Cliente'}{cidade ? ` · ${cidade}` : ''}
+                                                </p>
+
+                                                {/* Itens sem posição, com o MOTIVO que o backend informou */}
+                                                <div className="mt-1.5 mb-2 space-y-1.5">
+                                                    {semGps.map(i => (
+                                                        <div key={i.chave} className="flex items-start gap-1.5">
+                                                            {badgeTipo(i.tipoItem, 'mt-0.5')}
+                                                            <span className="min-w-0 flex-1">
+                                                                <span className="block text-xs text-gray-700 truncate">
+                                                                    {NOME_TIPO[i.tipoItem] || 'Item'}{i.etiqueta || i.numero ? ` ${i.etiqueta || i.numero}` : ''}
+                                                                </span>
+                                                                {i.motivo && (
+                                                                    <span className="block text-[11px] text-gray-500">{i.motivo}</span>
+                                                                )}
+                                                            </span>
+                                                            {i.valorTotal != null && (
+                                                                <span className="text-xs text-gray-500 shrink-0">{fmtBRL(i.valorTotal)}</span>
+                                                            )}
+                                                            {i.travado && <Lock className="h-3.5 w-3.5 text-gray-500 shrink-0 mt-0.5" />}
+                                                        </div>
+                                                    ))}
                                                 </div>
-                                            ) : seletorMover(p)}
-                                        </div>
-                                    ))}
+
+                                                {moviveis.length === 0 ? (
+                                                    <div className="text-xs bg-gray-50 border border-gray-200 text-gray-600 rounded-lg px-3 py-2 flex items-start gap-1.5">
+                                                        <Lock className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                                                        <span>Já saiu para entrega — fica na carga onde está.</span>
+                                                    </div>
+                                                ) : conjunto ? (
+                                                    <div>
+                                                        {seletorMoverGrupo(grupo)}
+                                                        <p className="mt-1.5 text-[11px] text-gray-500">
+                                                            Este cliente tem {grupo.itens.length} itens no dia — mover leva tudo junto.
+                                                        </p>
+                                                    </div>
+                                                ) : seletorMover(representante)}
+                                            </div>
+                                        );
+                                    })}
                                 </>
                             )}
                         </div>

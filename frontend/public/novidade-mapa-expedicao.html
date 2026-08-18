@@ -7,7 +7,7 @@
 <link rel="icon" href="/logo-192.png">
 <!-- Preview do link no WhatsApp (sem og:image de propósito: preview compacto) -->
 <meta property="og:title" content="🗺️ Novidade no Hardt App: Mapa das Entregas">
-<meta property="og:description" content="A expedição agora divide as entregas do dia entre as cargas vendo tudo no mapa — com sugestão automática e previsão de volta de cada veículo.">
+<meta property="og:description" content="A expedição divide as entregas do dia no mapa: um pino por cliente com tudo que vai para ele — pedido, bonificação, especial, amostra e cobrança — com sugestão automática e previsão de volta de cada veículo.">
 <meta property="og:type" content="website">
 <style>
   :root {
@@ -262,6 +262,36 @@
   }
   .selo { display:inline-block; font-size:10px; font-weight:700; padding:2px 8px; border-radius:999px; background:#f1f3f2; color:#555; }
   .selo.verde { background: var(--mint); color: var(--primary-dark); }
+
+  /* ── Marcadores de tipo de item (mesmas cores do app) ── */
+  .tg {
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 9.5px; font-weight: 800; line-height: 1;
+    padding: 3px 6px; border-radius: 999px;
+    border: 1px solid rgba(0,0,0,.15);
+    white-space: nowrap;
+  }
+  .tg.p  { background:#fff;     color:#374151; }
+  .tg.bn, .tg.zz { background:#f3e8ff; color:#7e22ce; }
+  .tg.a  { background:#fef3c7; color:#b45309; }
+  .tg.cb { background:#dcfce7; color:#166534; }
+  /* pino com os marcadores embaixo, como no mapa */
+  .pino-badges { position:absolute; display:flex; flex-direction:column; align-items:center; }
+  .pino-badges .bola {
+    width:22px; height:22px; border-radius:50%; border:2.5px solid #fff;
+    box-shadow:0 1px 4px rgba(0,0,0,.4);
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:11px; font-weight:800;
+  }
+  .pino-badges .fila { display:flex; gap:2px; margin-top:3px; }
+  .item-linha { display:flex; align-items:center; gap:7px; font-size:12px; padding:5px 0; border-top:1px solid #eee; }
+  .item-linha:first-child { border-top:0; }
+  .item-linha .nm { flex:1; color:#3f4a45; }
+  .item-linha .vl { font-weight:700; color:var(--ink); }
+  .alerta-vermelho {
+    background:#fef2f2; border:1px solid #fecaca; border-radius:10px;
+    padding:9px 11px; font-size:11.5px; color:#991b1b;
+  }
   .pin {
     display: inline-flex;
     align-items: center;
@@ -289,7 +319,7 @@
   <div class="hero-inner">
     <span class="eyebrow">✦ Novidade no Hardt App</span>
     <h1>As entregas do dia,<br>divididas no mapa</h1>
-    <p>A expedição agora enxerga todas as entregas do dia como pinos coloridos e decide quem leva o quê arrastando entre as cargas — com sugestão automática e previsão do horário de volta de cada veículo.</p>
+    <p>Um pino por cliente com <b>tudo</b> que vai para ele — pedido, bonificação, especial, amostra e cobrança. A expedição decide quem leva o quê, com sugestão automática e previsão do horário de volta de cada veículo.</p>
   </div>
 </header>
 
@@ -320,15 +350,37 @@
   <div class="acc aberto">
     <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
       <span class="acc-ico">📍</span>
-      <strong>Cada pino é um pedido; a cor é a carga</strong>
+      <strong>Cada pino é um cliente; a cor é a carga</strong>
       <span class="acc-seta">▼</span>
     </button>
     <div class="acc-corpo">
       <ul>
-        <li>Todos os pedidos faturados do dia aparecem no mapa. <b>Cinza = ainda sem carga.</b> A estrela ⭐ é a saída da Hardt.</li>
+        <li>Tudo que vai para a rua no dia aparece no mapa — pedidos, bonificações, especiais, amostras e cobranças. <b>Cinza = ainda sem carga.</b> A estrela ⭐ é a saída da Hardt.</li>
         <li>Pino de <b>bolinha cheia</b> = cliente com ponto GPS confirmado. Pino <b>tracejado com "≈"</b> = a posição veio do endereço do cadastro (aproximada) — vale confirmar o GPS desse cliente quando der.</li>
-        <li>Pino com <b>cadeado 🔒</b> = pedido que já saiu para entrega; esse não troca mais de carga.</li>
-        <li>Toque num pino para ver cliente, pedido, valor e cidade — e mover para outra carga ali mesmo.</li>
+        <li>Pino com <b>cadeado 🔒</b> = já saiu para entrega; esse não troca mais de carga.</li>
+        <li>Toque num pino para ver o cliente e a <b>lista do que vai para ele</b>, com valor de cada item e o total — e mover tudo para outra carga ali mesmo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧩</span>
+      <strong>O mapa mostra tudo do cliente</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>O mapa não é só de pedidos. Cada pino é um <b>CLIENTE</b> e junta tudo que vai para ele no dia:
+          <span class="tg p">P</span> pedido ·
+          <span class="tg bn">BN</span> bonificação ·
+          <span class="tg zz">ZZ</span> pedido especial ·
+          <span class="tg a">A</span> amostra ·
+          <span class="tg cb">$</span> cobrança.</li>
+        <li>Os marcadores aparecem <b>embaixo da bolinha</b> do pino e também na lista "Clientes no mapa". Pino só com pedido normal fica limpo, sem marcador — é o caso mais comum.</li>
+        <li>O número dentro da bolinha é <b>quantos itens</b> aquele cliente tem no dia. <b>Mover o cliente leva tudo junto</b> (é uma parada só para o motorista) — o que já saiu para entrega, com cadeado 🔒, fica onde está.</li>
+        <li>No cartão de cada carga, <b>"Trocar tudo desta rota"</b> troca os dois roteiros inteiros de uma vez: <b>pedidos, amostras e cobranças</b> — nada fica para trás.</li>
+        <li>⚠️ <b>Cobrança é diferente:</b> "Tirar da carga" numa cobrança <b>apaga</b> o registro — ela não volta pelo mapa, só pelo botão <b>"Inserir Cobrança"</b> na tela da carga. Por isso o app pede uma confirmação à parte antes de aplicar.</li>
       </ul>
     </div>
   </div>
@@ -341,7 +393,7 @@
     </button>
     <div class="acc-corpo">
       <ul>
-        <li><b>"Sugerir divisão"</b> propõe como repartir os pedidos entre as cargas do dia — os pinos recolorem na hora, só como proposta.</li>
+        <li><b>"Sugerir divisão"</b> propõe como repartir os clientes do dia entre as cargas — os pinos recolorem na hora, só como proposta.</li>
         <li>Cada carga mostra <b>km, tempo de rota e o horário previsto de volta</b>. Se a volta passa das 16:30, o horário fica em âmbar — é um aviso, não trava nada.</li>
         <li>Os números têm selo: <b>"≈ aproximado"</b> (cálculo rápido, na própria tela) ou <b>"preciso"</b> (rota de verdade, pelo botão "Recalcular preciso").</li>
         <li>Quem decide a <b>ordem</b> das entregas continua sendo o motorista, na tela dele — aqui a expedição decide <b>quem leva o quê</b>.</li>
@@ -358,9 +410,9 @@
     <div class="acc-corpo">
       <ul>
         <li>Mover pinos e aceitar sugestão é tudo <b>rascunho</b>: aparece a faixa "alterações não aplicadas" com <b>Confirmar</b> e <b>Descartar</b>.</li>
-        <li>Ao Confirmar, tudo é gravado de uma vez nas cargas. Se outro colega tiver mexido nos mesmos pedidos, <b>nada é aplicado</b> — a tela avisa quais clientes mudaram e recarrega para você conferir.</li>
+        <li>Ao Confirmar, tudo é gravado de uma vez nas cargas. Se outro colega tiver mexido nos mesmos itens, <b>nada é aplicado</b> — a tela avisa quais clientes mudaram e recarrega para você conferir.</li>
         <li>Carga que mudou depois do romaneio impresso ganha o aviso âmbar <b>"reimprimir"</b> no cartão dela.</li>
-        <li>Pedido sem localização nenhuma (sem GPS e sem endereço localizável) não some: fica na seção <b>"Sem localização"</b>, com o mesmo menu para atribuir a carga.</li>
+        <li>Item sem localização nenhuma (sem GPS e sem endereço localizável) não some: fica na seção <b>"Sem localização"</b>, com o mesmo menu para atribuir a carga — e agora a tela <b>diz o motivo</b> de não ter pino (por exemplo, amostra de lead sem ponto GPS marcado).</li>
       </ul>
     </div>
   </div>
@@ -391,9 +443,9 @@
     </div>
     <div class="legenda">
       <div><span class="pin">1</span><span><b>Estrela</b> — a Hardt, ponto de saída e volta das cargas.</span></div>
-      <div><span class="pin">2</span><span><b>Pino colorido</b> — um pedido; cada carga tem uma cor. Toque para abrir o cartão do pedido e mover.</span></div>
+      <div><span class="pin">2</span><span><b>Pino colorido</b> — um cliente; cada carga tem uma cor. Toque para abrir o cartão do cliente com tudo que vai para ele e mover.</span></div>
       <div><span class="pin">3</span><span><b>Pino tracejado "≈"</b> — posição pelo endereço do cadastro (o GPS ainda não foi confirmado).</span></div>
-      <div><span class="pin">4</span><span><b>Pino cinza</b> — pedido ainda sem carga.</span></div>
+      <div><span class="pin">4</span><span><b>Pino cinza</b> — cliente ainda sem carga.</span></div>
       <div><span class="pin">5</span><span><b>Faixa de rascunho</b> — aparece quando você move algo; nada grava até tocar em Confirmar.</span></div>
     </div>
   </div>
@@ -440,22 +492,85 @@
 
   <!-- Tela 3: cartão do pino -->
   <div class="tela">
-    <div class="tela-titulo">📦 Tela 3 — Movendo um pedido</div>
+    <div class="tela-titulo">📦 Tela 3 — Movendo um cliente de carga</div>
     <div class="tela-corpo">
       <div class="app-card">
         <div class="app-card-body">
           <div style="font-size:13px;font-weight:700">Mercado Bom Preço <span class="pin">1</span></div>
-          <div style="font-size:11.5px;color:#6b756f;margin-bottom:6px">#8412 · São Bento do Sul</div>
-          <div style="font-size:13px;font-weight:700;margin-bottom:8px">R$ 1.240,00</div>
+          <div style="font-size:11.5px;color:#6b756f;margin-bottom:6px">1 item para este cliente · São Bento do Sul</div>
+          <div style="margin-bottom:8px">
+            <div class="item-linha"><span class="tg p">P</span><span class="nm">Pedido #8412</span><span class="vl">R$ 1.240,00</span></div>
+          </div>
           <div style="font-size:11px;color:#6b756f;margin-bottom:8px">📍 posição pelo endereço do cadastro (aproximada) — o ponto GPS ainda não foi confirmado <span class="pin">2</span></div>
           <div class="app-input" style="margin-bottom:0"><small>Mover para…</small>Carga #142 — João ▾ <span class="pin">3</span></div>
+          <div style="font-size:11px;color:#6b756f;margin-top:8px">No mesmo menu, no fim da lista: <b>“Tirar da carga (sem carga)”</b> <span class="pin">4</span></div>
         </div>
       </div>
     </div>
     <div class="legenda">
-      <div><span class="pin">1</span><span><b>Cartão do pedido</b> — abre ao tocar no pino: cliente, número, cidade e valor.</span></div>
+      <div><span class="pin">1</span><span><b>Cartão do cliente</b> — abre ao tocar no pino: nome, cidade e a lista do que vai para ele, com o valor de cada item.</span></div>
       <div><span class="pin">2</span><span><b>Aviso de posição aproximada</b> — só aparece nos pinos tracejados "≈".</span></div>
-      <div><span class="pin">3</span><span><b>Mover para…</b> — escolha outra carga ou "Tirar da carga". Vira rascunho até o Confirmar.</span></div>
+      <div><span class="pin">3</span><span><b>Mover para…</b> — escolha a carga de destino; leva todos os itens do cliente juntos. Vira rascunho até o Confirmar.</span></div>
+      <div><span class="pin">4</span><span><b>Tirar da carga</b> — a última opção do menu. Em pedido/amostra ela aparece como <b>“Tirar da carga (sem carga)”</b> (o item volta a ficar sem carga); em cobrança o rótulo muda para <b>“Tirar da carga (apaga a cobrança)”</b>, porque ali o registro é apagado de vez.</span></div>
+    </div>
+  </div>
+
+  <!-- Tela 4: pino do cliente com marcadores + lista de itens -->
+  <div class="tela">
+    <div class="tela-titulo">🧩 Tela 4 — Um pino, tudo do cliente</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body" style="padding:0">
+          <div class="mini-mapa" style="height:150px;border-radius:8px">
+            <span class="estrela" style="left:44%;top:52%">⭐</span>
+            <span class="pino-badges" style="left:16%;top:22%">
+              <span class="bola" style="background:#00754A">3</span>
+              <span class="fila"><span class="tg p">P</span><span class="tg a">A</span><span class="tg cb">$</span></span>
+              <span class="pin" style="margin-left:0;margin-top:4px">1</span>
+            </span>
+            <span class="pino-badges" style="left:62%;top:20%">
+              <span class="bola" style="background:#2563eb">2</span>
+              <span class="fila"><span class="tg bn">BN</span><span class="tg zz">ZZ</span></span>
+              <span class="pin" style="margin-left:0;margin-top:4px">2</span>
+            </span>
+            <span class="dot" style="background:#2563eb;left:82%;top:56%"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-card">
+        <div class="app-card-body">
+          <div style="font-size:13px;font-weight:700">Mercado Bom Preço</div>
+          <div style="font-size:11.5px;color:#6b756f;margin-bottom:8px">3 itens para este cliente · São Bento do Sul <span class="pin">3</span></div>
+          <div style="margin-bottom:8px">
+            <div class="item-linha"><span class="tg p">P</span><span class="nm">Pedido #8412</span><span class="vl">R$ 1.240,00</span></div>
+            <div class="item-linha"><span class="tg a">A</span><span class="nm">Amostra AM#233</span><span class="vl"></span></div>
+            <div class="item-linha"><span class="tg cb">$</span><span class="nm">Cobrança CB#77</span><span class="vl">R$ 480,00</span></div>
+            <div class="item-linha"><span class="nm" style="color:#6b756f">Total</span><span class="vl">R$ 1.720,00</span></div>
+          </div>
+          <div class="app-input" style="margin-bottom:8px"><small>Mover para… (leva tudo junto)</small>Carga #142 — João ▾ <span class="pin">4</span></div>
+          <div class="alerta-vermelho">🗑️ <b>1 cobrança será apagada</b> — “Tirar da carga” numa cobrança apaga o registro; para recolocar, use “Inserir Cobrança” na tela da carga. <span class="pin">5</span></div>
+        </div>
+      </div>
+
+      <div class="app-card">
+        <div class="app-card-head">Cargas do dia</div>
+        <div class="app-card-body">
+          <div class="linha-carga"><span class="bolinha" style="background:#00754A"></span><b>Carga #142 · João</b><span style="margin-left:auto;color:#6b756f">8 pedidos · 2 amostras · 1 cobrança</span></div>
+          <div style="display:flex;gap:6px;align-items:center;margin:8px 0 0 20px">
+            <div class="app-input" style="flex:1;margin:0"><small>Trocar tudo desta rota com</small>Carga #143 · Marcos ▾</div>
+            <span class="app-btn claro" style="padding:8px 12px">↔ Trocar <span class="pin">6</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Marcadores embaixo do pino</b> — mostram o que vai para o cliente: <span class="tg p">P</span> pedido, <span class="tg a">A</span> amostra, <span class="tg cb">$</span> cobrança. O número na bolinha é a quantidade de itens.</span></div>
+      <div><span class="pin">2</span><span><b><span class="tg bn">BN</span> bonificação e <span class="tg zz">ZZ</span> pedido especial</b> — aparecem marcados também; pino só com pedido normal fica limpo.</span></div>
+      <div><span class="pin">3</span><span><b>Cartão do cliente</b> — a lista de tudo que vai para ele, com valor de cada item e o total da parada.</span></div>
+      <div><span class="pin">4</span><span><b>Mover leva tudo junto</b> — é uma parada só para o motorista. Item com cadeado 🔒 (já saiu) fica fora da mudança.</span></div>
+      <div><span class="pin">5</span><span><b>Aviso vermelho da cobrança</b> — antes de aplicar, o app pergunta de novo e diz quantas cobranças serão apagadas.</span></div>
+      <div><span class="pin">6</span><span><b>Trocar tudo desta rota</b> — troca os dois roteiros inteiros: pedidos, amostras e cobranças juntos.</span></div>
     </div>
   </div>
 

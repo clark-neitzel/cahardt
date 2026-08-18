@@ -2,8 +2,8 @@
   {
     "slug": "mapa-expedicao",
     "titulo": "Mapa das Entregas",
-    "resumo": "A expedição agora divide as entregas do dia entre as cargas vendo tudo no mapa: cada pedido é um pino colorido (a cor é a carga; cinza = sem carga; tracejado ≈ = posição pelo endereço, GPS ainda não confirmado). O botão 'Sugerir divisão' propõe quem leva o quê e cada carga mostra km, tempo e horário previsto de volta — depois das 16:30 fica em âmbar, só como referência. Tudo entra como rascunho: nada muda de verdade até tocar em Confirmar (e se outro colega mexeu nos mesmos pedidos, a tela avisa e nada é aplicado). A ordem das entregas continua com o motorista; aqui se decide quem leva o quê. Fica em Embarque → botão 'Mapa das entregas'.",
-    "data": "2026-08-17"
+    "resumo": "A expedição agora divide as entregas do dia entre as cargas vendo tudo no mapa. Cada pino é um CLIENTE e mostra tudo que vai para ele no dia — P pedido, BN bonificação, ZZ especial, A amostra e $ cobrança —, com o número de itens dentro da bolinha; tocar no pino abre a lista com o valor de cada item e o total, e mover leva tudo junto (é uma parada só para o motorista). A cor é a carga; cinza = sem carga; tracejado ≈ = posição pelo endereço, GPS ainda não confirmado. No cartão da carga, 'Trocar tudo desta rota' troca os dois roteiros inteiros (pedidos, amostras e cobranças). Atenção: 'Tirar da carga' numa COBRANÇA apaga o registro — ela não volta pelo mapa, só pelo botão 'Inserir Cobrança' na tela da carga; por isso o app pede confirmação à parte dizendo quantas serão apagadas. O botão 'Sugerir divisão' propõe quem leva o quê e cada carga mostra km, tempo e horário previsto de volta — depois das 16:30 fica em âmbar, só como referência. Tudo entra como rascunho: nada muda de verdade até tocar em Confirmar (e se outro colega mexeu nos mesmos itens, a tela avisa e nada é aplicado). Item sem pino fica em 'Sem localização', agora com o motivo. A ordem das entregas continua com o motorista. Fica em Embarque → botão 'Mapa das entregas'.",
+    "data": "2026-08-18"
   },
   {
     "slug": "recibo-endereco",

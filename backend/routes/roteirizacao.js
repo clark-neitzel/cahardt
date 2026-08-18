@@ -350,7 +350,12 @@ router.post('/', verificarAuth, async (req, res) => {
             totalSemGPS: semGPS.length,
             duracaoTotalMin: duracaoTotalRota,
             distanciaTotalKm: distanciaTotalRota,
-            motorista: responsavelNome
+            motorista: responsavelNome,
+            // Rota recém-calculada com o OSRM (inclui a volta à base): os totais
+            // valem. É AQUI que a marca de "a expedição mexeu na sua carga" some —
+            // organizar a rota de novo é a única coisa que refaz os quilômetros.
+            // (o recalcular-etas NÃO limpa: ele só reescreve horários, não a rota)
+            recalcularNecessario: false
         };
         const config_final = { horaSaida, tempoParadaMin, lat: origemLat, lng: origemLng };
 
@@ -415,10 +420,20 @@ router.get('/', verificarAuth, async (req, res) => {
             return res.status(204).send(); // 204 No Content se não houver rota salva.
         }
 
+        // resumo.recalcularNecessario = a expedição remanejou a carga deste
+        // motorista depois que ele organizou a rota (marcado pelo
+        // POST /api/embarques/aplicar-divisao). Quando isso acontece os totais
+        // de km/duração guardados NÃO são recalculados — as pernas salvas não
+        // contêm a volta à base, então qualquer soma aqui sairia menor que a
+        // verdade. Preferimos manter o número antigo (conservador) e avisar a
+        // tela para pedir "Organizar Rota" de novo. Espelhado no topo da
+        // resposta para a tela não precisar cavar dentro do resumo.
+        const resumo = rotaSalva.resumo;
         return res.json({
             sequencia: rotaSalva.sequencia,
             semGPS: rotaSalva.semGPS,
-            resumo: rotaSalva.resumo,
+            resumo,
+            recalcularNecessario: resumo?.recalcularNecessario === true,
             dadosConfig: rotaSalva.dadosConfig,
             updatedAt: rotaSalva.updatedAt
         });
@@ -484,7 +499,8 @@ router.get('/admin/todas', verificarAuth, async (req, res) => {
 
 // ── POST /api/roteirizar/recalcular-etas ────────────────────────────────────
 // Recalcula APENAS os horários (ETAs) das entregas restantes usando now() como base.
-// NÃO recalcula rota, NÃO chama OSRM. Mantém sequência e distâncias intactas.
+// NÃO recalcula rota, NÃO chama OSRM. Mantém a sequência e os totais do resumo
+// (distância E duração) intactos — ver a explicação no cálculo do `resumo` abaixo.
 router.post('/recalcular-etas', verificarAuth, async (req, res) => {
     try {
         const userId = req.user.id;
@@ -525,7 +541,6 @@ router.post('/recalcular-etas', verificarAuth, async (req, res) => {
 
         // Recalcular horários usando agora como base
         let horarioAtual = new Date();
-        let duracaoTotalSeg = 0;
 
         for (let i = 0; i < sequenciaRestante.length; i++) {
             const item = sequenciaRestante[i];
@@ -538,16 +553,28 @@ router.post('/recalcular-etas', verificarAuth, async (req, res) => {
             item.previsaoChegada = formatHorario(chegada);
             item.previsaoSaida = formatHorario(saida);
 
-            duracaoTotalSeg += duracaoTrajeto + tempoParadaSeg;
             horarioAtual = saida;
         }
 
-        // Atualizar resumo
+        // Atualizar resumo.
+        // ATENÇÃO: o espalhamento preserva de propósito `distanciaTotalKm`,
+        // `duracaoTotalMin` e `recalcularNecessario`.
+        // Por que a DURAÇÃO TOTAL não é recalculada aqui: cada item da sequência
+        // guarda só a perna que CHEGA nele — a perna final (última parada → BASE)
+        // não existe em `sequencia[]`, ela só vivia em `rota.duration` na hora do
+        // OSRM. Somar as pernas salvas daria um total MENOR que a verdade, e como
+        // esta rota roda toda vez que a aba Entregas abre, o número encolhia a cada
+        // abertura (medido: 323 → 270 min só reabrindo a aba). Melhor manter o
+        // total antigo (correto para a rota que o motorista organizou) do que
+        // mostrar um número inventado.
+        // Recalcular ETA só reescreve horários com base em agora; NÃO refaz a rota.
+        // Quem escreve `duracaoTotalMin`/`distanciaTotalKm` e limpa a marca de "a
+        // expedição mexeu na carga" é o POST /api/roteirizar (Organizar Rota), que
+        // chama o OSRM de novo e aí sim tem a volta à base no total.
         const resumo = {
             ...rotaSalva.resumo,
             totalParadas: sequenciaRestante.length,
-            totalSemGPS: semGPSRestante.length,
-            duracaoTotalMin: Math.round(duracaoTotalSeg / 60)
+            totalSemGPS: semGPSRestante.length
         };
 
         // Salvar no banco
@@ -560,7 +587,12 @@ router.post('/recalcular-etas', verificarAuth, async (req, res) => {
             }
         });
 
-        return res.json({ sequencia: sequenciaRestante, semGPS: semGPSRestante, resumo });
+        return res.json({
+            sequencia: sequenciaRestante,
+            semGPS: semGPSRestante,
+            resumo,
+            recalcularNecessario: resumo?.recalcularNecessario === true
+        });
     } catch (error) {
         console.error('[Roteirizacao recalcular-etas] Erro:', error);
         res.status(500).json({ error: 'Erro ao recalcular horários.' });

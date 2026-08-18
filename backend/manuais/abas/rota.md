@@ -77,6 +77,28 @@ A tela central de trabalho do vendedor. É aqui que começa qualquer ação de v
 5. Cada card de entrega passa a mostrar o número de sequência e o ETA estimado
 6. Para limpar a rota organizada, clique no X ao lado do resumo
 
+**Se a expedição mexer na sua carga depois que você organizou a rota** (Mapa das
+Entregas → Confirmar), o app marca a rota como desatualizada e pede para tocar em
+**Organizar Rota** de novo:
+
+- **Onde o aviso aparece:** logo abaixo do resumo da rota (a tarja azul com
+  “N paradas · km · min est.”), na própria sub-aba Entregas, numa faixa amarela:
+  *“⚠️ A expedição mudou sua carga — km e tempo acima são da rota anterior.
+  Organize a rota de novo para atualizar.”* Os números continuam à vista; o aviso
+  só diz que eles envelheceram.
+- O **número de paradas atualiza na hora**; a **parada que saiu da sua carga some**
+  da lista imediatamente, e a **parada que entrou só aparece** depois que você
+  organizar de novo.
+- Os números de **km e duração continuam sendo os da rota antiga** — de propósito.
+  O sistema **não** recalcula esse total sozinho porque a conta sairia **menor que
+  a verdade** (o caminho de volta à empresa não fica guardado em cada parada). Só o
+  **Organizar Rota** dá o número certo.
+- **Recalcular horários** (roda sozinho toda vez que você abre a sub-aba Entregas)
+  mexe **apenas** nos horários previstos de cada parada, recontando a partir de
+  agora, tira da lista o que já foi entregue e renumera a sequência. Ele **não**
+  altera os totais de **km e duração** e **não** tira o aviso — o aviso sai quando
+  você organiza a rota de novo.
+
 ---
 
 ## Sub-abas

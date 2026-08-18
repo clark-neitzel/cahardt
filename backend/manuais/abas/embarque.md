@@ -16,7 +16,7 @@ Painel de expedição logística. Aqui são criados os "embarques" (cargas), que
 
 - Ver todos os embarques criados (número, data, motorista, quantidade de pedidos)
 - Montar uma nova carga: escolher data de saída e motorista responsável
-- Abrir o **Mapa das entregas** (botão no topo): dividir os pedidos do dia entre as cargas vendo os pinos no mapa — ver o manual próprio da aba "Mapa das Entregas" (`/admin/embarques/mapa`)
+- Abrir o **Mapa das entregas** (botão no topo): dividir entre as cargas **tudo que vai para a rua no dia** — pedidos, bonificações (BN#), especiais (ZZ#) já aprovados, amostras liberadas e as cobranças penduradas nas cargas — vendo os pinos no mapa (um pino por cliente; mover leva tudo junto) e podendo **trocar rotas inteiras** entre duas cargas. As **amostras já entregues** que estão nas cargas do dia também aparecem lá, só que **travadas** (não saem mais da carga). Ver o manual próprio da aba "Mapa das Entregas" (`/admin/embarques/mapa`)
 - Abrir o detalhe de uma carga para:
   - Ver os pedidos e amostras incluídos
   - Adicionar mais pedidos à carga (modal `AdicionarPedidosModal`)
@@ -69,7 +69,8 @@ Serve para mandar um título em aberto junto com o motorista, para ele cobrar do
 3. A busca mostra **só títulos em aberto**, com parcela, vencimento e saldo; os vencidos vêm marcados em vermelho. A lista **não é limitada aos clientes da carga** — dá para mandar qualquer cobrança
 4. Marque um ou vários e clique em **Adicionar** — eles aparecem na carga com a situação **"A cobrar"**
 5. Título que já está em outra rota aparece bloqueado ("já em rota"), para não cobrar duas vezes
-6. **Tirar da carga:** clique na lixeira da linha. Só sai enquanto estiver "A cobrar" — depois que o motorista registrou algo na rua, fica travado
+6. **Tirar da carga:** clique na lixeira da linha. Só sai enquanto estiver "A cobrar" — depois que o motorista registrou algo na rua (cobrou / não conseguiu cobrar) **ou o caixa já baixou a cobrança**, fica travado. **Tirar apaga o registro** (não existe cobrança "a cobrar" fora de carga): para recolocar, é só inserir de novo pelo mesmo botão
+   - O **Mapa das entregas** também move cobrança de uma carga para outra (junto com o resto do cliente) e também **apaga** quando a opção escolhida é "Tirar da carga" — lá ele pede uma confirmação extra antes
 7. Inserir/tirar cobrança **não sobe a versão da carga** (não muda o romaneio impresso), mas fica registrado no Histórico da carga
 8. **Trocar o motorista** da carga leva as cobranças pendentes junto — o novo motorista passa a vê-las na aba Cobranças dele
 9. O motorista cobra na tela **Rota → Entregas** (seção "Cobranças a fazer", junto do roteiro do dia) e a **baixa oficial sai no Caixa Diário**, no cartão "Cobranças da Rota"
