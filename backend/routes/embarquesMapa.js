@@ -246,11 +246,15 @@ async function medirGrupo(gpsParadas, precisaoMatriz, avisos) {
 // ==========================================
 router.get('/mapa', verificarAuth, checkAcessoEmbarque, async (req, res) => {
     try {
-        const { data, entregaDe, entregaAte } = req.query;
+        const { data, entregaDe: entregaDeRecebida, entregaAte: entregaAteRecebida } = req.query;
         if (!data || !DATA_RE.test(data)) {
             return res.status(400).json({ error: 'Informe a data no formato YYYY-MM-DD.' });
         }
-        if (!entregaDe || !entregaAte || !DATA_RE.test(entregaDe) || !DATA_RE.test(entregaAte) || entregaDe > entregaAte) {
+        // Compatibilidade com a tela anterior ainda em cache: sem período
+        // explícito, ela continua vendo os pedidos do próprio dia do embarque.
+        const entregaDe = entregaDeRecebida || data;
+        const entregaAte = entregaAteRecebida || data;
+        if (!DATA_RE.test(entregaDe) || !DATA_RE.test(entregaAte) || entregaDe > entregaAte) {
             return res.status(400).json({ error: 'Informe um período de entrega válido (entregaDe e entregaAte em YYYY-MM-DD).' });
         }
 
@@ -296,10 +300,7 @@ router.get('/mapa', verificarAuth, checkAcessoEmbarque, async (req, res) => {
 // ==========================================
 router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, res) => {
     try {
-        const { data, entregaDe, entregaAte, embarqueIds, horaSaida, tempoParadaMin = 10 } = req.body || {};
-        if (!data || !DATA_RE.test(data) || !entregaDe || !entregaAte || !DATA_RE.test(entregaDe) || !DATA_RE.test(entregaAte) || entregaDe > entregaAte) {
-            return res.status(400).json({ error: 'Informe a data do embarque e um período de entrega válido.' });
-        }
+        let { data, entregaDe, entregaAte, embarqueIds, horaSaida, tempoParadaMin = 10 } = req.body || {};
         if (!Array.isArray(embarqueIds) || embarqueIds.length === 0) {
             return res.status(400).json({ error: 'Informe embarqueIds (as cargas que vão dividir as entregas).' });
         }
@@ -313,6 +314,17 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
         });
         if (cargas.length !== embarqueIds.length) {
             return res.status(400).json({ error: 'Uma ou mais cargas informadas não existem.' });
+        }
+        // A versão inicial da tela enviava somente embarqueIds. Derivamos a
+        // data das próprias cargas até o navegador carregar o JS novo.
+        if (!data) data = cargas[0].dataSaida.toISOString().slice(0, 10);
+        if (!DATA_RE.test(data)) {
+            return res.status(400).json({ error: 'Informe a data do embarque no formato YYYY-MM-DD.' });
+        }
+        entregaDe = entregaDe || data;
+        entregaAte = entregaAte || data;
+        if (!DATA_RE.test(entregaDe) || !DATA_RE.test(entregaAte) || entregaDe > entregaAte) {
+            return res.status(400).json({ error: 'Informe um período de entrega válido (entregaDe e entregaAte em YYYY-MM-DD).' });
         }
         const idsForaDoDia = cargas.filter(c => c.dataSaida < intervaloDia(data).gte || c.dataSaida > intervaloDia(data).lte).map(c => c.id);
         if (idsForaDoDia.length) {
