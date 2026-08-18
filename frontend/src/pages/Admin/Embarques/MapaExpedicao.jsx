@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Map as MapIcon, Loader2, Wand2, Route as RouteIcon, X, Truck, Printer, MapPinOff, Lock } from 'lucide-react';
+import { Map as MapIcon, Loader2, Wand2, Route as RouteIcon, X, Truck, Printer, MapPinOff, Lock, ArrowLeftRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import mapaExpedicaoService from '../../../services/mapaExpedicaoService';
 import SelectBusca from '../../../components/SelectBusca';
@@ -101,6 +101,7 @@ export default function MapaExpedicao() {
     const [estimApi, setEstimApi] = useState(null);      // { chave, grupos: { [embarqueId]: {...} } }
     const [avisos, setAvisos] = useState([]);
     const [criterioSugestao, setCriterioSugestao] = useState(null);
+    const [trocaDestino, setTrocaDestino] = useState({}); // carga de origem -> carga que receberá a rota inteira
     const [sugerindo, setSugerindo] = useState(false);
     const [recalculando, setRecalculando] = useState(false);
     const [aplicando, setAplicando] = useState(false);
@@ -247,6 +248,34 @@ export default function MapaExpedicao() {
             return nx;
         });
     }, [dados]);
+
+    // Troca dois conjuntos inteiros no rascunho. Não altera motorista/carga
+    // nem grava nada: apenas inverte os pedidos que cada motorista receberá.
+    const trocarRotas = useCallback((origemId, destinoId) => {
+        if (!origemId || !destinoId || origemId === destinoId) return;
+        const daOrigem = (grupos.porCarga[origemId] || []).filter(p => !p.travado);
+        const doDestino = (grupos.porCarga[destinoId] || []).filter(p => !p.travado);
+        if (!daOrigem.length && !doDestino.length) {
+            toast('Não há pedidos que possam ser trocados entre essas rotas.', { icon: 'ℹ️' });
+            return;
+        }
+        setRascunho(prev => {
+            const nx = { ...prev };
+            for (const p of daOrigem) {
+                if (p.embarqueId === destinoId) delete nx[p.pedidoId];
+                else nx[p.pedidoId] = destinoId;
+            }
+            for (const p of doDestino) {
+                if (p.embarqueId === origemId) delete nx[p.pedidoId];
+                else nx[p.pedidoId] = origemId;
+            }
+            return nx;
+        });
+        setEstimApi(null);
+        setCriterioSugestao(null);
+        setAvisos([]);
+        toast('Rotas trocadas no rascunho. Confira e confirme para gravar.', { icon: '↔️' });
+    }, [grupos]);
 
     // ── Sugerir divisão (carrega a proposta como rascunho) ──
     const sugerir = async () => {
@@ -777,6 +806,8 @@ export default function MapaExpedicao() {
                             {(dados?.cargas || []).map((c, i) => {
                                 const ps = grupos.porCarga[c.id] || [];
                                 const est = ps.length ? estimativas[c.id] : null;
+                                const outrasCargas = (dados?.cargas || []).filter(outra => outra.id !== c.id);
+                                const destinoId = trocaDestino[c.id] || outrasCargas[0]?.id || '';
                                 const foiImpressa = Number(c.ultimaImpressaoVersao) > 0;
                                 const reimprimir = foiImpressa && Number(c.versao) > Number(c.ultimaImpressaoVersao);
                                 return (
@@ -791,6 +822,32 @@ export default function MapaExpedicao() {
                                             </span>
                                         </div>
                                         {linhaEstimativa(est)}
+                                        {outrasCargas.length > 0 && (
+                                            <div className="mt-2 pt-2 border-t border-gray-100">
+                                                <p className="text-xs text-gray-600 mb-1.5">Trocar todos os pedidos desta rota com</p>
+                                                <div className="flex gap-1.5">
+                                                    <select
+                                                        value={destinoId}
+                                                        onChange={e => setTrocaDestino(prev => ({ ...prev, [c.id]: e.target.value }))}
+                                                        className="min-w-0 flex-1 border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-gray-800 bg-white"
+                                                        aria-label={`Escolher rota para trocar com a carga ${c.numero}`}
+                                                    >
+                                                        {outrasCargas.map(outra => (
+                                                            <option key={outra.id} value={outra.id}>
+                                                                Carga #{outra.numero}{outra.responsavel?.nome ? ` · ${outra.responsavel.nome}` : ''}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => trocarRotas(c.id, destinoId)}
+                                                        className="shrink-0 px-2.5 py-1.5 rounded-lg border border-primary text-primary hover:bg-mint/40 text-xs font-semibold flex items-center gap-1"
+                                                    >
+                                                        <ArrowLeftRight className="h-3.5 w-3.5" /> Trocar
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="mt-2 flex flex-wrap items-center gap-2">
                                             {reimprimir && (
                                                 <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 flex items-center gap-1">
