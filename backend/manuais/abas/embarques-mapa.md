@@ -23,7 +23,9 @@ Acesso: menu Embarque → botão **"Mapa das entregas"** no topo do Painel de Ex
 
 ## Painel lateral (no celular: puxe a alça na parte de baixo da tela)
 
-- **Dia das entregas** (padrão: hoje), **hora de saída** (padrão 08:00) e **minutos por parada** (padrão 10) — os dois últimos ficam salvos para o usuário.
+- **Data do embarque** (padrão: hoje): define quais cargas aparecem no mapa.
+- **Período de entrega dos pedidos**: define quais pedidos livres ficam disponíveis para distribuir. Assim é possível, por exemplo, abrir o embarque de hoje e incluir pedidos com entrega prevista para ontem que ainda não entraram em nenhuma carga. Pedidos que já pertencem às cargas do embarque continuam visíveis mesmo fora do período escolhido.
+- **Hora de saída** (padrão 08:00) e **minutos por parada** (padrão 10) ficam salvos para o usuário.
 - **Sugerir divisão** (botão verde): o sistema propõe uma divisão dos pedidos entre as cargas do dia. A proposta **não grava nada** — os pinos recolorem como rascunho.
 - **Recalcular preciso**: busca km, duração e horário de volta calculados por rota de verdade (OSRM) para o arranjo atual. Sem esse serviço, os números saem **aproximados** com o selo "≈" (calculados em linha reta, no próprio aparelho) — o mapa e a sugestão funcionam do mesmo jeito.
 - **Cartão de cada carga**: bolinha da cor, número e motorista, quantidade de pedidos, km/duração/volta prevista com o selo de precisão ("preciso" ou "≈ aproximado"), aviso âmbar **"impressa na vN — reimprimir"** quando a carga mudou depois da última impressão do romaneio, e o link "abrir carga" (leva ao Painel de Expedição).

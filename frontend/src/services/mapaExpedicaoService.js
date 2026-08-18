@@ -3,9 +3,9 @@ import api from './api';
 // Mapa de divisão de cargas da expedição (contrato fechado com o backend).
 // Nada aqui grava sozinho: sugerir/estimar só calculam; quem grava é aplicarDivisao.
 const mapaExpedicaoService = {
-    // Entregas do dia + cargas + base da empresa. data = 'YYYY-MM-DD'.
-    mapa: async (data) => {
-        const response = await api.get('/embarques/mapa', { params: { data } });
+    // Cargas da data de embarque + pedidos livres do período de entrega.
+    mapa: async ({ data, entregaDe, entregaAte }) => {
+        const response = await api.get('/embarques/mapa', { params: { data, entregaDe, entregaAte } });
         return response.data;
     },
     // Proposta de divisão (não grava). Pode devolver 423 se outro cálculo estiver rodando.

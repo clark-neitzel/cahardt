@@ -124,15 +124,28 @@ async function completarComGeocode(entregas, clientePorPedido, budgetMs = GEOCOD
 
 // Busca livres + pedidos das cargas informadas, monta as entregas e resolve as
 // posições (Ponto_GPS → geocode do endereço). Compartilhado por /mapa e /sugerir-divisao.
-async function carregarEntregas(embarqueIds) {
+async function carregarEntregas(embarqueIds, periodoEntrega = null) {
     const idsNoDelivery = await idsPedidosNoDelivery();
+    const whereLivres = wherePedidosLivresParaEmbarque(idsNoDelivery);
+    // O mapa da expedição é fiscal: especiais/bonificações ainda não faturados
+    // podem existir no fluxo clássico de cargas, mas não aparecem nesta tela.
+    whereLivres.situacaoCA = 'FATURADO';
+    if (periodoEntrega?.de && periodoEntrega?.ate) {
+        whereLivres.dataVenda = {
+            gte: new Date(`${periodoEntrega.de}T00:00:00-03:00`),
+            lte: new Date(`${periodoEntrega.ate}T23:59:59.999-03:00`)
+        };
+    }
     const livres = await prisma.pedido.findMany({
-        where: wherePedidosLivresParaEmbarque(idsNoDelivery),
+        where: whereLivres,
         orderBy: { dataVenda: 'asc' },
         select: SELECT_PEDIDO_MAPA
     });
     const emCargas = embarqueIds.length ? await prisma.pedido.findMany({
-        where: { embarqueId: { in: embarqueIds } },
+        where: {
+            embarqueId: { in: embarqueIds },
+            situacaoCA: 'FATURADO'
+        },
         orderBy: { dataVenda: 'asc' },
         select: SELECT_PEDIDO_MAPA
     }) : [];
@@ -192,16 +205,20 @@ async function montarMatriz(pontos, avisos) {
 // km/duração reais de um grupo: Trip API base → paradas → base.
 // Se o OSRM falhar (ou a matriz já for aproximada), estima pelo laço em linha reta.
 async function medirGrupo(gpsParadas, precisaoMatriz, avisos) {
-    if (!gpsParadas.length) return { distanciaKm: 0, duracaoMin: 0, precisao: precisaoMatriz };
+    if (!gpsParadas.length) return { distanciaKm: 0, duracaoMin: 0, precisao: precisaoMatriz, trajeto: [] };
 
     if (precisaoMatriz === 'osrm') {
         try {
-            const data = await osrm.trip(osrm.coordsParaString([osrm.BASE_EMPRESA, ...gpsParadas]));
+            const data = await osrm.trip(
+                osrm.coordsParaString([osrm.BASE_EMPRESA, ...gpsParadas]),
+                'roundtrip=true&source=first&geometries=geojson&overview=full'
+            );
             if (data?.code === 'Ok' && data.trips?.length) {
                 return {
                     distanciaKm: +(data.trips[0].distance / 1000).toFixed(1),
                     duracaoMin: Math.round(data.trips[0].duration / 60),
-                    precisao: 'osrm'
+                    precisao: 'osrm',
+                    trajeto: (data.trips[0].geometry?.coordinates || []).map(([lng, lat]) => ({ lat, lng }))
                 };
             }
             throw new Error(`OSRM Trip devolveu code=${data?.code || 'sem resposta'}`);
@@ -219,7 +236,8 @@ async function medirGrupo(gpsParadas, precisaoMatriz, avisos) {
     return {
         distanciaKm: +km.toFixed(1),
         duracaoMin: Math.round((km / VELOCIDADE_MEDIA_KMH) * 60),
-        precisao: 'aproximada'
+        precisao: 'aproximada',
+        trajeto: rota
     };
 }
 
@@ -228,9 +246,12 @@ async function medirGrupo(gpsParadas, precisaoMatriz, avisos) {
 // ==========================================
 router.get('/mapa', verificarAuth, checkAcessoEmbarque, async (req, res) => {
     try {
-        const { data } = req.query;
+        const { data, entregaDe, entregaAte } = req.query;
         if (!data || !DATA_RE.test(data)) {
             return res.status(400).json({ error: 'Informe a data no formato YYYY-MM-DD.' });
+        }
+        if (!entregaDe || !entregaAte || !DATA_RE.test(entregaDe) || !DATA_RE.test(entregaAte) || entregaDe > entregaAte) {
+            return res.status(400).json({ error: 'Informe um período de entrega válido (entregaDe e entregaAte em YYYY-MM-DD).' });
         }
 
         const cargasDb = await prisma.embarque.findMany({
@@ -238,11 +259,15 @@ router.get('/mapa', verificarAuth, checkAcessoEmbarque, async (req, res) => {
             orderBy: { numero: 'asc' },
             include: {
                 responsavel: { select: { id: true, nome: true } },
-                _count: { select: { pedidos: true } }
+                _count: {
+                    select: {
+                        pedidos: { where: { situacaoCA: 'FATURADO' } }
+                    }
+                }
             }
         });
 
-        const { entregas, semGps } = await carregarEntregas(cargasDb.map(c => c.id));
+        const { entregas, semGps } = await carregarEntregas(cargasDb.map(c => c.id), { de: entregaDe, ate: entregaAte });
 
         res.json({
             cargas: cargasDb.map(c => ({
@@ -256,6 +281,7 @@ router.get('/mapa', verificarAuth, checkAcessoEmbarque, async (req, res) => {
             })),
             entregas,
             semGps,
+            filtros: { dataEmbarque: data, entregaDe, entregaAte },
             base: osrm.BASE_EMPRESA
         });
     } catch (error) {
@@ -270,7 +296,10 @@ router.get('/mapa', verificarAuth, checkAcessoEmbarque, async (req, res) => {
 // ==========================================
 router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, res) => {
     try {
-        const { embarqueIds, horaSaida, tempoParadaMin = 10 } = req.body || {};
+        const { data, entregaDe, entregaAte, embarqueIds, horaSaida, tempoParadaMin = 10 } = req.body || {};
+        if (!data || !DATA_RE.test(data) || !entregaDe || !entregaAte || !DATA_RE.test(entregaDe) || !DATA_RE.test(entregaAte) || entregaDe > entregaAte) {
+            return res.status(400).json({ error: 'Informe a data do embarque e um período de entrega válido.' });
+        }
         if (!Array.isArray(embarqueIds) || embarqueIds.length === 0) {
             return res.status(400).json({ error: 'Informe embarqueIds (as cargas que vão dividir as entregas).' });
         }
@@ -284,6 +313,10 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
         });
         if (cargas.length !== embarqueIds.length) {
             return res.status(400).json({ error: 'Uma ou mais cargas informadas não existem.' });
+        }
+        const idsForaDoDia = cargas.filter(c => c.dataSaida < intervaloDia(data).gte || c.dataSaida > intervaloDia(data).lte).map(c => c.id);
+        if (idsForaDoDia.length) {
+            return res.status(400).json({ error: 'Uma ou mais cargas não pertencem à data de embarque selecionada.' });
         }
         const cargaPorId = new Map(cargas.map(c => [c.id, c]));
 
@@ -300,7 +333,7 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
 
         try {
             const avisos = [];
-            const { entregas, semGps, geocodificadas, geocodePendentes } = await carregarEntregas(embarqueIds);
+            const { entregas, semGps, geocodificadas, geocodePendentes } = await carregarEntregas(embarqueIds, { de: entregaDe, ate: entregaAte });
 
             if (geocodificadas > 0) {
                 avisos.push(`${geocodificadas} entrega(s) posicionada(s) pelo endereço escrito do cadastro (posição aproximada, cliente sem ponto GPS).`);
@@ -350,11 +383,22 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                     distanciaKm: med.distanciaKm,
                     duracaoMin: med.duracaoMin,
                     previsaoRetorno: calcularRetorno(horaSaida, med.duracaoMin, tempoParadaMin, stops.length),
-                    precisao: med.precisao
+                    precisao: med.precisao,
+                    trajeto: med.trajeto
                 });
             }
 
-            res.json({ grupos: gruposResp, semGps, avisos });
+            res.json({
+                grupos: gruposResp,
+                semGps,
+                avisos,
+                criterio: {
+                    principal: 'Equilibrar o tempo total das rotas entre as cargas',
+                    considera: ['tempo rodoviário entre os pontos', 'saída e retorno à Hardt', 'tempo informado por parada'],
+                    preserva: 'Pedidos já roteirizados ou em entrega permanecem na carga atual',
+                    naoConsidera: ['territórios fixos por cidade', 'capacidade ou peso do veículo', 'valor do pedido']
+                }
+            });
         } finally {
             osrm.liberarLock(lockToken);
         }
@@ -432,7 +476,8 @@ router.post('/estimar-rotas', verificarAuth, checkAcessoEmbarque, async (req, re
                     distanciaKm: med.distanciaKm,
                     duracaoMin: med.duracaoMin,
                     previsaoRetorno: calcularRetorno(horaSaida, med.duracaoMin, tempoParadaMin, stops.length),
-                    precisao: med.precisao
+                    precisao: med.precisao,
+                    trajeto: med.trajeto
                 });
             }
 

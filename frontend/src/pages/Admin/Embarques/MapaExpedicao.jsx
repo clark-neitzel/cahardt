@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import mapaExpedicaoService from '../../../services/mapaExpedicaoService';
 import SelectBusca from '../../../components/SelectBusca';
 import { useFiltrosSalvos } from '../../../hooks/useFiltrosSalvos';
+import FiltroPeriodo, { usePeriodoSalvo } from '../../../components/FiltroPeriodo';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mapa de divisão de cargas: a expedição vê as entregas do dia no mapa e decide
@@ -28,6 +29,7 @@ const hojeISO = () => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
+const dataBR = (s) => s ? s.split('-').reverse().join('/') : '';
 
 const hhmmParaMin = (s) => {
     const [h, m] = String(s || '').split(':').map(Number);
@@ -90,6 +92,7 @@ const mensagemErro = (e, fallback) => {
 
 export default function MapaExpedicao() {
     const [data, setData] = useState(hojeISO); // padrão calculado (hoje) — NÃO persiste
+    const [periodoEntrega, periodoEntregaCtl] = usePeriodoSalvo('mapa-expedicao:entrega', 'hoje');
     const [params, setParams] = useFiltrosSalvos('mapa-expedicao', { horaSaida: '08:00', tempoParadaMin: 10 });
     const [dados, setDados] = useState(null);           // { cargas, entregas, semGps, base }
     const [carregando, setCarregando] = useState(true);
@@ -97,6 +100,7 @@ export default function MapaExpedicao() {
     const [rascunho, setRascunho] = useState({});        // pedidoId -> embarqueId | null
     const [estimApi, setEstimApi] = useState(null);      // { chave, grupos: { [embarqueId]: {...} } }
     const [avisos, setAvisos] = useState([]);
+    const [criterioSugestao, setCriterioSugestao] = useState(null);
     const [sugerindo, setSugerindo] = useState(false);
     const [recalculando, setRecalculando] = useState(false);
     const [aplicando, setAplicando] = useState(false);
@@ -112,7 +116,11 @@ export default function MapaExpedicao() {
         setCarregando(true);
         setErroCarregamento(null);
         try {
-            const r = await mapaExpedicaoService.mapa(data);
+            const r = await mapaExpedicaoService.mapa({
+                data,
+                entregaDe: periodoEntrega.de,
+                entregaAte: periodoEntrega.ate
+            });
             if (requisicao !== requisicaoMapa.current) return;
             setDados(r);
             setRascunho({});
@@ -126,7 +134,7 @@ export default function MapaExpedicao() {
         } finally {
             if (requisicao === requisicaoMapa.current) setCarregando(false);
         }
-    }, [data]);
+    }, [data, periodoEntrega.de, periodoEntrega.ate]);
     useEffect(() => { carregar(); }, [carregar]);
 
     // ── Entregas do dia (dedup por pedidoId, caso semGps repita itens de entregas) ──
@@ -250,6 +258,8 @@ export default function MapaExpedicao() {
         try {
             const r = await mapaExpedicaoService.sugerirDivisao({
                 data,
+                entregaDe: periodoEntrega.de,
+                entregaAte: periodoEntrega.ate,
                 embarqueIds: dados.cargas.map(c => c.id),
                 horaSaida: params.horaSaida,
                 tempoParadaMin
@@ -272,11 +282,13 @@ export default function MapaExpedicao() {
             (r.grupos || []).forEach(g => {
                 gm[g.embarqueId] = {
                     distanciaKm: g.distanciaKm, duracaoMin: g.duracaoMin,
-                    previsaoRetorno: g.previsaoRetorno, precisao: g.precisao || 'aproximada'
+                    previsaoRetorno: g.previsaoRetorno, precisao: g.precisao || 'aproximada',
+                    trajeto: g.trajeto || []
                 };
             });
             setEstimApi({ chave: montarChave(porCargaIds), grupos: gm });
-            toast.success('Sugestão pronta — confira os pinos e clique em Confirmar para valer.');
+            setCriterioSugestao(r.criterio || null);
+            toast.success('Sugestão pronta — confira as linhas das rotas antes de confirmar.');
         } catch (e) {
             if (e.response?.status === 423) toast('Outro cálculo de rota está em andamento — aguarde um instante e tente de novo.', { icon: '⏳', duration: 6000 });
             else toast.error(mensagemErro(e, 'Não deu para montar a sugestão agora. Tente de novo.'));
@@ -305,7 +317,8 @@ export default function MapaExpedicao() {
             (r.grupos || []).forEach(g => {
                 gm[g.embarqueId] = {
                     distanciaKm: g.distanciaKm, duracaoMin: g.duracaoMin,
-                    previsaoRetorno: g.previsaoRetorno, precisao: g.precisao || 'aproximada'
+                    previsaoRetorno: g.previsaoRetorno, precisao: g.precisao || 'aproximada',
+                    trajeto: g.trajeto || []
                 };
             });
             setEstimApi({ chave: chaveEstim, grupos: gm });
@@ -354,6 +367,7 @@ export default function MapaExpedicao() {
         setRascunho({});
         setEstimApi(null);
         setAvisos([]);
+        setCriterioSugestao(null);
         toast('Alterações descartadas — o mapa voltou ao que está salvo.', { icon: '↩️' });
     };
 
@@ -362,6 +376,7 @@ export default function MapaExpedicao() {
     const mapObj = useRef(null);
     const marcadores = useRef({});
     const baseMarker = useRef(null);
+    const linhasRotas = useRef([]);
     const ajustouPara = useRef(null);
 
     useEffect(() => {
@@ -379,6 +394,7 @@ export default function MapaExpedicao() {
             mapObj.current = null;
             marcadores.current = {};
             baseMarker.current = null;
+            linhasRotas.current = [];
         };
     }, []);
 
@@ -421,6 +437,24 @@ export default function MapaExpedicao() {
             marcadores.current[p.pedidoId] = mk;
         });
     }, [dados, comGps, rascunho, corDaCarga, embarqueEfetivo]);
+
+    // Trajetos devolvidos pelo roteirizador: tornam visível por que um ponto
+    // pertence a uma carga, em vez de mostrar apenas cores soltas no mapa.
+    useEffect(() => {
+        const map = mapObj.current;
+        if (!map) return;
+        linhasRotas.current.forEach(linha => linha.remove());
+        linhasRotas.current = [];
+        if (!estimApi || estimApi.chave !== chaveEstim) return;
+        (dados?.cargas || []).forEach((c, i) => {
+            const trajeto = estimApi.grupos?.[c.id]?.trajeto || [];
+            if (trajeto.length < 2) return;
+            linhasRotas.current.push(L.polyline(
+                trajeto.map(p => [p.lat, p.lng]),
+                { color: CORES[i % CORES.length], weight: 4, opacity: 0.72 }
+            ).addTo(map));
+        });
+    }, [estimApi, chaveEstim, dados]);
 
     // Enquadrar o dia uma vez por carga de dados
     useEffect(() => {
@@ -482,7 +516,7 @@ export default function MapaExpedicao() {
     const suprimirClique = useRef(false);
 
     return (
-        <div className="w-full max-w-full px-3 md:px-0 py-3 md:py-6 overflow-x-hidden">
+        <div className="relative z-0 isolate w-full max-w-full px-3 md:px-0 py-3 md:py-6 overflow-x-hidden">
             {/* Topbar */}
             <div className="flex items-center justify-between gap-2 bg-white p-3 md:p-4 rounded-t-xl shadow-sm border border-gray-200 border-b-0">
                 <div className="flex items-center gap-2 min-w-0">
@@ -491,7 +525,9 @@ export default function MapaExpedicao() {
                     </div>
                     <div className="min-w-0">
                         <h1 className="text-base md:text-2xl font-bold text-gray-900 truncate">Mapa das entregas</h1>
-                        <p className="text-xs text-gray-500 hidden sm:block">Divida as entregas do dia entre as cargas — a ordem da rota continua com o motorista</p>
+                        <p className="text-xs text-gray-500 hidden sm:block">
+                            Embarque {dataBR(data)} · pedidos com entrega de {dataBR(periodoEntrega.de)} até {dataBR(periodoEntrega.ate)}
+                        </p>
                     </div>
                 </div>
                 <Link
@@ -643,10 +679,10 @@ export default function MapaExpedicao() {
                     <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3">
                         {/* Dia + parâmetros */}
                         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
-                            <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Dia e saída</p>
+                            <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Embarque e pedidos</p>
                             <div className="grid grid-cols-2 gap-2">
                                 <label className="col-span-2 text-sm font-medium text-gray-700">
-                                    Dia das entregas
+                                    Data do embarque
                                     <input
                                         type="date"
                                         value={data}
@@ -654,6 +690,19 @@ export default function MapaExpedicao() {
                                         className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none min-h-[44px]"
                                     />
                                 </label>
+                                <div className="col-span-2">
+                                    <p className="text-sm font-medium text-gray-700 mb-1">Período de entrega dos pedidos</p>
+                                    <FiltroPeriodo
+                                        periodo={periodoEntrega}
+                                        controle={periodoEntregaCtl}
+                                        rotulo="Entrega"
+                                        ocultarPresets={['todo']}
+                                        className="w-full"
+                                    />
+                                    <p className="mt-1.5 text-xs text-gray-600">
+                                        Mostra pedidos livres com entrega nesse período e os que já estão nas cargas deste embarque.
+                                    </p>
+                                </div>
                                 <label className="text-sm font-medium text-gray-700">
                                     Hora de saída
                                     <input
@@ -699,6 +748,20 @@ export default function MapaExpedicao() {
                         {avisos.length > 0 && (
                             <div className="text-[13px] bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-3 py-2.5 space-y-1">
                                 {avisos.map((a, i) => <p key={i} className="m-0">⚠️ {String(a)}</p>)}
+                            </div>
+                        )}
+
+                        {criterioSugestao && estimApi?.chave === chaveEstim && (
+                            <div className="text-[13px] bg-blue-50 border border-blue-200 text-blue-950 rounded-lg px-3 py-2.5 space-y-1.5">
+                                <p className="font-semibold m-0">Como a sugestão foi montada</p>
+                                <p className="m-0">{criterioSugestao.principal}.</p>
+                                <p className="m-0 text-blue-900">
+                                    Considera: {(criterioSugestao.considera || []).join(', ')}.
+                                </p>
+                                <p className="m-0 text-blue-900">
+                                    Não considera: {(criterioSugestao.naoConsidera || []).join(', ')}.
+                                </p>
+                                <p className="m-0 font-medium">As linhas coloridas mostram o trajeto calculado de cada carga.</p>
                             </div>
                         )}
 
