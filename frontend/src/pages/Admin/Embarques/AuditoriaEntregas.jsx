@@ -1,13 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AlertTriangle, Truck, Pencil, X, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../../services/api';
 import tabelaPrecoService from '../../../services/tabelaPrecoService';
 import formasPagamentoService from '../../../services/formasPagamentoService';
+import vendedorService from '../../../services/vendedorService';
 import SelectBusca from '../../../components/SelectBusca';
 import { useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
+import { somenteAtivos, rotuloVendedor } from '../../../utils/vendedoresFiltro';
 
 const hojeISO = new Date().toISOString().slice(0, 10);
+
+// Quem ficou de cobrar esta linha de pagamento. Mesma regra do backend: linha com
+// vendedor marcado vale VENDEDOR, mesmo que o escritório também esteja marcado.
+const responsavelDoPagamento = (pg, vendedores) => {
+    if (pg?.vendedorResponsavelId) {
+        const v = (vendedores || []).find(x => x.id === pg.vendedorResponsavelId);
+        return v?.nome ? `Resp.: ${v.nome}` : 'Resp.: vendedor';
+    }
+    if (pg?.escritorioResponsavel) return 'Resp.: Escritório';
+    return null;
+};
 
 const AuditoriaEntregas = () => {
     const [entregas, setEntregas] = useState([]);
@@ -21,6 +34,9 @@ const AuditoriaEntregas = () => {
     const [editandoEntrega, setEditandoEntrega] = useState(null);
     const [editPagamentos, setEditPagamentos] = useState([]);
     const [formasPagamento, setFormasPagamento] = useState([]);
+    // Vendedores (ativos + inativos): o seletor de responsável oferece os ATIVOS, mas
+    // precisa saber o nome de um inativo que já esteja marcado numa entrega antiga.
+    const [vendedores, setVendedores] = useState([]);
     const [salvandoEdicao, setSalvandoEdicao] = useState(false);
 
     const fetchAuditoria = async () => {
@@ -42,6 +58,12 @@ const AuditoriaEntregas = () => {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        vendedorService.listarParaFiltro()
+            .then(v => setVendedores(Array.isArray(v) ? v : []))
+            .catch(() => setVendedores([]));
+    }, []);
 
     useEffect(() => {
         const t = setTimeout(fetchAuditoria, 300);
@@ -115,15 +137,38 @@ const AuditoriaEntregas = () => {
                         formaPagamentoNome: pg.formaPagamentoNome,
                         valor: String(Number(pg.valor).toFixed(2)),
                         escritorioResponsavel: pg.escritorioResponsavel || false,
+                        // Sem carregar (e reenviar) o vendedor responsável, editar o valor da
+                        // entrega apagava o encargo do título — sem aviso nenhum na tela.
+                        vendedorResponsavelId: pg.vendedorResponsavelId || null,
                     };
                 })
-                : [{ _selectId: '', formaPagamentoEntregaId: null, formaPagamentoNome: '', valor: '', escritorioResponsavel: false }];
+                : [{ _selectId: '', formaPagamentoEntregaId: null, formaPagamentoNome: '', valor: '', escritorioResponsavel: false, vendedorResponsavelId: null }];
 
             setEditPagamentos(pgIniciais);
             setEditandoEntrega(entrega);
         } catch {
             toast.error('Erro ao carregar formas de pagamento.');
         }
+    };
+
+    // Só quem está na ativa pode ser ESCOLHIDO como responsável...
+    const vendedoresAtivos = useMemo(() => somenteAtivos(vendedores), [vendedores]);
+
+    // ...mas se a linha já estiver no nome de um vendedor inativo (ou de alguém que
+    // sumiu do cadastro), ele entra na lista mesmo assim — senão o menu abriria vazio
+    // e não haveria como TIRAR a marcação errada pela tela.
+    const opcoesVendedorDaLinha = (pg) => {
+        const lista = [...vendedoresAtivos];
+        const id = pg?.vendedorResponsavelId;
+        if (id && !lista.some(v => v.id === id)) {
+            const conhecido = vendedores.find(v => v.id === id);
+            lista.push(conhecido || { id, nome: 'Vendedor fora do cadastro', ativo: false });
+        }
+        return lista;
+    };
+
+    const atualizarPg = (idx, patch) => {
+        setEditPagamentos(atual => atual.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
     };
 
     const handleSalvarEdicao = async () => {
@@ -134,6 +179,8 @@ const AuditoriaEntregas = () => {
                 formaPagamentoNome: p.formaPagamentoNome,
                 valor: Number(p.valor),
                 escritorioResponsavel: p.escritorioResponsavel || false,
+                // Vai junto sempre: é o que mantém o título no nome de quem ficou responsável.
+                vendedorResponsavelId: p.vendedorResponsavelId || null,
             }));
 
         if (pagamentos.length === 0) {
@@ -308,7 +355,12 @@ const AuditoriaEntregas = () => {
                                         <div className="space-y-1">
                                             {entrega.pagamentosReais.map(pg => (
                                                 <div key={pg.id} className="text-green-700">
-                                                    + R$ {Number(pg.valor).toFixed(2)} ({pg.formaPagamentoNome}) {pg.escritorioResponsavel ? '[Fiado]' : ''}
+                                                    + R$ {Number(pg.valor).toFixed(2)} ({pg.formaPagamentoNome})
+                                                    {responsavelDoPagamento(pg, vendedores) && (
+                                                        <span className="ml-1 px-2 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-700">
+                                                            {responsavelDoPagamento(pg, vendedores)}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             ))}
                                         </div>
@@ -382,9 +434,16 @@ const AuditoriaEntregas = () => {
                         {entrega.pagamentosReais?.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1.5">
                                 {entrega.pagamentosReais.map(pg => (
-                                    <span key={pg.id} className="text-[10px] bg-green-50 text-green-700 px-1 py-0.5 rounded font-mono">
-                                        {pg.formaPagamentoNome}: R$ {Number(pg.valor).toFixed(2)}
-                                    </span>
+                                    <React.Fragment key={pg.id}>
+                                        <span className="text-[10px] bg-green-50 text-green-700 px-1 py-0.5 rounded font-mono">
+                                            {pg.formaPagamentoNome}: R$ {Number(pg.valor).toFixed(2)}
+                                        </span>
+                                        {responsavelDoPagamento(pg, vendedores) && (
+                                            <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-semibold">
+                                                {responsavelDoPagamento(pg, vendedores)}
+                                            </span>
+                                        )}
+                                    </React.Fragment>
                                 ))}
                             </div>
                         )}
@@ -431,54 +490,119 @@ const AuditoriaEntregas = () => {
                         </button>
                     </div>
 
-                    <div className="px-5 py-4 space-y-3 max-h-80 overflow-y-auto">
-                        {editPagamentos.map((pg, idx) => (
-                            <div key={idx} className="flex gap-2 items-start">
-                                <div className="flex-1 space-y-1.5">
-                                    <SelectBusca
-                                        className="w-full"
-                                        value={pg._selectId || ''}
-                                        onChange={(e) => {
-                                            const selected = formasPagamento.find(f => f._selectId === e.target.value);
-                                            const updated = [...editPagamentos];
-                                            updated[idx] = {
-                                                ...updated[idx],
-                                                _selectId: selected?._selectId || '',
-                                                formaPagamentoEntregaId: selected?.formaPagamentoEntregaId || null,
-                                                formaPagamentoNome: selected?.nome || '',
-                                            };
-                                            setEditPagamentos(updated);
-                                        }}
+                    <div className="px-4 md:px-5 py-4 space-y-3 max-h-[60vh] md:max-h-96 overflow-y-auto">
+                        {editPagamentos.map((pg, idx) => {
+                            const temResponsavel = !!(pg.escritorioResponsavel || pg.vendedorResponsavelId);
+                            const duasMarcacoes = !!(pg.escritorioResponsavel && pg.vendedorResponsavelId);
+                            return (
+                            <div key={idx} className="rounded-xl border border-gray-200 bg-white shadow-sm p-3">
+                                <div className="flex gap-2 items-start">
+                                    <div className="flex-1 space-y-1.5 min-w-0">
+                                        <SelectBusca
+                                            className="w-full"
+                                            value={pg._selectId || ''}
+                                            onChange={(e) => {
+                                                const selected = formasPagamento.find(f => f._selectId === e.target.value);
+                                                atualizarPg(idx, {
+                                                    _selectId: selected?._selectId || '',
+                                                    formaPagamentoEntregaId: selected?.formaPagamentoEntregaId || null,
+                                                    formaPagamentoNome: selected?.nome || '',
+                                                });
+                                            }}
+                                        >
+                                            <option value="">Selecionar forma...</option>
+                                            {formasPagamento.map(f => (
+                                                <option key={f._selectId} value={f._selectId}>{f.nome}</option>
+                                            ))}
+                                        </SelectBusca>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            min="0"
+                                            placeholder="Valor (R$)"
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                            value={pg.valor}
+                                            onChange={(e) => atualizarPg(idx, { valor: e.target.value })}
+                                        />
+                                    </div>
+                                    <button
+                                        onClick={() => setEditPagamentos(editPagamentos.filter((_, i) => i !== idx))}
+                                        className="mt-1 text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50"
+                                        title="Remover esta linha de pagamento"
                                     >
-                                        <option value="">Selecionar forma...</option>
-                                        {formasPagamento.map(f => (
-                                            <option key={f._selectId} value={f._selectId}>{f.nome}</option>
-                                        ))}
-                                    </SelectBusca>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        placeholder="Valor (R$)"
-                                        className="w-full px-2 py-1.5 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500"
-                                        value={pg.valor}
-                                        onChange={(e) => {
-                                            const updated = [...editPagamentos];
-                                            updated[idx] = { ...updated[idx], valor: e.target.value };
-                                            setEditPagamentos(updated);
-                                        }}
-                                    />
+                                        <Trash2 className="h-4 w-4" />
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => setEditPagamentos(editPagamentos.filter((_, i) => i !== idx))}
-                                    className="mt-1 text-red-400 hover:text-red-600 p-1"
-                                >
-                                    <Trash2 className="h-4 w-4" />
-                                </button>
+
+                                {/* Quem fica responsável por COBRAR o que ficou nesta linha.
+                                    Sem este bloco, marcação errada só saía por SQL. */}
+                                <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">
+                                            Responsável por cobrar
+                                        </span>
+                                        {temResponsavel && (
+                                            <button
+                                                onClick={() => atualizarPg(idx, { escritorioResponsavel: false, vendedorResponsavelId: null })}
+                                                className="text-xs font-semibold text-red-600 hover:text-red-700 px-2 py-1 rounded-full hover:bg-red-50"
+                                            >
+                                                Tirar responsável
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <label className="flex items-center gap-2 cursor-pointer min-h-[44px] md:min-h-0 md:py-1">
+                                        <input
+                                            type="checkbox"
+                                            className="h-5 w-5 md:h-4 md:w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                                            checked={!!pg.escritorioResponsavel}
+                                            onChange={(e) => atualizarPg(idx, {
+                                                escritorioResponsavel: e.target.checked,
+                                                // Uma linha responde por UMA pessoa: marcar o escritório
+                                                // solta o vendedor (e vice-versa), senão o selo do título
+                                                // mostra uma coisa e o relatório soma outra.
+                                                vendedorResponsavelId: e.target.checked ? null : pg.vendedorResponsavelId,
+                                            })}
+                                        />
+                                        <span className="text-sm font-medium text-gray-700">Escritório responsável</span>
+                                    </label>
+
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-600 mb-1">Vendedor responsável</label>
+                                        <SelectBusca
+                                            className="w-full"
+                                            value={pg.vendedorResponsavelId || ''}
+                                            onChange={(e) => {
+                                                const id = e.target.value || null;
+                                                atualizarPg(idx, {
+                                                    vendedorResponsavelId: id,
+                                                    escritorioResponsavel: id ? false : pg.escritorioResponsavel,
+                                                });
+                                            }}
+                                        >
+                                            <option value="">Sem vendedor responsável</option>
+                                            {opcoesVendedorDaLinha(pg).map(v => (
+                                                <option key={v.id} value={v.id}>{rotuloVendedor(v)}</option>
+                                            ))}
+                                        </SelectBusca>
+                                    </div>
+
+                                    {duasMarcacoes && (
+                                        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
+                                            Esta linha está marcada nos dois lugares. Vale o vendedor — escolha só um para corrigir.
+                                        </p>
+                                    )}
+                                    {temResponsavel && (
+                                        <p className="text-xs text-gray-500">
+                                            A marcação é desta linha: trocar a forma de pagamento acima NÃO tira o responsável.
+                                        </p>
+                                    )}
+                                </div>
                             </div>
-                        ))}
+                            );
+                        })}
                         <button
-                            onClick={() => setEditPagamentos([...editPagamentos, { _selectId: '', formaPagamentoEntregaId: null, formaPagamentoNome: '', valor: '', escritorioResponsavel: false }])}
+                            onClick={() => setEditPagamentos([...editPagamentos, { _selectId: '', formaPagamentoEntregaId: null, formaPagamentoNome: '', valor: '', escritorioResponsavel: false, vendedorResponsavelId: null }])}
                             className="flex items-center gap-1 text-xs text-sky-600 hover:text-sky-800 font-medium"
                         >
                             <Plus className="h-3.5 w-3.5" /> Adicionar pagamento
@@ -488,14 +612,14 @@ const AuditoriaEntregas = () => {
                     <div className="px-5 py-4 border-t flex justify-end gap-3">
                         <button
                             onClick={() => setEditandoEntrega(null)}
-                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg"
+                            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-full min-h-[44px] md:min-h-0"
                         >
                             Cancelar
                         </button>
                         <button
                             onClick={handleSalvarEdicao}
                             disabled={salvandoEdicao}
-                            className="px-4 py-2 text-sm font-semibold text-white bg-sky-600 hover:bg-sky-700 disabled:opacity-50 rounded-lg"
+                            className="px-4 py-2 text-sm font-semibold text-white bg-primary hover:bg-primaryDark disabled:opacity-50 rounded-full shadow-sm min-h-[44px] md:min-h-0"
                         >
                             {salvandoEdicao ? 'Salvando...' : 'Salvar'}
                         </button>

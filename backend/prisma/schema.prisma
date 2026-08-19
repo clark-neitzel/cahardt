@@ -1583,6 +1583,11 @@ model PedidoPagamentoReal {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([pedidoId])
+  // Filtro/relatório "Responsável pela cobrança" busca por esta coluna (rota
+  // /contas-receber/responsaveis e o `some` do filtro). Sem índice era varredura completa
+  // da tabela a cada abertura da tela. ⚠️ Índice criado só na mão é derrubado pelo
+  // `prisma db push` do deploy — por isso fica declarado aqui.
+  @@index([vendedorResponsavelId])
   @@map("pedido_pagamentos_reais")
 }
 

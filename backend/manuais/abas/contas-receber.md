@@ -86,6 +86,7 @@ régua de cobrança.
    - **Cobrança**: como o título é cobrado — Boleto, Pix, Dinheiro ou Cartão. Vem da condição do pedido, então **funciona com contas ainda em aberto** (ex.: Status Conta = Aberto + Cobrança = Boleto lista tudo que está para receber em boleto, sem precisar marcar uma a uma as condições "7 dias - Boleto", "14 dias - Boleto"...)
    - **Condição na Entrega**: forma registrada pelo motorista
    - **Forma Pgto (baixa)**: como a parcela foi quitada — só encontra parcela **já baixada** (parcela em aberto ainda não tem forma de pagamento). Para filtrar boleto em aberto, use o filtro **Cobrança**
+   - **Responsável pela cobrança**: quem ficou encarregado de cobrar o título — cada vendedor que já foi marcado, mais a opção **Escritório**. O filtro olha a **marcação feita na entrega**, não o nome da forma de pagamento: título registrado como "Dinheiro" com a caixinha de responsável marcada também é encontrado (antes escapava). Dá para marcar **uma ou várias** pessoas de uma vez — o recorte é feito no servidor nos dois casos, então os indicadores do topo (total em aberto, vencidas etc.) também passam a ser só das pessoas escolhidas. Linha marcada para vendedor **e** escritório ao mesmo tempo conta como do **vendedor**, tanto no filtro quanto no relatório
    - **Baixado por**: quem registrou a baixa (usuário do app). Como só parcela baixada tem responsável, ao usar este filtro a tela passa a mostrar também as parcelas já pagas (não é preciso mudar Status Conta/Parcela). A lista traz só quem já deu baixa em alguma parcela. É o mesmo nome que aparece em "Baixado por" embaixo de cada linha
    - **Vencimento** e **Pagamento (baixa)**: filtro de período no padrão do sistema — uma pílula `‹ Todo o período ›` com os presets Hoje, Últimos 7 dias, Últimos 30 dias, Este mês, Este ano, Todo o período e Período personalizado (De/Até dentro do próprio menu). As setas pulam o período inteiro (mês anterior, mês seguinte...). Começa em "Todo o período" (sem recorte de data)
 4. As escolhas ficam salvas por usuário e voltam ao reabrir a tela. Nos períodos o que fica salvo é o **preset** — "Este mês" salvo em julho abre agosto em agosto, ninguém fica preso numa data velha
@@ -111,6 +112,21 @@ Desconto sem dinheiro (perdoar saldo) continua na mesma permissão de desconto e
 **Parcela PARCIAL:** quando entra só parte do valor, a parcela fica com o selo **Parcial** e mostra **"Recebido (+ desconto)"** e **"Falta receber"** — o saldo continua em aberto e é o que entra na cobrança. O histórico de pagamento traz cada recebimento (valor, forma, banco/caixa, data e quem baixou).
 
 **"Escritório/Vendedor responsável" não quita:** essas formas não são recebimento — são o registro de quem ficou responsável por cobrar. A baixa manual com essa forma é **recusada** com a explicação; o título continua **em aberto no nome do responsável**, e é aqui que o dono confere e dá a baixa quando descontar o valor da pessoa.
+
+### Quem ficou de cobrar o título (responsável)
+
+Quando o motorista fecha a entrega e o cliente não paga, quem confere pode marcar **"Vendedor responsável"** ou **"Escritório responsável"** — é o registro de quem ficou encarregado de cobrar aquele valor. Isso já era gravado, mas o sistema não sabia usar: não mostrava o nome, não dava para filtrar por pessoa e não havia nenhum fechamento. O dono montava o relatório do dia 01 na mão.
+
+A partir de 08/2026 o sistema entende essa marcação:
+
+- **Selo com o nome, na linha do título.** Onde antes aparecia só "Escritório resp." ou "Vendedor resp.", agora vem o nome: o vendedor pelo nome dele, e o escritório como **"Escritório — lançado por Fulano"**. Esse "lançado por" é quem lançou o pedido — serve de **pista de a quem perguntar**, e **não** quer dizer que essa pessoa é a responsável pela cobrança. Título antigo, sem essa informação, continua mostrando o selo curto de antes.
+- **Bloco "Responsável pela cobrança" no detalhe.** Ao abrir "Ver detalhes" de um título que tem responsável, aparece um bloco listando cada responsável com o nome e o valor pelo qual respondeu. Se o título tiver **mais de um** (parte do vendedor, parte do escritório), os dois aparecem, um em cada linha.
+- **Filtro "Responsável pela cobrança"** nos filtros da tela (ver a lista de filtros acima).
+- **Fechamento por responsável.** A tela **Financeiro → Cobranças sob responsabilidade** (`/financeiro/cobrancas-responsavel`, mesma permissão desta) agrupa tudo por pessoa: quantos títulos, quanto está em aberto, o mais antigo, a lista completa e uma folha A4 com linha de assinatura para o vale. Só entra o que está **em aberto** — o que já foi baixado não é mais cobrança de ninguém. Ver [cobrancas-sob-responsabilidade.md](cobrancas-sob-responsabilidade.md).
+- **Corrigir o lançamento da entrega não apaga mais a marcação.** Antes, ao ajustar o valor de uma entrega na tela de auditoria, o responsável se perdia em silêncio e o título ficava sem dono. Vale também para a correção feita pela tela de **Rota**, que não fala de responsável.
+- **Ninguém responde por mais do que assumiu.** Se só parte do pedido foi marcada (ex.: pedido de R$ 1.000 com R$ 600 em espécie esperando a conferência do Caixa e R$ 400 no nome do vendedor), o fechamento cobra os **R$ 400** — nunca o título inteiro.
+
+A baixa continua sendo dada **aqui**, em Contas a Receber, quando o valor for descontado da pessoa — a tela de fechamento é só o levantamento.
 
 **Título cobrado em boleto/Pix quitado em espécie:** é permitido (o cliente pode ter pago em dinheiro no balcão), mas o app **avisa** antes de confirmar — tanto na baixa individual quanto na em lote. Se o cliente pagou o boleto de verdade, não dê baixa aqui: ela vem sozinha pela Conciliação Bancária, e a baixa manual deixaria o crédito do banco sem par no extrato.
 

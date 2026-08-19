@@ -571,6 +571,76 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
     }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Preservar QUEM FICOU RESPONSÁVEL ao reescrever os pagamentos da entrega
+// ─────────────────────────────────────────────────────────────────────────────
+// A edição administrativa apaga e recria as linhas de `pedido_pagamentos_reais`. Como o
+// formulário do escritório nunca enviou `vendedorResponsavelId` / `escritorioResponsavel`,
+// toda correção de valor apagava silenciosamente a marcação de quem ficou de cobrar — o
+// título continuava em aberto, mas sem dono, e sumia do fechamento do responsável.
+//
+// Regra: a marcação só muda quando o payload FALA dela. Se o item vier sem os dois campos
+// (`undefined`), herdamos a marcação da linha antiga equivalente (mesma forma de pagamento).
+// Mandar `vendedorResponsavelId: null` + `escritorioResponsavel: false` continua limpando.
+// ⚠️ A chave tem que ser SIMÉTRICA. A primeira versão caía no id quando havia id e no nome
+// quando não havia — e como 100% das linhas marcadas do banco têm `formaPagamentoEntregaId`,
+// nenhum payload que manda só `{ formaPagamentoNome, valor }` (é o caso da tela de Rota,
+// `frontend/src/pages/Rota/RotaLeads.jsx`) casava com nada: a fila vinha vazia e a marcação
+// era apagada. Agora cada linha antiga entra na fila pelas DUAS chaves (id e nome) e a linha
+// nova procura pelas duas — quem casar primeiro consome a marcação, e uma marcação só é
+// consumida uma vez.
+const chavesFormaPagamento = (p) => {
+    const chaves = [];
+    if (p?.formaPagamentoEntregaId) chaves.push(`id:${p.formaPagamentoEntregaId}`);
+    const nome = String(p?.formaPagamentoNome || '').trim().toLowerCase();
+    if (nome) chaves.push(`nome:${nome}`);
+    return chaves;
+};
+
+const preservarResponsaveis = (pagamentosNovos, pagamentosAntigos) => {
+    // Fila por forma: duas linhas da mesma forma herdam marcações diferentes, na ordem.
+    const filas = new Map();
+    for (const antigo of (pagamentosAntigos || [])) {
+        if (!antigo.vendedorResponsavelId && !antigo.escritorioResponsavel) continue;
+        const entrada = { antigo, usado: false };
+        for (const k of chavesFormaPagamento(antigo)) {
+            if (!filas.has(k)) filas.set(k, []);
+            filas.get(k).push(entrada);
+        }
+    }
+    // Tira da fila a próxima marcação ainda não usada que case por id OU por nome.
+    const proximaMarcacao = (p) => {
+        for (const k of chavesFormaPagamento(p)) {
+            const fila = filas.get(k);
+            if (!fila) continue;
+            while (fila.length > 0 && fila[0].usado) fila.shift();
+            if (fila.length > 0) {
+                const entrada = fila.shift();
+                entrada.usado = true;
+                return entrada.antigo;
+            }
+        }
+        return null;
+    };
+    return (pagamentosNovos || []).map(p => {
+        const declarou = p.vendedorResponsavelId !== undefined || p.escritorioResponsavel !== undefined;
+        if (declarou) {
+            return {
+                ...p,
+                vendedorResponsavelId: p.vendedorResponsavelId || null,
+                escritorioResponsavel: !!p.escritorioResponsavel
+            };
+        }
+        const herdado = proximaMarcacao(p);
+        return {
+            ...p,
+            vendedorResponsavelId: herdado?.vendedorResponsavelId || null,
+            escritorioResponsavel: !!herdado?.escritorioResponsavel
+        };
+    });
+};
+
+
 // ==========================================
 // 3b. ADMIN: EDITAR LANÇAMENTO DE ENTREGA
 // ==========================================
@@ -596,6 +666,21 @@ router.patch('/:id/editar', verificarAuth, checkAjustador, async (req, res) => {
             return res.status(400).json({ error: 'Status de Entrega inválido.' });
         }
 
+        // Marcações atuais de responsável — lidas ANTES do delete/recreate para não se perderem
+        // quando o formulário mandar os pagamentos sem falar de responsável.
+        const pagamentosAntigos = pagamentos
+            ? await prisma.pedidoPagamentoReal.findMany({
+                where: { pedidoId: id },
+                select: {
+                    formaPagamentoEntregaId: true, formaPagamentoNome: true,
+                    vendedorResponsavelId: true, escritorioResponsavel: true
+                }
+            })
+            : [];
+        const pagamentosPreservados = pagamentos
+            ? preservarResponsaveis(pagamentos, pagamentosAntigos)
+            : [];
+
         await prisma.$transaction(async (tx) => {
             // Atualiza campos do pedido
             const updateData = {};
@@ -610,9 +695,9 @@ router.patch('/:id/editar', verificarAuth, checkAjustador, async (req, res) => {
             // Se pagamentos foram enviados, reescreve todos
             if (pagamentos) {
                 await tx.pedidoPagamentoReal.deleteMany({ where: { pedidoId: id } });
-                if (pagamentos.length > 0) {
+                if (pagamentosPreservados.length > 0) {
                     await tx.pedidoPagamentoReal.createMany({
-                        data: pagamentos.map(p => ({
+                        data: pagamentosPreservados.map(p => ({
                             pedidoId: id,
                             formaPagamentoEntregaId: p.formaPagamentoEntregaId || null,
                             formaPagamentoNome: p.formaPagamentoNome,
@@ -975,3 +1060,5 @@ router.post('/reordenar-prioridades', verificarAuth, checkAcessoEntregador, asyn
 });
 
 module.exports = router;
+// Exposto só para teste automatizado da herança de responsável (ver item 2 da revisão).
+module.exports.__preservarResponsaveis = preservarResponsaveis;

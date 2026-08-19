@@ -41,6 +41,58 @@ const STATUS_PARC = {
     CANCELADO: 'bg-gray-100 text-gray-400'
 };
 
+// Responsável pela cobrança: o backend manda em `conta.responsaveis` o nome pronto
+// para exibir ({ tipo, pessoaId, pessoaNome, valor }), já agrupado por pessoa — um
+// título pode ter mais de um (linhas de pagamento diferentes). Aqui achamos, para cada
+// LINHA de pagamento, a entrada correspondente.
+const responsavelDaLinha = (pg, responsaveis) => {
+    const lista = Array.isArray(responsaveis) ? responsaveis : [];
+    // Linha com vendedor marcado vence o escritório — mesma regra do backend.
+    if (pg?.vendedorResponsavelId) {
+        return lista.find(r => r?.tipo === 'VENDEDOR' && r?.pessoaId === pg.vendedorResponsavelId) || null;
+    }
+    if (pg?.escritorioResponsavel) return lista.find(r => r?.tipo === 'ESCRITORIO') || null;
+    return null;
+};
+
+// Selo da linha: COR e NOME contam a mesma história. Quando a linha tem as duas
+// marcações vale o VENDEDOR (regra do backend) — então o selo é o azul de vendedor com
+// o nome dele, nunca o âmbar de escritório com nome de vendedor dentro.
+// Sem `responsaveis` (título antigo, ou popup do pedido) cai no nome do vendedor que já
+// temos na tela e, em último caso, no rótulo genérico de antes.
+const seloResponsavel = (pg, responsaveis, vendedorPorId) => {
+    const r = responsavelDaLinha(pg, responsaveis);
+    if (pg?.vendedorResponsavelId) {
+        const nome = r?.pessoaNome || vendedorPorId?.[pg.vendedorResponsavelId];
+        return {
+            tipo: 'VENDEDOR',
+            texto: nome ? `Vendedor: ${nome}` : 'Vendedor resp.',
+            classe: 'bg-blue-100 text-blue-800'
+        };
+    }
+    if (pg?.escritorioResponsavel) {
+        return {
+            tipo: 'ESCRITORIO',
+            // `pessoaNome` do escritório já vem como "Escritório" / "Escritório — lançado
+            // por Fulano" — não prefixar de novo.
+            texto: r?.pessoaNome || 'Escritório resp.',
+            classe: 'bg-amber-100 text-amber-700'
+        };
+    }
+    return null;
+};
+
+// Selo pronto para render — um só por linha de pagamento.
+const SeloResponsavel = ({ pg, responsaveis, vendedorPorId }) => {
+    const selo = seloResponsavel(pg, responsaveis, vendedorPorId);
+    if (!selo) return null;
+    return (
+        <span className={`px-2 py-1 text-xs font-semibold rounded-full truncate ${selo.classe}`} title={selo.texto}>
+            {selo.texto}
+        </span>
+    );
+};
+
 const FORMAS = ['Dinheiro', 'Pix', 'Boleto', 'Cartão Crédito', 'Cartão Débito', 'Transferência', 'Cheque', 'Outro'];
 
 // Menu de seleção MÚLTIPLA usado em todos os filtros da tela.
@@ -133,6 +185,9 @@ const ContasReceberTabela = () => {
     const podeBaixaManual = user?.permissoes?.admin || user?.permissoes?.Pode_Baixar_Contas_Receber_Manual;
 
     const [linhas, setLinhas] = useState([]);
+    // Mensagem do servidor quando a busca é recusada (ex.: 400 de filtro inválido).
+    // Sem isso a tela ficaria vazia sem explicar por quê.
+    const [erroLista, setErroLista] = useState(null);
     const [indicadores, setIndicadores] = useState({});
     const [loading, setLoading] = useState(false);
     const [syncing, setSyncing] = useState(null);
@@ -146,6 +201,7 @@ const ContasReceberTabela = () => {
     const [categorias, setCategorias] = useState([]);
     const [tiposCobranca, setTiposCobranca] = useState([]); // [{ valor, label }] — Boleto, Pix, ...
     const [usuariosBaixa, setUsuariosBaixa] = useState([]); // [{ valor, label }] — quem já deu baixa
+    const [responsaveisOpc, setResponsaveisOpc] = useState([]); // [{ tipo, pessoaId, valor, label }]
 
     // Busca por texto livre — não persiste (useState normal)
     const [busca, setBusca] = useState('');
@@ -163,7 +219,10 @@ const ContasReceberTabela = () => {
         tipoCobranca: [],
         formaPagamentoEntrega: [],
         formaPagamento: [],
-        baixadoPorId: []
+        baixadoPorId: [],
+        // Responsável pela cobrança: cada valor é o ID do vendedor OU a palavra
+        // 'ESCRITORIO' (é o `valor` que o próprio backend manda em /responsaveis).
+        responsavel: []
     });
     // Datas no padrão do sistema (FiltroPeriodo). Padrão 'todo' = sem recorte de data,
     // que é como a tela sempre abriu.
@@ -216,6 +275,7 @@ const ContasReceberTabela = () => {
         contasReceberService.tiposCobranca().then(setTiposCobranca).catch(() => {});
         contasReceberService.baixadoPor().then(setUsuariosBaixa).catch(() => {});
         contasReceberService.opcoesFiltros().then(setOpcoes).catch(() => {});
+        contasReceberService.responsaveis().then(r => setResponsaveisOpc(Array.isArray(r) ? r : [])).catch(() => {});
     }, []);
 
     const condicoes = opcoes.condicoes;
@@ -225,6 +285,23 @@ const ContasReceberTabela = () => {
         () => [...new Set([...FORMAS, ...opcoes.formasBaixa])],
         [opcoes.formasBaixa]
     );
+
+    // Opções do filtro "Responsável" — o backend já manda { valor, label } prontos
+    // (`valor` = id do vendedor, ou a palavra ESCRITORIO).
+    const opcoesResponsavel = useMemo(() => (
+        (responsaveisOpc || [])
+            .filter(r => r?.valor)
+            .map(r => ({ valor: r.valor, label: r.label || r.pessoaNome || 'Sem nome' }))
+    ), [responsaveisOpc]);
+
+    // id -> nome do vendedor: rede de segurança para o selo quando a conta não trouxer
+    // `responsaveis` (título antigo) ou no popup do pedido.
+    const vendedorPorId = useMemo(() => {
+        const m = {};
+        (vendedores || []).forEach(v => { if (v?.id) m[v.id] = v.nome || v.Nome; });
+        (responsaveisOpc || []).forEach(r => { if (r?.pessoaId) m[r.pessoaId] = r.label || r.pessoaNome; });
+        return m;
+    }, [vendedores, responsaveisOpc]);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -245,6 +322,10 @@ const ContasReceberTabela = () => {
             if (filtros.formaPagamentoEntrega.length) params.formaPagamentoEntrega = filtros.formaPagamentoEntrega.join(',');
             if (filtros.formaPagamento.length) params.formaPagamento = filtros.formaPagamento.join(',');
             if (filtros.baixadoPorId.length) params.baixadoPorId = filtros.baixadoPorId.join(',');
+            // Responsável pela cobrança: UMA regra só, no servidor. `responsaveis` aceita
+            // lista (id do vendedor e/ou a palavra ESCRITORIO). Recortar no navegador
+            // deixava os indicadores no topo somando a empresa inteira numa tela filtrada.
+            if (filtros.responsavel?.length) params.responsaveis = filtros.responsavel.join(',');
             if (vencDe) params.vencimentoDe = vencDe;
             if (vencAte) params.vencimentoAte = vencAte;
             if (pagDe) params.pagamentoDe = pagDe;
@@ -268,6 +349,8 @@ const ContasReceberTabela = () => {
                         condicaoPagamento: c.condicaoPagamento,
                         statusEntrega: c.statusEntrega,
                         pagamentosEntrega: c.pagamentosEntrega || [],
+                        // [{ tipo, pessoaId, pessoaNome, valor }] — quem ficou responsável pela cobrança
+                        responsaveis: c.responsaveis || [],
                         vendedorNome: c.vendedorNome,
                         vendedorId: c.vendedorId,
                         statusConta: c.status,
@@ -316,8 +399,15 @@ const ContasReceberTabela = () => {
             if (pagAte) filtered = filtered.filter(l => l.dataPagamento && toYMD(l.dataPagamento) <= pagAte);
             setLinhas(filtered);
             setIndicadores(data.indicadores || {});
+            setErroLista(null);
         } catch (e) {
-            toast.error(e.response?.data?.error || 'Erro ao carregar');
+            const msg = e.response?.data?.error || 'Erro ao carregar';
+            toast.error(msg);
+            // Recusa do servidor (400): a lista antiga não vale mais para os filtros
+            // atuais — limpamos e explicamos, em vez de mostrar dado velho como se
+            // fosse o resultado do filtro.
+            if (e.response?.status === 400) { setLinhas([]); setIndicadores({}); }
+            setErroLista(msg);
         } finally {
             setLoading(false);
         }
@@ -340,7 +430,7 @@ const ContasReceberTabela = () => {
         setFiltros({
             status: [], statusParcela: [], origem: [], vendedorId: [], categoriaClienteId: [],
             condicaoPagamento: [], tipoCobranca: [], formaPagamentoEntrega: [], formaPagamento: [],
-            baixadoPorId: []
+            baixadoPorId: [], responsavel: []
         });
         periodoVencCtl.limpar();
         periodoPagCtl.limpar();
@@ -749,7 +839,7 @@ const ContasReceberTabela = () => {
         setPedidoPopup({ carregando: true });
         try {
             const p = await pedidoService.detalhar(pedidoId);
-            setPedidoPopup(p);
+            setPedidoPopup({ ...p, _pedidoIdOrigem: pedidoId });
         } catch (e) {
             toast.error('Erro ao buscar pedido');
             setPedidoPopup(null);
@@ -955,6 +1045,15 @@ const ContasReceberTabela = () => {
                             onChange={(v) => setFiltros(f => ({ ...f, baixadoPorId: v }))}
                         />
                     </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Responsável pela cobrança</label>
+                        <FiltroMulti
+                            label="Todos"
+                            options={opcoesResponsavel}
+                            value={filtros.responsavel}
+                            onChange={(v) => setFiltros(f => ({ ...f, responsavel: v }))}
+                        />
+                    </div>
                     <div className="col-span-2">
                         <label className="block text-sm font-medium text-gray-700 mb-1">Vencimento</label>
                         <FiltroPeriodo periodo={periodoVenc} controle={periodoVencCtl} className="w-full md:w-auto" />
@@ -974,6 +1073,12 @@ const ContasReceberTabela = () => {
                 </div>
                 </div>
             </div>
+
+            {erroLista && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-3 text-sm text-red-800">
+                    {erroLista}
+                </div>
+            )}
 
             {/* Barra de seleção */}
             {sel.size > 0 && (
@@ -1329,6 +1434,7 @@ const ContasReceberTabela = () => {
                     saldoRestante={saldoRestante}
                     fmt={fmt}
                     fmtData={fmtData}
+                    vendedorPorId={vendedorPorId}
                 />
             )}
 
@@ -1348,6 +1454,9 @@ const ContasReceberTabela = () => {
             {pedidoPopup && (() => {
                 const p = pedidoPopup;
                 const close = () => setPedidoPopup(null);
+                // Responsáveis vêm da CONTA (listagem), não do pedido — pegamos da linha
+                // que abriu o popup para o selo mostrar o nome também aqui.
+                const respDoPedido = linhas.find(x => x.pedidoId === (p._pedidoIdOrigem || p.id))?.responsaveis || [];
                 if (p.carregando) {
                     return (
                         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={close}>
@@ -1501,15 +1610,10 @@ const ContasReceberTabela = () => {
                                                 <div className="space-y-1.5">
                                                     {p.pagamentosReais.filter(x => Number(x.valor) > 0).map((pg, i) => (
                                                         <div key={i} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm">
-                                                            <span className="font-medium text-gray-800">{pg.formaPagamentoNome}</span>
-                                                            <div className="flex items-center gap-2">
-                                                                {pg.escritorioResponsavel && (
-                                                                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Escritório resp.</span>
-                                                                )}
-                                                                {pg.vendedorResponsavelId && !pg.escritorioResponsavel && (
-                                                                    <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Vendedor resp.</span>
-                                                                )}
-                                                                <span className="font-bold tabular-nums text-gray-900">R$ {fmt(pg.valor)}</span>
+                                                            <span className="font-medium text-gray-800 shrink-0">{pg.formaPagamentoNome}</span>
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <SeloResponsavel pg={pg} responsaveis={respDoPedido} vendedorPorId={vendedorPorId} />
+                                                                <span className="font-bold tabular-nums text-gray-900 shrink-0">R$ {fmt(pg.valor)}</span>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -1832,7 +1936,7 @@ const ContasReceberTabela = () => {
 // ── Modal de detalhes da parcela (histórico de pagamentos + ações) ──
 const DetalheParcelaModal = ({
     linha, onClose, podeBaixar, podeBaixaManual, onBaixar, onEstornarTudo, onSyncCA, syncing,
-    onAbrirPedido, onEstornoPagamento, elegivelBaixa, saldoRestante, fmt, fmtData
+    onAbrirPedido, onEstornoPagamento, elegivelBaixa, saldoRestante, fmt, fmtData, vendedorPorId
 }) => {
     const l = linha;
     const [pagamentos, setPagamentos] = useState([]);
@@ -1967,6 +2071,29 @@ const DetalheParcelaModal = ({
                         </div>
                     )}
 
+                    {/* Quem ficou responsável pela cobrança deste título (pode ser mais de um:
+                        cada linha de pagamento da entrega tem o seu). */}
+                    {(l.responsaveis || []).length > 0 && (
+                        <div className="border-t border-gray-100 pt-3">
+                            <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">
+                                Responsável pela cobrança
+                            </div>
+                            <div className="space-y-1.5">
+                                {l.responsaveis.map((r, i) => (
+                                    <div key={i} className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg px-3 py-2 text-sm">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full shrink-0 ${r.tipo === 'ESCRITORIO' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-800'}`}>
+                                                {r.tipo === 'ESCRITORIO' ? 'Escritório' : 'Vendedor'}
+                                            </span>
+                                            <span className="font-medium text-gray-800 truncate">{r.pessoaNome || '—'}</span>
+                                        </div>
+                                        <span className="font-bold tabular-nums text-gray-900 shrink-0">R$ {fmt(r.valor)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {(l.pagamentosEntrega || []).length > 0 && (
                         <div className="border-t border-gray-100 pt-3">
                             <div className="text-xs text-gray-500 uppercase tracking-wide mb-2">
@@ -1975,15 +2102,10 @@ const DetalheParcelaModal = ({
                             <div className="space-y-1.5">
                                 {l.pagamentosEntrega.map((pg, i) => (
                                     <div key={i} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 text-sm">
-                                        <span className="font-medium text-gray-800">{pg.formaPagamentoNome}</span>
-                                        <div className="flex items-center gap-2">
-                                            {pg.escritorioResponsavel && (
-                                                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Escritório resp.</span>
-                                            )}
-                                            {pg.vendedorResponsavelId && !pg.escritorioResponsavel && (
-                                                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Vendedor resp.</span>
-                                            )}
-                                            <span className="font-bold tabular-nums text-gray-900">R$ {fmt(pg.valor)}</span>
+                                        <span className="font-medium text-gray-800 shrink-0">{pg.formaPagamentoNome}</span>
+                                        <div className="flex items-center gap-2 min-w-0">
+                                            <SeloResponsavel pg={pg} responsaveis={l.responsaveis} vendedorPorId={vendedorPorId} />
+                                            <span className="font-bold tabular-nums text-gray-900 shrink-0">R$ {fmt(pg.valor)}</span>
                                         </div>
                                     </div>
                                 ))}

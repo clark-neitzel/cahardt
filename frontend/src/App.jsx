@@ -42,6 +42,7 @@ const DespesasPage = lazyComRetry(() => import('./pages/Caixa/DespesasPage'));
 const CaixaDiarioPage = lazyComRetry(() => import('./pages/Caixa/CaixaDiarioPage'));
 const RelatorioCaixaPrint = lazyComRetry(() => import('./pages/Caixa/RelatorioCaixaPrint'));
 const ContasReceberTabela = lazyComRetry(() => import('./pages/Financeiro/ContasReceberTabela'));
+const CobrancasResponsavelPage = lazyComRetry(() => import('./pages/Financeiro/CobrancasResponsavelPage'));
 const ContasPagarPage = lazyComRetry(() => import('./pages/Financeiro/ContasPagarPage'));
 const FornecedoresPage = lazyComRetry(() => import('./pages/Financeiro/FornecedoresPage'));
 const NotasRecebidasPage = lazyComRetry(() => import('./pages/Financeiro/NotasRecebidasPage'));
@@ -367,6 +368,7 @@ const Layout = ({ children }) => {
       hasPermission('Pode_Acessar_Caixa') && { to: '/despesas', icon: Receipt, label: 'Despesas' },
       hasPermission('Pode_Ver_Todas_Entregas') && { to: '/admin/auditoria-entregas', icon: Search, label: 'Auditoria' },
       hasPermission('Pode_Acessar_Contas_Receber') && { to: '/financeiro/contas-receber/tabela', icon: DollarSign, label: 'Contas a Receber' },
+      hasPermission('Pode_Acessar_Contas_Receber') && { to: '/financeiro/cobrancas-responsavel', icon: UserCheck, label: 'Cobranças sob responsabilidade' },
       (hasPermission('Pode_Acessar_Cobranca') || hasPermission('Pode_Editar_Cobranca')) && { to: '/financeiro/cobranca', icon: BellRing, label: 'Régua de Cobrança' },
       hasPermission('Pode_Acessar_Contas_Pagar') && { to: '/contas-pagar', icon: Wallet, label: 'Contas a Pagar' },
       hasPermission('Pode_Acessar_Notas_Recebidas') && { to: '/notas-recebidas', icon: Inbox, label: 'Notas Recebidas' },
@@ -755,6 +757,7 @@ function App() {
               {/* Financeiro */}
               <Route path="/financeiro/contas-receber" element={<Navigate to="/financeiro/contas-receber/tabela" replace />} />
               <Route path="/financeiro/contas-receber/tabela" element={<PrivateRoute tab="Pode_Acessar_Contas_Receber"><ContasReceberTabela /></PrivateRoute>} />
+              <Route path="/financeiro/cobrancas-responsavel" element={<PrivateRoute tab="Pode_Acessar_Contas_Receber"><CobrancasResponsavelPage /></PrivateRoute>} />
               <Route path="/financeiro/cobranca" element={<PrivateRoute tab={['Pode_Acessar_Cobranca', 'Pode_Editar_Cobranca']}><ReguaCobrancaPage /></PrivateRoute>} />
               <Route path="/contas-pagar" element={<PrivateRoute tab="Pode_Acessar_Contas_Pagar"><ContasPagarPage /></PrivateRoute>} />
               <Route path="/notas-recebidas" element={<PrivateRoute tab="Pode_Acessar_Notas_Recebidas"><NotasRecebidasPage /></PrivateRoute>} />

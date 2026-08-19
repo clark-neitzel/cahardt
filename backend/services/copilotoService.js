@@ -61,6 +61,7 @@ const ABAS = [
     { slug: 'despesas',           nome: 'Despesas',                     rota: '/despesas',                           perm: 'Pode_Acessar_Caixa' },
     { slug: 'auditoria-entregas', nome: 'Auditoria de Entregas',        rota: '/admin/auditoria-entregas',           perm: 'Pode_Ver_Todas_Entregas' },
     { slug: 'contas-receber',     nome: 'Contas a Receber',             rota: '/financeiro/contas-receber/tabela',   perm: 'Pode_Acessar_Contas_Receber' },
+    { slug: 'cobrancas-sob-responsabilidade', nome: 'Cobranças sob responsabilidade', rota: '/financeiro/cobrancas-responsavel', perm: 'Pode_Acessar_Contas_Receber' },
     // "canhoto" no nome de propósito: `selecionarRelevantes` pontua o nome com peso 2 e
     // o corpo com 1 — a aba Canhotos (arquivo do mês, bipe da DANFE) mora nesta mesma
     // rota, com a mesma permissão, então quem pergunta "onde bipo o canhoto?" cai aqui.

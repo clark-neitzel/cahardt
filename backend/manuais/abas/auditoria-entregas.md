@@ -42,8 +42,22 @@ Uma entrega é marcada como divergente quando os pagamentos registrados pelo mot
 1. Clique no ícone de lápis na entrega que quer corrigir
 2. O painel de edição abre com os pagamentos registrados
 3. Adicione, remova ou edite os valores e formas de pagamento
-4. Marque "Escritório Responsável" se o pagamento será acertado pela gerência
+4. Cada linha de pagamento tem os controles de **quem ficou de cobrar**:
+   - a caixinha **Escritório responsável** — marque quando o acerto ficar com a gerência;
+   - o seletor **Vendedor responsável** — escolha a pessoa que ficou de cobrar aquele valor;
+   - a opção **Sem vendedor responsável**, dentro do próprio seletor, para tirar só o vendedor;
+   - o botão **Tirar responsável**, que limpa as duas marcações daquela linha de uma vez.
+   Se você marcar os dois na mesma linha, vale o **vendedor** — é a regra usada no relatório
+   e no filtro de Contas a Receber.
 5. Clique em Salvar
+
+> **A marcação de responsável não se perde ao editar (08/2026).** Antes, corrigir o valor de
+> uma entrega apagava em silêncio o "Vendedor responsável"/"Escritório responsável" daquele
+> pedido — o título continuava em aberto, mas sem dono, e sumia do fechamento por responsável.
+> Agora, se a tela usada para editar não falar de responsável (é o caso da correção feita pela
+> tela de **Rota**), a marcação anterior é mantida. Para **trocar ou tirar** o responsável use
+> os controles da linha de pagamento no painel de edição desta aba (passo 4) — é o único lugar
+> em que a marcação muda de propósito.
 
 ### Corrigir o status da entrega
 Editar o lançamento e mudar o status da entrega (ex.: o motorista marcou **Devolvido** por

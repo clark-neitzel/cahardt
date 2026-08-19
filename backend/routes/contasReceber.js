@@ -71,6 +71,109 @@ const validarFormaManual = (formaPagamento) => {
     return `Baixa manual aceita apenas ${FORMAS_ESPECIE.join(' ou ')}. Recebimento em ${f} entra pela Conciliação Bancária (quando cair no extrato) ou pelo Caixa.`;
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// RESPONSÁVEL PELA COBRANÇA (quem ficou de cobrar o título)
+// ─────────────────────────────────────────────────────────────────────────────
+// A marcação mora na LINHA DE PAGAMENTO da entrega (`pedido_pagamentos_reais`):
+//   • `vendedorResponsavelId` → um vendedor ficou responsável por aquele valor;
+//   • `escritorioResponsavel` → o escritório assumiu a cobrança.
+// Até 08/2026 o dado era gravado e nunca lido: o nome nunca era resolvido, não dava para
+// filtrar por pessoa nem fechar por responsável — o dono fazia o fechamento do dia 01 na mão.
+//
+// ⚠️ A marcação é o ÚNICO critério válido. NÃO usar o nome da forma de pagamento
+// ("Vendedor Responsável", "Escritório Responsável"): quem registrar como "Dinheiro" com a
+// caixinha marcada escapa de qualquer busca feita pelo nome — foi exatamente o defeito.
+const TIPOS_RESPONSAVEL = ['VENDEDOR', 'ESCRITORIO'];
+
+// `select` mínimo para montar os responsáveis sem N+1: o nome do vendedor vem por join na
+// relação `PagamentosFiados` (que existia no schema e nunca era usada em nenhum include).
+const SELECT_PAGAMENTOS_RESPONSAVEL = {
+    where: { valor: { gt: 0 } },
+    select: {
+        formaPagamentoNome: true,
+        valor: true,
+        escritorioResponsavel: true,
+        vendedorResponsavelId: true,
+        vendedorResponsavel: { select: { id: true, nome: true } }
+    }
+};
+
+// Rótulo do escritório: o escritório não é uma pessoa, então mostramos QUEM LANÇOU o pedido
+// como pista de a quem perguntar. NÃO é afirmação de que essa pessoa é a responsável.
+const rotuloEscritorio = (pedido) => {
+    const quem = pedido?.usuarioLancamento?.nome || pedido?.vendedor?.nome || null;
+    return quem ? `Escritório — lançado por ${quem}` : 'Escritório';
+};
+
+// Monta o array `responsaveis` de um pedido, agrupando por (tipo, pessoa) e somando o valor.
+// Sem marcação → array VAZIO (nunca null). Linha com vendedor marcado vence o escritório.
+const montarResponsaveis = (pedido) => {
+    const mapa = new Map();
+    for (const p of (pedido?.pagamentosReais || [])) {
+        const valor = Number(p.valor || 0);
+        if (valor <= 0) continue;
+        let chave, item;
+        if (p.vendedorResponsavelId) {
+            chave = `VENDEDOR:${p.vendedorResponsavelId}`;
+            item = {
+                tipo: 'VENDEDOR',
+                pessoaId: p.vendedorResponsavelId,
+                pessoaNome: p.vendedorResponsavel?.nome || 'Vendedor não identificado',
+                valor: 0
+            };
+        } else if (p.escritorioResponsavel) {
+            chave = 'ESCRITORIO';
+            item = { tipo: 'ESCRITORIO', pessoaId: null, pessoaNome: rotuloEscritorio(pedido), valor: 0 };
+        } else {
+            continue;
+        }
+        if (!mapa.has(chave)) mapa.set(chave, item);
+        mapa.get(chave).valor += valor;
+    }
+    return [...mapa.values()].map(r => ({ ...r, valor: Math.round(r.valor * 100) / 100 }));
+};
+
+// Cláusula `some` sobre as linhas de pagamento para filtrar por responsável.
+// Devolve null quando não há filtro pedido.
+const someResponsavel = (responsavelTipo, responsavelId) => {
+    const tipo = String(responsavelTipo || '').trim().toUpperCase();
+    if (tipo && !TIPOS_RESPONSAVEL.includes(tipo)) return null;
+    const id = String(responsavelId || '').trim();
+    if (!tipo && !id) return null;
+
+    if (tipo === 'ESCRITORIO') {
+        // Escritório não tem pessoaId — um responsavelId junto é ignorado de propósito.
+        // ⚠️ `vendedorResponsavelId: null` é OBRIGATÓRIO aqui: `montarResponsaveis` classifica
+        // linha com os DOIS marcados como VENDEDOR. Sem isso o servidor devolvia a conta no
+        // filtro "Escritório" e a tela a escondia (lista com buraco). Uma regra só.
+        return { valor: { gt: 0 }, escritorioResponsavel: true, vendedorResponsavelId: null };
+    }
+    if (id) return { valor: { gt: 0 }, vendedorResponsavelId: id };
+    // tipo VENDEDOR sem pessoa: qualquer vendedor marcado.
+    // `not: null` aqui é o que queremos mesmo (só linhas COM vendedor).
+    return { valor: { gt: 0 }, vendedorResponsavelId: { not: null } };
+};
+
+// Filtro por LISTA de responsáveis: `responsaveis=id1,id2,ESCRITORIO`.
+// Vira um único `some` com `OR` dentro — assim o recorte é feito no BANCO, e não no
+// navegador (com o recorte no cliente os indicadores da tela vinham do universo inteiro).
+// Devolve `null` quando não há nada válido pedido.
+const someResponsaveis = (lista) => {
+    const itens = (Array.isArray(lista) ? lista : String(lista || '').split(','))
+        .map(v => String(v || '').trim())
+        .filter(Boolean);
+    const ors = [];
+    for (const item of itens) {
+        const clausula = item.toUpperCase() === 'ESCRITORIO'
+            ? someResponsavel('ESCRITORIO', null)
+            : someResponsavel('VENDEDOR', item);
+        if (clausula) ors.push(clausula);
+    }
+    if (ors.length === 0) return null;
+    if (ors.length === 1) return ors[0];
+    return { OR: ors };
+};
+
 // Conta financeira em espécie (a "Caixinha") — usada quando a baixa manual em dinheiro
 // não vem com conta escolhida, para nunca sobrar baixa sem dizer onde o dinheiro entrou.
 const contaEspeciePadrao = async () => {
@@ -174,6 +277,297 @@ router.get('/baixado-por', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
+// ── GET /responsaveis — opções do filtro "Responsável pela cobrança" ──
+// Igual a /baixado-por: as opções vêm do banco INTEIRO, não das linhas já filtradas na tela
+// (senão ao escolher uma pessoa as outras somem do menu e o filtro fica impossível de limpar).
+// `valor` é o que a tela devolve ao servidor: id do vendedor, ou a palavra ESCRITORIO.
+router.get('/responsaveis', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        // `groupBy` vira GROUP BY no banco (o `distinct` do Prisma é filtrado em memória
+        // DEPOIS de trazer a tabela inteira — com 40 mil linhas de pagamento isso é uma
+        // varredura completa a cada abertura da tela).
+        const [gruposVendedor, temEscritorio] = await Promise.all([
+            prisma.pedidoPagamentoReal.groupBy({
+                by: ['vendedorResponsavelId'],
+                where: { valor: { gt: 0 }, vendedorResponsavelId: { not: null } }
+            }),
+            prisma.pedidoPagamentoReal.findFirst({
+                where: { valor: { gt: 0 }, escritorioResponsavel: true, vendedorResponsavelId: null },
+                select: { id: true }
+            })
+        ]);
+        const idsVendedor = gruposVendedor.map(g => g.vendedorResponsavelId).filter(Boolean);
+        const vendedores = idsVendedor.length
+            ? await prisma.vendedor.findMany({
+                where: { id: { in: idsVendedor } },
+                select: { id: true, nome: true }
+            })
+            : [];
+        const responsaveis = vendedores
+            .map(v => ({ tipo: 'VENDEDOR', pessoaId: v.id, valor: v.id, label: v.nome }))
+            .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
+        if (temEscritorio) {
+            responsaveis.push({ tipo: 'ESCRITORIO', pessoaId: null, valor: 'ESCRITORIO', label: 'Escritório' });
+        }
+        res.json({ responsaveis });
+    } catch (e) {
+        console.error('Erro em /contas-receber/responsaveis:', e);
+        res.json({ responsaveis: [] });
+    }
+});
+
+// ── GET /por-responsavel — fechamento do dia 01, agrupado por quem ficou de cobrar ──
+// Só título EM ABERTO: o que já foi baixado não é mais cobrança de ninguém.
+// `de`/`ate` (YYYY-MM-DD, opcionais) filtram pelo VENCIMENTO da parcela.
+// Um título é uma PARCELA em aberto (é o que tem vencimento e vira vale).
+router.get('/por-responsavel', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const { de, ate } = req.query;
+        const r2 = (n) => Math.round(Number(n || 0) * 100) / 100;
+
+        const filtroParcela = { status: { in: ['PENDENTE', 'VENCIDO', 'PARCIAL'] } };
+        if (de || ate) {
+            filtroParcela.dataVencimento = {};
+            if (de) filtroParcela.dataVencimento.gte = new Date(de + 'T00:00:00.000Z');
+            if (ate) filtroParcela.dataVencimento.lte = new Date(ate + 'T23:59:59.999Z');
+        }
+
+        const contas = await prisma.contaReceber.findMany({
+            where: {
+                parcelas: { some: filtroParcela },
+                // Mesmas exclusões da listagem: pedido excluído/cancelado no CA e bonificação
+                // não são cobrança de ninguém. `notIn` do Prisma EXCLUI null — daí o OR explícito.
+                pedido: {
+                    statusEnvio: { notIn: ['EXCLUIDO'] },
+                    bonificacao: false,
+                    OR: [
+                        { situacaoCA: null },
+                        { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }
+                    ],
+                    pagamentosReais: {
+                        some: {
+                            valor: { gt: 0 },
+                            OR: [
+                                { vendedorResponsavelId: { not: null } },
+                                { escritorioResponsavel: true }
+                            ]
+                        }
+                    }
+                }
+            },
+            select: {
+                id: true,
+                clienteId: true,
+                cliente: { select: { UUID: true, NomeFantasia: true, Nome: true } },
+                pedido: {
+                    select: {
+                        id: true, numero: true, dataVenda: true, especial: true,
+                        vendedor: { select: { id: true, nome: true } },
+                        usuarioLancamento: { select: { id: true, nome: true } },
+                        pagamentosReais: SELECT_PAGAMENTOS_RESPONSAVEL
+                    }
+                },
+                parcelas: {
+                    where: filtroParcela,
+                    orderBy: { numeroParcela: 'asc' },
+                    select: {
+                        id: true, numeroParcela: true, valor: true, valorPago: true,
+                        valorDescontoTotal: true, dataVencimento: true, status: true
+                    }
+                }
+            }
+        });
+
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        const grupos = new Map();
+        // Uma parcela dividida entre duas pessoas é UM título só (duas fatias). Contar por
+        // fatia dobrava o número impresso na folha do vale.
+        const parcelasNoRelatorio = new Set();
+
+        for (const c of contas) {
+            const responsaveis = montarResponsaveis(c.pedido);
+            if (responsaveis.length === 0) continue;
+
+            const marcadoTotal = r2(responsaveis.reduce((s, r) => s + r.valor, 0));
+            const compartilhado = responsaveis.length > 1;
+            const clienteNome = c.cliente?.NomeFantasia || c.cliente?.Nome || '-';
+
+            // Saldo em aberto de cada parcela do título (PARCIAL desconta o já pago/descontado)
+            const parcelasAbertas = c.parcelas
+                .map(p => {
+                    const saldo = r2(p.status === 'PARCIAL'
+                        ? Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0)
+                        : Number(p.valor));
+                    const venc = new Date(p.dataVencimento);
+                    venc.setHours(0, 0, 0, 0);
+                    return { p, saldo, diasAtraso: Math.max(0, Math.round((hoje - venc) / 86400000)) };
+                })
+                .filter(x => x.saldo > 0);
+            const saldoTotal = r2(parcelasAbertas.reduce((s, x) => s + x.saldo, 0));
+            if (saldoTotal <= 0) continue;
+
+            // ── Quanto CADA responsável deve NESTE título ──────────────────────────────
+            // Regra: NINGUÉM é cobrado por mais do que assumiu.
+            //  • Saldo em aberto >= total assumido → cada um responde exatamente pela fatia
+            //    que marcou. O que sobra do saldo é dinheiro que ninguém assumiu (ex.: espécie
+            //    recebida na entrega, ainda esperando a conferência do Caixa) e não vira vale.
+            //    Era aqui o defeito: com UM responsável o peso era 1 e ele levava o saldo
+            //    INTEIRO do título — pedido de R$ 1.000 com "Dinheiro 600" + "Vendedor 400"
+            //    saía como R$ 1.000 no nome do vendedor.
+            //  • Saldo em aberto < total assumido (houve baixa parcial) → rateia o saldo
+            //    proporcionalmente ao que cada um assumiu; o último leva a sobra do centavo.
+            //    (Ratear SEMPRE sobre o total de todas as linhas seria pior: depois que os
+            //    R$ 600 em espécie são conferidos, o saldo cai para R$ 400 e o vendedor
+            //    apareceria devendo R$ 160 — menos do que assumiu.)
+            const devidos = [];
+            if (marcadoTotal > 0 && saldoTotal < marcadoTotal) {
+                let acumTitulo = 0;
+                responsaveis.forEach((r, i) => {
+                    const ultimo = i === responsaveis.length - 1;
+                    const v = ultimo ? r2(saldoTotal - acumTitulo) : r2(saldoTotal * (r.valor / marcadoTotal));
+                    acumTitulo = r2(acumTitulo + v);
+                    devidos.push(v);
+                });
+            } else {
+                responsaveis.forEach(r => devidos.push(r2(r.valor)));
+            }
+
+            // Espalha o devido de cada responsável pelas parcelas em aberto, na proporção do
+            // saldo de cada uma; a ÚLTIMA parcela leva a sobra do arredondamento, então a soma
+            // das fatias fecha centavo a centavo com o devido do título.
+            // O MESMO rateio é aplicado ao que a pessoa ASSUMIU (`valorMarcado`): o marcado é
+            // do PEDIDO INTEIRO, e a linha do relatório é UMA PARCELA — mandar o marcado cheio
+            // em cada parcela fazia a tela comparar laranja com maçã e imprimir "anotado na
+            // entrega" em TODO pedido parcelado (alarme falso). Com a fatia, os dois números
+            // só divergem quando divergiram de verdade (baixa parcial no meio).
+            responsaveis.forEach((resp, i) => {
+                const devido = devidos[i];
+                if (devido <= 0) return;
+                const chave = resp.tipo === 'VENDEDOR' ? `VENDEDOR:${resp.pessoaId}` : 'ESCRITORIO';
+                if (!grupos.has(chave)) {
+                    grupos.set(chave, {
+                        tipo: resp.tipo,
+                        pessoaId: resp.pessoaId,
+                        // No relatório o escritório é UM balde só: os pedidos dele foram
+                        // lançados por gente diferente, então "lançado por Fulano" fica em
+                        // cada título (campo `lancadoPor`), não no nome do grupo.
+                        pessoaNome: resp.tipo === 'ESCRITORIO' ? 'Escritório' : resp.pessoaNome,
+                        quantidadeTitulos: 0,
+                        valorTotal: 0,
+                        valorMarcado: 0,
+                        titulos: []
+                    });
+                }
+                const g = grupos.get(chave);
+                let alocado = 0;
+                let marcadoAlocado = 0;
+                parcelasAbertas.forEach(({ p, saldo, diasAtraso }, j) => {
+                    const ultima = j === parcelasAbertas.length - 1;
+                    const valor = ultima ? r2(devido - alocado) : r2(devido * (saldo / saldoTotal));
+                    const marcadoFatia = ultima
+                        ? r2(r2(resp.valor) - marcadoAlocado)
+                        : r2(resp.valor * (saldo / saldoTotal));
+                    alocado = r2(alocado + valor);
+                    marcadoAlocado = r2(marcadoAlocado + marcadoFatia);
+                    if (valor <= 0) return;
+                    parcelasNoRelatorio.add(p.id);
+                    g.titulos.push({
+                        contaId: c.id,
+                        parcelaId: p.id,
+                        numeroParcela: p.numeroParcela,
+                        statusParcela: p.status,
+                        clienteId: c.clienteId,
+                        clienteNome,
+                        pedidoId: c.pedido?.id || null,
+                        pedidoNumero: c.pedido?.numero || null,
+                        pedidoEspecial: c.pedido?.especial || false,
+                        dataVenda: c.pedido?.dataVenda || null,
+                        // Pista de a quem perguntar quando o responsável é o escritório.
+                        // NÃO é afirmação de que essa pessoa é a responsável pela cobrança.
+                        lancadoPor: c.pedido?.usuarioLancamento?.nome || c.pedido?.vendedor?.nome || null,
+                        valor,
+                        // Saldo total da parcela (o título todo), para conferência na tela:
+                        // pode ser MAIOR que `valor` quando parte do pedido não tem responsável.
+                        saldoParcela: saldo,
+                        // Fatia do que a pessoa assumiu que cabe NESTA parcela (não o marcado
+                        // do pedido inteiro) — é contra este número que a tela compara `valor`.
+                        valorMarcado: marcadoFatia,
+                        compartilhado,
+                        dataVencimento: p.dataVencimento,
+                        diasAtraso
+                    });
+                    g.valorTotal = r2(g.valorTotal + valor);
+                    // Cabeçalho da pessoa = SOMA DAS LINHAS mostradas. Somar `resp.valor` por
+                    // conta (como antes) inflava o cabeçalho quando aquela conta não gerava
+                    // título nenhum ou gerava menos do que o marcado.
+                    g.valorMarcado = r2(g.valorMarcado + marcadoFatia);
+                    g.quantidadeTitulos += 1;
+                });
+            });
+        }
+
+        const lista = [...grupos.values()]
+            .filter(g => g.quantidadeTitulos > 0)
+            .map(g => {
+                g.titulos.sort((a, b) => new Date(a.dataVencimento) - new Date(b.dataVencimento));
+                // A chave de agrupamento é `tipo` + `pessoaId` (o escritório é um balde só,
+                // sem pessoaId) — quem consome monta a chave a partir desses dois campos.
+                return {
+                    ...g,
+                    valorTotal: r2(g.valorTotal),
+                    // Mesmo número de `valorTotal`, com o nome que diz o que ele é: a SOMA DO
+                    // SALDO EM ABERTO HOJE (parcela PARCIAL entra pelo que falta, não pelo
+                    // valor cheio). NÃO é comparável ao `totalEmAberto` da listagem, que soma
+                    // o valor NOMINAL de PENDENTE/VENCIDO.
+                    saldoEmAberto: r2(g.valorTotal),
+                    valorMarcado: r2(g.valorMarcado),
+                    maisAntigo: g.titulos[0]
+                        ? {
+                            dataVencimento: g.titulos[0].dataVencimento,
+                            diasAtraso: g.titulos[0].diasAtraso,
+                            clienteNome: g.titulos[0].clienteNome,
+                            pedidoNumero: g.titulos[0].pedidoNumero,
+                            valor: g.titulos[0].valor
+                        }
+                        : null
+                };
+            })
+            .sort((a, b) => b.valorTotal - a.valorTotal);
+
+        // Título mais antigo do relatório inteiro (o que está apodrecendo há mais tempo)
+        const maisAntigoGeral = lista
+            .map(g => g.maisAntigo)
+            .filter(Boolean)
+            .sort((a, b) => new Date(a.dataVencimento) - new Date(b.dataVencimento))[0] || null;
+
+        const valorGeral = r2(lista.reduce((s, g) => s + g.valorTotal, 0));
+        res.json({
+            periodo: { de: de || null, ate: ate || null },
+            responsaveis: lista,
+            rotulos: {
+                // Rótulo que o relatório deve imprimir em cima do total, para o dono não
+                // comparar com o "Total em aberto" da listagem (bases diferentes).
+                total: 'Saldo em aberto hoje'
+            },
+            totais: {
+                pessoas: lista.length,
+                // Títulos DISTINTOS: parcela dividida entre duas pessoas é um título só.
+                titulos: parcelasNoRelatorio.size,
+                // Mantido para quem já lê este campo; some as fatias, então em título
+                // compartilhado é maior que `titulos`.
+                fatias: lista.reduce((s, g) => s + g.quantidadeTitulos, 0),
+                valorTotal: valorGeral,
+                saldoEmAbertoHoje: valorGeral,
+                maisAntigo: maisAntigoGeral
+            }
+        });
+    } catch (e) {
+        console.error('Erro em /contas-receber/por-responsavel:', e);
+        res.status(500).json({ error: 'Erro ao montar o relatório por responsável.' });
+    }
+});
+
 // ── GET /opcoes-filtros — opções FIXAS dos filtros (condição, entrega, forma da baixa) ──
 // Precisam vir do banco INTEIRO, não das linhas já filtradas na tela: antes a tela montava
 // essas listas a partir do resultado atual, então ao escolher uma opção as outras sumiam do
@@ -240,7 +634,7 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             status, clienteId, vencimentoDe, vencimentoAte, origem, busca, ordenarPor,
             vendedorId, condicaoPagamento, formaPagamento, statusParcela,
             pagamentoDe, pagamentoAte, categoriaClienteId, formaPagamentoEntrega, tipoCobranca,
-            baixadoPorId
+            baixadoPorId, responsavelId, responsavelTipo, responsaveis
         } = req.query;
 
         const toList = (v) => (Array.isArray(v) ? v : String(v || '').split(',')).map(s => s.trim()).filter(Boolean);
@@ -285,13 +679,29 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
             }
         ];
 
-        // Filtros via pedido (vendedor, condição de pagamento e condição na entrega)
-        if (vendedorId || condicaoPagamento || formaPagamentoEntrega) {
+        // Filtros via pedido (vendedor, condição de pagamento, condição na entrega e responsável)
+        // Tipo inválido é ERRO, não filtro ignorado: numa tela financeira, devolver a lista
+        // inteira achando que está filtrada por uma pessoa é pior do que não responder.
+        const tipoResp = String(responsavelTipo || '').trim().toUpperCase();
+        if (tipoResp && !TIPOS_RESPONSAVEL.includes(tipoResp)) {
+            return res.status(400).json({ error: 'responsavelTipo deve ser VENDEDOR ou ESCRITORIO.' });
+        }
+        // `responsaveis` (lista) tem precedência; `responsavelId`/`responsavelTipo` continuam
+        // funcionando para não quebrar quem já está com o bundle antigo no PWA.
+        const someResp = someResponsaveis(responsaveis) || someResponsavel(responsavelTipo, responsavelId);
+        if (vendedorId || condicaoPagamento || formaPagamentoEntrega || someResp) {
             where.pedido = {};
             if (vendedorId) where.pedido.vendedorId = igual(vendedorId);
             if (condicaoPagamento) where.pedido.nomeCondicaoPagamento = igual(condicaoPagamento);
             if (formaPagamentoEntrega) {
                 where.pedido.pagamentosReais = { some: { formaPagamentoNome: igual(formaPagamentoEntrega), valor: { gt: 0 } } };
+            }
+            // Responsável pela cobrança: filtra pela MARCAÇÃO gravada na linha de pagamento,
+            // nunca pelo nome da forma ("Dinheiro" com a caixinha marcada tem que aparecer).
+            // Vai num AND próprio para não colidir com o `pagamentosReais.some` da condição
+            // na entrega — são linhas diferentes do mesmo pedido.
+            if (someResp) {
+                where.pedido.AND = [...(where.pedido.AND || []), { pagamentosReais: { some: someResp } }];
             }
         }
 
@@ -345,15 +755,13 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                         statusEntrega: true, devolucaoFinalizada: true, dataVenda: true,
                         idVendaContaAzul: true,
                         vendedor: { select: { id: true, nome: true } },
+                        usuarioLancamento: { select: { id: true, nome: true } },
                         itensDevolvidos: { select: { valorBaseItem: true, quantidade: true } },
                         devolucoes: {
                             where: { status: 'ATIVA' },
                             select: { valorTotal: true, escopo: true, dataDevolucao: true, pdfBoletoUrl: true }
                         },
-                        pagamentosReais: {
-                            where: { valor: { gt: 0 } },
-                            select: { formaPagamentoNome: true, valor: true, escritorioResponsavel: true, vendedorResponsavelId: true }
-                        }
+                        pagamentosReais: SELECT_PAGAMENTOS_RESPONSAVEL
                     }
                 },
                 parcelas: {
@@ -436,6 +844,8 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                     escritorioResponsavel: p.escritorioResponsavel,
                     vendedorResponsavelId: p.vendedorResponsavelId || null
                 })),
+                // Quem ficou de cobrar este título (vazio quando ninguém foi marcado).
+                responsaveis: montarResponsaveis(c.pedido),
                 devolucaoFinalizada: c.pedido?.devolucaoFinalizada || false,
                 valorDevolvido: valorDevolvido > 0 ? Math.round(valorDevolvido * 100) / 100 : null,
                 devolucaoEscopo: devolucaoAtiva?.escopo || null,

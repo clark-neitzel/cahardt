@@ -77,6 +77,20 @@ const contasReceberService = {
     relatorioItens: async (filtros = {}) => {
         const response = await api.get('/contas-receber/relatorio-itens', { params: filtros });
         return response.data;
+    },
+    // Opções do filtro "Responsável pela cobrança" — pessoas (vendedor/escritório) que
+    // aparecem como responsáveis por algum título. Aceita tanto { responsaveis: [...] }
+    // quanto um array puro, para não depender do embrulho da resposta.
+    responsaveis: async () => {
+        const response = await api.get('/contas-receber/responsaveis');
+        const dados = response.data;
+        return Array.isArray(dados) ? dados : (dados?.responsaveis || []);
+    },
+    // Relatório do fechamento (dia 01): títulos em aberto agrupados por responsável.
+    // params: { de, ate } — 'YYYY-MM-DD'
+    porResponsavel: async (params = {}) => {
+        const response = await api.get('/contas-receber/por-responsavel', { params });
+        return response.data;
     }
 };
 
