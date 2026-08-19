@@ -191,27 +191,49 @@ const clienteController = {
             if (clienteIds.length > 0) {
                 const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
                 const hoje = new Date(hojeStr + 'T00:00:00.000Z');
+                // Especial entregue e já pago em dinheiro, só esperando a conferência do
+                // Caixa, NÃO é inadimplência — o cliente pagou (regra do dono, 08/2026).
+                const { idsContasEmEsperaDeConferencia } = require('../services/recebimentoEntregaService');
+                const emEspera = await idsContasEmEsperaDeConferencia({ clienteIds });
                 const contasAbertas = await prisma.contaReceber.findMany({
                     where: {
                         clienteId: { in: clienteIds },
                         status: { in: ['ABERTO', 'PARCIAL'] },
-                        parcelas: { some: { status: 'PENDENTE', dataVencimento: { lt: hoje } } },
-                        NOT: [
-                            { pedido: { statusEnvio: 'EXCLUIDO' } },
-                            { pedido: { situacaoCA: 'CANCELADO' } }
+                        // PARCIAL conta como vencida: título pago pela metade continua devendo o saldo
+                        parcelas: { some: { status: { in: ['PENDENTE', 'PARCIAL', 'VENCIDO'] }, dataVencimento: { lt: hoje } } },
+                        // ⚠️ NÃO usar `NOT:`: NOT (situacao_ca = 'CANCELADO') com o campo
+                        // NULL dá NULL em SQL e a linha some — e pedido faturado no app nasce
+                        // com situacaoCA null, então o selo de inadimplente não via o devedor
+                        // de hoje. OR explícito (padrão de routes/contasReceber.js).
+                        OR: [
+                            { pedidoId: null },
+                            {
+                                pedido: {
+                                    statusEnvio: { not: 'EXCLUIDO' },
+                                    OR: [{ situacaoCA: null }, { situacaoCA: { not: 'CANCELADO' } }]
+                                }
+                            }
                         ]
                     },
                     select: {
+                        id: true,
                         clienteId: true,
                         parcelas: {
-                            where: { status: 'PENDENTE', dataVencimento: { lt: hoje } },
-                            select: { valor: true }
+                            where: { status: { in: ['PENDENTE', 'PARCIAL', 'VENCIDO'] }, dataVencimento: { lt: hoje } },
+                            select: { valor: true, valorPago: true, valorDescontoTotal: true }
                         }
                     }
                 });
                 for (const cr of contasAbertas) {
+                    if (emEspera.has(cr.id)) continue;
                     if (!delinqMap[cr.clienteId]) delinqMap[cr.clienteId] = 0;
-                    for (const p of cr.parcelas) delinqMap[cr.clienteId] += Number(p.valor);
+                    // saldo, não valor cheio (parcela parcial deve só o que falta)
+                    for (const p of cr.parcelas) {
+                        delinqMap[cr.clienteId] += Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0);
+                    }
+                }
+                for (const id of Object.keys(delinqMap)) {
+                    if (delinqMap[id] <= 0.01) delete delinqMap[id];
                 }
             }
 
@@ -798,9 +820,17 @@ const clienteController = {
                 where: {
                     clienteId: uuid,
                     status: { in: ['ABERTO', 'PARCIAL'] },
-                    NOT: [
-                        { pedido: { statusEnvio: 'EXCLUIDO' } },
-                        { pedido: { situacaoCA: 'CANCELADO' } }
+                    // ⚠️ NÃO usar `NOT:`: NOT (situacao_ca = 'CANCELADO') com o campo NULL
+                    // dá NULL em SQL e a linha é descartada — pedido faturado no app tem
+                    // situacaoCA null e sumia da ficha de inadimplência. OR explícito.
+                    OR: [
+                        { pedidoId: null },
+                        {
+                            pedido: {
+                                statusEnvio: { not: 'EXCLUIDO' },
+                                OR: [{ situacaoCA: null }, { situacaoCA: { not: 'CANCELADO' } }]
+                            }
+                        }
                     ]
                 },
                 include: {
@@ -820,20 +850,29 @@ const clienteController = {
                 orderBy: { createdAt: 'desc' }
             });
 
+            // Especial pago e aguardando conferência do Caixa não conta como atraso
+            const { idsContasEmEsperaDeConferencia } = require('../services/recebimentoEntregaService');
+            const emEsperaFicha = await idsContasEmEsperaDeConferencia({ clienteIds: [uuid] });
+
             let totalVencido = 0;
             let parcelasVencidas = 0;
 
             const contasFormatadas = contas.map(c => {
+                const contaEmEspera = emEsperaFicha.has(c.id);
                 const valorDevolvido = (c.pedido?.itensDevolvidos || [])
                     .reduce((s, i) => s + Number(i.valorBaseItem) * Number(i.quantidade), 0);
                 const devolucaoAtiva = c.pedido?.devolucoes?.[0] || null;
 
                 const parcelas = c.parcelas.map(p => {
-                    const vencida = p.status === 'PENDENTE' && new Date(p.dataVencimento) < hoje;
+                    // PARCIAL também vence: o saldo que falta continua em atraso
+                    const vencida = !contaEmEspera
+                        && ['PENDENTE', 'PARCIAL', 'VENCIDO'].includes(p.status)
+                        && new Date(p.dataVencimento) < hoje;
+                    const saldoParcela = Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0);
                     const diasAtraso = vencida
                         ? Math.floor((hoje - new Date(p.dataVencimento)) / (1000 * 60 * 60 * 24))
                         : 0;
-                    if (vencida) { totalVencido += Number(p.valor); parcelasVencidas++; }
+                    if (vencida && saldoParcela > 0.01) { totalVencido += saldoParcela; parcelasVencidas++; }
                     return {
                         id: p.id,
                         numeroParcela: p.numeroParcela,

@@ -8,11 +8,58 @@ const { CA_SOMENTE_LEITURA } = require('../config/contaAzulModo');
 // ligada em Configurações → Caixa; ver backend/config/caixaConferenciaConfig.js.
 const confService = require('../services/caixaConferenciaService');
 const { garantirContaFinanceira } = require('../services/contaFinanceiraGuardService');
+// Baixa de pedido ESPECIAL: sempre com linha de ledger (pagamentos_parcela) e
+// PAGO só quando o recebido cobre o valor — ver services/recebimentoEntregaService.js
+const {
+    aplicarRecebimentoEntrega, contaEspecieId, ehRecebimentoProprio, ehResponsavelPelaCobranca
+} = require('../services/recebimentoEntregaService');
+const {
+    acharRegrasCondicao, carregarMapaFormas, formaPermitida, nomesFormasPermitidas
+} = require('../services/condicaoRecebimentoService');
 const cfgConferencia = require('../config/caixaConferenciaConfig');
 // Caixa só de segunda a sexta: o movimento de sáb/dom é prestado na segunda.
 const { intervaloDoCaixa, ehFimDeSemana, dataCaixaDe } = require('../utils/diasUteisCaixa');
 
 // ── Helpers ──
+// Status de ContaReceber que NÃO representam dinheiro a prestar no caixa.
+//  • QUITADO/PARCIAL → já houve baixa (o dinheiro entrou no ledger);
+//  • DEVOLVIDO/CANCELADO → status FINAL do título: não existe o que baixar.
+// Sem DEVOLVIDO aqui, uma entrega cuja conta virou devolução ficava eternamente
+// como "baixa de dinheiro pendente" e TRAVAVA o fechamento do caixa.
+// ⚠️ ABERTO continua sendo pendência (é o especial fiado com dinheiro em aberto).
+const STATUS_CONTA_SEM_PENDENCIA_CAIXA = ['QUITADO', 'PARCIAL', 'DEVOLVIDO', 'CANCELADO'];
+const contaSemPendenciaDeCaixa = (conta) => STATUS_CONTA_SEM_PENDENCIA_CAIXA.includes(conta?.status);
+
+// Formas de pagamento que representam valor a prestar/baixar no caixa.
+// (boleto/prazo não entram: não há baixa a fazer aqui)
+const FORMAS_QUE_EXIGEM_BAIXA_CAIXA = ['dinheiro', 'pix', 'cartão', 'cartao'];
+const formaExigeBaixaNoCaixa = (p) => {
+    // aceita o pagamento CRU (formaPagamentoNome) e o formatado do /resumo (formaNome)
+    const n = (p?.formaPagamentoNome || p?.formaNome || '').toLowerCase();
+    return FORMAS_QUE_EXIGEM_BAIXA_CAIXA.some(f => n.includes(f));
+};
+
+// ⚠️ FONTE ÚNICA DE VERDADE: "esta entrega ainda pende de baixa no caixa?"
+// Usada pelo contador do GET /resumo (o que a TELA mostra, via pendencias.podeFechar)
+// E pelo gate do POST /fechar (o que o SERVIDOR aceita) — os dois PRECISAM concordar.
+// Divergiram até 08/2026 e o resultado foi caixa que não fechava de jeito nenhum:
+// baixa PARCIAL do especial (recebeu menos) saía da lista do /fechar mas continuava
+// contando na tela, deixando o botão "Fechar Caixa" desabilitado para sempre.
+// Qualquer mudança de critério é feita AQUI, nunca em um dos lados só.
+const entregaPendenteDeBaixaNoCaixa = (e) => {
+    if (e?.statusEntrega === 'DEVOLVIDO') return false;
+    // Especial: já baixado (QUITADO/PARCIAL) ou em status final (DEVOLVIDO/CANCELADO)
+    if (contaSemPendenciaDeCaixa(e?.contaReceber)) return false;
+    // Normal (CA): já processado via quitar-ca (baixa ou alteração de condição)
+    if (e?.baixaCaRealizada) return false;
+    // Critério de "é recebimento de verdade" vem do PONTO ÚNICO
+    // (recebimentoEntregaService.ehRecebimentoProprio) — é lá que entra o futuro
+    // motoristaResponsavelId. Não reescrever o teste na mão aqui.
+    return (e?.pagamentosReais || []).some(p =>
+        ehRecebimentoProprio(p) && formaExigeBaixaNoCaixa(p)
+    );
+};
+
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
         where: { id: userId },
@@ -437,17 +484,18 @@ router.get('/resumo', async (req, res) => {
                 // 0. PIX Asaas confirmado pelo banco: dinheiro caiu direto na conta Asaas,
                 //    nunca passou pela mão do motorista → NÃO debita (vai para "Outros")
                 // 1. Escritório responsável: NÃO debita
-                // 2. Vendedor responsável: DEBITA
+                // 2. Escritório/Vendedor responsável: NÃO debita (decisão do dono, 08/2026 —
+                //    "fica devendo, desconto depois": o dinheiro não passou pela mão do
+                //    motorista, então não entra no que ele presta; o título fica ABERTO no
+                //    nome do responsável e é baixado quando o valor for descontado dele)
                 // 3. Condição da TabelaPreco: buscar pelo nome do pagamento real
                 // 4. Fallback: condição original do pedido
                 let debitaCaixa;
                 let labelCondicao = p.formaPagamentoNome || nomeCondicao;
                 if (p.formaPagamentoNome === 'PIX Asaas' && p.cobrancaAsaasId) {
                     debitaCaixa = false;
-                } else if (p.escritorioResponsavel) {
+                } else if (ehResponsavelPelaCobranca(p)) {
                     debitaCaixa = false;
-                } else if (p.vendedorResponsavelId) {
-                    debitaCaixa = true;
                 } else if (mapaCondicoesPorNome[p.formaPagamentoNome] !== undefined) {
                     // Buscar pela condição que o motorista REALMENTE selecionou no checkout
                     debitaCaixa = mapaCondicoesPorNome[p.formaPagamentoNome];
@@ -507,7 +555,22 @@ router.get('/resumo', async (req, res) => {
                 })),
                 conferido: conferencia?.conferido || false,
                 conferenciaId: conferencia?.id || null,
+                // Mesma conta do POST /fechar (helper único) — é o que a tela usa para
+                // saber se o caixa pode fechar. Não recalcular por fora.
+                pendenteBaixaCaixa: entregaPendenteDeBaixaNoCaixa(e),
                 quitado: (() => {
+                    // Status FINAL da conta: nada mais a fazer nesta tela.
+                    // Devolução TOTAL grava contaReceber.status = 'DEVOLVIDO' e NÃO mexe no
+                    // statusEntrega (continua ENTREGUE_PARCIAL) — sem repassar o status aqui,
+                    // "conta devolvida" e "conta em aberto" chegavam na tela como o mesmo dado
+                    // (`null`), e o pedido voltava com selo A CONFERIR e checkbox de Baixa CA
+                    // num caso já resolvido (o Processar respondia "JÁ QUITADO").
+                    // O valor vai CRU, sem normalizar: 'DEVOLVIDO' está fora da lista oficial
+                    // (ABERTO|PARCIAL|QUITADO|CANCELADO) e o dono ainda não decidiu o que fazer
+                    // com ele — aqui a tela só ganha o direito de enxergá-lo.
+                    // Não dá para usar `devolucaoFinalizada` como atalho: devolução PARCIAL
+                    // também liga essa flag e nesses casos o título AINDA precisa de baixa.
+                    if (['DEVOLVIDO', 'CANCELADO'].includes(e.contaReceber?.status)) return e.contaReceber.status;
                     // Especial: usa status da ContaReceber local
                     if (e.contaReceber?.status === 'QUITADO' || e.contaReceber?.status === 'PARCIAL') return e.contaReceber.status;
                     // Normal (CA): verifica baixaCaRealizada
@@ -515,8 +578,10 @@ router.get('/resumo', async (req, res) => {
                     // Baixa REAL no CA: dinheiro (caixinha) ou PIX Asaas (conta Asaas —
                     // dinheiro confirmado pelo banco; a Baixa CA do caixa baixa os dois).
                     // PIX comum/cartão só ALTERA a condição no CA (não há baixa).
-                    const ehProprio = (p) => !p.vendedorResponsavelId && !p.escritorioResponsavel;
-                    const temBaixaReal = pagamentos.some(p => ehProprio(p) && (
+                    // Mesmo ponto único do resto do arquivo (ehRecebimentoProprio):
+                    // o objeto formatado acima preserva vendedorResponsavelId /
+                    // escritorioResponsavel justamente para isso.
+                    const temBaixaReal = pagamentos.some(p => ehRecebimentoProprio(p) && (
                         p.formaNome?.toLowerCase().includes('dinheiro') || p.formaNome?.toLowerCase() === 'pix asaas'
                     ));
                     if (temBaixaReal) return 'QUITADO';
@@ -762,16 +827,9 @@ router.get('/resumo', async (req, res) => {
         const devolucoesNaoFeitas = entregasFormatadas.filter(e =>
             ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada
         ).length;
-        const quitacoesNaoFeitas = entregasFormatadas.filter(e => {
-            if (e.statusEntrega === 'DEVOLVIDO') return false;
-            if (e.quitado === 'QUITADO') return false;
-            return e.pagamentos?.some(p =>
-                p.debitaCaixa &&
-                !p.vendedorResponsavelId &&
-                !p.escritorioResponsavel &&
-                p.formaNome?.toLowerCase().includes('dinheiro')
-            );
-        }).length;
+        // Mesmo critério do gate do POST /fechar (entregaPendenteDeBaixaNoCaixa) — o que a
+        // tela mostra tem que ser exatamente o que o servidor vai aceitar.
+        const quitacoesNaoFeitas = entregasFormatadas.filter(e => e.pendenteBaixaCaixa).length;
         const conferenciaDevolucaoPendente = temDevolucoesDia && confDev?.status !== 'CONFERIDA';
 
         // ── Conferência do dinheiro (passo antes de fechar) ──
@@ -1136,22 +1194,10 @@ router.post('/fechar', async (req, res) => {
         }
 
         // 2. Quitações pendentes: entregas com pagamento real em dinheiro/pix/cartão não quitadas
-        const quitPendentes = entregas.filter(e => {
-            if (e.statusEntrega === 'DEVOLVIDO') return false;
-            // Especial: já quitado via ContaReceber local
-            if (e.contaReceber?.status === 'QUITADO' || e.contaReceber?.status === 'PARCIAL') return false;
-            // Normal (CA): já processado via quitar-ca (baixa ou alteração de condição)
-            if (e.baixaCaRealizada) return false;
-            const n = (p) => (p.formaPagamentoNome || '').toLowerCase();
-            return e.pagamentosReais.some(p =>
-                !p.vendedorResponsavelId &&
-                !p.escritorioResponsavel &&
-                (n(p).includes('dinheiro') || n(p).includes('pix') || n(p).includes('cartão') || n(p).includes('cartao'))
-            );
-        });
+        const quitPendentes = entregas.filter(entregaPendenteDeBaixaNoCaixa);
         if (quitPendentes.length > 0) {
             const nomes = quitPendentes.map(e => `#${e.numero || '?'} ${e.cliente?.NomeFantasia || e.cliente?.Nome || ''}`).join(', ');
-            pendencias.push(`${quitPendentes.length} baixa(s) de dinheiro pendente(s): ${nomes}`);
+            pendencias.push(`${quitPendentes.length} baixa(s) de recebimento pendente(s): ${nomes}`);
         }
 
         // 3. Conferência de devoluções: se o dia teve devolução, precisa estar confirmada
@@ -1232,8 +1278,8 @@ router.post('/fechar', async (req, res) => {
                 let debita;
                 // PIX Asaas confirmado pelo banco não passa pela mão do motorista
                 if (p.formaPagamentoNome === 'PIX Asaas' && p.cobrancaAsaasId) debita = false;
-                else if (p.escritorioResponsavel) debita = false;
-                else if (p.vendedorResponsavelId) debita = true;
+                // responsável (escritório OU vendedor) fica devendo — não presta no dia
+                else if (ehResponsavelPelaCobranca(p)) debita = false;
                 else if (mapaDebitaPorNome[p.formaPagamentoNome] !== undefined) debita = mapaDebitaPorNome[p.formaPagamentoNome];
                 else debita = mapaDebitaPorOpcao[e.opcaoCondicaoPagamento] || false;
 
@@ -1485,17 +1531,7 @@ router.post('/reabrir-pendentes', async (req, res) => {
             const devPendentes = entregas.filter(e =>
                 ['ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(e.statusEntrega) && !e.devolucaoFinalizada
             );
-            const quitPendentes = entregas.filter(e => {
-                if (e.statusEntrega === 'DEVOLVIDO') return false;
-                if (e.contaReceber?.status === 'QUITADO' || e.contaReceber?.status === 'PARCIAL') return false;
-                if (e.baixaCaRealizada) return false;
-                const n = (p) => (p.formaPagamentoNome || '').toLowerCase();
-                return e.pagamentosReais.some(p =>
-                    !p.vendedorResponsavelId &&
-                    !p.escritorioResponsavel &&
-                    (n(p).includes('dinheiro') || n(p).includes('pix') || n(p).includes('cartão') || n(p).includes('cartao'))
-                );
-            });
+            const quitPendentes = entregas.filter(entregaPendenteDeBaixaNoCaixa);
 
             if (devPendentes.length > 0 || quitPendentes.length > 0) {
                 await prisma.caixaDiario.update({
@@ -2461,8 +2497,8 @@ router.get('/relatorio', async (req, res) => {
                         let debita;
                         // PIX Asaas confirmado pelo banco não passa pela mão do motorista
                         if (p.formaPagamentoNome === 'PIX Asaas' && p.cobrancaAsaasId) debita = false;
-                        else if (p.escritorioResponsavel) debita = false;
-                        else if (p.vendedorResponsavelId) debita = true;
+                        // responsável (escritório OU vendedor) fica devendo — não presta no dia
+                        else if (ehResponsavelPelaCobranca(p)) debita = false;
                         else if (mapaDebitaPorNomeRel[p.formaPagamentoNome] !== undefined) debita = mapaDebitaPorNomeRel[p.formaPagamentoNome];
                         else debita = condicaoDebitaCaixa;
                         return { forma: p.formaPagamentoNome, valor: Number(p.valor), debitaCaixa: debita };
@@ -2844,13 +2880,27 @@ router.post('/quitar-ca', async (req, res) => {
             const clienteNome = pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'N/A';
             const valorElegivel = calcValorElegivel(pedido);
             if (valorElegivel <= 0) {
+                // Só linhas de "escritório/vendedor responsável"? Não é caso de erro: é o
+                // registro de quem ficou com a cobrança. Sem banco não quita — o título
+                // continua em aberto e alguém tem que cobrar (regra do dono, 08/2026).
+                const soResponsavel = (pedido.pagamentosReais || [])
+                    .filter(p => Number(p.valor) > 0 && ehResponsavelPelaCobranca(p));
+                const detalhesResp = soResponsavel.map(p =>
+                    `${p.formaPagamentoNome}: R$ ${Number(p.valor).toFixed(2)} — cobrança com o responsável, título segue em aberto`);
                 resultados.push({
                     pedidoId: pedido.id,
                     numero: pedido.numero,
                     cliente: clienteNome,
                     tipo: pedido.especial ? 'ESPECIAL' : 'CA',
-                    status: 'ERRO',
-                    erro: 'Nenhum pagamento em dinheiro/pix encontrado neste pedido'
+                    status: soResponsavel.length > 0 ? 'SEM_BAIXA' : 'ERRO',
+                    erro: soResponsavel.length > 0
+                        ? 'Não quita: só há valor de "responsável" (sem banco). O título continua em aberto e a cobrança fica com o responsável.'
+                        : 'Nenhum pagamento em dinheiro/pix encontrado neste pedido',
+                    valor: 0,
+                    parcial: false,          // nada foi baixado — não é "parcial", é "sem baixa"
+                    saldoRestante: Math.round(soResponsavel.reduce((sm, p) => sm + Number(p.valor), 0) * 100) / 100,
+                    detalhes: detalhesResp,
+                    detalhe: detalhesResp.join(' | ') || undefined
                 });
                 continue;
             }
@@ -2875,7 +2925,23 @@ router.post('/quitar-ca', async (req, res) => {
         const especiais = pedidosElegiveis.filter(p => p.especial);
         const normais = pedidosElegiveis.filter(p => !p.especial);
 
+        // Conta financeira do Asaas no CA (config opcional) — onde entram os PIX Asaas.
+        // Lida ANTES dos especiais porque os dois ramos (especial e CA) precisam dela.
+        let contaAsaasCaId = null;
+        try {
+            const cfgAsaas = await prisma.appConfig.findUnique({ where: { key: 'asaas_conta_financeira_ca_id' } });
+            contaAsaasCaId = cfgAsaas?.value || null;
+        } catch (_) { /* sem config → baixa fica sem conta, com aviso no resultado */ }
+
         // ═══ ESPECIAIS → Baixa local no app ═══
+        // Dinheiro de pedido especial entra SEMPRE na Caixinha (conta em espécie).
+        const contaEspecieEspecial = especiais.length > 0 ? await contaEspecieId(prisma) : null;
+        if (especiais.length > 0 && !contaEspecieEspecial) {
+            console.warn('[Caixa] Nenhuma conta financeira ativa com tipoUso DINHEIRO — baixa de especial ficará sem conta.');
+        }
+        // Regras da condição de pagamento liberada para cada pedido (mesmo critério da entrega)
+        const condicoesAtivas = especiais.length > 0 ? await prisma.tabelaPreco.findMany({ where: { ativo: true } }) : [];
+        const mapaFormasEntrega = especiais.length > 0 ? await carregarMapaFormas(prisma) : {};
         for (const pedido of especiais) {
             const clienteNome = pedido.cliente?.NomeFantasia || pedido.cliente?.Nome || 'N/A';
             const motorista = pedido.embarque?.responsavel?.nome || 'N/I';
@@ -2912,7 +2978,9 @@ router.post('/quitar-ca', async (req, res) => {
                     console.log(`[Caixa] Auto-criada ContaReceber para pedido especial #${pedido.numero}`);
                 }
 
-                const parcelasElegiveis = contaReceber.parcelas.filter(p => p.status === 'PENDENTE' || p.status === 'VENCIDO');
+                // PARCIAL entra: com o ledger, uma parcela pode ter recebido só uma parte
+                // (ex.: parte em dinheiro na entrega) e ainda ter saldo a receber.
+                const parcelasElegiveis = contaReceber.parcelas.filter(p => ['PENDENTE', 'VENCIDO', 'PARCIAL'].includes(p.status));
 
                 if (parcelasElegiveis.length === 0) {
                     resultados.push({
@@ -2926,8 +2994,9 @@ router.post('/quitar-ca', async (req, res) => {
                     continue;
                 }
 
-                // Detalhar pagamentos por tipo
-                const totalParcelas = parcelasElegiveis.reduce((s, p) => s + Number(p.valor), 0);
+                // Detalhar pagamentos por tipo (saldo = valor - já recebido - desconto)
+                const totalParcelas = parcelasElegiveis.reduce(
+                    (s, p) => s + Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0), 0);
                 const detalhePgtos = Object.entries(pedido._gruposPagamento)
                     .map(([metodo, g]) => `${g.formaNome}: R$ ${g.valor.toFixed(2)}`)
                     .join(', ');
@@ -2949,47 +3018,91 @@ router.post('/quitar-ca', async (req, res) => {
 
                 const obs = `Motorista: ${motorista} | Caixa: ${dataPgto} | Solicitante: ${solicitante?.nome || req.user.id}${obsComplemento}`;
 
-                // Dar baixa nas parcelas pelo valor total elegível (dinheiro + pix)
+                // A condição liberada para o pedido manda no que pode ser recebido.
+                // Mesmo critério da entrega (condicaoRecebimentoService) — sem segunda regra.
+                const regrasCondicao = acharRegrasCondicao(pedido, condicoesAtivas);
+                // Só o que é recebimento de verdade passa pela validação de forma
+                // permitida — linha de "responsável" não quita e por isso não é validada
+                // aqui (critério único: ehResponsavelPelaCobranca / ehRecebimentoProprio).
+                const recebimentosReais = (pedido.pagamentosReais || [])
+                    .filter(p => Number(p.valor) > 0 && ehRecebimentoProprio(p));
+                const formaProibida = recebimentosReais.find(p => !formaPermitida({
+                    regrasCondicao,
+                    mapaNomes: mapaFormasEntrega,
+                    formaPagamentoEntregaId: p.formaPagamentoEntregaId,
+                    formaPagamentoNome: p.formaPagamentoNome,
+                    cobrancaAsaasId: p.cobrancaAsaasId
+                }));
+                if (formaProibida) {
+                    const liberadas = nomesFormasPermitidas({ regrasCondicao, mapaNomes: mapaFormasEntrega });
+                    resultados.push({
+                        pedidoId: pedido.id,
+                        numero: pedido.numero,
+                        cliente: clienteNome,
+                        tipo: 'ESPECIAL',
+                        status: 'ERRO',
+                        erro: `Forma "${formaProibida.formaPagamentoNome}" não é permitida pela condição "${regrasCondicao?.nomeCondicao || pedido.nomeCondicaoPagamento || '—'}" deste pedido.`
+                            + (liberadas.length ? ` Liberadas: ${liberadas.join(', ')}.` : '')
+                            + ' Corrija o lançamento da entrega (Entregas → editar) ou troque a condição do pedido antes de baixar.'
+                    });
+                    continue;
+                }
+
+                // ┌── PONTO ÚNICO: qual conta financeira recebe o dinheiro do especial ──┐
+                // │ Regra do dono: dinheiro de pedido especial entra SEMPRE na Caixinha.  │
+                // │ PIX Asaas cai na conta do Asaas (o dinheiro já está lá).              │
+                // │ PIX comum e cartão QUITAM também, com conta "não informada" (null) —  │
+                // │ é exatamente o que o ramo dos pedidos do CA faz logo abaixo. Deixar   │
+                // │ essas formas sem baixa travaria o fechamento do caixa para sempre.    │
+                // │ NÃO se chuta conta: null aparece como "não informado" em Saldos por   │
+                // │ Conta e é corrigido quando o dono definir a conta dessas formas.      │
+                // │ Se um dia valer o `bancoPadrao` da condição, é AQUI que se troca.     │
+                // └──────────────────────────────────────────────────────────────────────┘
+                const filasEspecial = Object.entries(pedido._gruposPagamento)
+                    .filter(([metodo, g]) => metodo !== 'OUTRO' && g.valor > 0)
+                    .map(([metodo, g]) => ({
+                        nome: g.formaNome,
+                        valor: Math.round(g.valor * 100) / 100,
+                        contaCaId: metodo === 'DINHEIRO' ? contaEspecieEspecial
+                            : (metodo === 'PIX_ASAAS' ? contaAsaasCaId : null)
+                    }));
+                // "Escritório/Vendedor responsável" (grupo OUTRO, filtrado acima) é o ÚNICO
+                // caso que não quita: não é recebimento, é quem ficou de cobrar.
+                const semConta = filasEspecial.filter(f => !f.contaCaId);
+                if (semConta.length > 0) {
+                    console.warn(`[Caixa] Pedido especial #${pedido.numero}: baixa sem conta financeira definida (fica "não informado") —`,
+                        semConta.map(f => `${f.nome}: R$ ${f.valor.toFixed(2)}`).join(', '));
+                }
+
+                // Baixa com ledger: cada recebimento vira linha em pagamentos_parcela e a
+                // parcela só vira PAGO se o recebido cobrir o valor (senão PARCIAL).
+                let baixa;
                 await prisma.$transaction(async (tx) => {
-                    let restante = pedido._valorElegivel;
-                    for (const parcela of parcelasElegiveis) {
-                        const valParcela = Number(parcela.valor);
-                        if (restante <= 0) break;
-
-                        const valorPagar = Math.min(restante, valParcela);
-                        await tx.parcela.update({
-                            where: { id: parcela.id },
-                            data: {
-                                status: 'PAGO',
-                                valorPago: Math.round(valorPagar * 100) / 100,
-                                formaPagamento: detalhePgtos,
-                                dataPagamento: new Date(dataPgto + 'T12:00:00-03:00'),
-                                baixadoPorId: req.user.id,
-                                observacao: obs
-                            }
-                        });
-                        restante -= valorPagar;
-                    }
-
-                    // Recalcular status da conta
-                    const todasParcelas = await tx.parcela.findMany({
-                        where: { contaReceberId: contaReceber.id }
+                    baixa = await aplicarRecebimentoEntrega(tx, {
+                        contaReceberId: contaReceber.id,
+                        filas: filasEspecial,
+                        dataPagamento: new Date(dataPgto + 'T12:00:00-03:00'),
+                        origem: 'CAIXA_BAIXA_CA',
+                        registradoPorId: req.user.id, // no caixa, quem baixa é quem opera a tela
+                        observacao: obs
                     });
-                    const pagas = todasParcelas.filter(p => p.status === 'PAGO').length;
-                    const canceladas = todasParcelas.filter(p => p.status === 'CANCELADO').length;
-                    const total = todasParcelas.length;
-
-                    let novoStatus;
-                    if (pagas + canceladas >= total) novoStatus = 'QUITADO';
-                    else if (pagas > 0) novoStatus = 'PARCIAL';
-                    else novoStatus = 'ABERTO';
-
-                    await tx.contaReceber.update({
-                        where: { id: contaReceber.id },
-                        data: { status: novoStatus }
-                    });
-
                 }, { timeout: 20000, maxWait: 10000 });
+
+                if (baixa.registrado <= 0 && baixa.jaRegistrado > 0) {
+                    resultados.push({
+                        pedidoId: pedido.id,
+                        numero: pedido.numero,
+                        cliente: clienteNome,
+                        tipo: 'ESPECIAL',
+                        status: 'JA_QUITADO',
+                        erro: `Recebimento desta entrega já registrado (R$ ${baixa.jaRegistrado.toFixed(2)})`,
+                        valor: 0,
+                        parcial: false,
+                        saldoRestante: 0,
+                        detalhes: []
+                    });
+                    continue;
+                }
 
                 // Log de histórico FORA da transação — um log lento/falho nunca pode
                 // derrubar (rollback) uma baixa já efetivada.
@@ -2997,7 +3110,7 @@ router.post('/quitar-ca', async (req, res) => {
                     await prisma.atendimento.create({
                         data: {
                             tipo: 'FINANCEIRO',
-                            observacao: `Baixa caixa (especial) - R$ ${pedido._valorElegivel.toFixed(2)} (${detalhePgtos})${isParcial ? ' — PARCIAL' : ''} | ${obs}`,
+                            observacao: `Baixa caixa (especial) - R$ ${baixa.registrado.toFixed(2)} (${detalhePgtos})${isParcial ? ' — PARCIAL' : ''} | ${obs}`,
                             clienteId: pedido.cliente.UUID,
                             idVendedor: req.user.id,
                             pedidoId: pedido.id
@@ -3007,15 +3120,41 @@ router.post('/quitar-ca', async (req, res) => {
                     console.error('[caixa baixa-lote] falha no log (baixa já efetivada):', logErr.message);
                 }
 
-                const valorTotal = parcelasElegiveis.reduce((s, p) => s + Number(p.valor), 0);
+                // `valor` = o que REALMENTE virou baixa agora (antes vinha o total das
+                // parcelas, o que fazia parecer quitado quando só entrou parte do dinheiro).
+                const saldoRestante = Math.round((totalParcelas - baixa.registrado) * 100) / 100;
+                // `parcial` e `saldoRestante` são DADO, não texto: a tela não pode ter que
+                // adivinhar por expressão regular no `detalhe` se a baixa fechou o título
+                // (era assim que um badge verde "BAIXADO" aparecia em baixa parcial).
+                const ehParcial = saldoRestante > 0.01;
+                const detalhes = [
+                    ehParcial
+                        ? `Baixa parcial: R$ ${baixa.registrado.toFixed(2)} de R$ ${totalParcelas.toFixed(2)} — saldo de R$ ${saldoRestante.toFixed(2)} continua em aberto para cobrança`
+                        : `Baixa: R$ ${baixa.registrado.toFixed(2)} (${detalhePgtos})`,
+                    // Baixado sem conta definida: entra no ledger, mas o operador precisa ver
+                    ...semConta.map(f => `${f.nome}: R$ ${f.valor.toFixed(2)} — baixado sem conta financeira definida ("não informado")`),
+                    // Responsável não quita: fica em aberto no nome de quem vai cobrar
+                    ...(pedido.pagamentosReais || [])
+                        .filter(p => Number(p.valor) > 0 && ehResponsavelPelaCobranca(p))
+                        .map(p => `${p.formaPagamentoNome}: R$ ${Number(p.valor).toFixed(2)} — cobrança com o responsável, título segue em aberto`),
+                    // Dinheiro que não coube em parcela nenhuma (recebido > título): não pode
+                    // sumir calado — o operador precisa acertar com o cliente/motorista.
+                    ...(baixa.sobra > 0.01
+                        ? [`Sobra de R$ ${baixa.sobra.toFixed(2)} — recebido a mais do que o título; NÃO foi baixado em parcela nenhuma. Confira com o motorista e acerte com o cliente.`]
+                        : [])
+                ];
                 resultados.push({
                     pedidoId: pedido.id,
                     numero: pedido.numero,
                     cliente: clienteNome,
                     tipo: 'ESPECIAL',
                     status: 'OK',
-                    valor: Math.round(valorTotal * 100) / 100,
-                    parcelas: parcelasElegiveis.length
+                    valor: baixa.registrado,
+                    parcelas: baixa.parcelasTocadas.length,
+                    parcial: ehParcial,
+                    saldoRestante: ehParcial ? saldoRestante : 0,
+                    detalhes,                    // array (contrato novo)
+                    detalhe: detalhes.join(' | ') // string (mantida p/ quem já lia assim)
                 });
 
             } catch (err) {
@@ -3031,13 +3170,7 @@ router.post('/quitar-ca', async (req, res) => {
         }
 
         // ═══ NORMAIS → Baixa no Conta Azul via API ═══
-        // Conta financeira do Asaas no CA (config opcional) — onde entram os PIX Asaas
-        let contaAsaasCaId = null;
-        try {
-            const cfgAsaas = await prisma.appConfig.findUnique({ where: { key: 'asaas_conta_financeira_ca_id' } });
-            contaAsaasCaId = cfgAsaas?.value || null;
-        } catch (_) { /* sem config → cai na caixinha com observação */ }
-
+        // (contaAsaasCaId é lida lá em cima, antes do ramo dos especiais)
         let contaCaixinha = null;
         if (normais.length > 0 && !CA_SOMENTE_LEITURA) {
             try {
@@ -3229,8 +3362,13 @@ router.post('/quitar-ca', async (req, res) => {
                         });
                     }, { timeout: 20000, maxWait: 10000 });
 
+                    // Saldo que sobrou em aberto depois da baixa (o "responsável" do grupo
+                    // OUTRO não é recebimento, então continua devendo)
+                    const saldoAposBaixa = round2(totalAberto - valorRecebido - valorDevolvido);
+
                     acoes.push(`Baixa local: R$ ${valorRecebido.toFixed(2)} (${detalhePgtos})`);
                     if (valorDevolvido > 0.01) acoes.push(`Devolução (desconto): R$ ${valorDevolvido.toFixed(2)}`);
+                    if (saldoAposBaixa > 0.01) acoes.push(`Saldo de R$ ${saldoAposBaixa.toFixed(2)} continua em aberto para cobrança`);
                     if (grupos['OUTRO']) acoes.push(`${grupos['OUTRO'].formaNome}: R$ ${grupos['OUTRO'].valor.toFixed(2)} fica em aberto p/ cobrança`);
 
                     // Log de histórico fora da transação
@@ -3250,7 +3388,12 @@ router.post('/quitar-ca', async (req, res) => {
 
                     resultados.push({
                         pedidoId: pedido.id, numero: pedido.numero, cliente: clienteNome,
-                        tipo: 'CA', status: 'OK', valor: pedido._valorElegivel, detalhe: acoes.join(' | ')
+                        tipo: 'CA', status: 'OK', valor: pedido._valorElegivel,
+                        // mesmo contrato do ramo especial: a tela lê dado, não frase
+                        parcial: saldoAposBaixa > 0.01,
+                        saldoRestante: saldoAposBaixa > 0.01 ? saldoAposBaixa : 0,
+                        detalhes: acoes,
+                        detalhe: acoes.join(' | ')
                     });
                 } catch (err) {
                     resultados.push({
@@ -3441,11 +3584,19 @@ router.post('/quitar-ca', async (req, res) => {
         }
 
         const ok = resultados.filter(r => r.status === 'OK').length;
+        const parciais = resultados.filter(r => r.status === 'OK' && r.parcial).length;
         const erros = resultados.filter(r => r.status === 'ERRO').length;
         const jaQuitados = resultados.filter(r => r.status === 'JA_QUITADO').length;
+        const semBaixa = resultados.filter(r => r.status === 'SEM_BAIXA').length;
+
+        // O resumo tem que somar TODOS os estados — quem lê só o `message` (integração,
+        // log, tela antiga) contava errado e "perdia" os pedidos sem baixa.
+        const message = `Baixa: ${ok} OK${parciais > 0 ? ` (${parciais} parcial(is))` : ''}`
+            + `, ${erros} erro(s), ${jaQuitados} já quitado(s), ${semBaixa} sem baixa`;
 
         res.json({
-            message: `Baixa: ${ok} OK, ${erros} erro(s), ${jaQuitados} já quitado(s)`,
+            message,
+            resumo: { ok, parciais, erros, jaQuitados, semBaixa, total: resultados.length },
             resultados,
             contaCaixinha: contaCaixinha ? { id: contaCaixinha.id, nome: contaCaixinha.nome } : null
         });

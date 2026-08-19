@@ -19,6 +19,15 @@ const verificarAuth = require('../middlewares/authMiddleware');
 const financeiroGerencialService = require('../services/financeiroGerencialService');
 const projecaoVendasService = require('../services/projecaoVendasService');
 
+// Especial entregue já pago em dinheiro, esperando só a conferência do Caixa, não é
+// inadimplência (regra do dono, 08/2026). Ponto único em recebimentoEntregaService.
+// RECORTE de 90 dias pela data de entrega: aqui o efeito de perder um caso antigo é só
+// um número um pouco maior na tela — nunca uma cobrança indevida. Os pontos que
+// PROTEGEM o cliente (bloqueio de venda, selo de inadimplente, painel/"cobrar agora")
+// continuam varrendo tudo, sem recorte.
+const idsEmEsperaConferencia = async () =>
+    [...await require('../services/recebimentoEntregaService').idsContasEmEsperaDeConferencia({ desdeDias: 90 })];
+
 const num = (v) => Number(v || 0);
 const round2 = (v) => Math.round(num(v) * 100) / 100;
 const TZ = 'America/Sao_Paulo';
@@ -230,7 +239,12 @@ router.get('/geral/visao-geral', verificarAuth, checkGestor, async (req, res) =>
                 prisma.clienteInsight.count({ where: { statusRecompra: 'CRITICO', cliente: { Ativo: true, insightAtivo: true } } }),
                 prisma.atendimento.count({ where: { dataRetorno: { gte: inicioDiaSP(somaDiasISO(hoje, -60)), lt: inicioHoje } } }),
                 prisma.parcela.findMany({
-                    where: { status: { in: ['PENDENTE', 'VENCIDO', 'PARCIAL'] }, dataVencimento: { lt: inicioHoje }, contaReceber: { status: { not: 'CANCELADO' } } },
+                    where: {
+                        status: { in: ['PENDENTE', 'VENCIDO', 'PARCIAL'] },
+                        dataVencimento: { lt: inicioHoje },
+                        // fora a janela "pago na entrega, esperando conferência do Caixa"
+                        contaReceber: { status: { not: 'CANCELADO' }, id: { notIn: await idsEmEsperaConferencia() } }
+                    },
                     select: { contaReceber: { select: { clienteId: true } } }
                 }),
                 prisma.pedido.count({ where: { statusEnvio: 'ERRO' } })
@@ -835,7 +849,12 @@ router.get('/vendedor', verificarAuth, async (req, res) => {
                 where: {
                     status: { in: ['PENDENTE', 'VENCIDO', 'PARCIAL'] },
                     dataVencimento: { lt: inicioHoje },
-                    contaReceber: { status: { not: 'CANCELADO' }, cliente: { idVendedor: vendedorId } }
+                    contaReceber: {
+                        status: { not: 'CANCELADO' },
+                        cliente: { idVendedor: vendedorId },
+                        // fora a janela "pago na entrega, esperando conferência do Caixa"
+                        id: { notIn: await idsEmEsperaConferencia() }
+                    }
                 },
                 select: {
                     valor: true, valorPago: true, valorDescontoTotal: true, dataVencimento: true,

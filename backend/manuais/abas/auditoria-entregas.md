@@ -83,3 +83,11 @@ Devoluções.
 |---------|-------|
 | `frontend/src/pages/Admin/Embarques/AuditoriaEntregas.jsx` | Tela completa de auditoria |
 | `backend/src/routes/entregas.js` | Rota `GET /entregas/auditoria`, `PATCH /entregas/:id/editar`, `DELETE /entregas/:id/estorno` |
+
+## Entrega cujo título já foi baixado no financeiro
+
+Desde 08/2026, **estornar** ou **editar** o lançamento de uma entrega é **recusado** quando o título daquele pedido já tem baixa (total ou parcial) no financeiro — a mensagem aparece na tela. Motivo: apagar/reescrever os pagamentos da entrega deixaria a baixa sem lastro, e **título já quitado não reabre sozinho**.
+
+O caminho certo, nesta ordem:
+1. Financeiro → **Contas a Receber** → estornar a baixa (ou "desfazer a quitação" do especial) — isso desfaz tudo em cascata: histórico de pagamento, status da parcela e conciliação bancária;
+2. só então volte aqui e estorne/edite a entrega.

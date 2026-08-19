@@ -106,6 +106,12 @@ Uma parcela só deve virar PAGA por um destes caminhos:
 
 Desconto sem dinheiro (perdoar saldo) continua na mesma permissão de desconto e **não** passa por caixa — não há valor a prestar.
 
+**Especial entregue aparece na aba "Aberto":** desde 08/2026 a entrega não quita mais o título sozinha, então o especial entregue fica em **Aberto** até a baixa na conferência do Caixa. Se o cliente já pagou em dinheiro na entrega, ele **não** é tratado como devedor nesse intervalo (não bloqueia venda nova, não entra na régua nem na inadimplência das telas).
+
+**Parcela PARCIAL:** quando entra só parte do valor, a parcela fica com o selo **Parcial** e mostra **"Recebido (+ desconto)"** e **"Falta receber"** — o saldo continua em aberto e é o que entra na cobrança. O histórico de pagamento traz cada recebimento (valor, forma, banco/caixa, data e quem baixou).
+
+**"Escritório/Vendedor responsável" não quita:** essas formas não são recebimento — são o registro de quem ficou responsável por cobrar. A baixa manual com essa forma é **recusada** com a explicação; o título continua **em aberto no nome do responsável**, e é aqui que o dono confere e dá a baixa quando descontar o valor da pessoa.
+
 **Título cobrado em boleto/Pix quitado em espécie:** é permitido (o cliente pode ter pago em dinheiro no balcão), mas o app **avisa** antes de confirmar — tanto na baixa individual quanto na em lote. Se o cliente pagou o boleto de verdade, não dê baixa aqui: ela vem sozinha pela Conciliação Bancária, e a baixa manual deixaria o crédito do banco sem par no extrato.
 
 ### Dar baixa em uma parcela (total, parcial ou com desconto)
@@ -169,7 +175,8 @@ Desconto sem dinheiro (perdoar saldo) continua na mesma permissão de desconto e
 - **Pedidos** — cada pedido finalizado gera a conta com parcelas aqui (tudo no app; nada vai ao CA)
 - **Conta Azul (legado)** — contas antigas da era CA foram importadas para cá (origem IMPORTADO_CA). Baixa dada **no Conta Azul** numa dessas contas importadas é espelhada no app sozinha (a cada 3 horas): a parcela é quitada com o banco/forma de lá e o crédito aparece na Conciliação Bancária e nos Saldos por Conta
 - **Notas Fiscais** — a NF-e do pedido é emitida pelo app (Focus NFe)
-- **Caixa Diário** — baixas feitas pelo motorista na entrega também atualizam as parcelas aqui
+- **Régua de Cobrança** — título de pedido **especial** (fiado local), **bonificação** e conta de origem ESPECIAL **nunca entram na cobrança automática** (decisão do dono, 08/2026): quem cobra especial é o escritório/vendedor, na mão. Amostra não gera título
+- **Caixa Diário** — é a conferência do caixa que baixa as parcelas do que foi recebido na rua. Desde 08/2026 a entrega **não quita mais nenhum título sozinha** (nem de pedido especial): ela só registra o que o motorista recebeu, e o título fica **em aberto** aqui até a baixa no Caixa. Recebendo menos que o valor, a parcela fica **PARCIAL** e o saldo continua em aberto para cobrança
 - **Clientes** — a inadimplência exibida na Rota e no detalhe do cliente vem dos dados desta tela
 
 ---

@@ -336,21 +336,63 @@ const pedidoController = {
                 const hojeStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
                 const hoje = new Date(hojeStr + 'T00:00:00.000Z');
 
-                const buscarParcelasVencidas = () => prisma.parcela.findMany({
-                    where: {
-                        status: 'PENDENTE',
-                        dataVencimento: { lt: hoje },
-                        contaReceber: {
-                            clienteId: dadosPedido.clienteId,
-                            status: { in: ['ABERTO', 'PARCIAL'] },
-                            NOT: [
-                                { pedido: { statusEnvio: 'EXCLUIDO' } },
-                                { pedido: { situacaoCA: 'CANCELADO' } }
-                            ]
+                const { contasAguardandoConferencia } = require('../services/recebimentoEntregaService');
+
+                const buscarParcelasVencidas = async () => {
+                    const parcelas = await prisma.parcela.findMany({
+                        where: {
+                            // PARCIAL também está vencida (deve o saldo) — desde 08/2026 a
+                            // baixa parcial virou rotina, então PENDENTE sozinho deixava
+                            // título vencido pago pela metade de fora do bloqueio.
+                            status: { in: ['PENDENTE', 'PARCIAL', 'VENCIDO'] },
+                            dataVencimento: { lt: hoje },
+                            contaReceber: {
+                                clienteId: dadosPedido.clienteId,
+                                status: { in: ['ABERTO', 'PARCIAL'] },
+                                // Esconde só pedido excluído/cancelado no CA.
+                                // ⚠️ NÃO usar `NOT:` aqui: em SQL, NOT (situacao_ca = 'CANCELADO')
+                                // com o campo NULL dá NULL e a linha é DESCARTADA — e todo pedido
+                                // faturado no app (padrão desde que o CA virou somente leitura)
+                                // nasce com situacaoCA null. O `NOT` deixava o devedor de hoje
+                                // invisível para o bloqueio de venda. OR explícito, como em
+                                // routes/contasReceber.js.
+                                OR: [
+                                    { pedidoId: null },
+                                    {
+                                        pedido: {
+                                            statusEnvio: { not: 'EXCLUIDO' },
+                                            OR: [{ situacaoCA: null }, { situacaoCA: { not: 'CANCELADO' } }]
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        select: {
+                            valor: true, valorPago: true, valorDescontoTotal: true, status: true,
+                            contaReceber: {
+                                select: {
+                                    id: true,
+                                    parcelas: { select: { valor: true, valorPago: true, valorDescontoTotal: true, status: true } },
+                                    pedido: {
+                                        select: {
+                                            especial: true, statusEntrega: true,
+                                            pagamentosReais: { select: { valor: true, escritorioResponsavel: true, vendedorResponsavelId: true } }
+                                        }
+                                    }
+                                }
+                            }
                         }
-                    },
-                    select: { valor: true }
-                });
+                    });
+                    // Especial ENTREGUE e já pago em dinheiro na rua, só esperando a
+                    // conferência do Caixa, NÃO é inadimplência — o cliente pagou; quem
+                    // ainda não agiu somos nós (regra do dono, 08/2026).
+                    const emEspera = contasAguardandoConferencia(
+                        parcelas.map(p => ({ id: p.contaReceber.id, parcelas: p.contaReceber.parcelas, pedido: p.contaReceber.pedido }))
+                    );
+                    // saldo > 0: parcela parcial só bloqueia pelo que ainda falta
+                    return parcelas.filter(p => !emEspera.has(p.contaReceber.id)
+                        && (Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0)) > 0.01);
+                };
 
                 let parcelasVencidas = await buscarParcelasVencidas();
 
@@ -367,7 +409,8 @@ const pedidoController = {
                 }
 
                 if (parcelasVencidas.length > 0) {
-                    const totalVencido = parcelasVencidas.reduce((acc, p) => acc + Number(p.valor), 0);
+                    const totalVencido = parcelasVencidas.reduce((acc, p) =>
+                        acc + Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0), 0);
                     const nomeVendedor = req.user?.nome || 'Vendedor';
                     if (!permissoes.admin && !permissoes.Pode_Vender_Inadimplente) {
                         const isAVista = (dadosPedido.nomeCondicaoPagamento || '').toLowerCase().includes('vista');
@@ -655,18 +698,43 @@ const pedidoController = {
 
             const pedido = await prisma.pedido.findUnique({
                 where: { id },
-                select: { especial: true, statusEnvio: true, situacaoCA: true },
+                select: { especial: true, statusEnvio: true, situacaoCA: true, statusEntrega: true },
             });
             if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
             if (!pedido.especial) return res.status(400).json({ error: 'Este pedido não é especial.' });
             if (pedido.statusEnvio !== 'RECEBIDO') return res.status(400).json({ error: 'Pedido não está aprovado/faturado.' });
+            // Mercadoria que JÁ SAIU não volta por reversão de aprovação: reverter cancela
+            // as parcelas e devolve o estoque. Antes, a baixa automática da entrega deixava
+            // a conta QUITADO e era isso que barrava — sem a baixa automática, a trava tem
+            // que ser explícita (senão especial entregue e ainda não conferido passa reto).
+            if (['ENTREGUE', 'ENTREGUE_PARCIAL'].includes(pedido.statusEntrega)) {
+                return res.status(400).json({
+                    error: 'Não é possível reverter: este pedido já foi entregue. Para desfazer a entrega, use o estorno em Auditoria de Entregas; para anular a venda, registre a devolução.'
+                });
+            }
 
-            // Verificar se tem conta a receber QUITADA
+            // Dinheiro já recebido trava a reversão. Desde 08/2026 a baixa do especial
+            // pode ser PARCIAL (parcela com parte do dinheiro registrada no ledger), e a
+            // reversão CANCELA as parcelas — sem esta trava, dinheiro real sumiria do
+            // contas a receber sem estorno. Conferimos as três pontas: status da conta,
+            // status das parcelas e a existência de pagamento vivo (não estornado).
             const conta = await prisma.contaReceber.findFirst({
-                where: { pedidoId: id }
+                where: { pedidoId: id },
+                include: { parcelas: { select: { id: true, status: true } } }
             });
-            if (conta && conta.status === 'QUITADO') {
-                return res.status(400).json({ error: 'Não é possível reverter: conta já está quitada. Estorne a quitação primeiro.' });
+            if (conta && ['QUITADO', 'PARCIAL'].includes(conta.status)) {
+                return res.status(400).json({ error: 'Não é possível reverter: a conta a receber já tem baixa (total ou parcial). Estorne a baixa em Contas a Receber primeiro.' });
+            }
+            if (conta?.parcelas?.some(p => ['PAGO', 'PARCIAL'].includes(p.status))) {
+                return res.status(400).json({ error: 'Não é possível reverter: existem parcelas já pagas (total ou parcialmente). Estorne a baixa em Contas a Receber primeiro.' });
+            }
+            if (conta) {
+                const ledgerVivo = await prisma.pagamentoParcela.count({
+                    where: { parcelaId: { in: conta.parcelas.map(p => p.id) }, estornado: false }
+                });
+                if (ledgerVivo > 0) {
+                    return res.status(400).json({ error: 'Não é possível reverter: há recebimento registrado neste título. Estorne a baixa em Contas a Receber primeiro.' });
+                }
             }
 
             // Reverter pedido para ABERTO
@@ -691,16 +759,19 @@ const pedidoController = {
 
             // Se tinha conta a receber, cancelar parcelas pendentes e atualizar status
             if (conta) {
-                await prisma.$transaction([
-                    prisma.parcela.updateMany({
-                        where: { contaReceberId: conta.id, status: { not: 'PAGO' } },
+                // Callback (não array): na forma de ARRAY o Prisma só aceita
+                // `isolationLevel` — timeout/maxWait são ignorados em silêncio e a
+                // transação volta a morrer nos 5s padrão com o banco lento em pico.
+                await prisma.$transaction(async (tx) => {
+                    await tx.parcela.updateMany({
+                        where: { contaReceberId: conta.id, status: { notIn: ['PAGO', 'PARCIAL'] } },
                         data: { status: 'CANCELADO' }
-                    }),
-                    prisma.contaReceber.update({
+                    });
+                    await tx.contaReceber.update({
                         where: { id: conta.id },
                         data: { status: 'CANCELADO' }
-                    })
-                ]);
+                    });
+                }, { timeout: 20000, maxWait: 10000 }); // banco compartilhado é lento em pico
             }
 
             // Registrar auditoria

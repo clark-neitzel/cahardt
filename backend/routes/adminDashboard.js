@@ -3,7 +3,22 @@ const router = express.Router();
 const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 
+// Especial entregue já pago em dinheiro, esperando só a conferência do Caixa, não é
+// inadimplência (regra do dono, 08/2026). Ponto único em recebimentoEntregaService.
+// RECORTE de 90 dias pela data de entrega: aqui o efeito de perder um caso antigo é só
+// um número um pouco maior na tela — nunca uma cobrança indevida. Os pontos que
+// PROTEGEM o cliente (bloqueio de venda, selo de inadimplente, painel/"cobrar agora")
+// continuam varrendo tudo, sem recorte.
+const idsEmEsperaConferencia = async () =>
+    [...await require('../services/recebimentoEntregaService').idsContasEmEsperaDeConferencia({ desdeDias: 90 })];
+
 const num = (v) => Number(v || 0);
+// Inadimplência = SALDO em aberto (valor − recebido − desconto), nunca o valor cheio da
+// parcela: desde 08/2026 PARCIAL entra na conta, e somar `valor` inflaria o número (uma
+// parcela de R$ 100 com R$ 90 já recebidos deve R$ 10). Mesmo cálculo do
+// financeiroGerencialService (`aberto`).
+const saldoAberto = (agg) => Math.round(
+    (num(agg?._sum?.valor) - num(agg?._sum?.valorPago) - num(agg?._sum?.valorDescontoTotal)) * 100) / 100;
 const TZ = 'America/Sao_Paulo';
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -219,12 +234,18 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
                 select: { value: true },
             }),
             prisma.parcela.aggregate({
-                _sum: { valor: true },
+                // soma os três campos: a inadimplência é o SALDO, não o valor cheio
+                _sum: { valor: true, valorPago: true, valorDescontoTotal: true },
                 _count: { _all: true },
                 where: {
-                    status: 'PENDENTE',
+                    // PARCIAL/VENCIDO também estão em atraso (devem o saldo); e a janela
+                    // "pago na entrega, esperando conferência do Caixa" fica de fora.
+                    status: { in: ['PENDENTE', 'PARCIAL', 'VENCIDO'] },
                     dataVencimento: { lt: dateFromISOStart(isoNowTZ()) },
-                    ...(vendedorIdFiltro ? { contaReceber: { pedido: { vendedorId: vendedorIdFiltro } } } : {}),
+                    contaReceber: {
+                        id: { notIn: await idsEmEsperaConferencia() },
+                        ...(vendedorIdFiltro ? { pedido: { vendedorId: vendedorIdFiltro } } : {})
+                    },
                 },
             }),
             prisma.pedido.count({ where: { statusEnvio: 'ERRO', ...(vendedorIdFiltro ? { vendedorId: vendedorIdFiltro } : {}) } }),
@@ -650,7 +671,7 @@ router.get('/weekly-brief', verificarAuth, async (req, res) => {
                 topClientes,
                 alertas: {
                     inadimplencia: {
-                        total: num(inadimplencia._sum.valor),
+                        total: saldoAberto(inadimplencia),
                         parcelas: inadimplencia._count._all,
                     },
                     errosErp: { total: pedidosComErro },
@@ -1005,9 +1026,13 @@ router.get('/', verificarAuth, async (req, res) => {
 
         // ============ INADIMPLÊNCIA (parcelas vencidas em aberto) ============
         const inadimplencia = await prisma.parcela.aggregate({
-            _sum: { valor: true },
+            _sum: { valor: true, valorPago: true, valorDescontoTotal: true }, // saldo, não valor cheio
             _count: { _all: true },
-            where: { status: 'PENDENTE', dataVencimento: { lt: startOfDay } },
+            where: {
+                status: { in: ['PENDENTE', 'PARCIAL', 'VENCIDO'] },
+                dataVencimento: { lt: startOfDay },
+                contaReceber: { id: { notIn: await idsEmEsperaConferencia() } }
+            },
         });
 
         // ============ PRODUTOS EM QUEDA (top 5: 30d vs 30-60d) ============
@@ -1142,7 +1167,7 @@ router.get('/', verificarAuth, async (req, res) => {
             topProdutos,
             topClientes,
             clientesInativos: { total: clientesInativosCount, top: clientesInativosTop },
-            inadimplencia: { total: num(inadimplencia._sum.valor), parcelas: inadimplencia._count._all },
+            inadimplencia: { total: saldoAberto(inadimplencia), parcelas: inadimplencia._count._all },
             produtosEmQueda,
             fechamentoOntem: {
                 data: startOfDay.toISOString().slice(0, 10),

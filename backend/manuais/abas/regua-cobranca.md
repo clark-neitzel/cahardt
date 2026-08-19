@@ -57,3 +57,20 @@ Todos os envios (automáticos, lembretes e manuais) com data, cliente, canal, ti
 - **Não quero cobrar um cliente:** hoje a régua cobra todos os inadimplentes da forma configurada; para pausar um caso específico, desative a régua da forma ou trate manualmente (o limite de avisos também para os envios).
 - **Quem pode acessar:** no grupo Financeiro do modal de permissões do usuário (Admin → Usuários → Acessos): "Régua de Cobrança" libera **ver**; o toggle extra "Editar Régua de Cobrança" (aparece ao ligar o primeiro) libera **alterar/executar/cobrar**. Desligar o "ver" desliga o "editar" junto.
 - **Consigo abrir a tela mas os botões sumiram / campos bloqueados:** você tem acesso somente de visualização — peça ao administrador a permissão "Editar Régua de Cobrança".
+
+## Quem a régua NUNCA cobra (desde 08/2026)
+
+- **Pedido especial** (e qualquer conta com origem ESPECIAL, mesmo sem pedido vinculado) — é fiado local: a cobrança é do escritório/vendedor, feita na mão. A parcela do especial nasce vencida no dia da venda e só é baixada na conferência do Caixa; sem essa trava, cliente que pagou em dinheiro na entrega receberia cobrança no dia seguinte
+- **Pedido bonificação** — não é venda
+- **Amostra** — não gera título nenhum (não tem conta a receber)
+- Pedido excluído/cancelado no Conta Azul (regra que já existia)
+
+**O painel e o botão "Cobrar agora" continuam enxergando o especial.** A trava vale só para o **envio automático** da régua: no painel de inadimplentes o escritório vê tudo, e pode disparar a cobrança na mão quando decidir.
+
+**Uma exceção, mesmo no painel e no "Cobrar agora": quem já pagou não é cobrado.** Pedido especial entregue, já pago em dinheiro na rua e esperando só a conferência do Caixa **não aparece** no painel e **não recebe** cobrança nem quando alguém clica em "Cobrar agora" — o cliente pagou, o que falta é o caixa conferir. Essas parcelas não somem sem aviso: o painel mostra quantas ficaram de fora no campo **"aguardando conferência"** dos totais. Especial fiado de verdade (nada recebido, ou só valor de "vendedor/escritório responsável") continua no painel e continua cobrável.
+
+### O que o painel enxerga (corrigido em 08/2026)
+
+O painel de inadimplentes e o botão **"Cobrar agora"** enxergam **todos** os títulos em aberto do cliente — inclusive de **pedido especial**, de propósito, porque é o escritório que cobra o especial na mão. Só o **envio automático** da régua é que nunca cobra especial, bonificação nem amostra.
+
+Até 08/2026 um defeito escondia do painel os títulos de **pedido faturado direto no app** (que ainda não tinha situação registrada no Conta Azul): eles não apareciam na lista de inadimplentes nem entravam na régua. Corrigido — esses títulos voltaram a ser enxergados. Efeito prático: podem aparecer no painel alguns clientes que antes não apareciam, e eles passam a receber **lembrete de vencimento** normalmente.

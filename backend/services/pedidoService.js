@@ -588,8 +588,10 @@ const pedidoService = {
                         where: { pedidoId: id },
                         include: { parcelas: { select: { status: true } } }
                     });
-                    if (crExistente?.parcelas?.some(p => p.status === 'PAGO')) {
-                        throw new Error("Não é possível editar: existem parcelas já pagas nesta conta a receber.");
+                    // PARCIAL conta como paga: desde 08/2026 a baixa do especial pode quitar
+                    // só parte do título, e a parcela guarda dinheiro de verdade no ledger.
+                    if (crExistente?.parcelas?.some(p => ['PAGO', 'PARCIAL'].includes(p.status))) {
+                        throw new Error("Não é possível editar: existem parcelas já pagas (total ou parcialmente) nesta conta a receber. Estorne a baixa em Contas a Receber antes.");
                     }
                     await tx.contaReceber.deleteMany({ where: { pedidoId: id } });
 
@@ -779,8 +781,8 @@ const pedidoService = {
         if (pedido.contaReceber && pedido.contaReceber.status === 'QUITADO') {
             throw new Error("Não é possível excluir: conta a receber já foi quitada.");
         }
-        if (pedido.contaReceber?.parcelas?.some(p => p.status === 'PAGO')) {
-            throw new Error("Não é possível excluir: existem parcelas já pagas nesta conta a receber.");
+        if (pedido.contaReceber?.parcelas?.some(p => ['PAGO', 'PARCIAL'].includes(p.status))) {
+            throw new Error("Não é possível excluir: existem parcelas já pagas (total ou parcialmente) nesta conta a receber. Estorne a baixa em Contas a Receber antes.");
         }
         // NF-e: pedido com nota viva (autorizada ou em processamento) NUNCA pode ser apagado —
         // o documento fiscal existe na SEFAZ e o XML/DANFE tem que continuar rastreável.
@@ -934,8 +936,8 @@ const pedidoService = {
         if (pedido.contaReceber?.status === 'QUITADO') {
             throw new Error('Não é possível cancelar: a conta a receber já está quitada. Estorne a baixa primeiro.');
         }
-        if (pedido.contaReceber?.parcelas?.some(p => p.status === 'PAGO')) {
-            throw new Error('Não é possível cancelar: existem parcelas já pagas. Estorne a baixa primeiro.');
+        if (pedido.contaReceber?.parcelas?.some(p => ['PAGO', 'PARCIAL'].includes(p.status))) {
+            throw new Error('Não é possível cancelar: existem parcelas já pagas (total ou parcialmente). Estorne a baixa em Contas a Receber primeiro.');
         }
         if (pedido.cobrancasAsaas?.some(c => c.status === 'RECEBIDO')) {
             throw new Error('Não é possível cancelar: existe cobrança Asaas já paga neste pedido. Faça a devolução do valor antes.');
@@ -945,7 +947,8 @@ const pedidoService = {
             // Cancela conta a receber e parcelas ainda em aberto
             if (pedido.contaReceber) {
                 await tx.parcela.updateMany({
-                    where: { contaReceberId: pedido.contaReceber.id, status: { not: 'PAGO' } },
+                    // (as travas acima já impedem chegar aqui com PAGO/PARCIAL — cinto e suspensório)
+                    where: { contaReceberId: pedido.contaReceber.id, status: { notIn: ['PAGO', 'PARCIAL'] } },
                     data: { status: 'CANCELADO' }
                 });
                 await tx.contaReceber.update({

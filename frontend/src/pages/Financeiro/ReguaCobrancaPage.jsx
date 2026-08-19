@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, Fragment } from 'react';
 import {
     BellRing, RefreshCw, Send, Plus, Trash2, ChevronDown, ChevronUp,
     MessageCircle, Mail, Smartphone, AlertTriangle, CheckCircle2, XCircle,
-    Eye, Settings2, History, Users, Loader2
+    Eye, Settings2, History, Users, Loader2, ClipboardCheck
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import cobrancaService from '../../services/cobrancaService';
@@ -190,6 +190,19 @@ function AbaInadimplentes({ podeEditar }) {
                     <div className="text-xl md:text-2xl font-bold text-amber-600 mt-1">{totais.semCelular}</div>
                 </div>
             </div>
+
+            {/* Quem pagou o especial em dinheiro e só espera o caixa ser conferido NÃO é
+                devedor — sai da lista. Sem este aviso o escritório via a lista encolher
+                sem entender por quê. Só aparece quando há algo em espera. */}
+            {Number(totais.aguardandoConferencia || 0) > 0 && (
+                <div
+                    className="inline-flex items-center gap-2 rounded-full bg-mint/60 border border-primary/20 px-3 py-1.5 text-xs font-medium text-primaryDark"
+                    title="Títulos de clientes que já pagaram (pedido especial recebido em dinheiro na entrega) e por isso ficam fora da lista de inadimplentes. O valor entra na cobrança quando o caixa do dia for conferido."
+                >
+                    <ClipboardCheck className="h-4 w-4 shrink-0" />
+                    <span>{totais.aguardandoConferencia} {Number(totais.aguardandoConferencia) === 1 ? 'parcela' : 'parcelas'} aguardando conferência do caixa</span>
+                </div>
+            )}
 
             {/* Lista */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm">

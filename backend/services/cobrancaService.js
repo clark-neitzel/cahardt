@@ -180,7 +180,14 @@ function vencimentoEfetivo(vencimento, prorrogar) {
  * Busca todas as parcelas em aberto vencidas (e as que vencem em breve, para
  * lembrete) e agrupa por cliente + configuração de forma de recebimento.
  */
-async function montarGrupos() {
+/**
+ * @param incluirEspecial  false (padrão) = visão do ENVIO AUTOMÁTICO: especial nunca entra.
+ *                         true = visão de LEITURA/manual (painel de inadimplentes e botão
+ *                         "Cobrar agora"), onde o escritório PRECISA enxergar o especial —
+ *                         a regra do dono é sobre a régua automática, não sobre a cobrança
+ *                         feita na mão.
+ */
+async function montarGrupos({ incluirEspecial = false } = {}) {
     const global = await getCobrancaConfigGlobal();
     const configs = await prisma.cobrancaConfig.findMany({
         include: { responsavelTarefa: { select: { id: true, nome: true } } }
@@ -197,17 +204,45 @@ async function montarGrupos() {
             dataVencimento: { lt: limiteFuturo },
             contaReceber: {
                 status: { in: ['ABERTO', 'PARCIAL'] },
-                // Mesma regra da tela Contas a Receber: esconde contas cujo pedido
-                // foi excluído/cancelado no CA ou é bonificação (nunca cobrar essas)
-                OR: [
-                    { pedidoId: null },
+                AND: [
+                    // Mesma regra da tela Contas a Receber: esconde contas cujo pedido
+                    // foi excluído/cancelado no CA ou é bonificação (nunca cobrar essas)
                     {
-                        pedido: {
-                            statusEnvio: { notIn: ['EXCLUIDO'] },
-                            situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] },
-                            bonificacao: false
-                        }
-                    }
+                        OR: [
+                            { pedidoId: null },
+                            {
+                                pedido: {
+                                    statusEnvio: { notIn: ['EXCLUIDO'] },
+                                    bonificacao: false,
+                                    // ⚠️ `notIn` do Prisma EXCLUI linha null: pedido faturado
+                                    // localmente nasce com situacaoCA vazia e sumia do painel
+                                    // inteiro. OR explícito cobrindo o null (mesmo padrão de
+                                    // routes/contasReceber.js). Este OR é do PEDIDO — não
+                                    // confundir com o OR de fora (pedidoId null × pedido).
+                                    OR: [
+                                        { situacaoCA: null },
+                                        { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }
+                                    ]
+                                }
+                            }
+                        ]
+                    },
+                    // ── PEDIDO ESPECIAL NUNCA ENTRA NA COBRANÇA AUTOMÁTICA (decisão do dono, 08/2026) ──
+                    // O especial é fiado local: quem cobra é o escritório/vendedor, na mão. Além disso,
+                    // a parcela do especial nasce vencida no dia da venda e só é baixada na conferência
+                    // do Caixa — sem esta trava, cliente que pagou em dinheiro na entrega receberia
+                    // cobrança por WhatsApp no dia seguinte.
+                    // Duas portas de entrada, porque existe conta ESPECIAL sem pedido vinculado:
+                    //   1) a origem da conta;  2) a flag do pedido.
+                    // Cuidado com a regra do null: `not`/`notIn` do Prisma EXCLUEM linha null.
+                    //  • `origem` é NOT NULL no banco (default 'ESPECIAL'), então `not` é seguro
+                    //    aqui — e o Prisma nem aceita `{ origem: null }` num campo obrigatório.
+                    //  • `pedidoId` É nullable: por isso o OR explícito cobrindo null, senão
+                    //    toda conta sem pedido (importada/avulsa) sumiria da régua.
+                    ...(incluirEspecial ? [] : [
+                        { origem: { not: 'ESPECIAL' } },
+                        { OR: [{ pedidoId: null }, { pedido: { especial: false } }] }
+                    ])
                 ]
             }
         },
@@ -228,8 +263,26 @@ async function montarGrupos() {
         orderBy: { dataVencimento: 'asc' }
     });
 
+    // ── QUEM PAGOU E SÓ ESPERA A CONFERÊNCIA DO CAIXA NÃO É DEVEDOR ──────────────
+    // A trava de cima tira o especial da régua AUTOMÁTICA. Mas o painel e o botão
+    // "Cobrar agora" chamam com incluirEspecial:true — e sem este filtro o cliente que
+    // pagou o especial em dinheiro na entrega aparecia como inadimplente e podia receber
+    // cobrança no WhatsApp da Ana ANTES da conferência do caixa (mensagem indevida no
+    // número que já foi banido uma vez). Ponto único: recebimentoEntregaService.
+    // Especial fiado de verdade (nada recebido, ou só "responsável") continua aqui.
+    let emEsperaDeConferencia = 0;
+    let parcelasCobraveis = parcelas;
+    if (incluirEspecial) {
+        const { idsContasEmEsperaDeConferencia } = require('./recebimentoEntregaService');
+        const emEspera = await idsContasEmEsperaDeConferencia();
+        if (emEspera.size) {
+            parcelasCobraveis = parcelas.filter((p) => !emEspera.has(p.contaReceberId));
+            emEsperaDeConferencia = parcelas.length - parcelasCobraveis.length;
+        }
+    }
+
     const grupos = new Map(); // chave: clienteId|configKey
-    for (const p of parcelas) {
+    for (const p of parcelasCobraveis) {
         const devido = valorDevido(p);
         if (devido < 0.01) continue;
 
@@ -260,7 +313,7 @@ async function montarGrupos() {
         else g.parcelasAVencer.push(item);
     }
 
-    return { grupos: [...grupos.values()], configs };
+    return { grupos: [...grupos.values()], configs, emEsperaDeConferencia };
 }
 
 // ── Mensagens ────────────────────────────────────────────────────────
@@ -703,7 +756,10 @@ async function executarRegua({ forcarManual = false, configId = null } = {}) {
 
 /** Envio manual imediato para um cliente (botão "Cobrar agora" do painel). */
 async function cobrarClienteAgora(clienteId) {
-    const { grupos } = await montarGrupos();
+    // Manual: o escritório decidiu cobrar aquele cliente — especial entra (a trava é só
+    // para o envio automático). O que já foi pago e espera a conferência do Caixa fica de
+    // fora mesmo aqui: não se cobra quem já pagou, nem a pedido.
+    const { grupos } = await montarGrupos({ incluirEspecial: true });
     const candidatos = grupos.filter(g => g.cliente.UUID === clienteId && g.parcelasVencidas.length > 0);
     if (!candidatos.length) return { ok: false, motivo: 'Cliente sem parcelas vencidas em aberto' };
 
@@ -732,7 +788,10 @@ async function cobrarClienteAgora(clienteId) {
 // ── Painel de inadimplentes ──────────────────────────────────────────
 
 async function painelInadimplentes() {
-    const { grupos } = await montarGrupos();
+    // Painel é LEITURA: mostra tudo, inclusive especial (que a régua automática não cobra) —
+    // menos quem já pagou e só espera a conferência do Caixa, que não é devedor. O total
+    // dessas parcelas sai em `totais.aguardandoConferencia` para nada ficar invisível.
+    const { grupos, emEsperaDeConferencia } = await montarGrupos({ incluirEspecial: true });
     const comVencidas = grupos.filter(g => g.parcelasVencidas.length > 0);
 
     const itens = [];
@@ -778,7 +837,9 @@ async function painelInadimplentes() {
         valorVencido: itens.reduce((s, i) => s + i.valorTotal, 0),
         parcelas: itens.reduce((s, i) => s + i.parcelas.length, 0),
         comErro: itens.filter(i => i.ultimoEnvio?.status === 'ERRO').length,
-        semCelular: itens.filter(i => !i.cliente.celular).length
+        semCelular: itens.filter(i => !i.cliente.celular).length,
+        // parcelas de especial já pago em dinheiro, fora do painel só até o caixa conferir
+        aguardandoConferencia: emEsperaDeConferencia
     };
     return { totais, itens };
 }
@@ -796,6 +857,7 @@ function previewMensagem(texto) {
 }
 
 module.exports = {
+    montarGrupos, // exportado para teste/diagnóstico: é aqui que vive o "quem a régua enxerga"
     executarRegua,
     cobrarClienteAgora,
     painelInadimplentes,

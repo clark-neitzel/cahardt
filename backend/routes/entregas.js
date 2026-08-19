@@ -2,6 +2,10 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const verificarAuth = require('../middlewares/authMiddleware');
+const {
+    acharRegrasCondicao, carregarMapaFormas, formaPermitida, nomesFormasPermitidas
+} = require('../services/condicaoRecebimentoService');
+const { baixaDeEntregaViva, MSG_TITULO_JA_BAIXADO } = require('../services/recebimentoEntregaService');
 
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
@@ -388,12 +392,8 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
         let regrasCondicao = null;
         if (pedido.opcaoCondicaoPagamento || pedido.tipoPagamento || pedido.nomeCondicaoPagamento) {
             const condicoes = await prisma.tabelaPreco.findMany({ where: { ativo: true } });
-            const chave = `${pedido.tipoPagamento || ''}|${pedido.opcaoCondicaoPagamento || ''}`;
-            // Priorizar nomeCondicaoPagamento (exato) sobre tipoPagamento|opcaoCondicao (ambíguo p/ boletos: todos = "1x")
-            regrasCondicao = (pedido.nomeCondicaoPagamento ? condicoes.find(t => t.nomeCondicao === pedido.nomeCondicaoPagamento) : null)
-                || condicoes.find(t => `${t.tipoPagamento || ''}|${t.opcaoCondicao || ''}` === chave)
-                || condicoes.find(t => t.opcaoCondicao === pedido.opcaoCondicaoPagamento)
-                || null;
+            // Prioridade nome exato > tipo|opção > opção (regra compartilhada com a baixa do caixa)
+            regrasCondicao = acharRegrasCondicao(pedido, condicoes);
         }
 
         // Validar restrições de devolução da condição
@@ -486,22 +486,15 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
 
             // Validar formas de recebimento permitidas pela condição
             if (regrasCondicao?.formasRecebimentoPermitidas?.length > 0) {
-                const permitidas = regrasCondicao.formasRecebimentoPermitidas;
-                // Montar mapa de nomes permitidos a partir dos _selectId salvos
-                const todasCondicoes = await prisma.tabelaPreco.findMany({ where: { ativo: true }, select: { idCondicao: true, nomeCondicao: true } });
-                const formasCustom = await prisma.formaPagamentoEntrega.findMany({ where: { ativo: true }, select: { id: true, nome: true } });
-                const mapaNomes = {};
-                todasCondicoes.forEach(c => { mapaNomes['tabela_' + c.idCondicao] = c.nomeCondicao; });
-                formasCustom.forEach(f => { mapaNomes[f.id] = f.nome; });
-                const nomesPermitidos = permitidas.map(p => mapaNomes[p]?.toLowerCase()).filter(Boolean);
-
+                // Mesmo critério usado na baixa do caixa (condicaoRecebimentoService)
+                const mapaNomes = await carregarMapaFormas(prisma);
                 for (const op of operacoesPgto) {
-                    if (op.cobrancaAsaasId) continue; // PIX Asaas confirmado pelo banco é sempre aceito
-                    const nomeUsado = op.formaPagamentoNome?.toLowerCase();
-                    const idPermitido = op.formaPagamentoEntregaId && permitidas.includes(op.formaPagamentoEntregaId);
-                    if (!idPermitido && !nomesPermitidos.includes(nomeUsado)) {
-                        return res.status(400).json({ error: `Forma de pagamento "${op.formaPagamentoNome}" não é permitida para esta condição.` });
-                    }
+                    if (formaPermitida({ regrasCondicao, mapaNomes, ...op })) continue;
+                    const liberadas = nomesFormasPermitidas({ regrasCondicao, mapaNomes });
+                    return res.status(400).json({
+                        error: `Forma de pagamento "${op.formaPagamentoNome}" não é permitida para esta condição.`
+                            + (liberadas.length ? ` Use uma das liberadas: ${liberadas.join(', ')}.` : '')
+                    });
                 }
             }
 
@@ -538,39 +531,13 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
                 });
             }
 
-            // Pedidos Especiais não têm espelho no CA — o sync nunca fecharia as parcelas.
-            // Se 100% do saldo foi pago em caixa (não-escritório), baixar as parcelas agora.
-            if (pedido.especial && ['ENTREGUE', 'ENTREGUE_PARCIAL'].includes(statusEntrega) && valorSaldoDevedor > 0) {
-                const totalCaixa = operacoesPgto
-                    .filter(p => !p.escritorioResponsavel)
-                    .reduce((s, p) => s + Number(p.valor), 0);
-
-                if (totalCaixa >= valorSaldoDevedor - 0.05) {
-                    const conta = await tx.contaReceber.findFirst({
-                        where: { pedidoId: id },
-                        include: { parcelas: { where: { status: { not: 'CANCELADO' } } } }
-                    });
-                    if (conta) {
-                        const hoje = new Date();
-                        const forma = operacoesPgto.filter(p => !p.escritorioResponsavel)[0]?.formaPagamentoNome || 'Dinheiro';
-                        for (const parcela of conta.parcelas) {
-                            if (parcela.status === 'PAGO') continue;
-                            await tx.parcela.update({
-                                where: { id: parcela.id },
-                                data: {
-                                    status: 'PAGO',
-                                    valorPago: Number(parcela.valor),
-                                    formaPagamento: forma,
-                                    dataPagamento: hoje,
-                                    baixadoPorId: req.user.id,
-                                    observacao: 'Baixa automática — pagamento registrado na entrega'
-                                }
-                            });
-                        }
-                        await tx.contaReceber.update({ where: { id: conta.id }, data: { status: 'QUITADO' } });
-                    }
-                }
-            }
+            // NÃO existe mais baixa automática de título aqui (removida em 08/2026, decisão do dono).
+            // A entrega só REGISTRA o que o motorista recebeu (pedidoPagamentoReal); o título do
+            // pedido especial continua EM ABERTO até alguém baixar na conferência do Caixa
+            // (routes/caixa.js → POST /baixa-lote, ramo dos especiais), que é onde a baixa passa a
+            // ter dono (quem confere) e vira linha de ledger em pagamentos_parcela.
+            // O dinheiro do motorista continua no "a prestar" dele — esse cálculo sai dos
+            // pagamentos da entrega (pagamentos_reais), nunca do status da parcela.
         }, { timeout: 20000, maxWait: 10000 });
 
         // Ponto GPS do cliente: se a entrega concluiu LONGE do ponto cadastrado (ou o
@@ -615,6 +582,15 @@ router.patch('/:id/editar', verificarAuth, checkAjustador, async (req, res) => {
         const pedido = await prisma.pedido.findUnique({ where: { id }, include: { itens: true } });
         if (!pedido) return res.status(404).json({ error: 'Pedido não localizado.' });
         if (pedido.statusEntrega === 'PENDENTE') return res.status(400).json({ error: 'Este pedido ainda não foi finalizado.' });
+
+        // Baixa NASCIDA DESTA ENTREGA (conferência do caixa) trava a edição: reescrever
+        // os pagamentos aqui deixaria a baixa sem lastro. Baixa de outra procedência
+        // (conciliação, sync do CA, Asaas, manual) não entra — corrigir a forma lançada
+        // na entrega não pode exigir estorno de uma conciliação bancária.
+        const baixaEditar = await baixaDeEntregaViva(id);
+        if (baixaEditar.temBaixa) {
+            return res.status(409).json({ error: MSG_TITULO_JA_BAIXADO });
+        }
 
         if (statusEntrega && !['ENTREGUE', 'ENTREGUE_PARCIAL', 'DEVOLVIDO'].includes(statusEntrega)) {
             return res.status(400).json({ error: 'Status de Entrega inválido.' });
@@ -809,6 +785,12 @@ router.delete('/:id/estorno', verificarAuth, checkAjustador, async (req, res) =>
 
         const pedido = await prisma.pedido.findUnique({ where: { id } });
         if (!pedido) return res.status(404).json({ error: 'Pedido inexistente.' });
+
+        // Idem: só a baixa nascida da conferência do caixa desta entrega trava o estorno.
+        const baixaEstorno = await baixaDeEntregaViva(id);
+        if (baixaEstorno.temBaixa) {
+            return res.status(409).json({ error: MSG_TITULO_JA_BAIXADO });
+        }
 
         // Transação de Desfazimento (Undo)
         await prisma.$transaction(async (tx) => {

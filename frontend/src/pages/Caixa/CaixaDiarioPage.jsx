@@ -53,6 +53,166 @@ const STATUS_BADGES = {
     A_FECHAR: { label: 'A fechar', class: 'bg-mint text-primaryDark' }
 };
 
+// Desde 08/2026 a entrega do pedido especial NÃO quita mais o título — ele nasce em
+// aberto e a baixa acontece aqui, na conferência do Caixa. Sem selo, a linha ficava
+// "sem nada" e o operador não sabia se já tinha sido tratada.
+//
+// MAS o selo "A CONFERIR" só pode aparecer quando existe DINHEIRO DE VERDADE a conferir.
+// No fiado puro (nada recebido na entrega) e no "fica com o responsável" (Vendedor/
+// Escritório responsável), o botão Processar não baixa nada — o resultado sai SEM BAIXA —
+// e o selo prometia uma conferência que nunca aconteceria.
+//
+// Critério de "é responsável" — MESMO do backend
+// (recebimentoEntregaService.ehResponsavelPelaCobranca): a linha de pagamento tem
+// `escritorioResponsavel = true` ou `vendedorResponsavelId` preenchido. Os dois campos
+// vêm em cada item de `e.pagamentos` (GET /caixa/diario, routes/caixa.js).
+const ehLinhaResponsavel = (p) => !!(p?.escritorioResponsavel || p?.vendedorResponsavelId);
+const valorLinha = (p) => Number(p?.valor || 0);
+
+// Especial ainda em aberto (o título não foi baixado e o pedido não foi devolvido)
+const especialEmAberto = (e) => !!e.especial && !e.quitado && e.statusEntrega !== 'DEVOLVIDO';
+
+// Nada mais a fazer nesta tela: o título já foi baixado/alterado, ou o pedido foi devolvido.
+// 'DEVOLVIDO'/'CANCELADO' ainda NÃO são devolvidos pelo backend em `quitado` (ele só manda
+// QUITADO/PARCIAL/ALTERADO); ficam aqui para a tela já tratar certo assim que o campo vier.
+const baixaJaResolvida = (e) => e.statusEntrega === 'DEVOLVIDO'
+    || ['QUITADO', 'ALTERADO', 'DEVOLVIDO', 'CANCELADO'].includes(e.quitado);
+
+// Houve recebimento próprio na entrega (dinheiro/pix/cartão que passou pelo motorista) —
+// é isto que a conferência do Caixa vai baixar.
+const temRecebimentoProprio = (e) => (e.pagamentos || []).some(p => !ehLinhaResponsavel(p) && valorLinha(p) > 0);
+
+// Só há o que conferir quando entrou dinheiro que não é linha de responsável.
+const aguardaConferencia = (e) => especialEmAberto(e) && temRecebimentoProprio(e);
+
+// Especial em aberto SEM recebimento próprio, mas com valor lançado no nome de um
+// responsável: a cobrança fica com o vendedor/escritório e a Baixa CA não age aqui.
+// Selo cinza (design system: cinza = pendente / nada a fazer nesta tela).
+// Fiado puro (nada recebido, nem responsável) fica SEM selo de propósito: é um título em
+// aberto igual a qualquer outro, e o selo "ESP." já identifica o pedido especial.
+const cobrancaComResponsavel = (e) => especialEmAberto(e) && !temRecebimentoProprio(e)
+    && (e.pagamentos || []).some(p => ehLinhaResponsavel(p) && valorLinha(p) > 0);
+
+const fmtMoeda = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+// Texto vindo do backend traz valor de `toFixed(2)` ("R$ 100.00"), que fica ao lado do
+// "R$ 100,00" do resto da tela. Aqui o ponto vira vírgula (com separador de milhar) só na
+// EXIBIÇÃO — não depende de o backend mudar o texto. "R$ 1.234,56" já correto não casa
+// com a expressão (o dígito depois dos centavos derruba o match), então não é reformatado.
+const abrasileirarMoeda = (txt) => String(txt ?? '').replace(
+    /R\$\s*(\d+)\.(\d{2})(?!\d)/g,
+    (_, inteiro, centavos) => `R$ ${fmtMoeda(`${inteiro}.${centavos}`)}`
+);
+
+// O detalhe pode vir como array (`detalhes`, formato novo) ou como string única separada
+// por " | " (formato atual). Aceita os dois e devolve sempre uma lista de linhas.
+const linhasDetalhe = (r) => {
+    const bruto = r?.detalhes ?? r?.detalhe;
+    if (Array.isArray(bruto)) return bruto.filter(Boolean).map(t => abrasileirarMoeda(t));
+    if (typeof bruto === 'string') return bruto.split(' | ').map(t => abrasileirarMoeda(t.trim())).filter(Boolean);
+    return [];
+};
+
+// Baixa parcial NÃO é quitação — é o engano mais perigoso da tela. Preferimos o campo
+// `parcial` do backend; enquanto ele não estiver no ar, caímos no texto do `detalhe`
+// ("Baixa parcial: R$ X de R$ Y — saldo ..."), para a tela funcionar nos dois casos.
+const ehBaixaParcial = (r) => r?.parcial ?? /baixa parcial/i.test(linhasDetalhe(r).join(' | '));
+
+// Saldo que continua em aberto depois da baixa (campo novo do backend; sem ele, a
+// informação continua aparecendo dentro do texto do detalhe)
+const saldoEmAberto = (r) => (typeof r?.saldoRestante === 'number' ? r.saldoRestante : null);
+
+// Como cada situação devolvida pelo backend aparece na tela (cores semânticas do
+// design system: verde = baixado, âmbar = atenção, cinza = nada a fazer, vermelho = erro)
+const RESULTADO_BAIXA_ESTILO = {
+    OK: { rotulo: 'BAIXADO', badge: 'bg-green-100 text-green-800', box: 'bg-green-50 border-green-200' },
+    PARCIAL: { rotulo: 'BAIXA PARCIAL', badge: 'bg-amber-100 text-amber-700', box: 'bg-amber-50 border-amber-200' },
+    SEM_BAIXA: { rotulo: 'SEM BAIXA', badge: 'bg-amber-100 text-amber-700', box: 'bg-amber-50 border-amber-200' },
+    JA_QUITADO: { rotulo: 'JÁ QUITADO', badge: 'bg-gray-100 text-gray-700', box: 'bg-gray-50 border-gray-200' },
+    ERRO: { rotulo: 'ERRO', badge: 'bg-red-100 text-red-700', box: 'bg-red-50 border-red-200' }
+};
+
+// Painel com o resultado da Baixa CA. Existe porque o backend passou a devolver
+// situações que o operador precisa LER inteiras (baixa parcial com saldo em aberto,
+// valor de responsável que não quita, condição recusada com a lista de formas
+// liberadas) — texto longo demais para toast, que some antes de ser lido.
+const ResultadoBaixaPainel = ({ dados, onFechar }) => {
+    if (!dados) return null;
+    const { resultados, ok, erros, jaQuitados, avisos, totalBaixado, parciais } = dados;
+    return (
+        <div className="mb-3 rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+            <div className="flex items-start justify-between gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50">
+                <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-widest text-gray-600">Resultado da Baixa</p>
+                    <p className="text-xs text-gray-600 mt-1 break-words">
+                        <span className="font-semibold text-green-700">{ok.length} baixada(s) — R$ {fmtMoeda(totalBaixado)}</span>
+                        {parciais.length > 0 && <span className="text-amber-700"> · {parciais.length} parcial(is)</span>}
+                        {avisos.length > 0 && <span className="text-amber-700"> · {avisos.length} sem baixa</span>}
+                        {jaQuitados.length > 0 && <span className="text-gray-500"> · {jaQuitados.length} já quitada(s)</span>}
+                        {erros.length > 0 && <span className="text-red-700"> · {erros.length} com erro</span>}
+                    </p>
+                    {(parciais.length > 0 || avisos.length > 0) && (
+                        <p className="text-[11px] text-amber-700 mt-1 break-words">
+                            Atenção: valor baixado não é o total — o que sobrou continua em aberto para cobrança.
+                        </p>
+                    )}
+                </div>
+                <button
+                    type="button"
+                    onClick={onFechar}
+                    className="shrink-0 min-h-[44px] min-w-[44px] px-3 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 text-xs font-semibold"
+                >
+                    Fechar
+                </button>
+            </div>
+            <div className="p-2 space-y-2 max-h-80 overflow-y-auto">
+                {resultados.map((r, i) => {
+                    const chave = r.status === 'OK' && ehBaixaParcial(r) ? 'PARCIAL' : r.status;
+                    const detalhes = linhasDetalhe(r);
+                    const saldo = saldoEmAberto(r);
+                    // Status desconhecido (backend novo, tela antiga): mostra neutro com o
+                    // nome cru — nunca engana o operador dizendo "baixado" ou "erro".
+                    const estilo = RESULTADO_BAIXA_ESTILO[chave]
+                        || { rotulo: String(r.status || 'INDEFINIDO'), badge: 'bg-gray-100 text-gray-700', box: 'bg-gray-50 border-gray-200' };
+                    return (
+                        <div key={`${r.pedidoId}-${i}`} className={`rounded-lg border p-2 ${estilo.box}`}>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${estilo.badge}`}>
+                                    {estilo.rotulo}
+                                </span>
+                                <span className="text-xs font-mono text-gray-500">#{r.numero}</span>
+                                <span className="text-xs font-medium text-gray-900 break-words min-w-0">{r.cliente}</span>
+                                {r.status === 'OK' && (
+                                    <span className="text-xs font-semibold text-gray-700 tabular-nums whitespace-nowrap">
+                                        R$ {fmtMoeda(r.valor)}
+                                    </span>
+                                )}
+                            </div>
+                            {r.erro && (
+                                <p className="text-[11px] text-gray-700 mt-1 break-words whitespace-pre-line" title={abrasileirarMoeda(r.erro)}>
+                                    {abrasileirarMoeda(r.erro)}
+                                </p>
+                            )}
+                            {detalhes.length > 0 && (
+                                <ul className="mt-1 space-y-0.5" title={detalhes.join(' | ')}>
+                                    {detalhes.map((linha, j) => (
+                                        <li key={j} className="text-[11px] text-gray-600 break-words">• {linha}</li>
+                                    ))}
+                                </ul>
+                            )}
+                            {saldo != null && saldo > 0.01 && (
+                                <p className="text-[11px] font-semibold text-amber-700 mt-1">
+                                    Continua em aberto para cobrança: R$ {fmtMoeda(saldo)}
+                                </p>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
 const CaixaDiarioPage = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
@@ -109,6 +269,10 @@ const CaixaDiarioPage = () => {
     const podeBaixarCaixa = user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Caixa || user?.permissoes?.Pode_Baixar_Caixa;
     const [selectedBaixa, setSelectedBaixa] = useState(new Set());
     const [quitandoCA, setQuitandoCA] = useState(false);
+    // Resultado da última Baixa CA (fica na tela até o operador fechar — as mensagens
+    // do backend são longas demais para caber num toast e o operador PRECISA lê-las:
+    // baixa parcial, valor de "responsável" que não quita, conta financeira faltando).
+    const [resultadoBaixa, setResultadoBaixa] = useState(null);
     // Fechar Caixa
     const podeFecharCaixa = user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Caixa || user?.permissoes?.Pode_Fechar_Caixa;
     // Devolução
@@ -198,11 +362,17 @@ const CaixaDiarioPage = () => {
     };
 
     const handleFechar = async () => {
-        // Verificar entregas pendentes de baixa/alteração no CA
-        const pendentes = resumo?.entregas?.filter(isElegivelBaixa) || [];
+        // Pendência de baixa: QUEM DECIDE É O SERVIDOR. Cada linha do GET /caixa/resumo
+        // vem com `pendenteBaixaCaixa` — a MESMA regra que o backend usa para aceitar ou
+        // recusar o fechamento. A tela não pode ter opinião própria aqui: quando tinha
+        // (filtro por `isElegivelBaixa`, que é outra pergunta — "esta linha PODE ser
+        // marcada?" — e inclui parcial e linha de responsável), o botão habilitava, o
+        // operador clicava e levava um toast vermelho sem o servidor sequer ser chamado.
+        const pendentes = resumo?.entregas?.filter(e => e.pendenteBaixaCaixa) || [];
         if (pendentes.length > 0) {
-            const lista = pendentes.map(e => `#${e.numero} ${e.clienteNome}`).join(', ');
-            toast.error(`${pendentes.length} baixa(s) de dinheiro pendente(s):\n${lista}`, { duration: 8000 });
+            // Pedido especial não tem número — sem o fallback sai "#null" na cara do usuário.
+            const lista = pendentes.map(e => `#${e.numero || '?'} ${e.clienteNome}`).join(', ');
+            toast.error(`${pendentes.length} baixa(s) de recebimento pendente(s):\n${lista}`, { duration: 8000 });
             return;
         }
 
@@ -306,21 +476,26 @@ const CaixaDiarioPage = () => {
         }, 100);
     };
 
-    // Verifica se uma entrega é elegível para baixa/condição no CA:
-    // - dinheiro/pix/cartão → cria baixa ou altera condição
-    // - vendedor/escritório responsável (só para pedidos CA) → altera forma para OUTRO
-    // Pedidos especiais com Vend/Escr Resp não aparecem (não estão no CA, é fiado local)
+    // Quais linhas o operador PODE marcar na coluna CA (checkbox individual):
+    // - dinheiro/pix/cartão → cria baixa ou altera condição no CA
+    // - vendedor/escritório responsável → pedido CA: altera a forma para OUTRO;
+    //   pedido especial: nada é baixado e o Processar responde SEM BAIXA, explicando
+    //   que a cobrança ficou com o responsável. Antes o checkbox simplesmente não
+    //   existia nesse caso e o operador ficava sem resposta nenhuma na tela.
     const isElegivelBaixa = (entrega) => {
-        if (entrega.statusEntrega === 'DEVOLVIDO') return false;
-        if (entrega.quitado === 'QUITADO' || entrega.quitado === 'ALTERADO') return false;
+        if (baixaJaResolvida(entrega)) return false;
         const n = (p) => (p.formaNome || '').toLowerCase();
         return entrega.pagamentos?.some(p => {
-            if (p.vendedorResponsavelId || p.escritorioResponsavel) {
-                return !entrega.especial; // só CA precisa de alteração
-            }
+            if (ehLinhaResponsavel(p)) return true;
             return n(p).includes('dinheiro') || n(p).includes('pix') || n(p).includes('cartão') || n(p).includes('cartao');
         });
     };
+
+    // O que o botão "Selecionar À Vista" marca. Fica de FORA o especial cujo valor
+    // ficou 100% no nome do responsável: ele nunca vira baixa, e marcá-lo todo dia
+    // encheria o painel de avisos SEM BAIXA — o operador pararia de ler o painel.
+    // Quem quiser a explicação marca a linha à mão (o checkbox está lá).
+    const isElegivelBaixaLote = (entrega) => isElegivelBaixa(entrega) && !cobrancaComResponsavel(entrega);
 
     const handleToggleBaixa = (pedidoId) => {
         setSelectedBaixa(prev => {
@@ -333,7 +508,7 @@ const CaixaDiarioPage = () => {
 
     const handleSelectAllDinheiro = () => {
         if (!resumo?.entregas) return;
-        const dinheiroIds = resumo.entregas.filter(isElegivelBaixa).map(e => e.pedidoId);
+        const dinheiroIds = resumo.entregas.filter(isElegivelBaixaLote).map(e => e.pedidoId);
         setSelectedBaixa(prev => {
             const allSelected = dinheiroIds.length > 0 && dinheiroIds.every(id => prev.has(id));
             if (allSelected) return new Set();
@@ -352,15 +527,35 @@ const CaixaDiarioPage = () => {
 
         try {
             setQuitandoCA(true);
+            setResultadoBaixa(null);
             const result = await caixaService.quitarCA(ids, data);
-            const ok = result.resultados?.filter(r => r.status === 'OK') || [];
-            const erros = result.resultados?.filter(r => r.status === 'ERRO') || [];
-            const jaQuitados = result.resultados?.filter(r => r.status === 'JA_QUITADO') || [];
+            const resultados = result.resultados || [];
+            const ok = resultados.filter(r => r.status === 'OK');
+            const erros = resultados.filter(r => r.status === 'ERRO');
+            const jaQuitados = resultados.filter(r => r.status === 'JA_QUITADO');
+            // Aviso: o backend processou, mas NADA foi baixado (ex.: só valor de
+            // "vendedor/escritório responsável"). Não é sucesso nem erro.
+            const avisos = resultados.filter(r => r.status === 'SEM_BAIXA');
+            // `valor` agora é o que REALMENTE virou baixa (não o total das parcelas)
+            const totalBaixado = ok.reduce((s, r) => s + Number(r.valor || 0), 0);
+            const parciais = ok.filter(ehBaixaParcial);
 
-            if (ok.length > 0) toast.success(`${ok.length} baixa(s) criada(s) no CA!`);
-            if (jaQuitados.length > 0) toast.success(`${jaQuitados.length} já quitada(s).`);
+            setResultadoBaixa({ resultados, ok, erros, jaQuitados, avisos, totalBaixado, parciais });
+
+            if (ok.length > 0) {
+                toast.success(
+                    `${ok.length} baixa(s) — R$ ${fmtMoeda(totalBaixado)}` +
+                    (parciais.length > 0 ? ` (${parciais.length} parcial(is), veja o detalhe)` : ''),
+                    { duration: 6000 }
+                );
+            }
+            if (jaQuitados.length > 0) toast(`${jaQuitados.length} já quitada(s).`, { icon: 'ℹ️' });
+            if (avisos.length > 0) {
+                toast(`${avisos.length} sem baixa — título continua em aberto. Veja o detalhe abaixo.`,
+                    { icon: '⚠️', duration: 7000 });
+            }
             if (erros.length > 0) {
-                erros.forEach(e => toast.error(`${e.cliente}: ${e.erro}`, { duration: 6000 }));
+                toast.error(`${erros.length} com erro. Veja o detalhe abaixo.`, { duration: 6000 });
             }
 
             setSelectedBaixa(new Set());
@@ -676,6 +871,10 @@ const CaixaDiarioPage = () => {
                         {/* Lista de Entregas Expandida */}
                         {expandedEntregas && resumo.entregas && (
                             <div className="border-t border-gray-200 pt-4">
+                                {/* Resultado da última Baixa CA (parcial / sem baixa / erro) */}
+                                {podeBaixarCaixa && (
+                                    <ResultadoBaixaPainel dados={resultadoBaixa} onFechar={() => setResultadoBaixa(null)} />
+                                )}
                                 {/* Barra de seleção para baixa CA */}
                                 {podeBaixarCaixa && (
                                     <div className="flex flex-wrap items-center gap-2 mb-3 p-2 bg-indigo-50 rounded-lg border border-indigo-200">
@@ -743,7 +942,9 @@ const CaixaDiarioPage = () => {
                                                                     checked={selectedBaixa.has(e.pedidoId)}
                                                                     onChange={() => handleToggleBaixa(e.pedidoId)}
                                                                     className="h-4 w-4 rounded text-indigo-600"
-                                                                    title="Selecionar para baixa (dinheiro)"
+                                                                    title={cobrancaComResponsavel(e)
+                                                                        ? 'Processar esta linha não baixa nada: o valor ficou com o vendedor/escritório responsável (o resultado sai como SEM BAIXA, com o nome dele).'
+                                                                        : 'Selecionar para baixa (dinheiro)'}
                                                                 />
                                                             )}
                                                         </td>
@@ -754,6 +955,22 @@ const CaixaDiarioPage = () => {
                                                             <SeloGps selo={e.seloGps} />
                                                             <span className="truncate max-w-[180px] lg:max-w-[280px]" title={e.clienteNome}>{e.clienteNome}</span>
                                                             {e.especial && <span className="text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESP.</span>}
+                                                            {aguardaConferencia(e) && (
+                                                                <span
+                                                                    className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded"
+                                                                    title="Título em aberto: a baixa do especial acontece aqui, na conferência do Caixa."
+                                                                >
+                                                                    A CONFERIR
+                                                                </span>
+                                                            )}
+                                                            {cobrancaComResponsavel(e) && (
+                                                                <span
+                                                                    className="text-[10px] font-bold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded"
+                                                                    title="Nada a conferir aqui: o valor ficou no nome do vendedor/escritório responsável. O título segue em aberto e é baixado quando o valor for descontado do responsável."
+                                                                >
+                                                                    COM RESPONSÁVEL
+                                                                </span>
+                                                            )}
                                                             {e.quitado === 'QUITADO' && <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">QUIT.</span>}
                                                             {e.quitado === 'PARCIAL' && <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">PARC.</span>}
                                                             {e.quitado === 'ALTERADO' && <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">ALT.</span>}
@@ -853,6 +1070,22 @@ const CaixaDiarioPage = () => {
                                             {(e.especial || e.quitado || e.devolucaoFinalizada) && (
                                                 <div className="flex flex-wrap gap-1 mt-2">
                                                     {e.especial && <span className="text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>}
+                                                    {aguardaConferencia(e) && (
+                                                        <span
+                                                            className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded"
+                                                            title="Título em aberto: a baixa do especial acontece na conferência do Caixa."
+                                                        >
+                                                            A CONFERIR
+                                                        </span>
+                                                    )}
+                                                    {cobrancaComResponsavel(e) && (
+                                                        <span
+                                                            className="text-[10px] font-bold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded"
+                                                            title="Nada a conferir aqui: o valor ficou no nome do vendedor/escritório responsável. O título segue em aberto e é baixado quando o valor for descontado do responsável."
+                                                        >
+                                                            COM RESPONSÁVEL
+                                                        </span>
+                                                    )}
                                                     {e.quitado === 'QUITADO' && <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">QUITADO</span>}
                                                     {e.quitado === 'PARCIAL' && <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded">PARCIAL</span>}
                                                     {e.quitado === 'ALTERADO' && <span className="text-[10px] font-bold text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded">ALTERADO</span>}
@@ -1331,7 +1564,7 @@ const CaixaDiarioPage = () => {
                                 {resumo.pendencias.quitacoesNaoFeitas > 0 && (
                                     <li>
                                         <button onClick={irParaEntregas} className="underline decoration-amber-400 underline-offset-2 hover:text-amber-900 text-left">
-                                            • {resumo.pendencias.quitacoesNaoFeitas} baixa(s) de dinheiro não quitada(s) — toque para abrir as entregas
+                                            • {resumo.pendencias.quitacoesNaoFeitas} baixa(s) de recebimento pendente(s) — toque para abrir as entregas
                                         </button>
                                     </li>
                                 )}

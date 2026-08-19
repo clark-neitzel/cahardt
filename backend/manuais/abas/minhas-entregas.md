@@ -90,6 +90,7 @@ Escolha o que aconteceu na entrega:
 - Clique em **Capturar GPS** para registrar a localização no momento da entrega
 - O navegador pedirá permissão de localização
 - Clique em **Finalizar** para confirmar — a entrega é salva, o caixa é atualizado e a entrega some da lista de pendentes
+- **O que a finalização faz com o título:** ela **registra o que o motorista recebeu**, e só. Desde 08/2026 nem o pedido especial é quitado sozinho aqui — o título continua em aberto até alguém **conferir e dar a baixa no Caixa**. O dinheiro entra normalmente no "a prestar" do motorista
 
 ### Conferir a folha impressa (QR code)
 1. Antes de carregar o caminhão, toque no botão **Folha** (ícone de QR, no header verde da tela)

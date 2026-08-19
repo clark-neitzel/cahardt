@@ -50,7 +50,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'diag-receber-saude-2026-08-18c',
+        deployMarker: 'baixa-especial-caixa-2026-08-19a',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -3550,63 +3550,66 @@ router.get('/especiais-abertos', async (req, res) => {
     }
 });
 
-// POST /api/admin-exec/corrigir-especiais-abertos — baixa automaticamente as contas elegíveis
-router.post('/corrigir-especiais-abertos', async (req, res) => {
+// GET /api/admin-exec/diag-impacto-responsavel-caixa — SOMENTE LEITURA.
+// Mede o impacto da decisão de 08/2026 ("responsável fica devendo, não presta o dinheiro
+// no dia"): quanto sai do "a prestar" e quantos caixas já conferidos passariam a aparecer
+// como DESATUALIZADO (o valor esperado da conferência muda). Nada é alterado aqui.
+router.get('/diag-impacto-responsavel-caixa', async (req, res) => {
     try {
-        const { executar = false } = req.body;
-        const contas = await prisma.contaReceber.findMany({
-            where: {
-                status: { in: ['ABERTO', 'PARCIAL'] },
-                pedido: { especial: true, statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL'] } }
-            },
-            include: {
-                pedido: { select: { numero: true, vendedorId: true, pagamentosReais: { where: { valor: { gt: 0 } } } } },
-                parcelas: { where: { status: { not: 'CANCELADO' } } }
+        const conferidos = await prisma.caixaDiario.findMany({
+            where: { dinheiroConferido: true, valorEsperadoConferencia: { not: null } },
+            select: { id: true, vendedorId: true, dataReferencia: true, status: true, valorEsperadoConferencia: true }
+        });
+        const pgtos = await prisma.pedidoPagamentoReal.findMany({
+            where: { vendedorResponsavelId: { not: null }, valor: { gt: 0 } },
+            select: {
+                valor: true, vendedorResponsavelId: true,
+                pedido: { select: { numero: true, especial: true, dataEntrega: true, statusEntrega: true, embarque: { select: { responsavelId: true } } } }
             }
         });
-
-        const elegíveis = contas.filter(c => {
-            const pgtos = c.pedido?.pagamentosReais || [];
-            const totalCaixa = pgtos.filter(p => !p.escritorioResponsavel).reduce((s, p) => s + Number(p.valor), 0);
-            const totalAberto = c.parcelas.filter(p => p.status !== 'PAGO').reduce((s, p) => s + Number(p.valor), 0);
-            return totalAberto > 0 && totalCaixa >= totalAberto - 0.05;
+        const porDiaVendedor = new Map();
+        for (const p of pgtos) {
+            const d = p.pedido?.dataEntrega, v = p.pedido?.embarque?.responsavelId;
+            if (!d || !v || p.pedido.statusEntrega === 'DEVOLVIDO') continue;
+            const chave = `${v}|${new Date(d).toISOString().slice(0, 10)}`;
+            porDiaVendedor.set(chave, Math.round(((porDiaVendedor.get(chave) || 0) + Number(p.valor)) * 100) / 100);
+        }
+        const afetados = conferidos
+            .filter(c => porDiaVendedor.has(`${c.vendedorId}|${c.dataReferencia}`))
+            .map(c => ({
+                caixaId: c.id, data: c.dataReferencia, status: c.status,
+                valorEsperadoAntes: Number(c.valorEsperadoConferencia),
+                sairaDoAPrestar: porDiaVendedor.get(`${c.vendedorId}|${c.dataReferencia}`)
+            }));
+        res.json({
+            somenteLeitura: true,
+            pagamentosVendedorResponsavel: pgtos.length,
+            valorTotalQueSaiDoAPrestar: Math.round(pgtos.reduce((s, p) => s + Number(p.valor), 0) * 100) / 100,
+            caixasComConferenciaDeDinheiro: conferidos.length,
+            caixasQueViramDESATUALIZADO: afetados.length,
+            afetados: afetados.slice(0, 50)
         });
-
-        if (!executar) {
-            return res.json({ simulacao: true, totalElegíveis: elegíveis.length, pedidos: elegíveis.map(c => c.pedido?.numero) });
-        }
-
-        let corrigidos = 0;
-        for (const conta of elegíveis) {
-            const pgtos = conta.pedido?.pagamentosReais || [];
-            const forma = pgtos.filter(p => !p.escritorioResponsavel)[0]?.formaPagamentoNome || 'Dinheiro';
-            const baixadoPorId = conta.pedido?.vendedorId;
-            const hoje = new Date();
-
-            await prisma.$transaction(async (tx) => {
-                for (const parcela of conta.parcelas) {
-                    if (parcela.status === 'PAGO') continue;
-                    await tx.parcela.update({
-                        where: { id: parcela.id },
-                        data: {
-                            status: 'PAGO',
-                            valorPago: Number(parcela.valor),
-                            formaPagamento: forma,
-                            dataPagamento: hoje,
-                            baixadoPorId: baixadoPorId || null,
-                            observacao: 'Correção retroativa — pagamento já registrado na entrega'
-                        }
-                    });
-                }
-                await tx.contaReceber.update({ where: { id: conta.id }, data: { status: 'QUITADO' } });
-            }, { timeout: 20000, maxWait: 10000 });
-            corrigidos++;
-        }
-
-        res.json({ corrigidos, pedidos: elegíveis.map(c => c.pedido?.numero) });
     } catch (e) {
         res.status(500).json({ error: e.message });
     }
+});
+
+// POST /api/admin-exec/corrigir-especiais-abertos — DESATIVADA em 08/2026.
+//
+// Esta rota marcava em LOTE as parcelas de pedido especial como PAGO (valor cheio,
+// sem linha em pagamentos_parcela, sem conta financeira e com o vendedor do pedido
+// como autor). Era a mesma baixa automática que gerou 638 parcelas / R$ 203.718,88
+// pagas sem histórico. O dono nunca pediu baixa automática: a baixa do especial é
+// feita — e assinada — por quem confere o Caixa.
+// O GET /especiais-abertos (logo acima) continua no ar — somente leitura.
+router.post('/corrigir-especiais-abertos', async (req, res) => {
+    return res.status(410).json({
+        error: 'Rota desativada em 08/2026. Baixa de pedido especial não é mais feita em lote por aqui.',
+        comoFazer: 'Dê a baixa na conferência do Caixa (Caixa → selecionar as entregas → Processar). '
+            + 'Lá a baixa gera o histórico de pagamento (valor, forma, conta financeira, quem baixou) '
+            + 'e só quita quando o recebido cobre o valor do título.',
+        diagnostico: 'GET /api/admin-exec/especiais-abertos continua disponível (somente leitura).'
+    });
 });
 
 // POST /api/admin-exec/db-push — executa prisma db push (cria tabelas novas sem migration)

@@ -56,9 +56,17 @@ const checkBaixaManual = async (req, res, next) => {
 const FORMAS_ESPECIE = ['Dinheiro', 'Cheque'];
 const ehEspecie = (f) => FORMAS_ESPECIE.some(x => x.toLowerCase() === String(f || '').trim().toLowerCase());
 
+// "Escritório responsável" / "Vendedor responsável" NÃO são recebimento: são o registro
+// de quem ficou encarregado de cobrar. Não têm banco — e SEM BANCO NÃO HÁ QUITAÇÃO
+// (regra do dono, 08/2026). O título continua em aberto até o dinheiro entrar de verdade.
+const ehResponsavel = (f) => /respons[áa]vel/i.test(String(f || ''));
+
 const validarFormaManual = (formaPagamento) => {
     const f = String(formaPagamento || '').trim();
     if (!f) return 'Escolha a forma de pagamento.';
+    if (ehResponsavel(f)) {
+        return `"${f}" não quita título: não é recebimento, é o registro de quem ficou responsável pela cobrança (por isso não tem banco). O valor continua em aberto e a cobrança é do responsável.`;
+    }
     if (ehEspecie(f)) return null;
     return `Baixa manual aceita apenas ${FORMAS_ESPECIE.join(' ou ')}. Recebimento em ${f} entra pela Conciliação Bancária (quando cair no extrato) ou pelo Caixa.`;
 };
@@ -497,9 +505,21 @@ router.get('/relatorio-itens', verificarAuth, checkAcesso, async (req, res) => {
         if (categoriaClienteId) {
             where.cliente = { ...(where.cliente || {}), categoriaClienteId: igual(categoriaClienteId) };
         }
+        // Mesmo critério da listagem principal: `notIn` do Prisma EXCLUI null, então
+        // situacaoCA vazia (pedido faturado no app / nunca sincronizado, incluindo os
+        // especiais) precisa do OR explícito, senão o pedido some do relatório.
         where.OR = [
             { pedidoId: null },
-            { pedido: { statusEnvio: { notIn: ['EXCLUIDO'] }, situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] }, bonificacao: false } }
+            {
+                pedido: {
+                    statusEnvio: { notIn: ['EXCLUIDO'] },
+                    bonificacao: false,
+                    OR: [
+                        { situacaoCA: null },
+                        { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }
+                    ]
+                }
+            }
         ];
         if (vendedorId || condicaoPagamento) {
             where.pedido = {};
@@ -748,8 +768,22 @@ router.get('/:parcelaId/pagamentos', verificarAuth, checkAcesso, async (req, res
 router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, checkBaixaManual, async (req, res) => {
     try {
         const { parcelaId } = req.params;
-        const { valorRecebido, valorDesconto, motivoDesconto, formaPagamento, dataPagamento, observacao, contaFinanceiraCaId } = req.body;
+        const {
+            valorRecebido, valorPago, // `valorPago`: nome LEGADO (ver aviso abaixo)
+            valorDesconto, motivoDesconto, formaPagamento, dataPagamento, observacao, contaFinanceiraCaId
+        } = req.body;
         const perms = req._perms;
+
+        // Compatibilidade: a tela antiga (Financeiro → Contas a Receber, botão "Dar Baixa")
+        // mandava `valorPago` e a rota só lia `valorRecebido` — resultado: 400 "Informe um
+        // valor recebido ou um desconto" em TODA tentativa (bug em produção, 08/2026).
+        // Aceitamos os dois nomes para não quebrar chamador antigo; `valorRecebido` é o
+        // oficial (é o nome da coluna do ledger). Remover `valorPago` só depois de
+        // confirmar que nenhuma versão antiga do app em campo ainda o envia.
+        const valorRecebidoFinal = valorRecebido !== undefined ? valorRecebido : valorPago;
+        if (valorRecebido === undefined && valorPago !== undefined) {
+            console.warn('[ContasReceber] baixa recebida com o campo LEGADO `valorPago` — o nome oficial é `valorRecebido`. Atualize o chamador.');
+        }
 
         const parcela = await prisma.parcela.findUnique({
             where: { id: parcelaId },
@@ -760,7 +794,7 @@ router.post('/:parcelaId/baixa', verificarAuth, checkBaixa, checkBaixaManual, as
         if (parcela.status === 'PAGO') return res.status(400).json({ error: 'Parcela já está paga. Estorne antes de lançar um novo pagamento.' });
         if (parcela.status === 'CANCELADO') return res.status(400).json({ error: 'Parcela cancelada.' });
 
-        const recebido = Math.max(0, Number(valorRecebido) || 0);
+        const recebido = Math.max(0, Number(valorRecebidoFinal) || 0);
         const desconto = Math.max(0, Number(valorDesconto) || 0);
 
         if (recebido <= 0 && desconto <= 0) {
@@ -1107,23 +1141,46 @@ router.put('/:id/reverter-quitacao', verificarAuth, async (req, res) => {
             return res.status(400).json({ error: 'Conta não está quitada nem parcialmente paga.' });
         }
 
-        // Estornar todas as parcelas pagas
-        await prisma.parcela.updateMany({
-            where: { contaReceberId: conta.id, status: 'PAGO' },
-            data: {
-                status: 'PENDENTE',
-                valorPago: null,
-                formaPagamento: null,
-                dataPagamento: null,
-                baixadoPorId: null,
-                observacao: null
-            }
-        });
+        // Estorno em CASCATA: reabrir a parcela sem estornar o ledger deixaria linha de
+        // pagamento viva num título aberto (dinheiro contado duas vezes no realizado e na
+        // conciliação). Desde que a baixa do especial passou a gerar ledger, este caminho
+        // precisa desfazer as duas pontas — parcela E pagamentos_parcela.
+        const idsEstornar = (await prisma.pagamentoParcela.findMany({
+            where: { parcela: { contaReceberId: conta.id }, estornado: false },
+            select: { id: true }
+        })).map(p => p.id);
 
-        await prisma.contaReceber.update({
-            where: { id: conta.id },
-            data: { status: 'ABERTO' }
-        });
+        await prisma.$transaction(async (tx) => {
+            if (idsEstornar.length > 0) {
+                await tx.pagamentoParcela.updateMany({
+                    where: { id: { in: idsEstornar } },
+                    data: { estornado: true, estornadoEm: new Date(), estornadoPorId: req.user.id }
+                });
+            }
+            // PARCIAL também volta (senão sobra parcela paga pela metade sem lastro)
+            await tx.parcela.updateMany({
+                where: { contaReceberId: conta.id, status: { in: ['PAGO', 'PARCIAL'] } },
+                data: {
+                    status: 'PENDENTE',
+                    valorPago: null,
+                    valorDescontoTotal: 0,
+                    formaPagamento: null,
+                    dataPagamento: null,
+                    baixadoPorId: null,
+                    observacao: null
+                }
+            });
+            await tx.contaReceber.update({ where: { id: conta.id }, data: { status: 'ABERTO' } });
+        }, { timeout: 20000, maxWait: 10000 });
+
+        // Conciliação bancária presa nestas baixas volta para pendente (estorno já efetivado)
+        for (const pid of idsEstornar) {
+            try {
+                await require('../services/conciliacaoBancariaService').desconciliarPorBaixa({ pagamentoParcelaId: pid });
+            } catch (e) {
+                console.error('Falha ao desconciliar extrato após reverter quitação (estorno já efetivado):', e.message);
+            }
+        }
 
         // Auditoria
         await prisma.auditLog.create({

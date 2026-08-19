@@ -20,6 +20,7 @@ const bcrypt = require('bcryptjs');
 const prisma = require('../config/database');
 const cfgConferencia = require('../config/caixaConferenciaConfig');
 const { diasDoCaixa, intervaloDoCaixa } = require('../utils/diasUteisCaixa');
+const { ehResponsavelPelaCobranca } = require('./recebimentoEntregaService');
 
 const PERM_CONFERIR = 'Pode_Conferir_Dinheiro_Caixa';
 const PERM_AUTORIZAR_DIF = 'Pode_Autorizar_Diferenca_Caixa';
@@ -92,8 +93,9 @@ const calcularValorAPrestar = async (vendedorId, data, cfg = null) => {
             const val = Number(p.valor);
             let debita;
             if (p.formaPagamentoNome === 'PIX Asaas' && p.cobrancaAsaasId) debita = false;
-            else if (p.escritorioResponsavel) debita = false;
-            else if (p.vendedorResponsavelId) debita = true;
+            // responsável (escritório OU vendedor) fica devendo — não presta no dia
+            // (decisão do dono, 08/2026; critério único em recebimentoEntregaService)
+            else if (ehResponsavelPelaCobranca(p)) debita = false;
             else if (mapaPorNome[p.formaPagamentoNome] !== undefined) debita = mapaPorNome[p.formaPagamentoNome];
             else debita = mapaPorOpcao[e.opcaoCondicaoPagamento] || false;
             if (debita) totalRecebidoCaixa += val; else totalRecebidoOutros += val;

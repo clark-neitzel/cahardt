@@ -81,6 +81,36 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 
 **Pagamentos "PIX Asaas":** o dinheiro desse PIX **não** fica com o motorista — não entra no valor a prestar.
 
+**Pedido ESPECIAL (desde 08/2026):** o título do especial **não é mais quitado sozinho na entrega**. O motorista só registra o que recebeu; a baixa acontece **aqui**, quando alguém confere o caixa e clica em Processar. Por isso:
+- o especial pago em dinheiro aparece **em aberto** na lista até a conferência — é justamente o que deve ser conferido;
+- **o caixa não fecha** enquanto houver especial com dinheiro sem baixa (entra nas pendências do fechamento);
+- quem faz a baixa fica gravado como responsável dela (aparece no histórico do cliente e no ledger da parcela);
+- o dinheiro do especial entra na conta **Caixinha**; PIX Asaas entra na conta do Asaas;
+- **recebeu menos que o título?** A parcela fica **PARCIAL** e o saldo continua em aberto para cobrança — o app não quita "por bondade" nem inventa desconto;
+- a baixa respeita a **condição de pagamento liberada** para o pedido: forma que a condição não permite é recusada, com a mensagem dizendo o que fazer (corrigir o lançamento da entrega ou trocar a condição do pedido);
+- clicar duas vezes não duplica: o que já foi baixado é ignorado.
+
+**"Escritório/Vendedor responsável" — quem ficou responsável FICA DEVENDO (decisão do dono, 08/2026):**
+- não é recebimento: **não baixa título** (nem aqui, nem na baixa manual de Contas a Receber), não gera histórico de pagamento e o título continua **em aberto no nome do responsável** — é assim que o dono vê a lista em Contas a Receber e dá baixa quando descontar da pessoa;
+- **não entra mais no "a prestar" do motorista**: antes, "Vendedor responsável" era cobrado do motorista no fechamento do dia *e* deixava o título aberto — o mesmo valor em dois lugares. Agora o motorista presta só o dinheiro que realmente recebeu do cliente. **A equipe vai notar que o valor a prestar diminuiu** — é esperado;
+- se a entrega só tiver valores de responsável, o resultado da baixa vem como **"Não quita: só há valor de responsável"**, e isso **não trava** o fechamento do caixa.
+
+**Selo "A CONFERIR" na lista de entregas:** o especial entregue e ainda não baixado aparece marcado como **A CONFERIR** — é o aviso de que aquele dinheiro já foi recebido pelo motorista e falta a baixa. Some assim que a baixa é feita. **Pedido cuja devolução foi TOTAL não aparece mais como A CONFERIR nem oferece a caixinha de Baixa CA**: a conta ficou marcada como devolvida e não há mais nada a fazer nessa linha (antes ela voltava pedindo conferência e o Processar respondia "JÁ QUITADO"). Devolução **parcial** é diferente: sobrou saldo, então o título continua precisando de baixa e o selo permanece.
+
+**Painel de resultado da Baixa CA:** depois de clicar em Processar, o resultado de cada pedido fica na tela até você fechar (não é um aviso que some sozinho). Cinco estados:
+
+| Estado | O que significa | O que fazer |
+|---|---|---|
+| **BAIXADO** (verde) | O recebido cobriu o título — parcela quitada | Nada |
+| **BAIXA PARCIAL** (âmbar) | Entrou parte do dinheiro; o saldo continua em aberto (o painel mostra quanto falta) | Cobrar o saldo — ele fica no Contas a Receber |
+| **SEM BAIXA** (âmbar) | Nada foi baixado — só havia valor de "responsável" | O título fica no nome do responsável; a baixa sai quando o valor for descontado dele |
+| **JÁ QUITADO** (cinza) | Aquele recebimento já tinha sido baixado antes | Nada — clicar duas vezes não duplica |
+| **ERRO** (vermelho) | Não deu para baixar (ex.: forma não permitida pela condição) | Ler a mensagem: ela diz o que corrigir |
+
+**Recebido a mais que o título:** se o dinheiro conferido passa do valor do título, a sobra **não é baixada em parcela nenhuma** — o painel mostra a linha "Sobra de R$ X — recebido a mais do que o título… Confira com o motorista e acerte com o cliente". Nada é lançado no chute.
+
+**Pix comum e cartão no pedido especial:** quitam normalmente, junto com o dinheiro. Enquanto não houver conta financeira definida para essas formas, a baixa fica com a conta **"não informada"** em Saldos por Conta (o app não escolhe conta no chute) — o valor está registrado e o título fecha.
+
 ### Baixar as cobranças da rota (títulos cobrados na rua)
 O cartão **Cobranças da Rota** aparece quando o motorista/vendedor registrou alguma cobrança de título naquele dia (seção **"Cobranças a fazer"**, na tela **Rota → Entregas**). Cada linha mostra o cliente, a parcela, quanto foi cobrado, a forma de pagamento e a carga de origem.
 
@@ -152,6 +182,12 @@ O caixa entra na fila de conferência **ao imprimir a folha** (a folha é a pres
 2. Com a regra ligada, **"Dinheiro ainda não conferido"** é uma das pendências: sem a assinatura de quem contou, não fecha
 3. Clique em **Fechar Caixa** — o sistema pode alertar sobre entregas sem conferência de assinatura (mas não bloqueia)
 4. Confirme — o status muda para FECHADO e fica gravado **quem fechou**
+
+> **Título devolvido não é pendência (corrigido em 08/2026).** Quando a devolução zera o título (a conta fica marcada como **devolvida**, ou cancelada), não existe mais dinheiro a prestar naquela linha — ela sai da lista de "baixas de recebimento pendentes" e **não trava mais o fechamento**. Antes disso, um pedido devolvido continuava contando como pendência e o botão Fechar Caixa ficava desabilitado sem que houvesse nada a fazer. **Especial com dinheiro de verdade ainda em aberto continua travando**, como sempre.
+
+> **Baixa parcial não trava mais o fechamento (corrigido em 08/2026).** Quando o motorista traz menos do que o valor do especial e o caixa processa a Baixa CA, o título fica **parcial** (o saldo continua em aberto no Contas a Receber, para cobrar depois). Essa linha já foi baixada no caixa — não há mais dinheiro daquele dia a prestar — então ela **sai das pendências** e o botão Fechar Caixa continua liberado. Antes, o botão ficava desabilitado para sempre nesse caso, sem nenhuma ação possível na tela.
+
+> **O que a tela mostra é o que o servidor aceita.** A contagem de **"baixa(s) de recebimento pendente(s)"** (nome novo — antes dizia "dinheiro", mas a conta sempre incluiu mais que dinheiro) usa exatamente a mesma regra do fechamento: entram as entregas com **dinheiro, PIX ou cartão** recebidos pelo motorista que ainda não foram baixados (Baixa CA / quitação do especial). **Não contam** como pendência: título já baixado, **baixa parcial** (o que falta vira cobrança normal, não prende o caixa), título devolvido ou cancelado, e a **linha de responsável pela cobrança** (escritório ou vendedor ficou de cobrar depois). A mensagem de recusa do servidor usa exatamente esse mesmo texto, para a tela e o toast não falarem duas línguas.
 
 > **Caixa fechado não se altera.** Depois de fechado, aquele dia não aceita despesa, baixa, devolução nem mudança de adiantamento — nem para o admin. Para mexer, é preciso reabrir.
 

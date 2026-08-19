@@ -1,5 +1,9 @@
 const prisma = require('../config/database');
 const estoqueService = require('./estoqueService');
+const { statusParcelaPos, recalcularStatusConta, round2 } = require('./recebimentoEntregaService');
+
+/** Quanto desta parcela JÁ foi liquidado (dinheiro recebido + desconto concedido). */
+const jaLiquidado = (p) => round2(Number(p.valorPago || 0) + Number(p.valorDescontoTotal || 0));
 
 // Cancela no Asaas os boletos/PIX ainda pagáveis das parcelas informadas.
 // Melhor esforço e fora de qualquer transação (é chamada de rede).
@@ -195,8 +199,15 @@ const devolucaoService = {
             status: p.status
         })) || null;
 
+        // Dinheiro já liquidado que a devolução torna indevido → crédito do cliente.
+        // Acumulado DENTRO da transação (os dois ramos podem gerar) e relatado depois.
+        let creditoAoCliente = 0;
+        let valorMantidoNaConta = 0;
+
         // 6. Executar tudo em transação
         const devolucao = await prisma.$transaction(async (tx) => {
+            creditoAoCliente = 0; valorMantidoNaConta = 0; // zera se a transação for reexecutada
+
             // 6a. Criar devolução
             const dev = await tx.devolucao.create({
                 data: {
@@ -240,17 +251,50 @@ const devolucaoService = {
                 const valorOriginalPedido = parseFloat(conta.valorTotal);
 
                 if (escopo === 'TOTAL') {
-                    // Cancelar todas as parcelas pendentes e marcar como DEVOLVIDO
-                    await tx.parcela.updateMany({
-                        where: { contaReceberId: conta.id, status: { not: 'PAGO' } },
-                        data: { status: 'CANCELADO' }
-                    });
+                    // Parcela que JÁ TEM DINHEIRO (ou desconto) liquidado NÃO pode ser
+                    // simplesmente cancelada: o ledger de `pagamentos_parcela` continua vivo
+                    // (o dinheiro segue em Saldos por Conta e no realizado) e o título sumiria
+                    // do Contas a Receber sem estorno nem crédito. Desde que a baixa parcial
+                    // virou rotina (especial baixado na conferência do Caixa) isso é cenário
+                    // comum, não exceção.
+                    //   • parcela sem nada liquidado  → CANCELADO (comportamento de sempre);
+                    //   • parcela com valor liquidado → valor cai para o que já foi liquidado
+                    //     e o status é recalculado (fica PAGO) — o ledger continua batendo com
+                    //     a parcela, e o que o cliente pagou por mercadoria devolvida vira
+                    //     CRÉDITO A DEVOLVER, registrado na observação da devolução.
+                    for (const p of conta.parcelas) {
+                        if (p.status === 'CANCELADO') continue;
+                        const liquidado = jaLiquidado(p);
+                        if (liquidado <= 0.01) {
+                            await tx.parcela.update({ where: { id: p.id }, data: { status: 'CANCELADO' } });
+                            continue;
+                        }
+                        creditoAoCliente = round2(creditoAoCliente + liquidado);
+                        valorMantidoNaConta = round2(valorMantidoNaConta + liquidado);
+                        await tx.parcela.update({
+                            where: { id: p.id },
+                            data: {
+                                valor: liquidado,
+                                status: statusParcelaPos(liquidado, p.valorPago, p.valorDescontoTotal)
+                            }
+                        });
+                    }
                     await tx.contaReceber.update({
                         where: { id: conta.id },
-                        data: { status: 'DEVOLVIDO' }
+                        // DEVOLVIDO continua sendo o status do título devolvido por inteiro
+                        // (sai da cobrança). O valorTotal só é mexido quando SOBROU parcela
+                        // viva (dinheiro já liquidado) — devolução total "limpa" continua
+                        // guardando o valor original, como sempre foi.
+                        data: {
+                            status: 'DEVOLVIDO',
+                            ...(valorMantidoNaConta > 0 ? { valorTotal: valorMantidoNaConta } : {})
+                        }
                     });
                 } else {
-                    // Reduzir proporcionalmente as parcelas pendentes
+                    // Reduzir proporcionalmente as parcelas pendentes.
+                    // Parcela PARCIAL entra aqui (tem saldo), mas o valor NUNCA pode cair
+                    // abaixo do que já foi recebido/descontado — senão sobraria parcela com
+                    // valorPago maior que o valor, que nenhuma tela sabe representar.
                     const ratio = valorTotalDevolucao / valorOriginalPedido;
                     const parcelasPendentes = conta.parcelas.filter(p => p.status !== 'PAGO' && p.status !== 'CANCELADO');
 
@@ -270,21 +314,63 @@ const devolucaoService = {
                             somaAjustada += novoValor;
                         }
 
+                        const liquidado = jaLiquidado(p);
+                        const valorFinal = Math.max(novoValor, liquidado);
+                        // O que o cliente pagou ALÉM do que passou a dever é crédito dele
+                        // (a devolução não "cabe" no título) — nunca pode sumir em silêncio.
+                        if (liquidado > novoValor + 0.01) creditoAoCliente = round2(creditoAoCliente + (liquidado - novoValor));
                         await tx.parcela.update({
                             where: { id: p.id },
-                            data: { valor: novoValor }
+                            data: {
+                                valor: valorFinal,
+                                // recebido já cobre o novo valor → a parcela está quitada
+                                status: statusParcelaPos(valorFinal, p.valorPago, p.valorDescontoTotal)
+                            }
                         });
                     }
 
-                    // Atualizar valor total da conta
-                    const novoTotal = Math.max(0, Math.round((valorOriginalPedido - valorTotalDevolucao) * 100) / 100);
+                    // Atualizar valor total da conta — SEMPRE relido das parcelas já ajustadas,
+                    // nunca por um segundo cálculo proporcional.
+                    // Por quê: a parcela tem PISO no que já foi liquidado (acima), e o cálculo
+                    // proporcional não tem. Título de R$ 108 com R$ 50 recebidos e devolução de
+                    // R$ 63 deixava a parcela em R$ 50 (certo) e a conta em R$ 45 (errado) —
+                    // conta valendo MENOS que a soma das próprias parcelas, e nenhuma tela do
+                    // Contas a Receber fecha com isso. Lendo do banco depois do ajuste, os dois
+                    // números nascem da mesma fonte e não têm como divergir de novo.
+                    // CANCELADO fica de fora: parcela cancelada não é dívida (é o mesmo critério
+                    // do ramo TOTAL, que soma só o que sobrou vivo).
+                    const parcelasFinais = await tx.parcela.findMany({
+                        where: { contaReceberId: conta.id, status: { not: 'CANCELADO' } },
+                        select: { valor: true }
+                    });
+                    const novoTotal = Math.max(0, round2(
+                        parcelasFinais.reduce((s, p) => s + parseFloat(p.valor), 0)
+                    ));
                     await tx.contaReceber.update({
                         where: { id: conta.id },
                         data: { valorTotal: novoTotal }
                     });
+                    // Parcela quitada pelo ajuste (recebido cobre o novo valor) precisa refletir
+                    // no título: sem isto o Contas a Receber continuava listando como ABERTO.
+                    await recalcularStatusConta(tx, conta.id);
                 }
             }
 
+            // Crédito do cliente (pagou mercadoria que devolveu) ainda não tem função própria
+            // no sistema — a decisão do dono é que por ora ele fique VISÍVEL, nunca silencioso.
+            if (creditoAoCliente > 0.01) {
+                const aviso = `⚠️ CRÉDITO A DEVOLVER AO CLIENTE: R$ ${creditoAoCliente.toFixed(2)} — `
+                    + 'o cliente já havia pago (ou teve desconto) por mercadoria que devolveu. '
+                    + 'O recebimento continua lançado no financeiro (não foi estornado). '
+                    + 'Acerte manualmente com o cliente: abatimento no próximo pedido ou devolução do valor.';
+                await tx.devolucao.update({
+                    where: { id: dev.id },
+                    data: { observacao: [dev.observacao, aviso].filter(Boolean).join('\n') }
+                });
+                dev.observacao = [dev.observacao, aviso].filter(Boolean).join('\n');
+            }
+
+            dev.creditoAoCliente = creditoAoCliente;
             return dev;
         }, { timeout: 20000, maxWait: 10000 });
 

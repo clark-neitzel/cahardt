@@ -174,7 +174,9 @@ async function fluxoCaixa(de, ate, granularidade = 'dia') {
             where: {
                 status: { in: ['PENDENTE', 'PARCIAL', 'VENCIDO'] },
                 dataVencimento: { lt: inicioDiaSP(ymdSP(new Date())) },
-                contaReceber: { status: { not: 'CANCELADO' } }
+                // KPI de VENCIDO: fora a janela "pago, esperando conferência do Caixa".
+                // O KPI de "em aberto" (acima) continua contando — o título existe mesmo.
+                contaReceber: { status: { not: 'CANCELADO' }, id: { notIn: await idsEmEsperaConferencia() } }
             }
         }),
         prisma.parcelaPagar.aggregate({
@@ -854,13 +856,27 @@ function montarAging(parcelas) {
     };
 }
 
+/**
+ * Ids das contas na janela "pago na entrega, esperando conferência do Caixa".
+ * Recorte de 90 dias pela data de entrega: KPI/aging é leitura — perder um caso antigo
+ * só engorda um pouco o número, nunca gera cobrança. Os pontos que protegem o cliente
+ * (bloqueio de venda, selo de inadimplente, painel de cobrança) consultam sem recorte.
+ */
+async function idsEmEsperaConferencia() {
+    const { idsContasEmEsperaDeConferencia } = require('./recebimentoEntregaService');
+    return [...await idsContasEmEsperaDeConferencia({ desdeDias: 90 })];
+}
+
 /** Aging (inadimplência por idade) das parcelas a receber em aberto. */
 async function agingRecebiveis() {
     const hoje = ymdSP(new Date());
+    // Especial entregue e já pago em dinheiro, esperando só a conferência do Caixa, não
+    // é atraso — sairia como inadimplência de mentira no aging (regra do dono, 08/2026).
+    const emEspera = await idsEmEsperaConferencia(); // com o recorte de 90 dias (leitura)
     const parcelas = await prisma.parcela.findMany({
         where: {
             status: { in: ['PENDENTE', 'VENCIDO', 'PARCIAL'] },
-            contaReceber: { status: { not: 'CANCELADO' } }
+            contaReceber: { status: { not: 'CANCELADO' }, id: { notIn: emEspera } }
         },
         select: { valor: true, valorPago: true, valorDescontoTotal: true, dataVencimento: true }
     });

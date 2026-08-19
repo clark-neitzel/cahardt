@@ -156,8 +156,13 @@ router.get('/parcelas-abertas', checkEscritorioOuCobrador, async (req, res) => {
                 contaReceber: {
                     include: {
                         cliente: { select: { UUID: true, NomeFantasia: true, Nome: true } },
-                        pedido: { select: { numero: true } },
-                        parcelas: { select: { id: true } }
+                        pedido: {
+                            select: {
+                                numero: true, especial: true, statusEntrega: true,
+                                pagamentosReais: { select: { valor: true, escritorioResponsavel: true, vendedorResponsavelId: true } }
+                            }
+                        },
+                        parcelas: { select: { id: true, valor: true, valorPago: true, valorDescontoTotal: true, status: true } }
                     }
                 },
                 cobrancasRota: {
@@ -169,8 +174,15 @@ router.get('/parcelas-abertas', checkEscritorioOuCobrador, async (req, res) => {
             take: 40
         });
 
+        // Especial já pago em dinheiro na entrega, só esperando a conferência do Caixa,
+        // NÃO pode ser pendurado na carga para o motorista cobrar de novo. Especial que é
+        // fiado de verdade (nada recebido, ou só "escritório/vendedor responsável")
+        // CONTINUA aparecendo — é o caminho de cobrança manual que o dono quer preservar.
+        const { contasAguardandoConferencia } = require('../services/recebimentoEntregaService');
+        const emEspera = contasAguardandoConferencia(parcelas.map(p => p.contaReceber));
+
         res.json(parcelas
-            .filter(p => saldoParcela(p) > 0)
+            .filter(p => saldoParcela(p) > 0 && !emEspera.has(p.contaReceber?.id))
             .map(p => ({
                 parcelaId: p.id,
                 clienteNome: nomeClienteConta(p.contaReceber),

@@ -35,6 +35,8 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 2. Clique no ícone de alerta (triângulo vermelho) na linha do cliente
 3. O modal abre com total vencido, parcelas e detalhes de cada nota
 
+> **Corrigido em 08/2026 — o selo estava escondendo devedor.** O selo de inadimplente da lista e o popup ignoravam os títulos de pedidos **faturados aqui no app** (que são a maioria hoje): o cliente devia e aparecia limpo, e a venda a prazo não era barrada. Agora esses títulos contam, então **mais clientes aparecem marcados** — e o mesmo número passa a valer no bloqueio de venda (aba Pedidos). Continuam **fora** da conta: pedido cancelado/excluído no Conta Azul e especial já pago em dinheiro na entrega que só aguarda a conferência do Caixa.
+
 ### Cadastrar um cliente novo (ou fornecedor)
 1. Na lista de clientes, clique em **Novo Cliente** (botão verde no topo — precisa da permissão `clientes.edit` ou admin)
 2. Escolha o tipo de cadastro: **Cliente**, **Fornecedor** ou **Cliente + Fornecedor**. Fornecedor vai para a lista de Fornecedores (usada no Contas a Pagar e Notas de Entrada); "Cliente + Fornecedor" grava nos dois lugares

@@ -73,6 +73,14 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 - Na **edição**, a quantidade que o próprio pedido já reservou volta ao disponível antes da comparação — reeditar um pedido sem mudar quantidades nunca é bloqueado.
 - "Disponível" = estoque total menos o que os outros pedidos em aberto já reservaram (o mesmo número "Est:" que aparece na tela de pedido).
 
+### Bloqueio de venda para cliente inadimplente
+- Ao salvar um pedido **normal** (especial e bonificação não entram), o sistema olha se o cliente tem **título vencido em aberto**.
+- Quem **não** tem `admin` nem **Pode_Vender_Inadimplente**: a venda **a prazo é recusada** ("Este cliente possui contas em aberto"). Venda **à vista** passa, mas o pedido sai com um carimbo na observação dizendo quem se responsabilizou e quanto o cliente deve.
+- Quem **tem** a permissão vende normalmente — o carimbo de responsabilidade na observação continua sendo gravado.
+- O valor considerado é o **saldo** (parcela paga pela metade conta só o que falta), e o mesmo número aparece no popup de inadimplência da tela Clientes e na ficha do cliente.
+- **Não conta como atraso:** pedido **cancelado/excluído no Conta Azul** e **especial já pago em dinheiro na entrega que ainda aguarda a conferência do Caixa** (o cliente pagou; quem ainda não fechou a conta somos nós).
+- **Corrigido em 08/2026:** os títulos de pedidos **faturados aqui no app** (a maioria, desde que o Conta Azul virou somente leitura) estavam sendo **ignorados** por esse controle — o cliente devia e continuava comprando, sem selo e sem bloqueio. Agora eles contam. Efeito prático: **mais clientes aparecem como inadimplentes e mais vendas a prazo são barradas** — é o comportamento correto, mas é uma mudança perceptível no dia a dia. Se um vendedor for barrado indevidamente, o caminho é dar baixa no título (ou conferir o caixa) — não desligar o controle.
+
 ### Lembrete de pedidos salvos sem enviar (popup a cada 30 min)
 - Quem tem pedido **ABERTO** (salvo e ainda não enviado) recebe um **popup com som a cada 30 minutos**, em qualquer tela do app (menos dentro da própria tela de criação de pedido), listando os pedidos e a data de entrega de cada um.
 - Botões: **"Ver pedidos"** (vai para a lista) e **"Lembrar em 30 min"** (fecha e volta a avisar depois). O aviso considera os pedidos em que a pessoa é o vendedor **ou** foi quem lançou.
@@ -180,6 +188,7 @@ Lista todos os pedidos normais (`especial = false`, `bonificacao = false`). Incl
 Lista pedidos do tipo **Especial** (`ZZ#`). São pedidos com condições diferenciadas de preço ou prazo, que requerem aprovação antes de ir ao CA.
 
 - Exibe botão **Aprovar** (para aprovadores) e **Reverter** (para quem pode reverter)
+- **Reverter só antes da entrega** (desde 08/2026): reverter cancela o título e devolve a mercadoria ao estoque, então o app recusa a reversão de pedido já **ENTREGUE/ENTREGUE PARCIAL** ou com qualquer baixa (total ou parcial) no financeiro. Para desfazer uma entrega, use o estorno em Auditoria de Entregas; para anular a venda depois de entregue, registre a **devolução**
 - Após aprovação, o status muda e o pedido é faturado no CA automaticamente
 - Botão **Converter em pedido c/ NF** (⚡, para quem aprova especial): transforma o especial em pedido normal com nota — em aberto ou já faturado, pago em qualquer forma. O pedido sai desta aba e vai para a aba Pedidos com o selo "Especial convertido" (ver seção própria acima)
 
@@ -204,6 +213,14 @@ Visível apenas para quem tem `Pode_Fazer_Devolucao` ou `admin`. Renderiza o com
 Mostra todas as devoluções registradas (parciais ou totais) com motivo, motorista, data, valor e status (ATIVA ou REVERTIDA).
 
 Desde 23/07/2026 o acerto financeiro da devolução acontece **nas parcelas do próprio app**: o valor devolvido vira **desconto** nas parcelas em aberto do pedido (histórico "Devolução TOTAL/PARCIAL #N") — nada é ajustado no Conta Azul. Se as parcelas já estiverem pagas, o app avisa que o acerto precisa ser manual em Contas a Receber (estorno + desconto).
+
+**Devolução de pedido que já tinha dinheiro recebido (08/2026):** a devolução **nunca apaga um recebimento**. Se o cliente já havia pago (todo ou em parte — típico do especial baixado no Caixa) e devolve a mercadoria, a parcela **não é cancelada**: ela passa a valer exatamente o que já foi recebido e fica quitada, para o dinheiro continuar batendo com o histórico de recebimento e com Saldos por Conta. O que o cliente pagou a mais vira **crédito dele**, e a devolução ganha um aviso na observação:
+
+> ⚠️ CRÉDITO A DEVOLVER AO CLIENTE: R$ X — o cliente já havia pago (ou teve desconto) por mercadoria que devolveu…
+
+Ainda **não existe** função de crédito de cliente no app: esse acerto é **manual** (abatimento no próximo pedido ou devolução do valor). O aviso fica gravado na devolução justamente para ninguém esquecer.
+
+O **valor do título** em Contas a Receber sempre acompanha as parcelas: depois de uma devolução parcial ele passa a valer a **soma das parcelas que sobraram**, nunca menos. Assim o total do título e a lista de parcelas fecham entre si na tela (antes, num título de R$ 108 com R$ 50 já recebidos e R$ 63 devolvidos, a parcela ficava em R$ 50 e o título aparecia como R$ 45).
 
 ---
 
