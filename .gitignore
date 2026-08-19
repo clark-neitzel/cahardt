@@ -29,3 +29,8 @@ backend/scripts/.admin-secret
 # Protótipo Congelados (referência local, não versionar)
 /Página Hardt Congelados/
 backend/backups/
+
+# Atalhos do Google Drive com credencial (login do EasyPanel etc.) — NUNCA versionar
+*.gdoc
+*.gsheet
+*.gslides

@@ -50,7 +50,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'mapa-fase2-clientes-amostras-cobrancas-2026-08-18b',
+        deployMarker: 'diag-receber-saude-2026-08-18c',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -9292,6 +9292,460 @@ router.get('/canhotos-diag', async (req, res) => {
     } catch (err) {
         console.error('[canhotos-diag]', err);
         res.status(500).json({ error: err.message });
+    }
+});
+
+// ── GET /diag-receber-saude?limiteAmostra=15 — raio-x SOMENTE LEITURA do Contas a Receber ──
+// Mede em produção o tamanho de 7 problemas já confirmados na leitura do código.
+// NÃO escreve nada: só findMany/$queryRaw de SELECT. Cada bloco é isolado —
+// se um falhar, ele devolve { erro } e os outros continuam.
+router.get('/diag-receber-saude', async (req, res) => {
+    const t0 = Date.now();
+    const LIM = Math.min(50, Math.max(1, parseInt(req.query.limiteAmostra, 10) || 15));
+    const n2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
+    const num = (v) => (v === null || v === undefined ? 0 : Number(v));
+    const dia = (d) => (d ? new Date(d).toISOString().slice(0, 10) : null);
+    const bloco = async (nome, fn) => {
+        try { return await fn(); }
+        catch (e) { console.error(`[diag-receber-saude:${nome}]`, e); return { erro: e.message }; }
+    };
+
+    // Trechos de SQL reaproveitados (somente SELECT)
+    const JOINS = `
+        FROM parcelas p
+        JOIN contas_receber cr ON cr.id = p.conta_receber_id
+        LEFT JOIN pedidos ped ON ped.id = cr.pedido_id
+        LEFT JOIN clientes c ON c."UUID" = cr.cliente_id`;
+    const IDENT = `ped.numero AS pedido, COALESCE(NULLIF(c."NomeFantasia", ''), c."Nome") AS cliente`;
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Base compartilhada dos blocos de devolução (1, 6 e 7b).
+    // Duas consultas em lote (parcelas do snapshot + linhas de desconto) — sem N+1.
+    // ────────────────────────────────────────────────────────────────────────
+    let devBase = null, devBaseErro = null;
+    try {
+        const devolucoes = await prisma.devolucao.findMany({
+            where: { status: 'ATIVA' },
+            select: {
+                numero: true, escopo: true, dataDevolucao: true,
+                valorTotal: true, snapshotParcelas: true,
+                pedidoOriginal: { select: { numero: true, especial: true } },
+                cliente: { select: { Nome: true, NomeFantasia: true } }
+            }
+        });
+
+        // Valor ATUAL das parcelas que estão no snapshot (lotes de 500 ids)
+        const idsSnap = [];
+        for (const d of devolucoes) {
+            const snap = Array.isArray(d.snapshotParcelas) ? d.snapshotParcelas : [];
+            for (const s of snap) if (s && s.id) idsSnap.push(s.id);
+        }
+        const idsUnicos = [...new Set(idsSnap)];
+        const atual = new Map();
+        for (let i = 0; i < idsUnicos.length; i += 500) {
+            const lote = await prisma.parcela.findMany({
+                where: { id: { in: idsUnicos.slice(i, i + 500) } },
+                select: { id: true, valor: true, status: true }
+            });
+            for (const p of lote) atual.set(p.id, p);
+        }
+
+        // Descontos lançados por aplicarDevolucaoLocalApp (backend/routes/devolucaoRoutes.js:46).
+        // O motivo é EXATAMENTE "Devolução TOTAL #<numero>" / "Devolução PARCIAL #<numero>".
+        // O motivo do caixa ("Devolução de mercadoria (conferência do caixa)") não casa com o
+        // regex abaixo — de propósito: aquele caminho não é o abatimento duplicado.
+        const RX = /^Devolução (TOTAL|PARCIAL) #(\d+)$/;
+        const porMotivo = new Map();
+        // Restringe pelas parcelas do snapshot (parcela_id é indexado). Sem isso o filtro cai
+        // só em estornado/origem/motivoDesconto — nenhum deles indexado — e vira seq scan da
+        // tabela inteira. É seguro: aplicarDevolucaoLocalApp (devolucaoRoutes.js:36) só lança
+        // desconto em parcela da MESMA conta a receber, e o snapshot guarda todas as parcelas
+        // dessa conta (devolucaoService.js:191).
+        for (let i = 0; i < idsUnicos.length; i += 500) {
+            const linhas = await prisma.pagamentoParcela.findMany({
+                where: {
+                    parcelaId: { in: idsUnicos.slice(i, i + 500) },
+                    estornado: false,
+                    origem: 'DEVOLUCAO',
+                    motivoDesconto: { startsWith: 'Devolução ' }
+                },
+                select: { valorDesconto: true, motivoDesconto: true }
+            });
+            for (const l of linhas) {
+                const m = l.motivoDesconto || '';
+                if (!RX.test(m)) continue;
+                porMotivo.set(m, n2((porMotivo.get(m) || 0) + num(l.valorDesconto)));
+            }
+        }
+
+        devBase = devolucoes.map(d => {
+            const snap = Array.isArray(d.snapshotParcelas) ? d.snapshotParcelas : [];
+            let reducao = 0, canceladas = 0, valorCancelado = 0;
+            for (const s of snap) {
+                const at = s && s.id ? atual.get(s.id) : null;
+                if (!at) continue;                        // parcela apagada: não dá para medir
+                const dif = num(s.valor) - num(at.valor);
+                if (dif > 0) reducao += dif;              // só o que DIMINUIU conta como abatimento
+                // Devolução TOTAL não reduz valor: _criar CANCELA as parcelas em aberto.
+                // Contabilizado à parte para o relatório não parecer que "não abateu nada".
+                if (at.status === 'CANCELADO' && s.status !== 'CANCELADO') {
+                    canceladas += 1;
+                    valorCancelado += num(s.valor);
+                }
+            }
+            const desconto = porMotivo.get(`Devolução ${d.escopo} #${d.numero}`) || 0;
+            return {
+                numero: d.numero,
+                escopo: d.escopo,
+                data: dia(d.dataDevolucao),
+                pedido: d.pedidoOriginal?.numero ?? null,
+                especial: d.pedidoOriginal?.especial ?? null,
+                cliente: d.cliente?.NomeFantasia || d.cliente?.Nome || null,
+                valorTotal: n2(d.valorTotal),
+                reducao: n2(reducao),
+                desconto: n2(desconto),
+                parcelasCanceladas: canceladas,
+                valorCancelado: n2(valorCancelado),
+                temSnapshot: snap.length > 0,
+                // Motivo provável de não ter abatido nada: quando a devolução foi registrada
+                // as parcelas já estavam todas pagas/canceladas (o snapshot é o "antes").
+                parcelasJaPagas: snap.length > 0
+                    ? snap.every(s => ['PAGO', 'CANCELADO'].includes(s?.status))
+                    : null
+            };
+        });
+    } catch (e) {
+        console.error('[diag-receber-saude:baseDevolucoes]', e);
+        devBaseErro = e.message;
+    }
+    const semBase = { erro: devBaseErro || 'base de devoluções indisponível' };
+
+    // 1) Devolução abatida em DOBRO (redução da parcela + desconto no ledger)
+    const devolucaoAbatidaEmDobro = devBaseErro ? semBase : await bloco('devolucaoAbatidaEmDobro', async () => {
+        const casos = devBase
+            .filter(d => d.temSnapshot && d.reducao > 0.01 && d.desconto > 0.01)
+            .map(d => ({ ...d, duplicadoEstimado: n2(Math.min(d.reducao, d.desconto)) }))
+            .sort((a, b) => b.duplicadoEstimado - a.duplicadoEstimado);
+        return {
+            quantidade: casos.length,
+            valorTotal: n2(casos.reduce((s, x) => s + x.duplicadoEstimado, 0)),
+            amostra: casos.slice(0, LIM).map(x => ({
+                numero: x.numero, escopo: x.escopo, data: x.data, pedido: x.pedido,
+                cliente: x.cliente, valorTotal: x.valorTotal,
+                reducao: x.reducao, desconto: x.desconto, duplicadoEstimado: x.duplicadoEstimado
+            }))
+        };
+    });
+
+    // 2) Parcela QUITADA que recebeu menos do que valia
+    const parcelaQuitadaRecebendoMenos = await bloco('parcelaQuitadaRecebendoMenos', async () => {
+        const COND = `p.status = 'PAGO'
+            AND (COALESCE(p.valor_pago,0) + COALESCE(p.valor_desconto_total,0)) < p.valor - 0.01`;
+        const [tot] = await prisma.$queryRawUnsafe(`
+            SELECT COUNT(*)::int AS quantidade,
+                   COALESCE(SUM(p.valor - COALESCE(p.valor_pago,0) - COALESCE(p.valor_desconto_total,0)),0)::float8 AS valor_total
+            FROM parcelas p WHERE ${COND}`);
+        const linhas = await prisma.$queryRawUnsafe(`
+            SELECT ${IDENT}, COALESCE(ped.especial, cr.origem = 'ESPECIAL') AS especial,
+                   p.numero_parcela::int AS numero_parcela,
+                   p.valor::float8 AS valor,
+                   COALESCE(p.valor_pago,0)::float8 AS valor_pago,
+                   COALESCE(p.valor_desconto_total,0)::float8 AS valor_desconto_total,
+                   (p.valor - COALESCE(p.valor_pago,0) - COALESCE(p.valor_desconto_total,0))::float8 AS falta,
+                   p.data_pagamento,
+                   EXISTS (SELECT 1 FROM pagamentos_parcela pp
+                            WHERE pp.parcela_id = p.id AND pp.estornado = false) AS tem_ledger
+            ${JOINS}
+            WHERE ${COND}
+            ORDER BY falta DESC
+            LIMIT $1`, LIM);
+        return {
+            quantidade: Number(tot?.quantidade || 0),
+            valorTotal: n2(tot?.valor_total),
+            amostra: linhas.map(l => ({
+                pedido: l.pedido, cliente: l.cliente, numeroParcela: l.numero_parcela,
+                valor: n2(l.valor), valorPago: n2(l.valor_pago),
+                valorDescontoTotal: n2(l.valor_desconto_total), falta: n2(l.falta),
+                dataPagamento: dia(l.data_pagamento), especial: !!l.especial, temLedger: !!l.tem_ledger
+            }))
+        };
+    });
+
+    // 3) Parcela PAGA sem nenhuma linha no ledger (pagamentos_parcela)
+    const parcelaPagaSemLedger = await bloco('parcelaPagaSemLedger', async () => {
+        const COND = `p.status = 'PAGO' AND COALESCE(p.valor_pago,0) > 0
+            AND NOT EXISTS (SELECT 1 FROM pagamentos_parcela pp
+                             WHERE pp.parcela_id = p.id AND pp.estornado = false)`;
+        const grupos = await prisma.$queryRawUnsafe(`
+            SELECT COALESCE(ped.especial, cr.origem = 'ESPECIAL') AS especial,
+                   COUNT(*)::int AS quantidade,
+                   COALESCE(SUM(p.valor_pago),0)::float8 AS valor_total
+            ${JOINS}
+            WHERE ${COND}
+            GROUP BY 1`);
+        const acha = (esp) => grupos.find(g => !!g.especial === esp) || { quantidade: 0, valor_total: 0 };
+        const esp = acha(true), nesp = acha(false);
+        const linhas = await prisma.$queryRawUnsafe(`
+            SELECT ${IDENT}, COALESCE(ped.especial, cr.origem = 'ESPECIAL') AS especial,
+                   p.numero_parcela::int AS numero_parcela,
+                   p.valor::float8 AS valor,
+                   COALESCE(p.valor_pago,0)::float8 AS valor_pago,
+                   COALESCE(p.valor_desconto_total,0)::float8 AS valor_desconto_total,
+                   p.data_pagamento, p.data_vencimento
+            ${JOINS}
+            WHERE ${COND}
+            ORDER BY p.valor_pago DESC
+            LIMIT $1`, LIM);
+        return {
+            quantidade: Number(esp.quantidade) + Number(nesp.quantidade),
+            valorTotal: n2(Number(esp.valor_total) + Number(nesp.valor_total)),
+            especiais: { quantidade: Number(esp.quantidade), valorTotal: n2(esp.valor_total) },
+            naoEspeciais: { quantidade: Number(nesp.quantidade), valorTotal: n2(nesp.valor_total) },
+            amostra: linhas.map(l => ({
+                pedido: l.pedido, cliente: l.cliente, numeroParcela: l.numero_parcela,
+                valor: n2(l.valor), valorPago: n2(l.valor_pago),
+                valorDescontoTotal: n2(l.valor_desconto_total),
+                dataVencimento: dia(l.data_vencimento), dataPagamento: dia(l.data_pagamento),
+                especial: !!l.especial
+            }))
+        };
+    });
+
+    // 4) Parcela ZERADA ainda em aberto (cobrança de R$ 0,00 que nunca fecha)
+    const parcelaZeradaEmAberto = await bloco('parcelaZeradaEmAberto', async () => {
+        const COND = `p.status IN ('PENDENTE','PARCIAL','VENCIDO') AND p.valor <= 0.009`;
+        const [tot] = await prisma.$queryRawUnsafe(`
+            SELECT COUNT(*)::int AS quantidade, COALESCE(SUM(p.valor),0)::float8 AS valor_total
+            FROM parcelas p WHERE ${COND}`);
+        const linhas = await prisma.$queryRawUnsafe(`
+            SELECT ${IDENT}, p.numero_parcela::int AS numero_parcela,
+                   p.valor::float8 AS valor, p.data_vencimento, p.status
+            ${JOINS}
+            WHERE ${COND}
+            ORDER BY p.data_vencimento DESC
+            LIMIT $1`, LIM);
+        return {
+            quantidade: Number(tot?.quantidade || 0),
+            valorTotal: n2(tot?.valor_total),
+            amostra: linhas.map(l => ({
+                pedido: l.pedido, cliente: l.cliente, numeroParcela: l.numero_parcela,
+                valor: n2(l.valor), dataVencimento: dia(l.data_vencimento), status: l.status
+            }))
+        };
+    });
+
+    // 5) Régua CEGA: título em aberto que a cobrança automática nunca enxerga porque
+    //    o pedido tem situacaoCA NULL e o filtro usa notIn (backend/services/cobrancaService.js:207)
+    const reguaCega = await bloco('reguaCega', async () => {
+        const COND = `p.status IN ('PENDENTE','PARCIAL','VENCIDO')
+            AND (p.valor - COALESCE(p.valor_pago,0) - COALESCE(p.valor_desconto_total,0)) > 0.01
+            AND cr.status IN ('ABERTO','PARCIAL')
+            AND ped.id IS NOT NULL
+            AND ped.situacao_ca IS NULL
+            AND ped.status_envio <> 'EXCLUIDO'
+            AND ped.bonificacao = false`;
+        const [tot] = await prisma.$queryRawUnsafe(`
+            SELECT COUNT(*)::int AS quantidade,
+                   COALESCE(SUM(p.valor - COALESCE(p.valor_pago,0) - COALESCE(p.valor_desconto_total,0)),0)::float8 AS valor_total,
+                   COUNT(*) FILTER (WHERE p.data_vencimento < CURRENT_DATE)::int AS vencidas,
+                   COALESCE(SUM(p.valor - COALESCE(p.valor_pago,0) - COALESCE(p.valor_desconto_total,0))
+                            FILTER (WHERE p.data_vencimento < CURRENT_DATE),0)::float8 AS valor_vencido
+            ${JOINS}
+            WHERE ${COND}`);
+        const linhas = await prisma.$queryRawUnsafe(`
+            SELECT ${IDENT}, p.numero_parcela::int AS numero_parcela,
+                   p.data_vencimento, p.status,
+                   (p.valor - COALESCE(p.valor_pago,0) - COALESCE(p.valor_desconto_total,0))::float8 AS devido,
+                   (p.data_vencimento < CURRENT_DATE) AS vencida
+            ${JOINS}
+            WHERE ${COND}
+            ORDER BY devido DESC
+            LIMIT $1`, LIM);
+        return {
+            quantidade: Number(tot?.quantidade || 0),
+            valorTotal: n2(tot?.valor_total),
+            vencidasHoje: Number(tot?.vencidas || 0),
+            valorVencido: n2(tot?.valor_vencido),
+            amostra: linhas.map(l => ({
+                pedido: l.pedido, cliente: l.cliente, numeroParcela: l.numero_parcela,
+                vencimento: dia(l.data_vencimento), status: l.status,
+                devido: n2(l.devido), vencida: !!l.vencida
+            }))
+        };
+    });
+
+    // 6) Devolução ATIVA que não abateu NADA (nem redução, nem desconto)
+    const devolucaoSemAbatimento = devBaseErro ? semBase : await bloco('devolucaoSemAbatimento', async () => {
+        const casos = devBase
+            .filter(d => d.reducao <= 0.01 && d.desconto <= 0.01)
+            .sort((a, b) => b.valorTotal - a.valorTotal);
+        // Quantos desses, na verdade, foram abatidos por CANCELAMENTO da parcela (devolução TOTAL)
+        const porCancelamento = casos.filter(d => d.parcelasCanceladas > 0);
+        const resto = casos.filter(d => !(d.parcelasCanceladas > 0));
+        // O que sobra são situações MUITO diferentes — juntar tudo num número só engana:
+        //  (a) semContaReceber  → não existia snapshot/conta a receber: não havia o que abater. NÃO é perda.
+        //  (b) parcelasJaPagas  → quando a devolução foi registrada as parcelas já estavam todas
+        //                         pagas/canceladas: o cliente pagou e NÃO recebeu o valor de volta.
+        //                         É o único bolo que representa dinheiro que ficou com a empresa.
+        //  (c) semExplicacao    → snapshot existe, as parcelas não estavam todas pagas e mesmo assim
+        //                         nada foi reduzido nem descontado. Conferir caso a caso.
+        const semCR = resto.filter(d => !d.temSnapshot);
+        const jaPagas = resto.filter(d => d.temSnapshot && d.parcelasJaPagas === true);
+        const semExplicacao = resto.filter(d => d.temSnapshot && d.parcelasJaPagas !== true);
+        const soma = (arr) => n2(arr.reduce((s, x) => s + x.valorTotal, 0));
+        const resumoCaso = (x) => ({
+            numero: x.numero, escopo: x.escopo, data: x.data, pedido: x.pedido,
+            cliente: x.cliente, valorTotal: x.valorTotal, especial: x.especial
+        });
+        return {
+            quantidade: casos.length,
+            valorTotal: soma(casos),
+            abatidosPorCancelamentoDeParcela: {
+                quantidade: porCancelamento.length,
+                valorTotal: soma(porCancelamento),
+                observacao: 'devolução TOTAL cancela a parcela em vez de reduzir o valor — aqui NÃO houve perda, o abatimento existiu por outro caminho'
+            },
+            semContaReceber: {
+                quantidade: semCR.length,
+                valorTotal: soma(semCR),
+                observacao: 'devolução sem snapshot de parcelas (pedido sem conta a receber) — não havia o que abater. NÃO é perda.'
+            },
+            parcelasJaPagas: {
+                quantidade: jaPagas.length,
+                valorTotal: soma(jaPagas),
+                observacao: 'ESTE é o número que dói: as parcelas já estavam pagas/canceladas quando a devolução foi registrada — o cliente pagou, devolveu a mercadoria e não recebeu o valor de volta.',
+                amostra: jaPagas.slice(0, LIM).map(resumoCaso)
+            },
+            semExplicacao: {
+                quantidade: semExplicacao.length,
+                valorTotal: soma(semExplicacao),
+                observacao: 'snapshot existe, as parcelas não estavam todas pagas e ainda assim nada foi reduzido nem descontado — conferir caso a caso',
+                amostra: semExplicacao.slice(0, LIM).map(resumoCaso)
+            },
+            amostra: casos.slice(0, LIM).map(x => ({
+                numero: x.numero, escopo: x.escopo, data: x.data, pedido: x.pedido,
+                cliente: x.cliente, valorTotal: x.valorTotal, especial: x.especial,
+                temSnapshot: x.temSnapshot, parcelasJaPagas: x.parcelasJaPagas,
+                parcelasCanceladas: x.parcelasCanceladas, valorCancelado: x.valorCancelado,
+                classificacao: x.parcelasCanceladas > 0
+                    ? 'abatidoPorCancelamentoDeParcela'
+                    : (!x.temSnapshot ? 'semContaReceber'
+                        : (x.parcelasJaPagas === true ? 'parcelasJaPagas' : 'semExplicacao')),
+                motivoProvavel: x.parcelasCanceladas > 0
+                    ? `abatido por CANCELAMENTO de ${x.parcelasCanceladas} parcela(s) (R$ ${x.valorCancelado.toFixed(2)}) — devolução TOTAL não reduz valor, cancela a parcela`
+                    : x.parcelasJaPagas === true
+                        ? 'parcelas já estavam pagas/canceladas quando a devolução foi registrada'
+                        : (x.temSnapshot ? 'snapshot existe mas nenhuma parcela foi reduzida nem descontada'
+                            : 'devolução sem snapshot de parcelas (pedido sem conta a receber?)')
+            }))
+        };
+    });
+
+    // 7) Outros
+    const outros = await bloco('outros', async () => {
+        const [ctd] = await prisma.$queryRawUnsafe(`
+            SELECT COUNT(*)::int AS quantidade, COALESCE(SUM(cr.valor_total),0)::float8 AS valor_total
+            FROM contas_receber cr WHERE cr.status = 'DEVOLVIDO'`);
+
+        let sobraPerdida;
+        if (devBaseErro) {
+            sobraPerdida = semBase;
+        } else {
+            // Devolução TOTAL NÃO reduz o valor da parcela: ela CANCELA a parcela
+            // (devolucaoService.js:243). Se a conta parasse em reducao+desconto, TODA devolução
+            // TOTAL apareceria como "sobra = valor integral" — o número saía inflado sempre que
+            // houvesse uma TOTAL na base. O cancelamento é abatimento de verdade e entra na soma.
+            const casos = devBase
+                .map(d => ({
+                    ...d,
+                    abatido: n2(d.reducao + d.desconto + d.valorCancelado),
+                    sobra: n2(d.valorTotal - (d.reducao + d.desconto + d.valorCancelado))
+                }))
+                .filter(d => d.sobra > 0.01)
+                .sort((a, b) => b.sobra - a.sobra);
+            sobraPerdida = {
+                quantidade: casos.length,
+                valorTotal: n2(casos.reduce((s, x) => s + x.sobra, 0)),
+                formula: 'sobra = valorTotal da devolução − (reducao de parcela + desconto no ledger + valor das parcelas CANCELADAS)',
+                amostra: casos.slice(0, LIM).map(x => ({
+                    numero: x.numero, escopo: x.escopo, data: x.data, pedido: x.pedido,
+                    cliente: x.cliente, valorTotal: x.valorTotal,
+                    reducao: x.reducao, desconto: x.desconto,
+                    parcelasCanceladas: x.parcelasCanceladas, valorCancelado: x.valorCancelado,
+                    abatido: x.abatido, sobra: x.sobra
+                }))
+            };
+        }
+
+        return {
+            contasStatusDevolvido: {
+                quantidade: Number(ctd?.quantidade || 0),
+                valorTotal: n2(ctd?.valor_total),
+                observacao: "status 'DEVOLVIDO' não existe na lista oficial da conta (ABERTO|PARCIAL|QUITADO|CANCELADO) — some dos filtros da tela"
+            },
+            devolucaoSobraPerdida: sobraPerdida
+        };
+    });
+
+    // ── Resumo legível (é o que vai ser mostrado ao dono) ──
+    // Envolvido em try/catch: se a montagem do resumo estourar (campo faltando num bloco que
+    // devolveu { erro }, por ex.), o Express responderia o HTML da página de erro 500 e quem
+    // chama a rota receberia algo que não é JSON. Aqui sempre sai JSON.
+    try {
+    const lin = (b, texto, extra) => (b && b.erro)
+        ? { problema: texto, erro: b.erro }
+        : { problema: texto, quantidade: b.quantidade, valorTotal: b.valorTotal, ...(extra || {}) };
+
+    res.json({
+        ok: true,
+        geradoEm: new Date().toISOString(),
+        limiteAmostra: LIM,
+        tempoMs: Date.now() - t0,
+        resumo: {
+            devolucaoAbatidaEmDobro: lin(devolucaoAbatidaEmDobro,
+                'Devoluções que abateram DUAS vezes (parcela reduzida + desconto no ledger). valorTotal = quanto o cliente deixou de dever a mais.'),
+            parcelaQuitadaRecebendoMenos: lin(parcelaQuitadaRecebendoMenos,
+                'Parcelas marcadas como PAGAS recebendo menos do que valiam. valorTotal = dinheiro que ficou faltando.'),
+            parcelaPagaSemLedger: (parcelaPagaSemLedger && parcelaPagaSemLedger.erro)
+                ? { problema: 'Parcelas pagas sem histórico de recebimento', erro: parcelaPagaSemLedger.erro }
+                : {
+                    problema: 'Parcelas PAGAS sem nenhuma linha de recebimento no histórico (não dá para saber quem baixou nem em que conta entrou).',
+                    quantidade: parcelaPagaSemLedger.quantidade,
+                    valorTotal: parcelaPagaSemLedger.valorTotal,
+                    especiais: parcelaPagaSemLedger.especiais,
+                    naoEspeciais: parcelaPagaSemLedger.naoEspeciais
+                },
+            parcelaZeradaEmAberto: lin(parcelaZeradaEmAberto,
+                'Parcelas de R$ 0,00 ainda em aberto — aparecem como cobrança que nunca fecha.'),
+            reguaCega: lin(reguaCega,
+                'Títulos em aberto que a régua de cobrança NUNCA enxerga (pedido sem situação do CA). valorTotal = TODO o valor represado, inclusive o que ainda nem venceu — o número ACIONÁVEL hoje é vencidasHoje/valorVencido, porque a régua real só olha vencimento até o limite futuro dos lembretes (cobrancaService.js:193).',
+                { vencidasHoje: reguaCega.vencidasHoje, valorVencido: reguaCega.valorVencido }),
+            devolucaoSemAbatimento: lin(devolucaoSemAbatimento,
+                'Devoluções ATIVAS sem redução de parcela nem desconto no ledger. O total NÃO é perda: parte foi abatida CANCELANDO a parcela (devolução TOTAL) e parte nem tinha conta a receber. O número que dói é "parcelasJaPagas" — cliente pagou, devolveu e não recebeu de volta.',
+                {
+                    abatidosPorCancelamentoDeParcela: devolucaoSemAbatimento.abatidosPorCancelamentoDeParcela,
+                    semContaReceber: devolucaoSemAbatimento.semContaReceber,
+                    parcelasJaPagas: devolucaoSemAbatimento.parcelasJaPagas,
+                    semExplicacao: devolucaoSemAbatimento.semExplicacao
+                }),
+            outros: (outros && outros.erro) ? { erro: outros.erro } : {
+                contasStatusDevolvido: outros.contasStatusDevolvido.quantidade,
+                devolucaoSobraPerdidaQuantidade: outros.devolucaoSobraPerdida?.quantidade ?? null,
+                devolucaoSobraPerdidaValor: outros.devolucaoSobraPerdida?.valorTotal ?? null,
+                devolucaoSobraPerdidaFormula: outros.devolucaoSobraPerdida?.formula ?? null
+            }
+        },
+        devolucaoAbatidaEmDobro,
+        parcelaQuitadaRecebendoMenos,
+        parcelaPagaSemLedger,
+        parcelaZeradaEmAberto,
+        reguaCega,
+        devolucaoSemAbatimento,
+        outros
+    });
+    } catch (err) {
+        console.error('[diag-receber-saude:resumo]', err);
+        if (!res.headersSent) res.status(500).json({ ok: false, erro: err.message });
     }
 });
 
