@@ -15,6 +15,7 @@ import SelectBusca from '../../components/SelectBusca';
 import ConferenciaDevolucaoCard from './ConferenciaDevolucaoCard';
 import ConferenciaDinheiroCard from './ConferenciaDinheiroCard';
 import CobrancasRotaCard from './CobrancasRotaCard';
+import { ehLinhaResponsavel as ehLinhaResponsavelUtil } from '../../utils/responsavelCobranca';
 
 const SESSION_KEY = '@CAHardt:CaixaFiltros';
 
@@ -63,10 +64,13 @@ const STATUS_BADGES = {
 // e o selo prometia uma conferência que nunca aconteceria.
 //
 // Critério de "é responsável" — MESMO do backend
-// (recebimentoEntregaService.ehResponsavelPelaCobranca): a linha de pagamento tem
-// `escritorioResponsavel = true` ou `vendedorResponsavelId` preenchido. Os dois campos
-// vêm em cada item de `e.pagamentos` (GET /caixa/diario, routes/caixa.js).
-const ehLinhaResponsavel = (p) => !!(p?.escritorioResponsavel || p?.vendedorResponsavelId);
+// (recebimentoEntregaService.ehResponsavelPelaCobranca), reaproveitado do ponto único do
+// frontend em `utils/responsavelCobranca`. Cada item de `e.pagamentos` (GET /caixa/diario,
+// routes/caixa.js) traz `responsavelPapel` (VENDEDOR | ESCRITORIO | MOTORISTA), os campos
+// legados e o `responsavelRotulo` já pronto para exibir.
+// ⚠️ Não testar os campos crus aqui: linha de MOTORISTA não tem nada de diferente de uma
+// de vendedor nos campos antigos, e o rótulo montado na mão saía como "vendedor".
+const ehLinhaResponsavel = (p) => ehLinhaResponsavelUtil(p);
 const valorLinha = (p) => Number(p?.valor || 0);
 
 // Especial ainda em aberto (o título não foi baixado e o pedido não foi devolvido)
@@ -993,8 +997,12 @@ const CaixaDiarioPage = () => {
                                                     <td className="py-2 px-2 text-xs text-gray-500">
                                                         <div className="flex flex-col gap-0.5">
                                                             {e.pagamentos?.map((p, i) => (
-                                                                <span key={i} className={`tabular-nums ${p.debitaCaixa ? 'text-green-700 font-medium' : 'text-gray-400'}`}>
+                                                                <span key={i} className={`tabular-nums ${p.debitaCaixa ? 'text-green-700 font-medium' : 'text-gray-500'}`}>
                                                                     {p.formaNome}: R$ {Number(p.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                                    {/* Rótulo PRONTO do servidor — nunca montado aqui */}
+                                                                    {p.responsavelRotulo && (
+                                                                        <span className="text-gray-500"> · {p.responsavelRotulo}</span>
+                                                                    )}
                                                                 </span>
                                                             ))}
                                                             {e.valorDevolvido > 0 && (
@@ -1099,6 +1107,7 @@ const CaixaDiarioPage = () => {
                                                     {e.pagamentos?.map((p, i) => (
                                                         <span key={i} className={`text-[11px] px-1.5 py-0.5 rounded tabular-nums ${p.debitaCaixa ? 'bg-green-100 text-green-700 font-medium' : 'bg-gray-100 text-gray-500'}`}>
                                                             {p.formaNome}: R$ {Number(p.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                                            {p.responsavelRotulo ? ` · ${p.responsavelRotulo}` : ''}
                                                         </span>
                                                     ))}
                                                     {e.valorDevolvido > 0 && (

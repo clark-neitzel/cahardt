@@ -21,6 +21,7 @@ import { Link } from 'react-router-dom';
 import { useFiltrosSalvos, useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { opcoesVendedorMulti } from '../../utils/vendedoresFiltro';
+import { papelResponsavel, CLASSE_PAPEL, ROTULO_PAPEL_CURTO } from '../../utils/responsavelCobranca';
 
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '-';
@@ -47,39 +48,44 @@ const STATUS_PARC = {
 // LINHA de pagamento, a entrada correspondente.
 const responsavelDaLinha = (pg, responsaveis) => {
     const lista = Array.isArray(responsaveis) ? responsaveis : [];
-    // Linha com vendedor marcado vence o escritório — mesma regra do backend.
-    if (pg?.vendedorResponsavelId) {
-        return lista.find(r => r?.tipo === 'VENDEDOR' && r?.pessoaId === pg.vendedorResponsavelId) || null;
-    }
-    if (pg?.escritorioResponsavel) return lista.find(r => r?.tipo === 'ESCRITORIO') || null;
-    return null;
+    const papel = papelResponsavel(pg);
+    if (!papel) return null;
+    if (papel === 'ESCRITORIO') return lista.find(r => r?.tipo === 'ESCRITORIO') || null;
+    // VENDEDOR e MOTORISTA são baldes separados no backend, mesmo sendo a MESMA pessoa —
+    // o `tipo` tem que entrar na busca, senão a dívida de motorista pega a entrada do
+    // vendedor (nome certo, papel errado).
+    return lista.find(r => r?.tipo === papel && r?.pessoaId === pg.vendedorResponsavelId) || null;
 };
 
-// Selo da linha: COR e NOME contam a mesma história. Quando a linha tem as duas
-// marcações vale o VENDEDOR (regra do backend) — então o selo é o azul de vendedor com
-// o nome dele, nunca o âmbar de escritório com nome de vendedor dentro.
+// Selo da linha: COR e NOME contam a mesma história — TRÊS papéis desde 08/2026
+// (vendedor azul, escritório âmbar, motorista roxo). O papel vem pronto do backend em
+// `pagamentosEntrega[].responsavelPapel` (já derivado lá, inclusive para as marcações
+// antigas); aqui ele passa pelo mesmo derivador do frontend como rede de segurança para
+// as telas que montam a linha sem esse campo (popup do pedido).
+// ⚠️ Nada de `if (vendedorResponsavelId) → vendedor`: era o que fazia dívida de MOTORISTA
+// aparecer para o financeiro como "Vendedor: Fulano".
 // Sem `responsaveis` (título antigo, ou popup do pedido) cai no nome do vendedor que já
-// temos na tela e, em último caso, no rótulo genérico de antes.
+// temos na tela e, em último caso, no rótulo genérico.
 const seloResponsavel = (pg, responsaveis, vendedorPorId) => {
+    const papel = papelResponsavel(pg);
+    if (!papel) return null;
     const r = responsavelDaLinha(pg, responsaveis);
-    if (pg?.vendedorResponsavelId) {
-        const nome = r?.pessoaNome || vendedorPorId?.[pg.vendedorResponsavelId];
-        return {
-            tipo: 'VENDEDOR',
-            texto: nome ? `Vendedor: ${nome}` : 'Vendedor resp.',
-            classe: 'bg-blue-100 text-blue-800'
-        };
-    }
-    if (pg?.escritorioResponsavel) {
+    if (papel === 'ESCRITORIO') {
         return {
             tipo: 'ESCRITORIO',
             // `pessoaNome` do escritório já vem como "Escritório" / "Escritório — lançado
             // por Fulano" — não prefixar de novo.
             texto: r?.pessoaNome || 'Escritório resp.',
-            classe: 'bg-amber-100 text-amber-700'
+            classe: CLASSE_PAPEL.ESCRITORIO
         };
     }
-    return null;
+    const nome = r?.pessoaNome || vendedorPorId?.[pg?.vendedorResponsavelId];
+    const curto = ROTULO_PAPEL_CURTO[papel];
+    return {
+        tipo: papel,
+        texto: nome ? `${curto}: ${nome}` : `${curto} resp.`,
+        classe: CLASSE_PAPEL[papel]
+    };
 };
 
 // Selo pronto para render — um só por linha de pagamento.
@@ -2082,8 +2088,10 @@ const DetalheParcelaModal = ({
                                 {l.responsaveis.map((r, i) => (
                                     <div key={i} className="flex items-center justify-between gap-2 bg-gray-50 rounded-lg px-3 py-2 text-sm">
                                         <div className="flex items-center gap-2 min-w-0">
-                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full shrink-0 ${r.tipo === 'ESCRITORIO' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-800'}`}>
-                                                {r.tipo === 'ESCRITORIO' ? 'Escritório' : 'Vendedor'}
+                                            {/* `tipo` pode valer MOTORISTA desde 08/2026 — e a MESMA
+                                                pessoa aparece em dois baldes (vendedor e motorista). */}
+                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full shrink-0 ${CLASSE_PAPEL[r.tipo] || 'bg-gray-100 text-gray-700'}`}>
+                                                {ROTULO_PAPEL_CURTO[r.tipo] || 'Responsável'}
                                             </span>
                                             <span className="font-medium text-gray-800 truncate">{r.pessoaNome || '—'}</span>
                                         </div>

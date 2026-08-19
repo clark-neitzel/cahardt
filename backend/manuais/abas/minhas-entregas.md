@@ -75,6 +75,25 @@ Escolha o que aconteceu na entrega:
 - Cada forma só pode aparecer uma vez; o total deve fechar exatamente (tolerância de R$ 0,05)
 - Marque o toggle de divergência se percebeu diferença em relação ao combinado
 
+**Quem vai cobrar este valor? — Etapa 3 (a partir de 19/08/2026)**
+
+Algumas formas de pagamento **não são dinheiro entrando agora**: são o registro de que o cliente ficou devendo e alguém ficou de cobrar depois (é o cadastro da forma, na aba Formas de Pagamento da Entrega, que diz isso). Ao escolher uma dessas formas, aparece embaixo da linha o bloco **"Quem vai cobrar este valor?"**, com três botões:
+
+- **Eu mesmo** — fica no seu nome. Vem **já marcado**, porque é o caso comum. A frase embaixo confirma com o seu nome ("Fica no seu nome (Fulano) para cobrar depois.")
+- **Escritório** — fica com o escritório
+- **Vendedor** — fica com o vendedor daquele cliente. Ao escolher, abre o campo **"Qual vendedor?"**: uma lista com busca, só com **vendedores ativos** (quem saiu da empresa não aparece)
+
+Pontos importantes:
+
+- **Escolheu "Vendedor" e não escolheu a pessoa?** A tela avisa em vermelho embaixo do campo ("Escolha o vendedor para poder finalizar") e o botão Finalizar recusa com o aviso *"Escolha QUAL vendedor fica responsável por cobrar este valor."* — o erro aparece **antes**, na sua mão, e não vira erro do servidor na porta do cliente
+- **Você pode marcar qualquer um dos três, inclusive você mesmo.** Não existe trava aqui: quem confere é **quem fecha o caixa**, depois
+- **Esse valor NÃO é recebimento.** Ele **não quita** o título e **não entra no seu "a prestar"** — o dinheiro não passou pela sua mão. O título fica **em aberto no nome de quem assumiu**, e some do seu acerto do dia
+- A frase em português embaixo dos botões mostra exatamente o que vai ser gravado — confira antes de finalizar
+- **Errou?** Quem confere o caixa corrige depois, na aba **Auditoria de Entregas** (trocar a pessoa, trocar o papel ou tirar a marcação). O que você marca aqui não é definitivo
+- O bloco **não aparece** na linha de **PIX Asaas** confirmado pelo banco (ali o dinheiro já entrou) nem nas formas normais de recebimento
+
+> **O que mudou:** até 19/08/2026 esta tela mandava **você mesmo** para o sistema, mas gravado na coluna do *vendedor*, e quem decidia era a caixinha marcada no cadastro da forma de pagamento — um cadastro invertido bastava para a dívida sair no nome errado, e você nunca via. Agora quem lança **escolhe**, os três aparecem na tela e dá para conferir na hora.
+
 **Receber com PIX (QR Code) — Etapa 3**
 - Se a integração Asaas estiver configurada no servidor, aparece o botão verde **Receber com PIX (QR Code)**
 - O motorista informa o valor (já vem sugerido com o saldo; pode ser menor se parte for em dinheiro ou houver devolução) e toca em **Gerar QR Code**
@@ -90,7 +109,7 @@ Escolha o que aconteceu na entrega:
 - Clique em **Capturar GPS** para registrar a localização no momento da entrega
 - O navegador pedirá permissão de localização
 - Clique em **Finalizar** para confirmar — a entrega é salva, o caixa é atualizado e a entrega some da lista de pendentes
-- **O que a finalização faz com o título:** ela **registra o que o motorista recebeu**, e só. Desde 08/2026 nem o pedido especial é quitado sozinho aqui — o título continua em aberto até alguém **conferir e dar a baixa no Caixa**. O dinheiro entra normalmente no "a prestar" do motorista
+- **O que a finalização faz com o título:** ela **registra o que o motorista recebeu**, e só. Desde 08/2026 nem o pedido especial é quitado sozinho aqui — o título continua em aberto até alguém **conferir e dar a baixa no Caixa**. O dinheiro entra normalmente no "a prestar" do motorista — **menos** o que foi marcado no bloco "Quem vai cobrar este valor?", que não é recebimento e fica de fora do acerto do dia (ver Etapa 3)
 
 ### Conferir a folha impressa (QR code)
 1. Antes de carregar o caminhão, toque no botão **Folha** (ícone de QR, no header verde da tela)
@@ -109,7 +128,7 @@ Escolha o que aconteceu na entrega:
    - **Total** (valor cheio) ou **Parcial** (digite quanto recebeu — o restante continua em aberto)
    - Forma de pagamento: **Dinheiro** (entra no seu caixa do dia, no valor a prestar), Pix, Cartão ou Outro
 4. Confirme — a cobrança fica registrada como **"aguarda caixa"**. **Nada é baixado na rua**: a baixa oficial da parcela sai no Caixa Diário, quando o escritório confere e marca o box
-5. **Não consegui cobrar**: toque em "😕 Não consegui cobrar" e marque quem fica responsável (**Escritório** ou **Vendedor** da carteira do cliente). É só registro — o título continua em aberto e nada entra no caixa
+5. **Não consegui cobrar**: toque em "😕 Não consegui cobrar" e marque quem fica responsável (**Escritório** ou **Vendedor** da carteira do cliente). É só registro — o título continua em aberto e nada entra no caixa. *(São só duas opções aqui, e é um registro à parte do bloco "Quem vai cobrar este valor?" da entrega — este é sobre uma cobrança que o escritório pendurou na carga, aquele é sobre o pagamento da entrega em si.)*
 6. **Busca livre** (imprevisto): se um cliente quiser pagar um título na hora, digite o nome dele em "Buscar cliente para cobrar…", toque em **Cobrar** no título e registre normal — não precisa estar na carga
 7. Registro errado? Na lista "Registradas hoje", toque na seta de **desfazer** (só antes da baixa no caixa)
 

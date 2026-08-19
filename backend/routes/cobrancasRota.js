@@ -159,7 +159,7 @@ router.get('/parcelas-abertas', checkEscritorioOuCobrador, async (req, res) => {
                         pedido: {
                             select: {
                                 numero: true, especial: true, statusEntrega: true,
-                                pagamentosReais: { select: { valor: true, escritorioResponsavel: true, vendedorResponsavelId: true } }
+                                pagamentosReais: { select: { valor: true, responsavelPapel: true, escritorioResponsavel: true, vendedorResponsavelId: true } }
                             }
                         },
                         parcelas: { select: { id: true, valor: true, valorPago: true, valorDescontoTotal: true, status: true } }

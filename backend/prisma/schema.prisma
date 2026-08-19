@@ -1568,7 +1568,19 @@ model PedidoPagamentoReal {
   formaPagamentoNome String  @map("forma_pagamento_nome") // Nome na hora, para histórico
   valor              Decimal @db.Decimal(12, 2)
 
-  // Responsabilidade em caso de Dívida/Ação
+  // ── Responsabilidade pela cobrança (Dívida/Ação) ────────────────────────────────────
+  // PAPEL de quem ficou de cobrar: VENDEDOR | ESCRITORIO | MOTORISTA.
+  // A PESSOA continua sendo `vendedorResponsavelId` — é UMA coluna só de pessoa, de
+  // propósito: uma segunda coluna obrigaria todo ponto do sistema a virar "um ou outro"
+  // (groupBy em duas consultas, `some` com OR, índice duplicado) e seis lugares novos
+  // para alguém esquecer o campo.
+  // ⚠️ Vazio = marcação LEGADA (as 44 gravadas antes de 08/2026). O papel é DERIVADO por
+  // `recebimentoEntregaService.papelResponsavel()` — nunca leia estes campos crus.
+  responsavelPapel String? @map("responsavel_papel")
+
+  // legado — a marcação antiga, anterior ao `responsavelPapel`. NÃO REMOVER: o deploy usa
+  // `prisma db push` sem `--accept-data-loss` e dropar coluna derruba o servidor.
+  // `vendedorResponsavelId` segue em uso como a PESSOA de VENDEDOR e de MOTORISTA.
   vendedorResponsavelId String? @map("vendedor_responsavel_id")
   escritorioResponsavel Boolean @default(false) @map("escritorio_responsavel")
 

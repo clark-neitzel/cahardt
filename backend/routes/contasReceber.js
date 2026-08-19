@@ -3,6 +3,8 @@ const router = express.Router();
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const verificarAuth = require('../middlewares/authMiddleware');
 const contasReceberSyncService = require('../services/contasReceberSyncService');
+// Papel do responsável pela cobrança — ponto ÚNICO de derivação (ver comentário do serviço).
+const { papelResponsavel, PAPEIS_RESPONSAVEL } = require('../services/recebimentoEntregaService');
 
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
@@ -75,15 +77,18 @@ const validarFormaManual = (formaPagamento) => {
 // RESPONSÁVEL PELA COBRANÇA (quem ficou de cobrar o título)
 // ─────────────────────────────────────────────────────────────────────────────
 // A marcação mora na LINHA DE PAGAMENTO da entrega (`pedido_pagamentos_reais`):
-//   • `vendedorResponsavelId` → um vendedor ficou responsável por aquele valor;
-//   • `escritorioResponsavel` → o escritório assumiu a cobrança.
+//   • `responsavelPapel`      → VENDEDOR | ESCRITORIO | MOTORISTA (desde 08/2026);
+//   • `vendedorResponsavelId` → a PESSOA (vale para VENDEDOR e para MOTORISTA);
+//   • `escritorioResponsavel` → legado, marcação antiga do escritório.
 // Até 08/2026 o dado era gravado e nunca lido: o nome nunca era resolvido, não dava para
 // filtrar por pessoa nem fechar por responsável — o dono fazia o fechamento do dia 01 na mão.
 //
+// ⚠️ O PAPEL é sempre DERIVADO por `papelResponsavel()` — as 44 marcações antigas têm
+// `responsavelPapel` vazio e sumiriam da tela se alguém lesse o campo cru.
 // ⚠️ A marcação é o ÚNICO critério válido. NÃO usar o nome da forma de pagamento
 // ("Vendedor Responsável", "Escritório Responsável"): quem registrar como "Dinheiro" com a
 // caixinha marcada escapa de qualquer busca feita pelo nome — foi exatamente o defeito.
-const TIPOS_RESPONSAVEL = ['VENDEDOR', 'ESCRITORIO'];
+const TIPOS_RESPONSAVEL = PAPEIS_RESPONSAVEL; // ['VENDEDOR', 'ESCRITORIO', 'MOTORISTA']
 
 // `select` mínimo para montar os responsáveis sem N+1: o nome do vendedor vem por join na
 // relação `PagamentosFiados` (que existia no schema e nunca era usada em nenhum include).
@@ -92,11 +97,20 @@ const SELECT_PAGAMENTOS_RESPONSAVEL = {
     select: {
         formaPagamentoNome: true,
         valor: true,
+        responsavelPapel: true,
         escritorioResponsavel: true,
         vendedorResponsavelId: true,
         vendedorResponsavel: { select: { id: true, nome: true } }
     }
 };
+
+// ── Cláusulas Prisma que espelham `papelResponsavel()` ──────────────────────────────
+// A derivação em JS é: papel válido em `responsavelPapel` vence; vazio cai no legado
+// (pessoa → VENDEDOR, senão escritório → ESCRITORIO). Estas cláusulas SÃO essa mesma
+// regra escrita em SQL — mexeu numa, confira a outra, senão o filtro e a lista divergem.
+const ondePapelLegado = { responsavelPapel: null };
+// VENDEDOR: papel explícito OU marcação legada (papel vazio + pessoa preenchida)
+const OU_PAPEL_VENDEDOR = { OR: [{ responsavelPapel: 'VENDEDOR' }, ondePapelLegado] };
 
 // Rótulo do escritório: o escritório não é uma pessoa, então mostramos QUEM LANÇOU o pedido
 // como pista de a quem perguntar. NÃO é afirmação de que essa pessoa é a responsável.
@@ -105,27 +119,34 @@ const rotuloEscritorio = (pedido) => {
     return quem ? `Escritório — lançado por ${quem}` : 'Escritório';
 };
 
-// Monta o array `responsaveis` de um pedido, agrupando por (tipo, pessoa) e somando o valor.
-// Sem marcação → array VAZIO (nunca null). Linha com vendedor marcado vence o escritório.
+// Monta o array `responsaveis` de um pedido, agrupando por (PAPEL, pessoa) e somando o
+// valor. Sem marcação → array VAZIO (nunca null). Contrato consumido pelo frontend:
+// { tipo, pessoaId, pessoaNome, valor } — `tipo` passou a poder valer MOTORISTA.
 const montarResponsaveis = (pedido) => {
     const mapa = new Map();
     for (const p of (pedido?.pagamentosReais || [])) {
         const valor = Number(p.valor || 0);
         if (valor <= 0) continue;
+        const papel = papelResponsavel(p); // derivado — nunca o campo cru
+        if (!papel) continue;
         let chave, item;
-        if (p.vendedorResponsavelId) {
-            chave = `VENDEDOR:${p.vendedorResponsavelId}`;
-            item = {
-                tipo: 'VENDEDOR',
-                pessoaId: p.vendedorResponsavelId,
-                pessoaNome: p.vendedorResponsavel?.nome || 'Vendedor não identificado',
-                valor: 0
-            };
-        } else if (p.escritorioResponsavel) {
+        if (papel === 'ESCRITORIO') {
             chave = 'ESCRITORIO';
             item = { tipo: 'ESCRITORIO', pessoaId: null, pessoaNome: rotuloEscritorio(pedido), valor: 0 };
         } else {
-            continue;
+            // VENDEDOR/MOTORISTA sem pessoa não deveria existir (o servidor recusa gravar
+            // assim), mas se aparecer é dado corrompido: agrupar num balde `PAPEL:-` criaria
+            // um responsável fantasma, sem nome e sem ninguém a quem cobrar. Melhor ignorar
+            // a linha do que inventar uma pessoa na tela.
+            if (!p.vendedorResponsavelId) continue;
+            chave = `${papel}:${p.vendedorResponsavelId}`;
+            item = {
+                tipo: papel,
+                pessoaId: p.vendedorResponsavelId,
+                pessoaNome: p.vendedorResponsavel?.nome
+                    || (papel === 'MOTORISTA' ? 'Motorista não identificado' : 'Vendedor não identificado'),
+                valor: 0
+            };
         }
         if (!mapa.has(chave)) mapa.set(chave, item);
         mapa.get(chave).valor += valor;
@@ -143,30 +164,63 @@ const someResponsavel = (responsavelTipo, responsavelId) => {
 
     if (tipo === 'ESCRITORIO') {
         // Escritório não tem pessoaId — um responsavelId junto é ignorado de propósito.
-        // ⚠️ `vendedorResponsavelId: null` é OBRIGATÓRIO aqui: `montarResponsaveis` classifica
-        // linha com os DOIS marcados como VENDEDOR. Sem isso o servidor devolvia a conta no
-        // filtro "Escritório" e a tela a escondia (lista com buraco). Uma regra só.
-        return { valor: { gt: 0 }, escritorioResponsavel: true, vendedorResponsavelId: null };
+        // ⚠️ `vendedorResponsavelId: null` é OBRIGATÓRIO no ramo legado: `papelResponsavel`
+        // classifica linha antiga com os DOIS marcados como VENDEDOR. Sem isso o servidor
+        // devolvia a conta no filtro "Escritório" e a tela a escondia (lista com buraco).
+        return {
+            valor: { gt: 0 },
+            OR: [
+                { responsavelPapel: 'ESCRITORIO' },
+                { responsavelPapel: null, escritorioResponsavel: true, vendedorResponsavelId: null }
+            ]
+        };
     }
-    if (id) return { valor: { gt: 0 }, vendedorResponsavelId: id };
-    // tipo VENDEDOR sem pessoa: qualquer vendedor marcado.
-    // `not: null` aqui é o que queremos mesmo (só linhas COM vendedor).
-    return { valor: { gt: 0 }, vendedorResponsavelId: { not: null } };
+
+    if (tipo === 'MOTORISTA') {
+        // Papel novo: só existe explícito (nenhuma linha legada é motorista).
+        return id
+            ? { valor: { gt: 0 }, responsavelPapel: 'MOTORISTA', vendedorResponsavelId: id }
+            : { valor: { gt: 0 }, responsavelPapel: 'MOTORISTA' };
+    }
+
+    // VENDEDOR (ou id solto, sem tipo — é como a tela sempre mandou): papel explícito
+    // VENDEDOR ou marcação legada. `not: null` aqui é o que queremos mesmo (só linhas
+    // COM pessoa); e no ramo legado a pessoa preenchida É o que define VENDEDOR.
+    return id
+        ? { valor: { gt: 0 }, vendedorResponsavelId: id, ...OU_PAPEL_VENDEDOR }
+        : { valor: { gt: 0 }, vendedorResponsavelId: { not: null }, ...OU_PAPEL_VENDEDOR };
 };
 
-// Filtro por LISTA de responsáveis: `responsaveis=id1,id2,ESCRITORIO`.
+// Filtro por LISTA de responsáveis: `responsaveis=id1,MOTORISTA:id2,ESCRITORIO`.
 // Vira um único `some` com `OR` dentro — assim o recorte é feito no BANCO, e não no
 // navegador (com o recorte no cliente os indicadores da tela vinham do universo inteiro).
 // Devolve `null` quando não há nada válido pedido.
+//
+// Formato de cada item (é o `valor` que `GET /responsaveis` devolve):
+//   'ESCRITORIO'        → o escritório
+//   '<id>'              → aquela pessoa como VENDEDOR (formato antigo — filtro que o
+//                         usuário já tem salvo no navegador continua funcionando igual)
+//   'VENDEDOR:<id>'     → idem, explícito
+//   'MOTORISTA:<id>'    → aquela pessoa como MOTORISTA
 const someResponsaveis = (lista) => {
     const itens = (Array.isArray(lista) ? lista : String(lista || '').split(','))
         .map(v => String(v || '').trim())
         .filter(Boolean);
     const ors = [];
     for (const item of itens) {
-        const clausula = item.toUpperCase() === 'ESCRITORIO'
-            ? someResponsavel('ESCRITORIO', null)
-            : someResponsavel('VENDEDOR', item);
+        let clausula;
+        if (item.toUpperCase() === 'ESCRITORIO') {
+            clausula = someResponsavel('ESCRITORIO', null);
+        } else {
+            // `PAPEL:<id>`. O corte é no PRIMEIRO ':' **e** só vale se o pedaço da esquerda
+            // for um papel conhecido — assim um id que por acaso contenha ':' cai no ramo
+            // de id puro (VENDEDOR) em vez de ser fatiado em duas metades sem sentido.
+            const sep = item.indexOf(':');
+            const prefixo = sep > 0 ? item.slice(0, sep).trim().toUpperCase() : '';
+            clausula = PAPEIS_RESPONSAVEL.includes(prefixo)
+                ? someResponsavel(prefixo, item.slice(sep + 1))
+                : someResponsavel('VENDEDOR', item);
+        }
         if (clausula) ors.push(clausula);
     }
     if (ors.length === 0) return null;
@@ -286,25 +340,52 @@ router.get('/responsaveis', verificarAuth, checkAcesso, async (req, res) => {
         // `groupBy` vira GROUP BY no banco (o `distinct` do Prisma é filtrado em memória
         // DEPOIS de trazer a tabela inteira — com 40 mil linhas de pagamento isso é uma
         // varredura completa a cada abertura da tela).
-        const [gruposVendedor, temEscritorio] = await Promise.all([
-            prisma.pedidoPagamentoReal.groupBy({
-                by: ['vendedorResponsavelId'],
-                where: { valor: { gt: 0 }, vendedorResponsavelId: { not: null } }
-            }),
-            prisma.pedidoPagamentoReal.findFirst({
-                where: { valor: { gt: 0 }, escritorioResponsavel: true, vendedorResponsavelId: null },
-                select: { id: true }
-            })
-        ]);
-        const idsVendedor = gruposVendedor.map(g => g.vendedorResponsavelId).filter(Boolean);
-        const vendedores = idsVendedor.length
+        // Um groupBy só, pelas três colunas da marcação — o PAPEL é derivado depois, em JS,
+        // pela mesma função de todo o resto (linha legada tem `responsavelPapel` vazio e
+        // sumiria daqui se filtrássemos pelo campo cru).
+        const grupos = await prisma.pedidoPagamentoReal.groupBy({
+            by: ['responsavelPapel', 'vendedorResponsavelId', 'escritorioResponsavel'],
+            where: {
+                valor: { gt: 0 },
+                // `not: null` do Prisma exclui as linhas null — é o que queremos em cada
+                // ramo do OR, e o OR garante que nenhuma família fique de fora.
+                OR: [
+                    { responsavelPapel: { not: null } },
+                    { vendedorResponsavelId: { not: null } },
+                    { escritorioResponsavel: true }
+                ]
+            }
+        });
+
+        const familias = new Map(); // chave `${papel}:${pessoaId||'-'}`
+        let temEscritorio = false;
+        for (const g of grupos) {
+            const papel = papelResponsavel(g);
+            if (!papel) continue;
+            if (papel === 'ESCRITORIO') { temEscritorio = true; continue; }
+            if (!g.vendedorResponsavelId) continue;
+            familias.set(`${papel}:${g.vendedorResponsavelId}`, { papel, pessoaId: g.vendedorResponsavelId });
+        }
+
+        const idsPessoa = [...new Set([...familias.values()].map(f => f.pessoaId))];
+        const pessoas = idsPessoa.length
             ? await prisma.vendedor.findMany({
-                where: { id: { in: idsVendedor } },
+                where: { id: { in: idsPessoa } },
                 select: { id: true, nome: true }
             })
             : [];
-        const responsaveis = vendedores
-            .map(v => ({ tipo: 'VENDEDOR', pessoaId: v.id, valor: v.id, label: v.nome }))
+        const nomeDe = (id) => pessoas.find(p => p.id === id)?.nome || 'Sem nome';
+
+        // `valor` é o que a tela devolve ao servidor. VENDEDOR continua indo como o id puro
+        // (formato antigo) para não invalidar o filtro que o usuário já tem salvo no
+        // navegador; MOTORISTA vai prefixado, porque a mesma pessoa pode ter as duas famílias.
+        const responsaveis = [...familias.values()]
+            .map(f => ({
+                tipo: f.papel,
+                pessoaId: f.pessoaId,
+                valor: f.papel === 'VENDEDOR' ? f.pessoaId : `${f.papel}:${f.pessoaId}`,
+                label: f.papel === 'MOTORISTA' ? `${nomeDe(f.pessoaId)} (motorista)` : nomeDe(f.pessoaId)
+            }))
             .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR'));
         if (temEscritorio) {
             responsaveis.push({ tipo: 'ESCRITORIO', pessoaId: null, valor: 'ESCRITORIO', label: 'Escritório' });
@@ -347,7 +428,11 @@ router.get('/por-responsavel', verificarAuth, checkAcesso, async (req, res) => {
                     pagamentosReais: {
                         some: {
                             valor: { gt: 0 },
+                            // Espelha `papelResponsavel()`: papel explícito (qualquer um
+                            // dos três) OU marcação legada. `not: null` exclui os nulls —
+                            // por isso cada família tem o seu ramo no OR.
                             OR: [
+                                { responsavelPapel: { not: null } },
                                 { vendedorResponsavelId: { not: null } },
                                 { escritorioResponsavel: true }
                             ]
@@ -444,7 +529,12 @@ router.get('/por-responsavel', verificarAuth, checkAcesso, async (req, res) => {
             responsaveis.forEach((resp, i) => {
                 const devido = devidos[i];
                 if (devido <= 0) return;
-                const chave = resp.tipo === 'VENDEDOR' ? `VENDEDOR:${resp.pessoaId}` : 'ESCRITORIO';
+                // Chave = PAPEL + pessoa. O escritório é um balde só (não tem pessoa);
+                // VENDEDOR e MOTORISTA são baldes separados mesmo sendo a MESMA pessoa —
+                // são dívidas de naturezas diferentes. ⚠️ O `if` antigo era
+                // `tipo === 'VENDEDOR' ? ... : 'ESCRITORIO'`, que jogava o motorista dentro
+                // do balde do escritório e somava a dívida dele no nome errado.
+                const chave = resp.tipo === 'ESCRITORIO' ? 'ESCRITORIO' : `${resp.tipo}:${resp.pessoaId}`;
                 if (!grupos.has(chave)) {
                     grupos.set(chave, {
                         tipo: resp.tipo,
@@ -684,7 +774,9 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         // inteira achando que está filtrada por uma pessoa é pior do que não responder.
         const tipoResp = String(responsavelTipo || '').trim().toUpperCase();
         if (tipoResp && !TIPOS_RESPONSAVEL.includes(tipoResp)) {
-            return res.status(400).json({ error: 'responsavelTipo deve ser VENDEDOR ou ESCRITORIO.' });
+            // Mensagem montada a partir da MESMA constante que valida — texto fixo aqui já
+            // mentiu uma vez: a rota aceitava MOTORISTA e o erro dizia que só havia dois.
+            return res.status(400).json({ error: `responsavelTipo deve ser ${TIPOS_RESPONSAVEL.join(', ')}.` });
         }
         // `responsaveis` (lista) tem precedência; `responsavelId`/`responsavelTipo` continuam
         // funcionando para não quebrar quem já está com o bundle antigo no PWA.
@@ -841,6 +933,8 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                 pagamentosEntrega: (c.pedido?.pagamentosReais || []).map(p => ({
                     formaPagamentoNome: p.formaPagamentoNome,
                     valor: Number(p.valor),
+                    // papel DERIVADO (linha legada não tem o campo gravado)
+                    responsavelPapel: papelResponsavel(p),
                     escritorioResponsavel: p.escritorioResponsavel,
                     vendedorResponsavelId: p.vendedorResponsavelId || null
                 })),

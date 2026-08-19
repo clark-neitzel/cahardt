@@ -1,5 +1,11 @@
 [
   {
+    "slug": "quem-vai-cobrar",
+    "titulo": "Quem vai cobrar: você escolhe",
+    "resumo": "Quando o valor da entrega fica para cobrar depois, o motorista marca na hora quem fica responsável: Eu mesmo, Escritório ou Vendedor (e qual vendedor, com busca). \"Eu mesmo\" já vem marcado, então o caso comum não custa nenhum toque a mais; escolhendo Vendedor sem indicar o nome, o app avisa e não deixa finalizar. Antes o app gravava o motorista na ficha do vendedor, e a dívida dele aparecia como \"Vendedor responsável\" no Caixa, no Contas a Receber e no relatório de cobranças. Agora existem três selos com cores próprias (Vendedor azul, Escritório âmbar, Motorista roxo) e o escritório corrige o papel na Auditoria de Entregas.",
+    "data": "2026-08-19"
+  },
+  {
     "slug": "baixa-especial-caixa",
     "titulo": "Baixa do especial no Caixa",
     "resumo": "Entregar não quita mais o pedido especial: o título fica em aberto e a baixa acontece na conferência do Caixa. Muda a rotina de quem entrega — o valor de Vendedor/Escritório responsável saiu do valor a prestar (o responsável fica devendo), então o motorista presta menos dinheiro no dia. Recebeu menos vira baixa parcial, com o saldo em aberto para cobrança. Na lista de entregas, selo âmbar A CONFERIR quando há dinheiro para conferir e cinza COM RESPONSÁVEL quando não há. Quem já pagou e espera a conferência não é cobrado.",

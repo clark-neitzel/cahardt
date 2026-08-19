@@ -8,18 +8,27 @@ import vendedorService from '../../../services/vendedorService';
 import SelectBusca from '../../../components/SelectBusca';
 import { useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
 import { somenteAtivos, rotuloVendedor } from '../../../utils/vendedoresFiltro';
+import { papelResponsavel, ROTULO_PAPEL_CURTO, papelExigePessoa } from '../../../utils/responsavelCobranca';
 
 const hojeISO = new Date().toISOString().slice(0, 10);
 
-// Quem ficou de cobrar esta linha de pagamento. Mesma regra do backend: linha com
-// vendedor marcado vale VENDEDOR, mesmo que o escritório também esteja marcado.
+// Quem ficou de cobrar esta linha de pagamento. O PAPEL vem do backend
+// (`responsavelPapel`), derivado no ponto único de `utils/responsavelCobranca` — nunca
+// adivinhado por "tem vendedor? então é vendedor", que escrevia dívida de MOTORISTA
+// como se fosse do vendedor.
 const responsavelDoPagamento = (pg, vendedores) => {
-    if (pg?.vendedorResponsavelId) {
-        const v = (vendedores || []).find(x => x.id === pg.vendedorResponsavelId);
-        return v?.nome ? `Resp.: ${v.nome}` : 'Resp.: vendedor';
-    }
-    if (pg?.escritorioResponsavel) return 'Resp.: Escritório';
-    return null;
+    const papel = papelResponsavel(pg);
+    if (!papel) return null;
+    if (papel === 'ESCRITORIO') return 'Resp.: Escritório';
+    const v = (vendedores || []).find(x => x.id === pg?.vendedorResponsavelId);
+    const rotulo = ROTULO_PAPEL_CURTO[papel].toLowerCase();
+    return v?.nome ? `Resp.: ${v.nome} (${rotulo})` : `Resp.: ${rotulo}`;
+};
+
+// Linha de pagamento em branco (usada ao abrir a edição sem pagamentos e no "Adicionar").
+const LINHA_PGTO_VAZIA = {
+    _selectId: '', formaPagamentoEntregaId: null, formaPagamentoNome: '', valor: '',
+    responsavelPapel: null, vendedorResponsavelId: null
 };
 
 const AuditoriaEntregas = () => {
@@ -136,13 +145,15 @@ const AuditoriaEntregas = () => {
                         formaPagamentoEntregaId: pg.formaPagamentoEntregaId || null,
                         formaPagamentoNome: pg.formaPagamentoNome,
                         valor: String(Number(pg.valor).toFixed(2)),
-                        escritorioResponsavel: pg.escritorioResponsavel || false,
-                        // Sem carregar (e reenviar) o vendedor responsável, editar o valor da
+                        // Papel DERIVADO (linha gravada antes de 08/2026 tem o campo vazio) —
+                        // sem isso a marcação antiga sumiria da tela e seria apagada ao salvar.
+                        responsavelPapel: papelResponsavel(pg),
+                        // Sem carregar (e reenviar) a pessoa responsável, editar o valor da
                         // entrega apagava o encargo do título — sem aviso nenhum na tela.
                         vendedorResponsavelId: pg.vendedorResponsavelId || null,
                     };
                 })
-                : [{ _selectId: '', formaPagamentoEntregaId: null, formaPagamentoNome: '', valor: '', escritorioResponsavel: false, vendedorResponsavelId: null }];
+                : [{ ...LINHA_PGTO_VAZIA }];
 
             setEditPagamentos(pgIniciais);
             setEditandoEntrega(entrega);
@@ -178,13 +189,24 @@ const AuditoriaEntregas = () => {
                 formaPagamentoEntregaId: p._selectId?.startsWith('tabela_') ? null : (p.formaPagamentoEntregaId || null),
                 formaPagamentoNome: p.formaPagamentoNome,
                 valor: Number(p.valor),
-                escritorioResponsavel: p.escritorioResponsavel || false,
-                // Vai junto sempre: é o que mantém o título no nome de quem ficou responsável.
-                vendedorResponsavelId: p.vendedorResponsavelId || null,
+                // O PAPEL vai SEMPRE, explícito — inclusive `null`, que é o que LIMPA a
+                // marcação no servidor. (Omitir os campos faria a linha HERDAR o que estava:
+                // o oposto do que o botão "Tirar responsável" promete na tela.)
+                responsavelPapel: p.responsavelPapel || null,
+                // A pessoa acompanha VENDEDOR e MOTORISTA; no escritório vai vazia.
+                vendedorResponsavelId: papelExigePessoa(p.responsavelPapel) ? (p.vendedorResponsavelId || null) : null,
             }));
 
         if (pagamentos.length === 0) {
             toast.error('Informe ao menos um pagamento válido.');
+            return;
+        }
+
+        // O servidor recusa (400) papel de pessoa sem pessoa — avisar aqui, com o nome do
+        // papel, em vez de deixar o escritório levar erro genérico depois de salvar.
+        const semPessoa = pagamentos.find(p => papelExigePessoa(p.responsavelPapel) && !p.vendedorResponsavelId);
+        if (semPessoa) {
+            toast.error(`Escolha quem é o ${ROTULO_PAPEL_CURTO[semPessoa.responsavelPapel].toLowerCase()} responsável pela cobrança.`);
             return;
         }
 
@@ -492,8 +514,12 @@ const AuditoriaEntregas = () => {
 
                     <div className="px-4 md:px-5 py-4 space-y-3 max-h-[60vh] md:max-h-96 overflow-y-auto">
                         {editPagamentos.map((pg, idx) => {
-                            const temResponsavel = !!(pg.escritorioResponsavel || pg.vendedorResponsavelId);
-                            const duasMarcacoes = !!(pg.escritorioResponsavel && pg.vendedorResponsavelId);
+                            const papel = pg.responsavelPapel || null;
+                            const opcoesPapel = [
+                                { valor: 'MOTORISTA', texto: 'Motorista' },
+                                { valor: 'ESCRITORIO', texto: 'Escritório' },
+                                { valor: 'VENDEDOR', texto: 'Vendedor' }
+                            ];
                             return (
                             <div key={idx} className="rounded-xl border border-gray-200 bg-white shadow-sm p-3">
                                 <div className="flex gap-2 items-start">
@@ -535,15 +561,17 @@ const AuditoriaEntregas = () => {
                                 </div>
 
                                 {/* Quem fica responsável por COBRAR o que ficou nesta linha.
-                                    Sem este bloco, marcação errada só saía por SQL. */}
+                                    Três papéis desde 08/2026 (motorista deixou de ser gravado
+                                    como se fosse vendedor). Sem este bloco, marcação errada só
+                                    saía por SQL. */}
                                 <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
                                     <div className="flex items-center justify-between gap-2">
                                         <span className="text-xs font-bold uppercase tracking-widest text-gray-600">
                                             Responsável por cobrar
                                         </span>
-                                        {temResponsavel && (
+                                        {papel && (
                                             <button
-                                                onClick={() => atualizarPg(idx, { escritorioResponsavel: false, vendedorResponsavelId: null })}
+                                                onClick={() => atualizarPg(idx, { responsavelPapel: null, vendedorResponsavelId: null })}
                                                 className="text-xs font-semibold text-red-600 hover:text-red-700 px-2 py-1 rounded-full hover:bg-red-50"
                                             >
                                                 Tirar responsável
@@ -551,48 +579,53 @@ const AuditoriaEntregas = () => {
                                         )}
                                     </div>
 
-                                    <label className="flex items-center gap-2 cursor-pointer min-h-[44px] md:min-h-0 md:py-1">
-                                        <input
-                                            type="checkbox"
-                                            className="h-5 w-5 md:h-4 md:w-4 text-primary focus:ring-primary border-gray-300 rounded"
-                                            checked={!!pg.escritorioResponsavel}
-                                            onChange={(e) => atualizarPg(idx, {
-                                                escritorioResponsavel: e.target.checked,
-                                                // Uma linha responde por UMA pessoa: marcar o escritório
-                                                // solta o vendedor (e vice-versa), senão o selo do título
-                                                // mostra uma coisa e o relatório soma outra.
-                                                vendedorResponsavelId: e.target.checked ? null : pg.vendedorResponsavelId,
-                                            })}
-                                        />
-                                        <span className="text-sm font-medium text-gray-700">Escritório responsável</span>
-                                    </label>
-
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-600 mb-1">Vendedor responsável</label>
-                                        <SelectBusca
-                                            className="w-full"
-                                            value={pg.vendedorResponsavelId || ''}
-                                            onChange={(e) => {
-                                                const id = e.target.value || null;
-                                                atualizarPg(idx, {
-                                                    vendedorResponsavelId: id,
-                                                    escritorioResponsavel: id ? false : pg.escritorioResponsavel,
-                                                });
-                                            }}
-                                        >
-                                            <option value="">Sem vendedor responsável</option>
-                                            {opcoesVendedorDaLinha(pg).map(v => (
-                                                <option key={v.id} value={v.id}>{rotuloVendedor(v)}</option>
-                                            ))}
-                                        </SelectBusca>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {opcoesPapel.map(op => (
+                                            <button
+                                                key={op.valor}
+                                                type="button"
+                                                onClick={() => atualizarPg(idx, {
+                                                    responsavelPapel: op.valor,
+                                                    // Escritório não tem pessoa; trocar de papel
+                                                    // não pode deixar o id do papel anterior para trás.
+                                                    vendedorResponsavelId: papelExigePessoa(op.valor) ? pg.vendedorResponsavelId : null
+                                                })}
+                                                className={`min-h-[44px] md:min-h-0 md:py-2 px-2 py-2 rounded-full text-xs font-bold border transition-colors ${papel === op.valor
+                                                    ? 'bg-primary border-primary text-white shadow-sm'
+                                                    : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                                            >
+                                                {op.texto}
+                                            </button>
+                                        ))}
                                     </div>
 
-                                    {duasMarcacoes && (
-                                        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1.5">
-                                            Esta linha está marcada nos dois lugares. Vale o vendedor — escolha só um para corrigir.
-                                        </p>
+                                    {papelExigePessoa(papel) && (
+                                        <div>
+                                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                                                Qual {ROTULO_PAPEL_CURTO[papel].toLowerCase()}?
+                                            </label>
+                                            <SelectBusca
+                                                className="w-full"
+                                                value={pg.vendedorResponsavelId || ''}
+                                                onChange={(e) => atualizarPg(idx, { vendedorResponsavelId: e.target.value || null })}
+                                            >
+                                                <option value="">Escolher pessoa...</option>
+                                                {opcoesVendedorDaLinha(pg).map(v => (
+                                                    <option key={v.id} value={v.id}>{rotuloVendedor(v)}</option>
+                                                ))}
+                                            </SelectBusca>
+                                            {!pg.vendedorResponsavelId && (
+                                                <p className="text-xs font-semibold text-red-600 mt-1">
+                                                    Escolha a pessoa — sem ela o servidor recusa a alteração.
+                                                </p>
+                                            )}
+                                        </div>
                                     )}
-                                    {temResponsavel && (
+
+                                    {papel === 'ESCRITORIO' && (
+                                        <p className="text-xs text-gray-500">Fica com o escritório — sem pessoa específica.</p>
+                                    )}
+                                    {papel && (
                                         <p className="text-xs text-gray-500">
                                             A marcação é desta linha: trocar a forma de pagamento acima NÃO tira o responsável.
                                         </p>
@@ -602,7 +635,7 @@ const AuditoriaEntregas = () => {
                             );
                         })}
                         <button
-                            onClick={() => setEditPagamentos([...editPagamentos, { _selectId: '', formaPagamentoEntregaId: null, formaPagamentoNome: '', valor: '', escritorioResponsavel: false, vendedorResponsavelId: null }])}
+                            onClick={() => setEditPagamentos([...editPagamentos, { ...LINHA_PGTO_VAZIA }])}
                             className="flex items-center gap-1 text-xs text-sky-600 hover:text-sky-800 font-medium"
                         >
                             <Plus className="h-3.5 w-3.5" /> Adicionar pagamento

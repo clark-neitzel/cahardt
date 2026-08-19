@@ -228,12 +228,15 @@ async function aplicarRecebimentoEntrega(tx, {
  * encarregado de cobrar. Não tem banco — e SEM BANCO NÃO HÁ QUITAÇÃO (regra do dono,
  * 08/2026). Não gera ledger, não muda status de parcela, não entra em total de recebido.
  *
- * ⚠️ PONTO DE EXTENSÃO — vem aí o MOTORISTA RESPONSÁVEL (fatia própria, com arquiteto):
- * quando existir `motoristaResponsavelId`, acrescente o campo AQUI, nesta única linha.
- * É de propósito que o teste não esteja espalhado: todo ponto novo (agrupamento do caixa,
- * "a prestar", totais, validação de baixa, contas a receber) deve chamar esta função.
- * (Ainda existem pontos legados escritos na mão em routes/caixa.js — ver relatório da
- * fatia de 08/2026; devem migrar para cá conforme forem tocados.)
+ * ⚠️ PONTO DE EXTENSÃO — papel novo NÃO ganha coluna de pessoa nova. Desde 08/2026 o
+ * papel mora em `responsavelPapel` (VENDEDOR | ESCRITORIO | MOTORISTA) e a PESSOA continua
+ * em `vendedorResponsavelId`, sempre. (O comentário antigo aqui mandava criar
+ * `motoristaResponsavelId` — era o oposto: uma segunda coluna de pessoa obriga todo ponto
+ * a virar "um ou outro" e multiplica os lugares onde dá para esquecer o campo.)
+ * Para acrescentar um papel: entre em `PAPEIS_RESPONSAVEL` + `ROTULO_RESPONSAVEL` logo
+ * abaixo, e mais nada. É de propósito que o teste não esteja espalhado: todo ponto
+ * (agrupamento do caixa, "a prestar", totais, validação de baixa, contas a receber) deve
+ * chamar `papelResponsavel` / `ehResponsavelPelaCobranca`, NUNCA ler os campos crus.
  *
  * ATENÇÃO — são coisas diferentes, não confundir:
  *   • `condicaoRecebimentoService.formaPermitida` diz se a forma PODE SER USADA naquele
@@ -244,7 +247,55 @@ async function aplicarRecebimentoEntrega(tx, {
  * pedido (ele continua "À vista - Dinheiro", que tem banco) — por isso a trava tem que
  * olhar a LINHA DE PAGAMENTO, nunca o `bancoPadrao` da condição.
  */
-const ehResponsavelPelaCobranca = (p) => !!(p?.escritorioResponsavel || p?.vendedorResponsavelId);
+const PAPEIS_RESPONSAVEL = ['VENDEDOR', 'ESCRITORIO', 'MOTORISTA'];
+
+const ROTULO_RESPONSAVEL = {
+    VENDEDOR: 'Vendedor responsável',
+    ESCRITORIO: 'Escritório responsável',
+    MOTORISTA: 'Motorista responsável'
+};
+// Versão curta, usada entre parênteses no texto que sai na observação da baixa.
+const ROTULO_CURTO_RESPONSAVEL = {
+    VENDEDOR: 'vendedor',
+    ESCRITORIO: 'escritório',
+    MOTORISTA: 'motorista'
+};
+
+/**
+ * DERIVAÇÃO DO PAPEL — ponto único. Devolve 'VENDEDOR' | 'ESCRITORIO' | 'MOTORISTA',
+ * ou `null` quando a linha não é de responsável (é recebimento de verdade).
+ *
+ * ⚠️ NUNCA leia `responsavelPapel` cru numa tela/relatório. As 44 marcações gravadas antes
+ * de 08/2026 têm o campo VAZIO — quem ler cru simplesmente não as enxerga, e o histórico
+ * some da tela sem erro nenhum (a tela só fica "mais limpa", ninguém percebe).
+ *
+ * Fallback do legado (campo vazio):
+ *   pessoa preenchida → VENDEDOR;   senão `escritorioResponsavel` → ESCRITORIO.
+ * (É a leitura correta do dado antigo: até 08/2026 só existiam esses dois estados.)
+ */
+const papelResponsavel = (p) => {
+    if (!p) return null;
+    const papel = String(p.responsavelPapel || '').trim().toUpperCase();
+    if (PAPEIS_RESPONSAVEL.includes(papel)) return papel;
+    if (p.vendedorResponsavelId) return 'VENDEDOR';
+    if (p.escritorioResponsavel) return 'ESCRITORIO';
+    return null;
+};
+
+/**
+ * RÓTULO PRONTO da linha — 'Vendedor responsável' / 'Escritório responsável' /
+ * 'Motorista responsável'. `null` quando não é linha de responsável.
+ * Use sempre este, nunca monte o texto na mão com `if`: rótulo errado aqui vira dívida de
+ * motorista escrita como "vendedor" na observação da baixa, que sai do app.
+ * `curto: true` devolve a forma entre parênteses ('motorista').
+ */
+const rotuloResponsavel = (p, { curto = false } = {}) => {
+    const papel = papelResponsavel(p);
+    if (!papel) return null;
+    return (curto ? ROTULO_CURTO_RESPONSAVEL : ROTULO_RESPONSAVEL)[papel];
+};
+
+const ehResponsavelPelaCobranca = (p) => papelResponsavel(p) !== null;
 
 /** Recebimento de verdade = o que NÃO é responsável pela cobrança. */
 const ehRecebimentoProprio = (p) => !ehResponsavelPelaCobranca(p);
@@ -346,7 +397,7 @@ async function idsContasEmEsperaDeConferencia({ clienteIds = null, desdeDias = n
             pedido: {
                 select: {
                     especial: true, statusEntrega: true,
-                    pagamentosReais: { select: { valor: true, escritorioResponsavel: true, vendedorResponsavelId: true } }
+                    pagamentosReais: { select: { valor: true, responsavelPapel: true, escritorioResponsavel: true, vendedorResponsavelId: true } }
                 }
             }
         }
@@ -356,6 +407,9 @@ async function idsContasEmEsperaDeConferencia({ clienteIds = null, desdeDias = n
 
 module.exports = {
     idsContasEmEsperaDeConferencia,
+    PAPEIS_RESPONSAVEL,
+    papelResponsavel,
+    rotuloResponsavel,
     ehResponsavelPelaCobranca,
     ehRecebimentoProprio,
     baixaDeEntregaViva,

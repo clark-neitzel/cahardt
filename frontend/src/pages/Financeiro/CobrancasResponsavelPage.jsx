@@ -8,6 +8,7 @@ import contasReceberService from '../../services/contasReceberService';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../components/FiltroPeriodo';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import { imprimirNaPagina, escaparHtml } from '../../utils/imprimirNaPagina';
+import { CLASSE_PAPEL, ROTULO_PAPEL_CURTO } from '../../utils/responsavelCobranca';
 
 // ── Helpers ──
 const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -59,9 +60,15 @@ const temBaixaParcial = (t) => {
 };
 const qtdBaixaParcial = (g) => (g?.titulos || []).filter(temBaixaParcial).length;
 
+// Rótulo do grupo. São TRÊS baldes desde 08/2026 — e a MESMA pessoa pode aparecer duas
+// vezes (como vendedor e como motorista), com dívidas diferentes. Por isso o papel entra
+// no texto e na cor; sem isso o dono via dois grupos com o mesmo nome e sem saber qual
+// era qual. (`chaveGrupo` já separava tipo+pessoa: só o rótulo estava mentindo.)
+const rotuloTipo = (tipo) => ROTULO_PAPEL_CURTO[tipo] || 'Responsável';
+
 const BadgeTipo = ({ tipo }) => (
-    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${tipo === 'ESCRITORIO' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-800'}`}>
-        {tipo === 'ESCRITORIO' ? 'Escritório' : 'Vendedor'}
+    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${CLASSE_PAPEL[tipo] || 'bg-gray-100 text-gray-700'}`}>
+        {rotuloTipo(tipo)}
     </span>
 );
 
@@ -175,7 +182,7 @@ const CobrancasResponsavelPage = () => {
             ${grupos.map(g => `
                 <div class="grupo">
                     <div class="gcab">
-                        <span>${escaparHtml(g.pessoaNome)} (${g.tipo === 'ESCRITORIO' ? 'Escritório' : 'Vendedor'})</span>
+                        <span>${escaparHtml(g.pessoaNome)} (${escaparHtml(rotuloTipo(g.tipo))})</span>
                         <span>R$ ${fmt(g.valorTotal)}</span>
                     </div>
                     <div class="ginfo">

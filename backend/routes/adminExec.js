@@ -12,6 +12,11 @@ const prisma = require('../config/database');
 const clienteInsightService = require('../services/clienteInsightService');
 const orientacaoService = require('../services/orientacaoService');
 const estoqueService = require('../services/estoqueService');
+// Papel do responsável pela cobrança — ponto ÚNICO de derivação. Os diagnósticos abaixo
+// liam os campos crus e por isso mentiam (ver comentários em cada um).
+const {
+    ehRecebimentoProprio, ehResponsavelPelaCobranca, papelResponsavel
+} = require('../services/recebimentoEntregaService');
 const contaAzulService = require('../services/contaAzulService');
 
 // Estado do backfill assíncrono da conta financeira em Contas a Receber (varre em segundo plano)
@@ -50,7 +55,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'cobrancas-responsavel-2026-08-19b',
+        deployMarker: 'papel-responsavel-2026-08-19c',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -3519,7 +3524,7 @@ router.get('/especiais-abertos', async (req, res) => {
                 pedido: {
                     select: {
                         numero: true, statusEntrega: true, dataEntrega: true,
-                        pagamentosReais: { where: { valor: { gt: 0 } }, select: { formaPagamentoNome: true, valor: true, escritorioResponsavel: true } }
+                        pagamentosReais: { where: { valor: { gt: 0 } }, select: { formaPagamentoNome: true, valor: true, responsavelPapel: true, escritorioResponsavel: true, vendedorResponsavelId: true } }
                     }
                 },
                 parcelas: { where: { status: { not: 'CANCELADO' } }, select: { id: true, numeroParcela: true, status: true, valor: true } }
@@ -3528,7 +3533,10 @@ router.get('/especiais-abertos', async (req, res) => {
 
         const resultado = contas.map(c => {
             const pgtos = c.pedido?.pagamentosReais || [];
-            const totalCaixa = pgtos.filter(p => !p.escritorioResponsavel).reduce((s, p) => s + Number(p.valor), 0);
+            // Critério único (`ehRecebimentoProprio`), não `!escritorioResponsavel`: linha de
+            // VENDEDOR/MOTORISTA responsável também não é dinheiro no caixa, e o teste antigo
+            // a contava como recebida — o diagnóstico devolvia um total inflado.
+            const totalCaixa = pgtos.filter(p => ehRecebimentoProprio(p)).reduce((s, p) => s + Number(p.valor), 0);
             const totalParcelas = c.parcelas.filter(p => p.status !== 'PAGO').reduce((s, p) => s + Number(p.valor), 0);
             return {
                 contaId: c.id,
@@ -3560,13 +3568,23 @@ router.get('/diag-impacto-responsavel-caixa', async (req, res) => {
             where: { dinheiroConferido: true, valorEsperadoConferencia: { not: null } },
             select: { id: true, vendedorId: true, dataReferencia: true, status: true, valorEsperadoConferencia: true }
         });
-        const pgtos = await prisma.pedidoPagamentoReal.findMany({
-            where: { vendedorResponsavelId: { not: null }, valor: { gt: 0 } },
+        // Todas as linhas de RESPONSÁVEL — não só as que têm pessoa. O `not: null` sozinho
+        // (o filtro antigo) nunca enxergava o ESCRITÓRIO, então o impacto vinha subestimado.
+        // O papel é derivado depois, em JS, porque linha legada tem `responsavelPapel` vazio.
+        const pgtos = (await prisma.pedidoPagamentoReal.findMany({
+            where: {
+                valor: { gt: 0 },
+                OR: [
+                    { responsavelPapel: { not: null } },
+                    { vendedorResponsavelId: { not: null } },
+                    { escritorioResponsavel: true }
+                ]
+            },
             select: {
-                valor: true, vendedorResponsavelId: true,
+                valor: true, responsavelPapel: true, vendedorResponsavelId: true, escritorioResponsavel: true,
                 pedido: { select: { numero: true, especial: true, dataEntrega: true, statusEntrega: true, embarque: { select: { responsavelId: true } } } }
             }
-        });
+        })).filter(p => ehResponsavelPelaCobranca(p));
         const porDiaVendedor = new Map();
         for (const p of pgtos) {
             const d = p.pedido?.dataEntrega, v = p.pedido?.embarque?.responsavelId;
@@ -3583,7 +3601,14 @@ router.get('/diag-impacto-responsavel-caixa', async (req, res) => {
             }));
         res.json({
             somenteLeitura: true,
+            // Nome mantido por compatibilidade com quem já lê este diagnóstico; agora conta
+            // TODA linha de responsável (motorista, vendedor e escritório).
             pagamentosVendedorResponsavel: pgtos.length,
+            pagamentosResponsavelPorPapel: pgtos.reduce((acc, p) => {
+                const papel = papelResponsavel(p) || 'SEM_PAPEL';
+                acc[papel] = (acc[papel] || 0) + 1;
+                return acc;
+            }, {}),
             valorTotalQueSaiDoAPrestar: Math.round(pgtos.reduce((s, p) => s + Number(p.valor), 0) * 100) / 100,
             caixasComConferenciaDeDinheiro: conferidos.length,
             caixasQueViramDESATUALIZADO: afetados.length,

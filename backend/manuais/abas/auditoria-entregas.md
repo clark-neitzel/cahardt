@@ -59,6 +59,22 @@ Uma entrega é marcada como divergente quando os pagamentos registrados pelo mot
 > os controles da linha de pagamento no painel de edição desta aba (passo 4) — é o único lugar
 > em que a marcação muda de propósito.
 
+> **Vendedor, motorista ou escritório (19/08/2026).** A marcação passou a dizer o **papel** de
+> quem ficou de cobrar:
+> - **Motorista responsável** — a pessoa é sempre **quem estava logado no aparelho** ao marcar.
+>   Um id de outra pessoa mandado por fora é ignorado: não dá para pendurar a dívida de
+>   motorista em terceiro.
+> - **Vendedor responsável** — a pessoa é escolhida numa lista.
+> - **Escritório responsável** — igual a antes.
+>
+> O **motorista pode marcar os três no checkout**, inclusive a si mesmo — a conferência do
+> caixa é que valida. Aqui na Auditoria o escritório marca e corrige qualquer um dos três. Em
+> qualquer tela a pessoa precisa existir e estar **ativa**, senão o app recusa e explica.
+>
+> Corrigir o **valor** de uma entrega preserva o papel junto com a pessoa: antes, cada correção
+> rebaixava em silêncio uma marcação de motorista para "vendedor". As marcações feitas antes
+> desta data continuam como estavam (vendedor/escritório) e não são reclassificadas.
+
 ### Corrigir o status da entrega
 Editar o lançamento e mudar o status da entrega (ex.: o motorista marcou **Devolvido** por
 engano) **não mexe no financeiro** — o título e o boleto do cliente ficam como estavam. Quem

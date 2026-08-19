@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { X, CheckCircle, Package, ArrowRight, Save, Navigation, DollarSign, AlertCircle, Trash2, Plus, Mic, MicOff, MessageSquare, QrCode } from 'lucide-react';
 import toast from 'react-hot-toast';
 import entregasService from '../../../services/entregasService';
@@ -10,6 +10,9 @@ import AlertaGpsFaltante from '../../../components/AlertaGpsFaltante';
 import ClientePopup from '../../Rota/ClientePopup';
 import PixAsaasModal from './PixAsaasModal';
 import NaPortaGpsModal from './NaPortaGpsModal';
+import SelectBusca from '../../../components/SelectBusca';
+import vendedorService from '../../../services/vendedorService';
+import { somenteAtivos } from '../../../utils/vendedoresFiltro';
 
 const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     const { user } = useAuth();
@@ -40,9 +43,42 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
     // Diversos
     const [divergencia, setDivergencia] = useState(false);
 
+    // Vendedores para o seletor de "Vendedor responsável".
+    // SÓ OS ATIVOS: o servidor recusa a entrega inteira (400) se o id apontar para alguém
+    // inativo — e o motorista travaria na porta do cliente. Por isso aqui é `listarAtivos`
+    // (critério de FORMULÁRIO), nunca `listarParaFiltro` (que inclui inativos de propósito).
+    // `vendedoresStatus`: 'carregando' | 'ok' | 'erro'. O motorista está no 4G da rua, na
+    // porta do cliente — a lista FALHAR é cenário normal, não exceção. Sem este estado a
+    // tela oferecia o botão "Vendedor" e abria um menu vazio: ele escolhia o papel, não
+    // conseguia escolher ninguém e não conseguia finalizar até descobrir sozinho que
+    // precisava voltar para "Eu mesmo".
+    const [vendedoresAtivos, setVendedoresAtivos] = useState([]);
+    const [vendedoresStatus, setVendedoresStatus] = useState('carregando');
+
     // PIX na entrega (Asaas) — QR Code com confirmação bancária na hora
     const [asaasDisponivel, setAsaasDisponivel] = useState(false);
     const [showPixModal, setShowPixModal] = useState(false);
+
+    // Recarregável: o botão "Tentar de novo" chama a MESMA função, sem fechar o modal
+    // (fechar faria o motorista refazer todo o fechamento da entrega).
+    const carregarVendedores = useCallback(async () => {
+        setVendedoresStatus('carregando');
+        try {
+            const lista = await vendedorService.listarAtivos();
+            // `somenteAtivos` é rede de segurança: a rota já filtra, mas se um dia devolver
+            // um inativo o servidor recusaria a entrega inteira com 400, na rua.
+            const ativos = somenteAtivos(lista);
+            setVendedoresAtivos(ativos);
+            // Lista vazia vale como indisponível: oferecer um menu sem ninguém dentro é o
+            // mesmo beco sem saída da falha de rede.
+            setVendedoresStatus(ativos.length > 0 ? 'ok' : 'erro');
+        } catch {
+            setVendedoresAtivos([]);
+            setVendedoresStatus('erro');
+        }
+    }, []);
+
+    useEffect(() => { carregarVendedores(); }, [carregarVendedores]);
 
     useEffect(() => {
         asaasService.status()
@@ -314,6 +350,65 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
         }));
     };
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // RESPONSÁVEL PELA COBRANÇA — o motorista ESCOLHE (08/2026)
+    // ─────────────────────────────────────────────────────────────────────────
+    // Até 08/2026 esta tela mandava `user.id` (o próprio motorista) na coluna do
+    // VENDEDOR, guiada pelas caixinhas da forma de pagamento — o cadastro invertido de
+    // uma forma bastava para a dívida sair no nome errado, e o motorista nunca via.
+    //
+    // Agora quem lança ESCOLHE o papel, os três aparecem (inclusive ele mesmo) e a tela
+    // MOSTRA o que vai ser gravado. O controle é a aprovação de quem confere o caixa, não
+    // uma trava aqui.
+    //
+    // As caixinhas da forma (`permiteVendedorResponsavel` / `permiteEscritorioResponsavel`)
+    // NÃO decidem mais QUEM é o responsável — sobraram com um papel só: dizer se a linha
+    // é de responsável (ou seja, se NÃO entra dinheiro agora). Qual das duas está marcada
+    // é indiferente.
+    const formaAceitaResponsavel = (formaConfig) =>
+        !!(formaConfig?.permiteVendedorResponsavel || formaConfig?.permiteEscritorioResponsavel);
+
+    const linhaAceitaResponsavel = (pg) => !pg._cobrancaAsaasId
+        && formaAceitaResponsavel(formasDisp.find(f => f._selectId === pg._selectId));
+
+    // Padrão = MOTORISTA (o caso comum: ele mesmo vai cobrar depois). Os outros dois
+    // ficam a um toque. De propósito NÃO herdamos o padrão das caixinhas da forma: era
+    // exatamente o cadastro invertido que escrevia dívida de motorista como "vendedor".
+    const trocarForma = (idL, selectId) => {
+        const aceita = formaAceitaResponsavel(formasDisp.find(f => f._selectId === selectId));
+        setPagamentos(pagamentos.map(p => {
+            if (p.idLocal !== idL) return p;
+            if (!aceita) return { ...p, _selectId: selectId, _papel: null, _vendedorId: null };
+            return { ...p, _selectId: selectId, _papel: p._papel || 'MOTORISTA' };
+        }));
+    };
+
+    // Papel EFETIVO da linha. A linha pré-preenchida automaticamente não passa por
+    // `trocarForma`, então o padrão MOTORISTA é resolvido aqui — assim tela, validação e
+    // payload leem sempre o mesmo valor.
+    const papelDaLinha = (pg) => {
+        if (!linhaAceitaResponsavel(pg)) return null;
+        return pg._papel || 'MOTORISTA';
+    };
+
+    const nomeVendedorDaLinha = (pg) =>
+        vendedoresAtivos.find(v => v.id === pg._vendedorId)?.nome || null;
+
+    // Só dá para pendurar no vendedor se existir lista para escolher.
+    const podeEscolherVendedor = vendedoresStatus === 'ok' && vendedoresAtivos.length > 0;
+
+    const escolherPapel = (idL, papel) => {
+        // Trava de segurança: mesmo que o botão escape (renderização antiga, toque duplo),
+        // ninguém entra no estado "VENDEDOR sem lista" — que é o beco sem saída.
+        if (papel === 'VENDEDOR' && !podeEscolherVendedor) {
+            toast.error('Sem conexão para carregar a lista de vendedores. Toque em "Tentar de novo".');
+            return;
+        }
+        setPagamentos(pagamentos.map(p => p.idLocal === idL
+            ? { ...p, _papel: papel, _vendedorId: papel === 'VENDEDOR' ? p._vendedorId : null }
+            : p));
+    };
+
     const avancarParaGPS = () => {
         // Se a entrega é DEVOLVIDO 100%, já pode ir! (Isso não chega aqui pq Pula do Step 1 pro 4, mas garantia)
         if (statusFinal === 'DEVOLVIDO') {
@@ -339,6 +434,14 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
         if (duplicado) {
             const nomeDuplicado = formasDisp.find(f => f._selectId === duplicado)?.nome || duplicado;
             return toast.error(`"${nomeDuplicado}" foi usada mais de uma vez. Cada forma de pagamento só pode aparecer uma vez.`);
+        }
+
+        // "Vendedor responsável" SEM vendedor escolhido: o servidor recusa a entrega
+        // inteira com 400 e o motorista trava na porta do cliente. A tela já sabe disso
+        // aqui — então nem deixa passar do caixa.
+        const semVendedor = pagamentos.find(p => papelDaLinha(p) === 'VENDEDOR' && !p._vendedorId);
+        if (semVendedor) {
+            return toast.error('Escolha QUAL vendedor fica responsável por cobrar este valor.');
         }
 
         // Validação Matemática RIGOROSA (Travada de Segurança contra Calote Cego)
@@ -402,18 +505,22 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                             formaPagamentoEntregaId: null,
                             formaPagamentoNome: 'PIX Asaas',
                             valor: p.valor,
+                            responsavelPapel: null,
                             vendedorResponsavelId: null,
-                            escritorioResponsavel: false,
                             cobrancaAsaasId: p._cobrancaAsaasId
                         };
                     }
                     const formaConfig = formasDisp.find(f => f._selectId === p._selectId);
+                    // Papel EXPLÍCITO, escolhido pelo motorista. MOTORISTA → o servidor usa
+                    // o usuário logado (id do payload é ignorado); ESCRITORIO → sem pessoa;
+                    // VENDEDOR → a pessoa escolhida na lista (só ativos).
+                    const papel = papelDaLinha(p);
                     return {
                         formaPagamentoEntregaId: formaConfig?.formaPagamentoEntregaId || null,
                         formaPagamentoNome: formaConfig?.nome || p._selectId,
                         valor: p.valor,
-                        vendedorResponsavelId: formaConfig?.permiteVendedorResponsavel ? user.id : null,
-                        escritorioResponsavel: !!formaConfig?.permiteEscritorioResponsavel
+                        responsavelPapel: papel,
+                        vendedorResponsavelId: papel === 'VENDEDOR' ? p._vendedorId : null
                     };
                 });
             }
@@ -703,7 +810,7 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                                 <select
                                                     className="w-full mt-1 border-b-2 border-gray-300 focus:border-primary bg-transparent py-1 text-sm font-bold text-gray-800 focus:outline-none"
                                                     value={pg._selectId}
-                                                    onChange={(e) => updatePagamento(pg.idLocal, '_selectId', e.target.value)}
+                                                    onChange={(e) => trocarForma(pg.idLocal, e.target.value)}
                                                 >
                                                     {pg._selectId === '' && <option value="">— Escolha a forma —</option>}
                                                     {['Condições de Pagamento', 'Formas de Entrega'].map(grupo => {
@@ -734,6 +841,95 @@ const CheckoutEntregaModal = ({ pedido, onClose, onSuccess }) => {
                                                     onChange={(e) => updatePagamento(pg.idLocal, 'valor', e.target.value)}
                                                 />
                                             </div>
+
+                                            {/* QUEM VAI COBRAR — só aparece na forma que não entra dinheiro agora.
+                                                Três toques possíveis, com "Eu" já marcado (caso comum). */}
+                                            {linhaAceitaResponsavel(pg) && (() => {
+                                                const papel = papelDaLinha(pg);
+                                                const opcoes = [
+                                                    { valor: 'MOTORISTA', texto: 'Eu mesmo', ativa: true },
+                                                    { valor: 'ESCRITORIO', texto: 'Escritório', ativa: true },
+                                                    { valor: 'VENDEDOR', texto: 'Vendedor', ativa: podeEscolherVendedor }
+                                                ];
+                                                return (
+                                                    <div className="mt-4 pt-3 border-t border-gray-100">
+                                                        <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wide">
+                                                            Quem vai cobrar este valor?
+                                                        </label>
+                                                        <div className="grid grid-cols-3 gap-2 mt-2">
+                                                            {opcoes.map(op => (
+                                                                <button
+                                                                    key={op.valor}
+                                                                    type="button"
+                                                                    disabled={!op.ativa}
+                                                                    onClick={() => escolherPapel(pg.idLocal, op.valor)}
+                                                                    className={`min-h-[44px] px-2 py-2 rounded-full text-xs font-bold border transition-colors ${papel === op.valor
+                                                                        ? 'bg-primary border-primary text-white shadow-sm'
+                                                                        : !op.ativa
+                                                                            ? 'bg-gray-100 border-gray-200 text-gray-400'
+                                                                            : 'bg-white border-gray-300 text-gray-700 active:bg-gray-100'}`}
+                                                                >
+                                                                    {op.texto}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+
+                                                        {/* A lista de vendedores não veio (4G ruim na porta do cliente).
+                                                            "Eu mesmo" e "Escritório" continuam funcionando — ele NUNCA
+                                                            fica sem caminho — e dá para tentar de novo sem sair daqui. */}
+                                                        {!podeEscolherVendedor && (
+                                                            <div className="mt-2 flex items-center justify-between gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                                                                <p className="text-xs text-amber-800">
+                                                                    {vendedoresStatus === 'carregando'
+                                                                        ? 'Carregando a lista de vendedores...'
+                                                                        : 'Sem conexão para carregar a lista de vendedores. Use "Eu mesmo" ou "Escritório" — o escritório corrige depois.'}
+                                                                </p>
+                                                                {vendedoresStatus === 'erro' && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={carregarVendedores}
+                                                                        className="shrink-0 min-h-[44px] px-3 rounded-full text-xs font-bold bg-white border border-amber-300 text-amber-800 active:bg-amber-100"
+                                                                    >
+                                                                        Tentar de novo
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {papel === 'VENDEDOR' && (
+                                                            <div className="mt-3">
+                                                                <label className="text-[10px] uppercase font-bold text-gray-500 tracking-wide">
+                                                                    Qual vendedor?
+                                                                </label>
+                                                                <SelectBusca
+                                                                    className="w-full mt-1"
+                                                                    value={pg._vendedorId || ''}
+                                                                    onChange={(e) => updatePagamento(pg.idLocal, '_vendedorId', e.target.value || null)}
+                                                                >
+                                                                    <option value="">Escolha o vendedor...</option>
+                                                                    {vendedoresAtivos.map(v => (
+                                                                        <option key={v.id} value={v.id}>{v.nome}</option>
+                                                                    ))}
+                                                                </SelectBusca>
+                                                                {!pg._vendedorId && (
+                                                                    <p className="text-xs font-semibold text-red-600 mt-1">
+                                                                        Escolha o vendedor para poder finalizar.
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {/* O que vai ser gravado, em português — o motorista confere na hora */}
+                                                        <p className="text-xs text-gray-600 mt-2">
+                                                            {papel === 'MOTORISTA' && `Fica no seu nome${user?.nome ? ` (${user.nome})` : ''} para cobrar depois.`}
+                                                            {papel === 'ESCRITORIO' && 'Fica com o escritório para cobrar depois.'}
+                                                            {papel === 'VENDEDOR' && (nomeVendedorDaLinha(pg)
+                                                                ? `Fica no nome de ${nomeVendedorDaLinha(pg)} para cobrar depois.`
+                                                                : 'Escolha o vendedor que fica responsável.')}
+                                                        </p>
+                                                    </div>
+                                                );
+                                            })()}
                                         </div>
                                     ))
                                 )}

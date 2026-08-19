@@ -5,7 +5,108 @@ const verificarAuth = require('../middlewares/authMiddleware');
 const {
     acharRegrasCondicao, carregarMapaFormas, formaPermitida, nomesFormasPermitidas
 } = require('../services/condicaoRecebimentoService');
-const { baixaDeEntregaViva, MSG_TITULO_JA_BAIXADO } = require('../services/recebimentoEntregaService');
+const {
+    baixaDeEntregaViva, MSG_TITULO_JA_BAIXADO, PAPEIS_RESPONSAVEL, ehResponsavelPelaCobranca
+} = require('../services/recebimentoEntregaService');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RESPONSÁVEL PELA COBRANÇA — quem o SERVIDOR aceita, e de quem
+// ─────────────────────────────────────────────────────────────────────────────
+// Até 08/2026 o servidor copiava o que o app mandasse: o checkout gravava o usuário
+// logado (o MOTORISTA) numa coluna chamada `vendedorResponsavelId`, e um POST feito à
+// mão podia pendurar a dívida em QUALQUER pessoa. Agora:
+//   • o motorista pode marcar os TRÊS papéis no checkout, INCLUSIVE o dele mesmo
+//     (decisão do dono, 08/2026 — "sim, inclusive a dele"). Quem controla isso é a
+//     APROVAÇÃO de quem confere o caixa, não uma trava na hora de marcar;
+//   • MOTORISTA  → a pessoa é SEMPRE quem está logado (id do payload é IGNORADO);
+//   • ESCRITORIO → sem pessoa;
+//   • VENDEDOR   → a pessoa VEM DO PAYLOAD (o motorista escolhe da lista);
+//   • em qualquer caso a pessoa tem que EXISTIR e estar ATIVA, e papel fora da lista
+//     é recusado com 400.
+// O papel vai para `responsavelPapel`; a PESSOA continua em `vendedorResponsavelId`
+// (uma coluna só de pessoa — ver comentário do schema).
+
+/**
+ * Lê a marcação de responsável de UMA linha de pagamento do payload e devolve os três
+ * campos já normalizados, ou `{ erro }` com a mensagem para o cliente.
+ *
+ * `contexto`:
+ *   'CHECKOUT'  → POST /:id/concluir (motorista em campo)
+ *   'AUDITORIA' → PATCH /:id/editar  (escritório)
+ *
+ * Compatibilidade: payload antigo, sem `responsavelPapel`, continua funcionando —
+ * `vendedorResponsavelId` preenchido vira MOTORISTA no checkout e VENDEDOR na Auditoria
+ * (é o que cada tela realmente quer dizer), `escritorioResponsavel` vira ESCRITORIO.
+ */
+const lerResponsavel = (pgto, { contexto, usuarioLogadoId }) => {
+    const vazio = { responsavelPapel: null, vendedorResponsavelId: null, escritorioResponsavel: false };
+
+    let papel = String(pgto?.responsavelPapel || '').trim().toUpperCase();
+    if (!papel) {
+        // Payload legado (frontend ainda não atualizado)
+        if (pgto?.vendedorResponsavelId) papel = contexto === 'CHECKOUT' ? 'MOTORISTA' : 'VENDEDOR';
+        else if (pgto?.escritorioResponsavel) papel = 'ESCRITORIO';
+        else return vazio;
+    }
+    if (!PAPEIS_RESPONSAVEL.includes(papel)) {
+        return { erro: `Papel de responsável inválido: "${pgto?.responsavelPapel}". Use ${PAPEIS_RESPONSAVEL.join(', ')}.` };
+    }
+
+    if (papel === 'ESCRITORIO') {
+        return { responsavelPapel: 'ESCRITORIO', vendedorResponsavelId: null, escritorioResponsavel: true };
+    }
+
+    // MOTORISTA no checkout: a pessoa é SEMPRE quem está logado. O que vier no payload
+    // é descartado de propósito — é o buraco que permitia pendurar a dívida em terceiro.
+    // VENDEDOR no checkout é PERMITIDO e a pessoa vem do payload (o motorista escolhe da
+    // lista) — ela ainda passa por `validarPessoasResponsaveis` (existe? está ativa?).
+    const pessoaId = (papel === 'MOTORISTA' && contexto === 'CHECKOUT')
+        ? usuarioLogadoId
+        : (pgto?.vendedorResponsavelId || null);
+
+    if (!pessoaId) {
+        return { erro: `Marque quem é o ${papel === 'MOTORISTA' ? 'motorista' : 'vendedor'} responsável por este valor.` };
+    }
+    return { responsavelPapel: papel, vendedorResponsavelId: pessoaId, escritorioResponsavel: false };
+};
+
+/**
+ * Todas as pessoas apontadas existem? E as pessoas NOVAS estão ativas?
+ * Devolve a mensagem de erro ou null.
+ *
+ * `idsJaMarcados`: pessoas que JÁ constavam como responsáveis neste pedido antes da
+ * edição. Elas passam mesmo INATIVAS.
+ *
+ * ⚠️ Por que a exceção existe: a Auditoria manda `responsavelPapel` em toda linha, então
+ * toda linha conta como "declarada" e cai nesta validação — inclusive quando o escritório
+ * só quis corrigir o VALOR e nem tocou no responsável. Sem a exceção, bastava a pessoa ter
+ * saído da empresa para o PATCH devolver 400, e a única saída do usuário seria reatribuir
+ * a dívida a outra pessoa ou tirar o responsável — as duas coisas que esta fatia existe
+ * para impedir. E é exatamente quando alguém sai que essas dívidas são auditadas.
+ * A tela, aliás, OFERECE a pessoa inativa de propósito ("Fulano (inativo)"); recusar aqui
+ * seria o frontend e o backend discordando.
+ *
+ * Continua barrado: MUDAR o responsável para alguém inativo (id que não estava no pedido).
+ * No checkout não se passa `idsJaMarcados` — lá a pessoa é sempre nova e precisa estar ativa.
+ */
+const validarPessoasResponsaveis = async (linhas, { idsJaMarcados = [] } = {}) => {
+    const ids = [...new Set((linhas || []).map(l => l.vendedorResponsavelId).filter(Boolean))];
+    if (ids.length === 0) return null;
+    const jaMarcados = new Set(idsJaMarcados.filter(Boolean));
+    const pessoas = await prisma.vendedor.findMany({
+        where: { id: { in: ids } },
+        select: { id: true, nome: true, ativo: true }
+    });
+    for (const id of ids) {
+        const pessoa = pessoas.find(p => p.id === id);
+        if (!pessoa) return 'Responsável pela cobrança não encontrado no cadastro de usuários.';
+        // Manter quem já estava nunca é recusado — só a atribuição NOVA exige pessoa ativa.
+        if (!pessoa.ativo && !jaMarcados.has(id)) {
+            return `${pessoa.nome} está inativo e não pode ficar como responsável pela cobrança.`;
+        }
+    }
+    return null;
+};
 
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
@@ -444,15 +545,23 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
                     return res.status(400).json({ error: 'Cada pagamento deve ter valor maior que R$ 0,00.' });
                 }
                 somaRecebida += Number(pgto.valor);
+                // O servidor NÃO copia mais a marcação do app: decide o papel e, no caso do
+                // motorista, quem é a pessoa (o usuário logado).
+                const resp = lerResponsavel(pgto, { contexto: 'CHECKOUT', usuarioLogadoId: req.user.id });
+                if (resp.erro) return res.status(400).json({ error: resp.erro });
                 operacoesPgto.push({
                     formaPagamentoEntregaId: pgto.formaPagamentoEntregaId,
                     formaPagamentoNome: pgto.formaPagamentoNome,
                     valor: Number(pgto.valor),
-                    vendedorResponsavelId: pgto.vendedorResponsavelId || null,
-                    escritorioResponsavel: pgto.escritorioResponsavel || false,
+                    responsavelPapel: resp.responsavelPapel,
+                    vendedorResponsavelId: resp.vendedorResponsavelId,
+                    escritorioResponsavel: resp.escritorioResponsavel,
                     cobrancaAsaasId: pgto.cobrancaAsaasId || null
                 });
             }
+
+            const erroPessoa = await validarPessoasResponsaveis(operacoesPgto);
+            if (erroPessoa) return res.status(400).json({ error: erroPessoa });
 
             // PIX Asaas: pagamento cujo dinheiro o banco JÁ confirmou (QR pago na frente do motorista).
             // Valida que a cobrança é deste pedido, está RECEBIDA, bate o valor e nunca foi usada.
@@ -472,6 +581,7 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
                     }
                     // Padroniza: dinheiro confirmado, sem responsável de dívida
                     op.formaPagamentoNome = 'PIX Asaas';
+                    op.responsavelPapel = null;
                     op.escritorioResponsavel = false;
                     op.vendedorResponsavelId = null;
                 }
@@ -579,9 +689,15 @@ router.post('/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, r
 // toda correção de valor apagava silenciosamente a marcação de quem ficou de cobrar — o
 // título continuava em aberto, mas sem dono, e sumia do fechamento do responsável.
 //
-// Regra: a marcação só muda quando o payload FALA dela. Se o item vier sem os dois campos
+// Regra: a marcação só muda quando o payload FALA dela. Se o item vier sem os campos
 // (`undefined`), herdamos a marcação da linha antiga equivalente (mesma forma de pagamento).
 // Mandar `vendedorResponsavelId: null` + `escritorioResponsavel: false` continua limpando.
+//
+// ⚠️ O PAPEL é herdado JUNTO, e CRU (inclusive vazio). Herdar só a pessoa rebaixava em
+// silêncio uma marcação de MOTORISTA para "vendedor" a cada correção de valor feita pela
+// Auditoria — o mesmo tipo de perda que já obrigou a remendar esta função uma vez. Linha
+// herdada também não passa pela validação de papel: é dado que já estava no banco, e
+// revalidá-lo carimbaria um papel novo por cima das 44 marcações legadas.
 // ⚠️ A chave tem que ser SIMÉTRICA. A primeira versão caía no id quando havia id e no nome
 // quando não havia — e como 100% das linhas marcadas do banco têm `formaPagamentoEntregaId`,
 // nenhum payload que manda só `{ formaPagamentoNome, valor }` (é o caso da tela de Rota,
@@ -601,7 +717,7 @@ const preservarResponsaveis = (pagamentosNovos, pagamentosAntigos) => {
     // Fila por forma: duas linhas da mesma forma herdam marcações diferentes, na ordem.
     const filas = new Map();
     for (const antigo of (pagamentosAntigos || [])) {
-        if (!antigo.vendedorResponsavelId && !antigo.escritorioResponsavel) continue;
+        if (!ehResponsavelPelaCobranca(antigo)) continue;
         const entrada = { antigo, usado: false };
         for (const k of chavesFormaPagamento(antigo)) {
             if (!filas.has(k)) filas.set(k, []);
@@ -623,17 +739,16 @@ const preservarResponsaveis = (pagamentosNovos, pagamentosAntigos) => {
         return null;
     };
     return (pagamentosNovos || []).map(p => {
-        const declarou = p.vendedorResponsavelId !== undefined || p.escritorioResponsavel !== undefined;
-        if (declarou) {
-            return {
-                ...p,
-                vendedorResponsavelId: p.vendedorResponsavelId || null,
-                escritorioResponsavel: !!p.escritorioResponsavel
-            };
-        }
+        const declarou = p.vendedorResponsavelId !== undefined
+            || p.escritorioResponsavel !== undefined
+            || p.responsavelPapel !== undefined;
+        // Declarou → a linha vai passar por `lerResponsavel` (validação de papel/pessoa).
+        if (declarou) return { ...p, _declarou: true };
         const herdado = proximaMarcacao(p);
         return {
             ...p,
+            _declarou: false,
+            responsavelPapel: herdado?.responsavelPapel || null,
             vendedorResponsavelId: herdado?.vendedorResponsavelId || null,
             escritorioResponsavel: !!herdado?.escritorioResponsavel
         };
@@ -673,13 +788,31 @@ router.patch('/:id/editar', verificarAuth, checkAjustador, async (req, res) => {
                 where: { pedidoId: id },
                 select: {
                     formaPagamentoEntregaId: true, formaPagamentoNome: true,
-                    vendedorResponsavelId: true, escritorioResponsavel: true
+                    responsavelPapel: true, vendedorResponsavelId: true, escritorioResponsavel: true
                 }
             })
             : [];
         const pagamentosPreservados = pagamentos
             ? preservarResponsaveis(pagamentos, pagamentosAntigos)
             : [];
+
+        // Só a linha que o formulário DECLAROU é validada/normalizada. A herdada passa
+        // reto, com o papel exatamente como estava no banco (inclusive vazio = legado).
+        for (const p of pagamentosPreservados) {
+            if (!p._declarou) continue;
+            const resp = lerResponsavel(p, { contexto: 'AUDITORIA', usuarioLogadoId: req.user.id });
+            if (resp.erro) return res.status(400).json({ error: resp.erro });
+            p.responsavelPapel = resp.responsavelPapel;
+            p.vendedorResponsavelId = resp.vendedorResponsavelId;
+            p.escritorioResponsavel = resp.escritorioResponsavel;
+        }
+        // Quem JÁ era responsável neste pedido pode continuar sendo, mesmo inativo (ver
+        // `validarPessoasResponsaveis`). Trocar para alguém inativo continua sendo 400.
+        const erroPessoaEdicao = await validarPessoasResponsaveis(
+            pagamentosPreservados.filter(p => p._declarou),
+            { idsJaMarcados: pagamentosAntigos.map(a => a.vendedorResponsavelId) }
+        );
+        if (erroPessoaEdicao) return res.status(400).json({ error: erroPessoaEdicao });
 
         await prisma.$transaction(async (tx) => {
             // Atualiza campos do pedido
@@ -702,6 +835,7 @@ router.patch('/:id/editar', verificarAuth, checkAjustador, async (req, res) => {
                             formaPagamentoEntregaId: p.formaPagamentoEntregaId || null,
                             formaPagamentoNome: p.formaPagamentoNome,
                             valor: Number(p.valor),
+                            responsavelPapel: p.responsavelPapel || null,
                             vendedorResponsavelId: p.vendedorResponsavelId || null,
                             escritorioResponsavel: p.escritorioResponsavel || false
                         }))

@@ -376,7 +376,7 @@ const pedidoController = {
                                     pedido: {
                                         select: {
                                             especial: true, statusEntrega: true,
-                                            pagamentosReais: { select: { valor: true, escritorioResponsavel: true, vendedorResponsavelId: true } }
+                                            pagamentosReais: { select: { valor: true, responsavelPapel: true, escritorioResponsavel: true, vendedorResponsavelId: true } }
                                         }
                                     }
                                 }

@@ -77,7 +77,7 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 2. A barra azul "Baixa CA" aparece no topo da lista com o total selecionado
 3. Clique em **Processar N selecionada(s)** — todas as baixas são registradas de uma vez
 
-**Como a baixa local funciona:** dinheiro entra na conta "Caixinha", PIX Asaas entra na conta financeira do Asaas (alimenta o relatório Saldos por Conta). Se o valor acertado na entrega for menor que a parcela por causa de devolução de mercadoria, a diferença fecha como **desconto** ("Devolução de mercadoria — conferência do caixa"). Valores marcados como "Vendedor responsável"/"Escritório responsável" **não baixam** — a parcela fica em aberto para essa parte.
+**Como a baixa local funciona:** dinheiro entra na conta "Caixinha", PIX Asaas entra na conta financeira do Asaas (alimenta o relatório Saldos por Conta). Se o valor acertado na entrega for menor que a parcela por causa de devolução de mercadoria, a diferença fecha como **desconto** ("Devolução de mercadoria — conferência do caixa"). Valores marcados como responsável (**motorista**, vendedor ou escritório) **não baixam** — a parcela fica em aberto para essa parte.
 
 **Pagamentos "PIX Asaas":** o dinheiro desse PIX **não** fica com o motorista — não entra no valor a prestar.
 
@@ -90,10 +90,11 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 - a baixa respeita a **condição de pagamento liberada** para o pedido: forma que a condição não permite é recusada, com a mensagem dizendo o que fazer (corrigir o lançamento da entrega ou trocar a condição do pedido);
 - clicar duas vezes não duplica: o que já foi baixado é ignorado.
 
-**"Escritório/Vendedor responsável" — quem ficou responsável FICA DEVENDO (decisão do dono, 08/2026):**
+**"Motorista/Escritório/Vendedor responsável" — quem ficou responsável FICA DEVENDO (decisão do dono, 08/2026):**
 - não é recebimento: **não baixa título** (nem aqui, nem na baixa manual de Contas a Receber), não gera histórico de pagamento e o título continua **em aberto no nome do responsável** — é assim que o dono vê a lista em Contas a Receber e dá baixa quando descontar da pessoa;
 - **não entra mais no "a prestar" do motorista**: antes, "Vendedor responsável" era cobrado do motorista no fechamento do dia *e* deixava o título aberto — o mesmo valor em dois lugares. Agora o motorista presta só o dinheiro que realmente recebeu do cliente. **A equipe vai notar que o valor a prestar diminuiu** — é esperado;
-- se a entrega só tiver valores de responsável, o resultado da baixa vem como **"Não quita: só há valor de responsável"**, e isso **não trava** o fechamento do caixa.
+- se a entrega só tiver valores de responsável, o resultado da baixa vem como **"Não quita: só há valor de responsável"**, e isso **não trava** o fechamento do caixa;
+- **desde 19/08/2026 são TRÊS papéis, e o texto diz qual é.** Além de "vendedor" e "escritório" existe **"motorista"** — o mais comum, porque quem fecha a entrega na rua costuma assumir a cobrança. Na observação que o sistema grava na baixa parcial, cada valor sai com o papel entre parênteses: `(motorista)`, `(vendedor)` ou `(escritório)`. **Antes, dívida de motorista era escrita como "vendedor"** — quem lê a observação de uma baixa antiga deve ter isso em mente. Marcação feita antes dessa data continua aparecendo como vendedor/escritório, sem reclassificação.
 
 **Selo "A CONFERIR" na lista de entregas:** o especial entregue e ainda não baixado aparece marcado como **A CONFERIR** — é o aviso de que aquele dinheiro já foi recebido pelo motorista e falta a baixa. Some assim que a baixa é feita. **Pedido cuja devolução foi TOTAL não aparece mais como A CONFERIR nem oferece a caixinha de Baixa CA**: a conta ficou marcada como devolvida e não há mais nada a fazer nessa linha (antes ela voltava pedindo conferência e o Processar respondia "JÁ QUITADO"). Devolução **parcial** é diferente: sobrou saldo, então o título continua precisando de baixa e o selo permanece.
 

@@ -29,8 +29,9 @@ No topo aparecem quatro números: **Saldo em aberto hoje**, **Responsáveis**, *
 
 ## Os cards
 
-Cada card é **uma pessoa**, com o selo **Vendedor** (azul) ou **Escritório** (âmbar), a quantidade de títulos, a data do mais antigo e o valor total à direita.
+Cada card é **uma pessoa**, com o selo **Vendedor** (azul), **Motorista** ou **Escritório** (âmbar), a quantidade de títulos, a data do mais antigo e o valor total à direita.
 
+- **Vendedor e motorista são cards separados, mesmo sendo a mesma pessoa (19/08/2026).** O que o motorista assumiu ao fechar a entrega na rua vem no card **"Fulano (motorista)"**; o que o escritório pendurou no vendedor vem no card do vendedor. São dívidas de naturezas diferentes e nunca se somam num card só. Marcação feita **antes** dessa data continua no card de sempre (vendedor ou escritório), sem reclassificação.
 - **O escritório é um balde só.** Não existe um card por pessoa do escritório: os pedidos foram lançados por gente diferente, então tudo cai num card "Escritório". O nome de quem lançou o pedido aparece na coluna **"Lançado por"** de cada título — é uma **pista de a quem perguntar, não a afirmação de que aquela pessoa é a responsável**.
 - **Clique no card** para expandir e ver os títulos: cliente, pedido, vencimento, "Lançado por" (só no card do Escritório), dias de atraso (badge vermelho) e valor. No celular cada título vira um cartão em vez de linha de tabela.
 

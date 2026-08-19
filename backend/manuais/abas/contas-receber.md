@@ -86,7 +86,7 @@ régua de cobrança.
    - **Cobrança**: como o título é cobrado — Boleto, Pix, Dinheiro ou Cartão. Vem da condição do pedido, então **funciona com contas ainda em aberto** (ex.: Status Conta = Aberto + Cobrança = Boleto lista tudo que está para receber em boleto, sem precisar marcar uma a uma as condições "7 dias - Boleto", "14 dias - Boleto"...)
    - **Condição na Entrega**: forma registrada pelo motorista
    - **Forma Pgto (baixa)**: como a parcela foi quitada — só encontra parcela **já baixada** (parcela em aberto ainda não tem forma de pagamento). Para filtrar boleto em aberto, use o filtro **Cobrança**
-   - **Responsável pela cobrança**: quem ficou encarregado de cobrar o título — cada vendedor que já foi marcado, mais a opção **Escritório**. O filtro olha a **marcação feita na entrega**, não o nome da forma de pagamento: título registrado como "Dinheiro" com a caixinha de responsável marcada também é encontrado (antes escapava). Dá para marcar **uma ou várias** pessoas de uma vez — o recorte é feito no servidor nos dois casos, então os indicadores do topo (total em aberto, vencidas etc.) também passam a ser só das pessoas escolhidas. Linha marcada para vendedor **e** escritório ao mesmo tempo conta como do **vendedor**, tanto no filtro quanto no relatório
+   - **Responsável pela cobrança**: quem ficou encarregado de cobrar o título — cada vendedor que já foi marcado, cada **motorista** que assumiu um valor no checkout da entrega (aparece como "Fulano (motorista)"), mais a opção **Escritório**. O filtro olha a **marcação feita na entrega**, não o nome da forma de pagamento: título registrado como "Dinheiro" com a caixinha de responsável marcada também é encontrado (antes escapava). Dá para marcar **uma ou várias** pessoas de uma vez — o recorte é feito no servidor nos dois casos, então os indicadores do topo (total em aberto, vencidas etc.) também passam a ser só das pessoas escolhidas. Linha marcada para vendedor **e** escritório ao mesmo tempo conta como do **vendedor**, tanto no filtro quanto no relatório
    - **Baixado por**: quem registrou a baixa (usuário do app). Como só parcela baixada tem responsável, ao usar este filtro a tela passa a mostrar também as parcelas já pagas (não é preciso mudar Status Conta/Parcela). A lista traz só quem já deu baixa em alguma parcela. É o mesmo nome que aparece em "Baixado por" embaixo de cada linha
    - **Vencimento** e **Pagamento (baixa)**: filtro de período no padrão do sistema — uma pílula `‹ Todo o período ›` com os presets Hoje, Últimos 7 dias, Últimos 30 dias, Este mês, Este ano, Todo o período e Período personalizado (De/Até dentro do próprio menu). As setas pulam o período inteiro (mês anterior, mês seguinte...). Começa em "Todo o período" (sem recorte de data)
 4. As escolhas ficam salvas por usuário e voltam ao reabrir a tela. Nos períodos o que fica salvo é o **preset** — "Este mês" salvo em julho abre agosto em agosto, ninguém fica preso numa data velha
@@ -125,6 +125,23 @@ A partir de 08/2026 o sistema entende essa marcação:
 - **Fechamento por responsável.** A tela **Financeiro → Cobranças sob responsabilidade** (`/financeiro/cobrancas-responsavel`, mesma permissão desta) agrupa tudo por pessoa: quantos títulos, quanto está em aberto, o mais antigo, a lista completa e uma folha A4 com linha de assinatura para o vale. Só entra o que está **em aberto** — o que já foi baixado não é mais cobrança de ninguém. Ver [cobrancas-sob-responsabilidade.md](cobrancas-sob-responsabilidade.md).
 - **Corrigir o lançamento da entrega não apaga mais a marcação.** Antes, ao ajustar o valor de uma entrega na tela de auditoria, o responsável se perdia em silêncio e o título ficava sem dono. Vale também para a correção feita pela tela de **Rota**, que não fala de responsável.
 - **Ninguém responde por mais do que assumiu.** Se só parte do pedido foi marcada (ex.: pedido de R$ 1.000 com R$ 600 em espécie esperando a conferência do Caixa e R$ 400 no nome do vendedor), o fechamento cobra os **R$ 400** — nunca o título inteiro.
+
+#### Vendedor, escritório ou motorista (a partir de 19/08/2026)
+
+Antes, a marcação só tinha o nome "vendedor responsável" — mas quem fecha a entrega na rua é o **motorista**, e era o nome dele que o sistema gravava nesse campo. Agora a marcação diz o **papel** de quem ficou de cobrar, e são três:
+
+- **Motorista responsável** — quem levou a entrega assumiu a cobrança. A pessoa é sempre **quem está logado no aparelho**: não dá para apontar outra pessoa nesse papel.
+- **Escritório responsável** — o escritório assumiu a cobrança (não é uma pessoa).
+- **Vendedor responsável** — o vendedor daquele cliente ficou de cobrar; a pessoa é **escolhida numa lista**.
+
+**O motorista pode marcar os três no checkout da entrega, inclusive a si mesmo.** Não há trava na hora de marcar — quem confere o valor é **quem fecha o caixa**, na conferência. O escritório também pode marcar e corrigir qualquer um dos três pela **Auditoria de Entregas**. Em todos os casos a pessoa escolhida precisa existir e estar **ativa**; se estiver inativa, o app recusa e explica.
+
+O que muda na sua tela:
+
+- No filtro **Responsável pela cobrança** e no fechamento **Cobranças sob responsabilidade**, a mesma pessoa pode aparecer **duas vezes**: uma como vendedor e outra como **"Fulano (motorista)"**. São dívidas de naturezas diferentes e ficam em grupos separados.
+- **Marcação antiga continua igual.** Tudo o que foi marcado antes desta data continua aparecendo exatamente como aparecia (vendedor ou escritório, com o mesmo nome e o mesmo valor). Nada foi reclassificado para trás.
+- **Corrigir o valor pela Auditoria não muda o papel.** Ajustar o valor de uma entrega preserva quem ficou de cobrar **e** em que papel — antes uma correção rebaixava a marcação do motorista para "vendedor" sem avisar ninguém.
+- Marcar responsável **continua não quitando** o título e continua **fora do "a prestar"** do motorista — nada disso mudou.
 
 A baixa continua sendo dada **aqui**, em Contas a Receber, quando o valor for descontado da pessoa — a tela de fechamento é só o levantamento.
 

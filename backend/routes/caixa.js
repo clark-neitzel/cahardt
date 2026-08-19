@@ -11,7 +11,8 @@ const { garantirContaFinanceira } = require('../services/contaFinanceiraGuardSer
 // Baixa de pedido ESPECIAL: sempre com linha de ledger (pagamentos_parcela) e
 // PAGO só quando o recebido cobre o valor — ver services/recebimentoEntregaService.js
 const {
-    aplicarRecebimentoEntrega, contaEspecieId, ehRecebimentoProprio, ehResponsavelPelaCobranca
+    aplicarRecebimentoEntrega, contaEspecieId, ehRecebimentoProprio, ehResponsavelPelaCobranca,
+    rotuloResponsavel
 } = require('../services/recebimentoEntregaService');
 const {
     acharRegrasCondicao, carregarMapaFormas, formaPermitida, nomesFormasPermitidas
@@ -521,6 +522,10 @@ router.get('/resumo', async (req, res) => {
                     formaNome: p.formaPagamentoNome,
                     valor: val,
                     debitaCaixa,
+                    // `responsavelPapel` vai junto para que o `ehRecebimentoProprio` lá
+                    // embaixo (e a tela) derivem o papel a partir do objeto formatado.
+                    responsavelPapel: p.responsavelPapel,
+                    responsavelRotulo: rotuloResponsavel(p),
                     vendedorResponsavelId: p.vendedorResponsavelId,
                     escritorioResponsavel: p.escritorioResponsavel
                 };
@@ -2781,7 +2786,7 @@ router.post('/quitar-ca', async (req, res) => {
                         const valorCob = Number(cob.valorRecebido ?? cob.valor);
                         const pg = (pedido.pagamentosReais || []).find(p =>
                             !p.cobrancaAsaasId &&
-                            !p.escritorioResponsavel && !p.vendedorResponsavelId &&
+                            ehRecebimentoProprio(p) && // linha de responsável nunca vira PIX Asaas
                             (p.formaPagamentoNome || '').toLowerCase().includes('pix') &&
                             Math.abs(Number(p.valor) - valorCob) <= 0.01
                         );
@@ -2845,11 +2850,11 @@ router.post('/quitar-ca', async (req, res) => {
             for (const p of pedido.pagamentosReais) {
                 if (Number(p.valor) <= 0) continue;
                 if (p.cobrancaAsaasId && cobrancasInvalidas.has(p.cobrancaAsaasId)) continue; // estornado no Asaas
-                if (p.escritorioResponsavel || p.vendedorResponsavelId) {
+                if (ehResponsavelPelaCobranca(p)) {
                     if (pedido.especial) continue; // especial: fiado local, sem ação no CA
-                    const rotulo = p.vendedorResponsavelId
-                        ? 'Vendedor responsável'
-                        : 'Escritório responsável';
+                    // Rótulo derivado (nunca montado na mão): linha de MOTORISTA tem pessoa
+                    // preenchida e sairia como "Vendedor responsável" no `if` antigo.
+                    const rotulo = rotuloResponsavel(p);
                     if (!grupos['OUTRO']) grupos['OUTRO'] = { valor: 0, formaNome: rotulo };
                     grupos['OUTRO'].valor += Number(p.valor);
                     continue;
@@ -3006,11 +3011,16 @@ router.post('/quitar-ca', async (req, res) => {
                 if (isParcial) {
                     const outrasFormas = pedido.pagamentosReais
                         .filter(p => {
-                            if (p.escritorioResponsavel || p.vendedorResponsavelId) return true;
+                            if (ehResponsavelPelaCobranca(p)) return true;
                             const n = (p.formaPagamentoNome || '').toLowerCase();
                             return !n.includes('dinheiro') && !n.includes('pix');
                         })
-                        .map(p => `${p.formaPagamentoNome}: R$ ${Number(p.valor).toFixed(2)}${p.vendedorResponsavelId ? ' (vendedor)' : ''}${p.escritorioResponsavel ? ' (escritório)' : ''}`)
+                        // ⚠️ Este texto SAI DO APP (observação da baixa). O rótulo vem
+                        // derivado: montado na mão, dívida de motorista virava "(vendedor)".
+                        .map(p => {
+                            const papel = rotuloResponsavel(p, { curto: true });
+                            return `${p.formaPagamentoNome}: R$ ${Number(p.valor).toFixed(2)}${papel ? ` (${papel})` : ''}`;
+                        })
                         .join(', ');
                     obsComplemento += ` | Baixa parcial (R$ ${pedido._valorElegivel.toFixed(2)} de R$ ${totalParcelas.toFixed(2)})`;
                     if (outrasFormas) obsComplemento += ` | Restante: ${outrasFormas}`;
