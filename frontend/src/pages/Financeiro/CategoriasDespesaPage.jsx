@@ -44,6 +44,11 @@ const CategoriasDespesaPage = () => {
     const [criando, setCriando] = useState(false);
     const [editandoId, setEditandoId] = useState(null);
     const [nomeEdit, setNomeEdit] = useState('');
+    // Criar categoria nova
+    const [novaCategoria, setNovaCategoria] = useState('');
+    const [novaBloco, setNovaBloco] = useState('');
+    const [novaNatureza, setNovaNatureza] = useState('A_DEFINIR');
+    const [criandoCategoria, setCriandoCategoria] = useState(false);
 
     const carregar = async () => {
         setLoading(true);
@@ -102,6 +107,48 @@ const CategoriasDespesaPage = () => {
             toast.error(e.response?.data?.error || 'Erro ao salvar.');
         } finally {
             setSalvando(false);
+        }
+    };
+
+    // ── Categorias: criar e apagar (salvam na hora) ──
+    const criarCategoria = async () => {
+        const nome = novaCategoria.trim();
+        if (!nome) return;
+        // Aviso antes de ir ao servidor — o backend também barra (sem diferenciar maiúscula)
+        if (linhas.some((l) => l.nome.toLowerCase() === nome.toLowerCase())) {
+            toast.error(`A categoria "${nome}" já existe.`);
+            return;
+        }
+        setCriandoCategoria(true);
+        try {
+            const nova = await financeiroGerencialService.criarCategoriaDespesa({
+                nome,
+                grupoDreId: novaBloco === FORA ? null : (novaBloco || null),
+                natureza: novaNatureza
+            });
+            // Fora da DRE: o POST cria sem bloco; a marcação vai junto do próximo Salvar
+            const linha = novaBloco === FORA ? { ...nova, classificacao: 'FORA_DRE', grupoDreId: null } : nova;
+            setLinhas((prev) => [linha, ...prev]);
+            if (novaBloco === FORA) setAlterado(true);
+            setNovaCategoria('');
+            setNovaBloco('');
+            setNovaNatureza('A_DEFINIR');
+            toast.success(`Categoria "${nova.nome}" criada! Já aparece ao lançar uma despesa.`);
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao criar a categoria.');
+        } finally {
+            setCriandoCategoria(false);
+        }
+    };
+
+    const excluirCategoria = async (l) => {
+        if (!window.confirm(`Apagar a categoria "${l.nome}"? Só sai se nunca tiver sido usada em nenhum lançamento.`)) return;
+        try {
+            await financeiroGerencialService.excluirCategoriaDespesa(l.id);
+            setLinhas((prev) => prev.filter((x) => x.id !== l.id));
+            toast.success('Categoria apagada.');
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao apagar a categoria.');
         }
     };
 
@@ -282,6 +329,47 @@ const CategoriasDespesaPage = () => {
                     </div>
                 </div>
 
+                {/* Criar categoria nova */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+                    <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
+                        <Tags className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">Nova categoria</span>
+                    </div>
+                    <div className="p-4 md:p-5 space-y-3">
+                        <div className="flex flex-col md:flex-row md:items-center gap-2">
+                            <input
+                                value={novaCategoria}
+                                onChange={(e) => setNovaCategoria(e.target.value)}
+                                onKeyDown={(e) => { if (e.key === 'Enter') criarCategoria(); }}
+                                placeholder="Nome da categoria (ex.: Manutenção de máquinas)"
+                                className="flex-1 min-w-0 border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                            />
+                            <div className="w-full md:w-56 shrink-0">
+                                <SelectBusca value={novaBloco} onChange={(e) => setNovaBloco(e.target.value)} className="w-full">
+                                    <option value="">— Sem bloco (a classificar) —</option>
+                                    {grupos.map((g) => <option key={g.id} value={g.id}>{g.nome}</option>)}
+                                    <option value={FORA}>🚫 Fora da DRE (não é resultado)</option>
+                                </SelectBusca>
+                            </div>
+                            <div className="md:shrink-0 md:w-[152px]">
+                                {novaBloco !== FORA && <SeletorNatureza valor={novaNatureza} onChange={setNovaNatureza} />}
+                            </div>
+                            <button
+                                onClick={criarCategoria}
+                                disabled={criandoCategoria || !novaCategoria.trim()}
+                                className="flex items-center justify-center gap-1.5 px-4 py-3 md:py-2 bg-primary hover:bg-primaryDark text-white rounded-full font-semibold text-sm disabled:opacity-50 shrink-0"
+                            >
+                                {criandoCategoria ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                                Criar categoria
+                            </button>
+                        </div>
+                        <p className="text-xs text-gray-500">
+                            A categoria criada aqui já aparece no campo <b>Categoria</b> ao lançar uma despesa em Contas a Pagar.
+                            Bloco e fixa/variável podem ficar para depois — dá para definir na lista abaixo.
+                        </p>
+                    </div>
+                </div>
+
                 {loading ? (
                     <div className="flex items-center justify-center gap-2 text-gray-500 py-16">
                         <Loader2 className="h-5 w-5 animate-spin" /> Carregando…
@@ -309,8 +397,20 @@ const CategoriasDespesaPage = () => {
                                             <option value={FORA}>🚫 Fora da DRE (não é resultado)</option>
                                         </SelectBusca>
                                     </div>
-                                    <div className="md:shrink-0 md:w-[152px]">
-                                        {!fora && <SeletorNatureza valor={l.natureza} onChange={(v) => mudarNatureza(l.nome, v)} />}
+                                    <div className="flex items-center gap-1 md:shrink-0">
+                                        <div className="md:w-[152px]">
+                                            {!fora && <SeletorNatureza valor={l.natureza} onChange={(v) => mudarNatureza(l.nome, v)} />}
+                                        </div>
+                                        {/* Apagar só faz sentido em categoria sem gasto — o backend confere de novo */}
+                                        {!l.total && l.id && (
+                                            <button
+                                                onClick={() => excluirCategoria(l)}
+                                                className="p-2 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50 shrink-0"
+                                                title="Apagar categoria (só se nunca foi usada)"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             );

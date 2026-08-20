@@ -315,6 +315,84 @@ router.put('/categorias-despesa', verificarAuth, checkAcesso, async (req, res) =
     }
 });
 
+// ── POST /categorias-despesa — criar categoria nova (sem esperar aparecer numa despesa) ──
+// body: { nome, grupoDreId?, natureza? }
+// As categorias nascem sozinhas quando aparecem numa conta a pagar; esta rota é para
+// criar ANTES — para a categoria já estar na lista na hora de lançar a despesa.
+router.post('/categorias-despesa', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const nome = String(req.body?.nome || '').trim().replace(/\s+/g, ' ');
+        if (!nome) return res.status(400).json({ error: 'Informe o nome da categoria.' });
+        if (nome.length > 120) return res.status(400).json({ error: 'Nome muito longo (máx. 120 caracteres).' });
+
+        // Duplicidade sem diferenciar maiúscula/minúscula ("Aluguel" x "aluguel")
+        const existente = await prisma.categoriaDespesa.findFirst({
+            where: { nome: { equals: nome, mode: 'insensitive' } }
+        });
+        if (existente) {
+            return res.status(400).json({ error: `A categoria "${existente.nome}" já existe.` });
+        }
+
+        let grupoDreId = null;
+        if (req.body?.grupoDreId) {
+            const grupo = await prisma.grupoDre.findUnique({ where: { id: String(req.body.grupoDreId) } });
+            if (!grupo) return res.status(400).json({ error: 'Bloco da DRE não encontrado.' });
+            grupoDreId = grupo.id;
+        }
+
+        const naturezaBruta = String(req.body?.natureza || 'A_DEFINIR').toUpperCase();
+        const natureza = NATUREZAS.includes(naturezaBruta) ? naturezaBruta : 'A_DEFINIR';
+        const classificacao = grupoDreId ? 'OPERACIONAL' : 'A_CLASSIFICAR';
+
+        const criada = await prisma.categoriaDespesa.create({
+            data: { nome, classificacao, natureza, grupoDreId }
+        });
+
+        res.status(201).json({
+            id: criada.id,
+            nome: criada.nome,
+            classificacao: criada.classificacao,
+            natureza: criada.natureza,
+            grupoDreId: criada.grupoDreId,
+            total: 0
+        });
+    } catch (error) {
+        if (error?.code === 'P2002') return res.status(400).json({ error: 'Essa categoria já existe.' });
+        console.error('Erro ao criar categoria de despesa:', error);
+        res.status(500).json({ error: 'Erro ao criar a categoria.' });
+    }
+});
+
+// ── DELETE /categorias-despesa/:id — apagar categoria que nunca foi usada ──
+// Só sai se NENHUMA despesa/rateio/item de nota apontar para ela (por ID ou pelo nome).
+// Serve para desfazer um nome digitado errado; categoria com histórico nunca é apagada.
+router.delete('/categorias-despesa/:id', verificarAuth, checkAcesso, async (req, res) => {
+    try {
+        const cat = await prisma.categoriaDespesa.findUnique({ where: { id: String(req.params.id) } });
+        if (!cat) return res.status(404).json({ error: 'Categoria não encontrada.' });
+
+        const [porIdConta, porIdRateio, porIdItem, porNomeConta, porNomeRateio] = await Promise.all([
+            prisma.contaPagar.count({ where: { categoriaDespesaId: cat.id } }),
+            prisma.contaPagarRateio.count({ where: { categoriaDespesaId: cat.id } }),
+            prisma.notaEntradaItem.count({ where: { categoriaDespesaId: cat.id } }),
+            prisma.contaPagar.count({ where: { categoria: cat.nome } }),
+            prisma.contaPagarRateio.count({ where: { categoria: cat.nome } })
+        ]);
+        const usos = porIdConta + porIdRateio + porIdItem + porNomeConta + porNomeRateio;
+        if (usos > 0) {
+            return res.status(400).json({
+                error: `"${cat.nome}" já está em uso em ${usos} lançamento(s) — não dá para apagar. Se ela não deve entrar no resultado, marque como "Fora da DRE".`
+            });
+        }
+
+        await prisma.categoriaDespesa.delete({ where: { id: cat.id } });
+        res.json({ ok: true });
+    } catch (error) {
+        console.error('Erro ao excluir categoria de despesa:', error);
+        res.status(500).json({ error: 'Erro ao excluir a categoria.' });
+    }
+});
+
 // ─────────────────────────────────────────────────────────────
 // Blocos da DRE (grupos) — o usuário cria, renomeia, reordena e apaga
 // ─────────────────────────────────────────────────────────────

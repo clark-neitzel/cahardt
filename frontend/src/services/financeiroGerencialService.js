@@ -23,6 +23,16 @@ const financeiroGerencialService = {
         const response = await api.put('/financeiro-gerencial/categorias-despesa', { categorias });
         return response.data;
     },
+    // Criar categoria nova (sem esperar ela aparecer numa despesa)
+    criarCategoriaDespesa: async (dados) => {
+        const response = await api.post('/financeiro-gerencial/categorias-despesa', dados);
+        return response.data;
+    },
+    // Apagar categoria que ainda não foi usada em nenhum lançamento
+    excluirCategoriaDespesa: async (id) => {
+        const response = await api.delete(`/financeiro-gerencial/categorias-despesa/${id}`);
+        return response.data;
+    },
     // Blocos da DRE (grupos): [{ id, nome, ordem }]
     gruposDre: async () => {
         const response = await api.get('/financeiro-gerencial/grupos-dre');

@@ -21,6 +21,23 @@ Card **"Blocos da DRE"** no topo da tela:
 
 Na primeira vez, o sistema cria os blocos padrão: **Impostos sobre vendas, Custos variáveis, Pessoal, Veículos e entregas, Administrativas, Financeiras, Sócios** — podem ser renomeados, reordenados ou excluídos à vontade.
 
+## Criar categoria nova (card "Nova categoria")
+
+Card logo abaixo dos blocos. Serve para ter a categoria **antes** de ela aparecer numa despesa —
+até 20/08/2026 só dava para classificar as que já tinham nascido de um lançamento.
+
+- Digite o **nome**, escolha o **bloco** e **Fixa/Variável** (os dois opcionais — dá para definir depois na lista) e clique em **Criar categoria**.
+- A categoria criada **já aparece no campo "Categoria"** ao lançar uma despesa em Contas a Pagar.
+- Salva na hora (não depende do botão Salvar do topo).
+- **Nome repetido é recusado**, mesmo escrito com outras maiúsculas ("Aluguel" x "aluguel") — evita duas categorias iguais dividindo o mesmo gasto na DRE.
+- Escolhendo **Fora da DRE** na criação, a categoria nasce sem bloco e a marcação entra no **próximo Salvar** (a linha já aparece marcada na tela).
+
+### Apagar categoria
+
+Ícone de lixeira na linha, **só nas categorias sem nenhum gasto** (serve para desfazer um nome
+digitado errado). Categoria que já tem lançamento **nunca é apagada** — nem pela tela nem pela API;
+se ela não deve entrar no resultado, o caminho é marcar **Fora da DRE**.
+
 ## Bloco de cada categoria
 
 Cada linha tem um menu suspenso (com busca) para escolher:
@@ -46,9 +63,11 @@ A pergunta-chave: **"se eu vender o dobro, esse gasto dobra?"**
 1. Cada categoria aparece com o **total já gasto** (para priorizar as maiores). As **pendentes** (sem bloco ou sem fixa/variável — ícone de atenção) vêm no topo.
 2. Escolha o bloco e marque Fixa/Variável em cada linha; depois **Salvar** (topo). A DRE usa a nova divisão na hora.
 3. Mudanças nos **blocos** (criar/renomear/reordenar/excluir) salvam sozinhas, sem precisar do botão Salvar.
+4. Criar e apagar **categorias** também salvam sozinhas.
 
 ## De onde vêm as categorias
 
+- **Criadas à mão** no card "Nova categoria" desta tela (ver acima).
 - São criadas sozinhas conforme as contas entram (lançamento manual, nota fiscal ou **Importar do Conta Azul**).
 - Toda categoria nova nasce com um **palpite** de bloco + natureza (para as categorias conhecidas); as desconhecidas nascem "a classificar" (sinalizadas) para o usuário revisar. O palpite **nunca sobrescreve** o que o usuário já escolheu.
 
