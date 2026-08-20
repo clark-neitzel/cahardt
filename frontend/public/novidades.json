@@ -1,5 +1,11 @@
 [
   {
+    "slug": "credito-icms",
+    "titulo": "Crédito de ICMS da nota",
+    "resumo": "O percentual do crédito de ICMS do Simples que sai nas nossas notas (aquele \"permite o aproveitamento do crédito…\" no rodapé) era fixo dentro do sistema. Agora fica em Configurações → Emissão de NF-e — Simples Nacional, junto do NCM padrão e dos textos legais da nota, com prévia ao vivo de como a frase vai sair. Serve para quando a empresa muda de faixa do Simples: o valor vem da contabilidade e se altera na tela, sem depender de alteração no sistema. Vale da próxima nota em diante (venda e devolução); notas já autorizadas não mudam. Enquanto ninguém alterar, continua valendo o 3,82% de sempre.",
+    "data": "2026-08-20"
+  },
+  {
     "slug": "quem-vai-cobrar",
     "titulo": "Quem vai cobrar: você escolhe",
     "resumo": "Quando o valor da entrega fica para cobrar depois, o motorista marca na hora quem fica responsável: Eu mesmo, Escritório ou Vendedor (e qual vendedor, com busca). \"Eu mesmo\" já vem marcado, então o caso comum não custa nenhum toque a mais; escolhendo Vendedor sem indicar o nome, o app avisa e não deixa finalizar. Antes o app gravava o motorista na ficha do vendedor, e a dívida dele aparecia como \"Vendedor responsável\" no Caixa, no Contas a Receber e no relatório de cobranças. Agora existem três selos com cores próprias (Vendedor azul, Escritório âmbar, Motorista roxo) e o escritório corrige o papel na Auditoria de Entregas.",

@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Novidade: Crédito de ICMS da nota — Hardt App</title>
+
+<!-- Preview do link no WhatsApp (sem og:image de propósito — cartão compacto) -->
+<meta property="og:title" content="🧾 Novidade no Hardt App: o crédito de ICMS da nota agora se configura na tela">
+<meta property="og:description" content="A alíquota do crédito do Simples que sai nas nossas notas era fixa no sistema. Agora ela fica em Configurações, com o NCM padrão e os textos legais — quando o Simples mudar de faixa, muda ali.">
+<meta property="og:type" content="article">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --house:#1E3932; --primary:#00754A; --primary-dark:#006241; --mint:#d4e9e2;
+    --cream:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87); --ink-soft:#5b6763;
+    --line:#e3e7e5; --line-soft:#eef1f0;
+    --amber:#8a6100; --amber-bg:#fdf3d7; --red:#a3231b; --red-bg:#fdeceb;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0; background:var(--cream); color:var(--ink);
+    font-family:Manrope,-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;
+    letter-spacing:-.01em; font-size:16px; line-height:1.5;
+  }
+  .wrap{max-width:620px; margin:0 auto; padding:0 16px 60px}
+
+  .hero{background:linear-gradient(168deg,var(--house) 0%,#16302a 100%); color:#fff; padding:38px 16px 88px}
+  .hero-in{max-width:620px; margin:0 auto}
+  .eyebrow{font-size:11px; font-weight:800; letter-spacing:.16em; text-transform:uppercase; color:var(--gold)}
+  .hero h1{margin:10px 0 10px; font-size:28px; line-height:1.15; font-weight:800; text-wrap:balance}
+  .hero p{margin:0; color:#cfe0d8; font-size:15px}
+
+  .card{background:#fff; border:1px solid var(--line); border-radius:16px; padding:20px; margin-top:-58px}
+  .card + .card{margin-top:14px}
+  .card h2{margin:0 0 10px; font-size:18px; font-weight:800}
+  .card p{margin:0 0 11px; font-size:15px; color:#33403b}
+  .card p:last-child{margin-bottom:0}
+  .destaque{background:var(--mint); border:1px solid #b5d9cc; color:#0d4032; border-radius:12px;
+            padding:13px 15px; font-size:14px; margin-top:13px}
+  .destaque > b:first-child{display:block; margin-bottom:2px}
+  .aviso{background:var(--amber-bg); border:1px solid #efdca8; color:#6b4c00; border-radius:12px;
+         padding:13px 15px; font-size:14px; margin-top:13px}
+  .aviso > b:first-child{display:block; margin-bottom:2px}
+  .erro{background:var(--red-bg); border:1px solid #f0c4c0; color:var(--red); border-radius:10px;
+        padding:9px 11px; font-size:12px; margin-top:9px}
+
+  /* ACCORDIONS (já abertos — o clique só serve para recolher) */
+  .acc{border:1px solid var(--line); border-radius:12px; margin-top:10px; overflow:hidden; background:#fff}
+  .acc-head{width:100%; display:flex; align-items:center; gap:12px; padding:13px 15px; background:none;
+            border:0; cursor:pointer; text-align:left; font-family:inherit; color:inherit}
+  .acc-ico{flex:0 0 32px; height:32px; border-radius:9px; background:var(--mint); display:flex;
+           align-items:center; justify-content:center; font-size:15px}
+  .acc-head strong{flex:1; font-size:15px; font-weight:750}
+  .acc-seta{color:#9aa5a0; transition:transform .2s; font-size:12px}
+  .acc.aberto .acc-seta{transform:rotate(180deg)}
+  .acc-corpo{display:none; padding:0 15px 15px 59px}
+  .acc.aberto .acc-corpo{display:block}
+  .acc-corpo p{font-size:14px; color:var(--ink-soft); margin:0 0 9px}
+  .acc-corpo p:last-child{margin-bottom:0}
+  .acc-corpo b{color:var(--ink)}
+
+  /* MOCKUP DA TELA */
+  .tela-nome{font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+             color:var(--ink-soft); margin:0 0 9px}
+  .app{background:var(--cream); border:1px solid var(--line); border-radius:14px; padding:11px; overflow:hidden}
+  .appcard{background:#fff; border:1px solid var(--line); border-radius:13px; overflow:hidden}
+  .apphead{display:flex; align-items:center; gap:8px; padding:10px 13px; border-bottom:1px solid var(--line-soft)}
+  .apphead .lb{font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft)}
+  .appbody{padding:13px}
+  .campo{margin-bottom:12px}
+  .campo:last-child{margin-bottom:0}
+  .campo label{display:block; font-size:12px; font-weight:700; color:#33403b; margin-bottom:4px}
+  .campo .inp{border:1px solid #cfd6d2; border-radius:7px; padding:8px 10px; font-size:13px;
+              background:#fff; color:var(--ink); font-weight:600}
+  .campo .dica{font-size:11px; color:#8a938f; margin-top:4px; line-height:1.35}
+  .campo .inp.area{font-weight:500; line-height:1.5; color:#33403b}
+  .previa{background:#f6f5f1; border:1px solid var(--line); border-radius:10px; padding:11px 12px; margin-top:12px}
+  .previa .lb{font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+              color:#8a938f; display:block; margin-bottom:4px}
+  .previa .txt{font-size:11.5px; color:#33403b; line-height:1.5}
+  .acoes{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-top:12px}
+  .btn{display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:999px;
+       font-size:12px; font-weight:750; border:1px solid var(--line); background:#fff; color:#3f4a46}
+  .btn.pri{background:var(--primary); border-color:var(--primary); color:#fff}
+  .btn.sec{background:#fff; border-color:var(--primary); color:var(--primary)}
+  .assinatura{font-size:11px; color:#8a938f}
+
+  /* LEGENDAS COM PINS */
+  .legendas{margin-top:11px; display:flex; flex-direction:column; gap:8px}
+  .legenda{display:flex; gap:9px; font-size:13.5px; color:#33403b}
+  .pin{flex:0 0 20px; width:20px; height:20px; border-radius:50%; background:var(--gold); color:#3d2c05;
+       font-size:11px; font-weight:900; display:inline-flex; align-items:center; justify-content:center; margin-top:1px}
+  .pin.na-tela{margin:0 0 0 6px; vertical-align:2px}
+
+  .rodape{text-align:center; color:#8a938f; font-size:12px; margin-top:30px}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-in">
+    <div class="eyebrow">Novidade no Hardt App</div>
+    <h1>O crédito de ICMS da nota agora se configura na tela</h1>
+    <p>Aquele percentual que aparece no rodapé das nossas notas — <b>"permite o aproveitamento do
+       crédito de ICMS…"</b> — estava fixo dentro do sistema. Agora ele fica em <b>Configurações</b>,
+       junto do NCM padrão e dos textos legais.</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <div class="card">
+    <h2>O que é esse crédito</h2>
+    <p>Quando vendemos para um <b>cliente CNPJ</b>, a nota informa quanto de ICMS aquele cliente pode
+       aproveitar como crédito — é um direito dele, previsto na lei do Simples Nacional. O percentual
+       vai dentro da nota, item por item, e vira aquela frase no rodapé.</p>
+    <p>Esse percentual <b>muda conforme a faixa do Simples</b> da empresa, que acompanha o faturamento
+       dos últimos 12 meses. Até agora, mudá-lo exigia alterar o sistema. Agora é um campo na tela.</p>
+    <div class="aviso">
+      <b>Não é um número para chutar</b>
+      O valor certo vem da contabilidade. Se ele estiver errado na nota, quem fica com o problema é o
+      nosso cliente, na escrituração dele.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tela-nome" style="margin-top:0">A tela — Configurações → Emissão de NF-e</div>
+
+    <div class="app">
+      <div class="appcard">
+        <div class="apphead"><span class="lb">Emissão de NF-e — Simples Nacional</span></div>
+        <div class="appbody">
+          <div class="campo">
+            <label>Crédito de ICMS do Simples (%)<span class="pin na-tela">1</span></label>
+            <div class="inp">3,82</div>
+            <div class="dica">É o percentual que o cliente CNPJ pode aproveitar de crédito. Muda conforme
+              a faixa do Simples — confirme com a contabilidade.</div>
+          </div>
+          <div class="campo">
+            <label>NCM padrão<span class="pin na-tela">2</span></label>
+            <div class="inp">19022000</div>
+            <div class="dica">Usado só quando o produto não tem NCM próprio no cadastro.</div>
+          </div>
+          <div class="campo">
+            <label>Textos legais da nota (uma linha por frase)<span class="pin na-tela">3</span></label>
+            <div class="inp area">DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.<br>
+              NAO GERA DIREITO A CREDITO FISCAL DE IPI.</div>
+          </div>
+          <div class="previa">
+            <span class="lb">Como vai sair na nota<span class="pin na-tela">4</span></span>
+            <div class="txt">PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ …,
+              CORRESPONDENTE A ALIQUOTA DE <b>3,82%</b>, NOS TERMOS DO ART. 23 DA LC 123/2006.</div>
+          </div>
+          <div class="acoes">
+            <span class="btn pri">💾 Salvar</span>
+            <span class="btn sec">↺ Voltar ao padrão<span class="pin na-tela">5</span></span>
+            <span class="assinatura">Alterado em 20/08/2026 por Clarkson<span class="pin na-tela">6</span></span>
+          </div>
+          <div class="erro">A alíquota do crédito deve ficar entre 0 e 15%. Confira o valor com a
+            contabilidade.<span class="pin na-tela">7</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="legendas">
+      <div class="legenda"><span class="pin">1</span><div><b>O percentual do crédito.</b> É o número que a contabilidade informa quando a empresa muda de faixa. Aceita vírgula (3,82).</div></div>
+      <div class="legenda"><span class="pin">2</span><div><b>NCM padrão.</b> Só entra em ação quando o produto não tem NCM preenchido no cadastro — é uma rede de segurança, não o caminho normal.</div></div>
+      <div class="legenda"><span class="pin">3</span><div><b>Textos legais.</b> Uma frase por linha; saem nas Informações Complementares da nota. A frase do crédito de ICMS <b>não</b> se digita aqui — o sistema monta sozinho, com o valor calculado.</div></div>
+      <div class="legenda"><span class="pin">4</span><div><b>Prévia ao vivo.</b> Mostra a frase como ela vai sair, já com o percentual que você digitou — dá para conferir antes de salvar.</div></div>
+      <div class="legenda"><span class="pin">5</span><div><b>Voltar ao padrão.</b> Repõe os valores originais (3,82% · NCM 19022000 · os dois textos). Ainda é preciso clicar em Salvar.</div></div>
+      <div class="legenda"><span class="pin">6</span><div><b>Quem mexeu e quando.</b> Fica registrado ao lado dos botões — é configuração fiscal, então tem assinatura.</div></div>
+      <div class="legenda"><span class="pin">7</span><div><b>As travas.</b> A alíquota é obrigatória (campo vazio é recusado, para ninguém zerar o crédito sem querer), tem que ficar entre 0 e 15%, e o NCM precisa ter 8 dígitos.</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Três coisas para não errar</h2>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">📅</span><strong>Vale da próxima nota em diante</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <p>O que você salvar entra na <b>próxima nota emitida</b> — de venda <b>e</b> de devolução.
+        <b>Notas já autorizadas não mudam</b>, e nem poderiam: nota autorizada pela SEFAZ é documento fechado.</p>
+        <p>Se a faixa do Simples mudou no meio do mês e algumas notas já saíram com o percentual antigo,
+        isso é assunto da contabilidade — a tela não reescreve o passado.</p>
+      </div>
+    </div>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">🔒</span><strong>Quem pode mexer</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <p>As mesmas pessoas que já entram em Configurações: <b>admin</b> ou quem tem permissão de
+        editar configurações. Não existe permissão nova.</p>
+        <p>Quem alterou e quando fica escrito na própria tela.</p>
+      </div>
+    </div>
+
+    <div class="acc aberto">
+      <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+        <span class="acc-ico">🛡️</span><strong>Se o campo ficar vazio, o sistema recusa</strong><span class="acc-seta">▼</span>
+      </button>
+      <div class="acc-corpo">
+        <p>Um campo de percentual em branco poderia virar <b>0%</b> sem ninguém perceber — e aí toda nota
+        sairia dizendo que o cliente não tem crédito nenhum. O sistema recusa e pede o valor.</p>
+        <p>Da mesma forma, enquanto ninguém configurar nada, continua valendo o padrão de hoje
+        (<b>3,82%</b>) — que é exatamente o que as notas já vinham usando. <b>Nada muda sozinho.</b></p>
+      </div>
+    </div>
+
+    <div class="destaque">
+      <b>Onde encontrar</b>
+      Menu <b>Configurações</b> → role até a seção <b>Emissão de NF-e — Simples Nacional</b>
+      (logo abaixo de "Captura automática de notas").
+    </div>
+  </div>
+
+  <div class="rodape">Hardt App · agosto de 2026</div>
+</main>
+
+<script>
+  // Accordions nascem ABERTOS: o clique só recolhe (a equipe não clicava para expandir).
+  function alternar(botao){
+    var acc = botao.parentElement;
+    var aberto = acc.classList.toggle('aberto');
+    botao.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

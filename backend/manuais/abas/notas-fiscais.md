@@ -40,6 +40,8 @@ Quando a nota é **autorizada**, o pedido correspondente vira **FATURADO** na ab
 - Pedido faturado pelo app fica **imune ao sync do Conta Azul** (o status FATURADO não é revertido).
 - **Venda para outro estado (interestadual):** o app ajusta a nota sozinho pela UF do cliente — usa **CFOP 6101/6102** e marca a operação como **interestadual** (dentro de SC continua 5101/5102). Para sair certa, o cliente precisa estar cadastrado com a **UF correta** e, se for contribuinte de ICMS, com a **Inscrição Estadual** preenchida. Os impostos do Simples (CSOSN 101 + crédito) e os demais campos são os mesmos da venda interna.
 
+- **Crédito de ICMS do Simples (`pCredSN`):** o percentual que o cliente CNPJ aproveita de crédito sai da configuração em **Configurações → Emissão de NF-e — Simples Nacional** (padrão 3,82%). Ele muda conforme a faixa do Simples da empresa; quem alterar deve confirmar o valor com a contabilidade. O mesmo lugar define o **NCM padrão** (usado só quando o produto não tem NCM próprio) e os **textos legais** das Informações Complementares. Vale para a próxima nota emitida — notas já autorizadas não mudam.
+
 ## Nota rejeitada: o link "O que fazer?"
 
 Toda linha **✕ Rejeitada** mostra a mensagem oficial da SEFAZ e, logo abaixo, o link **"O que fazer?"**. Ao abrir, aparece a orientação prática para aquele motivo específico: se o problema é do cadastro do cliente, do nosso cadastro, dos valores do pedido, ou se é caso de chamar o suporte. Se a SEFAZ mandar um motivo que o app ainda não conhece, aparece a orientação geral — nunca fica sem saída.

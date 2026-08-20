@@ -1,6 +1,6 @@
 ---
 aba: Config — Configurações Gerais
-rota: /admin/configuracoes
+rota: /admin/config
 permissao: admin
 ---
 
@@ -27,6 +27,7 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 - Configurar parâmetros do caixa diário
 - Configurar a mensagem padrão de WhatsApp para notificações
 - Instalar o **certificado digital A1** (.pfx/.p12) da empresa para o módulo de notas fiscais (seção Notas Fiscais / Certificado Digital)
+- Configurar a **emissão de NF-e (Simples Nacional)**: alíquota do crédito de ICMS que o cliente CNPJ aproveita, NCM padrão e os textos legais da nota (seção Emissão de NF-e — Simples Nacional)
 - Configurar a integração **Asaas — Boleto e PIX** (seção só para admin): multa e juros do boleto, mensagem impressa no boleto, validade padrão e descrição do PIX, avisos do Asaas ao cliente
 
 ---
@@ -64,6 +65,17 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 4. Se a SEFAZ bloquear por excesso de consultas (erro 656) ou o ambiente nacional pedir pausa (HTTP 429), o sistema pausa sozinho por 1h15 e informa até quando
 5. Desligar uma captura não apaga nada — só para de consultar
 6. **NFS-e**: só chegam notas de municípios já integrados ao sistema nacional da NFS-e (nfse.gov.br)
+
+### Emissão de NF-e — Simples Nacional (crédito de ICMS)
+1. Na seção **Emissão de NF-e — Simples Nacional**, o campo **Crédito de ICMS do Simples (%)** é o percentual que o cliente CNPJ pode aproveitar de crédito na nota (o `pCredSN` do XML)
+2. Esse percentual **muda conforme a faixa do Simples Nacional** da empresa — confirme o valor com a contabilidade antes de alterar
+3. **NCM padrão**: usado somente quando o produto não tem NCM próprio no cadastro (8 dígitos)
+4. **Textos legais da nota**: uma frase por linha; saem nas Informações Complementares da nota. A frase do crédito de ICMS ("PERMITE O APROVEITAMENTO DO CREDITO DE ICMS…") é montada sozinha pelo sistema e **não** deve ser digitada aqui
+5. O quadro **"Como vai sair na nota"** mostra em tempo real como a frase ficará com o percentual digitado
+6. Clique em **Salvar**. A tela mostra quem alterou e quando
+7. **Voltar ao padrão** repõe os valores originais do sistema (3,82% · NCM 19022000 · dois textos legais) — ainda é preciso clicar em Salvar
+8. O que for salvo vale para a **NF-e de venda e para a NF-e de devolução**, a partir da **próxima nota emitida**. Notas já autorizadas não mudam
+9. Travas: a alíquota é obrigatória (campo vazio é recusado, para não zerar o crédito sem querer) e precisa ficar entre 0 e 15%; o NCM precisa ter 8 dígitos
 
 ### Configurar a integração Asaas (Boleto e PIX) — só admin
 1. Na seção **Asaas — Boleto e PIX**, o topo mostra o **status da integração**: chave da conta (produção/sandbox), webhook de pagamento (o Asaas avisa o app na hora do pagamento), conta "ASAAS" vinculada no Conta Azul e o vigia de segurança (reprocessa baixas pendentes a cada 10 min)
@@ -116,6 +128,7 @@ O sistema faz backup sozinho para o **Google Drive** (a mesma conta conectada pa
 - **Rota / Atendimentos** — os tipos de atendimento e ações disponíveis vêm daqui
 - **Leads** — as origens de lead usadas no cadastro vêm daqui
 - **Notas Recebidas** — o certificado digital e os interruptores de captura controlam a busca automática de NF-e (SEFAZ) e NFS-e (ambiente nacional)
+- **Notas Fiscais (emissão)** — a alíquota do crédito de ICMS, o NCM padrão e os textos legais configurados aqui entram em toda NF-e de venda e de devolução emitida pelo app
 
 ---
 
@@ -127,7 +140,8 @@ O sistema faz backup sozinho para o **Google Drive** (a mesma conta conectada pa
 | `frontend/src/pages/Admin/Configuracoes/RotasAtivasPreview.jsx` | Preview das rotas configuradas |
 | `frontend/src/services/configService.js` | Chamadas de API de configurações |
 | `backend/src/routes/configuracoes.js` | Rotas do backend |
-| `backend/routes/configNotas.js` | Certificado digital (instalar/consultar) + liga/desliga das capturas de NF-e e NFS-e |
+| `backend/routes/configNotas.js` | Certificado digital (instalar/consultar) + liga/desliga das capturas de NF-e e NFS-e + configuração fiscal da emissão (`GET`/`PUT /emissao`) |
+| `backend/services/focusNfeEmissaoService.js` | Lê a configuração fiscal (`getConfig`) e aplica em cada NF-e emitida |
 | `backend/services/certificadoService.js` | Validação do .pfx e criptografia AES-256-GCM |
 | `frontend/src/pages/Admin/Configuracoes/SecaoBackup.jsx` | Cartão de status do backup automático |
 | `backend/services/backupService.js` | Backup do banco (15 min) e dos uploads (diário) para o Google Drive |

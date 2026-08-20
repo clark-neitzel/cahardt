@@ -166,4 +166,102 @@ router.put('/captura', verificarAuth, checkConfig, async (req, res) => {
     }
 });
 
+// ── Emissão de NF-e (Simples Nacional) — alíquota do crédito de ICMS, NCM padrão e textos legais ──
+// Gravado na chave `focus_nfe_config` (app_configs); é o que `focusNfeEmissaoService.getConfig()` lê
+// a cada emissão. Vale para a NF-e de venda E para a NF-e de devolução.
+
+const PADRAO_EMISSAO = {
+    aliquotaCreditoSimples: 3.82,
+    ncmPadrao: '19022000',
+    textosLegais: [
+        'DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.',
+        'NAO GERA DIREITO A CREDITO FISCAL DE IPI.',
+    ],
+};
+
+// ── GET /emissao — configuração fiscal atual da emissão ──
+router.get('/emissao', verificarAuth, checkConfig, async (req, res) => {
+    try {
+        const reg = await prisma.appConfig.findUnique({ where: { key: 'focus_nfe_config' } });
+        const salvo = (reg?.value && typeof reg.value === 'object' && !Array.isArray(reg.value)) ? reg.value : {};
+        res.json({
+            aliquotaCreditoSimples: Number(salvo.aliquotaCreditoSimples ?? PADRAO_EMISSAO.aliquotaCreditoSimples),
+            ncmPadrao: String(salvo.ncmPadrao || PADRAO_EMISSAO.ncmPadrao),
+            textosLegais: Array.isArray(salvo.textosLegais) ? salvo.textosLegais : PADRAO_EMISSAO.textosLegais,
+            personalizado: !!reg,
+            atualizadoEm: salvo.atualizadoEm || null,
+            atualizadoPorNome: salvo.atualizadoPorNome || null,
+            padrao: PADRAO_EMISSAO
+        });
+    } catch (error) {
+        console.error('Erro ao consultar configuração de emissão de NF-e:', error);
+        res.status(500).json({ error: 'Erro ao consultar a configuração de emissão.' });
+    }
+});
+
+// ── PUT /emissao — altera a configuração fiscal da emissão ──
+router.put('/emissao', verificarAuth, checkConfig, async (req, res) => {
+    try {
+        const { aliquotaCreditoSimples, ncmPadrao, textosLegais } = req.body || {};
+
+        // Alíquota do crédito (pCredSN) — aceita "3,82" ou 3.82.
+        // Campo vazio NÃO pode virar 0% (zerar o crédito de todos os clientes sem ninguém perceber).
+        const aliqTexto = String(aliquotaCreditoSimples ?? '').replace(',', '.').trim();
+        const aliqNum = Number(aliqTexto);
+        if (aliqTexto === '' || !Number.isFinite(aliqNum)) {
+            return res.status(400).json({ error: 'Informe a alíquota do crédito de ICMS (ex.: 3,82).' });
+        }
+        if (aliqNum < 0 || aliqNum > 15) {
+            return res.status(400).json({ error: 'A alíquota do crédito deve ficar entre 0 e 15%. Confira o valor com a contabilidade.' });
+        }
+        const aliquota = Math.round(aliqNum * 100) / 100;
+
+        // NCM padrão — usado só quando o produto não tem NCM próprio
+        const ncm = String(ncmPadrao ?? '').replace(/\D/g, '');
+        if (ncm.length !== 8) {
+            return res.status(400).json({ error: 'O NCM padrão deve ter 8 dígitos (ex.: 19022000).' });
+        }
+
+        // Textos legais — cada linha vira uma linha das Informações Complementares da nota
+        let textos = textosLegais;
+        if (typeof textos === 'string') textos = textos.split('\n');
+        if (!Array.isArray(textos)) {
+            return res.status(400).json({ error: 'Os textos legais devem ser uma lista de linhas.' });
+        }
+        textos = textos.map(t => String(t ?? '').trim()).filter(Boolean);
+        if (textos.length > 10) {
+            return res.status(400).json({ error: 'No máximo 10 linhas de texto legal.' });
+        }
+        if (textos.some(t => t.length > 500)) {
+            return res.status(400).json({ error: 'Cada linha de texto legal deve ter no máximo 500 caracteres.' });
+        }
+
+        const value = {
+            aliquotaCreditoSimples: aliquota,
+            ncmPadrao: ncm,
+            textosLegais: textos,
+            atualizadoEm: new Date().toISOString(),
+            atualizadoPorId: req.user.id,
+            atualizadoPorNome: req.user.nome || null
+        };
+
+        await prisma.appConfig.upsert({
+            where: { key: 'focus_nfe_config' },
+            update: { value },
+            create: { key: 'focus_nfe_config', value }
+        });
+
+        // Log da alteração (fiscal) — fora de transação, nunca derruba a gravação
+        try {
+            console.log(`[ConfigNotas] Emissão NF-e alterada por ${req.user.nome || req.user.id}: pCredSN=${aliquota}% NCM=${ncm} textos=${textos.length}`);
+        } catch { /* log não bloqueia */ }
+
+        res.json({ ok: true, aliquotaCreditoSimples: aliquota, ncmPadrao: ncm, textosLegais: textos });
+    } catch (error) {
+        console.error('Erro ao salvar configuração de emissão de NF-e:', error);
+        res.status(500).json({ error: 'Erro ao salvar a configuração de emissão.' });
+    }
+});
+
 module.exports = router;
+

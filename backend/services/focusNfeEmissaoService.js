@@ -32,9 +32,28 @@ const CONFIG_PADRAO = {
     ],
 };
 
+// Configuração fiscal da emissão. O padrão acima vale sempre; a chave `focus_nfe_config`
+// (editável em Configurações → Emissão de NF-e) sobrescreve campo a campo.
+// Sanitizado aqui de propósito: um valor torto no banco NÃO pode derrubar a emissão da nota.
 async function getConfig() {
-    const cfg = await prisma.appConfig.findUnique({ where: { key: 'focus_nfe_config' } });
-    return { ...CONFIG_PADRAO, ...(cfg?.value || {}) };
+    const reg = await prisma.appConfig.findUnique({ where: { key: 'focus_nfe_config' } }).catch(() => null);
+    const salvo = (reg?.value && typeof reg.value === 'object' && !Array.isArray(reg.value)) ? reg.value : {};
+    const cfg = { ...CONFIG_PADRAO };
+
+    // Atenção: Number('') é 0 — sem este teste de vazio, a AUSÊNCIA de configuração
+    // zeraria o crédito de ICMS de todas as notas.
+    const aliqTexto = String(salvo.aliquotaCreditoSimples ?? '').replace(',', '.').trim();
+    const aliq = Number(aliqTexto);
+    if (aliqTexto !== '' && Number.isFinite(aliq) && aliq >= 0 && aliq <= 15) cfg.aliquotaCreditoSimples = aliq;
+
+    const ncm = String(salvo.ncmPadrao || '').replace(/\D/g, '');
+    if (ncm.length === 8) cfg.ncmPadrao = ncm;
+
+    if (Array.isArray(salvo.textosLegais)) {
+        const textos = salvo.textosLegais.map(t => String(t ?? '').trim()).filter(Boolean).slice(0, 10);
+        cfg.textosLegais = textos;
+    }
+    return cfg;
 }
 
 const round2 = (n) => Math.round(n * 100) / 100;

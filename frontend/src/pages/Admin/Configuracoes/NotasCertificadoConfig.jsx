@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import configNotasService from '../../../services/configNotasService';
-import { ShieldCheck, Upload, Lock, RefreshCw, Link2, Loader2 } from 'lucide-react';
+import { ShieldCheck, Upload, Lock, RefreshCw, Link2, Loader2, Receipt, Save, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—';
@@ -56,7 +56,7 @@ const NotasCertificadoConfig = () => {
         }
     };
 
-    useEffect(() => { carregar(); carregarCaptura(); }, []);
+    useEffect(() => { carregar(); carregarCaptura(); carregarEmissao(); }, []);
 
     const toggleNfe = async () => {
         if (alterandoCaptura) return;
@@ -85,6 +85,50 @@ const NotasCertificadoConfig = () => {
             toast.error(e.response?.data?.error || 'Erro ao alterar a captura de NFS-e');
         } finally {
             setAlterandoCaptura(false);
+        }
+    };
+
+    // Emissão de NF-e (Simples Nacional): alíquota do crédito de ICMS, NCM padrão e textos legais
+    const [emissao, setEmissao] = useState(null);       // resposta do servidor (inclui .padrao)
+    const [emissaoErro, setEmissaoErro] = useState(false);
+    const [formEmissao, setFormEmissao] = useState({ aliquota: '', ncm: '', textos: '' });
+    const [salvandoEmissao, setSalvandoEmissao] = useState(false);
+    const [erroEmissao, setErroEmissao] = useState('');
+
+    const preencherEmissao = (data) => {
+        setFormEmissao({
+            aliquota: String(data?.aliquotaCreditoSimples ?? '').replace('.', ','),
+            ncm: String(data?.ncmPadrao ?? ''),
+            textos: (data?.textosLegais || []).join('\n')
+        });
+    };
+
+    const carregarEmissao = async () => {
+        try {
+            const data = await configNotasService.getEmissao();
+            setEmissao(data || {});
+            preencherEmissao(data);
+            setEmissaoErro(false);
+        } catch {
+            setEmissaoErro(true);
+        }
+    };
+
+    const salvarEmissao = async () => {
+        setErroEmissao('');
+        setSalvandoEmissao(true);
+        try {
+            await configNotasService.setEmissao({
+                aliquotaCreditoSimples: formEmissao.aliquota,
+                ncmPadrao: formEmissao.ncm,
+                textosLegais: formEmissao.textos
+            });
+            toast.success('Configuração salva! Vale para as próximas notas emitidas.');
+            await carregarEmissao();
+        } catch (e) {
+            setErroEmissao(e.response?.data?.error || 'Erro ao salvar a configuração de emissão.');
+        } finally {
+            setSalvandoEmissao(false);
         }
     };
 
@@ -276,6 +320,114 @@ const NotasCertificadoConfig = () => {
                     <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
                         A SEFAZ só disponibiliza notas dos últimos 90 dias — com a captura ligada, nada se perde. Se a captura falhar, o restante do sistema <span className="font-semibold">não é afetado</span>: o robô roda separado e tenta de novo sozinho.
                     </div>
+                </div>
+            </div>
+
+            {/* ── Emissão de NF-e (Simples Nacional) ── */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+                <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
+                    <Receipt className="h-4 w-4 text-blue-600" />
+                    <span className="text-xs font-bold uppercase tracking-widest text-gray-600">EMISSÃO DE NF-E — SIMPLES NACIONAL</span>
+                </div>
+                <div className="p-5 space-y-4">
+                    {emissaoErro ? (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                            Não foi possível consultar a configuração de emissão agora. Recarregue a página para tentar de novo.
+                        </div>
+                    ) : emissao == null ? (
+                        <div className="text-sm text-gray-400 flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Carregando…</div>
+                    ) : (
+                        <>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Crédito de ICMS do Simples (%)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        inputMode="decimal"
+                                        value={formEmissao.aliquota}
+                                        onChange={e => setFormEmissao(f => ({ ...f, aliquota: e.target.value }))}
+                                        placeholder="3,82"
+                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        É o percentual que o cliente CNPJ pode aproveitar de crédito. Muda conforme a faixa do Simples — confirme com a contabilidade.
+                                    </p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">NCM padrão</label>
+                                    <input
+                                        type="text"
+                                        inputMode="numeric"
+                                        value={formEmissao.ncm}
+                                        onChange={e => setFormEmissao(f => ({ ...f, ncm: e.target.value }))}
+                                        placeholder="19022000"
+                                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Usado só quando o produto não tem NCM próprio no cadastro.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Textos legais da nota <span className="font-normal text-gray-500">(uma linha por frase)</span>
+                                </label>
+                                <textarea
+                                    rows={3}
+                                    value={formEmissao.textos}
+                                    onChange={e => setFormEmissao(f => ({ ...f, textos: e.target.value }))}
+                                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Saem nas Informações Complementares da nota. A frase do crédito de ICMS é montada sozinha e não precisa ser digitada aqui.
+                                </p>
+                            </div>
+
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                <div className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Como vai sair na nota</div>
+                                <div className="text-xs text-gray-700 leading-relaxed">
+                                    PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ …, CORRESPONDENTE A ALIQUOTA DE{' '}
+                                    <span className="font-semibold">{(formEmissao.aliquota || '0').trim()}%</span>, NOS TERMOS DO ART. 23 DA LC 123/2006.
+                                </div>
+                            </div>
+
+                            {erroEmissao && (
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-700">{erroEmissao}</div>
+                            )}
+
+                            <div className="flex flex-col md:flex-row md:items-center gap-3">
+                                <button
+                                    onClick={salvarEmissao}
+                                    disabled={salvandoEmissao}
+                                    className="px-4 py-3 md:py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                                >
+                                    {salvandoEmissao ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                    {salvandoEmissao ? 'Salvando…' : 'Salvar'}
+                                </button>
+                                <button
+                                    onClick={() => { preencherEmissao(emissao?.padrao); setErroEmissao(''); }}
+                                    disabled={salvandoEmissao}
+                                    className="px-4 py-3 md:py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                                >
+                                    <RotateCcw className="h-4 w-4" />
+                                    Voltar ao padrão
+                                </button>
+                                {emissao?.atualizadoEm && (
+                                    <span className="text-xs text-gray-500 md:ml-1">
+                                        Alterado em {fmtData(emissao.atualizadoEm)}
+                                        {emissao.atualizadoPorNome ? ` por ${emissao.atualizadoPorNome}` : ''}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                                Vale para a NF-e de venda <span className="font-semibold">e</span> para a NF-e de devolução, a partir da próxima nota emitida. Notas já autorizadas não mudam.
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 

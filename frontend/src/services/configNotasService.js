@@ -22,6 +22,15 @@ const configNotasService = {
     setCaptura: async (dados) => {
         const response = await api.put('/config-notas/captura', dados);
         return response.data;
+    },
+    // Emissão de NF-e (Simples Nacional): { aliquotaCreditoSimples, ncmPadrao, textosLegais, padrao, ... }
+    getEmissao: async () => {
+        const response = await api.get('/config-notas/emissao');
+        return response.data;
+    },
+    setEmissao: async (dados) => {
+        const response = await api.put('/config-notas/emissao', dados);
+        return response.data;
     }
 };
 
