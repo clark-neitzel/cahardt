@@ -3,6 +3,7 @@ import { Barcode, Camera, Loader2, Check, AlertTriangle, Info, CornerDownLeft, U
 import canhotoService from '../services/canhotoService';
 import LeitorCodigoBarras from './LeitorCodigoBarras';
 import { interpretarBipe, limpar } from '../utils/chaveNfe';
+import { sinalizar, JANELA_REPETICAO_MS } from '../utils/feedbackBipe';
 
 /**
  * CAMPO DE BIPE DO CANHOTO — peça reutilizável.
@@ -27,40 +28,12 @@ import { interpretarBipe, limpar } from '../utils/chaveNfe';
  * exatamente o que o Enter faz.
  */
 
-const JANELA_REPETICAO_MS = 800; // leitor a laser dispara 2x quando o gatilho fica preso
-
-/** Bip curto pelo WebAudio — sem arquivo de som para baixar. */
-function tocar(tipo) {
-    try {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return;
-        const ctx = new AC();
-        const agora = ctx.currentTime;
-        const bipe = (freq, inicio, duracao, volume = 0.09) => {
-            const osc = ctx.createOscillator();
-            const gan = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.value = freq;
-            gan.gain.setValueAtTime(volume, agora + inicio);
-            gan.gain.exponentialRampToValueAtTime(0.0001, agora + inicio + duracao);
-            osc.connect(gan).connect(ctx.destination);
-            osc.start(agora + inicio);
-            osc.stop(agora + inicio + duracao);
-        };
-        if (tipo === 'ok') bipe(1040, 0, 0.11);
-        else if (tipo === 'repetido' || tipo === 'aviso') { bipe(660, 0, 0.08); bipe(660, 0.12, 0.08); }
-        else { bipe(200, 0, 0.22, 0.12); }
-        setTimeout(() => { try { ctx.close(); } catch { /* já fechado */ } }, 700);
-    } catch { /* som é conforto, nunca requisito */ }
-}
-
-function vibrar(tipo) {
-    try {
-        if (tipo === 'ok') navigator.vibrate?.(55);
-        else if (tipo === 'repetido' || tipo === 'aviso') navigator.vibrate?.([30, 40, 30]);
-        else navigator.vibrate?.([90, 60, 90]);
-    } catch { /* desktop não vibra */ }
-}
+/**
+ * ⚠️ O som/vibração do bipe mora em `utils/feedbackBipe.js` (junto da janela
+ * anti-repetição do laser) — é a MESMA peça usada pela conferência de carga na doca.
+ * Não recriar aqui: dois vocabulários de bip para o mesmo resultado confundem quem
+ * trabalha sem olhar a tela.
+ */
 
 const TONS = {
     ok: { classe: 'bg-green-100 text-green-800 border-green-200', Icone: Check },
@@ -130,8 +103,7 @@ const BipeCanhoto = ({
         seqRef.current += 1;
         const item = { id: seqRef.current, tom, rotulo, detalhe, quando: new Date(), ...(extra || {}) };
         setUltimas(prev => [item, ...prev].slice(0, 8));
-        tocar(tom);
-        vibrar(tom);
+        sinalizar(tom);
     }, []);
 
     /** Descreve a nota em uma linha ("NF 85.109 · Mercado Bom Dia"). */

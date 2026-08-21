@@ -27,6 +27,7 @@ Painel de expedição logística. Aqui são criados os "embarques" (cargas), que
   - Ver a **versão atual da carga** (badge `vN` no cabeçalho do modal) e o **Histórico da carga** (toda alteração registrada: quem fez, quando e o quê)
   - Ver o aviso amarelo **"A folha impressa ficou para trás"** quando a carga mudou depois da última impressão — sinal de reimprimir o romaneio
   - **Inserir cobranças na carga** (seção "Cobranças na Carga"): pendurar títulos em aberto para o motorista cobrar na rua
+  - **Conferir a carga por bipagem** (painel de conferência): bipar cada volume ao colocar no caminhão, com contador "conferidas / total / faltam" e fecho da conferência
 
 ---
 
@@ -95,6 +96,41 @@ Serve para mandar um título em aberto junto com o motorista, para ele cobrar do
 
 ---
 
+### Conferir a carga por bipagem (doca)
+
+Serve para garantir que **o que está no romaneio é o que subiu no caminhão**. Cada volume é bipado na hora de carregar.
+
+1. Abra o detalhe da carga e entre no **painel de conferência**
+2. Bipe (ou digite) o código de cada volume. O campo aceita:
+   - a **chave da NF-e** — o código de barras grande da DANFE (44 dígitos);
+   - o **código do recibo de conferência** — `ZZ#` (especial), `BN#` (bonificação) e `AM#` (amostra), impresso no próprio recibo. Pode digitar com ou sem o `#`;
+   - o **número puro**, digitado na mão quando o código está rasgado — mas só resolve se aquele número existir **dentro desta carga**
+3. A cada bipe o contador **conferidas / total / faltam** é recalculado no servidor — duas pessoas podem bipar a mesma carga em aparelhos diferentes sem o número embaralhar
+4. Bipou errado? **Desmarque** o item na lista; ele volta a contar como faltando
+5. Cada item conferido guarda **quem bipou, a hora** e se o código entrou **pelo leitor** ou foi **digitado à mão** (o app diferencia pelo ritmo da digitação: o leitor "digita" o código inteiro numa rajada; na dúvida, registra como digitado)
+6. No fim, clique em **Concluir conferência**. Se ainda faltar item, o sistema mostra a lista do que falta e pede confirmação; confirmando, a carga fica registrada como conferida **com o que faltou anotado** (quem concluiu, quando e quantos itens ficaram de fora, no Histórico da carga)
+
+**O que cada resposta do bipe quer dizer:**
+
+| Resposta | O que aconteceu | O que fazer |
+|---|---|---|
+| **Conferido** | O item é desta carga e acabou de ser marcado | Seguir para o próximo volume |
+| **Já conferido** | Alguém (ou você) já tinha bipado esse volume | Nada — o contador não muda, não conta em dobro |
+| **Não está nesta carga** | O item existe, está livre (sem carga) | Se for para ir junto, adicione o pedido à carga pelo botão normal de adicionar. O sistema já avisa se aquele pedido **não pode** entrar (cancelado, devolvido, especial ainda não aprovado…) |
+| **Já está em outra carga** | O volume pertence ao romaneio de outro motorista | Não pode ir em duas cargas: devolva o volume ou mova o pedido pelo Mapa das Entregas |
+| **Não encontrei / código inválido** | Código não existe no sistema, ou o leitor leu torto (dígito verificador não bate) | Passar o leitor de novo; se persistir, digitar o número com o prefixo |
+| **Preciso do prefixo** | Foi digitado só o número, e ele bate com mais de um item da carga (ou com nenhum) | Digitar com o prefixo — `ZZ`, `BN` ou `AM`. Isso existe porque `ZZ#100`, `BN#100`, `AM#100` e o pedido comum `#100` são numerações **diferentes** e podem coexistir |
+
+**Duas regras importantes:**
+
+- **Conferir NÃO pede reimpressão do romaneio.** Bipar não altera a carga, então a versão não sobe e o aviso amarelo de "reimprimir" não aparece.
+- **Adicionar um item PEDE reimpressão.** Se, durante a conferência, um pedido for adicionado à carga, aí sim a carga muda: a versão sobe e o romaneio precisa ser reimpresso.
+- **Se o item mudar de carga** (removido, adicionado a outra, ou movido pelo Mapa das Entregas), a conferência dele é **apagada** — ele chega na carga nova como "ainda não conferido".
+- **Cobranças em rota não entram na conferência** — não são mercadoria física, não sobem no caminhão.
+- **Especial que virou pedido com nota:** quando um especial é convertido, ele **deixa de ser `ZZ#` e ganha número novo**. O recibo `ZZ#` que já saiu impresso passa a dar **"não encontrei no sistema"** no bipe — isso não é defeito. Nesse caso, **bipe a DANFE** do pedido convertido (ou digite o número novo).
+
+---
+
 ## Quem aparece como motorista
 
 Apenas usuários com a permissão `Pode_Executar_Entregas` ou `admin` e com status ativo aparecem na lista de motoristas ao montar ou editar uma carga.
@@ -110,6 +146,7 @@ Apenas usuários com a permissão `Pode_Executar_Entregas` ou `admin` e com stat
 | Editar data/motorista do embarque | `Pode_Editar_Embarque` ou `admin` |
 | Adicionar/remover pedidos da carga | `Pode_Acessar_Embarque` (acesso à tela implica gestão da carga) |
 | Inserir/tirar cobranças da carga | `Pode_Acessar_Embarque` ou `admin` |
+| Conferir a carga por bipagem (bipar, desmarcar, concluir) | `Pode_Acessar_Embarque` ou `admin` |
 | Aparecer como motorista disponível | `Pode_Executar_Entregas` ou `admin` |
 | Cobrar os títulos na rua | `Pode_Cobrar_Titulo_Rota` (do motorista/vendedor, na tela Minhas Entregas) |
 
@@ -138,4 +175,6 @@ Apenas usuários com a permissão `Pode_Executar_Entregas` ou `admin` e com stat
 | `frontend/src/pages/Admin/Embarques/CobrancasCargaSection.jsx` | Seção "Cobranças na Carga" + modal de busca de títulos em aberto |
 | `backend/routes/cobrancasRota.js` | Rotas da Cobrança em Rota (inserir/tirar da carga, cobrar, não-cobrada) |
 | `frontend/src/services/embarqueService.js` | Chamadas de API para embarques |
-| `backend/src/routes/embarques.js` | Rotas do backend |
+| `backend/routes/embarques.js` | Rotas do backend (inclui a conferência por bipagem) |
+| `backend/services/conferenciaCargaService.js` | Regra da conferência por bipagem (o que cada código significa, contador, idempotência) |
+| `backend/utils/codigoCarga.js` | Leitura do código bipado (chave da NF-e, `ZZ`/`BN`/`AM`, número solto) |

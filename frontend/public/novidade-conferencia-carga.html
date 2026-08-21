@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Conferência da carga por bipagem — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: preview compacto) -->
+<meta property="og:title" content="📦 Novidade no Hardt App: conferir a carga bipando">
+<meta property="og:description" content="O recibo do especial, bonificação e amostra agora sai com código de barras — e na tela do embarque dá para bipar nota por nota ao carregar o caminhão, vendo na hora o que já subiu e o que ainda falta.">
+<meta property="og:type" content="website">
+<style>
+
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock resumido do quadro flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 34px;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+    border: 1px solid #e3e1da;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 10px 14px;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+  }
+  .mock-grid { display: grid; grid-template-columns: 2.2fr 1.3fr 1fr; }
+  .mock-cel { padding: 8px 10px; border-top: 1px solid #eceae4; min-width: 0; }
+  .mock-cel + .mock-cel { border-left: 1px solid #eceae4; }
+  .mock-cel small {
+    display: block;
+    font-size: 8.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #8a938f;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mock-cel b {
+    display: block;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    vertical-align: 1px;
+  }
+  .tag.mint { background: var(--mint); color: var(--primary-dark); }
+  .tag.escuro { background: var(--house); color: #fff; }
+
+  /* passos "para começar a usar" */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* a "folha" do recibo dentro do mockup */
+  .folha {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 10px;
+    padding: 12px;
+    box-shadow: 0 1px 3px rgba(30,57,50,.08);
+  }
+  .folha-hero {
+    background: var(--house);
+    color: #fff;
+    border-radius: 6px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;          /* em tela estreita o código desce para a linha de baixo */
+  }
+  .folha-hero small {
+    display: block;
+    font-size: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.65);
+  }
+  .folha-hero strong { font-size: 16px; line-height: 1.2; }
+  .folha-hero .num { text-align: right; }
+
+  .quadro { border: 1.5px solid var(--house); margin-bottom: 10px; }
+  .quadro-titulo {
+    background: var(--house);
+    color: #fff;
+    font-size: 8.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    padding: 5px 8px;
+    display: flex;
+    align-items: center;
+  }
+  .quadro-grid { display: grid; grid-template-columns: 2.2fr 1.3fr 1fr; }
+  .quadro-cel { padding: 5px 7px; min-width: 0; }
+  .quadro-grid .quadro-cel:nth-child(n+4) { border-top: .5px solid #e3e1da; }
+  .quadro-grid .quadro-cel:not(:nth-child(3n+1)) { border-left: .5px solid #e3e1da; }
+  .quadro-cel small {
+    display: block;
+    font-size: 7.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #8a938f;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .quadro-cel b {
+    display: block;
+    font-size: 10.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .quadro-cel .vazio { color: #9aa5a0; font-weight: 700; }
+
+  .folha-campos { display: flex; gap: 10px; margin-bottom: 10px; }
+  .folha-campos > div { flex: 1; min-width: 0; }
+  .folha-campos small {
+    display: block;
+    font-size: 7.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #8a938f;
+  }
+  .folha-campos b { font-size: 10.5px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .folha-tab { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  .folha-tab th {
+    font-size: 7.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    color: #8a938f;
+    text-align: left;
+    padding: 3px 4px;
+    border-bottom: 1.5px solid var(--house);
+  }
+  .folha-tab th.num, .folha-tab td.num { text-align: right; }
+  .folha-tab td {
+    font-size: 10px;
+    padding: 4px;
+    border-bottom: .5px solid #e3e1da;
+  }
+  .folha-total {
+    background: var(--mint);
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .folha-total small {
+    font-size: 8px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: var(--primary-dark);
+  }
+  .folha-total b { font-size: 13px; color: var(--primary-dark); }
+  .folha-assin {
+    border-top: 1.5px dashed #b9c2be;
+    text-align: center;
+    font-size: 7.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: #8a938f;
+    padding-top: 6px;
+  }
+
+  /* ── CÓDIGO DE BARRAS (Code128 desenhado com <span>) ── */
+  .cx-barras {
+    background: #fff;
+    border-radius: 5px;
+    padding: 5px 7px 3px;
+    text-align: center;
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+  }
+  .barras { display: flex; align-items: stretch; height: 30px; }
+  .barras span { display: block; flex: none; }   /* barra não pode encolher: distorce a leitura */
+  .cx-barras .humano {
+    font-size: 9.5px;
+    font-weight: 800;
+    color: #000;
+    letter-spacing: 1.2px;
+    margin-top: 2px;
+    font-family: ui-monospace, "Courier New", monospace;
+  }
+  .variantes { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  @media (min-width: 520px) { .variantes { grid-template-columns: repeat(3, 1fr); } }
+  .variante { background: var(--house); border-radius: 12px; padding: 12px; text-align: center; }
+  .variante .qual {
+    color: var(--mint);
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  /* ── MOCK DO PAINEL DE CONFERÊNCIA ── */
+  .conf { border: 2px solid var(--primary); border-radius: 14px; overflow: hidden; background: #fff; }
+  .conf-top {
+    background: var(--house);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .conf-top .tit {
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+  .conf-top .sub { color: var(--mint); font-size: 10.5px; margin-top: 2px; }
+  .contador { color: #fff; font-size: 12px; font-weight: 800; }
+  .contador b { font-size: 22px; }
+  .barra-prog { height: 6px; background: rgba(255,255,255,.18); border-radius: 999px; overflow: hidden; margin-top: 5px; width: 150px; max-width: 100%; }
+  .barra-prog i { display: block; height: 100%; width: 50%; background: #22c55e; }
+  .conf-campo { padding: 12px 14px; background: var(--cream); }
+  .campo-falso {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 2px solid var(--primary);
+    border-radius: 12px;
+    background: #fff;
+    padding: 12px 12px;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: #9aa5a0;
+    min-width: 0;
+  }
+  .campo-falso .cursor { color: var(--primary); font-weight: 800; }
+  .campo-dica { font-size: 10.5px; color: var(--ink-soft); margin-top: 6px; }
+  .fb {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    flex-wrap: wrap;          /* em 320px o botão desce em vez de ser cortado */
+    padding: 10px 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    border-top: 1px solid #e5e7eb;
+  }
+  .fb > span { min-width: 0; overflow-wrap: anywhere; }
+  .fb .emo { font-size: 16px; line-height: 1.3; }
+  .fb-ok { background: #dcfce7; color: #166534; }
+  .fb-warn { background: #fef3c7; color: #92400e; }
+  .fb-err { background: #fee2e2; color: #991b1b; }
+  .fb-add {
+    margin-left: auto;
+    background: var(--primary);
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 6px 10px;
+    border-radius: 999px;
+    white-space: nowrap;
+    align-self: center;
+  }
+  .conf-lista { padding: 12px; background: #fff; }
+  .linha-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 9px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+  .linha-item.ok { background: #f0fdf4; border-color: #bbf7d0; box-shadow: inset 3px 0 0 #22c55e; }
+  .linha-item .quem { flex: 1; min-width: 0; }
+  .linha-item .cli { font-size: 12px; font-weight: 700; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .linha-item .cid { font-size: 11px; color: var(--ink-soft); }
+  .num-item {
+    font-family: ui-monospace, Menlo, monospace;
+    font-weight: 800;
+    font-size: 11px;
+    padding: 3px 7px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .n-nf { color: #374151; background: #f3f4f6; }
+  .n-zz { color: #6d28d9; background: #f5f3ff; }
+  .n-bn { color: #15803d; background: #f0fdf4; }
+  .n-am { color: #c2410c; background: #fff7ed; }
+  .st { font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+  .st-ok { background: #dcfce7; color: #166534; }
+  .st-falta { background: #f3f4f6; color: #4b5563; }
+  .hora { font-size: 9.5px; color: #16a34a; font-weight: 700; display: block; text-align: right; margin-top: 2px; }
+  .faltam-bloco { background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; padding: 10px 12px; margin-top: 4px; }
+  .faltam-bloco h4 {
+    font-size: 10.5px;
+    font-weight: 800;
+    color: #92400e;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin: 0 0 5px;
+  }
+  .faltam-bloco div { font-size: 12px; color: #78350f; line-height: 1.6; }
+  .respostas { margin-top: 12px; display: grid; gap: 6px; }
+  .aviso-box {
+    background: #fff8e6;
+    border: 1px solid #f0d9a0;
+    border-radius: 14px;
+    padding: 14px 16px;
+    font-size: 13.5px;
+    color: #7a5b17;
+    margin-top: 12px;
+  }
+  .aviso-box b { color: #5c4410; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>A carga sai conferida,<br>bipe por bipe</h1>
+    <p>Agora todo recibo tem código de barras — e a tela do embarque tem um campo para bipar nota por nota na hora de colocar no caminhão. Some a dúvida de "será que carregou tudo?".</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do painel flutuando sobre o hero -->
+  <div class="mock" aria-hidden="true">
+    <div class="conf" style="border:none;border-radius:0">
+      <div class="conf-top">
+        <div>
+          <div class="tit">Conferência de carregamento</div>
+          <div class="sub">Motorista: Valdir · bipe cada volume</div>
+        </div>
+        <div>
+          <div class="contador"><b>3</b> de 6 conferidos</div>
+          <div class="barra-prog"><i></i></div>
+        </div>
+      </div>
+      <div class="fb fb-ok"><span class="emo">✅</span><span>ZZ#4821 no caminhão · Lanchonete Varanda · Barra Velha</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO FUNCIONA ══════════ -->
+  <div class="sec-label">Como funciona</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🏷️</span>
+      <strong>Todo recibo agora tem código de barras</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>O <b>Recibo de Conferência</b> do pedido especial <span class="tag escuro">ZZ#</span>, da bonificação <span class="tag escuro">BN#</span> e da amostra <span class="tag escuro">AM#</span> passa a sair com o <b>código de barras do próprio número</b>, numa caixinha branca dentro da faixa verde do cabeçalho.</li>
+        <li>Embaixo do código vai o <b>número escrito por extenso</b> (ZZ#4821), em letra de máquina — continua legível a olho nu e dá para digitar na mão se o código sair borrado.</li>
+        <li>A <b>letra na frente</b> resolve a confusão: existe especial nº 100, bonificação nº 100 e amostra nº 100 ao mesmo tempo. Só o número não diria qual é.</li>
+        <li>Na <b>nota fiscal normal nada mudou</b> — ela já tem o código dela (a chave de acesso, 44 números na DANFE).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📷</span>
+      <strong>Conferir a carga por bipagem</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Em <b>Expedição → Embarques</b>, abra a carga e toque em <b>"Conferir por bipagem"</b>. Abre um painel dentro da própria tela, sem sair de lugar nenhum.</p>
+      <ul>
+        <li>O campo grande fica pronto sozinho: <b>bipe nota por nota</b> conforme cada volume entra no caminhão — não precisa clicar em nada entre um bipe e outro.</li>
+        <li>A linha do item fica <b>verde, com a hora do bipe</b>, e o contador no alto sobe: <b>"3 de 6 conferidas"</b>.</li>
+        <li>Embaixo, um bloco amarelo lista <b>o que ainda falta subir no caminhão</b>.</li>
+        <li>O mesmo campo aceita as duas coisas: a <b>DANFE</b> da nota (chave de 44 números) e o <b>recibo</b> do especial, bonificação e amostra (ZZ / BN / AM).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚦</span>
+      <strong>O que o app responde a cada bipe</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>✅ Conferida</b> — é desta carga: fica verde, com a hora, e o contador sobe.</li>
+        <li><b>⚠️ Já conferida</b> — bipou de novo o mesmo volume: avisa em amarelo a que horas foi, sem contar duas vezes.</li>
+        <li><b>❗ Não é desta carga</b> — mostra de quem é e oferece o botão <b>"Adicionar a esta carga"</b>: dá para montar a carga bipando, sem procurar na lista.</li>
+        <li><b>⛔ Está em outra carga</b> — diz em qual carga o item está, para não sair duplicado.</li>
+        <li><b>❓ Não encontrado</b> — o código não é de nenhum documento do sistema (ou o leitor pegou torto: passe de novo, mais devagar).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">💾</span>
+      <strong>Fica salvo — e registra quem conferiu</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Cada bipe é <b>gravado na hora</b>: pode fechar a tela, trocar de aparelho ou cair a internet no meio que a conferência continua de onde parou.</li>
+        <li>Fica registrado <b>quem conferiu e quando</b> — inclusive se o número foi bipado no leitor ou digitado à mão.</li>
+        <li>Bipou errado? Dá para <b>desfazer</b> a conferência daquele item e bipar de novo.</li>
+        <li>Ao <b>concluir</b>, se ainda faltar volume o app avisa e pergunta antes de fechar — e fica registrado que a carga saiu incompleta.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🖨️</span>
+      <strong>Preciso reimprimir o romaneio?</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Conferir não muda a carga</b> — pode bipar tudo com a folha já impressa na mão, ela continua valendo.</li>
+        <li><b>Adicionar uma nota pela bipagem muda</b> — a carga ganha um item novo, a versão sobe e <b>a folha impressa fica para trás</b>: reimprima o romaneio.</li>
+        <li>O item que entra pela bipagem entra como <b>"falta bipar"</b> — bipe ele de novo depois de colocar no caminhão.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1 — o recibo com código de barras -->
+  <div class="tela">
+    <div class="tela-titulo">🧾 O recibo com o código de barras</div>
+    <div class="tela-corpo">
+      <div class="folha">
+        <div class="folha-hero">
+          <div>
+            <small>Recibo de Conferência</small>
+            <strong>Pedido<span class="pin">1</span></strong>
+          </div>
+          <div class="cx-barras">
+            <div class="barras" data-cod="ZZ4821"></div>
+            <div class="humano">ZZ#4821<span class="pin">2</span></div>
+          </div>
+        </div>
+
+        <div class="quadro">
+          <div class="quadro-titulo">Dados do Cliente · Local de Entrega</div>
+          <div class="quadro-grid">
+            <div class="quadro-cel"><small>Nome / Razão social</small><b>Lanchonete Varanda</b></div>
+            <div class="quadro-cel"><small>CNPJ / CPF</small><b>12.345.678/0001-90</b></div>
+            <div class="quadro-cel"><small>Fone</small><b>(47) 99912-3456</b></div>
+            <div class="quadro-cel"><small>Endereço</small><b>Rua das Palmeiras, 1520 — Sala 3</b></div>
+            <div class="quadro-cel"><small>Bairro</small><b>Centro</b></div>
+            <div class="quadro-cel"><small>CEP</small><b>89120-000</b></div>
+            <div class="quadro-cel"><small>Município</small><b>Timbó</b></div>
+            <div class="quadro-cel"><small>UF</small><b>SC</b></div>
+            <div class="quadro-cel"><small>Entrega</small><b>21/08/2026</b></div>
+          </div>
+        </div>
+
+        <table class="folha-tab" aria-hidden="true">
+          <tr><th>Produto</th><th class="num">Qtd</th><th class="num">Unit.</th><th class="num">Total</th></tr>
+          <tr><td>Coxinha de frango congelada</td><td class="num">20</td><td class="num">28,90</td><td class="num">578,00</td></tr>
+          <tr><td>Risole de carne congelado</td><td class="num">15</td><td class="num">27,50</td><td class="num">412,50</td></tr>
+        </table>
+
+        <div class="folha-total">
+          <small>Total do pedido</small>
+          <b>R$ 990,50<span class="pin">3</span></b>
+        </div>
+
+        <div class="folha-assin">Assinatura do recebedor · Data ___ /___ /____</div>
+      </div>
+
+      <div style="margin-top:14px">
+        <div class="variantes">
+          <div class="variante">
+            <div class="qual">Pedido especial</div>
+            <div class="cx-barras"><div class="barras" data-cod="ZZ4821"></div><div class="humano">ZZ#4821</div></div>
+          </div>
+          <div class="variante">
+            <div class="qual">Bonificação</div>
+            <div class="cx-barras"><div class="barras" data-cod="BN233"></div><div class="humano">BN#233</div></div>
+          </div>
+          <div class="variante">
+            <div class="qual">Amostra</div>
+            <div class="cx-barras"><div class="barras" data-cod="AM17"></div><div class="humano">AM#17</div></div>
+          </div>
+        </div>
+        <div class="aviso-box"><b>Pode testar agora:</b> aponte o leitor para a tela do celular ou do computador. Ele deve "digitar" ZZ4821, BN233 ou AM17 — são códigos de verdade, os mesmos que saem no papel.<span class="pin">4</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>A <b>faixa verde</b> do cabeçalho é a mesma de sempre — muda só o que fica do lado direito dela.</span></div>
+      <div><span class="pin">2</span><span>No lugar do número grande entrou a <b>caixinha branca com o código de barras</b>, e o número <b>legível embaixo</b> (ZZ#4821). O resto do recibo — cliente, endereço, itens, total, assinatura — continua igual.</span></div>
+      <div><span class="pin">3</span><span>Nada mudou daqui para baixo: <b>tabela de itens, total e linha de assinatura</b> seguem como estavam (amostra continua sem valores).</span></div>
+      <div><span class="pin">4</span><span>Os <b>três documentos</b> ganham o código: especial (ZZ), bonificação (BN) e amostra (AM). A <b>nota fiscal normal</b> não mudou — ela usa a chave de acesso da DANFE.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 — painel de conferência -->
+  <div class="tela">
+    <div class="tela-titulo">📷 Expedição → Embarques → Conferir por bipagem</div>
+    <div class="tela-corpo">
+      <div class="conf">
+        <div class="conf-top">
+          <div>
+            <div class="tit">Conferência de carregamento</div>
+            <div class="sub">Motorista: Valdir · bipe cada volume ao colocar no caminhão</div>
+          </div>
+          <div>
+            <div class="contador"><b>3</b> de 6 conferidos<span class="pin">1</span></div>
+            <div class="barra-prog"><i></i></div>
+          </div>
+        </div>
+
+        <div class="conf-campo">
+          <div class="campo-falso"><span>▌</span><span>Bipe a DANFE ou o recibo…</span><span class="pin">2</span></div>
+          <div class="campo-dica">O campo volta a ficar pronto sozinho depois de cada bipe. Também aceita o número digitado à mão (com o prefixo: ZZ4821, BN233, AM17).</div>
+        </div>
+
+        <div class="fb fb-ok">
+          <span class="emo">✅</span>
+          <span>ZZ#4821 no caminhão · Lanchonete Varanda · Barra Velha<span class="pin">3</span></span>
+        </div>
+
+        <div class="conf-lista">
+          <div class="linha-item ok">
+            <span class="num-item n-nf">NF 85142</span>
+            <span class="quem"><span class="cli">Mercado Bom Preço</span><span class="cid">Timbó</span></span>
+            <span><span class="st st-ok">✓ No caminhão</span><span class="hora">bipada 07:41</span></span>
+          </div>
+          <div class="linha-item ok">
+            <span class="num-item n-zz">ZZ#4821</span>
+            <span class="quem"><span class="cli">Lanchonete Varanda</span><span class="cid">Barra Velha</span></span>
+            <span><span class="st st-ok">✓ No caminhão</span><span class="hora">bipada 07:43</span></span>
+          </div>
+          <div class="linha-item ok">
+            <span class="num-item n-bn">BN#233</span>
+            <span class="quem"><span class="cli">Colégio São José</span><span class="cid">Timbó</span></span>
+            <span><span class="st st-ok">✓ No caminhão</span><span class="hora">bipada 07:44</span></span>
+          </div>
+          <div class="linha-item">
+            <span class="num-item n-am">AM#17</span>
+            <span class="quem"><span class="cli">Bar do Zé</span><span class="cid">Rio dos Cedros</span></span>
+            <span><span class="st st-falta">falta bipar</span></span>
+          </div>
+
+          <div class="faltam-bloco">
+            <h4>⚠️ Ainda não entraram no caminhão<span class="pin">4</span></h4>
+            <div>AM#17 — Bar do Zé<br>NF 85143 — Padaria Trigo de Ouro<br>NF 85144 — Supermercado Vale Verde</div>
+          </div>
+
+          <div class="respostas">
+            <div class="fb fb-warn" style="border-radius:10px;border-top:none"><span class="emo">⚠️</span><span>NF 85142 já tinha sido conferida (07:41)<span class="pin">5</span></span></div>
+            <div class="fb fb-err" style="border-radius:10px;border-top:none">
+              <span class="emo">❗</span><span>ZZ#9099 não é desta carga · Restaurante Sabor Caseiro</span>
+              <span class="fb-add">Adicionar a esta carga<span class="pin">6</span></span>
+            </div>
+            <div class="fb fb-err" style="border-radius:10px;border-top:none"><span class="emo">⛔</span><span>ZZ#7777 está na Carga #45, não nesta<span class="pin">7</span></span></div>
+            <div class="fb fb-err" style="border-radius:10px;border-top:none"><span class="emo">❓</span><span>Não encontrei esse código — confira se o volume é desta carga</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O <b>contador</b> no alto mostra quantos volumes já subiram — <b>"3 de 6 conferidos"</b> — com a barrinha de progresso ao lado.</span></div>
+      <div><span class="pin">2</span><span>O <b>campo grande</b> é onde o leitor "digita". Ele volta a ficar pronto sozinho depois de cada bipe: dá para bipar em sequência sem tocar na tela.</span></div>
+      <div><span class="pin">3</span><span>A <b>faixa de resposta</b> mostra o resultado do último bipe, com o nome do cliente e a cidade — e toca um som diferente para acerto e para erro.</span></div>
+      <div><span class="pin">4</span><span>O <b>bloco amarelo</b> lista o que ainda falta. É por ele que se confere o caminhão antes de fechar a porta.</span></div>
+      <div><span class="pin">5</span><span>Bipou o mesmo volume duas vezes? <b>Aviso amarelo</b> com a hora do primeiro bipe — o contador não sobe de novo.</span></div>
+      <div><span class="pin">6</span><span>Item que não é da carga: o botão <b>"Adicionar a esta carga"</b> traz ele para cá na hora (a carga muda de versão — <b>reimprima o romaneio</b>).</span></div>
+      <div><span class="pin">7</span><span>Item que já está em <b>outra carga</b> aparece em vermelho dizendo qual — é a trava contra mandar o mesmo pedido em dois caminhões.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PARA COMEÇAR A USAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Imprima os recibos como sempre</b>, pela impressão em lote na aba Pedidos — daqui para a frente eles já saem com o código de barras.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Vá em <b>Expedição → Embarques</b>, abra a carga do dia e toque em <b>"Conferir por bipagem"</b>.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div><b>Bipe cada volume</b> na hora de colocar no caminhão — DANFE ou recibo, tanto faz, é o mesmo campo. Acompanhe o contador subir.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Acabou de carregar? Confira o bloco amarelo e toque em <b>Concluir conferência</b>. Se faltar alguma coisa, o app avisa antes de fechar. 🚚</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a novidade.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+
+  // Code128 (conjunto B) — o MESMO desenho que sai no recibo impresso.
+  var P128 = ['212222','222122','222221','121223','121322','131222','122213','122312','132212','221213','221312','231212','112232','122132','122231','113222','123122','123221','223211','221132','221231','213212','223112','312131','311222','321122','321221','312212','322112','322211','212123','212321','232121','111323','131123','131321','112313','132113','132311','211313','231113','231311','112133','112331','132131','113123','113321','133121','313121','211331','231131','213113','213311','213131','311123','311321','331121','312113','312311','332111','314111','221411','431111','111224','111422','121124','121421','141122','141221','112214','112412','122114','122411','142112','142211','241211','221114','413111','241112','134111','111242','121142','121241','114212','124112','124211','411212','421112','421211','212141','214121','412121','111143','111341','131141','114113','114311','411113','411311','113141','114131','311141','411131','211412','211214','211232','2331112'];
+  function code128b(txt) {
+    var v = [104], soma = 104;                       // Start B
+    for (var i = 0; i < txt.length; i++) { var val = txt.charCodeAt(i) - 32; v.push(val); soma += val * (i + 1); }
+    v.push(soma % 103); v.push(106);                 // checksum + Stop
+    return v;
+  }
+  document.querySelectorAll('.barras').forEach(function (el) {
+    var vals = code128b(el.dataset.cod), MOD = 1.5, html = '';
+    vals.forEach(function (v) {
+      var p = P128[v];
+      for (var i = 0; i < p.length; i++) {
+        var w = parseInt(p[i], 10) * MOD;
+        html += '<span style="width:' + w + 'px;background:' + (i % 2 === 0 ? '#000' : '#fff') + '"></span>';
+      }
+    });
+    el.innerHTML = html;
+  });
+</script>
+</body>
+</html>

@@ -285,9 +285,9 @@ model ClienteGps {
   balcaoEm      DateTime? @map("balcao_em")
 
   // Selo calculado pelo agrupamento de sinais (entregas, atendimentos, "na porta")
-  selo     String?   // CONFIRMADO | SUSPEITO (null = sem sinais suficientes / aguardando)
+  selo     String? // CONFIRMADO | SUSPEITO (null = sem sinais suficientes / aguardando)
   seloEm   DateTime? @map("selo_em")
-  sugestao String?   // "lat,lng" — centro do agrupamento quando o cadastro diverge
+  sugestao String? // "lat,lng" — centro do agrupamento quando o cadastro diverge
 
   fotoFachada String? @map("foto_fachada")
 
@@ -431,6 +431,15 @@ model Pedido {
   observacaoEntrega    String?   @map("observacao_entrega") @db.Text // Observação geral do motorista na entrega
   prioridadeEntrega    Int?      @map("prioridade_entrega") // Prioridade manual do motorista (1, 2, 3...)
 
+  // CONFERÊNCIA DE CARGA POR BIPAGEM (08/2026) — a doca bipa a DANFE (chave de 44
+  // dígitos) ou o recibo (ZZ#/BN#) ao colocar a mercadoria no caminhão. Persistido:
+  // duas pessoas podem bipar ao mesmo tempo e o contador tem que bater no servidor.
+  // `cargaConferidaPorId` é snapshot solto (mesmo padrão de EmbarqueVersaoLog.alteradoPorId) — sem relation.
+  cargaConferidaEm      DateTime? @map("carga_conferida_em")
+  cargaConferidaPorId   String?   @map("carga_conferida_por_id")
+  cargaConferidaPorNome String?   @map("carga_conferida_por_nome")
+  cargaConferidaOrigem  String?   @map("carga_conferida_origem") // LEITOR | DIGITADO
+
   pagamentosReais      PedidoPagamentoReal[]
   itensDevolvidos      EntregaItemDevolvido[]
   caixaConferencias    CaixaEntregaConferida[]
@@ -468,6 +477,11 @@ model Pedido {
   // pedidos_nfe_chave_idx). Assim o `db push` os encontra prontos e não trava escrita.
   @@index([dataVenda])
   @@index([nfeChave])
+  //   embarqueId → contagem da conferência de carga por bipagem (2 counts por bipe,
+  //   dezenas de bipes por carga). Sem ele é seq scan em `pedidos` a cada leitura.
+  //   Mesma publicação segura dos dois acima: CREATE INDEX CONCURRENTLY pedidos_embarque_id_idx
+  //   em produção ANTES do deploy, para o `db push` achar pronto e não travar escrita.
+  @@index([embarqueId])
   @@map("pedidos")
 }
 
@@ -790,6 +804,11 @@ model NotaFiscalApp {
 
   @@index([pedidoId])
   @@index([status])
+  // ⚠️ PRECISA FICAR DECLARADO AQUI (mesmo motivo do índice de `pedidos`): o deploy roda
+  // `prisma db push`, que derruba índice criado por fora. O bipe da conferência de carga
+  // procura a nota pela chave — sem índice é varredura na tabela a cada bipe.
+  // Publicação segura: CREATE INDEX CONCURRENTLY notas_fiscais_app_chave_idx ANTES do deploy.
+  @@index([chave])
   @@map("notas_fiscais_app")
 }
 
@@ -986,15 +1005,15 @@ model Funcionario {
 // ("esqueci de bater"). Um pedido leva vários horários (itens) e o RH aprova
 // tudo de uma vez ou item a item.
 model PontoAcerto {
-  id            String    @id @default(uuid())
-  funcionarioId String    @map("funcionario_id")
-  motivo        String?
-  status        String    @default("PENDENTE") // PENDENTE | RESPONDIDO
-  respondidoPor String?   @map("respondido_por") // id do usuário do app
-  respondidoNome String?  @map("respondido_nome") // nome, para mostrar ao funcionário
-  respondidoEm  DateTime? @map("respondido_em")
-  lidoEm        DateTime? @map("lido_em") // quando o funcionário deu "OK, entendi"
-  createdAt     DateTime  @default(now()) @map("created_at")
+  id             String    @id @default(uuid())
+  funcionarioId  String    @map("funcionario_id")
+  motivo         String?
+  status         String    @default("PENDENTE") // PENDENTE | RESPONDIDO
+  respondidoPor  String?   @map("respondido_por") // id do usuário do app
+  respondidoNome String?   @map("respondido_nome") // nome, para mostrar ao funcionário
+  respondidoEm   DateTime? @map("respondido_em")
+  lidoEm         DateTime? @map("lido_em") // quando o funcionário deu "OK, entendi"
+  createdAt      DateTime  @default(now()) @map("created_at")
 
   funcionario Funcionario       @relation(fields: [funcionarioId], references: [id], onDelete: Cascade)
   itens       PontoAcertoItem[]
@@ -1210,16 +1229,16 @@ model ContaFinanceira {
   // FKs reais desde a Fase 0 Contabilidade (antes contaFinanceiraCaId era texto solto).
   // Escritas com conta vinda de fora (sync CA/Asaas/Baixa CA) passam por
   // contaFinanceiraGuardService.garantirContaFinanceira, que cria a conta inativa se faltar.
-  parcelas             Parcela[]               @relation("ParcelasConta")
-  pagamentosReceber    PagamentoParcela[]      @relation("PagamentosReceberConta")
-  contasPagar          ContaPagar[]            @relation("ContasPagarConta")
-  pagamentosPagar      PagamentoParcelaPagar[] @relation("PagamentosPagarConta")
-  extratoImportacoes   ExtratoImportacao[]     @relation("ExtratoImportacoesConta")
-  extratoLancamentos   ExtratoLancamento[]     @relation("ExtratoLancamentosConta")
-  conciliacaoGrupos    ConciliacaoGrupo[]      @relation("ConciliacaoGruposConta")
-  ajustesSaldo         AjusteSaldoConta[]      @relation("AjustesSaldoContaFin")
-  transferenciasOrigem TransferenciaConta[]    @relation("TransferenciasOrigem")
-  transferenciasDestino TransferenciaConta[]   @relation("TransferenciasDestino")
+  parcelas              Parcela[]               @relation("ParcelasConta")
+  pagamentosReceber     PagamentoParcela[]      @relation("PagamentosReceberConta")
+  contasPagar           ContaPagar[]            @relation("ContasPagarConta")
+  pagamentosPagar       PagamentoParcelaPagar[] @relation("PagamentosPagarConta")
+  extratoImportacoes    ExtratoImportacao[]     @relation("ExtratoImportacoesConta")
+  extratoLancamentos    ExtratoLancamento[]     @relation("ExtratoLancamentosConta")
+  conciliacaoGrupos     ConciliacaoGrupo[]      @relation("ConciliacaoGruposConta")
+  ajustesSaldo          AjusteSaldoConta[]      @relation("AjustesSaldoContaFin")
+  transferenciasOrigem  TransferenciaConta[]    @relation("TransferenciasOrigem")
+  transferenciasDestino TransferenciaConta[]    @relation("TransferenciasDestino")
 
   @@map("contas_financeiras")
 }
@@ -1228,15 +1247,15 @@ model ContaFinanceira {
 // o resultado de uma conta na tela Saldos por Conta. Valor positivo = entrada,
 // negativo = saída. Só existe no app (não vai ao Conta Azul).
 model AjusteSaldoConta {
-  id                  String    @id @default(uuid())
-  contaFinanceiraCaId String?   @map("conta_financeira_ca_id") // null = "Não informado"
+  id                  String           @id @default(uuid())
+  contaFinanceiraCaId String?          @map("conta_financeira_ca_id") // null = "Não informado"
   contaFinanceira     ContaFinanceira? @relation("AjustesSaldoContaFin", fields: [contaFinanceiraCaId], references: [id], onDelete: Restrict)
   data                DateTime
-  valor               Decimal   @db.Decimal(12, 2)
+  valor               Decimal          @db.Decimal(12, 2)
   descricao           String
-  criadoPorId         String?   @map("criado_por_id")
-  criadoPor           Vendedor? @relation("AjustesSaldoCriados", fields: [criadoPorId], references: [id])
-  criadoEm            DateTime  @default(now()) @map("criado_em")
+  criadoPorId         String?          @map("criado_por_id")
+  criadoPor           Vendedor?        @relation("AjustesSaldoCriados", fields: [criadoPorId], references: [id])
+  criadoEm            DateTime         @default(now()) @map("criado_em")
 
   @@index([contaFinanceiraCaId])
   @@index([data])
@@ -1482,6 +1501,13 @@ model Embarque {
   ultimaImpressaoEm     DateTime?           @map("ultima_impressao_em")
   versoes               EmbarqueVersaoLog[]
 
+  // Fecho da conferência de carga por bipagem: quem concluiu, quando e quantos itens
+  // ficaram faltando (conferir com falta é permitido, mas fica registrado).
+  conferenciaConcluidaEm      DateTime? @map("conferencia_concluida_em")
+  conferenciaConcluidaPorId   String?   @map("conferencia_concluida_por_id")
+  conferenciaConcluidaPorNome String?   @map("conferencia_concluida_por_nome")
+  conferenciaFaltantes        Int?      @map("conferencia_faltantes")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -1495,7 +1521,7 @@ model EmbarqueVersaoLog {
   embarqueId      String   @map("embarque_id")
   embarque        Embarque @relation(fields: [embarqueId], references: [id], onDelete: Cascade)
   versao          Int
-  acao            String // CRIADA | EDITADA | PEDIDOS_ADICIONADOS | PEDIDO_REMOVIDO | AMOSTRAS_ADICIONADAS | AMOSTRA_REMOVIDA | IMPRESSA
+  acao            String // CRIADA | EDITADA | PEDIDOS_ADICIONADOS | PEDIDO_REMOVIDO | AMOSTRAS_ADICIONADAS | AMOSTRA_REMOVIDA | IMPRESSA | CONFERENCIA_CONCLUIDA
   alteracoes      Json?
   alteradoPorId   String?  @map("alterado_por_id")
   alteradoPorNome String?  @map("alterado_por_nome")
@@ -1719,9 +1745,9 @@ model CaixaDiario {
   entregasConferidas   CaixaEntregaConferida[]
   conferenciaDevolucao CaixaConferenciaDevolucao?
   // Baixas de títulos em espécie lançadas neste caixa (somam no valor a prestar)
-  recebimentosTitulos PagamentoParcela[] @relation("RecebimentosTitulos")
+  recebimentosTitulos  PagamentoParcela[]         @relation("RecebimentosTitulos")
   // Canhotos de NF bipados durante este caixa (só auditoria — a lista do dia é por consulta)
-  canhotosBipados     CanhotoNota[]
+  canhotosBipados      CanhotoNota[]
 
   @@unique([vendedorId, dataReferencia])
   @@index([vendedorId])
@@ -1988,23 +2014,29 @@ model MetaCidade {
 // =============================================
 
 model Amostra {
-  id              String        @id @default(uuid())
-  numero          Int           @default(autoincrement())
-  leadId          String?       @map("lead_id")
-  lead            Lead?         @relation(fields: [leadId], references: [id])
-  clienteId       String?       @map("cliente_id")
-  cliente         Cliente?      @relation(fields: [clienteId], references: [UUID])
-  dataEntrega     DateTime?     @map("data_entrega")
-  observacao      String?       @db.Text
-  status          String        @default("SOLICITADA") // SOLICITADA | PREPARACAO | LIBERADO | ENTREGUE | CANCELADA
-  solicitadoPorId String        @map("solicitado_por_id")
-  solicitadoPor   Vendedor      @relation("AmostrasSolicitadas", fields: [solicitadoPorId], references: [id])
-  embarqueId      String?       @map("embarque_id")
-  embarque        Embarque?     @relation(fields: [embarqueId], references: [id])
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
-  itens           AmostraItem[]
-  atendimentos    Atendimento[]
+  id              String    @id @default(uuid())
+  numero          Int       @default(autoincrement())
+  leadId          String?   @map("lead_id")
+  lead            Lead?     @relation(fields: [leadId], references: [id])
+  clienteId       String?   @map("cliente_id")
+  cliente         Cliente?  @relation(fields: [clienteId], references: [UUID])
+  dataEntrega     DateTime? @map("data_entrega")
+  observacao      String?   @db.Text
+  status          String    @default("SOLICITADA") // SOLICITADA | PREPARACAO | LIBERADO | ENTREGUE | CANCELADA
+  solicitadoPorId String    @map("solicitado_por_id")
+  solicitadoPor   Vendedor  @relation("AmostrasSolicitadas", fields: [solicitadoPorId], references: [id])
+  embarqueId      String?   @map("embarque_id")
+  embarque        Embarque? @relation(fields: [embarqueId], references: [id])
+
+  // Conferência de carga por bipagem (AM# no recibo) — ver comentário em Pedido.
+  cargaConferidaEm      DateTime?     @map("carga_conferida_em")
+  cargaConferidaPorId   String?       @map("carga_conferida_por_id")
+  cargaConferidaPorNome String?       @map("carga_conferida_por_nome")
+  cargaConferidaOrigem  String?       @map("carga_conferida_origem") // LEITOR | DIGITADO
+  createdAt             DateTime      @default(now()) @map("created_at")
+  updatedAt             DateTime      @updatedAt @map("updated_at")
+  itens                 AmostraItem[]
+  atendimentos          Atendimento[]
 
   @@index([status])
   @@index([leadId])
@@ -2188,17 +2220,17 @@ model Parcela {
   dataVencimento DateTime     @map("data_vencimento")
 
   // Baixa
-  dataPagamento       DateTime? @map("data_pagamento")
-  valorPago           Decimal?  @map("valor_pago") @db.Decimal(12, 2)
-  valorDescontoTotal  Decimal   @default(0) @map("valor_desconto_total") @db.Decimal(12, 2)
-  formaPagamento      String?   @map("forma_pagamento")
-  contaFinanceiraCaId String?   @map("conta_financeira_ca_id") // UUID do banco/caixa no CA em que o dinheiro ENTROU (vem da baixa sincronizada do CA)
+  dataPagamento       DateTime?        @map("data_pagamento")
+  valorPago           Decimal?         @map("valor_pago") @db.Decimal(12, 2)
+  valorDescontoTotal  Decimal          @default(0) @map("valor_desconto_total") @db.Decimal(12, 2)
+  formaPagamento      String?          @map("forma_pagamento")
+  contaFinanceiraCaId String?          @map("conta_financeira_ca_id") // UUID do banco/caixa no CA em que o dinheiro ENTROU (vem da baixa sincronizada do CA)
   // FK real desde a Fase 0 Contabilidade — escrita com conta externa passa antes por garantirContaFinanceira
   contaFinanceira     ContaFinanceira? @relation("ParcelasConta", fields: [contaFinanceiraCaId], references: [id], onDelete: Restrict)
-  baixadoPorId        String?   @map("baixado_por_id")
-  baixadoPor          Vendedor? @relation("BaixasRealizadas", fields: [baixadoPorId], references: [id])
-  status              String    @default("PENDENTE") // PENDENTE | PARCIAL | PAGO | VENCIDO | CANCELADO
-  observacao          String?   @db.Text
+  baixadoPorId        String?          @map("baixado_por_id")
+  baixadoPor          Vendedor?        @relation("BaixasRealizadas", fields: [baixadoPorId], references: [id])
+  status              String           @default("PENDENTE") // PENDENTE | PARCIAL | PAGO | VENCIDO | CANCELADO
+  observacao          String?          @db.Text
 
   pagamentos     PagamentoParcela[]
   cobrancasAsaas CobrancaAsaas[] // PIX/boleto emitidos pelo app via Asaas
@@ -2217,17 +2249,17 @@ model Parcela {
 // Histórico (ledger) de cada pagamento/desconto recebido numa parcela —
 // permite baixa parcial (várias linhas até quitar) e estorno individual de cada linha.
 model PagamentoParcela {
-  id                  String   @id @default(uuid())
-  parcelaId           String   @map("parcela_id")
-  parcela             Parcela  @relation(fields: [parcelaId], references: [id], onDelete: Cascade)
-  valorRecebido       Decimal  @default(0) @map("valor_recebido") @db.Decimal(12, 2)
-  valorDesconto       Decimal  @default(0) @map("valor_desconto") @db.Decimal(12, 2)
-  motivoDesconto      String?  @map("motivo_desconto")
-  formaPagamento      String?  @map("forma_pagamento")
-  contaFinanceiraCaId String?  @map("conta_financeira_ca_id") // UUID do banco/caixa no CA em que o dinheiro entrou
+  id                  String           @id @default(uuid())
+  parcelaId           String           @map("parcela_id")
+  parcela             Parcela          @relation(fields: [parcelaId], references: [id], onDelete: Cascade)
+  valorRecebido       Decimal          @default(0) @map("valor_recebido") @db.Decimal(12, 2)
+  valorDesconto       Decimal          @default(0) @map("valor_desconto") @db.Decimal(12, 2)
+  motivoDesconto      String?          @map("motivo_desconto")
+  formaPagamento      String?          @map("forma_pagamento")
+  contaFinanceiraCaId String?          @map("conta_financeira_ca_id") // UUID do banco/caixa no CA em que o dinheiro entrou
   contaFinanceira     ContaFinanceira? @relation("PagamentosReceberConta", fields: [contaFinanceiraCaId], references: [id], onDelete: Restrict)
-  dataPagamento       DateTime @map("data_pagamento")
-  observacao          String?  @db.Text
+  dataPagamento       DateTime         @map("data_pagamento")
+  observacao          String?          @db.Text
 
   registradoPorId String   @map("registrado_por_id")
   registradoPor   Vendedor @relation("PagamentosParcelaRegistrados", fields: [registradoPorId], references: [id])
@@ -3307,8 +3339,8 @@ model ContaPagar {
 
   // Condição de pagamento escolhida na entrada da nota (vai no payload da despesa ao CA:
   // metodo_pagamento + conta_financeira de cada parcela). Nulo = usa a conta padrão do CA.
-  metodoPagamentoCA   String? @map("metodo_pagamento_ca") // enum de metodo_pagamento do CA
-  contaFinanceiraCaId String? @map("conta_financeira_ca_id") // UUID do banco/caixa no CA
+  metodoPagamentoCA   String?          @map("metodo_pagamento_ca") // enum de metodo_pagamento do CA
+  contaFinanceiraCaId String?          @map("conta_financeira_ca_id") // UUID do banco/caixa no CA
   contaFinanceira     ContaFinanceira? @relation("ContasPagarConta", fields: [contaFinanceiraCaId], references: [id], onDelete: Restrict)
 
   criadoPorId String?   @map("criado_por_id")
@@ -3395,10 +3427,10 @@ model PagamentoParcelaPagar {
 
   // Baixa nascida "já paguei" na conferência da nota → precisa ser EMPURRADA ao CA.
   // Pagamento MANUAL comum fica NAO_ENVIAR (comportamento legado: sync é só CA→local).
-  contaFinanceiraCaId String? @map("conta_financeira_ca_id") // UUID do banco/caixa no CA (de onde saiu o pgto)
+  contaFinanceiraCaId String?          @map("conta_financeira_ca_id") // UUID do banco/caixa no CA (de onde saiu o pgto)
   contaFinanceira     ContaFinanceira? @relation("PagamentosPagarConta", fields: [contaFinanceiraCaId], references: [id], onDelete: Restrict)
-  statusEnvioCA       String  @default("NAO_ENVIAR") @map("status_envio_ca") // NAO_ENVIAR | ENVIAR | ENVIADO
-  erroEnvioCA         String? @map("erro_envio_ca") @db.Text
+  statusEnvioCA       String           @default("NAO_ENVIAR") @map("status_envio_ca") // NAO_ENVIAR | ENVIAR | ENVIADO
+  erroEnvioCA         String?          @map("erro_envio_ca") @db.Text
 
   registradoPorId String?   @map("registrado_por_id")
   registradoPor   Vendedor? @relation("PagamentosParcelaPagarRegistrados", fields: [registradoPorId], references: [id])
@@ -3708,17 +3740,17 @@ model NotaEntradaEstoqueMov {
 
 // Uma importação de arquivo OFX de extrato bancário (histórico de uploads).
 model ExtratoImportacao {
-  id                  String    @id @default(uuid())
-  contaFinanceiraCaId String    @map("conta_financeira_ca_id") // banco/caixa (UUID da conta no CA)
+  id                  String          @id @default(uuid())
+  contaFinanceiraCaId String          @map("conta_financeira_ca_id") // banco/caixa (UUID da conta no CA)
   contaFinanceira     ContaFinanceira @relation("ExtratoImportacoesConta", fields: [contaFinanceiraCaId], references: [id], onDelete: Restrict)
-  nomeArquivo         String    @map("nome_arquivo")
-  dataInicio          DateTime? @map("data_inicio") // menor data dos lançamentos do arquivo
-  dataFim             DateTime? @map("data_fim")
-  totalArquivo        Int       @default(0) @map("total_arquivo") // lançamentos no arquivo
-  novos               Int       @default(0) // gravados (não existiam ainda)
-  duplicados          Int       @default(0) // já existiam (FITID repetido) — pulados
-  criadoPorId         String?   @map("criado_por_id")
-  criadoEm            DateTime  @default(now()) @map("criado_em")
+  nomeArquivo         String          @map("nome_arquivo")
+  dataInicio          DateTime?       @map("data_inicio") // menor data dos lançamentos do arquivo
+  dataFim             DateTime?       @map("data_fim")
+  totalArquivo        Int             @default(0) @map("total_arquivo") // lançamentos no arquivo
+  novos               Int             @default(0) // gravados (não existiam ainda)
+  duplicados          Int             @default(0) // já existiam (FITID repetido) — pulados
+  criadoPorId         String?         @map("criado_por_id")
+  criadoEm            DateTime        @default(now()) @map("criado_em")
 
   // IDENTIDADE DO ARQUIVO — de qual banco/conta o extrato é (tags do próprio OFX).
   // É a TRAVA contra importar na conta errada: cada conta "aprende" sua identidade na
@@ -3783,11 +3815,11 @@ model ExtratoLancamento {
 // (baixa parcial no app + saldo em outro grupo). O caso simples 1↔1 continua
 // nos campos pagamentoParcelaId/pagamentoParcelaPagarId do ExtratoLancamento.
 model ConciliacaoGrupo {
-  id                  String  @id @default(uuid())
-  contaFinanceiraCaId String  @map("conta_financeira_ca_id")
+  id                  String          @id @default(uuid())
+  contaFinanceiraCaId String          @map("conta_financeira_ca_id")
   contaFinanceira     ContaFinanceira @relation("ConciliacaoGruposConta", fields: [contaFinanceiraCaId], references: [id], onDelete: Restrict)
   tipo                String // CREDITO | DEBITO (um grupo não mistura sentidos)
-  valor               Decimal @db.Decimal(12, 2) // soma do lado do EXTRATO (legado: antes, os dois lados eram iguais)
+  valor               Decimal         @db.Decimal(12, 2) // soma do lado do EXTRATO (legado: antes, os dois lados eram iguais)
 
   // Os dois lados podem NÃO fechar (tarifa do banco, juros pagos a mais, desconto…).
   // Nesse caso o grupo só é aceito com o motivo declarado — a diferença fica registrada,
@@ -3811,12 +3843,12 @@ model ConciliacaoGrupo {
 // (Saldos por Conta / extrato) como movimento próprio: sai de uma, entra na outra.
 // NUNCA entra na DRE nem no fluxo de caixa gerencial (no global soma zero).
 model TransferenciaConta {
-  id             String   @id @default(uuid())
+  id             String           @id @default(uuid())
   data           DateTime
-  valor          Decimal  @db.Decimal(12, 2) // sempre positivo
-  contaOrigemId  String?  @map("conta_origem_id") // UUID da conta financeira no CA; null = conta fora do sistema
+  valor          Decimal          @db.Decimal(12, 2) // sempre positivo
+  contaOrigemId  String?          @map("conta_origem_id") // UUID da conta financeira no CA; null = conta fora do sistema
   contaOrigem    ContaFinanceira? @relation("TransferenciasOrigem", fields: [contaOrigemId], references: [id], onDelete: Restrict)
-  contaDestinoId String?  @map("conta_destino_id") // idem
+  contaDestinoId String?          @map("conta_destino_id") // idem
   contaDestino   ContaFinanceira? @relation("TransferenciasDestino", fields: [contaDestinoId], references: [id], onDelete: Restrict)
   descricao      String?
 

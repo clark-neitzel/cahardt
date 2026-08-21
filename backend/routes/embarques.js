@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const verificarAuth = require('../middlewares/authMiddleware');
+const conferenciaCarga = require('../services/conferenciaCargaService');
 
 const checkAcessoEmbarque = async (req, res, next) => {
     try {
@@ -390,7 +391,8 @@ router.post('/', verificarAuth, checkAcessoEmbarque, async (req, res) => {
         if (pedidosIds && pedidosIds.length > 0) {
             await prisma.pedido.updateMany({
                 where: { id: { in: pedidosIds } },
-                data: { statusEntrega: 'PENDENTE' }
+                // // Item que ENTRA ou SAI de carga volta a "não conferido" — senão chegaria já verde na carga nova.
+                data: { statusEntrega: 'PENDENTE', ...conferenciaCarga.RESET_CONFERENCIA }
             });
         }
 
@@ -435,7 +437,9 @@ router.post('/:id/pedidos', verificarAuth, checkAcessoEmbarque, async (req, res)
             where: { id: { in: pedidosIds } },
             data: {
                 embarqueId,
-                statusEntrega: 'PENDENTE' // Status de Partida do motorista
+                statusEntrega: 'PENDENTE', // Status de Partida do motorista
+                // Item que ENTRA ou SAI de carga volta a "não conferido" — senão chegaria já verde na carga nova.
+                ...conferenciaCarga.RESET_CONFERENCIA
             }
         });
 
@@ -488,7 +492,9 @@ router.delete('/:id/pedidos/:pedidoId', verificarAuth, checkAcessoEmbarque, asyn
         await prisma.pedido.update({
             where: { id: pedidoId },
             data: {
-                embarqueId: null
+                embarqueId: null,
+                // Item que ENTRA ou SAI de carga volta a "não conferido" — senão chegaria já verde na carga nova.
+                ...conferenciaCarga.RESET_CONFERENCIA
             }
         });
 
@@ -539,7 +545,8 @@ router.post('/:id/amostras', verificarAuth, checkAcessoEmbarque, async (req, res
 
         await prisma.amostra.updateMany({
             where: { id: { in: amostrasIds } },
-            data: { embarqueId }
+            // // Item que ENTRA ou SAI de carga volta a "não conferido" — senão chegaria já verde na carga nova.
+            data: { embarqueId, ...conferenciaCarga.RESET_CONFERENCIA }
         });
 
         // Versionamento (best-effort)
@@ -582,7 +589,8 @@ router.delete('/:id/amostras/:amostraId', verificarAuth, checkAcessoEmbarque, as
 
         await prisma.amostra.update({
             where: { id: amostraId },
-            data: { embarqueId: null }
+            // // Item que ENTRA ou SAI de carga volta a "não conferido" — senão chegaria já verde na carga nova.
+            data: { embarqueId: null, ...conferenciaCarga.RESET_CONFERENCIA }
         });
 
         // Versionamento (best-effort)
@@ -625,6 +633,153 @@ router.post('/:id/impressao', verificarAuth, checkAcessoEmbarque, async (req, re
     } catch (error) {
         console.error('Erro ao registrar impressão do embarque:', error);
         res.status(500).json({ error: 'Erro ao registrar a impressão.' });
+    }
+});
+
+
+// ==========================================
+// 10. CONFERÊNCIA DE CARGA POR BIPAGEM (doca, 08/2026)
+// A pessoa bipa a DANFE (chave 44 dígitos) ou o recibo (ZZ#/BN#/AM#) ao colocar o
+// volume no caminhão. A conferência é PERSISTIDA — duas pessoas podem bipar a mesma
+// carga ao mesmo tempo e o contador é sempre recontado no servidor.
+//
+// ⚠️ REGRA DURA: SEMPRE HTTP 200 no caminho normal, INCLUSIVE nas recusas
+// (JA_CONFERIDA, FORA_DA_CARGA, EM_OUTRA_CARGA, DESCONHECIDO, INVALIDO, PEDE_PREFIXO).
+// 4xx cai no interceptor genérico do axios e vira um toast vermelho sem informação —
+// a doca precisa da mensagem PRECISA (mesmo motivo de canhotoService.bipar).
+//
+// Conferir NÃO sobe a `versao` do embarque (precedente: POST /:id/impressao) — conferir
+// não muda a carga, então não pede reimpressão da folha. Adicionar um item por bipe usa
+// o POST /:id/pedidos de sempre, que já sobe a versão.
+// ==========================================
+router.post('/:id/conferir', verificarAuth, checkAcessoEmbarque, async (req, res) => {
+    try {
+        const { texto, origem } = req.body || {};
+        const embarque = await prisma.embarque.findUnique({ where: { id: req.params.id }, select: { id: true } });
+        if (!embarque) return res.status(404).json({ error: 'Embarque não encontrado.' });
+
+        const nome = req.user.nome || await nomeUsuario(req.user.id);
+        const r = await conferenciaCarga.biparNaCarga({
+            embarqueId: req.params.id,
+            texto,
+            usuario: { id: req.user.id, nome },
+            origem
+        });
+        res.json(r); // 200 SEMPRE — ver comentário acima
+    } catch (error) {
+        console.error('Erro ao conferir item da carga:', error);
+        res.status(500).json({ error: 'Erro ao registrar a conferência.' });
+    }
+});
+
+// Situação atual da conferência (abrir a tela / dois aparelhos bipando).
+router.get('/:id/conferencia', verificarAuth, checkAcessoEmbarque, async (req, res) => {
+    try {
+        const embarque = await prisma.embarque.findUnique({
+            where: { id: req.params.id },
+            select: {
+                id: true, numero: true, dataSaida: true, versao: true,
+                conferenciaConcluidaEm: true, conferenciaConcluidaPorNome: true, conferenciaFaltantes: true,
+                responsavel: { select: { nome: true } }
+            }
+        });
+        if (!embarque) return res.status(404).json({ error: 'Embarque não encontrado.' });
+
+        const [itens, contagem] = await Promise.all([
+            conferenciaCarga.itensDaCarga(req.params.id),
+            conferenciaCarga.contarCarga(req.params.id)
+        ]);
+        res.json({
+            embarque: {
+                id: embarque.id,
+                numero: embarque.numero,
+                dataSaida: embarque.dataSaida,
+                versao: embarque.versao,
+                motorista: embarque.responsavel?.nome || null,
+                concluidaEm: embarque.conferenciaConcluidaEm,
+                concluidaPorNome: embarque.conferenciaConcluidaPorNome,
+                faltantesNoFecho: embarque.conferenciaFaltantes
+            },
+            itens,
+            ...contagem
+        });
+    } catch (error) {
+        console.error('Erro ao carregar conferência da carga:', error);
+        res.status(500).json({ error: 'Erro ao carregar a conferência.' });
+    }
+});
+
+// Desmarcar um item conferido (bipou errado / tirou o volume do caminhão). Não sobe versão.
+router.delete('/:id/conferir/:tipo/:itemId', verificarAuth, checkAcessoEmbarque, async (req, res) => {
+    try {
+        const { id, tipo, itemId } = req.params;
+        if (!['pedido', 'amostra'].includes(tipo)) {
+            return res.status(400).json({ error: 'Tipo inválido (use pedido ou amostra).' });
+        }
+        const r = await conferenciaCarga.desmarcar({ embarqueId: id, tipo, itemId });
+        res.json(r); // 200 SEMPRE — inclusive NAO_ENCONTRADO
+    } catch (error) {
+        console.error('Erro ao desmarcar conferência:', error);
+        res.status(500).json({ error: 'Erro ao desfazer a conferência.' });
+    }
+});
+
+// Concluir a conferência. Com item faltando, exige confirmação explícita — e o que
+// faltou fica GRAVADO no cabeçalho da carga (é a prova de que saiu incompleta).
+router.post('/:id/conferencia/concluir', verificarAuth, checkAcessoEmbarque, async (req, res) => {
+    try {
+        const { confirmarFaltantes } = req.body || {};
+        const embarque = await prisma.embarque.findUnique({
+            where: { id: req.params.id },
+            select: { id: true, versao: true }
+        });
+        if (!embarque) return res.status(404).json({ error: 'Embarque não encontrado.' });
+
+        const contagem = await conferenciaCarga.contarCarga(req.params.id);
+        if (contagem.faltam > 0 && !confirmarFaltantes) {
+            const faltantes = await conferenciaCarga.faltantesDaCarga(req.params.id);
+            return res.json({
+                ok: false,
+                resultado: 'FALTAM',
+                mensagem: `Ainda ${contagem.faltam === 1 ? 'falta 1 item' : `faltam ${contagem.faltam} itens`} para bipar.`,
+                faltantes,
+                ...contagem
+            }); // 200 SEMPRE
+        }
+
+        const nome = req.user.nome || await nomeUsuario(req.user.id);
+        const faltantes = contagem.faltam > 0 ? await conferenciaCarga.faltantesDaCarga(req.params.id) : [];
+        const atualizado = await prisma.embarque.update({
+            where: { id: req.params.id },
+            data: {
+                conferenciaConcluidaEm: new Date(),
+                conferenciaConcluidaPorId: req.user.id,
+                conferenciaConcluidaPorNome: nome,
+                conferenciaFaltantes: contagem.faltam
+            },
+            select: { conferenciaConcluidaEm: true, conferenciaConcluidaPorNome: true, conferenciaFaltantes: true }
+        });
+
+        // Histórico SEM subir a versão (best-effort — nunca derruba a conclusão).
+        await registrarLogEmbarque(req.params.id, embarque.versao, 'CONFERENCIA_CONCLUIDA', {
+            conferidas: contagem.conferidas,
+            faltantes: faltantes.map(f => f.etiqueta)
+        }, req.user.id);
+
+        res.json({
+            ok: true,
+            resultado: 'CONCLUIDA',
+            mensagem: contagem.faltam > 0
+                ? `Conferência concluída com ${contagem.faltam} item(ns) faltando.`
+                : 'Conferência concluída — carga completa.',
+            concluidaEm: atualizado.conferenciaConcluidaEm,
+            concluidaPorNome: atualizado.conferenciaConcluidaPorNome,
+            faltantes,
+            ...contagem
+        });
+    } catch (error) {
+        console.error('Erro ao concluir conferência da carga:', error);
+        res.status(500).json({ error: 'Erro ao concluir a conferência.' });
     }
 });
 

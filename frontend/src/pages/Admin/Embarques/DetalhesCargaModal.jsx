@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Printer, Plus, Trash2, MapPin, Package, Edit2, Check, History, AlertTriangle } from 'lucide-react';
+import { X, Printer, Plus, Trash2, MapPin, Package, Edit2, Check, History, AlertTriangle, ScanLine } from 'lucide-react';
 import toast from 'react-hot-toast';
 import embarqueService from '../../../services/embarqueService';
 import AdicionarPedidosModal from './AdicionarPedidosModal';
 import CobrancasCargaSection from './CobrancasCargaSection';
+import ConferenciaCargaPanel from './ConferenciaCargaPanel';
 import { useAuth } from '../../../contexts/AuthContext';
 import SelectBusca from '../../../components/SelectBusca';
 
@@ -18,7 +19,15 @@ const ACAO_VERSAO_LABELS = {
     AMOSTRA_REMOVIDA: 'Amostra removida',
     COBRANCAS_ADICIONADAS: 'Cobranças adicionadas',
     COBRANCA_REMOVIDA: 'Cobrança removida',
-    IMPRESSA: 'Folha impressa'
+    IMPRESSA: 'Folha impressa',
+    CONFERENCIA_CONCLUIDA: 'Conferência concluída'
+};
+
+// Hora curta do bipe da conferência (só o relógio — a data é a da própria carga)
+const horaDoBipe = (iso) => {
+    if (!iso) return '';
+    try { return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+    catch { return ''; }
 };
 
 // Transforma o JSON de alterações de um log em linhas legíveis
@@ -38,6 +47,15 @@ const descreverAlteracoes = (log) => {
         const sinalCob = log.acao === 'COBRANCA_REMOVIDA' ? '−' : '+';
         alt.cobrancas.forEach(c => linhas.push(`${sinalCob} Cobrança ${c.cliente || ''}${c.valor != null ? ` — R$ ${Number(c.valor).toFixed(2)}` : ''}`));
     }
+    if (log.acao === 'CONFERENCIA_CONCLUIDA') {
+        // Bipagem na doca: quantos volumes subiram no caminhão e o que ficou para trás.
+        if (alt.conferidas != null) linhas.push(`${alt.conferidas} item(ns) conferido(s) por bipagem`);
+        if (Array.isArray(alt.faltantes) && alt.faltantes.length > 0) {
+            linhas.push(`Saiu faltando: ${alt.faltantes.join(', ')}`);
+        } else if (alt.conferidas != null) {
+            linhas.push('Carga completa — nada faltando.');
+        }
+    }
     if (log.acao === 'CRIADA' && typeof alt.pedidos === 'number') {
         linhas.push(`${alt.pedidos} pedido(s) na criação${alt.motorista ? ` · Motorista: ${alt.motorista}` : ''}`);
     }
@@ -56,22 +74,45 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
     const [salvando, setSalvando] = useState(false);
     const [qrDataUrl, setQrDataUrl] = useState(null);
     const [historicoAberto, setHistoricoAberto] = useState(false);
+    // Conferência por bipagem (doca). `conferencia` é o mapa `tipo:id → item conferido`
+    // que pinta as linhas de verde; ele vem do painel, que já recebe a resposta de cada
+    // bipe — assim a tabela acompanha sem refazer o GET da carga a cada volume.
+    const [conferenciaAberta, setConferenciaAberta] = useState(false);
+    const [conferencia, setConferencia] = useState({});
+
+    const aoAtualizarConferencia = useCallback((d) => {
+        const mapa = {};
+        (d?.itens || []).forEach(i => { mapa[`${i.tipo}:${i.id}`] = i; });
+        setConferencia(mapa);
+    }, []);
 
     const podeEditarEmbarque = !!(user?.permissoes?.admin || user?.permissoes?.Pode_Editar_Embarque);
 
     // Referencia para o Print
     const printRef = useRef();
 
-    const fetchDetalhes = async () => {
+    /**
+     * Relê a carga do servidor.
+     *
+     * `silencioso = true` NÃO liga o spinner — e é isso que mantém o painel de
+     * conferência VIVO. Com `setLoading(true)` o corpo do modal inteiro é trocado pelo
+     * "Lendo escopo do caminhão…", o `ConferenciaCargaPanel` desmonta e leva junto o
+     * feedback do último bipe, a janela anti-repetição do laser e a fila serial dos
+     * POSTs. Na prática o aviso "a folha impressa ficou para trás" nunca chegava a
+     * aparecer depois de "Adicionar a esta carga" — logo o aviso que JUSTIFICA a
+     * versão nova da carga. Recarregar por baixo (padrão que a própria conferência já
+     * usa em `carregar(true)`) resolve sem timer e sem guardar estado fora do React.
+     */
+    const fetchDetalhes = async (silencioso = false) => {
         try {
-            setLoading(true);
+            if (!silencioso) setLoading(true);
             const data = await embarqueService.detalhar(embarqueId);
             setEmbarque(data);
         } catch (error) {
             toast.error('Erro ao ler a carga. Ela pode ter sido deletada.');
-            onClose();
+            if (!silencioso) onClose();   // no refresh de fundo, um blip de rede não fecha a carga na cara de quem está bipando
         } finally {
-            setLoading(false);
+            if (!silencioso) setLoading(false);
         }
     };
 
@@ -235,8 +276,8 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                         Pré-visualização do Relatório (A4)
                     </h3>
                     <div className="flex gap-3">
-                        <button onClick={() => setShowPreview(false)} className="px-5 py-2 border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md text-sm font-medium transition-colors cursor-pointer">Voltar para Edição</button>
-                        <button onClick={handlePrint} className="px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-md flex items-center shadow-lg text-sm font-bold transition-all cursor-pointer">
+                        <button type="button" onClick={() => setShowPreview(false)} className="px-5 py-2 border border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white rounded-md text-sm font-medium transition-colors cursor-pointer">Voltar para Edição</button>
+                        <button type="button" onClick={handlePrint} className="px-5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-md flex items-center shadow-lg text-sm font-bold transition-all cursor-pointer">
                             <Printer className="w-4 h-4 mr-2" /> Imprimir / PDF
                         </button>
                     </div>
@@ -579,10 +620,10 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                         )}
                     </div>
                     <div className="flex items-center gap-2">
-                        <button onClick={() => setShowPreview(true)} disabled={!embarque} className="flex items-center gap-2 px-3 py-2 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 rounded-xl transition-colors font-semibold text-xs shadow-sm disabled:opacity-50">
+                        <button type="button" onClick={() => setShowPreview(true)} disabled={!embarque} className="flex items-center gap-2 px-3 py-2 bg-sky-50 text-sky-700 hover:bg-sky-100 border border-sky-200 rounded-xl transition-colors font-semibold text-xs shadow-sm disabled:opacity-50">
                             <Printer className="h-3.5 w-3.5" /> Relatório / Imprimir
                         </button>
-                        <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
+                        <button type="button" onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-xl transition-colors">
                             <X className="h-5 w-5" />
                         </button>
                     </div>
@@ -611,8 +652,8 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                     </div>
                                 </div>
                             )}
-                            <div className="flex justify-between items-start mb-6 gap-4">
-                                <div className="flex-1">
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-6 gap-3 sm:gap-4">
+                                <div className="flex-1 min-w-0">
                                     {editando ? (
                                         <div className="flex flex-col gap-3">
                                             <div>
@@ -638,7 +679,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                                 </SelectBusca>
                                             </div>
                                             <div className="flex gap-2">
-                                                <button
+                                                <button type="button"
                                                     onClick={salvarEdicao}
                                                     disabled={salvando}
                                                     className="inline-flex items-center px-3 py-1.5 bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium rounded-md disabled:opacity-50"
@@ -646,7 +687,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                                     <Check className="h-4 w-4 mr-1" />
                                                     {salvando ? 'Salvando...' : 'Salvar'}
                                                 </button>
-                                                <button
+                                                <button type="button"
                                                     onClick={() => setEditando(false)}
                                                     className="px-3 py-1.5 border border-gray-300 text-gray-600 text-sm rounded-md hover:bg-gray-50"
                                                 >
@@ -662,7 +703,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                                 <p className="text-sm text-gray-500 mt-1">Data de Saída: {new Date(embarque.dataSaida).toLocaleDateString('pt-BR')}</p>
                                             </div>
                                             {podeEditarEmbarque && (
-                                                <button
+                                                <button type="button"
                                                     onClick={abrirEdicao}
                                                     className="mt-1 p-1.5 text-gray-400 hover:text-sky-600 hover:bg-sky-50 rounded-md"
                                                     title="Editar carga"
@@ -673,16 +714,44 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                         </div>
                                     )}
                                 </div>
-                                <div className="flex-shrink-0">
+                                {/* Mobile: os dois botões ocupam a largura toda, um embaixo do outro
+                                    (em 375px, lado a lado com o bloco do motorista, eles saíam da tela).
+                                    Do sm: para cima volta a ser a linha de sempre, à direita. */}
+                                <div className="w-full sm:w-auto flex-shrink-0 flex flex-col sm:flex-row gap-2">
                                     <button
-                                        onClick={() => setIsAddOpen(true)}
-                                        className="inline-flex items-center px-4 py-2 border border-sky-600 shadow-sm text-sm font-medium rounded-md text-sky-600 bg-white hover:bg-sky-50 focus:outline-none"
+                                        type="button"
+                                        onClick={() => setConferenciaAberta(v => !v)}
+                                        className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm"
                                     >
-                                        <Plus className="-ml-1 mr-2 h-4 w-4" />
-                                        Atrelar Notas "FATURADAS"
+                                        <ScanLine className="mr-2 h-4 w-4 flex-shrink-0" />
+                                        <span className="min-w-0 truncate">{conferenciaAberta ? 'Fechar conferência' : 'Conferir por bipagem'}</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsAddOpen(true)}
+                                        className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 min-h-[44px] border border-sky-600 shadow-sm text-sm font-medium rounded-full text-sky-600 bg-white hover:bg-sky-50 focus:outline-none"
+                                    >
+                                        <Plus className="mr-2 h-4 w-4 flex-shrink-0" />
+                                        <span className="min-w-0 truncate">Atrelar Notas "FATURADAS"</span>
                                     </button>
                                 </div>
                             </div>
+
+                            {/* Conferência da doca — INLINE dentro deste modal, nunca empilhada:
+                                no iPad um segundo modal rouba o foco do campo e o leitor
+                                para de funcionar no meio da rajada de bipes. */}
+                            {conferenciaAberta && (
+                                <ConferenciaCargaPanel
+                                    embarqueId={embarqueId}
+                                    onFechar={() => setConferenciaAberta(false)}
+                                    onSituacao={aoAtualizarConferencia}
+                                    /* Silencioso: sem spinner, o painel não desmonta. O `onUpdated` é o
+                                       mesmo dos outros pontos de mutação (remover pedido/amostra, editar):
+                                       sem ele a LISTA DE CARGAS atrás do modal fica com contagem e versão
+                                       velhas depois de adicionar um pedido pelo bipe. */
+                                    onCargaAlterada={() => { fetchDetalhes(true); onUpdated?.(); }}
+                                />
+                            )}
 
                             <div className="border border-gray-200 rounded-xl overflow-hidden">
                                 <table className="min-w-full divide-y divide-gray-200">
@@ -709,10 +778,17 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                                 p.cliente?.End_Numero || 'SN',
                                                 p.cliente?.End_Bairro,
                                             ].filter(Boolean).join(', ');
+                                            // Conferência da doca: a linha fica verde e mostra a hora do bipe.
+                                            const bipadoEm = conferencia[`pedido:${p.id}`]?.conferidaEm || null;
                                             return (
-                                            <tr key={p.id}>
+                                            <tr key={p.id} className={bipadoEm ? 'bg-green-50' : ''}>
                                                 <td className="px-4 py-3 whitespace-nowrap">
                                                     <span className={`text-sm font-mono font-bold px-1.5 py-0.5 rounded ${tipoCor}`}>{numExibido}</span>
+                                                    {bipadoEm && (
+                                                        <div className="text-[11px] font-semibold text-green-700 mt-0.5">
+                                                            ✓ no caminhão {horaDoBipe(bipadoEm)}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-3 text-sm">
                                                     <div className="font-bold text-gray-900">{nomeCliente}</div>
@@ -729,11 +805,11 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                                         <span>{enderecoCompleto || 'N/A'}</span>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-bold text-gray-700 bg-gray-50">
+                                                <td className={`px-4 py-3 whitespace-nowrap text-center text-sm font-bold text-gray-700 ${bipadoEm ? 'bg-green-100' : 'bg-gray-50'}`}>
                                                     {p.itens.reduce((acc, i) => acc + Number(i.quantidade), 0)} itens
                                                 </td>
                                                 <td className="px-4 py-4 whitespace-nowrap text-right text-sm">
-                                                    <button
+                                                    <button type="button"
                                                         onClick={() => handleRemover(p)}
                                                         disabled={removerLoader === p.id}
                                                         className="text-red-500 hover:text-red-700 disabled:opacity-50"
@@ -768,18 +844,27 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-orange-100">
-                                                {embarque.amostras.map(a => (
-                                                    <tr key={a.id}>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-orange-700 font-bold">AM#{a.numero}</td>
+                                                {embarque.amostras.map(a => {
+                                                const bipadoEm = conferencia[`amostra:${a.id}`]?.conferidaEm || null;
+                                                return (
+                                                    <tr key={a.id} className={bipadoEm ? 'bg-green-50' : ''}>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-orange-700 font-bold">
+                                                            AM#{a.numero}
+                                                            {bipadoEm && (
+                                                                <div className="text-[11px] font-semibold text-green-700 mt-0.5">
+                                                                    ✓ no caminhão {horaDoBipe(bipadoEm)}
+                                                                </div>
+                                                            )}
+                                                        </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
                                                             {a.cliente?.NomeFantasia || a.cliente?.Nome || a.lead?.nomeEstabelecimento || '-'}
                                                         </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-gray-700 bg-orange-50">
+                                                        <td className={`px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-gray-700 ${bipadoEm ? 'bg-green-100' : 'bg-orange-50'}`}>
                                                             {a.itens?.length || 0} {(a.itens?.length || 0) === 1 ? 'item' : 'itens'}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{a.solicitadoPor?.nome || '-'}</td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                                                            <button
+                                                            <button type="button"
                                                                 onClick={() => handleRemoverAmostra(a.id)}
                                                                 disabled={removerLoader === a.id}
                                                                 className="text-red-500 hover:text-red-700 disabled:opacity-50"
@@ -789,7 +874,8 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                                                             </button>
                                                         </td>
                                                     </tr>
-                                                ))}
+                                                );
+                                                })}
                                             </tbody>
                                         </table>
                                     </div>
@@ -802,7 +888,7 @@ const DetalhesCargaModal = ({ embarqueId, onClose, onUpdated, motoristas = [] })
                             {/* Histórico de versões da carga */}
                             {embarque.versoes && embarque.versoes.length > 0 && (
                                 <div className="mt-6">
-                                    <button
+                                    <button type="button"
                                         onClick={() => setHistoricoAberto(v => !v)}
                                         className="w-full flex items-center gap-2 text-left text-sm font-bold text-gray-600 uppercase tracking-wide hover:text-gray-800"
                                     >

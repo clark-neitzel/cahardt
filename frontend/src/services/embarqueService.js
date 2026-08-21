@@ -44,6 +44,29 @@ const embarqueService = {
     registrarImpressao: async (id) => {
         const response = await api.post(`/embarques/${id}/impressao`);
         return response.data;
+    },
+
+    // ── Conferência de carga por bipagem (doca) ────────────────────────────────
+    // ⚠️ Estas quatro respondem HTTP 200 SEMPRE, inclusive nas recusas
+    // (JA_CONFERIDA, FORA_DA_CARGA, EM_OUTRA_CARGA, DESCONHECIDO, INVALIDO,
+    // PEDE_PREFIXO, FALTAM). Quem chama deve olhar `r.ok`/`r.resultado` — tratar
+    // `ok:false` como erro de rede apagaria justamente a mensagem precisa que a
+    // pessoa na doca precisa ler.
+    conferenciaCarga: async (id) => {
+        const response = await api.get(`/embarques/${id}/conferencia`);
+        return response.data;
+    },
+    conferirBipe: async (id, texto, origem = 'LEITOR') => {
+        const response = await api.post(`/embarques/${id}/conferir`, { texto, origem });
+        return response.data;
+    },
+    desconferir: async (id, tipo, itemId) => {
+        const response = await api.delete(`/embarques/${id}/conferir/${tipo}/${itemId}`);
+        return response.data;
+    },
+    concluirConferencia: async (id, confirmarFaltantes = false) => {
+        const response = await api.post(`/embarques/${id}/conferencia/concluir`, { confirmarFaltantes });
+        return response.data;
     }
 };
 

@@ -52,6 +52,7 @@ const whereElegivelNaCarga = () => {
     const { embarqueId, ...resto } = wherePedidosLivresParaEmbarque();
     return resto;
 };
+const conferenciaCarga = require('../services/conferenciaCargaService');
 const osrm = require('../services/osrmService');
 const { particionarParadas } = require('../services/divisaoCargasService');
 const { geocodeEndereco } = require('../services/gpsClientesService');
@@ -1271,12 +1272,16 @@ router.post('/aplicar-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                 if (m.tipo === 'pedido') {
                     alterado = await tx.pedido.updateMany({
                         where: whereGuard,
-                        data: m.embarqueId ? { embarqueId: m.embarqueId, statusEntrega: 'PENDENTE' } : { embarqueId: null }
+                        // // Mudou de carga → a conferência da doca não vale mais (senão chegaria já verde na carga nova).
+                        data: m.embarqueId
+                            ? { embarqueId: m.embarqueId, statusEntrega: 'PENDENTE', ...conferenciaCarga.RESET_CONFERENCIA }
+                            : { embarqueId: null, ...conferenciaCarga.RESET_CONFERENCIA }
                     });
                 } else if (m.tipo === 'amostra') {
                     alterado = await tx.amostra.updateMany({
                         where: { ...whereGuard, status: AMOSTRA_STATUS_MOVIVEL },
-                        data: { embarqueId: m.embarqueId } // null = volta para "amostras livres"
+                        // // Mudou de carga → a conferência da doca não vale mais (senão chegaria já verde na carga nova).
+                        data: { embarqueId: m.embarqueId, ...conferenciaCarga.RESET_CONFERENCIA } // null = volta para "amostras livres"
                     });
                 } else {
                     // cobranca: mover = trocar a carga; tirar da carga = APAGAR o

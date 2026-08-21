@@ -1,5 +1,11 @@
 [
   {
+    "slug": "conferencia-carga",
+    "titulo": "Conferir a carga bipando",
+    "resumo": "Duas coisas juntas. O Recibo de Conferência do especial (ZZ#), da bonificação (BN#) e da amostra (AM#) agora sai com o código de barras do próprio número na faixa verde, com o número legível embaixo (na nota fiscal normal nada muda: ela já tem a chave de acesso). E em Expedição → Embarques, abrindo a carga, o botão \"Conferir por bipagem\" abre um campo para bipar nota por nota ao carregar o caminhão — aceita a DANFE e o recibo, mostra \"3 de 6 conferidas\" e lista o que falta. Fica salva e registra quem conferiu.",
+    "data": "2026-08-21"
+  },
+  {
     "slug": "mapa-expedicao",
     "titulo": "Mapa das Entregas",
     "resumo": "A expedição divide as entregas do dia entre as cargas vendo tudo no mapa: cada pino é um CLIENTE e mostra tudo que vai para ele (pedido, bonificação, especial, amostra e cobrança), mover leva o conjunto junto e nada grava até tocar em Confirmar. Novidade: no cartão de cada carga há a caixinha \"Participa da divisão\" — desmarque a carga dedicada (alguém da empresa que vai levar um pedido específico) e o \"Sugerir divisão\" não mexe nela nem manda entrega para lá; ela continua no mapa e aceita item pelo \"Mover para…\". Mexer no \"Período de entrega dos pedidos\" não apaga mais o seu rascunho — só a troca da DATA do embarque descarta, e perguntando antes. Atenção de sempre: tirar uma COBRANÇA da carga apaga o registro.",

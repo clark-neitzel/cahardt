@@ -5,6 +5,7 @@
 // tabela de itens, total em destaque e linha de assinatura.
 // =====================================================================
 const PDFDocument = require('pdfkit');
+const { code128bLarguras } = require('./code128');
 
 const VERDE_ESCURO = '#1E3932';
 const VERDE = '#006241';
@@ -48,6 +49,61 @@ const dadosQuadroCliente = (cliente, entrega, nomeFallback) => {
         entrega
     };
 };
+
+// ── Código de barras do número do documento (canto direito da faixa verde) ──
+// Caixinha branca de cantos arredondados (mesmo espírito visual do QR do romaneio),
+// com o Code128-B do número (payload SEM "#": ZZ4821 / BN233 / AM17), quiet zone de
+// 10 módulos de cada lado, e o número legível em monoespaçada COM "#" logo abaixo.
+// Sem número (ou se o encoder recusar o texto) sai só o texto — o recibo nunca quebra.
+const BARRAS_ALTURA = 26;      // altura das barras (pt)
+const BARRAS_MOD_IDEAL = 1.2;  // largura da barra fina (pt) ≈ 0,42 mm
+const BARRAS_MOD_MIN = 0.9;    // nunca abaixo disso
+const BARRAS_QUIET = 10;       // módulos de branco de cada lado (obrigatório p/ leitura)
+const BARRAS_PAD = 6;          // respiro extra da caixinha, além da quiet zone (pt)
+const BARRAS_MAX_LARG = 210;   // teto da caixinha (pt) p/ não invadir o texto da esquerda
+
+function desenharCodigoBarras(doc, xDireita, faixaY, faixaH, payload, legivel) {
+    let simbolo = null;
+    if (payload) {
+        try { simbolo = code128bLarguras(payload); } catch { simbolo = null; }
+    }
+
+    let modulo = BARRAS_MOD_IDEAL;
+    let largBarras = 0;
+    if (simbolo) {
+        const totalMod = simbolo.modulos + BARRAS_QUIET * 2;
+        if (totalMod * modulo + BARRAS_PAD * 2 > BARRAS_MAX_LARG) {
+            modulo = Math.max(BARRAS_MOD_MIN, (BARRAS_MAX_LARG - BARRAS_PAD * 2) / totalMod);
+        }
+        largBarras = totalMod * modulo;
+    }
+
+    const textoLarg = doc.font('Courier-Bold').fontSize(11).widthOfString(legivel) + 16;
+    const caixaLarg = Math.max(largBarras + BARRAS_PAD * 2, textoLarg, 70);
+    const caixaAlt = simbolo ? 50 : 28;
+    const caixaX = xDireita - caixaLarg;
+    const caixaY = faixaY + (faixaH - caixaAlt) / 2;
+
+    doc.roundedRect(caixaX, caixaY, caixaLarg, caixaAlt, 4).fill('#ffffff');
+
+    if (simbolo) {
+        // Barras vetoriais (nítidas na impressão). Quiet zone = branco da própria caixinha.
+        let x = caixaX + (caixaLarg - largBarras) / 2 + BARRAS_QUIET * modulo;
+        const yBarras = caixaY + 5;
+        simbolo.larguras.forEach((larg, i) => {
+            const w = larg * modulo;
+            if (i % 2 === 0) doc.rect(x, yBarras, w, BARRAS_ALTURA).fill('#000000');
+            x += w;
+        });
+        doc.font('Courier-Bold').fontSize(11).fillColor('#000000')
+            .text(legivel, caixaX, yBarras + BARRAS_ALTURA + 3.5,
+                { width: caixaLarg, align: 'center', lineBreak: false });
+    } else {
+        doc.font('Courier-Bold').fontSize(11).fillColor('#000000')
+            .text(legivel, caixaX, caixaY + 8.5, { width: caixaLarg, align: 'center', lineBreak: false });
+    }
+    doc.fillColor('#000000');
+}
 
 // ── Quadro "DADOS DO CLIENTE · LOCAL DE ENTREGA" ──
 // Estilo do quadro de destinatário da DANFE, no design do recibo (faixa de
@@ -128,10 +184,11 @@ function gerarReciboEspecial(pedido) {
         doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(8)
             .text('RECIBO DE CONFERÊNCIA', x0 + 18, 52, { characterSpacing: 1.5 });
         doc.font('Helvetica-Bold').fontSize(19).text(pedido.bonificacao ? 'Bonificação' : 'Pedido', x0 + 18, 64);
-        doc.font('Helvetica').fontSize(8).fillColor('#b9c9c2')
-            .text('Nº', x0 + largura - 150, 52, { width: 132, align: 'right', characterSpacing: 1.5 });
-        doc.font('Helvetica-Bold').fontSize(19).fillColor('#ffffff')
-            .text(`${pedido.bonificacao ? 'BN#' : 'ZZ#'}${pedido.numero ?? '—'}`, x0 + largura - 200, 64, { width: 182, align: 'right' });
+        const prefixo = pedido.bonificacao ? 'BN' : 'ZZ';
+        const temNumero = pedido.numero !== null && pedido.numero !== undefined && String(pedido.numero) !== '';
+        desenharCodigoBarras(doc, x0 + largura - 14, 36, 62,
+            temNumero ? `${prefixo}${pedido.numero}` : null,
+            temNumero ? `${prefixo}#${pedido.numero}` : '—');
 
         // ── Quadro do cliente / local de entrega (estilo destinatário da DANFE) ──
         let y = 116;
@@ -253,10 +310,10 @@ function gerarReciboAmostra(amostra) {
         doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(8)
             .text('RECIBO DE CONFERÊNCIA', x0 + 18, 52, { characterSpacing: 1.5 });
         doc.font('Helvetica-Bold').fontSize(19).text('Amostra', x0 + 18, 64);
-        doc.font('Helvetica').fontSize(8).fillColor('#b9c9c2')
-            .text('Nº', x0 + largura - 150, 52, { width: 132, align: 'right', characterSpacing: 1.5 });
-        doc.font('Helvetica-Bold').fontSize(19).fillColor('#ffffff')
-            .text(`AM#${amostra.numero ?? '—'}`, x0 + largura - 200, 64, { width: 182, align: 'right' });
+        const temNumero = amostra.numero !== null && amostra.numero !== undefined && String(amostra.numero) !== '';
+        desenharCodigoBarras(doc, x0 + largura - 14, 36, 62,
+            temNumero ? `AM${amostra.numero}` : null,
+            temNumero ? `AM#${amostra.numero}` : '—');
 
         // ── Quadro do cliente / local de entrega (estilo destinatário da DANFE) ──
         // Sem cliente (só lead): sai o nome do lead e os demais campos "—".
