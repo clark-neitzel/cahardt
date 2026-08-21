@@ -1,5 +1,11 @@
 [
   {
+    "slug": "mapa-expedicao",
+    "titulo": "Mapa das Entregas",
+    "resumo": "A expedição divide as entregas do dia entre as cargas vendo tudo no mapa: cada pino é um CLIENTE e mostra tudo que vai para ele (pedido, bonificação, especial, amostra e cobrança), mover leva o conjunto junto e nada grava até tocar em Confirmar. Novidade: no cartão de cada carga há a caixinha \"Participa da divisão\" — desmarque a carga dedicada (alguém da empresa que vai levar um pedido específico) e o \"Sugerir divisão\" não mexe nela nem manda entrega para lá; ela continua no mapa e aceita item pelo \"Mover para…\". Mexer no \"Período de entrega dos pedidos\" não apaga mais o seu rascunho — só a troca da DATA do embarque descarta, e perguntando antes. Atenção de sempre: tirar uma COBRANÇA da carga apaga o registro.",
+    "data": "2026-08-20"
+  },
+  {
     "slug": "credito-icms",
     "titulo": "Crédito de ICMS da nota",
     "resumo": "O percentual do crédito de ICMS do Simples que sai nas nossas notas (aquele \"permite o aproveitamento do crédito…\" no rodapé) era fixo dentro do sistema. Agora fica em Configurações → Emissão de NF-e — Simples Nacional, junto do NCM padrão e dos textos legais da nota, com prévia ao vivo de como a frase vai sair. Serve para quando a empresa muda de faixa do Simples: o valor vem da contabilidade e se altera na tela, sem depender de alteração no sistema. Vale da próxima nota em diante (venda e devolução); notas já autorizadas não mudam. Enquanto ninguém alterar, continua valendo o 3,82% de sempre.",
@@ -16,12 +22,6 @@
     "titulo": "Baixa do especial no Caixa",
     "resumo": "Entregar não quita mais o pedido especial: o título fica em aberto e a baixa acontece na conferência do Caixa. Muda a rotina de quem entrega — o valor de Vendedor/Escritório responsável saiu do valor a prestar (o responsável fica devendo), então o motorista presta menos dinheiro no dia. Recebeu menos vira baixa parcial, com o saldo em aberto para cobrança. Na lista de entregas, selo âmbar A CONFERIR quando há dinheiro para conferir e cinza COM RESPONSÁVEL quando não há. Quem já pagou e espera a conferência não é cobrado.",
     "data": "2026-08-19"
-  },
-  {
-    "slug": "mapa-expedicao",
-    "titulo": "Mapa das Entregas",
-    "resumo": "A expedição agora divide as entregas do dia entre as cargas vendo tudo no mapa. Cada pino é um CLIENTE e mostra tudo que vai para ele no dia — P pedido, BN bonificação, ZZ especial, A amostra e $ cobrança —, com o número de itens dentro da bolinha; tocar no pino abre a lista com o valor de cada item e o total, e mover leva tudo junto (é uma parada só para o motorista). A cor é a carga; cinza = sem carga; tracejado ≈ = posição pelo endereço, GPS ainda não confirmado. No cartão da carga, 'Trocar tudo desta rota' troca os dois roteiros inteiros (pedidos, amostras e cobranças). Atenção: 'Tirar da carga' numa COBRANÇA apaga o registro — ela não volta pelo mapa, só pelo botão 'Inserir Cobrança' na tela da carga; por isso o app pede confirmação à parte dizendo quantas serão apagadas. O botão 'Sugerir divisão' propõe quem leva o quê e cada carga mostra km, tempo e horário previsto de volta — depois das 16:30 fica em âmbar, só como referência. Tudo entra como rascunho: nada muda de verdade até tocar em Confirmar (e se outro colega mexeu nos mesmos itens, a tela avisa e nada é aplicado). Item sem pino fica em 'Sem localização', agora com o motivo. A ordem das entregas continua com o motorista. Fica em Embarque → botão 'Mapa das entregas'.",
-    "data": "2026-08-18"
   },
   {
     "slug": "recibo-endereco",

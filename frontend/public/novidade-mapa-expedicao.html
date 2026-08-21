@@ -7,7 +7,7 @@
 <link rel="icon" href="/logo-192.png">
 <!-- Preview do link no WhatsApp (sem og:image de propósito: preview compacto) -->
 <meta property="og:title" content="🗺️ Novidade no Hardt App: Mapa das Entregas">
-<meta property="og:description" content="A expedição divide as entregas do dia no mapa: um pino por cliente com tudo que vai para ele — pedido, bonificação, especial, amostra e cobrança — com sugestão automática e previsão de volta de cada veículo.">
+<meta property="og:description" content="A expedição divide as entregas do dia no mapa: um pino por cliente com tudo que vai para ele — pedido, bonificação, especial, amostra e cobrança. Agora dá para escolher quais cargas entram na divisão: a carga dedicada fica de fora do rateio, mas continua no mapa.">
 <meta property="og:type" content="website">
 <style>
   :root {
@@ -403,6 +403,26 @@
 
   <div class="acc aberto">
     <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">☑️</span>
+      <strong>Novo: você escolhe quais cargas entram na divisão</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>No cartão de cada carga tem agora a caixinha <b>"Participa da divisão"</b>. <b>Todas nascem marcadas</b> — para quem não quiser mexer, continua tudo como era.</li>
+        <li>Serve para a <b>carga dedicada</b>: quando alguém da empresa vai levar <b>um pedido específico</b>, desmarque aquela carga e o <b>"Sugerir divisão" não joga entrega nenhuma nela</b> — nem tira o que já está lá.</li>
+        <li>A carga desmarcada <b>continua no mapa</b>, com a cor dela e as entregas à vista — os pinos dela ganham a marca cinza <b>FORA</b> embaixo da bolinha, e o cartão ganha o selo <b>"fora da divisão"</b>. Ninguém precisa adivinhar por que aquele pino está diferente.</li>
+        <li>Ela <b>continua recebendo item na mão</b>: é só escolher a carga no menu <b>"Mover para…"</b> do cliente. A caixinha vale <b>só</b> para a sugestão automática — o botão <b>"Trocar tudo desta rota"</b> também passa por cima dela, porque é comando manual.</li>
+        <li><b>Já clicou em "Sugerir divisão" e ela jogou entrega na carga errada?</b> É só <b>desmarcar</b> a caixinha: o que <b>a sugestão</b> tinha colocado ali <b>volta para onde estava</b>, e o app avisa quantas entregas voltaram. Não precisa descartar tudo e começar de novo. <b>O que você mesmo moveu para lá à mão fica</b> — desmarcar a caixinha é justamente como você protege a carga, não pode desmanchar o seu trabalho.</li>
+        <li>E o contrário também vale, nos <b>dois sentidos</b>: o que você colocar <b>à mão</b> numa carga que está fora da divisão <b>continua lá</b>, e o cliente que você <b>tirar</b> dessa carga <b>continua fora</b> — mesmo que você clique em "Sugerir divisão" depois. A sugestão não mexe nessa carga, nem no que você pôs nela ou tirou dela.</li>
+        <li>Embaixo do botão a tela diz quantas vão dividir (“<i>A sugestão divide entre 2 de 3 cargas — a desmarcada fica como está</i>”), e o painel azul do resultado repete quantas participaram. Se nenhuma estiver marcada, o app avisa em vez de calcular.</li>
+        <li>A escolha <b>não fica salva de um dia para o outro</b> (as cargas mudam todo dia): ao abrir a tela ou <b>trocar a data do embarque</b>, todas voltam marcadas. Mexer no <b>"Período de entrega dos pedidos" não desfaz a sua marcação nem o seu rascunho</b> — as cargas do dia continuam as mesmas (veja o próximo bloco). O <b>"Recalcular preciso" continua calculando todas</b> as cargas.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
       <span class="acc-ico">✅</span>
       <strong>Nada muda de verdade até você Confirmar</strong>
       <span class="acc-seta">▼</span>
@@ -410,6 +430,8 @@
     <div class="acc-corpo">
       <ul>
         <li>Mover pinos e aceitar sugestão é tudo <b>rascunho</b>: aparece a faixa "alterações não aplicadas" com <b>Confirmar</b> e <b>Descartar</b>.</li>
+        <li><b>Mexer no "Período de entrega dos pedidos" não apaga o seu rascunho.</b> Pode usar as setas ‹ › à vontade: as cargas do dia são as mesmas, então tudo o que você já moveu continua marcado. Se algum item que você mexeu ficar <b>fora do novo período</b>, só <b>aquela</b> alteração é descartada — e o app diz quantas saíram ("<i>3 itens que você tinha mexido ficaram fora do período escolhido…</i>"). Nada some calado.</li>
+        <li>Já a <b>"Data do embarque"</b> é outro dia, com outras cargas: aí o rascunho é descartado mesmo — e o app <b>pergunta antes</b>. Respondeu "Cancelar", fica tudo como estava.</li>
         <li>Ao Confirmar, tudo é gravado de uma vez nas cargas. Se outro colega tiver mexido nos mesmos itens, <b>nada é aplicado</b> — a tela avisa quais clientes mudaram e recarrega para você conferir.</li>
         <li>Carga que mudou depois do romaneio impresso ganha o aviso âmbar <b>"reimprimir"</b> no cartão dela.</li>
         <li>Item sem localização nenhuma (sem GPS e sem endereço localizável) não some: fica na seção <b>"Sem localização"</b>, com o mesmo menu para atribuir a carga — e agora a tela <b>diz o motivo</b> de não ter pino (por exemplo, amostra de lead sem ponto GPS marcado).</li>
@@ -574,6 +596,51 @@
     </div>
   </div>
 
+  <!-- Tela 5: escolher quais cargas participam da divisão -->
+  <div class="tela">
+    <div class="tela-titulo">☑️ Tela 5 — Escolhendo quem entra na divisão</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Cargas do dia</div>
+        <div class="app-card-body">
+          <!-- carga participando -->
+          <div class="linha-carga"><span class="bolinha" style="background:#00754A"></span><b>Carga #142 · João</b><span style="margin-left:auto;color:#6b756f">8 pedidos</span></div>
+          <div style="font-size:11.5px;color:#6b756f;margin:4px 0 6px 20px">62 km · 3h10 · volta prevista 15:40 <span class="selo verde">preciso</span></div>
+          <div style="display:flex;align-items:center;gap:8px;margin:0 0 12px 20px;font-size:12px">
+            <span style="width:16px;height:16px;border-radius:4px;background:#00754A;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800">✓</span>
+            <span>Participa da divisão <span class="pin">1</span></span>
+          </div>
+
+          <!-- carga FORA da divisão -->
+          <div style="border:1.5px dashed #c9d0cc;background:#f7f8f7;border-radius:10px;padding:10px">
+            <div class="linha-carga"><span class="bolinha" style="background:#d97706"></span><b>Carga #144 · Marcelo</b><span style="margin-left:auto;color:#6b756f">1 pedido</span></div>
+            <div style="font-size:11.5px;color:#6b756f;margin:4px 0 6px 20px">31 km · 1h05 · volta prevista 09:20 <span class="selo">≈ aproximado</span></div>
+            <div style="display:flex;align-items:center;gap:8px;margin-left:20px;font-size:12px">
+              <span style="width:16px;height:16px;border-radius:4px;border:1.5px solid #9aa5a0;display:inline-block"></span>
+              <span>Participa da divisão <span class="pin">2</span></span>
+              <span class="selo" style="margin-left:auto">fora da divisão <span class="pin">3</span></span>
+            </div>
+            <div style="font-size:11px;color:#6b756f;margin:8px 0 0 20px">A sugestão automática não mexe nesta carga, nem no que você colocar nela. Ela continua no mapa (pinos com a marca <span class="tg" style="background:#e5e7eb;color:#374151">FORA</span>) e aceita item pelo “Mover para…”. <span class="pin">4</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-card">
+        <div class="app-card-body">
+          <span class="app-btn" style="justify-content:center;width:100%">🪄 Sugerir divisão</span>
+          <div style="font-size:11.5px;color:#6b756f;margin-top:8px">A sugestão divide entre 2 de 3 cargas — a desmarcada fica como está. <span class="pin">5</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Participa da divisão</b> — vem marcada em todas as cargas. Marcada = a carga entra no rateio do "Sugerir divisão".</span></div>
+      <div><span class="pin">2</span><span><b>Desmarcada</b> — a carga fica de fora do rateio automático. É o caso de quem vai levar <b>um pedido específico</b> e não pode receber mais nada. Se você desmarcar <b>depois</b> de já ter clicado em "Sugerir divisão", o que <b>a sugestão</b> tinha posto ali <b>volta para onde estava</b> (o app diz quantas entregas voltaram) — o que <b>você</b> moveu para lá à mão fica.</span></div>
+      <div><span class="pin">3</span><span><b>Selo "fora da divisão"</b> (e a borda tracejada) — deixa claro que aquela carga ficou de fora de propósito.</span></div>
+      <div><span class="pin">4</span><span><b>Ela não some do mapa</b> — os pinos continuam lá, marcados com <span class="tg" style="background:#e5e7eb;color:#374151">FORA</span> embaixo da bolinha, e você pode mandar item para ela à mão pelo "Mover para…". O que você puser ali fica — e o que você tirar de lá continua fora — mesmo se clicar em "Sugerir divisão" depois.</span></div>
+      <div><span class="pin">5</span><span><b>Aviso embaixo do botão</b> — diz quantas cargas vão dividir antes de você clicar. Sem nenhuma marcada, o app pede para escolher uma.</span></div>
+    </div>
+  </div>
+
   <!-- ══════════ PARA COMEÇAR ══════════ -->
   <div class="sec-label">Para começar a usar</div>
   <div class="passos">
@@ -587,7 +654,11 @@
     </div>
     <div class="passo">
       <span class="passo-n">3</span>
-      <div>Monte as cargas do dia como sempre, toque em <b>"Sugerir divisão"</b> — e ajuste os pinos como quiser antes de <b>Confirmar</b>. 🗺️</div>
+      <div>Monte as cargas do dia como sempre. Se alguma carga <b>não</b> pode receber entrega no rateio (o pedido específico que alguém vai levar), <b>desmarque "Participa da divisão"</b> no cartão dela.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Toque em <b>"Sugerir divisão"</b> — e ajuste os pinos como quiser antes de <b>Confirmar</b>. 🗺️</div>
     </div>
   </div>
 

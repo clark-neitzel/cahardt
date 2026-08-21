@@ -176,6 +176,12 @@ export default function MapaExpedicao() {
     const [avisos, setAvisos] = useState([]);
     const [criterioSugestao, setCriterioSugestao] = useState(null);
     const [trocaDestino, setTrocaDestino] = useState({}); // carga de origem -> carga que receberá a rota inteira
+    // Cargas que NÃO entram na "Sugerir divisão" (ex.: alguém da empresa que vai
+    // levar UM pedido específico — aquela carga não pode receber o rateio).
+    // Guardamos quem está FORA: vazio = todas participam (comportamento de antes).
+    // NÃO persiste (nem em useFiltrosSalvos): id de carga muda todo dia, salvar
+    // prenderia o operador numa seleção velha — mesma razão de não salvar data absoluta.
+    const [foraDaDivisao, setForaDaDivisao] = useState([]);
     const [sugerindo, setSugerindo] = useState(false);
     const [recalculando, setRecalculando] = useState(false);
     const [aplicando, setAplicando] = useState(false);
@@ -183,11 +189,32 @@ export default function MapaExpedicao() {
     const [selecionado, setSelecionado] = useState(null); // chave do CLIENTE do pino clicado
     const [sheetAberta, setSheetAberta] = useState(false); // bottom-sheet no celular
     const requisicaoMapa = useRef(0);
+    // Espelho do rascunho para uso DENTRO do `carregar` (que não pode depender dele:
+    // entrar na lista de dependências recriaria o callback e o efeito rodaria em laço).
+    const rascunhoRef = useRef(rascunho);
+    useEffect(() => { rascunhoRef.current = rascunho; }, [rascunho]);
+    // Chaves que a "Sugerir divisão" colocou no rascunho — só ELAS podem ser desfeitas
+    // quando o operador tira uma carga da divisão. O que ele moveu à mão é dele.
+    const chavesDaSugestao = useRef(new Set());
 
     const tempoParadaMin = Math.max(0, Number(params.tempoParadaMin) || 0);
 
+    // ── Quem participa da sugestão automática ──
+    const foraSet = useMemo(() => new Set(foraDaDivisao), [foraDaDivisao]);
+    const cargasParticipantes = useMemo(
+        () => (dados?.cargas || []).filter(c => !foraSet.has(c.id)),
+        [dados, foraSet]
+    );
+
     // ── Carregar o dia ──
-    const carregar = useCallback(async () => {
+    // `limparRascunho` separa QUEM chamou:
+    //  • sem o flag (efeito da tela, troca de PERÍODO DE ENTREGA) → o rascunho é
+    //    PRESERVADO e só podado. O controle de período fica na mesma caixa, uma linha
+    //    acima da data: uma seta do FiltroPeriodo apagava 12 alterações em silêncio.
+    //    As cargas do dia são exatamente as mesmas — não há razão técnica para descartar.
+    //  • com o flag (depois de aplicar com sucesso e depois de um 409) → o rascunho é
+    //    ZERADO. Preservar ali faria a alteração já gravada reaparecer como pendente.
+    const carregar = useCallback(async ({ limparRascunho = false } = {}) => {
         const requisicao = ++requisicaoMapa.current;
         setCarregando(true);
         setErroCarregamento(null);
@@ -199,10 +226,45 @@ export default function MapaExpedicao() {
             });
             if (requisicao !== requisicaoMapa.current) return;
             setDados(r);
-            setRascunho({});
             setEstimApi(null);
             setAvisos([]);
             setSelecionado(null);
+            // A seleção "participa da divisão" NÃO é zerada aqui: este `carregar` roda
+            // também quando o operador só mexe no PERÍODO DE ENTREGA (o controle fica na
+            // mesma caixa, uma linha acima do botão) — e aí as cargas do dia são as mesmas,
+            // só muda quais pedidos livres aparecem. Zerar ali apagava em silêncio a
+            // proteção da carga dedicada e o "Sugerir" despejava rateio nela.
+            // Quem zera é a troca da DATA DO EMBARQUE (`trocarData`), aí sim as cargas são outras.
+            // Aqui só descartamos id de carga que não existe mais no dia recarregado.
+            const idsDoDia = new Set((r.cargas || []).map(c => c.id));
+            setForaDaDivisao(prev => prev.filter(id => idsDoDia.has(id)));
+            if (limparRascunho) {
+                setRascunho({});
+                chavesDaSugestao.current = new Set();
+                return;
+            }
+            // Poda (mesma régua da marcação acima): some do rascunho só o item que
+            // deixou de existir no dia recarregado — saiu do período e não está em
+            // carga nenhuma. E NUNCA calado: se algo saiu, o operador é avisado.
+            const chavesDoDia = new Set(
+                [...(r.entregas || []), ...(r.amostras || []), ...(r.cobrancas || []), ...(r.semGps || [])]
+                    .map(raw => normalizarItem(raw).chave)
+            );
+            const podadas = Object.keys(rascunhoRef.current).filter(ch => !chavesDoDia.has(ch));
+            if (podadas.length) {
+                setRascunho(prev => {
+                    const nx = { ...prev };
+                    podadas.forEach(ch => { delete nx[ch]; });
+                    return nx;
+                });
+                podadas.forEach(ch => chavesDaSugestao.current.delete(ch));
+                toast(
+                    podadas.length === 1
+                        ? '1 item que você tinha mexido ficou fora do período escolhido — essa alteração foi descartada. O resto do rascunho continua aqui.'
+                        : `${podadas.length} itens que você tinha mexido ficaram fora do período escolhido — essas alterações foram descartadas. O resto do rascunho continua aqui.`,
+                    { icon: '✂️', duration: 9000 }
+                );
+            }
         } catch (e) {
             if (requisicao !== requisicaoMapa.current) return;
             setDados(null);
@@ -237,6 +299,42 @@ export default function MapaExpedicao() {
         () => todas.filter(p => temChave(rascunho, p.chave) && rascunho[p.chave] !== (p.embarqueId ?? null)),
         [todas, rascunho]
     );
+
+    // Marcar/desmarcar "participa da divisão".
+    // Ao TIRAR a carga da divisão, desfazemos no rascunho o que a SUGESTÃO tinha
+    // mandado para ela (os itens voltam para onde estavam). Sem isso o gesto mais
+    // natural do operador — rodar "Sugerir", ver entrega indevida na carga dedicada e
+    // desmarcá-la para consertar — não consertava nada: o rascunho continuava
+    // apontando para a carga e o Confirmar movia os itens para lá, enquanto o cartão
+    // afirmava "a sugestão automática não mexe nesta carga".
+    // SÓ o que a sugestão pôs (`chavesDaSugestao`): o que o operador moveu À MÃO para
+    // esta carga fica onde ele pôs — desmarcar é justamente como ele PROTEGE a carga
+    // dedicada, e antes esse gesto puxava de volta a entrega que ele mesmo tinha
+    // colocado, com o toast culpando "o rascunho".
+    const alternarParticipacao = useCallback((id) => {
+        const saindoDaDivisao = !foraSet.has(id);
+        setForaDaDivisao(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+        if (!saindoDaDivisao) return;
+        const postosPelaSugestao = todas.filter(p => (
+            chavesDaSugestao.current.has(p.chave)
+            && temChave(rascunho, p.chave)
+            && rascunho[p.chave] === id
+            && rascunho[p.chave] !== (p.embarqueId ?? null)
+        ));
+        if (!postosPelaSugestao.length) return;
+        setRascunho(prev => {
+            const nx = { ...prev };
+            postosPelaSugestao.forEach(p => { delete nx[p.chave]; });
+            return nx;
+        });
+        postosPelaSugestao.forEach(p => chavesDaSugestao.current.delete(p.chave));
+        toast(
+            postosPelaSugestao.length === 1
+                ? '1 entrega que a sugestão automática tinha colocado nesta carga voltou para onde estava. O que você moveu à mão continua como está.'
+                : `${postosPelaSugestao.length} entregas que a sugestão automática tinha colocado nesta carga voltaram para onde estavam. O que você moveu à mão continua como está.`,
+            { icon: '↩️', duration: 7000 }
+        );
+    }, [foraSet, todas, rascunho]);
 
     // ── Grupos por cliente (TODOS os itens do cliente andam juntos, mesmo os
     // sem posição — regra do dono: mover leva tudo). Pino só para quem tem gps. ──
@@ -313,6 +411,16 @@ export default function MapaExpedicao() {
         const novaData = proximaData || hojeISO();
         if (novaData === data) return;
         if (mudancas.length && !window.confirm('Há alterações de carga ainda não aplicadas. Deseja mudar o dia e descartar o rascunho?')) return;
+        // Outro dia = outras cargas: a marcação "participa da divisão" recomeça com
+        // TODAS marcadas (id de carga não se repete entre os dias).
+        setForaDaDivisao([]);
+        // Quem zera o rascunho é a troca de DATA (o `carregar` só poda) — e só depois
+        // do "sim" acima. Trocar o período de entrega não passa por aqui.
+        setRascunho({});
+        chavesDaSugestao.current = new Set();
+        setEstimApi(null);
+        setAvisos([]);
+        setCriterioSugestao(null);
         setData(novaData);
     };
 
@@ -384,11 +492,14 @@ export default function MapaExpedicao() {
     }, [grupos, montarChave]);
 
     const estimativas = useMemo(() => {
-        if (estimApi && estimApi.chave === chaveEstim) return estimApi.grupos;
+        // A sugestão só devolve números das cargas que participaram; a carga deixada
+        // de fora continua com a estimativa local (≈) em vez de ficar sem linha nenhuma.
+        const daApi = (estimApi && estimApi.chave === chaveEstim) ? estimApi.grupos : null;
         const out = {};
         (dados?.cargas || []).forEach(c => {
             const ps = grupos.porCarga[c.id] || [];
             if (!ps.length) return;
+            if (daApi?.[c.id]) { out[c.id] = daApi[c.id]; return; }
             const { pontos, nParadas } = paradasPorCliente(ps);
             out[c.id] = estimativaLocal(dados?.base, pontos, nParadas, params.horaSaida, tempoParadaMin);
         });
@@ -405,6 +516,8 @@ export default function MapaExpedicao() {
         const destino = valorSel === SEM_CARGA
             ? null
             : ((dados?.cargas || []).find(c => String(c.id) === String(valorSel))?.id ?? null);
+        // Mexeu à mão: a entrada passa a ser do operador, não da sugestão.
+        chavesDaSugestao.current.delete(item.chave);
         setRascunho(prev => {
             const nx = { ...prev };
             if (destino === (item.embarqueId ?? null)) delete nx[item.chave];
@@ -424,6 +537,7 @@ export default function MapaExpedicao() {
         const destino = valorSel === SEM_CARGA
             ? null
             : ((dados?.cargas || []).find(c => String(c.id) === String(valorSel))?.id ?? null);
+        moviveis.forEach(p => chavesDaSugestao.current.delete(p.chave)); // passou a ser movimento à mão
         setRascunho(prev => {
             const nx = { ...prev };
             moviveis.forEach(p => {
@@ -444,6 +558,7 @@ export default function MapaExpedicao() {
             toast('Não há itens que possam ser trocados entre essas rotas.', { icon: 'ℹ️' });
             return;
         }
+        [...daOrigem, ...doDestino].forEach(p => chavesDaSugestao.current.delete(p.chave)); // troca é gesto do operador
         setRascunho(prev => {
             const nx = { ...prev };
             for (const p of daOrigem) {
@@ -476,13 +591,21 @@ export default function MapaExpedicao() {
             toast('Monte as cargas do dia no Painel de Expedição antes de pedir a sugestão.', { icon: '🚚' });
             return;
         }
+        // Só as cargas marcadas dividem as entregas. As de fora nem são enviadas —
+        // o backend não carrega os itens delas, então nada nelas é lido nem movido.
+        const idsParticipantes = cargasParticipantes.map(c => c.id);
+        const nFora = dados.cargas.length - idsParticipantes.length;
+        if (!idsParticipantes.length) {
+            toast('Escolha ao menos uma carga para dividir — marque "participa da divisão" no cartão da carga.', { icon: '☑️', duration: 7000 });
+            return;
+        }
         setSugerindo(true);
         try {
             const r = await mapaExpedicaoService.sugerirDivisao({
                 data,
                 entregaDe: periodoEntrega.de,
                 entregaAte: periodoEntrega.ate,
-                embarqueIds: dados.cargas.map(c => c.id),
+                embarqueIds: idsParticipantes,
                 horaSaida: params.horaSaida,
                 tempoParadaMin
             });
@@ -492,7 +615,40 @@ export default function MapaExpedicao() {
                 if (!p || p.travado) return; // travado fica onde está
                 if ((p.embarqueId ?? null) !== g.embarqueId) nx[ch] = g.embarqueId;
             }));
+            // Guarda o que a SUGESTÃO criou (antes das preservações abaixo): é esse
+            // conjunto — e só ele — que "tirar a carga da divisão" pode desfazer.
+            const criadasPelaSugestao = new Set(Object.keys(nx));
+            // O que o operador mexeu À MÃO envolvendo carga FORA da divisão fica como ele
+            // deixou, nos DOIS sentidos:
+            //  • para DENTRO — item livre que ele pôs na carga dedicada;
+            //  • para FORA — item GRAVADO na carga dedicada que ele tirou de lá à mão.
+            // Vai por ÚLTIMO de propósito: para o backend esses itens ainda estão como
+            // estavam gravados (o rascunho não gravou nada), então sem esta sobreposição o
+            // `setRascunho(nx)` apagava o movimento manual em silêncio — no sentido "para
+            // fora" o item voltava calado para a carga protegida. Combina com o que a tela
+            // promete: "a sugestão não mexe nessa carga, nem no que você colocou ou tirou dela".
+            const cargasComNumeroVencido = new Set(); // cargas cujos números da API já não valem
+            let nPreservados = 0;
+            Object.entries(rascunho).forEach(([ch, destino]) => {
+                const p = todas.find(t => t.chave === ch);
+                if (!p || p.travado) return;
+                const gravadaEmCargaFora = p.embarqueId != null && foraSet.has(p.embarqueId);
+                const destinoCargaFora = destino != null && foraSet.has(destino);
+                if (!gravadaEmCargaFora && !destinoCargaFora) return;
+                if (destino === (p.embarqueId ?? null)) return; // não é mudança nenhuma
+                const ondeASugestaoPos = temChave(nx, ch) ? nx[ch] : (p.embarqueId ?? null);
+                if (ondeASugestaoPos === destino) return;       // a sugestão já concordava
+                // Carga que perde o item aqui e carga que o recebe: os km/horário que o
+                // backend calculou já não valem para elas. Ficam sem número da API e caem
+                // na estimativa local "≈" (honesta) até "Recalcular preciso".
+                if (ondeASugestaoPos != null) cargasComNumeroVencido.add(ondeASugestaoPos);
+                if (destino != null) cargasComNumeroVencido.add(destino);
+                nx[ch] = destino;
+                criadasPelaSugestao.delete(ch);
+                nPreservados++;
+            });
             setRascunho(nx);
+            chavesDaSugestao.current = criadasPelaSugestao;
             setAvisos(r.avisos || []);
             // guarda os números da sugestão presos a este arranjo
             const porCargaChaves = {};
@@ -502,6 +658,11 @@ export default function MapaExpedicao() {
             });
             const gm = {};
             (r.grupos || []).forEach(g => {
+                // Carga de onde tiramos item para devolver a uma carga fora da divisão:
+                // os km/horário que o backend calculou já não valem para ela. Fica sem
+                // número da API e cai na estimativa local "≈" (honesta) até o operador
+                // clicar em "Recalcular preciso".
+                if (cargasComNumeroVencido.has(g.embarqueId)) return;
                 gm[g.embarqueId] = {
                     distanciaKm: g.distanciaKm, duracaoMin: g.duracaoMin,
                     previsaoRetorno: g.previsaoRetorno, precisao: g.precisao || 'aproximada',
@@ -509,8 +670,20 @@ export default function MapaExpedicao() {
                 };
             });
             setEstimApi({ chave: montarChave(porCargaChaves), grupos: gm });
-            setCriterioSugestao(r.criterio || null);
-            toast.success('Sugestão pronta — confira as linhas das rotas antes de confirmar.');
+            // guarda quem participou DESTA sugestão (o operador pode mexer nas caixas depois)
+            setCriterioSugestao(r.criterio ? { ...r.criterio, nParticipantes: idsParticipantes.length, nFora } : null);
+            const baseToast = idsParticipantes.length === 1
+                ? 'Sugestão pronta com UMA carga participando — tudo o que estava livre foi para ela. Confira antes de confirmar.'
+                : 'Sugestão pronta — confira as linhas das rotas antes de confirmar.';
+            const sufixoPreservado = nPreservados
+                ? (nPreservados === 1
+                    ? ' A mudança que você fez à mão envolvendo carga fora da divisão foi mantida.'
+                    : ` As ${nPreservados} mudanças que você fez à mão envolvendo carga fora da divisão foram mantidas.`)
+                : '';
+            toast.success(
+                `${baseToast}${sufixoPreservado}`,
+                (idsParticipantes.length === 1 || nPreservados) ? { duration: 9000 } : undefined
+            );
         } catch (e) {
             if (e.response?.status === 423) toast('Outro cálculo de rota está em andamento — aguarde um instante e tente de novo.', { icon: '⏳', duration: 6000 });
             else toast.error(mensagemErro(e, 'Não deu para montar a sugestão agora. Tente de novo.'));
@@ -614,7 +787,9 @@ export default function MapaExpedicao() {
                     : 'Divisão aplicada nas cargas.',
                 nApagadas ? { duration: 9000 } : undefined
             );
-            await carregar();
+            // Aplicado: o rascunho ZERA (se fosse preservado, o que acabou de ser gravado
+            // reapareceria como pendente na recarga).
+            await carregar({ limparRascunho: true });
         } catch (e) {
             if (e.response?.status === 409) {
                 // O 409 cobre TRÊS causas diferentes (item sumiu · mudou de carga · mudou de
@@ -646,7 +821,9 @@ export default function MapaExpedicao() {
                             || 'O arranjo mudou desde que a tela foi carregada. Nada foi aplicado. O mapa foi recarregado — confira e confirme de novo.',
                     { duration: 9000 }
                 );
-                await carregar();
+                // 409: nada foi aplicado, mas o arranjo de baixo mudou — o rascunho velho
+                // não vale mais. Zera junto com a recarga (a mensagem acima já avisou).
+                await carregar({ limparRascunho: true });
             } else if (Array.isArray(e.response?.data?.bloqueados) && e.response.data.bloqueados.length) {
                 // 400 com a lista do que travou: [{ pedido: '#743', cliente, motivo }] (o
                 // backend pode mandar também o cliente; senão, buscamos no que a tela já tem).
@@ -669,6 +846,7 @@ export default function MapaExpedicao() {
     };
     const descartar = () => {
         setRascunho({});
+        chavesDaSugestao.current = new Set();
         setEstimApi(null);
         setAvisos([]);
         setCriterioSugestao(null);
@@ -729,7 +907,11 @@ export default function MapaExpedicao() {
         gruposComPino.forEach(g => {
             // cor do círculo = carga do 1º item (se o cliente estiver repartido em
             // cargas diferentes, os badges e o cartão mostram a situação)
-            const cor = corDaCarga(embarqueEfetivo(g.itens[0]));
+            const eidPino = embarqueEfetivo(g.itens[0]);
+            const cor = corDaCarga(eidPino);
+            // carga fora da divisão continua no mapa (com pino e cor), só esmaecida —
+            // o operador precisa VER onde estão as entregas dela e poder mexer à mão
+            const cargaFora = eidPino != null && foraSet.has(eidPino);
             const todosTravados = g.itens.every(i => i.travado);
             const mudou = g.itens.some(i => temChave(rascunho, i.chave) && rascunho[i.chave] !== (i.embarqueId ?? null));
             const aproximado = g.origemGps === 'endereco';
@@ -742,18 +924,25 @@ export default function MapaExpedicao() {
             // qualquer outro tipo presente aparece marcado (P junto, quando há mistura)
             const tipos = ORDEM_TIPOS.filter(t => g.itens.some(i => i.tipoItem === t));
             const soPedido = tipos.length === 1 && tipos[0] === 'pedido';
-            const badges = soPedido ? '' :
-                `<div style="display:flex;gap:2px;justify-content:center;margin-top:2px">${
-                    tipos.map(t => {
-                        const d = BADGE_TIPO[t];
-                        return `<span style="background:${d.bg};color:${d.fg};border:1px solid rgba(0,0,0,.18);` +
-                            `border-radius:999px;font-size:9px;font-weight:800;line-height:1;padding:2px 4px;` +
-                            `box-shadow:0 1px 2px rgba(0,0,0,.35);white-space:nowrap">${d.t}</span>`;
-                    }).join('')
-                }</div>`;
+            const chip = (bg, fg, texto) =>
+                `<span style="background:${bg};color:${fg};border:1px solid rgba(0,0,0,.18);` +
+                `border-radius:999px;font-size:9px;font-weight:800;line-height:1;padding:2px 4px;` +
+                `box-shadow:0 1px 2px rgba(0,0,0,.35);white-space:nowrap">${texto}</span>`;
+            // Carga fora da divisão: marcação CATEGÓRICA ("FORA"), não só o esmaecido.
+            // Esmaecido sozinho (opacity .6) era indistinguível do pino travado (.55) —
+            // quem olhava só o mapa via pino claro sem saber por quê. O chip não some no
+            // esmaecido (a opacidade fica no círculo, não nele) nem briga com o anel
+            // dourado de "movido no rascunho".
+            const chipsPino = [
+                ...(cargaFora ? [chip('#e5e7eb', '#374151', 'FORA')] : []),
+                ...(soPedido ? [] : tipos.map(t => chip(BADGE_TIPO[t].bg, BADGE_TIPO[t].fg, BADGE_TIPO[t].t)))
+            ];
+            const badges = chipsPino.length
+                ? `<div style="display:flex;gap:2px;justify-content:center;flex-wrap:wrap;margin-top:2px">${chipsPino.join('')}</div>`
+                : '';
             const html = `<div style="display:flex;flex-direction:column;align-items:center;width:56px">` +
                 `<div style="width:26px;height:26px;border-radius:50%;${estilo}` +
-                `box-shadow:0 1px 4px rgba(0,0,0,.45);${todosTravados ? 'opacity:.55;' : ''}` +
+                `box-shadow:0 1px 4px rgba(0,0,0,.45);${todosTravados ? 'opacity:.55;' : cargaFora ? 'opacity:.6;' : ''}` +
                 `${mudou ? 'outline:3px solid #cba258;outline-offset:1px;' : ''}` +
                 `display:flex;align-items:center;justify-content:center;font-size:${todosTravados ? '12px' : '13px'};font-weight:800;line-height:1">` +
                 `${conteudo}</div>${badges}</div>`;
@@ -763,7 +952,7 @@ export default function MapaExpedicao() {
             }).addTo(map).on('click', () => setSelecionado(g.chave));
             marcadores.current[g.chave] = mk;
         });
-    }, [dados, gruposComPino, rascunho, corDaCarga, embarqueEfetivo]);
+    }, [dados, gruposComPino, rascunho, corDaCarga, embarqueEfetivo, foraSet]);
 
     // Trajetos devolvidos pelo roteirizador: tornam visível por que um ponto
     // pertence a uma carga, em vez de mostrar apenas cores soltas no mapa.
@@ -1088,6 +1277,10 @@ export default function MapaExpedicao() {
                             <Lock className="w-3 h-3 text-gray-500 shrink-0" />
                             já saiu — não move
                         </div>
+                        <div className="flex items-center gap-1.5">
+                            <span className="px-1 rounded-full bg-gray-200 text-gray-700 font-extrabold text-[8px] leading-3 border border-black/10 shrink-0">FORA</span>
+                            carga fora da divisão automática
+                        </div>
                     </div>
 
                     {/* Cartão do pino selecionado (cliente + tudo que vai para ele) */}
@@ -1258,6 +1451,28 @@ export default function MapaExpedicao() {
                                     {recalculando ? <Loader2 className="h-4 w-4 animate-spin" /> : <RouteIcon className="h-4 w-4" />}
                                     {recalculando ? 'Calculando rotas…' : 'Recalcular preciso'}
                                 </button>
+                                {/* Quem entra no rateio automático (o "Recalcular preciso" estima
+                                    TODAS as cargas — inclusive as que estão fora da divisão). */}
+                                {(dados?.cargas || []).length > 0 && (
+                                    cargasParticipantes.length === 0 ? (
+                                        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                            Nenhuma carga está marcada para participar — escolha ao menos uma em “Cargas do dia”, abaixo.
+                                        </p>
+                                    ) : cargasParticipantes.length === dados.cargas.length ? (
+                                        <p className="text-xs text-gray-600">
+                                            {dados.cargas.length === 1
+                                                ? 'Só há uma carga no dia — tudo o que estiver livre vai para ela.'
+                                                : `A sugestão divide entre as ${dados.cargas.length} cargas do dia. Desmarque no cartão a que não deve entrar.`}
+                                        </p>
+                                    ) : (
+                                        <p className="text-xs text-gray-600">
+                                            A sugestão divide entre {cargasParticipantes.length} de {dados.cargas.length} cargas —{' '}
+                                            {dados.cargas.length - cargasParticipantes.length === 1
+                                                ? 'a desmarcada fica como está'
+                                                : 'as desmarcadas ficam como estão'}.
+                                        </p>
+                                    )
+                                )}
                             </div>
                         </div>
 
@@ -1272,6 +1487,18 @@ export default function MapaExpedicao() {
                             <div className="text-[13px] bg-blue-50 border border-blue-200 text-blue-950 rounded-lg px-3 py-2.5 space-y-1.5">
                                 <p className="font-semibold m-0">Como a sugestão foi montada</p>
                                 <p className="m-0">{criterioSugestao.principal}.</p>
+                                {criterioSugestao.nParticipantes != null && (
+                                    <p className="m-0 text-blue-900">
+                                        {criterioSugestao.nParticipantes === 1
+                                            ? 'Participou 1 carga: tudo o que estava livre foi para ela.'
+                                            : `Participaram ${criterioSugestao.nParticipantes} cargas.`}
+                                        {criterioSugestao.nFora > 0 && (
+                                            criterioSugestao.nFora === 1
+                                                ? ' 1 carga ficou fora da divisão e não foi alterada.'
+                                                : ` ${criterioSugestao.nFora} cargas ficaram fora da divisão e não foram alteradas.`
+                                        )}
+                                    </p>
+                                )}
                                 <p className="m-0 text-blue-900">
                                     Considera: {(criterioSugestao.considera || []).join(', ')}.
                                 </p>
@@ -1298,8 +1525,12 @@ export default function MapaExpedicao() {
                                 const destinoId = trocaDestino[c.id] || outrasCargas[0]?.id || '';
                                 const foiImpressa = Number(c.ultimaImpressaoVersao) > 0;
                                 const reimprimir = foiImpressa && Number(c.versao) > Number(c.ultimaImpressaoVersao);
+                                const participa = !foraSet.has(c.id);
                                 return (
-                                    <div key={c.id} className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                                    <div
+                                        key={c.id}
+                                        className={`rounded-xl border shadow-sm p-3 ${participa ? 'bg-white border-gray-200' : 'bg-gray-50 border-dashed border-gray-300'}`}
+                                    >
                                         <div className="flex items-center gap-2 min-w-0">
                                             <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ background: CORES[i % CORES.length] }} />
                                             <span className="font-semibold text-gray-900 text-sm truncate flex-1">
@@ -1310,6 +1541,38 @@ export default function MapaExpedicao() {
                                             </span>
                                         </div>
                                         {linhaEstimativa(est)}
+
+                                        {/* Participa (ou não) do rateio automático. Desmarcada, a carga
+                                            continua no mapa e recebe item pelo "Mover para…" — só a
+                                            sugestão automática deixa de mexer nela.
+                                            A caixa usa `accent-[#00754A]` (padrão do projeto): este projeto
+                                            NÃO tem o plugin @tailwindcss/forms, então `text-primary` só
+                                            definiria `color` e a caixa sairia azul, fora do tema. */}
+                                        <div className="mt-1 flex items-center justify-between gap-2">
+                                            <label className="flex items-center gap-2 min-h-[44px] flex-1 min-w-0 cursor-pointer select-none">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={participa}
+                                                    onChange={() => alternarParticipacao(c.id)}
+                                                    className="h-5 w-5 shrink-0 accent-[#00754A]"
+                                                />
+                                                <span className={`text-xs font-medium truncate ${participa ? 'text-gray-700' : 'text-gray-600'}`}>
+                                                    Participa da divisão
+                                                </span>
+                                            </label>
+                                            {!participa && (
+                                                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 shrink-0">
+                                                    fora da divisão
+                                                </span>
+                                            )}
+                                        </div>
+                                        {!participa && (
+                                            <p className="-mt-1 mb-1 text-[11px] text-gray-600">
+                                                A sugestão automática não mexe nesta carga, nem no que você colocar nela ou tirar dela à mão. Ela continua
+                                                no mapa (pinos com a marca <span className="px-1 rounded-full bg-gray-200 text-gray-700 font-extrabold text-[9px] leading-3 border border-black/10">FORA</span>) e
+                                                aceita item pelo “Mover para…”.
+                                            </p>
+                                        )}
                                         {outrasCargas.length > 0 && (
                                             <div className="mt-2 pt-2 border-t border-gray-100">
                                                 <p className="text-xs text-gray-600 mb-1.5">Trocar tudo desta rota (pedidos, amostras e cobranças) com</p>
