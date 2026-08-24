@@ -248,7 +248,13 @@ export default function HomeSite() {
         </div>
       </footer>
 
-      {/* WhatsApp flutuante (acompanha o scroll) — abre a escolha de vendedor (integração Bot Hardt) */}
+      {/* WhatsApp flutuante (acompanha o scroll) — leva SEMPRE à equipe de vendas, sem
+          marcador e sem nome de vendedor. É de propósito, não é esquecimento: a HomeSite é
+          a página pública de entrada e não carrega a sessão do cliente, então aqui não há
+          como saber quem é a pessoa nem qual o vendedor dela. Por isso `cliente` NÃO é
+          passado — sem ele o FalarVendedor cai na regra "todo o resto" (equipe). O atalho
+          direto para o vendedor só existe no catálogo de congelados, onde o cliente está
+          logado. NÃO passar `cliente` aqui sem antes decidir se a home vai buscar o perfil. */}
       <FalarVendedor whatsapp={loja.whatsapp} variant="float" />
     </div>
   );

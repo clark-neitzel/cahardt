@@ -7,7 +7,7 @@
 <link rel="icon" href="/logo-192.png">
 <!-- Preview do link no WhatsApp (sem og:image de propósito — preview compacto) -->
 <meta property="og:title" content="💬 Novidade no site da Hardt: Falar com seu vendedor">
-<meta property="og:description" content="O cliente escolhe o vendedor no site e a conversa abre no WhatsApp da empresa já endereçada para a pessoa certa — o bot entrega direto e pausa a Ana.">
+<meta property="og:description" content="O cliente NÃO escolhe mais vendedor: quem já tem vendedor vinculado fala direto com ele; todo o resto fala com a equipe. A conversa abre sempre no WhatsApp oficial da Hardt.">
 <meta property="og:type" content="website">
 <style>
   :root {
@@ -333,41 +333,8 @@
     gap: 5px;
   }
   .site-pill.wa { border-color: #25d366; color: #7bf0a6; }
-  .site-modal {
-    background: #23251c;
-    border: 1px solid rgba(243,236,220,.14);
-    border-radius: 14px;
-    padding: 14px;
-    color: #f3ecdc;
-  }
-  .site-modal h4 { margin: 0 0 2px; font-size: 14px; text-transform: uppercase; letter-spacing: .04em; }
-  .site-modal .sub { font-size: 11.5px; color: rgba(243,236,220,.6); margin: 0 0 10px; }
-  .vend-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: #2c2f23;
-    border: 1px solid rgba(243,236,220,.12);
-    border-radius: 10px;
-    padding: 8px 10px;
-    margin-bottom: 7px;
-    font-size: 12.5px;
-  }
-  .vend-item .av { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; flex-shrink: 0; }
-  .vend-item b { display: block; font-size: 12.5px; }
-  .vend-item small { display: block; font-size: 9.5px; text-transform: uppercase; letter-spacing: .06em; color: rgba(243,236,220,.55); }
-  .vend-item .zap { margin-left: auto; color: #25d366; font-size: 14px; }
-  .btn-equipe {
-    display: block;
-    text-align: center;
-    background: #25d366;
-    color: #073d1c;
-    font-size: 12px;
-    font-weight: 800;
-    padding: 9px;
-    border-radius: 999px;
-    margin-top: 4px;
-  }
+  /* (.site-modal / .vend-item / .btn-equipe removidos: eram o mock do modal de escolha
+     de vendedor, que deixou de existir — a Tela 2 agora é o caminho "Falar com a equipe".) */
 </style>
 </head>
 <body>
@@ -377,7 +344,7 @@
   <div class="hero-inner">
     <span class="eyebrow">✦ Novidade no site da Hardt</span>
     <h1>Falar com seu vendedor<br>direto do site</h1>
-    <p>O cliente toca em "Falar com [vendedor]" no site de congelados e a conversa abre no WhatsApp oficial da Hardt já endereçada — o bot entrega direto para o vendedor e pausa a Ana. O telefone pessoal de ninguém aparece.</p>
+    <p>Quem já tem vendedor vinculado toca em "Falar com [vendedor]" e a conversa abre no WhatsApp oficial da Hardt já endereçada — o bot entrega direto e pausa a Ana. Todo o resto cai em "Falar com a equipe". <b>O cliente não escolhe mais vendedor numa lista.</b> O telefone pessoal de ninguém aparece.</p>
   </div>
 </header>
 
@@ -418,10 +385,11 @@
     </button>
     <div class="acc-corpo">
       <ul>
-        <li>No topo do catálogo apareceu uma <b>pílula verde de WhatsApp</b>. Para o cliente cujo vendedor já está vinculado, ela mostra direto <b>"Falar com [nome do vendedor]"</b>.</li>
-        <li>Cliente novo (ou cujo vendedor ainda não atende por esse canal) toca na pílula e <b>escolhe um vendedor da lista oficial</b> — só aparecem as pessoas liberadas no Painel Hardt.</li>
-        <li>Na página inicial do site (<b>/inicio</b>), o botão flutuante de WhatsApp agora abre essa mesma escolha para quem chega de fora.</li>
-        <li>Se ninguém estiver disponível (ou o bot estiver fora do ar), aparece um botão único <b>"Falar com a equipe"</b> — a conversa cai na recepção, como sempre foi. <b>Nenhum cliente fica sem canal.</b></li>
+        <li>No topo do catálogo há uma <b>pílula verde de WhatsApp</b>. Ela é sempre um <b>link direto</b> — nunca abre lista para escolher.</li>
+        <li><b>Cliente logado cujo vendedor está vinculado e liberado no bot:</b> a pílula mostra o <b>primeiro nome do vendedor</b> e abre o WhatsApp da empresa já endereçado para ele.</li>
+        <li><b>Todo o resto</b> — visitante sem cadastro, cliente sem vendedor, vendedor sem vínculo ou fora da lista do bot, bot fora do ar: a pílula mostra <b>"Vendas"</b> e abre <b>"Falar com a equipe"</b>, sem nome de ninguém. A conversa cai na recepção normal, como sempre foi. <b>Nenhum cliente fica sem canal.</b></li>
+        <li>Na página inicial do site (<b>/inicio</b>), o botão flutuante de WhatsApp vai <b>sempre para a equipe</b> — quem chega ali ainda não está identificado.</li>
+        <li><b>O que saiu:</b> a telinha de escolha de vendedor. Ela listava quem o bot devolvesse — inclusive gente de <b>Compras, Logística e Financeiro</b> — e isso não pode ser oferecido ao cliente.</li>
       </ul>
     </div>
   </div>
@@ -451,8 +419,8 @@
     <div class="acc-corpo">
       <ul>
         <li>O cadastro de usuário do app ganhou o campo <b>"Nome usado no Bot Hardt"</b> (Administração → Usuários → lápis).</li>
-        <li>É preciso <b>copiar exatamente</b> o valor que aparece em <b>Painel Hardt → Equipe → Editar → Nome usado no Bot Hardt</b>. Maiúsculas e minúsculas não importam; acentos e espaços contam.</li>
-        <li>Só aparece na lista do site quem, além do vínculo, estiver <b>ativo e marcado no Painel Hardt</b> com "Receber novos clientes escolhidos no site".</li>
+        <li>É preciso <b>copiar</b> o valor que aparece em <b>Painel Hardt → Equipe → Editar → Nome usado no Bot Hardt</b>. Maiúsculas/minúsculas e espaço sobrando não atrapalham mais; <b>acento continua contando</b> ("Fabio" não casa com "Fábio").</li>
+        <li>O vínculo só vale se a pessoa também estiver <b>ativa e liberada no Painel Hardt</b>. Se não estiver, o cliente dela cai em "Falar com a equipe" — nunca em outro vendedor.</li>
         <li>Quem já tem o vínculo mostra um <b>ícone de robô</b> com o nome sob o usuário na lista.</li>
       </ul>
     </div>
@@ -479,25 +447,31 @@
       </div>
     </div>
     <div class="legenda">
-      <div><span class="pin">1</span><span><b>Pílula "Falar com o vendedor".</b> Para o cliente logado cujo vendedor já está vinculado e liberado, ela mostra o nome e abre o WhatsApp da empresa direto com a mensagem pronta. Para os demais, mostra "Vendedor" e abre a escolha (Tela 2).</span></div>
+      <div><span class="pin">1</span><span><b>Pílula com o nome do vendedor.</b> Cliente logado cujo vendedor está vinculado e liberado no bot: aparece o <b>primeiro nome</b> e o toque abre o WhatsApp da empresa com a mensagem pronta e o marcador. É um link — não abre telinha nenhuma.</span></div>
     </div>
   </div>
 
-  <!-- Tela 2: modal de escolha -->
+  <!-- Tela 2: caminho "Falar com a equipe" (todo o resto) -->
   <div class="tela">
-    <div class="tela-titulo">💬 Tela 2 — Escolha do vendedor (no site)</div>
+    <div class="tela-titulo">💬 Tela 2 — Todo o resto: "Falar com a equipe"</div>
     <div class="tela-corpo">
-      <div class="site-modal">
-        <h4>Falar no WhatsApp</h4>
-        <p class="sub">Escolha quem vai te atender: <span class="pin">1</span></p>
-        <div class="vend-item"><span class="av">J</span><span><b>João</b><small>Vendas</small></span><span class="zap">✆</span></div>
-        <div class="vend-item"><span class="av">M</span><span><b>Maria</b><small>Vendas</small></span><span class="zap">✆</span></div>
-        <a class="btn-equipe">✆ Falar com a equipe <span class="pin">2</span></a>
+      <div class="site-top">
+        <div class="site-brand">
+          <span class="lg">🥟</span>
+          <span>Hardt Congelados<br><b>Visitante</b></span>
+        </div>
+        <div class="site-pills">
+          <span class="site-pill wa">💬 Vendas<span class="pin">1</span></span>
+          <span class="site-pill">Início</span>
+          <span class="site-pill">Entrar</span>
+          <span class="site-pill">Pedido</span>
+        </div>
       </div>
+      <div class="zap-msg" style="margin-top:14px;">Olá! Vim pelo site e quero falar com a equipe de vendas.<span class="pin">2</span></div>
     </div>
     <div class="legenda">
-      <div><span class="pin">1</span><span><b>Lista oficial do bot.</b> Só aparecem as pessoas ativas e marcadas no Painel Hardt para receber clientes do site (a lista se renova a cada 5 minutos). Se o vendedor atual do cliente não estiver nela, o site avisa "Seu vendedor atual ainda não atende por este canal" e deixa escolher outro.</span></div>
-      <div><span class="pin">2</span><span><b>Falar com a equipe.</b> Sempre disponível — e vira o único botão quando não há vendedor liberado ou o bot está fora do ar. A conversa segue para a recepção normal.</span></div>
+      <div><span class="pin">1</span><span><b>Pílula "Vendas".</b> É o que aparece para visitante sem cadastro, cliente sem vendedor, vendedor sem vínculo ou fora da lista do bot, e também se o bot estiver fora do ar. Também é um link direto — <b>nunca mais existe lista de vendedores para o cliente escolher</b>.</span></div>
+      <div><span class="pin">2</span><span><b>A mensagem sai sem marcador e sem nome de ninguém.</b> Cai na recepção normal (a Ana atende), e de lá o atendimento encaminha para quem for. Assim o cliente nunca é mandado para Compras, Logística ou Financeiro por engano.</span></div>
     </div>
   </div>
 
@@ -533,9 +507,9 @@
   <!-- ══════════ PASSOS ══════════ -->
   <div class="sec-label">Para começar a usar</div>
   <div class="passos">
-    <div class="passo"><span class="passo-n">1</span><div><b>No Painel Hardt</b> (bot): em Equipe → Editar, confira o <b>"Nome usado no Bot Hardt"</b> de cada vendedor e marque <b>"Receber novos clientes escolhidos no site"</b> para quem deve aparecer na lista.</div></div>
+    <div class="passo"><span class="passo-n">1</span><div><b>No Painel Hardt</b> (bot): em Equipe → Editar, confira o <b>"Nome usado no Bot Hardt"</b> de cada vendedor e deixe liberado quem deve receber cliente do site.</div></div>
     <div class="passo"><span class="passo-n">2</span><div><b>No app:</b> Administração → <b>Usuários</b> → lápis no vendedor → cole o nome no campo <b>"Nome usado no Bot Hardt"</b> e salve.</div></div>
-    <div class="passo"><span class="passo-n">3</span><div><b>Pronto.</b> O cliente logado no site passa a ver <b>"Falar com [nome]"</b>; cliente novo escolhe na lista. A conversa chega no WhatsApp oficial já endereçada, e o vendedor recebe o aviso no aparelho.</div></div>
+    <div class="passo"><span class="passo-n">3</span><div><b>Pronto.</b> O cliente daquele vendedor passa a ver o nome dele na pílula e a conversa chega já endereçada. <b>Quem não tiver o vínculo em dia continua funcionando</b> — só cai em "Falar com a equipe" em vez de ir direto ao vendedor. Vale a pena conferir vendedor por vendedor.</div></div>
   </div>
 
   <p class="rodape">Dúvidas? É só perguntar pro <strong>Clippy</strong> dentro do app. 📎</p>

@@ -1,5 +1,11 @@
 [
   {
+    "slug": "falar-vendedor",
+    "titulo": "Falar com o vendedor pelo site",
+    "resumo": "No site de congelados, o cliente NÃO escolhe mais o vendedor numa lista — aquela telinha saiu. Agora são só dois caminhos, os dois em um toque: cliente cujo vendedor está vinculado e liberado no bot vê o nome dele na pílula e a conversa abre já endereçada (o bot entrega direto e pausa a Ana); todo o resto (visitante, cliente sem vendedor, vendedor sem vínculo ou fora da lista, bot fora do ar) vê 'Vendas' e cai em 'Falar com a equipe', na recepção normal. Motivo: a lista do bot devolvia também gente de Compras, Logística e Financeiro, e isso não pode ser oferecido ao cliente. Confira o campo 'Nome usado no Bot Hardt' em Administração → Usuários — sem ele o cliente do vendedor cai na equipe.",
+    "data": "2026-08-24"
+  },
+  {
     "slug": "conferencia-carga",
     "titulo": "Conferir a carga bipando",
     "resumo": "Duas coisas juntas. O Recibo de Conferência do especial (ZZ#), da bonificação (BN#) e da amostra (AM#) agora sai com o código de barras do próprio número na faixa verde, com o número legível embaixo (na nota fiscal normal nada muda: ela já tem a chave de acesso). E em Expedição → Embarques, abrindo a carga, o botão \"Conferir por bipagem\" abre um campo para bipar nota por nota ao carregar o caminhão — aceita a DANFE e o recibo, mostra \"3 de 6 conferidas\" e lista o que falta. Fica salva e registra quem conferiu.",
@@ -88,12 +94,6 @@
     "titulo": "NF de devolução impressa no Caixa",
     "resumo": "Registrou a devolução no Caixa? A NF-e de devolução sai sozinha na SEFAZ (devolução parcial ou total) e o botão verde '🧾 NF dev.' aparece na própria linha da entrega — clique, imprima a DANFE e arquive junto com o movimento do dia. Se a SEFAZ estiver fora, a devolução fica registrada e a nota pode ser emitida depois em Pedidos → Devoluções.",
     "data": "2026-08-10"
-  },
-  {
-    "slug": "falar-vendedor",
-    "titulo": "Falar com o vendedor pelo site",
-    "resumo": "O site de congelados ganhou o botão 'Falar com [vendedor]': o cliente escolhe o vendedor e a conversa abre no WhatsApp oficial da Hardt já endereçada — o bot entrega direto para a pessoa e pausa a Ana. Para funcionar, preencha o campo novo 'Nome usado no Bot Hardt' em Administração → Usuários (copiando o valor do Painel Hardt → Equipe).",
-    "data": "2026-08-09"
   },
   {
     "slug": "produtos-categorias",

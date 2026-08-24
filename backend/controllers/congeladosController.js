@@ -59,8 +59,10 @@ const congeladosController = {
         try { res.json(await svc.configPublico()); }
         catch (e) { erro(res, e, 'config'); }
     },
-    // Lista oficial do Bot Hardt de quem pode receber clientes escolhidos no site
+    // Lista oficial do Bot Hardt de quem está autorizado a receber conversa vinda do site
     // (proxy autenticado com cache de 5 min — o front nunca fala com o bot direto).
+    // O site usa isto SÓ para conferir se o vendedor do próprio cliente está autorizado;
+    // a lista NUNCA é exibida ao cliente (não existe mais escolha de vendedor no site).
     vendedoresSite: async (req, res) => {
         try {
             const { listarVendedoresSite } = require('../services/botSiteVendedoresService');

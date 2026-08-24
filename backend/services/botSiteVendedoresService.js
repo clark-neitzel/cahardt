@@ -1,11 +1,15 @@
-// Lista oficial de vendedores do Bot Hardt que podem receber clientes escolhidos no site.
+// Lista oficial de vendedores autorizados do Bot Hardt.
 // Fonte: GET {BOT_WHATSAPP_URL}/api/site/vendedores (autenticado por x-api-key — por isso
 // o site NUNCA chama o bot direto; este backend faz a ponte e o front consome
 // /api/congelados-publico/vendedores-site).
 //
-// Contrato com o bot: a lista só traz pessoas ativas e marcadas no Painel Hardt com
-// "Receber novos clientes escolhidos no site", e não pode ser guardada por mais de
-// 5 minutos — daí o cache abaixo.
+// PARA QUE SERVE (mudou em 08/2026): o site usa esta lista SÓ para conferir se o vendedor
+// do PRÓPRIO cliente logado está autorizado a receber a conversa. Ela NUNCA é exibida ao
+// cliente — a tela de escolha de vendedor foi removida, porque a lista traz também gente
+// de Compras/Logística/Financeiro, que não pode ser oferecida a quem chega pelo site.
+//
+// Contrato com o bot: a lista só traz pessoas ativas e liberadas no Painel Hardt, e não
+// pode ser guardada por mais de 5 minutos — daí o cache abaixo.
 
 const CACHE_OK_MS = 5 * 60 * 1000;   // teto permitido pelo bot
 const CACHE_ERRO_MS = 60 * 1000;     // falhou: tenta de novo em 1 min (sem martelar o bot)
@@ -19,8 +23,10 @@ const getConfig = () => ({
 });
 
 /**
- * Devolve [{ nome, setor }]. Em erro/indisponibilidade devolve [] — o site trata
- * lista vazia como "sem escolha de vendedor" e cai no botão "Falar com a equipe".
+ * Devolve [{ nome, setor }]. Em erro/indisponibilidade devolve [] — como o site só usa a
+ * lista para confirmar o vendedor do próprio cliente, lista vazia significa "não deu para
+ * confirmar ninguém", e o link cai em "Falar com a equipe" (sem marcador). Nunca é
+ * oferecido outro vendedor no lugar.
  */
 async function listarVendedoresSite() {
     if (Date.now() - cache.em < cache.ttl) return cache.vendedores;
