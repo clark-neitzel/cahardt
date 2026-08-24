@@ -40,6 +40,11 @@
  * — o "restaurar custoAnterior" do estorno não basta quando houve compras no meio.
  */
 
+// Miolo do custo (regra nova: compras VÁLIDAS recentes que cobrem o estoque). É a home
+// real de `recalcularCustoAlvo` (compraEstoqueService só o re-exporta). Requerer aqui não
+// cria ciclo: custoCompraCalculo só depende de prisma + estoqueService.
+const custoCompraCalculo = require('./custoCompraCalculo');
+
 const round = (v, casas) => {
     const f = 10 ** casas;
     return Math.round(Number(v) * f) / f;
@@ -47,9 +52,9 @@ const round = (v, casas) => {
 const num = (v) => Number(v || 0);
 
 /**
- * Custo médio ponderado sobre o estoque anterior. Função PURA (testável offline).
- * novo = (max(estoqueAnterior,0)·custoAtual + qtd·custoCompra) / (max(estoqueAnterior,0)+qtd)
- * Sem estoque anterior (≤0) ou sem custo atual (null/≤0) → custo da compra direto.
+ * legado — não usar em custo novo. Custo médio ponderado sobre o estoque anterior.
+ * Mantido exportado por compatibilidade (testes antigos). O custo real agora sai do
+ * recompute pela regra das compras válidas recentes (custoCompraCalculo).
  */
 function custoMedioPonderado(estoqueAnterior, custoAtual, qtdEntrada, custoCompra) {
     const est = Math.max(num(estoqueAnterior), 0);
@@ -135,15 +140,12 @@ async function aplicarEstoqueNota(tx, nota, itensResolvidos, { comCusto = false,
             const totalDepois = round(totalAntes + qtd, 3);
             const dispDepois = round(num(p.estoqueDisponivel) + qtd, 3);
 
-            // Custo: média ponderada em custoManual (NUNCA custoMedio — esse vem do CA)
+            // Custo (custoManual — NUNCA custoMedio, esse vem do CA) NÃO é mais decidido aqui:
+            // sai do recompute pela regra nova (compras válidas recentes que cobrem o estoque),
+            // rodado DEPOIS da entrada de estoque + criação do CompraItem.
             const custoAnterior = p.custoManual != null ? num(p.custoManual) : null;
             let custoPosterior = null;
-            const data = { estoqueTotal: totalDepois, estoqueDisponivel: dispDepois };
-            if (custoCompra != null) {
-                custoPosterior = round(custoMedioPonderado(totalAntes, custoAnterior, qtd, custoCompra), 2);
-                data.custoManual = custoPosterior;
-            }
-            await tx.produto.update({ where: { id: p.id }, data });
+            await tx.produto.update({ where: { id: p.id }, data: { estoqueTotal: totalDepois, estoqueDisponivel: dispDepois } });
 
             // Movimentação visível (mesmos campos do padrão existente)
             await tx.movimentacaoEstoque.create({
@@ -162,10 +164,25 @@ async function aplicarEstoqueNota(tx, nota, itensResolvidos, { comCusto = false,
             });
 
             // Histórico de compras (tela do produto) — só quando a entrada tem custo
+            let compraCriada = null;
             if (custoCompra != null && item.itemNota) {
-                await criarCompraItem(tx, nota, item, p.unidade, qtd, custoCompra, { produtoId: p.id }, contaPagarId, {
-                    estoqueAnterior: totalAntes, custoAnterior, custoPosterior
+                compraCriada = await criarCompraItem(tx, nota, item, p.unidade, qtd, custoCompra, { produtoId: p.id }, contaPagarId, {
+                    estoqueAnterior: totalAntes, custoAnterior, custoPosterior: null
                 });
+            }
+
+            // Produto com controle de estoque: recalcula reservado/disponível (reservas de pedidos)
+            const estoqueService = require('./estoqueService');
+            await estoqueService.recalcularEstoqueProduto(p.id, tx);
+
+            // Custo pela regra nova, DEPOIS da entrada (o CompraItem já existe e o estoque já
+            // foi somado). Grava custoManual e completa o retrato do CompraItem/ledger.
+            if (custoCompra != null) {
+                const rc = await custoCompraCalculo.recalcularCustoAlvo({ produtoId: p.id }, tx);
+                if (rc.motivo === 'ok') {
+                    custoPosterior = rc.custo;
+                    if (compraCriada) await tx.compraItem.update({ where: { id: compraCriada.id }, data: { custoPosterior } });
+                }
             }
 
             await tx.notaEntradaEstoqueMov.create({
@@ -181,10 +198,6 @@ async function aplicarEstoqueNota(tx, nota, itensResolvidos, { comCusto = false,
                 }
             });
 
-            // Produto com controle de estoque: recalcula reservado/disponível (reservas de pedidos)
-            const estoqueService = require('./estoqueService');
-            await estoqueService.recalcularEstoqueProduto(p.id, tx);
-
             itens.push({ nome: p.nome, unidade: p.unidade, quantidade: qtd, destino: 'PROD' });
         } else if (item.destino === 'PCP' && item.itemPcpId) {
             const i = await tx.itemPcp.findUnique({
@@ -196,14 +209,10 @@ async function aplicarEstoqueNota(tx, nota, itensResolvidos, { comCusto = false,
             const antes = num(i.estoqueAtual);
             const depois = round(antes + qtd, 3);
 
+            // Custo NÃO é decidido aqui — vem do recompute pela regra nova, após a entrada.
             const custoAnterior = i.custoUnitario != null ? num(i.custoUnitario) : null;
             let custoPosterior = null;
-            const data = { estoqueAtual: depois };
-            if (custoCompra != null) {
-                custoPosterior = round(custoMedioPonderado(antes, custoAnterior, qtd, custoCompra), 4);
-                data.custoUnitario = custoPosterior;
-            }
-            await tx.itemPcp.update({ where: { id: i.id }, data });
+            await tx.itemPcp.update({ where: { id: i.id }, data: { estoqueAtual: depois } });
 
             await tx.movimentacaoPcp.create({
                 data: {
@@ -218,10 +227,20 @@ async function aplicarEstoqueNota(tx, nota, itensResolvidos, { comCusto = false,
                 }
             });
 
+            let compraCriada = null;
             if (custoCompra != null && item.itemNota) {
-                await criarCompraItem(tx, nota, item, i.unidade, qtd, custoCompra, { itemPcpId: i.id }, contaPagarId, {
-                    estoqueAnterior: antes, custoAnterior, custoPosterior
+                compraCriada = await criarCompraItem(tx, nota, item, i.unidade, qtd, custoCompra, { itemPcpId: i.id }, contaPagarId, {
+                    estoqueAnterior: antes, custoAnterior, custoPosterior: null
                 });
+            }
+
+            // Custo pela regra nova, DEPOIS da entrada. Grava custoUnitario e completa o retrato.
+            if (custoCompra != null) {
+                const rc = await custoCompraCalculo.recalcularCustoAlvo({ itemPcpId: i.id }, tx);
+                if (rc.motivo === 'ok') {
+                    custoPosterior = rc.custo;
+                    if (compraCriada) await tx.compraItem.update({ where: { id: compraCriada.id }, data: { custoPosterior } });
+                }
             }
 
             await tx.notaEntradaEstoqueMov.create({
@@ -251,7 +270,7 @@ async function aplicarEstoqueNota(tx, nota, itensResolvidos, { comCusto = false,
 // e ao replay começar do saldo certo, sem depender só do ledger da nota.
 async function criarCompraItem(tx, nota, item, unidadeNossa, qtd, custoCompra, alvo, contaPagarId, snapshot = {}) {
     const it = item.itemNota;
-    await tx.compraItem.create({
+    return tx.compraItem.create({
         data: {
             estoqueAnterior: snapshot.estoqueAnterior != null ? snapshot.estoqueAnterior : null,
             custoAnterior: snapshot.custoAnterior != null ? snapshot.custoAnterior : null,
@@ -325,19 +344,15 @@ async function estornarEstoqueNota(tx, notaId, { criadoPorId = null, correcao = 
 
             const totalAntes = num(p.estoqueTotal);
             const totalDepois = round(totalAntes - qtd, 3);
-            const data = {
-                estoqueTotal: totalDepois,
-                estoqueDisponivel: round(num(p.estoqueDisponivel) - qtd, 3)
-            };
-            if (mov.custoPosterior != null) {
-                if (custoIgual(p.custoManual, mov.custoPosterior, 2)) {
-                    data.custoManual = mov.custoAnterior != null ? round(num(mov.custoAnterior), 2) : null;
-                } else if (!correcao) {
-                    // Na correção esse aviso é ruído: o custo é refeito pelo histórico de compras depois do commit.
-                    avisos.push(`"${p.nome}": o custo mudou depois desta entrada — quantidade estornada, custo mantido (confira o Custo Manual).`);
+            // Só devolve a QUANTIDADE. O custo NÃO é restaurado aqui — quem chama o refaz
+            // pela regra nova (compras válidas recentes que cobrem o estoque).
+            await tx.produto.update({
+                where: { id: p.id },
+                data: {
+                    estoqueTotal: totalDepois,
+                    estoqueDisponivel: round(num(p.estoqueDisponivel) - qtd, 3)
                 }
-            }
-            await tx.produto.update({ where: { id: p.id }, data });
+            });
 
             await tx.movimentacaoEstoque.create({
                 data: {
@@ -365,15 +380,8 @@ async function estornarEstoqueNota(tx, notaId, { criadoPorId = null, correcao = 
 
             const antes = num(i.estoqueAtual);
             const depois = round(antes - qtd, 3);
-            const data = { estoqueAtual: depois };
-            if (mov.custoPosterior != null) {
-                if (custoIgual(i.custoUnitario, mov.custoPosterior, 4)) {
-                    data.custoUnitario = mov.custoAnterior != null ? round(num(mov.custoAnterior), 4) : null;
-                } else if (!correcao) {
-                    avisos.push(`"${i.nome}": o custo mudou depois desta entrada — quantidade estornada, custo mantido (confira o custo unitário no PCP).`);
-                }
-            }
-            await tx.itemPcp.update({ where: { id: i.id }, data });
+            // Só devolve a QUANTIDADE. O custo é refeito pela regra nova por quem chama.
+            await tx.itemPcp.update({ where: { id: i.id }, data: { estoqueAtual: depois } });
 
             await tx.movimentacaoPcp.create({
                 data: {

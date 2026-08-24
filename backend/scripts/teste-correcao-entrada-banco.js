@@ -141,8 +141,10 @@ async function principal() {
     const errado = await prisma.produto.findUnique({ where: { id: produto.id } });
     console.log('\n═══ Como ficou com a conversão errada (fator 1) ═══');
     conferir('estoque (KG)', errado.estoqueTotal, 52, 3);           // 40 + 12
-    // média ponderada: (40×21 + 12×200) / 52 = 62,31 → o custo real (R$ 20) triplicou
-    conferir('custo do produto (R$/KG)', errado.custoManual, 62.31);
+    // REGRA NOVA: custo = compras válidas recentes que cobrem o estoque. Os 12 KG lançados
+    // não cobrem os 52 do estoque → usa a ÚNICA compra válida (12 KG @ R$ 200) → R$ 200,00.
+    // O erro de conversão inflou o custo unitário (2.400 ÷ 12) e o custo herda isso inteiro.
+    conferir('custo do produto (R$/KG)', errado.custoManual, 200);
 
     // ── A CORREÇÃO: mesma nota, fator 10, sem tocar no financeiro ──
     console.log('\n═══ Corrigindo a conversão para 1 CX = 10 KG ═══');
@@ -159,14 +161,13 @@ async function principal() {
     const certo = await prisma.produto.findUnique({ where: { id: produto.id } });
     conferir('estoque agora (KG)', certo.estoqueTotal, 160, 3);   // 40 + 120
     conferir('entraram no estoque de hoje (KG)', num(certo.estoqueTotal) - num(errado.estoqueTotal), 108, 3);
-    // 08/2026 — o replay passou a ser SEMEADO pelo estoque/custo que existiam ANTES da
-    // compra (retrato gravado agora em CompraItem). Antes ele começava em 0/0 e jogava
-    // fora os 40 KG a R$ 21,00 que já estavam no estoque: o custo dava R$ 20,00 e
-    // R$ 40,00 sumiam da conta (era o "Bug 2"). Agora:
-    //   (40 × 21 + 120 × 20) / 160 = R$ 20,25/KG   →   160 KG × 20,25 = 840 + 2.400 ✔
-    conferir('custo recalculado (R$/KG)', novoCusto, 20.25);
-    conferir('custo gravado no produto (R$/KG)', certo.custoManual, 20.25);
-    conferir('dinheiro conservado (160 KG × custo = 840 + 2.400)', num(certo.estoqueTotal) * num(certo.custoManual), 3240, 0);
+    // REGRA NOVA (08/2026): custo = compras válidas recentes que cobrem o estoque. Só sobra
+    // a compra corrigida (120 KG @ R$ 20). Ela não cobre os 160 KG do estoque → usa ela
+    // inteira → R$ 20,00/KG. Os 40 KG antigos (custo manual R$ 21) NÃO entram na média: o
+    // custo passa a valer o preço das compras recentes, por decisão do dono — não há mais a
+    // "conservação de dinheiro" do modelo de média ponderada.
+    conferir('custo recalculado (R$/KG)', novoCusto, 20);
+    conferir('custo gravado no produto (R$/KG)', certo.custoManual, 20);
     console.log(`  → o custo CAIU de R$ ${round(errado.custoManual, 2)} para R$ ${round(certo.custoManual, 2)}/KG`);
 
     console.log('\n═══ O financeiro ficou intocado? ═══');

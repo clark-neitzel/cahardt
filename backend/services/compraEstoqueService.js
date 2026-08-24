@@ -23,6 +23,9 @@
 const prisma = require('../config/database');
 const estoqueService = require('./estoqueService');
 const pcpEstoqueService = require('./pcpEstoqueService');
+// Miolo do custo (regra nova: compras VÁLIDAS recentes que cobrem o estoque). Este módulo
+// requer o custoCompraCalculo — nunca o contrário (o custoCompraCalculo é a base, sem ciclo).
+const custoCompraCalculo = require('./custoCompraCalculo');
 
 const round = (v, casas) => {
     const f = 10 ** casas;
@@ -69,8 +72,10 @@ const emOrdemDeCriacao = (linhas) => [...linhas].sort(compararPorCriacao);
 const emOrdemDeCriacaoInversa = (linhas) => [...linhas].sort((a, b) => compararPorCriacao(b, a));
 
 /**
- * Custo médio ponderado pelo estoque anterior. Função PURA.
- * Sem estoque anterior (<= 0) ou sem custo atual (<= 0) → custo da compra.
+ * legado — não usar em custo novo. Custo médio ponderado pelo estoque anterior.
+ * Mantido exportado só porque o diagnóstico `/diag-receita-custo` (adminExec) ainda o
+ * importa para mostrar o cálculo antigo lado a lado. O custo real agora sai de
+ * custoCompraCalculo (compras válidas recentes que cobrem o estoque).
  */
 function custoMedioPonderado(estoqueAntes, custoAtual, qtdEntrada, custoEntrada) {
     const est = num(estoqueAntes);
@@ -142,18 +147,12 @@ async function registrarCompras(origem, entradas, criadoPorId) {
                 // mas não movimenta quantidade.
                 const controla = await estoqueService.produtoControlaEstoque(p);
 
-                // Custo: SEMPRE atualizado. Com controle de estoque, média ponderada com o
-                // saldo anterior; sem controle, o custo passa a ser o da última compra.
-                // (custo do CA não entra mais na conta — decisão de 07/2026)
-                // Calculado ANTES do create para gravar o retrato antes/depois na própria
-                // linha da compra — é o que o estorno usa para devolver o custo exato.
+                // Retrato do saldo/custo ANTES desta compra (auditoria — o custoPosterior é
+                // preenchido depois do recálculo). O custo do CA não entra mais na conta.
                 const estoqueAnterior = num(p.estoqueTotal);
                 const custoAnterior = p.custoManual != null ? num(p.custoManual) : null;
-                const novoCusto = round(controla
-                    ? custoMedioPonderado(estoqueAnterior, custoAnterior, quantidade, custoUnitario)
-                    : custoUnitario, 2);
 
-                await prisma.compraItem.create({
+                const compraCriada = await prisma.compraItem.create({
                     data: {
                         notaEntradaId: origem.notaEntradaId || null,
                         contaPagarId: origem.contaPagarId || null,
@@ -173,7 +172,7 @@ async function registrarCompras(origem, entradas, criadoPorId) {
                         custoUnitario,
                         estoqueAnterior,
                         custoAnterior,
-                        custoPosterior: novoCusto
+                        custoPosterior: null
                     }
                 });
 
@@ -189,12 +188,18 @@ async function registrarCompras(origem, entradas, criadoPorId) {
                     });
                 }
 
-                await prisma.produto.update({
-                    where: { id: produtoId },
-                    data: { custoManual: novoCusto }
-                });
+                // Custo pela regra nova (compras válidas recentes que cobrem o estoque JÁ com
+                // esta entrada). Grava custoManual. Rodar DEPOIS da entrada de estoque.
+                const rc = await custoCompraCalculo.recalcularCustoAlvo({ produtoId });
+                if (rc.motivo === 'ok') {
+                    await prisma.compraItem.update({
+                        where: { id: compraCriada.id },
+                        data: { custoPosterior: rc.custo }
+                    });
+                }
                 if (!controla) {
-                    avisos.push(`"${p.nome}": custo atualizado (R$ ${novoCusto.toFixed(2)}), sem movimentar estoque — produto não controla estoque.`);
+                    const txt = rc.custo != null ? ` (R$ ${num(rc.custo).toFixed(2)})` : '';
+                    avisos.push(`"${p.nome}": custo atualizado${txt}, sem movimentar estoque — produto não controla estoque.`);
                 }
             } else {
                 const i = await prisma.itemPcp.findUnique({
@@ -206,9 +211,8 @@ async function registrarCompras(origem, entradas, criadoPorId) {
 
                 const estoqueAnterior = num(i.estoqueAtual);
                 const custoAnterior = i.custoUnitario != null ? num(i.custoUnitario) : null;
-                const novoCusto = round(custoMedioPonderado(estoqueAnterior, custoAnterior, quantidade, custoUnitario), 4);
 
-                await prisma.compraItem.create({
+                const compraCriada = await prisma.compraItem.create({
                     data: {
                         notaEntradaId: origem.notaEntradaId || null,
                         contaPagarId: origem.contaPagarId || null,
@@ -228,7 +232,7 @@ async function registrarCompras(origem, entradas, criadoPorId) {
                         custoUnitario,
                         estoqueAnterior,
                         custoAnterior,
-                        custoPosterior: novoCusto
+                        custoPosterior: null
                     }
                 });
 
@@ -241,10 +245,14 @@ async function registrarCompras(origem, entradas, criadoPorId) {
                     criadoPorId: criadoPorId || null
                 });
 
-                await prisma.itemPcp.update({
-                    where: { id: itemPcpId },
-                    data: { custoUnitario: novoCusto }
-                });
+                // Custo pela regra nova, DEPOIS da entrada de estoque. Grava custoUnitario.
+                const rc = await custoCompraCalculo.recalcularCustoAlvo({ itemPcpId });
+                if (rc.motivo === 'ok') {
+                    await prisma.compraItem.update({
+                        where: { id: compraCriada.id },
+                        data: { custoPosterior: rc.custo }
+                    });
+                }
             }
 
             registradas++;
@@ -371,41 +379,25 @@ function observacaoEstorno(c) {
 
 /**
  * Estorna uma lista de compras (fora de transação — usa estoqueService.ajustar, que
- * abre transação própria). Para cada linha: devolve a quantidade, DEVOLVE O CUSTO ao
- * valor de antes quando dá, e marca a linha como estornada (nunca apaga).
+ * abre transação própria). Para cada linha: devolve a quantidade e marca a linha como
+ * estornada (nunca apaga). O CUSTO não é mais "devolvido ao valor de antes" aqui — quem
+ * decide o custo é o recompute pela regra nova (compras válidas recentes que cobrem o
+ * estoque), rodado em `fecharCustoDosAlvos` no fim. Sem compra válida → custo INTOCADO.
  *
- * O custo volta em duas etapas, nesta ordem:
- *   1. a própria compra tem `custoPosterior` gravado E o custo de hoje ainda é esse
- *      valor (ninguém mexeu depois) → devolve exatamente o `custoAnterior`;
- *   2. senão → replay da média ponderada pelas compras válidas restantes;
- *   3. o replay não deu conta (sem compras / deu zero) → CUSTO INTOCADO + aviso claro.
- * Nunca zera o custo em silêncio (era o Bug 1: cancelar a única compra do produto
- * devolvia o estoque e deixava o custo errado, sem avisar ninguém).
- *
- * Passe a lista em ordem INVERSA DE CRIAÇÃO (emOrdemDeCriacaoInversa) para o passo 1
- * funcionar encadeado.
- *
- * `avisos` = o que pede ação do usuário; `infos` = recado informativo (custo devolvido).
+ * `avisos` = o que pede ação do usuário; `infos` = recado informativo (custo recalculado).
  */
 async function estornarCompras(compras, criadoPorId) {
     let estornadas = 0;
     const avisos = [];
     const infos = [];
-    const restaurados = new Set(); // alvos cujo custo voltou exato — não precisam de replay
 
     for (const c of compras) {
-        // O alvo só continua "restaurado" se ESTA linha devolveu o custo exato. Qualquer
-        // outro desfecho (linha legada sem retrato, custo mexido depois, produto apagado,
-        // erro no meio) tem que DESMARCAR — senão fecharCustoDosAlvos pula o replay e o
-        // custo fica errado em silêncio.
-        const chave = chaveAlvo(c.produtoId, c.itemPcpId);
-        let custoRestaurado = false;
         try {
             if (c.produtoId) {
                 // Produto sem controle de estoque nunca teve a quantidade lançada — só marca o estorno.
                 const p = await prisma.produto.findUnique({
                     where: { id: c.produtoId },
-                    select: { id: true, nome: true, categoria: true, controlaEstoque: true, custoManual: true }
+                    select: { id: true, nome: true, categoria: true, controlaEstoque: true }
                 });
                 const controla = await estoqueService.produtoControlaEstoque(p);
                 if (controla) {
@@ -421,17 +413,10 @@ async function estornarCompras(compras, criadoPorId) {
                         avisos.push(`O estoque de "${p?.nome || 'produto'}" ficou negativo (${round(r.estoqueDepois, 3)}) porque a quantidade lançada já tinha sido usada — acerte pelo ajuste manual.`);
                     }
                 }
-                // Custo de volta ao valor de antes desta compra
-                if (p && c.custoPosterior != null && custoIgual(p.custoManual, c.custoPosterior, 2)) {
-                    const volta = c.custoAnterior != null ? round(num(c.custoAnterior), 2) : null;
-                    await prisma.produto.update({ where: { id: p.id }, data: { custoManual: volta } });
-                    custoRestaurado = true;
-                    infos.push(`"${p.nome}": custo devolvido ao valor de antes desta compra (${volta != null ? `R$ ${volta.toFixed(2)}` : 'sem custo'}).`);
-                }
             } else if (c.itemPcpId) {
                 const i = await prisma.itemPcp.findUnique({
                     where: { id: c.itemPcpId },
-                    select: { id: true, nome: true, estoqueAtual: true, custoUnitario: true }
+                    select: { id: true, nome: true, estoqueAtual: true }
                 });
                 const saldoAntes = num(i?.estoqueAtual);
                 await pcpEstoqueService.ajustar({
@@ -445,12 +430,6 @@ async function estornarCompras(compras, criadoPorId) {
                 if (i && saldoAntes - num(c.quantidade) < -0.0005) {
                     avisos.push(`O insumo "${i.nome}" já tinha sido consumido: o estoque parou em zero e ${round(num(c.quantidade) - saldoAntes, 3)} não puderam ser devolvidos — confira no PCP.`);
                 }
-                if (i && c.custoPosterior != null && custoIgual(i.custoUnitario, c.custoPosterior, 4)) {
-                    const volta = c.custoAnterior != null ? round(num(c.custoAnterior), 4) : null;
-                    await prisma.itemPcp.update({ where: { id: i.id }, data: { custoUnitario: volta } });
-                    custoRestaurado = true;
-                    infos.push(`"${i.nome}": custo devolvido ao valor de antes desta compra (${volta != null ? `R$ ${volta.toFixed(4)}` : 'sem custo'}).`);
-                }
             }
             await prisma.compraItem.update({
                 where: { id: c.id },
@@ -461,14 +440,11 @@ async function estornarCompras(compras, criadoPorId) {
             console.error(`[CompraEstoque] Falha ao estornar compra ${c.id}:`, err.message);
             avisos.push(`Falha ao estornar a entrada de "${c.descricaoFornecedor}" (${err.message}).`);
         }
-        if (custoRestaurado) restaurados.add(chave);
-        else restaurados.delete(chave);
     }
 
     const fechamento = await fecharCustoDosAlvos({
         produtoIds: [...new Set(compras.map((c) => c.produtoId).filter(Boolean))],
-        itemPcpIds: [...new Set(compras.map((c) => c.itemPcpId).filter(Boolean))],
-        restaurados
+        itemPcpIds: [...new Set(compras.map((c) => c.itemPcpId).filter(Boolean))]
     });
 
     return {
@@ -483,25 +459,22 @@ async function estornarCompras(compras, criadoPorId) {
  * Fecha o custo dos alvos tocados por um estorno/edição. SEMPRE fora de transação
  * (lê muitas linhas e é ajuste secundário: falhar aqui não desfaz o que já foi feito).
  *
- * Quem teve o custo devolvido EXATAMENTE (`restaurados`) sai daqui intocado: aquela
- * devolução só é aceita quando a compra estornada foi o último toque no custo, logo o
- * valor já está certo — e um replay por cima poderia piorar num alvo cujo histórico
- * restante é todo legado (sem retrato, semeado em 0/0).
- * Para os demais, roda o replay; se ele não conseguir, AVISA em vez de zerar.
+ * Recompõe SEMPRE, sem exceção, pela regra nova (compras válidas recentes que cobrem o
+ * estoque). Não há mais o atalho de "custo já restaurado" (`restaurados`): o custo é
+ * sempre derivado das compras válidas do momento. Sem compra válida → AVISA em vez de zerar.
  *
- * @param {Set<string>} restaurados chaves 'PROD:<id>' / 'PCP:<id>'
+ * @param {object} _ignorado o campo `restaurados` é aceito por compatibilidade e ignorado.
  * @returns {{ custos: Array, avisos: string[], infos: string[] }}
  *   `avisos` = pede ação do usuário (não deu para recalcular); `infos` = só informa o custo novo.
  */
-async function fecharCustoDosAlvos({ produtoIds = [], itemPcpIds = [], restaurados = new Set() }) {
+async function fecharCustoDosAlvos({ produtoIds = [], itemPcpIds = [] }) {
     const custos = [];
     const avisos = [];
     const infos = [];
 
     for (const produtoId of produtoIds) {
-        if (restaurados.has(chaveAlvo(produtoId, null))) continue;
         try {
-            const r = await recalcularCustoDetalhado({ produtoId });
+            const r = await custoCompraCalculo.recalcularCustoAlvo({ produtoId });
             if (r.motivo === 'ok') {
                 custos.push({ produtoId, custo: r.custo });
                 infos.push(`Custo de "${r.nome || 'produto'}" recalculado pelas compras válidas: R$ ${r.custo.toFixed(2)}.`);
@@ -515,9 +488,8 @@ async function fecharCustoDosAlvos({ produtoIds = [], itemPcpIds = [], restaurad
     }
 
     for (const itemPcpId of itemPcpIds) {
-        if (restaurados.has(chaveAlvo(null, itemPcpId))) continue;
         try {
-            const r = await recalcularCustoDetalhado({ itemPcpId });
+            const r = await custoCompraCalculo.recalcularCustoAlvo({ itemPcpId });
             if (r.motivo === 'ok') {
                 custos.push({ itemPcpId, custo: r.custo });
                 infos.push(`Custo do insumo "${r.nome || '(PCP)'}" recalculado pelas compras válidas: R$ ${r.custo.toFixed(4)}.`);
@@ -534,80 +506,16 @@ async function fecharCustoDosAlvos({ produtoIds = [], itemPcpIds = [], restaurad
 }
 
 /**
- * Recalcula o custo de um produto/insumo reaplicando a média ponderada sobre o
- * histórico de compras VÁLIDAS (não estornadas), em ordem cronológica.
+ * Recalcula e grava o custo de um produto/insumo pela regra nova (compras VÁLIDAS mais
+ * recentes que cobrem o estoqueAtual). Wrapper fino sobre `custoCompraCalculo` mantendo
+ * o retorno detalhado {custo, motivo, nome} que o resto do serviço espera.
  *
- * O replay é SEMEADO (correção do Bug 2, 08/2026): parte do `estoqueAnterior`/
- * `custoAnterior` gravados na compra válida mais antiga que os tenha, e ignora as
- * compras anteriores a ela — aquele retrato já contém o efeito delas. Antes o replay
- * começava sempre em `0/0`, jogando fora o saldo e o custo que existiam antes da
- * primeira compra (o custo digitado à mão sumia da conta).
- * Histórico só de linhas antigas (sem retrato) → continua caindo no `0/0`, que é o
- * melhor que dá para fazer sem inventar dado.
- *
- * A ordem do laço é a ORDEM DE CRIAÇÃO das linhas (`compararPorCriacao`), a MESMA em que
- * os retratos foram tirados — semente e laço têm que falar a mesma língua. Ordenar por
- * `dataCompra` (data do documento) fazia a semente ser um retrato que já continha compras
- * que o laço aplicava de novo: a mesma compra entrava duas vezes (nota fiscal emitida antes
- * e conferida depois de uma despesa manual). Ver o comentário de `compararPorCriacao`.
- * A semente exige só `estoqueAnterior` — `custoAnterior` é NULO de propósito quando o alvo
- * ainda não tinha custo, e exigir os dois fazia o retrato válido ser pulado (voltando ao
- * mesmo defeito de semear por um retrato "adiantado").
- *
- * Sem nenhuma compra válida restante, ou com replay dando zero, o custo atual é
- * MANTIDO (pode ter sido digitado à mão) e o motivo diz por quê.
- *
+ * @param {object} db  opcional — cliente/transação Prisma (default: prisma global).
  * @returns {{ custo: number|null, motivo: 'ok'|'sem-compras'|'custo-zero'|'sem-alvo', nome: string|null }}
  */
-async function recalcularCustoDetalhado({ produtoId, itemPcpId }) {
-    const where = { estornado: false };
-    if (produtoId) where.produtoId = produtoId;
-    else if (itemPcpId) where.itemPcpId = itemPcpId;
-    else return { custo: null, motivo: 'sem-alvo', nome: null };
-
-    const nome = produtoId
-        ? (await prisma.produto.findUnique({ where: { id: produtoId }, select: { nome: true } }))?.nome || null
-        : (await prisma.itemPcp.findUnique({ where: { id: itemPcpId }, select: { nome: true } }))?.nome || null;
-
-    const linhas = await prisma.compraItem.findMany({
-        where,
-        select: {
-            id: true, criadoEm: true, quantidade: true, custoUnitario: true,
-            estoqueAnterior: true, custoAnterior: true
-        }
-    });
-    if (linhas.length === 0) return { custo: null, motivo: 'sem-compras', nome };
-    // Ordem de CRIAÇÃO (a mesma dos retratos) — nunca dataCompra. Ver compararPorCriacao.
-    const compras = emOrdemDeCriacao(linhas);
-
-    // Semente: primeira compra que trouxe o retrato do alvo. As anteriores a ela já
-    // estão dentro desse retrato — reaplicá-las contaria a mesma entrada duas vezes.
-    let inicio = compras.findIndex((c) => c.estoqueAnterior != null);
-    let est = 0;
-    let custo = 0;
-    if (inicio >= 0) {
-        est = Math.max(num(compras[inicio].estoqueAnterior), 0);
-        custo = compras[inicio].custoAnterior != null ? num(compras[inicio].custoAnterior) : 0;
-    } else {
-        inicio = 0; // histórico todo legado
-    }
-
-    for (let k = inicio; k < compras.length; k++) {
-        const qtd = num(compras[k].quantidade);
-        if (qtd <= 0) continue;
-        custo = custoMedioPonderado(est, custo, qtd, num(compras[k].custoUnitario));
-        est += qtd;
-    }
-    if (!(custo > 0)) return { custo: null, motivo: 'custo-zero', nome };
-
-    if (produtoId) {
-        const novo = round(custo, 2);
-        await prisma.produto.update({ where: { id: produtoId }, data: { custoManual: novo } });
-        return { custo: novo, motivo: 'ok', nome };
-    }
-    const novo = round(custo, 4);
-    await prisma.itemPcp.update({ where: { id: itemPcpId }, data: { custoUnitario: novo } });
-    return { custo: novo, motivo: 'ok', nome };
+async function recalcularCustoDetalhado({ produtoId, itemPcpId }, db) {
+    const r = await custoCompraCalculo.recalcularCustoAlvo({ produtoId, itemPcpId }, db || prisma);
+    return { custo: r.custo, motivo: r.motivo, nome: r.nome };
 }
 
 /**
@@ -616,7 +524,7 @@ async function recalcularCustoDetalhado({ produtoId, itemPcpId }) {
  * @returns {number|null} novo custo aplicado, ou null se nada mudou
  */
 async function recalcularCustoPelasCompras({ produtoId, itemPcpId }) {
-    const r = await recalcularCustoDetalhado({ produtoId, itemPcpId });
+    const r = await custoCompraCalculo.recalcularCustoAlvo({ produtoId, itemPcpId });
     return r.motivo === 'ok' ? r.custo : null;
 }
 
@@ -667,18 +575,18 @@ async function comprasDaConta(db, contaPagarId) {
 async function estornarCompraTx(tx, c, criadoPorId, observacao) {
     const avisos = [];
     const infos = [];
-    let custoRestaurado = false;
     const qtd = round(num(c.quantidade), 3);
 
     if (c.produtoId) {
         const p = await tx.produto.findUnique({
             where: { id: c.produtoId },
-            select: { id: true, nome: true, estoqueTotal: true, estoqueDisponivel: true, custoManual: true, categoria: true, controlaEstoque: true }
+            select: { id: true, nome: true, estoqueTotal: true, estoqueDisponivel: true, categoria: true, controlaEstoque: true }
         });
         if (!p) {
             avisos.push('Produto de uma das compras não existe mais — quantidade não devolvida.');
         } else {
             // Produto sem controle de estoque nunca teve a quantidade lançada.
+            // O custo NÃO é devolvido aqui — é refeito pela regra nova em fecharCustoDosAlvos.
             const controla = await estoqueService.produtoControlaEstoque(p, tx);
             const data = {};
             let totalAntes = num(p.estoqueTotal);
@@ -690,11 +598,6 @@ async function estornarCompraTx(tx, c, criadoPorId, observacao) {
                 if (totalDepois < 0) {
                     avisos.push(`O estoque de "${p.nome}" ficou negativo (${totalDepois}) porque a quantidade lançada já tinha sido usada — acerte pelo ajuste manual.`);
                 }
-            }
-            if (c.custoPosterior != null && custoIgual(p.custoManual, c.custoPosterior, 2)) {
-                data.custoManual = c.custoAnterior != null ? round(num(c.custoAnterior), 2) : null;
-                custoRestaurado = true;
-                infos.push(`"${p.nome}": custo devolvido ao valor de antes desta compra (${data.custoManual != null ? `R$ ${data.custoManual.toFixed(2)}` : 'sem custo'}).`);
             }
             if (Object.keys(data).length > 0) await tx.produto.update({ where: { id: p.id }, data });
             if (controla && qtd > 0) {
@@ -739,12 +642,7 @@ async function estornarCompraTx(tx, c, criadoPorId, observacao) {
                     avisos.push(`O insumo "${i.nome}" já tinha sido consumido: o estoque parou em zero e ${round(qtd - antes, 3)} não puderam ser devolvidos — confira no PCP.`);
                 }
             }
-            if (c.custoPosterior != null && custoIgual(i.custoUnitario, c.custoPosterior, 4)) {
-                const volta = c.custoAnterior != null ? round(num(c.custoAnterior), 4) : null;
-                await tx.itemPcp.update({ where: { id: i.id }, data: { custoUnitario: volta } });
-                custoRestaurado = true;
-                infos.push(`"${i.nome}": custo devolvido ao valor de antes desta compra (${volta != null ? `R$ ${volta.toFixed(4)}` : 'sem custo'}).`);
-            }
+            // Custo não é devolvido aqui — refeito pela regra nova em fecharCustoDosAlvos.
         }
     }
 
@@ -752,7 +650,7 @@ async function estornarCompraTx(tx, c, criadoPorId, observacao) {
         where: { id: c.id },
         data: { estornado: true, estornadoEm: new Date() }
     });
-    return { avisos, infos, custoRestaurado };
+    return { avisos, infos };
 }
 
 /**
@@ -802,11 +700,8 @@ async function lancarCompraTx(tx, origem, e, criadoPorId) {
         const unidadeNossa = p.unidade || e.unidadeFornecedor || 'UN';
         const estoqueAnterior = num(p.estoqueTotal);
         const custoAnterior = p.custoManual != null ? num(p.custoManual) : null;
-        const novoCusto = round(controla
-            ? custoMedioPonderado(estoqueAnterior, custoAnterior, quantidade, custoUnitario)
-            : custoUnitario, 2);
 
-        await tx.compraItem.create({
+        const compra = await tx.compraItem.create({
             data: {
                 ...base,
                 produtoId: p.id,
@@ -814,18 +709,19 @@ async function lancarCompraTx(tx, origem, e, criadoPorId) {
                 unidade: unidadeNossa,
                 estoqueAnterior,
                 custoAnterior,
-                custoPosterior: novoCusto
+                custoPosterior: null
             }
         });
 
-        const data = { custoManual: novoCusto };
+        // Estoque primeiro (só se controla); custo depois, pela regra nova.
         if (controla) {
-            data.estoqueTotal = round(estoqueAnterior + quantidade, 3);
-            data.estoqueDisponivel = round(num(p.estoqueDisponivel) + quantidade, 3);
-        }
-        await tx.produto.update({ where: { id: p.id }, data });
-
-        if (controla) {
+            await tx.produto.update({
+                where: { id: p.id },
+                data: {
+                    estoqueTotal: round(estoqueAnterior + quantidade, 3),
+                    estoqueDisponivel: round(num(p.estoqueDisponivel) + quantidade, 3)
+                }
+            });
             await tx.movimentacaoEstoque.create({
                 data: {
                     produtoId: p.id,
@@ -841,8 +737,17 @@ async function lancarCompraTx(tx, origem, e, criadoPorId) {
                 }
             });
             await estoqueService.recalcularEstoqueProduto(p.id, tx);
-        } else {
-            infos.push(`"${p.nome}": custo atualizado (R$ ${novoCusto.toFixed(2)}), sem movimentar estoque — produto não controla estoque.`);
+        }
+
+        // Custo pela regra nova (compras válidas recentes que cobrem o estoque JÁ com esta
+        // entrada). Grava custoManual e completa o retrato (custoPosterior) da linha.
+        const rc = await custoCompraCalculo.recalcularCustoAlvo({ produtoId: p.id }, tx);
+        if (rc.motivo === 'ok') {
+            await tx.compraItem.update({ where: { id: compra.id }, data: { custoPosterior: rc.custo } });
+        }
+        if (!controla) {
+            const txt = rc.custo != null ? ` (R$ ${num(rc.custo).toFixed(2)})` : '';
+            infos.push(`"${p.nome}": custo atualizado${txt}, sem movimentar estoque — produto não controla estoque.`);
         }
         return { avisos, infos, registrada: true };
     }
@@ -856,9 +761,8 @@ async function lancarCompraTx(tx, origem, e, criadoPorId) {
     const unidadeNossa = i.unidade || e.unidadeFornecedor || 'UN';
     const estoqueAnterior = num(i.estoqueAtual);
     const custoAnterior = i.custoUnitario != null ? num(i.custoUnitario) : null;
-    const novoCusto = round(custoMedioPonderado(estoqueAnterior, custoAnterior, quantidade, custoUnitario), 4);
 
-    await tx.compraItem.create({
+    const compra = await tx.compraItem.create({
         data: {
             ...base,
             itemPcpId: i.id,
@@ -866,7 +770,7 @@ async function lancarCompraTx(tx, origem, e, criadoPorId) {
             unidade: unidadeNossa,
             estoqueAnterior,
             custoAnterior,
-            custoPosterior: novoCusto
+            custoPosterior: null
         }
     });
     await pcpEstoqueService.ajustar({
@@ -877,7 +781,12 @@ async function lancarCompraTx(tx, origem, e, criadoPorId) {
         observacao: origem.observacaoMov,
         criadoPorId
     }, tx);
-    await tx.itemPcp.update({ where: { id: i.id }, data: { custoUnitario: novoCusto } });
+
+    // Custo pela regra nova, DEPOIS da entrada. Grava custoUnitario e completa o retrato.
+    const rc = await custoCompraCalculo.recalcularCustoAlvo({ itemPcpId: i.id }, tx);
+    if (rc.motivo === 'ok') {
+        await tx.compraItem.update({ where: { id: compra.id }, data: { custoPosterior: rc.custo } });
+    }
 
     return { avisos, infos, registrada: true };
 }
@@ -908,6 +817,8 @@ async function lancarCompraTx(tx, origem, e, criadoPorId) {
 async function sincronizarComprasConta(tx, conta, fornecedor, itensDesejados, criadoPorId) {
     const avisos = [];
     const infos = [];
+    // legado — sempre vazio: o custo é SEMPRE refeito pela regra nova em fecharCustoDosAlvos.
+    // Mantido no retorno só para compatibilidade com quem ainda repassa este campo.
     const restaurados = new Set();
 
     // ── 0. TRAVA a despesa até o fim da transação.
@@ -933,9 +844,6 @@ async function sincronizarComprasConta(tx, conta, fornecedor, itensDesejados, cr
         const r = await estornarCompraTx(tx, c, criadoPorId || null, `Correção da ${rotulo} — retirada do lançamento anterior`);
         avisos.push(...r.avisos);
         infos.push(...r.infos);
-        const chave = chaveAlvo(c.produtoId, c.itemPcpId);
-        if (r.custoRestaurado) restaurados.add(chave);
-        else restaurados.delete(chave);
         estornadas++;
     }
 
@@ -981,12 +889,7 @@ async function sincronizarComprasConta(tx, conta, fornecedor, itensDesejados, cr
         }, criadoPorId || null);
         avisos.push(...r.avisos);
         infos.push(...r.infos);
-        if (r.registrada) {
-            registradas++;
-            // O alvo recebeu compra nova: o custo dele não é mais "o de antes do estorno",
-            // então o replay pós-commit precisa rodar nele.
-            restaurados.delete(chaveAlvo(it.produtoId || null, it.itemPcpId || null));
-        }
+        if (r.registrada) registradas++;
     }
 
     const depois = await comprasDaConta(tx, conta.id);

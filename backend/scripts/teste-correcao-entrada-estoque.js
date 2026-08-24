@@ -1,100 +1,81 @@
 /**
- * Teste OFFLINE (sem banco) da correção de entrada de estoque.
+ * Teste OFFLINE (sem banco) da REGRA DE CUSTO por compras recentes que cobrem o estoque
+ * (custoCompraCalculo.custoPorEstoqueRecente) — a função pura, sem I/O.
  *
- * Prova as três perguntas que o dono fez ao pedir a funcionalidade (08/2026):
- *   1. corrigir a conversão REDUZ o custo? → reduz quando a conversão errada lançou
- *      quantidade a MENOS; sobe no caso contrário. O valor pago nunca muda.
- *   2. o valor da nota pode ser alterado por engano? → não: quantidade e custo são
- *      sempre derivados de (quantidade do XML × fator) e (valorTotal ÷ quantidade).
- *   3. compras posteriores atrapalham? → só restaurar o "custo anterior" não basta;
- *      o custo tem que ser refeito pelo histórico de compras válidas (o que a rota faz).
+ * Regra (travada com o dono, 08/2026): custo = média das compras VÁLIDAS mais recentes
+ * que COBREM o estoqueAtual. Ordena da mais recente para a mais antiga (dataCompra,
+ * desempate criadoEm depois id), soma as quantidades até cobrir o estoque; a compra que
+ * CRUZA o limite entra INTEIRA (nunca proporcional). Sem compra válida → null (custo
+ * intocado). estoque <= 0 → último preço pago. estoque > soma de todas → usa todas.
+ *
+ * Prova aqui:
+ *   1. cobertura por 2 compras (a 3ª, mais antiga, fica de fora);
+ *   2. a compra que cruza entra INTEIRA (não proporcional);
+ *   3. estoque maior que a soma de todas → usa TODAS;
+ *   4. estoque <= 0 → custo da compra mais recente;
+ *   5. sem compra válida (lista vazia ou só quantidade zero) → null;
+ *   6. desempate por criadoEm/id quando a dataCompra empata;
+ *   7. o valor da nota é intocável: quantidade × custo = valor do item, para qualquer fator.
  *
  * Rodar: node backend/scripts/teste-correcao-entrada-estoque.js
  */
 
-const { custoMedioPonderado } = require('../services/notaEstoqueService');
+const { custoPorEstoqueRecente } = require('../services/custoCompraCalculo');
 
 const round = (v, c) => Math.round(Number(v) * 10 ** c) / 10 ** c;
 let falhas = 0;
 
 const conferir = (rotulo, obtido, esperado, casas = 2) => {
-    const ok = Math.abs(Number(obtido) - Number(esperado)) < 0.5 / 10 ** casas;
-    console.log(`  ${ok ? '✅' : '❌'} ${rotulo}: ${round(obtido, casas)} (esperado ${round(esperado, casas)})`);
+    const ok = obtido == null && esperado == null
+        ? true
+        : (obtido != null && esperado != null && Math.abs(Number(obtido) - Number(esperado)) < 0.5 / 10 ** casas);
+    console.log(`  ${ok ? '✅' : '❌'} ${rotulo}: ${obtido == null ? 'null' : round(obtido, casas)} (esperado ${esperado == null ? 'null' : round(esperado, casas)})`);
     if (!ok) falhas++;
 };
 
-/** Como a conferência calcula a entrada de um item (montarItensResolvidos). */
+// Compra de teste: da mais recente para a mais antiga (o algoritmo ordena sozinho, mas
+// deixamos as datas explícitas para o teste ser legível).
+const A = { id: 'A', quantidade: 100, custoUnitario: 20, dataCompra: '2026-08-10', criadoEm: '2026-08-10T10:00:00Z' }; // mais recente
+const B = { id: 'B', quantidade: 100, custoUnitario: 10, dataCompra: '2026-08-05', criadoEm: '2026-08-05T10:00:00Z' };
+const C = { id: 'C', quantidade: 100, custoUnitario: 5, dataCompra: '2026-08-01', criadoEm: '2026-08-01T10:00:00Z' }; // mais antiga
+const compras = [C, A, B]; // ordem embaralhada de propósito
+
+console.log('\n═══ 1. Cobertura por 2 compras (a 3ª, mais antiga, fica de fora) ═══');
+// estoque 150: A(100) + B(100) = 200 ≥ 150 → inclui A e B; C não entra.
+// custo = (100·20 + 100·10) / 200 = 15,00
+conferir('estoque 150 → média das 2 compras recentes', custoPorEstoqueRecente(150, compras), 15);
+
+console.log('\n═══ 2. A compra que CRUZA o limite entra INTEIRA (não proporcional) ═══');
+// estoque 120: A(100) < 120; A+B(200) ≥ 120 → B entra INTEIRA.
+// inteira: (100·20 + 100·10)/200 = 15,00 ; proporcional (só 20 de B) daria 18,33.
+conferir('estoque 120 → B inteira → 15,00 (não 18,33)', custoPorEstoqueRecente(120, compras), 15);
+
+console.log('\n═══ 3. Estoque maior que a soma de todas → usa TODAS ═══');
+// soma = 300; estoque 500 → inclui A+B+C = (2000+1000+500)/300 = 11,6667
+conferir('estoque 500 → todas as compras', custoPorEstoqueRecente(500, compras), 11.6667, 4);
+
+console.log('\n═══ 4. Estoque <= 0 → custo da compra MAIS RECENTE ═══');
+conferir('estoque 0 → último preço (A = 20)', custoPorEstoqueRecente(0, compras), 20);
+conferir('estoque negativo → último preço (A = 20)', custoPorEstoqueRecente(-5, compras), 20);
+
+console.log('\n═══ 5. Sem compra válida → null (custo intocado) ═══');
+conferir('lista vazia → null', custoPorEstoqueRecente(100, []), null);
+conferir('só quantidade zero → null', custoPorEstoqueRecente(100, [{ id: 'Z', quantidade: 0, custoUnitario: 9, dataCompra: '2026-08-09', criadoEm: '2026-08-09T10:00:00Z' }]), null);
+
+console.log('\n═══ 6. Desempate por criadoEm/id quando a dataCompra empata ═══');
+// Duas compras na MESMA dataCompra: a de criadoEm mais novo é a "mais recente".
+const M1 = { id: 'M1', quantidade: 10, custoUnitario: 30, dataCompra: '2026-08-12', criadoEm: '2026-08-12T08:00:00Z' };
+const M2 = { id: 'M2', quantidade: 10, custoUnitario: 40, dataCompra: '2026-08-12', criadoEm: '2026-08-12T09:00:00Z' }; // criadoEm mais novo
+// estoque 0 → último preço = a de criadoEm mais novo (M2 = 40).
+conferir('empate de data → criadoEm mais novo ganha (M2 = 40)', custoPorEstoqueRecente(0, [M1, M2]), 40);
+
+console.log('\n═══ 7. O valor da nota é intocável (quantidade × custo = valor do item) ═══');
+// Como a conferência calcula a entrada de um item (montarItensResolvidos, lógica pura).
 const entradaDoItem = (item, fator) => {
     const quantidade = round(item.quantidade * fator, 3);
     return { quantidade, custoUnitario: quantidade > 0 ? round(item.valorTotal / quantidade, 6) : null };
 };
-
-/** Replay da média ponderada sobre as compras válidas (compraEstoqueService.recalcularCustoPelasCompras). */
-const custoPelasCompras = (compras) => {
-    let est = 0;
-    let custo = 0;
-    for (const c of compras) {
-        if (c.quantidade <= 0) continue;
-        custo = custoMedioPonderado(est, custo, c.quantidade, c.custoUnitario);
-        est += c.quantidade;
-    }
-    return round(custo, 2);
-};
-
-console.log('\n═══ 1. Conversão errada em julho: 12 CX de mussarela por R$ 2.400 (1 CX = 10 KG) ═══');
-const item = { quantidade: 12, unidade: 'CX', valorTotal: 2400 };
-
-const errada = entradaDoItem(item, 1);    // digitaram fator 1 (tratou CX como KG)
-const certa = entradaDoItem(item, 10);    // conversão correta
-conferir('quantidade lançada errada (KG)', errada.quantidade, 12, 3);
-conferir('custo inflado pelo erro (R$/KG)', errada.custoUnitario, 200, 2);
-conferir('quantidade correta (KG)', certa.quantidade, 120, 3);
-conferir('custo correto (R$/KG)', certa.custoUnitario, 20, 2);
-conferir('valor do item é o MESMO nos dois casos', certa.quantidade * certa.custoUnitario, item.valorTotal, 2);
-conferir('falta entrar no estoque de hoje (KG)', certa.quantidade - errada.quantidade, 108, 3);
-
-console.log('\n═══ 2. O erro ao contrário (fator alto demais) faz o custo SUBIR ═══');
-const exagerada = entradaDoItem(item, 100); // 1 CX = 100 KG (errado para mais)
-conferir('custo subestimado pelo erro (R$/KG)', exagerada.custoUnitario, 2, 2);
-conferir('corrigir SOBE o custo de 2 para', certa.custoUnitario, 20, 2);
-conferir('sai do estoque de hoje (KG)', exagerada.quantidade - certa.quantidade, 1080, 3);
-
-console.log('\n═══ 3. Compras posteriores: restaurar o "custo anterior" NÃO basta ═══');
-// Linha do tempo real: custo do produto era 21,00 antes de julho.
-// Julho: a compra errada (200,00/KG) explodiu a média; depois vieram mais 2 compras.
-const custoAntesDeJulho = 21;
-const estoqueAntesDeJulho = 40;
-const posteriores = [
-    { quantidade: 100, custoUnitario: 19.5 },
-    { quantidade: 80, custoUnitario: 22 }
-];
-
-// (a) como ficou com a compra ERRADA na média
-let custoHoje = custoMedioPonderado(estoqueAntesDeJulho, custoAntesDeJulho, errada.quantidade, errada.custoUnitario);
-let estoque = estoqueAntesDeJulho + errada.quantidade;
-for (const c of posteriores) {
-    custoHoje = custoMedioPonderado(estoque, custoHoje, c.quantidade, c.custoUnitario);
-    estoque += c.quantidade;
-}
-console.log(`  → custo hoje, contaminado pelo erro: R$ ${round(custoHoje, 2)}/KG`);
-if (!(custoHoje > 25)) { console.log('  ❌ o cenário deveria estar contaminado'); falhas++; }
-
-// (b) só "desfazer a última entrada" não resolve — o erro já entrou na média das compras seguintes
-const soRestaurando = custoAntesDeJulho;
-console.log(`  → se o app apenas restaurasse o custo anterior: R$ ${round(soRestaurando, 2)}/KG (ignora 2 compras posteriores) ❗`);
-
-// (c) o que a rota faz: refaz a média pelo histórico de compras VÁLIDAS (a errada sai, a certa entra)
-const historicoCorrigido = [
-    { quantidade: certa.quantidade, custoUnitario: certa.custoUnitario }, // julho, já corrigida
-    ...posteriores
-];
-const custoRefeito = custoPelasCompras(historicoCorrigido);
-console.log(`  → custo refeito pelo histórico de compras válidas: R$ ${custoRefeito}/KG`);
-conferir('custo refeito fica na faixa real das compras (19,50–22,00)', custoRefeito > 19.5 && custoRefeito < 22 ? 1 : 0, 1, 0);
-conferir('a compra errada saiu da média', custoRefeito < custoHoje ? 1 : 0, 1, 0);
-
-console.log('\n═══ 4. O valor da nota é intocável ═══');
-// Qualquer fator que o usuário digite: quantidade × custo continua sendo o valor do item.
+const item = { quantidade: 12, valorTotal: 2400 };
 for (const f of [0.5, 1, 3.7, 10, 144]) {
     const e = entradaDoItem(item, f);
     conferir(`fator ${f} → quantidade × custo`, e.quantidade * e.custoUnitario, item.valorTotal, 2);

@@ -1844,23 +1844,21 @@ router.post('/:id/cancelar-conferencia', verificarAuth, checkEscrita, async (req
             estornoLedger = await notaEstoqueService.estornarEstoqueNota(tx, nota.id, { criadoPorId: req.user.id });
         }, { timeout: 20000, maxWait: 10000 });
 
-        // Nota conferida ANTES do ledger: o estorno acima já saiu pelo caminho legado
-        // (CompraItem), mas o custo lá não tem "antes/depois" gravado — refazer pelo
-        // histórico de compras válidas é o que tira a compra cancelada da média.
-        // Best-effort: falha não trava o cancelamento.
+        // O custo dos alvos tocados é SEMPRE refeito pela regra nova (compras VÁLIDAS mais
+        // recentes que cobrem o estoque) — o estorno não devolve mais o "custo anterior"
+        // inline (nem no ledger, nem no caminho legado). Sem compra válida → custo intocado
+        // + aviso. Best-effort: falha não trava o cancelamento.
         let estorno = { estornadas: 0, avisos: [], infos: [] };
         try {
             const compraEstoqueService = require('../services/compraEstoqueService');
-            if (estornoLedger.legado) {
-                for (const produtoId of (estornoLedger.alvos?.produtoIds || [])) {
-                    await compraEstoqueService.recalcularCustoPelasCompras({ produtoId });
-                }
-                for (const itemPcpId of (estornoLedger.alvos?.itemPcpIds || [])) {
-                    await compraEstoqueService.recalcularCustoPelasCompras({ itemPcpId });
-                }
-            }
+            const fechamento = await compraEstoqueService.fecharCustoDosAlvos({
+                produtoIds: estornoLedger.alvos?.produtoIds || [],
+                itemPcpIds: estornoLedger.alvos?.itemPcpIds || []
+            });
             // Rede de segurança: qualquer linha antiga que não tenha saído acima.
             estorno = await compraEstoqueService.estornarEntradasNota(nota.id, req.user.id);
+            estorno.avisos = [...(fechamento.avisos || []), ...(estorno.avisos || [])];
+            estorno.infos = [...(fechamento.infos || []), ...(estorno.infos || [])];
         } catch (e) {
             console.error('[NotasEntrada] Falha ao estornar entradas de estoque:', e.message);
             estorno.avisos.push('Falha ao estornar o estoque — confira e ajuste manualmente.');

@@ -3,19 +3,22 @@
  * exercitando os serviços de verdade — transação, movimentações, retrato de custo,
  * replay e trava de concorrência.
  *
+ * REGRA DE CUSTO (08/2026): custo = média das compras VÁLIDAS mais recentes que COBREM
+ * o estoqueAtual (a que cruza o limite entra INTEIRA). Sem compra válida → custo intocado.
+ *
  * Prova, no banco:
  *   1. COMPRA ÚNICA (o caso PALMITO): corrigir a quantidade acerta estoque e custo;
- *      tirar o produto devolve o estoque e o custo VOLTA ao valor de antes (não zera).
+ *      tirar o produto devolve o estoque e o custo FICA NO ÚLTIMO VALOR (não volta ao
+ *      manual antigo, não zera — não há mais compra válida para recalcular).
  *   2. NOTA FISCAL + DESPESA MANUAL MISTURADAS, com `dataCompra` FORA da ordem de
  *      criação (nota emitida em 01/08 conferida DEPOIS de uma despesa manual de hoje):
- *      o replay do custo tem que conservar o dinheiro (estoque × custo = soma paga),
- *      sem contar a mesma compra duas vezes.
+ *      o custo é a média das compras recentes que cobrem o estoque — independe da ordem
+ *      do replay e de retrato; o recompute é idempotente (bate com o caminho ao vivo).
  *   3. A correção NÃO muda a compra de mês: a linha relançada mantém a `dataCompra`
  *      da linha estornada.
  *   4. Duas correções SIMULTÂNEAS na mesma despesa não somam nem perdem estoque
  *      (trava `SELECT ... FOR UPDATE` na despesa).
- *   5. Linha LEGADA (sem o retrato antes/depois): o custo é MANTIDO e sai aviso —
- *      nunca zerado em silêncio.
+ *   5. Sem compra válida restante: o custo é MANTIDO e sai aviso — nunca zerado em silêncio.
  *
  * Cria e APAGA os próprios dados (prefixo TESTE-DESPESA-PROD).
  *
@@ -161,7 +164,9 @@ async function principal() {
 
     const erradoP = await prisma.produto.findUnique({ where: { id: palmito.id } });
     conferir('estoque com o lançamento errado (KG)', erradoP.estoqueTotal, 60, 3);
-    conferir('custo com o lançamento errado (R$/KG)', erradoP.custoManual, 29.83); // (840+950)/60
+    // Regra nova: a única compra (20 UN @ 47,50) não cobre os 60 do estoque → usa ela
+    // inteira → custo 47,50 (o valor manual antigo de R$ 21 não entra).
+    conferir('custo com o lançamento errado (R$/KG)', erradoP.custoManual, 47.5);
 
     console.log('\n  → corrigindo para 200 UN (mesmo valor de R$ 950)');
     const r1 = await editarProdutos(despesa1, [
@@ -169,8 +174,8 @@ async function principal() {
     ], vendedor.id);
     const certoP = await prisma.produto.findUnique({ where: { id: palmito.id } });
     conferir('estoque corrigido (KG)', certoP.estoqueTotal, 240, 3);             // 40 + 200
-    conferir('custo corrigido (R$/KG)', certoP.custoManual, 7.46);               // (840 + 950)/240
-    conferir('dinheiro conservado (240 × custo = 840 + 950)', num(certoP.estoqueTotal) * num(certoP.custoManual), 1790, 0);
+    // Regra nova: a compra corrigida (200 KG @ 4,75) não cobre os 240 → usa ela inteira → 4,75.
+    conferir('custo corrigido (R$/KG)', certoP.custoManual, 4.75);
     conferir('linhas ativas no histórico', (await prisma.compraItem.count({ where: { contaPagarId: despesa1.id, estornado: false } })), 1, 0);
     conferir('linhas estornadas (a errada)', (await prisma.compraItem.count({ where: { contaPagarId: despesa1.id, estornado: true } })), 1, 0);
 
@@ -185,19 +190,21 @@ async function principal() {
     const r2 = await editarProdutos(despesa1, [], vendedor.id);
     const semP = await prisma.produto.findUnique({ where: { id: palmito.id } });
     conferir('estoque devolvido (KG)', semP.estoqueTotal, 40, 3);
-    conferir('custo VOLTOU ao valor de antes (R$/KG)', semP.custoManual, 21);
+    // Regra nova: sem compra válida restante, o custo NÃO é recalculado — fica no último
+    // valor (4,75). Não volta ao manual antigo (21) nem zera.
+    conferir('custo fica no ÚLTIMO valor (não volta a 21, não zera) (R$/KG)', semP.custoManual, 4.75);
     dizer('o custo não foi zerado nem apagado', semP.custoManual != null && num(semP.custoManual) > 0);
     console.log(`     avisos: ${r2.avisos.length ? r2.avisos.join(' | ') : '(nenhum)'}`);
     console.log(`     infos:  ${r2.infos.length ? r2.infos.join(' | ') : '(nenhuma)'}`);
-    dizer('o "custo devolvido" saiu como INFO, não como aviso',
-        r2.infos.some((t) => t.includes('custo devolvido')) && !r2.avisos.some((t) => t.includes('custo devolvido')));
+    dizer('sem compra válida, avisou que não deu para recalcular (custo mantido)',
+        r2.avisos.some((t) => t.includes('Não consegui recalcular') || t.includes('não sobrou compra válida')));
     dizer('avisos do passo 1 sem ruído informativo',
         !r1.avisos.some((t) => t.includes('recalculado')) && r1.infos.some((t) => t.includes('recalculado')));
 
     // ═══════════════════════════════════════════════════════════════════════════
     console.log('\n═══ 2. NOTA FISCAL + DESPESA MANUAL com dataCompra FORA da ordem de criação ═══');
-    console.log('  (o que quebrava: a nota é emitida em 01/08 e conferida DEPOIS da despesa manual —');
-    console.log('   ordenar o replay por dataCompra semeava por um retrato que já continha a despesa)');
+    console.log('  (a nota é emitida em 01/08 e conferida DEPOIS da despesa manual de hoje —');
+    console.log('   a regra nova ordena por dataCompra: as compras recentes que cobrem o estoque mandam)');
     const queijo = await criarProduto('QUEIJO', 40, 21);
     console.log('  antes: 40 KG @ R$ 21,00 = R$ 840,00');
 
@@ -210,7 +217,8 @@ async function principal() {
     );
     const depoisManual = await prisma.produto.findUnique({ where: { id: queijo.id } });
     conferir('depois da despesa manual — estoque (KG)', depoisManual.estoqueTotal, 140, 3);
-    conferir('depois da despesa manual — custo (R$/KG)', depoisManual.custoManual, 41.71); // (840+5000)/140
+    // Regra nova: a compra (100 KG @ 50) não cobre os 140 → usa ela inteira → 50,00.
+    conferir('depois da despesa manual — custo (R$/KG)', depoisManual.custoManual, 50);
 
     // (b) depois: nota EMITIDA EM 01/08 conferida agora — 120 KG por R$ 1.200
     const nota = await prisma.notaEntrada.create({
@@ -238,7 +246,9 @@ async function principal() {
 
     const depoisNota = await prisma.produto.findUnique({ where: { id: queijo.id } });
     conferir('depois da nota — estoque (KG)', depoisNota.estoqueTotal, 260, 3);
-    conferir('depois da nota — custo (R$/KG)', depoisNota.custoManual, 27.07); // (140×41,71 + 1200)/260
+    // Regra nova: as 2 compras válidas (100 KG @ 50 hoje + 120 KG @ 10 de 01/08) somam 220 KG,
+    // menos que os 260 do estoque → usa AS DUAS → (100·50 + 120·10)/220 = R$ 28,18/KG.
+    conferir('depois da nota — custo (R$/KG)', depoisNota.custoManual, 28.18);
     const linhas = await prisma.compraItem.findMany({
         where: { produtoId: queijo.id, estornado: false },
         orderBy: { criadoEm: 'asc' },
@@ -251,35 +261,17 @@ async function principal() {
     dizer('as duas ordens estão MESMO trocadas (dataCompra da nota é anterior à da despesa manual)',
         new Date(linhas[1].dataCompra) < new Date(linhas[0].dataCompra));
 
-    // O que o código REPROVADO fazia: mesmo replay, mas percorrendo por dataCompra.
-    // Fica aqui como régua — é o número que não pode voltar.
-    const replayNaOrdemAntiga = (() => {
-        const porData = [...linhas].sort((x, y) => new Date(x.dataCompra) - new Date(y.dataCompra));
-        const i = porData.findIndex((c) => c.estoqueAnterior != null);
-        let est = Math.max(num(porData[i].estoqueAnterior), 0);
-        let custo = num(porData[i].custoAnterior);
-        for (let k = i; k < porData.length; k++) {
-            custo = compraEstoqueService.custoMedioPonderado(est, custo, num(porData[k].quantidade), num(porData[k].custoUnitario));
-            est += num(porData[k].quantidade);
-        }
-        return { custo: round(custo, 2), est };
-    })();
-    console.log(`  ↯ ordenando por dataCompra (o jeito REPROVADO): R$ ${replayNaOrdemAntiga.custo}/KG achando ${replayNaOrdemAntiga.est} KG — a despesa manual entraria DE NOVO`);
-
-    console.log('\n  → replay do custo (é o que a correção de entrada e o estorno chamam)');
+    console.log('\n  → recompute do custo (é o que a correção de entrada e o estorno chamam)');
     const custoReplay = await compraEstoqueService.recalcularCustoPelasCompras({ produtoId: queijo.id });
     const depoisReplay = await prisma.produto.findUnique({ where: { id: queijo.id } });
-    const PAGO = 840 + 5000 + 1200; // R$ 7.040 de fato no estoque
-    console.log(`     custo do replay: R$ ${round(custoReplay, 4)}/KG  ·  estoque real: ${round(depoisReplay.estoqueTotal, 0)} KG`);
-    // 27,08 e não 27,07 porque o replay carrega o custo intermediário com 4 casas
-    // (41,7143) enquanto o caminho ao vivo grava 41,71 no produto — 1 centavo, a favor
-    // da precisão. O que importa é o dinheiro fechar: 260 × 27,0769 = R$ 7.040.
-    conferir('custo do replay (R$/KG)', custoReplay, 27.08);
-    conferir('custo gravado no produto (R$/KG)', depoisReplay.custoManual, 27.08);
-    conferir('DINHEIRO CONSERVADO (260 KG × custo ≈ R$ 7.040)', num(depoisReplay.estoqueTotal) * num(depoisReplay.custoManual), PAGO, -1);
-    dizer('bate com o caminho ao vivo (diferença ≤ 1 centavo)', Math.abs(num(custoReplay) - num(depoisNota.custoManual)) <= 0.01);
-    dizer(`a compra NÃO foi contada duas vezes (a ordem antiga daria R$ ${replayNaOrdemAntiga.custo}/KG)`,
-        num(custoReplay) < 30 && replayNaOrdemAntiga.custo > 30);
+    console.log(`     custo recomputado: R$ ${round(custoReplay, 4)}/KG  ·  estoque real: ${round(depoisReplay.estoqueTotal, 0)} KG`);
+    // Regra nova: (100·50 + 120·10)/220 = R$ 28,18/KG — as duas compras válidas cobrem os
+    // 260 KG do estoque (soma 220 < 260 → usa as duas). O custo NÃO depende mais da ORDEM
+    // do replay nem de retrato: é sempre a média das compras recentes que cobrem o estoque.
+    conferir('custo recomputado (R$/KG)', custoReplay, 28.18);
+    conferir('custo gravado no produto (R$/KG)', depoisReplay.custoManual, 28.18);
+    dizer('o recompute é idempotente: bate com o custo do caminho ao vivo',
+        Math.abs(num(custoReplay) - num(depoisNota.custoManual)) <= 0.01);
 
     // ═══════════════════════════════════════════════════════════════════════════
     console.log('\n═══ 3. Duas correções SIMULTÂNEAS na mesma despesa (trava) ═══');
@@ -322,7 +314,7 @@ async function principal() {
     conferir('custo (R$/KG)', arrozFim.custoManual, 20);
 
     // ═══════════════════════════════════════════════════════════════════════════
-    console.log('\n═══ 4. Linha LEGADA (sem retrato antes/depois) — custo mantido + aviso ═══');
+    console.log('\n═══ 4. Sem compra válida restante — custo MANTIDO + aviso ═══');
     const feijao = await criarProduto('FEIJAO', 0, null);
     const despesa4 = await criarDespesa('Feijão legado', 500);
     await compraEstoqueService.registrarComprasManuais(
@@ -330,7 +322,9 @@ async function principal() {
         [{ descricao: 'FEIJAO', quantidade: 50, valorTotal: 500, produtoId: feijao.id }],
         vendedor.id
     );
-    // Apaga o retrato: é exatamente como estão as linhas antigas do banco (sem backfill).
+    // Apaga o retrato (linhas antigas do banco não têm backfill). Na regra nova o retrato
+    // nem é usado no cálculo — o teste segue provando que, quando NÃO sobra compra válida,
+    // o custo é mantido e sai aviso (nunca zerado em silêncio).
     await prisma.compraItem.updateMany({
         where: { contaPagarId: despesa4.id, estornado: false },
         data: { estoqueAnterior: null, custoAnterior: null, custoPosterior: null }

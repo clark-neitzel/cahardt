@@ -2553,6 +2553,361 @@ router.get('/diag-produto-custo', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-receita-custo?nome=<parte>&insumo=<parte opcional> — SÓ-LEITURA.
+// Descobre de ONDE sai o custo de um ingrediente na ficha da receita, em produção.
+// Para cada item da receita reproduz EXATAMENTE a leitura de pcpReceitaService.calcularCusto
+// (produto.custoManual>0 => 'compra'; senão itemPcp.custoUnitario => 'manual'; SUB => 'receita';
+// sem custo => 'sem-custo') e mostra o custoManual do produto vs. o que a média ponderada das
+// compras DARIA (compraEstoqueService.recalcularCustoDetalhado, SEM gravar), para revelar
+// custoManual travado, produto duplicado (homônimo) e divergência de unidade (kg x UN).
+// NENHUMA escrita — só findMany/findFirst/findUnique + calcularCusto (read-only).
+router.get('/diag-receita-custo', async (req, res) => {
+    try {
+        const pcpReceitaService = require('../services/pcpReceitaService');
+        const { custoMedioPonderado } = require('../services/compraEstoqueService');
+
+        const nome = (req.query.nome || '').trim();
+        const insumo = (req.query.insumo || '').trim();
+        if (!nome && !insumo) {
+            return res.status(400).json({
+                error: 'Informe ao menos um parâmetro: ?nome=<parte do nome da receita> e/ou ?insumo=<parte do nome do item PCP>. Ex.: /diag-receita-custo?nome=Palmito%20Tortinha&insumo=palmito'
+            });
+        }
+
+        const arred = (v, casas) => { const f = 10 ** casas; return Math.round(Number(v || 0) * f) / f; };
+        const num = (v) => Number(v || 0);
+
+        // Mesma ordenação de compraEstoqueService.compararPorCriacao (criadoEm, estoqueAnterior, id).
+        const compararPorCriacao = (a, b) => {
+            const ta = new Date(a.criadoEm || 0).getTime();
+            const tb = new Date(b.criadoEm || 0).getTime();
+            if (ta !== tb) return ta - tb;
+            const ea = a.estoqueAnterior != null ? num(a.estoqueAnterior) : -Infinity;
+            const eb = b.estoqueAnterior != null ? num(b.estoqueAnterior) : -Infinity;
+            if (ea !== eb) return ea - eb;
+            return String(a.id || '').localeCompare(String(b.id || ''));
+        };
+
+        // Reproduz recalcularCustoDetalhado (linhas 562-611) SEM gravar. casas: 2 (produto) | 4 (itemPcp).
+        const simularCusto = async ({ produtoId, itemPcpId }, casas) => {
+            const where = { estornado: false };
+            if (produtoId) where.produtoId = produtoId;
+            else if (itemPcpId) where.itemPcpId = itemPcpId;
+            else return { simulado: null, motivo: 'sem-alvo', mediaSimplesPonderada: null, qtdCompras: 0 };
+
+            const linhas = await prisma.compraItem.findMany({
+                where,
+                select: {
+                    id: true, criadoEm: true, quantidade: true, custoUnitario: true,
+                    estoqueAnterior: true, custoAnterior: true
+                }
+            });
+            if (linhas.length === 0) return { simulado: null, motivo: 'sem-compras', mediaSimplesPonderada: null, qtdCompras: 0 };
+            const compras = [...linhas].sort(compararPorCriacao);
+
+            // Semente: 1ª compra com estoqueAnterior != null (as anteriores já estão nesse retrato).
+            let inicio = compras.findIndex((c) => c.estoqueAnterior != null);
+            let est = 0, custo = 0;
+            if (inicio >= 0) {
+                est = Math.max(num(compras[inicio].estoqueAnterior), 0);
+                custo = compras[inicio].custoAnterior != null ? num(compras[inicio].custoAnterior) : 0;
+            } else {
+                inicio = 0;
+            }
+            for (let k = inicio; k < compras.length; k++) {
+                const qtd = num(compras[k].quantidade);
+                if (qtd <= 0) continue;
+                custo = custoMedioPonderado(est, custo, qtd, num(compras[k].custoUnitario));
+                est += qtd;
+            }
+            // Referência p/ o dono: média aritmética ponderada por quantidade (ignora semente).
+            let somaVal = 0, somaQtd = 0;
+            for (const c of compras) {
+                const q = num(c.quantidade);
+                if (q > 0) { somaVal += q * num(c.custoUnitario); somaQtd += q; }
+            }
+            const mediaSimplesPonderada = somaQtd > 0 ? arred(somaVal / somaQtd, casas) : null;
+
+            if (!(custo > 0)) return { simulado: null, motivo: 'custo-zero', mediaSimplesPonderada, qtdCompras: linhas.length };
+            return { simulado: arred(custo, casas), motivo: 'ok', mediaSimplesPonderada, qtdCompras: linhas.length };
+        };
+
+        const SELECT_COMPRA = {
+            id: true, dataCompra: true, criadoEm: true, quantidade: true, custoUnitario: true,
+            valorTotal: true, estoqueAnterior: true, custoAnterior: true, custoPosterior: true,
+            numeroNota: true, descricaoFornecedor: true, unidade: true, unidadeFornecedor: true,
+            fatorConversao: true, estornado: true
+        };
+        // Ativas (asc, até 20) + últimas 5 estornadas do mesmo alvo.
+        const carregarCompras = async ({ produtoId, itemPcpId }) => {
+            if (!produtoId && !itemPcpId) return { ativas: [], estornadas: [] };
+            const base = produtoId ? { produtoId } : { itemPcpId };
+            const [ativas, estornadas] = await Promise.all([
+                prisma.compraItem.findMany({
+                    where: { ...base, estornado: false },
+                    orderBy: { criadoEm: 'asc' }, take: 20, select: SELECT_COMPRA
+                }),
+                prisma.compraItem.findMany({
+                    where: { ...base, estornado: true },
+                    orderBy: { criadoEm: 'desc' }, take: 5, select: SELECT_COMPRA
+                })
+            ]);
+            return { ativas, estornadas };
+        };
+
+        const SELECT_PRODUTO = {
+            id: true, nome: true, codigo: true, unidade: true,
+            custoManual: true, custoMedio: true, controlaEstoque: true, estoqueTotal: true
+        };
+
+        // Unidades divergentes? (produto/compras x unidade do item na receita) — pega kg x UN.
+        const norm = (u) => String(u || '').trim().toUpperCase();
+        const calcAlertaUnidade = (unidadeReceita, produtoUnidade, compras) => {
+            const alvo = norm(unidadeReceita);
+            if (!alvo) return false;
+            const unids = [produtoUnidade, ...compras.map((c) => c.unidade)]
+                .map(norm).filter(Boolean);
+            return unids.some((u) => u !== alvo);
+        };
+
+        // Bloco completo de um "alvo" (produto e/ou itemPcp): simulação + compras + unidade.
+        const analisarAlvo = async ({ produtoId, itemPcpId, unidadeReceita }) => {
+            const [compProd, compItem] = await Promise.all([
+                produtoId ? carregarCompras({ produtoId }) : Promise.resolve({ ativas: [], estornadas: [] }),
+                itemPcpId ? carregarCompras({ itemPcpId }) : Promise.resolve({ ativas: [], estornadas: [] })
+            ]);
+            return { compProd, compItem };
+        };
+
+        // ---- produtosHomonimos: mesmo termo buscado (ou PALMITO) — detecta produto duplicado.
+        const termoHom = (insumo || nome || 'PALMITO').trim();
+        const produtosHomonimos = await prisma.produto.findMany({
+            where: { nome: { contains: termoHom, mode: 'insensitive' } },
+            select: SELECT_PRODUTO,
+            orderBy: { nome: 'asc' },
+            take: 50
+        });
+
+        const resposta = {
+            parametros: { nome: nome || null, insumo: insumo || null, termoHomonimos: termoHom },
+            receitas: [],
+            insumos: [],
+            produtosHomonimos
+        };
+
+        // ---- RECEITAS (por nome do item PCP produzido pela receita) ----
+        if (nome) {
+            const includeItens = {
+                itemPcp: { select: { id: true, nome: true, unidade: true, tipo: true } },
+                itens: {
+                    orderBy: [{ ordem: 'asc' }, { ordemEtapa: 'asc' }],
+                    include: {
+                        itemPcp: {
+                            select: {
+                                id: true, nome: true, tipo: true, unidade: true,
+                                produtoId: true, custoUnitario: true,
+                                produto: { select: SELECT_PRODUTO }
+                            }
+                        }
+                    }
+                }
+            };
+            let receitas = await prisma.receita.findMany({
+                where: { status: 'ativa', itemPcp: { nome: { contains: nome, mode: 'insensitive' } } },
+                orderBy: { versao: 'desc' }, take: 5, include: includeItens
+            });
+            if (receitas.length === 0) {
+                // Sem ativa: a(s) mais recente(s) por versão.
+                receitas = await prisma.receita.findMany({
+                    where: { itemPcp: { nome: { contains: nome, mode: 'insensitive' } } },
+                    orderBy: { versao: 'desc' }, take: 5, include: includeItens
+                });
+            }
+
+            for (const rec of receitas) {
+                const itensOut = [];
+                for (const item of rec.itens) {
+                    const ip = item.itemPcp;
+                    const qtd = num(item.quantidade);
+
+                    // MESMA leitura de calcularCusto:534-544 (+ ramo SUB 512-533).
+                    let custoUnitarioFinal = 0;
+                    let fonteUsada = 'sem-custo';
+                    if (ip?.tipo === 'SUB') {
+                        const sub = await prisma.receita.findFirst({
+                            where: {
+                                itemPcpId: ip.id, status: 'ativa',
+                                dataInicioVigencia: { lte: new Date() },
+                                OR: [{ dataFimVigencia: null }, { dataFimVigencia: { gte: new Date() } }]
+                            },
+                            orderBy: { versao: 'desc' }, select: { id: true }
+                        });
+                        if (sub) {
+                            const custoSub = await pcpReceitaService.calcularCusto(sub.id);
+                            custoUnitarioFinal = custoSub.custoPorUnidade;
+                            fonteUsada = 'receita';
+                        } else if (ip.custoUnitario != null && num(ip.custoUnitario) > 0) {
+                            custoUnitarioFinal = num(ip.custoUnitario); fonteUsada = 'manual';
+                        } else {
+                            fonteUsada = 'sem-custo';
+                        }
+                    } else {
+                        const compraProd = ip?.produto?.custoManual != null ? num(ip.produto.custoManual) : 0;
+                        const manualItem = ip?.custoUnitario != null ? num(ip.custoUnitario) : 0;
+                        if (compraProd > 0) { custoUnitarioFinal = compraProd; fonteUsada = 'compra'; }
+                        else if (manualItem > 0) { custoUnitarioFinal = manualItem; fonteUsada = 'manual'; }
+                        else { custoUnitarioFinal = 0; fonteUsada = 'sem-custo'; }
+                    }
+                    const custoUnitFinalR = arred(custoUnitarioFinal, 4);
+                    const custoTotalItem = arred(custoUnitarioFinal * qtd, 4);
+
+                    const { compProd, compItem } = await analisarAlvo({
+                        produtoId: ip?.produtoId, itemPcpId: ip?.id, unidadeReceita: ip?.unidade
+                    });
+
+                    // Simulação do custo travado (produto: 2 casas; itemPcp: 4 casas).
+                    let produtoOut = null;
+                    if (ip?.produtoId && ip.produto) {
+                        const sim = await simularCusto({ produtoId: ip.produtoId }, 2);
+                        const atual = ip.produto.custoManual != null ? num(ip.produto.custoManual) : null;
+                        produtoOut = {
+                            ...ip.produto,
+                            custoManualSimulacao: {
+                                custoManualAtual: atual,
+                                custoManualSimulado: sim.simulado,
+                                batem: (sim.simulado != null && atual != null) ? Math.abs(atual - sim.simulado) < 0.005 : false,
+                                motivoSimulacao: sim.motivo,
+                                custoMediaSimplesCompras: sim.mediaSimplesPonderada,
+                                qtdComprasValidas: sim.qtdCompras
+                            }
+                        };
+                    }
+                    const simItem = await simularCusto({ itemPcpId: ip?.id }, 4);
+                    const atualItem = ip?.custoUnitario != null ? num(ip.custoUnitario) : null;
+
+                    const alertaUnidade =
+                        calcAlertaUnidade(ip?.unidade, ip?.produto?.unidade, compProd.ativas) ||
+                        calcAlertaUnidade(ip?.unidade, null, compItem.ativas);
+
+                    itensOut.push({
+                        itemPcp: {
+                            id: ip?.id, nome: ip?.nome, tipo: ip?.tipo, unidade: ip?.unidade,
+                            produtoId: ip?.produtoId, custoUnitario: ip?.custoUnitario,
+                            custoUnitarioSimulacao: {
+                                atual: atualItem,
+                                simulado: simItem.simulado,
+                                batem: (simItem.simulado != null && atualItem != null) ? Math.abs(atualItem - simItem.simulado) < 0.005 : false,
+                                motivo: simItem.motivo,
+                                mediaSimplesCompras: simItem.mediaSimplesPonderada
+                            }
+                        },
+                        produto: produtoOut,
+                        quantidade: item.quantidade,
+                        unidadeReceita: ip?.unidade,
+                        fonteUsada,
+                        custoUnitarioFinal: custoUnitFinalR,
+                        custoTotalItem,
+                        alertaUnidade,
+                        comprasProduto: compProd.ativas,
+                        comprasItemPcp: compItem.ativas,
+                        comprasEstornadas: { produto: compProd.estornadas, itemPcp: compItem.estornadas }
+                    });
+                }
+
+                // custoTotalReceita / custoPorUnidade pelo PRÓPRIO service (bate com o PDF).
+                let custoService = null;
+                try {
+                    const c = await pcpReceitaService.calcularCusto(rec.id);
+                    custoService = {
+                        custoTotalReceita: c.custoTotal,
+                        custoPorUnidade: c.custoPorUnidade,
+                        temCustoFaltando: c.temCustoFaltando,
+                        rendimentoLiquido: c.rendimentoLiquido
+                    };
+                } catch (e) {
+                    custoService = { erro: e.message };
+                }
+
+                resposta.receitas.push({
+                    id: rec.id,
+                    nome: rec.nome,
+                    versao: rec.versao,
+                    status: rec.status,
+                    rendimentoBase: rec.rendimentoBase,
+                    perdaPercentual: rec.perdaPercentual,
+                    itemPcpResultado: rec.itemPcp ? { id: rec.itemPcp.id, nome: rec.itemPcp.nome, unidade: rec.itemPcp.unidade, tipo: rec.itemPcp.tipo } : null,
+                    itens: itensOut,
+                    ...custoService
+                });
+            }
+        }
+
+        // ---- INSUMOS (itens PCP por nome) ----
+        if (insumo) {
+            const itens = await prisma.itemPcp.findMany({
+                where: { nome: { contains: insumo, mode: 'insensitive' } },
+                orderBy: { nome: 'asc' }, take: 10,
+                select: {
+                    id: true, nome: true, tipo: true, unidade: true,
+                    produtoId: true, custoUnitario: true,
+                    produto: { select: SELECT_PRODUTO }
+                }
+            });
+            for (const ip of itens) {
+                const { compProd, compItem } = await analisarAlvo({
+                    produtoId: ip.produtoId, itemPcpId: ip.id, unidadeReceita: ip.unidade
+                });
+
+                let produtoOut = null;
+                if (ip.produtoId && ip.produto) {
+                    const sim = await simularCusto({ produtoId: ip.produtoId }, 2);
+                    const atual = ip.produto.custoManual != null ? num(ip.produto.custoManual) : null;
+                    produtoOut = {
+                        ...ip.produto,
+                        custoManualSimulacao: {
+                            custoManualAtual: atual,
+                            custoManualSimulado: sim.simulado,
+                            batem: (sim.simulado != null && atual != null) ? Math.abs(atual - sim.simulado) < 0.005 : false,
+                            motivoSimulacao: sim.motivo,
+                            custoMediaSimplesCompras: sim.mediaSimplesPonderada,
+                            qtdComprasValidas: sim.qtdCompras
+                        }
+                    };
+                }
+                const simItem = await simularCusto({ itemPcpId: ip.id }, 4);
+                const atualItem = ip.custoUnitario != null ? num(ip.custoUnitario) : null;
+                const alertaUnidade =
+                    calcAlertaUnidade(ip.unidade, ip.produto?.unidade, compProd.ativas) ||
+                    calcAlertaUnidade(ip.unidade, null, compItem.ativas);
+
+                resposta.insumos.push({
+                    itemPcp: {
+                        id: ip.id, nome: ip.nome, tipo: ip.tipo, unidade: ip.unidade,
+                        produtoId: ip.produtoId, custoUnitario: ip.custoUnitario,
+                        custoUnitarioSimulacao: {
+                            atual: atualItem,
+                            simulado: simItem.simulado,
+                            batem: (simItem.simulado != null && atualItem != null) ? Math.abs(atualItem - simItem.simulado) < 0.005 : false,
+                            motivo: simItem.motivo,
+                            mediaSimplesCompras: simItem.mediaSimplesPonderada
+                        }
+                    },
+                    produto: produtoOut,
+                    alertaUnidade,
+                    comprasProduto: compProd.ativas,
+                    comprasItemPcp: compItem.ativas,
+                    comprasEstornadas: { produto: compProd.estornadas, itemPcp: compItem.estornadas }
+                });
+            }
+        }
+
+        res.json(resposta);
+    } catch (error) {
+        console.error('[admin-exec] diag-receita-custo:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /api/admin-exec/diag-contas-pagar-pdf — onde estão (ou não) os PDFs anexados às despesas.
 // ?limpar=1 zera o pdfPath das despesas cujo arquivo sumiu (tira o selo "PDF" da lista).
 router.get('/diag-contas-pagar-pdf', async (req, res) => {
@@ -9972,6 +10327,118 @@ router.get('/diag-receber-saude', async (req, res) => {
     });
     } catch (err) {
         console.error('[diag-receber-saude:resumo]', err);
+        if (!res.headersSent) res.status(500).json({ ok: false, erro: err.message });
+    }
+});
+
+// =============================================================================
+// POST /recalcular-custo-todos — recalcula o custo de TODOS os alvos pela regra nova
+// (compras VÁLIDAS mais recentes que cobrem o estoqueAtual — custoCompraCalculo).
+//
+// MODO PADRÃO = SIMULAÇÃO (dryRun): NÃO grava nada, só devolve a prévia do que mudaria.
+// Para APLICAR de verdade, chame com dryRun=0 (ou aplicar=1) EXPLICITAMENTE.
+//
+//   Simular (padrão, seguro):
+//     curl -s -X POST 'https://<host>/api/admin-exec/recalcular-custo-todos' \
+//          -H 'x-admin-secret: <ADMIN_SECRET>'
+//   Simular só um produto:
+//     curl -s -X POST 'https://<host>/api/admin-exec/recalcular-custo-todos?nome=palmito' \
+//          -H 'x-admin-secret: <ADMIN_SECRET>'
+//   APLICAR de verdade (grava custoManual/custoUnitario):
+//     curl -s -X POST 'https://<host>/api/admin-exec/recalcular-custo-todos?dryRun=0' \
+//          -H 'x-admin-secret: <ADMIN_SECRET>'
+//
+// Cada alvo é atualizado por conta própria (sem transação gigante — banco de produção
+// é lento e cada update é pequeno e independente). Um alvo que falhar não derruba o
+// resto: o erro entra em `falhas` e a rotina segue.
+router.post('/recalcular-custo-todos', async (req, res) => {
+    try {
+        const custoCompraCalculo = require('../services/custoCompraCalculo');
+        const num = (v) => Number(v || 0);
+        // Simulação é o PADRÃO. Só grava com dryRun=0 (ou aplicar=1) explícito.
+        const aplicar = String(req.query.dryRun) === '0' || String(req.query.aplicar) === '1';
+        const nome = (req.query.nome || '').trim();
+        const filtroNome = nome ? { nome: { contains: nome, mode: 'insensitive' } } : {};
+
+        // Produtos que controlam estoque (flag explícita true).
+        const produtos = await prisma.produto.findMany({
+            where: { controlaEstoque: true, ...filtroNome },
+            select: { id: true, nome: true }
+        });
+
+        // Insumos PCP: não têm flag de controle — todos rastreiam estoqueAtual. Só faz
+        // sentido recalcular os que têm alguma compra válida no histórico.
+        const gruposPcp = await prisma.compraItem.groupBy({
+            by: ['itemPcpId'],
+            where: { estornado: false, itemPcpId: { not: null } },
+            _count: { _all: true }
+        });
+        const idsPcp = gruposPcp.map((g) => g.itemPcpId).filter(Boolean);
+        const insumos = idsPcp.length
+            ? await prisma.itemPcp.findMany({
+                where: { id: { in: idsPcp }, ...filtroNome },
+                select: { id: true, nome: true }
+            })
+            : [];
+
+        const previa = [];
+        const falhas = [];
+        const resumo = { total: 0, mudam: 0, mantidos: 0, semCompra: 0, erros: 0 };
+
+        const processar = async (alvo, tipo) => {
+            resumo.total++;
+            try {
+                const r = await custoCompraCalculo.recalcularCustoAlvo(
+                    tipo === 'produto' ? { produtoId: alvo.id } : { itemPcpId: alvo.id },
+                    prisma,
+                    { apenasCalcular: !aplicar }
+                );
+                if (r.motivo === 'ok') {
+                    const custoAtual = r.custoAtual != null ? num(r.custoAtual) : null;
+                    const delta = custoAtual != null ? num(r.custo) - custoAtual : null;
+                    const mudou = custoAtual == null || Math.abs(delta) > (tipo === 'produto' ? 0.005 : 0.00005);
+                    if (mudou) resumo.mudam++; else resumo.mantidos++;
+                    previa.push({
+                        id: alvo.id, nome: alvo.nome || r.nome || null, tipo,
+                        custoAtual, custoNovo: num(r.custo), delta, motivo: r.motivo
+                    });
+                } else {
+                    // sem-compras / custo-zero / sem-alvo — custo mantido.
+                    resumo.semCompra++;
+                    previa.push({
+                        id: alvo.id, nome: alvo.nome || r.nome || null, tipo,
+                        custoAtual: r.custoAtual != null ? num(r.custoAtual) : null,
+                        custoNovo: null, delta: null, motivo: r.motivo
+                    });
+                }
+            } catch (err) {
+                resumo.erros++;
+                falhas.push({ id: alvo.id, nome: alvo.nome || null, tipo, erro: err.message });
+            }
+        };
+
+        for (const p of produtos) await processar(p, 'produto');
+        for (const i of insumos) await processar(i, 'insumo');
+
+        // Ordena pelos que mais mudam (|delta| desc), depois os informativos; limita a 300.
+        const rank = (x) => (x.delta != null ? Math.abs(x.delta) : -1);
+        previa.sort((a, b) => rank(b) - rank(a));
+        const LIMITE = 300;
+        const detalhe = previa.slice(0, LIMITE);
+
+        res.json({
+            ok: true,
+            modo: aplicar ? 'APLICADO (gravou)' : 'SIMULACAO (nada gravado — use dryRun=0 para aplicar)',
+            aplicado: aplicar,
+            filtroNome: nome || null,
+            resumo,
+            itensListados: detalhe.length,
+            itensOcultados: Math.max(0, previa.length - detalhe.length),
+            itens: detalhe,
+            falhas
+        });
+    } catch (err) {
+        console.error('[recalcular-custo-todos]', err);
         if (!res.headersSent) res.status(500).json({ ok: false, erro: err.message });
     }
 });
