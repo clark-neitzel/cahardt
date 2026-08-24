@@ -96,6 +96,17 @@ const MOTIVOS_ENTRADA = [
 ];
 const motivoEntradaLabel = (m) => MOTIVOS_ENTRADA.find(x => x.value === m)?.label || null;
 
+// Motivos do escape "Este item não é estoque" — todo item da nota precisa de um DESTINO:
+// produto/insumo vinculado, produto novo, ou marcado aqui com um motivo (OUTRO exige observação).
+const MOTIVOS_SEM_ESTOQUE = [
+    { value: 'SERVICO', label: 'Serviço' },
+    { value: 'FRETE', label: 'Frete' },
+    { value: 'IMPOSTO', label: 'Imposto / taxa' },
+    { value: 'CONSUMO_IMEDIATO', label: 'Consumo imediato' },
+    { value: 'OUTRO', label: 'Outro' }
+];
+const motivoSemEstoqueLabel = (m) => MOTIVOS_SEM_ESTOQUE.find(x => x.value === m)?.label || m || '';
+
 // Toast "Estoque atualizado" após gerar-conta / registrar-entrada.
 // resp.estoque = [{ nome, unidade, quantidade, destino }] — mostra até 3 itens e resume o resto.
 const toastEstoque = (estoque) => {
@@ -1068,12 +1079,40 @@ const BotaoImprimirDanfe = ({ id, rotulo = 'Imprimir DANFE' }) => {
 
 // Busca de produto — combobox genérico com opções UNIFICADAS (Produto do catálogo + Item PCP).
 // `itens`: [{ value:'PROD:<id>'|'PCP:<id>', nome, unidade, sub }]. O valor selecionado é a string `value`.
+// A opção é um insumo do PCP? Ordem de confiança: marcador de tipo do backend
+// ('PRODUTO' | 'ITEM_PCP') → rótulo `grupo` → prefixo do `value`. O último ramo é
+// rede de segurança, não o caminho normal — não remover.
+const ehInsumoPcp = (p) => {
+    const t = String(p?.tipo || '').toUpperCase();
+    if (t === 'ITEM_PCP' || t === 'PCP' || t === 'INSUMO') return true;
+    if (t === 'PRODUTO' || t === 'PROD') return false;
+    const g = String(p?.grupo || '').trim();
+    if (g) return /insumo|pcp/i.test(g);
+    return String(p?.value || '').startsWith('PCP:');
+};
+
+// Rótulo do cabeçalho de grupo: o backend já manda pronto em `grupo`
+// ('Produtos' / 'Insumos (PCP)'); só montamos um se ele faltar.
+const grupoDaOpcao = (p) => {
+    const g = String(p?.grupo || '').trim();
+    if (g) return g;
+    return ehInsumoPcp(p) ? 'Insumos (PCP)' : 'Produtos';
+};
+
 const ComboProduto = ({ value, itens, onSelect, onCriarNovo, invalido }) => {
-    const options = useMemo(() => itens.map(p => ({
-        value: p.value,
-        label: `${p.nome}${p.unidade ? ` (${p.unidade})` : ''}`,
-        sub: p.sub || (p.tipo ? tipoItemLabel(p.tipo) : '')
-    })), [itens]);
+    const options = useMemo(() => {
+        const mapeadas = itens.map(p => ({
+            value: p.value,
+            label: `${p.nome}${p.unidade ? ` (${p.unidade})` : ''}`,
+            sub: p.sub || (p.tipo && tipoItemLabel(p.tipo) !== p.tipo ? tipoItemLabel(p.tipo) : ''),
+            grupo: grupoDaOpcao(p),
+            insumo: ehInsumoPcp(p)
+        }));
+        // Produtos primeiro, insumos do PCP depois — o ComboBusca desenha o cabeçalho de
+        // cada grupo. O sort é estável, então a ordem alfabética do backend é preservada
+        // dentro de cada grupo.
+        return mapeadas.sort((a, b) => (a.insumo ? 1 : 0) - (b.insumo ? 1 : 0));
+    }, [itens]);
     return (
         <ComboBusca
             className="mt-1"
@@ -1507,7 +1546,10 @@ const PainelVincularParcelas = ({ nota, onCancelar, onChanged }) => {
 // `obterItens` (opcional, só NF-e de produto): função da conferência que valida os vínculos da
 // seção de itens (visível acima do painel) e devolve { itens } no formato do gerar-conta —
 // itens vinculados são SOMADOS NO ESTOQUE mesmo sem pagamento (decisão do dono, 07/2026).
-const PainelRegistrarEntrada = ({ nota, obterItens, onCancelar, onChanged }) => {
+// `bloqueio` (string): motivo pelo qual o registro está travado (ex.: "3 itens sem destino") —
+// desabilita o botão. `onIrParaPendencia` rola até o primeiro item pendente.
+// `onErroDestino(e)`: trata o 400 `itensPendentes` do backend destacando as linhas. → true se tratou.
+const PainelRegistrarEntrada = ({ nota, obterItens, onCancelar, onChanged, bloqueio = '', onIrParaPendencia, onErroDestino }) => {
     const [motivo, setMotivo] = useState(nota.motivoSugerido || '');
     const [observacao, setObservacao] = useState('');
     const [salvando, setSalvando] = useState(false);
@@ -1535,7 +1577,9 @@ const PainelRegistrarEntrada = ({ nota, obterItens, onCancelar, onChanged }) => 
             }
             onChanged();
         } catch (e) {
-            toast.error(e.response?.data?.error || 'Não foi possível registrar a entrada.');
+            if (!(onErroDestino && onErroDestino(e))) {
+                toast.error(e.response?.data?.error || 'Não foi possível registrar a entrada.');
+            }
         } finally {
             setSalvando(false);
         }
@@ -1565,7 +1609,7 @@ const PainelRegistrarEntrada = ({ nota, obterItens, onCancelar, onChanged }) => 
                     A nota fica <b>arquivada como recebida</b> (com XML e DANFE), <b>sem criar despesa</b> no Contas a Pagar.
                     Use para bonificação, amostra grátis, remessa/troca, comodato — notas que entram no CNPJ mas não geram pagamento.
                     {obterItens && (
-                        <> Itens vinculados acima serão <b>somados no estoque</b> (sem alterar o custo — mercadoria sem pagamento). Itens sem vínculo não entram no estoque.</>
+                        <> <b>Todo item acima precisa de um destino</b>: vinculado a um produto nosso (é <b>somado no estoque</b>, sem alterar o custo — mercadoria sem pagamento) ou marcado como <b>"não é estoque"</b> com o motivo.</>
                     )}
                 </div>
 
@@ -1617,17 +1661,31 @@ const PainelRegistrarEntrada = ({ nota, obterItens, onCancelar, onChanged }) => 
                 {!motivo && (
                     <div className="text-xs text-amber-700">Escolha o motivo da entrada para liberar o registro.</div>
                 )}
+                {bloqueio && (
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        <span><span className="font-semibold">{bloqueio}</span> — defina o destino de cada item acima para liberar o registro.</span>
+                        {onIrParaPendencia && (
+                            <button
+                                type="button"
+                                onClick={onIrParaPendencia}
+                                className="ml-auto shrink-0 px-3 py-2 min-h-[44px] sm:min-h-0 sm:py-1 bg-white border border-amber-300 text-amber-800 hover:bg-amber-100/60 rounded-full font-semibold"
+                            >
+                                Ir para o 1º item
+                            </button>
+                        )}
+                    </div>
+                )}
 
                 {/* Ações */}
                 <div className="flex flex-col md:flex-row gap-3">
                     <button
                         onClick={registrar}
-                        disabled={salvando || !motivo}
-                        title={!motivo ? 'Escolha o motivo da entrada' : undefined}
+                        disabled={salvando || !motivo || !!bloqueio}
+                        title={bloqueio || (!motivo ? 'Escolha o motivo da entrada' : undefined)}
                         className="w-full md:w-auto px-4 py-3 md:py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
                     >
                         {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageCheck className="h-4 w-4" />}
-                        {salvando ? 'Registrando…' : 'Registrar entrada'}
+                        {salvando ? 'Registrando…' : bloqueio ? `Registrar entrada (${bloqueio})` : 'Registrar entrada'}
                     </button>
                     <button
                         onClick={onCancelar}
@@ -1658,8 +1716,24 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         vinculoValue: it.vinculo?.value || '',
         fator: it.vinculo?.fatorConversao != null ? String(it.vinculo.fatorConversao).replace('.', ',') : '',
         categoria: it.vinculo?.categoria || '', // categoria de custo por item (lembrada quando houver)
-        novo: null // { nome, tipo, unidade } quando "+ Criar produto novo…"
+        novo: null, // { nome, tipo, unidade } quando "+ Criar produto novo…"
+        // Escape "Este item não é estoque" — mutuamente exclusivo com o vínculo.
+        // Vem preenchido quando a nota já foi conferida assim (backend devolve no GET).
+        // `semEstoqueAtivo` separa "marcado" de "motivo escolhido": o botão marca o item,
+        // mas o motivo nasce VAZIO — sem ele o item segue pendente (gravar frete como
+        // "Serviço" sem querer tirava o valor do registro de motivo).
+        semEstoqueAtivo: !!it.semEstoqueMotivo,
+        semEstoqueMotivo: it.semEstoqueMotivo || '',
+        semEstoqueObs: it.semEstoqueObs || ''
     })));
+
+    // Itens que o BACKEND recusou por falta de destino (HTTP 400 com `itensPendentes`) — Set de itemId.
+    const [pendentesBackend, setPendentesBackend] = useState(() => new Set());
+    // Ação em massa: motivo escolhido para marcar todos os itens ainda pendentes
+    const [motivoEmMassa, setMotivoEmMassa] = useState('');
+    const [obsEmMassa, setObsEmMassa] = useState('');
+    // Refs das linhas de item — usados pelo atalho "ir para o primeiro item pendente"
+    const refsItens = useRef([]);
 
     // Parcelas: pré-preenchidas das duplicatas do XML
     const [parcelas, setParcelas] = useState(() => {
@@ -1714,8 +1788,36 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
             .finally(() => setLoadingOpcoes(false));
     }, [enviarCA, opcoesCarregadas, loadingOpcoes]);
 
-    const setVinculo = (idx, patch) =>
+    const setVinculo = (idx, patch) => {
         setVinculos(prev => prev.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
+        // Qualquer edição na linha limpa a marcação de pendência que veio do backend
+        setPendentesBackend(prev => {
+            const id = vinculos[idx]?.itemId;
+            if (!id || !prev.has(id)) return prev;
+            const n = new Set(prev); n.delete(id); return n;
+        });
+    };
+
+    // ── Destino do item: vincular produto e "não é estoque" são MUTUAMENTE EXCLUSIVOS ──
+    // Vincular (ou criar produto novo) apaga a marcação; marcar "não é estoque" apaga o vínculo.
+    const escolherProduto = (idx, val) =>
+        setVinculo(idx, { vinculoValue: val, novo: null, semEstoqueAtivo: false, semEstoqueMotivo: '', semEstoqueObs: '' });
+
+    const criarProdutoNovo = (idx, novo) =>
+        setVinculo(idx, { novo, vinculoValue: '', semEstoqueAtivo: false, semEstoqueMotivo: '', semEstoqueObs: '' });
+
+    // Marca o item SEM escolher motivo — ele fica pendente até a pessoa escolher.
+    const marcarSemEstoque = (idx) =>
+        setVinculo(idx, { semEstoqueAtivo: true, semEstoqueMotivo: '', semEstoqueObs: '', vinculoValue: '', novo: null, fator: '' });
+
+    // Trocar para OUTRO preserva o texto já digitado; sair de OUTRO limpa (o campo some).
+    const definirMotivoSemEstoque = (idx, motivo) =>
+        setVinculo(idx, motivo === 'OUTRO'
+            ? { semEstoqueAtivo: true, semEstoqueMotivo: motivo }
+            : { semEstoqueAtivo: true, semEstoqueMotivo: motivo, semEstoqueObs: '' });
+
+    const desmarcarSemEstoque = (idx) =>
+        setVinculo(idx, { semEstoqueAtivo: false, semEstoqueMotivo: '', semEstoqueObs: '' });
 
     const setParcela = (idx, campo, valor) =>
         setParcelas(prev => prev.map((p, i) => (i === idx ? { ...p, [campo]: valor } : p)));
@@ -1793,40 +1895,117 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         const opcao = v.novo ? null : itensPcp.find(p => String(p.value) === String(v.vinculoValue));
         const unidadeNossa = v.novo ? (v.novo.unidade || '?') : (opcao?.unidade || '?');
         const vinculado = !!v.novo || !!v.vinculoValue;
+        const semEstoque = !!v.semEstoqueAtivo || !!v.semEstoqueMotivo;
         const fator = parseFator(v.fator);
         const entrada = fator > 0 ? Number(it.quantidade || 0) * fator : 0;
         const custo = entrada > 0 ? Number(it.valorTotal || 0) / entrada : 0;
-        return { it, v, opcao, unidadeNossa, vinculado, fator, entrada, custo };
+        // O que falta neste item para ele ter um DESTINO válido ('' = está resolvido)
+        let pendencia = '';
+        if (semEstoque) {
+            if (!v.semEstoqueMotivo) {
+                pendencia = 'Escolha o motivo: o que é este item, se não é estoque?';
+            } else if (v.semEstoqueMotivo === 'OUTRO' && !String(v.semEstoqueObs || '').trim()) {
+                pendencia = 'Explique em poucas palavras o que é este item.';
+            }
+        } else if (v.novo) {
+            if (!v.novo.nome.trim() || !v.novo.unidade.trim()) pendencia = 'Preencha nome e unidade do produto novo.';
+            else if (fator <= 0) pendencia = 'Informe a conversão de quantidade.';
+        } else if (v.vinculoValue) {
+            if (fator <= 0) pendencia = 'Informe a conversão de quantidade.';
+        } else {
+            pendencia = 'Escolha o nosso produto ou marque "Este item não é estoque".';
+        }
+        return { it, v, opcao, unidadeNossa, vinculado, semEstoque, fator, entrada, custo, pendencia };
     };
 
-    // Validação dos vínculos — comum aos DOIS fluxos que somam estoque (gerar conta e registrar entrada)
+    // Itens sem destino definido (só NF-e de produto — NFS-e não tem vínculo/estoque)
+    const pendentes = useMemo(() => {
+        if (ehServico) return [];
+        return itensNota
+            .map((_, i) => i)
+            .filter(i => !!infoItem(i).pendencia);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [itensNota, vinculos, itensPcp, ehServico]);
+
+    const temPendencia = pendentes.length > 0;
+    const rotuloPendencia = `${pendentes.length} ${pendentes.length === 1 ? 'item sem destino' : 'itens sem destino'}`;
+
+    const irParaPrimeiroPendente = () => {
+        const el = refsItens.current[pendentes[0]];
+        if (el?.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    };
+
+    // Validação dos destinos — comum aos DOIS fluxos que somam estoque (gerar conta e registrar entrada)
     const validarVinculos = () => {
+        if (ehServico) return '';
         for (let i = 0; i < vinculos.length; i++) {
-            const { v, it, vinculado, fator } = infoItem(i);
-            if (v.novo && (!v.novo.nome.trim() || !v.novo.unidade.trim())) {
-                return `Preencha nome e unidade do produto novo do item "${it.descricao || i + 1}".`;
-            }
-            if (vinculado && fator <= 0) {
-                return `Informe a conversão de quantidade do item "${it.descricao || i + 1}" (ou desfaça o vínculo).`;
-            }
+            const { it, pendencia } = infoItem(i);
+            if (pendencia) return `Item "${it.descricao || i + 1}": ${pendencia}`;
         }
         return '';
     };
 
-    // Payload de itens (vínculo + conversão) — MESMO formato no gerar-conta e no registrar-entrada
+    // Payload de itens (destino + conversão) — MESMO formato no gerar-conta e no registrar-entrada
     const montarItensBase = () => vinculos.map(v => ({
         itemId: v.itemId,
-        vinculo: v.novo ? null : (v.vinculoValue || null),
-        fatorConversao: parseFator(v.fator) > 0 ? parseFator(v.fator) : null,
-        criarItemPcp: v.novo
+        vinculo: v.novo || v.semEstoqueMotivo ? null : (v.vinculoValue || null),
+        fatorConversao: !v.semEstoqueMotivo && parseFator(v.fator) > 0 ? parseFator(v.fator) : null,
+        criarItemPcp: v.novo && !v.semEstoqueMotivo
             ? { nome: v.novo.nome.trim(), tipo: v.novo.tipo, unidade: v.novo.unidade.trim() }
-            : null
+            : null,
+        semEstoqueMotivo: v.semEstoqueMotivo || null,
+        semEstoqueObs: v.semEstoqueMotivo === 'OUTRO' ? (String(v.semEstoqueObs || '').trim() || null) : null
     }));
+
+    // Ação em massa — marca TODOS os itens ainda pendentes com o mesmo motivo (resolvido no payload).
+    const marcarRestantesSemEstoque = () => {
+        if (!motivoEmMassa) { toast.error('Escolha o motivo antes de marcar os itens.'); return; }
+        if (motivoEmMassa === 'OUTRO' && !obsEmMassa.trim()) {
+            toast.error('O motivo "Outro" precisa de uma explicação curta.');
+            return;
+        }
+        const alvos = pendentes;
+        if (alvos.length === 0) return;
+        const rotulo = motivoSemEstoqueLabel(motivoEmMassa);
+        const ok = window.confirm(
+            `Marcar ${alvos.length} ${alvos.length === 1 ? 'item' : 'itens'} como "não é estoque" (${rotulo})?\n\n` +
+            'Esses itens NÃO vão somar estoque nem gerar custo de produto — só entram na despesa.'
+        );
+        if (!ok) return;
+        const set = new Set(alvos);
+        setVinculos(prev => prev.map((v, i) => (set.has(i)
+            ? { ...v, semEstoqueAtivo: true, semEstoqueMotivo: motivoEmMassa, semEstoqueObs: motivoEmMassa === 'OUTRO' ? obsEmMassa.trim() : '', vinculoValue: '', novo: null, fator: '' }
+            : v)));
+        setPendentesBackend(new Set());
+        toast.success(`${alvos.length} ${alvos.length === 1 ? 'item marcado' : 'itens marcados'} como "não é estoque" (${rotulo}).`);
+    };
+
+    // Backend recusou por falta de destino (HTTP 400 + `itensPendentes`): destaca EXATAMENTE
+    // as linhas que ele apontou, rola até a primeira e avisa. → true se tratou o erro aqui.
+    const tratarErroDestino = (e) => {
+        const dados = e?.response?.data;
+        const lista = Array.isArray(dados?.itensPendentes) ? dados.itensPendentes : [];
+        if (lista.length === 0) return false;
+        const ids = new Set(lista.map(p => p?.id).filter(Boolean));
+        setPendentesBackend(ids);
+        const nomes = lista
+            .slice(0, 3)
+            .map(p => String(p?.descricao || p?.codigoFornecedor || '').trim() || 'item sem descrição');
+        const resto = lista.length - nomes.length;
+        toast.error(
+            `${dados?.error || 'Há itens sem destino definido.'} (${lista.length}): ${nomes.join(' · ')}${resto > 0 ? ` e mais ${resto}` : ''}`,
+            { duration: 9000 }
+        );
+        const primeiro = itensNota.findIndex(it => ids.has(it.id));
+        const el = primeiro >= 0 ? refsItens.current[primeiro] : null;
+        if (el?.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return true;
+    };
 
     // Usado pelo painel "Registrar entrada (sem pagamento)": valida e devolve os itens p/ somar no estoque
     const obterItensEntrada = () => {
         const erro = validarVinculos();
-        if (erro) return { erro };
+        if (erro) { irParaPrimeiroPendente(); return { erro }; }
         return { itens: montarItensBase() };
     };
 
@@ -1839,9 +2018,13 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
             toast.error(`A soma das parcelas (R$ ${fmt(somaParcelas)}) não bate com o valor da nota (R$ ${fmt(totalNota)}).`);
             return;
         }
-        // Vínculo é opcional — mas, se vinculou, a conversão precisa estar preenchida
+        // Todo item precisa de um DESTINO (produto vinculado, produto novo, ou "não é estoque")
         const erroVinculos = validarVinculos();
-        if (erroVinculos) { toast.error(erroVinculos); return; }
+        if (erroVinculos) {
+            toast.error(erroVinculos);
+            irParaPrimeiroPendente();
+            return;
+        }
         // Se vai enviar ao CA, todo grupo do rateio precisa ter categoria da lista do CA (com id)
         if (enviarCA) {
             if (semCategoria) {
@@ -1892,7 +2075,7 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
             }
             onChanged();
         } catch (e) {
-            toast.error(e.response?.data?.error || 'Erro ao gerar a Conta a Pagar');
+            if (!tratarErroDestino(e)) toast.error(e.response?.data?.error || 'Erro ao gerar a Conta a Pagar');
         } finally {
             setGerando(false);
         }
@@ -1955,16 +2138,68 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 o que soma no estoque (NFS-e não tem estoque, então some nesse caso). */}
             {!(entradaAberta && ehServico) && (
             <div>
-                <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">
-                    {ehServico ? 'Serviço da nota' : 'Itens da nota → nossos produtos'}
+                <div className="flex flex-wrap items-center gap-2 mb-2">
+                    <div className="text-xs font-bold uppercase tracking-widest text-gray-600">
+                        {ehServico ? 'Serviço da nota' : 'Itens da nota → destino de cada item'}
+                    </div>
+                    {!ehServico && itensNota.length > 0 && (
+                        temPendencia
+                            ? <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">{rotuloPendencia}</span>
+                            : <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">todos os itens com destino ✓</span>
+                    )}
                 </div>
+
+                {/* Ação em massa — evita travar a conferência de nota "sem estoque" (combustível, frete…) */}
+                {!ehServico && temPendencia && itensNota.length > 0 && (
+                    <div className="mb-3 bg-white border border-amber-300 rounded-xl shadow-sm p-3 space-y-2">
+                        <div className="text-sm text-gray-700">
+                            <span className="font-semibold">{rotuloPendencia}.</span>{' '}
+                            Se esta nota não é de mercadoria (combustível, frete, serviço…), resolva tudo de uma vez:
+                        </div>
+                        <div className="flex flex-col md:flex-row md:items-end gap-2">
+                            <div className="flex-1 min-w-0">
+                                <label className="text-xs font-medium text-gray-500">Motivo aplicado a todos</label>
+                                <SelectBusca
+                                    value={motivoEmMassa}
+                                    onChange={e => setMotivoEmMassa(e.target.value)}
+                                    className="mt-1 w-full md:max-w-xs"
+                                >
+                                    <option value="">Selecionar…</option>
+                                    {MOTIVOS_SEM_ESTOQUE.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                </SelectBusca>
+                            </div>
+                            {motivoEmMassa === 'OUTRO' && (
+                                <div className="flex-1 min-w-0">
+                                    <label className="text-xs font-medium text-gray-500">O que são estes itens?</label>
+                                    <input
+                                        value={obsEmMassa}
+                                        onChange={e => setObsEmMassa(e.target.value)}
+                                        placeholder="Ex.: material de escritório"
+                                        maxLength={120}
+                                        className="mt-1 w-full min-h-[44px] border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                    />
+                                </div>
+                            )}
+                            <button
+                                type="button"
+                                onClick={marcarRestantesSemEstoque}
+                                disabled={!motivoEmMassa || (motivoEmMassa === 'OUTRO' && !obsEmMassa.trim())}
+                                className="w-full md:w-auto shrink-0 px-4 py-3 md:py-2 min-h-[44px] bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-semibold text-sm disabled:opacity-50"
+                            >
+                                Marcar os {pendentes.length} restantes como "não é estoque"
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="space-y-3">
                     {itensNota.length === 0 && (
                         <div className="text-sm text-gray-400 border border-gray-200 rounded-lg p-3">Nenhum item encontrado no XML desta nota.</div>
                     )}
                     {itensNota.map((it, idx) => {
-                        const { v, vinculado, unidadeNossa, fator, entrada, custo } = infoItem(idx);
+                        const { v, vinculado, semEstoque, unidadeNossa, fator, entrada, custo, pendencia } = infoItem(idx);
                         const lembrado = !!it.vinculo?.lembrado;
+                        const apontadoPeloBackend = pendentesBackend.has(it.id);
                         if (ehServico) {
                             return (
                                 <div key={it.id} className="rounded-lg p-3 md:p-4 border border-gray-200">
@@ -1992,7 +2227,17 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                             );
                         }
                         return (
-                            <div key={it.id} className={`rounded-lg p-3 md:p-4 border ${vinculado ? 'border-gray-200' : 'border-amber-300 bg-amber-50/40'}`}>
+                            <div
+                                key={it.id}
+                                ref={el => { refsItens.current[idx] = el; }}
+                                className={`rounded-lg p-3 md:p-4 border ${
+                                    apontadoPeloBackend
+                                        ? 'border-red-300 bg-red-50 ring-1 ring-red-300'
+                                        : pendencia
+                                            ? 'border-amber-300 bg-amber-50'
+                                            : 'border-gray-200'
+                                }`}
+                            >
                                 <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-1">
                                     <div className="min-w-0">
                                         <div className="text-sm font-medium text-gray-900">{it.descricao || `Item ${it.numeroItem || idx + 1}`}</div>
@@ -2005,17 +2250,84 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                             <div className="text-xs text-gray-400 mt-0.5 whitespace-pre-wrap break-words">{String(it.infAdProd).trim()}</div>
                                         )}
                                     </div>
-                                    {lembrado ? (
+                                    {pendencia ? (
+                                        <span className="shrink-0 self-start px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">sem destino</span>
+                                    ) : semEstoque ? (
+                                        <span className="shrink-0 self-start px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 whitespace-nowrap">não é estoque</span>
+                                    ) : lembrado ? (
                                         <span className="shrink-0 self-start px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 whitespace-nowrap">vínculo lembrado ✓</span>
                                     ) : (
-                                        <span className="shrink-0 self-start px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">novo — escolher produto</span>
+                                        <span className="shrink-0 self-start px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 whitespace-nowrap">destino definido ✓</span>
                                     )}
                                 </div>
 
+                                {/* O que falta neste item — o aviso do backend aparece mesmo que
+                                    a tela ache que está tudo certo (ele é a palavra final). */}
+                                {apontadoPeloBackend ? (
+                                    <div className="mt-2 text-xs font-medium text-red-700">
+                                        O sistema recusou este item por falta de destino.
+                                        {pendencia ? ` ${pendencia}` : ' Confira o destino e envie de novo.'}
+                                    </div>
+                                ) : pendencia ? (
+                                    <div className="mt-2 text-xs font-medium text-amber-800">{pendencia}</div>
+                                ) : null}
+
+                                {/* Como esta nota foi conferida antes (backend devolve ao reabrir) */}
+                                {semEstoque && it.semEstoqueMarcadoEm && (
+                                    <div className="mt-2 text-xs text-gray-500">
+                                        marcado como "não é estoque"
+                                        {it.semEstoqueMarcadoPorNome ? ` por ${it.semEstoqueMarcadoPorNome}` : ''}
+                                        {` em ${fmtDataHoraAno(it.semEstoqueMarcadoEm)}`}
+                                    </div>
+                                )}
+
+                                {/* ── DESTINO DO ITEM ──
+                                    Ou entra no estoque (produto vinculado / produto novo), ou é
+                                    marcado como "não é estoque" com motivo. Os dois se excluem. */}
+                                {semEstoque ? (
+                                    <div className="mt-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                        <div className="flex flex-col md:flex-row md:items-end gap-2">
+                                            <div className="flex-1 min-w-0">
+                                                <label className="text-xs font-medium text-gray-500">Este item não é estoque — por quê?</label>
+                                                <SelectBusca
+                                                    value={v.semEstoqueMotivo}
+                                                    onChange={e => definirMotivoSemEstoque(idx, e.target.value)}
+                                                    className="mt-1 w-full md:max-w-xs"
+                                                >
+                                                    <option value="">Escolher o motivo…</option>
+                                                    {MOTIVOS_SEM_ESTOQUE.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                                                </SelectBusca>
+                                            </div>
+                                            {v.semEstoqueMotivo === 'OUTRO' && (
+                                                <div className="flex-1 min-w-0">
+                                                    <label className="text-xs font-medium text-gray-500">O que é este item?</label>
+                                                    <input
+                                                        value={v.semEstoqueObs || ''}
+                                                        onChange={e => setVinculo(idx, { semEstoqueObs: e.target.value })}
+                                                        placeholder="Ex.: material de escritório"
+                                                        maxLength={120}
+                                                        className={`mt-1 w-full min-h-[44px] border rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none ${String(v.semEstoqueObs || '').trim() ? 'border-gray-300' : 'border-amber-300'}`}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-2">
+                                            <span className="text-xs text-gray-600">Não soma estoque nem gera custo de produto — só entra na despesa.</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => desmarcarSemEstoque(idx)}
+                                                className="sm:ml-auto shrink-0 px-3 py-2 min-h-[44px] sm:min-h-0 sm:py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-xs"
+                                            >
+                                                Desfazer — quero vincular um produto
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                <>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
                                     {/* Nosso produto */}
                                     <div>
-                                        <label className="text-xs font-medium text-gray-500">Nosso produto (opcional)</label>
+                                        <label className="text-xs font-medium text-gray-500">Nosso produto</label>
                                         {v.novo ? (
                                             <div className="mt-1 space-y-2 border border-gray-200 rounded-lg p-2 bg-white">
                                                 <input
@@ -2051,8 +2363,8 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                                 value={v.vinculoValue || ''}
                                                 itens={itensPcp}
                                                 invalido={!vinculado}
-                                                onSelect={val => setVinculo(idx, { vinculoValue: val })}
-                                                onCriarNovo={() => setVinculo(idx, { novo: { nome: it.descricao || '', tipo: 'MP', unidade: '' }, vinculoValue: '' })}
+                                                onSelect={val => escolherProduto(idx, val)}
+                                                onCriarNovo={() => criarProdutoNovo(idx, { nome: it.descricao || '', tipo: 'MP', unidade: '' })}
                                             />
                                         )}
                                     </div>
@@ -2079,9 +2391,9 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                         <label className="text-xs font-medium text-gray-500">Entrada convertida</label>
                                         <div className="mt-1 text-sm min-h-[38px] flex items-center flex-wrap">
                                             {!vinculado ? (
-                                                <span className="text-gray-400">— sem vínculo (não entra no estoque)</span>
+                                                <span className="text-amber-800">— falta escolher o destino deste item</span>
                                             ) : fator <= 0 ? (
-                                                <span className="text-gray-400">— informe a conversão</span>
+                                                <span className="text-amber-800">— informe a conversão</span>
                                             ) : (
                                                 <>
                                                     <span className="font-semibold text-gray-900">{fmtQtd(entrada)} {unidadeNossa}</span>
@@ -2095,6 +2407,17 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                                         </div>
                                     </div>
                                 </div>
+
+                                {/* Escape: o item não é mercadoria (serviço, frete, imposto…) */}
+                                <button
+                                    type="button"
+                                    onClick={() => marcarSemEstoque(idx)}
+                                    className="mt-2 w-full sm:w-auto px-4 py-3 sm:py-2 min-h-[44px] bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-xs inline-flex items-center justify-center gap-1.5"
+                                >
+                                    <Unlink className="h-3.5 w-3.5" /> Este item não é estoque
+                                </button>
+                                </>
+                                )}
 
                                 {/* Categoria de custo por item (não se aplica ao registrar entrada sem pagamento) */}
                                 {!entradaAberta && (
@@ -2123,8 +2446,8 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                     {ehServico
                         ? <>A categoria fica <span className="font-semibold text-gray-700">memorizada por prestador</span> — na próxima nota de serviço deste fornecedor ela já vem preenchida.</>
                         : entradaAberta
-                            ? <>Confira o vínculo e a conversão de cada item — <span className="font-semibold text-gray-700">itens vinculados serão somados no estoque</span> ao registrar a entrada. Itens sem vínculo não entram no estoque.</>
-                            : <>Item vinculado <span className="font-semibold text-gray-700">soma no estoque e atualiza o custo</span> do produto ao gerar a conta. O vínculo e a conversão ficam <span className="font-semibold text-gray-700">salvos por fornecedor + código do produto na nota</span> (e código de barras, quando houver) — na próxima nota deste fornecedor, tudo já entra preenchido. O vínculo é opcional: sem ele, o item não entra no estoque (só gera a despesa).</>}
+                            ? <><span className="font-semibold text-gray-700">Todo item precisa de um destino</span>: vinculado a um produto nosso (soma no estoque ao registrar a entrada) ou marcado como <span className="font-semibold text-gray-700">"não é estoque"</span> com o motivo. Nada mais passa em branco.</>
+                            : <><span className="font-semibold text-gray-700">Todo item precisa de um destino</span> — ou ele vira mercadoria nossa, ou você diz o que ele é. Item vinculado <span className="font-semibold text-gray-700">soma no estoque e atualiza o custo</span> do produto ao gerar a conta; item marcado como <span className="font-semibold text-gray-700">"não é estoque"</span> (serviço, frete, imposto, consumo imediato) só entra na despesa, com o motivo registrado. O vínculo e a conversão ficam <span className="font-semibold text-gray-700">salvos por fornecedor + código do produto na nota</span> (e código de barras, quando houver) — <span className="font-semibold text-gray-700">a partir da 2ª nota deste fornecedor tudo já vem preenchido</span>, é só conferir.</>}
                 </div>
             </div>
             )}
@@ -2135,6 +2458,9 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 <PainelRegistrarEntrada
                     nota={nota}
                     obterItens={ehServico ? undefined : obterItensEntrada}
+                    bloqueio={temPendencia ? rotuloPendencia : ''}
+                    onIrParaPendencia={irParaPrimeiroPendente}
+                    onErroDestino={tratarErroDestino}
                     onCancelar={() => setEntradaAberta(false)}
                     onChanged={onChanged}
                 />
@@ -2340,15 +2666,47 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 )}
             </div>
 
+            {/* Backend recusou por destino (400) e a tela não vê nada errado — avisa mesmo assim */}
+            {!temPendencia && pendentesBackend.size > 0 && (
+                <div className="flex flex-wrap items-center gap-2 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5 text-sm text-red-800">
+                    <span>
+                        <span className="font-semibold">O sistema recusou {pendentesBackend.size} {pendentesBackend.size === 1 ? 'item' : 'itens'}</span> por falta de destino
+                        (marcados em vermelho acima). Confira e envie de novo.
+                    </span>
+                </div>
+            )}
+
+            {/* Trava: nenhum item pode ficar sem destino */}
+            {temPendencia && (
+                <div className="flex flex-wrap items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-sm text-amber-900">
+                    <span>
+                        <span className="font-semibold">{rotuloPendencia}.</span>{' '}
+                        Escolha o nosso produto ou marque "Este item não é estoque" para liberar a conta.
+                    </span>
+                    <button
+                        type="button"
+                        onClick={irParaPrimeiroPendente}
+                        className="ml-auto shrink-0 px-4 py-3 sm:py-1.5 min-h-[44px] sm:min-h-0 bg-white border border-amber-300 text-amber-800 hover:bg-amber-100/60 rounded-full font-semibold text-xs"
+                    >
+                        Ir para o 1º item pendente
+                    </button>
+                </div>
+            )}
+
             {/* Ações */}
             <div className="flex flex-col md:flex-row gap-3 pt-1">
                 <button
                     onClick={gerar}
-                    disabled={gerando || somaDiverge}
-                    className="w-full md:w-auto px-4 py-3 md:py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                    disabled={gerando || somaDiverge || temPendencia}
+                    title={temPendencia ? `${rotuloPendencia} — defina o destino de cada item` : undefined}
+                    className="w-full md:w-auto px-4 py-3 md:py-2 bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
                 >
                     {gerando && <Loader2 className="h-4 w-4 animate-spin" />}
-                    {gerando ? 'Gerando…' : `${pago ? 'Gerar Conta PAGA' : 'Gerar Conta a Pagar'} (${parcelas.length} parcela${parcelas.length !== 1 ? 's' : ''})`}
+                    {gerando
+                        ? 'Gerando…'
+                        : temPendencia
+                            ? `${pago ? 'Gerar Conta PAGA' : 'Gerar Conta a Pagar'} — ${rotuloPendencia}`
+                            : `${pago ? 'Gerar Conta PAGA' : 'Gerar Conta a Pagar'} (${parcelas.length} parcela${parcelas.length !== 1 ? 's' : ''})`}
                 </button>
                 <button
                     onClick={() => setVincularAberto(true)}
@@ -2570,11 +2928,18 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
                                             <span className="text-gray-400"> (não muda)</span>
                                         </div>
                                     </div>
-                                    {mudou && (
-                                        <span className="shrink-0 self-start px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
-                                            vai mudar
-                                        </span>
-                                    )}
+                                    <div className="flex flex-wrap items-center gap-1.5 shrink-0 self-start">
+                                        {it.semEstoqueMotivo && !ap && (
+                                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 whitespace-nowrap">
+                                                não é estoque
+                                            </span>
+                                        )}
+                                        {mudou && (
+                                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">
+                                                vai mudar
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Como está hoje no estoque */}
@@ -2584,8 +2949,23 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
                                             {' · '}{fmtQtd(ap.quantidade)} {ap.unidade || 'un'}
                                             {ap.custoUnitario != null ? ` · custo R$ ${fmtCusto(ap.custoUnitario)}/${ap.unidade || 'un'}` : ' · sem custo (entrada sem pagamento)'}
                                         </>
+                                    ) : it.semEstoqueMotivo ? (
+                                        /* Item conferido como "não é estoque": aqui era lido como
+                                           "ficou pendente/errado" — justamente na tela de consertar erro. */
+                                        <span className="text-gray-600">
+                                            Hoje: <span className="font-semibold text-gray-800">não é estoque</span>
+                                            {` · ${motivoSemEstoqueLabel(it.semEstoqueMotivo)}`}
+                                            {String(it.semEstoqueObs || '').trim() ? ` — ${String(it.semEstoqueObs).trim()}` : ''}
+                                            {(it.semEstoqueMarcadoPorNome || it.semEstoqueMarcadoEm) && (
+                                                <span className="text-gray-500">
+                                                    {it.semEstoqueMarcadoPorNome ? ` (marcado por ${it.semEstoqueMarcadoPorNome}` : ' ('}
+                                                    {it.semEstoqueMarcadoEm ? `${it.semEstoqueMarcadoPorNome ? ' em ' : 'marcado em '}${fmtDataHoraAno(it.semEstoqueMarcadoEm)}` : ''}
+                                                    {')'}
+                                                </span>
+                                            )}
+                                        </span>
                                     ) : (
-                                        <span className="text-gray-400">Hoje: este item não entrou no estoque.</span>
+                                        <span className="text-gray-500">Hoje: este item não entrou no estoque.</span>
                                     )}
                                 </div>
 
@@ -2656,7 +3036,11 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
                                         <label className="text-xs font-medium text-gray-500">Vai ficar</label>
                                         <div className="mt-1 text-sm min-h-[38px] flex items-center flex-wrap gap-x-1.5">
                                             {!vinculado ? (
-                                                <span className="text-gray-400">— sem vínculo (sai do estoque)</span>
+                                                <span className="text-gray-500">
+                                                    {it.semEstoqueMotivo
+                                                        ? `— segue como "não é estoque" (${motivoSemEstoqueLabel(it.semEstoqueMotivo)})`
+                                                        : '— sem vínculo (sai do estoque)'}
+                                                </span>
                                             ) : fator <= 0 ? (
                                                 <span className="text-gray-400">— informe a conversão</span>
                                             ) : (
@@ -2884,7 +3268,10 @@ const DetalheNota = ({ nota, podeOperar, itensPcp = [], onChanged }) => {
                 nunca somou estoque. Dá para lançar a entrada depois, sem refazer a despesa. */}
             {podeLancarEstoque && !corrigirAberto && (
                 <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 whitespace-nowrap">
+                    <span
+                        title="Nenhum item desta nota virou mercadoria nossa — ou porque todos foram marcados como 'não é estoque', ou porque a nota foi conferida antes da trava de destino por item."
+                        className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 whitespace-nowrap cursor-help"
+                    >
                         <PackageCheck className="h-3.5 w-3.5" /> Sem entrada no estoque
                     </span>
                     <button
@@ -3051,6 +3438,21 @@ const DetalheNota = ({ nota, podeOperar, itensPcp = [], onChanged }) => {
                                     {aplicadoPorItem.get(it.id).custoUnitario != null
                                         ? ` · custo R$ ${fmtCusto(aplicadoPorItem.get(it.id).custoUnitario)}/${aplicadoPorItem.get(it.id).unidade || 'un'}`
                                         : ''}
+                                </div>
+                            ) : it.semEstoqueMotivo ? (
+                                /* Item conferido como "não é estoque" — nada de item mudo:
+                                   mostra o motivo, quem marcou e quando (campos do GET /:id). */
+                                <div className="text-xs text-gray-600 mt-1">
+                                    → <span className="font-semibold">não é estoque</span>
+                                    {` · ${motivoSemEstoqueLabel(it.semEstoqueMotivo)}`}
+                                    {String(it.semEstoqueObs || '').trim() ? ` — ${String(it.semEstoqueObs).trim()}` : ''}
+                                    {(it.semEstoqueMarcadoPorNome || it.semEstoqueMarcadoEm) && (
+                                        <span className="text-gray-500">
+                                            {it.semEstoqueMarcadoPorNome ? ` (marcado por ${it.semEstoqueMarcadoPorNome}` : ' ('}
+                                            {it.semEstoqueMarcadoEm ? `${it.semEstoqueMarcadoPorNome ? ' em ' : 'marcado em '}${fmtDataHoraAno(it.semEstoqueMarcadoEm)}` : ''}
+                                            {')'}
+                                        </span>
+                                    )}
                                 </div>
                             ) : it.vinculo?.nome ? (
                                 <div className="text-xs text-gray-600 mt-1">

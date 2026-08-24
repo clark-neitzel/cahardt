@@ -168,6 +168,9 @@ const LABEL_MOTIVO_ENTRADA = {
     OUTRO: 'Outro'
 };
 
+// Rótulo do tipo do insumo do PCP (usado no subtítulo das opções de /itens-pcp)
+const LABEL_TIPO_ITEM_PCP = { MP: 'Matéria-prima', SUB: 'Subproduto', PA: 'Produto acabado', EMB: 'Embalagem' };
+
 // Ação escolhida no app quando a soma vinculada ≠ valor da nota → tipoDiferenca gravado.
 const ACOES_DIFERENCA = ['NENHUMA', 'AJUSTAR_PARCELA', 'DESCONTO', 'ACRESCIMO'];
 const tipoDiferencaDaAcao = (acao) => (acao === 'AJUSTAR_PARCELA' ? 'AJUSTE' : acao);
@@ -288,9 +291,14 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
     }
 });
 
-// ── GET /itens-pcp — busca no catálogo de Produtos para o de-para ──
-// Retorna { tipo:'PRODUTO', id, value:'PROD:<id>', nome, unidade, sub }.
-// Só o catálogo de produtos (tabela `produto`) — insumos PCP NÃO entram aqui.
+// ── GET /itens-pcp — opções do de-para: catálogo de Produtos + insumos do PCP ──
+// Retorna um ARRAY plano (formato inalterado, só com opções A MAIS):
+//   { tipo:'PRODUTO'|'ITEM_PCP', grupo:'Produtos'|'Insumos (PCP)', id, value, nome, unidade, sub }
+//   value = 'PROD:<id>' (produto do catálogo) | 'PCP:<id>' (insumo do PCP) — o mesmo que
+//   `decodeVinculo` entende no corpo da conferência.
+// Até 08/2026 a rota devolvia SÓ `Produto`, apesar do nome: o usuário só chegava a um insumo
+// CRIANDO um novo, mesmo quando o insumo já existia. Agora os ItemPcp ativos também aparecem.
+// Produtos vêm primeiro; dentro de cada grupo, por nome.
 // Sem limite: a tela carrega tudo e filtra a busca no cliente. `?busca=` filtra também no banco.
 router.get('/itens-pcp', verificarAuth, checkAcesso, async (req, res) => {
     try {
@@ -305,26 +313,52 @@ router.get('/itens-pcp', verificarAuth, checkAcesso, async (req, res) => {
                 { ean: { contains: b, mode: 'insensitive' } }
             ];
         }
+        const whereItem = { ativo: true };
+        if (busca) {
+            whereItem.OR = [
+                { nome: { contains: b, mode: 'insensitive' } },
+                { codigo: { contains: b, mode: 'insensitive' } }
+            ];
+        }
 
-        const produtos = await prisma.produto.findMany({
-            where: whereProd,
-            select: { id: true, codigo: true, nome: true, unidade: true, categoria: true },
-            orderBy: { nome: 'asc' }
-        });
+        const [produtos, itensPcp] = await Promise.all([
+            prisma.produto.findMany({
+                where: whereProd,
+                select: { id: true, codigo: true, nome: true, unidade: true, categoria: true },
+                orderBy: { nome: 'asc' }
+            }),
+            prisma.itemPcp.findMany({
+                where: whereItem,
+                select: { id: true, codigo: true, nome: true, unidade: true, tipo: true },
+                orderBy: { nome: 'asc' }
+            })
+        ]);
 
-        const opcoes = produtos.map((p) => ({
-            tipo: 'PRODUTO',
-            id: p.id,
-            value: `PROD:${p.id}`,
-            nome: p.nome,
-            unidade: p.unidade,
-            sub: `Produto${p.codigo ? ` · ${p.codigo}` : ''}${p.categoria ? ` · ${p.categoria}` : ''}`
-        }));
+        const opcoes = [
+            ...produtos.map((p) => ({
+                tipo: 'PRODUTO',
+                grupo: 'Produtos',
+                id: p.id,
+                value: `PROD:${p.id}`,
+                nome: p.nome,
+                unidade: p.unidade,
+                sub: `Produto${p.codigo ? ` · ${p.codigo}` : ''}${p.categoria ? ` · ${p.categoria}` : ''}`
+            })),
+            ...itensPcp.map((i) => ({
+                tipo: 'ITEM_PCP',
+                grupo: 'Insumos (PCP)',
+                id: i.id,
+                value: `PCP:${i.id}`,
+                nome: i.nome,
+                unidade: i.unidade,
+                sub: `Insumo${i.codigo ? ` · ${i.codigo}` : ''}${i.tipo ? ` · ${LABEL_TIPO_ITEM_PCP[i.tipo] || i.tipo}` : ''}`
+            }))
+        ];
 
         res.json(opcoes);
     } catch (error) {
-        console.error('Erro ao buscar produtos:', error);
-        res.status(500).json({ error: 'Erro ao buscar produtos.' });
+        console.error('Erro ao buscar produtos e insumos:', error);
+        res.status(500).json({ error: 'Erro ao buscar produtos e insumos.' });
     }
 });
 
@@ -628,16 +662,34 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
         const parsed = precisaXml ? parseXmlSalvo(nota) : null;
         const parsedItens = new Map((parsed?.itens || []).map((i) => [String(i.codigoFornecedor), i]));
 
+        // Nome de quem marcou os itens como "não é estoque" (id sem FK — resolvido aqui)
+        const marcadoresIds = [...new Set(nota.itens.map((i) => i.semEstoqueMarcadoPorId).filter(Boolean))];
+        const marcadores = marcadoresIds.length > 0
+            ? await prisma.vendedor.findMany({ where: { id: { in: marcadoresIds } }, select: { id: true, nome: true } })
+            : [];
+        const nomePorId = new Map(marcadores.map((v) => [v.id, v.nome]));
+
         const itens = nota.itens.map((item) => {
             const v = porCodigo.get(item.codigoFornecedor) || (item.ean ? porEan.get(item.ean) : null) || null;
+            // Item marcado como "não é estoque" NESTA nota: a marcação vence a memória do
+            // de-para SÓ na parte do PRODUTO (senão a tela reabriria sugerindo produto para o
+            // frete/imposto e o usuário salvaria mercadoria que não existe no estoque).
+            // A memória de CATEGORIA continua valendo — é justamente o item "não é estoque"
+            // (frete, serviço, imposto) que mais depende dela: sem isso, refazer a conferência
+            // jogaria a linha na categoria padrão e mudaria o rateio/DRE em silêncio.
+            const marcadoSemEstoque = !!item.semEstoqueMotivo;
             // Memória existe se houver vínculo de produto (Produto ou ItemPcp) OU categoria memorizada
-            const temMemoria = v && (v.produtoId != null || v.itemPcpId != null || v.categoria != null || v.categoriaCaId != null);
+            const temMemoria = v && (
+                (!marcadoSemEstoque && (v.produtoId != null || v.itemPcpId != null))
+                || v.categoria != null || v.categoriaCaId != null
+            );
             const px = parsedItens.get(String(item.codigoFornecedor));
 
-            // Resolve o alvo do vínculo (Produto tem prioridade se ambos setados, mas gravamos só um)
-            const alvo = v && v.produtoId
+            // Resolve o alvo do vínculo (Produto tem prioridade se ambos setados, mas gravamos só um).
+            // Item marcado como "não é estoque" nunca devolve alvo — vai sem produto sugerido.
+            const alvo = !marcadoSemEstoque && v && v.produtoId
                 ? { value: `PROD:${v.produtoId}`, nome: v.produto?.nome || null, unidade: v.produto?.unidade || null }
-                : (v && v.itemPcpId
+                : (!marcadoSemEstoque && v && v.itemPcpId
                     ? { value: `PCP:${v.itemPcpId}`, nome: v.itemPcp?.nome || null, unidade: v.itemPcp?.unidade || null }
                     : { value: null, nome: null, unidade: null });
             return {
@@ -655,16 +707,22 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
                 categoria: item.categoria || null,
                 categoriaCaId: item.categoriaCaId || null,
                 infAdProd: item.infAdProd || px?.infAdProd || null,
+                // "Não é estoque": destino explícito do item que não vira produto/insumo.
+                semEstoqueMotivo: item.semEstoqueMotivo || null,
+                semEstoqueObs: item.semEstoqueObs || null,
+                semEstoqueMarcadoEm: item.semEstoqueMarcadoEm || null,
+                semEstoqueMarcadoPorNome: item.semEstoqueMarcadoPorId ? (nomePorId.get(item.semEstoqueMarcadoPorId) || null) : null,
                 vinculo: temMemoria
                     ? {
                         value: alvo.value,          // "PROD:<id>" | "PCP:<id>" | null
                         nome: alvo.nome,            // nome do produto/insumo vinculado
                         unidade: alvo.unidade,      // unidade "nossa" (para conversão/custo)
                         // legado — mantido para telas antigas de detalhe:
-                        itemPcpId: v.itemPcpId || null,
+                        itemPcpId: marcadoSemEstoque ? null : (v.itemPcpId || null),
                         itemPcpNome: alvo.nome,
                         itemPcpUnidade: alvo.unidade,
-                        fatorConversao: num(v.fatorConversao),
+                        // item marcado não semeia conversão (não há produto para converter)
+                        fatorConversao: marcadoSemEstoque ? 0 : num(v.fatorConversao),
                         categoria: v.categoria || null,
                         categoriaCaId: v.categoriaCaId || null,
                         lembrado: true
@@ -1123,18 +1181,70 @@ const decodeVinculo = (value) => {
     return { produtoId: null, itemPcpId: null };
 };
 
-// Validação dos itens do de-para (mesma para gerar-conta e registrar-entrada).
-// Devolve a mensagem de erro ou null se tudo OK.
-const validarItensBody = (itensBody, itensNota) => {
+// Motivos válidos para "este item NÃO é estoque" (destino explícito do item que não vira
+// produto/insumo): serviço embutido, frete, imposto/taxa lançado como item, consumo imediato.
+const MOTIVOS_SEM_ESTOQUE = ['SERVICO', 'FRETE', 'IMPOSTO', 'CONSUMO_IMEDIATO', 'OUTRO'];
+
+// Normaliza a marcação "não é estoque" vinda do corpo → { motivo, obs } ou null.
+const lerSemEstoque = (it) => {
+    const motivo = String(it?.semEstoqueMotivo || '').toUpperCase().trim();
+    if (!motivo) return null;
+    const obs = String(it?.semEstoqueObs || '').trim();
+    return { motivo, obs: obs || null };
+};
+
+// Item tem destino explícito? (vínculo com produto/insumo, criação de item PCP novo,
+// ou marcação "não é estoque" com motivo)
+const temDestinoExplicito = (it) => {
+    if (!it) return false;
+    const { produtoId, itemPcpId } = decodeVinculo(it.vinculo);
+    return !!(produtoId || itemPcpId || it.criarItemPcp || lerSemEstoque(it));
+};
+
+// Validação dos itens do de-para (mesma para gerar-conta, registrar-entrada e correção).
+// Devolve null se tudo OK, ou { error, itensPendentes? } — o chamador responde 400 com
+// { ok:false, ...retorno }. `itensPendentes` só aparece na trava de destino obrigatório.
+//
+// `exigirDestino` (conferência de nota que NÃO é NFS-e): CADA item da nota precisa de um
+// destino — vínculo (PROD:/PCP:), item PCP novo, ou motivo "não é estoque". Item em branco
+// era descartado em silêncio (não somava estoque nem gerava custo/CompraItem); a partir de
+// 08/2026 a conferência trava. NFS-e continua isenta (serviço não vira estoque).
+const validarItensBody = (itensBody, itensNota, { nota = null, exigirDestino = false } = {}) => {
     for (const it of itensBody) {
         if (!it?.itemId || !itensNota.has(it.itemId)) {
-            return 'Item informado não pertence a esta nota.';
+            return { error: 'Item informado não pertence a esta nota.' };
         }
         if (it.criarItemPcp) {
             const { nome, tipo, unidade } = it.criarItemPcp;
-            if (!nome?.trim()) return 'Informe o nome do novo item PCP.';
-            if (!['MP', 'SUB', 'PA', 'EMB'].includes(tipo)) return 'Tipo do novo item PCP inválido (use MP, SUB, PA ou EMB).';
-            if (!unidade?.trim()) return 'Informe a unidade do novo item PCP.';
+            if (!nome?.trim()) return { error: 'Informe o nome do novo item PCP.' };
+            if (!['MP', 'SUB', 'PA', 'EMB'].includes(tipo)) return { error: 'Tipo do novo item PCP inválido (use MP, SUB, PA ou EMB).' };
+            if (!unidade?.trim()) return { error: 'Informe a unidade do novo item PCP.' };
+        }
+        const semEstoque = lerSemEstoque(it);
+        if (semEstoque) {
+            if (!MOTIVOS_SEM_ESTOQUE.includes(semEstoque.motivo)) {
+                return { error: `Motivo inválido para "não é estoque" (use ${MOTIVOS_SEM_ESTOQUE.join(', ')}).` };
+            }
+            if (semEstoque.motivo === 'OUTRO' && !semEstoque.obs) {
+                const itemNota = itensNota.get(it.itemId);
+                return { error: `Explique por que o item "${itemNota?.descricao || it.itemId}" não entra no estoque (motivo "Outro" exige a observação).` };
+            }
+        }
+    }
+
+    if (exigirDestino && nota && nota.tipo !== 'NFSE') {
+        const porItemId = new Map(itensBody.map((it) => [it.itemId, it]));
+        const itensPendentes = [];
+        for (const itemNota of itensNota.values()) {
+            if (temDestinoExplicito(porItemId.get(itemNota.id))) continue;
+            itensPendentes.push({
+                id: itemNota.id,
+                descricao: itemNota.descricao,
+                codigoFornecedor: itemNota.codigoFornecedor
+            });
+        }
+        if (itensPendentes.length > 0) {
+            return { error: 'Há itens sem destino definido.', itensPendentes };
         }
     }
     return null;
@@ -1146,10 +1256,16 @@ const validarItensBody = (itensBody, itensNota) => {
  * categoria efetiva no item da nota (só no gerar-conta) e memoriza o de-para por
  * fornecedor+cProd (FornecedorProdutoVinculo). Roda DENTRO da transação (tx).
  *
+ * Também grava/limpa a marcação "não é estoque" (motivo + observação + quem marcou e
+ * quando) no NotaEntradaItem: item marcado NÃO entra em `vinculados` (não soma estoque,
+ * como antes), mas agora a decisão fica registrada e auditável em vez de sumir em branco.
+ * Item que passa a ter vínculo tem a marcação LIMPA (o usuário pode mudar de ideia numa
+ * reconferência/correção).
+ *
  * @returns {Array} itens vinculados prontos para a entrada de estoque:
  *                  [{ itemNota, produtoId, itemPcpId, fator }]
  */
-const processarItensConferencia = async (tx, nota, itensBody, itensNota, { catPadrao = null, catPadraoCaId = null, gravarCategoria = true } = {}) => {
+const processarItensConferencia = async (tx, nota, itensBody, itensNota, { catPadrao = null, catPadraoCaId = null, gravarCategoria = true, usuarioId = null } = {}) => {
     const vinculados = [];
     for (const it of itensBody) {
         const itemNota = itensNota.get(it.itemId);
@@ -1178,16 +1294,38 @@ const processarItensConferencia = async (tx, nota, itensBody, itensNota, { catPa
         const catItem = gravarCategoria ? (it.categoria?.trim() || catPadrao) : null;
         const catItemCaId = gravarCategoria ? (it.categoriaCaId || catPadraoCaId) : null;
 
+        const dataItem = {};
+
         // Persiste categoria efetiva no item da nota (fluxo gerar-conta)
         if (gravarCategoria) {
-            await tx.notaEntradaItem.update({
-                where: { id: itemNota.id },
-                data: {
-                    categoria: catItem,
-                    categoriaCaId: catItemCaId,
-                    categoriaDespesaId: await categoriaDespesaService.idPorNome(catItem, tx)
-                }
-            });
+            dataItem.categoria = catItem;
+            dataItem.categoriaCaId = catItemCaId;
+            dataItem.categoriaDespesaId = await categoriaDespesaService.idPorNome(catItem, tx);
+        }
+
+        // "Não é estoque": grava motivo/observação + carimbo de quem marcou.
+        // Com vínculo, LIMPA a marcação antiga (reconferência/correção).
+        const semEstoque = temProduto ? null : lerSemEstoque(it);
+        if (semEstoque) {
+            const obs = semEstoque.obs;
+            const mudou = itemNota.semEstoqueMotivo !== semEstoque.motivo
+                || (itemNota.semEstoqueObs || null) !== obs
+                || itemNota.semEstoqueMarcadoEm == null;
+            dataItem.semEstoqueMotivo = semEstoque.motivo;
+            dataItem.semEstoqueObs = obs;
+            if (mudou) {
+                dataItem.semEstoqueMarcadoPorId = usuarioId || null;
+                dataItem.semEstoqueMarcadoEm = new Date();
+            }
+        } else if (temProduto && (itemNota.semEstoqueMotivo != null || itemNota.semEstoqueMarcadoEm != null)) {
+            dataItem.semEstoqueMotivo = null;
+            dataItem.semEstoqueObs = null;
+            dataItem.semEstoqueMarcadoPorId = null;
+            dataItem.semEstoqueMarcadoEm = null;
+        }
+
+        if (Object.keys(dataItem).length > 0) {
+            await tx.notaEntradaItem.update({ where: { id: itemNota.id }, data: dataItem });
         }
 
         // Memória por fornecedor+cProd: grava se houver produto OU categoria
@@ -1321,8 +1459,9 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
         // ── Validação dos itens do de-para ──
         const itensBody = Array.isArray(itens) ? itens : [];
         const itensNota = new Map(nota.itens.map((i) => [i.id, i]));
-        const erroItens = validarItensBody(itensBody, itensNota);
-        if (erroItens) return res.status(400).json({ error: erroItens });
+        // Trava: em nota que não é NFS-e, todo item precisa de destino (vínculo ou "não é estoque").
+        const erroItens = validarItensBody(itensBody, itensNota, { nota, exigirDestino: true });
+        if (erroItens) return res.status(400).json({ ok: false, ...erroItens });
 
         const catPadrao = categoriaPadrao?.trim() || null;
         const catPadraoCaId = categoriaPadraoCaId || null;
@@ -1364,7 +1503,8 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
             const vinculados = await processarItensConferencia(tx, nota, itensBody, itensNota, {
                 catPadrao,
                 catPadraoCaId,
-                gravarCategoria: true
+                gravarCategoria: true,
+                usuarioId: req.user.id
             });
 
             // 2) Cria a conta a pagar + parcelas + rateio
@@ -1526,14 +1666,15 @@ router.post('/:id/registrar-entrada', verificarAuth, checkEscrita, async (req, r
 
         const itensBody = Array.isArray(req.body?.itens) ? req.body.itens : [];
         const itensNota = new Map(nota.itens.map((i) => [i.id, i]));
-        const erroItens = validarItensBody(itensBody, itensNota);
-        if (erroItens) return res.status(400).json({ error: erroItens });
+        // Trava: em nota que não é NFS-e, todo item precisa de destino (vínculo ou "não é estoque").
+        const erroItens = validarItensBody(itensBody, itensNota, { nota, exigirDestino: true });
+        if (erroItens) return res.status(400).json({ ok: false, ...erroItens });
 
         let estoqueResultado = { itens: [], avisos: [] };
         await prisma.$transaction(async (tx) => {
             // Mesma memória de vínculo do gerar-conta (sem categoria — aqui não há despesa)
             const vinculados = itensBody.length > 0
-                ? await processarItensConferencia(tx, nota, itensBody, itensNota, { gravarCategoria: false })
+                ? await processarItensConferencia(tx, nota, itensBody, itensNota, { gravarCategoria: false, usuarioId: req.user.id })
                 : [];
 
             await tx.notaEntrada.update({
@@ -1796,8 +1937,12 @@ router.post('/:id/corrigir-entrada-estoque', verificarAuth, checkAcesso, checkCo
 
         const itensBody = Array.isArray(req.body?.itens) ? req.body.itens : [];
         const itensNota = new Map(nota.itens.map((i) => [i.id, i]));
-        const erroItens = validarItensBody(itensBody, itensNota);
-        if (erroItens) return res.status(400).json({ error: erroItens });
+        // Aqui NÃO se exige destino de todo item: esta rota é o conserto de nota já lançada
+        // (inclusive nota antiga, conferida antes da trava) e tem guarda própria logo abaixo —
+        // travar aqui deixaria a nota velha sem caminho de correção. A marcação "não é estoque"
+        // que vier no corpo continua sendo validada e gravada.
+        const erroItens = validarItensBody(itensBody, itensNota, { nota });
+        if (erroItens) return res.status(400).json({ ok: false, ...erroItens });
         // Nada aplicado hoje E nada vinculado agora = pedido vazio (não é "corrigir para zero").
         const vaiVincular = itensBody.some((i) => i.vinculo || i.criarItemPcp);
         if (antesAplicado.length === 0 && !vaiVincular) {
@@ -1809,7 +1954,7 @@ router.post('/:id/corrigir-entrada-estoque', verificarAuth, checkAcesso, checkCo
             // Mesmo núcleo da conferência: resolve PROD:/PCP:, cria item PCP novo se pedido e
             // atualiza a memória do de-para por fornecedor+cProd (a próxima nota já vem certa).
             // Categoria NÃO é tocada — mexer nela mudaria o rateio da despesa/DRE.
-            const vinculados = await processarItensConferencia(tx, nota, itensBody, itensNota, { gravarCategoria: false });
+            const vinculados = await processarItensConferencia(tx, nota, itensBody, itensNota, { gravarCategoria: false, usuarioId: req.user.id });
 
             resultado = await notaEstoqueService.corrigirEstoqueNota(
                 tx,

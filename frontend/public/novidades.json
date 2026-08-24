@@ -1,5 +1,11 @@
 [
   {
+    "slug": "destino-item-nota",
+    "titulo": "Item de nota precisa de destino",
+    "resumo": "Na conferência da nota recebida (Financeiro → Notas Recebidas), o campo \"Nosso produto\" deixou de ser opcional: todo item agora precisa de um destino — ou vira um produto/insumo nosso (soma estoque e atualiza o custo), ou é marcado como \"Este item não é estoque\" com o motivo (Serviço, Frete, Imposto/taxa, Consumo imediato, Outro). Item pendente fica com a linha em âmbar dizendo o que falta, e o botão Gerar Conta a Pagar fica desligado mostrando quantos itens faltam, com atalho para pular até o primeiro. Antes, item deixado em branco era descartado calado: não somava estoque, não gerava custo e não entrava no histórico de compras. Para não travar o financeiro, existe um botão que marca todos os itens restantes de uma vez com um único motivo (nota de combustível/frete continua saindo em segundos) — e, a partir da 2ª nota do mesmo fornecedor, o vínculo já vem lembrado. Reabrindo a nota, cada item mostra o motivo, quem marcou e quando.",
+    "data": "2026-08-24"
+  },
+  {
     "slug": "falar-vendedor",
     "titulo": "Falar com o vendedor pelo site",
     "resumo": "No site de congelados, o cliente NÃO escolhe mais o vendedor numa lista — aquela telinha saiu. Agora são só dois caminhos, os dois em um toque: cliente cujo vendedor está vinculado e liberado no bot vê o nome dele na pílula e a conversa abre já endereçada (o bot entrega direto e pausa a Ana); todo o resto (visitante, cliente sem vendedor, vendedor sem vínculo ou fora da lista, bot fora do ar) vê 'Vendas' e cai em 'Falar com a equipe', na recepção normal. Motivo: a lista do bot devolvia também gente de Compras, Logística e Financeiro, e isso não pode ser oferecido ao cliente. Confira o campo 'Nome usado no Bot Hardt' em Administração → Usuários — sem ele o cliente do vendedor cai na equipe.",

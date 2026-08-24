@@ -18,6 +18,9 @@ const notasEntradaService = {
         return response.data;
     },
     // Gera a Conta a Pagar da nota; itens vinculados somam no estoque.
+    // Cada item leva um DESTINO obrigatório (NF-e de produto): `vinculo` ('PROD:<id>'|'PCP:<id>' + fatorConversao),
+    // `criarItemPcp`, ou `semEstoqueMotivo` ('SERVICO'|'FRETE'|'IMPOSTO'|'CONSUMO_IMEDIATO'|'OUTRO'
+    //  — 'OUTRO' exige `semEstoqueObs`). Sem destino o backend recusa com 400 + `itensPendentes`.
     // → resposta inclui estoque: [{ nome, unidade, quantidade, destino }] (vazio se nenhum item vinculado)
     gerarConta: async (id, dados) => {
         const response = await api.post(`/notas-entrada/${id}/gerar-conta`, dados);
@@ -46,7 +49,7 @@ const notasEntradaService = {
     },
     // Registra a ENTRADA sem gerar pagamento (bonificação, amostra, remessa/troca, comodato, outro).
     // Itens vinculados SOMAM NO ESTOQUE (sem alterar o custo).
-    // payload: { motivo, observacao?, itens?: [{ itemId, vinculo: 'PROD:<id>'|'PCP:<id>'|null, fatorConversao|null, criarItemPcp|null }] }
+    // payload: { motivo, observacao?, itens?: [{ itemId, vinculo: 'PROD:<id>'|'PCP:<id>'|null, fatorConversao|null, criarItemPcp|null, semEstoqueMotivo|null, semEstoqueObs|null }] }
     // → { ok, message, status, motivo, estoque: [{ nome, unidade, quantidade, destino }] }
     registrarEntrada: async (id, payload) => {
         const response = await api.post(`/notas-entrada/${id}/registrar-entrada`, payload);

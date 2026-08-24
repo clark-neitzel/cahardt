@@ -3609,6 +3609,18 @@ model NotaEntradaItem {
   categoriaDespesaId String?           @map("categoria_despesa_id")
   categoriaDespesa   CategoriaDespesa? @relation("ItensNotaCategoria", fields: [categoriaDespesaId], references: [id], onDelete: SetNull)
 
+  // "Não é estoque" — destino EXPLÍCITO do item que não vira produto/insumo (frete, IPI/taxa
+  // lançados como item, serviço embutido, consumo imediato). Antes o item ficava em branco e
+  // era descartado em silêncio (não somava estoque, não gerava custo nem CompraItem);
+  // agora a conferência exige vínculo OU um destes motivos, e a escolha fica auditável.
+  semEstoqueMotivo       String?   @map("sem_estoque_motivo") // SERVICO | FRETE | IMPOSTO | CONSUMO_IMEDIATO | OUTRO
+  semEstoqueObs          String?   @map("sem_estoque_obs") @db.Text // texto livre — obrigatório quando o motivo é OUTRO
+  // Sem FK de propósito (só o id do Vendedor, como em outros logs do schema): a coluna é
+  // adicionada por `prisma db push` num modelo já em produção — sem constraint não há risco
+  // de o push falhar por linha órfã. O nome de quem marcou é resolvido na leitura (GET /:id).
+  semEstoqueMarcadoPorId String?   @map("sem_estoque_marcado_por_id")
+  semEstoqueMarcadoEm    DateTime? @map("sem_estoque_marcado_em")
+
   @@index([notaEntradaId])
   @@map("notas_entrada_itens")
 }

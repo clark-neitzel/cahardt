@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: todo item da nota precisa de um destino — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de proposito: cartao compacto) -->
+<meta property="og:title" content="✨ Novidade: item de nota nao passa mais em branco">
+<meta property="og:description" content="Na conferencia da nota recebida, cada item agora precisa de um destino: virar produto nosso ou ser marcado como 'nao e estoque'. Tem botao para resolver a nota inteira de uma vez.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo {
+    background: #f6f5f1;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .4s, color .4s;
+  }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+<style>
+  .app-linha { border:1px solid #e5e3dc; border-radius:12px; padding:12px; margin-bottom:10px; background:#fff; }
+  .app-linha.pendente { border-color:#fcd34d; background:#fffbeb; }
+  .app-linha.recusada { border-color:#fca5a5; background:#fef2f2; }
+  .app-linha.ok { border-color:#e5e3dc; }
+  .app-linha .titulo { font-size:13px; font-weight:700; color:var(--ink); }
+  .app-linha .meta { font-size:11px; color:#8b948f; margin-top:2px; }
+  .app-linha .falta { font-size:11.5px; font-weight:700; color:#92400e; margin-top:6px; }
+  .app-linha .falta.vermelho { color:#b91c1c; }
+  .badge { font-size:10px; font-weight:800; padding:3px 9px; border-radius:999px; white-space:nowrap; }
+  .badge.ambar { background:#fef3c7; color:#92400e; }
+  .badge.verde { background:#dcfce7; color:#166534; }
+  .badge.cinza { background:#f1f0ec; color:#4b5551; }
+  .linha-topo { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+  .app-btn.desab { background:#9fc4b4; box-shadow:none; }
+  .app-btn.cinza { background:#fff; border:1.5px solid #d8d5cc; color:#5f6b66; }
+  .aviso-ambar { background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:10px 12px; font-size:12px; color:#92400e; margin-bottom:10px; }
+  .aviso-vermelho { background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:10px 12px; font-size:12px; color:#b91c1c; margin-bottom:10px; }
+  .destaque { background:var(--mint); border-radius:12px; padding:14px 16px; font-size:14px; color:var(--primary-dark); margin:18px 0; }
+  .destaque b { color:#004b30; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Item de nota não passa<br>mais em branco</h1>
+    <p>Na conferência da nota recebida, cada item agora precisa dizer para onde vai: vira um produto nosso (entra no estoque) ou é marcado como <b>&ldquo;não é estoque&rdquo;</b> com o motivo. Nada mais some sem ninguém ver.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">📦</span>
+      <div>
+        <small>Financeiro · Notas Recebidas</small>
+        <strong>3 itens sem destino</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="app-linha pendente">
+        <div class="linha-topo">
+          <div><div class="titulo">ÓLEO DE SOJA 900ML CX/20</div><div class="meta">10 CX × R$ 80,00 = R$ 800,00</div></div>
+          <span class="badge ambar">sem destino</span>
+        </div>
+        <div class="falta">Escolha o nosso produto ou marque &ldquo;Este item não é estoque&rdquo;.</div>
+      </div>
+      <div class="app-linha ok">
+        <div class="linha-topo">
+          <div><div class="titulo">FRETE CIF</div><div class="meta">1 UN × R$ 230,50 = R$ 230,50</div></div>
+          <span class="badge cinza">não é estoque</span>
+        </div>
+        <div class="meta" style="margin-top:6px">Motivo: <b>Frete</b> · não soma estoque, só entra na despesa.</div>
+      </div>
+      <div class="mock-status ok">✅ Resolveu tudo? O botão de gerar a conta libera.</div>
+    </div>
+  </div>
+
+  <div class="destaque">
+    <b>O que mudou, em uma frase:</b> antes o campo &ldquo;Nosso produto&rdquo; era opcional e o item em branco era descartado calado — sem estoque, sem custo, sem histórico. Agora ele é obrigatório, com uma saída rápida para as notas que realmente não são de mercadoria.
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">📄 Tela 1 — Conferência da nota: itens pendentes</div>
+    <div class="tela-corpo">
+      <div class="aviso-ambar"><b>3 itens sem destino.</b> Se esta nota não é de mercadoria (combustível, frete, serviço…), resolva tudo de uma vez: <span class="pin">4</span></div>
+      <div class="app-card">
+        <div class="app-card-head">📦 Itens da nota → destino de cada item <span class="badge ambar" style="margin-left:auto">3 itens sem destino</span> <span class="pin">1</span></div>
+        <div class="app-card-body">
+          <div class="app-linha pendente">
+            <div class="linha-topo">
+              <div><div class="titulo">ÓLEO DE SOJA 900ML CX/20</div><div class="meta">cód. do fornecedor OL900 · 10 CX × R$ 80,00</div></div>
+              <span class="badge ambar">sem destino</span>
+            </div>
+            <div class="falta">Escolha o nosso produto ou marque &ldquo;Este item não é estoque&rdquo;. <span class="pin">2</span></div>
+            <div class="app-input" style="margin-top:8px"><small>Nosso produto</small>Buscar produto…</div>
+            <span class="app-btn cinza">🔗 Este item não é estoque <span class="pin">3</span></span>
+          </div>
+        </div>
+      </div>
+      <span class="app-btn desab">Gerar Conta a Pagar — 3 itens sem destino <span class="pin">5</span></span>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O cabeçalho da seção mostra <b>quantos itens ainda estão sem destino</b>. Quando zera, ele vira &ldquo;todos os itens com destino ✓&rdquo;.</span></div>
+      <div><span class="pin">2</span><span>A linha pendente fica com <b>borda e fundo âmbar</b> e diz em palavras o que falta — escolher o produto, informar a conversão ou explicar o motivo.</span></div>
+      <div><span class="pin">3</span><span>O botão <b>&ldquo;Este item não é estoque&rdquo;</b> é a saída para o que não é mercadoria: serviço, frete, imposto/taxa, consumo imediato ou outro.</span></div>
+      <div><span class="pin">4</span><span>A faixa âmbar no topo resolve <b>a nota inteira de uma vez</b> (veja a Tela 3).</span></div>
+      <div><span class="pin">5</span><span>O botão <b>Gerar Conta a Pagar fica desligado</b> enquanto houver item sem destino, e mostra o contador. Ao lado tem o atalho <b>&ldquo;Ir para o 1º item pendente&rdquo;</b>, que rola a tela até ele.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">🏷️ Tela 2 — Marcando &ldquo;Este item não é estoque&rdquo;</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="app-linha ok">
+            <div class="linha-topo">
+              <div><div class="titulo">FRETE CIF</div><div class="meta">cód. do fornecedor FRT · 1 UN × R$ 230,50</div></div>
+              <span class="badge cinza">não é estoque <span class="pin">1</span></span>
+            </div>
+            <div class="app-input ok" style="margin-top:8px"><small>Este item não é estoque — por quê?</small>Frete <span class="pin">2</span></div>
+            <div class="meta" style="margin-top:-2px">(nasce como &ldquo;Escolher o motivo…&rdquo; — o item fica pendente até você escolher)</div>
+            <div class="meta">Não soma estoque nem gera custo de produto — só entra na despesa. <span class="pin">3</span></div>
+            <span class="app-btn cinza" style="margin-top:8px">Desfazer — quero vincular um produto <span class="pin">4</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O selo da linha muda para <b>&ldquo;não é estoque&rdquo;</b> e a borda âmbar some — o item está resolvido.</span></div>
+      <div><span class="pin">2</span><span>O motivo é obrigatório e <b>começa em branco</b> — o item continua contando como pendente até você escolher, para ninguém gravar um frete como &ldquo;Serviço&rdquo; sem querer. As opções são <b>Serviço · Frete · Imposto/taxa · Consumo imediato · Outro</b>. Escolhendo <b>Outro</b>, aparece um campo para explicar em poucas palavras — e sem esse texto o botão continua bloqueado.</span></div>
+      <div><span class="pin">3</span><span>Fica escrito na tela o que isso significa: o item <b>não soma estoque e não gera custo de produto</b>, só entra no valor da despesa.</span></div>
+      <div><span class="pin">4</span><span>Dá para voltar atrás a qualquer momento. Marcar &ldquo;não é estoque&rdquo; <b>limpa o vínculo</b>, e escolher um produto <b>limpa a marcação</b> — são duas opções que não convivem.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-titulo">⚡ Tela 3 — Resolver a nota inteira de uma vez</div>
+    <div class="tela-corpo">
+      <div class="app-card" style="border-color:#fcd34d">
+        <div class="app-card-body">
+          <div style="font-size:12.5px;color:#5f6b66;margin-bottom:8px"><b>3 itens sem destino.</b> Se esta nota não é de mercadoria (combustível, frete, serviço…), resolva tudo de uma vez:</div>
+          <div class="app-input"><small>Motivo aplicado a todos <span class="pin">1</span></small>Consumo imediato</div>
+          <span class="app-btn claro">Marcar os 3 restantes como &ldquo;não é estoque&rdquo; <span class="pin">2</span></span>
+        </div>
+      </div>
+      <div class="aviso-ambar" style="background:#fff;border-color:#e5e3dc;color:#5f6b66">
+        ✅ <b>Marcar 3 itens como &ldquo;não é estoque&rdquo; (Consumo imediato)?</b><br>
+        Esses itens NÃO vão somar estoque nem gerar custo de produto — só entram na despesa. <span class="pin">3</span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Escolha <b>um motivo</b> — ele vale para todos os itens que ainda estão pendentes. Os que você já vinculou a um produto <b>não são tocados</b>.</span></div>
+      <div><span class="pin">2</span><span>Um clique resolve a nota inteira. A nota de combustível continua saindo em segundos.</span></div>
+      <div><span class="pin">3</span><span>Antes de aplicar, o app <b>pergunta e diz quantos itens</b> serão marcados — sem surpresa.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4 -->
+  <div class="tela">
+    <div class="tela-titulo">🔎 Tela 4 — Reabrindo uma nota já conferida</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">📋 Itens da nota</div>
+        <div class="app-card-body">
+          <div class="app-linha ok">
+            <div class="titulo">ÓLEO DIESEL S10</div>
+            <div class="meta">cód. do fornecedor DS10 · 80 L × R$ 6,25 = R$ 500,00</div>
+            <div class="meta" style="margin-top:6px">→ <b>não é estoque</b> · Consumo imediato <span style="color:#8b948f">(marcado por Josi em 11/08/2026, 11:32)</span> <span class="pin">1</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Abrindo a nota depois, cada item conta a sua história: <b>o motivo, quem marcou e quando</b>. Acabou o item mudo — dá para auditar meses depois.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Perguntas que você deve estar fazendo</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">⏱️</span><strong>Isso não vai deixar a conferência mais lenta?</strong><span class="acc-seta">▾</span></button>
+    <div class="acc-corpo">
+      <p>Na primeira nota de um fornecedor, sim: você escolhe o destino de cada item. Daí em diante, <b>não</b>.</p>
+      <ul>
+        <li>O vínculo e a conversão ficam <b>salvos por fornecedor + código do produto na nota</b> (e código de barras, quando houver). <b>A partir da 2ª nota daquele fornecedor tudo já vem preenchido</b> — é só conferir.</li>
+        <li>Nota que não é de mercadoria (combustível, frete, serviço) se resolve com <b>um clique</b> no botão de marcar todos os restantes.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">🧨</span><strong>Por que a mudança?</strong><span class="acc-seta">▾</span></button>
+    <div class="acc-corpo">
+      <p>Antes, o campo &ldquo;Nosso produto&rdquo; era <b>opcional</b>. Item deixado em branco era simplesmente descartado: não somava estoque, não gerava custo e não entrava no histórico de compras — e o único aviso era um texto cinza no rodapé, que ninguém lia.</p>
+      <p>Resultado: estoque com menos mercadoria do que a real e custo de produto desatualizado, <b>sem ninguém perceber</b>. Agora o app não deixa passar, mas também não obriga a inventar um produto: existe o caminho honesto de dizer &ldquo;isso aqui não é estoque, é frete&rdquo;.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">📦</span><strong>E o &ldquo;Registrar entrada sem pagamento&rdquo;?</strong><span class="acc-seta">▾</span></button>
+    <div class="acc-corpo">
+      <p>Mesma regra. Bonificação, amostra, remessa/troca e comodato também exigem o destino de cada item antes de registrar — o botão mostra o contador e só libera quando tudo estiver resolvido.</p>
+      <p>Nota de <b>serviço (NFS-e)</b> não muda nada: ela nunca teve vínculo com produto nem entrada de estoque, continua sendo só categoria + parcelas.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" type="button"><span class="acc-ico">🔍</span><strong>Produto do catálogo ou insumo do PCP?</strong><span class="acc-seta">▾</span></button>
+    <div class="acc-corpo">
+      <p>A busca de &ldquo;Nosso produto&rdquo; agora separa os dois em grupos: <b>Produtos do catálogo</b> e <b>Insumos do PCP</b>. Assim dá para ver de cara se você está mandando a farinha para o insumo certo, e não para um produto de venda com nome parecido.</p>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><div class="passo-n">1</div><div>Abra <b>Financeiro → Notas Recebidas</b> e clique em <b>Conferir</b> numa nota nova.</div></div>
+    <div class="passo"><div class="passo-n">2</div><div>Olhe o contador no topo da lista de itens: ele diz <b>quantos ainda estão sem destino</b>.</div></div>
+    <div class="passo"><div class="passo-n">3</div><div>Para cada item: escolha o <b>nosso produto</b> (e a conversão) ou clique em <b>&ldquo;Este item não é estoque&rdquo;</b> e diga o motivo.</div></div>
+    <div class="passo"><div class="passo-n">4</div><div>Nota que não é de mercadoria? Use a faixa âmbar do topo para <b>marcar todos os restantes de uma vez</b>.</div></div>
+    <div class="passo"><div class="passo-n">5</div><div>Com tudo resolvido, o <b>Gerar Conta a Pagar</b> libera normalmente.</div></div>
+  </div>
+
+  <p class="rodape">Dúvida? Chama no grupo.<br><strong>Hardt App</strong></p>
+</div>
+
+<script>
+  // Accordions já abertos: o clique só serve para recolher.
+  document.querySelectorAll('.acc-head').forEach(h => {
+    h.addEventListener('click', () => h.parentElement.classList.toggle('aberto'));
+  });
+</script>
+</body>
+</html>

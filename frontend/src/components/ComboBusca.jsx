@@ -75,16 +75,22 @@ const ComboBusca = ({
                         )}
                         {filtrados.length === 0 && <div className="px-3 py-3 text-sm text-gray-400">{vazioTexto}</div>}
                         {filtrados.map((o, i) => (
+                            <React.Fragment key={String(o.value)}>
+                            {/* Cabeçalho de grupo — só aparece quando as options trazem `grupo`
+                                (opcional: quem não usa continua igual). */}
+                            {o.grupo && o.grupo !== filtrados[i - 1]?.grupo && (
+                                <div className="px-3 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wide text-gray-500">{o.grupo}</div>
+                            )}
                             <button
-                                key={String(o.value)}
                                 type="button"
                                 onMouseEnter={() => setHi(i)}
                                 onClick={() => escolher(o)}
                                 className={`w-full text-left px-3 py-2 text-sm flex flex-col gap-0.5 ${i === hi ? 'bg-blue-50' : 'hover:bg-gray-50'} ${String(o.value) === String(value) ? 'font-semibold text-primary' : 'text-gray-800'}`}
                             >
                                 <span className="break-words">{o.label}</span>
-                                {o.sub && <span className="text-xs text-gray-400">{o.sub}</span>}
+                                {o.sub && <span className="text-xs text-gray-500">{o.sub}</span>}
                             </button>
+                            </React.Fragment>
                         ))}
                     </div>
                     <div className="px-3 py-1.5 border-t border-gray-100 text-[11px] text-gray-400">
