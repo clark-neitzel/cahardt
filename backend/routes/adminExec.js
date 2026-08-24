@@ -55,7 +55,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'mapa-participa-divisao-2026-08-21',
+        deployMarker: 'itens-nota-sem-estoque-2026-08-24',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -6143,6 +6143,205 @@ router.get('/compras-estoque-check', async (req, res) => {
         for (const l of linhas) resumo[l.situacao] = (resumo[l.situacao] || 0) + 1;
 
         res.json({ totalConferidas: linhas.length, resumo, notas: linhas });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// GET /api/admin-exec/itens-nota-sem-estoque?de=YYYY-MM-DD&ate=YYYY-MM-DD&limite=200
+// SOMENTE LEITURA (Fase 0 do trabalho de item sem vínculo). Mede o estrago de itens de
+// notas JÁ CONFERIDAS que nunca somaram estoque nem custo porque não tinham vínculo com
+// Produto/ItemPcp (o filtro em notaEstoqueService descarta silenciosamente).
+// Classificação de cada item:
+//   OK            → existe NotaEntradaEstoqueMov ativo apontando para o próprio item;
+//   ORFAO         → a NOTA inteira não tem nenhum mov ativo nem CompraItem ativo (nunca somou nada);
+//   INDETERMINADO → a nota tem CompraItem ativo (formato legado, que não referencia o item),
+//                   mas este item não tem mov — precisa conferência manual.
+// Performance: 4 consultas em lote (notas → itens em blocos de 300 notas → movs em blocos →
+// groupBy de CompraItem). Nenhum N+1, nenhuma escrita, nenhuma transação.
+router.get('/itens-nota-sem-estoque', async (req, res) => {
+    try {
+        const RE_DATA = /^\d{4}-\d{2}-\d{2}$/;
+        const de = req.query.de ? String(req.query.de) : null;
+        const ate = req.query.ate ? String(req.query.ate) : null;
+        if ((de && !RE_DATA.test(de)) || (ate && !RE_DATA.test(ate))) {
+            return res.status(400).json({ ok: false, error: 'Datas em YYYY-MM-DD.' });
+        }
+        const limite = Math.min(Math.max(parseInt(req.query.limite, 10) || 200, 1), 2000);
+
+        const whereNota = {
+            status: { in: ['CONFERIDA', 'ENTRADA_REGISTRADA'] },
+            tipo: { not: 'NFSE' }
+        };
+        if (de || ate) {
+            whereNota.emissao = {};
+            if (de) whereNota.emissao.gte = new Date(`${de}T00:00:00`);
+            if (ate) whereNota.emissao.lte = new Date(`${ate}T23:59:59.999`);
+        }
+
+        // 1) Notas (sem os itens, para não trazer tudo de uma vez)
+        const notas = await prisma.notaEntrada.findMany({
+            where: whereNota,
+            orderBy: { emissao: 'desc' },
+            select: {
+                id: true, numero: true, emissao: true, dataEntrada: true, status: true,
+                fornecedorNome: true, fornecedorCnpj: true
+            }
+        });
+        const notaPorId = new Map(notas.map((n) => [n.id, n]));
+        const ids = notas.map((n) => n.id);
+
+        const emBlocos = (arr, tam) => {
+            const out = [];
+            for (let i = 0; i < arr.length; i += tam) out.push(arr.slice(i, i + tam));
+            return out;
+        };
+        const blocos = emBlocos(ids, 300);
+
+        // 2) Itens dessas notas (em blocos)
+        const itens = [];
+        for (const bloco of blocos) {
+            const parte = await prisma.notaEntradaItem.findMany({
+                where: { notaEntradaId: { in: bloco } },
+                select: {
+                    id: true, notaEntradaId: true, codigoFornecedor: true, descricao: true,
+                    ncm: true, cfop: true, unidade: true, quantidade: true, valorTotal: true,
+                    categoria: true
+                }
+            });
+            itens.push(...parte);
+        }
+
+        // 3) Movimentos de estoque ATIVOS dessas notas (ledger novo — referencia o item)
+        const itensComMov = new Set();
+        const notasComMov = new Set();
+        for (const bloco of blocos) {
+            const movs = await prisma.notaEntradaEstoqueMov.findMany({
+                where: { estornado: false, notaEntradaId: { in: bloco } },
+                select: { notaEntradaId: true, notaEntradaItemId: true }
+            });
+            for (const m of movs) {
+                notasComMov.add(m.notaEntradaId);
+                if (m.notaEntradaItemId) itensComMov.add(m.notaEntradaItemId);
+            }
+        }
+
+        // 4) CompraItem ativo por nota (formato legado — não referencia o item)
+        const compras = await prisma.compraItem.groupBy({
+            by: ['notaEntradaId'],
+            where: { estornado: false, notaEntradaId: { in: ids } },
+            _count: { id: true }
+        });
+        const notasComCompra = new Set(compras.map((c) => c.notaEntradaId).filter(Boolean));
+
+        const num = (v) => (v == null ? 0 : Number(v));
+
+        const totais = {
+            notasAnalisadas: notas.length,
+            itensAnalisados: itens.length,
+            ok: 0, orfao: 0, indeterminado: 0,
+            valorOrfao: 0, valorIndeterminado: 0,
+            // Recorte dentro de INDETERMINADO: o 1º caso é orfandade PROVADA (a nota já usa o
+            // ledger novo, que grava o id do item — se este item não está lá, ele foi descartado);
+            // o 2º é nota antiga, só com CompraItem legado, que realmente exige olhar manual.
+            indeterminadoNotaComLedger: 0, valorIndeterminadoNotaComLedger: 0,
+            indeterminadoSoCompraLegado: 0, valorIndeterminadoSoCompraLegado: 0
+        };
+        const porFornecedor = new Map();
+        const porNcm = new Map();
+        const porCfop = new Map();
+        const porCodigo = new Map();
+        const detalhe = [];
+
+        for (const it of itens) {
+            const nota = notaPorId.get(it.notaEntradaId);
+            if (!nota) continue;
+            const valor = num(it.valorTotal);
+            let classe;
+            if (itensComMov.has(it.id)) classe = 'OK';
+            else if (!notasComMov.has(it.notaEntradaId) && !notasComCompra.has(it.notaEntradaId)) classe = 'ORFAO';
+            else classe = 'INDETERMINADO';
+
+            if (classe === 'OK') { totais.ok++; continue; }
+            if (classe === 'INDETERMINADO') {
+                totais.indeterminado++;
+                totais.valorIndeterminado += valor;
+                if (notasComMov.has(it.notaEntradaId)) {
+                    totais.indeterminadoNotaComLedger++;
+                    totais.valorIndeterminadoNotaComLedger += valor;
+                } else {
+                    totais.indeterminadoSoCompraLegado++;
+                    totais.valorIndeterminadoSoCompraLegado += valor;
+                }
+                continue;
+            }
+
+            totais.orfao++;
+            totais.valorOrfao += valor;
+
+            const chaveF = `${nota.fornecedorCnpj || ''}|${nota.fornecedorNome || ''}`;
+            const f = porFornecedor.get(chaveF)
+                || { fornecedorNome: nota.fornecedorNome, fornecedorCnpj: nota.fornecedorCnpj, itens: 0, valor: 0 };
+            f.itens++; f.valor += valor; porFornecedor.set(chaveF, f);
+
+            const kNcm = it.ncm || '(sem NCM)';
+            const n1 = porNcm.get(kNcm) || { ncm: kNcm, itens: 0, valor: 0 };
+            n1.itens++; n1.valor += valor; porNcm.set(kNcm, n1);
+
+            const kCfop = it.cfop || '(sem CFOP)';
+            const c1 = porCfop.get(kCfop) || { cfop: kCfop, itens: 0, valor: 0 };
+            c1.itens++; c1.valor += valor; porCfop.set(kCfop, c1);
+
+            const kCod = `${nota.fornecedorCnpj || ''}|${it.codigoFornecedor}|${it.descricao}`;
+            const p1 = porCodigo.get(kCod) || {
+                fornecedorCnpj: nota.fornecedorCnpj, fornecedorNome: nota.fornecedorNome,
+                codigoFornecedor: it.codigoFornecedor, descricao: it.descricao,
+                unidade: it.unidade, ocorrencias: 0, valor: 0
+            };
+            p1.ocorrencias++; p1.valor += valor; porCodigo.set(kCod, p1);
+
+            if (detalhe.length < limite) {
+                detalhe.push({
+                    itemId: it.id,
+                    notaId: nota.id, notaNumero: nota.numero, notaStatus: nota.status,
+                    emissao: nota.emissao, dataEntrada: nota.dataEntrada,
+                    fornecedorNome: nota.fornecedorNome, fornecedorCnpj: nota.fornecedorCnpj,
+                    codigoFornecedor: it.codigoFornecedor, descricao: it.descricao,
+                    ncm: it.ncm, cfop: it.cfop, unidade: it.unidade,
+                    quantidade: num(it.quantidade), valorTotal: valor,
+                    categoria: it.categoria
+                });
+            }
+        }
+
+        const arred = (v) => Math.round(v * 100) / 100;
+        const ordenar = (mapa, campo) => [...mapa.values()]
+            .sort((a, b) => (b[campo] - a[campo]) || (b.valor - a.valor))
+            .map((x) => ({ ...x, valor: arred(x.valor) }));
+
+        res.json({
+            ok: true,
+            filtro: { de, ate, limite, statusConsiderados: ['CONFERIDA', 'ENTRADA_REGISTRADA'] },
+            legenda: {
+                OK: 'item tem movimento de estoque ativo pelo próprio id',
+                ORFAO: 'a nota inteira nunca somou estoque nem custo — item perdido de verdade',
+                INDETERMINADO: 'a nota somou alguma coisa, mas não dá para provar que foi ESTE item — ver o recorte abaixo',
+                indeterminadoNotaComLedger: 'a nota já usa o ledger novo (que grava o id do item) e este item não está lá — na prática é órfão, contado à parte para não inflar o número duro',
+                indeterminadoSoCompraLegado: 'nota antiga, só com CompraItem legado (não referencia o item) — exige conferência manual'
+            },
+            totais: {
+                ...totais,
+                valorOrfao: arred(totais.valorOrfao),
+                valorIndeterminado: arred(totais.valorIndeterminado),
+                valorIndeterminadoNotaComLedger: arred(totais.valorIndeterminadoNotaComLedger),
+                valorIndeterminadoSoCompraLegado: arred(totais.valorIndeterminadoSoCompraLegado)
+            },
+            rankingFornecedores: ordenar(porFornecedor, 'itens').slice(0, 50),
+            rankingNcm: ordenar(porNcm, 'itens').slice(0, 50),
+            rankingCfop: ordenar(porCfop, 'itens').slice(0, 50),
+            topItensOrfaos: ordenar(porCodigo, 'ocorrencias').slice(0, 50),
+            itensOrfaos: { limite, exibidos: detalhe.length, total: totais.orfao, lista: detalhe }
+        });
     } catch (e) {
         res.status(500).json({ ok: false, error: e.message });
     }
