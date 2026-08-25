@@ -21,6 +21,17 @@ const qtdDe = (mapa, v) => {
     return Number.isFinite(n) && n > 0 ? n : 0;
 };
 
+// Larguras FIXAS das 3 colunas (nota | quantas | subtotal), iguais nas duas
+// tabelas: sem isso o layout automático redistribui as colunas quando o
+// subtotal aparece ("—" vira "R$ 700,00") e os campos pulam durante a digitação.
+const ColunasContagem = () => (
+    <colgroup>
+        <col style={{ width: '30%' }} />
+        <col style={{ width: '30%' }} />
+        <col style={{ width: '40%' }} />
+    </colgroup>
+);
+
 // FORA do componente de propósito: declarada dentro, a cada tecla o React trata
 // como um tipo novo, remonta a linha e o campo PERDE O FOCO no meio da digitação
 // (digitar "18" virava "1"). Pego no teste de clique.
@@ -169,7 +180,8 @@ const ModalConferir = ({ aberto, onFechar, onOk, vendedorId, vendedorNome, data,
                         <>
                             <div className="border border-gray-200 rounded-xl p-3">
                                 <div className="text-[10px] font-bold uppercase tracking-widest text-amber-700 mb-1">Cédulas</div>
-                                <table className="w-full">
+                                <table className="w-full table-fixed">
+                                    <ColunasContagem />
                                     <thead>
                                         <tr className="text-[10px] uppercase tracking-wide text-gray-400">
                                             <th className="text-left font-bold pb-1">Nota</th>
@@ -183,7 +195,8 @@ const ModalConferir = ({ aberto, onFechar, onOk, vendedorId, vendedorNome, data,
                                 </table>
 
                                 <div className="text-[10px] font-bold uppercase tracking-widest text-amber-700 mt-3 mb-1">Moedas</div>
-                                <table className="w-full">
+                                <table className="w-full table-fixed">
+                                    <ColunasContagem />
                                     <tbody>
                                         {MOEDAS.map(v => <LinhaContagem key={v} valor={v} mapa={moedas} setMapa={setMoedas} moeda />)}
                                     </tbody>
