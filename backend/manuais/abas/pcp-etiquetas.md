@@ -102,9 +102,9 @@ A **impressão sai na própria página** (não abre janela nem aba nova) — fun
 
 ### Modelo ANVISA
 
-Etiqueta organizada por zonas: nome centralizado no topo (com folga para o selo quando houver), selo(s) "ALTO EM" no canto superior direito, tabela nutricional completa (colunas 100 g / porção / %VD), e embaixo os ingredientes/preparo/conservação. No rodapé ficam, lado a lado, as datas de Fabricação/Lote e Validade (à esquerda) e o **código de barras EAN-13 na horizontal, com o número embaixo** (à direita) — o padrão clássico de embalagem, fácil de ler no leitor. Tudo em preto puro, pensado para a impressora térmica. Sai no tamanho escolhido — no 80 × 100 as fontes e espaçamentos ficam mais compactos para caber no rolo menor.
+Etiqueta organizada por zonas: nome centralizado no topo (com folga para o selo quando houver), selo(s) "ALTO EM" no canto superior direito (a tabela começa sempre abaixo do selo, sem sobreposição), tabela nutricional completa (colunas 100 g / porção / %VD), e na zona inferior os textos de ingredientes/preparo/conservação à esquerda com o **código de barras EAN-13 na vertical** (girado 90°, número acompanhando na lateral, lendo de baixo para cima — como um EAN de embalagem em pé) numa coluna à direita, sem nunca encostar na tabela. No rodapé, sempre visíveis, as datas de Fabricação/Lote e Validade. Tudo em preto puro, pensado para a impressora térmica. Sai no tamanho escolhido — no 80 × 100 as fontes e espaçamentos ficam mais compactos para caber no rolo menor.
 
-Quando o produto tem muito texto (ingredientes e modo de preparo longos), a etiqueta **encolhe o conteúdo automaticamente** até tudo caber na altura da folha — as datas de Fabricação/Validade no rodapé aparecem sempre inteiras na impressão, nunca cortadas.
+Quando o produto tem muito texto (ingredientes e modo de preparo longos), a etiqueta **encolhe as fontes automaticamente** até tudo caber na altura da folha — é um ajuste de layout de verdade (não um "zoom" de tela), então o que aparece no preview é exatamente o que sai impresso, no computador e no iPad. As datas de Fabricação/Validade ficam num rodapé fixo, fora do bloco que encolhe — aparecem sempre inteiras na impressão, nunca cortadas. O código de barras também não encolhe: mantém as proporções e o tamanho corretos de leitura.
 
 ### Modelo Clássico
 
