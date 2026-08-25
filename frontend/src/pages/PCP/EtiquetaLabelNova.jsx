@@ -16,35 +16,49 @@ import {
 const fs = (pt) => `calc(var(--fs, 1) * ${pt}pt)`;
 const vmm = (mm) => `calc(var(--fs, 1) * ${mm}mm)`;
 
-// ─── Selo oficial "ALTO EM" (canto superior direito) ──────────────────────────
-// Pílula com lupa + um retângulo preto por nutriente acima do limite (0 a 3).
-// `sm` = rolo pequeno (80×100): tudo mais compacto, como no mockup aprovado (.seal.sm).
-// Fica FORA do bloco ajustável (posição absoluta, tamanho fixo em mm).
-function SeloAnvisa({ selos, sm, seloRef }) {
+// ─── Selo oficial "ALTO EM" — composição HORIZONTAL (Anexo XVII / IN 75/2020) ──
+// FAIXA no topo da etiqueta: moldura arredondada com a pílula da lupa + "ALTO EM"
+// à esquerda e os retângulos pretos dos nutrientes LADO A LADO (1 a 3), texto
+// branco podendo quebrar em 2 linhas ("AÇÚCAR / ADICIONADO"), como no arquivo
+// oficial da ANVISA. Altura CONSTANTE com 1, 2 ou 3 teores — o cabeçalho não
+// cresce, e o nome do produto fica centralizado na largura toda logo abaixo.
+// Tamanho fixo em mm/pt (não escala com o --fs do auto-fit); fica DENTRO do
+// bloco medido, então a altura dela é descontada da área útil automaticamente.
+function SeloAnvisa({ selos, sm }) {
     if (!selos.length) return null;
+    const altura = sm ? '5.5mm' : '7mm'; // 2 linhas de texto — constante p/ 1–3 selos
     return (
-        <div ref={seloRef} style={{
-            position: 'absolute', top: sm ? '2.5mm' : '3.5mm', right: sm ? '2.5mm' : '3.5mm',
-            border: `${sm ? '0.5mm' : '0.7mm'} solid #000`, borderRadius: '1.8mm',
-            background: '#fff', padding: sm ? '0.6mm' : '0.8mm', width: sm ? '20mm' : '25mm',
+        <div style={{
+            display: 'flex', alignItems: 'stretch', gap: sm ? '0.8mm' : '1mm',
+            border: `${sm ? '0.5mm' : '0.6mm'} solid #000`, borderRadius: '2mm',
+            background: '#fff', padding: sm ? '0.7mm' : '0.9mm',
+            marginBottom: sm ? '1.5mm' : '2mm', flex: '0 0 auto',
+            alignSelf: 'center', maxWidth: '100%', // SEMPRE centralizada na largura (1–3 teores)
         }}>
             <div style={{
-                display: 'flex', alignItems: 'center', gap: '0.7mm',
-                border: '0.45mm solid #000', borderRadius: '2mm',
-                padding: '0.5mm 1mm 0.5mm 0.7mm', marginBottom: '0.8mm',
+                display: 'flex', alignItems: 'center', gap: '0.8mm', flex: '0 0 auto',
+                border: '0.45mm solid #000', borderRadius: '2mm', minHeight: altura,
+                padding: sm ? '0.4mm 1.4mm 0.4mm 0.9mm' : '0.5mm 1.8mm 0.5mm 1.1mm',
             }}>
-                <svg viewBox="0 0 24 24" style={{ width: sm ? '3mm' : '3.8mm', height: sm ? '3mm' : '3.8mm', flex: '0 0 auto' }}>
+                <svg viewBox="0 0 24 24" style={{ width: sm ? '3.2mm' : '4mm', height: sm ? '3.2mm' : '4mm', flex: '0 0 auto' }}>
                     <circle cx="10" cy="9" r="6.2" fill="none" stroke="#000" strokeWidth="2.4" />
                     <line x1="5.6" y1="13.4" x2="1.4" y2="19.4" stroke="#000" strokeWidth="3.6" strokeLinecap="round" />
                 </svg>
-                <b style={{ fontSize: sm ? '6pt' : '7pt', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1 }}>ALTO EM</b>
+                <b style={{ fontSize: sm ? '6.5pt' : '8pt', fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1, whiteSpace: 'nowrap' }}>ALTO EM</b>
             </div>
-            {selos.map((s, i) => (
+            {selos.map((s) => (
                 <div key={s.chave} style={{
+                    flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: '#000', color: '#fff', fontWeight: 800, textTransform: 'uppercase',
-                    textAlign: 'center', borderRadius: '1.5mm', padding: sm ? '0.6mm 0.3mm' : '0.9mm 0.4mm',
-                    fontSize: sm ? '5.6pt' : '6.5pt', lineHeight: 1.02, marginTop: i === 0 ? 0 : '0.8mm',
-                }}>{s.rotulo}</div>
+                    textAlign: 'center', borderRadius: '1.5mm', minHeight: altura,
+                    padding: '0.3mm 1.2mm', fontSize: sm ? '5.4pt' : '6.5pt', lineHeight: 1.05,
+                }}>
+                    {/* nutriente de 2 palavras quebra em 2 linhas ("AÇÚCAR / ADICIONADO"),
+                        como no modelo oficial do Anexo XVII */}
+                    <span>{s.rotulo.split(' ').map((p, i) => (
+                        <span key={p}>{i > 0 && <br />}{p}</span>
+                    ))}</span>
+                </div>
             ))}
         </div>
     );
@@ -52,17 +66,15 @@ function SeloAnvisa({ selos, sm, seloRef }) {
 
 // ─── Etiqueta ANVISA (layout com selos "ALTO EM") ─────────────────────────────
 // Nome centralizado no topo (com folga p/ o selo), tabela nutricional completa,
-// zona inferior com os textos (ingredientes → preparo → conservação) à ESQUERDA
-// e o código de barras EAN-13 VERTICAL (girado 90°, número acompanhando na
-// lateral, lendo de baixo p/ cima — como um EAN de embalagem em pé) numa coluna
-// fixa à DIREITA, sem nunca encostar na tabela. As datas (Fabricação/Lote +
-// Validade) ficam num RODAPÉ FIXO, fora do bloco ajustável — nunca cortam.
+// zona inferior com os textos (ingredientes → preparo → conservação) usando a
+// largura TODA. RODAPÉ FIXO (fora do bloco ajustável — nunca corta) numa linha
+// só: Fabricação/Lote + Validade EMPILHADAS à esquerda e o código de barras
+// EAN-13 DEITADO (horizontal, número embaixo, aspecto travado) à direita —
+// pedido do dono em 08/2026: datas empilhadas encurtam a linha e sobra mais
+// espaço vertical p/ os textos.
 // Renderiza no TAMANHO escolhido: 100×120 (padrão) ou 80×100 compacto (sm).
 export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, alturaMM = 120 }) {
     const svgRef = useRef(null);
-    const colBarcodeRef = useRef(null);
-    const seloRef = useRef(null);
-    const headerRef = useRef(null);
     // sm = rolo pequeno 80×100 → aperto de fontes/paddings (classe .label.sm do mockup)
     const sm = larguraMM <= 80;
     // Auto-fit por LAYOUT REAL (--fs): encolhe fontes/espaçamentos até o conteúdo
@@ -72,12 +84,12 @@ export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, altur
     useEffect(() => {
         const svg = svgRef.current;
         if (!svg || !et.codigoBarras) return;
-        // EAN-13 nas proporções corretas, depois girado 90° pelo wrapper (CSS).
+        // EAN-13 DEITADO (horizontal, número embaixo) nas proporções corretas.
         // width = módulo em px CSS (96dpi): sm 1px ≈ 0,26mm (magnificação 80%,
         // mínimo do padrão EAN) · grande 1.2px ≈ 0,32mm — nítido na Zebra 203dpi.
         // margin = zona quieta nas PONTAS do código (obrigatória p/ leitura);
-        // marginTop/Bottom pequenos p/ o conjunto (barras + número) caber na
-        // largura da coluna depois de girado.
+        // marginTop/Bottom pequenos p/ o conjunto (barras + número) ficar baixo
+        // e caber na altura do rodapé.
         const opts = {
             width: sm ? 1 : 1.2, height: sm ? 30 : 36,
             displayValue: true, fontSize: sm ? 9 : 11, textMargin: 0,
@@ -92,8 +104,8 @@ export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, altur
         if (!ok) return;
         // Trava o aspecto: fixa o viewBox e dá as dimensões REAIS em mm (px CSS →
         // mm a 96dpi). Nunca esticar por width/height desencontrados — foi o que
-        // distorceu o EAN vertical anterior. preserveAspectRatio fica no default
-        // (travado). O --fs não afeta o barcode: tamanho físico constante.
+        // distorceu um EAN antigo. preserveAspectRatio fica no default (travado).
+        // O --fs não afeta o barcode: tamanho físico constante (leitura garantida).
         const w = parseFloat(svg.getAttribute('width'));
         const h = parseFloat(svg.getAttribute('height'));
         if (w > 0 && h > 0) {
@@ -104,25 +116,10 @@ export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, altur
             const PX2MM = 25.4 / 96;
             svg.style.width = `${(w * PX2MM).toFixed(2)}mm`;
             svg.style.height = `${(h * PX2MM).toFixed(2)}mm`;
-            // A coluna precisa de altura ≥ comprimento do código girado, senão o
-            // barcode (absoluto, centralizado) invadiria a tabela acima.
-            if (colBarcodeRef.current) {
-                colBarcodeRef.current.style.minHeight = `${(w * PX2MM + 2).toFixed(2)}mm`;
-            }
         }
     }, [et.codigoBarras, sm]);
 
     const selos = selosAnvisa(et);
-
-    // O selo "ALTO EM" é absoluto (canto sup. direito) e, com 2–3 nutrientes,
-    // fica mais alto que o cabeçalho — sem reserva ele SOBREPUNHA a coluna %VD
-    // da tabela (visto no PDF de validação). Reserva no cabeçalho a altura REAL
-    // do selo (medida no DOM, + folga) para a tabela começar sempre abaixo dele.
-    useEffect(() => {
-        if (!headerRef.current) return;
-        const h = seloRef.current ? seloRef.current.offsetHeight : 0;
-        headerRef.current.style.minHeight = h ? `${h + 2}px` : '';
-    }, [selos.length, sm, et]);
 
     const peso = pesoTabela(et);
     const linhas = linhasNutricionais(et);
@@ -140,9 +137,6 @@ export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, altur
     const cell = { padding: `${vmm(sm ? 0.2 : 0.4)} ${sm ? '0.9mm' : '1mm'}`, textAlign: 'center', borderLeft: '0.25mm solid #000', fontVariantNumeric: 'tabular-nums' };
     const cellNome = { padding: `${vmm(sm ? 0.2 : 0.4)} ${sm ? '0.9mm' : '1.5mm'}` };
     const indentBase = sm ? 1.2 : 1.5;
-    // Largura da coluna do código de barras vertical (girado): altura do SVG
-    // (barras + número) ≈ 10–12mm; coluna fixa com folga.
-    const colBarcode = sm ? '11.5mm' : '14mm';
 
     return (
         <div style={{
@@ -152,22 +146,37 @@ export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, altur
             fontFamily: 'Arial, Helvetica, sans-serif', lineHeight: 1.15,
             display: 'flex', flexDirection: 'column', overflow: 'hidden',
         }}>
-            <SeloAnvisa selos={selos} sm={sm} seloRef={seloRef} />
-
           {/* Bloco AJUSTÁVEL: tudo que pode encolher via --fs. O rodapé de datas
-              fica fora, então jamais é cortado. */}
+              fica fora, então jamais é cortado. A faixa do selo entra aqui em
+              tamanho fixo — a altura dela é descontada da área útil na medição. */}
           <div ref={boxRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
             <div ref={innerRef} style={{
                 minHeight: '100%', display: 'flex', flexDirection: 'column',
                 '--fs': fator,
             }}>
-            {/* Cabeçalho centralizado (abre espaço à direita quando há selo) */}
-            <div ref={headerRef} style={{ textAlign: 'center', padding: '0 1mm', paddingRight: selos.length ? (sm ? '21mm' : '26mm') : '1mm' }}>
-                <div style={{ fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 0.98, fontSize: fs(sm ? 12 : 15), textTransform: 'uppercase' }}>
+            {/* Faixa do selo "ALTO EM" no TOPO, centralizada; sem selo, o nome
+                sobe e usa o espaço */}
+            <SeloAnvisa selos={selos} sm={sm} />
+            {/* Cabeçalho centralizado na largura toda */}
+            <div style={{ textAlign: 'center', padding: '0 1mm' }}>
+                {/* tarjaPreta (config do cadastro, paridade com o Clássico): nome
+                    sobre faixa preta com letra branca. A faixa ocupa a largura
+                    disponível do cabeçalho — quando há selo, o paddingRight do
+                    header já reserva o canto, então tarja e selo convivem. */}
+                <div style={{
+                    fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 0.98,
+                    fontSize: fs(sm ? 12 : 15), textTransform: 'uppercase',
+                    background: et.tarjaPreta ? '#000' : 'transparent',
+                    color: et.tarjaPreta ? '#fff' : '#000',
+                    padding: et.tarjaPreta ? `${vmm(0.8)} 1mm` : undefined,
+                    borderRadius: et.tarjaPreta ? '0.8mm' : undefined,
+                }}>
                     {et.nomeProduto}
                 </div>
                 <div style={{ fontWeight: 700, fontSize: fs(sm ? 6 : 7), marginTop: vmm(sm ? 1 : 1.5) }}>
-                    Contém aprox. {et.quantidadeEmbalagem} unidades{et.pesoUnitario != null ? ` · ${et.pesoUnitario} g cada` : ''}
+                    {/* "aprox." só com a config quantidadeAproximada ligada (paridade
+                        com o Clássico: "CONTÉM APROXIMADAMENTE X" só com a flag) */}
+                    Contém {et.quantidadeAproximada ? 'aprox. ' : ''}{et.quantidadeEmbalagem} unidades{et.pesoUnitario != null ? ` · ${et.pesoUnitario} g cada` : ''}
                 </div>
                 <div style={{ fontWeight: 700, fontSize: fs(sm ? 6.5 : 7.5), marginTop: vmm(0.8) }}>
                     CÓD. {cod}{pesoLiq ? ` · PESO LÍQUIDO ${pesoLiq}` : ''}
@@ -213,62 +222,65 @@ export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, altur
                 </div>
             </div>
 
-            {/* Zona inferior: textos à ESQUERDA + código de barras EAN-13 VERTICAL
-                (girado 90°, número na lateral, lendo de baixo p/ cima) numa coluna
-                fixa à DIREITA. A zona começa abaixo da tabela — o barcode vive
-                dentro dela e nunca encosta na tabela. */}
-            <div style={{ display: 'flex', flex: 1, minHeight: 0, gap: sm ? '1.5mm' : '2mm', marginTop: vmm(sm ? 1.6 : 2.5) }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: fs(sm ? 6 : 6.4), lineHeight: sm ? 1.22 : 1.3 }}>
-                        <b style={{ fontWeight: 800 }}>INGREDIENTES:</b> {String(et.composicao || '').toLowerCase()}
-                        <span style={{ fontWeight: 800, textTransform: 'uppercase' }}>
-                            {' '}{et.contemGluten ? 'CONTÉM GLÚTEN' : 'NÃO CONTÉM GLÚTEN'}
-                            {et.contemLactose && <> · CONTÉM LACTOSE</>}
-                            {alergenos.length > 0 && (
-                                <> · ALÉRGICOS: CONTÉM {alergenos.join(', ').toUpperCase()}.</>
-                            )}
-                            {et.avisosRotulo && <> {String(et.avisosRotulo).toUpperCase()}</>}
-                        </span>
-                    </div>
-                    {et.modoPreparo && (
-                        <div style={{ fontSize: fs(sm ? 6 : 6.4), lineHeight: sm ? 1.22 : 1.3, marginTop: vmm(sm ? 1 : 1.6) }}>
-                            <b style={{ fontWeight: 800 }}>MODO DE PREPARO:</b> {et.modoPreparo}
-                        </div>
-                    )}
-                    {et.armazenamento && (
-                        <div style={{ fontStyle: 'italic', fontSize: fs(sm ? 5.4 : 5.8), lineHeight: 1.22, marginTop: vmm(sm ? 1 : 1.6) }}>
-                            ❄ Conservar em FREEZER (-12 °C ou mais frio). Descongelado, não recongelar.
-                        </div>
-                    )}
+            {/* Zona inferior: textos (ingredientes → preparo → conservação) na
+                largura TODA — o código de barras agora vive no rodapé fixo. */}
+            <div style={{ flex: 1, minHeight: 0, marginTop: vmm(sm ? 1.6 : 2.5) }}>
+                <div style={{ fontSize: fs(sm ? 6 : 6.4), lineHeight: sm ? 1.22 : 1.3 }}>
+                    <b style={{ fontWeight: 800 }}>INGREDIENTES:</b> {String(et.composicao || '').toLowerCase()}
+                    <span style={{ fontWeight: 800, textTransform: 'uppercase' }}>
+                        {' '}{et.contemGluten ? 'CONTÉM GLÚTEN' : 'NÃO CONTÉM GLÚTEN'}
+                        {et.contemLactose && <> · CONTÉM LACTOSE</>}
+                        {alergenos.length > 0 && (
+                            <> · ALÉRGICOS: CONTÉM {alergenos.join(', ').toUpperCase()}.</>
+                        )}
+                        {et.avisosRotulo && <> {String(et.avisosRotulo).toUpperCase()}</>}
+                    </span>
                 </div>
-                {et.codigoBarras && (
-                    <div ref={colBarcodeRef} style={{ flex: '0 0 auto', width: colBarcode, position: 'relative' }}>
-                        {/* rotate(-90°): o início do código fica embaixo e o número
-                            acompanha na lateral, lendo de baixo para cima — EAN de
-                            embalagem "em pé". Aspecto do SVG travado (sem esticar). */}
-                        <div style={{
-                            position: 'absolute', top: '50%', left: '50%',
-                            transform: 'translate(-50%, -50%) rotate(-90deg)',
-                        }}>
-                            <svg ref={svgRef} style={{ display: 'block' }} />
-                        </div>
+                {et.modoPreparo && (
+                    <div style={{ fontSize: fs(sm ? 6 : 6.4), lineHeight: sm ? 1.22 : 1.3, marginTop: vmm(sm ? 1 : 1.6) }}>
+                        <b style={{ fontWeight: 800 }}>MODO DE PREPARO:</b> {et.modoPreparo}
+                    </div>
+                )}
+                {et.armazenamento && (
+                    <div style={{ fontStyle: 'italic', fontSize: fs(sm ? 5.4 : 5.8), lineHeight: 1.22, marginTop: vmm(sm ? 1 : 1.6) }}>
+                        ❄ Conservar em FREEZER (-12 °C ou mais frio). Descongelado, não recongelar.
                     </div>
                 )}
             </div>
             </div>
           </div>
 
-            {/* Rodapé FIXO (fora do bloco ajustável): Fabricação/Lote + Validade
-                sempre visíveis e em tamanho pleno — nunca cortam. */}
-            <div style={{ display: 'flex', gap: sm ? '4mm' : '6mm', borderTop: '0.35mm solid #000', paddingTop: sm ? '1mm' : '1.5mm', marginTop: sm ? '1mm' : '1.5mm', flex: '0 0 auto' }}>
-                <div>
-                    <div style={{ fontSize: '6pt', fontWeight: 600 }}>Fabricação / Lote</div>
-                    <div style={{ fontSize: sm ? '8pt' : '9.5pt', fontWeight: 800, letterSpacing: '-0.01em' }}>{dataFab}</div>
+            {/* Rodapé FIXO (fora do bloco ajustável — nunca corta, não escala):
+                datas em PÍLULAS empilhadas (borda preta, fundo branco) + EAN-13
+                DEITADO à direita. Cada pílula é um grid com coluna de rótulo de
+                largura FIXA — rótulos alinhados à esquerda entre si e as datas
+                começando no mesmo x, uma em cima da outra; as pílulas esticam
+                para a mesma largura (alignItems: stretch). O bloco das pílulas
+                fica CENTRALIZADO (vertical e horizontal) no espaço que sobra ao
+                lado do barcode. Barcode em tamanho físico constante (leitura). */}
+            <div style={{
+                display: 'flex', alignItems: 'center',
+                gap: sm ? '2mm' : '3mm', borderTop: '0.35mm solid #000',
+                paddingTop: sm ? '1mm' : '1.5mm', marginTop: sm ? '1mm' : '1.5mm', flex: '0 0 auto',
+            }}>
+                <div style={{ flex: 1, minWidth: 0, alignSelf: 'stretch', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'stretch', gap: sm ? '0.8mm' : '1mm' }}>
+                        {[['Fabricação/Lote:', dataFab], ['Validade:', dataVal]].map(([rotulo, valor]) => (
+                            <div key={rotulo} style={{
+                                display: 'grid', gridTemplateColumns: sm ? '20mm auto' : '22mm auto',
+                                alignItems: 'baseline', columnGap: '1mm', whiteSpace: 'nowrap',
+                                border: '0.35mm solid #000', borderRadius: '99mm', background: '#fff',
+                                padding: sm ? '0.6mm 2mm' : '0.9mm 2.5mm',
+                            }}>
+                                <span style={{ fontSize: sm ? '6.5pt' : '7pt', fontWeight: 600 }}>{rotulo}</span>
+                                <b style={{ fontSize: sm ? '8pt' : '9.5pt', fontWeight: 800, letterSpacing: '-0.01em' }}>{valor}</b>
+                            </div>
+                        ))}
+                    </div>
                 </div>
-                <div>
-                    <div style={{ fontSize: '6pt', fontWeight: 600 }}>Validade</div>
-                    <div style={{ fontSize: sm ? '8pt' : '9.5pt', fontWeight: 800, letterSpacing: '-0.01em' }}>{dataVal}</div>
-                </div>
+                {et.codigoBarras && (
+                    <svg ref={svgRef} style={{ display: 'block', flex: '0 0 auto' }} />
+                )}
             </div>
         </div>
     );
