@@ -48,10 +48,16 @@ function SeloAnvisa({ selos, sm }) {
             </div>
             {selos.map((s) => (
                 <div key={s.chave} style={{
-                    flex: '0 0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    // TODOS os retângulos com a MESMA largura (modelo oficial da
+                    // ANVISA) — fixa em mm, dimensionada pelo maior rótulo
+                    // ("GORDURA SATURADA" em 2 linhas). Com 1, 2 ou 3 teores a
+                    // proporção não muda: "SÓDIO" não sai estreito nem o box
+                    // único estica para a largura toda.
+                    flex: '0 0 auto', width: sm ? '13mm' : '16mm',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                     background: '#000', color: '#fff', fontWeight: 800, textTransform: 'uppercase',
                     textAlign: 'center', borderRadius: '1.5mm', minHeight: altura,
-                    padding: '0.3mm 1.2mm', fontSize: sm ? '5.4pt' : '6.5pt', lineHeight: 1.05,
+                    padding: '0.3mm 0.5mm', fontSize: sm ? '5.4pt' : '6.5pt', lineHeight: 1.05,
                 }}>
                     {/* nutriente de 2 palavras quebra em 2 linhas ("AÇÚCAR / ADICIONADO"),
                         como no modelo oficial do Anexo XVII */}
