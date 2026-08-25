@@ -8,7 +8,7 @@ Tela para acompanhar a **rentabilidade de cada produto** — custo, preço, mark
 
 ### Filtros (no topo)
 - **Navegador de mês** (`‹ Julho 2026 ›`) — passe entre os meses para ver **o que aconteceu em cada mês**. No mês atual mostra o custo de hoje e o preço de tabela; num **mês passado** mostra o custo daquele mês e o **preço praticado** (média real das vendas do mês), com markup e margem recalculados. Abre sempre no mês corrente.
-- **Categoria** (menu com busca) — padrão **Produto Acabado**.
+- **Categoria** (menu com busca) — padrão **Produto Acabado**. Categorias com o toggle **"Vende" desligado** em Config — Cat. Estoque (imobilizado: freezer, painel LED, móveis) **não aparecem neste menu** e seus produtos ficam de fora da tela — bem que não é vendido não tem margem, e ele sujaria os KPIs e o histórico de custo. Para vê-lo, use Produtos (Admin) ou Estoque — Posição.
 - **Período** — últimos 3, 6 ou 12 meses (define a janela da variação de custo, terminando no mês selecionado).
 - **Produção própria / Revenda / Todos** — porque o custo de um vem da ficha técnica e do outro da compra.
 
@@ -17,6 +17,8 @@ Tela para acompanhar a **rentabilidade de cada produto** — custo, preço, mark
 - **Produção própria** — quantos têm ficha técnica.
 - **Sem custo cadastrado** — não entram na margem (precisam de custo).
 - **Margem em queda** — produtos cujo custo subiu no período.
+
+> **Categoria que ficou um tempo como "não vende":** enquanto o toggle **Vende** está desligado, a captura diária do custo **não grava** os produtos dessa categoria. Se um dia a categoria voltar a vender, os meses em que ela ficou desligada aparecem como **buraco no gráfico de tendência** daqueles produtos (sem ponto no mês). É esperado, não é defeito, e não afeta os meses anteriores nem os seguintes.
 
 ### Tabela (no celular vira cards)
 Colunas: Produto, **Origem** (própria/revenda/sem custo), **Custo unitário**, **Preço**, **Markup**, **Margem %** e **tendência do custo** (mini-linha dos últimos meses). A Margem % é colorida: verde ≥ 50%, amarelo 35–49%, vermelho abaixo de 35%. A tendência fica **vermelha quando o custo sobe** e verde quando cai.

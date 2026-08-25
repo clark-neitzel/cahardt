@@ -227,8 +227,11 @@ const ConferenciaDevolucaoCard = ({ data, vendedorId, caixaStatus, podeReverter,
     }, [conf?.temSolicitacaoPendente, data, vendedorId]);
 
     // Lista de produtos só quando o usuário quer registrar sobra avulsa.
-    // MESMO filtro da tela Catálogo: só produtos ativos das categorias de venda
-    // configuradas (senão apareciam os 448 itens do banco, com peça de caminhão etc.).
+    // Filtra por TODAS as categorias existentes nos produtos (configService.getCategorias()
+    // → GET /config/categorias, um groupBy da coluna categoria) — NÃO é a lista
+    // 'categorias_vendas' da tela Catálogo. Na prática isso só descarta produto ativo
+    // sem categoria nenhuma (senão apareciam os 448 itens do banco, com peça de caminhão etc.);
+    // as categorias marcadas como "não vende" já são cortadas pelo próprio /produtos.
     // A rota /produtos devolve { data, meta } paginado — pedir limite alto e ler .data
     useEffect(() => {
         if (addSobra && produtos.length === 0) {

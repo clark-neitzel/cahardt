@@ -14,7 +14,7 @@ Visão completa da posição atual de estoque de todos os produtos. Mostra o est
 
 ## O que dá pra fazer aqui
 
-- Ver posição de estoque de todos os produtos ativos
+- Ver posição de estoque de todos os produtos ativos — **inclusive os do imobilizado** (categorias com o toggle "Vende" desligado em Config — Cat. Estoque): freezer, painel LED e móveis têm saldo e custo aqui, mesmo estando fora das listas de venda
 - Filtrar por categoria de produto (múltipla seleção) e por status de estoque
 - Ordenar por nome, estoque disponível, mínimo ou reservado
 - Ver alertas de estoque: triângulo âmbar = abaixo do mínimo; check verde = acima do mínimo

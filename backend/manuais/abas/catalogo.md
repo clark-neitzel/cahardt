@@ -106,4 +106,6 @@ Se o vendedor tiver categorias comerciais definidas no seu cadastro, ele só vê
 | `backend/routes/produtoRoutes.js` | Rota `GET /produtos/:id/ficha` |
 
 > A página antiga `frontend/src/pages/Produtos/DetalheProduto.jsx` continua existindo na rota `/produto/:id`, mas o catálogo agora abre o popup em vez de navegar para ela.
+> **Produtos do imobilizado nunca entram na lista (08/2026).** Produto de categoria com o toggle **"Vende" desligado** (tela Categorias de Estoque) — freezer, painel LED, móveis — não entra quando a lista é montada **e** também não aparece na página pública de uma lista salva antes da regra. O link é público: um bem ali viraria preço de venda na mão do cliente. Some só o item; os preços congelados dos outros itens não mudam. Se todos os produtos escolhidos forem desses, a criação é recusada com "Nenhum dos produtos selecionados está disponível.".
+
 > O catálogo personalizado é um **snapshot** (tabelas `catalogos_personalizados` + `catalogos_personalizados_itens`): não referencia Produto/Cliente por FK, guarda os dados congelados do momento da geração.

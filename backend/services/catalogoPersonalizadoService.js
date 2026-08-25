@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
+const categoriaEstoqueService = require('./categoriaEstoqueService');
 
 // WhatsApp central da loja para o botão "fazer pedido" da página pública.
 // Pode ser sobrescrito em app_configs (chave "catalogo_publico_whatsapp"); default abaixo.
@@ -23,6 +24,25 @@ async function gerarTokenUnico() {
     throw new Error('Não foi possível gerar um token único para o catálogo.');
 }
 const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+
+// Categorias CA marcadas como "não vende" (imobilizado: freezer, painel LED, móveis).
+// O link do catálogo é PÚBLICO — um bem entrando aqui iria parar numa lista de preços
+// na mão do cliente. Vale na montagem E na leitura (lista antiga continuaria vazando).
+// Sem nenhuma categoria assim, tudo se comporta EXATAMENTE como antes (nem consulta extra).
+async function nomesNaoVendaveis() {
+    try {
+        return await categoriaEstoqueService.nomesNaoVendaveis();
+    } catch (err) {
+        // Nunca derrubar a página pública por causa disso; o pior caso é o de hoje.
+        console.error('[CatalogoPersonalizado] Falha ao ler categorias não vendáveis:', err.message);
+        return [];
+    }
+}
+// `notIn` do Prisma EXCLUI linhas com categoria = null — daí o OR explícito.
+function filtroVendavel(naoVendaveis) {
+    if (!naoVendaveis.length) return {};
+    return { OR: [{ categoria: null }, { categoria: { notIn: naoVendaveis } }] };
+}
 const soDigitos = (s) => String(s || '').replace(/\D/g, '');
 function comDDI55(tel) {
     let d = soDigitos(tel);
@@ -86,7 +106,7 @@ async function criar({ vendedor, clienteUuid, clienteNome, condicaoId, produtoId
 
     // Produtos frescos do catálogo
     const produtos = await prisma.produto.findMany({
-        where: { id: { in: produtoIds }, ativo: true },
+        where: { id: { in: produtoIds }, ativo: true, ...filtroVendavel(await nomesNaoVendaveis()) },
         include: {
             imagens: { orderBy: [{ principal: 'desc' }, { ordem: 'asc' }], take: 1 },
             categoriaProduto: { select: { nome: true, corTag: true } }
@@ -197,6 +217,22 @@ async function obterPublico(token) {
 
     const expirado = !!(cat.validadeEm && cat.validadeEm.getTime() < Date.now());
 
+    // Trava de leitura: item cujo produto HOJE está numa categoria "não vende"
+    // sai da página pública, mesmo que a lista tenha sido montada antes da regra.
+    // Só o item some — preço, condição e demais itens do snapshot ficam intactos.
+    let itens = cat.itens;
+    const naoVendaveis = await nomesNaoVendaveis();
+    if (naoVendaveis.length && itens.length) {
+        const bloqueados = await prisma.produto.findMany({
+            where: { id: { in: itens.map(i => i.produtoId) }, categoria: { in: naoVendaveis } },
+            select: { id: true }
+        });
+        if (bloqueados.length) {
+            const fora = new Set(bloqueados.map(p => p.id));
+            itens = itens.filter(i => !fora.has(i.produtoId));
+        }
+    }
+
     return {
         token: cat.token,
         titulo: cat.titulo,
@@ -211,7 +247,7 @@ async function obterPublico(token) {
         vendedorNome: cat.vendedorNome,
         whatsapp, // já resolvido (vendedor p/ cliente, loja p/ não-cliente)
         criadoEm: cat.createdAt,
-        itens: cat.itens.map(i => ({
+        itens: itens.map(i => ({
             codigo: i.codigo,
             nome: i.nome,
             unidade: i.unidade,

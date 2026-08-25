@@ -7,6 +7,7 @@ const router = express.Router();
 const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const produtoMargemService = require('../services/produtoMargemService');
+const categoriaEstoqueService = require('../services/categoriaEstoqueService');
 
 const getPerms = async (userId) => {
     const v = await prisma.vendedor.findUnique({ where: { id: userId }, select: { permissoes: true } });
@@ -41,13 +42,16 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
 // GET /categorias — categorias de produto disponíveis (para o filtro)
 router.get('/categorias', verificarAuth, checkAcesso, async (req, res) => {
     try {
+        // Categorias "não vende" (imobilizado) ficam fora do menu do filtro,
+        // para bater com a lista — que também não traz esses produtos.
+        const naoVendaveis = new Set(await categoriaEstoqueService.nomesNaoVendaveis());
         const rows = await prisma.produto.groupBy({
             by: ['categoria'],
             where: { ativo: true, categoria: { not: null } },
             _count: { _all: true }
         });
         res.json(rows
-            .filter((r) => (r.categoria || '').trim())
+            .filter((r) => (r.categoria || '').trim() && !naoVendaveis.has(r.categoria))
             .map((r) => ({ categoria: r.categoria, produtos: r._count._all }))
             .sort((a, b) => b.produtos - a.produtos));
     } catch (error) {

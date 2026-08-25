@@ -9,7 +9,7 @@ Contar fisicamente o estoque de uma categoria (ex.: dentro da câmara fria) e aj
 
 ## Fluxo
 
-1. **Escolher a categoria** (tela inicial). Mostra as categorias de estoque com a quantidade de produtos. Precisa de internet **só neste passo** — ao tocar em "Baixar produtos e iniciar", a lista de produtos (com o estoque atual do sistema) fica guardada no celular.
+1. **Escolher a categoria** (tela inicial). Mostra as categorias de estoque com a quantidade de produtos. **Categorias marcadas como "não vende"** (imobilizado — freezer, painel LED, móveis) **aparecem aqui normalmente**: é justamente aqui que o bem precisa ser contado. O que muda é que os produtos dessas categorias somem das listas de venda (catálogo, pedido, amostra). Precisa de internet **só neste passo** — ao tocar em "Baixar produtos e iniciar", a lista de produtos (com o estoque atual do sistema) fica guardada no celular.
 2. **Contar (funciona offline).** Cada produto tem botões grandes **−**, **+** e **+10** (para caixas fechadas) e um campo para digitar direto. Cada toque é salvo na hora no celular: pode fechar o app, a tela apagar ou a bateria acabar — ao reabrir a tela, a contagem continua de onde parou (cartão "Contagem em andamento"). Tem busca por nome/código e filtros "Todos / Faltam contar / Contados", além da barra de progresso (X de Y contados).
 3. **Revisar.** Mostra contados vs. sistema com badge de diferença (verde "confere", âmbar +N, vermelho −N), total de diferenças e campo de observação. Produtos **não contados ficam de fora** (o estoque deles não muda).
 4. **Enviar.** Com internet, envia na hora. **Sem internet**, fica "guardado no celular" e é **enviado sozinho** assim que o celular reconectar (ou pelo botão "Tentar enviar agora").

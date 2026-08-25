@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Inventário do Imobilizado — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
+<meta property="og:title" content="📦 Novidade no Hardt App: contar freezer, painel e móveis no Inventário">
+<meta property="og:description" content="Agora dá para controlar os bens da empresa com estoque e custo, sem que eles apareçam no catálogo nem nos pedidos. Basta desligar a chave “Vende” da categoria.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 96px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block; background: var(--gold); color: #2b230f;
+    font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em;
+    padding: 6px 14px; border-radius: 999px; margin-bottom: 18px;
+  }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 420px; margin: -68px auto 30px; background: #fff; border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28); overflow: hidden; text-align: left;
+  }
+  .mock-top { background: var(--house); color: #fff; padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+  .mock-top small {
+    display: block; font-size: 10px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .14em; color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em;
+    color: var(--primary-dark); margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff; border: 1px solid #e3e1da; border-radius: 16px;
+    margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none;
+    font: inherit; text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px;
+  }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico {
+    width: 38px; height: 38px; border-radius: 11px; background: var(--mint);
+    display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* avisos */
+  .aviso {
+    background: #fdf6e6; border: 1px solid #ecd9a8; border-radius: 12px;
+    padding: 12px 14px; font-size: 13.5px; color: #6b5a2c; margin: 12px 0 0;
+  }
+  .aviso b { color: #4d4020; }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%;
+    background: var(--primary); color: #fff; font-weight: 800; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff; border: 1px solid #e3e1da; border-radius: 16px;
+    overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house); color: #fff; padding: 12px 16px;
+    font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+  .app-card-head {
+    display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9; font-size: 10px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .12em; color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc; border-radius: 8px; padding: 8px 10px;
+    font-size: 12.5px; color: var(--ink); background: #fff; margin-bottom: 8px;
+  }
+  .app-input small {
+    display: block; font-size: 9px; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px;
+  }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex; align-items: center; gap: 6px; background: var(--primary); color: #fff;
+    font-size: 12.5px; font-weight: 700; padding: 9px 16px; border-radius: 999px;
+  }
+  .app-busca { display: flex; align-items: center; gap: 8px; }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+
+  /* linha de categoria com as 3 chaves */
+  .cab-cats {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: #f2f1ec; border-bottom: 1px solid #e5e3dc; padding: 7px 12px;
+    font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #8a938e;
+  }
+  .cab-cats .chaves span { display: inline-block; width: 48px; text-align: center; }
+  .linha-cat {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 10px 12px; border-bottom: 1px solid #f0efe9;
+  }
+  .linha-cat:last-child { border-bottom: none; }
+  .linha-cat .nome { font-size: 13px; font-weight: 600; color: var(--ink); min-width: 0; }
+  .linha-cat .nome small { display: block; font-size: 11px; font-weight: 600; color: #a37b17; }
+  .chaves { display: flex; align-items: center; flex-shrink: 0; }
+  .chaves .cel { width: 48px; display: flex; justify-content: center; }
+  .app-toggle { width: 38px; height: 22px; border-radius: 999px; background: #d8d5cc; position: relative; }
+  .app-toggle::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 16px; height: 16px; border-radius: 50%; background: #fff;
+  }
+  .app-toggle.on::after { left: auto; right: 3px; }
+  .app-toggle.on.verde { background: var(--primary); }
+  .app-toggle.on.roxo { background: #8b5cf6; }
+
+  /* chips */
+  .chip {
+    display: inline-block; font-size: 10.5px; font-weight: 800;
+    padding: 2px 8px; border-radius: 999px; vertical-align: 1px; margin-left: 6px;
+  }
+  .chip.ambar { background: #fef3c7; color: #b45309; }
+  .chip.verde { background: #dcfce7; color: #15803d; }
+
+  /* cartão do inventário */
+  .inv-card {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; padding: 12px; margin-bottom: 8px;
+  }
+  .inv-card.destaque { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.10); }
+  .inv-card .t { font-size: 13.5px; font-weight: 700; }
+  .inv-card .s { font-size: 11.5px; color: #8a938e; }
+  .inv-num { font-size: 17px; font-weight: 800; color: var(--primary-dark); }
+
+  .pin {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--gold); color: #2b230f;
+    font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Agora dá para fazer o<br>inventário do imobilizado</h1>
+    <p>Freezer, painel de LED, mesa, cadeira: os bens da empresa passam a ter estoque e custo dentro do app — e somem das listas de venda (catálogo, pedido, amostra e especial), para ninguém achar e vender sem querer.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🧊</span>
+      <div>
+        <small>Configurações · Categorias de Estoque</small>
+        <strong>A chave nova: “Vende”</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="cab-cats" style="margin:-16px -18px 10px; padding:8px 18px;">
+        <span>Categoria</span>
+        <span class="chaves"><span>Estoque</span><span>Vende</span><span>Flex</span></span>
+      </div>
+      <div class="linha-cat" style="padding-left:0;padding-right:0;">
+        <div class="nome">Produto Acabado</div>
+        <div class="chaves">
+          <div class="cel"><div class="app-toggle on verde"></div></div>
+          <div class="cel"><div class="app-toggle on verde"></div></div>
+          <div class="cel"><div class="app-toggle on roxo"></div></div>
+        </div>
+      </div>
+      <div class="linha-cat" style="padding-left:0;padding-right:0;border-bottom:none;">
+        <div class="nome">Imobilizado<small>Não aparece no catálogo nem em pedidos</small></div>
+        <div class="chaves">
+          <div class="cel"><div class="app-toggle on verde"></div></div>
+          <div class="cel"><div class="app-toggle"></div></div>
+          <div class="cel"><div class="app-toggle"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <p class="sec-label">O que mudou</p>
+
+  <div class="acc aberto">
+    <button class="acc-head" aria-expanded="true" onclick="alternar(this)">
+      <span class="acc-ico">🔑</span>
+      <strong>Uma chave nova por categoria: “Vende”</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Em <b>Configurações → Cat. Estoque</b>, cada categoria já tinha duas chaves: <b>Estoque</b> e <b>Flex</b>. Agora tem uma terceira, no meio: <b>Vende</b>.</p>
+      <ul>
+        <li><b>Vende ligado</b> (é assim que todas nascem): nada muda — os produtos aparecem normalmente para vender.</li>
+        <li><b>Vende desligado</b>: os produtos daquela categoria <b>somem do catálogo, do pedido, da amostra e do pedido especial</b> — mas continuam com estoque e custo, como qualquer produto.</li>
+      </ul>
+      <p>Embaixo da lista há uma legenda explicando o que cada uma das três chaves faz.</p>
+      <p class="aviso">O corte é feito <b>no servidor</b>, não é um filtro só de tela: o produto deixa de vir na lista, então não tem como achar ele para colocar no pedido.<br><br><b>Quem já estiver com a tela de Novo Pedido aberta precisa recarregar o app</b> — até recarregar, a lista antiga continua na memória do aparelho e o produto ainda pode ser incluído naquele pedido.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" aria-expanded="true" onclick="alternar(this)">
+      <span class="acc-ico">📦</span>
+      <strong>O bem é um produto — com estoque e custo</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Cada freezer, painel ou móvel é cadastrado em <b>Produtos</b>, na categoria <b>Imobilizado</b>. A partir daí ele se comporta como qualquer item:</p>
+      <ul>
+        <li>entra no <b>Inventário</b> para ser contado;</li>
+        <li>tem <b>histórico de movimentação</b> (Estoque → Histórico);</li>
+        <li>recebe o <b>custo da nota de compra</b> quando a nota é lançada.</li>
+      </ul>
+      <p>A única diferença é que ele <b>não vem mais nas listas de venda</b>: o servidor deixa de devolver esse produto, então não há como encontrá-lo para incluir num pedido. Quem estiver com a tela de venda já aberta precisa <b>recarregar o app</b> para a lista dele atualizar.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" aria-expanded="true" onclick="alternar(this)">
+      <span class="acc-ico">🏷️</span>
+      <strong>Na lista de Produtos ele aparece marcado</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Como o bem some do catálogo, o cadastro precisava continuar mostrando ele — senão não daria mais para editar o freezer.</p>
+      <p>Então em <b>Produtos</b> ele aparece normalmente, com uma etiqueta cor de âmbar <span class="chip ambar">Não vendável</span> ao lado do nome. É o lembrete visual de por que ele não está no catálogo.</p>
+      <p>A categoria <b>Imobilizado</b> também entra no filtro “Filtrar por Categoria”, para achar todos os bens de uma vez.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" aria-expanded="true" onclick="alternar(this)">
+      <span class="acc-ico">🧹</span>
+      <strong>Saiu uma chave que não fazia nada</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Na tela <b>Configurações → Categorias de Produto</b> (as categorias comerciais, com cor de etiqueta) existia uma caixinha <b>“Controla Estoque”</b>. Ela salvava, mas <b>nenhuma parte do sistema lia esse valor</b> — quem manda no estoque sempre foi a <b>categoria de estoque</b>.</p>
+      <p>Ela foi removida da tela para ninguém marcar achando que ligou alguma coisa. Nada do que já estava cadastrado mudou.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <p class="sec-label">As telas do app</p>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">🖥️ Tela 1 · Configurações → Cat. Estoque</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="cab-cats">
+          <span>Categoria</span>
+          <span class="chaves"><span>Estoque</span><span>Vende</span><span>Flex</span></span>
+        </div>
+        <div class="linha-cat">
+          <div class="nome">Produto Acabado</div>
+          <div class="chaves">
+            <div class="cel"><div class="app-toggle on verde"></div></div>
+            <div class="cel"><div class="app-toggle on verde"></div></div>
+            <div class="cel"><div class="app-toggle on roxo"></div></div>
+          </div>
+        </div>
+        <div class="linha-cat">
+          <div class="nome">Material p/ revenda</div>
+          <div class="chaves">
+            <div class="cel"><div class="app-toggle on verde"></div></div>
+            <div class="cel"><div class="app-toggle on verde"></div></div>
+            <div class="cel"><div class="app-toggle on roxo"></div></div>
+          </div>
+        </div>
+        <div class="linha-cat">
+          <div class="nome">Imobilizado <span class="pin">2</span><small>Não aparece no catálogo nem em pedidos <span class="pin">3</span></small></div>
+          <div class="chaves">
+            <div class="cel"><div class="app-toggle on verde"></div></div>
+            <div class="cel"><div class="app-toggle"></div><span class="pin">1</span></div>
+            <div class="cel"><div class="app-toggle"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">ℹ️ O que cada chave faz <span class="pin">4</span></div>
+        <div class="app-card-body" style="font-size:12.5px;color:#5f6b66;">
+          <div style="display:flex;gap:9px;margin-bottom:8px;"><span style="width:24px;height:12px;border-radius:999px;background:#22c55e;flex-shrink:0;margin-top:4px;"></span><span><b style="color:rgba(0,0,0,.87)">Estoque</b> — o app conta entradas e saídas e a categoria aparece no Inventário.</span></div>
+          <div style="display:flex;gap:9px;margin-bottom:8px;"><span style="width:24px;height:12px;border-radius:999px;background:#00754A;flex-shrink:0;margin-top:4px;"></span><span><b style="color:rgba(0,0,0,.87)">Vende</b> — desligado, os produtos NÃO aparecem no catálogo, nem em pedido, amostra ou especial.</span></div>
+          <div style="display:flex;gap:9px;"><span style="width:24px;height:12px;border-radius:999px;background:#8b5cf6;flex-shrink:0;margin-top:4px;"></span><span><b style="color:rgba(0,0,0,.87)">Flex</b> — acréscimos e descontos dessa categoria entram no saldo flex do vendedor.</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>A chave “Vende”, desligada.</b> Ao tocar para <b>desligar</b>, o app pergunta antes: abre “Tirar da venda?” dizendo <b>quantos produtos serão afetados</b> — assim você não tira 180 itens do catálogo sem querer. Confirmando em “Sim, tirar da venda”, vale na hora. Para <b>religar</b> é só tocar, sem pergunta.</span></div>
+      <div><span class="pin">2</span><span><b>A categoria Imobilizado.</b> Criada no botão “Nova categoria”, no alto da tela. O nome é livre.</span></div>
+      <div><span class="pin">3</span><span><b>O aviso embaixo do nome.</b> Aparece sozinho quando “Vende” está desligado — assim ninguém precisa decorar o que a chave faz.</span></div>
+      <div><span class="pin">4</span><span><b>A legenda das três chaves</b>, no fim da tela, em português simples.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">📋 Tela 2 · Estoque → Inventário</div>
+    <div class="tela-corpo">
+      <div class="inv-card">
+        <div><div class="t">Produto Acabado</div><div class="s">128 itens para contar</div></div>
+        <div class="inv-num">128</div>
+      </div>
+      <div class="inv-card">
+        <div><div class="t">Material p/ revenda</div><div class="s">41 itens para contar</div></div>
+        <div class="inv-num">41</div>
+      </div>
+      <div class="inv-card destaque">
+        <div><div class="t">Imobilizado <span class="pin">1</span></div><div class="s">6 bens para contar <span class="pin">2</span></div></div>
+        <div class="inv-num">6</div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>O cartão “Imobilizado” no Inventário.</b> Ele só aparece porque a chave <b>Estoque</b> da categoria está ligada — a chave “Vende” desligada não tira o bem daqui.</span></div>
+      <div><span class="pin">2</span><span><b>A contagem funciona igual à dos produtos:</b> abre o cartão, conta o que existe e confirma. Quem vai contar precisa ter a permissão de estoque.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-titulo">🔍 Tela 3 · Produtos (cadastro)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="app-busca" style="margin-bottom:10px;">
+            <div class="app-input">🔎 freezer</div>
+          </div>
+          <div class="app-input" style="margin-bottom:0;color:#9aa5a0;">Filtrar por Categoria: <b style="color:var(--ink)">Imobilizado</b> <span class="pin">3</span></div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-body">
+          <div style="font-size:13.5px;font-weight:700;">Freezer horizontal 500L — Loja 2 <span class="chip ambar">Não vendável</span> <span class="pin">1</span></div>
+          <div style="font-size:11.5px;color:#8a938e;margin-top:2px;">Cód: IMB-0012 • Imobilizado</div>
+          <div style="font-size:12px;margin-top:6px;color:#5f6b66;">Estoque: <b style="color:#15803d">1 UN</b> · Custo: <b style="color:var(--ink)">R$ 3.480,00</b> <span class="pin">2</span></div>
+        </div>
+      </div>
+      <div class="app-card" style="margin-bottom:0;">
+        <div class="app-card-body">
+          <div style="font-size:13.5px;font-weight:700;">Painel de LED 2×1m — Fachada <span class="chip ambar">Não vendável</span></div>
+          <div style="font-size:11.5px;color:#8a938e;margin-top:2px;">Cód: IMB-0013 • Imobilizado</div>
+          <div style="font-size:12px;margin-top:6px;color:#5f6b66;">Estoque: <b style="color:#15803d">1 UN</b> · Custo: <b style="color:var(--ink)">R$ 5.900,00</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>A etiqueta “Não vendável”.</b> Aparece do lado do nome sempre que o produto está numa categoria com “Vende” desligado. É só um aviso — o produto continua totalmente editável.</span></div>
+      <div><span class="pin">2</span><span><b>Estoque e custo normais.</b> O custo vem da nota de compra lançada; o estoque, da entrada e do inventário.</span></div>
+      <div><span class="pin">3</span><span><b>A categoria entra no filtro.</b> Escolhendo “Imobilizado” a tela lista todos os bens de uma vez — bom para conferir a lista antes de contar.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PASSO A PASSO ══════════ -->
+  <p class="sec-label">Para começar a usar</p>
+  <div class="passos">
+    <div class="passo">
+      <div class="passo-n">1</div>
+      <div><b>Crie a categoria — só administrador faz este passo.</b> Configurações → <b>Cat. Estoque</b> → botão <b>Nova categoria</b> → digite <b>Imobilizado</b>. Depois, na linha dela: <b>Estoque ligado</b>, <b>Vende desligado</b>, <b>Flex desligado</b>. Quem não é administrador consegue abrir a tela e ver como está configurado, mas as chaves aparecem travadas — nesse caso, peça a quem administra o sistema.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">2</div>
+      <div><b>Cadastre cada bem em Produtos.</b> Produtos → <b>Novo produto</b>. Nome bem descritivo (“Freezer horizontal 500L — Loja 2”), unidade <b>UN</b> e categoria <b>Imobilizado</b>. Um produto por bem, para conseguir contar item a item.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">3</div>
+      <div><b>Dê a permissão de estoque a quem vai contar.</b> Configurações → Usuários → permissão de <b>Estoque/Inventário</b>. Sem ela a pessoa não vê o Inventário.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">4</div>
+      <div><b>Lance a nota de compra vinculando ao produto.</b> Financeiro → Notas Recebidas → lance a nota e, no item, escolha o produto <b>Imobilizado</b> que você cadastrou. É isso que dá entrada no estoque e joga o custo real no bem.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">5</div>
+      <div><b>Conte no Inventário.</b> Estoque → Inventário → cartão <b>Imobilizado</b>. Daí em diante é a mesma contagem de sempre.</div>
+    </div>
+  </div>
+
+  <div class="aviso" style="margin-top:14px;">
+    <b>Atenção ao criar a categoria:</b> se você desligar a chave <b>Vende</b> de uma categoria que hoje é vendida (Produto Acabado, por exemplo), aqueles produtos <b>somem do catálogo na hora</b> para todo mundo. Use “Vende desligado” só nas categorias de bem próprio.
+  </div>
+
+  <p class="rodape">
+    Dúvida? Fale com o <strong>Clark</strong>.<br>
+    O manual da aba no <strong>Clippy</strong> já está atualizado — é só perguntar a ele dentro do app.
+  </p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

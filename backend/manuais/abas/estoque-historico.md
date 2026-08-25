@@ -17,7 +17,7 @@ Registro completo de todas as movimentações de estoque (entradas e saídas), c
 - Ver todas as movimentações de estoque em ordem cronológica
 - Ver os **totais do filtro** no cabeçalho: nº de movimentações, quantas caixas entraram (+), quantas saíram (−) e o saldo do período — somados no servidor, contando todas as páginas (não só o que está carregado na tela)
 - Nos títulos das colunas Entradas/Saídas: nº de lançamentos e total de caixas de cada lado
-- Filtrar por **produto escolhendo da lista** (menu com busca — não é mais texto digitado solto)
+- Filtrar por **produto escolhendo da lista** (menu com busca — não é mais texto digitado solto). A lista inclui os produtos do **imobilizado** (categorias com "Vende" desligado), para dar para auditar a movimentação de um freezer ou painel LED
 - Filtrar por: tipo (entrada/saída), motivo e **período no padrão do sistema** (pílula com presets: Hoje · 7 dias · 30 dias · Este mês · Este ano · Todo o período · Personalizado, com setas ‹ › para pular de período; a escolha fica salva por usuário; padrão: todo o período)
 - Ver para cada movimentação: produto, tipo, quantidade, responsável, motivo, data, estoque antes/depois e status de sync com CA
 - Carregar mais registros (paginação infinita — 60 por vez)

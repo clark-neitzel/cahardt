@@ -84,7 +84,9 @@ export default function HistoricoEstoque() {
     const tamanhoPagina = 60;
 
     useEffect(() => {
-        produtoService.listar({ limit: 2000, page: 1 }).then(r => {
+        // incluirNaoVendaveis: o histórico do freezer/painel (categoria sem venda)
+        // também precisa aparecer no seletor de produto.
+        produtoService.listar({ limit: 2000, page: 1, incluirNaoVendaveis: 1 }).then(r => {
             const arr = Array.isArray(r) ? r : (r?.data || []);
             setProdutos(arr.sort((a, b) => a.nome.localeCompare(b.nome)));
         }).catch(() => {});

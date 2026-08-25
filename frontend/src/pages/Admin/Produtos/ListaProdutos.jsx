@@ -1,10 +1,10 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import produtoService from '../../../services/produtoService';
 import configService from '../../../services/configService';
 import categoriaProdutoService from '../../../services/categoriaProdutoService';
-import { API_URL } from '../../../services/api';
+import api, { API_URL } from '../../../services/api';
 import { Search, ArrowLeft, Plus, X, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import MultiSelect from '../../../components/MultiSelect';
@@ -59,7 +59,14 @@ const ListaProdutos = () => {
         if (!novoProduto.nome.trim()) { toast.error('Informe o nome do produto.'); return; }
         setCriando(true);
         try {
-            const criado = await produtoService.criar(novoProduto);
+            // Bem do imobilizado (freezer, painel) não tem preço de venda — o campo fica em
+            // branco e o backend recusava com "Valor de venda inválido." (parseFloat('') = NaN).
+            // Em branco = 0; quem digitar um preço continua igual.
+            const payload = {
+                ...novoProduto,
+                valorVenda: String(novoProduto.valorVenda).trim() === '' ? 0 : novoProduto.valorVenda
+            };
+            const criado = await produtoService.criar(payload);
             toast.success('Produto criado!');
             setModalNovo(false);
             setNovoProduto({ nome: '', codigo: '', ean: '', unidade: 'UN', categoria: '', valorVenda: '' });
@@ -71,6 +78,9 @@ const ListaProdutos = () => {
         }
     };
     const [availableCatsComerciais, setAvailableCatsComerciais] = useState([]);
+    // Categorias marcadas como "não vende" (ex.: Imobilizado). Aqui no cadastro elas
+    // TÊM que aparecer — é onde o freezer/painel é editado — só que sinalizadas.
+    const [catsNaoVendaveis, setCatsNaoVendaveis] = useState([]);
 
     // Load filter options
     useEffect(() => {
@@ -81,7 +91,28 @@ const ListaProdutos = () => {
         categoriaProdutoService.listar()
             .then(cats => setAvailableCatsComerciais(cats || []))
             .catch(err => console.error(err));
+
+        // Se o backend ainda não devolver "vendavel", a lista fica vazia e nada muda na tela
+        api.get('/categorias-estoque')
+            .then(r => {
+                const lista = Array.isArray(r?.data) ? r.data : [];
+                setCatsNaoVendaveis(lista.filter(c => c?.vendavel === false).map(c => c.nome));
+            })
+            .catch(() => setCatsNaoVendaveis([]));
     }, []);
+
+    // /config/categorias é um groupBy da coluna categoria: a categoria recém-criada
+    // (Imobilizado, ainda sem nenhum produto) NÃO vem de lá. Somamos as não-vendáveis
+    // aqui para o dono achar os bens dele. Derivado, e não useEffect + setState: as duas
+    // chamadas chegam fora de ordem e a que respondesse por último apagava a outra.
+    const opcoesCategorias = useMemo(() => {
+        const faltando = catsNaoVendaveis.filter(n => !availableCategories.includes(n));
+        return faltando.length === 0
+            ? availableCategories
+            : [...availableCategories, ...faltando].sort((a, b) => a.localeCompare(b));
+    }, [availableCategories, catsNaoVendaveis]);
+
+    const ehNaoVendavel = (produto) => !!produto?.categoria && catsNaoVendaveis.includes(produto.categoria);
 
     // Sync State -> URL (a persistência dos filtros fica por conta do useFiltroSalvo)
     useEffect(() => {
@@ -100,7 +131,9 @@ const ListaProdutos = () => {
         const fetchProdutos = async () => {
             setLoading(true);
             try {
-                const params = { page, limit: 10, search };
+                // Cadastro de produto mostra TUDO, inclusive as categorias que não vão à venda
+                // (Imobilizado etc.) — senão o bem some da tela e não dá mais para editar.
+                const params = { page, limit: 10, search, incluirNaoVendaveis: 1 };
 
                 if (statusFilter === 'ativo') params.ativo = true;
                 if (statusFilter === 'inativo') params.ativo = false;
@@ -290,7 +323,7 @@ const ListaProdutos = () => {
                     <div className="flex flex-col md:flex-row gap-3">
                         <div className="w-full md:w-64 z-20">
                             <MultiSelect
-                                options={availableCategories}
+                                options={opcoesCategorias}
                                 selected={selectedCategories}
                                 onChange={handleCategoryChange}
                                 placeholder="Filtrar por Categoria"
@@ -344,6 +377,12 @@ const ListaProdutos = () => {
                                                 {produto.nome}
                                                 {produto.ativo === false && (
                                                     <span className="ml-1.5 inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 align-middle">Inativo</span>
+                                                )}
+                                                {ehNaoVendavel(produto) && (
+                                                    <span
+                                                        className="ml-1.5 inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 align-middle"
+                                                        title="Categoria sem venda — não aparece no catálogo nem em pedidos"
+                                                    >Não vendável</span>
                                                 )}
                                             </div>
                                             <div className="text-xs text-gray-500">
@@ -431,6 +470,12 @@ const ListaProdutos = () => {
                                                             {produto.nome}
                                                             {produto.ativo === false && (
                                                                 <span className="ml-2 inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-700 align-middle">Inativo</span>
+                                                            )}
+                                                            {ehNaoVendavel(produto) && (
+                                                                <span
+                                                                    className="ml-2 inline-block px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 align-middle"
+                                                                    title="Categoria sem venda — não aparece no catálogo nem em pedidos"
+                                                                >Não vendável</span>
                                                             )}
                                                         </div>
                                                         <div className="text-sm text-gray-500">

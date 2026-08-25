@@ -18,8 +18,23 @@
 
 const prisma = require('../config/database');
 const pcpReceitaService = require('./pcpReceitaService');
+const categoriaEstoqueService = require('./categoriaEstoqueService');
 
 const TZ = 'America/Sao_Paulo';
+
+/**
+ * Trecho de `where` que tira os produtos das categorias CA marcadas como
+ * "não vende" (imobilizado: freezer, painel LED, móveis) — eles não têm
+ * preço de venda e sujariam a margem e o histórico de custo.
+ * Devolve {} quando não há nenhuma categoria assim (zero regressão).
+ * OBS: `notIn` do Prisma EXCLUI linhas com categoria = null — daí o OR explícito.
+ */
+async function filtroCategoriasVendaveis() {
+    const naoVendaveis = await categoriaEstoqueService.nomesNaoVendaveis();
+    if (!naoVendaveis.length) return {};
+    return { OR: [{ categoria: null }, { categoria: { notIn: naoVendaveis } }] };
+}
+
 const num = (v) => Number(v || 0);
 const round2 = (v) => Math.round(num(v) * 100) / 100;
 const round4 = (v) => Math.round(num(v) * 10000) / 10000;
@@ -120,7 +135,7 @@ async function listar({ categoria = null, origem = 'todos', meses = 6, mes = nul
     const mesesArr = listaMeses(mesSel, meses); // janela da tendência termina no mês selecionado
 
     const produtos = await prisma.produto.findMany({
-        where: { ativo: true, ...(categoria ? { categoria } : {}) },
+        where: { ativo: true, ...(categoria ? { categoria } : {}), ...(await filtroCategoriasVendaveis()) },
         select: { id: true, codigo: true, nome: true, unidade: true, valorVenda: true, categoria: true }
     });
     const ids = produtos.map((p) => p.id);
@@ -511,7 +526,7 @@ async function arvoreCusto(produtoId, meses = 6, mes = null) {
  */
 async function capturarMes(mesRef = ymNowSP(), { estimado = false } = {}) {
     const produtos = await prisma.produto.findMany({
-        where: { ativo: true },
+        where: { ativo: true, ...(await filtroCategoriasVendaveis()) },
         select: { id: true, valorVenda: true }
     });
     const ids = produtos.map((p) => p.id);

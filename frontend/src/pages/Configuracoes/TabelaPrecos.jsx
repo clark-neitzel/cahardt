@@ -27,15 +27,24 @@ const TabelaPrecos = () => {
     const carregarDados = async () => {
         try {
             setLoading(true);
-            const [dados, bancosData, catsRes, formasRes] = await Promise.all([
+            const [dados, bancosData, catsRes, formasRes, catsEstoque] = await Promise.all([
                 tabelaPrecoService.listar(),
                 contaFinanceiraService.listar(),
                 api.get('/produtos/categorias-ca').then(r => r.data).catch(() => []),
-                formasPagamentoService.listar().catch(() => [])
+                formasPagamentoService.listar().catch(() => []),
+                api.get('/categorias-estoque').then(r => r.data).catch(() => [])
             ]);
             setCondicoes(dados);
             setBancos(bancosData.filter(b => b.ativo));
-            setCategoriasCA(catsRes);
+            // /produtos/categorias-ca devolve TODAS as categorias, inclusive as que não vão à venda
+            // (Imobilizado). Marcar uma delas aqui daria lista vazia ao vendedor, sem explicação —
+            // então nem chegam a ser oferecidas. Se a chamada falhar, a lista fica como era antes.
+            const naoVendaveis = new Set(
+                (Array.isArray(catsEstoque) ? catsEstoque : [])
+                    .filter(c => c?.vendavel === false)
+                    .map(c => c.nome)
+            );
+            setCategoriasCA((Array.isArray(catsRes) ? catsRes : []).filter(c => !naoVendaveis.has(c)));
             setFormasEntrega(formasRes);
         } catch (error) {
             toast.error('Erro ao carregar dados');

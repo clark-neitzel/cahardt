@@ -2,12 +2,13 @@ const prisma = require('../config/database');
 const fs = require('fs');
 const path = require('path');
 const pcpReceitaService = require('../services/pcpReceitaService');
+const categoriaEstoqueService = require('../services/categoriaEstoqueService');
 
 const produtoController = {
     // Listar produtos com paginação e filtros
     listar: async (req, res) => {
         try {
-            const { page = 1, limit = 10, search, ativo, categorias, categoriaProdutoIds } = req.query;
+            const { page = 1, limit = 10, search, ativo, categorias, categoriaProdutoIds, incluirNaoVendaveis } = req.query;
             const skip = (page - 1) * limit;
 
             const where = {};
@@ -22,9 +23,19 @@ const produtoController = {
                 where.ativo = ativo === 'true';
             }
 
-            // Filtro de Categorias CA (Multi-select por nome)
+            // Filtro de Categorias CA (Multi-select por nome, separado por vírgula).
+            // Pega antes as flags (cache) porque o nome da própria categoria PODE ter
+            // vírgula (ex.: "Móveis, Equipamentos") — nesse caso o split quebraria o
+            // nome em dois e a contagem/filtro sairia errado. Se o texto inteiro bate
+            // com uma categoria cadastrada, ele vale como UM nome só.
+            const flagsCategorias = await categoriaEstoqueService.flagsCategorias();
             if (categorias) {
-                const cats = categorias.split(',').map(c => c.trim()).filter(c => c);
+                const bruto = String(categorias).trim();
+                const chave = (n) => String(n ?? '').trim().toLowerCase();
+                const nomeInteiro = flagsCategorias.find(c => chave(c.nome) === chave(bruto));
+                const cats = nomeInteiro
+                    ? [nomeInteiro.nome]
+                    : categorias.split(',').map(c => c.trim()).filter(c => c);
                 if (cats.length > 0) {
                     where.categoria = { in: cats };
                 }
@@ -38,7 +49,26 @@ const produtoController = {
                 }
             }
 
-            const [produtos, total, categoriasEstoque] = await Promise.all([
+            // Categorias CA marcadas como "não vende" (imobilizado: freezer, painel LED, móveis).
+            // Saem da listagem padrão — que é a que alimenta catálogo/pedido/amostra.
+            // As telas de cadastro/estoque pedem ?incluirNaoVendaveis=1 para vê-los.
+            if (incluirNaoVendaveis !== '1') {
+                const naoVendaveis = flagsCategorias
+                    .filter(c => c.vendavel === false)
+                    .map(c => c.nome)
+                    .filter(n => typeof n === 'string' && n.length > 0);
+                if (naoVendaveis.length > 0) {
+                    // ATENÇÃO: `notIn` no Prisma EXCLUI as linhas com categoria = null.
+                    // Sem o OR explícito, os produtos sem categoria sumiriam da lista.
+                    // E o where.OR já é usado pela busca por texto — por isso vai em AND.
+                    where.AND = [
+                        ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+                        { OR: [{ categoria: null }, { categoria: { notIn: naoVendaveis } }] }
+                    ];
+                }
+            }
+
+            const [produtos, total] = await Promise.all([
                 prisma.produto.findMany({
                     where,
                     skip: Number(skip),
@@ -54,13 +84,12 @@ const produtoController = {
                     },
                     orderBy: { nome: 'asc' }
                 }),
-                prisma.produto.count({ where }),
-                prisma.categoriaEstoque.findMany({ select: { nome: true, controlaEstoque: true } })
+                prisma.produto.count({ where })
             ]);
 
             // Controle de estoque EFETIVO: produto.controlaEstoque força; null segue a categoria.
             // O front (tela de pedido) usa isso p/ avisar item sem estoque sem falso positivo.
-            const catControla = new Map(categoriasEstoque.map(c => [c.nome, c.controlaEstoque === true]));
+            const catControla = new Map(flagsCategorias.map(c => [c.nome, c.controlaEstoque === true]));
             const produtosComFlag = produtos.map(p => ({
                 ...p,
                 controlaEstoqueEfetivo: p.controlaEstoque === true ? true
@@ -263,7 +292,10 @@ const produtoController = {
                     valorVenda: valor,
                     unidade: unidadeFinal,
                     ean: ean?.trim() || '',
-                    categoria: categoria?.trim() || '',
+                    // Nome canônico da tabela de categorias (ver canonizarNome):
+                    // "imobilizado" digitado à mão gruda em "Imobilizado" e a trava
+                    // do "Vende" continua valendo.
+                    categoria: await categoriaEstoqueService.canonizarNome(categoria) || '',
                     descricao: descricao?.trim() || '',
                     status: 'ATIVO',
                     ativo: true,
@@ -306,9 +338,14 @@ const produtoController = {
             if (data.controlaEstoque !== undefined && data.controlaEstoque !== null) {
                 data.controlaEstoque = data.controlaEstoque === true || data.controlaEstoque === 'true';
             }
-            // Categoria: texto livre (agrupa estoque/relatórios/flex); vazio = sem categoria
+            // Categoria: texto livre (agrupa estoque/relatórios/flex); vazio = sem categoria.
+            // Normaliza para a grafia da tabela `categorias_estoque` quando bater
+            // ignorando caixa/espaços — o casamento produto↔categoria é por string
+            // EXATA e o `notIn` do Postgres é case-sensitive, então um "imobilizado"
+            // digitado torto criaria uma categoria paralela e a trava do "Vende"
+            // deixaria de pegar em silêncio.
             if (data.categoria !== undefined) {
-                data.categoria = String(data.categoria || '').trim() || null;
+                data.categoria = await categoriaEstoqueService.canonizarNome(data.categoria) || null;
             }
             // Ativo: só true/false de verdade
             if (data.ativo !== undefined) {

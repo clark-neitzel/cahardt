@@ -181,15 +181,11 @@ const CategoriasProduto = () => {
                                 />
                                 <span className="text-gray-900 text-sm font-medium">Permite Fração (kg, litro...)</span>
                             </label>
-                            <label className="flex items-center space-x-2 mt-6">
-                                <input
-                                    type="checkbox"
-                                    checked={form.controlaEstoque || false}
-                                    onChange={(e) => setForm({ ...form, controlaEstoque: e.target.checked })}
-                                    className="h-4 w-4 text-primary bg-white focus:ring-primary border-gray-300 rounded"
-                                />
-                                <span className="text-gray-900 text-sm font-medium">Controla Estoque</span>
-                            </label>
+                            {/* "Controla Estoque" saiu daqui (08/2026): a chave gravava no banco mas
+                                NENHUMA rota lia esse campo — quem manda no controle de estoque é a
+                                categoria de ESTOQUE (Configurações → Categorias de Estoque). O campo
+                                controlaEstoque continua no schema (regra do projeto: não dropar coluna)
+                                e é preservado ao salvar, porque handleEdit copia a categoria inteira. */}
                             <label className="flex items-center space-x-2 mt-6">
                                 <input
                                     type="checkbox"
@@ -234,7 +230,6 @@ const CategoriasProduto = () => {
                                     <h3 className="text-sm font-bold text-gray-900 flex items-center flex-wrap gap-1">
                                         {cat.nome}
                                         {cat.permiteFracao && <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">Fração</span>}
-                                        {cat.controlaEstoque && <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded">Estoque</span>}
                                         {cat.flexPositivo === false && cat.flexNegativo === false && <span className="px-2 py-0.5 text-xs bg-gray-200 text-gray-600 rounded">Flex: excluído</span>}
                                         {cat.flexPositivo === false && cat.flexNegativo !== false && <span className="px-2 py-0.5 text-xs bg-yellow-100 text-yellow-700 rounded">Flex: só desconto</span>}
                                         {cat.flexPositivo !== false && cat.flexNegativo === false && <span className="px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">Flex: só acréscimo</span>}

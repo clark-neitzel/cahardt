@@ -2088,6 +2088,10 @@ model CategoriaEstoque {
   controlaEstoque Boolean  @default(false) @map("controla_estoque")
   // Se false, produtos desta categoria CA são excluídos do cálculo de flex
   contabilizaFlex Boolean  @default(true) @map("contabiliza_flex")
+  // Se false, os produtos desta categoria CA NUNCA aparecem para venda
+  // (catálogo, pedido, amostra, margem/custo). Continuam no estoque/inventário.
+  // Usado para o imobilizado (freezer, painel LED, móveis).
+  vendavel        Boolean  @default(true) @map("vendavel")
   createdAt       DateTime @default(now()) @map("created_at")
 
   @@map("categorias_estoque")
