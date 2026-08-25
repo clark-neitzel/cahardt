@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
 import { codExibir, imprimirEtiquetas, validadeDias } from './EtiquetaLabel';
 import { EtiquetaRender } from './EtiquetaLabelNova';
-import { MODELOS, MODELO_PADRAO } from './etiquetaModelos';
+import { TAMANHOS, TAMANHO_PADRAO, LAYOUTS, LAYOUT_PADRAO, layoutValido } from './etiquetaModelos';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 // ─── Utilidades de data ───────────────────────────────────────────────────────
@@ -62,10 +62,13 @@ function BarcodeEl({ value, height = 28 }) {
 function PrintModal({ et, onClose }) {
     const [dataFab, setDataFab] = useState(hojeIso());
     const [copies, setCopies] = useState(1);
-    const [modelo, setModelo] = useFiltroSalvo('etiquetas:modelo', MODELO_PADRAO);
+    // Tamanho (rolo) e Modelo (layout) escolhidos SEPARADAMENTE.
+    const [tamanho, setTamanho] = useFiltroSalvo('etiquetas:tamanho', TAMANHO_PADRAO);
+    const [modeloSalvo, setModelo] = useFiltroSalvo('etiquetas:modelo', LAYOUT_PADRAO);
+    const layout = layoutValido(modeloSalvo); // sanitiza valor legado ('anvisa120' → 'anvisa')
     const labelRef = useRef(null);
 
-    const cfg = MODELOS[modelo] || MODELOS[MODELO_PADRAO];
+    const dim = TAMANHOS[tamanho] || TAMANHOS[TAMANHO_PADRAO];
     const dataFabDisplay = isoParaDisplay(dataFab);
     const dias = validadeDias(et);
     const dataValDisplay = somarDias(dataFab, dias);
@@ -74,7 +77,7 @@ function PrintModal({ et, onClose }) {
         const conteudo = labelRef.current;
         if (!conteudo) return;
 
-        imprimirEtiquetas(conteudo.innerHTML, parseInt(copies) || 1, modelo);
+        imprimirEtiquetas(conteudo.innerHTML, parseInt(copies) || 1, tamanho);
     };
 
     return (
@@ -94,19 +97,37 @@ function PrintModal({ et, onClose }) {
                 {/* Controles */}
                 <div className="px-6 py-4 bg-gray-50 border-b flex flex-wrap items-end gap-5">
                     <div>
-                        <label className="block text-xs font-semibold text-gray-600 mb-1">Modelo</label>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Tamanho</label>
                         <div className="flex flex-wrap gap-1.5">
-                            {Object.values(MODELOS).map(m => (
+                            {Object.values(TAMANHOS).map(t => (
                                 <button
-                                    key={m.id}
-                                    onClick={() => setModelo(m.id)}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all min-h-[36px] ${
-                                        modelo === m.id
+                                    key={t.id}
+                                    onClick={() => setTamanho(t.id)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all min-h-[44px] ${
+                                        tamanho === t.id
                                             ? 'bg-primary text-white border-primary shadow-sm'
                                             : 'bg-white text-gray-600 border-gray-300 hover:border-primary hover:text-primary'
                                     }`}
                                 >
-                                    {m.nome}
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Modelo</label>
+                        <div className="flex flex-wrap gap-1.5">
+                            {Object.values(LAYOUTS).map(l => (
+                                <button
+                                    key={l.id}
+                                    onClick={() => setModelo(l.id)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all min-h-[44px] ${
+                                        layout === l.id
+                                            ? 'bg-primary text-white border-primary shadow-sm'
+                                            : 'bg-white text-gray-600 border-gray-300 hover:border-primary hover:text-primary'
+                                    }`}
+                                >
+                                    {l.label}
                                 </button>
                             ))}
                         </div>
@@ -162,9 +183,9 @@ function PrintModal({ et, onClose }) {
                 {/* Preview */}
                 <div className="flex-1 overflow-auto bg-gray-100 flex justify-center py-6">
                     <div>
-                        <p className="text-xs text-gray-400 text-center mb-3">Preview — {cfg.larguraMM}mm × {cfg.alturaMM}mm</p>
-                        <div ref={labelRef} style={{ transform:`scale(${modelo === 'anvisa120' ? 1.5 : 1.9})`, transformOrigin:'top center', marginBottom: modelo === 'anvisa120' ? '260px' : '190px' }}>
-                            <EtiquetaRender modelo={modelo} et={et} dataFab={dataFabDisplay} dataVal={dataValDisplay} />
+                        <p className="text-xs text-gray-400 text-center mb-3">Preview — {dim.larguraMM}mm × {dim.alturaMM}mm · {LAYOUTS[layout]?.label}</p>
+                        <div ref={labelRef} style={{ transform:`scale(${tamanho === 'g120' ? 1.5 : 1.9})`, transformOrigin:'top center', marginBottom: tamanho === 'g120' ? '260px' : '190px' }}>
+                            <EtiquetaRender layout={layout} tamanho={tamanho} et={et} dataFab={dataFabDisplay} dataVal={dataValDisplay} />
                         </div>
                     </div>
                 </div>

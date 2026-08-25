@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
-import { MODELOS, MODELO_PADRAO, codExibir, validadeDias, pesoLiquidoStr, parseValor, parseVD, fmtNum } from './etiquetaModelos';
+import { TAMANHOS, TAMANHO_PADRAO, MODELOS, codExibir, validadeDias, pesoLiquidoStr, parseValor, parseVD, fmtNum } from './etiquetaModelos';
 
 // Reexporta os helpers puros (a fonte agora é etiquetaModelos.js) para NÃO quebrar
 // os imports existentes de EtiquetasList / EtiquetaImprimir / EtiquetaForm.
@@ -9,10 +9,10 @@ export { codExibir, validadeDias, pesoLiquidoStr, parseValor, parseVD, fmtNum, A
 // Impressão dentro do PWA — mesmo padrão de ReceitaDetalhe.imprimirConteudo (funciona no iPad/iOS,
 // onde imprimir via iframe sai em branco/só URL). Monta as etiquetas na própria página e usa
 // @media print para esconder o app; depois limpa tudo. print() deve rodar dentro do clique.
-// `modelo` define o tamanho da folha (classico 80×100 / anvisa120 100×120); default = classico
-// (comportamento idêntico ao de sempre).
-export function imprimirEtiquetas(labelHtml, copies = 1, modelo = MODELO_PADRAO) {
-    const cfg = MODELOS[modelo] || MODELOS[MODELO_PADRAO];
+// `tamanho` define a folha (p80 = 80×100 / g120 = 100×120); default = p80 (rolo atual).
+// Compat: aceita também os ids de modelo antigos ('classico'/'anvisa120') sem quebrar.
+export function imprimirEtiquetas(labelHtml, copies = 1, tamanho = TAMANHO_PADRAO) {
+    const cfg = TAMANHOS[tamanho] || MODELOS[tamanho] || TAMANHOS[TAMANHO_PADRAO];
     const { larguraMM, alturaMM } = cfg;
     const ID_AREA = 'area-impressao';
     const ID_ESTILO = 'estilo-impressao';
@@ -58,7 +58,7 @@ export function imprimirEtiquetas(labelHtml, copies = 1, modelo = MODELO_PADRAO)
 
 // ─── Etiqueta visual (preview + impressão) ────────────────────────────────────
 
-export default function EtiquetaLabel({ et, dataFab, dataVal }) {
+export default function EtiquetaLabel({ et, dataFab, dataVal, larguraMM = 80, alturaMM = 100 }) {
     const svgRef = useRef(null);
     useEffect(() => {
         if (!svgRef.current || !et.codigoBarras) return;
@@ -116,7 +116,7 @@ export default function EtiquetaLabel({ et, dataFab, dataVal }) {
     const cell = { padding: '0.1mm 0.8mm', textAlign: 'center', borderLeft: '0.3pt solid #000' };
     const cellNome = { padding: '0.1mm 0.8mm' };
 
-    return (
+    const conteudo = (
       <div style={outer}>
         <div style={style}>
             {/* Nome do produto (tarja preta opcional) — sem linha separadora */}
@@ -207,6 +207,23 @@ export default function EtiquetaLabel({ et, dataFab, dataVal }) {
                 Fabricação/Lote - {dataFab}&nbsp;&nbsp;Validade - {dataVal}
             </div>
         </div>
+      </div>
+    );
+
+    // Tamanho nativo do layout clássico = 80×100. Nesse tamanho, sai idêntico ao de sempre.
+    if (larguraMM === 80 && alturaMM === 100) return conteudo;
+
+    // Em outro tamanho (ex.: 100×120), o conteúdo 80×100 é escalado para PREENCHER a
+    // folha, centralizado — sem cortar nada e sem sobrar muito branco. Fator = o maior
+    // que ainda cabe nas duas dimensões (min da razão de largura e de altura).
+    const fator = Math.min(larguraMM / 80, alturaMM / 100);
+    return (
+      <div style={{
+          width: `${larguraMM}mm`, height: `${alturaMM}mm`, background: '#fff',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxSizing: 'border-box', overflow: 'hidden',
+      }}>
+        <div style={{ transform: `scale(${fator})`, transformOrigin: 'center' }}>{conteudo}</div>
       </div>
     );
 }

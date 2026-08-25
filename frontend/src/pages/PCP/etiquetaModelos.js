@@ -3,6 +3,33 @@
 // com selos de advertência "ALTO EM". O usuário escolhe qual usar porque ainda
 // tem rolo do tamanho antigo.
 
+// ── DUAS DIMENSÕES INDEPENDENTES (desde 08/2026) ──────────────────────────────
+// Tamanho (rolo físico na impressora) e Layout (visual do rótulo) são escolhidos
+// SEPARADAMENTE, para imprimir qualquer combinação: Clássico ou ANVISA, cada um
+// em 80×100 ou 100×120. O tamanho controla a folha (@page) e as dimensões do
+// rótulo; o layout controla o desenho (com ou sem selos "ALTO EM").
+export const TAMANHOS = {
+    p80:  { id: 'p80',  larguraMM: 80,  alturaMM: 100, label: '80 × 100' },
+    g120: { id: 'g120', larguraMM: 100, alturaMM: 120, label: '100 × 120' },
+};
+export const TAMANHO_PADRAO = 'p80'; // rolo atual/clássico — default seguro
+
+export const LAYOUTS = {
+    classico: { id: 'classico', comSelos: false, label: 'Clássico' },
+    anvisa:   { id: 'anvisa',   comSelos: true,  label: 'ANVISA'   },
+};
+export const LAYOUT_PADRAO = 'classico';
+
+// Normaliza um layout salvo/legado para uma chave válida de LAYOUTS.
+// (o localStorage antigo guardava 'classico' | 'anvisa120' na chave 'etiquetas:modelo')
+export function layoutValido(v) {
+    if (LAYOUTS[v]) return v;
+    if (v === 'anvisa120') return 'anvisa';
+    return LAYOUT_PADRAO;
+}
+
+// Legado — mantido para não quebrar código/imports antigos (id → dimensões).
+// Combina tamanho+layout do jeito antigo; novos chamadores usam TAMANHOS/LAYOUTS.
 export const MODELOS = {
     classico:  { id: 'classico',  nome: 'Clássico 80×100',  larguraMM: 80,  alturaMM: 100, comSelos: false },
     anvisa120: { id: 'anvisa120', nome: 'ANVISA 100×120',   larguraMM: 100, alturaMM: 120, comSelos: true  },

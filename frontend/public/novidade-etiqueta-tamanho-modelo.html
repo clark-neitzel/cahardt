@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Tamanho e Modelo da etiqueta — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
+<meta property="og:title" content="🏷️ Etiquetas: agora Tamanho e Modelo são escolhidos separados">
+<meta property="og:description" content="Clássico ou ANVISA, cada um em 80×100 ou 100×120 — imprima qualquer combinação conforme o rolo que estiver na impressora.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --cream: #f2f0eb; --gold: #cba258;
+    --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66; letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cream); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* HERO */
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 96px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow { display: inline-block; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .14em; padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(26px, 6.6vw, 38px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.78); font-size: 16px; max-width: 48ch; margin: 0 auto; text-wrap: balance; }
+
+  /* mock flutuando sobre o hero */
+  .mock { max-width: 430px; margin: -70px auto 30px; background: #fff; border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28); overflow: hidden; text-align: left; }
+  .mock-top { background: #f7f6f2; padding: 14px 16px; border-bottom: 1px solid #e9e6df; }
+  .mock-top .lbl { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-soft); margin-bottom: 8px; }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill { padding: 9px 15px; border-radius: 999px; font-size: 13px; font-weight: 700; border: 1px solid #d3d0c8; background: #fff; color: #56605b; }
+  .pill.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .mock-body { padding: 16px; text-align: center; color: var(--ink-soft); font-size: 13px; }
+
+  h2.sec { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--primary-dark); margin: 34px 0 14px; }
+
+  /* Accordions */
+  .acc { background: #fff; border: 1px solid #e9e6df; border-radius: 14px; margin-bottom: 12px; overflow: hidden; }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; padding: 15px 16px; background: none; border: 0; cursor: pointer; text-align: left; }
+  .acc-ico { width: 38px; height: 38px; flex: 0 0 auto; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 19px; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* Grade das 4 combinações */
+  .grade { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .combo { background: #fff; border: 1px solid #e9e6df; border-radius: 13px; padding: 14px; }
+  .combo .t { font-weight: 800; font-size: 14.5px; margin-bottom: 3px; }
+  .combo .d { font-size: 12.5px; color: var(--ink-soft); }
+  .combo .tag { display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+  .tag.cl { background: var(--mint); color: var(--primary-dark); }
+  .tag.an { background: #fde8cf; color: #8a5a12; }
+
+  /* Telas do app (mockups com pins) */
+  .tela { background: #fff; border: 1px solid #e9e6df; border-radius: 16px; overflow: hidden; margin-bottom: 20px; }
+  .tela-titulo { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #eee; font-weight: 700; }
+  .tela-num { width: 26px; height: 26px; border-radius: 999px; background: var(--gold); color: #2b230f; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; position: relative; }
+  .app-card { background: #fff; border: 1px solid #e5e2db; border-radius: 12px; overflow: hidden; }
+  .app-card-head { padding: 10px 14px; border-bottom: 1px solid #eee; font-size: 13px; }
+  .app-card-head b { font-weight: 800; }
+  .app-card-body { padding: 14px; }
+  .campo-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 12px 0 7px; display: flex; align-items: center; gap: 7px; }
+  .campo-lbl:first-child { margin-top: 0; }
+  .pin { width: 18px; height: 18px; flex: 0 0 auto; border-radius: 999px; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+  .legenda { padding: 4px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 8px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  .rodape { text-align: center; color: var(--ink-soft); font-size: 12.5px; margin-top: 30px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Novidade • PCP · Etiquetas</span>
+    <h1>Tamanho e Modelo, agora escolhidos separados</h1>
+    <p>Antes o modelo já vinha "colado" no tamanho. Agora você escolhe as duas coisas de forma independente — e imprime qualquer combinação conforme o rolo que estiver na impressora.</p>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="mock">
+    <div class="mock-top">
+      <div class="lbl">Tamanho</div>
+      <div class="pills"><span class="pill on">80 × 100</span><span class="pill">100 × 120</span></div>
+    </div>
+    <div class="mock-top" style="border-top:0">
+      <div class="lbl">Modelo</div>
+      <div class="pills"><span class="pill on">Clássico</span><span class="pill">ANVISA</span></div>
+    </div>
+    <div class="mock-body">Escolha um de cada — o preview muda na hora.</div>
+  </div>
+
+  <h2 class="sec">O que mudou</h2>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔀</span>
+      <strong>Dois seletores no lugar de um</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Na tela de impressão (tanto no modal da lista quanto na tela dedicada) agora existem <b>dois seletores de pills</b>:</p>
+      <ul>
+        <li><b>Tamanho</b> — <b>80 × 100</b> ou <b>100 × 120</b>. É o que define a folha/rolo que sai na impressora. Padrão: <b>80 × 100</b> (o rolo atual — o mais seguro).</li>
+        <li><b>Modelo</b> — <b>Clássico</b> ou <b>ANVISA</b>. É o desenho do rótulo. Padrão: <b>Clássico</b>.</li>
+      </ul>
+      <p>As duas escolhas ficam <b>salvas no navegador</b> e voltam do jeito que você deixou na próxima vez.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⚠️</span>
+      <strong>Os selos "ALTO EM" continuam só no ANVISA</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O modelo <b>ANVISA</b> traz os selos de advertência <b>"ALTO EM"</b> (açúcar adicionado, gordura saturada e/ou sódio) no canto superior direito, calculados sozinhos pela tabela nutricional. Isso não mudou — e vale nos dois tamanhos.</p>
+      <p>O modelo <b>Clássico nunca</b> mostra selo, em nenhum tamanho.</p>
+    </div>
+  </div>
+
+  <h2 class="sec">As 4 combinações possíveis</h2>
+  <div class="grade">
+    <div class="combo"><div class="t">Clássico</div><div class="d">80 × 100 — o de sempre.</div><span class="tag cl">sem selo</span></div>
+    <div class="combo"><div class="t">Clássico</div><div class="d">100 × 120 — ampliado p/ preencher a folha maior.</div><span class="tag cl">sem selo</span></div>
+    <div class="combo"><div class="t">ANVISA</div><div class="d">80 × 100 — versão compacta p/ o rolo menor.</div><span class="tag an">com selos</span></div>
+    <div class="combo"><div class="t">ANVISA</div><div class="d">100 × 120 — o layout completo.</div><span class="tag an">com selos</span></div>
+  </div>
+
+  <h2 class="sec">A tela do app</h2>
+
+  <div class="tela">
+    <div class="tela-titulo"><span class="tela-num">1</span> Modal de impressão — os dois seletores</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head"><b>Coxinha de Frango 22g</b> · Cód. 1024 · 22g</div>
+        <div class="app-card-body">
+          <div class="campo-lbl"><span class="pin">1</span> Tamanho</div>
+          <div class="pills"><span class="pill on">80 × 100</span><span class="pill">100 × 120</span></div>
+          <div class="campo-lbl"><span class="pin">2</span> Modelo</div>
+          <div class="pills"><span class="pill on">Clássico</span><span class="pill">ANVISA</span></div>
+          <div class="campo-lbl"><span class="pin">3</span> Cópias / Imprimir</div>
+          <div class="pills"><span class="pill">−</span><span class="pill on">1</span><span class="pill">+</span><span class="pill" style="background:#4f46e5;color:#fff;border-color:#4f46e5">🖨 Imprimir</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Tamanho</b> — escolha o rolo que está na impressora (80 × 100 ou 100 × 120). É o que sai na folha impressa.</span></div>
+      <div><span class="pin">2</span><span><b>Modelo</b> — Clássico (sem selo) ou ANVISA (com os selos "ALTO EM"). Independe do tamanho.</span></div>
+      <div><span class="pin">3</span><span>Ajuste as <b>cópias</b> e clique em <b>Imprimir</b>. O preview logo abaixo já mostra a combinação escolhida.</span></div>
+    </div>
+  </div>
+
+  <div class="rodape">Qualquer dúvida, chama no grupo. 🏷️</div>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.closest('.acc');
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

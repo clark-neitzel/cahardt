@@ -1,5 +1,11 @@
 [
   {
+    "slug": "etiqueta-tamanho-modelo",
+    "titulo": "Etiqueta: Tamanho e Modelo separados",
+    "resumo": "Na tela de impressão de etiquetas (PCP), o tamanho do rolo e o desenho do rótulo agora são escolhidos SEPARADAMENTE, em dois seletores de pills. Antes estavam colados: Clássico só saía 80×100 e ANVISA só 100×120. Agora dá para imprimir qualquer uma das quatro combinações conforme o rolo que estiver na impressora — Clássico 80×100, Clássico 100×120, ANVISA 80×100 e ANVISA 100×120. O 'Tamanho' (80×100 ou 100×120) é o que manda na folha impressa e tem padrão 80×100, o rolo atual; o 'Modelo' (Clássico ou ANVISA) é o desenho, com padrão Clássico. No 100×120 o layout Clássico é ampliado para preencher a folha; no 80×100 o layout ANVISA fica mais compacto para caber no rolo menor. Os selos 'ALTO EM' continuam saindo só no modelo ANVISA (nos dois tamanhos) e o Clássico nunca mostra selo. As duas escolhas ficam salvas no navegador e valem no modal da lista e na tela dedicada de impressão.",
+    "data": "2026-08-25"
+  },
+  {
     "slug": "inventario-imobilizado",
     "titulo": "Inventário do imobilizado",
     "resumo": "Freezer, painel de LED, mesa, cadeira: os bens da empresa agora podem ter estoque e custo dentro do app, e somem das listas de venda (catálogo, pedido, amostra e especial) para ninguém achar e vender sem querer. Em Configurações → Cat. Estoque cada categoria ganhou uma terceira chave, a \"Vende\": ligada (como todas nascem) nada muda; desligada, os produtos daquela categoria somem de tudo que é venda. O corte é feito no servidor, não é filtro só de tela, mas quem já estiver com a tela de Novo Pedido aberta precisa recarregar o app — até recarregar, a lista antiga segue na memória do aparelho. O caminho é criar a categoria Imobilizado (Estoque ligado, Vende desligado, Flex desligado — só administrador mexe nessas chaves), cadastrar cada bem como produto nessa categoria, dar a permissão de estoque a quem vai contar e lançar a nota de compra vinculada ao produto (é ela que dá entrada e joga o custo real no bem). Na tela de Produtos o bem continua aparecendo e editável, com uma etiqueta âmbar \"Não vendável\" ao lado do nome, e a categoria entra no filtro. Também saiu da tela Categorias de Produto a caixinha \"Controla Estoque\", que salvava mas não era lida por nenhuma parte do sistema.",

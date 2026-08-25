@@ -26,26 +26,30 @@ Tela usada na produção. Mostra todos os produtos com etiqueta ativa em cards (
 **O que dá pra fazer:**
 - Buscar produto por nome ou código (campo em destaque, com foco automático)
 - Filtrar por categoria de produto (pills clicáveis, salvos no navegador)
-- Escolher o **modelo/tamanho da etiqueta** (ver abaixo)
+- Escolher o **Tamanho** e o **Modelo** da etiqueta, separadamente (ver abaixo)
 - Selecionar um produto e abrir o modal de impressão
 - Imprimir a etiqueta diretamente
 
-**Modelo da etiqueta (dois tamanhos de rolo):**
+**Tamanho e Modelo são escolhidos SEPARADAMENTE (dois seletores):**
 
-No modal de impressão há um seletor **Modelo** com duas opções:
+Desde 08/2026 o tamanho do rolo e o desenho da etiqueta são escolhidos de forma independente — dá para imprimir qualquer combinação, conforme o rolo que estiver na impressora. São dois seletores de pills no modal (e na tela dedicada):
 
-- **Clássico 80×100** — o modelo de sempre, para o rolo antigo. É o padrão.
-- **ANVISA 100×120** — modelo novo, maior, que traz os selos de advertência **"ALTO EM"** (açúcar adicionado, gordura saturada e/ou sódio) no canto superior direito quando o produto ultrapassa os limites da ANVISA por 100 g. Os selos aparecem sozinhos, calculados pela tabela nutricional; se nenhum nutriente passa do limite, a etiqueta sai sem selo.
+- **Tamanho** — `80 × 100` ou `100 × 120`. É o tamanho da folha/rolo. O padrão é **80 × 100** (o rolo atual, mais seguro).
+- **Modelo** — `Clássico` ou `ANVISA`. É o desenho do rótulo:
+  - **Clássico** — o layout de sempre, sem selos. É o padrão.
+  - **ANVISA** — traz os selos de advertência **"ALTO EM"** (açúcar adicionado, gordura saturada e/ou sódio) no canto superior direito quando o produto ultrapassa os limites da ANVISA por 100 g. Os selos aparecem sozinhos, calculados pela tabela nutricional; se nenhum nutriente passa do limite, a etiqueta sai sem selo. O Clássico **nunca** mostra selo, em nenhum tamanho.
 
-A escolha do modelo fica **salva no navegador** e vale tanto no modal quanto na tela dedicada de impressão. Escolha o modelo conforme o rolo que está na impressora.
+As quatro combinações possíveis: **Clássico 80×100**, **Clássico 100×120**, **ANVISA 80×100** e **ANVISA 100×120**. No 100×120 o layout Clássico é ampliado para preencher a folha; no 80×100 o layout ANVISA fica mais compacto (fontes e espaçamentos apertados) para caber no rolo menor.
+
+As duas escolhas ficam **salvas no navegador** e valem tanto no modal quanto na tela dedicada de impressão. O que manda o tamanho da folha impressa é o **Tamanho**.
 
 **Como imprimir:**
 
 1. Abra a tela `/pcp/etiquetas`.
 2. Digite o nome ou código na barra de busca, ou clique na categoria desejada.
 3. Clique no card do produto (ou no botão **Imprimir** dentro do card).
-4. O modal de impressão abre com um preview da etiqueta no tamanho do modelo escolhido.
-5. Escolha o **Modelo** (Clássico 80×100 ou ANVISA 100×120) — o preview muda na hora.
+4. O modal de impressão abre com um preview da etiqueta no tamanho escolhido.
+5. Escolha o **Tamanho** (80 × 100 ou 100 × 120) e o **Modelo** (Clássico ou ANVISA) — o preview muda na hora.
 6. Confira ou altere a **Data de Fabricação** (padrão: hoje).
 7. A **Validade** é calculada automaticamente somando os dias configurados na etiqueta.
 8. Ajuste o número de **Cópias** (use os botões + / − ou digite diretamente).
@@ -96,13 +100,13 @@ Gerenciamento do cadastro. Permite criar, editar, ativar/inativar e remover etiq
 
 A **impressão sai na própria página** (não abre janela nem aba nova) — funciona no computador e no iPad. A impressora fica em modo paisagem; a etiqueta é desenhada em pé e girada 90° para casar com o rolo.
 
-### Modelo ANVISA 100×120 (novo)
+### Modelo ANVISA
 
-Etiqueta maior, organizada por zonas: nome centralizado no topo (com folga para o selo quando houver), selo(s) "ALTO EM" no canto superior direito, tabela nutricional completa (colunas 100 g / porção / %VD), e embaixo os ingredientes/preparo/conservação à esquerda com o código de barras **na vertical** à direita e as datas de Fabricação/Lote e Validade no rodapé. Tudo em preto puro, pensado para a impressora térmica.
+Etiqueta organizada por zonas: nome centralizado no topo (com folga para o selo quando houver), selo(s) "ALTO EM" no canto superior direito, tabela nutricional completa (colunas 100 g / porção / %VD), e embaixo os ingredientes/preparo/conservação à esquerda com o código de barras **na vertical** à direita e as datas de Fabricação/Lote e Validade no rodapé. Tudo em preto puro, pensado para a impressora térmica. Sai no tamanho escolhido — no 80 × 100 as fontes e espaçamentos ficam mais compactos para caber no rolo menor.
 
-### Modelo Clássico 80×100
+### Modelo Clássico
 
-A etiqueta mede 80mm × 100mm e contém (nesta ordem):
+O conteúdo clássico contém (nesta ordem):
 1. Nome do produto (negrito, grande)
 2. Código + Peso unitário em gramas
 3. Tabela nutricional por porção
@@ -114,6 +118,8 @@ A etiqueta mede 80mm × 100mm e contém (nesta ordem):
 9. Armazenamento (freezer -12°C), se preenchido
 10. Código de barras EAN-13 (se cadastrado)
 11. "Fabricação - DD/MM/AAAA   Validade - DD/MM/AAAA"
+
+No tamanho 80 × 100 sai no formato original; no 100 × 120 o mesmo conteúdo é ampliado e centralizado para preencher a folha, sem cortar nada.
 
 ## Permissões necessárias
 
@@ -139,7 +145,7 @@ Admin (`admin: true`) tem acesso sem precisar de `pcp.etiquetas`.
 | `frontend/src/pages/PCP/EtiquetasDados.jsx` | Tela de cadastro: listagem com ações |
 | `frontend/src/pages/PCP/EtiquetaForm.jsx` | Formulário de criação/edição com todos os campos do rótulo |
 | `frontend/src/pages/PCP/EtiquetaImprimir.jsx` | Tela dedicada de impressão por ID (`/pcp/etiquetas/:id/imprimir`) |
-| `frontend/src/pages/PCP/EtiquetaLabel.jsx` | Componente do rótulo clássico 80×100 + função de impressão `imprimirEtiquetas` |
-| `frontend/src/pages/PCP/EtiquetaLabelNova.jsx` | Componente do rótulo ANVISA 100×120 (com selos) + despachante `EtiquetaRender` |
-| `frontend/src/pages/PCP/etiquetaModelos.js` | Fonte única: catálogo de modelos, helpers puros e cálculo dos selos ANVISA (`selosAnvisa`) |
+| `frontend/src/pages/PCP/EtiquetaLabel.jsx` | Componente do rótulo Clássico (recebe `larguraMM`/`alturaMM`; escala para preencher no 100×120) + função de impressão `imprimirEtiquetas` (recebe o `tamanho`) |
+| `frontend/src/pages/PCP/EtiquetaLabelNova.jsx` | Componente do rótulo ANVISA (recebe o tamanho; versão compacta no 80×100) + despachante `EtiquetaRender` (`layout` + `tamanho`) |
+| `frontend/src/pages/PCP/etiquetaModelos.js` | Fonte única: `TAMANHOS` (p80/g120) e `LAYOUTS` (classico/anvisa) separados, helpers puros e cálculo dos selos ANVISA (`selosAnvisa`) |
 | `frontend/src/services/etiquetaService.js` | Chamadas de API para etiquetas |

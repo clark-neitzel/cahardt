@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
 import { codExibir, imprimirEtiquetas, validadeDias } from './EtiquetaLabel';
 import { EtiquetaRender } from './EtiquetaLabelNova';
-import { MODELOS, MODELO_PADRAO } from './etiquetaModelos';
+import { TAMANHOS, TAMANHO_PADRAO, LAYOUTS, LAYOUT_PADRAO, layoutValido } from './etiquetaModelos';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 function hojeIso() { return new Date().toISOString().split('T')[0]; }
@@ -33,7 +33,10 @@ export default function EtiquetaImprimir() {
     const [loading, setLoading] = useState(true);
     const [dataFab, setDataFab] = useState(hojeIso());
     const [copies, setCopies] = useState(1);
-    const [modelo, setModelo] = useFiltroSalvo('etiquetas:modelo', MODELO_PADRAO);
+    // Tamanho (rolo) e Modelo (layout) escolhidos SEPARADAMENTE.
+    const [tamanho, setTamanho] = useFiltroSalvo('etiquetas:tamanho', TAMANHO_PADRAO);
+    const [modeloSalvo, setModelo] = useFiltroSalvo('etiquetas:modelo', LAYOUT_PADRAO);
+    const layout = layoutValido(modeloSalvo); // sanitiza valor legado ('anvisa120' → 'anvisa')
 
     useEffect(() => {
         etiquetaService.buscar(id)
@@ -45,7 +48,7 @@ export default function EtiquetaImprimir() {
     if (loading) return <div className="p-8 text-center text-gray-400">Carregando...</div>;
     if (!et) return null;
 
-    const cfg = MODELOS[modelo] || MODELOS[MODELO_PADRAO];
+    const dim = TAMANHOS[tamanho] || TAMANHOS[TAMANHO_PADRAO];
     const dataFabDisplay = isoParaDisplay(dataFab);
     const dias = validadeDias(et);
     const dataValDisplay = somarDias(dataFab, dias);
@@ -54,7 +57,7 @@ export default function EtiquetaImprimir() {
         const conteudo = printRef.current;
         if (!conteudo) return;
 
-        imprimirEtiquetas(conteudo.innerHTML, parseInt(copies) || 1, modelo);
+        imprimirEtiquetas(conteudo.innerHTML, parseInt(copies) || 1, tamanho);
     };
 
     return (
@@ -72,19 +75,37 @@ export default function EtiquetaImprimir() {
             <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
                 <div className="flex flex-wrap items-end gap-6">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Tamanho</label>
                         <div className="flex flex-wrap gap-1.5">
-                            {Object.values(MODELOS).map(m => (
+                            {Object.values(TAMANHOS).map(t => (
                                 <button
-                                    key={m.id}
-                                    onClick={() => setModelo(m.id)}
-                                    className={`px-3 py-2 rounded-full text-xs font-semibold border transition-all min-h-[40px] ${
-                                        modelo === m.id
+                                    key={t.id}
+                                    onClick={() => setTamanho(t.id)}
+                                    className={`px-3 py-2 rounded-full text-xs font-semibold border transition-all min-h-[44px] ${
+                                        tamanho === t.id
                                             ? 'bg-primary text-white border-primary shadow-sm'
                                             : 'bg-white text-gray-600 border-gray-300 hover:border-primary hover:text-primary'
                                     }`}
                                 >
-                                    {m.nome}
+                                    {t.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
+                        <div className="flex flex-wrap gap-1.5">
+                            {Object.values(LAYOUTS).map(l => (
+                                <button
+                                    key={l.id}
+                                    onClick={() => setModelo(l.id)}
+                                    className={`px-3 py-2 rounded-full text-xs font-semibold border transition-all min-h-[44px] ${
+                                        layout === l.id
+                                            ? 'bg-primary text-white border-primary shadow-sm'
+                                            : 'bg-white text-gray-600 border-gray-300 hover:border-primary hover:text-primary'
+                                    }`}
+                                >
+                                    {l.label}
                                 </button>
                             ))}
                         </div>
@@ -137,9 +158,9 @@ export default function EtiquetaImprimir() {
 
             <div className="bg-gray-100 rounded-xl p-6 flex justify-center">
                 <div>
-                    <p className="text-xs text-gray-400 text-center mb-3">Preview — {cfg.larguraMM}mm × {cfg.alturaMM}mm</p>
-                    <div ref={printRef} style={{ transform:`scale(${modelo === 'anvisa120' ? 1.5 : 1.8})`, transformOrigin:'top center', marginBottom: modelo === 'anvisa120' ? '250px' : '180px' }}>
-                        <EtiquetaRender modelo={modelo} et={et} dataFab={dataFabDisplay} dataVal={dataValDisplay} />
+                    <p className="text-xs text-gray-400 text-center mb-3">Preview — {dim.larguraMM}mm × {dim.alturaMM}mm · {LAYOUTS[layout]?.label}</p>
+                    <div ref={printRef} style={{ transform:`scale(${tamanho === 'g120' ? 1.5 : 1.8})`, transformOrigin:'top center', marginBottom: tamanho === 'g120' ? '250px' : '180px' }}>
+                        <EtiquetaRender layout={layout} tamanho={tamanho} et={et} dataFab={dataFabDisplay} dataVal={dataValDisplay} />
                     </div>
                 </div>
             </div>
