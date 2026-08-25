@@ -26,19 +26,30 @@ Tela usada na produção. Mostra todos os produtos com etiqueta ativa em cards (
 **O que dá pra fazer:**
 - Buscar produto por nome ou código (campo em destaque, com foco automático)
 - Filtrar por categoria de produto (pills clicáveis, salvos no navegador)
+- Escolher o **modelo/tamanho da etiqueta** (ver abaixo)
 - Selecionar um produto e abrir o modal de impressão
 - Imprimir a etiqueta diretamente
+
+**Modelo da etiqueta (dois tamanhos de rolo):**
+
+No modal de impressão há um seletor **Modelo** com duas opções:
+
+- **Clássico 80×100** — o modelo de sempre, para o rolo antigo. É o padrão.
+- **ANVISA 100×120** — modelo novo, maior, que traz os selos de advertência **"ALTO EM"** (açúcar adicionado, gordura saturada e/ou sódio) no canto superior direito quando o produto ultrapassa os limites da ANVISA por 100 g. Os selos aparecem sozinhos, calculados pela tabela nutricional; se nenhum nutriente passa do limite, a etiqueta sai sem selo.
+
+A escolha do modelo fica **salva no navegador** e vale tanto no modal quanto na tela dedicada de impressão. Escolha o modelo conforme o rolo que está na impressora.
 
 **Como imprimir:**
 
 1. Abra a tela `/pcp/etiquetas`.
 2. Digite o nome ou código na barra de busca, ou clique na categoria desejada.
 3. Clique no card do produto (ou no botão **Imprimir** dentro do card).
-4. O modal de impressão abre com um preview da etiqueta (tamanho real 80mm × 100mm).
-5. Confira ou altere a **Data de Fabricação** (padrão: hoje).
-6. A **Validade** é calculada automaticamente somando os dias configurados na etiqueta.
-7. Ajuste o número de **Cópias** (use os botões + / − ou digite diretamente).
-8. Clique em **Imprimir** — o diálogo de impressão do navegador abre com as cópias pré-configuradas.
+4. O modal de impressão abre com um preview da etiqueta no tamanho do modelo escolhido.
+5. Escolha o **Modelo** (Clássico 80×100 ou ANVISA 100×120) — o preview muda na hora.
+6. Confira ou altere a **Data de Fabricação** (padrão: hoje).
+7. A **Validade** é calculada automaticamente somando os dias configurados na etiqueta.
+8. Ajuste o número de **Cópias** (use os botões + / − ou digite diretamente).
+9. Clique em **Imprimir** — o diálogo de impressão do navegador abre com as cópias pré-configuradas.
 
 ---
 
@@ -83,6 +94,14 @@ Gerenciamento do cadastro. Permite criar, editar, ativar/inativar e remover etiq
 
 ## O que aparece na etiqueta impressa
 
+A **impressão sai na própria página** (não abre janela nem aba nova) — funciona no computador e no iPad. A impressora fica em modo paisagem; a etiqueta é desenhada em pé e girada 90° para casar com o rolo.
+
+### Modelo ANVISA 100×120 (novo)
+
+Etiqueta maior, organizada por zonas: nome centralizado no topo (com folga para o selo quando houver), selo(s) "ALTO EM" no canto superior direito, tabela nutricional completa (colunas 100 g / porção / %VD), e embaixo os ingredientes/preparo/conservação à esquerda com o código de barras **na vertical** à direita e as datas de Fabricação/Lote e Validade no rodapé. Tudo em preto puro, pensado para a impressora térmica.
+
+### Modelo Clássico 80×100
+
 A etiqueta mede 80mm × 100mm e contém (nesta ordem):
 1. Nome do produto (negrito, grande)
 2. Código + Peso unitário em gramas
@@ -120,4 +139,7 @@ Admin (`admin: true`) tem acesso sem precisar de `pcp.etiquetas`.
 | `frontend/src/pages/PCP/EtiquetasDados.jsx` | Tela de cadastro: listagem com ações |
 | `frontend/src/pages/PCP/EtiquetaForm.jsx` | Formulário de criação/edição com todos os campos do rótulo |
 | `frontend/src/pages/PCP/EtiquetaImprimir.jsx` | Tela dedicada de impressão por ID (`/pcp/etiquetas/:id/imprimir`) |
+| `frontend/src/pages/PCP/EtiquetaLabel.jsx` | Componente do rótulo clássico 80×100 + função de impressão `imprimirEtiquetas` |
+| `frontend/src/pages/PCP/EtiquetaLabelNova.jsx` | Componente do rótulo ANVISA 100×120 (com selos) + despachante `EtiquetaRender` |
+| `frontend/src/pages/PCP/etiquetaModelos.js` | Fonte única: catálogo de modelos, helpers puros e cálculo dos selos ANVISA (`selosAnvisa`) |
 | `frontend/src/services/etiquetaService.js` | Chamadas de API para etiquetas |

@@ -3,7 +3,9 @@ import { Search, Printer, X, Minus, Plus, Tag } from 'lucide-react';
 import JsBarcode from 'jsbarcode';
 import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
-import EtiquetaLabel, { codExibir, imprimirEtiquetas, validadeDias } from './EtiquetaLabel';
+import { codExibir, imprimirEtiquetas, validadeDias } from './EtiquetaLabel';
+import { EtiquetaRender } from './EtiquetaLabelNova';
+import { MODELOS, MODELO_PADRAO } from './etiquetaModelos';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 // ─── Utilidades de data ───────────────────────────────────────────────────────
@@ -60,8 +62,10 @@ function BarcodeEl({ value, height = 28 }) {
 function PrintModal({ et, onClose }) {
     const [dataFab, setDataFab] = useState(hojeIso());
     const [copies, setCopies] = useState(1);
+    const [modelo, setModelo] = useFiltroSalvo('etiquetas:modelo', MODELO_PADRAO);
     const labelRef = useRef(null);
 
+    const cfg = MODELOS[modelo] || MODELOS[MODELO_PADRAO];
     const dataFabDisplay = isoParaDisplay(dataFab);
     const dias = validadeDias(et);
     const dataValDisplay = somarDias(dataFab, dias);
@@ -70,7 +74,7 @@ function PrintModal({ et, onClose }) {
         const conteudo = labelRef.current;
         if (!conteudo) return;
 
-        imprimirEtiquetas(conteudo.innerHTML, parseInt(copies) || 1);
+        imprimirEtiquetas(conteudo.innerHTML, parseInt(copies) || 1, modelo);
     };
 
     return (
@@ -89,6 +93,24 @@ function PrintModal({ et, onClose }) {
 
                 {/* Controles */}
                 <div className="px-6 py-4 bg-gray-50 border-b flex flex-wrap items-end gap-5">
+                    <div>
+                        <label className="block text-xs font-semibold text-gray-600 mb-1">Modelo</label>
+                        <div className="flex flex-wrap gap-1.5">
+                            {Object.values(MODELOS).map(m => (
+                                <button
+                                    key={m.id}
+                                    onClick={() => setModelo(m.id)}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all min-h-[36px] ${
+                                        modelo === m.id
+                                            ? 'bg-primary text-white border-primary shadow-sm'
+                                            : 'bg-white text-gray-600 border-gray-300 hover:border-primary hover:text-primary'
+                                    }`}
+                                >
+                                    {m.nome}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
                     <div>
                         <label className="block text-xs font-semibold text-gray-600 mb-1">Data de Fabricação</label>
                         <input
@@ -140,9 +162,9 @@ function PrintModal({ et, onClose }) {
                 {/* Preview */}
                 <div className="flex-1 overflow-auto bg-gray-100 flex justify-center py-6">
                     <div>
-                        <p className="text-xs text-gray-400 text-center mb-3">Preview — 80mm × 100mm</p>
-                        <div ref={labelRef} style={{ transform:'scale(1.9)', transformOrigin:'top center', marginBottom:'190px' }}>
-                            <EtiquetaLabel et={et} dataFab={dataFabDisplay} dataVal={dataValDisplay} />
+                        <p className="text-xs text-gray-400 text-center mb-3">Preview — {cfg.larguraMM}mm × {cfg.alturaMM}mm</p>
+                        <div ref={labelRef} style={{ transform:`scale(${modelo === 'anvisa120' ? 1.5 : 1.9})`, transformOrigin:'top center', marginBottom: modelo === 'anvisa120' ? '260px' : '190px' }}>
+                            <EtiquetaRender modelo={modelo} et={et} dataFab={dataFabDisplay} dataVal={dataValDisplay} />
                         </div>
                     </div>
                 </div>

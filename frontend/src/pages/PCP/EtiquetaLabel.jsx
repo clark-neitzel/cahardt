@@ -1,16 +1,19 @@
 import { useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
+import { MODELOS, MODELO_PADRAO, codExibir, validadeDias, pesoLiquidoStr, parseValor, parseVD, fmtNum } from './etiquetaModelos';
 
-// SKU do catálogo tem prioridade; cai para o código interno se não vinculado
-export const codExibir = (et) => et.produto?.codigo || et.codigoProduto;
-
-// Validade em dias: a do produto do catálogo manda (fonte única); cai na da etiqueta se não houver
-export const validadeDias = (et) => et.produto?.validadeDias ?? et.validadeDias ?? 90;
+// Reexporta os helpers puros (a fonte agora é etiquetaModelos.js) para NÃO quebrar
+// os imports existentes de EtiquetasList / EtiquetaImprimir / EtiquetaForm.
+export { codExibir, validadeDias, pesoLiquidoStr, parseValor, parseVD, fmtNum, ALERGENOS_LISTA } from './etiquetaModelos';
 
 // Impressão dentro do PWA — mesmo padrão de ReceitaDetalhe.imprimirConteudo (funciona no iPad/iOS,
 // onde imprimir via iframe sai em branco/só URL). Monta as etiquetas na própria página e usa
 // @media print para esconder o app; depois limpa tudo. print() deve rodar dentro do clique.
-export function imprimirEtiquetas(labelHtml, copies = 1) {
+// `modelo` define o tamanho da folha (classico 80×100 / anvisa120 100×120); default = classico
+// (comportamento idêntico ao de sempre).
+export function imprimirEtiquetas(labelHtml, copies = 1, modelo = MODELO_PADRAO) {
+    const cfg = MODELOS[modelo] || MODELOS[MODELO_PADRAO];
+    const { larguraMM, alturaMM } = cfg;
     const ID_AREA = 'area-impressao';
     const ID_ESTILO = 'estilo-impressao';
     document.getElementById(ID_AREA)?.remove();
@@ -18,12 +21,12 @@ export function imprimirEtiquetas(labelHtml, copies = 1) {
 
     const style = document.createElement('style');
     style.id = ID_ESTILO;
-    // Impressora ZDesigner está em LANDSCAPE (100×80mm). A etiqueta é desenhada em
-    // portrait (80×100mm), então a página sai em landscape e o conteúdo é girado 90°
-    // para casar com a mídia e sair reto na etiqueta.
+    // Impressora ZDesigner está em LANDSCAPE (altura×largura da mídia). A etiqueta é
+    // desenhada em portrait (larguraMM×alturaMM), então a página sai em landscape e o
+    // conteúdo é girado 90° para casar com a mídia e sair reto na etiqueta.
     // @page no nível raiz (iOS não lida bem com @page dentro de @media)
     style.textContent = `
-        @page { size: 100mm 80mm; margin: 0; }
+        @page { size: ${alturaMM}mm ${larguraMM}mm; margin: 0; }
         #${ID_AREA} { display: none; }
         @media print {
             html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; }
@@ -32,9 +35,9 @@ export function imprimirEtiquetas(labelHtml, copies = 1) {
             #root { display: none !important; }
             #${ID_AREA} { display: block !important; }
             #${ID_AREA}, #${ID_AREA} * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            #${ID_AREA} .pg { width: 100mm; height: 80mm; display: flex; align-items: center; justify-content: center; overflow: hidden; page-break-after: always; }
+            #${ID_AREA} .pg { width: ${alturaMM}mm; height: ${larguraMM}mm; display: flex; align-items: center; justify-content: center; overflow: hidden; page-break-after: always; }
             #${ID_AREA} .pg:last-child { page-break-after: avoid; }
-            /* gira a etiqueta portrait (80×100) para caber na página landscape (100×80) */
+            /* gira a etiqueta portrait para caber na página landscape */
             #${ID_AREA} .pg > * { transform: rotate(90deg); flex: 0 0 auto; }
         }
     `;
@@ -51,48 +54,6 @@ export function imprimirEtiquetas(labelHtml, copies = 1) {
 
     void area.offsetHeight; // força o layout antes de imprimir
     try { window.print(); } catch { limpar(); }
-}
-
-// Lista oficial de alérgenos (RDC 26/2015 / IN 75/2020) para os checks do formulário
-export const ALERGENOS_LISTA = [
-    'Trigo', 'Centeio', 'Cevada', 'Aveia',
-    'Crustáceos', 'Ovos', 'Peixes', 'Amendoim', 'Soja', 'Leite',
-    'Amêndoa', 'Avelã', 'Castanha-de-caju', 'Castanha-do-pará',
-    'Macadâmia', 'Nozes', 'Pecã', 'Pistache', 'Pinoli', 'Castanhas',
-    'Látex natural',
-];
-
-// ─── Parsers de valores nutricionais ──────────────────────────────────────────
-// Valores armazenados como "34kcal (2% VD)", "5,7g (2% VD)", "147mg (6% VD)"
-
-function parseValor(str) {
-    if (!str) return null;
-    const m = String(str).replace(',', '.').match(/-?[\d.]+/);
-    return m ? parseFloat(m[0]) : null;
-}
-
-function parseVD(str) {
-    if (!str) return '0';
-    const m = String(str).match(/(\d+)\s*%/);
-    return m ? m[1] : '0';
-}
-
-function fmtNum(n, dec) {
-    if (n === null || n === undefined || isNaN(n)) return '0';
-    const f = Math.pow(10, dec);
-    const r = Math.round(n * f) / f;
-    return String(r).replace('.', ',');
-}
-
-// Peso líquido = quantidade da embalagem × peso unitário (kg se ≥ 1000g)
-export function pesoLiquidoStr(et) {
-    const g = (Number(et.quantidadeEmbalagem) || 0) * (Number(et.pesoUnitario) || 0);
-    if (g <= 0) return '';
-    if (g >= 1000) {
-        const kg = Math.round((g / 1000) * 100) / 100;
-        return `${String(kg).replace('.', ',')} kg`;
-    }
-    return `${g} g`;
 }
 
 // ─── Etiqueta visual (preview + impressão) ────────────────────────────────────
