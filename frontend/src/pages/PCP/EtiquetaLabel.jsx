@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
 import { TAMANHOS, TAMANHO_PADRAO, MODELOS, codExibir, validadeDias, pesoLiquidoStr, parseValor, parseVD, fmtNum } from './etiquetaModelos';
+import { useAutoFit } from './useAutoFit';
 
 // Reexporta os helpers puros (a fonte agora é etiquetaModelos.js) para NÃO quebrar
 // os imports existentes de EtiquetasList / EtiquetaImprimir / EtiquetaForm.
@@ -60,6 +61,9 @@ export function imprimirEtiquetas(labelHtml, copies = 1, tamanho = TAMANHO_PADRA
 
 export default function EtiquetaLabel({ et, dataFab, dataVal, larguraMM = 80, alturaMM = 100 }) {
     const svgRef = useRef(null);
+    // Auto-fit: encolhe o conteúdo se ele passar da altura da etiqueta, garantindo
+    // que Fabricação/Lote + Validade (rodapé) SEMPRE apareçam inteiros.
+    const { boxRef, innerRef, fator: fatorFit } = useAutoFit([et, dataFab, dataVal, larguraMM, alturaMM]);
     useEffect(() => {
         if (!svgRef.current || !et.codigoBarras) return;
         try {
@@ -119,6 +123,13 @@ export default function EtiquetaLabel({ et, dataFab, dataVal, larguraMM = 80, al
     const conteudo = (
       <div style={outer}>
         <div style={style}>
+          <div ref={boxRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            <div ref={innerRef} style={{
+                minHeight: '100%', display: 'flex', flexDirection: 'column',
+                // `zoom` (não `transform: scale`) encolhe a CAIXA de layout de verdade,
+                // inclusive na impressão — garante que o rodapé (datas) nunca é cortado.
+                zoom: fatorFit < 1 ? fatorFit : undefined,
+            }}>
             {/* Nome do produto (tarja preta opcional) — sem linha separadora */}
             <div style={{ textAlign:'center', fontWeight:'bold', fontSize:'8.5pt', marginBottom:'0.3mm', lineHeight:1.1, background: et.tarjaPreta ? '#000' : 'transparent', color: et.tarjaPreta ? '#fff' : '#000', margin: et.tarjaPreta ? '-1mm -1mm 0.3mm -1mm' : undefined, padding: et.tarjaPreta ? '1mm' : undefined }}>
                 {et.nomeProduto}
@@ -206,6 +217,8 @@ export default function EtiquetaLabel({ et, dataFab, dataVal, larguraMM = 80, al
             <div style={{ border:'0.4pt solid #000', textAlign:'center', fontWeight:'bold', fontSize:'6.5pt', padding:'0.5mm', marginTop:'auto' }}>
                 Fabricação/Lote - {dataFab}&nbsp;&nbsp;Validade - {dataVal}
             </div>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -216,6 +229,8 @@ export default function EtiquetaLabel({ et, dataFab, dataVal, larguraMM = 80, al
     // Em outro tamanho (ex.: 100×120), o conteúdo 80×100 é escalado para PREENCHER a
     // folha, centralizado — sem cortar nada e sem sobrar muito branco. Fator = o maior
     // que ainda cabe nas duas dimensões (min da razão de largura e de altura).
+    // `zoom` (não `transform: scale`) para o aumento valer também no LAYOUT de
+    // impressão — assim a etiqueta ocupa a folha física de verdade, não só na tela.
     const fator = Math.min(larguraMM / 80, alturaMM / 100);
     return (
       <div style={{
@@ -223,7 +238,7 @@ export default function EtiquetaLabel({ et, dataFab, dataVal, larguraMM = 80, al
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxSizing: 'border-box', overflow: 'hidden',
       }}>
-        <div style={{ transform: `scale(${fator})`, transformOrigin: 'center' }}>{conteudo}</div>
+        <div style={{ zoom: fator }}>{conteudo}</div>
       </div>
     );
 }

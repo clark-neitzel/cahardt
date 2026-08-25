@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
 import EtiquetaLabel from './EtiquetaLabel';
+import { useAutoFit } from './useAutoFit';
 import {
     TAMANHOS, TAMANHO_PADRAO, LAYOUT_PADRAO, layoutValido,
     codExibir, pesoLiquidoStr, pesoTabela, linhasNutricionais, selosAnvisa,
@@ -49,20 +50,24 @@ export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, altur
     const svgRef = useRef(null);
     // sm = rolo pequeno 80×100 → aperto de fontes/paddings (classe .label.sm do mockup)
     const sm = larguraMM <= 80;
+    // Auto-fit: encolhe o conteúdo se passar da altura, garantindo Fabricação/Lote
+    // + Validade (rodapé) sempre visíveis. O selo "ALTO EM" (absolute) fica fora.
+    const { boxRef, innerRef, fator } = useAutoFit([et, dataFab, dataVal, larguraMM, alturaMM]);
     useEffect(() => {
         if (!svgRef.current || !et.codigoBarras) return;
+        // EAN-13 HORIZONTAL, com o número embaixo (o clássico de embalagem).
+        // Módulo largo o suficiente p/ leitura na Zebra 203 dpi: width:2 px ≈ 0,53 mm
+        // de X-dimension na impressão (bem acima do mínimo). Cai p/ CODE128 se o
+        // código cadastrado não for um EAN-13 válido (13 díg. + dígito verificador).
+        const comum = { width: sm ? 1.8 : 2, height: sm ? 26 : 32, displayValue: true, fontSize: sm ? 12 : 13, textMargin: 1, margin: 0 };
         try {
-            JsBarcode(svgRef.current, et.codigoBarras, {
-                format: 'EAN13', width: 2, height: 34, displayValue: false, margin: 0,
-            });
+            JsBarcode(svgRef.current, et.codigoBarras, { format: 'EAN13', ...comum });
         } catch {
             try {
-                JsBarcode(svgRef.current, et.codigoBarras, {
-                    format: 'CODE128', width: 2, height: 34, displayValue: false, margin: 0,
-                });
+                JsBarcode(svgRef.current, et.codigoBarras, { format: 'CODE128', ...comum });
             } catch { /* sem código de barras */ }
         }
-    }, [et.codigoBarras]);
+    }, [et.codigoBarras, sm]);
 
     const selos = selosAnvisa(et);
     const peso = pesoTabela(et);
@@ -92,6 +97,13 @@ export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, altur
         }}>
             <SeloAnvisa selos={selos} sm={sm} />
 
+          <div ref={boxRef} style={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            <div ref={innerRef} style={{
+                minHeight: '100%', display: 'flex', flexDirection: 'column',
+                // `zoom` (não `transform: scale`) encolhe a CAIXA de layout de verdade,
+                // inclusive na impressão — garante que Fabricação/Validade nunca são cortadas.
+                zoom: fator < 1 ? fator : undefined,
+            }}>
             {/* Cabeçalho centralizado (abre espaço à direita quando há selo) */}
             <div style={{ textAlign: 'center', padding: '0 1mm', paddingRight: selos.length ? (sm ? '21mm' : '26mm') : '1mm' }}>
                 <div style={{ fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 0.98, fontSize: sm ? '12pt' : '15pt', textTransform: 'uppercase' }}>
@@ -144,32 +156,34 @@ export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, altur
                 </div>
             </div>
 
-            {/* Zona inferior: texto à esquerda + barras à direita, validade na sobra */}
-            <div style={{ display: 'flex', gap: sm ? '2mm' : '3mm', flex: 1, marginTop: sm ? '1.6mm' : '2.5mm', minHeight: 0 }}>
-                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
-                    <div style={{ fontSize: sm ? '6pt' : '6.4pt', lineHeight: sm ? 1.22 : 1.3 }}>
-                        <b style={{ fontWeight: 800 }}>INGREDIENTES:</b> {String(et.composicao || '').toLowerCase()}
-                        <span style={{ fontWeight: 800, textTransform: 'uppercase' }}>
-                            {' '}{et.contemGluten ? 'CONTÉM GLÚTEN' : 'NÃO CONTÉM GLÚTEN'}
-                            {et.contemLactose && <> · CONTÉM LACTOSE</>}
-                            {alergenos.length > 0 && (
-                                <> · ALÉRGICOS: CONTÉM {alergenos.join(', ').toUpperCase()}.</>
-                            )}
-                            {et.avisosRotulo && <> {String(et.avisosRotulo).toUpperCase()}</>}
-                        </span>
+            {/* Zona inferior: textos e, no rodapé, datas à esquerda + código de barras
+                EAN-13 HORIZONTAL (com número embaixo) à direita. */}
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, marginTop: sm ? '1.6mm' : '2.5mm', minHeight: 0 }}>
+                <div style={{ fontSize: sm ? '6pt' : '6.4pt', lineHeight: sm ? 1.22 : 1.3 }}>
+                    <b style={{ fontWeight: 800 }}>INGREDIENTES:</b> {String(et.composicao || '').toLowerCase()}
+                    <span style={{ fontWeight: 800, textTransform: 'uppercase' }}>
+                        {' '}{et.contemGluten ? 'CONTÉM GLÚTEN' : 'NÃO CONTÉM GLÚTEN'}
+                        {et.contemLactose && <> · CONTÉM LACTOSE</>}
+                        {alergenos.length > 0 && (
+                            <> · ALÉRGICOS: CONTÉM {alergenos.join(', ').toUpperCase()}.</>
+                        )}
+                        {et.avisosRotulo && <> {String(et.avisosRotulo).toUpperCase()}</>}
+                    </span>
+                </div>
+                {et.modoPreparo && (
+                    <div style={{ fontSize: sm ? '6pt' : '6.4pt', lineHeight: sm ? 1.22 : 1.3, marginTop: sm ? '1mm' : '1.6mm' }}>
+                        <b style={{ fontWeight: 800 }}>MODO DE PREPARO:</b> {et.modoPreparo}
                     </div>
-                    {et.modoPreparo && (
-                        <div style={{ fontSize: sm ? '6pt' : '6.4pt', lineHeight: sm ? 1.22 : 1.3, marginTop: sm ? '1mm' : '1.6mm' }}>
-                            <b style={{ fontWeight: 800 }}>MODO DE PREPARO:</b> {et.modoPreparo}
-                        </div>
-                    )}
-                    {et.armazenamento && (
-                        <div style={{ fontStyle: 'italic', fontSize: sm ? '5.4pt' : '5.8pt', lineHeight: 1.22, marginTop: sm ? '1mm' : '1.6mm' }}>
-                            ❄ Conservar em FREEZER (-12 °C ou mais frio). Descongelado, não recongelar.
-                        </div>
-                    )}
-                    <div style={{ flex: 1, minHeight: '2mm' }} />
-                    <div style={{ display: 'flex', gap: sm ? '4mm' : '6mm', borderTop: '0.35mm solid #000', paddingTop: sm ? '1mm' : '1.5mm' }}>
+                )}
+                {et.armazenamento && (
+                    <div style={{ fontStyle: 'italic', fontSize: sm ? '5.4pt' : '5.8pt', lineHeight: 1.22, marginTop: sm ? '1mm' : '1.6mm' }}>
+                        ❄ Conservar em FREEZER (-12 °C ou mais frio). Descongelado, não recongelar.
+                    </div>
+                )}
+                <div style={{ flex: 1, minHeight: '2mm' }} />
+                {/* Rodapé: datas + EAN-13 horizontal (número embaixo, gerado pelo JsBarcode) */}
+                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: sm ? '2mm' : '3mm', borderTop: '0.35mm solid #000', paddingTop: sm ? '1mm' : '1.5mm' }}>
+                    <div style={{ display: 'flex', gap: sm ? '4mm' : '6mm', flex: '0 0 auto' }}>
                         <div>
                             <div style={{ fontSize: '6pt', fontWeight: 600 }}>Fabricação / Lote</div>
                             <div style={{ fontSize: sm ? '8pt' : '9.5pt', fontWeight: 800, letterSpacing: '-0.01em' }}>{dataFab}</div>
@@ -179,21 +193,15 @@ export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, altur
                             <div style={{ fontSize: sm ? '8pt' : '9.5pt', fontWeight: 800, letterSpacing: '-0.01em' }}>{dataVal}</div>
                         </div>
                     </div>
-                </div>
-
-                {/* Código de barras VERTICAL */}
-                {et.codigoBarras && (
-                    <div style={{ flex: sm ? '0 0 11mm' : '0 0 13mm', display: 'flex', alignItems: 'stretch', justifyContent: 'center', gap: '0.8mm' }}>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                            <svg ref={svgRef} style={{ transform: 'rotate(90deg)', width: 'auto', height: sm ? '8mm' : '9.5mm' }} />
+                    {et.codigoBarras && (
+                        <div style={{ flex: '0 1 auto', display: 'flex', justifyContent: 'flex-end', minWidth: 0 }}>
+                            <svg ref={svgRef} style={{ display: 'block', width: 'auto', height: 'auto', maxWidth: '100%' }} />
                         </div>
-                        <span style={{
-                            writingMode: 'vertical-rl', transform: 'rotate(180deg)',
-                            fontSize: sm ? '5.2pt' : '6pt', letterSpacing: '0.12em', alignSelf: 'center', fontWeight: 600,
-                        }}>{et.codigoBarras}</span>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
+            </div>
+          </div>
         </div>
     );
 }

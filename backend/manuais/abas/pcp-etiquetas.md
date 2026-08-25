@@ -102,7 +102,9 @@ A **impressão sai na própria página** (não abre janela nem aba nova) — fun
 
 ### Modelo ANVISA
 
-Etiqueta organizada por zonas: nome centralizado no topo (com folga para o selo quando houver), selo(s) "ALTO EM" no canto superior direito, tabela nutricional completa (colunas 100 g / porção / %VD), e embaixo os ingredientes/preparo/conservação à esquerda com o código de barras **na vertical** à direita e as datas de Fabricação/Lote e Validade no rodapé. Tudo em preto puro, pensado para a impressora térmica. Sai no tamanho escolhido — no 80 × 100 as fontes e espaçamentos ficam mais compactos para caber no rolo menor.
+Etiqueta organizada por zonas: nome centralizado no topo (com folga para o selo quando houver), selo(s) "ALTO EM" no canto superior direito, tabela nutricional completa (colunas 100 g / porção / %VD), e embaixo os ingredientes/preparo/conservação. No rodapé ficam, lado a lado, as datas de Fabricação/Lote e Validade (à esquerda) e o **código de barras EAN-13 na horizontal, com o número embaixo** (à direita) — o padrão clássico de embalagem, fácil de ler no leitor. Tudo em preto puro, pensado para a impressora térmica. Sai no tamanho escolhido — no 80 × 100 as fontes e espaçamentos ficam mais compactos para caber no rolo menor.
+
+Quando o produto tem muito texto (ingredientes e modo de preparo longos), a etiqueta **encolhe o conteúdo automaticamente** até tudo caber na altura da folha — as datas de Fabricação/Validade no rodapé aparecem sempre inteiras na impressão, nunca cortadas.
 
 ### Modelo Clássico
 
