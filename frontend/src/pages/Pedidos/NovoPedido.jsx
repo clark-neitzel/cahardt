@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
     ArrowLeft, Save, User, ChevronDown, ChevronUp, Calendar,
     FileText, AlertCircle, X, CheckCircle, Minus, Plus, Clock,
-    ShoppingBag, Search, Trash2, Package, Tag, Phone, Mic, MicOff, MapPin
+    ShoppingBag, Search, Trash2, Package, Tag, Phone, Mic, MicOff, MapPin, MessageCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import clienteService from '../../services/clienteService';
@@ -19,6 +19,9 @@ import ClientePopup from '../Rota/ClientePopup';
 import AlertaGpsFaltante from '../../components/AlertaGpsFaltante';
 import ModalErroEstoque from '../../components/ModalErroEstoque';
 import ModalPontoGps from '../../components/ModalPontoGps';
+import ModalWhatsappCliente from '../../components/ModalWhatsappCliente';
+import AvisoWhatsappFaltante from '../../components/AvisoWhatsappFaltante';
+import whatsappClientesService, { numeroWhatsappValido } from '../../services/whatsappClientesService';
 import { somAviso } from '../../utils/sons';
 import { normalizarDoc } from '../../utils/documento'; // busca por CPF/CNPJ (inclui alfanumérico)
 
@@ -186,6 +189,13 @@ const NovoPedido = () => {
     const [erroEstoqueMsg, setErroEstoqueMsg] = useState(null);
     const [gpsBloqueio, setGpsBloqueio] = useState(null);       // { clienteUuid, mensagem, statusEnvio }
     const [gpsMapaAberto, setGpsMapaAberto] = useState(false);  // mapa "Definir ponto agora"
+    // Bloqueio de envio por cliente sem WhatsApp (decidido pelo servidor)
+    const [whatsappBloqueio, setWhatsappBloqueio] = useState(null);   // { clienteUuid, clienteNome, mensagem, statusEnvio }
+    const [whatsappModalAberto, setWhatsappModalAberto] = useState(false);
+    const [avisoWhatsappDismissed, setAvisoWhatsappDismissed] = useState(false);
+    // Interruptor do módulo (GET /whatsapp-clientes/config), lido UMA vez ao abrir a
+    // tela. Enquanto estiver desligado, a tarja âmbar não aparece para ninguém.
+    const [exigeWhatsapp, setExigeWhatsapp] = useState(false);
     const qtdOriginalRef = useRef(new Map());   // edição: qtd já reservada pelo próprio pedido
     const dataEntregaOriginalRef = useRef(null); // edição: manter a data antiga é permitido
     const avisadosEstoqueRef = useRef(new Set()); // produtos já avisados (evita toast repetido)
@@ -199,6 +209,16 @@ const NovoPedido = () => {
     const clienteIdFromUrl = searchParams.get('clienteId');
 
     useEffect(() => { carregarDadosBase(); }, []);
+
+    // Interruptor do WhatsApp obrigatório. Falha em silêncio de propósito: sem a
+    // config, nenhuma tarja aparece — nunca uma tela de erro por causa de um aviso.
+    useEffect(() => {
+        let vivo = true;
+        whatsappClientesService.config()
+            .then(cfg => { if (vivo) setExigeWhatsapp(cfg?.ativo === true); })
+            .catch(() => { });
+        return () => { vivo = false; };
+    }, []);
 
     // Categorias Comerciais permitidas ao vendedor (vazio/ausente = todas).
     // Aplicado a Pedido Normal, Especial, Bonificação e Catálogo — NÃO afeta Devolução.
@@ -416,6 +436,7 @@ const NovoPedido = () => {
             }
             setClienteSelecionado(cliente);
             setAlertaGpsDismissed(false);
+            setAvisoWhatsappDismissed(false);
             setVendedorId(cliente.idVendedor);
             setVendedorSelecionado(vendedorDoCliente || null);
             setClienteSearchText(cliente.NomeFantasia || cliente.Nome);
@@ -995,6 +1016,15 @@ const NovoPedido = () => {
                     mensagem: msg,
                     statusEnvio
                 });
+            } else if (error.response?.status === 403 && error.response?.data?.codigo === 'SEM_WHATSAPP') {
+                // Cliente sem WhatsApp: popup com atalho "Pegar o WhatsApp agora"
+                setWhatsappBloqueio({
+                    clienteUuid: error.response.data.clienteId || clienteId,
+                    clienteNome: error.response.data.clienteNome
+                        || clienteSelecionado?.NomeFantasia || clienteSelecionado?.Nome || '',
+                    mensagem: msg,
+                    statusEnvio
+                });
             } else {
                 toast.error(msg, { duration: 6000, style: { maxWidth: "600px" } });
             }
@@ -1543,6 +1573,18 @@ const NovoPedido = () => {
                         </div>
                     );
                 })()}
+
+                {/* Aviso amigável: cliente sem WhatsApp. NÃO bloqueia — quem bloqueia é o
+                    servidor no ENVIAR. Só aparece com a exigência LIGADA (o módulo nasce
+                    desligado; o dono liga quando quiser, sem deploy). O número já vem na
+                    listagem: nenhuma chamada extra por cliente. */}
+                {exigeWhatsapp && clienteId && clienteSelecionado && !numeroWhatsappValido(clienteSelecionado.Telefone_Celular) && !avisoWhatsappDismissed && (
+                    <AvisoWhatsappFaltante
+                        nomeCliente={clienteSelecionado.NomeFantasia || clienteSelecionado.Nome}
+                        onPegarAgora={() => setWhatsappModalAberto(true)}
+                        onDispensar={() => setAvisoWhatsappDismissed(true)}
+                    />
+                )}
 
                 {/* Etapas sequenciais — cada uma só aparece após a anterior estar preenchida */}
                 {clienteId && (
@@ -2317,6 +2359,63 @@ const NovoPedido = () => {
                     } else if (r?.offline) {
                         toast('Sem internet: o ponto será enviado quando o sinal voltar. Tente enviar o pedido novamente mais tarde.', { icon: '📵' });
                     }
+                }}
+            />
+
+            {/* Bloqueio do servidor: cliente sem WhatsApp não envia (resolve na hora, com o cliente na frente) */}
+            {whatsappBloqueio && !whatsappModalAberto && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                        <div className="bg-red-600 px-5 py-4 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-white/20 rounded-full p-2">
+                                    <MessageCircle className="h-6 w-6 text-white" />
+                                </div>
+                                <h2 className="text-white font-bold text-lg leading-tight">Cliente sem WhatsApp</h2>
+                            </div>
+                            <button onClick={() => setWhatsappBloqueio(null)} aria-label="Fechar" className="text-white/80 hover:text-white p-1">
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="px-5 py-4">
+                            <p className="text-sm text-gray-700 leading-relaxed">{whatsappBloqueio.mensagem}</p>
+                        </div>
+                        <div className="px-5 py-3 bg-gray-50 border-t flex flex-col md:flex-row gap-2 md:justify-end">
+                            <button onClick={() => setWhatsappBloqueio(null)}
+                                className="px-5 py-2.5 bg-white border border-gray-300 text-gray-600 text-sm font-medium rounded-full min-h-[44px]">
+                                Fechar
+                            </button>
+                            <button onClick={() => setWhatsappModalAberto(true)}
+                                className="px-5 py-2.5 bg-primary hover:bg-primaryDark text-white text-sm font-semibold rounded-full shadow-sm flex items-center justify-center gap-2 min-h-[44px]">
+                                <MessageCircle className="h-4 w-4" /> Pegar o WhatsApp agora
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <ModalWhatsappCliente
+                aberto={whatsappModalAberto}
+                onFechar={() => setWhatsappModalAberto(false)}
+                clienteUuid={whatsappBloqueio?.clienteUuid || clienteId || null}
+                clienteNome={whatsappBloqueio?.clienteNome || clienteSelecionado?.NomeFantasia || clienteSelecionado?.Nome || ''}
+                numeroAtual={clienteSelecionado?.Telefone_Celular || ''}
+                rotuloSalvar={whatsappBloqueio ? 'Salvar e enviar o pedido' : 'Salvar WhatsApp'}
+                onSalvo={(r) => {
+                    const bloqueio = whatsappBloqueio;
+                    setWhatsappModalAberto(false);
+                    setWhatsappBloqueio(null);
+                    setAvisoWhatsappDismissed(true);
+                    // Reflete na lista já carregada (evita o aviso reaparecer e o bloqueio repetir)
+                    if (r?.numero && clienteSelecionado) clienteSelecionado.Telefone_Celular = r.numero;
+                    if (!bloqueio) {
+                        if (r?.numero) toast.success('WhatsApp salvo no cadastro do cliente.');
+                        return;
+                    }
+                    // Veio de um envio recusado: reenvia sozinho — o vendedor não clica "Enviar" de novo
+                    if (r?.numero) toast.success('WhatsApp salvo! Enviando o pedido…');
+                    else toast('Motivo registrado. Enviando o pedido…', { icon: '📝' });
+                    setTimeout(() => handleSalvar(bloqueio.statusEnvio || 'ENVIAR'), 400);
                 }}
             />
 
