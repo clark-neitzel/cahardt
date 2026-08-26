@@ -10443,4 +10443,352 @@ router.post('/recalcular-custo-todos', async (req, res) => {
     }
 });
 
+// ============================================================================
+// GET /api/admin-exec/diag-cidades  — PADRONIZAÇÃO DE CIDADE, FASE 0
+// ----------------------------------------------------------------------------
+// SOMENTE LEITURA. Não grava, não altera, não cria coluna. Só olha.
+//
+// Por quê: cidade é string livre em todo o sistema e a mesma cidade convive no
+// banco em várias grafias ("Joinville"/"JOINVILLE", "Itapoá"/"ITAPOA"). Quem casa
+// cidade faz lookup EXATO — em `comissaoService` o realizado por cidade cai em 0
+// quando a grafia da meta não bate com a do pedido, `bateu` fica false em silêncio
+// e o vendedor perde bônus. Metas e dashboards duplicam a mesma cidade.
+//
+// Esta rota agrupa TODAS as grafias que existem hoje pela chave de comparação
+// (`utils/cidade.js` -> chaveCidade) e propõe, para cada grupo, o nome final. É a
+// lista que o dono aprova ANTES de a Fase 1 escrever qualquer coisa.
+//
+// Query:
+//   ?tudo=1     -> lista todos os grupos (padrão: só os que precisam de ação —
+//                  mais de uma grafia OU alguma grafia que muda no backfill)
+//   ?limite=N   -> corta a lista de `grupos` em N (padrão 500)
+//
+// Onde varre:
+//   clientes."End_Cidade" · leads.cidade · meta_cidades.cidade ·
+//   fornecedores.cidade · kitfesta_bairros.cidade ·
+//   catalogos_personalizados.cliente_cidade (campo COMPOSTO "Joinville · SC")
+//
+// Tudo é agregado com GROUP BY no Postgres — o Node recebe uma linha por grafia
+// distinta, nunca a tabela inteira (clientes tem milhares de linhas).
+router.get('/diag-cidades', async (req, res) => {
+    try {
+        const { chaveCidade, normalizarCidade } = require('../utils/cidade');
+        const { porFrequencia, decidirNomeFinal } = require('../utils/cidadeNomeFinal');
+
+        const tudo = req.query.tudo === '1' || req.query.tudo === 'true';
+        const limite = Math.max(1, Math.min(5000, parseInt(req.query.limite, 10) || 500));
+
+        const FONTES = ['clientes', 'leads', 'metaCidades', 'fornecedores', 'kitFestaBairros', 'catalogos'];
+        const zerado = () => FONTES.reduce((o, f) => (o[f] = 0, o), {});
+
+        // ---------------------------------------------------------------- 1) ambiente
+        // Informativo apenas — NÃO usamos `unaccent` nesta entrega. A normalização é
+        // feita em JavaScript para o backend e o frontend darem exatamente o mesmo
+        // resultado (o espelho `frontend/src/utils/cidade.js` nasce na Fase 4).
+        const ambiente = { postgres: null, unaccentDisponivel: false, unaccentInstalado: false };
+        try {
+            const [v] = await prisma.$queryRawUnsafe('SELECT version() AS v');
+            // "PostgreSQL 15.6 (Debian ...) on x86_64..." — guarda só o começo
+            ambiente.postgres = String(v?.v || '').split(' on ')[0].trim() || null;
+        } catch (e) { ambiente.postgres = `erro: ${e.message}`; }
+        try {
+            const ext = await prisma.$queryRawUnsafe(
+                "SELECT installed_version FROM pg_available_extensions WHERE name = 'unaccent'"
+            );
+            ambiente.unaccentDisponivel = ext.length > 0;
+            ambiente.unaccentInstalado = !!(ext[0] && ext[0].installed_version);
+        } catch { /* extensão é informativa; falha aqui não pode derrubar o diagnóstico */ }
+
+        // ---------------------------------------------------------------- 2) coleta
+        // Uma consulta agregada por fonte. `valor` = grafia crua, `n` = quantas linhas.
+        // Uma fonte que falhe (tabela ausente num ambiente) devolve [] e o resto continua.
+        const consulta = (sql) => prisma.$queryRawUnsafe(sql).catch((e) => {
+            console.error('[diag-cidades] falha em fonte:', e.message);
+            return [];
+        });
+
+        const [rClientes, rLeads, rMetas, rFornecedores, rBairros, rCatalogos] = await Promise.all([
+            consulta(`SELECT "End_Cidade" AS valor, COUNT(*)::int AS n FROM clientes
+                      WHERE "End_Cidade" IS NOT NULL AND btrim("End_Cidade") <> '' GROUP BY 1`),
+            consulta(`SELECT cidade AS valor, COUNT(*)::int AS n FROM leads
+                      WHERE cidade IS NOT NULL AND btrim(cidade) <> '' GROUP BY 1`),
+            consulta(`SELECT cidade AS valor, COUNT(*)::int AS n FROM meta_cidades
+                      WHERE cidade IS NOT NULL AND btrim(cidade) <> '' GROUP BY 1`),
+            consulta(`SELECT cidade AS valor, COUNT(*)::int AS n FROM fornecedores
+                      WHERE cidade IS NOT NULL AND btrim(cidade) <> '' GROUP BY 1`),
+            consulta(`SELECT cidade AS valor, COUNT(*)::int AS n FROM kitfesta_bairros
+                      WHERE cidade IS NOT NULL AND btrim(cidade) <> '' GROUP BY 1`),
+            consulta(`SELECT cliente_cidade AS valor, COUNT(*)::int AS n FROM catalogos_personalizados
+                      WHERE cliente_cidade IS NOT NULL AND btrim(cliente_cidade) <> '' GROUP BY 1`),
+        ]);
+
+        // `catalogos_personalizados.cliente_cidade` é COMPOSTO: o service monta
+        // `[End_Cidade, End_Estado].filter(Boolean).join(' · ')` (catalogoPersonalizadoService.js:87),
+        // ou seja "Joinville · SC". Sem estado vem só "Joinville"; e (raro) sem cidade
+        // vem só "SC" — daí a guarda da UF sozinha, senão "SC"/"PR" viravam cidade aqui.
+        const parteCidadeDoCatalogo = (composto) => {
+            const bruto = String(composto == null ? '' : composto);
+            const partes = bruto.split('·');
+            if (partes.length > 1) return partes[0].trim();
+            const unico = bruto.trim();
+            return /^[A-Za-z]{2}$/.test(unico) ? '' : unico; // "SC" sozinho = estado, não cidade
+        };
+
+        // ---------------------------------------------------------------- 3) agrupamento
+        // grupos: chave de comparação -> { variantes: grafia crua -> contagem por fonte }
+        const grupos = new Map();
+        const registrar = (valorBruto, fonte, n) => {
+            const valor = String(valorBruto == null ? '' : valorBruto);
+            const chave = chaveCidade(valor);
+            // Cidade vazia NÃO entra como grupo: `routes/adminDashboard.js` e
+            // `routes/dashboards.js` rotulam o vazio como 'Sem cidade' — deixar passar
+            // criaria a cidade fantasma "Sem Cidade" nos dropdowns.
+            if (!chave) return;
+            let g = grupos.get(chave);
+            if (!g) { g = { chave, variantes: new Map() }; grupos.set(chave, g); }
+            let v = g.variantes.get(valor);
+            if (!v) { v = { valor, total: 0, ...zerado() }; g.variantes.set(valor, v); }
+            v[fonte] += n;
+            v.total += n;
+        };
+
+        for (const r of rClientes) registrar(r.valor, 'clientes', r.n);
+        for (const r of rLeads) registrar(r.valor, 'leads', r.n);
+        for (const r of rMetas) registrar(r.valor, 'metaCidades', r.n);
+        for (const r of rFornecedores) registrar(r.valor, 'fornecedores', r.n);
+        for (const r of rBairros) registrar(r.valor, 'kitFestaBairros', r.n);
+        for (const r of rCatalogos) registrar(parteCidadeDoCatalogo(r.valor), 'catalogos', r.n);
+
+        // ---------------------------------------------------------------- 4) nome final
+        // A regra que decide o nome final de cada grupo mora em `utils/cidadeNomeFinal.js`
+        // (função pura, com teste próprio em `scripts/teste-cidade-nome-final.js`). Aqui a
+        // rota só a aplica — é a MESMA função que o teste exercita, não uma cópia.
+
+        const registrosQueMudam = zerado();
+        const listaGrupos = [];
+        const nomeFinalPorChave = new Map();
+        let variantesDistintas = 0;
+        let gruposComColisao = 0;
+        let gruposQueMudam = 0;
+        let foraDoDicionario = 0;
+
+        for (const g of grupos.values()) {
+            const variantes = [...g.variantes.values()].sort(porFrequencia);
+            variantesDistintas += variantes.length;
+            const { nomeFinal, origemNomeFinal, precisaAprovacao } = decidirNomeFinal(g.chave, variantes);
+            nomeFinalPorChave.set(g.chave, nomeFinal);
+            if (origemNomeFinal !== 'dicionario') foraDoDicionario++;
+
+            let total = 0;
+            let algumaMuda = false;
+            const saidaVariantes = variantes.map((v) => {
+                total += v.total;
+                const muda = v.valor !== nomeFinal;
+                if (muda) {
+                    algumaMuda = true;
+                    for (const f of FONTES) registrosQueMudam[f] += v[f];
+                }
+                return {
+                    valor: v.valor,
+                    mudaPara: muda ? nomeFinal : null,
+                    ...FONTES.reduce((o, f) => (o[f] = v[f], o), {}),
+                };
+            });
+
+            const colide = variantes.length > 1;
+            if (colide) gruposComColisao++;
+            if (algumaMuda) gruposQueMudam++;
+            // Padrão: só o que dá trabalho. Um grupo de grafia única JÁ correta não
+            // interessa ao dono — mas um de grafia única ERRADA ("SAO BENTO") interessa,
+            // e por isso o filtro é "colide OU muda", não só "colide".
+            if (!tudo && !colide && !algumaMuda) continue;
+
+            listaGrupos.push({
+                chave: g.chave, nomeFinal, origemNomeFinal, precisaAprovacao,
+                colide, total, variantes: saidaVariantes,
+            });
+        }
+
+        // Mais grafias primeiro (é onde está o estrago), depois volume.
+        listaGrupos.sort((a, b) => (b.variantes.length - a.variantes.length) || (b.total - a.total)
+            || a.chave.localeCompare(b.chave, 'pt-BR'));
+
+        // ---------------------------------------------------------------- 5) colisões de meta
+        // `meta_cidades` tem @@unique([meta_mensal_vendedor_id, cidade]) (schema.prisma:2007).
+        // Se a MESMA meta tem "ITAPOA" e "Itapoá", o backfill tentaria deixar duas linhas
+        // com o mesmo nome final e o UPDATE quebraria no meio. Aqui só LISTAMOS e propomos.
+        const colisoesMetaCidade = [];
+        try {
+            const linhasMeta = await prisma.$queryRawUnsafe(`
+                SELECT mc.id, mc.meta_mensal_vendedor_id AS meta_id, mc.cidade,
+                       mc.valor::float8 AS valor, mc.dias_semana,
+                       mmv.mes_referencia AS mes, v.nome AS vendedor
+                FROM meta_cidades mc
+                JOIN meta_mensal_vendedor mmv ON mmv.id = mc.meta_mensal_vendedor_id
+                LEFT JOIN vendedores v ON v.id = mmv.vendedor_id
+                WHERE mc.cidade IS NOT NULL AND btrim(mc.cidade) <> ''
+            `);
+
+            const porMetaENome = new Map();
+            for (const l of linhasMeta) {
+                const chave = chaveCidade(l.cidade);
+                if (!chave) continue;
+                const nomeFinal = nomeFinalPorChave.get(chave) || normalizarCidade(l.cidade);
+                const k = `${l.meta_id} ${nomeFinal}`;
+                if (!porMetaENome.has(k)) {
+                    porMetaENome.set(k, {
+                        metaMensalVendedorId: l.meta_id, vendedor: l.vendedor || null,
+                        mes: l.mes || null, nomeFinal, linhas: [],
+                    });
+                }
+                porMetaENome.get(k).linhas.push({
+                    id: l.id, cidade: l.cidade,
+                    valor: Number(l.valor) || 0,
+                    diasSemana: l.dias_semana || null,
+                });
+            }
+
+            // Ordem canônica dos dias — a união não pode sair embaralhada ("QUI,TER").
+            const ORDEM_DIAS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
+            for (const grupo of porMetaENome.values()) {
+                if (grupo.linhas.length < 2) continue;
+                grupo.linhas.sort((a, b) => a.cidade.localeCompare(b.cidade, 'pt-BR'));
+                const dias = new Set();
+                let soma = 0;
+                for (const l of grupo.linhas) {
+                    soma += l.valor;
+                    for (const d of String(l.diasSemana || '').split(',')) {
+                        const dia = d.trim().toUpperCase();
+                        if (dia) dias.add(dia);
+                    }
+                }
+                const conhecidos = ORDEM_DIAS.filter(d => dias.has(d));
+                const desconhecidos = [...dias].filter(d => !ORDEM_DIAS.includes(d)).sort();
+                colisoesMetaCidade.push({
+                    metaMensalVendedorId: grupo.metaMensalVendedorId,
+                    vendedor: grupo.vendedor,
+                    mes: grupo.mes,
+                    nomeFinal: grupo.nomeFinal,
+                    linhas: grupo.linhas,
+                    proposta: {
+                        // SOMAR, não escolher a maior: a meta da cidade é UMA só; ficar com
+                        // a maior apagaria meta de verdade e mudaria o bônus do vendedor.
+                        valor: Math.round(soma * 100) / 100,
+                        diasSemana: [...conhecidos, ...desconhecidos].join(',') || null,
+                        regra: 'soma + união dos dias',
+                    },
+                });
+            }
+            colisoesMetaCidade.sort((a, b) => b.linhas.length - a.linhas.length);
+        } catch (e) {
+            console.error('[diag-cidades] colisoesMetaCidade:', e.message);
+        }
+
+        // ---------------------------------------------------------------- 6) erro de digitação
+        // Levenshtein entre as chaves. É SUGESTÃO, NUNCA aplicada sozinha: existem
+        // cidades legitimamente parecidas (Bela Vista x Boa Vista, Jacareí x Jacaré).
+        // Só o dono decide se "Jonville" é erro de digitação de "Joinville".
+        const distancia = (a, b, teto) => {
+            if (Math.abs(a.length - b.length) > teto) return teto + 1;
+            let anterior = Array.from({ length: b.length + 1 }, (_, i) => i);
+            for (let i = 1; i <= a.length; i++) {
+                const atual = [i];
+                let menor = i;
+                for (let j = 1; j <= b.length; j++) {
+                    atual[j] = Math.min(
+                        anterior[j] + 1,
+                        atual[j - 1] + 1,
+                        anterior[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+                    );
+                    if (atual[j] < menor) menor = atual[j];
+                }
+                if (menor > teto) return teto + 1; // corta cedo: nem vale terminar a matriz
+                anterior = atual;
+            }
+            return anterior[b.length];
+        };
+
+        const suspeitosDeErroDigitacao = [];
+        const resumoChaves = [...grupos.values()]
+            .map(g => {
+                const variantes = [...g.variantes.values()].sort(porFrequencia);
+                return {
+                    chave: g.chave,
+                    valor: variantes[0].valor,
+                    total: variantes.reduce((s, v) => s + v.total, 0),
+                    clientes: variantes.reduce((s, v) => s + v.clientes, 0),
+                };
+            })
+            .filter(c => c.chave.length >= 4); // chave curta com distância 2 é ruído puro
+
+        // n^2 sobre as CHAVES distintas (dezenas/centenas), não sobre as linhas.
+        //
+        // O CUSTO É SÍNCRONO E BLOQUEIA O BACKEND INTEIRO. Node é single-thread: enquanto
+        // este laço roda, vendedor em campo, motorista e escritório ficam esperando. Por
+        // isso o teto é baixo. Medido nesta máquina (pares = n*(n-1)/2, teto de distância 2):
+        //     n=200 -> 10 ms · n=500 -> 38 ms · n=600 -> 56 ms
+        //     n=800 -> 93 ms · n=1000 -> 149 ms · n=3000 -> 1435 ms (teto antigo, inaceitável)
+        // 600 mantém o pior caso em ~56 ms e cobre com folga a base real (~1.157 clientes,
+        // 200-500 cidades distintas somando as 6 fontes).
+        //
+        // Passar do teto NÃO derruba nada: esta seção é SUGESTÃO auxiliar de erro de
+        // digitação, não o núcleo do diagnóstico. A resposta avisa em
+        // `resumo.comparacaoDeErroDigitacao` que a comparação foi pulada, e o agrupamento
+        // por chave (que é o que importa) continua completo.
+        const TETO_CHAVES = 600;
+        let comparacaoDeErroDigitacao = 'completa';
+        if (resumoChaves.length > TETO_CHAVES) {
+            comparacaoDeErroDigitacao = `pulada (${resumoChaves.length} chaves distintas, teto ${TETO_CHAVES})`;
+        } else {
+            for (let i = 0; i < resumoChaves.length; i++) {
+                for (let j = i + 1; j < resumoChaves.length; j++) {
+                    const a = resumoChaves[i];
+                    const b = resumoChaves[j];
+                    const d = distancia(a.chave, b.chave, 2);
+                    if (d === 0 || d > 2) continue;
+                    // O menos frequente é o "suspeito"; o mais frequente é o "parecidoCom".
+                    const [suspeito, referencia] = a.total <= b.total ? [a, b] : [b, a];
+                    suspeitosDeErroDigitacao.push({
+                        valor: suspeito.valor,
+                        chave: suspeito.chave,
+                        parecidoCom: referencia.valor,
+                        distancia: d,
+                        clientes: suspeito.clientes,
+                        total: suspeito.total,
+                        acao: 'PRECISA_DECISAO_DO_DONO',
+                    });
+                }
+            }
+            suspeitosDeErroDigitacao.sort((a, b) => (a.distancia - b.distancia) || (a.total - b.total));
+        }
+
+        // ---------------------------------------------------------------- 7) resposta
+        res.json({
+            ok: true,
+            geradoEm: new Date().toISOString(),
+            somenteLeitura: true,
+            ambiente,
+            resumo: {
+                variantesDistintas,
+                cidadesFinais: grupos.size,
+                gruposComColisao,      // grupos com MAIS DE UMA grafia
+                gruposQueMudam,        // grupos em que alguma grafia é reescrita no backfill
+                registrosQueMudam,
+                colisoesMetaCidade: colisoesMetaCidade.length,
+                foraDoDicionario,      // grupos sem entrada em CIDADES_CANONICAS (pedem aprovação)
+                comparacaoDeErroDigitacao,
+            },
+            filtro: tudo ? 'todos os grupos' : 'só os grupos que precisam de ação (use ?tudo=1 para ver todos)',
+            gruposListados: Math.min(listaGrupos.length, limite),
+            gruposOcultados: Math.max(0, listaGrupos.length - limite),
+            grupos: listaGrupos.slice(0, limite),
+            colisoesMetaCidade,
+            suspeitosDeErroDigitacao: suspeitosDeErroDigitacao.slice(0, limite),
+        });
+    } catch (err) {
+        console.error('[diag-cidades]', err);
+        if (!res.headersSent) res.status(500).json({ ok: false, erro: err.message });
+    }
+});
+
 module.exports = router;
