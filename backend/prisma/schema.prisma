@@ -226,6 +226,10 @@ model Cliente {
   // WhatsApps vinculados ao cadastro (tabela lateral — mesma razão da ClienteFiscal)
   whatsapp ClienteWhatsapp?
 
+  // Situação do WhatsApp do cadastro (verificação, selo por uso real, dispensa) —
+  // tabela lateral, mesma razão da ClienteFiscal
+  whatsappStatus ClienteWhatsappStatus?
+
   // GPS: selo de confiança, cliente balcão, auditoria e sinais (tabelas laterais)
   gps       ClienteGps?
   gpsLogs   ClienteGpsLog[]
@@ -269,6 +273,43 @@ model ClienteWhatsapp {
   cliente     Cliente  @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
 
   @@map("cliente_whatsapps")
+}
+
+// Situação do WhatsApp do cadastro (Telefone_Celular) em tabela lateral — a `clientes`
+// está no teto de 1600 colunas do Postgres, mesma razão da ClienteFiscal. NENHUMA coluna
+// nova entra em `clientes`: a FK fica aqui.
+//
+// São três camadas independentes:
+//  1. DISPENSA  — o escritório/vendedor declarou por que aquele cliente antigo segue sem
+//     número; vale por N dias (config `whatsapp_cliente_config.diasValidadeDispensa`).
+//  2. VERIFICAÇÃO — o bot da Ana foi CONSULTADO (GET, nunca envio) se o número existe no
+//     WhatsApp. INDISPONIVEL = não deu para perguntar (bot fora do ar/endpoint ausente).
+//  3. SELO — calculado pelo uso REAL da fila `bot_whatsapp_envios`. EM_USO significa
+//     "mensagem já saiu para esse número", NUNCA "o cliente recebeu" (o bot não tem
+//     callback de entrega). COM_PROBLEMA = erro do próprio número (telefone_invalido).
+model ClienteWhatsappStatus {
+  clienteUuid String  @id @map("cliente_uuid")
+  cliente     Cliente @relation(fields: [clienteUuid], references: [UUID], onDelete: Cascade)
+
+  // Camada 2 — consulta ao bot
+  verificacaoStatus String?   @map("verificacao_status") // EXISTE | NAO_EXISTE | INDISPONIVEL
+  verificacaoNumero String?   @map("verificacao_numero")
+  verificacaoEm     DateTime? @map("verificacao_em")
+
+  // Camada 3 — selo pelo uso real
+  selo       String? // EM_USO | COM_PROBLEMA (null = sem sinal suficiente)
+  seloEm     DateTime? @map("selo_em")
+  seloMotivo String?   @map("selo_motivo")
+
+  // Camada 1 — dispensa justificada (cliente antigo, no ENVIAR do pedido)
+  dispensaMotivo  String?   @map("dispensa_motivo") // NAO_TEM_WHATSAPP | NAO_QUIS_INFORMAR | VOU_PEGAR_DEPOIS
+  dispensaPorId   String?   @map("dispensa_por_id")
+  dispensaPorNome String?   @map("dispensa_por_nome")
+  dispensaEm      DateTime? @map("dispensa_em")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("cliente_whatsapp_status")
 }
 
 // Dados de GPS do cliente em tabela lateral (a tabela `clientes` está no teto de

@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: WhatsApp do cliente vai virar obrigatório — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto no grupo) -->
+<meta property="og:title" content="💬 Novidade no Hardt App: o WhatsApp do cliente vai virar obrigatório">
+<meta property="og:description" content="Já está no app e começa a valer no dia em que a empresa ligar. Aí o cadastro novo passa a pedir o número, e em cliente antigo o app pede na hora de enviar o pedido. Veja como vai ficar.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid var(--primary);
+    box-shadow: 0 0 0 3px rgba(0,117,74,.14);
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 16px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 48px;
+  }
+  .mock-ajuda { font-size: 12px; color: var(--ink-soft); margin: 8px 0 14px; }
+  .mock-ajuda b { color: var(--ink); }
+  .mock-cta {
+    display: block;
+    text-align: center;
+    background: var(--primary);
+    color: #fff;
+    font-size: 14px;
+    font-weight: 800;
+    padding: 13px;
+    border-radius: 999px;
+  }
+  .mock-link { display: block; text-align: center; font-size: 12.5px; color: var(--ink-soft); text-decoration: underline; margin-top: 12px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .destaque {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-left: 4px solid var(--gold);
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin-bottom: 6px;
+  }
+  .destaque p { margin: 0; font-size: 14.5px; color: var(--ink-soft); }
+  .destaque b { color: var(--ink); }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-input.erro { background: #fdf0ef; border-color: #e5b4b0; }
+  .app-ajuda { font-size: 10.5px; color: #6b756f; margin: -4px 0 10px; line-height: 1.45; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-btn.perigo { background: #dc2626; }
+  .app-btn.bloco { display: flex; justify-content: center; width: 100%; }
+  .app-link { display: block; text-align: center; font-size: 11.5px; color: #6b756f; text-decoration: underline; margin-top: 10px; }
+  .app-opcao {
+    border: 1.5px solid #d8d5cc;
+    background: #fff;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #6b756f;
+    margin-bottom: 7px;
+  }
+  .app-opcao.on { background: var(--mint); border-color: var(--primary); color: var(--primary-dark); font-weight: 800; }
+  .app-tarja {
+    background: #fdf6e6;
+    border: 1px solid #e8d3a0;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #8a6d24;
+    margin-bottom: 10px;
+    line-height: 1.45;
+  }
+  .app-tarja b { color: #6b5316; }
+  .app-modal-top {
+    background: #dc2626;
+    color: #fff;
+    font-size: 13.5px;
+    font-weight: 800;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
+  @media (min-width: 480px) { .app-kpis { grid-template-columns: repeat(4, 1fr); } }
+  .app-kpi { background: #fff; border: 1px solid #e5e3dc; border-radius: 10px; padding: 9px 6px; text-align: center; }
+  .app-kpi b { display: block; font-size: 19px; font-weight: 800; line-height: 1.1; }
+  .app-kpi small { display: block; font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: #9aa5a0; margin-top: 2px; }
+  .app-badge {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 3px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .b-verde { background: #dcfce7; color: #166534; }
+  .b-vermelho { background: #fee2e2; color: #b91c1c; }
+  .b-cinza { background: #f1f1ee; color: #57605b; }
+  .b-ambar { background: #fef3c7; color: #92610a; }
+  .app-linha {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+    padding: 9px 0;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 12.5px;
+  }
+  .app-linha:last-child { border-bottom: none; }
+  .app-linha small { display: block; font-size: 10.5px; color: #8b938e; margin-top: 2px; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+    margin-bottom: 10px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>O WhatsApp do cliente<br>vai virar obrigatório</h1>
+    <p>A novidade já está no app, mas <b>ainda não está valendo</b>: a exigência começa no dia em que a empresa ligar. A partir daí, o cadastro novo passa a pedir o número e, em cliente antigo, o app pede na hora de enviar o pedido — e depois manda o pedido sozinho.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do popup que o vendedor vê -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">💬</span>
+      <div>
+        <small>Novo Pedido · WhatsApp do cliente</small>
+        <strong>Panificadora Exemplo</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-label">Número com DDD *</div>
+      <div class="mock-input">47999998888</div>
+      <p class="mock-ajuda">Vai ser salvo como <b>(47) 99999-8888</b></p>
+      <div class="mock-cta">✓ Salvar e enviar o pedido</div>
+      <span class="mock-link">Não consegui agora</span>
+    </div>
+  </div>
+
+  <!-- ══════════ QUANDO COMEÇA A VALER ══════════ -->
+  <div class="sec-label">Quando começa a valer</div>
+
+  <div class="destaque">
+    <p><b>Hoje nada mudou para você.</b> A novidade já está no app, mas vem <b>desligada</b>: você continua cadastrando cliente e enviando pedido exatamente como sempre fez.</p>
+    <p style="margin-top:10px;">A exigência só começa <b>no dia em que a empresa ligar</b> — e isso será avisado antes. Deste dia em diante é que o cadastro novo passa a pedir o WhatsApp e o app passa a pedir o número na hora de enviar pedido de cliente antigo. Esta página é para você já saber como vai funcionar.</p>
+  </div>
+
+  <!-- ══════════ POR QUE MUDOU ══════════ -->
+  <div class="sec-label">Por que isso vai mudar</div>
+
+  <div class="destaque">
+    <p>Semana passada um vendedor faltou e o escritório <b>não conseguiu fazer os pedidos dos clientes dele</b> — simplesmente não tinha como falar com essas pessoas. O telefone não estava no cadastro. O cliente ficou sem receber e a empresa ficou sem vender.</p>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">Como vai funcionar</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📝</span>
+      <strong>Cadastro novo: o WhatsApp passa a ser obrigatório</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Depois que a exigência for ligada, o campo <b>Celular / WhatsApp</b> passa a ser obrigatório no cadastro de cliente novo — igual à razão social e ao CNPJ. A partir daí, sem o número o cadastro não salva. <b>Enquanto não for ligada, o cadastro salva normalmente sem o número</b>, como sempre.</p>
+      <ul>
+        <li>Precisa ter <b>DDD</b> e 10 ou 11 números (ex.: 47999998888).</li>
+        <li>O app ainda <b>confere se aquele número tem WhatsApp mesmo</b>. Se não tiver, ele avisa na hora: "Esse número não tem WhatsApp. Confira com o cliente."</li>
+        <li>Cadastro que é <b>só fornecedor</b> não precisa — fornecedor não recebe aviso de pedido.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚚</span>
+      <strong>Cliente antigo: o app pede na hora de enviar</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Você não precisa parar tudo para arrumar a carteira. Depois que a exigência for ligada, quando for <b>ENVIAR</b> um pedido de um cliente que está sem número, vai aparecer uma telinha pedindo o WhatsApp — o melhor momento, porque <b>você está com o cliente na frente</b>.</p>
+      <ul>
+        <li>Digitou e salvou? <b>O pedido vai sozinho</b>. Você não clica em "Enviar" de novo.</li>
+        <li><b>Salvar como rascunho nunca trava.</b> A exigência é só no envio.</li>
+        <li>Antes disso, ao escolher o cliente, aparece uma <b>tarja amarela</b> lembrando — ela não impede nada, é só um aviso amigável para você já aproveitar a visita.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🙋</span>
+      <strong>"Não consegui agora" — e o que acontece depois</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Se realmente não deu, existe a saída. No pé da telinha tem o link <b>"Não consegui agora"</b>, com três motivos:</p>
+      <ul>
+        <li><b>Cliente não tem WhatsApp</b></li>
+        <li><b>Cliente não quis informar</b></li>
+        <li><b>Vou pegar depois</b></li>
+      </ul>
+      <p>Escolheu o motivo, o pedido segue normalmente. Mas seja honesto: <b>fica registrado com o seu nome e a data</b>, e o escritório vê isso numa lista. A saída existe para o caso de verdade, não para virar o botão que todo mundo aperta.</p>
+      <p>A dispensa também <b>vale só por um tempo</b> — passado o prazo, o app volta a pedir o número daquele cliente.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🏷️</span>
+      <strong>Selo do WhatsApp na ficha do cliente</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Na ficha do cliente, embaixo do celular, apareceu a situação do número:</p>
+      <ul>
+        <li><b>WhatsApp em uso</b> (verde) — o sistema já mandou mensagem para esse número.</li>
+        <li><b>Número com problema</b> (vermelho) — as mensagens para esse número estão falhando. Vale conferir com o cliente.</li>
+        <li><b>Número verificado</b> — o app perguntou e o número tem WhatsApp.</li>
+      </ul>
+      <p>Um aviso honesto: o sistema sabe que a mensagem <b>saiu</b>, não que o cliente <b>leu</b>. "Em uso" quer dizer que o número está sendo usado nos envios — não é confirmação de leitura.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📋</span>
+      <strong>Tela nova: Pendências de WhatsApp (escritório)</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Na aba <b>Clientes</b>, ao lado do botão "Saúde GPS", entrou o botão <b>💬 WhatsApp</b>. Ele abre a lista de quem ainda está sem número, <b>separada por vendedor</b>.</p>
+      <ul>
+        <li>Mostra <b>quem dispensou, quando e por quê</b>, e até quando aquela dispensa vale.</li>
+        <li>Dá para filtrar por situação, vendedor e motivo — e o app <b>lembra o filtro</b> que você deixou.</li>
+        <li>Tocar no cliente abre a ficha dele para cadastrar o número.</li>
+        <li>Tem o <b>interruptor</b> que liga e desliga a exigência no envio do pedido, sem precisar de atualização do app.</li>
+      </ul>
+      <p><b>Começa desligado.</b> Nada trava para ninguém até a direção decidir ligar — a ideia é primeiro zerar a lista, depois ligar.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app</div>
+  <p style="font-size:13px;color:var(--ink-soft);margin:-4px 4px 12px;">As telas abaixo mostram como o app vai ficar <b>depois</b> que a exigência for ligada. Hoje, com ela desligada, o asterisco e os avisos ainda não aparecem.</p>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Novo Cadastro — o campo obrigatório</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">✉️ Contato</div>
+        <div class="app-card-body">
+          <div class="app-input"><small>E-mail</small>cliente@email.com</div>
+          <div class="app-input ok"><small>Celular / WhatsApp *<span class="pin">1</span></small>47999998888</div>
+          <p class="app-ajuda">Com DDD, só números. <b>Obrigatório</b>: é por este número que o cliente recebe a confirmação do pedido e o escritório consegue falar com ele quando o vendedor não estiver disponível.<span class="pin">2</span></p>
+          <div class="app-input erro"><small>Se o número não tiver WhatsApp<span class="pin">3</span></small>⚠️ Esse número não tem WhatsApp. Confira com o cliente.</div>
+        </div>
+      </div>
+      <div style="text-align:right;"><span class="app-btn">💾 Cadastrar Cliente</span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Com a exigência ligada, o rótulo ganha o <b>asterisco (*)</b> — quer dizer obrigatório, igual ao CNPJ e à razão social. Aí o botão de cadastrar recusa sem o número e mostra o que falta. Desligada, o asterisco não aparece e o cadastro salva sem o número.</span></div>
+      <div><span class="pin">2</span><span>A explicação fica <b>do lado do campo</b>, para não restar dúvida do porquê. Precisa de <b>DDD</b>, 10 ou 11 números.</span></div>
+      <div><span class="pin">3</span><span>Se o número digitado <b>não tiver WhatsApp</b>, o campo fica vermelho com o aviso. Não é erro seu — é para conferir o número com o cliente ali mesmo.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Novo Pedido — o aviso e o pedido do número</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">👤 Cliente selecionado</div>
+        <div class="app-card-body">
+          <div class="app-input" style="margin-bottom:10px;">123456 · Panificadora Exemplo</div>
+          <div class="app-tarja">
+            💬 <b>Panificadora Exemplo ainda não tem WhatsApp cadastrado</b><span class="pin">1</span><br>
+            Aproveite que você está com ele e pegue o número — é por ele que o cliente recebe a confirmação do pedido e o escritório consegue falar com ele.
+            <div style="margin-top:8px;"><span class="app-btn" style="font-size:11.5px;padding:7px 13px;">💬 Pegar o WhatsApp agora</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="app-card">
+        <div class="app-modal-top">💬 Cliente sem WhatsApp<span class="pin">2</span></div>
+        <div class="app-card-body">
+          <div style="font-size:12px;color:#5f6b66;margin-bottom:10px;">O cliente "Panificadora Exemplo" está sem WhatsApp no cadastro. Informe o número do WhatsApp dele para enviar o pedido.</div>
+          <div class="app-input"><small>Número com DDD *</small>47999998888<span class="pin">3</span></div>
+          <span class="app-btn bloco">✓ Salvar e enviar o pedido</span>
+          <span class="app-link">Não consegui agora<span class="pin">4</span></span>
+          <div style="margin-top:12px;">
+            <div class="app-opcao on">● Cliente não tem WhatsApp</div>
+            <div class="app-opcao">○ Cliente não quis informar</div>
+            <div class="app-opcao">○ Vou pegar depois<span class="pin">5</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>A <b>tarja amarela</b> aparece assim que você escolhe o cliente. Ela <b>não bloqueia nada</b> — é um lembrete para aproveitar que você está na frente dele. Dá para fechar no "×".</span></div>
+      <div><span class="pin">2</span><span>O <b>popup vermelho</b> só aparece quando você aperta <b>ENVIAR</b> e a exigência está ligada. Salvar o pedido como <b>rascunho continua funcionando normalmente</b>.</span></div>
+      <div><span class="pin">3</span><span>Digite o número e toque em <b>"Salvar e enviar o pedido"</b>. O app grava no cadastro do cliente e <b>manda o pedido sozinho</b> — você não clica em "Enviar" de novo.</span></div>
+      <div><span class="pin">4</span><span><b>"Não consegui agora"</b> fica discreto de propósito. Ao tocar, abrem os três motivos.</span></div>
+      <div><span class="pin">5</span><span>Escolha o motivo e toque em <b>"Registrar e continuar"</b>. O pedido segue — e o motivo fica gravado <b>com o seu nome e a data</b>.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Pendências de WhatsApp (escritório)</div>
+    <div class="tela-corpo">
+      <div class="app-kpis">
+        <div class="app-kpi"><b style="color:#dc2626;">18</b><small>Sem número</small></div>
+        <div class="app-kpi"><b style="color:#b45309;">4</b><small>Dispensados</small></div>
+        <div class="app-kpi"><b style="color:#dc2626;">2</b><small>Com problema</small></div>
+        <div class="app-kpi"><b style="color:#166534;">311</b><small>Verificados</small></div>
+      </div>
+      <div class="app-toggle-linha">
+        <div>
+          <b>Exigir WhatsApp para ENVIAR pedido</b>
+          <small>Desligado — ligue depois de zerar a lista, para não travar vendedor em campo.</small>
+        </div>
+        <span class="app-btn" style="font-size:11.5px;padding:7px 13px;">Ligar exigência<span class="pin">1</span></span>
+      </div>
+      <div class="app-toggle-linha">
+        <div>
+          <b>Selos de WhatsApp</b>
+          <small>Recalculados sozinhos toda madrugada (04:20).</small>
+        </div>
+        <span class="app-btn claro" style="font-size:11.5px;padding:7px 13px;">↻ Recalcular agora<span class="pin">2</span></span>
+      </div>
+
+      <div class="app-card">
+        <div class="app-card-head">💬 Jociel<span class="pin">3</span><span style="margin-left:auto;" class="app-badge b-cinza">7</span></div>
+        <div class="app-card-body" style="padding-top:4px;">
+          <div class="app-linha">
+            <div>Panificadora Exemplo<small>12.345.678/0001-90 · Joinville</small></div>
+            <span class="app-badge b-cinza">Sem número</span>
+          </div>
+          <div class="app-linha">
+            <div>Mercado do Bairro<small>Cliente não tem WhatsApp · por Jociel · em 26/08 · <b style="color:#b45309;">dispensado até 25/09</b><span class="pin">4</span></small></div>
+            <span class="app-badge b-ambar">Dispensado</span>
+          </div>
+          <div class="app-linha">
+            <div>Lanchonete da Praça<small>47988887777 · mensagens estão falhando</small></div>
+            <span class="app-badge b-vermelho">Número com problema<span class="pin">5</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O <b>interruptor</b> liga e desliga a exigência na hora, sem atualizar o app. Nasce <b>desligado</b>. Só quem pode editar clientes consegue mexer.</span></div>
+      <div><span class="pin">2</span><span><b>Recalcular agora</b> atualiza os selos na hora, em vez de esperar a madrugada. Demora um pouco — pode deixar a tela aberta.</span></div>
+      <div><span class="pin">3</span><span>A lista vem <b>separada por vendedor</b>, do que tem mais pendência para o que tem menos. No celular vira cartão; no computador, tabela.</span></div>
+      <div><span class="pin">4</span><span>Quem dispensou, <b>quando e por quê</b> — e até que dia aquela dispensa vale. Depois disso o app volta a pedir o número.</span></div>
+      <div><span class="pin">5</span><span>As cores são as de sempre: <b>cinza</b> = sem número, <b>amarelo</b> = dispensado, <b>vermelho</b> = número com problema. Tocar no cliente abre a ficha dele.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE FAZER AGORA ══════════ -->
+  <div class="sec-label">O que fazer desde já</div>
+  <div class="passos">
+    <div class="passo">
+      <div class="passo-n">1</div>
+      <div><b>Atualize o app.</b> Toque no ícone de atualizar dentro do sistema (ou feche e abra o atalho na tela inicial).</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">2</div>
+      <div><b>Vá pegando o WhatsApp na visita.</b> Nada trava ainda — mas cada número que você cadastrar agora é um cliente a menos para correr atrás quando a exigência for ligada. Leva 10 segundos e resolve para sempre.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">3</div>
+      <div><b>Cadastro novo: já preencha o número.</b> Assim o cliente nasce certo e você não precisa voltar nele depois.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">4</div>
+      <div><b>Escritório:</b> aba <b>Clientes → 💬 WhatsApp</b> para acompanhar a lista. A exigência será ligada quando a lista estiver perto de zerar — com aviso antes.</div>
+    </div>
+  </div>
+
+  <p class="rodape">
+    Dúvida? Fale com o <strong>Clarkson</strong>.<br>
+    <strong>Hardt Salgados</strong> · 26/08/2026
+  </p>
+
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

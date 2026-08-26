@@ -20,6 +20,14 @@ import { normalizarDoc, formatarDoc, mascaraDoc, validarDoc } from '../../utils/
 import toast from 'react-hot-toast';
 import gpsClientesService from '../../services/gpsClientesService';
 import ModalPontoGps from '../../components/ModalPontoGps';
+import whatsappClientesService, { rotuloMotivo, calcularValidaAte } from '../../services/whatsappClientesService';
+
+// Data curta em pt-BR, tolerante a valor nulo/inválido vindo do backend
+const fmtDataBr = (v) => {
+    if (!v) return '';
+    const d = new Date(v);
+    return isNaN(d) ? '' : d.toLocaleDateString('pt-BR');
+};
 
 // Toggle switch inline
 const Toggle = ({ checked, onChange }) => (
@@ -93,6 +101,11 @@ const DetalheCliente = () => {
     // Ponto GPS: mapa + selo + cliente balcão
     const [showMapaGps, setShowMapaGps] = useState(false);
     const [gpsInfo, setGpsInfo] = useState(null); // { balcao, selo, sugestao, balcaoPorNome }
+    // Situação do WhatsApp do cliente (vem junto do detalhe; null = sem registro)
+    const [whatsappStatus, setWhatsappStatus] = useState(null);
+    // Validade da dispensa — só para completar "dispensado até" quando o registro
+    // é antigo e não traz dispensaValidaAte. Falha em silêncio: é detalhe informativo.
+    const [diasValidadeDispensa, setDiasValidadeDispensa] = useState(null);
     const [salvandoBalcao, setSalvandoBalcao] = useState(false);
     const podeLiberarBalcao = !!(perms.admin || perms.Pode_Liberar_Cliente_Balcao);
     const [condicoesPagamento, setCondicoesPagamento] = useState([]);
@@ -172,6 +185,12 @@ const DetalheCliente = () => {
             ]);
 
             setCliente(clienteData);
+            setWhatsappStatus(clienteData?.whatsappStatus || null);
+            if (clienteData?.whatsappStatus?.dispensaMotivo && !clienteData.whatsappStatus.dispensaValidaAte) {
+                whatsappClientesService.config()
+                    .then(cfg => setDiasValidadeDispensa(cfg?.diasValidadeDispensa ?? null))
+                    .catch(() => { });
+            }
             setCondicoesPagamento(condicoesData);
             setCondicoesPagamentoCA(condicoesCAData);
             setVendedores(vendedoresData);
@@ -1179,7 +1198,41 @@ const DetalheCliente = () => {
                                 value={formData.Telefone_Celular}
                                 onChange={(e) => setFormData({ ...formData, Telefone_Celular: e.target.value.replace(/\D/g, '') })}
                             />
-                            <p className="text-xs text-gray-400 mt-1">Com DDD, só números.</p>
+                            <p className="text-xs text-gray-500 mt-1">Com DDD, só números.</p>
+                            {/* Situação do WhatsApp deste número. O sistema só sabe que a mensagem
+                                SAIU — não existe confirmação de entrega do bot. Nada de "entregue". */}
+                            {(whatsappStatus?.selo || whatsappStatus?.verificacaoStatus === 'EXISTE') && (
+                                <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                    {whatsappStatus?.selo === 'EM_USO' && (
+                                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                            WhatsApp em uso
+                                        </span>
+                                    )}
+                                    {whatsappStatus?.selo === 'COM_PROBLEMA' && (
+                                        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">
+                                            Número com problema
+                                        </span>
+                                    )}
+                                    {whatsappStatus?.verificacaoStatus === 'EXISTE' && (
+                                        <span className="text-xs text-gray-500">Número verificado</span>
+                                    )}
+                                </div>
+                            )}
+                            {whatsappStatus?.selo === 'COM_PROBLEMA' && whatsappStatus?.seloMotivo && (
+                                <p className="text-xs text-red-600 mt-1 leading-snug">{whatsappStatus.seloMotivo}</p>
+                            )}
+                            {whatsappStatus?.dispensaMotivo && (
+                                <p className="text-xs text-amber-700 mt-1 leading-snug">
+                                    Dispensado do WhatsApp: {rotuloMotivo(whatsappStatus.dispensaMotivo)}
+                                    {whatsappStatus.dispensaPorNome ? ` · por ${whatsappStatus.dispensaPorNome}` : ''}
+                                    {fmtDataBr(whatsappStatus.dispensaEm) ? ` · em ${fmtDataBr(whatsappStatus.dispensaEm)}` : ''}
+                                    {/* dispensaValidaAte vem do backend; dispensa antiga sem o campo cai
+                                        no cálculo pela config, e sem nenhum dos dois o prazo é omitido */}
+                                    {fmtDataBr(calcularValidaAte(whatsappStatus.dispensaValidaAte, whatsappStatus.dispensaEm, diasValidadeDispensa))
+                                        ? <b> · dispensado até {fmtDataBr(calcularValidaAte(whatsappStatus.dispensaValidaAte, whatsappStatus.dispensaEm, diasValidadeDispensa))}</b>
+                                        : ''}
+                                </p>
+                            )}
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wide">Inscrição Estadual</label>

@@ -8,6 +8,7 @@ import SelectBusca from '../../components/SelectBusca';
 import CampoWhatsapps from '../../components/CampoWhatsapps';
 import ModalPontoGps from '../../components/ModalPontoGps';
 import { mascaraDoc, normalizarDoc, validarDoc } from '../../utils/documento';
+import whatsappClientesService from '../../services/whatsappClientesService';
 
 const UFS = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'];
 
@@ -61,6 +62,13 @@ const NovoCliente = () => {
     const [consultando, setConsultando] = useState(false);
     const [consulta, setConsulta] = useState(null); // resultado da busca automática
     const [salvando, setSalvando] = useState(false);
+    // Erro do WhatsApp — do backend (mensagem pronta) ou da validação daqui.
+    // Serve para os dois: mostra o texto E marca o campo de vermelho.
+    const [erroWhatsapp, setErroWhatsapp] = useState('');
+    // Interruptor do módulo. Nasce DESLIGADO: enquanto não for ligado, esta tela se
+    // comporta exatamente como antes (WhatsApp opcional). Quem manda é o backend —
+    // se não der para ler a config, NÃO exigimos nada aqui.
+    const [exigirWhatsappConfig, setExigirWhatsappConfig] = useState(false);
     // Localização: ponto GPS no mapa OU cliente balcão (um dos dois)
     const [pontoGps, setPontoGps] = useState('');
     const [clienteBalcao, setClienteBalcao] = useState(false);
@@ -75,11 +83,24 @@ const NovoCliente = () => {
         if (user?.id) setIdVendedor(v => v || user.id);
     }, [user]);
 
+    // Lê o interruptor uma vez ao abrir a tela. Falha em silêncio de propósito:
+    // sem a config, o cadastro segue como sempre foi (não inventa exigência).
+    useEffect(() => {
+        let vivo = true;
+        whatsappClientesService.config()
+            .then(cfg => { if (vivo) setExigirWhatsappConfig(cfg?.ativo === true); })
+            .catch(() => { });
+        return () => { vivo = false; };
+    }, []);
+
     const set = (campo, valor) => setForm(f => ({ ...f, [campo]: valor }));
 
     const docNorm = normalizarDoc(documento);
     const docCompleto = docNorm.length === 11 || docNorm.length === 14;
     const docValido = docCompleto && validarDoc(docNorm);
+    // Exige WhatsApp só quando o módulo está LIGADO e o cadastro é (também) de cliente.
+    // Fornecedor puro não vende e não recebe aviso de pedido — nunca exige.
+    const exigeWhatsapp = exigirWhatsappConfig && perfil !== 'FORNECEDOR';
 
     const buscarDados = async (doc) => {
         const cnpj = normalizarDoc(doc);
@@ -130,10 +151,27 @@ const NovoCliente = () => {
         if (!docNorm) erros.push('Informe o CNPJ ou CPF');
         else if (!docValido) erros.push('CNPJ/CPF inválido (confira os dígitos)');
         if (!form.Nome.trim()) erros.push('Informe a razão social / nome');
+        // WhatsApp obrigatório no cliente: é por ele que o cliente recebe a confirmação
+        // do pedido e o escritório fala com ele quando o vendedor falta. (10-11 dígitos,
+        // a mesma regra que o backend valida.)
+        const celular = (form.Telefone_Celular || '').replace(/\D/g, '');
+        // O erro do WhatsApp também MARCA o campo de vermelho — o vendedor vê onde está
+        // o problema sem precisar ler o alerta inteiro.
+        let msgWhatsapp = '';
+        if (exigeWhatsapp && !celular) {
+            msgWhatsapp = 'Informe o WhatsApp do cliente';
+        } else if (celular && (celular.length < 10 || celular.length > 11)) {
+            msgWhatsapp = 'WhatsApp deve ter 10 ou 11 dígitos, com DDD';
+        }
+        if (msgWhatsapp) erros.push(msgWhatsapp);
+        setErroWhatsapp(msgWhatsapp);
+
         const ie = form.Inscricao_Estadual.replace(/\D/g, '');
         if (ie && form.End_Estado === 'SC' && ie.length !== 9) erros.push('Inscrição Estadual de SC deve ter 9 dígitos');
         if (erros.length) {
             alert('Corrija antes de salvar:\n• ' + erros.join('\n• '));
+            // Depois do alerta: leva o cursor direto ao campo marcado
+            if (msgWhatsapp) document.getElementById('campoCelularCliente')?.focus();
             return;
         }
         setSalvando(true);
@@ -141,6 +179,7 @@ const NovoCliente = () => {
             const criado = await clienteService.criar({
                 ...form,
                 perfil,
+                Telefone_Celular: celular,
                 Documento: docNorm,
                 Inscricao_Estadual: ie,
                 idVendedor: idVendedor || undefined,
@@ -160,6 +199,10 @@ const NovoCliente = () => {
                 if (window.confirm(`${resp.error}.\n\nAbrir o cadastro existente?`)) {
                     navigate(`/clientes/${resp.clienteExistente.UUID}`);
                 }
+            } else if (resp?.codigo === 'WHATSAPP_NAO_EXISTE') {
+                // Mensagem pronta do backend — mostrada com destaque no campo do celular
+                setErroWhatsapp(resp.error);
+                document.getElementById('campoCelularCliente')?.focus();
             } else {
                 alert('Erro ao cadastrar: ' + (resp?.error || e.message));
             }
@@ -309,9 +352,30 @@ const NovoCliente = () => {
                         <Campo label="E-mail">
                             <input type="email" className={inputCls} placeholder="cliente@email.com" value={form.Email} onChange={(e) => set('Email', e.target.value)} />
                         </Campo>
-                        <Campo label="Celular / WhatsApp" hint="Com DDD, só números.">
-                            <input type="tel" inputMode="numeric" maxLength={11} className={inputCls} placeholder="47999998888"
-                                value={form.Telefone_Celular} onChange={(e) => set('Telefone_Celular', e.target.value.replace(/\D/g, ''))} />
+                        <Campo
+                            label={exigeWhatsapp ? 'Celular / WhatsApp *' : 'Celular / WhatsApp'}
+                            hint={exigeWhatsapp ? null : 'Com DDD, só números.'}
+                        >
+                            <input
+                                id="campoCelularCliente"
+                                type="tel" inputMode="numeric" maxLength={11}
+                                className={`${inputCls} ${erroWhatsapp ? 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-red-400' : ''}`}
+                                placeholder="47999998888"
+                                value={form.Telefone_Celular}
+                                onChange={(e) => { set('Telefone_Celular', e.target.value.replace(/\D/g, '')); setErroWhatsapp(''); }}
+                            />
+                            {erroWhatsapp && (
+                                <p className="text-xs text-red-600 mt-1 flex items-start gap-1">
+                                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" /> {erroWhatsapp}
+                                </p>
+                            )}
+                            {exigeWhatsapp && (
+                                <p className="text-xs text-gray-500 mt-1 leading-snug">
+                                    Com DDD, só números. <b>Obrigatório</b>: é por este número que o cliente recebe a
+                                    confirmação do pedido e o escritório consegue falar com ele quando o vendedor não
+                                    estiver disponível.
+                                </p>
+                            )}
                         </Campo>
                         <Campo label="Telefone Fixo">
                             <input type="tel" inputMode="numeric" maxLength={10} className={inputCls} placeholder="4733334444"

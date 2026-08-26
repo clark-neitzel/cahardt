@@ -42,6 +42,7 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 2. Escolha o tipo de cadastro: **Cliente**, **Fornecedor** ou **Cliente + Fornecedor**. Fornecedor vai para a lista de Fornecedores (usada no Contas a Pagar e Notas de Entrada); "Cliente + Fornecedor" grava nos dois lugares
 3. Digite o CNPJ. Assim que ele fica completo e válido, o app consulta a Receita Federal e a SEFAZ e preenche razão social, fantasia, endereço, telefone, e-mail e Inscrição Estadual automaticamente
 4. Confira/edite os campos (todos são editáveis). Endereço completo é obrigatório para emitir NF-e depois. CNPJ/CPF é **obrigatório** e o dígito verificador é validado
+4b. **WhatsApp (campo Celular)** — vira **campo obrigatório em cadastro de cliente quando a exigência estiver LIGADA** na tela Pendências de WhatsApp (é o mesmo interruptor do bloqueio de envio de pedido; ele vem desligado de fábrica). **Enquanto estiver desligado, o cadastro continua salvando sem o número, como sempre foi.** É por esse número que sai a confirmação do pedido, o boleto/PIX e a cobrança, e é como o escritório fala com o cliente quando o vendedor falta. Com a exigência ligada, antes de salvar o app ainda **pergunta ao WhatsApp da empresa se o número existe** (é uma consulta — **nenhuma mensagem é enviada ao cliente**): se a resposta for que não existe, o cadastro é recusado com "Esse número não tem WhatsApp. Confira com o cliente."; se não der para perguntar na hora (WhatsApp da empresa fora do ar), **o cadastro salva normalmente** e fica marcado como "não deu para verificar". Cadastro que é **só fornecedor** nunca pede WhatsApp
 5. Clique em **Cadastrar**. Para cliente, o código sequencial é gerado automaticamente e a tela abre no detalhe; fornecedor puro leva à tela de Fornecedores
 6. Também funciona com CPF (pessoa física), mas aí não há busca automática — preencha manualmente
 7. **Não duplica**: se o documento já existir (como cliente ou como fornecedor), o app avisa e oferece abrir o cadastro existente
@@ -113,7 +114,13 @@ Aba padrão ao abrir o detalhe. Contém tudo que é editável pelo time comercia
 
 **Contato / Fiscal**
 - E-mail
-- Celular (com DDD, só números)
+- Celular (com DDD, só números) — **é o WhatsApp do cliente**: o único número que o sistema usa para mandar confirmação de pedido, boleto/PIX e cobrança. Ao lado dele aparece a situação do número:
+  - **Em uso** — já saiu mensagem do sistema para esse número nos últimos 180 dias (é a prova mais forte de que está certo; quer dizer que a mensagem **saiu**, não que o cliente leu)
+  - **Com problema** — o WhatsApp recusou o envio por causa do número; confira com o cliente
+  - **Verificado** — o WhatsApp confirmou que o número existe (conferido no cadastro)
+  - **Dispensado até DD/MM** — cliente sem número, com justificativa registrada (vale 60 dias)
+
+  Na **edição** o campo **nunca** é obrigatório (várias telas alteram um campo só), com a exigência ligada ou desligada. Se o número **for trocado**, o app confere no WhatsApp igual ao cadastro novo — e, como lá, a recusa por "esse número não tem WhatsApp" só acontece com a exigência **ligada**. A cobrança do número dos clientes antigos acontece na tela **Pendências de WhatsApp** e na hora de enviar o pedido
 - Inscrição Estadual (em SC: 9 dígitos) + link para consultar Sintegra SC
 - Indicador de IE (Contribuinte, Não Contribuinte, Isento)
 - Telefone fixo (editável)
@@ -205,3 +212,13 @@ Exibe os leads que foram associados a este cliente — geralmente leads converti
 - **Cliente Balcão** (checkbox no cadastro, permissão "Liberar Cliente Balcão"): cliente que compra e retira na empresa — dispensado de ponto GPS. No cadastro novo: ou define o ponto no mapa, ou marca balcão.
 - Sem internet, a correção de ponto fica guardada no aparelho e é enviada sozinha quando o sinal volta.
 - Visão geral e faxina dos pontos: tela **Saúde dos Pontos GPS** (`/clientes/saude-gps`).
+
+## WhatsApp do cliente obrigatório (novo — 08/2026)
+
+> **Tudo nesta seção só vale depois que a exigência for LIGADA** no interruptor da tela Pendências de WhatsApp. Ele vem **desligado de fábrica**, e enquanto estiver assim nada muda no dia a dia: cadastro e envio de pedido seguem funcionando como sempre.
+
+- **Cadastro novo:** o campo **Celular** virou o "WhatsApp do cliente". Com a exigência **ligada**, não há como cadastrar um cliente sem ele; com ela **desligada**, o cadastro salva sem o número normalmente. Estando ligada, antes de salvar o app **consulta** o WhatsApp da empresa para saber se o número existe — é uma pergunta, **nunca um envio de mensagem para o cliente**. Número que o WhatsApp diz não existir é recusado; WhatsApp da empresa fora do ar **não impede** o cadastro.
+- **Edição:** o campo não é obrigatório (para não travar telas que mudam um campo só), mas trocar o número dispara a mesma conferência.
+- **Ao ENVIAR pedido:** com o interruptor ligado, cliente sem WhatsApp não envia pedido — o vendedor informa o número na hora ou registra uma justificativa (**Cliente não tem WhatsApp**, **Cliente não quis informar**, **Vou pegar o número depois**), que fica gravada com autor e data e vale **60 dias**. Rascunho (pedido salvo como aberto) nunca é bloqueado.
+- **Selo pelo uso real:** uma vez por dia o sistema cruza os envios que já saíram pelo WhatsApp da empresa com o cadastro e marca **Em uso** ou **Com problema**. Falha nossa (internet, teto de envios, WhatsApp fora do ar) nunca marca o cliente como problema, e cliente que optou por não receber aviso de pedido nunca é marcado como "com problema".
+- Cobrança e acompanhamento por vendedor: tela **Pendências de WhatsApp** (`/clientes/pendencias-whatsapp`).

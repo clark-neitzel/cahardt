@@ -297,3 +297,21 @@ O **valor do título** em Contas a Receber sempre acompanha as parcelas: depois 
 ## Bloqueio de pedido sem ponto GPS (novo — 07/2026)
 
 Quando o interruptor "Exigir ponto GPS para ENVIAR pedido" está LIGADO (tela Saúde dos Pontos GPS), pedido de cliente **sem ponto GPS e que não é Cliente Balcão** não pode ser ENVIADO — aparece um aviso com o botão **"Definir ponto agora"**, que abre o mapa; depois de salvar o ponto, o pedido é enviado automaticamente. Salvar o pedido como ABERTO continua permitido (igual ao bloqueio de estoque). Cliente Balcão (compra e retira na empresa) é dispensado da exigência.
+
+## Bloqueio de pedido sem WhatsApp do cliente (novo — 08/2026)
+
+Quando o interruptor "Exigir WhatsApp para ENVIAR pedido" está LIGADO (tela **Pendências de WhatsApp**, em Clientes), pedido de cliente **sem WhatsApp no cadastro** não pode ser ENVIADO. Aparece um aviso pedindo o número: dá para **informar o WhatsApp na hora** (salva no cadastro do cliente e o pedido segue) ou **registrar uma justificativa**:
+
+- **Cliente não tem WhatsApp**
+- **Cliente não quis informar**
+- **Vou pegar o número depois**
+
+A justificativa fica gravada com **quem** registrou e **quando**, e vale **60 dias** — depois disso o cliente volta a pedir o número. Não existe "dispensar para sempre".
+
+Regras:
+
+- **Rascunho nunca é bloqueado:** salvar o pedido como ABERTO continua permitido (igual ao bloqueio de estoque e ao de GPS). O bloqueio só vale no ENVIAR.
+- O interruptor vem **desligado de fábrica** — o dono liga quando a lista de pendências estiver baixa.
+- O WhatsApp do cliente é o campo **Celular** do cadastro. É por ele que sai a confirmação do pedido, o boleto/PIX e a cobrança, e é o que permite ao escritório atender a carteira quando o vendedor falta.
+- O **mesmo interruptor** vale para o cadastro de cliente novo: com ele ligado, não dá para cadastrar cliente sem o WhatsApp; com ele desligado, o cadastro continua salvando sem o número, como sempre foi.
+- Acompanhamento por vendedor: tela **Pendências de WhatsApp** (`/clientes/pendencias-whatsapp`).

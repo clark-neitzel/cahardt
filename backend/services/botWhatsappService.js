@@ -143,6 +143,10 @@ const postEnviar = async ({ telefone, texto, tipo, origem, referencia }) => {
 
 const botWhatsappService = {
     TIPOS,
+    // Exportado (só adição) para o selo do WhatsApp do cliente saber, a partir de UMA
+    // fonte só, quais códigos são falha passageira/nossa — e portanto nunca podem
+    // acusar o número do cliente. Uma cópia da lista aqui viraria mentira com o tempo.
+    CODIGOS_REAGENDAR,
     referenciaUnica,
     normalizarTelefone,
 

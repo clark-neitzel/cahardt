@@ -153,6 +153,7 @@ app.use('/api/canhotos', authMiddleware, canhotoRoutes); // Canhoto da NF assina
 app.use('/api/produtos', authMiddleware, produtoRoutes);
 app.use('/api/clientes', authMiddleware, clienteRoutes);
 app.use('/api/gps-clientes', authMiddleware, require('./routes/gpsClientesRoutes')); // Ponto GPS confiável por cliente
+app.use('/api/whatsapp-clientes', authMiddleware, require('./routes/whatsappClienteRoutes')); // WhatsApp do cliente: obrigatório, verificado e com selo
 app.use('/api/vendedores', authMiddleware, vendedorRoutes);
 app.use('/api/config', authMiddleware, configRoutes);
 app.use('/api/tabela-precos', authMiddleware, tabelaPrecoRoutes);

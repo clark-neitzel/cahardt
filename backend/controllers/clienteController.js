@@ -324,6 +324,13 @@ const clienteController = {
                     arquivos: true,
                     fiscal: true,
                     whatsapp: true,
+                    whatsappStatus: {
+                        select: {
+                            selo: true, seloEm: true, seloMotivo: true,
+                            verificacaoStatus: true, verificacaoEm: true,
+                            dispensaMotivo: true, dispensaEm: true, dispensaPorNome: true
+                        }
+                    },
                     indicacao: {
                         select: { UUID: true, Nome: true, NomeFantasia: true }
                     }
@@ -338,6 +345,18 @@ const clienteController = {
             cliente.Inscricao_Estadual = cliente.fiscal?.inscricaoEstadual ?? null;
             // Achata os WhatsApps vinculados (tabela separada) — front usa cliente.Whatsapps
             cliente.Whatsapps = cliente.whatsapp?.numeros ?? [];
+
+            // Até quando a dispensa do WhatsApp vale. É calculado (dispensaEm + N dias da
+            // config), não é coluna — por isso entra aqui e não no select. Só ADIÇÃO de campo.
+            if (cliente.whatsappStatus?.dispensaEm) {
+                const whatsCliente = require('../services/whatsappClienteService');
+                const { diasValidadeDispensa } = await whatsCliente.getConfig();
+                const ate = new Date(new Date(cliente.whatsappStatus.dispensaEm).getTime()
+                    + diasValidadeDispensa * 24 * 60 * 60 * 1000);
+                cliente.whatsappStatus.dispensaValidaAte = ate.toISOString();
+            } else if (cliente.whatsappStatus) {
+                cliente.whatsappStatus.dispensaValidaAte = null;
+            }
 
             // Este cadastro também é fornecedor? (tabela fornecedores, por documento)
             const docNorm = normalizarDoc(cliente.Documento);
@@ -394,14 +413,25 @@ const clienteController = {
             if (celularNorm && (celularNorm.length < 10 || celularNorm.length > 11)) {
                 erros.push('Celular deve ter 10 ou 11 dígitos (com DDD)');
             }
+            // WhatsApp do cliente é OBRIGATÓRIO no cadastro novo, sem escape — MAS só
+            // depois que o dono LIGA o módulo (`whatsapp_cliente_config.ativo`). O módulo
+            // nasce desligado e é ligado quando a equipe já tiver sido avisada; sem esta
+            // consulta, o deploy passaria a exigir WhatsApp de todo cadastro novo no mesmo
+            // minuto, com o dono achando que estava desligado.
+            // Com o módulo DESLIGADO o comportamento é exatamente o de antes desta entrega.
+            // (Cadastro que é só FORNECEDOR nunca pede — não recebe aviso de pedido.)
+            const criaCliente = perfil === 'CLIENTE' || perfil === 'AMBOS';
+            const criaFornecedor = perfil === 'FORNECEDOR' || perfil === 'AMBOS';
+            const whatsCliente = require('../services/whatsappClienteService');
+            const cfgWhats = await whatsCliente.getConfig();
+            if (cfgWhats.ativo && criaCliente && !celularNorm) {
+                erros.push('Informe o WhatsApp do cliente — é por ele que o cliente recebe a confirmação do pedido e o escritório consegue falar com ele');
+            }
             const ieNorm = soDigitos(b.Inscricao_Estadual);
             const erroIe = validarIe(ieNorm, ufNorm);
             if (erroIe) erros.push(erroIe);
             const whatsappsNorm = normalizarWhatsapps(b.Whatsapps, erros);
             if (erros.length) return res.status(400).json({ error: erros.join('; ') });
-
-            const criaCliente = perfil === 'CLIENTE' || perfil === 'AMBOS';
-            const criaFornecedor = perfil === 'FORNECEDOR' || perfil === 'AMBOS';
 
             // Ponto GPS no cadastro novo: mesma validação do módulo de GPS
             // (duplicado/empresa bloqueiam; perto de outro cliente exige autorização)
@@ -440,6 +470,27 @@ const clienteController = {
                 const fornExiste = await prisma.fornecedor.findFirst({ where: { cnpjCpf: docNorm, ativo: true } });
                 if (fornExiste) {
                     return res.status(409).json({ error: `Já existe um fornecedor com este documento: ${fornExiste.razaoSocial}` });
+                }
+            }
+
+            // O número informado tem WhatsApp mesmo? Pergunta ao bot da Ana — é uma
+            // CONSULTA (GET), nunca um envio. Só recusa quando o bot responde
+            // explicitamente que o número NÃO existe; se não deu para perguntar
+            // (bot fora do ar, endpoint ainda não publicado, timeout), o cadastro
+            // segue normalmente e o caso fica marcado como INDISPONIVEL.
+            // A RECUSA também só vale com o módulo ligado — "desligado" tem que ser
+            // exatamente o comportamento de antes desta entrega. O carimbo continua
+            // sendo gravado nos dois casos: assim, quando o dono ligar o módulo, já
+            // existe histórico de verificação em vez de tudo em branco.
+            let verifResultado = null;
+            if (criaCliente && celularNorm) {
+                const whatsVerif = require('../services/whatsappVerificacaoService');
+                verifResultado = await whatsVerif.verificarNumero(celularNorm);
+                if (cfgWhats.ativo && verifResultado.disponivel && verifResultado.existe === false) {
+                    return res.status(400).json({
+                        error: 'Esse número não tem WhatsApp. Confira com o cliente.',
+                        codigo: 'WHATSAPP_NAO_EXISTE'
+                    });
                 }
             }
 
@@ -518,6 +569,12 @@ const clienteController = {
                     cliente.clienteBalcao = true;
                 }
             } catch (gpsLogErr) { console.error('Cadastro criado; falhou log de GPS/balcão:', gpsLogErr.message); }
+
+            // Carimbo da consulta ao bot (best-effort — o cadastro já está criado)
+            if (verifResultado) {
+                const whatsCliente = require('../services/whatsappClienteService');
+                await whatsCliente.registrarVerificacao(cliente.UUID, celularNorm, verifResultado);
+            }
 
             if (ieNorm) {
                 await prisma.clienteFiscal.create({
@@ -601,7 +658,7 @@ const clienteController = {
 
             const atual = await prisma.cliente.findUnique({
                 where: { UUID: uuid },
-                select: { Documento: true, End_Estado: true, fiscal: { select: { inscricaoEstadual: true } } }
+                select: { Documento: true, End_Estado: true, Telefone_Celular: true, fiscal: { select: { inscricaoEstadual: true } } }
             });
             if (!atual) return res.status(404).json({ error: 'Cliente não encontrado' });
 
@@ -643,9 +700,61 @@ const clienteController = {
             const whatsappsNorm = normalizarWhatsapps(Whatsapps, erros);
             if (erros.length) return res.status(400).json({ error: erros.join('; ') });
 
+            // WhatsApp NÃO é obrigatório aqui de propósito: várias telas fazem PATCH de um
+            // campo só (dia de entrega, vendedor, observação) e passariam a quebrar. O que
+            // é feito na edição é CONFERIR o número quando ele MUDA — mesma consulta (GET)
+            // do cadastro novo, com a mesma degradação quando o bot não responde.
+            //
+            // Gate PRÓPRIO do WhatsApp, estreito de propósito. Ele existe por UM motivo só:
+            // o bloqueio do ENVIAR manda o vendedor informar o número que FALTA na hora (o
+            // modal faz PATCH /clientes/:uuid com Telefone_Celular). Sem isso, um usuário com
+            // a aba Pedidos mas sem `clientes.edit` recebia 200 sem nada ser gravado, o modal
+            // dizia "salvo" e o pedido voltava a ser bloqueado — laço sem saída.
+            //
+            // O que este gate NÃO pode virar (e por isso as três condições abaixo):
+            //  - é `perms.pedidos?.edit === true`, NÃO `!!perms.pedidos`: `permissoes.pedidos` é
+            //    um OBJETO (`{ view, edit, clientes }`), então `!!` seria true até para quem só
+            //    LÊ a aba — e quem não CRIA pedido nunca esbarra no bloqueio do ENVIAR, logo não
+            //    tem por que ganhar escrita neste campo. Mesma régua do `podeDispensar` da rota.
+            //  - mesmo quem envia pedido só PREENCHE número faltando; nunca sobrescreve nem apaga
+            //    um que já está lá — é o campo por onde saem boleto, PIX e a régua de cobrança.
+            //  - o 403 só vale quando o número está REALMENTE mudando. Telas como o Detalhe do
+            //    Cliente mandam o formulário inteiro a cada Salvar; barrar pela mera presença do
+            //    campo quebraria quem só mexeu na observação ou no vendedor.
+            const whatsCliente = require('../services/whatsappClienteService');
+            const numeroAtualOk = whatsCliente.numeroValido(atual.Telefone_Celular);
+            const mudouNumero = celularNorm !== undefined && celularNorm !== (atual.Telefone_Celular || '');
+            const podeGravarWhatsapp = podeEditarCadastro || (perms.pedidos?.edit === true && !numeroAtualOk);
+            if (mudouNumero && !podeGravarWhatsapp) {
+                return res.status(403).json({
+                    error: numeroAtualOk
+                        ? 'Este cliente já tem WhatsApp cadastrado. Só quem pode editar clientes altera esse número.'
+                        : 'Sem permissão para alterar o WhatsApp deste cliente.'
+                });
+            }
+
+            // Conferência do número trocado. Igual ao cadastro novo: a RECUSA só vale com
+            // o módulo ligado; o carimbo é gravado de qualquer jeito.
+            let verifResultado = null;
+            if (podeGravarWhatsapp && celularNorm && mudouNumero) {
+                const cfgWhats = await whatsCliente.getConfig();
+                const whatsVerif = require('../services/whatsappVerificacaoService');
+                verifResultado = await whatsVerif.verificarNumero(celularNorm);
+                if (cfgWhats.ativo && verifResultado.disponivel && verifResultado.existe === false) {
+                    return res.status(400).json({
+                        error: 'Esse número não tem WhatsApp. Confira com o cliente.',
+                        codigo: 'WHATSAPP_NAO_EXISTE'
+                    });
+                }
+            }
+
+            // Gravado à parte do resto do cadastro por causa do gate próprio acima
+            const cadastroWhatsapp = (podeGravarWhatsapp && celularNorm !== undefined)
+                ? { Telefone_Celular: celularNorm || null }
+                : {};
+
             const cadastro = podeEditarCadastro ? {
                 Email: emailNorm !== undefined ? (emailNorm || null) : undefined,
-                Telefone_Celular: celularNorm !== undefined ? (celularNorm || null) : undefined,
                 Indicador_Inscricao_Estadual: Indicador_Inscricao_Estadual !== undefined ? (Indicador_Inscricao_Estadual || null) : undefined,
                 Nome: nomeNorm,
                 NomeFantasia: NomeFantasia !== undefined ? (String(NomeFantasia || '').trim() || null) : undefined,
@@ -724,9 +833,16 @@ const clienteController = {
                     insightAtivo: insightAtivo !== undefined ? insightAtivo : true,
                     observacaoComercialFixa: observacaoComercialFixa || null,
                     recebeAvisoPedido: recebeAvisoPedido !== undefined ? recebeAvisoPedido : undefined,
-                    ...cadastro
+                    ...cadastro,
+                    ...cadastroWhatsapp
                 }
             });
+
+            // Carimbo da consulta ao bot quando o número mudou (best-effort — já salvou)
+            if (verifResultado) {
+                const whatsCliente = require('../services/whatsappClienteService');
+                await whatsCliente.registrarVerificacao(uuid, celularNorm, verifResultado);
+            }
 
             // WhatsApps vinculados em tabela separada (cliente_whatsapps), fora da tabela clientes
             if (podeEditarCadastro && whatsappsNorm) {

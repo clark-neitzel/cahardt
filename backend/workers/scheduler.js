@@ -406,6 +406,25 @@ function startSchedulers() {
     setTimeout(_runFilaWhatsapp, 180000);        // 3min após o start
     setInterval(_runFilaWhatsapp, 5 * 60 * 1000); // a cada 5 minutos
 
+    // === 9b. SELO DO WHATSAPP DO CLIENTE (uso real) ===
+    // 1x por dia (04:20), na madrugada: casa `bot_whatsapp_envios` com o cadastro
+    // e marca EM_USO / COM_PROBLEMA. NÃO pode ser calculado na listagem de clientes
+    // (ela carrega ~2000 registros). Isolado: nunca derruba nada.
+    console.log('⏰ Agendando o selo do WhatsApp dos clientes...');
+    const _runSeloWhatsapp = () => {
+        // ComTrava: se o botão da tela já disparou a varredura, o job entra na MESMA
+        // rodada em vez de abrir uma segunda em paralelo no banco compartilhado.
+        require('../services/whatsappSeloService').recalcularComTrava()
+            .catch(err => console.error('⚠️ Selo WhatsApp Error:', err.message));
+    };
+    const scheduleSeloWhatsapp = () => {
+        const now = new Date();
+        const target = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 4, 20, 0);
+        if (target <= now) target.setDate(target.getDate() + 1);
+        setTimeout(() => { _runSeloWhatsapp(); scheduleSeloWhatsapp(); }, target.getTime() - now.getTime());
+    };
+    scheduleSeloWhatsapp();
+
     // === 10. EXTRATO ASAAS → CONCILIAÇÃO BANCÁRIA ===
     // Busca os lançamentos da conta Asaas (janela de 7 dias, idempotente pelo id
     // do Asaas) e já roda a conciliação automática. Sem ASAAS_API_KEY ou sem a

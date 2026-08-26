@@ -14,6 +14,7 @@ const ListaClientes = lazyComRetry(() => import('./pages/Clientes/ListaClientes'
 const DetalheCliente = lazyComRetry(() => import('./pages/Clientes/DetalheCliente'));
 const NovoCliente = lazyComRetry(() => import('./pages/Clientes/NovoCliente'));
 const SaudePontosGps = lazyComRetry(() => import('./pages/Clientes/SaudePontosGps'));
+const PendenciasWhatsapp = lazyComRetry(() => import('./pages/Clientes/PendenciasWhatsapp'));
 const ListaVendedores = lazyComRetry(() => import('./pages/Admin/Vendedores/ListaVendedores'));
 const Configuracoes = lazyComRetry(() => import('./pages/Admin/Configuracoes/Configuracoes'));
 const TabelaPrecos = lazyComRetry(() => import('./pages/Configuracoes/TabelaPrecos'));
@@ -746,6 +747,7 @@ function App() {
               <Route path="/clientes" element={<PrivateRoute tab="clientes"><ListaClientes /></PrivateRoute>} />
               <Route path="/clientes/novo" element={<PrivateRoute tab="clientes"><NovoCliente /></PrivateRoute>} />
               <Route path="/clientes/saude-gps" element={<PrivateRoute tab="clientes"><SaudePontosGps /></PrivateRoute>} />
+              <Route path="/clientes/pendencias-whatsapp" element={<PrivateRoute tab="clientes"><PendenciasWhatsapp /></PrivateRoute>} />
               <Route path="/clientes/:uuid" element={<PrivateRoute tab="clientes"><DetalheCliente /></PrivateRoute>} />
 
               {/* LISTA GERENCIAL DE ENTREGAS */}

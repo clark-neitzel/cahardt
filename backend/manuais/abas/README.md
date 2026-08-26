@@ -34,6 +34,7 @@
 | Análise IA | `/analise-ia` | Logs técnicos das análises de inteligência artificial (admin) | [analise-ia.md](analise-ia.md) |
 | Clientes | `/clientes` | Cadastro completo de clientes com edição, filtros e ações em lote | [clientes.md](clientes.md) |
 | Saúde dos Pontos GPS | `/clientes/saude-gps` | Faxina dos pontos GPS: repetidos, na empresa, suspeitos (com sugestão pelas entregas reais), aprovações da logística e bloqueio de pedido sem GPS | [saude-pontos-gps.md](saude-pontos-gps.md) |
+| Pendências de WhatsApp | `/clientes/pendencias-whatsapp` | Clientes sem WhatsApp por vendedor, justificativa de 60 dias, selo pelo uso real e bloqueio de pedido sem WhatsApp | [pendencias-whatsapp.md](pendencias-whatsapp.md) |
 | Rel. Pedidos | `/relatorios/pedidos` | Relatório detalhado de pedidos com itens, flex por item, entrega e pagamentos | [rel-pedidos.md](rel-pedidos.md) |
 | Rel. Vendas | `/relatorios/vendas` | Relatório por item vendido com filtros por coluna estilo Excel | [rel-vendas.md](rel-vendas.md) |
 | Análise Flex | `/relatorios/flex` | Análise do uso de flex por vendedor: descontos, acréscimos e orçamento consumido | [analise-flex.md](analise-flex.md) |

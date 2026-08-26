@@ -460,6 +460,26 @@ const pedidoController = {
                 if (erroGps) return res.status(403).json({ error: erroGps, codigo: 'SEM_GPS', clienteId: dadosPedido.clienteId });
             }
 
+            // Cliente precisa de WhatsApp no cadastro (ou dispensa justificada dentro da
+            // validade) para ENVIAR — interruptor na tela Pendências de WhatsApp; salvar
+            // como ABERTO continua permitido.
+            if (dadosPedido.statusEnvio === 'ENVIAR' && dadosPedido.clienteId) {
+                const whatsappClienteService = require('../services/whatsappClienteService');
+                const erroWhats = await whatsappClienteService.validarPedidoEnviar(dadosPedido.clienteId);
+                if (erroWhats) {
+                    const c = await prisma.cliente.findUnique({
+                        where: { UUID: dadosPedido.clienteId },
+                        select: { Nome: true, NomeFantasia: true }
+                    });
+                    return res.status(403).json({
+                        error: erroWhats,
+                        codigo: 'SEM_WHATSAPP',
+                        clienteId: dadosPedido.clienteId,
+                        clienteNome: c?.NomeFantasia || c?.Nome || null
+                    });
+                }
+            }
+
             const novoPedido = await pedidoService.criar(dadosPedido);
 
             // Notificação de WhatsApp ao cliente (não bloqueia a resposta)
@@ -539,6 +559,22 @@ const pedidoController = {
                 const gpsClientesService = require('../services/gpsClientesService');
                 const erroGps = await gpsClientesService.validarPedidoEnviar(clienteAlvo);
                 if (erroGps) return res.status(403).json({ error: erroGps, codigo: 'SEM_GPS', clienteId: clienteAlvo });
+
+                // Cliente precisa de WhatsApp no cadastro (ou dispensa justificada válida)
+                const whatsappClienteService = require('../services/whatsappClienteService');
+                const erroWhats = await whatsappClienteService.validarPedidoEnviar(clienteAlvo);
+                if (erroWhats) {
+                    const c = await prisma.cliente.findUnique({
+                        where: { UUID: clienteAlvo },
+                        select: { Nome: true, NomeFantasia: true }
+                    });
+                    return res.status(403).json({
+                        error: erroWhats,
+                        codigo: 'SEM_WHATSAPP',
+                        clienteId: clienteAlvo,
+                        clienteNome: c?.NomeFantasia || c?.Nome || null
+                    });
+                }
             }
 
             const pedidoAtualizado = await pedidoService.editar(id, dadosPedido);

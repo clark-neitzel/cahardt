@@ -51,6 +51,7 @@ const ABAS = [
     { slug: 'analise-ia',         nome: 'Análise IA',                   rota: '/analise-ia',                         perm: 'Pode_Ver_Analise_IA' },
     { slug: 'clientes',           nome: 'Clientes',                     rota: '/clientes',                           perm: 'clientes' },
     { slug: 'saude-pontos-gps',   nome: 'Saúde dos Pontos GPS',         rota: '/clientes/saude-gps',                 perm: 'clientes' },
+    { slug: 'pendencias-whatsapp', nome: 'Pendências de WhatsApp (clientes)', rota: '/clientes/pendencias-whatsapp',  perm: 'clientes' },
     // ── Logística ───────────────────────────────
     { slug: 'embarque',           nome: 'Embarque',                     rota: '/admin/embarques',                    perm: 'Pode_Acessar_Embarque' },
     { slug: 'embarques-mapa',     nome: 'Mapa das Entregas',            rota: '/admin/embarques/mapa',               perm: 'Pode_Acessar_Embarque' },
