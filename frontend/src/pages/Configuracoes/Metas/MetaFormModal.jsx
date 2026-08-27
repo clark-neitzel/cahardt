@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import dayjs from 'dayjs';
-import { Trash2, Search, Sparkles, MapPin, Package, Tag, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, Search, Sparkles, MapPin, Package, Tag, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
 import api from '../../../services/api';
 import produtoService from '../../../services/produtoService';
 import promocaoService from '../../../services/promocaoService';
@@ -451,6 +451,23 @@ const MetaFormModal = ({ isOpen, onClose, metaData, vendedores, mesAtualStr }) =
                                                 <div className="text-xl font-bold text-amber-700">{fmt(sugestao.valorSugerido)}</div>
                                                 <div className="text-xs text-gray-400">{sugestao.totalClientes} clientes analisados</div>
                                             </div>
+
+                                            {/* Cliente sem cidade no cadastro. A sugestão NÃO inventa mais uma cidade
+                                                chamada "Sem cidade" para eles (isso criava linha de meta por engano);
+                                                eles continuam somando no valor sugerido, mas ficam de fora do
+                                                "Preencher cidades" — por isso o aviso, senão o total das cidades fica
+                                                menor que o valor sugerido sem explicação nenhuma. */}
+                                            {sugestao.clientesSemCidade > 0 && (
+                                                <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                                    <AlertTriangle size={14} className="text-amber-600 shrink-0 mt-0.5" />
+                                                    <div className="text-xs text-amber-800">
+                                                        <span className="font-semibold">
+                                                            {sugestao.clientesSemCidade} cliente{sugestao.clientesSemCidade > 1 ? 's' : ''} sem cidade no cadastro
+                                                        </span>
+                                                        {' '}({fmt(sugestao.valorSemCidade)}). Não entra{sugestao.clientesSemCidade > 1 ? 'm' : ''} em "Preencher cidades" — complete o cadastro do cliente para incluir.
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             <div className="flex gap-2">
                                                 <button

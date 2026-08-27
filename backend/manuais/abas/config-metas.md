@@ -35,6 +35,25 @@ Cadastro e gestão das metas mensais de vendas por vendedor. Para cada vendedor 
    - Dias de trabalho (quais dias da semana o vendedor trabalha)
    - Metas por produto: produto + quantidade ou valor alvo
    - Metas por cidade: cidade + valor alvo + dias de visita
+     - **A cidade é gravada com a grafia oficial.** Se você digitar `JOINVILLE`, `joinville`
+       ou `Joinville ` (com espaço), o sistema salva `Joinville`. Cidades com acento também são
+       corrigidas: `ITAPOA` vira `Itapoá`, `JARAGUA DO SUL` vira `Jaraguá do Sul`.
+     - **Se a mesma cidade aparecer duas vezes na mesma meta** (por exemplo `Joinville` e
+       `JOINVILLE`), as duas linhas são **juntadas numa só ao salvar**: os valores são
+       **somados** e os dias de visita são **unidos**. Ex.: `Joinville R$ 107.132,05 (seg a sex)`
+       + `JOINVILLE R$ 231,00` = uma linha `Joinville R$ 107.363,05 (seg a sex)`.
+       Isso é de propósito: a meta de uma cidade é uma só, e ficar só com a maior apagaria meta
+       de verdade e mudaria o bônus do vendedor.
+     - Linha sem cidade preenchida é ignorada ao salvar (não dá para casar com pedido nenhum).
+     - **"Preencher cidades" (na sugestão) não cria mais a cidade "Sem cidade".** Cliente cujo
+       cadastro está sem cidade **continua contando** no valor sugerido, mas fica de fora da
+       lista de cidades — antes ele virava uma linha de meta chamada "Sem cidade", que não é
+       cidade nenhuma e nunca casaria com pedido. A sugestão agora avisa na tela:
+       *"1 cliente sem cidade no cadastro (R$ 49,56). Não entra em Preencher cidades — complete
+       o cadastro do cliente para incluir."* Se você quiser que ele entre, preencha a cidade na
+       ficha do cliente e calcule a sugestão de novo.
+     - Por isso a soma das metas por cidade pode ficar **menor** que o valor sugerido: a
+       diferença é exatamente o valor desses clientes sem cidade.
    - Metas de promoção: nome da promoção + valor alvo
 5. Salve
 
@@ -61,6 +80,11 @@ Cadastro e gestão das metas mensais de vendas por vendedor. Para cada vendedor 
 
 - **Dashboard** — as metas definidas aqui são exibidas no dashboard do vendedor como barra de progresso
 - **Vendedores** — o Flex Mensal configurado aqui é diferente do Flex Disponível no cadastro do vendedor (este é o limite mensal para descontos)
+- **Comissão e Dashboard por cidade** — o realizado por cidade é casado pelo **nome exato** da
+  cidade. Era daí que vinha um problema silencioso: meta escrita `Itapoá` e pedidos com
+  `ITAPOA` não se encontravam, o realizado ficava zerado e o vendedor perdia bônus sem nenhum
+  erro aparecer na tela. Com a grafia padronizada na gravação (08/2026) isso deixa de acontecer
+  para o que for cadastrado daqui em diante.
 
 ---
 

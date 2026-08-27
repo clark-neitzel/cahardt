@@ -152,6 +152,7 @@ app.use('/api/notas-fiscais', authMiddleware, notasFiscaisRoutes); // NF-e emiti
 app.use('/api/canhotos', authMiddleware, canhotoRoutes); // Canhoto da NF assinado (bipe da DANFE, arquivo do mês)
 app.use('/api/produtos', authMiddleware, produtoRoutes);
 app.use('/api/clientes', authMiddleware, clienteRoutes);
+app.use('/api/cidades', authMiddleware, require('./routes/cidades')); // Lista canônica de cidades (dropdowns) — padronização de grafia
 app.use('/api/gps-clientes', authMiddleware, require('./routes/gpsClientesRoutes')); // Ponto GPS confiável por cliente
 app.use('/api/whatsapp-clientes', authMiddleware, require('./routes/whatsappClienteRoutes')); // WhatsApp do cliente: obrigatório, verificado e com selo
 app.use('/api/vendedores', authMiddleware, vendedorRoutes);

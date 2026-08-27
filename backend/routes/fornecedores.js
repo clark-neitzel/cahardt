@@ -9,6 +9,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../config/database');
+const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1)
 const verificarAuth = require('../middlewares/authMiddleware');
 const contasPagarCaSyncService = require('../services/contasPagarCaSyncService');
 
@@ -94,7 +95,7 @@ router.post('/', verificarAuth, checkEscrita, async (req, res) => {
                 inscricaoEstadual: inscricaoEstadual?.trim() || null,
                 email: email?.trim() || null,
                 telefone: telefone?.trim() || null,
-                cidade: cidade?.trim() || null,
+                cidade: normalizarCidade(cidade),
                 uf: uf?.trim()?.toUpperCase()?.substring(0, 2) || null,
                 observacoes: observacoes?.trim() || null,
                 ativo: ativo !== false,
@@ -140,7 +141,7 @@ router.put('/:id', verificarAuth, checkEscrita, async (req, res) => {
         if (inscricaoEstadual !== undefined) data.inscricaoEstadual = inscricaoEstadual?.trim() || null;
         if (email !== undefined) data.email = email?.trim() || null;
         if (telefone !== undefined) data.telefone = telefone?.trim() || null;
-        if (cidade !== undefined) data.cidade = cidade?.trim() || null;
+        if (cidade !== undefined) data.cidade = normalizarCidade(cidade);
         if (uf !== undefined) data.uf = uf?.trim()?.toUpperCase()?.substring(0, 2) || null;
         if (observacoes !== undefined) data.observacoes = observacoes?.trim() || null;
         if (ativo !== undefined) data.ativo = ativo !== false;
@@ -228,6 +229,24 @@ router.post('/:id/cadastro-pessoa', verificarAuth, checkAcesso, async (req, res)
             SELECT COALESCE(MAX(NULLIF(regexp_replace("Codigo", '[^0-9]', '', 'g'), '')::bigint), 0) AS max
             FROM clientes`;
 
+        // ── Endereço herdado do fornecedor: ESTE É UM PONTO DE ESCRITA EM `clientes` ──
+        // O fornecedor pode ser LEGADO (importado do CA antes da Fase 1), e aí `cidade`/`uf`
+        // vêm sujos — é por aqui que a grafia errada nasceria em `clientes`, que é exatamente
+        // o que a Fase 1 existe para impedir. `GET /api/cidades` lê `clientes` sem filtrar
+        // `Ativo`, então a sujeira reapareceria no dropdown mesmo com o cadastro desativado.
+        const cidadeCliente = normalizarCidade(fornecedor.cidade);
+
+        // UF: mesmo tratamento das rotas de fornecedor acima (trim + MAIÚSCULO, 2 letras),
+        // com uma trava a mais. `Fornecedor.uf` é `text` livre e o worker do CA grava POR
+        // EXTENSO ("SANTA CATARINA" — contasPagarCaSyncService.js, dívida pré-existente já
+        // registrada para o dono decidir). `clientes.End_Estado` é sempre a sigla de 2 letras
+        // (é o que `clienteController` grava e o que `validarIe(ie, uf)` e o catálogo esperam).
+        // Cortar em 2 sem conferir daria "SA" — uma UF FALSA que parece válida e quebra a
+        // validação de IE em silêncio. Só aceita o que já é sigla; o resto vira null, e o
+        // usuário completa o endereço na tela do cliente.
+        const ufBruta = String(fornecedor.uf || '').trim().toUpperCase();
+        const ufCliente = /^[A-Z]{2}$/.test(ufBruta) ? ufBruta : null;
+
         const cliente = await prisma.cliente.create({
             data: {
                 Codigo: String(Number(max) + 1),
@@ -237,8 +256,8 @@ router.post('/:id/cadastro-pessoa', verificarAuth, checkAcesso, async (req, res)
                 Tipo_Pessoa: fornecedor.cnpjCpf ? (fornecedor.cnpjCpf.length === 11 ? 'FISICA' : 'JURIDICA') : null,
                 Email: fornecedor.email || null,
                 Telefone: fornecedor.telefone || null,
-                End_Cidade: fornecedor.cidade || null,
-                End_Estado: fornecedor.uf || null,
+                End_Cidade: cidadeCliente,
+                End_Estado: ufCliente,
                 Ativo: false, // só fornecedor: fora das telas de venda
                 Perfis: JSON.stringify([{ perfil: 'FORNECEDOR' }]),
                 Data_Criacao: new Date()

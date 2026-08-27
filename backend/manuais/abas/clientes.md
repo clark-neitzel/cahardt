@@ -143,6 +143,18 @@ Aba padrão ao abrir o detalhe. Contém tudo que é editável pelo time comercia
 
 A barra de ações fica fixada no rodapé com os botões **Descartar** e **Salvar Alterações**.
 
+> **Grafia da cidade (desde 08/2026):** o nome da cidade é gravado sempre na forma oficial, não
+> importa como for digitado. `JOINVILLE`, `joinville` e `Joinville ` (com espaço no fim) viram
+> todos `Joinville`; `ITAPOA` vira `Itapoá`; `JARAGUA DO SUL` vira `Jaraguá do Sul`. Erros de
+> digitação já conhecidos e aprovados pelo dono também são corrigidos (`Joiville`, `Joinvile`,
+> `Joinvlle`, `Noinville`, `Joinvillevile` → `Joinville`), e `São Francisco` incompleto vira
+> `São Francisco do Sul`. Você **não precisa** se preocupar com maiúscula/minúscula ou acento —
+> digite como preferir. Isso vale também para a cidade que vem da consulta por CNPJ (a Receita
+> devolve tudo em MAIÚSCULA) e para o que chega do Conta Azul.
+> **Por que isso importa:** metas por cidade, comissão e dashboards casam a cidade pelo nome
+> exato — antes, meta em `Itapoá` e cliente em `ITAPOA` simplesmente não se encontravam, e o
+> vendedor perdia bônus sem nenhum erro aparecer.
+
 ### Admin (label: "⚙️ Admin")
 Painel de debug do motor analítico (Inteligência Comercial). Exibe os dados calculados internamente para o cliente:
 

@@ -16,6 +16,15 @@ const axios = require('axios');
 const https = require('https');
 const prisma = require('../config/database');
 const { normalizarDoc } = require('../utils/documento');
+const { normalizarCidade } = require('../utils/cidade');
+
+// ⚠️ ESTA É A FONTE PRINCIPAL DA BAGUNÇA DE GRAFIA DE CIDADE NO SISTEMA.
+// A BrasilAPI devolve o município em MAIÚSCULO ("JOINVILLE") e a CNPJá devolve em Title
+// Case ("Joinville"). Como uma é fallback da outra, o MESMO CNPJ entrava no cadastro com
+// caixa diferente dependendo de qual das duas respondeu naquele minuto — e o estrago
+// aparecia longe, em `comissaoService`, que casa cidade por igualdade exata: meta em
+// "Itapoá" x pedido em "ITAPOA" zera o realizado e o vendedor perde bônus em silêncio.
+// Normalizar aqui é o que faz as duas fontes entregarem sempre o mesmo nome.
 
 const TIMEOUT_MS = 15000;
 
@@ -45,7 +54,7 @@ async function _consultarBrasilApi(cnpj) {
             numero: String(d.numero || '').trim(),
             complemento: String(d.complemento || '').trim(),
             bairro: String(d.bairro || '').trim(),
-            cidade: String(d.municipio || '').trim(),
+            cidade: normalizarCidade(d.municipio) || '',   // BrasilAPI devolve MAIÚSCULO
             uf: String(d.uf || '').trim().toUpperCase(),
             cep: String(d.cep || '').replace(/\D/g, '')
         }
@@ -68,7 +77,7 @@ async function _consultarCnpja(cnpj) {
             numero: String(d.address?.number || '').trim(),
             complemento: String(d.address?.details || '').trim(),
             bairro: String(d.address?.district || '').trim(),
-            cidade: String(d.address?.city || '').trim(),
+            cidade: normalizarCidade(d.address?.city) || '',  // CNPJá devolve Title Case
             uf: String(d.address?.state || '').trim().toUpperCase(),
             cep: String(d.address?.zip || '').replace(/\D/g, '')
         }

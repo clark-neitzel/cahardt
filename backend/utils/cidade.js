@@ -63,7 +63,75 @@ const PREPOSICOES = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
  *   // 'jonville':          'Joinville',   // erro de digitação conhecido
  */
 const CIDADES_CANONICAS = {
-    // (preencher na Fase 1, após aprovação do diagnóstico)
+    // ═══════════════════════════════════════════════════════════════════════════
+    // FASE 1 — PREENCHIDO EM 2026-08 COM A APROVAÇÃO DO DONO, UMA LINHA POR VEZ.
+    // Base: `GET /api/admin-exec/diag-cidades` rodado contra PRODUÇÃO (PostgreSQL
+    // 17.10): 121 grafias para 103 cidades, 82 registros a corrigir.
+    // NÃO acrescentar linha aqui sem aprovação — cada uma REESCREVE dado real.
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    // --- 1) GRAFIAS DIVERGENTES (a MESMA cidade escrita de vários jeitos) --------
+    // O que o dicionário resolve aqui é o acento que o dado perdeu: sem estas linhas
+    // "ITAPOA" viraria "Itapoa" (Title Case não inventa acento) — uma TERCEIRA grafia
+    // errada. As sem acento ('joinville', 'araquari'...) entram do mesmo jeito porque
+    // travam a grafia oficial: sem a linha, o nome final passa a depender de qual
+    // grafia é a mais frequente no banco NAQUELE dia.
+    'joinville':          'Joinville',
+    'jaragua do sul':     'Jaraguá do Sul',
+    'itajai':             'Itajaí',
+    'itapoa':             'Itapoá',
+    'camboriu':           'Camboriú',
+    'araquari':           'Araquari',
+    'guaramirim':         'Guaramirim',
+    'barra velha':        'Barra Velha',
+    'balneario picarras': 'Balneário Piçarras',
+    'luiz alves':         'Luiz Alves',
+    'salvador':           'Salvador',
+    'sao francisco do sul': 'São Francisco do Sul',
+
+    // --- 2) ERRO DE DIGITAÇÃO -> Joinville (10 leads, aprovados um a um) ---------
+    // ⚠️ ESTAS LINHAS **FUNDEM CHAVES DIFERENTES**, e é o único lugar do sistema que faz
+    // isso. `chaveCidade('Joiville')` é 'joiville' — uma chave DISTINTA de 'joinville'.
+    // Consequências, já tratadas em quem consome:
+    //   · `GET /api/admin-exec/diag-cidades` agrupa por chave, então "Joiville" continua
+    //     sendo um GRUPO separado — mas com o mesmo `nomeFinal` do grupo 'joinville'. A
+    //     rota sinaliza isso em `fundeCom` / `fusoesPorNomeFinal` para o dono não ler
+    //     "Joiville" como cidade à parte.
+    //   · Pode nascer colisão NOVA de `meta_cidades` (@@unique[meta, cidade]) que o
+    //     diagnóstico anterior não via: meta em "Joiville" + meta em "Joinville" viram a
+    //     mesma linha. Por isso o diagnóstico foi rodado DE NOVO depois deste dicionário.
+    // Levantamento aprovado: Joiville (4) · Joinvile (2) · Joinvlle (1) · Noinville (1)
+    // · Joinvillevile (1) · Joinyille (1) — todos em `leads`, nenhum em `clientes`.
+    //
+    // 'joinyille' entrou DEPOIS das outras: o diagnóstico o apontava como distância 1 de
+    // Joinville, mas ele não estava na primeira lista aprovada e por isso ficou de fora de
+    // propósito (código não decide erro de digitação sozinho). O dono aprovou na conferência
+    // da Fase 1 — são 10 leads no total agora.
+    'joiville':      'Joinville',
+    'joinvile':      'Joinville',
+    'joinvlle':      'Joinville',
+    'noinville':     'Joinville',
+    'joinvillevile': 'Joinville',
+    'joinyille':     'Joinville',
+
+    // --- 3) NOME INCOMPLETO NO CADASTRO ----------------------------------------
+    // "São Francisco " (2 leads) é São Francisco do Sul — o dono confirmou (já existem
+    // 56 clientes na grafia completa). Também FUNDE CHAVES: 'sao francisco' -> o nome
+    // da chave 'sao francisco do sul'. Se um dia aparecer o São Francisco de MG/SP/PB
+    // na base, esta linha precisa ser revista.
+    'sao francisco': 'São Francisco do Sul',
+
+    // --- 4) SENTINELA: "Sem cidade" NÃO É CIDADE -------------------------------
+    // Existem 2 linhas em `meta_cidades` com o texto literal "Sem cidade" (é o rótulo
+    // que `adminDashboard.js`/`dashboards.js` usam para cliente sem cidade, e alguém o
+    // salvou como se fosse uma cidade). O dono mandou NÃO MEXER — vai olhar depois.
+    //
+    // Esta linha existe justamente para NÃO mexer: sem ela, o Title Case transformaria
+    // "Sem cidade" em "Sem Cidade" e o backfill da Fase 2 reescreveria as duas linhas,
+    // criando a cidade fantasma "Sem Cidade" nos dropdowns. Mapeando a chave para o
+    // texto EXATO que já está no banco, `normalizarCidade` vira no-op e o backfill não
+    // encosta nelas. Quando o dono decidir o que fazer, esta linha sai junto.
+    'sem cidade': 'Sem cidade',
 
     // --- MUNICÍPIOS COM "D'" MAIÚSCULO (Rondônia) — DESATIVADOS DE PROPÓSITO ---
     // O Title Case sozinho NÃO acerta estes: ver o aviso em `capitalizarPalavra`. O IBGE

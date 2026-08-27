@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const prisma = require('../config/database');
 const consultaCnpjService = require('../services/consultaCnpjService');
 const { normalizarDoc, validarDoc, ehCnpj } = require('../utils/documento');
+const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1 — blindagem da escrita)
 
 // WhatsApps vinculados ao cadastro (tabela lateral cliente_whatsapps — usados pelo painel do
 // bot de WhatsApp para achar o cliente). Normaliza para só dígitos, sem vazios nem repetidos.
@@ -37,7 +38,10 @@ async function upsertFornecedorDoCadastro(dados) {
         inscricaoEstadual: dados.InscricaoEstadual || null,
         email: dados.Email || null,
         telefone: dados.Telefone_Celular || dados.Telefone || null,
-        cidade: dados.End_Cidade || null,
+        // `dados.End_Cidade` já vem normalizado de `dadosComuns`; o normalizador é
+        // idempotente e fica aqui como cinto de segurança para quem chamar esta
+        // função com um objeto montado em outro lugar.
+        cidade: normalizarCidade(dados.End_Cidade),
         uf: dados.End_Estado || null,
         ativo: true
     };
@@ -502,7 +506,7 @@ const clienteController = {
                 Email: emailNorm || null,
                 Telefone: soDigitos(b.Telefone) || null,
                 Telefone_Celular: celularNorm || null,
-                End_Cidade: String(b.End_Cidade || '').trim() || null,
+                End_Cidade: normalizarCidade(b.End_Cidade),
                 End_Estado: ufNorm || null
             };
 
@@ -766,7 +770,7 @@ const clienteController = {
                 End_Numero: End_Numero !== undefined ? (String(End_Numero || '').trim() || null) : undefined,
                 End_Complemento: End_Complemento !== undefined ? (String(End_Complemento || '').trim() || null) : undefined,
                 End_Bairro: End_Bairro !== undefined ? (String(End_Bairro || '').trim() || null) : undefined,
-                End_Cidade: End_Cidade !== undefined ? (String(End_Cidade || '').trim() || null) : undefined,
+                End_Cidade: End_Cidade !== undefined ? normalizarCidade(End_Cidade) : undefined,
                 End_Estado: End_Estado !== undefined ? (ufFinal || null) : undefined,
                 End_CEP: End_CEP !== undefined ? (soDigitos(End_CEP) || null) : undefined
             } : {};

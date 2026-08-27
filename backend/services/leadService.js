@@ -1,4 +1,5 @@
 const prisma = require('../config/database');
+const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1)
 
 const leadService = {
 
@@ -97,7 +98,9 @@ const leadService = {
                 pontoGps,
                 observacoes,
                 idVendedor,
-                cidade,
+                // Grafia oficial (Fase 1). O lead é a fonte com MAIS grafia solta do banco —
+                // é digitado à mão em campo e chega também do bot de WhatsApp.
+                cidade: normalizarCidade(cidade),
                 origemLead,
                 categoriaClienteId: categoriaClienteId || null,
                 etapa: 'NOVO'
@@ -125,7 +128,7 @@ const leadService = {
                 ...(etapa !== undefined && { etapa }),
                 ...(proximaVisita !== undefined && { proximaVisita: proximaVisita ? new Date(proximaVisita) : null }),
                 ...(fotoFachada !== undefined && { fotoFachada }),
-                ...(cidade !== undefined && { cidade }),
+                ...(cidade !== undefined && { cidade: normalizarCidade(cidade) }),
                 ...(origemLead !== undefined && { origemLead }),
                 ...(categoriaClienteId !== undefined && { categoriaClienteId: categoriaClienteId || null }),
                 ...(idVendedor !== undefined && { idVendedor }),

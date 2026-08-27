@@ -2,6 +2,11 @@ const axios = require('axios');
 const prisma = require('../config/database');
 // CNPJ ALFANUMÉRICO: comparar/enviar documento preservando letras (não usar replace(/\D/g,'')).
 const { normalizarDoc } = require('../utils/documento');
+// Grafia oficial da cidade (Fase 1). O CA devolve a cidade como o usuário digitou lá —
+// inclusive MAIÚSCULA e com espaço sobrando. `syncPedidosModificados` roda no scheduler
+// a cada poucos minutos e CRIA cliente: sem isto, o worker re-sujaria o banco depois do
+// backfill da Fase 2, sem ninguém ver.
+const { normalizarCidade } = require('../utils/cidade');
 
 const CLIENT_ID = process.env.CONTA_AZUL_CLIENT_ID || '6f6gpe5la4bvg6oehqjh2ugp97';
 const CLIENT_SECRET = process.env.CONTA_AZUL_CLIENT_SECRET || '1fvmga9ikj9dk4mkctoqvm2nfna7ht2t60p2qmg7kq04le0gb1ls';
@@ -593,6 +598,10 @@ const contaAzulService = {
                 const razao = detalheC.nome_empresa || detalheC.company_name || detalheC.razao_social;
                 const fantasia = detalheC.nome || detalheC.fantasy_name || detalheC.nome_fantasia || detalheC.apelido;
 
+                // Fonte da cidade escolhida UMA vez (mesma cascata de antes), para dar para
+                // distinguir "não veio" de "veio vazio" logo abaixo em `End_Cidade`.
+                const cidadeBrutaCA = enderecoPrincipal.cidade || enderecoPrincipal.city?.name || enderecoPrincipal.city;
+
                 const dadosCliente = {
                     Nome: razao || fantasia || 'Desconhecido',
                     NomeFantasia: (fantasia && fantasia !== razao) ? fantasia : null, // Se for igual à Razão ou ausente, fica null
@@ -623,7 +632,24 @@ const contaAzulService = {
                     End_Numero: enderecoPrincipal.numero || enderecoPrincipal.number,
                     End_Complemento: enderecoPrincipal.complemento || enderecoPrincipal.complement,
                     End_Bairro: enderecoPrincipal.bairro || enderecoPrincipal.neighborhood,
-                    End_Cidade: enderecoPrincipal.cidade || enderecoPrincipal.city?.name || enderecoPrincipal.city,
+                    // CIDADE — dois casos DIFERENTES que o `?? bruto` anterior confundia:
+                    //
+                    //  (a) campo AUSENTE (o CA não mandou endereço) → `undefined`. Este objeto vai
+                    //      inteiro para o `update` do upsert, e em Prisma `undefined` quer dizer
+                    //      "não mexer" enquanto `null` APAGA. Tem que continuar `undefined`, senão
+                    //      um cliente do CA sem endereço zeraria a cidade que já estava certa no
+                    //      cadastro local (os campos irmãos de endereço também ficam `undefined`
+                    //      nesse caso — a cidade não pode ser a única a ser apagada).
+                    //
+                    //  (b) campo PRESENTE mas vazio (`'   '`, só espaço) → `null`. O `?? bruto`
+                    //      antigo devolvia os espaços crus e gravava `'   '` como se fosse nome de
+                    //      cidade — uma grafia suja nascendo em `clientes`, que é justamente o que
+                    //      esta fase existe para impedir. Não há perda: `'   '` não é cidade.
+                    //
+                    // Qualquer texto de verdade NUNCA vira `null` (`normalizarCidade` só devolve
+                    // `null` para vazio/só espaço), então isto não reintroduz o risco de apagar
+                    // cidade boa. A escolha da FONTE (`||` em cascata) fica exatamente como estava.
+                    End_Cidade: cidadeBrutaCA == null ? undefined : normalizarCidade(cidadeBrutaCA),
                     End_Estado: enderecoPrincipal.estado || enderecoPrincipal.state?.name || enderecoPrincipal.state,
                     End_CEP: enderecoPrincipal.cep || enderecoPrincipal.zip_code,
                     End_Pais: enderecoPrincipal.pais || 'Brasil',
@@ -985,7 +1011,7 @@ const contaAzulService = {
             End_Numero: ender.numero || ender.number || null,
             End_Complemento: ender.complemento || ender.complement || null,
             End_Bairro: ender.bairro || ender.neighborhood || null,
-            End_Cidade: ender.cidade || ender.city?.name || ender.city || null,
+            End_Cidade: normalizarCidade(ender.cidade || ender.city?.name || ender.city),
             End_Estado: ender.estado || ender.state?.name || ender.state || null,
             End_CEP: ender.cep || ender.zip_code || null,
             Ativo: typeof p.ativo === 'boolean' ? p.ativo : undefined,
@@ -1633,7 +1659,7 @@ const contaAzulService = {
                                             Perfil_Filtro: 'PADRAO',
                                             End_Logradouro: enderecoC.logradouro || null,
                                             End_Numero: enderecoC.numero || null,
-                                            End_Cidade: enderecoC.cidade || null,
+                                            End_Cidade: normalizarCidade(enderecoC.cidade),
                                             End_Estado: enderecoC.estado || null,
                                             End_CEP: enderecoC.cep || null,
                                             End_Pais: enderecoC.pais || 'Brasil',

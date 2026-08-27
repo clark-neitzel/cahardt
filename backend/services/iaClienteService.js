@@ -5,6 +5,7 @@
 const prisma = require('../config/database');
 const leadService = require('./leadService');
 const { normalizarDoc } = require('../utils/documento');
+const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1)
 
 const soDigitos = (s) => String(s || '').replace(/\D/g, '');
 const dec = (v) => (v == null ? 0 : Number(v));
@@ -226,7 +227,10 @@ const iaClienteService = {
             nomeEstabelecimento: String(nomeEstabelecimento).trim(),
             whatsapp: soDigitos(whatsapp),
             contato: contato || null,
-            cidade: cidade || null,
+            // A cidade aqui é TEXTO CRU de LLM (o cliente escreveu no WhatsApp e a IA repassou):
+            // chega "joinvile", "JOINVILLE", "Joinville ". `leadService.criar` normaliza de novo —
+            // é idempotente, e ter as duas camadas deixa explícito que este ponto não confia na entrada.
+            cidade: normalizarCidade(cidade),
             observacoes: observacoes || null,
             origemLead: 'WHATSAPP_IA',
         });

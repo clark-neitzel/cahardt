@@ -18,9 +18,22 @@
 // ficha de cliente para o PAINEL da equipe do bot: POST cliente/buscar (razão/fantasia/documento)
 // e POST cliente/ficha (por documento); cadastro ganha lista de WhatsApps (cliente_whatsapps) e
 // os reconhecer-telefone (geral e congelados) passam a casar também por esses números. Tudo aditivo.
-const VERSAO_API = '1.5.0';
+// · 1.5.1 (2026-08-26) padronização de grafia de cidade (Fase 1): a 'cidade' recebida em
+// cliente/criar-lead é gravada com o nome oficial. NENHUM campo de resposta removido ou
+// renomeado — só o VALOR gravado muda; aviso informativo registrado em AVISOS.
+const VERSAO_API = '1.5.1';
 
 const AVISOS = [
+    // AVISO INFORMATIVO (não é quebra de contrato): nenhum campo de resposta foi removido
+    // nem renomeado. O que muda é o VALOR gravado a partir da `cidade` enviada em
+    // POST /cliente/criar-lead — por isso está aqui, para o app consumidor não estranhar.
+    {
+        desde: '2026-08-26',
+        mensagem: "POST /cliente/criar-lead: a 'cidade' enviada passa a ser gravada com a grafia oficial "
+            + "(ex.: 'JOINVILLE', 'joinvile' e 'Joinville ' viram todas 'Joinville'; 'ITAPOA' vira 'Itapoá'). "
+            + "Nenhum campo de resposta mudou — o endpoint continua devolvendo { id, numero, etapa }. "
+            + "A IA pode continuar mandando a cidade como o cliente escreveu."
+    },
     // Exemplo (remover quando o aviso deixar de ser válido):
     // { desde: '2026-07-01', mensagem: "O campo 'bairros' será removido em 2026-09-01. A verificação de entrega agora é só por CEP/raio — use POST /kitfesta/verificar-entrega." }
 ];

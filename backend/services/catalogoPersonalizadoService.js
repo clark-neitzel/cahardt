@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const prisma = require('../config/database'); // singleton compartilhado (pool único)
 const categoriaEstoqueService = require('./categoriaEstoqueService');
+const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1)
 
 // WhatsApp central da loja para o botão "fazer pedido" da página pública.
 // Pode ser sobrescrito em app_configs (chave "catalogo_publico_whatsapp"); default abaixo.
@@ -84,7 +85,12 @@ async function criar({ vendedor, clienteUuid, clienteNome, condicaoId, produtoId
         if (!cliente) throw Object.assign(new Error('Cliente não encontrado.'), { status: 404 });
         nomeDestino = cliente.NomeFantasia || cliente.Nome;
         telefoneDestino = cliente.Telefone_Celular || cliente.Telefone || null;
-        cidadeDestino = [cliente.End_Cidade, cliente.End_Estado].filter(Boolean).join(' · ') || null;
+        // `clienteCidade` é um campo COMPOSTO ("Joinville · SC") montado aqui e gravado como
+        // rótulo na página pública do catálogo. Normalizamos SÓ a parte da cidade, ANTES de
+        // juntar — assim não existe string composta para desmontar depois (nem o caso chato
+        // de "faltou o separador"), e a UF continua exatamente como está no cadastro.
+        cidadeDestino = [normalizarCidade(cliente.End_Cidade), cliente.End_Estado]
+            .filter(Boolean).join(' · ') || null;
     } else {
         nomeDestino = (clienteNome || '').trim();
         if (nomeDestino.length < 2)

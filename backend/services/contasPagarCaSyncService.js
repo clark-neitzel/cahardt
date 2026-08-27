@@ -17,6 +17,7 @@ const contaAzulService = require('./contaAzulService');
 const { garantirContaFinanceira } = require('./contaFinanceiraGuardService');
 // CNPJ ALFANUMÉRICO: normalizar documento preservando letras (nunca replace(/\D/g,'')).
 const { normalizarDoc } = require('../utils/documento');
+const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1)
 // App é o dono do financeiro (desde 07/2026): com esta chave ligada, Contas a Pagar
 // PARA de enviar ao CA (fornecedor, despesa, baixa "já paguei"). A LEITURA continua
 // (conferência de baixas de títulos antigos que ainda vivem no CA). Ver contaAzulModo.js.
@@ -314,8 +315,14 @@ async function importarFornecedoresCA() {
                 nomeFantasia: p.nome_fantasia || null,
                 email: p.email || null,
                 telefone: p.telefone || null,
-                cidade: p.endereco?.cidade || null,
-                uf: p.endereco?.estado || null,
+                // Grafia oficial da cidade (Fase 1): o CA devolve o que o usuário digitou lá,
+                // MAIÚSCULA e com espaço sobrando incluídos. Este worker roda sozinho e cria
+                // fornecedor — sem isto ele re-sujaria o banco depois do backfill da Fase 2.
+                cidade: normalizarCidade(p.endereco?.cidade),
+                // A UF vinha sem NENHUM tratamento. Só `trim` + `toUpperCase`: NÃO cortar em 2
+                // caracteres aqui, porque o CA às vezes manda o nome do estado por extenso
+                // ("Santa Catarina") e cortar produziria a UF ERRADA ("SA").
+                uf: String(p.endereco?.estado || '').trim().toUpperCase() || null,
                 observacoes: p.observacoes_gerais || null,
                 ativo: p.ativo !== false,
                 statusEnvioCA: 'SINCRONIZADO',

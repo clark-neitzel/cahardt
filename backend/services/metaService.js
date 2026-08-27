@@ -4,6 +4,8 @@ const isBetween = require('dayjs/plugin/isBetween');
 dayjs.extend(isBetween);
 const { calcularFlexDinamico } = require('./flexService');
 const projecaoVendasService = require('./projecaoVendasService');
+const { deduplicarMetasCidades } = require('../utils/metaCidadeMerge'); // fusão de cidades repetidas (@@unique de meta_cidades)
+const { normalizarCidade } = require('../utils/cidade'); // grafia oficial da cidade (Fase 1)
 
 const metaService = {
     salvarMetaMensal: async (dados, usuarioLogadoId) => {
@@ -37,14 +39,32 @@ const metaService = {
             });
         }
 
+        // METAS POR CIDADE — normaliza a grafia E deduplica ANTES de gravar.
+        //
+        // Por que o dedupe é obrigatório aqui (não é zelo, é regressão):
+        // `meta_cidades` tem @@unique([metaMensalVendedorId, cidade]). Antes da Fase 1 a
+        // cidade era gravada CRUA, então um payload com "JOINVILLE" e "Joinville" criava
+        // DUAS linhas (strings diferentes para o Postgres — o índice deixava passar; em
+        // produção havia 3 metas assim). Com `normalizarCidade` as duas passam a ter o
+        // MESMO nome: sem deduplicar, o `createMany` viola o índice único e a meta
+        // simplesmente PARA DE SALVAR (erro 500 na cara do admin).
+        // O dedupe do `MetaFormModal.jsx` é de UI e não protege a API.
+        //
+        // Regra da fusão (a mesma que o dono aprovou no diagnóstico, em
+        // `utils/metaCidadeMerge.js`): SOMA os valores e UNE os dias. Somar, e não ficar
+        // com a maior — a meta da cidade é uma só, e escolher apagaria meta de verdade.
         await prisma.metaCidade.deleteMany({ where: { metaMensalVendedorId: metaSalva.id } });
-        if (metasCidades?.length > 0) {
+        const metasCidadesLimpas = deduplicarMetasCidades(metasCidades);
+        if (metasCidadesLimpas.descartadasSemCidade > 0) {
+            console.warn(`[Metas] ${metasCidadesLimpas.descartadasSemCidade} meta(s) de cidade sem nome de cidade foram ignoradas (meta ${metaSalva.id}).`);
+        }
+        if (metasCidadesLimpas.cidades.length > 0) {
             await prisma.metaCidade.createMany({
-                data: metasCidades.map(mc => ({
+                data: metasCidadesLimpas.cidades.map(mc => ({
                     metaMensalVendedorId: metaSalva.id,
                     cidade: mc.cidade,
                     valor: mc.valor,
-                    diasSemana: mc.diasSemana || null
+                    diasSemana: mc.diasSemana
                 }))
             });
         }
@@ -112,6 +132,10 @@ const metaService = {
         const resultadosClientes = [];
         const porCidadeMap = {};
         const porProdutoMap = {};
+        // Clientes cujo cadastro não tem cidade. Contados à parte de propósito — ver o
+        // comentário grande no laço abaixo.
+        let clientesSemCidade = 0;
+        let valorSemCidade = 0;
 
         for (const [clienteId, dados] of Object.entries(porClienteMap)) {
             const { cliente, pedidos: ultimos } = dados;
@@ -136,24 +160,49 @@ const metaService = {
             }
 
             const valorEsperado = valorMedio * pedidosPorMes * fatorCrescimento;
-            const cidade = cliente?.End_Cidade || 'Sem cidade';
+
+            // ── CIDADE DO CLIENTE — e por que 'Sem cidade' NÃO pode entrar em `porCidade` ──
+            //
+            // Esta lista não é só informativa: o botão "Preencher cidades" do
+            // `MetaFormModal.jsx` despeja `porCidade` INTEIRA em `metasCidades`, e ao salvar
+            // cada item vira uma linha de `meta_cidades`. Enquanto o rótulo 'Sem cidade'
+            // saía daqui como se fosse cidade, cada clique num vendedor com cliente de
+            // cadastro incompleto criava MAIS uma linha `meta_cidades.cidade = 'Sem cidade'` —
+            // as 2 linhas que existem em produção não são resto histórico, é esta torneira.
+            // (A sentinela em `utils/cidade.js` protege o backfill de reescrever as linhas
+            // que já existem; ela continua lá. A correção da ORIGEM é aqui.)
+            //
+            // `normalizarCidade` devolve `null` para vazio/nulo/só espaço, e o nome oficial
+            // para o resto — então o agrupamento também deixa de dividir a mesma cidade em
+            // duas linhas por causa da grafia ("JOINVILLE" e "Joinville" viravam 2 itens).
+            const cidade = normalizarCidade(cliente?.End_Cidade);
 
             resultadosClientes.push({
                 clienteId,
                 nome: cliente?.NomeFantasia || cliente?.Nome || clienteId,
-                cidade,
+                cidade, // `null` quando o cadastro não tem cidade (antes: o texto 'Sem cidade')
                 pedidosBase: ultimos.length,
                 valorMedio: Math.round(valorMedio * 100) / 100,
                 pedidosPorMes,
                 valorEstimado: Math.round(valorEsperado * 100) / 100
             });
 
-            if (!porCidadeMap[cidade]) porCidadeMap[cidade] = { cidade, valor: 0, clientes: 0, diasSet: new Set() };
-            porCidadeMap[cidade].valor += valorEsperado;
-            porCidadeMap[cidade].clientes++;
-            if (cliente?.Dia_de_venda) {
-                cliente.Dia_de_venda.split(',').map(d => d.trim()).filter(Boolean)
-                    .forEach(d => porCidadeMap[cidade].diasSet.add(d));
+            if (cidade) {
+                if (!porCidadeMap[cidade]) porCidadeMap[cidade] = { cidade, valor: 0, clientes: 0, diasSet: new Set() };
+                porCidadeMap[cidade].valor += valorEsperado;
+                porCidadeMap[cidade].clientes++;
+                if (cliente?.Dia_de_venda) {
+                    cliente.Dia_de_venda.split(',').map(d => d.trim()).filter(Boolean)
+                        .forEach(d => porCidadeMap[cidade].diasSet.add(d));
+                }
+            } else {
+                // O cliente NÃO some da sugestão: ele continua em `porCliente` e o valor dele
+                // continua dentro de `valorSugerido`. O que ele não faz é virar uma cidade
+                // falsa. A contagem sai em `clientesSemCidade` para a tela poder avisar o
+                // admin que há cadastro incompleto (Fase 4) — a informação não se perde,
+                // muda de lugar.
+                clientesSemCidade++;
+                valorSemCidade += valorEsperado;
             }
 
             // Produtos: média por pedido × pedidos estimados no mês
@@ -225,6 +274,11 @@ const metaService = {
             fatorCrescimento,
             totalClientes: resultadosClientes.length,
             porCidade,
+            // Campos NOVOS (aditivos): quantos clientes ficaram de fora de `porCidade` por
+            // não terem cidade no cadastro, e quanto valor eles representam. Sem isto, a
+            // soma de `porCidade` seria menor que `valorSugerido` sem explicação nenhuma.
+            clientesSemCidade,
+            valorSemCidade: Math.round(valorSemCidade * 100) / 100,
             porProduto: porProduto.slice(0, 50), // Top 50 produtos
             porCliente: resultadosClientes.sort((a, b) => b.valorEstimado - a.valorEstimado)
         };

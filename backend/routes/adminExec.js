@@ -10474,6 +10474,10 @@ router.get('/diag-cidades', async (req, res) => {
     try {
         const { chaveCidade, normalizarCidade } = require('../utils/cidade');
         const { porFrequencia, decidirNomeFinal } = require('../utils/cidadeNomeFinal');
+        // A união dos dias mora em utils/metaCidadeMerge.js porque `services/metaService.js`
+        // usa EXATAMENTE a mesma regra ao gravar. Se a proposta que o dono aprova aqui e o
+        // que a gravação faz lá divergirem, o backfill da Fase 2 grava outra coisa.
+        const { unirDiasSemana } = require('../utils/metaCidadeMerge');
 
         const tudo = req.query.tudo === '1' || req.query.tudo === 'true';
         const limite = Math.max(1, Math.min(5000, parseInt(req.query.limite, 10) || 500));
@@ -10609,6 +10613,52 @@ router.get('/diag-cidades', async (req, res) => {
             });
         }
 
+        // ------------------------------------------------- 4b) FUSÃO DE CHAVES DIFERENTES
+        // O agrupamento acima é por `chaveCidade`, e os APELIDOS de CIDADES_CANONICAS fundem
+        // chaves DIFERENTES: `chaveCidade('Joiville')` é 'joiville', que nunca cai no mesmo
+        // grupo de 'joinville' — mas as duas viram "Joinville" no `nomeFinal`.
+        //
+        // Sem este bloco o dono lê "Joiville" como uma cidade à parte no relatório e não vê
+        // que ela vai desaparecer dentro de Joinville. Pior: some do radar a colisão NOVA que
+        // isso pode criar em `meta_cidades` (@@unique[meta, cidade]) — meta em "Joiville" +
+        // meta em "Joinville" viram a MESMA linha. (A seção 5, logo abaixo, já casa por
+        // `nomeFinal` e por isso enxerga essas colisões novas; aqui é a leitura humana.)
+        // A varredura é sobre TODAS as chaves (`nomeFinalPorChave`), não sobre `listaGrupos`:
+        // a lista já passou pelo filtro "só o que precisa de ação" e a chave PRINCIPAL de uma
+        // fusão costuma estar toda certa e ser filtrada fora. É o caso real de
+        // "São Francisco do Sul" (65 registros, grafia única e correta) recebendo o apelido
+        // "sao francisco" — montando a partir de `listaGrupos` a fusão passaria batida.
+        const totalPorChave = new Map();
+        for (const g of grupos.values()) {
+            totalPorChave.set(g.chave, [...g.variantes.values()].reduce((t, v) => t + v.total, 0));
+        }
+        const porNomeFinal = new Map();
+        for (const [chave, nome] of nomeFinalPorChave.entries()) {
+            if (!porNomeFinal.has(nome)) porNomeFinal.set(nome, []);
+            porNomeFinal.get(nome).push(chave);
+        }
+        const gruposListadosPorChave = new Map(listaGrupos.map(g => [g.chave, g]));
+        const fusoesPorNomeFinal = [];
+        for (const [nome, chaves] of porNomeFinal.entries()) {
+            if (chaves.length < 2) continue;
+            for (const chave of chaves) {
+                // Marca cada grupo LISTADO com as OUTRAS chaves que terminam no mesmo nome.
+                const grupo = gruposListadosPorChave.get(chave);
+                if (grupo) grupo.fundeCom = chaves.filter(k => k !== chave);
+            }
+            fusoesPorNomeFinal.push({
+                nomeFinal: nome,
+                chaves,
+                total: chaves.reduce((t, k) => t + (totalPorChave.get(k) || 0), 0),
+                // Qual é a chave "dona" do nome (a que o próprio nome final produz) e quais
+                // são apelidos vindos do dicionário — é o que o dono precisa ver.
+                chavePrincipal: chaveCidade(nome),
+                apelidos: chaves.filter(k => k !== chaveCidade(nome)),
+            });
+        }
+        fusoesPorNomeFinal.sort((a, b) => (b.chaves.length - a.chaves.length) || (b.total - a.total)
+            || a.nomeFinal.localeCompare(b.nomeFinal, 'pt-BR'));
+
         // Mais grafias primeiro (é onde está o estrago), depois volume.
         listaGrupos.sort((a, b) => (b.variantes.length - a.variantes.length) || (b.total - a.total)
             || a.chave.localeCompare(b.chave, 'pt-BR'));
@@ -10648,22 +10698,12 @@ router.get('/diag-cidades', async (req, res) => {
                 });
             }
 
-            // Ordem canônica dos dias — a união não pode sair embaralhada ("QUI,TER").
-            const ORDEM_DIAS = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM'];
+            // A ordem canônica dos dias (e o tratamento do dia desconhecido, tipo o "N/D" que
+            // existe em duas linhas reais) vive em `unirDiasSemana`, compartilhada com a gravação.
             for (const grupo of porMetaENome.values()) {
                 if (grupo.linhas.length < 2) continue;
                 grupo.linhas.sort((a, b) => a.cidade.localeCompare(b.cidade, 'pt-BR'));
-                const dias = new Set();
-                let soma = 0;
-                for (const l of grupo.linhas) {
-                    soma += l.valor;
-                    for (const d of String(l.diasSemana || '').split(',')) {
-                        const dia = d.trim().toUpperCase();
-                        if (dia) dias.add(dia);
-                    }
-                }
-                const conhecidos = ORDEM_DIAS.filter(d => dias.has(d));
-                const desconhecidos = [...dias].filter(d => !ORDEM_DIAS.includes(d)).sort();
+                const soma = grupo.linhas.reduce((t, l) => t + l.valor, 0);
                 colisoesMetaCidade.push({
                     metaMensalVendedorId: grupo.metaMensalVendedorId,
                     vendedor: grupo.vendedor,
@@ -10674,7 +10714,7 @@ router.get('/diag-cidades', async (req, res) => {
                         // SOMAR, não escolher a maior: a meta da cidade é UMA só; ficar com
                         // a maior apagaria meta de verdade e mudaria o bônus do vendedor.
                         valor: Math.round(soma * 100) / 100,
-                        diasSemana: [...conhecidos, ...desconhecidos].join(',') || null,
+                        diasSemana: unirDiasSemana(grupo.linhas.map(l => l.diasSemana)),
                         regra: 'soma + união dos dias',
                     },
                 });
@@ -10776,12 +10816,16 @@ router.get('/diag-cidades', async (req, res) => {
                 registrosQueMudam,
                 colisoesMetaCidade: colisoesMetaCidade.length,
                 foraDoDicionario,      // grupos sem entrada em CIDADES_CANONICAS (pedem aprovação)
+                // Quantos nomes finais recebem MAIS DE UMA chave (apelido do dicionário:
+                // erro de digitação, nome incompleto). Zero = nenhum apelido em uso.
+                nomesFinaisComFusaoDeChave: fusoesPorNomeFinal.length,
                 comparacaoDeErroDigitacao,
             },
             filtro: tudo ? 'todos os grupos' : 'só os grupos que precisam de ação (use ?tudo=1 para ver todos)',
             gruposListados: Math.min(listaGrupos.length, limite),
             gruposOcultados: Math.max(0, listaGrupos.length - limite),
             grupos: listaGrupos.slice(0, limite),
+            fusoesPorNomeFinal,
             colisoesMetaCidade,
             suspeitosDeErroDigitacao: suspeitosDeErroDigitacao.slice(0, limite),
         });
