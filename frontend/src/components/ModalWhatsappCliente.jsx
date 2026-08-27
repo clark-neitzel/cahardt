@@ -38,6 +38,15 @@ export default function ModalWhatsappCliente({
     clienteNome = '',
     numeroAtual = '',
     rotuloSalvar = 'Salvar e enviar o pedido',
+    // O escape "Não consegui agora" registra uma DISPENSA de 60 dias que vale para
+    // TODO MUNDO naquele cliente. Ele foi desenhado para o momento do bloqueio do
+    // ENVIAR — ali o vendedor está preso e precisa de uma saída. Aberto de outro
+    // lugar (ex.: o selo de WhatsApp na linha da Rota), viraria uma porta para
+    // dispensar qualquer cliente da lista sem nunca ter esbarrado no bloqueio.
+    // Por isso quem abre o modal fora do ENVIAR passa `permitirDispensa={false}`:
+    // ali o objetivo é PEGAR o número; se não der, é só não usar.
+    // Padrão `true` — o uso atual (bloqueio do ENVIAR) não muda.
+    permitirDispensa = true,
     onSalvo = null,   // ({ numero }) | ({ dispensaMotivo }) => void
 }) {
     const [numero, setNumero] = useState('');
@@ -91,11 +100,14 @@ export default function ModalWhatsappCliente({
                 gravou = true; // não deu para conferir: seguir em frente em vez de travar
             }
             if (!gravou) {
+                // Sem o escape na tela, não adianta mandar usar "Não consegui agora"
                 setErro({
-                    texto: 'O número não foi gravado — o seu usuário não tem permissão para alterar o cadastro do cliente. Peça ao escritório para cadastrar o WhatsApp, ou use "Não consegui agora" para registrar o motivo.',
+                    texto: permitirDispensa
+                        ? 'O número não foi gravado — o seu usuário não tem permissão para alterar o cadastro do cliente. Peça ao escritório para cadastrar o WhatsApp, ou use "Não consegui agora" para registrar o motivo.'
+                        : 'O número não foi gravado — o seu usuário não tem permissão para alterar o cadastro do cliente. Peça ao escritório para cadastrar o WhatsApp deste cliente.',
                     noCampo: false
                 });
-                setMostrarEscape(true);
+                if (permitirDispensa) setMostrarEscape(true);
                 return;
             }
             if (onSalvo) onSalvo({ numero: digitos });
@@ -206,8 +218,9 @@ export default function ModalWhatsappCliente({
                         {salvando ? 'Salvando…' : rotuloSalvar}
                     </button>
 
-                    {/* Escape — discreto de propósito: só abre se a pessoa pedir */}
-                    {!mostrarEscape ? (
+                    {/* Escape — discreto de propósito: só abre se a pessoa pedir.
+                        Fora do bloqueio do ENVIAR ele não existe (ver permitirDispensa). */}
+                    {!permitirDispensa ? null : !mostrarEscape ? (
                         <button
                             onClick={() => setMostrarEscape(true)}
                             className="w-full text-center text-[13px] text-gray-500 underline underline-offset-2 hover:text-gray-700 min-h-[44px]"

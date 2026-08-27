@@ -5,6 +5,29 @@ const clienteInsightService = require('./clienteInsightService');
 // (a mesclagem atendimento + pedido é feita em memória para ordenar pela hora).
 const TETO_LINHAS = 3000;
 
+// Campos do cliente na linha do painel de atendimentos.
+// UMA constante para as DUAS consultas (atendimento e pedido) de propósito: o painel
+// mistura as duas em uma lista só, e se os selects divergirem a linha vinda do pedido
+// aparece sem o selo enquanto a de atendimento aparece com ele — o vendedor acharia
+// que metade da carteira perdeu o WhatsApp.
+//   Telefone_Celular → é o campo que o sistema usa para mandar WhatsApp; sem ele a
+//                      tela não consegue distinguir "sem número" de "número sem selo".
+//   whatsappStatus   → selo por uso real: EM_USO ("saiu mensagem nossa nos últimos
+//                      180 dias") | COM_PROBLEMA ("o WhatsApp recusou o número") | null.
+//                      NÃO é conferência: o sistema nunca verifica se o número é do
+//                      cliente. Não chamar de "validado"/"verificado" em código nem em
+//                      manual — vira promessa falsa para quem está em campo.
+//                      Só `selo`: a lista não desenha estado "dispensado".
+//
+// Esta rota carrega o celular de TODA a base para quem abre o painel — por isso
+// `GET /atendimentos/filtros` é gateado por `Pode_Ver_Atendimentos` em
+// routes/atendimentoRoutes.js. Ao acrescentar campo pessoal aqui, confira o gate.
+const CLIENTE_LINHA_SELECT = {
+    UUID: true, NomeFantasia: true, Nome: true, End_Cidade: true,
+    Telefone_Celular: true,
+    whatsappStatus: { select: { selo: true } },
+};
+
 // Canal informado no pedido (campo "Tipo de Atendimento" do NovoPedido) → tipo do painel.
 // VISITA vira PRESENCIAL só se a configuração de tipos_atendimento usar esse nome
 // (a lista de tipos é editável em Configurações) — quem decide é criarResolvedorDeTipo.
@@ -487,7 +510,7 @@ const atendimentoService = {
                 include: {
                     vendedor: { select: { id: true, nome: true } },
                     transferidoPara: { select: { id: true, nome: true } },
-                    cliente: { select: { UUID: true, NomeFantasia: true, Nome: true, End_Cidade: true } },
+                    cliente: { select: CLIENTE_LINHA_SELECT },
                     lead: { select: { id: true, nomeEstabelecimento: true, numero: true } },
                     amostra: { select: { id: true, numero: true, status: true } },
                 },
@@ -502,7 +525,7 @@ const atendimentoService = {
                     statusEnvio: true, nomeCondicaoPagamento: true, observacoes: true,
                     clienteId: true, latLng: true,
                     vendedor: { select: { id: true, nome: true } },
-                    cliente: { select: { UUID: true, NomeFantasia: true, Nome: true, End_Cidade: true } },
+                    cliente: { select: CLIENTE_LINHA_SELECT },
                     itens: { select: { quantidade: true, valor: true } },
                 },
                 orderBy: { createdAt: 'desc' },

@@ -52,17 +52,30 @@ const podeDispensar = (req, res, next) => {
     next();
 };
 
-// ── Config (interruptor "exigir WhatsApp no envio do pedido") ────────────────
+// ── Config (dois interruptores independentes) ───────────────────────────────
+// `ativo` = exigir WhatsApp no envio do pedido.
+// `mostrarSeloNasListas` = mostrar o selo nas listas de campo (Rota, Atendimentos,
+// Atendidos, Entregas, Entregues).
+//
+// O GET é DE PROPÓSITO sem gate de administração: é ele que o vendedor em campo e
+// o motorista leem para saber se desenham o selo na linha da lista. Não acrescentar
+// gate aqui — a resposta são dois booleanos e um número, nenhum dado de cliente.
 
 router.get('/config', async (req, res) => {
     try { res.json(await whats.getConfig()); }
     catch (e) { trataErro(res, e, 'config'); }
 });
 
+// Os dois campos são OPCIONAIS e independentes: só entra no patch o que veio no
+// corpo. `setConfig` mescla o patch sobre o valor atual, então mandar um campo
+// sozinho NÃO apaga o outro (é o que a tela de Configurações faz: um toggle por vez).
 router.post('/config', podeAdministrar, async (req, res) => {
     try {
-        const { ativo } = req.body || {};
-        res.json(await whats.setConfig({ ativo: ativo === true }));
+        const body = req.body || {};
+        const patch = {};
+        if (body.ativo !== undefined) patch.ativo = body.ativo === true;
+        if (body.mostrarSeloNasListas !== undefined) patch.mostrarSeloNasListas = body.mostrarSeloNasListas === true;
+        res.json(await whats.setConfig(patch));
     } catch (e) { trataErro(res, e, 'set-config'); }
 });
 

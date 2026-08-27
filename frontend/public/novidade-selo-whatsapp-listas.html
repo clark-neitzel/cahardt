@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: o selo de WhatsApp aparece na lista — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto no grupo) -->
+<meta property="og:title" content="💬 Novidade no Hardt App: dá para ver quem tem WhatsApp sem abrir a ficha">
+<meta property="og:description" content="Na Rota (Atendimento, Atendidos, Entregas e Entregues) e no Painel de Atendimentos, a própria linha do cliente mostra se ele tem WhatsApp. E quem está sem número, o vendedor cadastra ali mesmo, num toque.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 96px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block; background: var(--gold); color: #2b230f;
+    font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em;
+    padding: 6px 14px; border-radius: 999px; margin-bottom: 18px;
+  }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 420px; margin: -68px auto 28px; background: #fff; border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28); overflow: hidden; text-align: left;
+  }
+  .mock-top { background: var(--house); color: #fff; padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+  .mock-top small { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; color: rgba(255,255,255,.55); }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-legenda { font-size: 11px; color: #7a837e; border-bottom: 1px solid #f0efe9; padding-bottom: 9px; margin-bottom: 11px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; color: var(--primary-dark); margin: 34px 4px 12px; }
+  .destaque { background: #fff; border: 1px solid #e3e1da; border-left: 4px solid var(--gold); border-radius: 14px; padding: 16px 18px; margin-bottom: 6px; }
+  .destaque p { margin: 0; font-size: 14.5px; color: var(--ink-soft); }
+  .destaque b { color: var(--ink); }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit; text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px; }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+  .app-card.entrega { border-color: rgba(56,158,214,.45); box-shadow: 0 0 0 1px rgba(56,158,214,.16); }
+  .app-card.amostra { border-color: rgba(234,140,50,.45); box-shadow: 0 0 0 1px rgba(234,140,50,.16); }
+  .app-card-body { padding: 12px; }
+  .app-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 6px; }
+  .app-nome { font-size: 13.5px; font-weight: 800; line-height: 1.2; }
+  .app-sub { font-size: 11.5px; color: #8b938e; margin-top: 2px; }
+  .app-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--primary); color: #fff; font-size: 12.5px; font-weight: 700; padding: 9px 16px; border-radius: 999px; }
+  .app-btn.bloco { display: flex; width: 100%; margin-top: 10px; }
+  .app-btn.laranja { background: #ea8c32; }
+  .app-abas { display: flex; gap: 4px; background: #fff; border: 1px solid #e5e3dc; border-radius: 10px 10px 0 0; padding: 8px 6px 0; font-size: 11px; font-weight: 700; color: #9aa5a0; }
+  .app-abas span { padding: 6px 8px 8px; border-bottom: 2px solid transparent; }
+  .app-abas span.on { color: var(--primary-dark); border-bottom-color: var(--primary); }
+  .app-legenda-tela { background: #fff; border: 1px solid #e5e3dc; border-top: none; border-radius: 0 0 10px 10px; padding: 7px 10px 9px; font-size: 10.5px; color: #7a837e; margin-bottom: 10px; }
+  .app-badge { display: inline-block; font-size: 10.5px; font-weight: 800; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .b-verde { background: #dcfce7; color: #166534; }
+  .b-vermelho { background: #fee2e2; color: #b91c1c; }
+  .b-cinza { background: #f1f1ee; color: #57605b; }
+  .b-ambar { background: #fef3c7; color: #92610a; }
+  .b-roxo { background: #f3e8ff; color: #6b21a8; }
+  .b-azul { background: #e0f2fe; color: #0369a1; }
+  .selo-ico { font-size: 13px; line-height: 1; }
+  .selo-verde { color: var(--primary); }
+  .selo-cinza { color: #c9cdca; }
+  .app-tabela { width: 100%; border-collapse: collapse; font-size: 11.5px; background: #fff; border: 1px solid #e5e3dc; border-radius: 10px; overflow: hidden; }
+  .app-tabela th { background: #f7f6f2; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; padding: 8px 9px; }
+  .app-tabela td { padding: 9px; border-top: 1px solid #f0efe9; vertical-align: top; }
+  .app-toggle-linha { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #fff; border: 1px solid #edece6; border-radius: 10px; padding: 10px 12px; font-size: 12.5px; margin-bottom: 10px; }
+  .app-toggle-linha.on { background: var(--mint); border-color: rgba(0,117,74,.3); }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #7a837e; }
+  .app-input { border: 1.5px solid var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.12); border-radius: 9px; padding: 10px 12px; font-size: 14px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; background: #fff; margin-bottom: 8px; }
+  .app-input small { display: block; font-family: -apple-system, sans-serif; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 3px; }
+  .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+  .tabela-selos { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #e3e1da; border-radius: 14px; overflow: hidden; font-size: 13.5px; }
+  .tabela-selos th { background: #f7f6f2; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: #7a837e; padding: 10px 12px; }
+  .tabela-selos td { padding: 11px 12px; border-top: 1px solid #f0efe9; color: var(--ink-soft); vertical-align: top; }
+  .tabela-selos td:first-child { white-space: nowrap; }
+  .tabela-selos b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Dá para ver quem tem WhatsApp<br>sem abrir a ficha</h1>
+    <p>Na <b>Rota</b> — Atendimento, Atendidos, Entregas e Entregues — e no <b>Painel de Atendimentos</b>, a própria linha do cliente passa a mostrar um selinho de WhatsApp. E quando o cliente está <b>sem número</b>, o vendedor toca no selo e cadastra ali mesmo, com o cliente na frente.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock: a linha do card com os quatro estados -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">💬</span>
+      <div>
+        <small>Rota · Entregas</small>
+        <strong>O selo na própria linha</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-legenda">💬 verde = WhatsApp em uso · cinza = sem histórico · âmbar = sem número</div>
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f0efe9;">
+        <span class="app-badge b-ambar">🚫 Sem WhatsApp</span>
+        <span class="app-nome">BAR DO NEGÃO</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f0efe9;">
+        <span class="selo-ico selo-cinza">💬</span>
+        <span class="app-nome">BAR E MERCEARIA UNIÃO</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid #f0efe9;">
+        <span class="app-badge b-vermelho">⚠ WhatsApp com problema</span>
+        <span class="app-nome">MERCADO SALLES</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 0;">
+        <span class="selo-ico selo-verde">💬</span>
+        <span class="app-nome">KELI TRAILER</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDA ══════════ -->
+  <div class="sec-label">O que muda no seu dia</div>
+
+  <div class="destaque">
+    <p><b>Nada muda até a empresa ligar a chave.</b> O selo vem <b>desligado de fábrica</b>: enquanto estiver assim, a Rota e o Painel ficam exatamente como estão hoje. Quando for ligado, aparece só o selinho na linha — <b>nenhum pedido é bloqueado</b> e <b>nenhum campo vira obrigatório</b>.</p>
+    <p style="margin-top:10px;">Isso é uma chave <b>diferente</b> da "Exigir WhatsApp" (aquela que trava o ENVIAR do pedido). Ligar o selo <b>não</b> liga a exigência.</p>
+  </div>
+
+  <!-- ══════════ OS QUATRO SELOS ══════════ -->
+  <div class="sec-label">Os quatro selos</div>
+
+  <table class="tabela-selos">
+    <thead>
+      <tr><th>Selo</th><th>O que quer dizer</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="selo-ico selo-verde">💬</span> <b>verde</b></td>
+        <td><b>WhatsApp em uso.</b> Já saiu mensagem nossa para esse número. É a prova mais forte de que o número está certo — mas quer dizer que <b>a mensagem saiu</b>, não que o cliente leu ou respondeu.</td>
+      </tr>
+      <tr>
+        <td><span class="selo-ico selo-cinza">💬</span> <b>cinza</b></td>
+        <td><b>Sem histórico.</b> O cliente tem número no cadastro, mas ainda não saiu mensagem nossa para ele. <b>Não é problema.</b></td>
+      </tr>
+      <tr>
+        <td><span class="app-badge b-ambar">🚫 Sem WhatsApp</span></td>
+        <td><b>Sem número.</b> O cadastro está sem WhatsApp. É o único selo que vira <b>botão</b> para o vendedor: toque e cadastre na hora.</td>
+      </tr>
+      <tr>
+        <td><span class="app-badge b-vermelho">⚠ WhatsApp com problema</span></td>
+        <td><b>O número está lá, mas foi recusado.</b> Nossa última tentativa de mensagem não foi entregue. Esse caso é do <b>escritório</b> resolver — por isso ele não é clicável na rua.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="destaque" style="margin-top:10px;">
+    <p>O selo é recalculado <b>uma vez por dia, de madrugada</b>. Ele não muda no meio da rota — se você cadastrar um número agora, o selo âmbar some na hora (o cliente passou a ter número), mas o verde só aparece depois que sair a primeira mensagem.</p>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">📋 Tela 1 — Rota → Atendimento e Atendidos</div>
+    <div class="tela-corpo">
+      <div class="app-abas">
+        <span class="on">📋 Atendimento (77)</span><span>✓ Atendidos</span><span>📦 Entregas</span><span>🚚 Entregues</span>
+      </div>
+      <div class="app-legenda-tela">💬 verde = WhatsApp em uso · cinza = sem histórico · âmbar = sem número · atualizado de madrugada</div>
+
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="app-chips">
+            <span class="app-badge b-azul">CLIENTE</span>
+            <span class="app-badge b-ambar">🚫 Sem WhatsApp</span>
+          </div>
+          <div class="app-nome">48.292.977 FABIO DA SILVA ROSA</div>
+          <div class="app-sub">Joinville · QUA · Entrega: QUI</div>
+        </div>
+      </div>
+
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="app-chips">
+            <span class="app-badge b-azul">CLIENTE</span>
+            <span class="selo-ico selo-verde">💬</span>
+          </div>
+          <div class="app-nome">CANTINA MACHADO</div>
+          <div class="app-sub">Joinville · QUA · Entrega: QUI</div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>A <b>legenda</b> aparece uma vez por tela, logo abaixo das abas. Ela existe porque no celular não dá para passar o mouse em cima do selo para ler a explicação.</span></div>
+      <div><span class="pin">2</span><span>O selo entra na <b>mesma fileira dos outros selinhos</b> do card (CLIENTE, GPS, atendido hoje). Ele não empurra o nome nem muda o tamanho do card.</span></div>
+      <div><span class="pin">3</span><span><b>Tocar no nome do cliente continua abrindo a ficha</b>, como sempre. O selo não rouba esse toque.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">📦 Tela 2 — Rota → Entregas, Entregues e Organizar Rota</div>
+    <div class="tela-corpo">
+      <div class="app-card entrega">
+        <div class="app-card-body">
+          <div class="app-chips">
+            <span class="app-badge b-azul">CARGA #9701</span>
+            <span class="app-badge b-roxo">🚚 Josiane</span>
+            <span class="app-badge b-ambar">🚫 Sem WhatsApp</span>
+          </div>
+          <div class="app-nome">BAR DO NEGÃO</div>
+          <div class="app-sub">Rua Ervino Hanemann 85 · Guaramirim</div>
+          <div class="app-btn bloco">✓ Dar Baixa</div>
+        </div>
+      </div>
+
+      <div class="app-card entrega">
+        <div class="app-card-body">
+          <div class="app-chips">
+            <span class="app-badge b-azul">CARGA #9701</span>
+            <span class="app-badge b-vermelho">⚠ WhatsApp com problema</span>
+          </div>
+          <div class="app-nome">MERCADO SALLES</div>
+          <div class="app-sub">R Presidente Campos Salles 1085 · Joinville</div>
+          <div class="app-btn bloco">✓ Dar Baixa</div>
+        </div>
+      </div>
+
+      <div class="app-card amostra">
+        <div class="app-card-body">
+          <div class="app-chips">
+            <span class="app-badge b-ambar">AM#31</span>
+            <span class="app-badge b-azul">CARGA #9701</span>
+          </div>
+          <div class="app-nome">Panificado Helena</div>
+          <div class="app-sub">Amostra de lead · 0 itens</div>
+          <div class="app-btn bloco laranja">✓ Entregar Amostra</div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Vale para as <b>entregas de pedido e as amostras</b> que estão na carga — e também dentro do modo <b>Organizar Rota</b>, que usa o mesmo card.</span></div>
+      <div><span class="pin">2</span><span>Em <b>Entregues</b> o selo aparece ao lado do nome, no resumo que já vem fechado.</span></div>
+      <div><span class="pin">3</span><span><b>Amostra de lead não tem selo</b> — lead ainda não é cliente cadastrado, então não existe cadastro de WhatsApp para mostrar.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-titulo">💬 Tela 3 — Toque no "Sem WhatsApp" e cadastre na hora</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="app-chips" style="margin-bottom:10px;">
+            <span class="app-badge b-ambar">🚫 Sem WhatsApp</span>
+            <span style="font-size:11px;color:#8b938e;">← toque aqui</span>
+          </div>
+          <div style="border-top:1px solid #f0efe9;padding-top:11px;">
+            <div class="app-nome" style="margin-bottom:2px;">💬 WhatsApp do cliente — BAR DO NEGÃO</div>
+            <div class="app-sub" style="margin-bottom:10px;">Peça o número agora, enquanto você está com ele</div>
+            <div class="app-input"><small>Número com DDD *</small>47999998888</div>
+            <div class="app-btn bloco">✓ Salvar o número</div>
+            <div style="text-align:center;font-size:11.5px;color:#7a837e;text-decoration:underline;margin-top:10px;">Não consegui agora</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>É o <b>mesmo campo</b> que já aparece hoje quando o pedido é bloqueado por falta de WhatsApp. Um campo só, botão grande, feito para ser usado em pé.</span></div>
+      <div><span class="pin">2</span><span>Salvou, a lista se atualiza sozinha e o chip âmbar <b>some na hora</b>.</span></div>
+      <div><span class="pin">3</span><span><b>"Não consegui agora"</b> continua ali: registra o motivo com o seu nome e a data, para o escritório acompanhar.</span></div>
+      <div><span class="pin">4</span><span>Quem <b>não pode mexer no cadastro do cliente</b> vê o chip âmbar normalmente, mas ele <b>não é clicável</b> — nada de tocar e levar "sem permissão" na cara do cliente.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4 -->
+  <div class="tela">
+    <div class="tela-titulo">📊 Tela 4 — Painel de Atendimentos (escritório)</div>
+    <div class="tela-corpo">
+      <div class="app-legenda-tela" style="border-radius:10px;border-top:1px solid #e5e3dc;">💬 verde = WhatsApp em uso · cinza = sem histórico · âmbar = sem número · atualizado de madrugada</div>
+      <table class="app-tabela">
+        <thead><tr><th>Vendedor</th><th>Cliente / Lead</th><th>Cidade</th></tr></thead>
+        <tbody>
+          <tr><td>Edilson</td><td>Lead #17 — Panificadora nascer do sol</td><td>—</td></tr>
+          <tr><td>Leticia</td><td><b>PANIFICADORA E CONFEITARIA ITALIA</b> <span class="app-badge b-ambar">🚫 Sem WhatsApp</span></td><td>Joinville</td></tr>
+          <tr><td>Leticia</td><td><b>PADARIA E CONFEITARIA NUBIA</b> <span class="selo-ico selo-cinza">💬</span></td><td>Guaramirim</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>No Painel o selo é <b>só para olhar</b>: não é botão, mesmo para quem é administrador. Ali é acompanhamento, não é a hora de cadastrar.</span></div>
+      <div><span class="pin">2</span><span><b>Linha de lead não tem selo</b> — vale igual para a linha do atendimento e para a linha da venda (pedido).</span></div>
+      <div><span class="pin">3</span><span>No <b>celular</b>, os mesmos selos aparecem nos cards, ao lado do nome.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 5 -->
+  <div class="tela">
+    <div class="tela-titulo">🔑 Tela 5 — Onde se liga (escritório)</div>
+    <div class="tela-corpo">
+      <div class="app-toggle-linha">
+        <div>
+          <b>Exigir WhatsApp do cliente para ENVIAR pedido</b>
+          <small>Desligado — trava o pedido de cliente sem número.</small>
+        </div>
+        <span class="app-btn">Ligar exigência</span>
+      </div>
+      <div class="app-toggle-linha on">
+        <div>
+          <b>Mostrar o selo nas listas de campo</b>
+          <small>LIGADO — Rota e Painel de Atendimentos mostram o selo. É só informação.</small>
+        </div>
+        <span class="app-btn" style="background:#fff;border:1.5px solid var(--primary);color:var(--primary);">Desligar selo</span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Clientes → 💬 Pendências de WhatsApp.</b> São <b>duas chaves separadas</b>: uma liga o bloqueio do pedido, a outra só mostra o selo. Uma não liga a outra.</span></div>
+      <div><span class="pin">2</span><span>Só quem tem permissão de <b>editar clientes</b> (ou administrador) liga e desliga.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ PERGUNTAS ══════════ -->
+  <div class="sec-label">Perguntas que a equipe vai fazer</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" aria-expanded="true" onclick="alternar(this)">
+      <span class="acc-ico">🔒</span><strong>Isso vai travar meu pedido?</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p><b>Não.</b> O selo é só informação na tela. Quem trava o pedido é a outra chave, a "Exigir WhatsApp" — e ela continua desligada até a empresa avisar.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" aria-expanded="true" onclick="alternar(this)">
+      <span class="acc-ico">✅</span><strong>Verde quer dizer que a mensagem chegou ao cliente?</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p><b>Não.</b> Verde quer dizer que <b>já saiu mensagem nossa</b> para aquele número — confirmação de pedido, boleto, cobrança. É o sinal mais forte de que o número está certo, mas o app não sabe se o cliente abriu, leu ou respondeu.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" aria-expanded="true" onclick="alternar(this)">
+      <span class="acc-ico">⚠️</span><strong>Apareceu "WhatsApp com problema". O que eu faço?</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Quer dizer que o número está no cadastro, mas a última mensagem <b>não foi entregue</b>. Na rua, não tem o que fazer no app — <b>avise o escritório</b>. Se der para conferir com o cliente, confira o DDD e o dígito 9.</p>
+      <p>Esse chip <b>não é clicável de propósito</b>: o número existe, e ninguém deve trocá-lo sem conferir.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" aria-expanded="true" onclick="alternar(this)">
+      <span class="acc-ico">🕓</span><strong>Cadastrei o número e o selo não ficou verde</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>É o esperado. O chip âmbar "Sem WhatsApp" some na hora (o cliente passou a ter número), e o selo fica <b>cinza</b> — tem número, sem histórico. Ele fica verde depois que sair a primeira mensagem para esse número, na conta que roda <b>de madrugada</b>.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" aria-expanded="true" onclick="alternar(this)">
+      <span class="acc-ico">👀</span><strong>Não estou vendo selo nenhum</strong><span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>A chave <b>ainda não foi ligada</b> — é o mais provável, ela vem desligada.</li>
+        <li>Feche e abra o app para pegar a versão nova (ou toque no ícone de atualizar).</li>
+        <li>Nas <b>amostras de lead</b> o selo nunca aparece: lead não é cliente cadastrado.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ PARA COMEÇAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+
+  <div class="passos">
+    <div class="passo">
+      <div class="passo-n">1</div>
+      <div><b>Escritório:</b> Clientes → <b>💬 Pendências de WhatsApp</b> → chave <b>"Mostrar o selo nas listas de campo"</b>. Vale a pena ligar antes de ligar a exigência: dá para ver o tamanho do problema sem travar ninguém.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">2</div>
+      <div><b>Vendedor:</b> abra a Rota e leia a legenda embaixo das abas. Cliente com chip <b>âmbar</b> é o que precisa de você.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">3</div>
+      <div><b>Toque no chip âmbar com o cliente na frente</b>, digite o número e salve. Some da lista na hora — e você não precisa voltar nesse cliente depois.</div>
+    </div>
+    <div class="passo">
+      <div class="passo-n">4</div>
+      <div><b>Motorista:</b> na entrega, se aparecer âmbar, é o momento mais fácil de pegar o número — você já está com a pessoa.</div>
+    </div>
+  </div>
+
+  <p class="rodape">
+    Dúvida? Fale com o <strong>Clarkson</strong>.<br>
+    <strong>Hardt Salgados</strong> · 26/08/2026
+  </p>
+
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

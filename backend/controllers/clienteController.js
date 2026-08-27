@@ -185,7 +185,21 @@ const clienteController = {
                             diasSemComprar: true,
                             scoreRisco: true,
                         }
-                    }
+                    },
+                    // Selo de WhatsApp para a linha da lista (Rota → Atendimento e
+                    // Atendidos). É SÓ ADIÇÃO: quem já consumia /clientes (NovoPedido,
+                    // Catálogo, ListaClientes...) ignora o campo novo.
+                    // Relação 1-1 por @id → uma query extra com WHERE IN, não N+1.
+                    // `null` quando o cliente nunca entrou na tabela lateral.
+                    //
+                    // SÓ `selo`, de propósito: a lista desenha 4 estados (sem número,
+                    // com problema, já saiu mensagem, neutro) e NÃO tem estado
+                    // "dispensado" — a dispensa silencia o bloqueio do ENVIAR, mas na
+                    // lista o que importa é "falta número, pega agora". Trazer
+                    // `dispensaMotivo`/`dispensaEm` aqui seria payload morto × até 2000
+                    // linhas. A ficha individual do cliente (o findUnique mais abaixo)
+                    // continua trazendo a dispensa, porque lá ela é mostrada.
+                    whatsappStatus: { select: { selo: true } }
                 }
             });
 

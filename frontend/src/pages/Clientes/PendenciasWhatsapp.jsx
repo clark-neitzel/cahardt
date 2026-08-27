@@ -72,6 +72,7 @@ export default function PendenciasWhatsapp() {
     const [carregando, setCarregando] = useState(true);
     const [erroCarga, setErroCarga] = useState(null);
     const [salvandoConfig, setSalvandoConfig] = useState(false);
+    const [salvandoSelo, setSalvandoSelo] = useState(false);
     const [recalculando, setRecalculando] = useState(false);
 
     // Filtros lembrados por usuário/tela (busca por texto NÃO é persistida)
@@ -88,9 +89,14 @@ export default function PendenciasWhatsapp() {
             const r = await whatsappClientesService.pendencias();
             setDados(r || null);
             setErroCarga(null);
-            // Validade da dispensa vem da config — detalhe informativo, não pode travar a tela
+            // Validade da dispensa e o interruptor do selo vêm da config — detalhe
+            // informativo, não pode travar a tela
             whatsappClientesService.config()
-                .then(cfg => setDados(d => d ? { ...d, diasValidadeDispensa: cfg?.diasValidadeDispensa } : d))
+                .then(cfg => setDados(d => d ? {
+                    ...d,
+                    diasValidadeDispensa: cfg?.diasValidadeDispensa,
+                    mostrarSeloNasListas: cfg?.mostrarSeloNasListas === true,
+                } : d))
                 .catch(() => { });
         } catch (e) {
             // Backend fora do ar / rota ainda não publicada: tela de vazio, nunca tela vermelha
@@ -130,7 +136,7 @@ export default function PendenciasWhatsapp() {
         setSalvandoConfig(true);
         try {
             const novo = !dados?.ativo;
-            const r = await whatsappClientesService.setConfig(novo);
+            const r = await whatsappClientesService.setConfig({ ativo: novo });
             const ativo = typeof r?.ativo === 'boolean' ? r.ativo : novo;
             setDados(d => ({ ...(d || {}), ativo }));
             toast.success(ativo
@@ -140,6 +146,26 @@ export default function PendenciasWhatsapp() {
             toast.error(e.response?.data?.error || 'Erro ao mudar a configuração.');
         } finally {
             setSalvandoConfig(false);
+        }
+    };
+
+    // Interruptor SEPARADO: só MOSTRA o selo nas listas de campo. Não exige nada,
+    // não bloqueia pedido — é independente da exigência acima.
+    const toggleSelo = async () => {
+        if (!podeAdministrar) return toast.error('Só quem pode editar clientes liga/desliga o selo.');
+        setSalvandoSelo(true);
+        try {
+            const novo = !dados?.mostrarSeloNasListas;
+            const r = await whatsappClientesService.setConfig({ mostrarSeloNasListas: novo });
+            const valor = typeof r?.mostrarSeloNasListas === 'boolean' ? r.mostrarSeloNasListas : novo;
+            setDados(d => ({ ...(d || {}), mostrarSeloNasListas: valor }));
+            toast.success(valor
+                ? 'Selo LIGADO: a Rota, os Atendimentos e as Entregas passam a mostrar quem tem WhatsApp.'
+                : 'Selo desligado: as listas voltam a ficar como estavam.');
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao mudar a configuração.');
+        } finally {
+            setSalvandoSelo(false);
         }
     };
 
@@ -242,6 +268,24 @@ export default function PendenciasWhatsapp() {
                             <button onClick={toggleExigir} disabled={salvandoConfig || !podeAdministrar}
                                 className={`px-4 py-2.5 rounded-full font-semibold text-sm shrink-0 disabled:opacity-50 min-h-[44px] ${dados?.ativo ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-primary hover:bg-primaryDark text-white'}`}>
                                 {salvandoConfig ? '…' : (dados?.ativo ? 'Desligar exigência' : 'Ligar exigência')}
+                            </button>
+                        </div>
+
+                        {/* Interruptor do selo nas listas de campo — INDEPENDENTE do de cima.
+                            Ligar aqui não exige WhatsApp de ninguém e não bloqueia pedido:
+                            só faz a linha da lista mostrar se o cliente tem número ou não. */}
+                        <div className={`rounded-xl border p-4 flex items-start md:items-center justify-between gap-3 flex-col md:flex-row ${dados?.mostrarSeloNasListas ? 'bg-mint/40 border-primary/30' : 'bg-white border-gray-200'}`}>
+                            <div>
+                                <p className="text-sm font-bold text-gray-900">Mostrar o selo nas listas de campo</p>
+                                <p className="text-xs text-gray-600 mt-0.5">
+                                    {dados?.mostrarSeloNasListas
+                                        ? 'LIGADO — Rota (Atendimento, Atendidos, Entregas, Entregues) e Painel de Atendimentos mostram, na própria linha, se o cliente tem WhatsApp. É só informação: NÃO exige o número nem bloqueia pedido.'
+                                        : 'Desligado — as listas ficam exatamente como estão. Este interruptor é independente do de cima: ligar o selo não passa a exigir WhatsApp para enviar pedido.'}
+                                </p>
+                            </div>
+                            <button onClick={toggleSelo} disabled={salvandoSelo || !podeAdministrar}
+                                className={`px-4 py-2.5 rounded-full font-semibold text-sm shrink-0 disabled:opacity-50 min-h-[44px] ${dados?.mostrarSeloNasListas ? 'bg-white border border-primary text-primary hover:bg-mint/40' : 'bg-primary hover:bg-primaryDark text-white'}`}>
+                                {salvandoSelo ? '…' : (dados?.mostrarSeloNasListas ? 'Desligar selo' : 'Ligar selo')}
                             </button>
                         </div>
 

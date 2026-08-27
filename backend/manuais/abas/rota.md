@@ -113,6 +113,7 @@ Lista de clientes e leads que **ainda não foram atendidos hoje** pelo vendedor 
 - Cards com botões de **Atender** e **Novo Pedido**
 - Clientes com alerta de inadimplência exibem ícone vermelho clicável
 - Leads mostram a etapa atual (NOVO, PROSPECÇÃO, etc.)
+- **Selo de WhatsApp** ao lado do nome do cliente, quando a chave "Mostrar selo nas listas" estiver ligada (ver seção própria abaixo)
 
 ### Atendidos (concluídos hoje)
 Lista de clientes e leads que **já receberam pelo menos um atendimento hoje** pelo vendedor. O cliente some da aba Atendimento e aparece aqui logo após o atendimento ser salvo.
@@ -120,6 +121,7 @@ Lista de clientes e leads que **já receberam pelo menos um atendimento hoje** p
 - Filtros de dia da semana e forma de atendimento também ficam visíveis aqui
 - Os cards continuam com opção de registrar novo atendimento ou pedido
 - Útil para consultar o que já foi feito no dia
+- **Selo de WhatsApp** ao lado do nome do cliente, quando a chave "Mostrar selo nas listas" estiver ligada (ver seção própria abaixo)
 
 ### Cobrança em Rota (dentro da sub-aba Entregas)
 Quem tem `Pode_Cobrar_Titulo_Rota` vê, no topo da sub-aba **Entregas**, a seção **"Cobranças a fazer"** — títulos em aberto para cobrar do cliente na mesma visita da entrega.
@@ -145,6 +147,7 @@ Lista de pedidos faturados em embarques que ainda precisam ser entregues fisicam
 - Botão **Maps** — abre Google Maps com a localização do cliente (usa GPS cadastrado ou endereço)
 - Botão **Fazer Check-in (Entregar)** — abre o modal de checkout para registrar a baixa
 - **Selo GPS × endereço** (aparece depois de organizar a rota) — compara o ponto GPS cadastrado com o endereço escrito e mostra no card: verde "GPS no endereço", âmbar "GPS a ~X do endereço", vermelho "GPS longe do endereço (~X)" (ver seção própria abaixo)
+- **Selo de WhatsApp** ao lado do nome do cliente, quando a chave "Mostrar selo nas listas" estiver ligada (ver seção própria abaixo) — vale também para as **amostras de cliente cadastrado** que estão na carga; **amostra de lead não tem selo**
 
 Para organizar a sequência de entrega, há o botão **Organizar Rota** (roteirizador por GPS).
 
@@ -158,6 +161,49 @@ Lista de pedidos cujo check-in de entrega já foi realizado. Cada card mostra:
 - Status físico da entrega: ENTREGUE, PARCIAL ou DEVOLVIDO
 - Se houve divergência de pagamento apontada
 - Horário e data do check-in
+- **Selo de WhatsApp** ao lado do nome do cliente, quando a chave "Mostrar selo nas listas" estiver ligada (ver seção própria abaixo)
+
+---
+
+## Selo de WhatsApp nas listas (novo — 08/2026)
+
+**Para que serve:** quem está em campo saber, **olhando a própria linha da lista**, se aquele cliente **tem número de WhatsApp no cadastro** e se **já saiu mensagem nossa** para esse número — sem precisar abrir a ficha. Aparece nas quatro sub-abas da Rota: **Atendimento**, **Atendidos**, **Entregas** e **Entregues**.
+
+> **O que o selo NÃO é.** O sistema **não confere** se o número é do cliente nem se ele está certo. Tudo o que o selo sabe é: tem número cadastrado? já saiu mensagem nossa para lá? o WhatsApp da empresa recusou o número em alguma tentativa? Verde **não** quer dizer "número conferido", quer dizer "já mandamos mensagem para cá". Na dúvida, **confirme o número com o cliente do mesmo jeito**.
+
+**O que cada cor quer dizer** (é o mesmo selo da tela de Pendências de WhatsApp, não há regra nova):
+
+| Na tela | O que quer dizer | Clicável? |
+|---|---|---|
+| **Ícone verde** | Já saiu mensagem do sistema para esse número nos últimos 180 dias. Quer dizer que **a mensagem saiu daqui** — não que tenha chegado, não que o cliente leu, não que o número foi conferido. | Não |
+| **Ícone cinza** | Tem número no cadastro, mas **ainda não saiu mensagem** para ele — o sistema não tem histórico para dizer nada. **Não é problema**: falha nossa (internet, WhatsApp fora do ar, teto de envios) nunca marca o cliente. | Não |
+| **Chip âmbar "Sem WhatsApp"** | O cadastro do cliente está **sem número** nenhum. | **Sim, na Rota** — ver abaixo |
+| **Chip vermelho "WhatsApp com problema"** | O número está no cadastro, mas o WhatsApp da empresa tentou mandar e o número foi recusado. Confira o DDD e o dígito 9 com o cliente. | Não — ver abaixo |
+
+São **essas quatro marcas e mais nenhuma**. Em particular, **a lista não tem estado "dispensado"**: cliente com justificativa registrada e sem número mostra o mesmo chip âmbar "Sem WhatsApp" que qualquer outro. É de propósito — a justificativa serve para **destravar o ENVIAR do pedido**, não para tirar o cliente da fila de quem ainda precisa dar o número. Na rua, o recado continua sendo "falta o número, pegue agora". Quem quiser ver quem está dispensado usa a tela **Pendências de WhatsApp**, que separa isso.
+
+### O chip âmbar "Sem WhatsApp" é um botão (aqui na Rota)
+
+Achou um cliente sem número **durante a visita**? Toque no chip âmbar: abre o modal para **cadastrar o número na hora**, sem sair da lista e sem abrir a ficha do cliente. Salvou, o chip some da linha na mesma hora.
+
+- Só é clicável para quem tem **permissão de gravar o cadastro do cliente**. Sem essa permissão o chip aparece do mesmo jeito, mas só como informação.
+- Esse modal **não oferece a opção "não consegui agora"** (a justificativa/dispensa). Aqui ninguém está travado — o objetivo é **pegar o número**; se não der, é só fechar e seguir. A dispensa continua existindo onde ela resolve alguma coisa: no bloqueio do ENVIAR do pedido.
+- **No Painel de Atendimentos o chip NÃO é clicável** — aquela tela é de consulta, não de cadastro. Para corrigir o número a partir de lá, abra o cadastro do cliente.
+- O chip vermelho **"WhatsApp com problema" nunca é clicável**, em tela nenhuma: ali o número existe e foi recusado, então digitar de novo o mesmo número não resolve. É caso para o escritório apurar com o cliente.
+
+### A legenda das cores
+
+Logo abaixo da barra de sub-abas aparece uma **legenda** explicando o que é cada cor, para ninguém precisar decorar. Ela também lembra que a informação é **atualizada de madrugada**.
+
+**Como ligar/desligar:** Clientes → **Pendências de WhatsApp** → chave **"Mostrar selo nas listas"**. Vem **desligada de fábrica**.
+
+> Essa chave é **independente** da chave "Exigir WhatsApp". Ligar os selos **não** liga o bloqueio do ENVIAR do pedido nem torna o WhatsApp obrigatório no cadastro — só mostra o ícone nas listas. Dá para ver a situação da carteira antes de decidir se vai exigir.
+
+O selo é recalculado sozinho **uma vez por dia, às 04:20** — por isso a legenda diz "atualizado de madrugada". Ele **não muda no meio da rota**: cadastrou o número agora, o chip âmbar some na hora, mas o ícone verde de "já saiu mensagem" só aparece depois que sair mensagem e o recálculo rodar.
+
+### Amostra de lead não tem selo (não é bug)
+
+Nas sub-abas **Entregas** e **Entregues** o selo vale para os pedidos e para as amostras **de cliente cadastrado**. **Amostra de lead nunca mostra selo** — o lead ainda não é cliente, não tem cadastro e portanto não tem campo de WhatsApp para o sistema olhar. Linha de amostra de lead sem nenhum ícone é o comportamento esperado.
 
 ---
 

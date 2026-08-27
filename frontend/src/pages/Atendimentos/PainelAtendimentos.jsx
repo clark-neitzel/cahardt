@@ -4,6 +4,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import atendimentoService from '../../services/atendimentoService';
 import vendedorService from '../../services/vendedorService';
 import SelectBusca from '../../components/SelectBusca';
+import SeloWhatsappCliente, { LegendaSeloWhatsapp } from '../../components/SeloWhatsappCliente';
+import whatsappClientesService from '../../services/whatsappClientesService';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import ClientePopup from '../Rota/ClientePopup';
 import {
@@ -99,6 +101,16 @@ const PainelAtendimentos = () => {
         page: 1,
         limit: 50,
     });
+
+    // Selo de WhatsApp na linha — aqui é SOMENTE LEITURA (acompanhamento do
+    // escritório, não campo de cadastro). Falha na leitura = selo não aparece,
+    // em silêncio.
+    const [mostrarSeloWhats, setMostrarSeloWhats] = useState(false);
+    useEffect(() => {
+        whatsappClientesService.config()
+            .then(cfg => setMostrarSeloWhats(cfg?.mostrarSeloNasListas === true))
+            .catch(() => setMostrarSeloWhats(false));
+    }, []);
 
     // Carregar vendedores (todos, incluindo inativos)
     useEffect(() => {
@@ -472,6 +484,9 @@ const PainelAtendimentos = () => {
                 </div>
             )}
 
+            {/* Legenda do selo — o tooltip não abre no toque */}
+            <LegendaSeloWhatsapp mostrar={mostrarSeloWhats} />
+
             {/* ── TABELA DESKTOP ── */}
             <div className="hidden md:block bg-white border border-gray-200 rounded-xl overflow-hidden">
                 <table className="w-full text-sm table-fixed">
@@ -529,17 +544,21 @@ const PainelAtendimentos = () => {
                                             )}
                                         </td>
                                         <td className="px-3 py-2.5">
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (a.cliente) setClientePopup(a.cliente);
-                                                    else if (a.lead) setClientePopup(a.lead);
-                                                }}
-                                                className="text-xs font-semibold text-blue-700 hover:text-blue-900 text-left w-full line-clamp-2 leading-tight"
-                                                title={nomeItem}
-                                            >
-                                                {nomeItem}
-                                            </button>
+                                            <div className="flex items-start gap-1.5">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (a.cliente) setClientePopup(a.cliente);
+                                                        else if (a.lead) setClientePopup(a.lead);
+                                                    }}
+                                                    className="text-xs font-semibold text-blue-700 hover:text-blue-900 text-left min-w-0 flex-initial line-clamp-2 leading-tight"
+                                                    title={nomeItem}
+                                                >
+                                                    {nomeItem}
+                                                </button>
+                                                {/* Linha de LEAD não tem cliente: o selo devolve null */}
+                                                <SeloWhatsappCliente cliente={a.cliente} mostrar={mostrarSeloWhats} className="mt-0.5" />
+                                            </div>
                                         </td>
                                         <td className="px-3 py-2.5 text-xs text-gray-500 truncate">
                                             {a.cliente?.End_Cidade || '-'}
@@ -725,7 +744,10 @@ const PainelAtendimentos = () => {
                                     </div>
                                     <span className="text-[11px] text-gray-500 shrink-0">{fmtData(a.criadoEm)} {fmtHora(a.criadoEm)}</span>
                                 </div>
-                                <p className="text-sm font-bold text-gray-900 truncate">{nomeItem}</p>
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                    <p className="text-sm font-bold text-gray-900 truncate">{nomeItem}</p>
+                                    <SeloWhatsappCliente cliente={a.cliente} mostrar={mostrarSeloWhats} />
+                                </div>
                                 {a.cliente?.End_Cidade && <p className="text-[11px] text-gray-500">{a.cliente.End_Cidade}</p>}
                                 {a.origemPedido && (
                                     <p className="text-[12px] font-bold text-green-800 tabular-nums">

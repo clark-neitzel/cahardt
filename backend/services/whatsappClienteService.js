@@ -44,8 +44,17 @@ const numeroValido = (raw) => {
     return !!botWhatsappService.normalizarTelefone(local);
 };
 
-// ── Configuração (interruptor do bloqueio no pedido) ─────────────────────────
-// Padrão de fábrica DESLIGADO: o dono liga quando quiser, igual ao módulo de GPS.
+// ── Configuração (dois interruptores INDEPENDENTES) ──────────────────────────
+// Padrão de fábrica DESLIGADO nos dois: o dono liga quando quiser, igual ao
+// módulo de GPS.
+//
+//   `ativo`                 → bloqueia o ENVIAR do pedido e obriga o número no cadastro.
+//   `mostrarSeloNasListas`  → só MOSTRA o selo de WhatsApp nas listas de campo
+//                             (Rota/Atendimentos/Atendidos/Entregas/Entregues).
+//
+// São propositalmente independentes: "desligado = nada muda" foi a promessa feita
+// ao dono. Amarrar o selo ao `ativo` o obrigaria a ligar o bloqueio do pedido só
+// para enxergar quem tem WhatsApp — não é isso que ele pediu.
 const getConfig = async () => {
     const cfg = await prisma.appConfig.findUnique({ where: { key: CONFIG_KEY } });
     const v = (cfg && typeof cfg.value === 'object' && cfg.value) || {};
@@ -53,6 +62,7 @@ const getConfig = async () => {
     return {
         ativo: v.ativo === true,
         diasValidadeDispensa: Number.isFinite(dias) && dias > 0 ? Math.floor(dias) : DIAS_VALIDADE_PADRAO,
+        mostrarSeloNasListas: v.mostrarSeloNasListas === true,
     };
 };
 

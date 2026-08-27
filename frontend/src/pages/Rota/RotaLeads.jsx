@@ -29,6 +29,9 @@ import api from '../../services/api';
 import MetaCidadeHojeBanner from '../../components/Rota/MetaCidadeHojeBanner';
 import MetaAdminHojeBanner from '../../components/Rota/MetaAdminHojeBanner';
 import SelectBusca from '../../components/SelectBusca';
+import SeloWhatsappCliente, { LegendaSeloWhatsapp } from '../../components/SeloWhatsappCliente';
+import ModalWhatsappCliente from '../../components/ModalWhatsappCliente';
+import whatsappClientesService from '../../services/whatsappClientesService';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 const DIAS_SIGLA = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'N/D'];
@@ -297,7 +300,7 @@ const CONTA_STATUS = {
     PARCIAL:  { label: 'Parcial',   cls: 'bg-yellow-100 text-yellow-700' },
 };
 
-const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, meuVendedorId, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista, foraFiltro, bloqueado, podeUsarIA = false }) => {
+const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostrarAcoes = true, podeEscolherVendedor = false, meuVendedorId, alerta, onAlertaVisto, onFinalizarTransferencia, onTransferenciaVista, foraFiltro, bloqueado, podeUsarIA = false, selo = {} }) => {
     const atendHoje = getAtendimentoHoje(cliente._atendimentos);
     const atendOutro = !atendHoje ? getAtendimentoOutroVendedor(cliente, meuVendedorId) : null;
     const doDia = itemTemDiaBase(cliente.Dia_de_venda); // Cliente do dia
@@ -511,6 +514,8 @@ const CardCliente = ({ cliente, onAtendimento, onNovoPedido, onVerCliente, mostr
                                     <MapPin className="h-3 w-3" /> GPS
                                 </button>
                             )}
+                            {/* Selo de WhatsApp — some por completo com a flag desligada */}
+                            <SeloWhatsappCliente cliente={cliente} {...selo} />
                         </div>
                         {/* Nome clicável */}
                         {podeEscolherVendedor && vendedorNome && (
@@ -962,7 +967,7 @@ const ChipGpsEndereco = ({ resultado }) => {
     );
 };
 
-const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente, onTogglePrioridade, semRounded, gpsEndereco }) => {
+const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente, onTogglePrioridade, semRounded, gpsEndereco, selo = {} }) => {
     const totalValor = pedido.itens?.reduce((s, i) => s + (Number(i.valor) * Number(i.quantidade)), 0) || 0;
     const motoristaNome = pedido.embarque?.responsavel?.nome;
     const vendedorNome = pedido.vendedor?.nome;
@@ -997,6 +1002,8 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente, o
                             {pedido.especial && (
                                 <span className="text-[10px] font-bold text-violet-700 bg-violet-100 px-1.5 py-0.5 rounded">ESPECIAL</span>
                             )}
+                            {/* Selo de WhatsApp — vale também no modo Organizar Rota (mesmo card) */}
+                            <SeloWhatsappCliente cliente={pedido.cliente} {...selo} />
                         </div>
                         <button
                             onClick={() => onVerCliente && onVerCliente(pedido.cliente)}
@@ -1049,7 +1056,7 @@ const CardEntregaPendente = ({ pedido, onCheckout, podeCheckout, onVerCliente, o
 // ================================================
 // Card de Amostra Pendente (Motorista)
 // ================================================
-const CardAmostraEntrega = ({ amostra, onEntregarAmostra, podeCheckout, semRounded }) => {
+const CardAmostraEntrega = ({ amostra, onEntregarAmostra, podeCheckout, semRounded, selo = {} }) => {
     const motoristaNome = amostra.embarque?.responsavel?.nome;
     const vendedorNome = amostra.solicitadoPor?.nome;
     const abrirMaps = () => {
@@ -1079,6 +1086,9 @@ const CardAmostraEntrega = ({ amostra, onEntregarAmostra, podeCheckout, semRound
                                     <User className="h-3 w-3" /> {vendedorNome.split(' ')[0]}
                                 </span>
                             )}
+                            {/* Amostra de LEAD traz um `cliente` sintético SEM UUID
+                                (backend/routes/entregas.js) — o selo devolve null nesse caso */}
+                            <SeloWhatsappCliente cliente={amostra.cliente} {...selo} />
                         </div>
                         <p className="text-left font-bold text-[13px] md:text-[15px] text-gray-900 leading-tight truncate mt-0.5">
                             {amostra.cliente?.NomeFantasia || amostra.cliente?.Nome || '-'}
@@ -1116,7 +1126,7 @@ const CardAmostraEntrega = ({ amostra, onEntregarAmostra, podeCheckout, semRound
 // ================================================
 // Card de Entrega Concluída
 // ================================================
-const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar, onEditar, onVerCliente }) => {
+const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar, onEditar, onVerCliente, selo = {} }) => {
     const [aberto, setAberto] = useState(false);
     const cls = STATUS_ENTREGA_CORES[pedido.statusEntrega] || 'bg-gray-100 text-gray-600';
     const labels = { ENTREGUE: 'Entregue', ENTREGUE_PARCIAL: 'Parcial', DEVOLVIDO: 'Devolvido' };
@@ -1163,12 +1173,15 @@ const CardEntregaConcluida = ({ pedido, podeAjustar, onEstornar, onEditar, onVer
                     </div>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                    <button
-                        onClick={e => { e.stopPropagation(); if (onVerCliente && pedido.cliente) onVerCliente(pedido.cliente); }}
-                        className="text-left font-bold text-[13px] md:text-[15px] text-gray-900 leading-tight truncate hover:text-sky-700 transition-colors"
-                    >
-                        {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}
-                    </button>
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <button
+                            onClick={e => { e.stopPropagation(); if (onVerCliente && pedido.cliente) onVerCliente(pedido.cliente); }}
+                            className="text-left font-bold text-[13px] md:text-[15px] text-gray-900 leading-tight truncate hover:text-sky-700 transition-colors"
+                        >
+                            {pedido.cliente?.NomeFantasia || pedido.cliente?.Nome}
+                        </button>
+                        <SeloWhatsappCliente cliente={pedido.cliente} {...selo} />
+                    </div>
                     {totalRecebido > 0 && <span className="text-[11px] md:text-[12px] font-bold text-green-700 shrink-0">R$ {totalRecebido.toFixed(2)}</span>}
                 </div>
                 {!aberto && pedido.pagamentosReais?.length > 0 && (
@@ -1519,6 +1532,9 @@ const RotaLeads = () => {
     const [modalAmostra, setModalAmostra] = useState(null); // { leadId?, clienteId?, nomeDestinatario, vendedorId, finalizarAtendimento }
     const [modalNovoLead, setModalNovoLead] = useState(false);
     const [editarEntregaPedido, setEditarEntregaPedido] = useState(null); // pedido para edição admin
+    // Selo de WhatsApp nas linhas + modal para pegar o número na hora (montado UMA vez na tela)
+    const [mostrarSeloWhats, setMostrarSeloWhats] = useState(false);
+    const [whatsCliente, setWhatsCliente] = useState(null); // cliente cujo número está sendo pego
 
     // Entregas (Motorista)
     const [entregasPendentes, setEntregasPendentes] = useState([]);
@@ -1645,6 +1661,27 @@ const RotaLeads = () => {
     const podeCobrarRota = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Cobrar_Titulo_Rota);
     const podeUsarIAOrientacao = !!(user?.permissoes?.admin) || !!(user?.permissoes?.Pode_Usar_IA_Orientacao);
 
+    // Gravar o WhatsApp pelo selo = espelho EXATO do gate do backend
+    // (clienteController.js, PATCH /clientes/:uuid):
+    //   podeEditarCadastro = admin || clientes.edit || Pode_Editar_GPS
+    //   podeGravar         = podeEditarCadastro || (pedidos.edit === true && !numeroAtualOk)
+    // O `=== true` é OBRIGATÓRIO: `permissoes.pedidos` é um OBJETO ({view, edit,
+    // clientes}), então `!!perms.pedidos` daria true para quem só LÊ a aba.
+    // A parte `!numeroAtualOk` é garantida pelo próprio selo: o chip só vira botão
+    // no estado "Sem WhatsApp", ou seja, exatamente quando não há número válido.
+    // Quem não passa vê o chip estático — nunca um botão que leva a 403.
+    const permsWhats = user?.permissoes || {};
+    const podeGravarWhatsapp = !!(
+        permsWhats.admin || permsWhats.clientes?.edit || permsWhats.Pode_Editar_GPS
+        || permsWhats.pedidos?.edit === true
+    );
+    // Um objeto só, repassado a cada card (evita 3 props novas em 4 componentes)
+    const seloWhats = useMemo(() => ({
+        mostrar: mostrarSeloWhats,
+        podeEditar: podeGravarWhatsapp,
+        onPegarNumero: (c) => setWhatsCliente(c),
+    }), [mostrarSeloWhats, podeGravarWhatsapp]);
+
     // Filtro persistido para não resetar ao voltar pra tela
     const [vendedorFiltro, setVendedorFiltro] = useFiltroSalvo('rota-leads:vendedorFiltro', 'todos');
     const [vendedores, setVendedores] = useState([]);
@@ -1697,6 +1734,13 @@ const RotaLeads = () => {
     const carregar = useCallback(async () => {
         try {
             setLoading(true);
+
+            // Interruptor do selo de WhatsApp nas linhas. Leitura SOLTA de propósito:
+            // se falhar (backend antigo, sem rede), o selo simplesmente não aparece —
+            // em silêncio, sem toast e sem tela vermelha.
+            whatsappClientesService.config()
+                .then(cfg => setMostrarSeloWhats(cfg?.mostrarSeloNasListas === true))
+                .catch(() => setMostrarSeloWhats(false));
 
             // define quem será o alvo das queries
             let idBusca = vendedorId;
@@ -2248,7 +2292,7 @@ const RotaLeads = () => {
         const mostrarAcoes = aba === 'atendimento' || aba === 'atendidos';
 
         if (item._tipo === 'cliente') {
-            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} meuVendedorId={vendedorId} alerta={alertasPorItem[item.UUID]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} podeUsarIA={podeUsarIAOrientacao} />;
+            return <CardCliente key={item.UUID} cliente={item} onAtendimento={setModalAtendimento} onNovoPedido={handleNovoPedido} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} meuVendedorId={vendedorId} alerta={alertasPorItem[item.UUID]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} podeUsarIA={podeUsarIAOrientacao} selo={seloWhats} />;
         }
         return <CardLead key={item.id} lead={item} onAtendimento={setModalAtendimento} onVerCliente={setClientePopupItem} mostrarAcoes={mostrarAcoes} podeEscolherVendedor={podeEscolherVendedor} meuVendedorId={vendedorId} alerta={alertasPorItem[item.id]} onAlertaVisto={handleMarcarAlertaVisto} onFinalizarTransferencia={handleFinalizarTransferencia} onTransferenciaVista={handleMarcarTransferenciaVista} foraFiltro={item._foraFiltro} bloqueado={item._bloqueado} />;
     };
@@ -2372,6 +2416,8 @@ const RotaLeads = () => {
                         );
                     })}
                 </div>
+                {/* O tooltip do selo não abre no toque — a legenda explica uma vez por tela */}
+                <LegendaSeloWhatsapp mostrar={mostrarSeloWhats} className="px-3 md:px-4 pb-1.5" />
             </div>
 
             {/* Conteúdo */}
@@ -2588,6 +2634,7 @@ const RotaLeads = () => {
                                                             onEntregarAmostra={handleEntregarAmostra}
                                                             podeCheckout={podeEntregas}
                                                             semRounded={!!rotaInfo}
+                                                            selo={seloWhats}
                                                         />
                                                     ) : (
                                                         <CardEntregaPendente
@@ -2598,6 +2645,7 @@ const RotaLeads = () => {
                                                             onTogglePrioridade={handleTogglePrioridade}
                                                             semRounded={!!rotaInfo}
                                                             gpsEndereco={gpsEnderecoMapa[p.cliente?.UUID]}
+                                                            selo={seloWhats}
                                                         />
                                                     )}
                                                 </div>
@@ -2624,6 +2672,8 @@ const RotaLeads = () => {
                                                         <span className="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded">Entregue</span>
                                                         <span className="text-[10px] font-bold text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded">AM#{p.numero}</span>
                                                         {p.embarque?.numero && <span className="text-[10px] text-gray-400">Carga #{p.embarque.numero}</span>}
+                                                        {/* Amostra de lead vem sem UUID: o selo devolve null */}
+                                                        <SeloWhatsappCliente cliente={p.cliente} {...seloWhats} />
                                                     </div>
                                                     <p className="font-bold text-[13px] text-gray-900">{p.cliente?.NomeFantasia || p.cliente?.Nome || '-'}</p>
                                                     <div className="flex items-center gap-2 mt-1 text-[11px] text-gray-500">
@@ -2640,6 +2690,7 @@ const RotaLeads = () => {
                                                 onEstornar={handleEstornar}
                                                 onEditar={setEditarEntregaPedido}
                                                 onVerCliente={setClientePopupItem}
+                                                selo={seloWhats}
                                             />
                                         )
                                     ))}
@@ -2741,6 +2792,31 @@ const RotaLeads = () => {
                         }
                         carregarEntregas('concluidas');
                         carregarEntregas('pendentes');
+                    }}
+                />
+            )}
+
+            {/* Pegar o WhatsApp na hora, pelo selo da linha. Montado UMA vez na tela
+                (não dentro do card): o card só diz QUAL cliente. */}
+            {whatsCliente && (
+                <ModalWhatsappCliente
+                    aberto
+                    onFechar={() => setWhatsCliente(null)}
+                    clienteUuid={whatsCliente.UUID}
+                    clienteNome={whatsCliente.NomeFantasia || whatsCliente.Nome || ''}
+                    numeroAtual={whatsCliente.Telefone_Celular || ''}
+                    rotuloSalvar="Salvar o número"
+                    // SEM o escape "Não consegui agora": aqui ninguém está preso por um
+                    // bloqueio — o objetivo é PEGAR o número; se não der, é só não tocar
+                    // no selo. A dispensa vale 60 dias para TODO MUNDO naquele cliente e
+                    // continua existindo só no bloqueio do ENVIAR do pedido.
+                    permitirDispensa={false}
+                    onSalvo={() => {
+                        setWhatsCliente(null);
+                        // Recarrega a lista da aba aberta para o selo mudar de estado
+                        carregar();
+                        if (aba === 'entregas') carregarEntregas('pendentes');
+                        if (aba === 'entregues') carregarEntregas('concluidas');
                     }}
                 />
             )}

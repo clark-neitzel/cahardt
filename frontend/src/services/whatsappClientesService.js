@@ -7,11 +7,15 @@ import api from './api';
 // aqui ficam só a configuração da exigência, a dispensa e o painel de pendências.
 // ─────────────────────────────────────────────────────────────────────────────
 const whatsappClientesService = {
-    // { ativo: bool, diasValidadeDispensa: number }
+    // { ativo: bool, diasValidadeDispensa: number, mostrarSeloNasListas: bool }
     config: async () => (await api.get('/whatsapp-clientes/config')).data,
 
-    setConfig: async (ativo) =>
-        (await api.post('/whatsapp-clientes/config', { ativo })).data,
+    // patch = { ativo? , mostrarSeloNasListas? } — os dois interruptores são
+    // INDEPENDENTES e opcionais: mandar um sozinho não apaga o outro (o backend
+    // mescla o patch sobre o valor atual). Devolve a config completa.
+    // Recebe OBJETO, não boolean: `setConfig(true)` viraria { ativo: undefined }.
+    setConfig: async (patch) =>
+        (await api.post('/whatsapp-clientes/config', patch || {})).data,
 
     // motivo: NAO_TEM_WHATSAPP | NAO_QUIS_INFORMAR | VOU_PEGAR_DEPOIS
     dispensar: async (uuid, motivo) =>

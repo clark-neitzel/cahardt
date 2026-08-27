@@ -39,6 +39,46 @@ precisa ser cancelado/excluído).
 - Excluir um atendimento (admin) — **não vale para linha de pedido**
 - Ver resumo: total, por tipo, por vendedor, pedidos, com/sem pedido, lead
 - Exportar CSV (inclui as colunas Pedido e Valor)
+- Ver o **selo de WhatsApp** do cliente na própria linha, quando a chave estiver ligada (seção abaixo)
+
+---
+
+## Selo de WhatsApp na linha (novo — 08/2026)
+
+Quando a chave **"Mostrar selo nas listas"** (Clientes → Pendências de WhatsApp) está ligada, cada
+linha de cliente mostra, ao lado do nome, se aquele cliente **tem número de WhatsApp no cadastro** e
+se **já saiu mensagem nossa** para esse número — sem precisar abrir a ficha.
+
+> **O que o selo NÃO é.** O sistema **não confere** se o número é do cliente nem se ele está certo.
+> Verde quer dizer "já mandamos mensagem para esse número", **não** "número conferido". Na dúvida,
+> confirme o número com o cliente do mesmo jeito.
+
+| Na tela | O que quer dizer |
+|---|---|
+| **Ícone verde** | Já saiu mensagem do sistema para esse número nos últimos 180 dias. Quer dizer que **a mensagem saiu daqui** — não que tenha chegado, não que o cliente leu. |
+| **Ícone cinza** | Tem número no cadastro, mas ainda não saiu mensagem para ele. **Não é problema** — só falta histórico. |
+| **Chip âmbar "Sem WhatsApp"** | O cadastro do cliente está sem número nenhum. |
+| **Chip vermelho "WhatsApp com problema"** | O número está no cadastro, mas o WhatsApp da empresa tentou mandar e o número foi recusado. |
+
+Abaixo da barra de abas aparece uma **legenda** explicando as cores e lembrando que a informação é
+**atualizada de madrugada** (o recálculo roda às 04:20).
+
+São **essas quatro marcas e mais nenhuma**. Não existe marca de "dispensado": cliente com
+justificativa registrada e sem número mostra o mesmo chip âmbar "Sem WhatsApp" que qualquer outro —
+a justificativa serve para destravar o ENVIAR do pedido, não para sumir da lista de quem ainda
+precisa dar o número. Quem está dispensado aparece separado na tela **Pendências de WhatsApp**.
+
+**Aqui os chips são só leitura.** Diferente da **Rota** — onde o chip âmbar "Sem WhatsApp" é um botão
+que abre o cadastro do número na hora —, neste painel **nenhum chip é clicável**: esta é uma tela de
+consulta. Para acertar o número de um cliente visto aqui, abra o cadastro dele (ou faça pela Rota, na
+próxima visita). O chip vermelho "com problema" não é clicável em tela nenhuma: o número existe e foi
+recusado, então redigitar o mesmo número não resolve — é caso para o escritório apurar com o cliente.
+
+Vale igual para as **duas espécies de linha** do painel: o atendimento registrado pelo vendedor e a
+linha da venda (pedido). Linha de **lead** não tem selo — lead ainda não é cliente cadastrado.
+
+A chave vem **desligada de fábrica** e é **independente** da chave "Exigir WhatsApp": ligar o selo
+**não** trava o envio de pedido nem torna o número obrigatório no cadastro.
 
 ---
 

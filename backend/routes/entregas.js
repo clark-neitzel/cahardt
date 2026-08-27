@@ -126,7 +126,23 @@ const CLIENTE_FICHA_SELECT = {
     End_Logradouro: true, End_Numero: true, End_Complemento: true, End_Bairro: true,
     End_Cidade: true, End_Estado: true, End_CEP: true, Ponto_GPS: true,
     Dia_de_venda: true, Dia_de_entrega: true, Condicao_de_pagamento: true,
-    Observacoes_Gerais: true, Situacao_serasa: true
+    Observacoes_Gerais: true, Situacao_serasa: true,
+    // Selo de WhatsApp na linha da lista (Entregas e Entregues, pedido e amostra):
+    // o motorista vê, sem abrir a ficha, se o cliente TEM NÚMERO no cadastro e se
+    // JÁ SAIU MENSAGEM nossa para ele.
+    //
+    // ATENÇÃO ao mexer aqui: `selo` NÃO é conferência de número. O sistema nunca
+    // verifica se o número é do cliente — `EM_USO` só quer dizer "saiu mensagem
+    // daqui nos últimos 180 dias" e `COM_PROBLEMA`, "o WhatsApp recusou o número".
+    // Não escreva "validado"/"verificado" para este campo, em código nem em manual:
+    // a tela passa a prometer à equipe uma garantia que não existe.
+    //
+    // SÓ `selo`: a lista não desenha estado "dispensado", então `dispensaMotivo` e
+    // `dispensaEm` seriam payload morto em toda linha de entrega.
+    // Só adição — uma edição aqui cobre os quatro usos deste SELECT.
+    // Amostra de LEAD monta um `cliente` sintético mais abaixo (sem UUID e sem
+    // este campo): quem consome precisa tolerar `whatsappStatus` ausente.
+    whatsappStatus: { select: { selo: true } }
 };
 
 // Middleware interno: Permissão Entregador (ou quem pode ver todas entregas)
