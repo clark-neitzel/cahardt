@@ -10835,4 +10835,107 @@ router.get('/diag-cidades', async (req, res) => {
     }
 });
 
+// ============================================================================
+// BACKFILL DE CIDADES — FASE 2 (ALTERA DADO DE PRODUÇÃO)
+// ----------------------------------------------------------------------------
+// A Fase 1 (já no ar) fechou a torneira: cidade que ENTRA no sistema passa por
+// `normalizarCidade()`. Ela não mexeu no que já estava gravado. Estas rotas mexem.
+//
+// A lógica toda mora em `services/backfillCidadesService.js` (com o porquê de cada
+// decisão). Aqui é só a casca HTTP.
+//
+//   POST /api/admin-exec/backfill-cidades                  -> DRY-RUN (não escreve nada)
+//   POST /api/admin-exec/backfill-cidades { confirmar:true} -> aplica
+//   POST /api/admin-exec/backfill-cidades-reverter { confirmar:true } -> desfaz pelo snapshot
+//   GET  /api/admin-exec/backfill-cidades-snapshots          -> o que existe no volume
+//
+// O dry-run é o PADRÃO, como nas outras rotas destrutivas deste arquivo
+// (`limpar-pedidos-abertos-antigos`, `backfill-contas-receber`, `asaas-quitar-residuo-ca`).
+//
+// COMO SABER SE O DEPLOY DESTA FASE JÁ SUBIU (sem disputar o `deployMarker`)
+// -------------------------------------------------------------------------
+// `GET /backfill-cidades-snapshots` é a sonda: devolve 404 antes do deploy e 200 depois.
+// É somente leitura e idempotente, então pode ser chamada à vontade. O `deployMarker` do
+// /ping NÃO é bumpado aqui de propósito — nem a Fase 0 nem a Fase 1 o tocaram, ele é a
+// sonda de uma entrega paralela ainda aberta, e disputá-lo apagaria a sonda dela e
+// garantiria conflito de merge.
+// ============================================================================
+
+// POST /api/admin-exec/backfill-cidades
+// Body: { confirmar?: true, permitirForaDoDicionario?: true }
+//
+// SEM `confirmar` é DRY-RUN PURO: lê o banco e devolve, tabela por tabela, exatamente
+// quais valores viram quais e quantas linhas, mais as fusões de `meta_cidades` com o
+// antes/depois de cada uma. Nenhuma escrita — nem no banco, nem no snapshot.
+//
+// `permitirForaDoDicionario` libera as mudanças que NÃO vêm de `CIDADES_CANONICAS` e não
+// são só espaço sobrando. Sem ele, essas ficam listadas em `mudancasSemAprovacao` e não são
+// aplicadas. Em produção essa lista está VAZIA.
+//
+// ⚠️ LIGAR ISSO FURA UMA PROTEÇÃO ESTRUTURAL, não uma conveniência. A regra da GRAVAÇÃO
+// (`normalizarCidade`, que este backfill usa) e a regra do DIAGNÓSTICO (`decidirNomeFinal`,
+// que montou a lista aprovada pelo dono) divergem fora do dicionário: uma dá Title Case sem
+// acento, a outra dá a grafia acentuada mais frequente do grupo. O que hoje mantém o
+// backfill fiel à lista aprovada é justamente que esses casos caem em `tituloAutomatico` e
+// a trava os bloqueia. Com a permissão ligada, o backfill pode gravar nome que a tela nunca
+// mostrou ao dono ("SAO BENTO DO SUL" -> "Sao Bento do Sul"). Por isso a resposta passa a
+// trazer `avisoForaDoDicionario`. O caminho certo continua sendo acrescentar a linha em
+// CIDADES_CANONICAS, com aprovação.
+router.post('/backfill-cidades', async (req, res) => {
+    try {
+        const backfill = require('../services/backfillCidadesService');
+        const permitirForaDoDicionario = req.body?.permitirForaDoDicionario === true;
+
+        if (req.body?.confirmar !== true) {
+            const plano = await backfill.montarPlano({ permitirForaDoDicionario });
+            return res.json({
+                ok: true,
+                dryRun: true,
+                escreveu: false,
+                comoAplicar: 'POST /api/admin-exec/backfill-cidades { "confirmar": true }',
+                geradoEm: new Date().toISOString(),
+                ...backfill.planoParaResposta(plano),
+            });
+        }
+
+        const r = await backfill.aplicar({ permitirForaDoDicionario });
+        res.json({ dryRun: false, ...r });
+    } catch (err) {
+        console.error('[backfill-cidades]', err);
+        if (!res.headersSent) res.status(500).json({ ok: false, erro: err.message });
+    }
+});
+
+// POST /api/admin-exec/backfill-cidades-reverter { "confirmar": true, "arquivo"?: "..." }
+// Lê o snapshot gravado pelo backfill e desfaz: `updateMany` de volta, valor/dias da meta
+// que ficou restaurados e as linhas de meta apagadas na fusão recriadas com o MESMO id.
+// Sem `arquivo`, usa o snapshot mais recente que ainda não foi revertido.
+// Linha que alguém editou depois do backfill NÃO é sobrescrita — sai em `pulados`.
+router.post('/backfill-cidades-reverter', async (req, res) => {
+    try {
+        if (req.body?.confirmar !== true) {
+            return res.status(400).json({ error: 'Envie { "confirmar": true } para reverter.' });
+        }
+        const backfill = require('../services/backfillCidadesService');
+        res.json(await backfill.reverter({ arquivo: req.body?.arquivo }));
+    } catch (err) {
+        console.error('[backfill-cidades-reverter]', err);
+        if (!res.headersSent) res.status(500).json({ ok: false, erro: err.message });
+    }
+});
+
+// GET /api/admin-exec/backfill-cidades-snapshots — SOMENTE LEITURA.
+// Lista o que está em `backend/uploads/backfill-cidades/`. É também o jeito de PROVAR,
+// depois de uma publicação, que o snapshot sobreviveu ao deploy (o volume é o único
+// caminho persistente; qualquer outro some sem erro nenhum).
+router.get('/backfill-cidades-snapshots', async (req, res) => {
+    try {
+        const backfill = require('../services/backfillCidadesService');
+        res.json({ ok: true, ...(await backfill.listarSnapshots()) });
+    } catch (err) {
+        console.error('[backfill-cidades-snapshots]', err);
+        if (!res.headersSent) res.status(500).json({ ok: false, erro: err.message });
+    }
+});
+
 module.exports = router;

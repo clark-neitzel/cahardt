@@ -1,0 +1,5 @@
+# Snapshots de reversão do backfill de cidades (Fase 2) — contêm IDs e valores
+# reais de produção. NUNCA versionar; o arquivo vive no volume persistente.
+*
+!.gitignore
+!.gitkeep
