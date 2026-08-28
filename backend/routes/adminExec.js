@@ -10938,4 +10938,43 @@ router.get('/backfill-cidades-snapshots', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-manifestacao-sefaz — SOMENTE LEITURA (do certificado).
+//
+// Prova, EM PRODUÇÃO, a única parte da Manifestação do Destinatário que a máquina
+// local não consegue provar: que o certificado A1 REAL abre com a senha guardada,
+// assina o evento e que a SEFAZ responde de verdade. Não há shell no container do
+// EasyPanel — por isso o `scripts/manifestacao-homologacao.js` virou este endpoint.
+//
+// ⚠️ TRAVAS (não afrouxar):
+//  - tpAmb é a CONSTANTE '2' (HOMOLOGAÇÃO) dentro do serviço. NÃO existe parâmetro
+//    de ambiente aqui e não deve passar a existir: com tpAmb=1 isto manifestaria uma
+//    nota de verdade, e manifestação é IRREVERSÍVEL (nSeqEvento fixo em "1").
+//  - A chave de acesso é FICTÍCIA, gerada pelo serviço com DV válido e o CNPJ de
+//    teste 00000000000191. Não vem de query string e nunca é a chave de uma nota real.
+//  - NÃO grava nada: nem NotaEntrada, nem NotaEntradaManifestacao. A única ida ao
+//    banco é a leitura do certificado ativo.
+//  - Não reaproveita `sefazDfeService.manifestar` (aquela é tpAmb=1 e escreve histórico).
+//
+// RESULTADO ESPERADO: a SEFAZ REJEITA (a nota fictícia não consta na base dela).
+// É a rejeição que prova assinatura + transporte. Um "aceito" aqui seria o alarme.
+router.get('/diag-manifestacao-sefaz', async (req, res) => {
+    try {
+        const homolog = require('../services/manifestacaoHomologacaoService');
+        // Teto curto de propósito (15s por evento): é diagnóstico dentro de um HTTP.
+        const relatorio = await homolog.diagnosticar({ timeoutMs: homolog.TIMEOUT_PADRAO_MS });
+        res.json(relatorio);
+    } catch (err) {
+        // `diagnosticar` já é blindado; este catch é a rede de segurança para que a
+        // rota NUNCA fique sem resposta (o pedido era: nunca um 500 sem corpo).
+        console.error('[diag-manifestacao-sefaz]', err);
+        if (!res.headersSent) {
+            res.status(500).json({
+                ok: false,
+                veredito: 'NÃO PROVADO — erro inesperado no diagnóstico.',
+                erro: String(err?.message || err).substring(0, 500)
+            });
+        }
+    }
+});
+
 module.exports = router;
