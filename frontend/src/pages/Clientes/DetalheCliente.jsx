@@ -1214,7 +1214,17 @@ const DetalheCliente = () => {
                                         </span>
                                     )}
                                     {whatsappStatus?.verificacaoStatus === 'EXISTE' && (
-                                        <span className="text-xs text-gray-500">Número verificado</span>
+                                        // NÃO escrever "Número verificado": este campo só diz que o
+                                        // WhatsApp respondeu que EXISTE conta naquele número — nunca que
+                                        // o número é DO CLIENTE. Aqui é o pior lugar para prometer a
+                                        // mais: é a ficha que o vendedor abre COM O CLIENTE NA FRENTE,
+                                        // e "verificado" faz ele deixar de conferir o número.
+                                        // Redação idêntica à de PendenciasWhatsapp.jsx de propósito —
+                                        // foi por as duas telas divergirem que isto escapou da 1ª limpeza.
+                                        <span className="text-xs text-gray-500"
+                                            title="O WhatsApp respondeu que existe uma conta neste número. NÃO quer dizer que o número seja do cliente — isso continua sendo conferido com ele.">
+                                            Tem conta de WhatsApp
+                                        </span>
                                     )}
                                 </div>
                             )}

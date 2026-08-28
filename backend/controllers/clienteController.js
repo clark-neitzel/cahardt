@@ -59,7 +59,7 @@ const clienteController = {
     // Listar clientes com paginação e busca
     listar: async (req, res) => {
         try {
-            const { page = 1, limit = 10, search = '', ativo, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil } = req.query;
+            const { page = 1, limit = 10, search = '', ativo, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp } = req.query;
             const skip = (page - 1) * limit;
 
             const where = {};
@@ -141,6 +141,32 @@ const clienteController = {
             }
             if (condicaoPermitida) {
                 where.condicoes_pagamento_permitidas = { has: condicaoPermitida };
+            }
+
+            // Situação do WhatsApp do cadastro:
+            //   EM_USO | SEM_HISTORICO | COM_PROBLEMA | SEM_NUMERO | DISPENSADO
+            // (ausente = todos, comportamento idêntico ao de antes deste filtro).
+            //
+            // Entra no MESMO `where` que alimenta o `count` logo abaixo — é isso que
+            // faz o contador da tela acertar sozinho. Filtrar em memória depois do
+            // `take` filtraria só a página aberta: o total mentiria e, como "em uso"
+            // ainda é minoria, a página 1 viria quase sempre vazia.
+            //
+            // Vai em `AND` e NUNCA em `where.OR`: o `OR` já é do campo de busca
+            // (Nome/Documento/cidade...) e sobrescrevê-lo transformaria "buscar X com
+            // WhatsApp em uso" em "buscar X OU qualquer um em uso".
+            //
+            // Valor DESCONHECIDO é IGNORADO (vira "todos"), não 400: `GET /clientes` é
+            // compartilhada por NovoPedido, Catálogo, Lista de Clientes,
+            // ModalReferenciarCliente e Detalhe do Cliente. Um valor errado (JS antigo
+            // em cache depois de um deploy) derrubaria essas telas inteiras; ignorando,
+            // o pior caso é a lista vir sem o filtro — visivelmente "sem filtro", nunca
+            // uma lista vazia que se leia como "não existe ninguém".
+            if (whatsapp) {
+                const whatsCliente = require('../services/whatsappClienteService');
+                const condWhats = await whatsCliente.whereSituacao(String(whatsapp));
+                if (condWhats) where.AND = [...(where.AND || []), condWhats];
+                else console.warn(`[Clientes] filtro whatsapp="${whatsapp}" desconhecido — ignorado (sem filtro).`);
             }
 
             // Controle de visibilidade com base no nível de permissão (Vendedor/Admin)
@@ -594,6 +620,16 @@ const clienteController = {
                 await whatsCliente.registrarVerificacao(cliente.UUID, celularNorm, verifResultado);
             }
 
+            // Espelho `temNumero` (o que o filtro de situação do WhatsApp da lista lê).
+            // Fica AQUI, no ponto de gravação do cadastro, e não pendurado na
+            // verificação: se um dia a consulta ao bot mudar de lugar ou for desligada,
+            // o espelho continua saindo. Best-effort — o cadastro já está salvo, e a
+            // varredura das 04:20 conserta se esta escrita falhar.
+            if (celularNorm) {
+                const whatsCliente = require('../services/whatsappClienteService');
+                await whatsCliente.sincronizarTemNumero(cliente.UUID, celularNorm);
+            }
+
             if (ieNorm) {
                 await prisma.clienteFiscal.create({
                     data: { clienteUuid: cliente.UUID, inscricaoEstadual: ieNorm }
@@ -860,6 +896,14 @@ const clienteController = {
             if (verifResultado) {
                 const whatsCliente = require('../services/whatsappClienteService');
                 await whatsCliente.registrarVerificacao(uuid, celularNorm, verifResultado);
+            }
+
+            // Espelho `temNumero` sempre que o campo do WhatsApp foi REALMENTE gravado
+            // (`cadastroWhatsapp` acima). Inclui o caso de LIMPAR o número: aí a marca
+            // precisa cair para false, senão o cliente continuaria aparecendo no filtro
+            // como "tem número". Best-effort — a varredura das 04:20 é a rede de segurança.
+            if (podeGravarWhatsapp && celularNorm !== undefined) {
+                await whatsCliente.sincronizarTemNumero(uuid, celularNorm || null);
             }
 
             // WhatsApps vinculados em tabela separada (cliente_whatsapps), fora da tabela clientes

@@ -307,8 +307,41 @@ model ClienteWhatsappStatus {
   dispensaPorNome String?   @map("dispensa_por_nome")
   dispensaEm      DateTime? @map("dispensa_em")
 
+  // ── Espelho de `numeroValido(clientes.Telefone_Celular)` ────────────────────
+  // "Tem número aproveitável?" NÃO é expressável num `where` do Prisma: a regra
+  // (`whatsappClienteService.numeroValido`) tira o DDI 55, exige 10-11 dígitos e
+  // ainda passa pelo normalizador do bot. Sem esta coluna, o filtro de situação
+  // do WhatsApp na tela de Clientes só daria para calcular em memória — e a tela
+  // é PAGINADA no servidor (`skip`/`take` + `count`), então filtrar depois da
+  // paginação faria o contador mentir e a página 1 vir vazia.
+  //
+  // É denormalização de UM pedaço só, de propósito: dispensa/selo continuam
+  // saindo das colunas acima. Mantida em dois lugares (se cair um, defasa):
+  //  1. varredura diária do selo (04:20) — backfill e rede de segurança;
+  //  2. toda gravação de cadastro que mexe em `Telefone_Celular`
+  //     (clienteController.criar/atualizar), pela MESMA `numeroValido`.
+  //
+  // Quem MAIS grava `Telefone_Celular` hoje (conferido em 08/2026): só
+  // `contaAzulService.syncClientes` — DESLIGADO desde 07/2026, ninguém o chama
+  // (ver syncController.js) — e `sincronizarClienteUnico`, alcançável apenas por
+  // rota manual de diagnóstico (adminExec.js). Os dois caminhos ATIVOS que criam
+  // cliente fora do controller (o sync de PEDIDOS do CA e "promover fornecedor a
+  // cliente" em routes/fornecedores.js) NÃO gravam este campo: nascem sem celular,
+  // então `false` já é a resposta certa e não há defasagem. Se algum dia um deles
+  // passar a gravar `Telefone_Celular`, chame `sincronizarTemNumero` junto — senão
+  // o cliente aparece como "sem número" até a varredura da madrugada.
+  temNumero Boolean @default(false) @map("tem_numero")
+
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  // Filtro de situação do WhatsApp na lista de Clientes: o `where` é sempre
+  // (tem_numero, selo), e roda DUAS vezes por request (o `count` do total e o
+  // `findMany` da página). O planejador entra por ESTA tabela nas situações
+  // seletivas (EM_USO / COM_PROBLEMA / DISPENSADO — poucas linhas) e depois
+  // casa em `clientes` pela chave primária.
+  // O índice PRECISA morar aqui, no schema: o deploy usa `prisma db push`, que
+  // derruba índice criado à mão no banco.
+  @@index([temNumero, selo])
   @@map("cliente_whatsapp_status")
 }
 

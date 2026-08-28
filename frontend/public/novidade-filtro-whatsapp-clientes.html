@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: filtrar clientes pela situação do WhatsApp — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
+<meta property="og:title" content="💬 Novidade no Hardt App: filtrar clientes pela situação do WhatsApp">
+<meta property="og:description" content="Na tela de Clientes entrou o filtro WhatsApp: veja quem tem número, quem está sem, quem deu problema e para quem já saiu mensagem nossa.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 96px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block; background: var(--gold); color: #2b230f;
+    font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em;
+    padding: 6px 14px; border-radius: 999px; margin-bottom: 18px;
+  }
+  .hero h1 { font-size: clamp(28px, 7vw, 40px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.75); font-size: 16px; max-width: 46ch; margin: 0 auto; text-wrap: balance; }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 420px; margin: -68px auto 28px; background: #fff; border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28); overflow: hidden; text-align: left;
+  }
+  .mock-top { background: var(--house); color: #fff; padding: 14px 18px; display: flex; align-items: center; gap: 12px; }
+  .mock-top small { display: block; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .14em; color: rgba(255,255,255,.55); }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-soft); margin-bottom: 4px; }
+  .menu { border: 1.5px solid var(--primary); border-radius: 12px; overflow: hidden; }
+  .menu-item { display: flex; align-items: center; gap: 9px; padding: 10px 12px; font-size: 14px; border-top: 1px solid #f4f3ee; }
+  .menu-item:first-of-type { border-top: none; }
+  .menu-item .ico { width: 18px; text-align: center; flex-shrink: 0; }
+  .menu-item .tag { margin-left: auto; font-size: 10.5px; font-weight: 800; color: #98a29c; font-variant-numeric: tabular-nums; }
+  .destaque { outline: 2px dashed var(--gold); outline-offset: -2px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .16em; color: var(--primary-dark); margin: 34px 4px 12px; }
+  .acc { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; margin-bottom: 10px; overflow: hidden; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; background: none; border: none; font: inherit; text-align: left; padding: 15px 16px; cursor: pointer; min-height: 56px; }
+  .acc-ico { width: 38px; height: 38px; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .aviso { background: #fff8e6; border: 1px solid #f0dfae; border-left: 4px solid var(--gold); border-radius: 12px; padding: 13px 15px; margin: 0 0 10px; }
+  .aviso p { margin: 0; font-size: 14px; color: #6b5a2c; }
+  .aviso b { color: #4a3d17; }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; overflow: hidden; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(30,57,50,.05); }
+  .tela-titulo { background: var(--house); color: #fff; padding: 12px 16px; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card { background: #fff; border: 1px solid #e5e3dc; border-radius: 12px; overflow: hidden; margin-bottom: 10px; }
+  .app-card-body { padding: 12px; }
+  .app-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .app-input { border: 1px solid #d8d5cc; border-radius: 8px; padding: 8px 10px; font-size: 12.5px; color: var(--ink); background: #fff; }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.aberto { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.12); }
+  .app-ajuda { background: rgba(212,233,226,.5); border: 1px solid rgba(0,117,74,.2); border-radius: 9px; padding: 9px 11px; font-size: 11.5px; color: #46534d; display: flex; gap: 7px; margin-top: 9px; }
+  .app-total { font-size: 11px; color: #9aa5a0; border-top: 1px solid #f0efe9; margin-top: 9px; padding-top: 7px; }
+  .app-linha { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 9px 12px; border-top: 1px solid #f0efe9; flex-wrap: wrap; }
+  .app-linha:first-child { border-top: none; }
+  .app-linha b { color: var(--ink); }
+  .chip { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+  .chip.ambar { background: #fef3c7; color: #b45309; }
+  .chip.vermelho { background: #fee2e2; color: #b91c1c; }
+  .chip.cinza { background: #f3f4f6; color: #6b7280; }
+  .pin { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; flex-shrink: 0; vertical-align: 2px; margin-left: 6px; }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape { text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: 40px; }
+  .rodape strong { color: var(--primary-dark); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Filtrar clientes pela<br>situação do WhatsApp</h1>
+    <p>Na tela de <b>Clientes</b> entrou o filtro <b>WhatsApp</b>. Dá para separar quem tem número, quem está sem, quem deu problema no envio e para quem o sistema já mandou mensagem.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock do menu do filtro -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">💬</span>
+      <div>
+        <small>Clientes · Filtros</small>
+        <strong>WhatsApp</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-label">WhatsApp</div>
+      <div class="menu">
+        <div class="menu-item"><span class="ico">✓</span> Todos</div>
+        <div class="menu-item"><span class="ico">🟢</span> WhatsApp em uso</div>
+        <div class="menu-item"><span class="ico">⚪</span> Sem histórico</div>
+        <div class="menu-item"><span class="ico">🔴</span> Número com problema</div>
+        <div class="menu-item destaque"><span class="ico">🟠</span> Sem número</div>
+        <div class="menu-item"><span class="ico">📝</span> Dispensado</div>
+      </div>
+      <p style="font-size:12px;color:#8a938e;margin:10px 0 0">Seis opções. O filtro vale para a <b>lista inteira</b>, não só para a página que está na tela.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">💬</span>
+      <strong>Um filtro novo, com seis situações</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Em <b>Clientes</b>, no bloco de filtros, apareceu o menu <b>WhatsApp</b>:</p>
+      <ul>
+        <li><b>Todos</b> — como era antes, sem filtrar.</li>
+        <li><b>WhatsApp em uso</b> — já saiu mensagem nossa para o número desse cliente.</li>
+        <li><b>Sem histórico</b> — tem número no cadastro, mas ainda não saiu nenhuma mensagem para ele.</li>
+        <li><b>Número com problema</b> — na última tentativa, o WhatsApp da empresa recusou o envio por causa desse número. É o caso de conferir.</li>
+        <li><b>Sem número</b> — o cadastro está sem o campo <b>Celular/WhatsApp</b> preenchido.</li>
+        <li><b>Dispensado</b> — sem número, mas com uma justificativa registrada pelo vendedor e ainda dentro da validade.</li>
+      </ul>
+      <p>Cada cliente entra em <b>uma</b> situação só — somando as cinco, dá o total da lista.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⚠️</span>
+      <strong>O que "em uso" NÃO quer dizer</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <div class="aviso">
+        <p><b>O sistema nunca conferiu se o número é mesmo do cliente.</b> Ele só sabe se já saiu mensagem nossa para aquele número — nada além disso.</p>
+      </div>
+      <p>Por isso o rótulo é <b>"WhatsApp em uso"</b> e não "confirmado". Um número digitado errado pode aparecer como "em uso" se alguma mensagem chegou a sair para ele.</p>
+      <p><b>Continue conferindo o número com o cliente</b> na hora de cadastrar ou atualizar. O filtro ajuda a achar quem falta — não substitui a conferência.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📊</span>
+      <strong>"Sem número" vai ser a maioria — e isso é normal</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Ao escolher <b>Sem número</b> você vai ver que é <b>a maior parte da base</b>. Isso <b>não é defeito do filtro</b>: é o retrato de quantos cadastros ainda estão sem o campo <b>Celular/WhatsApp</b> preenchido — que é o único campo que o sistema usa para mandar mensagem.</p>
+      <p>Do mesmo jeito, <b>"WhatsApp em uso" vai ser pouca gente por enquanto</b>, porque depende de já ter saído mensagem para aquele número.</p>
+      <p>Ou seja: essas duas listas são exatamente o <b>tamanho do trabalho que falta</b> — e é para isso que o filtro serve.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📌</span>
+      <strong>O app lembra a sua escolha</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Escolheu uma situação, saiu da tela e voltou? <b>O filtro volta do jeito que você deixou</b> — guardado por usuário, no seu aparelho.</p>
+      <p>Para desfazer, escolha <b>Todos</b> ou toque em <b>Limpar Filtros</b>. O contador ao lado de "Limpar Filtros" já conta esse filtro novo junto com os outros.</p>
+      <p>O <b>número de clientes encontrados</b> no rodapé e a <b>paginação</b> acompanham o filtro: o que aparece ali é o total de verdade da situação escolhida, não só da página aberta.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app</div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">🖥️ Tela 1 — Clientes, no computador</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="app-grid">
+            <div class="app-input"><small>Tempo sem Vendas</small>Qualquer período</div>
+            <div class="app-input"><small>Perfil</small>Todos os cadastros</div>
+            <div class="app-input aberto"><small>WhatsApp <span class="pin">1</span></small>Sem número</div>
+            <div class="app-input" style="display:flex;align-items:center;justify-content:center;color:#8a938e">✕ Limpar Filtros <span class="pin">2</span></div>
+          </div>
+          <div class="app-ajuda">
+            <span>💬</span>
+            <span><b>Sem número:</b> cadastro sem número no campo Celular/WhatsApp, o único que o sistema usa para mandar mensagem. É normal ser a maior parte da lista. <span class="pin">3</span></span>
+          </div>
+          <div class="app-total">1.000 clientes encontrados <span class="pin">4</span></div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-linha"><b>12.345.678 PADARIA DO ZÉ</b> <span class="chip ambar">⌀ Sem WhatsApp</span> <span class="pin">5</span></div>
+        <div class="app-linha"><b>98.765.432 MERCADO CENTRAL</b> <span class="chip ambar">⌀ Sem WhatsApp</span></div>
+        <div class="app-linha"><b>11.222.333 BAR DA ESQUINA</b> <span class="chip ambar">⌀ Sem WhatsApp</span></div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>O filtro novo.</b> Fica junto dos outros, no bloco de filtros. No computador ele já aparece; no celular, toque no ícone de funil.</span></div>
+      <div><span class="pin">2</span><span><b>Limpar Filtros.</b> O numerozinho ao lado conta quantos filtros estão ligados — agora incluindo o de WhatsApp.</span></div>
+      <div><span class="pin">3</span><span><b>A explicação da situação escolhida.</b> Aparece só quando você escolhe uma; diz o que aquela lista significa.</span></div>
+      <div><span class="pin">4</span><span><b>O total.</b> É o total da <b>base inteira</b> naquela situação — não só o que cabe na página.</span></div>
+      <div><span class="pin">5</span><span><b>O selo na linha.</b> Só aparece se o selo de WhatsApp estiver ligado nas Pendências de WhatsApp. Verde = em uso · cinza = sem histórico · âmbar = sem número · vermelho = com problema.</span></div>
+      <div style="border-top:1px dashed #e3e1da;margin-top:6px;padding-top:9px;color:#8a938e;font-size:12px">Nomes, documentos e telefones destas telas são <b>fictícios</b>, só para o exemplo.</div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 — Clientes, no celular</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="app-input aberto" style="margin-bottom:8px"><small>WhatsApp <span class="pin">1</span></small>Número com problema</div>
+          <div class="app-ajuda">
+            <span>💬</span>
+            <span><b>Número com problema:</b> na última tentativa, o WhatsApp da empresa recusou o envio por causa desse número — é caso de o escritório conferir. <span class="pin">2</span></span>
+          </div>
+          <div class="app-total">3 clientes encontrados</div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-linha" style="flex-direction:column;align-items:flex-start;gap:5px">
+          <b>44.555.666 LANCHONETE DA PRAÇA</b>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <span class="chip cinza">47900000000</span>
+            <span class="chip cinza">📍 Cidade Exemplo</span>
+            <span class="chip vermelho">⚠ WhatsApp com problema</span>
+            <span class="pin">3</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>No celular os filtros ficam escondidos</b> atrás do ícone de funil, ao lado da busca. Toque nele para abrir.</span></div>
+      <div><span class="pin">2</span><span><b>A explicação continua aparecendo</b> mesmo com os filtros recolhidos — para você saber por que a lista está daquele tamanho.</span></div>
+      <div><span class="pin">3</span><span><b>No celular a lista vira cartão</b>, e o selo aparece junto do documento e da cidade.</span></div>
+      <div style="border-top:1px dashed #e3e1da;margin-top:6px;padding-top:9px;color:#8a938e;font-size:12px">Nomes, documentos e telefones destas telas são <b>fictícios</b>, só para o exemplo.</div>
+    </div>
+  </div>
+
+  <!-- ══════════ PASSOS ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><div class="passo-n">1</div><div>Abra <b>Clientes</b>. No celular, toque no ícone de <b>funil</b> ao lado da busca para abrir os filtros.</div></div>
+    <div class="passo"><div class="passo-n">2</div><div>Abra o menu <b>WhatsApp</b> e escolha a situação que quer ver.</div></div>
+    <div class="passo"><div class="passo-n">3</div><div>Leia a <b>faixa verde</b> que aparece embaixo: ela explica o que aquela lista quer dizer.</div></div>
+    <div class="passo"><div class="passo-n">4</div><div>Quer atacar quem está faltando? Escolha <b>Sem número</b> e vá abrindo os cadastros para <b>pedir o WhatsApp ao cliente</b>.</div></div>
+    <div class="passo"><div class="passo-n">5</div><div>Para voltar ao normal, escolha <b>Todos</b> ou toque em <b>Limpar Filtros</b>.</div></div>
+  </div>
+
+  <p class="rodape">Dúvida em alguma tela? Chame o <strong>Clippy</strong> 📎 no canto da tela — ele já sabe explicar isso.</p>
+</div>
+
+<script>
+  function alternar(botao) {
+    var acc = botao.parentElement;
+    var aberto = acc.classList.toggle('aberto');
+    botao.setAttribute('aria-expanded', aberto ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

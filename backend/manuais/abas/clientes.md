@@ -42,7 +42,7 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 2. Escolha o tipo de cadastro: **Cliente**, **Fornecedor** ou **Cliente + Fornecedor**. Fornecedor vai para a lista de Fornecedores (usada no Contas a Pagar e Notas de Entrada); "Cliente + Fornecedor" grava nos dois lugares
 3. Digite o CNPJ. Assim que ele fica completo e válido, o app consulta a Receita Federal e a SEFAZ e preenche razão social, fantasia, endereço, telefone, e-mail e Inscrição Estadual automaticamente
 4. Confira/edite os campos (todos são editáveis). Endereço completo é obrigatório para emitir NF-e depois. CNPJ/CPF é **obrigatório** e o dígito verificador é validado
-4b. **WhatsApp (campo Celular)** — vira **campo obrigatório em cadastro de cliente quando a exigência estiver LIGADA** na tela Pendências de WhatsApp (é o mesmo interruptor do bloqueio de envio de pedido; ele vem desligado de fábrica). **Enquanto estiver desligado, o cadastro continua salvando sem o número, como sempre foi.** É por esse número que sai a confirmação do pedido, o boleto/PIX e a cobrança, e é como o escritório fala com o cliente quando o vendedor falta. Com a exigência ligada, antes de salvar o app ainda **pergunta ao WhatsApp da empresa se o número existe** (é uma consulta — **nenhuma mensagem é enviada ao cliente**): se a resposta for que não existe, o cadastro é recusado com "Esse número não tem WhatsApp. Confira com o cliente."; se não der para perguntar na hora (WhatsApp da empresa fora do ar), **o cadastro salva normalmente** e fica marcado como "não deu para verificar". Cadastro que é **só fornecedor** nunca pede WhatsApp
+4b. **WhatsApp (campo Celular)** — vira **campo obrigatório em cadastro de cliente quando a exigência estiver LIGADA** na tela Pendências de WhatsApp (é o mesmo interruptor do bloqueio de envio de pedido; ele vem desligado de fábrica). **Enquanto estiver desligado, o cadastro continua salvando sem o número, como sempre foi.** É por esse número que sai a confirmação do pedido, o boleto/PIX e a cobrança, e é como o escritório fala com o cliente quando o vendedor falta. Com a exigência ligada, antes de salvar o app ainda **pergunta ao WhatsApp da empresa se o número existe** (é uma consulta — **nenhuma mensagem é enviada ao cliente**): se a resposta for que não existe, o cadastro é recusado com "Esse número não tem WhatsApp. Confira com o cliente."; se não der para perguntar na hora (WhatsApp da empresa fora do ar), **o cadastro salva normalmente** e fica marcado como "não deu para perguntar". Cadastro que é **só fornecedor** nunca pede WhatsApp
 5. Clique em **Cadastrar**. Para cliente, o código sequencial é gerado automaticamente e a tela abre no detalhe; fornecedor puro leva à tela de Fornecedores
 6. Também funciona com CPF (pessoa física), mas aí não há busca automática — preencha manualmente
 7. **Não duplica**: se o documento já existir (como cliente ou como fornecedor), o app avisa e oferece abrir o cadastro existente
@@ -80,7 +80,10 @@ Cadastro completo de clientes da empresa — **o cadastro agora é 100% do app**
 | Condição Permitida | Filtra por condição que o cliente tem autorizado |
 | Tempo sem Vendas | Duas opções: **"Sem comprar de… até… (dias)"** — faixa livre (ex.: de 30 até 180 dias sem comprar; quem NUNCA comprou não entra na faixa) — e **"Nunca comprou"** (nenhum pedido válido, opção separada de propósito para não poluir a faixa). Bonificações e pedidos cancelados/excluídos não contam como venda. Com o filtro ativo, cada cliente mostra o chip "Xd sem comprar" |
 | Perfil | Todos os cadastros · Só cliente (não é fornecedor) · Também é fornecedor |
+| WhatsApp | Separa a carteira pela situação do número de WhatsApp do cadastro. Seis opções: **Todos** · **WhatsApp em uso** · **Sem histórico** · **Número com problema** · **Sem número** · **Dispensado**. O quadro com o que cada uma quer dizer está na seção "WhatsApp do cliente", mais abaixo |
 | Ativos / Inativos | Aba de seleção no topo |
+
+> O filtro **WhatsApp** trabalha sobre a **base inteira**, não só sobre a página que está na tela — o "N clientes encontrados", no rodapé do painel de filtros, já vem com o filtro aplicado, e as páginas seguintes continuam trazendo só quem está naquela situação. Ele soma com os outros filtros e com a busca: "clientes do vendedor X, na cidade Y, sem número" é uma pergunta válida. Vale também na aba **Inativos**.
 
 ---
 
@@ -117,7 +120,7 @@ Aba padrão ao abrir o detalhe. Contém tudo que é editável pelo time comercia
 - Celular (com DDD, só números) — **é o WhatsApp do cliente**: o único número que o sistema usa para mandar confirmação de pedido, boleto/PIX e cobrança. Ao lado dele aparece a situação do número:
   - **Em uso** — já saiu mensagem do sistema para esse número nos últimos 180 dias (é a prova mais forte de que está certo; quer dizer que a mensagem **saiu**, não que o cliente leu)
   - **Com problema** — o WhatsApp recusou o envio por causa do número; confira com o cliente
-  - **Verificado** — o WhatsApp confirmou que o número existe (conferido no cadastro)
+  - **Tem conta de WhatsApp** — ao salvar o cadastro, o WhatsApp respondeu que **existe uma conta nesse número**. Só isso. **Não** quer dizer que o número seja do cliente — quem confere de quem é o número continua sendo você, com ele. É o mesmo dado do placar "Tem conta de WhatsApp" da tela Pendências de WhatsApp
   - **Dispensado até DD/MM** — cliente sem número, com justificativa registrada (vale 60 dias)
 
   Na **edição** o campo **nunca** é obrigatório (várias telas alteram um campo só), com a exigência ligada ou desligada. Se o número **for trocado**, o app confere no WhatsApp igual ao cadastro novo — e, como lá, a recusa por "esse número não tem WhatsApp" só acontece com a exigência **ligada**. A cobrança do número dos clientes antigos acontece na tela **Pendências de WhatsApp** e na hora de enviar o pedido
@@ -234,3 +237,50 @@ Exibe os leads que foram associados a este cliente — geralmente leads converti
 - **Ao ENVIAR pedido:** com o interruptor ligado, cliente sem WhatsApp não envia pedido — o vendedor informa o número na hora ou registra uma justificativa (**Cliente não tem WhatsApp**, **Cliente não quis informar**, **Vou pegar o número depois**), que fica gravada com autor e data e vale **60 dias**. Rascunho (pedido salvo como aberto) nunca é bloqueado.
 - **Selo pelo uso real:** uma vez por dia o sistema cruza os envios que já saíram pelo WhatsApp da empresa com o cadastro e marca **Em uso** ou **Com problema**. Falha nossa (internet, teto de envios, WhatsApp fora do ar) nunca marca o cliente como problema, e cliente que optou por não receber aviso de pedido nunca é marcado como "com problema".
 - Cobrança e acompanhamento por vendedor: tela **Pendências de WhatsApp** (`/clientes/pendencias-whatsapp`).
+
+### Filtro "WhatsApp" na lista de Clientes (novo — 08/2026)
+
+**Onde fica:** no painel de filtros da lista de Clientes, com o rótulo **WhatsApp**. No computador ele aparece junto dos outros filtros; no celular fica atrás do **ícone de funil**, que mostra uma bolinha com quantos filtros estão ligados.
+
+São **seis opções**, nesta ordem:
+
+**Todos** · **WhatsApp em uso** · **Sem histórico** · **Número com problema** · **Sem número** · **Dispensado**
+
+Tirando "Todos", cada cliente cai em **uma situação só** — somando as cinco você tem a lista inteira, e é assim que dá para conferir se a conta fecha.
+
+> Este filtro **não depende do interruptor** da exigência de WhatsApp: funciona com o módulo ligado ou desligado, porque é só uma forma de olhar o cadastro.
+
+| Opção | O que quer dizer | Como ler |
+|-------|------------------|----------|
+| **WhatsApp em uso** | Tem número no cadastro e já saiu mensagem nossa para ele nos últimos 180 dias | É o mais perto que o sistema chega de "esse número serve". Quer dizer que a mensagem **saiu do nosso lado** — o sistema não sabe o que aconteceu do lado do cliente, nem se o número é mesmo dele |
+| **Sem histórico** | Tem número no cadastro, mas ainda não saiu mensagem nenhuma para ele nem houve recusa | Não é problema: é ausência de sinal. Cliente novo, ou cliente que ainda não teve nenhum aviso de pedido, fica aqui |
+| **Número com problema** | Tem número no cadastro e o WhatsApp da empresa **recusou o envio por causa do número** | É a lista curta que vale o escritório telefonar e conferir o número. Falha nossa (internet, teto de envios, WhatsApp da empresa fora do ar) nunca joga o cliente aqui |
+| **Sem número** | Não tem número aproveitável no campo Celular/WhatsApp — vazio, ou com menos dígitos do que um telefone com DDD — e não há justificativa em pé | É o trabalho de cadastro: são estes que a tela de Pendências cobra de cada vendedor. **É normal ser a maior parte da lista** — mostra o tamanho do cadastro que falta preencher, não um defeito do filtro |
+| **Dispensado** | Também está sem número, mas o vendedor registrou o porquê (não tem WhatsApp / não quis informar / vou pegar depois) e a justificativa ainda está dentro dos **60 dias** | Fica separado de "Sem número" de propósito, para não misturar "ninguém olhou ainda" com "já olharam e explicaram". Passados os 60 dias, o cliente volta sozinho para **Sem número**, sem ninguém precisar mexer |
+
+Ao escolher uma situação, aparece logo abaixo dos filtros uma **linha de ajuda em verde** explicando aquela opção — ela fica **fora** do painel recolhível, então no celular continua visível mesmo com os filtros fechados.
+
+**Detalhes que evitam susto:**
+
+- **O filtro fica guardado por usuário.** Se você sair da tela e voltar (ou fechar e reabrir o app), a lista **abre já filtrada** pela última situação escolhida — mesmo sem nada na barra de endereço. Não é defeito: é o padrão do sistema, para não obrigar a remarcar o filtro toda vez. Para ver a base inteira de novo, escolha **Todos** ou clique em **Limpar Filtros**.
+- **Dá para compartilhar o link já filtrado**, porque a escolha aparece no endereço (`?whatsapp=EM_USO`). Ao abrir um link desses, o que vale é o link, não o filtro que estava guardado.
+- **Link velho ou opção que não existe mais volta para "Todos"** sozinho na abertura — assim a tela nunca diz "1 filtro ativo" mostrando a base inteira.
+- Ele **conta no número de filtros ativos** e é apagado pelo botão **Limpar Filtros**, como qualquer outro.
+- **Ter justificativa não tira o cliente de "WhatsApp em uso".** Quem tem número no cadastro é classificado pelo número; a justificativa só conta para quem está sem número. É a mesma regra da tela de Pendências — as duas telas dão sempre o mesmo resultado para o mesmo cliente.
+- **A conta é a mesma da tela de Pendências — na aba Ativos.** Estando na aba **Ativos**, se a tela de Pendências diz ⟨N⟩ sem número e ⟨M⟩ dispensados, o filtro aqui traz exatamente ⟨N⟩ e ⟨M⟩ clientes. Se divergirem, é defeito — avise. Na aba **Inativos** os números são outros de propósito: a tela de Pendências só olha clientes ativos, e o filtro daqui vale nas duas abas.
+- **Quando a situação muda:** salvar o cadastro com o número preenchido (ou apagado) muda a situação **na hora**. Já **WhatsApp em uso** e **Número com problema** vêm da varredura que roda **uma vez por dia, de madrugada** — um envio de hoje só aparece amanhã.
+- **Cadastro criado por fora da tela de Clientes** (o cliente novo que aparece junto com um pedido vindo do Conta Azul, ou o fornecedor promovido a cliente) nasce **sem** o campo Celular/WhatsApp preenchido — então cai corretamente em "Sem número" desde o primeiro minuto. Basta preencher o número na ficha e ele muda de situação na hora.
+- É ferramenta de **gestão de cadastro**, não trava de operação: nada aqui bloqueia pedido, e nada aqui manda mensagem para ninguém.
+
+**A marca na linha do cliente depende de outra chave.** Além do filtro, cada cliente pode mostrar a sua situação **na própria linha** (no computador) ou **no card** (no celular) — é o mesmo selo das listas de campo (Rota, Atendimentos, Entregas), com uma legenda curta acima da lista. Isso só aparece com a chave **"Mostrar o selo nas listas de campo"** ligada, na tela **Pendências de WhatsApp**. Com ela desligada, **o filtro continua funcionando igual** — só não desenha nada na linha. Se alguém reclamar que "filtrou mas não vejo marca nenhuma nos clientes", é esta chave.
+
+O selo tem **quatro desenhos**, não cinco:
+
+| Desenho na linha | Significa |
+|------------------|-----------|
+| 💬 verde | WhatsApp em uso |
+| 💬 cinza | Tem número, sem histórico |
+| 🚫 âmbar "Sem WhatsApp" | Sem número no cadastro |
+| ⚠️ vermelho "WhatsApp com problema" | Número com problema |
+
+**"Dispensado" não tem desenho próprio:** cliente dispensado está sem número, então na linha ele aparece como **"Sem WhatsApp"** (âmbar), igual aos outros sem número. Quem separa os dois é o filtro. E, nesta tela, o chip âmbar é **só informativo** — quem preenche o número na hora, tocando no chip, são as listas de campo (Rota e Atendimentos).

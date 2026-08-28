@@ -152,6 +152,18 @@ const ultimaRodada = async () => {
 const recalcular = async () => {
     const desde = new Date(Date.now() - DIAS_JANELA * 24 * 60 * 60 * 1000);
 
+    // Espelho `temNumero` em dia ANTES do selo. Ele é o que torna o filtro de
+    // situação do WhatsApp da lista de clientes expressável num `where` do Prisma
+    // (a regra `numeroValido` não é). Varre ativos e inativos, escreve só quem
+    // mudou, e roda em try/catch próprio: falhar aqui não pode impedir o selo.
+    // Require preguiçoso — mesmo motivo do `ultimaRodada` lá em whatsappClienteService.
+    let espelhoNumero = null;
+    try {
+        espelhoNumero = await require('./whatsappClienteService').sincronizarTemNumeroTodos();
+    } catch (e) {
+        console.error('[WhatsappSelo] falha ao sincronizar temNumero (o selo segue):', e.message);
+    }
+
     const clientes = await prisma.cliente.findMany({
         where: { Ativo: true },
         select: {
@@ -258,6 +270,10 @@ const recalcular = async () => {
     return {
         avaliados: clientes.length,
         emUso, comProblema, limpos, gravados,
+        // SÓ ADIÇÃO: o que a sincronização do espelho `temNumero` fez nesta rodada
+        // (null = ela falhou; o selo abaixo continua válido). Quem já lia este
+        // retorno ignora o campo novo.
+        espelhoNumero,
         enviosNaJanela: envios.length,
         enviosQueSairam,
         telefonesDistintosNaFila: porChave.size,

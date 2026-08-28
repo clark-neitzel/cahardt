@@ -82,8 +82,8 @@ const fraseRecalculo = (r) => {
     return `Selos recalculados: ${trecho}${avaliados != null ? ` (de ${avaliados} clientes avaliados)` : ''}.`;
 };
 
-const Kpi = ({ valor, rotulo, cor, className = '' }) => (
-    <div className={`bg-white rounded-xl border border-gray-200 shadow-sm p-3 text-center ${className}`}>
+const Kpi = ({ valor, rotulo, cor, className = '', title }) => (
+    <div title={title} className={`bg-white rounded-xl border border-gray-200 shadow-sm p-3 text-center ${className}`}>
         <p className={`text-2xl font-bold tabular-nums ${cor}`}>{valor ?? 0}</p>
         <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mt-0.5">{rotulo}</p>
     </div>
@@ -312,7 +312,14 @@ export default function PendenciasWhatsapp() {
                                 <Kpi valor={k.semNumero} rotulo="Sem número" cor={k.semNumero ? 'text-red-600' : 'text-gray-400'} />
                                 <Kpi valor={k.dispensados} rotulo="Dispensados" cor={k.dispensados ? 'text-amber-600' : 'text-gray-400'} />
                                 <Kpi valor={k.comProblema} rotulo="Com problema" cor={k.comProblema ? 'text-red-600' : 'text-gray-400'} />
-                                <Kpi valor={k.verificados} rotulo="Verificados" cor={k.verificados ? 'text-green-600' : 'text-gray-400'} />
+                                {/* NÃO voltar para "Verificados": o campo só diz que o WhatsApp respondeu que
+                                    EXISTE conta naquele número — nunca que o número é DO CLIENTE. Num
+                                    rótulo de KPI, que é o texto mais lido da tela, a promessa a mais é
+                                    pior que no selo. (Hoje depende de um endpoint que o bot ainda não
+                                    expôs, então tende a marcar zero.) */}
+                                <Kpi valor={k.verificados} rotulo="Tem conta de WhatsApp"
+                                    title="O WhatsApp respondeu que existe uma conta neste número. NÃO quer dizer que o número seja do cliente — isso continua sendo conferido com ele."
+                                    cor={k.verificados ? 'text-green-600' : 'text-gray-400'} />
                                 {/* "Em uso" = já saiu mensagem NOSSA para aquele número. NÃO quer dizer
                                     que o cliente recebeu, leu ou confirmou nada — o rótulo tem que
                                     continuar sendo exatamente este. */}
@@ -488,7 +495,9 @@ export default function PendenciasWhatsapp() {
                                                     </div>
                                                     <div className="mt-1"><DetalheDispensa c={c} diasValidade={dados?.diasValidadeDispensa} /></div>
                                                     {c.verificacaoStatus === 'EXISTE' && (
-                                                        <p className="text-[11px] text-gray-500 mt-1">Número verificado</p>
+                                                        <p className="text-[11px] text-gray-500 mt-1" title="O WhatsApp respondeu que existe uma conta neste número. NÃO quer dizer que o número seja do cliente.">
+                                                            Tem conta de WhatsApp <span className="text-gray-400">· não diz de quem é o número</span>
+                                                        </p>
                                                     )}
                                                 </button>
                                             ))}

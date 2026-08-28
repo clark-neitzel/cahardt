@@ -26,7 +26,12 @@ const CHIP = 'inline-flex items-center gap-1 shrink-0 whitespace-nowrap rounded-
 const TITULO = {
     SEM: 'Este cliente não tem número de WhatsApp no cadastro.',
     SEM_CLICAVEL: 'Este cliente não tem número de WhatsApp no cadastro. Toque para cadastrar agora.',
-    PROBLEMA: 'A última tentativa de mensagem para este número não foi entregue. O escritório precisa conferir.',
+    // "não foi entregue" era PROIBIDO aqui e passou despercebido até 08/2026: afirmar
+    // que algo não foi entregue é afirmar que o sistema SABE sobre entrega — e ele não
+    // sabe, não existe retorno de entrega do bot. Pior, pelo avesso convidava a ler o
+    // selo verde como "foi entregue". O que houve foi o WhatsApp da empresa RECUSAR o
+    // envio por causa do número.
+    PROBLEMA: 'O WhatsApp da empresa recusou o envio por causa deste número. O escritório precisa conferir.',
     EM_USO: 'Já saiu mensagem nossa para este número. Não quer dizer que o cliente respondeu ou confirmou.',
     NEUTRO: 'Tem número cadastrado, mas ainda não saiu mensagem nossa para ele.',
 };

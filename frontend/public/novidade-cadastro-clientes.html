@@ -398,9 +398,9 @@
       <div class="mock-status" id="mockStatus"></div>
       <div class="mock-campos">
         <div class="campo" id="c1"><span class="ck">✅</span> <span>Razão social: <b>Panificadora Exemplo LTDA</b></span></div>
-        <div class="campo" id="c2"><span class="ck">✅</span> <span>Endereço: <b>Rua das Flores, 218 — Joinville/SC</b></span></div>
+        <div class="campo" id="c2"><span class="ck">✅</span> <span>Endereço: <b>Rua das Flores, 218 — Cidade Exemplo/SC</b></span></div>
         <div class="campo" id="c3"><span class="ck">✅</span> <span>Telefone e e-mail preenchidos</span></div>
-        <div class="campo" id="c4"><span class="ck">✅</span> <span>Inscrição Estadual (SEFAZ): <b>257.887.190</b></span></div>
+        <div class="campo" id="c4"><span class="ck">✅</span> <span>Inscrição Estadual (SEFAZ): <b>250.000.001</b></span></div>
       </div>
     </div>
   </div>
@@ -522,7 +522,7 @@
         <div class="app-card-head">🔍 CNPJ / CPF</div>
         <div class="app-card-body">
           <div class="app-busca">
-            <div class="app-input" style="color:var(--ink);font-family:ui-monospace,Menlo,monospace;">62.800.570/0001-13</div>
+            <div class="app-input" style="color:var(--ink);font-family:ui-monospace,Menlo,monospace;">12.345.678/0001-90</div>
             <span class="app-btn">Buscar dados<span class="pin">2</span></span>
           </div>
           <div style="font-size:11.5px;font-weight:700;color:var(--primary-dark);margin-top:8px;">✅ Dados encontrados (Receita) · IE encontrada na SEFAZ<span class="pin">3</span></div>
@@ -531,9 +531,9 @@
       <div class="app-card">
         <div class="app-card-head">🏢 Identificação e Endereço</div>
         <div class="app-card-body">
-          <div class="app-input ok"><small>Razão Social</small>PANIFICADORA E CONFEITARIA ARTESANAL LTDA</div>
-          <div class="app-input ok"><small>Inscrição Estadual (veio da SEFAZ)</small>263.846.660<span class="pin">4</span></div>
-          <div class="app-input ok" style="margin-bottom:0;"><small>Endereço</small>Rua Duarte Schuttel, 218 · Costa e Silva · Joinville/SC</div>
+          <div class="app-input ok"><small>Razão Social</small>PANIFICADORA EXEMPLO LTDA</div>
+          <div class="app-input ok"><small>Inscrição Estadual (veio da SEFAZ)</small>250.000.002<span class="pin">4</span></div>
+          <div class="app-input ok" style="margin-bottom:0;"><small>Endereço</small>Rua das Flores, 218 · Bairro Exemplo · Cidade Exemplo/SC</div>
         </div>
       </div>
       <div style="text-align:right;"><span class="app-btn">💾 Cadastrar Cliente<span class="pin">5</span></span></div>
@@ -554,8 +554,8 @@
       <div class="app-card">
         <div class="app-card-head">🏢 Informações do Cadastro <span style="margin-left:auto;color:#3b82f6;font-weight:700;text-transform:none;letter-spacing:0;">↻ Atualizar pela Receita/SEFAZ<span class="pin">1</span></span></div>
         <div class="app-card-body">
-          <div class="app-input"><small>Razão Social</small>PADARIA E CONFEITARIA HILARIO VOLPI LTDA<span class="pin">2</span></div>
-          <div class="app-input"><small>Endereço</small>Rua XV de Novembro, 1200 · Centro · Joinville/SC</div>
+          <div class="app-input"><small>Razão Social</small>CONFEITARIA DOCE LAR LTDA<span class="pin">2</span></div>
+          <div class="app-input"><small>Endereço</small>Rua dos Pinheiros, 1200 · Bairro Exemplo · Cidade Exemplo/SC</div>
           <div class="app-toggle-linha">
             <span><b>Também é fornecedor</b><small>Aparece no Contas a Pagar e nas Notas de Entrada</small></span>
             <span class="app-toggle"></span><span class="pin">3</span>
@@ -608,7 +608,7 @@
   function rodarDemo() {
     if (demoRodando) return;
     demoRodando = true;
-    const cnpj = '62.800.570/0001-13';
+    const cnpj = '12.345.678/0001-90';
     const alvo = document.getElementById('mockCnpj');
     const input = document.getElementById('mockInput');
     const status = document.getElementById('mockStatus');

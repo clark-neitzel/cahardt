@@ -7,10 +7,60 @@ import tabelaPrecoService from '../../services/tabelaPrecoService';
 import fornecedorService from '../../services/fornecedorService';
 import { Search, MapPin, Phone, User, Filter, Settings, X, Save, AlertTriangle, MessageCircle, AlertCircle, UserPlus, Building2, ArrowRight } from 'lucide-react';
 import SelectBusca from '../../components/SelectBusca';
+import SeloWhatsappCliente, { LegendaSeloWhatsapp } from '../../components/SeloWhatsappCliente';
+import whatsappClientesService from '../../services/whatsappClientesService';
 import { opcoesVendedorFiltro, somenteAtivos } from '../../utils/vendedoresFiltro';
+import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 import { useAuth } from '../../contexts/AuthContext';
 
 const DIAS_SEMANA = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB', 'DOM', 'N/D'];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Filtro de SITUAÇÃO DO WHATSAPP.
+//
+// A classificação é do BACKEND (whatsappClienteService.SITUACOES / whereSituacao):
+// a tela só manda `GET /clientes?whatsapp=<valor>`, que filtra a BASE INTEIRA e
+// devolve `meta.total` já filtrado — por isso o rodapé "N clientes encontrados" e
+// a paginação acertam sozinhos. NÃO reimplementar a regra aqui: a lista é paginada
+// no servidor (25 por página), então filtrar em memória filtraria a PÁGINA e não a
+// base. Como "WhatsApp em uso" é minoria, a página 1 viria vazia e se leria como
+// "não existe ninguém com WhatsApp" — exatamente a conclusão falsa a evitar.
+// Valor desconhecido o backend IGNORA (vira "todos"), nunca 400: JS antigo em cache
+// depois de um deploy não pode derrubar as telas que consomem /clientes.
+//
+// ⚠️ VOCABULÁRIO — regra do projeto, não mexer:
+// o sistema NUNCA confere se o número é mesmo do cliente. Ele só sabe se JÁ SAIU
+// MENSAGEM NOSSA para aquele número. Por isso "confirmado", "validado",
+// "verificado", "entregue" e "cliente recebeu" são PROIBIDOS em rótulo, ajuda e
+// legenda — escrever isso faria o vendedor parar de conferir o número achando que
+// o app já conferiu por ele.
+//
+// ARRAY, nunca Fragment (<>…</>): o SelectBusca varre os filhos para montar o menu,
+// e um Fragment o faz abrir VAZIO — falha que nem o build nem o curl pegam, só
+// clicando.
+const SITUACOES_WHATSAPP = [
+    { valor: '', rotulo: 'Todos' },
+    { valor: 'EM_USO', rotulo: 'WhatsApp em uso' },
+    { valor: 'SEM_HISTORICO', rotulo: 'Sem histórico' },
+    { valor: 'COM_PROBLEMA', rotulo: 'Número com problema' },
+    { valor: 'SEM_NUMERO', rotulo: 'Sem número' },
+    { valor: 'DISPENSADO', rotulo: 'Dispensado' },
+];
+
+// Ajuda por situação: o rótulo é curto e o usuário precisa saber o que ele mede.
+// A de SEM_NUMERO diz que ser a maioria é o retrato do cadastro e NÃO defeito — na
+// base real a maior parte dos clientes está sem o campo Celular/WhatsApp, e a tela
+// não pode dar a entender que o filtro está errado.
+const AJUDA_WHATSAPP = {
+    EM_USO: 'Já saiu mensagem nossa para o número. Não quer dizer que o cliente respondeu, nem que alguém conferiu se o número é mesmo dele.',
+    SEM_HISTORICO: 'Tem número no cadastro, mas ainda não saiu nenhuma mensagem nossa para ele.',
+    // NÃO escrever "não foi entregue": afirmaria que o sistema sabe sobre entrega, e
+    // ele não sabe (não há retorno de entrega do bot) — e ainda convidaria a ler o
+    // selo verde como "foi entregue". O fato é que o WhatsApp RECUSOU o envio.
+    COM_PROBLEMA: 'Na última tentativa, o WhatsApp da empresa recusou o envio por causa desse número — é caso de o escritório conferir o número.',
+    SEM_NUMERO: 'Cadastro sem número no campo Celular/WhatsApp, o único que o sistema usa para mandar mensagem. É normal ser a maior parte da lista: mostra quantos cadastros ainda estão sem o número.',
+    DISPENSADO: 'Sem número, mas com justificativa registrada pelo vendedor e ainda dentro da validade.',
+};
 
 const ListaClientes = () => {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -51,6 +101,12 @@ const ListaClientes = () => {
     const [loading, setLoading] = useState(true);
     const [totalPages, setTotalPages] = useState(1);
     const [totalRegistros, setTotalRegistros] = useState(0);
+    // Falha ao CARREGAR é diferente de lista vazia. Sem este estado, um 500 caía num
+    // catch que só logava no console e a tela mostrava "0 clientes encontrados" +
+    // "Nenhum cliente encontrado" — um zero com cara de resposta legítima. Com o filtro
+    // de WhatsApp isso vira conclusão falsa ("não existe ninguém com WhatsApp em uso"),
+    // que é exatamente o que o vocabulário desta tela existe para impedir.
+    const [erroCarga, setErroCarga] = useState(null);
 
     // Filtros
     const [search, setSearch] = useState(initialSearch);
@@ -67,6 +123,38 @@ const ListaClientes = () => {
     const [semVendaAte, setSemVendaAte] = useState(initialSemVendaAte);
     const [perfil, setPerfil] = useState(initialPerfil);
     const [showFilters, setShowFilters] = useState(false);
+
+    // Situação do WhatsApp — ÚNICO filtro desta tela no padrão do projeto
+    // (`useFiltrosSalvos`: salvo por USUÁRIO e por tela). Os outros 9 seguem no
+    // mecanismo antigo da tela (`clientesFiltro_*`, sem usuário) de propósito:
+    // migrá-los agora apagaria o filtro salvo de todo mundo que está usando o app
+    // agora. Dois mecanismos convivendo aqui é decisão consciente.
+    const [whatsapp, setWhatsapp] = useFiltroSalvo('lista-clientes:whatsapp', '');
+    // Link compartilhado manda: `?whatsapp=` na URL vence o que estava salvo. O hook
+    // prioriza o localStorage, então o valor da URL é reaplicado uma vez na abertura.
+    // Congelado no 1º render para não depender da ordem em que os efeitos rodam (o
+    // efeito de sync reescreve a URL a partir do estado logo em seguida).
+    const [whatsappDaUrl] = useState(() => searchParams.get('whatsapp'));
+    useEffect(() => {
+        const bruto = whatsappDaUrl !== null ? whatsappDaUrl : whatsapp;
+        // Valor DESCONHECIDO (localStorage de uma versão antiga, URL digitada à mão)
+        // volta para "Todos". O backend ignora o que não conhece, então manter o valor
+        // faria a tela afirmar que há filtro enquanto mostra a base inteira — e ainda
+        // somaria 1 em "filtros ativos". Mentira silenciosa é pior que filtro nenhum.
+        const conhecido = SITUACOES_WHATSAPP.some(s => s.valor === bruto);
+        setWhatsapp(conhecido ? bruto : '');
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Interruptor do selo nas linhas (`mostrarSeloNasListas`). Leitura SOLTA, igual a
+    // Rota e Painel de Atendimentos: se falhar (sem rede, backend antigo) o selo
+    // simplesmente não aparece — em silêncio, sem toast e sem tela vermelha. O FILTRO
+    // funciona de qualquer jeito; esta flag só controla o desenho na linha.
+    const [mostrarSeloWhats, setMostrarSeloWhats] = useState(false);
+    useEffect(() => {
+        whatsappClientesService.config()
+            .then(cfg => setMostrarSeloWhats(cfg?.mostrarSeloNasListas === true))
+            .catch(() => setMostrarSeloWhats(false));
+    }, []);
 
     // Seleção em Lote
     const [selectedIds, setSelectedIds] = useState([]);
@@ -112,6 +200,7 @@ const ListaClientes = () => {
         if (semVenda === 'faixa' && semVendaDe) params.semVendaDe = semVendaDe;
         if (semVenda === 'faixa' && semVendaAte) params.semVendaAte = semVendaAte;
         if (perfil) params.perfil = perfil;
+        if (whatsapp) params.whatsapp = whatsapp;
         setSearchParams(params, { replace: true });
 
         saveToLocal('search', search);
@@ -126,10 +215,15 @@ const ListaClientes = () => {
         saveToLocal('semVendaAte', semVendaAte);
         saveToLocal('perfil', perfil);
         saveToLocal('activeTab', activeTab);
-    }, [search, page, limit, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, activeTab, setSearchParams]);
+        // `whatsapp` NÃO tem saveToLocal: quem o persiste é o useFiltroSalvo (por
+        // usuário). Aqui ele entra só no sync da URL — e PRECISA estar nas deps abaixo,
+        // senão o endereço não acompanha a troca do filtro e o link copiado abriria
+        // outra situação.
+    }, [search, page, limit, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp, activeTab, setSearchParams]);
 
     const fetchClientes = async () => {
         setLoading(true);
+        setErroCarga(null);
         try {
             const ativo = activeTab === 'ativos';
             const data = await clienteService.listar({
@@ -137,13 +231,22 @@ const ListaClientes = () => {
                 condicaoPagamento, condicaoPermitida, perfil,
                 semVenda: semVenda === 'nunca' ? 'nunca' : undefined,
                 semVendaDe: semVenda === 'faixa' ? semVendaDe : undefined,
-                semVendaAte: semVenda === 'faixa' ? semVendaAte : undefined
+                semVendaAte: semVenda === 'faixa' ? semVendaAte : undefined,
+                // `|| undefined` para "Todos" não virar `whatsapp=` vazio na query.
+                whatsapp: whatsapp || undefined
             });
             setClientes(data.data);
             setTotalPages(data.meta.totalPages);
             setTotalRegistros(data.meta.total);
         } catch (error) {
             console.error(error);
+            // Limpar a lista é proposital: manter o resultado do filtro ANTERIOR na tela
+            // enquanto o cabeçalho já mostra o filtro NOVO é outra forma de mentir.
+            // Melhor não mostrar nada e dizer que não carregou.
+            setErroCarga(error?.response?.data?.error || 'Não foi possível carregar os clientes agora.');
+            setClientes([]);
+            setTotalRegistros(0);
+            setTotalPages(1);
         } finally {
             setLoading(false);
         }
@@ -152,7 +255,7 @@ const ListaClientes = () => {
     useEffect(() => {
         const t = setTimeout(fetchClientes, 300);
         return () => clearTimeout(t);
-    }, [page, limit, search, activeTab, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil]);
+    }, [page, limit, search, activeTab, idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, semVendaDe, semVendaAte, perfil, whatsapp]);
 
     // Busca também na tabela de fornecedores (cadastros que só existem como fornecedor —
     // ex.: importados do Conta Azul — não aparecem na lista de clientes; sem isso o usuário
@@ -186,10 +289,16 @@ const ListaClientes = () => {
         setSemVendaDe('');
         setSemVendaAte('');
         setPerfil('');
+        setWhatsapp('');
         setPage(1);
     };
 
-    const activeFiltersCount = [idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, perfil].filter(Boolean).length;
+    const activeFiltersCount = [idVendedor, diaEntrega, diaVenda, condicaoPagamento, condicaoPermitida, semVenda, perfil, whatsapp].filter(Boolean).length;
+
+    // Situação escolhida, só quando é uma das conhecidas E não é "Todos" — é o que
+    // libera a linha de ajuda. Sem esta busca, um valor estranho renderizaria um
+    // rótulo vazio seguido de nada.
+    const situacaoWhats = whatsapp ? SITUACOES_WHATSAPP.find(s => s.valor === whatsapp) : null;
 
     const handleSelectAll = (e) => {
         setSelectedIds(e.target.checked ? clientes.map(c => c.UUID) : []);
@@ -484,6 +593,20 @@ const ListaClientes = () => {
                         </SelectBusca>
                     </div>
 
+                    <div>
+                        <label className="block text-[11px] font-medium text-gray-500 mb-1">WhatsApp</label>
+                        <SelectBusca
+                            className="w-full"
+                            value={whatsapp}
+                            onChange={(e) => { setWhatsapp(e.target.value); setPage(1); }}
+                        >
+                            {/* .map devolve ARRAY — nunca Fragment, que abriria o menu vazio */}
+                            {SITUACOES_WHATSAPP.map(s => (
+                                <option key={s.valor || 'todos'} value={s.valor}>{s.rotulo}</option>
+                            ))}
+                        </SelectBusca>
+                    </div>
+
                     <div className="flex items-end col-span-2 sm:col-span-1">
                         <button
                             onClick={handleClearFilters}
@@ -498,11 +621,34 @@ const ListaClientes = () => {
                     </div>
                 </div>
 
+                {/* O que a situação escolhida quer dizer. FORA do grid recolhível de
+                    propósito: no celular os filtros ficam escondidos, e é justamente lá
+                    que o usuário precisa saber por que a lista está daquele tamanho. */}
+                {situacaoWhats && (
+                    <div className="flex items-start gap-2 rounded-lg bg-mint/40 border border-primary/20 px-3 py-2">
+                        <MessageCircle className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                        <p className="text-[11px] leading-snug text-gray-700">
+                            <span className="font-semibold">{situacaoWhats.rotulo}:</span> {AJUDA_WHATSAPP[whatsapp]}
+                            <span className="text-gray-500"> A situação é recalculada de madrugada.</span>
+                        </p>
+                    </div>
+                )}
+
                 {/* Total */}
                 <div className="text-xs text-gray-400 pt-1 border-t border-gray-100">
-                    {loading ? 'Carregando...' : `${totalRegistros} cliente${totalRegistros !== 1 ? 's' : ''} encontrado${totalRegistros !== 1 ? 's' : ''}`}
+                    {loading
+                        ? 'Carregando...'
+                        : erroCarga
+                            /* NUNCA "0 clientes encontrados" aqui: o zero viria de uma falha
+                               de rede e seria lido como resposta do filtro. */
+                            ? <span className="text-red-600 font-semibold">Não foi possível carregar a lista</span>
+                            : `${totalRegistros} cliente${totalRegistros !== 1 ? 's' : ''} encontrado${totalRegistros !== 1 ? 's' : ''}`}
                 </div>
             </div>
+
+            {/* Legenda do selo — uma vez por tela (o tooltip não abre no toque).
+                Só aparece com o interruptor `mostrarSeloNasListas` ligado, igual ao selo. */}
+            <LegendaSeloWhatsapp mostrar={mostrarSeloWhats} className="mb-2 px-1" />
 
             {/* Tabela Desktop */}
             <div className="hidden md:block bg-white shadow-sm overflow-hidden rounded-lg border border-gray-200">
@@ -529,6 +675,18 @@ const ListaClientes = () => {
                     <tbody className="bg-white divide-y divide-gray-100">
                         {loading ? (
                             <tr><td colSpan="8" className="text-center py-8 text-gray-400 text-sm">Carregando...</td></tr>
+                        ) : erroCarga ? (
+                            /* FALHA ao carregar — não é "não existe ninguém". Mesmo padrão da
+                               tela de Pendências de WhatsApp, para as duas falharem igual. */
+                            <tr><td colSpan="8" className="text-center py-10">
+                                <p className="text-3xl mb-2">📵</p>
+                                <p className="text-sm font-bold text-gray-900">Não deu para carregar agora</p>
+                                <p className="text-xs text-gray-500 mt-1">{erroCarga}</p>
+                                <button onClick={fetchClientes}
+                                    className="mt-4 px-5 py-2.5 bg-primary hover:bg-primaryDark text-white rounded-full text-sm font-semibold min-h-[44px]">
+                                    Tentar de novo
+                                </button>
+                            </td></tr>
                         ) : clientes.length === 0 ? (
                             <tr><td colSpan="8" className="text-center py-8 text-gray-400 text-sm">Nenhum cliente encontrado.</td></tr>
                         ) : (
@@ -571,6 +729,10 @@ const ListaClientes = () => {
                                                     </span>
                                                 );
                                             })}
+                                            {/* Sem `onPegarNumero`: esta tela não tem o modal de pegar
+                                                número, então o estado "Sem WhatsApp" sai como chip
+                                                estático — nunca um botão que não leva a lugar nenhum. */}
+                                            <SeloWhatsappCliente cliente={cliente} mostrar={mostrarSeloWhats} />
                                         </div>
                                     </td>
                                     <td className="px-3 py-2 text-xs text-gray-600 whitespace-nowrap">
@@ -643,6 +805,16 @@ const ListaClientes = () => {
             <div className="md:hidden space-y-2">
                 {loading ? (
                     <div className="text-center py-8 text-gray-400 text-sm">Carregando...</div>
+                ) : erroCarga ? (
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 text-center">
+                        <p className="text-3xl mb-2">📵</p>
+                        <p className="text-sm font-bold text-gray-900">Não deu para carregar agora</p>
+                        <p className="text-xs text-gray-500 mt-1">{erroCarga}</p>
+                        <button onClick={fetchClientes}
+                            className="mt-4 px-5 py-2.5 bg-primary hover:bg-primaryDark text-white rounded-full text-sm font-semibold min-h-[44px]">
+                            Tentar de novo
+                        </button>
+                    </div>
                 ) : clientes.length === 0 ? (
                     <div className="text-center py-8 text-gray-400 text-sm">Nenhum cliente encontrado.</div>
                 ) : clientes.map((cliente) => (
@@ -679,6 +851,7 @@ const ListaClientes = () => {
                                         <MapPin className="h-2.5 w-2.5 text-gray-400" />{cliente.End_Cidade}
                                     </span>
                                 )}
+                                <SeloWhatsappCliente cliente={cliente} mostrar={mostrarSeloWhats} />
                                 {cliente.Formas_Atendimento && cliente.Formas_Atendimento.length > 0 && (
                                     <div className="flex gap-0.5 ml-auto">
                                         {cliente.Formas_Atendimento.map(forma => {
