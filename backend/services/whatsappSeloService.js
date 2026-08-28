@@ -92,9 +92,62 @@ function chaveTelefone(raw) {
     return d;
 }
 
+// ── Carimbo da RODADA (não da mudança) ───────────────────────────────────────
+//
+// A tela mostra "Selo atualizado em ⟨quando⟩". A primeira versão derivava isso de
+// `max(seloEm)` dos clientes — e `seloEm` só é escrito quando o selo MUDA de valor
+// (o `continue` logo antes do upsert pula quem já estava certo) e volta a `null`
+// quando o selo se apaga. Ou seja, aquilo respondia "quando alguém trocou de selo",
+// nunca "quando a conta rodou". Com a base de hoje (ninguém com selo) a tela diria
+// "ainda não calculado", o dono clicaria em recalcular, voltaria e leria a MESMA
+// frase — reproduzindo, na linha feita para ser o termômetro, exatamente o relatório
+// enganoso que originou esta correção. E, com selos parados, envelheceria para sempre
+// numa data antiga mesmo com o job rodando toda madrugada.
+//
+// Por isso o carimbo é gravado pela PRÓPRIA varredura, uma linha em `app_configs`,
+// FORA de transação e em try/catch próprio: falhar em anotar a hora nunca pode
+// derrubar (nem desfazer) o recálculo que já aconteceu.
+const CHAVE_RODADA = 'whatsapp_selo_ultima_rodada';
+
+const registrarRodada = async (dados) => {
+    try {
+        const value = {
+            em: dados.em.toISOString(),
+            avaliados: dados.avaliados,
+            emUso: dados.emUso,
+            comProblema: dados.comProblema,
+            gravados: dados.gravados,
+            enviosNaJanela: dados.enviosNaJanela,
+            janelaDias: DIAS_JANELA,
+        };
+        await prisma.appConfig.upsert({
+            where: { key: CHAVE_RODADA },
+            update: { value },
+            create: { key: CHAVE_RODADA, value },
+        });
+    } catch (e) {
+        // A varredura JÁ terminou e os selos já estão gravados — só o carimbo se perdeu.
+        console.error('[WhatsappSelo] falha ao anotar a hora da rodada (selos já gravados):', e.message);
+    }
+};
+
+/** Quando a varredura rodou pela última vez (Date) ou null se nunca rodou. */
+const ultimaRodada = async () => {
+    try {
+        const cfg = await prisma.appConfig.findUnique({ where: { key: CHAVE_RODADA } });
+        const v = (cfg && typeof cfg.value === 'object' && cfg.value) || null;
+        if (!v?.em) return null;
+        const d = new Date(v.em);
+        return Number.isNaN(d.getTime()) ? null : d;
+    } catch (e) {
+        console.error('[WhatsappSelo] falha ao ler a hora da última rodada:', e.message);
+        return null;
+    }
+};
+
 /**
  * Recalcula o selo de todos os clientes ativos.
- * Retorna { avaliados, emUso, comProblema, limpos, gravados }.
+ * Retorna { avaliados, emUso, comProblema, limpos, gravados, rodadaEm, resumo, ... }.
  */
 const recalcular = async () => {
     const desde = new Date(Date.now() - DIAS_JANELA * 24 * 60 * 60 * 1000);
@@ -117,7 +170,14 @@ const recalcular = async () => {
 
     // chave tolerante → { ok: bool, erroNumero: {codigo, em} | null }
     const porChave = new Map();
+    // `envios` é a tabela de TENTATIVAS: PENDENTE (na fila de reenvio) conta como linha
+    // igual a ENVIADO. Para leigo, "228 envios" sugere "228 saíram" — e com o bot em modo
+    // de emergência (403) ou a Z-API fora, as 228 podem estar TODAS na fila, sem nenhuma
+    // ter saído. Contar aqui quantas realmente saíram custa nada (já estamos percorrendo)
+    // e deixa o resumo dizer a diferença em vez de o leitor supor.
+    let enviosQueSairam = 0;
     for (const e of envios) {
+        if (e.status === 'ENVIADO' || e.status === 'DUPLICADO') enviosQueSairam++;
         const k = chaveTelefone(e.telefone);
         if (!k) continue;
         if (!porChave.has(k)) porChave.set(k, { ok: false, erroNumero: null });
@@ -168,8 +228,43 @@ const recalcular = async () => {
         }
     }
 
-    console.log(`[WhatsappSelo] ${clientes.length} clientes · em uso ${emUso} · com problema ${comProblema} · ${gravados} atualizados`);
-    return { avaliados: clientes.length, emUso, comProblema, limpos, gravados };
+    // `gravados` conta ESCRITAS (linhas que mudaram), não selos. Numa 2ª rodada — ou
+    // depois do job das 04:20 — ele é 0 mesmo com centenas de clientes EM_USO, e quem
+    // lê só esse número conclui que a função não funciona. Por isso o retorno traz
+    // também o RESULTADO (`emUso`) e o tamanho da base de prova.
+    //
+    // O `resumo` diz APENAS o que esta função mediu. Ele NÃO pode apontar causa: a
+    // varredura sabe que ninguém terminou EM_USO, mas não calcula interseção nenhuma
+    // entre a fila e o cadastro. Uma versão anterior concluía "e nenhum deles bate com
+    // o celular de um cliente ativo" — palpite vestido de fato: com o bot em modo de
+    // emergência (403) ou a Z-API fora, as mensagens ficam PENDENTE, `reg.ok` nunca
+    // liga, `emUso` dá 0 — e a frase mandaria o dono mexer no cadastro quando o
+    // problema é a fila travada. Quem mede causa é `diagnosticoSelo`
+    // (`casamento.chavesDaFilaQueBatemComCliente`); o resumo aponta para lá.
+    const resumo = emUso === 0 && comProblema === 0
+        ? `Nenhum cliente ativo ficou com selo. Base considerada: ${envios.length} tentativa(s) de envio na janela de ${DIAS_JANELA} dias, das quais ${enviosQueSairam} saíram; ${porChave.size} número(s) distinto(s); ${clientes.length} cliente(s) ativo(s). Para saber o motivo, rode o diagnóstico do selo.`
+        : `${emUso} cliente(s) com WhatsApp em uso e ${comProblema} com problema (${gravados} mudaram nesta rodada).`;
+
+    console.log(`[WhatsappSelo] ${clientes.length} clientes · ${envios.length} envios na janela · ${porChave.size} números distintos · em uso ${emUso} · com problema ${comProblema} · ${gravados} mudaram`);
+
+    // Carimbo DEPOIS da varredura e fora de qualquer transação: a rodada aconteceu,
+    // mudando alguém ou não, e é isso que a tela precisa mostrar.
+    const rodadaEm = new Date();
+    await registrarRodada({
+        em: rodadaEm, avaliados: clientes.length, emUso, comProblema,
+        gravados, enviosNaJanela: envios.length,
+    });
+
+    return {
+        avaliados: clientes.length,
+        emUso, comProblema, limpos, gravados,
+        enviosNaJanela: envios.length,
+        enviosQueSairam,
+        telefonesDistintosNaFila: porChave.size,
+        janelaDias: DIAS_JANELA,
+        rodadaEm,
+        resumo,
+    };
 };
 
 /**
@@ -201,6 +296,213 @@ const diagnosticoCodigos = async ({ dias = DIAS_JANELA } = {}) => {
     };
 };
 
+// ─────────────────────────────────────────────────────────────────────────────
+// DIAGNÓSTICO DO SELO — somente leitura, para rodar CONTRA PRODUÇÃO
+//
+// Existe porque o selo saiu "0 atualizados" em produção com 228 envios ENVIADO na
+// fila, e nenhuma das hipóteses (casamento de telefone, campo de data, filtro de
+// status, recebeAvisoPedido, Ativo) dá para separar de fora: todas falham em
+// SILÊNCIO e produzem exatamente o mesmo zero. Esta função responde as cinco de
+// uma vez, sem escrever nada e sem expor telefone legível.
+//
+// Privacidade: telefone nunca sai inteiro. Sai (a) o FORMATO do valor bruto, com
+// cada dígito virando '#' (revela '+', espaço, sufixo '@c.us' sem revelar o
+// número) e (b) a chave mascarada (DDD + 2 dígitos ... 2 últimos).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** '(47) 99999-8888' → '(##) #####-####'. Mostra o formato, esconde o número. */
+const formatoBruto = (raw) => String(raw ?? '').replace(/\d/g, '#');
+
+/** '4799998888' → '4799****88'. Mantém DDD (útil no diagnóstico), esconde o resto. */
+const mascararDigitos = (raw) => {
+    const s = String(raw ?? '');
+    if (!s) return '';
+    if (s.length <= 6) return s.slice(0, 1) + '*'.repeat(Math.max(0, s.length - 1));
+    return s.slice(0, 4) + '*'.repeat(s.length - 6) + s.slice(-2);
+};
+
+const diagnosticoSelo = async ({ dias = DIAS_JANELA, amostra = 10 } = {}) => {
+    const desde = new Date(Date.now() - dias * 24 * 60 * 60 * 1000);
+    const nAmostra = Math.min(Math.max(Number(amostra) || 10, 1), 50);
+
+    // ── 1. A fila de envios: quantos, com que status, em que janela ──────────
+    const [porStatusTotal, porStatusJanela, porOrigemTipo, extremos, totalEnvios] = await Promise.all([
+        prisma.botWhatsappEnvio.groupBy({ by: ['status'], _count: { _all: true } }),
+        prisma.botWhatsappEnvio.groupBy({ by: ['status'], where: { createdAt: { gte: desde } }, _count: { _all: true } }),
+        prisma.botWhatsappEnvio.groupBy({ by: ['origem', 'tipo', 'status'], _count: { _all: true } }),
+        prisma.botWhatsappEnvio.aggregate({
+            _min: { createdAt: true, enviadoEm: true },
+            _max: { createdAt: true, enviadoEm: true },
+        }),
+        prisma.botWhatsappEnvio.count(),
+    ]);
+    const mapaStatus = (linhas) => Object.fromEntries(linhas.map(l => [l.status, l._count._all]));
+
+    // Todas as linhas da janela — é exatamente o que `recalcular` lê.
+    const envios = await prisma.botWhatsappEnvio.findMany({
+        where: { createdAt: { gte: desde } },
+        select: { telefone: true, status: true, codigoErro: true, createdAt: true, enviadoEm: true, tipo: true, origem: true },
+        orderBy: { createdAt: 'desc' },
+    });
+
+    // ── 2. Os clientes, exatamente como `recalcular` os lê ───────────────────
+    // `Telefone` entra AQUI SÓ PARA MEDIR, nunca para casar: o selo fala do número
+    // que o sistema realmente usa para mandar WhatsApp, que é o Telefone_Celular
+    // (webhookService.formatPhone). Casar pelo telefone antigo pintaria de verde um
+    // número para o qual nunca saiu mensagem nenhuma. O que interessa medir é o
+    // TAMANHO DA BASE DE PROVA: se quase nenhum cliente ativo tem celular, o selo
+    // não tem como acender, e a resposta não é mexer na regra — é preencher o campo.
+    const clientes = await prisma.cliente.findMany({
+        where: { Ativo: true },
+        select: {
+            UUID: true,
+            Telefone_Celular: true,
+            Telefone: true,
+            recebeAvisoPedido: true,
+            whatsappStatus: { select: { selo: true } },
+        },
+    });
+    const [totalClientes, clientesInativos, recusamAviso] = await Promise.all([
+        prisma.cliente.count(),
+        prisma.cliente.count({ where: { Ativo: false } }),
+        prisma.cliente.count({ where: { Ativo: true, recebeAvisoPedido: false } }),
+    ]);
+
+    // ── 3. As chaves dos dois lados ──────────────────────────────────────────
+    const chavesEnvio = new Map();  // chave → { ok, erroNumero, exemplos }
+    let enviosSemChave = 0;
+    for (const e of envios) {
+        const k = chaveTelefone(e.telefone);
+        if (!k) { enviosSemChave++; continue; }
+        if (!chavesEnvio.has(k)) chavesEnvio.set(k, { ok: false, erroNumero: null });
+        const reg = chavesEnvio.get(k);
+        if (e.status === 'ENVIADO' || e.status === 'DUPLICADO') reg.ok = true;
+        else if (e.status === 'ERRO' && ehProblemaDoNumero(e.codigoErro)) reg.erroNumero = e.codigoErro;
+    }
+
+    const chavesCliente = new Map();       // chave → qtde de clientes ativos com ela
+    const chavesSoNoTelefoneAntigo = new Set();
+    let clientesSemCelular = 0;
+    let semCelularMasComTelefoneAntigo = 0;
+    for (const c of clientes) {
+        const k = chaveTelefone(c.Telefone_Celular);
+        const kAntigo = chaveTelefone(c.Telefone);
+        if (!k) {
+            clientesSemCelular++;
+            if (kAntigo) { semCelularMasComTelefoneAntigo++; chavesSoNoTelefoneAntigo.add(kAntigo); }
+            continue;
+        }
+        chavesCliente.set(k, (chavesCliente.get(k) || 0) + 1);
+    }
+    for (const k of chavesCliente.keys()) chavesSoNoTelefoneAntigo.delete(k);
+
+    let intersecao = 0;
+    const chavesEnvioSemCliente = [];
+    for (const k of chavesEnvio.keys()) {
+        if (chavesCliente.has(k)) intersecao++;
+        else if (chavesEnvioSemCliente.length < nAmostra) chavesEnvioSemCliente.push(k);
+    }
+
+    // ── 4. Simulação do recálculo (NÃO grava) ────────────────────────────────
+    let emUso = 0, comProblema = 0, limpos = 0, mudariam = 0;
+    for (const c of clientes) {
+        const k = chaveTelefone(c.Telefone_Celular);
+        const reg = k ? chavesEnvio.get(k) : null;
+        let selo = null;
+        if (reg?.ok) selo = 'EM_USO';
+        else if (reg?.erroNumero && c.recebeAvisoPedido !== false) selo = 'COM_PROBLEMA';
+        if (selo === 'EM_USO') emUso++; else if (selo === 'COM_PROBLEMA') comProblema++; else limpos++;
+        const atual = c.whatsappStatus?.selo ?? null;
+        if (atual !== selo && !(selo === null && !c.whatsappStatus)) mudariam++;
+    }
+
+    // ── 5. O que já está GRAVADO hoje (separa "não calculou" de "não mostra") ─
+    const seloGravado = await prisma.clienteWhatsappStatus.groupBy({ by: ['selo'], _count: { _all: true } });
+
+    return {
+        geradoEm: new Date().toISOString(),
+        janelaDias: dias,
+        janelaDesde: desde.toISOString(),
+
+        envios: {
+            totalNaTabela: totalEnvios,
+            porStatusTotal: mapaStatus(porStatusTotal),
+            porStatusNaJanela: mapaStatus(porStatusJanela),
+            createdAtMaisAntigo: extremos._min.createdAt,
+            createdAtMaisNovo: extremos._max.createdAt,
+            enviadoEmMaisAntigo: extremos._min.enviadoEm,
+            enviadoEmMaisNovo: extremos._max.enviadoEm,
+            foraDaJanela: totalEnvios - envios.length,
+            semChaveCalculavel: enviosSemChave,
+            porOrigemTipo: porOrigemTipo
+                .map(l => ({ origem: l.origem, tipo: l.tipo, status: l.status, quantidade: l._count._all }))
+                .sort((a, b) => b.quantidade - a.quantidade),
+            amostra: envios.slice(0, nAmostra).map(e => ({
+                telefoneFormato: formatoBruto(e.telefone),
+                telefoneDigitos: soDigitos(e.telefone).length,
+                chave: mascararDigitos(chaveTelefone(e.telefone)),
+                chaveDigitos: chaveTelefone(e.telefone).length,
+                status: e.status,
+                tipo: e.tipo,
+                origem: e.origem,
+                createdAt: e.createdAt,
+                enviadoEm: e.enviadoEm,
+                codigoErro: e.codigoErro,
+            })),
+        },
+
+        clientes: {
+            total: totalClientes,
+            ativos: clientes.length,
+            inativos: clientesInativos,
+            ativosSemCelular: clientesSemCelular,
+            // O TETO do selo: nenhum cliente fora deste grupo pode ficar verde, porque
+            // o sistema nunca mandou (nem manda) mensagem para ele.
+            ativosComCelular: clientes.length - clientesSemCelular,
+            // O tamanho do buraco: cliente que TEM telefone, mas no campo antigo
+            // (`Telefone`), que o WhatsApp do sistema não usa. É trabalho de cadastro,
+            // não defeito do selo — e é o que a tela de Pendências existe para resolver.
+            ativosSemCelularMasComTelefoneAntigo: semCelularMasComTelefoneAntigo,
+            ativosQueRecusamAviso: recusamAviso,
+            amostra: clientes.slice(0, nAmostra).map(c => ({
+                telefoneFormato: formatoBruto(c.Telefone_Celular),
+                telefoneDigitos: soDigitos(c.Telefone_Celular).length,
+                chave: mascararDigitos(chaveTelefone(c.Telefone_Celular)),
+                chaveDigitos: chaveTelefone(c.Telefone_Celular).length,
+                recebeAvisoPedido: c.recebeAvisoPedido,
+                seloGravado: c.whatsappStatus?.selo ?? null,
+                temLinhaDeStatus: !!c.whatsappStatus,
+            })),
+        },
+
+        // O NÚMERO QUE RESPONDE TUDO: quantas chaves da fila existem no cadastro.
+        casamento: {
+            chavesDistintasNaFila: chavesEnvio.size,
+            chavesDistintasDeClientes: chavesCliente.size,
+            chavesQueSoExistemNoTelefoneAntigo: chavesSoNoTelefoneAntigo.size,
+            chavesDaFilaQueBatemComCliente: intersecao,
+            chavesDaFilaSemClienteAmostra: chavesEnvioSemCliente.map(k => ({
+                chave: mascararDigitos(k), digitos: k.length,
+            })),
+        },
+
+        simulacaoRecalculo: { avaliados: clientes.length, emUso, comProblema, limpos, gravariam: mudariam },
+
+        seloJaGravado: Object.fromEntries(
+            seloGravado.map(l => [String(l.selo), l._count._all])
+        ),
+
+        comoLer: [
+            'clientes.ativosComCelular é o TETO do selo — nenhum cliente fora dele pode ficar verde. Se for baixo, o selo não tem base de prova e a resposta é preencher o celular no cadastro, não mexer na regra.',
+            'clientes.ativosSemCelularMasComTelefoneAntigo alto → a base tem o número no campo `Telefone`, que o WhatsApp do sistema não usa.',
+            'chavesDaFilaQueBatemComCliente = 0 → o casamento de telefone é a causa (ver amostras de formato).',
+            'foraDaJanela alto e porStatusNaJanela vazio → a janela de dias / campo de data é a causa.',
+            'simulacaoRecalculo.emUso > 0 e gravariam = 0 → o cálculo funciona e os selos JÁ estão gravados: o problema é a tela não mostrar (ver seloJaGravado).',
+            'seloJaGravado vazio e emUso > 0 → a gravação está falhando (olhar o log [WhatsappSelo]).',
+        ],
+    };
+};
+
 // Trava simples de concorrência: a varredura roda em série sobre todos os clientes
 // ativos. Dois cliques no botão da tela (ou botão + job da madrugada) rodando junto
 // só duplicariam escrita no banco compartilhado sem mudar o resultado.
@@ -220,6 +522,8 @@ module.exports = {
     recalcularComTrava,
     estaRodando,
     diagnosticoCodigos,
+    diagnosticoSelo,
+    ultimaRodada,
     ehProblemaDoNumero,
     chaveTelefone,
     DIAS_JANELA,

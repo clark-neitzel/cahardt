@@ -31,8 +31,59 @@ const fmtData = (v) => {
     return isNaN(d) ? '' : d.toLocaleDateString('pt-BR');
 };
 
-const Kpi = ({ valor, rotulo, cor }) => (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3 text-center">
+// ─────────────────────────────────────────────────────────────────────────────
+// Carimbo da última rodada do selo.
+//
+// OS SEGUNDOS SÃO OBRIGATÓRIOS — não remover `second`. Esta frase é o termômetro
+// que existe para o dono enxergar que a conta RODOU de verdade: ele clica em
+// "Recalcular agora", espera alguns segundos e clica de novo. Sem os segundos,
+// dois recálculos dentro do mesmo minuto imprimiam TEXTO IDÊNTICO na tela
+// (API 06:58:51 e 06:58:55 viravam as duas "28/08/2026, 03:58") — que é
+// exatamente a leitura "não fez nada" que gerou o chamado. A API sempre avança;
+// era o arredondamento da tela que apagava a diferença.
+//
+// Devolve a frase já com a preposição ("hoje às…", "ontem às…", "em 27/08…"),
+// para caber em 375px sem virar uma data longa com segundos pendurados.
+// ─────────────────────────────────────────────────────────────────────────────
+const mesmoDia = (a, b) =>
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+const fmtCarimboSelo = (v) => {
+    if (!v) return '';
+    const d = new Date(v);
+    if (isNaN(d)) return '';
+    const hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const hoje = new Date();
+    const ontem = new Date(hoje);
+    ontem.setDate(ontem.getDate() - 1);
+    if (mesmoDia(d, hoje)) return `hoje às ${hora}`;
+    if (mesmoDia(d, ontem)) return `ontem às ${hora}`;
+    return `em ${d.toLocaleDateString('pt-BR')} às ${hora}`;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Frase do resultado do recálculo.
+// O backend manda `resumo` pronto — é ele que manda. O caminho de reserva existe
+// só para backend antigo, e nele NUNCA se usa `gravados` sozinho: `gravados` conta
+// linhas que MUDARAM, então depois do job das 04:20 (ou num 2º clique) ele é 0 mesmo
+// com centenas de selos acesos — foi exatamente isso que fez o "0 atualizados"
+// parecer defeito. Quem descreve o resultado é `emUso` / `comProblema`.
+// ─────────────────────────────────────────────────────────────────────────────
+const fraseRecalculo = (r) => {
+    const resumo = typeof r?.resumo === 'string' ? r.resumo.trim() : '';
+    if (resumo) return resumo;
+
+    const emUso = r?.emUso;
+    const comProblema = r?.comProblema;
+    if (emUso == null && comProblema == null) return 'Selos recalculados.';
+
+    const avaliados = r?.avaliados;
+    const trecho = `${emUso ?? 0} cliente(s) com WhatsApp em uso e ${comProblema ?? 0} com problema`;
+    return `Selos recalculados: ${trecho}${avaliados != null ? ` (de ${avaliados} clientes avaliados)` : ''}.`;
+};
+
+const Kpi = ({ valor, rotulo, cor, className = '' }) => (
+    <div className={`bg-white rounded-xl border border-gray-200 shadow-sm p-3 text-center ${className}`}>
         <p className={`text-2xl font-bold tabular-nums ${cor}`}>{valor ?? 0}</p>
         <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500 mt-0.5">{rotulo}</p>
     </div>
@@ -112,20 +163,24 @@ export default function PendenciasWhatsapp() {
     const recalcularSelos = async () => {
         if (!podeAdministrar) return toast.error('Só quem pode editar clientes recalcula os selos.');
         setRecalculando(true);
-        const aviso = toast.loading('Recalculando os selos… pode levar alguns minutos.');
+        // Rodapé, não canto superior: o Toaster do app é `top-right` e, por 9 segundos,
+        // este aviso cobria justamente o cartão "Em uso" — o dono lia a frase que cita o
+        // placar e, ao olhar o placar, ele estava tapado (em 1440px e em 375px).
+        const POSICAO = { position: 'bottom-center' };
+        const aviso = toast.loading('Recalculando os selos… pode levar alguns minutos.', POSICAO);
         try {
             const r = await whatsappClientesService.recalcularSelo();
+            const frase = fraseRecalculo(r);
             if (r?.jaEstavaRodando) {
                 // Não é erro: alguém (ou o job) já estava recalculando — este clique
                 // entrou na rodada que estava em andamento.
-                toast('Já havia um recálculo em andamento — este clique entrou nele. A lista foi atualizada.', { id: aviso, icon: '⏳', duration: 6000 });
+                toast(`Já havia um recálculo em andamento — este clique entrou nele. ${frase}`, { ...POSICAO, id: aviso, icon: '⏳', duration: 9000 });
             } else {
-                const n = r?.gravados;
-                toast.success(n != null ? `Selos recalculados (${n} atualizados).` : 'Selos recalculados.', { id: aviso });
+                toast.success(frase, { ...POSICAO, id: aviso, duration: 9000 });
             }
             await carregar();
         } catch (e) {
-            toast.error(e.response?.data?.error || 'Não foi possível recalcular os selos agora.', { id: aviso });
+            toast.error(e.response?.data?.error || 'Não foi possível recalcular os selos agora.', { ...POSICAO, id: aviso });
         } finally {
             setRecalculando(false);
         }
@@ -193,6 +248,21 @@ export default function PendenciasWhatsapp() {
     const totalListado = grupos.reduce((acc, v) => acc + v.clientes.length, 0);
     const k = dados?.kpis || {};
 
+    // Backend antigo não manda `emUso` — sem ele o cartão simplesmente não aparece
+    // (nada quebra, a fileira volta a ter 4 colunas).
+    const temKpiSelo = k.emUso != null;
+
+    // Quantos clientes ativos TÊM número no campo Celular/WhatsApp. O backend classifica
+    // cada cliente em uma situação só, e "sem número" + "dispensado" são exatamente os
+    // que estão sem número — o resto tem. Serve para o zero do selo ser lido como
+    // "cadastro incompleto", não como "a função quebrou".
+    const comNumero = (k.totalAtivos != null && k.semNumero != null && k.dispensados != null)
+        ? Math.max(0, k.totalAtivos - k.semNumero - k.dispensados)
+        : null;
+
+    // Já vem com a preposição ("hoje às 03:58:51" / "em 27/08/2026 às 03:58:51")
+    const seloAtualizadoEm = fmtCarimboSelo(k.seloUltimaAtualizacao);
+
     const filtrosAtivos =
         (filtros.situacao !== 'todas' ? 1 : 0) +
         (filtros.vendedorId !== 'todos' ? 1 : 0) +
@@ -237,11 +307,38 @@ export default function PendenciasWhatsapp() {
                 ) : (
                     <>
                         {/* KPIs */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-                            <Kpi valor={k.semNumero} rotulo="Sem número" cor={k.semNumero ? 'text-red-600' : 'text-gray-400'} />
-                            <Kpi valor={k.dispensados} rotulo="Dispensados" cor={k.dispensados ? 'text-amber-600' : 'text-gray-400'} />
-                            <Kpi valor={k.comProblema} rotulo="Com problema" cor={k.comProblema ? 'text-red-600' : 'text-gray-400'} />
-                            <Kpi valor={k.verificados} rotulo="Verificados" cor={k.verificados ? 'text-green-600' : 'text-gray-400'} />
+                        <div className="space-y-2">
+                            <div className={`grid grid-cols-2 gap-2 md:gap-3 ${temKpiSelo ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
+                                <Kpi valor={k.semNumero} rotulo="Sem número" cor={k.semNumero ? 'text-red-600' : 'text-gray-400'} />
+                                <Kpi valor={k.dispensados} rotulo="Dispensados" cor={k.dispensados ? 'text-amber-600' : 'text-gray-400'} />
+                                <Kpi valor={k.comProblema} rotulo="Com problema" cor={k.comProblema ? 'text-red-600' : 'text-gray-400'} />
+                                <Kpi valor={k.verificados} rotulo="Verificados" cor={k.verificados ? 'text-green-600' : 'text-gray-400'} />
+                                {/* "Em uso" = já saiu mensagem NOSSA para aquele número. NÃO quer dizer
+                                    que o cliente recebeu, leu ou confirmou nada — o rótulo tem que
+                                    continuar sendo exatamente este. */}
+                                {/* `col-span-2` no mobile: com 5 cartões em 2 colunas, o 5º ficava
+                                    sozinho na última fileira com metade vazia. Ocupando a fileira
+                                    inteira ele deixa de parecer sobra e encosta na frase logo
+                                    abaixo, que é justamente a explicação DELE. */}
+                                {temKpiSelo && (
+                                    <Kpi valor={k.emUso} rotulo="Em uso" cor={k.emUso ? 'text-green-600' : 'text-gray-400'}
+                                        className="col-span-2 md:col-span-1" />
+                                )}
+                            </div>
+                            {/* Termômetro do selo: quando foi calculado e por que o número pode ser
+                                baixo. Sem isto, "Em uso: 0" é lido como defeito — quando na verdade
+                                a maioria dos clientes ativos sequer tem número cadastrado. */}
+                            {temKpiSelo && (
+                                <p className="text-[11px] text-gray-500 leading-relaxed">
+                                    {seloAtualizadoEm
+                                        ? <>Selo atualizado <span className="font-semibold tabular-nums">{seloAtualizadoEm}</span>.</>
+                                        : <>Selo <span className="font-semibold">ainda não calculado</span> — roda sozinho às 04:20, ou use o botão abaixo.</>}
+                                    {' '}O selo só existe para quem tem número no campo Celular/WhatsApp
+                                    {comNumero != null && k.totalAtivos != null
+                                        ? <> — hoje <span className="font-semibold tabular-nums">{comNumero} de {k.totalAtivos}</span> clientes ativos têm</>
+                                        : null}.
+                                </p>
+                            )}
                         </div>
                         <div className="flex flex-wrap gap-2 text-xs">
                             <span className="px-2 py-1 font-semibold rounded-full bg-blue-100 text-blue-800 tabular-nums">

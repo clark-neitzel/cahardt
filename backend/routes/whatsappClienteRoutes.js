@@ -119,12 +119,47 @@ router.post('/recalcular-selo', podeAdministrar, async (req, res) => {
 // Somente leitura. É por aqui que descobrimos quais códigos o bot manda de
 // verdade, para a regra do selo "Com problema" parar de depender de palpite.
 
+// TETO DE 2 ANOS no `?dias=`: `diagnosticoSelo` faz um `findMany` da janela inteira e
+// materializa tudo na memória do container. Sem teto, um `?dias=100000` puxaria a
+// `bot_whatsapp_envios` inteira de uma vez, no banco compartilhado, em produção. O teto
+// vale também no `diag-codigos-erro` (hoje só `groupBy`, mas a rota é a mesma porta).
+const MAX_DIAS_DIAG = 730;
+const lerDias = (req) => {
+    const dias = Number(req.query.dias);
+    return Number.isFinite(dias) && dias > 0 ? Math.min(Math.floor(dias), MAX_DIAS_DIAG) : null;
+};
+
 router.get('/diag-codigos-erro', podeAdministrar, async (req, res) => {
     try {
         const selo = require('../services/whatsappSeloService');
-        const dias = Number(req.query.dias);
-        res.json(await selo.diagnosticoCodigos(Number.isFinite(dias) && dias > 0 ? { dias } : {}));
+        const dias = lerDias(req);
+        res.json(await selo.diagnosticoCodigos(dias ? { dias } : {}));
     } catch (e) { trataErro(res, e, 'diag-codigos-erro'); }
+});
+
+// ── Diagnóstico do selo: por que ele não acendeu? ───────────────────────────
+// Somente leitura. Responde de uma vez as cinco causas que falham em SILÊNCIO e
+// produzem o mesmo zero: casamento de telefone, janela/campo de data, filtro de
+// status, `recebeAvisoPedido` e `Ativo`. Não expõe telefone legível — só o FORMATO
+// do valor gravado (dígitos viram '#') e a chave mascarada.
+//
+// É diagnóstico manual por curl: faz varredura sem índice. NÃO transformar em chamada
+// de tela nem em polling.
+
+function lerOpcoesDiag(req) {
+    const opts = {};
+    const dias = lerDias(req);
+    if (dias) opts.dias = dias;
+    const amostra = Number(req.query.amostra);
+    if (Number.isFinite(amostra) && amostra > 0) opts.amostra = amostra;
+    return opts;
+}
+
+router.get('/diag-selo', podeAdministrar, async (req, res) => {
+    try {
+        const selo = require('../services/whatsappSeloService');
+        res.json(await selo.diagnosticoSelo(lerOpcoesDiag(req)));
+    } catch (e) { trataErro(res, e, 'diag-selo'); }
 });
 
 module.exports = router;

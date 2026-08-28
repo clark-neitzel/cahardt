@@ -195,12 +195,37 @@ const pendencias = async () => {
         },
     });
 
-    const kpis = { totalAtivos: clientes.length, semNumero: 0, dispensados: 0, comProblema: 0, verificados: 0 };
+    // `emUso` e `seloUltimaAtualizacao` são o TERMÔMETRO do selo. Sem eles não havia
+    // nenhum lugar no app mostrando quantos selos verdes existem: o botão "Recalcular
+    // agora" só devolvia `gravados` (= linhas que MUDARAM), então uma varredura que
+    // encontrasse tudo já correto reportava zero e parecia que nada funcionou.
+    // Contar o resultado, e não a escrita, é o que distingue "não calculou" de
+    // "calculou e já estava gravado".
+    //
+    // `seloUltimaAtualizacao` vem do CARIMBO DA RODADA gravado pela varredura
+    // (whatsappSeloService), NÃO de `max(seloEm)` dos clientes: `seloEm` só é escrito
+    // quando o selo muda de valor e vira null quando ele se apaga, então derivá-lo daí
+    // responderia "quando alguém trocou de selo" e não "quando a conta rodou" — e numa
+    // base sem selo nenhum a tela continuaria dizendo "ainda não calculado" mesmo
+    // depois de o dono clicar em recalcular. Require preguiçoso de propósito: mantém
+    // este módulo livre de ciclo se um dia o serviço do selo precisar de algo daqui.
+    const { ultimaRodada } = require('./whatsappSeloService');
+    const kpis = {
+        totalAtivos: clientes.length, semNumero: 0, dispensados: 0,
+        comProblema: 0, verificados: 0, emUso: 0,
+        seloUltimaAtualizacao: await ultimaRodada(),
+    };
     const porVendedor = new Map();
 
+    // A tela deriva daqui a frase "o selo só existe para quem tem número no campo
+    // Celular/WhatsApp — hoje N de M clientes ativos têm": N = totalAtivos menos
+    // (semNumero + dispensados), M = totalAtivos. Ou seja, ela depende de `semNumero` e
+    // `dispensados` classificarem exatamente "quem NÃO tem número aproveitável" — o que
+    // a cadeia if/else abaixo garante. Mudar essa classificação muda a frase da tela.
     for (const c of clientes) {
         const st = c.whatsappStatus || null;
         if (st?.verificacaoStatus === 'EXISTE') kpis.verificados++;
+        if (st?.selo === 'EM_USO') kpis.emUso++;
 
         const temNumero = numeroValido(c.Telefone_Celular);
         const temDispensa = dispensaValida(st, cfg.diasValidadeDispensa);
