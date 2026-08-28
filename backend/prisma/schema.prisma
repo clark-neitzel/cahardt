@@ -3558,7 +3558,9 @@ model CertificadoDigital {
 //                  → CONFERIDA (virou conta a pagar) | VINCULADA (anexada a parcela(s)
 //                    já lançada(s), SEM criar despesa nova) | ENTRADA_REGISTRADA (entrada
 //                    SEM pagamento: bonificação/amostra/remessa/comodato — não gera conta
-//                    a pagar) | IGNORADA | CANCELADA_EMITENTE
+//                    a pagar) | IGNORADA | RECUSADA (manifestação de Desconhecimento ou
+//                    Operação não Realizada ACEITA pela SEFAZ — a nota foi recusada na
+//                    Receita e não pode mais ser lançada) | CANCELADA_EMITENTE
 model NotaEntrada {
   id              String      @id @default(uuid())
   tipo            String      @default("NFE") // NFE (NFS-e = fase futura)
@@ -3576,7 +3578,7 @@ model NotaEntrada {
   // fica null enquanto a nota está só capturada (NOVA/AGUARDANDO_XML) ou ignorada.
   dataEntrada     DateTime?   @map("data_entrada")
   valorTotal      Decimal?    @map("valor_total") @db.Decimal(12, 2)
-  status          String      @default("AGUARDANDO_XML") // AGUARDANDO_XML | NOVA | CONFERIDA | VINCULADA | ENTRADA_REGISTRADA | IGNORADA | CANCELADA_EMITENTE
+  status          String      @default("AGUARDANDO_XML") // AGUARDANDO_XML | NOVA | CONFERIDA | VINCULADA | ENTRADA_REGISTRADA | IGNORADA | RECUSADA | CANCELADA_EMITENTE
   manifestada     Boolean     @default(false) // Ciência da Operação (210210) já enviada?
   infComplementar String?     @map("inf_complementar") @db.Text // infAdic/infCpl do XML (observações da nota)
   xmlPath         String?     @map("xml_path") // uploads/notas-xml/{chave}.xml
@@ -3596,6 +3598,24 @@ model NotaEntrada {
   entradaRegistradaPorId String?   @map("entrada_registrada_por_id")
   entradaRegistradaPor   Vendedor? @relation("NotasEntradaRegistradas", fields: [entradaRegistradaPorId], references: [id])
 
+  // ── Manifestação do Destinatário (eventos da SEFAZ), 08/2026 ───────────────────
+  // `manifestada` (acima) continua sendo SÓ a Ciência da Operação (210210), automática.
+  // Estes campos são o ATO DELIBERADO do usuário e só são gravados quando a SEFAZ
+  // ACEITA o evento (cStat 135/136) — nunca marcamos no app o que a Receita recusou.
+  // Uma vez aceito é IRREVERSÍVEL: nSeqEvento é fixo em "1", então o mesmo evento não
+  // pode ser reenviado para a mesma chave.
+  manifestacaoTipo          String?   @map("manifestacao_tipo") // CONFIRMADA | DESCONHECIDA | NAO_REALIZADA
+  manifestacaoEm            DateTime? @map("manifestacao_em")
+  manifestacaoJustificativa String?   @map("manifestacao_justificativa") @db.Text
+  manifestacaoProtocolo     String?   @map("manifestacao_protocolo")
+  manifestacaoCStat         String?   @map("manifestacao_cstat")
+  // Sem FK de propósito (mesmo precedente de semEstoqueMarcadoPorId): a coluna entra por
+  // `prisma db push` num modelo já em produção — sem constraint não há risco de o push
+  // falhar por linha órfã. O nome é resolvido na leitura (GET /:id).
+  manifestacaoPorId         String?   @map("manifestacao_por_id")
+  // Trava anti-clique-duplo: carimbo de "envio em andamento" (expira em 2 min).
+  manifestacaoEnviandoEm    DateTime? @map("manifestacao_enviando_em")
+
   itens              NotaEntradaItem[]
   duplicatas         NotaEntradaDuplicata[]
   compras            CompraItem[] // Fase 6: entradas de estoque/custo geradas na conferência
@@ -3603,10 +3623,39 @@ model NotaEntrada {
   // Parcelas JÁ LANÇADAS às quais esta nota foi vinculada (caminho alternativo ao
   // "gerar despesa nova": a NF chegou depois do lançamento/pagamento).
   parcelasVinculadas NotaEntradaParcela[]
+  // Histórico COMPLETO das tentativas de manifestação (aceitas e recusadas).
+  manifestacoes      NotaEntradaManifestacao[]
 
   @@index([status])
   @@index([fornecedorCnpj])
+  @@index([manifestacaoTipo])
   @@map("notas_entrada")
+}
+
+// Histórico de TODA tentativa de manifestação do destinatário enviada à SEFAZ para
+// uma nota — inclusive as que a SEFAZ recusou e as que nem saíram (erro de rede).
+// É o registro auditável do ato: sem ele, uma recusa negada pela Receita não deixaria
+// rastro nenhum no app.
+model NotaEntradaManifestacao {
+  id            String      @id @default(uuid())
+  notaEntradaId String      @map("nota_entrada_id")
+  notaEntrada   NotaEntrada @relation(fields: [notaEntradaId], references: [id], onDelete: Cascade)
+  chave         String // chave de acesso da nota no momento do envio
+  tipoEvento    String      @map("tipo_evento") // 210200 (Confirmação) | 210220 (Desconhecimento) | 210240 (Não Realizada)
+  justificativa String?     @db.Text // só existe no 210240 (a SEFAZ rejeita xJust nos outros)
+  aceito        Boolean     @default(false) // true SOMENTE com cStat 135/136
+  cStat         String?     @map("c_stat")
+  xMotivo       String?     @map("x_motivo") @db.Text
+  protocolo     String? // nProt devolvido pela SEFAZ
+  nSeqEvento    String?     @map("n_seq_evento")
+  erro          String?     @db.Text // erro de transporte/SOAP (a SEFAZ nem respondeu)
+  // Sem FK de propósito (mesmo precedente dos demais logs deste schema).
+  criadoPorId   String?     @map("criado_por_id")
+  criadoEm      DateTime    @default(now()) @map("criado_em")
+
+  @@index([notaEntradaId])
+  @@index([tipoEvento])
+  @@map("notas_entrada_manifestacoes")
 }
 
 // Vínculo N:N entre uma nota recebida e parcelas de contas a pagar JÁ existentes.

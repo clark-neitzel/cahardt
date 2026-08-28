@@ -84,6 +84,20 @@ const notasEntradaService = {
         const response = await api.post(`/notas-entrada/${id}/corrigir-entrada-estoque`, payload);
         return response.data;
     },
+    // MANIFESTAÇÃO DO DESTINATÁRIO — evento fiscal na SEFAZ, IRREVERSÍVEL.
+    // payload: { tipo: 'CONFIRMACAO' | 'DESCONHECIMENTO' | 'NAO_REALIZADA', justificativa: '<15 a 255 caracteres>' }
+    //   • `justificativa` é OBRIGATÓRIA nas duas recusas e ignorada em CONFIRMACAO.
+    //   • O frontend NUNCA manda código SEFAZ (210200 etc.) — quem traduz tipo → código é o backend.
+    // → 200  { ok:true, aceito:true, tipo, status, manifestacaoTipo, manifestacaoEm, protocolo, cStat, message }
+    //        ÚNICO caso em que a tela pode atualizar lista/badge.
+    // → 422  { ok:false, aceito:false, cStat, xMotivo, error } — a SEFAZ RECUSOU o evento e a nota ficou
+    //        INALTERADA. É erro visível (toast vermelho com `error`); a tela NÃO marca nada como recusado,
+    //        só recarrega a nota do servidor.
+    // → 400/403/404/409/412/502 { error: '<mensagem pronta para o usuário>' } — mesma regra do 422.
+    manifestar: async (id, { tipo, justificativa }) => {
+        const response = await api.post(`/notas-entrada/${id}/manifestar`, { tipo, justificativa });
+        return response.data;
+    },
     consultarAgora: async () => {
         const response = await api.post('/notas-entrada/consultar-agora');
         return response.data;

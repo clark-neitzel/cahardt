@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import notasEntradaService from '../../services/notasEntradaService';
 import contasPagarService from '../../services/contasPagarService';
-import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search, Upload, Calendar, FilePlus, UploadCloud, Clock, Link2, Unlink, PackageCheck, Undo2, Wrench, ArrowRight } from 'lucide-react';
+import { Inbox, Trash2, Loader2, RefreshCw, X, FileDown, Printer, Search, Upload, Calendar, FilePlus, UploadCloud, Clock, Link2, Unlink, PackageCheck, Undo2, Wrench, ArrowRight, ShieldCheck, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ComboBusca from '../../components/ComboBusca';
 import SelectBusca from '../../components/SelectBusca';
@@ -83,8 +83,67 @@ const STATUS_NOTA = {
         title: 'Entrou no CNPJ sem gerar pagamento (bonificação, amostra, troca, comodato) — não criou despesa'
     },
     IGNORADA: { label: 'Ignorada', cls: 'bg-gray-100 text-gray-700' },
-    CANCELADA_EMITENTE: { label: 'Cancelada pelo emitente', cls: 'bg-red-100 text-red-700' }
+    CANCELADA_EMITENTE: { label: 'Cancelada pelo emitente', cls: 'bg-red-100 text-red-700' },
+    RECUSADA: {
+        label: 'Recusada', cls: 'bg-red-100 text-red-700',
+        title: 'Recusada na Receita pela Manifestação do Destinatário — não gera despesa nem estoque'
+    }
 };
+
+// ── Manifestação do Destinatário (evento fiscal na SEFAZ) ──
+// `value` é o que o FRONT ENVIA no POST /manifestar (contrato: CONFIRMACAO | DESCONHECIMENTO | NAO_REALIZADA).
+// `manifestacao` é o que o BACKEND DEVOLVE gravado no campo `manifestacaoTipo`
+// (CONFIRMADA | DESCONHECIDA | NAO_REALIZADA). São vocabulários DIFERENTES de propósito — não unificar.
+const TIPOS_RECUSA = [
+    {
+        value: 'NAO_REALIZADA',
+        manifestacao: 'NAO_REALIZADA',
+        label: 'Operação não realizada',
+        curto: 'Não recebi a mercadoria',
+        explica: 'A compra existiu, mas a mercadoria não chegou ou foi recusada na entrega (carga avariada, pedido cancelado, produto devolvido ao motorista).',
+        exemplo: 'Ex.: carga chegou avariada e foi devolvida ao motorista no dia 26/08.'
+    },
+    {
+        value: 'DESCONHECIMENTO',
+        manifestacao: 'DESCONHECIDA',
+        label: 'Desconhecimento',
+        curto: 'Não reconheço esta nota',
+        explica: 'A nota foi emitida contra o nosso CNPJ sem nenhuma compra nossa — não houve pedido, nem entrega, nem combinação com este fornecedor.',
+        exemplo: 'Ex.: nota emitida contra o nosso CNPJ sem nenhum pedido feito a este fornecedor.'
+    }
+];
+// manifestacaoTipo (o que vem do backend) → rótulo na tela
+const manifestacaoLabel = (m) => m === 'CONFIRMADA'
+    ? 'Confirmada'
+    : (TIPOS_RECUSA.find(t => t.manifestacao === m)?.label || null);
+// A nota foi RECUSADA por nós na Receita? Pergunta ao `manifestacaoTipo`, NUNCA ao `status`:
+// se o emitente cancelar a nota depois da nossa recusa, o status vira CANCELADA_EMITENTE e
+// levaria junto a prova do ato (justificativa, protocolo, autor e data). O registro fiscal
+// da recusa não pode sumir da tela por causa de um evento posterior do fornecedor.
+const ehManifestacaoRecusa = (m) => TIPOS_RECUSA.some(t => t.manifestacao === m);
+
+const JUSTIFICATIVA_MIN = 15;
+const JUSTIFICATIVA_MAX = 255;
+// ESPELHO EXATO de `normalizarJustificativa` (backend/services/sefazDfeService.js).
+// O backend valida o mínimo de 15 caracteres DEPOIS de normalizar — e a normalização
+// APAGA caracteres (aspas, & e < >, acentos viram a letra base, não-ASCII e espaços
+// repetidos viram um espaço só). Contar o texto cru aqui deixaria o contador dizer
+// "tamanho aceito ✓" numa justificativa que o backend recusa com 400
+// (ex.: "Nao veio o 'kit'" = 16 cruas → 14 normalizadas). O contador tem que medir
+// exatamente o texto que a SEFAZ vai receber.
+//
+// ⚠️ AS DUAS CÓPIAS ANDAM JUNTAS: mexeu aqui, mexa em
+// `normalizarJustificativa` de backend/services/sefazDfeService.js — e vice-versa.
+// Se elas divergirem o defeito é MUDO: a tela libera o botão e o backend
+// responde 400, ou pior, o contador trava um texto que passaria.
+const normalizarJustificativa = (texto) => String(texto || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // tira acento
+    .replace(/[^\x20-\x7E]/g, ' ')                      // só ASCII imprimível
+    .replace(/["&'<>]/g, ' ')                           // proibidos no texto da NF-e
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, JUSTIFICATIVA_MAX)
+    .trim();
 
 // Motivos da entrada sem pagamento (labels centralizados — badge, painel e detalhes usam daqui)
 const MOTIVOS_ENTRADA = [
@@ -128,7 +187,86 @@ const badgeNota = (nota) => {
         const rotulo = motivoEntradaLabel(nota.motivoEntrada);
         if (rotulo) return { ...cfg, label: `${rotulo} ✓` };
     }
+    // Recusa NÃO entra aqui de propósito: o badge diz o STATUS ("Recusada", ou "Cancelada pelo
+    // emitente" quando o fornecedor cancelou depois) e quem diz QUAL recusa foi é o selo separado
+    // (SeloManifestacaoRecusa). Assim os dois nunca repetem a mesma informação, e o selo aparece
+    // mesmo quando o status deixou de ser RECUSADA.
     return cfg;
+};
+
+// Tentativas de manifestação que a SEFAZ RECUSOU (`aceito: false` no histórico
+// `manifestacoes[]` do GET /:id). Quando a SEFAZ nega o evento, a nota fica INTACTA —
+// sem isto o usuário não teria como saber depois que tentou e por que não foi
+// (só olhando o banco). Nota sem tentativa falha não mostra nada.
+// Aparece na conferência E no detalhe: a recusa negada deixa a nota em NOVA,
+// que é justamente a tela de conferência.
+const ManifestacoesRecusadas = ({ nota }) => {
+    const falhas = (Array.isArray(nota?.manifestacoes) ? nota.manifestacoes : [])
+        .filter(m => m && m.aceito === false);
+    if (falhas.length === 0) return null;
+    return (
+        <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <div className="font-semibold">
+                {falhas.length === 1
+                    ? '1 tentativa recusada pela SEFAZ'
+                    : `${falhas.length} tentativas recusadas pela SEFAZ`}
+                {' '}— a nota continua como está.
+            </div>
+            {falhas.map((m, idx) => {
+                // campos opcionais: guardar antes de montar o texto (senão vira "undefined")
+                const quando = m.criadoEm ? fmtData(m.criadoEm) : null;
+                const rotulo = String(m.rotulo || '').trim() || 'Manifestação';
+                // `aceito:false` cobre DOIS casos: a SEFAZ respondeu negando (xMotivo/cStat)
+                // ou nem respondeu (erro de transporte). Cada linha diz qual foi.
+                const xMotivo = String(m.xMotivo || '').trim();
+                const erro = String(m.erro || '').trim();
+                return (
+                    <div key={m.id || idx} className="mt-0.5 break-words">
+                        {rotulo}
+                        {quando ? ` em ${quando}` : ''}
+                        {xMotivo
+                            ? <> — {xMotivo}{m.cStat ? ` (cStat ${m.cStat})` : ''}</>
+                            : erro
+                                ? <> — a SEFAZ não respondeu: {erro}</>
+                                : ''}
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+// Selo SEPARADO do badge de status: a confirmação da operação convive com
+// "Despesa gerada ✓", "Vinculada ✓" etc. — são duas informações diferentes.
+const SeloManifestacaoConfirmada = ({ nota }) => {
+    if (nota?.manifestacaoTipo !== 'CONFIRMADA') return null;
+    return (
+        <span
+            className="px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap bg-mint text-primaryDark cursor-help"
+            title="Confirmação da Operação enviada à SEFAZ — o recebimento da mercadoria está declarado na Receita"
+        >
+            Confirmada ✓
+        </span>
+    );
+};
+
+// Selo da RECUSA — mesma ideia do "Confirmada ✓", e pelo mesmo motivo do detalhe:
+// depende do `manifestacaoTipo`, NUNCA do status. Se o fornecedor cancelar a nota depois
+// da nossa recusa, o status vira CANCELADA_EMITENTE e o card passaria a contradizer a aba
+// "Recusadas" — o dono abriria a aba procurando o que recusou e leria "Cancelada pelo
+// emitente", tendo que abrir nota por nota. Com o selo ao lado, o card mostra os DOIS fatos.
+const SeloManifestacaoRecusa = ({ nota }) => {
+    if (!ehManifestacaoRecusa(nota?.manifestacaoTipo)) return null;
+    const rotulo = manifestacaoLabel(nota.manifestacaoTipo);
+    if (!rotulo) return null;
+    return (
+        <span
+            className="px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap bg-red-100 text-red-700 cursor-help"
+            title="Recusada por nós na Receita (Manifestação do Destinatário) — esta nota não gera despesa nem entrada de estoque"
+        >
+            {rotulo}
+        </span>
+    );
 };
 
 const BadgeStatusNota = ({ nota }) => {
@@ -156,17 +294,17 @@ const CHIPS = [
     { key: 'GERADAS', label: () => 'Despesa gerada / vinculada' },
     { key: 'SEM_PAGAMENTO', label: () => 'Sem pagamento' },
     { key: 'IGNORADAS', label: () => 'Ignoradas' },
+    // chave IDÊNTICA à do backend — o filtro do chip é resolvido no servidor
+    { key: 'RECUSADAS', label: () => 'Recusadas' },
     { key: 'TODAS', label: () => 'Todas' }
 ];
 
-const notaPassaChip = (nota, chip) => {
-    if (chip === 'GERADAS') return nota.status === 'CONFERIDA' || nota.status === 'VINCULADA';
-    if (chip === 'SEM_PAGAMENTO') return nota.status === 'ENTRADA_REGISTRADA';
-    if (chip === 'IGNORADAS') return nota.status === 'IGNORADA';
-    if (chip === 'TODAS') return true;
-    // NOVAS: novas + resumos aguardando o XML completo
-    return nota.status === 'NOVA' || nota.status === 'AGUARDANDO_XML';
-};
+// NÃO existe filtro de chip no cliente — quem resolve a situação é o SERVIDOR
+// (GET /notas-entrada?chip=…), junto de busca, tipo e período. Havia aqui uma cópia
+// `notaPassaChip` já sem chamador, removida em 08/2026: além de morta, ela tinha
+// divergido do backend (respondia pelo `status`, e por isso escondia a nota recusada
+// que o fornecedor cancelou depois). Se algum dia precisar filtrar no cliente, leia
+// a regra do backend antes de reescrever — não ressuscite uma segunda fonte da verdade.
 
 // Filtro por tipo de nota (segmentado)
 const TIPOS_NOTA = [
@@ -366,6 +504,25 @@ const NotasRecebidasPage = () => {
     };
 
     const fecharNota = () => { setExpandedId(null); setDetalhe(null); };
+
+    // Recarrega a nota ABERTA sem fechá-la. Usado no caminho de ERRO da manifestação:
+    // a SEFAZ recusou (422) ou não respondeu (502) e a nota ficou intacta — fechar
+    // esconderia a tarja com o motivo, que é justamente o que o usuário precisa ler.
+    // (`onChanged` continua fechando; ele é o caminho de SUCESSO.)
+    const recarregarNota = useCallback(async () => {
+        const id = expandedId;
+        if (!id) return;
+        try {
+            const d = await notasEntradaService.detalhe(id);
+            // a nota pode ter sido fechada/trocada durante o await
+            setExpandedId(atual => {
+                if (atual === id) setDetalhe(d);
+                return atual;
+            });
+        } catch {
+            // sem toast: o erro da manifestação já foi mostrado; a tela fica como está
+        }
+    }, [expandedId]);
 
     const consultarAgora = async () => {
         setConsultando(true);
@@ -585,6 +742,7 @@ const NotasRecebidasPage = () => {
                                         categoriasErro={categoriasErro}
                                         onClose={fecharNota}
                                         onChanged={() => { fecharNota(); fetchData(); }}
+                                        onRecarregar={recarregarNota}
                                     />
                                 )}
                             </div>
@@ -639,7 +797,7 @@ const NotasRecebidasPage = () => {
 const NotaCard = ({ nota, podeOperar, onAbrir }) => {
     const aguardandoXml = nota.status === 'AGUARDANDO_XML';
     const conferivel = nota.status === 'NOVA' && podeOperar;
-    const finalizada = nota.status === 'CONFERIDA' || nota.status === 'IGNORADA' || nota.status === 'VINCULADA' || nota.status === 'ENTRADA_REGISTRADA';
+    const finalizada = nota.status === 'CONFERIDA' || nota.status === 'IGNORADA' || nota.status === 'VINCULADA' || nota.status === 'ENTRADA_REGISTRADA' || nota.status === 'RECUSADA';
 
     return (
         <div className={`bg-white rounded-xl border border-gray-200 shadow-sm p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2 ${finalizada ? 'opacity-75' : ''}`}>
@@ -647,6 +805,8 @@ const NotaCard = ({ nota, podeOperar, onAbrir }) => {
                 <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-gray-900 truncate">{nota.fornecedorNome || 'Fornecedor não identificado'}</span>
                     <BadgeStatusNota nota={nota} />
+                    <SeloManifestacaoRecusa nota={nota} />
+                    <SeloManifestacaoConfirmada nota={nota} />
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full whitespace-nowrap ${
                         String(nota.tipo || '').toUpperCase().includes('NFS') ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-700'
                     }`}>
@@ -986,7 +1146,7 @@ const ImportarXmlModal = ({ onClose, onChanged }) => {
 // ═══════════════════════════════════════════════════════════
 // NOTA EXPANDIDA (conferência editável ou detalhes)
 // ═══════════════════════════════════════════════════════════
-const NotaExpandida = ({ nota, podeOperar, itensPcp, categorias, categoriasErro, onClose, onChanged }) => {
+const NotaExpandida = ({ nota, podeOperar, itensPcp, categorias, categoriasErro, onClose, onChanged, onRecarregar }) => {
     const emConferencia = nota.status === 'NOVA' && podeOperar;
 
     return (
@@ -997,6 +1157,8 @@ const NotaExpandida = ({ nota, podeOperar, itensPcp, categorias, categoriasErro,
                     <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-gray-900">{nota.fornecedorNome || 'Fornecedor não identificado'}</span>
                         <BadgeStatusNota nota={nota} />
+                        <SeloManifestacaoRecusa nota={nota} />
+                        <SeloManifestacaoConfirmada nota={nota} />
                         <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 whitespace-nowrap">
                             {tipoNotaLabel(nota.tipo)}{nota.numero ? ` ${nota.numero}` : ''}
                         </span>
@@ -1025,9 +1187,10 @@ const NotaExpandida = ({ nota, podeOperar, itensPcp, categorias, categoriasErro,
                     categorias={categorias}
                     categoriasErro={categoriasErro}
                     onChanged={onChanged}
+                    onRecarregar={onRecarregar}
                 />
             ) : (
-                <DetalheNota nota={nota} podeOperar={podeOperar} itensPcp={itensPcp} onChanged={onChanged} />
+                <DetalheNota nota={nota} podeOperar={podeOperar} itensPcp={itensPcp} onChanged={onChanged} onRecarregar={onRecarregar} />
             )}
         </>
     );
@@ -1317,6 +1480,8 @@ const PainelVincularParcelas = ({ nota, onCancelar, onChanged }) => {
                 { duration: 8000 }
             );
             for (const aviso of resp?.avisos || []) toast(aviso, { icon: '⚠️', duration: 9000 });
+            // A confirmação automática na SEFAZ não saiu — dá para confirmar na mão pelo botão do detalhe
+            if (resp?.manifestacaoAviso) toast(resp.manifestacaoAviso, { icon: '⚠️', duration: 10000 });
             onChanged();
         } catch (e) {
             toast.error(e.response?.data?.error || 'Não foi possível vincular a nota.');
@@ -1575,6 +1740,8 @@ const PainelRegistrarEntrada = ({ nota, obterItens, onCancelar, onChanged, bloqu
             for (const aviso of [...(resp?.avisos || []), ...(resp?.estoqueAvisos || [])]) {
                 toast(aviso, { icon: '⚠️', duration: 8000 });
             }
+            // A confirmação automática na SEFAZ não saiu — dá para confirmar na mão pelo botão do detalhe
+            if (resp?.manifestacaoAviso) toast(resp.manifestacaoAviso, { icon: '⚠️', duration: 10000 });
             onChanged();
         } catch (e) {
             if (!(onErroDestino && onErroDestino(e))) {
@@ -1701,9 +1868,277 @@ const PainelRegistrarEntrada = ({ nota, obterItens, onCancelar, onChanged, bloqu
 };
 
 // ═══════════════════════════════════════════════════════════
+// MANIFESTAÇÃO DO DESTINATÁRIO (evento na SEFAZ — ATO FISCAL IRREVERSÍVEL)
+//
+// Dois modos, mesmo painel e mesma rota (POST /notas-entrada/:id/manifestar):
+//   'CONFIRMAR' → Confirmação da Operação: declara à Receita que a mercadoria chegou.
+//   'RECUSAR'   → escolhe entre "Operação não realizada" e "Desconhecimento", com justificativa.
+//
+// O front NUNCA manda código SEFAZ — só o `tipo` do contrato. E só o 200 com `aceito:true`
+// muda alguma coisa na tela (`onChanged`: fecha a nota e recarrega a lista). Se a SEFAZ
+// recusar o evento (422) ou a comunicação falhar (502), é erro visível e a nota é
+// RECARREGADA CONTINUANDO ABERTA (`onFalha`), sem nada ser marcado localmente — é assim
+// que o usuário lê na hora a tarja com o motivo devolvido pela SEFAZ.
+//
+// Painel INLINE (nunca window.confirm): a confirmação é um passo visível dentro da tela,
+// porque depois de enviado não há como desfazer.
+// ═══════════════════════════════════════════════════════════
+const PainelManifestacao = ({ nota, modo, onCancelar, onChanged, onFalha }) => {
+    const recusando = modo === 'RECUSAR';
+    const [tipoRecusa, setTipoRecusa] = useState('');
+    const [justificativa, setJustificativa] = useState('');
+    const [confirmando, setConfirmando] = useState(false);
+    const [enviando, setEnviando] = useState(false);
+
+    // Conta (e envia) o texto JÁ NORMALIZADO — é exatamente ele que o backend valida
+    // no mínimo de 15 e manda para a SEFAZ. Ver normalizarJustificativa acima.
+    const texto = normalizarJustificativa(justificativa);
+    const tamanho = texto.length;
+    const faltam = JUSTIFICATIVA_MIN - tamanho;
+    const escolhido = TIPOS_RECUSA.find(t => t.value === tipoRecusa) || null;
+    // Só libera com o tipo escolhido E a justificativa no tamanho que a SEFAZ exige
+    const liberado = recusando ? (!!tipoRecusa && tamanho >= JUSTIFICATIVA_MIN) : true;
+
+    // Caminho de ERRO: a nota não mudou nada no servidor. Fecha só o PAINEL e recarrega a
+    // nota — que continua ABERTA — para a tarja âmbar com o motivo da SEFAZ aparecer na hora.
+    // (Sem `onFalha` cai no comportamento antigo, que fecha a nota: nunca deixa a tela travada.)
+    const falhou = () => { if (onFalha) onFalha(); else onChanged(); };
+
+    const enviar = async () => {
+        if (!liberado) return;
+        setEnviando(true);
+        try {
+            const resp = await notasEntradaService.manifestar(nota.id, {
+                tipo: recusando ? tipoRecusa : 'CONFIRMACAO',
+                // ignorada pelo backend na CONFIRMACAO — mandada só na recusa
+                justificativa: recusando ? texto : undefined
+            });
+            // Defensivo: só o `aceito:true` autoriza mexer na lista/badge
+            if (resp?.aceito !== true) {
+                toast.error(
+                    resp?.error || resp?.xMotivo || 'A SEFAZ não aceitou o evento. Nada foi alterado nesta nota.',
+                    { duration: 10000 }
+                );
+                falhou();
+                return;
+            }
+            toast.success(resp?.message || (recusando ? 'Recusa enviada à Receita.' : 'Operação confirmada na Receita.'), { duration: 8000 });
+            onChanged(); // SUCESSO: fecha a nota e recarrega a lista (badge/chip novos)
+        } catch (e) {
+            // Em TODO erro a nota fica INTACTA e o motivo aparece em vermelho — a tela nunca
+            // marca recusa sozinha. O que muda é o destino do painel:
+            //   502 (SEFAZ fora do ar / rede) → o painel FICA ABERTO com a justificativa digitada,
+            //       porque o ato natural é tentar de novo e o texto tem 15-255 caracteres escritos
+            //       à mão. Volta para o passo de edição (não para o "Sim, recusar"), para o reenvio
+            //       de um ato irreversível passar de novo pela confirmação.
+            //   demais (422 etc.) → fecha o painel e mantém a NOTA aberta, com a tarja âmbar do
+            //       motivo: reenviar o mesmo texto não mudaria a resposta da SEFAZ.
+            const semResposta = e.response?.status === 502;
+            toast.error(
+                e.response?.data?.error || 'Não foi possível enviar a manifestação à SEFAZ. Nada foi alterado nesta nota.',
+                { duration: 10000 }
+            );
+            if (semResposta) { setConfirmando(false); return; }
+            falhou();
+        } finally {
+            setEnviando(false);
+        }
+    };
+
+    return (
+        <div className={`border-2 rounded-xl overflow-hidden bg-white ${recusando ? 'border-red-500' : 'border-primary'}`}>
+            {/* Cabeçalho */}
+            <div className="px-4 md:px-5 py-3.5 border-b border-gray-100 flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                        {recusando
+                            ? <ShieldAlert className="h-4 w-4 text-red-600 shrink-0" />
+                            : <ShieldCheck className="h-4 w-4 text-primary shrink-0" />}
+                        <span className="text-xs font-bold uppercase tracking-widest text-gray-600">
+                            {recusando ? 'Recusar a nota na Receita' : 'Confirmar a operação na Receita'}
+                        </span>
+                    </div>
+                    <div className="text-sm text-gray-700 mt-1 break-words">
+                        {tipoNotaLabel(nota.tipo)}{nota.numero ? ` ${nota.numero}` : ''}
+                        {nota.fornecedorNome ? ` · ${nota.fornecedorNome}` : ''}
+                        {' · '}R$ {fmt(nota.valorTotal)}
+                    </div>
+                </div>
+                {/* alvo de toque de 44px (regra do CLAUDE.md) — o ícone continua com 16px */}
+                <button
+                    onClick={onCancelar}
+                    title="Fechar"
+                    aria-label="Fechar"
+                    className="min-h-[44px] min-w-[44px] inline-flex items-center justify-center text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 shrink-0"
+                >
+                    <X className="h-4 w-4" />
+                </button>
+            </div>
+
+            <div className="p-4 md:p-5 space-y-4">
+                {/* Explicação do que o envio significa */}
+                {recusando ? (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-xs text-red-900 leading-relaxed">
+                        Isto envia um <b>evento oficial à Receita Federal</b> dizendo que esta nota não deve ser
+                        cobrada de nós. O fornecedor é avisado, e o registro fica no histórico fiscal do nosso CNPJ.
+                        <br />
+                        <b>Não dá para desfazer pelo app.</b> Só recuse quando tiver certeza — se for só um erro de
+                        conferência, use "Ignorar nota", que não fala nada com a Receita.
+                    </div>
+                ) : (
+                    <div className="bg-mint/50 border border-primary/30 rounded-lg p-3 text-xs text-primaryDark leading-relaxed">
+                        Isto envia a <b>Confirmação da Operação</b> à Receita Federal: declaramos que a mercadoria
+                        desta nota <b>chegou e foi aceita</b>. É o que o fornecedor precisa para encerrar a operação.
+                        <br />
+                        É um <b>ato fiscal definitivo</b> — depois de confirmada, a nota não pode mais ser recusada.
+                    </div>
+                )}
+
+                {recusando && (
+                    <>
+                        {/* Tipo de recusa (pílulas — comportamento de radio) */}
+                        <div>
+                            <div className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">O que aconteceu</div>
+                            <div className="flex flex-col sm:flex-row flex-wrap gap-2" role="radiogroup" aria-label="Motivo da recusa">
+                                {TIPOS_RECUSA.map(t => {
+                                    const ativo = tipoRecusa === t.value;
+                                    return (
+                                        <button
+                                            key={t.value}
+                                            type="button"
+                                            role="radio"
+                                            aria-checked={ativo}
+                                            onClick={() => { setTipoRecusa(t.value); setConfirmando(false); }}
+                                            className={`w-full sm:w-auto px-4 py-2 min-h-[44px] rounded-full text-sm transition-colors ${
+                                                ativo
+                                                    ? 'bg-red-600 text-white font-semibold'
+                                                    : 'bg-white border border-gray-300 text-gray-700 font-medium hover:bg-gray-50'
+                                            }`}
+                                        >
+                                            {t.curto}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            {escolhido && (
+                                <div className="mt-2 text-xs text-gray-600 leading-relaxed">
+                                    <span className="font-semibold text-gray-700">{escolhido.label}</span> — {escolhido.explica}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Justificativa (a SEFAZ exige de 15 a 255 caracteres) */}
+                        <div>
+                            <label htmlFor="justificativa-manifestacao" className="text-sm font-medium text-gray-700">
+                                Justificativa (vai para a Receita)
+                            </label>
+                            <textarea
+                                id="justificativa-manifestacao"
+                                value={justificativa}
+                                onChange={e => { setJustificativa(e.target.value.slice(0, JUSTIFICATIVA_MAX)); setConfirmando(false); }}
+                                rows={3}
+                                maxLength={JUSTIFICATIVA_MAX}
+                                placeholder={escolhido?.exemplo || 'Escreva o que aconteceu, com data e detalhe.'}
+                                className="mt-1 w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                            />
+                            <div className="mt-1 flex items-center justify-between gap-2 text-xs">
+                                <span className={faltam > 0 ? 'text-amber-700' : 'text-gray-500'}>
+                                    {faltam > 0
+                                        ? `Faltam ${faltam} ${faltam === 1 ? 'caractere' : 'caracteres'} (mínimo ${JUSTIFICATIVA_MIN})`
+                                        : 'Tamanho aceito pela SEFAZ ✓'}
+                                </span>
+                                <span className={tamanho >= JUSTIFICATIVA_MAX ? 'text-amber-700 font-semibold' : 'text-gray-500'}>
+                                    {tamanho}/{JUSTIFICATIVA_MAX}
+                                </span>
+                            </div>
+                        </div>
+
+                        {!tipoRecusa && (
+                            <div className="text-xs text-amber-700">Escolha o que aconteceu para liberar a recusa.</div>
+                        )}
+                    </>
+                )}
+
+                {/* Ações — confirmação em 2 passos, sempre dentro da tela */}
+                {confirmando ? (
+                    <div className={`bg-white border-2 rounded-lg p-3 ${recusando ? 'border-red-400' : 'border-primary'}`}>
+                        <div className="text-sm text-gray-800">
+                            {recusando ? (
+                                <>
+                                    Enviar <b>{escolhido?.label}</b> da nota {tipoNotaLabel(nota.tipo)}
+                                    {nota.numero ? ` ${nota.numero}` : ''} para a Receita Federal?{' '}
+                                    A nota fica marcada como <b>Recusada</b> e <b>não pode ser desfeita pelo app</b>.
+                                </>
+                            ) : (
+                                <>
+                                    Confirmar na Receita que recebemos a mercadoria da nota {tipoNotaLabel(nota.tipo)}
+                                    {nota.numero ? ` ${nota.numero}` : ''}?{' '}
+                                    Depois de enviada, a confirmação <b>não pode ser desfeita</b>.
+                                </>
+                            )}
+                        </div>
+                        <div className="flex flex-col md:flex-row gap-3 mt-3">
+                            <button
+                                onClick={enviar}
+                                disabled={enviando || !liberado}
+                                className={`w-full md:w-auto px-4 py-3 md:py-2 text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2 ${
+                                    recusando ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primaryDark'
+                                }`}
+                            >
+                                {enviando
+                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                    : (recusando ? <ShieldAlert className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />)}
+                                {enviando
+                                    ? 'Enviando à SEFAZ…'
+                                    : (recusando ? 'Sim, recusar na Receita' : 'Sim, confirmar operação')}
+                            </button>
+                            <button
+                                onClick={() => setConfirmando(false)}
+                                disabled={enviando}
+                                className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm disabled:opacity-50"
+                            >
+                                Voltar
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex flex-col md:flex-row gap-3">
+                        <button
+                            onClick={() => setConfirmando(true)}
+                            disabled={!liberado}
+                            title={!liberado
+                                ? (!tipoRecusa ? 'Escolha o que aconteceu' : `Escreva pelo menos ${JUSTIFICATIVA_MIN} caracteres na justificativa`)
+                                : undefined}
+                            className={`w-full md:w-auto px-4 py-3 md:py-2 text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2 ${
+                                recusando ? 'bg-red-600 hover:bg-red-700' : 'bg-primary hover:bg-primaryDark'
+                            }`}
+                        >
+                            {recusando ? <ShieldAlert className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                            {recusando ? 'Revisar e recusar' : 'Revisar e confirmar'}
+                        </button>
+                        <button
+                            onClick={onCancelar}
+                            className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-medium text-sm"
+                        >
+                            Cancelar
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// ═══════════════════════════════════════════════════════════
 // CONFERÊNCIA (nota NOVA, com permissão)
 // ═══════════════════════════════════════════════════════════
-const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged }) => {
+const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged, onRecarregar }) => {
+    const { hasPermission } = useAuth();
+    // Recusar é ato fiscal irreversível — permissão própria, espelhando o backend (nome idêntico)
+    const podeRecusar = hasPermission('Pode_Recusar_Nota_Fiscal');
+    // '' | 'CONFIRMAR' | 'RECUSAR' — o painel de manifestação substitui a conferência enquanto aberto
+    const [manifestarAberto, setManifestarAberto] = useState('');
+    const jaManifestada = !!nota.manifestacaoTipo;
     const itensNota = useMemo(() => Array.isArray(nota.itens) ? nota.itens : [], [nota]);
     // NFS-e (serviço tomado): não tem vínculo com produto nem entrada no estoque —
     // a conferência vira só "categoria + parcelas + enviar ao CA".
@@ -1769,11 +2204,26 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
     const [opcoesBaixa, setOpcoesBaixa] = useState({ contasFinanceiras: [], metodosPagamento: [] });
     const [loadingOpcoes, setLoadingOpcoes] = useState(false);
     const [opcoesCarregadas, setOpcoesCarregadas] = useState(false);
+    // Falha ao buscar bancos/formas do CA. É estado próprio (e não "ausência de carregadas")
+    // porque é ELE que encerra a tentativa — ver o laço descrito abaixo.
+    const [opcoesErro, setOpcoesErro] = useState(false);
+    // Tentativa em andamento num REF, não em estado: `loadingOpcoes` nas dependências era
+    // metade do laço (voltar para false re-disparava o effect).
+    const buscandoOpcoesRef = useRef(false);
     const pago = enviarCA && modoPagamento === 'PAGO';
 
     // Carrega bancos + formas do CA quando a despesa vai ao CA (forma+banco são obrigatórios).
+    //
+    // ⚠️ LAÇO INFINITO CORRIGIDO (08/2026): antes o `catch` só mostrava o toast — não marcava
+    // a tentativa como concluída. Como o `finally` devolvia `loadingOpcoes` a false e essa
+    // variável estava nas dependências, o effect re-disparava sem parar: com o token do CA
+    // inválido o QA registrou 1022 chamadas a GET /api/contas-pagar e uma PILHA de toasts que
+    // cobria a tela inteira no celular. Agora a falha encerra a tentativa (`opcoesErro`), o
+    // toast tem `id` fixo (react-hot-toast não empilha o mesmo id) e o usuário reexecuta
+    // pelo botão "Tentar de novo".
     useEffect(() => {
-        if (!enviarCA || opcoesCarregadas || loadingOpcoes) return;
+        if (!enviarCA || opcoesCarregadas || opcoesErro || buscandoOpcoesRef.current) return;
+        buscandoOpcoesRef.current = true;
         setLoadingOpcoes(true);
         contasPagarService.opcoesBaixa()
             .then(op => {
@@ -1783,10 +2233,20 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 const padrao = cf.find(c => c.padrao) || cf[0];
                 setContaFinanceiraCaId(prev => prev || padrao?.id || ''); // banco padrão pré-selecionado
                 setOpcoesCarregadas(true);
+                setOpcoesErro(false);
             })
-            .catch(() => toast.error('Não consegui carregar os bancos do Conta Azul.'))
-            .finally(() => setLoadingOpcoes(false));
-    }, [enviarCA, opcoesCarregadas, loadingOpcoes]);
+            .catch(() => {
+                setOpcoesErro(true); // ENCERRA a tentativa — sem isto o effect re-dispara para sempre
+                toast.error('Não consegui carregar os bancos do Conta Azul.', { id: 'opcoes-baixa-erro' });
+            })
+            .finally(() => {
+                buscandoOpcoesRef.current = false;
+                setLoadingOpcoes(false);
+            });
+    }, [enviarCA, opcoesCarregadas, opcoesErro]);
+
+    // "Tentar de novo" — única forma de repetir a busca depois de uma falha
+    const recarregarOpcoesBaixa = () => { setOpcoesErro(false); };
 
     const setVinculo = (idx, patch) => {
         setVinculos(prev => prev.map((v, i) => (i === idx ? { ...v, ...patch } : v)));
@@ -2073,6 +2533,8 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
             for (const aviso of [...(resp?.avisos || []), ...(resp?.estoqueAvisos || [])]) {
                 toast(aviso, { icon: '⚠️', duration: 8000 });
             }
+            // A confirmação automática na SEFAZ não saiu — dá para confirmar na mão pelo botão do detalhe
+            if (resp?.manifestacaoAviso) toast(resp.manifestacaoAviso, { icon: '⚠️', duration: 10000 });
             onChanged();
         } catch (e) {
             if (!tratarErroDestino(e)) toast.error(e.response?.data?.error || 'Erro ao gerar a Conta a Pagar');
@@ -2108,12 +2570,34 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
         );
     }
 
+    // Caminho 2b: manifestação do destinatário (confirmar / recusar na Receita) — ato fiscal,
+    // não depende de item nem de parcela, então o painel substitui a conferência inteira.
+    if (manifestarAberto) {
+        return (
+            <div className="p-4 md:p-5">
+                <PainelManifestacao
+                    nota={nota}
+                    modo={manifestarAberto}
+                    onCancelar={() => setManifestarAberto('')}
+                    onChanged={onChanged}
+                    // A SEFAZ não aceitou: fecha o painel (para a conferência e a tarja âmbar
+                    // voltarem à tela) e recarrega a nota, que continua ABERTA.
+                    onFalha={() => { setManifestarAberto(''); onRecarregar?.(); }}
+                />
+            </div>
+        );
+    }
+
     // Caminho 3: entrada sem pagamento — o painel abre ABAIXO da seção de itens, que CONTINUA
     // visível e editável (os vínculos definem o que soma no estoque). Só parcelas/categoria/
     // forma de pagamento somem — ver o return principal (`entradaAberta`).
 
     return (
         <div className="p-4 md:p-5 space-y-4">
+            {/* Tentativa de manifestação recusada pela SEFAZ deixa a nota em NOVA — ou seja,
+                nesta tela. É aqui que o usuário precisa ver o que aconteceu. */}
+            {!entradaAberta && <ManifestacoesRecusadas nota={nota} />}
+
             {/* Sugestão: a natureza da operação indica nota sem pagamento (bonificação, troca…) */}
             {!entradaAberta && nota.motivoSugerido && (
                 <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 text-sm text-purple-900 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -2593,6 +3077,22 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                             <div className="flex items-center gap-2 text-sm text-gray-500 py-2">
                                 <Loader2 className="h-4 w-4 animate-spin" /> Carregando bancos/caixas…
                             </div>
+                        ) : opcoesErro ? (
+                            /* A busca falhou: o app NÃO tenta de novo sozinho (era o laço infinito).
+                               Quem decide repetir é o usuário, por este botão. */
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5 text-sm text-amber-900">
+                                <span>
+                                    <span className="font-semibold">Não consegui carregar os bancos e formas de pagamento do Conta Azul.</span>{' '}
+                                    Sem eles não dá para registrar a forma de pagamento — desmarque a opção acima para gerar a despesa mesmo assim.
+                                </span>
+                                <button
+                                    type="button"
+                                    onClick={recarregarOpcoesBaixa}
+                                    className="sm:ml-auto shrink-0 w-full sm:w-auto px-4 py-3 sm:py-1.5 min-h-[44px] sm:min-h-0 bg-white border border-amber-300 text-amber-800 hover:bg-amber-100/60 rounded-full font-semibold text-xs inline-flex items-center justify-center gap-1.5"
+                                >
+                                    <RefreshCw className="h-3.5 w-3.5" /> Tentar de novo
+                                </button>
+                            </div>
                         ) : (
                             <>
                                 {/* Condição (forma + banco) — obrigatória */}
@@ -2722,6 +3222,25 @@ const ConferenciaNota = ({ nota, itensPcp, categorias, categoriasErro, onChanged
                 >
                     <PackageCheck className="h-4 w-4" /> Registrar entrada (sem pagamento)
                 </button>
+                {/* Manifestação do destinatário — só na nota NOVA e ainda não manifestada */}
+                {nota.status === 'NOVA' && !jaManifestada && (
+                    <button
+                        onClick={() => setManifestarAberto('CONFIRMAR')}
+                        title="Recebemos a mercadoria? Declare a Confirmação da Operação para a Receita Federal."
+                        className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm inline-flex items-center justify-center gap-1.5"
+                    >
+                        <ShieldCheck className="h-4 w-4" /> Confirmar operação
+                    </button>
+                )}
+                {nota.status === 'NOVA' && !jaManifestada && podeRecusar && (
+                    <button
+                        onClick={() => setManifestarAberto('RECUSAR')}
+                        title="A mercadoria não chegou, ou a nota veio contra o nosso CNPJ sem compra nenhuma? Recuse na Receita."
+                        className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-red-300 text-red-700 hover:bg-red-50 rounded-full font-medium text-sm inline-flex items-center justify-center gap-1.5"
+                    >
+                        <ShieldAlert className="h-4 w-4" /> Não recebi / Não reconheço
+                    </button>
+                )}
                 <BotaoImprimirDanfe id={nota.id} rotulo={ehServico ? 'Imprimir DANFSE' : 'Imprimir DANFE'} />
                 <button
                     onClick={() => baixarXmlNota(nota)}
@@ -3130,7 +3649,7 @@ const PainelCorrigirEntrada = ({ nota, itensPcp, modo = 'corrigir', onCancelar, 
     );
 };
 
-const DetalheNota = ({ nota, podeOperar, itensPcp = [], onChanged }) => {
+const DetalheNota = ({ nota, podeOperar, itensPcp = [], onChanged, onRecarregar }) => {
     const { hasPermission } = useAuth();
     const [reativando, setReativando] = useState(false);
     const [cancelando, setCancelando] = useState(false);
@@ -3188,6 +3707,22 @@ const DetalheNota = ({ nota, podeOperar, itensPcp = [], onChanged }) => {
     const quemRegistrouEntrada = typeof nota.entradaRegistradaPor === 'string'
         ? nota.entradaRegistradaPor
         : (nota.entradaRegistradaPor?.nome || null);
+
+    // ── Manifestação do destinatário ──
+    // Recusar não aparece aqui: recusa só na nota NOVA (na conferência). Aqui fica o FALLBACK
+    // de confirmação, para quando a confirmação automática da SEFAZ tiver falhado.
+    const [manifestarAberto, setManifestarAberto] = useState(false);
+    const jaManifestada = !!nota.manifestacaoTipo;
+    const podeConfirmarOperacao = podeOperar
+        && !jaManifestada
+        && ['CONFERIDA', 'VINCULADA', 'ENTRADA_REGISTRADA'].includes(nota.status);
+    // Campos opcionais do GET /:id — guardados antes de entrar em texto (senão vira "undefined" na tela)
+    const manifestacaoRotulo = manifestacaoLabel(nota.manifestacaoTipo);
+    const manifestacaoJustificativa = String(nota.manifestacaoJustificativa || '').trim();
+    const manifestacaoProtocolo = String(nota.manifestacaoProtocolo || '').trim();
+    const quemManifestou = typeof nota.manifestacaoPorNome === 'string'
+        ? nota.manifestacaoPorNome.trim()
+        : (nota.manifestacaoPorNome?.nome || '');
 
     const desfazerEntrada = async () => {
         if (!window.confirm('Desfazer o registro de entrada sem pagamento? A nota volta para conferência, como Nova. Itens somados no estoque são estornados.')) return;
@@ -3328,6 +3863,75 @@ const DetalheNota = ({ nota, podeOperar, itensPcp = [], onChanged }) => {
                 <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
                     O emitente cancelou esta nota na SEFAZ — ela não deve gerar despesa.
                 </div>
+            )}
+
+            {/* Faixa da manifestação — RECUSADA (bloco vermelho, com tudo que foi para a Receita).
+                Condicionada ao `manifestacaoTipo`, NÃO ao status: cancelamento posterior do
+                emitente troca o status e apagaria a prova da nossa recusa. */}
+            {ehManifestacaoRecusa(nota.manifestacaoTipo) && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-800">
+                    <div className="flex items-start gap-2">
+                        <ShieldAlert className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                            <span className="font-semibold">Nota recusada na Receita</span>
+                            {manifestacaoRotulo ? <> — <span className="font-semibold">{manifestacaoRotulo}</span></> : null}
+                            . A manifestação do destinatário foi aceita pela SEFAZ: esta nota{' '}
+                            <span className="font-semibold">não gera despesa nem entrada de estoque</span>.
+                        </div>
+                    </div>
+                    {/* Os DOIS fatos na tela quando o emitente cancelou depois da nossa recusa */}
+                    {nota.status === 'CANCELADA_EMITENTE' && (
+                        <div className="mt-1.5">
+                            O emitente <span className="font-semibold">também cancelou</span> esta nota na SEFAZ (aviso acima).
+                            Os dois registros valem: <span className="font-semibold">nós recusamos</span> e{' '}
+                            <span className="font-semibold">o emitente cancelou</span>.
+                        </div>
+                    )}
+                    {manifestacaoJustificativa && (
+                        <div className="mt-1.5 whitespace-pre-wrap break-words">
+                            justificativa enviada: {manifestacaoJustificativa}
+                        </div>
+                    )}
+                    <div className="text-xs text-red-700 mt-1">
+                        {nota.manifestacaoEm ? `enviada em ${fmtDataHoraAno(nota.manifestacaoEm)}` : 'enviada'}
+                        {quemManifestou ? ` por ${quemManifestou}` : ''}
+                        {manifestacaoProtocolo ? ` · protocolo ${manifestacaoProtocolo}` : ''}
+                    </div>
+                </div>
+            )}
+
+            {/* Faixa da manifestação — CONFIRMADA (bloco verde discreto, convive com o status da nota) */}
+            {nota.manifestacaoTipo === 'CONFIRMADA' && (
+                <div className="bg-mint/50 border border-primary/30 rounded-lg p-3 text-sm text-primaryDark">
+                    <div className="flex items-start gap-2">
+                        <ShieldCheck className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                            <span className="font-semibold">Operação confirmada na Receita</span> — declaramos à SEFAZ que
+                            a mercadoria desta nota chegou e foi aceita.
+                        </div>
+                    </div>
+                    <div className="text-xs text-primaryDark/80 mt-1">
+                        {nota.manifestacaoEm ? `confirmada em ${fmtDataHoraAno(nota.manifestacaoEm)}` : 'confirmada'}
+                        {quemManifestou ? ` por ${quemManifestou}` : ''}
+                        {manifestacaoProtocolo ? ` · protocolo ${manifestacaoProtocolo}` : ''}
+                    </div>
+                </div>
+            )}
+
+            {/* Tentativas que a SEFAZ recusou (a nota ficou intacta) */}
+            <ManifestacoesRecusadas nota={nota} />
+
+            {/* Fallback: confirmar a operação na mão (a confirmação automática pode ter falhado) */}
+            {manifestarAberto && (
+                <PainelManifestacao
+                    nota={nota}
+                    modo="CONFIRMAR"
+                    onCancelar={() => setManifestarAberto(false)}
+                    onChanged={onChanged}
+                    // A SEFAZ não aceitou: fecha o painel e recarrega a nota, que continua
+                    // ABERTA — a tarja âmbar logo acima mostra o motivo devolvido.
+                    onFalha={() => { setManifestarAberto(false); onRecarregar?.(); }}
+                />
             )}
 
             {/* Observações da nota (infCpl) */}
@@ -3496,6 +4100,15 @@ const DetalheNota = ({ nota, podeOperar, itensPcp = [], onChanged }) => {
                 >
                     <FileDown className="h-4 w-4" /> Ver XML
                 </button>
+                {podeConfirmarOperacao && !manifestarAberto && (
+                    <button
+                        onClick={() => setManifestarAberto(true)}
+                        title="Declara à Receita Federal que a mercadoria desta nota chegou (Confirmação da Operação)."
+                        className="w-full md:w-auto px-4 py-3 md:py-2 bg-white border border-primary text-primary hover:bg-mint/40 rounded-full font-medium text-sm inline-flex items-center justify-center gap-1.5"
+                    >
+                        <ShieldCheck className="h-4 w-4" /> Confirmar operação
+                    </button>
+                )}
                 {nota.status === 'IGNORADA' && podeOperar && (
                     <button
                         onClick={reativar}

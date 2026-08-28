@@ -92,6 +92,20 @@ const checkCorrigirEstoque = async (req, res, next) => {
     next();
 };
 
+// RECUSAR a nota na Receita (Desconhecimento / Operação não Realizada) é ato fiscal
+// IRREVERSÍVEL contra o CNPJ da empresa — permissão própria, separada de quem só opera
+// contas a pagar (decisão do dono, 08/2026). Confirmar a operação continua em checkEscrita.
+// Atenção: permissão no projeto é OBJETO, não booleano — ler a chave, nunca `!!perms.x`
+// sobre um objeto pai.
+const checkRecusar = async (req, res, next) => {
+    const perms = req._perms || await getPerms(req.user.id);
+    req._perms = perms;
+    if (!perms.admin && !perms.Pode_Recusar_Nota_Fiscal) {
+        return res.status(403).json({ error: 'Sem permissão para recusar nota fiscal na SEFAZ.' });
+    }
+    next();
+};
+
 const num = (v) => (v == null ? null : Number(v));
 const round2 = (v) => Math.round(Number(v) * 100) / 100;
 const round4 = (v) => Math.round(Number(v) * 10000) / 10000;
@@ -184,6 +198,124 @@ const parseVencimento = (v) => {
     return /^\d{4}-\d{2}-\d{2}$/.test(s) ? new Date(`${s}T12:00:00-03:00`) : new Date(s);
 };
 
+// ── Manifestação do Destinatário (SEFAZ) ──────────────────────────────────────
+// Tipos aceitos no corpo da rota (o app NUNCA manda código de evento da SEFAZ).
+const MANIFESTACAO_TIPOS = ['CONFIRMACAO', 'DESCONHECIMENTO', 'NAO_REALIZADA'];
+// Só estas duas RECUSAM a nota na Receita (viram status RECUSADA).
+const MANIFESTACAO_RECUSAS = ['DESCONHECIMENTO', 'NAO_REALIZADA'];
+// As mesmas duas, no vocabulário do que fica GRAVADO na nota (`manifestacaoTipo`).
+// Cuidado para não confundir com MANIFESTACAO_RECUSAS acima: lá é o `tipo` que o app
+// recebe no corpo da requisição ('DESCONHECIMENTO'), aqui é a marca gravada na coluna
+// ('DESCONHECIDA'). São vocabulários diferentes de propósito.
+const MANIFESTACAO_MARCAS_RECUSA = ['DESCONHECIDA', 'NAO_REALIZADA'];
+// Rótulo do que ficou gravado na nota (`manifestacaoTipo`).
+const LABEL_MANIFESTACAO = {
+    CONFIRMADA: 'Confirmação da Operação',
+    DESCONHECIDA: 'Desconhecimento da Operação',
+    NAO_REALIZADA: 'Operação não Realizada'
+};
+// Rótulo por código de evento (histórico).
+const LABEL_EVENTO_MANIFESTACAO = {
+    210200: 'Confirmação da Operação',
+    210210: 'Ciência da Operação',
+    210220: 'Desconhecimento da Operação',
+    210240: 'Operação não Realizada'
+};
+const TIPO_POR_EVENTO_MANIFESTACAO = {
+    210200: 'CONFIRMACAO',
+    210220: 'DESCONHECIMENTO',
+    210240: 'NAO_REALIZADA'
+};
+const dataBr = (d) => (d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'data não registrada');
+
+// ── Trava anti-envio-duplo da manifestação ────────────────────────────────────
+// Usada pelos DOIS caminhos que falam com a SEFAZ: o botão manual (rota /manifestar) e
+// a confirmação automática dos lançamentos. Até 08/2026 a trava existia só na rota, e a
+// automática passava por fora — dava para a automática e o botão saírem juntos e mandarem
+// dois eventos para a mesma chave (dano baixo, porque a própria SEFAZ recusa o segundo por
+// duplicidade, mas gera um 573 sem motivo na cara do usuário).
+//
+// NOTA para quem for mexer: o lugar "certo" desta trava seria dentro do
+// `sefazDfeService.manifestar`, para valer para qualquer chamador futuro. Não foi movida
+// para lá de propósito — o service tem 5 pontos de retorno antecipado antes do envio
+// (tipo inválido, justificativa, nota inexistente, sem certificado) e envolvê-lo num
+// try/finally exigiria reestruturar uma função de caminho fiscal recém-aprovada.
+// Decisão do gerente de entrega (08/2026): fechar o buraco aqui, sem reestruturar.
+// Se um TERCEIRO chamador de `manifestar` aparecer, ele PRECISA usar estas duas funções.
+const TRAVA_MANIFESTACAO_MS = 120000; // 2 min — teto de um envio pendurado
+
+/** @returns {Promise<boolean>} true se ESTA chamada conquistou a trava. */
+const travarManifestacao = async (notaId) => {
+    // O `OR` com `{ manifestacaoEnviandoEm: null }` é obrigatório: no Prisma o operador
+    // `lt` EXCLUI as linhas null — que são justamente as notas livres.
+    const r = await prisma.notaEntrada.updateMany({
+        where: {
+            id: notaId,
+            manifestacaoTipo: null,
+            OR: [
+                { manifestacaoEnviandoEm: null },
+                { manifestacaoEnviandoEm: { lt: new Date(Date.now() - TRAVA_MANIFESTACAO_MS) } }
+            ]
+        },
+        data: { manifestacaoEnviandoEm: new Date() }
+    });
+    return r.count > 0;
+};
+
+const liberarManifestacao = async (notaId) => {
+    await prisma.notaEntrada.updateMany({
+        where: { id: notaId },
+        data: { manifestacaoEnviandoEm: null }
+    }).catch((e) => console.error('[NotasEntrada] falha ao liberar a trava de manifestação:', e?.message || e));
+};
+
+/**
+ * CONFIRMAÇÃO AUTOMÁTICA da operação na SEFAZ ("recebi a mercadoria") — pedido do dono.
+ * Chamada nos três caminhos em que a nota entra de verdade no CNPJ: gerar conta,
+ * registrar entrada sem pagamento e vincular a parcela já lançada.
+ *
+ * INEGOCIÁVEL (mesmo espírito da NF-e de devolução):
+ *   - roda SEMPRE FORA da $transaction, depois de a operação já estar efetivada;
+ *   - falha aqui NUNCA desfaz nem bloqueia o lançamento — devolve só um aviso de tela;
+ *   - se a nota já tem manifestação, não faz nada (é irreversível, não há segundo envio);
+ *   - vai com `automatica: true` → teto de espera de 15s (contra 30s do botão manual).
+ *     Este `await` está DENTRO do clique do usuário: ampulheta longa faz ele clicar de
+ *     novo, e este projeto já teve estrago por clique repetido. Falha rápida (rejeição,
+ *     403, DNS) volta em segundos e gera o aviso igual; só conexão pendurada gasta os 15s.
+ *
+ * @returns {Promise<string|null>} aviso para a tela, ou null quando deu certo/não se aplica.
+ */
+const confirmarOperacaoAuto = async (nota, usuarioId) => {
+    try {
+        if (!nota || nota.tipo !== 'NFE') return null;                       // NFS-e não tem manifestação
+        if (String(nota.chave || '').startsWith('MANUAL-')) return null;     // nota digitada na mão
+        const atual = await prisma.notaEntrada.findUnique({
+            where: { id: nota.id },
+            select: { manifestacaoTipo: true }
+        });
+        if (!atual || atual.manifestacaoTipo) return null;                   // já manifestada
+
+        // Mesma trava do botão manual: se já houver um envio em andamento para esta nota,
+        // esta confirmação simplesmente não sai (o outro envio resolve). Silencioso de
+        // propósito — o usuário não pediu esta confirmação, ela é um brinde do lançamento.
+        if (!(await travarManifestacao(nota.id))) {
+            console.warn(`[NotasEntrada] confirmação automática pulada (já há envio em andamento) — nota ${nota.numero || nota.id}`);
+            return null;
+        }
+        try {
+            const r = await sefazDfeService.manifestar({ notaId: nota.id, tipo: 'CONFIRMACAO', usuarioId, automatica: true });
+            if (r?.aceito) return null;
+            console.warn(`[NotasEntrada] confirmação automática não saiu (nota ${nota.numero || nota.id}):`, r?.motivo || r?.codigo);
+            return 'A confirmação da operação na SEFAZ não saiu. Use o botão "Confirmar operação" na nota para tentar de novo.';
+        } finally {
+            await liberarManifestacao(nota.id);
+        }
+    } catch (e) {
+        console.error('[NotasEntrada] confirmação automática:', e?.message || e);
+        return 'A confirmação da operação na SEFAZ não saiu. Use o botão "Confirmar operação" na nota para tentar de novo.';
+    }
+};
+
 const formatarNotaLista = (n) => ({
     id: n.id,
     tipo: n.tipo,
@@ -195,6 +327,8 @@ const formatarNotaLista = (n) => ({
     valorTotal: num(n.valorTotal),
     status: n.status,
     motivoEntrada: n.motivoEntrada || null, // badge de "entrada sem pagamento" na lista
+    // Selo da manifestação do destinatário: CONFIRMADA | DESCONHECIDA | NAO_REALIZADA | null
+    manifestacaoTipo: n.manifestacaoTipo || null,
     contaPagarId: n.contaPagarId
 });
 
@@ -206,11 +340,42 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
         const where = {};
         // Situação: aceita `chip` (agrupado, usado pela tela) ou `status` (direto/legado).
         // NOVAS agrupa NOVA + AGUARDANDO_XML (resumos que ainda esperam o XML completo).
+        // ATENÇÃO (corrigido em 08/2026): o front manda NOVAS | GERADAS | SEM_PAGAMENTO |
+        // IGNORADAS | RECUSADAS | TODAS. Antes o back não conhecia SEM_PAGAMENTO — o chip caía
+        // no `else` sem filtro nenhum e a aba "Sem pagamento" devolvia TODAS as notas. E
+        // GERADAS pegava só CONFERIDA, escondendo as VINCULADAS (que também já viraram despesa).
         const chipUp = String(chip || '').toUpperCase();
         if (chipUp === 'NOVAS') where.status = { in: ['NOVA', 'AGUARDANDO_XML'] };
-        else if (chipUp === 'GERADAS') where.status = 'CONFERIDA';
-        else if (chipUp === 'VINCULADAS') where.status = 'VINCULADA'; // anexadas a parcela já lançada
+        else if (chipUp === 'GERADAS') where.status = { in: ['CONFERIDA', 'VINCULADA'] };
+        else if (chipUp === 'SEM_PAGAMENTO') where.status = 'ENTRADA_REGISTRADA';
+        else if (chipUp === 'VINCULADAS') where.status = 'VINCULADA'; // legado (anexadas a parcela já lançada)
         else if (chipUp === 'IGNORADAS') where.status = 'IGNORADA';
+        else if (chipUp === 'RECUSADAS') {
+            // A aba "Recusadas" NÃO pode depender só do status. Se o fornecedor cancelar a
+            // nota DEPOIS de nós a recusarmos, `registrarEvento` sobrescreve RECUSADA por
+            // CANCELADA_EMITENTE (benigno para o dado — a nota segue congelada e a
+            // manifestação sobrevive) e a nota SUMIA justamente da aba onde o dono vai
+            // procurar a prova da recusa dele. Por isso: status RECUSADA **ou** marca de
+            // recusa gravada, qualquer que seja o status.
+            //
+            // Vai em `AND` (e não em `where.OR`) porque o filtro de BUSCA, mais abaixo,
+            // também escreve em `where.OR` — e como ele roda depois, sobrescreveria este
+            // filtro por completo. Seria o mesmo defeito mudo do chip SEM_PAGAMENTO:
+            // buscar dentro de "Recusadas" passaria a varrer a caixa inteira.
+            //
+            // `in` NÃO casa com linha NULL (semântica do SQL), então nota sem manifestação
+            // nenhuma não entra aqui — que é exatamente o que se quer. (A armadilha do
+            // projeto é o contrário: `not`/`notIn`, que EXCLUEM os NULL sem avisar.)
+            where.AND = [
+                ...(Array.isArray(where.AND) ? where.AND : []),
+                {
+                    OR: [
+                        { status: 'RECUSADA' },
+                        { manifestacaoTipo: { in: MANIFESTACAO_MARCAS_RECUSA } }
+                    ]
+                }
+            ];
+        }
         else if (chipUp === 'TODAS') { /* sem filtro de situação */ }
         else if (status) where.status = status;
 
@@ -613,7 +778,9 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
                             include: { contaPagar: { select: { id: true, descricao: true } } }
                         }
                     }
-                }
+                },
+                // Histórico de manifestações (inclusive as recusadas pela SEFAZ) — mais recente primeiro.
+                manifestacoes: { orderBy: { criadoEm: 'desc' } }
             }
         });
         if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
@@ -662,8 +829,13 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
         const parsed = precisaXml ? parseXmlSalvo(nota) : null;
         const parsedItens = new Map((parsed?.itens || []).map((i) => [String(i.codigoFornecedor), i]));
 
-        // Nome de quem marcou os itens como "não é estoque" (id sem FK — resolvido aqui)
-        const marcadoresIds = [...new Set(nota.itens.map((i) => i.semEstoqueMarcadoPorId).filter(Boolean))];
+        // Nome de quem marcou os itens como "não é estoque" e de quem manifestou a nota
+        // (ids SEM FK — resolvidos aqui, numa consulta só).
+        const marcadoresIds = [...new Set([
+            ...nota.itens.map((i) => i.semEstoqueMarcadoPorId),
+            nota.manifestacaoPorId,
+            ...nota.manifestacoes.map((m) => m.criadoPorId)
+        ].filter(Boolean))];
         const marcadores = marcadoresIds.length > 0
             ? await prisma.vendedor.findMany({ where: { id: { in: marcadoresIds } }, select: { id: true, nome: true } })
             : [];
@@ -762,7 +934,29 @@ router.get('/:id', verificarAuth, checkAcesso, async (req, res) => {
             emissao: nota.emissao,
             valorTotal: num(nota.valorTotal),
             status: nota.status,
-            manifestada: nota.manifestada,
+            manifestada: nota.manifestada, // Ciência da Operação (210210) automática — NÃO é o aceite
+            // Manifestação do destinatário (ato do usuário). Só existe quando a SEFAZ ACEITOU.
+            manifestacaoTipo: nota.manifestacaoTipo || null,
+            manifestacaoEm: nota.manifestacaoEm || null,
+            manifestacaoJustificativa: nota.manifestacaoJustificativa || null,
+            manifestacaoProtocolo: nota.manifestacaoProtocolo || null,
+            manifestacaoCStat: nota.manifestacaoCStat || null,
+            manifestacaoPorNome: nota.manifestacaoPorId ? (nomePorId.get(nota.manifestacaoPorId) || null) : null,
+            // Histórico COMPLETO das tentativas (inclusive as que a SEFAZ recusou).
+            manifestacoes: nota.manifestacoes.map((m) => ({
+                id: m.id,
+                tipoEvento: m.tipoEvento,
+                tipo: TIPO_POR_EVENTO_MANIFESTACAO[m.tipoEvento] || null,
+                rotulo: LABEL_EVENTO_MANIFESTACAO[m.tipoEvento] || m.tipoEvento,
+                justificativa: m.justificativa || null,
+                aceito: m.aceito,
+                cStat: m.cStat || null,
+                xMotivo: m.xMotivo || null,
+                protocolo: m.protocolo || null,
+                erro: m.erro || null,
+                criadoEm: m.criadoEm,
+                criadoPorNome: m.criadoPorId ? (nomePorId.get(m.criadoPorId) || null) : null
+            })),
             naturezaOperacao,
             // Entrada sem pagamento (bonificação/amostra/remessa/comodato)
             motivoEntrada: nota.motivoEntrada || null,
@@ -1101,6 +1295,10 @@ router.post('/:id/vincular-parcelas', verificarAuth, checkEscrita, async (req, r
         googleDriveService.salvarXmlNota(nota, xmlAbsPath(nota))
             .catch((err) => console.error('[NotasEntrada] Drive (vincular-parcelas):', err?.message || err));
 
+        // Confirmação da operação na SEFAZ — a nota é nossa e a mercadoria/serviço entrou.
+        // FORA da transação; falha vira aviso, nunca desfaz o vínculo.
+        const manifestacaoAviso = await confirmarOperacaoAuto(nota, req.user.id);
+
         res.json({
             ok: true,
             message: 'Nota vinculada à(s) parcela(s) existente(s). Nenhuma despesa nova foi criada.',
@@ -1108,7 +1306,8 @@ router.post('/:id/vincular-parcelas', verificarAuth, checkEscrita, async (req, r
             somaVinculada: totalVinculado,
             valorNota,
             diferenca,
-            avisos
+            avisos,
+            ...(manifestacaoAviso ? { manifestacaoAviso } : {})
         });
     } catch (error) {
         console.error('Erro ao vincular nota a parcelas:', error);
@@ -1604,7 +1803,7 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
         googleDriveService.salvarXmlNota(nota, xmlAbsPath(nota))
             .catch((err) => console.error('[NotasEntrada] Drive (gerar-conta):', err?.message || err));
 
-        res.status(201).json({
+        const resposta = {
             message: pagto
                 ? (enviarCAefetivo
                     ? 'Conta a pagar criada como PAGA — será marcada como quitada no Conta Azul!'
@@ -1617,7 +1816,14 @@ router.post('/:id/gerar-conta', verificarAuth, checkEscrita, async (req, res) =>
             // O que entrou no estoque nesta conferência (para a tela mostrar).
             estoque: estoqueResultado.itens,
             estoqueAvisos: estoqueResultado.avisos
-        });
+        };
+
+        // 7) Confirmação da operação na SEFAZ ("recebi a mercadoria") — FORA da transação,
+        // com a conta já criada. Falhar aqui não desfaz nada: só vira aviso na tela.
+        const manifestacaoAviso = await confirmarOperacaoAuto(nota, req.user.id);
+        if (manifestacaoAviso) resposta.manifestacaoAviso = manifestacaoAviso;
+
+        res.status(201).json(resposta);
     } catch (error) {
         console.error('Erro ao gerar conta a pagar da nota:', error);
         res.status(500).json({ error: 'Erro ao gerar a conta a pagar da nota.' });
@@ -1707,7 +1913,7 @@ router.post('/:id/registrar-entrada', verificarAuth, checkEscrita, async (req, r
                 .catch((err) => console.error('[NotasEntrada] Drive (registrar-entrada):', err?.message || err));
         }
 
-        res.json({
+        const resposta = {
             ok: true,
             message: `Entrada registrada como ${LABEL_MOTIVO_ENTRADA[motivo]} — sem gerar conta a pagar.`,
             status: 'ENTRADA_REGISTRADA',
@@ -1715,7 +1921,14 @@ router.post('/:id/registrar-entrada', verificarAuth, checkEscrita, async (req, r
             // O que entrou no estoque (sem custo) — para a tela mostrar.
             estoque: estoqueResultado.itens,
             estoqueAvisos: estoqueResultado.avisos
-        });
+        };
+
+        // Confirmação da operação na SEFAZ — a mercadoria entrou de verdade no CNPJ.
+        // FORA da transação; falha vira aviso, nunca desfaz o registro.
+        const manifestacaoAviso = await confirmarOperacaoAuto(nota, req.user.id);
+        if (manifestacaoAviso) resposta.manifestacaoAviso = manifestacaoAviso;
+
+        res.json(resposta);
     } catch (error) {
         console.error('Erro ao registrar entrada sem pagamento:', error);
         res.status(500).json({ error: 'Erro ao registrar a entrada sem pagamento.' });
@@ -1796,6 +2009,174 @@ router.post('/:id/reativar', verificarAuth, checkEscrita, async (req, res) => {
     } catch (error) {
         console.error('Erro ao reativar nota:', error);
         res.status(500).json({ error: 'Erro ao reativar a nota.' });
+    }
+});
+
+// =============================================================
+// MANIFESTAÇÃO DO DESTINATÁRIO (SEFAZ) — 08/2026
+//
+// Três atos, todos IRREVERSÍVEIS (a SEFAZ não aceita o mesmo evento duas vezes
+// para a mesma chave):
+//   CONFIRMACAO     (210200) "recebi a mercadoria"          → não muda o status da nota
+//   DESCONHECIMENTO (210220) "essa nota não é minha"        → status RECUSADA
+//   NAO_REALIZADA   (210240) "a mercadoria não chegou"      → status RECUSADA
+//
+// Regra que sustenta tudo: se a SEFAZ NÃO aceitar, a nota fica EXATAMENTE como estava
+// (é o service quem garante isso — ver sefazDfeService.manifestar).
+// Recusar uma nota já lançada é BLOQUEADO (não desfazemos conta a pagar/estoque por
+// tabela): o usuário desfaz o lançamento primeiro, depois recusa.
+// =============================================================
+
+// A permissão depende do ATO: confirmar é operação normal da nota; RECUSAR na Receita
+// tem permissão própria. Tipo inválido responde 400 aqui (antes de qualquer 403).
+const checkManifestar = (req, res, next) => {
+    const tipo = String(req.body?.tipo || '').toUpperCase().trim();
+    if (!MANIFESTACAO_TIPOS.includes(tipo)) {
+        return res.status(400).json({ error: 'Tipo de manifestação inválido.' });
+    }
+    return MANIFESTACAO_RECUSAS.includes(tipo) ? checkRecusar(req, res, next) : checkEscrita(req, res, next);
+};
+
+// Mensagem de bloqueio da RECUSA por status — a nota já foi lançada e precisa ser
+// desfeita antes (nunca desfazemos nada automaticamente aqui).
+const BLOQUEIO_RECUSA_POR_STATUS = {
+    CONFERIDA: "Esta nota já gerou uma conta a pagar. Use 'Cancelar entrada e refazer' antes de recusar a nota na SEFAZ.",
+    VINCULADA: 'Esta nota está anexada a parcela(s) já lançada(s). Desvincule antes de recusar a nota na SEFAZ.',
+    ENTRADA_REGISTRADA: "Esta nota está registrada como entrada sem pagamento. Use 'Desfazer registro' antes de recusar a nota na SEFAZ.",
+    IGNORADA: 'Esta nota está ignorada. Reative-a antes de recusar a nota na SEFAZ.'
+};
+
+// Status em que a CONFIRMAÇÃO da operação é permitida (a mercadoria chegou de verdade).
+const STATUS_CONFIRMACAO_OK = ['NOVA', 'CONFERIDA', 'VINCULADA', 'ENTRADA_REGISTRADA'];
+// Status em que a RECUSA é permitida (nada foi lançado ainda).
+const STATUS_RECUSA_OK = ['NOVA', 'AGUARDANDO_XML'];
+
+// ── POST /:id/manifestar — body { tipo, justificativa? } ──
+router.post('/:id/manifestar', verificarAuth, checkManifestar, async (req, res) => {
+    const tipo = String(req.body?.tipo || '').toUpperCase().trim();
+    const ehRecusa = MANIFESTACAO_RECUSAS.includes(tipo);
+    let travou = false;
+    try {
+        // Justificativa: obrigatória nas duas recusas, ignorada na confirmação.
+        // Validada JÁ NORMALIZADA (sem acento/controle) — é o texto que vai ao XML.
+        let justificativa = null;
+        if (ehRecusa) {
+            justificativa = sefazDfeService.normalizarJustificativa(req.body?.justificativa);
+            if (justificativa.length < 15) {
+                return res.status(400).json({ error: 'A justificativa precisa ter de 15 a 255 caracteres.' });
+            }
+        }
+
+        const nota = await prisma.notaEntrada.findUnique({
+            where: { id: req.params.id },
+            select: {
+                id: true, tipo: true, chave: true, numero: true, status: true,
+                manifestacaoTipo: true, manifestacaoEm: true
+            }
+        });
+        if (!nota) return res.status(404).json({ error: 'Nota não encontrada.' });
+
+        // Nota que a SEFAZ não conhece / não aceita evento de destinatário:
+        // NFS-e (outro ambiente), nota lançada na mão (chave MANUAL-) e nota já cancelada.
+        if (nota.tipo !== 'NFE'
+            || nota.status === 'CANCELADA_EMITENTE'
+            || String(nota.chave || '').startsWith('MANUAL-')) {
+            return res.status(400).json({ error: 'Esta nota não aceita manifestação do destinatário.' });
+        }
+
+        // Já manifestada → é IRREVERSÍVEL, não há segundo envio.
+        if (nota.manifestacaoTipo) {
+            return res.status(409).json({
+                error: `Esta nota já foi manifestada como ${LABEL_MANIFESTACAO[nota.manifestacaoTipo] || nota.manifestacaoTipo} em ${dataBr(nota.manifestacaoEm)}.`
+            });
+        }
+
+        // Trava por status.
+        if (ehRecusa) {
+            if (!STATUS_RECUSA_OK.includes(nota.status)) {
+                return res.status(400).json({
+                    error: BLOQUEIO_RECUSA_POR_STATUS[nota.status]
+                        || `Nota com status ${nota.status} não pode ser recusada na SEFAZ.`
+                });
+            }
+        } else if (!STATUS_CONFIRMACAO_OK.includes(nota.status)) {
+            const motivo = nota.status === 'AGUARDANDO_XML'
+                ? 'O XML completo desta nota ainda não chegou da SEFAZ. Aguarde a próxima consulta para confirmar a operação.'
+                : (nota.status === 'IGNORADA'
+                    ? 'Esta nota está ignorada. Reative-a antes de confirmar a operação na SEFAZ.'
+                    : `Nota com status ${nota.status} não aceita a confirmação da operação.`);
+            return res.status(400).json({ error: motivo });
+        }
+
+        // ── Trava anti-clique-duplo, ANTES de falar com a SEFAZ ──
+        travou = await travarManifestacao(nota.id);
+        if (!travou) {
+            return res.status(409).json({ error: 'Já existe um envio desta manifestação em andamento.' });
+        }
+
+        const r = await sefazDfeService.manifestar({
+            notaId: nota.id,
+            tipo,
+            justificativa,
+            usuarioId: req.user.id
+        });
+
+        if (r.ok && r.aceito) {
+            const rotuloAto = LABEL_MANIFESTACAO[r.marca] || r.rotulo || 'Manifestação';
+            return res.json({
+                ok: true,
+                aceito: true,
+                tipo,
+                // A confirmação NÃO muda o status da nota; as recusas mandam para RECUSADA.
+                status: r.status || nota.status,
+                manifestacaoTipo: r.marca,
+                manifestacaoEm: r.manifestacaoEm,
+                protocolo: r.protocolo || null,
+                cStat: r.cStat || null,
+                message: ehRecusa
+                    ? `${rotuloAto} registrada na SEFAZ. A nota foi recusada e não pode mais ser lançada.`
+                    : `${rotuloAto} registrada na SEFAZ.`
+            });
+        }
+
+        // A partir daqui a nota está INTACTA — o service não escreve nada quando não é aceito.
+        if (r.codigo === 'REJEITADA') {
+            return res.status(422).json({
+                ok: false,
+                aceito: false,
+                cStat: r.cStat || null,
+                xMotivo: r.xMotivo || null,
+                error: `A SEFAZ não aceitou a manifestação: ${r.xMotivo || 'motivo não informado'} (cStat ${r.cStat || '—'}). A nota continua como estava.`
+            });
+        }
+        if (r.codigo === 'SEM_CERTIFICADO') {
+            return res.status(412).json({ ok: false, aceito: false, error: 'Nenhum certificado digital válido instalado.' });
+        }
+        if (r.codigo === 'REDE') {
+            console.error('[NotasEntrada] manifestar — falha de rede/SOAP:', r.motivo);
+            return res.status(502).json({ ok: false, aceito: false, error: 'Não foi possível falar com a SEFAZ agora. Tente de novo em alguns minutos — a nota continua como estava.' });
+        }
+        if (r.codigo === 'JUSTIFICATIVA') {
+            return res.status(400).json({ ok: false, aceito: false, error: 'A justificativa precisa ter de 15 a 255 caracteres.' });
+        }
+        if (r.codigo === 'TIPO_INVALIDO') {
+            return res.status(400).json({ ok: false, aceito: false, error: 'Tipo de manifestação inválido.' });
+        }
+        if (r.codigo === 'NOTA_NAO_ENCONTRADA') {
+            return res.status(404).json({ ok: false, aceito: false, error: 'Nota não encontrada.' });
+        }
+        // GRAVACAO e qualquer imprevisto: a mensagem do service já explica o estado real.
+        return res.status(500).json({
+            ok: false,
+            aceito: !!r.aceito,
+            error: r.motivo || 'Erro ao registrar a manifestação da nota.'
+        });
+    } catch (error) {
+        console.error('Erro ao manifestar nota:', error);
+        return res.status(500).json({ error: 'Erro ao registrar a manifestação da nota.' });
+    } finally {
+        // Libera a trava SEMPRE (inclusive nos caminhos de erro).
+        if (travou) await liberarManifestacao(req.params.id);
     }
 });
 

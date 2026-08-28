@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Manifestação do Destinatário — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito — cartão compacto) -->
+<meta property="og:title" content="🧾 Novidade no Hardt App: dar o aceite (ou recusar) a nota do fornecedor">
+<meta property="og:description" content="Nas Notas Recebidas dá para confirmar na Receita que a mercadoria chegou — e recusar a nota quando ela não chegou ou quando veio contra o nosso CNPJ sem compra nenhuma.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    --vermelho: #b91c1c;
+    --vermelho-bg: #fef2f2;
+    --vermelho-bd: #fecaca;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* ── mock flutuando sobre o hero ── */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 34px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-ico { font-size: 26px; }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-body p { font-size: 13px; color: var(--ink-soft); margin: 0 0 12px; }
+  .mock-botoes { display: flex; flex-direction: column; gap: 8px; }
+  .mock-botoes span {
+    text-align: center;
+    font-size: 13.5px;
+    font-weight: 700;
+    padding: 12px 8px;
+    border-radius: 999px;
+  }
+  .mock-botoes .verde { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .mock-botoes .vermelho { background: #fff; border: 1.5px solid var(--vermelho-bd); color: var(--vermelho); }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-ico.alerta { background: var(--vermelho-bg); }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  .destaque {
+    background: var(--vermelho-bg);
+    border: 1px solid var(--vermelho-bd);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 13.5px;
+    color: #7f1d1d;
+    margin: 0 0 10px;
+  }
+  .destaque b { color: #7f1d1d; }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card.recusa { border: 2px solid #dc2626; }
+  .app-card.confirma { border: 2px solid var(--primary); }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-linha { font-size: 12.5px; color: var(--ink); margin-bottom: 8px; }
+  .app-sub { font-size: 11.5px; color: #8b948f; }
+
+  .app-badges { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; margin-bottom: 6px; }
+  .app-badge {
+    font-size: 10.5px;
+    font-weight: 800;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: #eceae4;
+    color: #5f6b66;
+    white-space: nowrap;
+  }
+  .app-badge.azul { background: #dbeafe; color: #1e40af; }
+  .app-badge.verde { background: #dcfce7; color: #166534; }
+  .app-badge.mint { background: var(--mint); color: var(--primary-dark); }
+  .app-badge.vermelho { background: #fee2e2; color: #b91c1c; }
+
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 10px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-btn.perigo { background: #dc2626; color: #fff; }
+  .app-btn.perigo-claro { background: #fff; border: 1.5px solid var(--vermelho-bd); color: var(--vermelho); }
+  .app-btn.cinza { background: #fff; border: 1.5px solid #d8d5cc; color: #6b756f; }
+  .app-btn.bloqueado { background: #dc2626; color: #fff; opacity: .45; }
+
+  .app-acoes { display: flex; flex-direction: column; gap: 8px; }
+  .app-acoes .app-btn { width: 100%; }
+
+  .app-pills { display: flex; flex-direction: column; gap: 6px; }
+  .app-pill {
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+    text-align: center;
+  }
+  .app-pill.on-vermelho { background: #dc2626; border-color: #dc2626; color: #fff; }
+
+  .app-nota {
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12px;
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+  .app-nota.vermelha { background: var(--vermelho-bg); border: 1px solid var(--vermelho-bd); color: #7f1d1d; }
+  .app-nota.verde { background: rgba(212,233,226,.5); border: 1px solid rgba(0,117,74,.3); color: var(--primary-dark); }
+
+  .app-textarea {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 9px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    min-height: 58px;
+  }
+  .app-rotulo { font-size: 12px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+  .app-contador { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; margin-top: 5px; }
+  .app-contador .falta { color: #b45309; }
+  .app-contador .ok { color: var(--primary-dark); font-weight: 700; }
+  .app-contador .num { color: #8b948f; }
+
+  .app-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+  .app-chip {
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid #d8d5cc;
+    background: #fff;
+    color: #6b756f;
+  }
+  .app-chip.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Dar o aceite — ou recusar<br>a nota do fornecedor</h1>
+    <p>Nas Notas Recebidas você agora fala direto com a Receita Federal: confirma que a mercadoria chegou, ou recusa a nota quando ela não chegou — ou quando veio contra o nosso CNPJ sem compra nenhuma.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">🧾</span>
+      <div>
+        <small>Notas Recebidas · Conferência</small>
+        <strong>NF-e 43.980 · Moinho Exemplo</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <p>Dois botões novos na conferência da nota:</p>
+      <div class="mock-botoes">
+        <span class="verde">🛡️ Confirmar operação</span>
+        <span class="vermelho">⚠️ Não recebi / Não reconheço</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧾</span>
+      <strong>O que é a "Manifestação do Destinatário"</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Toda vez que um fornecedor emite uma nota contra o nosso CNPJ, ela cai na aba <b>Notas Recebidas</b>. Até agora a gente só conferia e lançava a despesa — a Receita nunca ouvia a nossa versão.</p>
+      <ul>
+        <li>Agora dá para <b>responder oficialmente</b> à Receita Federal sobre cada nota.</li>
+        <li>São três respostas possíveis: <b>Confirmar a operação</b> (recebi tudo certo), <b>Operação não realizada</b> (a mercadoria não chegou) e <b>Desconhecimento</b> (essa nota não é nossa).</li>
+        <li>O fornecedor é avisado, e fica registrado no histórico fiscal do nosso CNPJ.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✅</span>
+      <strong>"Confirmar operação" — o aceite da mercadoria</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>É o caso normal do dia a dia: a carga chegou, foi conferida, está tudo certo.</p>
+      <ul>
+        <li>O botão <b>"Confirmar operação"</b> aparece na conferência da nota nova, e também na nota que já virou despesa (para o caso de a confirmação automática ter falhado).</li>
+        <li>Confirmada, a nota ganha o selo verde <b>"Confirmada ✓"</b> na lista — dá para ver de relance quais já foram respondidas.</li>
+        <li><b>Não precisa de permissão especial</b>: quem já opera as Notas Recebidas pode confirmar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚫</span>
+      <strong>"Não recebi" × "Não reconheço" — a diferença</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>São duas recusas diferentes, e escolher a certa importa:</p>
+      <ul>
+        <li><b>Não recebi a mercadoria</b> (Operação não realizada) — a compra existiu, mas a mercadoria não chegou ou foi recusada na entrega: carga avariada, pedido cancelado, produto devolvido ao motorista.</li>
+        <li><b>Não reconheço esta nota</b> (Desconhecimento) — a nota foi emitida contra o nosso CNPJ <b>sem nenhuma compra nossa</b>: não teve pedido, nem entrega, nem combinação com esse fornecedor.</li>
+      </ul>
+      <p>Nos dois casos o app pede uma <b>justificativa de no mínimo 15 letras</b> (limite de 255) — é a Receita que exige. Escreva com data e detalhe, porque esse texto vai junto.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico alerta">⚠️</span>
+      <strong>Recusar é definitivo — não dá para desfazer</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <div class="destaque">
+        A recusa é um <b>ato fiscal enviado à Receita Federal</b>. Depois que sai, <b>não existe botão de desfazer no app</b>. Por isso o app pede confirmação numa segunda tela antes de enviar.
+      </div>
+      <p><b>Se for só engano de conferência</b>, não recuse:</p>
+      <ul>
+        <li>Nota que a gente não quer lançar agora → use <b>"Ignorar nota"</b>. Ela sai da lista de novas e não fala nada com a Receita (e dá para reativar depois).</li>
+        <li>Nota de bonificação, amostra, troca ou comodato → use <b>"Registrar entrada (sem pagamento)"</b>, como já era.</li>
+        <li>Produto ou conversão errados numa nota já lançada → use <b>"Corrigir entrada de estoque"</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔒</span>
+      <strong>Quem pode recusar</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Confirmar</b> a operação: qualquer pessoa que já opera as Notas Recebidas.</li>
+        <li><b>Recusar</b>: só quem tiver a permissão nova <b>"Recusar Nota na Receita"</b>. Quem não tiver, nem enxerga o botão vermelho.</li>
+        <li>A permissão fica em <b>Administração → Usuários → Permissões → Financeiro</b>, logo abaixo de "Corrigir Entrada de Estoque". Ela vem <b>desligada</b> para todo mundo — o gerente liga para quem deve ter.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔎</span>
+      <strong>Onde a nota recusada vai parar</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Entrou um filtro novo na lista: o chip <b>"Recusadas"</b>, entre "Ignoradas" e "Todas".</li>
+        <li>Na linha da nota, o selo passa a mostrar <b>qual</b> recusa foi — "Operação não realizada" ou "Desconhecimento" — em vermelho.</li>
+        <li>Abrindo a nota, uma faixa vermelha mostra a <b>justificativa enviada</b>, o <b>protocolo</b> da Receita, <b>quem</b> recusou e <b>quando</b>.</li>
+        <li>Nota recusada <b>não gera despesa nem entrada de estoque</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔁</span>
+      <strong>Quando o app avisa "confirme na mão"</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Ao gerar a despesa, vincular a nota ou registrar a entrada sem pagamento, o app tenta confirmar a operação na Receita sozinho. Se a SEFAZ estiver fora do ar naquele instante, aparece um <b>aviso amarelo</b> dizendo que a confirmação automática não saiu.</p>
+      <p>Nesse caso é só abrir a nota e tocar em <b>"Confirmar operação"</b> — o botão continua lá no detalhe da nota justamente para isso.</p>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Conferência da nota — os dois botões novos</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🧾 NF-e 43.980 · Moinho Exemplo LTDA</div>
+        <div class="app-card-body">
+          <div class="app-badges">
+            <span class="app-badge azul">Nova</span>
+            <span class="app-badge">NF-e 43980</span>
+          </div>
+          <div class="app-linha">Emitida 25/08/2026 · <b>R$ 4.820,00</b></div>
+          <div class="app-acoes">
+            <span class="app-btn">Gerar Conta a Pagar (2 parcelas)</span>
+            <span class="app-btn claro">🛡️ Confirmar operação<span class="pin">1</span></span>
+            <span class="app-btn perigo-claro">⚠️ Não recebi / Não reconheço<span class="pin">2</span></span>
+            <span class="app-btn cinza">Ignorar nota<span class="pin">3</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>"Confirmar operação"</b> (verde vazado): declara à Receita que a mercadoria chegou. Todo mundo que opera as Notas Recebidas vê este botão.</span></div>
+      <div><span class="pin">2</span><span><b>"Não recebi / Não reconheço"</b> (vermelho vazado): abre o painel de recusa. <b>Só aparece</b> para quem tem a permissão "Recusar Nota na Receita".</span></div>
+      <div><span class="pin">3</span><span><b>"Ignorar nota"</b> continua igual e <b>não fala nada com a Receita</b> — é o caminho para nota que a gente só não quer lançar.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Painel de recusa — o que aconteceu e por quê</div>
+    <div class="tela-corpo">
+      <div class="app-card recusa">
+        <div class="app-card-head">⚠️ Recusar a nota na Receita</div>
+        <div class="app-card-body">
+          <div class="app-linha">NF-e 43.980 · Moinho Exemplo LTDA · R$ 4.820,00</div>
+          <div class="app-nota vermelha">
+            Isto envia um <b>evento oficial à Receita Federal</b> dizendo que esta nota não deve ser cobrada de nós. <b>Não dá para desfazer pelo app.</b><span class="pin">1</span>
+          </div>
+          <div class="app-rotulo">O que aconteceu</div>
+          <div class="app-pills">
+            <span class="app-pill on-vermelho">Não recebi a mercadoria<span class="pin">2</span></span>
+            <span class="app-pill">Não reconheço esta nota</span>
+          </div>
+          <div class="app-sub" style="margin:8px 0 12px;"><b>Operação não realizada</b> — a compra existiu, mas a mercadoria não chegou ou foi recusada na entrega.<span class="pin">3</span></div>
+          <div class="app-rotulo">Justificativa (vai para a Receita)</div>
+          <div class="app-textarea">Carga chegou avariada e foi devolvida ao motorista no dia 26/08.</div>
+          <div class="app-contador">
+            <span class="ok">Tamanho aceito pela SEFAZ ✓</span>
+            <span class="num">62/255<span class="pin">4</span></span>
+          </div>
+          <div class="app-acoes" style="margin-top:12px;">
+            <span class="app-btn perigo">⚠️ Revisar e recusar<span class="pin">5</span></span>
+            <span class="app-btn cinza">Cancelar</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O aviso vermelho no topo lembra que <b>o envio é definitivo</b> antes de você escrever qualquer coisa.</span></div>
+      <div><span class="pin">2</span><span><b>Escolha o que aconteceu</b>: "Não recebi a mercadoria" ou "Não reconheço esta nota". Sem escolher, o botão de recusar fica travado.</span></div>
+      <div><span class="pin">3</span><span>Ao escolher, o app <b>explica em uma linha</b> o que aquela opção significa para a Receita — para ninguém marcar a errada.</span></div>
+      <div><span class="pin">4</span><span>O contador mostra quanto falta: a Receita exige de <b>15 a 255 letras</b>. Enquanto faltar, ele avisa "Faltam X caracteres" e o botão continua bloqueado.</span></div>
+      <div><span class="pin">5</span><span><b>"Revisar e recusar"</b> ainda NÃO envia — ele abre o passo de confirmação (Tela 3).</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · A confirmação — o último passo antes de ir</div>
+    <div class="tela-corpo">
+      <div class="app-card recusa">
+        <div class="app-card-head">⚠️ Recusar a nota na Receita</div>
+        <div class="app-card-body">
+          <div class="app-nota vermelha" style="background:#fff;border:2px solid #f87171;">
+            Enviar <b>Operação não realizada</b> da nota NF-e 43980 para a Receita Federal? A nota fica marcada como <b>Recusada</b> e <b>não pode ser desfeita pelo app</b>.<span class="pin">1</span>
+          </div>
+          <div class="app-acoes">
+            <span class="app-btn perigo">⚠️ Sim, recusar na Receita<span class="pin">2</span></span>
+            <span class="app-btn cinza">Voltar<span class="pin">3</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>A confirmação <b>repete em português</b> exatamente o que vai ser enviado, com o tipo da recusa e o número da nota.</span></div>
+      <div><span class="pin">2</span><span>Só este botão envia de verdade. Se a Receita recusar o evento, o app mostra o motivo em vermelho e <b>a nota continua exatamente como estava</b> — nada é marcado por engano.</span></div>
+      <div><span class="pin">3</span><span><b>"Voltar"</b> traz você de volta ao texto, sem enviar nada.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 4 · Depois — como a nota fica na lista</div>
+    <div class="tela-corpo">
+      <div class="app-chips" style="margin-bottom:12px;">
+        <span class="app-chip">Novas (3)</span>
+        <span class="app-chip">Despesa gerada / vinculada</span>
+        <span class="app-chip">Sem pagamento</span>
+        <span class="app-chip">Ignoradas</span>
+        <span class="app-chip on">Recusadas<span class="pin">1</span></span>
+        <span class="app-chip">Todas</span>
+      </div>
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="app-badges">
+            <span class="app-badge vermelho">Operação não realizada<span class="pin">2</span></span>
+            <span class="app-badge">NF-e 43980</span>
+          </div>
+          <div class="app-linha">Moinho Exemplo LTDA · <b>R$ 4.820,00</b></div>
+          <div class="app-nota vermelha" style="margin-top:8px;margin-bottom:0;">
+            <b>Nota recusada na Receita</b> — Operação não realizada. Esta nota <b>não gera despesa nem entrada de estoque</b>.<br>
+            justificativa enviada: Carga chegou avariada e foi devolvida ao motorista no dia 26/08.<br>
+            <span style="font-size:11px;">enviada em 27/08/2026 14:32 por Clarkson · protocolo 135260000123456<span class="pin">3</span></span>
+          </div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-body">
+          <div class="app-badges">
+            <span class="app-badge verde">Despesa gerada ✓</span>
+            <span class="app-badge mint">Confirmada ✓<span class="pin">4</span></span>
+            <span class="app-badge">NF-e 44012</span>
+          </div>
+          <div class="app-linha">Embalagens Exemplo ME · <b>R$ 1.190,00</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O chip <b>"Recusadas"</b> junta todas as notas que foram recusadas na Receita — fica entre "Ignoradas" e "Todas".</span></div>
+      <div><span class="pin">2</span><span>O selo vermelho diz <b>qual</b> recusa foi: "Operação não realizada" ou "Desconhecimento".</span></div>
+      <div><span class="pin">3</span><span>Abrindo a nota, a faixa vermelha traz <b>justificativa, protocolo da Receita, quem recusou e quando</b>.</span></div>
+      <div><span class="pin">4</span><span>O selo verde <b>"Confirmada ✓"</b> aparece ao lado do status normal da nota — são duas informações diferentes: o que a gente fez com a despesa, e o que a gente respondeu à Receita.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO USAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div><b>Peça a permissão:</b> quem vai recusar nota precisa do interruptor <b>"Recusar Nota na Receita"</b> ligado em Administração → Usuários → Permissões → Financeiro. Confirmar a operação não precisa de nada.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Abra <b>Financeiro → Notas Recebidas</b> e toque em <b>Conferir</b> numa nota nova.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Mercadoria chegou? <b>Confirmar operação</b>. Não chegou, ou a nota não é nossa? <b>Não recebi / Não reconheço</b>, escolha o caso, escreva a justificativa e confirme.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">5</span>
+      <div>Na dúvida, <b>não recuse</b> — use "Ignorar nota" e chame o financeiro. Recusa não tem volta. ⚠️</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a tela nova.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

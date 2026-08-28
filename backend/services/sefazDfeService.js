@@ -289,6 +289,31 @@ async function statusCaptura() {
 // Persistência dos documentos capturados
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * Status em que a nota JÁ FOI TRATADA e cujo status NÃO PODE REGREDIR para NOVA quando
+ * o XML completo chega depois (`registrarProcNFe`). O XML continua sendo COMPLETADO
+ * nessas notas — o que não pode é o status voltar atrás e reabrir a nota para lançamento.
+ *
+ * Por que cada uma está aqui:
+ *   CONFERIDA           já virou conta a pagar;
+ *   VINCULADA           já está anexada a parcela lançada (voltar para NOVA deixaria
+ *                       gerar uma despesa NOVA em cima da mesma nota = dívida em dobro);
+ *   ENTRADA_REGISTRADA  já entrou como bonificação/amostra/remessa;
+ *   IGNORADA            o usuário disse que não interessa;
+ *   RECUSADA            manifestação 210220/210240 já ACEITA pela SEFAZ — é
+ *                       IRREVERSÍVEL na Receita. Se o status voltasse para NOVA, a nota
+ *                       passaria de novo em TODAS as travas (gerar-conta, registrar-entrada,
+ *                       vincular-parcelas) e viraria despesa + estoque + XML na
+ *                       contabilidade para uma nota que a empresa recusou oficialmente;
+ *   CANCELADA_EMITENTE  o fornecedor cancelou.
+ *
+ * ⚠️ RECUSADA e VINCULADA foram acrescentadas em 08/2026. O caminho real que expunha a
+ * RECUSADA: a rota de manifestação aceita recusar nota em AGUARDANDO_XML (é o caso
+ * natural do Desconhecimento — dá para recusar só pelo resumo); quando o XML completo
+ * chegava na consulta seguinte, a nota era jogada de volta para NOVA.
+ */
+const STATUS_NAO_REGRIDEM = ['CONFERIDA', 'VINCULADA', 'ENTRADA_REGISTRADA', 'IGNORADA', 'RECUSADA', 'CANCELADA_EMITENTE'];
+
 /** Garante o Fornecedor pelo CNPJ do emitente (auto-criado com origem NFE). */
 async function garantirFornecedor(cnpj, nome) {
     if (!cnpj) return null;
@@ -361,8 +386,10 @@ async function registrarProcNFe(xmlString, nsu, cnpjNosso) {
     const naoEDestinada = !!(nota.destinatarioCnpj && cnpjNosso && nota.destinatarioCnpj !== cnpjNosso);
     const existente = await prisma.notaEntrada.findUnique({ where: { chave: nota.chave } });
 
-    // Notas já tratadas pelo usuário não voltam para NOVA — só completam o XML
-    if (existente && ['CONFERIDA', 'ENTRADA_REGISTRADA', 'IGNORADA', 'CANCELADA_EMITENTE'].includes(existente.status)) {
+    // Nota já tratada pelo usuário NÃO volta para NOVA — mas o XML completo continua
+    // sendo gravado (xmlPath + nsu): é justamente o que dá DANFE, download e relatório
+    // fiscal para uma nota conferida/vinculada/recusada. Só o status é que não regride.
+    if (existente && STATUS_NAO_REGRIDEM.includes(existente.status)) {
         await prisma.notaEntrada.update({
             where: { chave: nota.chave },
             data: { xmlPath, nsu: nsu || existente.nsu }
@@ -444,7 +471,16 @@ async function registrarEvento(xmlString) {
 
 async function manifestarCiencia(cert, pfx, senha) {
     const pendentes = await prisma.notaEntrada.findMany({
-        where: { manifestada: false, tipo: 'NFE', status: { not: 'CANCELADA_EMITENTE' } },
+        // `manifestacaoTipo: null` é IGUALDADE a null de propósito: no Prisma, `not`/`notIn`
+        // EXCLUEM as linhas null — usar `not` aqui deixaria de fora justamente as notas que
+        // ainda não têm manifestação nenhuma (ou seja, todas as pendentes).
+        // Nota já recusada (Desconhecimento / Não Realizada) NUNCA recebe ciência.
+        where: {
+            manifestada: false,
+            tipo: 'NFE',
+            manifestacaoTipo: null,
+            status: { notIn: ['CANCELADA_EMITENTE', 'RECUSADA'] }
+        },
         select: { id: true, chave: true },
         take: 100,
         orderBy: { criadoEm: 'asc' }
@@ -489,6 +525,290 @@ async function manifestarCiencia(cert, pfx, senha) {
         }
     }
     return { manifestadas };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Manifestação do Destinatário — ATO DELIBERADO do usuário (08/2026)
+//
+// Três eventos, todos no mesmo webservice de RecepcaoEvento (NÃO é a Distribuição
+// DF-e, então NÃO passa pela trava de 1h do `podeConsultar` — o cStat 656 não existe
+// aqui):
+//   210200 Confirmação da Operação    → "recebi a mercadoria"
+//   210220 Desconhecimento da Operação → "essa nota não é minha, não comprei nada"
+//   210240 Operação não Realizada     → "a mercadoria não chegou / foi recusada"
+//
+// Regras que NÃO podem ser afrouxadas:
+//  1. Só o 210240 leva justificativa. A lib põe `xJust` no XML para QUALQUER evento
+//     que receba `justificativa` — e a SEFAZ rejeita 210200/210220 com xJust por schema.
+//  2. NUNCA gravar a manifestação na nota quando a SEFAZ não aceitou (é o vício do
+//     `manifestarCiencia` acima, que marca `manifestada: true` mesmo em rejeição —
+//     lá é aceitável porque só evita reenvio infinito de um evento neutro; aqui seria
+//     mentir para o usuário sobre um ato fiscal).
+//  3. É IRREVERSÍVEL: `nSeqEvento` é fixo em "1" e o Id do evento é
+//     `ID<tpEvento><chNFe>01` — a SEFAZ recusa o mesmo evento repetido para a mesma
+//     chave (duplicidade). Isso dá idempotência de graça, mas não há "desfazer".
+// ─────────────────────────────────────────────────────────────
+
+const MANIFESTACAO_EVENTOS = {
+    CONFIRMACAO: { tpEvento: 210200, marca: 'CONFIRMADA', recusa: false, rotulo: 'Confirmação da Operação' },
+    DESCONHECIMENTO: { tpEvento: 210220, marca: 'DESCONHECIDA', recusa: true, rotulo: 'Desconhecimento da Operação' },
+    NAO_REALIZADA: { tpEvento: 210240, marca: 'NAO_REALIZADA', recusa: true, rotulo: 'Operação não Realizada' }
+};
+
+// cStat de evento REGISTRADO pela SEFAZ. Qualquer outro é recusa.
+const CSTAT_EVENTO_ACEITO = ['135', '136'];
+
+// Teto da chamada HTTP à SEFAZ na manifestação (o padrão da lib é 60s — demais).
+// Dois tetos DIFERENTES de propósito (decisão do gerente de entrega, 08/2026):
+//  - MANUAL (30s): o usuário clicou no botão pedindo AQUELE ato e deve esperar por ele.
+//  - AUTOMÁTICA (15s): roda DENTRO do clique de "gerar conta"/"registrar entrada"/
+//    "vincular parcela". Ampulheta longa nesse clique faz o usuário clicar de novo —
+//    e este projeto já teve estrago por clique repetido. As falhas rápidas (rejeição,
+//    403, DNS) voltam em segundos e geram o aviso igual; só a conexão pendurada gasta
+//    o teto inteiro, e aí 15s já bastam para concluir que não vai responder. A nota
+//    fica sem confirmar, o aviso aparece e o botão manual continua como saída.
+const MANIFESTACAO_TIMEOUT_MS = 30000;
+const MANIFESTACAO_TIMEOUT_AUTO_MS = 15000;
+
+/**
+ * Normaliza a justificativa para o que o schema da SEFAZ aceita no `xJust`:
+ *   - sem acento (NFD + remocao dos diacriticos — mesmo tratamento de detectarMotivoEntrada:
+ *     "ç" vira "c", "ã" vira "a");
+ *   - so ASCII imprimivel: caractere de controle (quebra de linha, tab), travessao,
+ *     aspas curvas e emoji NAO passam no schema da NF-e e derrubariam o lote inteiro;
+ *   - sem os caracteres proibidos em campo de texto da NF-e (& < > " ');
+ *   - espacos colapsados, cortada em 255.
+ * Funcao PURA — devolve string (possivelmente vazia; quem chama valida o minimo de 15).
+ *
+ * ⚠️ EXISTE UM ESPELHO EXATO desta função no frontend, em
+ * `frontend/src/pages/Financeiro/NotasRecebidasPage.jsx` (~linha 122) — é ele que faz o
+ * contador de caracteres da tela medir o MESMO texto que a SEFAZ vai receber (o mínimo
+ * de 15 é validado aqui DEPOIS de normalizar, e a normalização APAGA caracteres:
+ * "Nao veio o 'kit'" tem 16 cruas e 14 normalizadas).
+ * AS DUAS CÓPIAS ANDAM JUNTAS: mudou a regra aqui, mude lá — e vice-versa. Se elas
+ * divergirem o defeito é MUDO: a tela libera o botão e o backend responde 400
+ * (ou o contador trava um texto que passaria). Nenhum build nem `node --check` pega isso.
+ */
+function normalizarJustificativa(texto) {
+    return String(texto || '')
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // tira acento
+        .replace(/[^\x20-\x7E]/g, ' ')                      // so ASCII imprimivel
+        .replace(/["&'<>]/g, ' ')                           // proibidos em texto de NF-e (aspas, & e sinais de tag)
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 255)
+        .trim();
+}
+
+/**
+ * Envia UMA manifestação do destinatário para UMA nota.
+ *
+ * NUNCA lança — devolve sempre um objeto.
+ * NUNCA escreve em NotaEntrada quando `aceito === false`.
+ *
+ * Sobre o histórico (`NotaEntradaManifestacao`), sendo exato:
+ *   - grava a tentativa SEMPRE QUE O EVENTO CHEGOU A SER ENVIADO à SEFAZ — aceita,
+ *     recusada por cStat, lote rejeitado inteiro ou erro de rede/SOAP;
+ *   - NÃO grava nada quando a chamada é barrada ANTES do envio, porque aí não houve
+ *     tentativa nenhuma: `TIPO_INVALIDO`, `JUSTIFICATIVA` (texto curto demais),
+ *     `NOTA_NAO_ENCONTRADA` e `SEM_CERTIFICADO` retornam antes de falar com a SEFAZ;
+ *   - a gravação do histórico e o update da nota NÃO são atômicos de propósito
+ *     (ver o comentário no corpo da função) — histórico órfão é melhor do que
+ *     evento na Receita sem rastro nenhum no app.
+ *
+ * @param {object}  p
+ * @param {string}  p.notaId
+ * @param {'CONFIRMACAO'|'DESCONHECIMENTO'|'NAO_REALIZADA'} p.tipo
+ * @param {string} [p.justificativa]  obrigatória nas DUAS recusas (é registro do ato no app);
+ *                                    só a de NAO_REALIZADA vai para a SEFAZ, como `xJust`
+ * @param {string} [p.usuarioId]
+ * @param {boolean} [p.automatica=false]  true = confirmação disparada por dentro de um
+ *   lançamento (gerar conta / registrar entrada / vincular parcela). Só muda o TETO de
+ *   espera da chamada HTTP: 15s no automático (não travar o clique do usuário) contra
+ *   30s no manual (o usuário pediu aquele ato e espera por ele). Nada mais muda.
+ * @returns {Promise<{ok:boolean, aceito:boolean, codigo:string, cStat?:string, xMotivo?:string, protocolo?:string, motivo?:string, tipo?:string, marca?:string, status?:string, manifestacaoEm?:Date}>}
+ *   `codigo`: OK | TIPO_INVALIDO | JUSTIFICATIVA | NOTA_NAO_ENCONTRADA | SEM_CERTIFICADO
+ *             | REDE | REJEITADA | GRAVACAO
+ */
+async function manifestar({ notaId, tipo, justificativa, usuarioId, automatica = false } = {}) {
+    // Único efeito do modo: o teto de espera da chamada HTTP (ver as constantes acima).
+    // A regra fiscal é IDÊNTICA nos dois caminhos — nada de "automático marca mais fácil".
+    const timeoutMs = automatica ? MANIFESTACAO_TIMEOUT_AUTO_MS : MANIFESTACAO_TIMEOUT_MS;
+    const cfg = MANIFESTACAO_EVENTOS[String(tipo || '').toUpperCase().trim()];
+    if (!cfg) {
+        return { ok: false, aceito: false, codigo: 'TIPO_INVALIDO', motivo: 'Tipo de manifestação inválido.' };
+    }
+
+    let nota;
+    try {
+        nota = await prisma.notaEntrada.findUnique({
+            where: { id: String(notaId || '') },
+            select: { id: true, chave: true, numero: true }
+        });
+    } catch (e) {
+        console.error('[SefazDFe] manifestar — falha ao ler a nota:', e.message);
+        return { ok: false, aceito: false, codigo: 'GRAVACAO', motivo: 'Não foi possível ler a nota no banco.' };
+    }
+    if (!nota) return { ok: false, aceito: false, codigo: 'NOTA_NAO_ENCONTRADA', motivo: 'Nota não encontrada.' };
+
+    // Justificativa:
+    //  - as DUAS recusas exigem justificativa (é o registro do ato dentro do app);
+    //  - mas SÓ o 210240 pode mandá-la para a SEFAZ. Enviar `justificativa` junto com
+    //    210200/210220 faz a lib escrever `xJust` no XML e a SEFAZ rejeita por schema
+    //    (ver regra 1 acima) — por isso `justSefaz` é separado de `just`.
+    let just = null;
+    if (cfg.recusa) {
+        just = normalizarJustificativa(justificativa);
+        if (just.length < 15) {
+            return { ok: false, aceito: false, codigo: 'JUSTIFICATIVA', motivo: 'A justificativa precisa ter de 15 a 255 caracteres.' };
+        }
+    }
+    const justSefaz = cfg.tpEvento === 210240 ? just : null;
+
+    // Certificado A1 — NÃO usa podeConsultar() (aquela trava é da Distribuição DF-e).
+    const cert = await certificadoAtivo().catch(() => null);
+    if (!cert || new Date(cert.validade) < new Date()) {
+        return { ok: false, aceito: false, codigo: 'SEM_CERTIFICADO', motivo: 'Nenhum certificado digital válido instalado.' };
+    }
+    let pfx, senha;
+    try {
+        const certificadoService = require('./certificadoService');
+        ({ pfx, senha } = certificadoService.descriptografarCertificado(cert));
+    } catch (e) {
+        console.error('[SefazDFe] manifestar — falha ao abrir o certificado:', e.message);
+        return { ok: false, aceito: false, codigo: 'SEM_CERTIFICADO', motivo: 'Nenhum certificado digital válido instalado.' };
+    }
+
+    // ── Chamada de rede: SEMPRE fora de qualquer $transaction ──
+    let resultado = null;
+    let erroTransporte = null;
+    try {
+        const { RecepcaoEvento } = require('node-mde');
+        const recepcao = new RecepcaoEvento({
+            pfx,
+            passphrase: senha,
+            cnpj: normalizarDoc(cert.cnpj),
+            tpAmb: TP_AMB,
+            // O padrão da lib é 60s — demais nos dois casos. 15s no automático (roda dentro
+            // do clique de "gerar conta"/"registrar entrada"/"vincular parcela") e 30s no
+            // manual (o usuário pediu o ato e espera por ele).
+            options: { requestOptions: { timeout: timeoutMs } }
+        });
+        resultado = await recepcao.enviarEvento({
+            idLote: String(Date.now()),
+            lote: [{
+                chNFe: nota.chave,
+                tipoEvento: cfg.tpEvento,
+                ...(justSefaz ? { justificativa: justSefaz } : {})   // xJust SÓ no 210240
+            }]
+        });
+        if (resultado?.error) erroTransporte = String(resultado.error).substring(0, 2000);
+    } catch (e) {
+        erroTransporte = String(e?.message || e).substring(0, 2000);
+        console.error(`[SefazDFe] manifestar ${cfg.rotulo} ${nota.chave}:`, erroTransporte);
+    }
+
+    // Lote rejeitado inteiro → infEvento VAZIO (a SEFAZ responde só no nível do lote).
+    const ev = Array.isArray(resultado?.data?.infEvento) ? resultado.data.infEvento[0] : null;
+    const cStatEvento = ev?.cStat != null && ev.cStat !== '' ? String(ev.cStat) : null;
+    const cStatLote = resultado?.data?.cStat != null && resultado.data.cStat !== '' ? String(resultado.data.cStat) : null;
+    const cStat = cStatEvento || cStatLote;
+    const xMotivoBruto = ev?.xMotivo || resultado?.data?.xMotivo || null;
+    const xMotivo = xMotivoBruto ? String(xMotivoBruto).substring(0, 2000) : null;
+    const protocolo = ev?.nProt ? String(ev.nProt) : null;
+
+    const aceito = !erroTransporte && !!ev && CSTAT_EVENTO_ACEITO.includes(cStatEvento);
+    const manifestacaoEm = new Date();
+
+    // ── Gravação, em DOIS PASSOS DELIBERADAMENTE NÃO ATÔMICOS ──
+    //
+    // Aqui NÃO se usa $transaction de propósito (08/2026). Com os dois writes na mesma
+    // transação, uma falha no update da nota fazia ROLLBACK e levava junto a linha de
+    // histórico — o pior desfecho possível: evento REGISTRADO na Receita e ZERO rastro
+    // no app, sem poder reenviar (nSeqEvento é fixo em "1"). Um histórico órfão é
+    // muitíssimo melhor do que nenhum registro: ele é a única prova de que o evento saiu.
+    // Por isso o histórico é gravado PRIMEIRO e SOZINHO, e a nota depois.
+
+    // Passo 1 — histórico da tentativa (aceita, recusada ou sem resposta). Best-effort:
+    // se ele falhar, ainda assim seguimos para marcar a nota, que é o que o usuário vê.
+    let historicoGravado = true;
+    try {
+        await prisma.notaEntradaManifestacao.create({
+            data: {
+                notaEntradaId: nota.id,
+                chave: nota.chave,
+                tipoEvento: String(cfg.tpEvento),
+                justificativa: just,
+                aceito,
+                cStat,
+                xMotivo,
+                protocolo,
+                nSeqEvento: ev?.nSeqEvento ? String(ev.nSeqEvento) : null,
+                erro: erroTransporte,
+                criadoPorId: usuarioId || null
+            }
+        });
+    } catch (e) {
+        historicoGravado = false;
+        console.error(
+            `[SefazDFe] manifestar — FALHA AO GRAVAR O HISTÓRICO (nota ${nota.numero || nota.id}, chave ${nota.chave}, evento ${cfg.tpEvento}, aceito=${aceito}, cStat=${cStat}, protocolo=${protocolo}):`,
+            e.message
+        );
+    }
+
+    // Passo 2 — a nota só é tocada quando a SEFAZ ACEITOU (regra 2 do cabeçalho).
+    if (aceito) {
+        try {
+            await prisma.notaEntrada.update({
+                where: { id: nota.id },
+                data: {
+                    manifestacaoTipo: cfg.marca,
+                    manifestacaoEm,
+                    manifestacaoJustificativa: just,
+                    manifestacaoProtocolo: protocolo,
+                    manifestacaoCStat: cStatEvento,
+                    manifestacaoPorId: usuarioId || null,
+                    // Confirmação NÃO muda o status (a nota segue o fluxo normal);
+                    // as duas recusas tiram a nota do fluxo.
+                    ...(cfg.recusa ? { status: 'RECUSADA' } : {})
+                }
+            });
+        } catch (e) {
+            // A SEFAZ aceitou e o app não conseguiu registrar: avisa alto. O histórico
+            // do passo 1 (se gravou) é o rastro que sobra para o conserto manual.
+            console.error(
+                `[SefazDFe] manifestar — SEFAZ ACEITOU MAS A NOTA NÃO FOI MARCADA (nota ${nota.numero || nota.id}, chave ${nota.chave}, evento ${cfg.tpEvento}, protocolo ${protocolo}, histórico gravado: ${historicoGravado}):`,
+                e.message
+            );
+            return {
+                ok: false,
+                aceito: true,
+                codigo: 'GRAVACAO',
+                cStat, xMotivo, protocolo,
+                motivo: 'A SEFAZ ACEITOU a manifestação, mas o app não conseguiu registrar isso no banco. Confira a nota antes de tentar de novo — o evento já foi enviado e não pode ser reenviado.'
+            };
+        }
+    }
+
+    if (erroTransporte) {
+        return { ok: false, aceito: false, codigo: 'REDE', cStat, xMotivo, motivo: erroTransporte };
+    }
+    if (!aceito) {
+        return { ok: false, aceito: false, codigo: 'REJEITADA', cStat, xMotivo, motivo: xMotivo || 'A SEFAZ não aceitou a manifestação.' };
+    }
+    return {
+        ok: true,
+        aceito: true,
+        codigo: 'OK',
+        cStat: cStatEvento,
+        xMotivo,
+        protocolo,
+        tipo: String(tipo).toUpperCase().trim(),
+        marca: cfg.marca,
+        rotulo: cfg.rotulo,
+        status: cfg.recusa ? 'RECUSADA' : null,
+        manifestacaoEm
+    };
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -819,11 +1139,15 @@ module.exports = {
     podeConsultar,
     statusCaptura,
     capturaAtiva,
+    // Manifestação do destinatário (ato do usuário — Confirmação / Desconhecimento / Não Realizada)
+    manifestar,
+    MANIFESTACAO_EVENTOS,
     // gravação (reaproveitada na importação manual de XML — mesma lógica da captura automática)
     registrarProcNFe,
     // funções puras (testáveis offline)
     parseProcNFe,
     parseResNFe,
     parseEvento,
-    detectarMotivoEntrada
+    detectarMotivoEntrada,
+    normalizarJustificativa
 };

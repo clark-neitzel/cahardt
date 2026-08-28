@@ -27,7 +27,7 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 5. Se o fornecedor **cancelar** a nota depois, ela muda sozinha para **CANCELADA PELO EMITENTE**.
 6. Fornecedor que ainda não existe no app é **criado automaticamente** pelo CNPJ da nota (origem NFE, sem enviar ao Conta Azul).
 
-> A manifestação de "Ciência da Operação" é neutra: só diz à SEFAZ "estou sabendo da nota". Não é aceite comercial.
+> A manifestação de "Ciência da Operação" é neutra: só diz à SEFAZ "estou sabendo da nota". **Não é aceite comercial** — o aceite (Confirmação da Operação) e as recusas são feitos à mão na tela, ver a seção "Manifestação do Destinatário".
 
 ### NFS-e (serviços tomados — Ambiente Nacional)
 1. A cada hora (defasado da NF-e), o robô consulta o ambiente nacional da NFS-e com o mesmo certificado A1, buscando notas de serviço onde somos o **tomador**.
@@ -51,13 +51,19 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 | ENTRADA_REGISTRADA | **Entrada sem pagamento**: a mercadoria entrou no CNPJ (bonificação, amostra grátis, remessa/troca, comodato, outro) mas **não gera conta a pagar** — a nota fica registrada com o motivo, e os itens vinculados **somam no estoque sem custo** (ver seção própria) |
 | IGNORADA | Marcada para ignorar (ex.: nota que não gera conta) — dá para reativar |
 | CANCELADA_EMITENTE | O fornecedor/prestador cancelou a nota |
+| RECUSADA | **Recusada na Receita** pela Manifestação do Destinatário (Operação não realizada ou Desconhecimento) — não gera despesa nem entrada de estoque. Ver a seção "Manifestação do Destinatário" |
+
+> Além do status, a nota pode carregar um **selo de manifestação** independente: **"Confirmada ✓"** (verde-menta) quando a Confirmação da Operação já foi enviada à Receita. Ele convive com "Despesa gerada ✓", "Vinculada ✓" etc., porque são duas informações diferentes: o que a empresa fez com a despesa, e o que a empresa respondeu à Receita.
 
 ---
 
 ## O que dá pra fazer aqui
 
 - Ver todas as notas capturadas (NF-e e NFS-e, com etiqueta do tipo) com fornecedor, número, emissão, valor e status
-- **Buscar uma nota** pelo campo de busca acima das abas: procura por **nome do fornecedor, CNPJ, produto da nota (descrição, código ou código de barras), número da nota ou chave de acesso**. A busca vale em **todas as abas** (Novas, Despesa gerada, Ignoradas e Todas). Observação: a busca por produto só encontra notas que já têm o **XML completo** (as "Aguardando XML" ainda não têm a lista de itens)
+- **Buscar uma nota** pelo campo de busca acima das abas: procura por **nome do fornecedor, CNPJ, produto da nota (descrição, código ou código de barras), número da nota ou chave de acesso**. A busca vale em **todas as abas** (Novas, Despesa gerada, Sem pagamento, Ignoradas, **Recusadas** e Todas). Observação: a busca por produto só encontra notas que já têm o **XML completo** (as "Aguardando XML" ainda não têm a lista de itens)
+- **As abas (situação):** **Novas** (Nova + Aguardando XML) · **Despesa gerada** · **Sem pagamento** (entrada registrada) · **Ignoradas** · **Recusadas** · **Todas**
+  - **"Recusadas"** junta tudo que a empresa recusou na Receita: as notas com status **RECUSADA** **e também** as que foram recusadas e **depois canceladas pelo fornecedor** (essas ficam com a etiqueta "Cancelada pelo emitente", mas seguem na aba). Nota cancelada pelo emitente que a empresa **nunca** recusou **não** aparece aqui
+  - **Dois defeitos corrigidos em 08/2026:** a aba **"Sem pagamento"** vinha devolvendo **todas** as notas (o servidor não conhecia esse filtro e o ignorava em silêncio); e a aba **"Despesa gerada"** mostrava só as notas **conferidas**, escondendo as **vinculadas** a parcela já lançada — que também já viraram despesa. Agora "Despesa gerada" traz **Conferida + Vinculada**, e "Sem pagamento" traz só as de **entrada registrada**. Se você estranhar as contagens mudarem, é isso: antes estavam erradas
 - **Filtrar por tipo de nota**: alternar entre **Todas / NF-e (produto) / NFS-e (serviço)**
 - **Filtrar por período de emissão**: seletor único em pílula (padrão do sistema, estilo Conta Azul) com presets **Hoje · Últimos 7 dias · Últimos 30 dias · Este mês · Este ano · Todo o período · Período personalizado** (De/Até dentro do próprio menu). As **setas ‹ ›** ao lado pulam o período inteiro (mês anterior/seguinte etc.); em "Todo o período" ficam desligadas
 - **Todos os filtros ficam lembrados por usuário** (situação, tipo e período): ao reabrir a tela, voltam do jeito que você deixou. No período o que fica salvo é o **preset** ("Últimos 30 dias" recalcula a partir de hoje — você não fica preso numa data velha); só o personalizado guarda as datas exatas. A navegação pelas setas não é salva
@@ -73,11 +79,12 @@ De cada nota dá para gerar a **conta a pagar** com um clique, já com as parcel
 - **Baixar o XML** completo da nota
 - **Imprimir a DANFE** (NF-e: visão em folha com emitente, chave, itens com NCM/CFOP, totais, duplicatas) ou o **DANFSE** (NFS-e: espelho com prestador, tomador, discriminação do serviço, valores e retenções) — impressos na própria página, funciona no iPad/PWA
 - **Ignorar** uma nota (e **reativar** depois, se mudar de ideia)
+- **Confirmar a operação** ou **recusar a nota na Receita** (Manifestação do Destinatário — ver seção própria abaixo). O filtro por situação ganhou o chip **"Recusadas"**, entre "Ignoradas" e "Todas"
 - **Registrar entrada (sem pagamento)** — para nota de **bonificação, amostra grátis, simples remessa/troca, comodato ou outro** motivo que entra no CNPJ mas **não gera dívida** (ver seção própria abaixo). O motivo já vem **sugerido automaticamente** pela natureza da operação e pelos CFOPs da nota
 - **Gerar a conta a pagar** a partir da nota:
   - As **parcelas vêm sugeridas pelas duplicatas** da nota (pode ajustar; a soma precisa bater com o total da nota). Quando a nota **não tem boleto/duplicata no XML** (compra à vista e toda NFS-e), a parcela já vem com a **data de emissão da nota** (não a data de hoje), para a despesa aparecer no Conta Azul com a data certa.
   - **Parcelamento manual inteligente** (para notas **sem** boleto no XML): ao clicar **"+ Adicionar parcela"**, o valor é **dividido igualmente** entre todas (a 1ª absorve os centavos) e as datas entram em **sequência**; o campo **"a cada N dias"** define o intervalo entre as parcelas (ex.: 30 → 08/07, 07/08, 06/09). Ao **digitar um valor** numa parcela, o **saldo se redistribui automaticamente** nas parcelas seguintes. Qualquer **data** pode ser editada manualmente. **Notas que já têm parcelas no XML continuam vindo do XML** (sem redividir).
-  - **Forma de pagamento e banco (registro local).** Ao marcar "Registrar forma de pagamento e banco", você escolhe a **forma de pagamento** (Pix, dinheiro, boleto, cartão etc.) e o **banco/caixa** (o padrão já vem pré-selecionado) — usado nos **Saldos por conta** do app. *(A despesa fica só no app; desde 07/2026 não é mais enviada ao Conta Azul.)*
+  - **Forma de pagamento e banco (registro local).** Ao marcar "Registrar forma de pagamento e banco", você escolhe a **forma de pagamento** (Pix, dinheiro, boleto, cartão etc.) e o **banco/caixa** (o padrão já vem pré-selecionado) — usado nos **Saldos por conta** do app. *(A despesa fica só no app; desde 07/2026 não é mais enviada ao Conta Azul.)* Se a lista de bancos/formas não carregar, aparece uma tarja âmbar com o botão **"Tentar de novo"** — o app **não** fica tentando sozinho. Dá para seguir sem isso: basta desmarcar "Registrar forma de pagamento e banco" e gerar a despesa normalmente.
   - **Observações vão para a descrição da despesa.** O que você digitar no campo **Observações** é anexado à **descrição** da despesa (fica `NF-e 123 — Fornecedor — sua observação`), mantendo o número da nota e o fornecedor na frente.
   - **"Ainda vou pagar" ou "Já paguei"**:
     - **Ainda vou pagar** — a despesa entra **em aberto**, já com a forma/banco definidos, para pagar depois.
@@ -200,6 +207,57 @@ Nem toda nota recebida representa uma dívida. Fornecedor manda **bonificação*
 
 ---
 
+## Manifestação do Destinatário — confirmar ou recusar a nota na Receita (08/2026)
+
+Toda nota que um fornecedor emite contra o CNPJ da empresa pode receber uma **resposta oficial à Receita Federal**. Até 08/2026 o app só registrava a **Ciência da Operação** automática (neutra, só serve para liberar o XML). Agora existem as três manifestações que valem como posição da empresa:
+
+| Botão na tela | O que envia | Quando usar |
+|---|---|---|
+| **Confirmar operação** (verde vazado) | Confirmação da Operação | A carga chegou, foi conferida e está tudo certo — é o "aceite" da mercadoria |
+| **Não recebi a mercadoria** | Operação Não Realizada | A compra existiu, mas a mercadoria **não chegou ou foi recusada na entrega** (carga avariada, pedido cancelado, devolvida ao motorista) |
+| **Não reconheço esta nota** | Desconhecimento da Operação | A nota veio contra o nosso CNPJ **sem nenhuma compra nossa** — não houve pedido, entrega nem combinação com esse fornecedor |
+
+**Onde ficam os botões:**
+- **Nota NOVA (conferência):** "Confirmar operação" e "Não recebi / Não reconheço" ficam na barra de ações, ao lado de "Gerar Conta a Pagar", "Registrar entrada" e "Ignorar nota". Só aparecem enquanto a nota **ainda não foi manifestada**.
+- **Nota já lançada** (Despesa gerada / Vinculada / Entrada registrada): aparece só **"Confirmar operação"**, como *fallback* — é o caminho quando a confirmação automática do lançamento não saiu. **Recusar não é oferecido aqui**: nota que já virou despesa/estoque não deve ser recusada sem antes desfazer o lançamento.
+
+**A justificativa (só nas recusas):** a SEFAZ exige de **15 a 255 caracteres**. A tela mostra o contador e **mantém o botão travado** até o texto chegar aos 15 — com o aviso "Faltam X caracteres". A Confirmação da Operação **não** pede justificativa.
+
+**Confirmação em dois passos:** nem a confirmação nem a recusa são enviadas no primeiro clique. O botão "Revisar e confirmar" / "Revisar e recusar" abre um bloco dentro da própria tela repetindo em português o que vai ser enviado (tipo da manifestação e número da nota); só o botão "Sim, ..." envia de verdade. Não existe janelinha do navegador — é tudo na tela, porque o ato é irreversível.
+
+**É definitivo.** Manifestação enviada e aceita pela SEFAZ **não tem botão de desfazer no app**. Se for só engano de conferência, o caminho certo é outro:
+- Nota que não se quer lançar agora → **Ignorar nota** (não fala nada com a Receita, e dá para reativar).
+- Bonificação, amostra, troca, comodato → **Registrar entrada (sem pagamento)**.
+- Produto ou conversão errados em nota já lançada → **Corrigir entrada de estoque**.
+
+**Se a SEFAZ recusar o evento** (prazo vencido, nota já manifestada, chave não encontrada) ou se a comunicação falhar, o app mostra o motivo em **mensagem vermelha** e a nota **continua exatamente como estava** — nada é marcado como recusado/confirmado por conta própria. Só o aceite da SEFAZ muda o status na tela.
+
+**A tentativa que não passou fica registrada — e aparece na hora.** Quando a SEFAZ recusa o evento, a nota **continua aberta** na tela e surge ali mesmo uma tarja âmbar discreta com as tentativas que não foram aceitas: tipo, data e o motivo devolvido. Não é preciso reabrir a nota nem consultar o banco para entender por que a recusa não foi. A tarja fica guardada: reabrindo a nota depois, ela continua lá. Nota sem tentativa frustrada não mostra tarja nenhuma. Como a tentativa negada deixa a nota **como estava** (em regra, NOVA), a tarja aparece tanto na tela de conferência quanto no detalhe.
+
+**Quando a SEFAZ está fora do ar** (falha de comunicação, e não uma recusa), o painel **não se fecha**: a justificativa que você digitou continua escrita, para você tentar de novo sem redigitar. A tarja âmbar então mostra "a SEFAZ não respondeu". Reenviar exige passar de novo pela tela de confirmação — o ato continua sendo irreversível.
+
+**Como a nota fica depois:**
+- **Recusada:** status **RECUSADA**, com o selo vermelho dizendo **qual** recusa foi ("Operação não realizada" ou "Desconhecimento"). Cai no chip **"Recusadas"**. Abrindo a nota, uma faixa vermelha mostra a **justificativa enviada**, o **protocolo** devolvido pela Receita, **quem** recusou e **quando**. Nota recusada **não gera despesa nem entrada de estoque**.
+  - **Se o fornecedor cancelar a nota depois de você recusá-la**, o status passa a ser **CANCELADA PELO EMITENTE** (é o fato mais recente, e verdadeiro). Mesmo assim a nota **continua aparecendo na aba "Recusadas"**, e a faixa vermelha com a sua recusa continua lá dentro — porque a prova de que a empresa recusou não pode sumir da aba onde você vai procurá-la. É por isso que nessa aba pode aparecer nota com etiqueta de cancelada: as duas coisas aconteceram.
+  - **Não precisa abrir a nota para reencontrar a sua recusa:** na própria lista, o selo vermelho da recusa ("Operação não realizada" / "Desconhecimento") fica **ao lado** da etiqueta de situação, nunca no lugar dela. Então o card mostra as duas coisas de uma vez — por exemplo **"Cancelada pelo emitente"** + **"Desconhecimento"**. Na nota que só foi recusada (sem cancelamento), o card mostra **"Recusada"** + qual recusa foi: a etiqueta diz a **situação**, o selo diz **o que a empresa respondeu à Receita**.
+- **Confirmada:** ganha o selo verde-menta **"Confirmada ✓"** ao lado do status normal, e uma faixa verde discreta no detalhe com data, autor e protocolo.
+
+**Confirmação automática ao lançar:** ao **gerar a despesa**, **vincular a parcela** ou **registrar a entrada sem pagamento**, o sistema já tenta enviar a Confirmação da Operação sozinho. Se não conseguir (SEFAZ fora do ar, por exemplo), aparece um **aviso amarelo** dizendo que a confirmação automática não saiu — e o botão "Confirmar operação" continua disponível no detalhe da nota para fazer na mão.
+
+**Permissão:** recusar exige **`Pode_Recusar_Nota_Fiscal`** (permissão própria, marcada como perigosa, **desligada por padrão**; fica em Administração → Usuários → Permissões → Financeiro, logo abaixo de "Corrigir Entrada de Estoque"). **Só se concede no interruptor individual, pessoa a pessoa.** Nenhum atalho liga esta permissão: os perfis rápidos (inclusive "Escritório / Financeiro") e o "Marcar tudo" da seção nunca a ligam. E ela é **revogada** quando se aplica um perfil rápido ou se usa o "Limpar" da seção — ou seja, os atalhos só sabem desligar. Se alguém aplicar um perfil num usuário que já podia recusar, a permissão cai e precisa ser religada na mão, de propósito: recusar é irreversível e não tem estorno, diferente das demais permissões do financeiro. **Confirmar não exige permissão extra** — quem já opera as Notas Recebidas pode confirmar.
+
+### O que mais é bom saber
+
+- **Prazo da Receita.** A SEFAZ tem prazo para aceitar a manifestação de uma nota. Passando esse prazo ela **recusa o evento**, e o motivo devolvido pela própria Receita aparece na tela — não é o app que trava. Por isso, quando a mercadoria não chega ou a nota não é nossa, manifeste **assim que descobrir**, não semanas depois.
+- **Notas que não aceitam manifestação** (o app avisa "Esta nota não aceita manifestação do destinatário"): **NFS-e** (nota de serviço vive em outro ambiente, que não tem manifestação do destinatário), nota **lançada manualmente** no app (não existe na SEFAZ) e nota já **cancelada pelo emitente**.
+- **Recusar nota já lançada é bloqueado de propósito.** O app **não desfaz nada sozinho**: se a nota já virou despesa, já está anexada a uma parcela ou já foi registrada como entrada sem pagamento, a mensagem diz o que fazer antes ("Cancelar entrada e refazer", "Desvincule", "Desfazer registro"); nota **ignorada** precisa ser reativada. Isso evita o pior cenário — recusar na Receita uma nota cuja despesa continua aberta no financeiro.
+- **Toda tentativa fica registrada** — inclusive as que a SEFAZ recusou e as que nem saíram por falha de comunicação. O detalhe da nota guarda o histórico com data, autor, código e motivo devolvidos pela Receita: uma recusa negada pela SEFAZ não some sem deixar rastro.
+- **Nota recusada NÃO vai para a contabilidade.** Diferente de "dar entrada" e de "ignorar", a recusa **não** manda o XML para a pasta do mês no Google Drive — a nota não é da empresa (ou a mercadoria não entrou), então não faz parte do movimento do mês. A **Ciência da Operação automática** também deixa de ser enviada para notas recusadas.
+- **Acento na justificativa.** O layout da SEFAZ não aceita acento, travessão nem emoji nesse campo, e o app tira isso sozinho antes de enviar: você digita "Mercadoria não chegou" e a Receita recebe "Mercadoria nao chegou". É por isso que a justificativa aparece sem acento no histórico — não é erro de digitação.
+- **Clique repetido não manda duas vezes.** Enquanto o envio está em andamento, um segundo clique recebe "Já existe um envio desta manifestação em andamento"; depois de aceita, a nota responde "Esta nota já foi manifestada como … em dd/mm/aaaa". A própria SEFAZ também recusaria o evento repetido.
+
+---
+
 ## Salvamento automático do XML na Contabilidade (Google Drive)
 
 Ao **dar entrada** numa nota (gerar a conta a pagar), **registrá-la como entrada sem pagamento** ou **ignorá-la**, o sistema **salva o XML sozinho no Google Drive**, na pasta da contabilidade organizada por mês — sem precisar baixar e arrastar nada. Vale para **NF-e e NFS-e**.
@@ -241,6 +299,7 @@ Envio Contabilidade
 | `Pode_Acessar_Notas_Recebidas` | Ver a caixa de entrada, detalhes e XML |
 | `Pode_Baixar_Contas_Pagar` | Gerar conta, **vincular/desvincular a parcela já lançada**, **registrar/desfazer entrada sem pagamento**, ignorar/reativar, cancelar entrada e "Consultar agora" |
 | `Pode_Corrigir_Entrada_Estoque` | **Corrigir produto/conversão de nota já lançada** — ajusta estoque e custo sem mexer na despesa, nas parcelas nem nos pagamentos |
+| `Pode_Recusar_Nota_Fiscal` | **Recusar a nota na Receita** (Operação não realizada / Desconhecimento). Sem ela, o botão vermelho nem aparece. **Confirmar a operação NÃO exige esta permissão** — basta `Pode_Baixar_Contas_Pagar` |
 | `configuracoes.edit` | Ligar/desligar as capturas e instalar o certificado |
 | `admin` | Tudo acima |
 
@@ -260,9 +319,10 @@ Envio Contabilidade
 
 | Caminho | Papel |
 |---------|-------|
-| `backend/services/sefazDfeService.js` | Robô de captura de NF-e na SEFAZ (Distribuição DF-e + manifestação 210210) + busca pontual por chave de acesso (`buscarPorChave`) |
+| `backend/services/sefazDfeService.js` | Robô de captura de NF-e na SEFAZ (Distribuição DF-e + Ciência da Operação 210210 automática) + busca pontual por chave (`buscarPorChave`) + **`manifestar()`**: Confirmação (210200), Desconhecimento (210220) e Operação não Realizada (210240) — só grava na nota quando a SEFAZ ACEITA (cStat 135/136) |
+| `backend/prisma/schema.prisma` | `NotaEntrada.manifestacao*` (o que ficou valendo) e **`NotaEntradaManifestacao`** (histórico de TODA tentativa, aceita ou não) |
 | `backend/services/nfseAdnService.js` | Robô de captura de NFS-e no Ambiente de Dados Nacional (ADN) + espelho DANFSE |
-| `backend/routes/notasEntrada.js` | Rotas da API (listar com filtro de tipo/período, detalhar, XML, DANFE/DANFSE, gerar conta com categoria por item + rateio, **parcelas-compativeis / vincular-parcelas / desvincular-parcelas**, **registrar-entrada / desfazer-entrada** (entrada sem pagamento), ignorar, consultar agora, **importar-xml** e **lancar-manual**) — dispara o salvamento do XML no Drive ao dar entrada/registrar/ignorar |
+| `backend/routes/notasEntrada.js` | Rotas da API (listar com filtro de tipo/período, detalhar, XML, DANFE/DANFSE, gerar conta com categoria por item + rateio, **parcelas-compativeis / vincular-parcelas / desvincular-parcelas**, **registrar-entrada / desfazer-entrada** (entrada sem pagamento), **manifestar** (Confirmação da Operação / Operação Não Realizada / Desconhecimento), ignorar, consultar agora, **importar-xml** e **lancar-manual**) — dispara o salvamento do XML no Drive ao dar entrada/registrar/ignorar |
 | `backend/services/googleDriveService.js` | Salva o XML da nota no Google Drive da Contabilidade (pasta do mês por emissão; subpasta "Ignoradas"); credenciais OAuth em `app_configs.gdrive_config` |
 | `backend/services/danfeHtmlService.js` | Monta o HTML da DANFE simplificada (função pura) a partir do XML da NF-e |
 | `backend/routes/configNotas.js` | Certificado digital + liga/desliga das capturas (NF-e e NFS-e) |

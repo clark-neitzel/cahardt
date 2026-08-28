@@ -822,7 +822,11 @@ const fs = require('fs');
 
 const DESTINO_NOTA = {
     CONFERIDA: 'GEROU_CP', VINCULADA: 'VINCULADA', ENTRADA_REGISTRADA: 'SEM_PAGAMENTO',
-    NOVA: 'PENDENTE', AGUARDANDO_XML: 'PENDENTE', IGNORADA: 'IGNORADA', CANCELADA_EMITENTE: 'CANCELADA'
+    NOVA: 'PENDENTE', AGUARDANDO_XML: 'PENDENTE', IGNORADA: 'IGNORADA',
+    // Recusada na SEFAZ (Desconhecimento / Operação não Realizada): a nota aparece no
+    // relatório, mas não gerou nem vai gerar despesa nenhuma.
+    RECUSADA: 'RECUSADA',
+    CANCELADA_EMITENTE: 'CANCELADA'
 };
 
 /** Notas de entrada do período com as parcelas a pagar de cada uma (rota + pacote). */

@@ -55,7 +55,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'whatsapp-obrigatorio-2026-08-26',
+        deployMarker: 'manifestacao-destinatario-2026-08-28',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,

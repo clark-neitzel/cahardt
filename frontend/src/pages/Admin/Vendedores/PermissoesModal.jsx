@@ -100,6 +100,7 @@ const DEFAULT_PERMISSIONS = {
     Pode_Baixar_Contas_Pagar: false,
     Pode_Acessar_Notas_Recebidas: false,
     Pode_Corrigir_Entrada_Estoque: false,
+    Pode_Recusar_Nota_Fiscal: false,
     Pode_Acessar_Fornecedores: false,
     Pode_Acessar_Financeiro_Gerencial: false,
     Pode_Acessar_Cobranca: false,
@@ -298,6 +299,7 @@ const BOOL_INDEX = [
     { sec: 'financeiro', path: 'Pode_Baixar_Contas_Pagar', nome: 'Operar Contas a Pagar', desc: 'Criar/editar despesas, dar baixa e conferir notas recebidas (gerar conta, ignorar)', kw: 'operar baixa despesa conferir nota gerar conta pagar' },
     { sec: 'financeiro', path: 'Pode_Acessar_Notas_Recebidas', nome: 'Notas Recebidas', desc: 'Notas fiscais de entrada (compras)', kw: 'nota recebida entrada xml compra menu' },
     { sec: 'financeiro', path: 'Pode_Corrigir_Entrada_Estoque', nome: 'Corrigir Entrada de Estoque', desc: 'Arruma produto/conversão de uma nota já lançada — mexe no custo e no estoque (a despesa não é alterada)', kw: 'corrigir conversao fator custo estoque nota lancada produto errado', danger: true },
+    { sec: 'financeiro', path: 'Pode_Recusar_Nota_Fiscal', nome: 'Recusar Nota na Receita', desc: 'Manifestação do Destinatário: recusar a nota na Receita Federal por "Operação não realizada" (mercadoria não chegou) ou "Desconhecimento" (nota contra o nosso CNPJ sem compra). Ato fiscal IRREVERSÍVEL, com justificativa. Confirmar a operação não precisa desta permissão', kw: 'recusar manifestacao destinatario desconhecimento operacao nao realizada sefaz receita nota entrada irreversivel', danger: true },
     { sec: 'admin', path: 'Pode_Acessar_Contabilidade', nome: 'Contabilidade (consulta)', desc: 'Área Administração → Contabilidade: relatórios para o contador (Receber, Pagar com DRE, Extratos, Notas de Entrada, Pacote do Mês). Somente leitura e exportação — nenhum botão de baixa/edição', kw: 'contabilidade contador relatorio fiscal exportar csv consulta escritorio pacote dre' },
     { sec: 'financeiro', path: 'Pode_Acessar_Notas_Fiscais', nome: 'Notas Fiscais (emissão)', desc: 'Fila de emissão de NF-e dos pedidos', kw: 'nfe emissao fila nota fiscal menu' },
     { sec: 'financeiro', path: 'Pode_Emitir_NF', nome: 'Pode Emitir Notas', desc: "Emitir NF-e dos pedidos da fila (individual ou 'Emitir todas')", kw: 'emitir nota nfe faturar' },
@@ -1161,6 +1163,10 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                     {permissoes.Pode_Acessar_Notas_Recebidas && (
                         <Toggle checked={!!permissoes.Pode_Corrigir_Entrada_Estoque} onChange={() => toggleBool('Pode_Corrigir_Entrada_Estoque')}
                             label="Corrigir Entrada de Estoque" sublabel="Arruma produto/conversão de nota já lançada — altera custo e estoque (a despesa e os pagamentos ficam intactos)" danger />
+                    )}
+                    {permissoes.Pode_Acessar_Notas_Recebidas && (
+                        <Toggle checked={!!permissoes.Pode_Recusar_Nota_Fiscal} onChange={() => toggleBool('Pode_Recusar_Nota_Fiscal')}
+                            label="Recusar Nota na Receita" sublabel='Manifestação do Destinatário: recusar a nota por "Operação não realizada" ou "Desconhecimento". Vai para a Receita Federal e NÃO dá para desfazer pelo app (confirmar a operação não precisa desta permissão)' danger />
                     )}
                 </div>
             )}

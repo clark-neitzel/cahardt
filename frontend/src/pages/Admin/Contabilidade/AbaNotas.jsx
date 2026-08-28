@@ -13,6 +13,9 @@ const DESTINO_BADGE = {
     SEM_PAGAMENTO: { label: 'Sem pagamento', cls: 'bg-amber-100 text-amber-700' },
     PENDENTE: { label: 'Pendente de conferência', cls: 'bg-gray-100 text-gray-700' },
     IGNORADA: { label: 'Ignorada', cls: 'bg-gray-100 text-gray-700' },
+    // Recusada na SEFAZ (Desconhecimento / Operação não Realizada) — aparece no relatório,
+    // mas não gerou nem vai gerar despesa. Espelha DESTINO_NOTA de backend/routes/contabilidadeRoutes.js.
+    RECUSADA: { label: 'Recusada na Receita', cls: 'bg-red-100 text-red-700' },
     CANCELADA: { label: 'Cancelada pelo emitente', cls: 'bg-red-100 text-red-700' },
 };
 const MOTIVO_LABEL = { BONIFICACAO: 'bonificação', AMOSTRA: 'amostra', REMESSA_TROCA: 'remessa/troca', COMODATO: 'comodato', OUTRO: 'outro' };
