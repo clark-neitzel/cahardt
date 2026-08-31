@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: a ficha do cliente nos Atendimentos vem completa — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
+<meta property="og:title" content="📇 Corrigido no Hardt App: a ficha do cliente no Painel de Atendimentos vem completa">
+<meta property="og:description" content="Clicando no nome do cliente no Painel de Atendimentos, a barra lateral vinha quase vazia — e chegava a dizer 'Sem ponto GPS cadastrado' para cliente que tem ponto. Agora ela mostra o mesmo que a ficha da Rota: endereço, telefones, e-mail, dias, condição de pagamento e o ponto GPS de verdade.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932;
+    --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258;
+    --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66;
+    letter-spacing:-0.01em;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); line-height:1.55;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums; }
+  .wrap { max-width:640px; margin:0 auto; padding:0 16px 56px; }
+
+  .hero { background:linear-gradient(168deg, var(--house) 0%, #16302a 100%); color:#fff;
+    padding:40px 16px 96px; text-align:center; }
+  .hero .chip { display:inline-block; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);
+    color:#d4e9e2; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+    border-radius:999px; padding:6px 14px; margin-bottom:14px; }
+  .hero h1 { font-size:28px; margin:0 0 10px; font-weight:800; }
+  .hero p { color:#c8d6d0; max-width:490px; margin:0 auto; font-size:15.5px; }
+
+  .cartao { background:#fff; border:1px solid #e5e7eb; border-radius:16px;
+    box-shadow:0 8px 24px rgba(30,57,50,.10); padding:20px; margin-top:-64px; }
+  .cartao + .cartao, .sec { margin-top:16px; }
+  .sec-titulo { font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+  .texto { margin:0; font-size:14.5px; color:#3f4a46; }
+  .texto b { color:var(--house); }
+
+  .resumo { display:grid; gap:10px; margin-top:14px; }
+  .resumo div { display:flex; gap:10px; align-items:flex-start; background:#fbfaf8; border:1px solid #eceae4;
+    border-radius:12px; padding:12px 14px; font-size:14px; color:#3f4a46; }
+  .resumo .ic { font-size:17px; line-height:1.2; }
+  .resumo b { color:var(--house); }
+
+  details { background:#fff; border:1px solid #e5e7eb; border-radius:14px; margin-top:10px; overflow:hidden; }
+  summary { list-style:none; cursor:pointer; padding:15px 18px; font-weight:800; font-size:15px; color:var(--house);
+    display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  summary::-webkit-details-marker { display:none; }
+  summary .mais { color:var(--primary); font-size:20px; font-weight:800; transition:transform .2s; flex:none; }
+  details[open] summary .mais { transform:rotate(45deg); }
+  .det-corpo { padding:0 18px 16px; font-size:14.5px; color:#3f4a46; }
+  .det-corpo b { color:var(--house); }
+  .det-corpo ul { margin:8px 0 0; padding-left:20px; }
+  .det-corpo li { margin-top:6px; }
+
+  /* ── MOCK DE TELA ── */
+  .tela { border:1px solid #e3e1da; border-radius:16px; overflow:hidden; background:#fff; margin-top:14px; }
+  .tela-titulo { background:var(--house); color:#fff; padding:10px 14px; font-size:12px; font-weight:800;
+    letter-spacing:.08em; text-transform:uppercase; display:flex; align-items:center; gap:8px; }
+  .tela-corpo { padding:14px; background:#f7f6f2; }
+  .app-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; margin-bottom:10px; overflow:hidden; }
+  .app-card:last-child { margin-bottom:0; }
+  .app-head { display:flex; align-items:center; gap:8px; padding:10px 13px; border-bottom:1px solid #f1f0ec; }
+  .app-head .t { font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); }
+  .app-body { padding:13px; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:999px;
+    padding:9px 15px; font-size:13px; font-weight:700; }
+  .btn.pri { background:var(--primary); color:#fff; }
+  .btn.sec { background:#fff; border:1px solid var(--primary); color:var(--primary); }
+  .btn.blq { background:#f3f4f6; color:#9ca3af; border:1px solid #e5e7eb; }
+  .aviso { border-radius:10px; padding:10px 12px; font-size:12.5px; line-height:1.5; margin:8px 0; }
+  .a-green { background:#f0fdf4; border:1px solid #bbf7d0; color:#14532d; }
+  .a-gray { background:#f9fafb; border:1px solid #e5e7eb; color:#374151; }
+  .a-amber { background:#fffbeb; border:1px solid #fde68a; color:#92400e; }
+  .a-red { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
+
+  /* ── ficha lateral do cliente (mock) ── */
+  .ficha { border-radius:12px; overflow:hidden; border:1px solid #e5e7eb; background:#fff; }
+  .ficha .topo { background:#111827; color:#fff; padding:12px 13px; }
+  .ficha .topo .rot { font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:#9ca3af; }
+  .ficha .topo .nm { font-size:14px; font-weight:800; margin-top:2px; }
+  .ficha .topo .doc { font-size:10.5px; color:#9ca3af; margin-top:5px; }
+  .ficha .bloco { padding:11px 13px; border-top:1px solid #f1f0ec; }
+  .ficha .bt { font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#9ca3af; margin-bottom:7px; }
+  .ficha .lin { padding:5px 0; border-bottom:1px solid #f7f6f2; }
+  .ficha .lin:last-child { border-bottom:0; }
+  .ficha .lb { font-size:9.5px; letter-spacing:.08em; text-transform:uppercase; color:#9ca3af; }
+  .ficha .vl { font-size:12.5px; color:#1f2937; font-weight:600; }
+  .ficha .vazio { font-size:12px; color:#9ca3af; font-style:italic; }
+  .skel { height:9px; border-radius:5px; background:#e5e7eb; margin:7px 0; }
+  .duas { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:520px){ .duas { grid-template-columns:1fr; } }
+  .rotulo-antes { font-size:10.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+    color:#991b1b; margin-bottom:6px; }
+  .rotulo-agora { font-size:10.5px; font-weight:800; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--primary-dark); margin-bottom:6px; }
+
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:19px; height:19px; flex:none;
+    border-radius:999px; background:var(--gold); color:#fff; font-size:10.5px; font-weight:800; vertical-align:middle; }
+  .legenda { padding:12px 14px 14px; background:#fff; border-top:1px solid #f1f0ec; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda div:last-child { margin-bottom:0; }
+  .legenda b { color:var(--ink); }
+
+  .passos { background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:18px 16px; margin-top:16px; }
+  .passo { display:flex; gap:12px; margin-top:14px; }
+  .passo:first-of-type { margin-top:10px; }
+  .passo .num { flex:none; width:28px; height:28px; border-radius:999px; background:var(--primary); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+  .passo p { margin:3px 0 0; font-size:14.5px; color:#3f4a46; }
+  .passo b { color:var(--house); }
+  .rodape { text-align:center; color:var(--ink-soft); font-size:12.5px; margin-top:34px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="chip">Correção nos Atendimentos</div>
+  <h1>A ficha do cliente vem completa</h1>
+  <p>Clicando no nome do cliente no Painel de Atendimentos, a barra lateral mostra agora exatamente
+     o mesmo que a ficha da Rota — inclusive o ponto GPS de verdade.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao">
+    <p class="sec-titulo">📇 O que muda</p>
+    <p class="texto">A barra lateral é <b>a mesma tela</b> que abre na Rota. O que estava errado eram os
+      <b>dados</b> que o Painel de Atendimentos entregava para ela: a lista do painel carrega só
+      nome, cidade e celular de cada cliente, e a ficha mostrava só isso — o resto ficava em branco,
+      como se o cadastro estivesse vazio.</p>
+    <div class="resumo">
+      <div><span class="ic">📍</span><span><b>O erro mais grave:</b> a ficha dizia <b>“Sem ponto GPS cadastrado”</b> para cliente que <b>tem</b> ponto — e ainda oferecia “Definir ponto no mapa”, como se ninguém tivesse marcado.</span></div>
+      <div><span class="ic">🏠</span><span>Endereço, bairro, CEP, telefone fixo e e-mail apareciam vazios mesmo estando preenchidos no cadastro.</span></div>
+      <div><span class="ic">📅</span><span>Dias de venda, dias de entrega e condição de pagamento também não apareciam.</span></div>
+      <div><span class="ic">✅</span><span>Agora, ao abrir a ficha pelo painel, o app <b>busca o cadastro completo</b> e mostra tudo — igual à Rota.</span></div>
+      <div><span class="ic">⏳</span><span>Enquanto os dados chegam (é rápido), a ficha mostra <b>tracinhos cinza de “carregando”</b>. Ela não afirma mais que um campo está vazio antes de saber.</span></div>
+      <div><span class="ic">📶</span><span>Se a internet falhar, aparece um <b>aviso amarelo</b> com o botão “Tentar de novo” — e a ficha diz claramente que o que está na tela pode estar incompleto.</span></div>
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">⚠️ Vale conferir</p>
+    <p class="texto">Enquanto o defeito existiu, quem abriu a ficha <b>pelo Painel de Atendimentos</b> podia ler
+      “Sem ponto GPS cadastrado” num cliente que já tinha ponto. <b>Se você chegou a marcar o ponto no mapa
+      por causa dessa mensagem</b>, o ponto antigo pode ter sido substituído pelo novo.</p>
+    <div class="aviso a-amber" style="margin-top:12px">Nesse caso, avise a <b>logística</b>: em
+      <b>Clientes → Saúde dos Pontos GPS</b>, o botão <b>“Histórico de alterações”</b> mostra quem mexeu,
+      quando e quantos metros o ponto andou — e tem o botão <b>Desfazer</b>, que devolve o ponto anterior.
+      <b>A ficha aberta pela Rota nunca teve esse problema.</b></div>
+  </div>
+
+  <!-- ═══════════ TELAS ═══════════ -->
+  <p class="sec-titulo sec" style="margin-top:22px">📱 As telas do app</p>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">1 · Antes × Agora — a mesma ficha, pelo Painel de Atendimentos</div>
+    <div class="tela-corpo">
+      <div class="duas">
+        <div>
+          <div class="rotulo-antes">✗ Antes</div>
+          <div class="ficha">
+            <div class="topo">
+              <div class="rot">Razão Social</div>
+              <div class="nm">PANIFICADORA BOM DIA LTDA</div>
+            </div>
+            <div class="bloco">
+              <div class="bt">Contato</div>
+              <div class="lin"><div class="lb">Celular</div><div class="vl">(47) 9 9999-0000</div></div>
+              <div class="lin"><div class="vazio">telefone fixo e e-mail em branco <span class="pin">1</span></div></div>
+            </div>
+            <div class="bloco">
+              <div class="bt">Endereço</div>
+              <div class="vl">Joinville - SC</div>
+              <div class="vazio" style="margin-top:4px">sem rua, número, bairro nem CEP <span class="pin">2</span></div>
+            </div>
+            <div class="bloco">
+              <div class="bt">Atendimento &amp; Entregas</div>
+              <div class="vazio">nada aqui <span class="pin">2</span></div>
+            </div>
+            <div class="bloco">
+              <div class="bt">📍 Localização GPS</div>
+              <div class="vazio" style="color:#b91c1c">Sem ponto GPS cadastrado <span class="pin">3</span></div>
+              <div class="btn pri" style="width:100%;margin-top:8px">Definir ponto no mapa <span class="pin">3</span></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="rotulo-agora">✓ Agora</div>
+          <div class="ficha">
+            <div class="topo">
+              <div class="rot">Razão Social</div>
+              <div class="nm">PANIFICADORA BOM DIA LTDA</div>
+              <div class="doc">CNPJ: 00.000.000/0001-00 <span class="pin">4</span></div>
+            </div>
+            <div class="bloco">
+              <div class="bt">Contato</div>
+              <div class="lin"><div class="lb">Telefone</div><div class="vl">(47) 3333-0000</div></div>
+              <div class="lin"><div class="lb">Celular</div><div class="vl">(47) 9 9999-0000</div></div>
+              <div class="lin"><div class="lb">E-mail</div><div class="vl">compras@bomdia.com.br</div></div>
+            </div>
+            <div class="bloco">
+              <div class="bt">Endereço</div>
+              <div class="vl">Rua das Palmeiras, 120</div>
+              <div class="lb" style="text-transform:none;letter-spacing:0;font-size:11.5px;color:#6b7280">Centro · Joinville - SC · CEP 89200-000</div>
+              <div style="display:flex;gap:7px;margin-top:8px">
+                <span class="btn sec" style="font-size:11.5px;padding:7px 12px">Copiar</span>
+                <span class="btn sec" style="font-size:11.5px;padding:7px 12px">Ver no Google Maps</span>
+              </div>
+            </div>
+            <div class="bloco">
+              <div class="bt">Atendimento &amp; Entregas</div>
+              <div class="lin"><div class="lb">Dia(s) de Venda</div><div class="vl">TER, QUI</div></div>
+              <div class="lin"><div class="lb">Dia(s) de Entrega</div><div class="vl">SEG, QUA</div></div>
+              <div class="lin"><div class="lb">Condição de Pagamento</div><div class="vl">14 dias - Boleto</div></div>
+            </div>
+            <div class="bloco">
+              <div class="bt">📍 Localização GPS</div>
+              <div class="vl" style="font-family:ui-monospace,monospace;font-size:11.5px">-26.304500,-48.845100 <span class="pin">5</span></div>
+              <div class="btn pri" style="width:100%;margin-top:8px">Ajustar ponto no mapa <span class="pin">5</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Telefone fixo e e-mail em branco</b> — não porque o cadastro estava vazio, mas porque o painel não tinha carregado esses campos.</span></div>
+      <div><span class="pin">2</span><span><b>Endereço só com a cidade</b> e a seção de dias/condição de pagamento sem nada. Agora vêm completos.</span></div>
+      <div><span class="pin">3</span><span><b>A informação falsa:</b> “Sem ponto GPS cadastrado” em cliente com ponto, e o botão convidando a definir o primeiro ponto.</span></div>
+      <div><span class="pin">4</span><span><b>O documento</b> também passa a aparecer no cabeçalho, como já era na Rota — e agora com o rótulo certo: pessoa física aparece como <b>Pessoa Física / CPF</b> (antes CPF era rotulado como CNPJ).</span></div>
+      <div><span class="pin">5</span><span><b>O ponto que existe de verdade</b>, com o botão certo: <b>“Ajustar ponto no mapa”</b> (não “definir”), e o mapa abre centrado no ponto atual.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">2 · Carregando e sem internet — a ficha não inventa resposta</div>
+    <div class="tela-corpo">
+      <div class="duas">
+        <div>
+          <div class="rotulo-agora">Carregando</div>
+          <div class="ficha">
+            <div class="topo">
+              <div class="rot">Razão Social</div>
+              <div class="nm">PANIFICADORA BOM DIA LTDA</div>
+            </div>
+            <div class="bloco" style="background:#f9fafb">
+              <div style="font-size:11.5px;color:#6b7280">⏳ Carregando os dados completos do cliente… <span class="pin">1</span></div>
+            </div>
+            <div class="bloco">
+              <div class="bt">Endereço</div>
+              <div class="skel" style="width:66%"></div>
+              <div class="skel" style="width:50%"></div>
+              <div class="skel" style="width:75%"></div>
+            </div>
+            <div class="bloco">
+              <div class="bt">📍 Localização GPS</div>
+              <div style="font-size:12px;color:#6b7280">⏳ Carregando o ponto GPS… <span class="pin">2</span></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="rotulo-agora">Sem internet</div>
+          <div class="ficha">
+            <div class="topo">
+              <div class="rot">Razão Social</div>
+              <div class="nm">PANIFICADORA BOM DIA LTDA</div>
+            </div>
+            <div class="bloco" style="background:#fffbeb">
+              <div style="font-size:11.5px;color:#92400e">⚠️ Não deu para carregar o cadastro completo agora.
+                Campo em branco aqui não quer dizer campo vazio no cadastro. <span class="pin">3</span></div>
+              <div class="btn sec" style="margin-top:8px;border-color:#fde68a;color:#92400e">Tentar de novo <span class="pin">4</span></div>
+            </div>
+            <div class="bloco">
+              <div class="bt">📍 Localização GPS</div>
+              <div style="font-size:12px;color:#92400e">Não foi possível carregar o ponto GPS deste cliente. <span class="pin">5</span></div>
+              <div class="btn blq" style="width:100%;margin-top:8px">Definir ponto no mapa — não aparece <span class="pin">5</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Uma faixa cinza avisa que os dados estão a caminho — dura o tempo de um piscar de olhos numa internet normal.</span></div>
+      <div><span class="pin">2</span><span>No lugar dos campos, <b>tracinhos cinza</b>. A ficha só afirma que um campo está vazio depois de ter carregado o cadastro.</span></div>
+      <div><span class="pin">3</span><span>Falhou a rede? <b>Aviso amarelo dizendo a verdade</b>: o que está na tela é só o que o painel já tinha.</span></div>
+      <div><span class="pin">4</span><span><b>Tentar de novo</b> — sem precisar fechar a ficha nem sair da tela.</span></div>
+      <div><span class="pin">5</span><span>Sem saber se existe ponto, o app <b>não oferece o mapa</b>. Isso evita gravar um “primeiro ponto” por cima do ponto que o cliente já tinha.</span></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ DETALHES ═══════════ -->
+  <p class="sec-titulo sec" style="margin-top:22px">📌 Detalhes</p>
+
+  <details open>
+    <summary>Onde essa ficha aparece <span class="mais">+</span></summary>
+    <div class="det-corpo">
+      <p style="margin:0">É <b>uma tela só</b>, usada em vários lugares do app:</p>
+      <ul>
+        <li><b>Rota</b> (Atendimento, Atendidos) — as listas do dia já vinham com o cadastro completo; ali <b>nada muda</b>. Duas portas da própria Rota, porém, entregam o cliente resumido e agora passam a carregar o cadastro ao abrir a ficha (pisca o “carregando” e faz uma consulta a mais): o cliente achado pela <b>busca por nome/CNPJ</b> e a ficha aberta pelo <b>aviso de rota pendente</b>.</li>
+        <li><b>Painel de Atendimentos</b> — é onde estava o defeito, tanto no computador (clicando no nome do cliente na tabela) quanto no celular (botão “Ver detalhes do cliente”).</li>
+        <li><b>Contas a Receber</b> — já abria a ficha com o cadastro completo; <b>nada muda lá</b>.</li>
+        <li><b>Novo Pedido</b> (tocando no cliente já escolhido) e a <b>entrega do motorista</b> — como é a mesma tela, se algum dia ela receber um cliente resumido também busca o cadastro sozinha.</li>
+      </ul>
+      <p style="margin-top:10px">Onde o cliente já chegava completo, <b>nada foi alterado</b> e nenhuma consulta a mais é feita; onde ele chegava pela metade, a ficha faz <b>uma</b> consulta ao abrir.
+        <b>Quem pode abrir a ficha continua exatamente como era</b> — esta correção não mexeu em permissão nem em regra de acesso.</p>
+    </div>
+  </details>
+
+  <details open>
+    <summary>Lead ganhou a mesma proteção <span class="mais">+</span></summary>
+    <div class="det-corpo">
+      <p style="margin:0">Linha de <b>lead</b> (quem ainda não é cliente cadastrado) abre a mesma ficha em modo lead.
+        O painel também mandava o lead só com o nome — então o app agora <b>busca o cadastro do lead</b> ao abrir e
+        só depois mostra responsável, WhatsApp, dias de visita, horário, próxima visita, etapa e o ponto GPS.</p>
+      <ul>
+        <li>Enquanto não carrega (ou se a internet falhar), o campo de coordenadas <b>não aparece</b> e
+          <b>não dá para salvar o ponto</b> — antes dava, e o ponto que o lead já tinha era substituído.</li>
+        <li>No lead isso é mais sério do que no cliente: <b>lead não tem histórico de ponto</b>, então não haveria
+          como voltar atrás.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details open>
+    <summary>Quem pode mexer no ponto GPS <span class="mais">+</span></summary>
+    <div class="det-corpo">
+      <p style="margin:0">Nada mudou aqui: como sempre, só quem tem <b>permissão de editar GPS</b> (ou de editar clientes) vê o botão do mapa.
+        Quem não tem, vê o ponto e o aviso de que precisa falar com o administrador. Esta correção <b>não criou nem mudou nenhuma permissão</b>.</p>
+      <ul>
+        <li>A seção <b>“Últimas alterações do ponto”</b> continua mostrando quem mexeu, quando e quantos metros andou.</li>
+        <li>Ela só aparece <b>depois</b> que o app sabe qual é o ponto — não fica dizendo “nenhuma alteração” enquanto carrega.</li>
+      </ul>
+    </div>
+  </details>
+
+  <div class="passos">
+    <p class="sec-titulo" style="margin:0">✅ Para começar a usar</p>
+    <div class="passo"><div class="num">1</div>
+      <p>Abra <b>Atendimentos</b> e clique no <b>nome do cliente</b> (no celular: <b>Ver detalhes do cliente</b>).</p></div>
+    <div class="passo"><div class="num">2</div>
+      <p>A ficha abre e, num instante, mostra <b>endereço, telefones, e-mail, dias, condição de pagamento e o ponto GPS</b> — igual à Rota.</p></div>
+    <div class="passo"><div class="num">3</div>
+      <p>Viu <b>aviso amarelo</b>? Foi a internet. Toque em <b>Tentar de novo</b> antes de concluir que o cadastro está vazio.</p></div>
+    <div class="passo"><div class="num">4</div>
+      <p>Se você marcou algum ponto GPS por aqui achando que o cliente não tinha, <b>avise a logística para conferir</b>.</p></div>
+  </div>
+
+  <p class="rodape">Hardt App · Painel de Atendimentos — ficha do cliente completa · agosto/2026</p>
+</div>
+
+</body>
+</html>

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     X, MapPin, Navigation, Phone, Mail, Package,
     Calendar, DollarSign, User, FileText, Save,
     Loader, CheckCircle, ExternalLink, AlertCircle, Lock, ClipboardList, Copy, History
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import clienteService from '../../services/clienteService';
 import toast from 'react-hot-toast';
 import HistoricoModal from './HistoricoModal';
 import ModalPontoGps from '../../components/ModalPontoGps';
@@ -16,6 +17,77 @@ const formatDoc = (doc) => {
     const d = normalizarDoc(doc);
     return (d.length === 11 || d.length === 14) ? formatarDoc(d) : doc;
 };
+
+// O banco grava 'FISICA'/'JURIDICA' (e há registros antigos com 'F'/'J').
+// Comparar com 'F' seco fazia CPF de pessoa física aparecer rotulado como CNPJ.
+// Sem tipo confiável, o tamanho do documento decide (11 dígitos = CPF, 14 = CNPJ).
+const ehPessoaFisica = (tipo, doc) => {
+    const t = String(tipo || '').trim().toUpperCase();
+    if (t.startsWith('J')) return false;   // J / JURIDICA
+    if (t.startsWith('F')) return true;    // F / FISICA / FÍSICA
+    return normalizarDoc(doc || '').length === 11;
+};
+
+// Campos do cadastro que esta barra lateral mostra.
+// Algumas telas entregam um cliente RESUMIDO: o painel de Atendimentos, por exemplo,
+// recebe da listagem só UUID/Nome/NomeFantasia/Cidade/Celular (select enxuto de
+// atendimentoService — aquela rota carrega a base inteira, não pode trafegar dado
+// pessoal à toa). Nesse objeto a chave nem EXISTE (é diferente de existir valendo
+// null) — e é exatamente isso que distingue "cliente sem telefone cadastrado" de
+// "telefone que ainda não foi carregado". Faltando qualquer uma, buscamos o cadastro
+// completo por UUID e a tela fica igual à da Rota.
+const CAMPOS_COMPLETOS = [
+    'Telefone', 'Email', 'Documento', 'Tipo_Pessoa',
+    'End_Logradouro', 'End_Bairro', 'End_Estado', 'End_CEP',
+    'Dia_de_venda', 'Dia_de_entrega', 'Condicao_de_pagamento',
+    'Ponto_GPS', 'Observacoes_Gerais', 'Situacao_serasa',
+];
+// O LEAD tem exatamente o mesmo problema: o painel de Atendimentos manda o lead com
+// só id/nomeEstabelecimento/numero (select de atendimentoService) — SEM pontoGps.
+// Sem essas chaves a ficha não sabe nada do lead e busca o cadastro por id
+// (GET /leads/:id → leadService.buscarPorId devolve o lead inteiro).
+const CAMPOS_COMPLETOS_LEAD = [
+    'contato', 'whatsapp', 'diasVisita', 'horarioAtendimento',
+    'pontoGps', 'etapa', 'proximaVisita', 'observacoes',
+];
+const estaCompleto = (c, campos) => !!c && campos.every(k => k in c);
+
+const Skel = ({ w = 'w-full' }) => <div className={`h-3 ${w} bg-gray-200 rounded animate-pulse`} />;
+const BlocoCarregando = () => (
+    <div className="space-y-2 py-2">
+        <Skel w="w-2/3" /><Skel w="w-1/2" /><Skel w="w-3/4" />
+    </div>
+);
+
+// Enquanto o cadastro completo não chega, o popup NÃO sabe se existe ponto GPS.
+// Dizer "sem ponto GPS cadastrado" aqui é mentira para quem TEM ponto — e o botão
+// de definir/salvar ponto gravaria por cima do ponto que já existe. Vale para
+// cliente E para lead (o lead nem tem histórico de ponto para desfazer).
+const GpsIndefinido = ({ carregando, onTentar, podeTentar = true }) => (
+    <div className="space-y-2">
+        {carregando ? (
+            <p className="flex items-center gap-2 text-[12px] text-gray-500">
+                <Loader className="h-3.5 w-3.5 animate-spin" /> Carregando o ponto GPS...
+            </p>
+        ) : (
+            <>
+                <p className="flex items-start gap-2 text-[12px] text-amber-700">
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    Não foi possível carregar o ponto GPS deste cadastro. Para não apagar um ponto
+                    que já exista, a gravação fica bloqueada até o cadastro carregar.
+                </p>
+                {podeTentar && (
+                    <button
+                        onClick={onTentar}
+                        className="w-full min-h-[44px] py-2.5 text-[13px] font-bold rounded-full border border-primary text-primary bg-white hover:bg-mint/40 transition-colors"
+                    >
+                        Tentar de novo
+                    </button>
+                )}
+            </>
+        )}
+    </div>
+);
 
 const DataRow = ({ label, value, icon: Icon }) => {
     if (!value) return null;
@@ -78,14 +150,33 @@ const HistoricoGpsLista = ({ logs, temPonto }) => {
     );
 };
 
-const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
+// A ficha em si. NÃO é exportada direta: quem renderiza é o ClientePopup lá embaixo,
+// que a monta com `key` = identidade do cadastro. Ver o comentário de lá — é o que
+// garante que TODO o estado daqui (ponto GPS, cadastro carregado, histórico, avisos)
+// pertence a UM cadastro só.
+const ClientePopupFicha = ({ cliente: clienteProp, onClose, onAtualizado }) => {
     const { user } = useAuth();
     const podeEditarGPS = !!(user?.permissoes?.admin || user?.permissoes?.Pode_Editar_GPS || user?.permissoes?.clientes?.edit);
-    const isLead = !!(cliente?.nomeEstabelecimento); // distingue Lead de Cliente
+    const isLead = !!(clienteProp?.nomeEstabelecimento); // distingue Lead de Cliente
+
+    // Objeto resumido → busca o cadastro completo: cliente por UUID (clienteService.detalhar),
+    // LEAD por id (leadService.buscarPorId). Os dois precisam disso: quem chega resumido
+    // não traz o ponto GPS, e sem ele não dá para oferecer gravar ponto nenhum.
+    const chaveBusca = isLead ? clienteProp?.id : clienteProp?.UUID;
+    const precisaCarregar = !!chaveBusca
+        && !estaCompleto(clienteProp, isLead ? CAMPOS_COMPLETOS_LEAD : CAMPOS_COMPLETOS);
+    const [clienteCompleto, setClienteCompleto] = useState(null);
+    const [carregandoCliente, setCarregandoCliente] = useState(precisaCarregar);
+    const [falhouCarregar, setFalhouCarregar] = useState(false);
+    const [tentativa, setTentativa] = useState(0);
+    const tentarDeNovo = () => setTentativa(t => t + 1);
+    // Daqui para baixo o componente lê SEMPRE o objeto mais completo que tem em mãos.
+    const cliente = clienteCompleto || clienteProp;
+    const dadosCarregados = !precisaCarregar || !!clienteCompleto;
     const nome = isLead ? cliente.nomeEstabelecimento : (cliente.Nome || '');
     const fantasia = isLead ? null : cliente.NomeFantasia;
     const doc = !isLead ? formatDoc(cliente.Documento) : null;
-    const tipoPessoa = !isLead ? cliente.Tipo_Pessoa : null;
+    const pessoaFisica = !isLead && ehPessoaFisica(cliente.Tipo_Pessoa, cliente.Documento);
 
     const [gpsInput, setGpsInput] = useState(
         (isLead ? cliente.pontoGps : cliente.Ponto_GPS) || ''
@@ -95,6 +186,32 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
     const [gpsSalvo, setGpsSalvo] = useState(false);
     const [showHistorico, setShowHistorico] = useState(false);
     const [showMapa, setShowMapa] = useState(false);
+
+    // Busca o cadastro completo quando o objeto recebido veio resumido.
+    // Falhou (rede/permissão)? mantém o que já tinha e AVISA — nunca afirma que o
+    // campo está vazio no cadastro.
+    useEffect(() => {
+        if (!precisaCarregar) { setCarregandoCliente(false); return; }
+        let ativo = true;
+        setCarregandoCliente(true);
+        setFalhouCarregar(false);
+        const busca = isLead
+            ? import('../../services/leadService').then(m => m.default.buscarPorId(chaveBusca))
+            : clienteService.detalhar(chaveBusca);
+        busca
+            .then(c => {
+                if (!ativo) return;
+                // Resposta vazia (200 sem corpo) é tão desconhecida quanto uma falha: sem isso
+                // a ficha saía do carregamento sem aviso nenhum no topo e voltava a exibir os
+                // campos ausentes como se estivessem vazios no cadastro.
+                if (!c) { setFalhouCarregar(true); return; }
+                setClienteCompleto(c);
+                setGpsInput(prev => prev || ((isLead ? c.pontoGps : c.Ponto_GPS) || ''));
+            })
+            .catch(() => { if (ativo) setFalhouCarregar(true); })
+            .finally(() => { if (ativo) setCarregandoCliente(false); });
+        return () => { ativo = false; };
+    }, [chaveBusca, isLead, precisaCarregar, tentativa]);
 
     // Últimas alterações do ponto GPS (quem mexeu, quando e a que horas)
     const [historicoGps, setHistoricoGps] = useState(null);
@@ -134,6 +251,12 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
     // pela validação). Cliente usa SEMPRE o mapa (ModalPontoGps) — validado.
     const salvarGpsLead = async () => {
         if (!gpsInput.trim()) return;
+        // Trava dura: sem o ponto atual carregado, salvar SOBRESCREVERIA o ponto que
+        // já existe — e lead não tem histórico de ponto para desfazer.
+        if (gpsDesconhecido) {
+            toast.error('O cadastro do lead ainda não carregou. Não dá para salvar o ponto sem saber o que já está gravado.');
+            return;
+        }
         try {
             setSalvandoGps(true);
             const leadService = (await import('../../services/leadService')).default;
@@ -148,6 +271,11 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
             setSalvandoGps(false);
         }
     };
+
+    // Sem a chave do ponto no objeto (Ponto_GPS no cliente, pontoGps no lead) não dá
+    // para afirmar NADA sobre o ponto: ou está carregando, ou a busca falhou.
+    // Nos dois casos a tela cala a boca — e não deixa gravar por cima.
+    const gpsDesconhecido = isLead ? !('pontoGps' in cliente) : !('Ponto_GPS' in cliente);
 
     const abrirMapa = () => {
         const gps = gpsInput || (isLead ? cliente.pontoGps : cliente.Ponto_GPS);
@@ -212,7 +340,7 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                         <div className="flex-1 min-w-0">
                             {/* Razão Social */}
                             <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">
-                                {isLead ? 'Lead' : (tipoPessoa === 'F' ? 'Pessoa Física' : 'Razão Social')}
+                                {isLead ? 'Lead' : (pessoaFisica ? 'Pessoa Física' : 'Razão Social')}
                             </p>
                             <h2 className="text-[15px] font-bold text-white leading-tight break-words">{nome}</h2>
 
@@ -226,7 +354,7 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                             {/* CNPJ/CPF */}
                             {doc && (
                                 <p className="text-[11px] text-gray-400 mt-1.5">
-                                    {tipoPessoa === 'F' ? 'CPF' : 'CNPJ'}: <span className="font-mono text-gray-300">{doc}</span>
+                                    {pessoaFisica ? 'CPF' : 'CNPJ'}: <span className="font-mono text-gray-300">{doc}</span>
                                 </p>
                             )}
                         </div>
@@ -248,6 +376,35 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                 {/* Conteúdo scrollável */}
                 <div className="flex-1 overflow-y-auto">
 
+                    {/* Cadastro completo a caminho / não veio — nunca deixar a tela
+                        parecer um cadastro vazio quando é só dado não carregado */}
+                    {carregandoCliente && (
+                        <div className="flex items-center gap-2 px-4 py-2 bg-gray-50 border-b border-gray-100 text-[11px] text-gray-500">
+                            <Loader className="h-3.5 w-3.5 animate-spin shrink-0" />
+                            Carregando os dados completos do cliente...
+                        </div>
+                    )}
+                    {!carregandoCliente && falhouCarregar && (
+                        <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-200">
+                            <p className="flex items-start gap-2 text-[11px] text-amber-800">
+                                <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                Não deu para carregar o cadastro completo agora. O que aparece abaixo é
+                                só o que já estava na tela — campo em branco aqui não quer dizer campo
+                                vazio no cadastro.
+                            </p>
+                            {/* Só oferece "tentar de novo" quando existe o que tentar: sem
+                                UUID/id o efeito de busca nem roda e o botão não faria nada. */}
+                            {precisaCarregar && (
+                                <button
+                                    onClick={tentarDeNovo}
+                                    className="mt-2 inline-flex items-center justify-center min-h-[44px] px-4 py-2 text-[12px] font-bold rounded-full border border-amber-300 bg-white text-amber-800 hover:bg-amber-100 transition-colors"
+                                >
+                                    Tentar de novo
+                                </button>
+                            )}
+                        </div>
+                    )}
+
                     {/* ── Contato ── */}
                     <div className="px-4 pt-4 pb-2">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Contato</p>
@@ -259,17 +416,32 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                                 ? <DataRow label="Responsável" value={cliente.contato} icon={Mail} />
                                 : <DataRow label="E-mail" value={cliente.Email} icon={Mail} />
                             }
+                            {!dadosCarregados && (carregandoCliente
+                                ? <BlocoCarregando />
+                                : <p className="text-[12px] text-gray-500 italic py-2">
+                                    {isLead ? 'Contato e WhatsApp não carregados.' : 'Telefone fixo e e-mail não carregados.'}
+                                </p>
+                            )}
                         </div>
                     </div>
 
                     {/* ── Endereço (só clientes) ── */}
-                    {!isLead && (endereco || cidadeEstado) && (
+                    {!isLead && carregandoCliente && (
+                        <div className="px-4 pt-3 pb-2 border-t border-gray-100">
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Endereço</p>
+                            <BlocoCarregando />
+                        </div>
+                    )}
+                    {!isLead && !carregandoCliente && (endereco || cidadeEstado) && (
                         <div className="px-4 pt-3 pb-2 border-t border-gray-100">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Endereço</p>
                             {endereco && <p className="text-[13px] text-gray-800 font-medium">{endereco}</p>}
                             {cliente.End_Bairro && <p className="text-[12px] text-gray-500">{cliente.End_Bairro}</p>}
                             {cidadeEstado && <p className="text-[12px] text-gray-500">{cidadeEstado}{cliente.End_CEP ? ` · CEP ${cliente.End_CEP}` : ''}</p>}
-                            <div className="flex gap-2 mt-2.5">
+                            {!dadosCarregados && (
+                                <p className="text-[11px] text-amber-700 mt-1.5">Endereço incompleto — o cadastro não foi carregado.</p>
+                            )}
+                            {dadosCarregados && <div className="flex gap-2 mt-2.5">
                                 <button
                                     onClick={copiarEndereco}
                                     className="flex items-center justify-center gap-1.5 px-3 py-2 text-[12px] font-semibold text-gray-600 border border-gray-200 rounded-full bg-gray-50 hover:bg-gray-100 transition-colors"
@@ -282,7 +454,7 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                                 >
                                     <ExternalLink className="h-3.5 w-3.5" /> Ver no Google Maps
                                 </button>
-                            </div>
+                            </div>}
                         </div>
                     )}
 
@@ -290,11 +462,15 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                     {!isLead && (
                         <div className="px-4 pt-3 pb-2 border-t border-gray-100">
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Atendimento & Entregas</p>
+                            {/* Horario_Atendimento/Horario_Entrega NÃO existem no cadastro de
+                                Cliente (não estão no schema) — as linhas nunca renderizaram. */}
                             <DataRow label="Dia(s) de Venda" value={cliente.Dia_de_venda} icon={Calendar} />
-                            <DataRow label="Horário Atendimento" value={cliente.Horario_Atendimento} icon={Calendar} />
                             <DataRow label="Dia(s) de Entrega" value={cliente.Dia_de_entrega} icon={Package} />
-                            <DataRow label="Horário Entrega" value={cliente.Horario_Entrega} icon={Package} />
                             <DataRow label="Condição de Pagamento" value={cliente.Condicao_de_pagamento} icon={DollarSign} />
+                            {!dadosCarregados && (carregandoCliente
+                                ? <BlocoCarregando />
+                                : <p className="text-[12px] text-gray-500 italic py-2">Dias de venda/entrega e condição de pagamento não carregados.</p>
+                            )}
                         </div>
                     )}
 
@@ -306,6 +482,10 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                             <DataRow label="Horário" value={cliente.horarioAtendimento} icon={Calendar} />
                             <DataRow label="Próxima Visita" value={cliente.proximaVisita ? new Date(cliente.proximaVisita).toLocaleDateString('pt-BR') : null} icon={Calendar} />
                             <DataRow label="Etapa" value={cliente.etapa} icon={User} />
+                            {!dadosCarregados && (carregandoCliente
+                                ? <BlocoCarregando />
+                                : <p className="text-[12px] text-gray-500 italic py-2">Dias de visita, horário e etapa não carregados.</p>
+                            )}
                         </div>
                     )}
 
@@ -315,82 +495,101 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
 
                         {podeEditarGPS && !isLead ? (
                             <div className="space-y-2">
-                                {gpsInput ? (
-                                    <div className="flex items-center gap-2">
-                                        <p className="text-[12px] font-mono text-gray-600 flex-1">{gpsInput}</p>
-                                        <button
-                                            onClick={abrirMapa}
-                                            className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-gray-600 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
-                                        >
-                                            <ExternalLink className="h-3 w-3" /> Google Maps
-                                        </button>
-                                    </div>
+                                {gpsDesconhecido ? (
+                                    <GpsIndefinido carregando={carregandoCliente} onTentar={tentarDeNovo} podeTentar={precisaCarregar} />
                                 ) : (
-                                    <p className="text-[12px] text-gray-500 italic">Sem ponto GPS cadastrado</p>
+                                    <>
+                                        {gpsInput ? (
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-[12px] font-mono text-gray-600 flex-1">{gpsInput}</p>
+                                                <button
+                                                    onClick={abrirMapa}
+                                                    className="flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-gray-600 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                                                >
+                                                    <ExternalLink className="h-3 w-3" /> Google Maps
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <p className="text-[12px] text-gray-500 italic">Sem ponto GPS cadastrado</p>
+                                        )}
+                                        {/* Só oferece o mapa sabendo o ponto atual: sem ele o
+                                            ModalPontoGps trataria como "primeiro ponto". */}
+                                        <button
+                                            onClick={() => setShowMapa(true)}
+                                            className="w-full py-2.5 text-[13px] font-bold rounded-full flex items-center justify-center gap-2 bg-primary hover:bg-primaryDark text-white transition-colors min-h-[44px]"
+                                        >
+                                            <MapPin className="h-4 w-4" />
+                                            {gpsInput ? 'Ajustar ponto no mapa' : 'Definir ponto no mapa'}
+                                        </button>
+                                    </>
                                 )}
-                                <button
-                                    onClick={() => setShowMapa(true)}
-                                    className="w-full py-2.5 text-[13px] font-bold rounded-full flex items-center justify-center gap-2 bg-primary hover:bg-primaryDark text-white transition-colors min-h-[44px]"
-                                >
-                                    <MapPin className="h-4 w-4" />
-                                    {gpsInput ? 'Ajustar ponto no mapa' : 'Definir ponto no mapa'}
-                                </button>
                             </div>
                         ) : podeEditarGPS && isLead ? (
                             <div className="space-y-2">
-                                {/* Input de coordenadas (lead: fluxo simples, valida ao virar cliente) */}
-                                <div className="relative">
-                                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                    <input
-                                        type="text"
-                                        value={gpsInput}
-                                        onChange={e => setGpsInput(e.target.value)}
-                                        placeholder="-26.123456,-48.912345"
-                                        className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-lg text-[12px] font-mono focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none"
-                                    />
-                                </div>
+                                {/* Enquanto o cadastro do lead não carregou, a ficha não sabe se
+                                    já existe ponto — e salvar aqui sobrescreveria o que está
+                                    gravado (lead não tem histórico de ponto para desfazer). */}
+                                {gpsDesconhecido ? (
+                                    <GpsIndefinido carregando={carregandoCliente} onTentar={tentarDeNovo} podeTentar={precisaCarregar} />
+                                ) : (
+                                    <>
+                                        {/* Input de coordenadas (lead: fluxo simples, valida ao virar cliente) */}
+                                        <div className="relative">
+                                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                            <input
+                                                type="text"
+                                                value={gpsInput}
+                                                onChange={e => setGpsInput(e.target.value)}
+                                                placeholder="-26.123456,-48.912345"
+                                                className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded text-[12px] font-mono focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none"
+                                            />
+                                        </div>
 
-                                {/* Botões de ação */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <button
-                                        onClick={capturarGpsAtual}
-                                        disabled={capturando}
-                                        className="flex items-center justify-center gap-1.5 py-2 text-[12px] font-semibold text-blue-600 border border-blue-200 rounded-lg bg-blue-50 hover:bg-blue-100 disabled:opacity-50 transition-colors"
-                                    >
-                                        {capturando ? <Loader className="h-3.5 w-3.5 animate-spin" /> : <Navigation className="h-3.5 w-3.5" />}
-                                        {capturando ? 'Capturando...' : 'Minha localização'}
-                                    </button>
+                                        {/* Botões de ação */}
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <button
+                                                onClick={capturarGpsAtual}
+                                                disabled={capturando}
+                                                className="flex items-center justify-center gap-1.5 min-h-[44px] py-2 text-[12px] font-semibold text-primary border border-primary rounded-full bg-white hover:bg-mint/40 disabled:opacity-50 transition-colors"
+                                            >
+                                                {capturando ? <Loader className="h-3.5 w-3.5 animate-spin" /> : <Navigation className="h-3.5 w-3.5" />}
+                                                {capturando ? 'Capturando...' : 'Minha localização'}
+                                            </button>
 
-                                    {gpsInput && (
+                                            {gpsInput && (
+                                                <button
+                                                    onClick={abrirMapa}
+                                                    className="flex items-center justify-center gap-1.5 min-h-[44px] py-2 text-[12px] font-semibold text-gray-600 border border-gray-200 rounded-full bg-gray-50 hover:bg-gray-100 transition-colors"
+                                                >
+                                                    <ExternalLink className="h-3.5 w-3.5" />
+                                                    Ver no Mapa
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {/* Salvar GPS */}
                                         <button
-                                            onClick={abrirMapa}
-                                            className="flex items-center justify-center gap-1.5 py-2 text-[12px] font-semibold text-gray-600 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                                            onClick={salvarGpsLead}
+                                            disabled={salvandoGps || !gpsInput.trim()}
+                                            className={`w-full min-h-[44px] py-2.5 text-[13px] font-bold rounded-full flex items-center justify-center gap-2 transition-colors disabled:opacity-50 ${gpsSalvo ? 'bg-green-600 text-white' : 'bg-primary hover:bg-primaryDark text-white'}`}
                                         >
-                                            <ExternalLink className="h-3.5 w-3.5" />
-                                            Ver no Mapa
+                                            {salvandoGps ? (
+                                                <><Loader className="h-4 w-4 animate-spin" /> Salvando...</>
+                                            ) : gpsSalvo ? (
+                                                <><CheckCircle className="h-4 w-4" /> Localização Salva!</>
+                                            ) : (
+                                                <><Save className="h-4 w-4" /> Salvar Localização</>
+                                            )}
                                         </button>
-                                    )}
-                                </div>
-
-                                {/* Salvar GPS */}
-                                <button
-                                    onClick={salvarGpsLead}
-                                    disabled={salvandoGps || !gpsInput.trim()}
-                                    className={`w-full py-2.5 text-[13px] font-bold rounded-lg flex items-center justify-center gap-2 transition-colors disabled:opacity-50 ${gpsSalvo ? 'bg-green-600 text-white' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                                >
-                                    {salvandoGps ? (
-                                        <><Loader className="h-4 w-4 animate-spin" /> Salvando...</>
-                                    ) : gpsSalvo ? (
-                                        <><CheckCircle className="h-4 w-4" /> Localização Salva!</>
-                                    ) : (
-                                        <><Save className="h-4 w-4" /> Salvar Localização</>
-                                    )}
-                                </button>
+                                    </>
+                                )}
                             </div>
                         ) : (
                             <div className="space-y-2">
                                 {/* Mostra GPS atual (somente leitura) */}
-                                {gpsInput ? (
+                                {gpsDesconhecido ? (
+                                    <GpsIndefinido carregando={carregandoCliente} onTentar={tentarDeNovo} podeTentar={precisaCarregar} />
+                                ) : gpsInput ? (
                                     <div className="flex items-center gap-2">
                                         <p className="text-[12px] font-mono text-gray-600 flex-1">{gpsInput}</p>
                                         <button
@@ -410,7 +609,7 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
                             </div>
                         )}
 
-                        {!isLead && <HistoricoGpsLista logs={historicoGps} temPonto={!!gpsInput} />}
+                        {!isLead && !gpsDesconhecido && <HistoricoGpsLista logs={historicoGps} temPonto={!!gpsInput} />}
                     </div>
 
                     {/* ── Observações ── */}
@@ -469,6 +668,43 @@ const ClientePopup = ({ cliente, onClose, onAtualizado }) => {
             )}
         </div>
     );
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TROCAR DE CLIENTE COM A FICHA ABERTA = FICHA NOVA (remonta pela `key`)
+//
+// Vários chamadores trocam SÓ a prop `cliente` sem fechar a ficha (painel de
+// Atendimentos, Rota/Leads, Contas a Receber, Novo Pedido). Com o mouse o pano de
+// fundo intercepta o clique e fecha a ficha antes; pelo TECLADO (Tab até o nome do
+// cliente da linha de trás + Enter) não — o React reaproveita o mesmo componente e
+// TODO o estado do cliente anterior sobrevive. Foi assim que a ficha de um cliente
+// SEM ponto GPS apareceu mostrando o ponto do cliente anterior, com o botão dizendo
+// "Ajustar ponto no mapa" — e o mapa abriria no ponto do cliente A com o UUID do
+// cliente B (confirmar gravaria o ponto no cliente errado).
+//
+// Por que `key` e não um efeito que zera os estados na troca:
+//  1. O efeito roda DEPOIS da renderização — existe um quadro pintado com o ponto do
+//     cliente anterior e o botão de gravar ativo. A `key` desmonta antes: o ponto
+//     errado nunca chega à tela.
+//  2. O efeito precisaria listar cada estado (gpsInput, clienteCompleto,
+//     falhouCarregar, gpsSalvo, capturando, salvandoGps, historicoGps, tentativa,
+//     modais abertos...). Esquecer um — ou acrescentar estado novo amanhã sem lembrar
+//     do reset — é o mesmo defeito de novo. A `key` zera tudo, inclusive o estado
+//     interno dos filhos (ModalPontoGps, HistoricoModal) e requisições em voo (o
+//     cleanup do efeito marca `ativo = false`).
+//  3. Preserva a proteção da 1ª rodada: dentro do MESMO cadastro nada remonta, então
+//     o `setGpsInput(prev => prev || ...)` continua sem atropelar o que o usuário
+//     está digitando enquanto a busca do cadastro volta.
+const ClientePopup = (props) => {
+    const c = props.cliente;
+    const ehLead = !!c?.nomeEstabelecimento;
+    // Identidade do cadastro. Prefixo separa lead de cliente (id numérico de lead
+    // podia coincidir com UUID de cliente); os retornos extras cobrem objeto sem
+    // chave — sem eles dois cadastros sem UUID cairiam na mesma `key` (undefined).
+    const identidade = ehLead
+        ? `lead:${c?.id ?? c?.nomeEstabelecimento ?? '?'}`
+        : `cliente:${c?.UUID ?? c?.Documento ?? c?.Nome ?? '?'}`;
+    return <ClientePopupFicha key={identidade} {...props} />;
 };
 
 export default ClientePopup;

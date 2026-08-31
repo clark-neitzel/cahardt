@@ -419,7 +419,11 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
             where: whereAmostraConcluida,
             include: {
                 cliente: { select: CLIENTE_FICHA_SELECT },
-                lead: { select: { nomeEstabelecimento: true } },
+                // pontoGps é obrigatório aqui: a ficha do cliente na aba Entregues usa
+                // Ponto_GPS para saber se o cadastro tem ponto. Sem ele, a amostra de lead
+                // caía no aviso de "não foi possível carregar o ponto GPS" (mesmo select
+                // do irmão em /pendentes).
+                lead: { select: { nomeEstabelecimento: true, pontoGps: true } },
                 embarque: { select: { numero: true, responsavel: { select: { id: true, nome: true } } } },
                 solicitadoPor: { select: { id: true, nome: true } },
                 itens: { include: { produto: { select: { id: true, nome: true, unidade: true } } } }
@@ -438,7 +442,11 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
             embarque: a.embarque,
             solicitadoPor: a.solicitadoPor,
             itens: a.itens,
-            cliente: a.cliente || (a.lead ? { NomeFantasia: a.lead.nomeEstabelecimento, Nome: a.lead.nomeEstabelecimento } : null),
+            cliente: a.cliente || (a.lead ? {
+                NomeFantasia: a.lead.nomeEstabelecimento,
+                Nome: a.lead.nomeEstabelecimento,
+                Ponto_GPS: a.lead.pontoGps
+            } : null),
         }));
 
         res.json([...pedidosEnriquecidos, ...amostrasFormatadas]);

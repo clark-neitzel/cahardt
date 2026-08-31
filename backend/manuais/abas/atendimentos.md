@@ -135,6 +135,29 @@ WhatsApp → WHATSAPP, Ligação → TELEFONE, Kit Festa/site → SITE.
 - Na linha de **pedido**: número, valor, condição de pagamento, tipo de atendimento informado na
   venda, status de envio ao Conta Azul e GPS de onde a venda foi lançada
 
+### Abrir a ficha do cliente (barra lateral)
+- Clique no **nome do cliente** na linha (no celular, botão **Ver detalhes do cliente**)
+- Abre a **mesma ficha da Rota**, com o cadastro completo: razão social, nome fantasia, CNPJ/CPF,
+  telefone, celular, e-mail, endereço completo (com botões Copiar e Ver no Google Maps), dias de
+  venda e de entrega, condição de pagamento, ponto GPS, observações e situação no Serasa
+- O ponto GPS só pode ser alterado por quem tem a permissão de GPS (ou de editar clientes); quem
+  não tem apenas vê o ponto
+- A ficha busca o cadastro completo na hora de abrir. Enquanto isso, mostra marcas de
+  **carregando** — ela nunca afirma que um campo está vazio antes de ter carregado o cadastro
+- Se a internet falhar, aparece um **aviso amarelo** com o botão **Tentar de novo**, e o botão do
+  mapa não é oferecido (sem saber o ponto atual, marcar um ponto novo apagaria o que já existe)
+- Linha de **lead** abre a mesma ficha em modo lead. A lista de atendimentos manda só o nome do
+  lead, então a ficha **busca o cadastro do lead** ao abrir e só depois mostra os campos:
+  responsável, WhatsApp, dias de visita, horário, próxima visita, etapa, observações e ponto GPS.
+  Enquanto não carregar (ou se falhar), a seção **Visita** avisa que os dados não vieram, o campo
+  de coordenadas não aparece e **não dá para salvar ponto** — no lead o ponto antigo seria
+  sobrescrito sem histórico para desfazer
+- O rótulo do documento segue o tipo de pessoa do cadastro: pessoa física aparece como
+  **Pessoa Física / CPF**, jurídica como **Razão Social / CNPJ**
+- Abrindo **outro cliente com a ficha já aberta** (inclusive pelo teclado, com Tab + Enter no nome
+  da linha de trás), a ficha **recomeça do zero** no cadastro novo: nada do cliente anterior fica na
+  tela — nem o ponto GPS, nem o histórico do ponto, nem os avisos
+
 ### Ver só as vendas do dia
 1. Clique no cartão **Pedidos** (ou escolha "Só pedidos" no menu de tipo)
 2. A lista fica só com as vendas do período, na ordem em que foram feitas
