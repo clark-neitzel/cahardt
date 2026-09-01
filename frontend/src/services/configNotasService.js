@@ -31,6 +31,20 @@ const configNotasService = {
     setEmissao: async (dados) => {
         const response = await api.put('/config-notas/emissao', dados);
         return response.data;
+    },
+    // Referência da nota de origem POR ITEM na NF-e de devolução (NT 2025.002).
+    // O GET não exige `configuracoes.edit` (qualquer usuário logado lê o estado — é ele que
+    // alimenta o lembrete na tela); o PUT exige, e o próprio GET já avisa isso em `podeEditar`.
+    // { chave, modo, modos, ligado, definido, obrigatorioEm, diasRestantes, ambiente,
+    //   atualizadoEm, atualizadoPorNome, podeEditar }
+    getDevolucaoRefItem: async () => {
+        const response = await api.get('/config-notas/devolucao-ref-item');
+        return response.data;
+    },
+    // modo: 'auto' | 'sempre' | 'nunca' → { ok, chave, modo, modoAnterior, ligado, ambiente }
+    setDevolucaoRefItem: async (modo) => {
+        const response = await api.put('/config-notas/devolucao-ref-item', { modo });
+        return response.data;
     }
 };
 

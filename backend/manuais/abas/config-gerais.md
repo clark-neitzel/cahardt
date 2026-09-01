@@ -28,6 +28,7 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 - Configurar a mensagem padrão de WhatsApp para notificações
 - Instalar o **certificado digital A1** (.pfx/.p12) da empresa para o módulo de notas fiscais (seção Notas Fiscais / Certificado Digital)
 - Configurar a **emissão de NF-e (Simples Nacional)**: alíquota do crédito de ICMS que o cliente CNPJ aproveita, NCM padrão e os textos legais da nota (seção Emissão de NF-e — Simples Nacional)
+- Ligar ou desligar a **referência da nota de origem por item na NF-e de devolução** (seção NF-e de devolução — referência por item)
 - Configurar a integração **Asaas — Boleto e PIX** (seção só para admin): multa e juros do boleto, mensagem impressa no boleto, validade padrão e descrição do PIX, avisos do Asaas ao cliente
 
 ---
@@ -77,6 +78,48 @@ Central de configurações do sistema. Agrupa todas as definições que afetam o
 8. O que for salvo vale para a **NF-e de venda e para a NF-e de devolução**, a partir da **próxima nota emitida**. Notas já autorizadas não mudam
 9. Travas: a alíquota é obrigatória (campo vazio é recusado, para não zerar o crédito sem querer) e precisa ficar entre 0 e 15%; o NCM precisa ter 8 dígitos
 
+### NF-e de devolução — referência por item (prazo da SEFAZ: 05/10/2026)
+
+**O que é, em português:** a partir de **05/10/2026** a SEFAZ passa a exigir que a NF-e de
+devolução aponte, **dentro de cada item**, de qual item da nota original aquele produto veio.
+Sem isso a nota é rejeitada. O sistema já sabe fazer isso — esta chave decide **quando** ele faz.
+
+1. Na seção **NF-e de devolução — referência por item** (logo abaixo de "Emissão de NF-e") aparece
+   o estado atual (**Ligado ✓** ou **Desligado**), a data em que passa a ser obrigatório,
+   **quantos dias faltam** e em qual ambiente a emissão está (produção ou homologação)
+2. As três opções, escolhidas clicando no cartão da opção (a que está valendo tem o selo "em uso"):
+
+| Opção | O que faz |
+|---|---|
+| **Automático** *(padrão)* | liga sozinho na data da SEFAZ (05/10/2026) — e já vem ligado no ambiente de homologação, que valida antes |
+| **Sempre** | força ligado **agora**, antes do prazo. É como testar em produção com antecedência |
+| **Nunca** | força desligado. Válvula de escape: se a virada der problema, volta ao jeito antigo **sem precisar de publicação** |
+
+3. Deixado no **Automático**, não é preciso fazer nada — a virada acontece sozinha na data
+4. Enquanto **ninguém tiver escolhido nada**, a tela diz "está valendo o padrão Automático" e o
+   botão vem escrito **"Confirmar esta opção"** — serve para registrar a decisão (é o que faz o
+   lembrete a cada 10 minutos parar de aparecer). Depois de escolhido, o botão vira **"Salvar"** e
+   só habilita quando a opção muda
+5. A tela mostra **quem alterou e quando**; toda troca fica registrada no log de auditoria
+6. Só quem tem `admin` ou `configuracoes.edit` vê e altera esta seção — ela fica dentro do bloco
+   "Notas & Certificado" das Configurações, que **não é renderizado** para quem não tem essa
+   permissão. Pela navegação normal, quem não pode alterar **não vê a seção**. Existe ainda um
+   modo somente-leitura ("Você pode ver essa configuração, mas não alterá-la"), mas só como rede
+   de segurança para o caso de a permissão ser retirada com a pessoa já logada — não é o caminho
+   normal de ninguém
+7. Alterar aqui **não mexe** na configuração de Emissão de NF-e (crédito de ICMS / NCM / textos
+   legais) — são ajustes guardados separados
+8. Vale a partir da **próxima nota de devolução emitida**; notas já autorizadas não mudam
+
+**Lembrete a cada 10 minutos (só para o Clarkson):** enquanto ninguém tiver acionado essa chave,
+o app mostra para o usuário **Clarkson** — e só para ele — um aviso na tela **a cada 10 minutos**,
+em qualquer aparelho, com o que falta fazer: acionar a chave, conseguir o **token de homologação da
+Focus** (para provar que a SEFAZ aceita a nota) e levar a pergunta da **VC02-50** para a
+contabilidade, além do prazo de 05/10/2026. O botão **"Ir para a chave"** leva direto a esta seção.
+Dá para fechar o aviso, mas ele volta no próximo ciclo de 10 minutos — foi assim que ele pediu.
+O aviso some de vez quando a chave é acionada (escolha gravada) ou quando a referência por item
+passa a valer.
+
 ### Configurar a integração Asaas (Boleto e PIX) — só admin
 1. Na seção **Asaas — Boleto e PIX**, o topo mostra o **status da integração**: chave da conta (produção/sandbox), webhook de pagamento (o Asaas avisa o app na hora do pagamento), conta "ASAAS" vinculada no Conta Azul e o vigia de segurança (reprocessa baixas pendentes a cada 10 min)
 2. **Boleto — multa e juros**: interruptor + porcentagem para multa por atraso (única, máx. legal 2%) e juros por atraso (por mês, proporcional aos dias, máx. legal 1% ao mês). O banco calcula e cobra sozinho; a baixa entra com o valor extra registrado
@@ -118,7 +161,8 @@ O sistema faz backup sozinho para o **Google Drive** (a mesma conta conectada pa
 | Permissão | Efeito |
 |-----------|--------|
 | `admin` | Acesso total às configurações gerais |
-| `configuracoes.edit` | Também pode instalar/consultar o certificado digital e ligar/desligar as capturas de NF-e e NFS-e |
+| `configuracoes.edit` | Também pode instalar/consultar o certificado digital, ligar/desligar as capturas de NF-e e NFS-e e alterar a **referência por item da NF-e de devolução** |
+| *(qualquer usuário logado)* | A rota que informa o estado da referência por item (`GET /config-notas/devolucao-ref-item`) responde a qualquer usuário logado — é ela que alimenta o lembrete na tela. Hoje a **seção** só aparece dentro do bloco "Notas & Certificado", que é de `admin`/`configuracoes.edit` |
 
 ---
 
@@ -129,6 +173,7 @@ O sistema faz backup sozinho para o **Google Drive** (a mesma conta conectada pa
 - **Leads** — as origens de lead usadas no cadastro vêm daqui
 - **Notas Recebidas** — o certificado digital e os interruptores de captura controlam a busca automática de NF-e (SEFAZ) e NFS-e (ambiente nacional)
 - **Notas Fiscais (emissão)** — a alíquota do crédito de ICMS, o NCM padrão e os textos legais configurados aqui entram em toda NF-e de venda e de devolução emitida pelo app
+- **Caixa (conferência) e Pedidos → Devoluções** — a chave da referência por item decide o conteúdo do XML da NF-e de devolução emitida no registro da devolução (e na reemissão pelo botão da aba Devoluções)
 
 ---
 
@@ -140,8 +185,9 @@ O sistema faz backup sozinho para o **Google Drive** (a mesma conta conectada pa
 | `frontend/src/pages/Admin/Configuracoes/RotasAtivasPreview.jsx` | Preview das rotas configuradas |
 | `frontend/src/services/configService.js` | Chamadas de API de configurações |
 | `backend/src/routes/configuracoes.js` | Rotas do backend |
-| `backend/routes/configNotas.js` | Certificado digital (instalar/consultar) + liga/desliga das capturas de NF-e e NFS-e + configuração fiscal da emissão (`GET`/`PUT /emissao`) |
+| `backend/routes/configNotas.js` | Certificado digital (instalar/consultar) + liga/desliga das capturas de NF-e e NFS-e + configuração fiscal da emissão (`GET`/`PUT /emissao`) + interruptor da referência por item da NF-e de devolução (`GET`/`PUT /devolucao-ref-item`; o `GET` é aberto a qualquer usuário logado porque o lembrete periódico roda em qualquer tela do app, fora do bloco de Configurações) |
 | `backend/services/focusNfeEmissaoService.js` | Lê a configuração fiscal (`getConfig`) e aplica em cada NF-e emitida |
 | `backend/services/certificadoService.js` | Validação do .pfx e criptografia AES-256-GCM |
+| `frontend/src/components/AlertaDevolucaoRefItem.jsx` | Lembrete a cada 10 minutos (só para o Clarkson) enquanto a chave da referência por item não for acionada; montado global no `App.jsx` |
 | `frontend/src/pages/Admin/Configuracoes/SecaoBackup.jsx` | Cartão de status do backup automático |
 | `backend/services/backupService.js` | Backup do banco (15 min) e dos uploads (diário) para o Google Drive |

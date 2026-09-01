@@ -10,6 +10,8 @@ const prisma = require('../config/database');
 const verificarAuth = require('../middlewares/authMiddleware');
 const uploadCertificado = require('../middlewares/uploadCertificadoMiddleware');
 const certificadoService = require('../services/certificadoService');
+const focusNfe = require('../services/focusNfeService');
+const emissao = require('../services/focusNfeEmissaoService');
 
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
@@ -21,11 +23,23 @@ const getPerms = async (userId) => {
         : (vendedor?.permissoes || {});
 };
 
+/**
+ * A regra de quem pode ALTERAR configuração, num lugar só.
+ * ⚠️ `permissoes.configuracoes` neste projeto é OBJETO, não booleano — `!!perms.configuracoes`
+ * liberaria até quem só tem visualização. Tem que ser `.edit === true`.
+ * O frontend precisa espelhar exatamente isto (por isso o GET abaixo devolve `podeEditar`
+ * já calculado aqui, em vez de a tela repetir a conta e errar).
+ */
+const podeEditarConfig = (perms) => {
+    const p = perms || {};
+    const podeConfig = p.configuracoes && typeof p.configuracoes === 'object' && p.configuracoes.edit === true;
+    return !!p.admin || podeConfig === true;   // `admin` continua por truthiness, como era antes
+};
+
 const checkConfig = async (req, res, next) => {
     const perms = req._perms || await getPerms(req.user.id);
     req._perms = perms;
-    const podeConfig = perms.configuracoes && typeof perms.configuracoes === 'object' && perms.configuracoes.edit === true;
-    if (!perms.admin && !podeConfig) {
+    if (!podeEditarConfig(perms)) {
         return res.status(403).json({ error: 'Sem permissão para alterar configurações.' });
     }
     next();
@@ -260,6 +274,158 @@ router.put('/emissao', verificarAuth, checkConfig, async (req, res) => {
     } catch (error) {
         console.error('Erro ao salvar configuração de emissão de NF-e:', error);
         res.status(500).json({ error: 'Erro ao salvar a configuração de emissão.' });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Referência da nota de origem POR ITEM na NF-e de DEVOLUÇÃO (NT 2025.002)
+// Chave `nfe_devolucao_ref_item` em `app_configs`: 'auto' (padrão) | 'sempre' | 'nunca'.
+//
+// ⚠️ CHAVE SEPARADA — e tem que continuar assim. NUNCA guardar este modo dentro de
+// `focus_nfe_config`: o `PUT /emissao` acima reescreve aquele objeto INTEIRO com só três
+// campos, então qualquer campo extra ali seria apagado em silêncio na primeira vez que
+// alguém salvasse a tela de Configurações.
+//
+// Quem manda no comportamento da emissão continua sendo `focusNfeEmissaoService.refItemLigada()`.
+// O GET abaixo chama a PRÓPRIA função para devolver `ligado`, então o aviso da tela nunca pode
+// mostrar um estado diferente do que a emissão vai fazer de verdade. Aqui só se lê o rótulo
+// `modo` (o valor cru guardado) e se grava a chave — a lógica de emissão não foi tocada.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const CHAVE_REF_ITEM = 'nfe_devolucao_ref_item';
+const MODOS_REF_ITEM = ['auto', 'sempre', 'nunca'];
+
+/**
+ * Modo VÁLIDO gravado, ou `null` quando não há escolha utilizável (linha inexistente, valor
+ * fora dos três, lixo). Mesma tolerância de `focusNfeEmissaoService.refItemLigada()`: aceita
+ * tanto o valor solto `"auto"` quanto o objeto `{ modo: "auto" }`.
+ * Duplicação consciente e mínima: o efeito (`ligado`) sempre vem da função do service, então os
+ * dois não podem divergir no que importa — isto aqui só nomeia o que está guardado, para a tela.
+ */
+const lerModoRefItemValido = (reg) => {
+    const bruto = (reg && reg.value && typeof reg.value === 'object' && !Array.isArray(reg.value))
+        ? reg.value.modo
+        : reg?.value;
+    const s = String(bruto ?? '').trim().toLowerCase();
+    return MODOS_REF_ITEM.includes(s) ? s : null;
+};
+
+/** O mesmo, já com o padrão da emissão aplicado (`auto`) — é o que a tela mostra em `modo`. */
+const lerModoRefItem = (reg) => lerModoRefItemValido(reg) || 'auto';
+
+/** Data de hoje em Brasília (UTC-3) — mesma conta que a emissão faz para comparar com o prazo. */
+const hojeBrasilia = () => new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+
+// ── GET /devolucao-ref-item — estado do interruptor ──
+// SEM `checkConfig` de propósito. Quem consome hoje:
+//   1. `frontend/src/components/AlertaDevolucaoRefItem.jsx` — o lembrete periódico, montado no
+//      `App.jsx` e portanto ativo em QUALQUER tela do app, fora do bloco de Configurações.
+//      (Hoje ele só é exibido para o Clarkson, mas quem decide isso é o componente, não a rota.)
+//   2. `frontend/src/pages/Admin/Configuracoes/NotasCertificadoConfig.jsx` — a seção com o botão.
+// Ou seja: a rota é aberta porque o lembrete roda fora do bloco de Configurações — NÃO porque
+// exista aviso do estado da chave no Caixa ou em Pedidos → Devoluções (não existe; aquelas telas
+// não consultam esta rota). Nada aqui é dado sensível: é o modo do interruptor, o prazo da SEFAZ
+// e o ambiente da emissão. O BOTÃO de gravar, esse sim, exige permissão (PUT abaixo), e o campo
+// `podeEditar` diz à tela se deve mostrar o botão — calculado pela MESMA função do backend,
+// para o front não repetir a conta e errar.
+router.get('/devolucao-ref-item', verificarAuth, async (req, res) => {
+    try {
+        const reg = await prisma.appConfig.findUnique({ where: { key: CHAVE_REF_ITEM } });
+        const modoValido = lerModoRefItemValido(reg);
+        const modo = modoValido || 'auto';
+        const ligado = await emissao.refItemLigada();   // fonte da verdade do comportamento
+
+        const obrigatorioEm = emissao.DATA_OBRIGATORIA_REF_ITEM;
+        const diasRestantes = Math.round(
+            (Date.parse(`${obrigatorioEm}T00:00:00Z`) - Date.parse(`${hojeBrasilia()}T00:00:00Z`)) / 86400000
+        );
+
+        const salvo = (reg?.value && typeof reg.value === 'object' && !Array.isArray(reg.value)) ? reg.value : {};
+        const perms = req._perms || await getPerms(req.user.id);
+        req._perms = perms;
+
+        res.json({
+            chave: CHAVE_REF_ITEM,
+            modo,                       // 'auto' | 'sempre' | 'nunca' (o que está guardado)
+            modos: MODOS_REF_ITEM,      // valores aceitos pelo PUT
+            ligado,                     // resultado EFETIVO de refItemLigada()
+            // `definido` = existe uma ESCOLHA VÁLIDA gravada — não é só "a linha existe".
+            // Se alguém escrever lixo direto no banco (`{"modo":"xyz"}`), `modo` cai para 'auto'
+            // e `definido` continua false: o lembrete segue aparecendo e o botão da tela continua
+            // habilitado para reescrever a chave, em vez de travar sem saída.
+            definido: modoValido !== null,
+            obrigatorioEm,              // '2026-10-05'
+            diasRestantes,              // negativo depois do prazo
+            ambiente: focusNfe.ambiente(),          // 'producao' | 'homologacao'
+            atualizadoEm: salvo.atualizadoEm || null,
+            atualizadoPorNome: salvo.atualizadoPorNome || null,
+            podeEditar: podeEditarConfig(perms)
+        });
+    } catch (error) {
+        console.error('Erro ao consultar o interruptor da referência por item:', error);
+        res.status(500).json({ error: 'Erro ao consultar a configuração da NF-e de devolução.' });
+    }
+});
+
+// ── PUT /devolucao-ref-item — grava o modo (o BOTÃO) ──
+// Exige `configuracoes.edit` (ou admin), a mesma regra do resto deste arquivo: virar esta chave
+// muda o conteúdo do XML da NF-e de devolução que a empresa emite.
+router.put('/devolucao-ref-item', verificarAuth, checkConfig, async (req, res) => {
+    try {
+        const modo = String(req.body?.modo ?? '').trim().toLowerCase();
+        if (!MODOS_REF_ITEM.includes(modo)) {
+            return res.status(400).json({
+                error: 'Valor inválido. Use "auto" (segue o prazo da SEFAZ), "sempre" (força ligado) ou "nunca" (força desligado).',
+                modos: MODOS_REF_ITEM
+            });
+        }
+
+        const regAnterior = await prisma.appConfig.findUnique({ where: { key: CHAVE_REF_ITEM } });
+        const anteriorValido = lerModoRefItemValido(regAnterior);
+        const anterior = anteriorValido || 'auto';   // o que a emissão estava fazendo antes
+        // No log, distinguir "estava em auto por escolha" de "nunca escolheram nada" — senão a
+        // primeira decisão do dono é registrada como "auto → auto" e parece que não mudou nada.
+        const anteriorRotulo = anteriorValido || 'auto (padrão, sem escolha gravada)';
+
+        const value = {
+            modo,
+            atualizadoEm: new Date().toISOString(),
+            atualizadoPorId: req.user.id,
+            atualizadoPorNome: req.user.nome || null
+        };
+        await prisma.appConfig.upsert({
+            where: { key: CHAVE_REF_ITEM },
+            update: { value },
+            create: { key: CHAVE_REF_ITEM, value }
+        });
+
+        // Estado efetivo DEPOIS de gravar, lido pela mesma função da emissão.
+        const ligado = await emissao.refItemLigada();
+
+        // Auditoria FORA do caminho crítico: a chave JÁ está gravada. Log lento ou com defeito
+        // nunca pode derrubar nem desfazer a alteração que a pessoa acabou de fazer.
+        try {
+            await prisma.auditLog.create({
+                data: {
+                    acao: 'ALTERAR_NFE_DEVOLUCAO_REF_ITEM',
+                    entidade: 'AppConfig',
+                    entidadeId: CHAVE_REF_ITEM,
+                    detalhes: `Referência da nota de origem por item na NF-e de devolução: ${anteriorRotulo} → ${modo} · efeito agora: ${ligado ? 'LIGADO' : 'desligado'} · ambiente ${focusNfe.ambiente()}`,
+                    usuarioId: req.user.id,
+                    usuarioNome: req.user.nome || '(sem nome)'
+                }
+            });
+        } catch (logErr) {
+            console.error('[ConfigNotas] falha no audit log do interruptor (a chave JÁ foi gravada):', logErr.message);
+        }
+        try {
+            console.log(`[ConfigNotas] nfe_devolucao_ref_item: ${anteriorRotulo} → ${modo} por ${req.user.nome || req.user.id} (efeito: ${ligado ? 'ligado' : 'desligado'})`);
+        } catch { /* log não bloqueia */ }
+
+        res.json({ ok: true, chave: CHAVE_REF_ITEM, modo, modoAnterior: anterior, ligado, ambiente: focusNfe.ambiente() });
+    } catch (error) {
+        console.error('Erro ao salvar o interruptor da referência por item:', error);
+        res.status(500).json({ error: 'Erro ao salvar a configuração da NF-e de devolução.' });
     }
 });
 

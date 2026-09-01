@@ -749,6 +749,53 @@ gravado em `NotaFiscalApp.mensagemSefaz` com `status: 'ERRO'` — a aba Devoluç
 > o `PUT /api/config-notas/emissao` reescreve aquele objeto inteiro com só três campos, e um campo
 > extra ali seria apagado em silêncio quando alguém salvasse a tela de Configurações.
 
+**Onde se liga (tela + rotas):** Configurações → seção **NF-e de devolução — referência por item**
+(dentro do bloco "Notas & Certificado", que só é renderizado para `admin`/`configuracoes.edit`).
+Até 08/2026 a chave só existia por comando técnico; agora tem botão nessa seção e um lembrete
+periódico (`AlertaDevolucaoRefItem.jsx`) que hoje aparece **só para o Clarkson**. **Não** existe
+aviso do estado da chave no Caixa nem em Pedidos → Devoluções.
+
+| Rota | Permissão | Para que serve |
+|---|---|---|
+| `GET /api/config-notas/devolucao-ref-item` | **qualquer usuário logado** (`verificarAuth`, sem `checkConfig`) | lê o estado da chave. Consumidores hoje: o **lembrete periódico** (`AlertaDevolucaoRefItem.jsx`, montado no `App.jsx` e exibido **só para o Clarkson**) e a **seção de Configurações** (`NotasCertificadoConfig.jsx`). Ficou sem `checkConfig` porque o lembrete roda em qualquer tela do app, fora do bloco de Configurações — **não** porque exista aviso no Caixa ou em Pedidos → Devoluções (não existe) |
+| `PUT /api/config-notas/devolucao-ref-item` | `admin` **ou** `configuracoes.edit === true` (`checkConfig`) | o **botão**: grava `auto` / `sempre` / `nunca` |
+
+Resposta do `GET`:
+
+```json
+{
+  "chave": "nfe_devolucao_ref_item",
+  "modo": "auto",                       // o que está guardado
+  "modos": ["auto", "sempre", "nunca"], // valores aceitos pelo PUT
+  "ligado": false,                      // resultado EFETIVO de refItemLigada()
+  "definido": false,                    // false = não há escolha VÁLIDA gravada; vale o padrão 'auto'
+  "obrigatorioEm": "2026-10-05",
+  "diasRestantes": 34,                  // negativo depois do prazo
+  "ambiente": "producao",
+  "atualizadoEm": null,
+  "atualizadoPorNome": null,
+  "podeEditar": true                    // a MESMA conta do backend — a tela não repete a regra
+}
+```
+
+> `ligado` vem da própria `focusNfeEmissaoService.refItemLigada()`, não de uma cópia da regra: o
+> aviso da tela nunca pode mostrar um estado diferente do que a emissão vai fazer.
+> ⚠️ `permissoes.configuracoes` é **objeto**, não booleano — `!!perms.configuracoes` liberaria
+> quem só tem `view`. Por isso o `GET` devolve `podeEditar` já calculado no backend.
+
+O `PUT` recusa qualquer valor fora dos três com **400** e mensagem em português, e grava um
+`audit_logs` com ação `ALTERAR_NFE_DEVOLUCAO_REF_ITEM` (de → para, efeito e ambiente, quem e
+quando) **fora** do caminho crítico — falha no log não desfaz a gravação.
+
+```bash
+# ler o estado (qualquer usuário logado)
+curl -s -H "Authorization: Bearer $TOKEN" "$URL/api/config-notas/devolucao-ref-item"
+
+# virar a chave (precisa de configuracoes.edit)
+curl -s -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"modo":"sempre"}' "$URL/api/config-notas/devolucao-ref-item"
+```
+
 **Diagnóstico (somente leitura, não emitem nada):**
 
 ```bash

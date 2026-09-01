@@ -1,9 +1,42 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import configNotasService from '../../../services/configNotasService';
-import { ShieldCheck, Upload, Lock, RefreshCw, Link2, Loader2, Receipt, Save, RotateCcw } from 'lucide-react';
+import { ShieldCheck, Upload, Lock, RefreshCw, Link2, Loader2, Receipt, Save, RotateCcw, Undo2, CalendarClock, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—';
+
+// Data que vem como 'YYYY-MM-DD' (sem hora): montar pelos pedaços, senão `new Date()` lê como
+// UTC e mostra o dia anterior no Brasil.
+const fmtDataSimples = (iso) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? ''));
+    return m ? `${m[3]}/${m[2]}/${m[1]}` : null;
+};
+
+// Âncora usada pelo lembrete do Clarkson (AlertaDevolucaoRefItem) para cair direto aqui.
+const ANCORA_REF_ITEM = 'nfe-devolucao-ref-item';
+
+// O backend devolve 'producao'/'homologacao' sem acento (é o valor cru da env) — na tela sai em português.
+const nomeAmbiente = (a) => ({ producao: 'produção', homologacao: 'homologação' }[a] || a || null);
+
+// As três opções do interruptor, com o que cada uma faz em português.
+const OPCOES_REF_ITEM = [
+    {
+        valor: 'auto',
+        titulo: 'Automático (recomendado)',
+        descricao: 'Segue o prazo da SEFAZ: fica desligado até a data limite e liga sozinho no dia. Não precisa fazer nada.'
+    },
+    {
+        valor: 'sempre',
+        titulo: 'Sempre ligado',
+        descricao: 'Liga agora, antes do prazo. Use só depois de provar em homologação que a SEFAZ aceita a nota.'
+    },
+    {
+        valor: 'nunca',
+        titulo: 'Nunca (desligado à força)',
+        descricao: 'Continua desligado mesmo depois da data limite. Só para emergência — passada a data, a SEFAZ pode rejeitar a devolução.'
+    }
+];
 const fmtDataHora = (d) => d
     ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
     : null;
@@ -56,7 +89,50 @@ const NotasCertificadoConfig = () => {
         }
     };
 
-    useEffect(() => { carregar(); carregarCaptura(); carregarEmissao(); }, []);
+    // ── Referência da nota de origem POR ITEM na NF-e de devolução (NT 2025.002) ──
+    // { modo, ligado, obrigatorioEm, diasRestantes, ambiente, podeEditar, ... }
+    const [refItem, setRefItem] = useState(null);
+    const [refItemErro, setRefItemErro] = useState(false);
+    const [refItemEscolha, setRefItemEscolha] = useState('auto');
+    const [salvandoRefItem, setSalvandoRefItem] = useState(false);
+    const location = useLocation();
+
+    const carregarRefItem = async () => {
+        try {
+            const data = await configNotasService.getDevolucaoRefItem();
+            setRefItem(data || {});
+            setRefItemEscolha(data?.modo || 'auto');
+            setRefItemErro(false);
+        } catch {
+            setRefItemErro(true);
+        }
+    };
+
+    const salvarRefItem = async () => {
+        if (salvandoRefItem) return;
+        setSalvandoRefItem(true);
+        try {
+            const res = await configNotasService.setDevolucaoRefItem(refItemEscolha);
+            toast.success(res?.ligado
+                ? 'Salvo! A referência por item está LIGADA nas próximas devoluções.'
+                : 'Salvo! A referência por item segue desligada por enquanto.');
+            await carregarRefItem();
+        } catch (e) {
+            toast.error(e.response?.data?.error || 'Erro ao salvar a configuração da NF-e de devolução.');
+        } finally {
+            setSalvandoRefItem(false);
+        }
+    };
+
+    useEffect(() => { carregar(); carregarCaptura(); carregarEmissao(); carregarRefItem(); }, []);
+
+    // Chegou por "#nfe-devolucao-ref-item" (o lembrete da tela) — rola até o cartão.
+    // Espera o cartão existir no DOM: ele só aparece depois que o GET responde.
+    useEffect(() => {
+        if (location.hash !== `#${ANCORA_REF_ITEM}`) return;
+        const alvo = document.getElementById(ANCORA_REF_ITEM);
+        if (alvo) alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, [location.hash, refItem, refItemErro]);
 
     const toggleNfe = async () => {
         if (alterandoCaptura) return;
@@ -425,6 +501,134 @@ const NotasCertificadoConfig = () => {
 
                             <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
                                 Vale para a NF-e de venda <span className="font-semibold">e</span> para a NF-e de devolução, a partir da próxima nota emitida. Notas já autorizadas não mudam.
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+
+            {/* ── NF-e de devolução: referência da nota de origem POR ITEM (NT 2025.002) ── */}
+            <div id={ANCORA_REF_ITEM} className="bg-white rounded-xl border border-gray-200 shadow-sm scroll-mt-4">
+                <div className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100">
+                    <Undo2 className="h-4 w-4 text-blue-600" />
+                    <span className="text-xs font-bold uppercase tracking-widest text-gray-600">NF-E DE DEVOLUÇÃO — REFERÊNCIA POR ITEM</span>
+                </div>
+                <div className="p-5 space-y-4">
+                    {refItemErro ? (
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800">
+                            Não foi possível consultar essa configuração agora. Recarregue a página para tentar de novo.
+                        </div>
+                    ) : refItem == null ? (
+                        <div className="text-sm text-gray-500 flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Carregando…</div>
+                    ) : (
+                        <>
+                            <p className="text-sm text-gray-600 leading-snug">
+                                Na NF-e de devolução, cada item pode apontar para o item correspondente da nota de venda original.
+                                A SEFAZ passa a <span className="font-semibold">exigir</span> isso a partir da data abaixo; até lá é opcional.
+                            </p>
+
+                            {/* Estado atual */}
+                            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-sm font-medium text-gray-900">Está valendo agora?</span>
+                                        {refItem.ligado ? (
+                                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Ligado ✓</span>
+                                        ) : (
+                                            <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700">Desligado</span>
+                                        )}
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-1 break-words">
+                                        {refItem.ligado
+                                            ? 'As devoluções emitidas agora já saem com a referência item a item.'
+                                            : 'As devoluções emitidas agora referenciam só a chave da nota de origem, como sempre foi.'}
+                                        {nomeAmbiente(refItem.ambiente) ? ` · ambiente de ${nomeAmbiente(refItem.ambiente)}` : ''}
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-2 shrink-0">
+                                    <CalendarClock className="h-4 w-4 text-gray-500 mt-0.5 shrink-0" />
+                                    <div className="text-left md:text-right">
+                                        <div className="text-xs text-gray-500">Obrigatório a partir de</div>
+                                        <div className="text-sm font-semibold text-gray-900">
+                                            {fmtDataSimples(refItem.obrigatorioEm) || '—'}
+                                            <BadgeDiasRestantes dias={refItem.diasRestantes} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* As três opções */}
+                            <div className="space-y-2" role="radiogroup" aria-label="Quando usar a referência por item na NF-e de devolução">
+                                {OPCOES_REF_ITEM.map((op) => {
+                                    const marcada = refItemEscolha === op.valor;
+                                    return (
+                                        <button
+                                            key={op.valor}
+                                            type="button"
+                                            role="radio"
+                                            aria-checked={marcada}
+                                            disabled={!refItem.podeEditar || salvandoRefItem}
+                                            onClick={() => setRefItemEscolha(op.valor)}
+                                            className={`w-full text-left flex items-start gap-3 rounded-lg border p-3 min-h-[44px] transition-colors disabled:opacity-70 disabled:cursor-not-allowed ${marcada ? 'border-primary bg-mint/40' : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                                        >
+                                            <span className={`mt-0.5 shrink-0 h-5 w-5 rounded-full border flex items-center justify-center ${marcada ? 'border-primary bg-primary text-white' : 'border-gray-300 bg-white'}`}>
+                                                {marcada && <Check className="h-3.5 w-3.5" />}
+                                            </span>
+                                            <span className="min-w-0">
+                                                <span className="block text-sm font-semibold text-gray-900 break-words">
+                                                    {op.titulo}
+                                                    {refItem.modo === op.valor && (
+                                                        <span className="ml-2 px-2 py-0.5 text-[11px] font-semibold rounded-full bg-blue-100 text-blue-800 align-middle">em uso</span>
+                                                    )}
+                                                </span>
+                                                <span className="block text-xs text-gray-500 leading-snug mt-0.5 break-words">{op.descricao}</span>
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {refItem.podeEditar ? (
+                                <div className="flex flex-col md:flex-row md:items-center gap-3">
+                                    {/* Fica habilitado quando a escolha mudou OU quando ninguém nunca gravou
+                                        a chave (`definido` = false): confirmar o "Automático" é uma decisão
+                                        válida, e é o que faz o lembrete da tela parar de aparecer. */}
+                                    <button
+                                        onClick={salvarRefItem}
+                                        disabled={salvandoRefItem || (refItemEscolha === refItem.modo && refItem.definido === true)}
+                                        className="px-4 py-3 md:py-2 min-h-[44px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-sm disabled:opacity-50 inline-flex items-center justify-center gap-2"
+                                    >
+                                        {salvandoRefItem ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                                        {salvandoRefItem
+                                            ? 'Salvando…'
+                                            : (refItemEscolha === refItem.modo && !refItem.definido) ? 'Confirmar esta opção' : 'Salvar'}
+                                    </button>
+                                    {refItemEscolha === refItem.modo && refItem.definido === true && (
+                                        <span className="text-xs text-gray-500">Nada a salvar — essa já é a opção em uso.</span>
+                                    )}
+                                    {!refItem.definido && (
+                                        <span className="text-xs text-gray-500 break-words">
+                                            Ninguém escolheu ainda — está valendo o padrão <span className="font-semibold">Automático</span>.
+                                        </span>
+                                    )}
+                                    {refItem.atualizadoEm && (
+                                        <span className="text-xs text-gray-500 md:ml-1 break-words">
+                                            Alterado em {fmtData(refItem.atualizadoEm)}
+                                            {refItem.atualizadoPorNome ? ` por ${refItem.atualizadoPorNome}` : ''}
+                                        </span>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600">
+                                    Você pode ver essa configuração, mas não alterá-la — é preciso permissão de
+                                    <span className="font-semibold"> editar Configurações</span>.
+                                </div>
+                            )}
+
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 leading-snug">
+                                Em <span className="font-semibold">Automático</span> não é preciso ligar nada à mão: na data limite o sistema
+                                passa a mandar a referência por item sozinho. Mudar aqui só vale para as
+                                <span className="font-semibold"> próximas</span> devoluções emitidas — notas já autorizadas não mudam.
                             </div>
                         </>
                     )}

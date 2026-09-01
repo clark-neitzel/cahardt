@@ -75,6 +75,7 @@ Na aba **Pedidos → Devoluções**, ao expandir uma devolução de pedido **com
 - Status igual ao da venda: Processando → ✓ Autorizada (com botão **DANFE**) ou ✕ Rejeitada (motivo + "Emitir novamente").
 - **Devolução de pedido ESPECIAL não gera nota** (pedido sem nota) — o botão nem aparece; o fluxo especial segue como sempre.
 - Devolução que já teve nota emitida pelo CA (campo "Nota Devolução" preenchido) também não emite de novo.
+- **Referência por item (prazo da SEFAZ: 05/10/2026):** a partir dessa data a SEFAZ exige que a nota de devolução aponte, **dentro de cada item**, de qual item da nota original o produto veio. O sistema já faz isso; o interruptor fica em **Configurações → NF-e de devolução — referência por item** (Automático / Sempre / Nunca), e no **Automático** liga sozinho na data — não é preciso fazer nada. **Nesta aba, e no Caixa, não há aviso do estado da chave**: para conferir como ela está é preciso abrir essa seção das Configurações, que só aparece para quem tem `admin` ou `configuracoes.edit`.
 
 ---
 

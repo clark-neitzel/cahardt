@@ -125,6 +125,7 @@ import AlertaComissao from './components/ComissaoVendedor';
 import AlertaTarefas from './components/AlertaTarefas';
 import AlertaPedidosSite from './components/AlertaPedidosSite';
 import AlertaAutorizacaoDevolucao from './components/AlertaAutorizacaoDevolucao';
+import AlertaDevolucaoRefItem from './components/AlertaDevolucaoRefItem';
 import Clippy from './components/Clippy/Clippy';
 import TelaSemConexao from './components/TelaSemConexao';
 import { useVersionCheck } from './hooks/useVersionCheck';
@@ -664,6 +665,12 @@ const Layout = ({ children }) => {
 
         {/* ALERTA DE PEDIDOS NOVOS DO SITE — Kit Festa + Congelados (popup a cada 15 min) */}
         {(isAdmin || hasPermission('kitFesta')) && <AlertaPedidosSite />}
+
+        {/* LEMBRETE DA CHAVE DA NF-e DE DEVOLUÇÃO POR ITEM — só p/ o Clarkson, a cada 10 min
+            até a chave estar acionada (o próprio componente decide se é ele e se ainda cabe).
+            Fica em z-[9990], ABAIXO dos avisos operacionais acima — lembrete de configuração
+            não pode cobrir "pedidos pendentes de faturamento" e afins. */}
+        <AlertaDevolucaoRefItem />
 
         {/* COPILOTO (CLIPPY) — assistente de negócio com IA, só desktop */}
         <Clippy />
