@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ChevronDown, ChevronUp, RotateCcw, Loader2, FileText, ExternalLink } from 'lucide-react';
 import devolucaoService from '../../services/devolucaoService';
 import api, { API_URL } from '../../services/api';
@@ -30,17 +30,22 @@ const ListaDevolucoes = ({ filtros }) => {
     const [revertendo, setRevertendo] = useState(null);
     const [motivoReversao, setMotivoReversao] = useState('');
     const [emitindoNF, setEmitindoNF] = useState(null);   // devolucaoId em emissão
+    const emitindoNFRef = useRef(null);                  // trava síncrona: 2º clique no mesmo tick não dispara request
     const [baixandoDanfe, setBaixandoDanfe] = useState(null);
 
     const emitirNFDevolucao = async (dev) => {
+        if (emitindoNFRef.current) return;   // já tem emissão em andamento: ignora o clique repetido
+        emitindoNFRef.current = dev.id;
         setEmitindoNF(dev.id);
         try {
             await api.post(`/notas-fiscais/emitir-devolucao/${dev.id}`);
             toast.success(`NF de devolução do DEV#${dev.numero} enviada para emissão.`);
             await carregar(1);
         } catch (e) {
-            toast.error(e.response?.data?.error || 'Erro ao emitir a NF de devolução.');
+            toast.error(e.response?.data?.error || 'Erro ao emitir a NF de devolução.',
+                { duration: 10000, style: { maxWidth: '480px', whiteSpace: 'pre-line', overflowWrap: 'anywhere', wordBreak: 'break-word' } });
         } finally {
+            emitindoNFRef.current = null;
             setEmitindoNF(null);
         }
     };

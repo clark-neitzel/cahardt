@@ -230,6 +230,70 @@ O relatório sai em **2 folhas A4**:
 > celular do motorista **não** faz nada disso — é só o registro do que aconteceu na porta,
 > justamente para o motorista poder pedir correção se marcou errado.
 
+### Quando a NF de devolução NÃO sai
+
+A devolução **sempre fica registrada**, mesmo que a nota falhe: o estoque volta, as parcelas são
+ajustadas e os boletos/PIX são cancelados do mesmo jeito. O que falha é só a nota.
+
+Quando isso acontece aparece na tela o aviso **"Devolução registrada, mas a NF não saiu: `<motivo>`"**
+— e **é nesse aviso que o motivo SEMPRE aparece**. Ele fica cerca de 10 segundos; vale a pena ler
+antes de continuar.
+
+**Atenção: nem todo motivo fica guardado para depois.** Em **Pedidos → aba Devoluções** a linha só
+mostra **"✕ Rejeitada: `<motivo>`"** em vermelho quando o app já tinha chegado a criar o registro da
+nota. Nos demais casos — e o mais comum do dia a dia, cadastro incompleto, é um deles — a aba
+Devoluções mostra **só o botão "Emitir NF de devolução", sem nenhum texto vermelho**. Não é erro da
+tela: aquele motivo não foi gravado em lugar nenhum.
+
+> **Ficou sem saber o motivo?** Clique em **"Emitir NF de devolução"** na aba Devoluções: o app
+> tenta de novo e mostra o mesmo aviso com o motivo, na hora. É a forma de recuperar a informação.
+>
+> E quando houver texto vermelho, lembre que ele é da **última tentativa que chegou a enviar a
+> nota** — se você corrigiu alguma coisa e ela ainda não sai, quem está atualizado é o aviso do
+> momento, não o vermelho antigo.
+
+#### Motivos que FICAM guardados (vermelho na aba Devoluções, botão vira "Emitir novamente")
+
+- **Rejeição da SEFAZ ou recusa na validação** da emissora — a nota chegou a ser enviada e voltou
+  com o motivo (dado fiscal do produto, cadastro recusado pela SEFAZ, nota original inválida…).
+- **A partir de 05/10/2026**, as falhas de referência por item (explicadas abaixo).
+
+#### Motivos que aparecem SÓ no aviso do momento (nada em vermelho na aba Devoluções)
+
+São as conferências que o app faz **antes** de montar a nota — por isso não há registro de nota
+para guardar o texto:
+
+- **Cadastro do cliente incompleto** — falta endereço (rua), número, bairro, cidade, UF ou CEP.
+  **É o motivo mais comum.** Corrija o cadastro do cliente e clique em "Emitir NF de devolução".
+- **Cliente sem CPF/CNPJ** no cadastro.
+- **Devolução sem itens com quantidade.**
+- **NF-e original da venda não encontrada** — o pedido não tem a nota de venda vinculada, e a
+  devolução precisa apontar para ela.
+- **Casos que nunca geram nota, por regra:** devolução já revertida, devolução de pedido especial
+  (pedido sem nota de origem) e devolução que já tem NF de devolução do Conta Azul.
+- **"Nota de devolução deste registro já está AUTORIZADO/PROCESSANDO"** — não é falha: a nota já
+  saiu (ou está saindo). É a trava que impede emitir a mesma nota duas vezes; a linha vai mostrar
+  o número da NF ou "NF dev. emitindo…".
+
+#### As falhas de referência por item (só a partir de 05/10/2026)
+
+**Até essa data nada muda no Caixa** e a devolução segue emitindo como sempre. A partir dela a
+SEFAZ passa a exigir que **cada produto devolvido aponte a linha correspondente da nota de venda
+original**. Estas três mensagens ficam guardadas em vermelho na aba Devoluções:
+
+- **"Produto X não consta na NF-e nº Y da venda"** — o produto devolvido não existe naquela nota
+  (item trocado por outro, produto recadastrado com outro código, mercadoria de uma nota diferente
+  da que está vinculada ao pedido). Confira a nota original da venda e, se for mesmo um caso fora
+  do padrão, emita a devolução manualmente pelo contador.
+- **"Produto X aparece MENOS vezes na NF-e nº Y da venda do que nas linhas desta devolução"** — a
+  devolução ficou com o mesmo produto em mais de uma linha e a nota da venda tem menos linhas dele.
+  Como cada produto devolvido precisa apontar uma linha própria da venda, e a nota não pode apontar
+  a mesma linha duas vezes, o app **prefere não emitir** a arriscar uma nota errada (nota fiscal
+  errada só se desfaz com cancelamento em 24h). Junte as linhas repetidas desse produto na
+  devolução e emita de novo, ou emita pelo contador.
+- **"Não foi possível ler os itens da NF-e nº Y"** — o app não conseguiu recuperar a nota de venda
+  original (nota antiga do Conta Azul cujo XML não está guardado). Avise o escritório.
+
 ### Imprimir a NF de devolução (DANFE) no próprio Caixa
 - Assim que a NF-e de devolução é **autorizada** pela SEFAZ (leva segundos), aparece na linha da entrega o botão verde **"🧾 NF dev. `<número>`"** — clique para abrir o PDF da DANFE, imprimir e arquivar junto com o caixa do dia
 - Enquanto a nota ainda está na SEFAZ aparece "NF dev. emitindo…" — recarregue a tela em instantes

@@ -20,6 +20,25 @@ function salvarLocal(chave, xml) {
     }
 }
 
+/**
+ * XML já gravado no volume local (backend/uploads/xml-nfe), SEM rede.
+ * Devolve a string do XML ou `null` se o arquivo não existir/não puder ser lido.
+ * Usado pela emissão da NF-e de devolução para descobrir o nItem de cada item na
+ * nota de origem sem depender da API do Conta Azul (rede/token) dentro do clique
+ * que registra a devolução no Caixa.
+ */
+function lerXmlLocal(chave) {
+    try {
+        const arq = caminhoLocal(chave);
+        if (!fs.existsSync(arq)) return null;
+        const xml = fs.readFileSync(arq, 'utf8');
+        return xml && xml.trim() ? xml : null;
+    } catch (e) {
+        console.error('[XmlNfe] Falha ao ler XML local:', e.message);
+        return null;
+    }
+}
+
 /** XML de nota antiga do CA: arquivo local primeiro; senão busca no CA e guarda. */
 async function obterXmlNotaCA(chave) {
     const arq = caminhoLocal(chave);
@@ -144,4 +163,4 @@ function backupStatus() {
     return { ...backup, arquivosNoDisco: arquivos };
 }
 
-module.exports = { obterXmlNotaCA, obterXmlNotaApp, salvarLocal, backupXmlsCA, backupStatus, vincularXmlAoPedido, vincularXmlsBaixados };
+module.exports = { obterXmlNotaCA, obterXmlNotaApp, lerXmlLocal, salvarLocal, backupXmlsCA, backupStatus, vincularXmlAoPedido, vincularXmlsBaixados };

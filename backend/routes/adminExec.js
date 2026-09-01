@@ -55,7 +55,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'manifestacao-destinatario-2026-08-28',
+        deployMarker: 'devolucao-ref-item-2026-09-01',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -10974,6 +10974,312 @@ router.get('/diag-manifestacao-sefaz', async (req, res) => {
                 erro: String(err?.message || err).substring(0, 500)
             });
         }
+    }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NF-e de devolução — referência da nota de origem POR ITEM (NT 2025.002 v1.51,
+// regras VC02-14 / VC03-20). Produção passa a exigir em 05/10/2026.
+// NENHUMA DAS DUAS ROTAS ABAIXO EMITE NOTA. Mas só a de SIMULAÇÃO EM MASSA é
+// realmente somente leitura: a individual pode buscar o XML da nota de origem na API
+// do Conta Azul e gravá-lo no volume (cache de `xmlNfeService`). Cada rota declara
+// isso na própria resposta — não trocar por um `somenteLeitura: true` genérico.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// GET /api/admin-exec/diag-devolucao-ref-item?numero=<nº da devolução>
+// Mostra, para UMA devolução: de onde vieram os itens da nota de origem
+// (payload / xml-local / xml-ca), a lista de itens dessa nota e o nItem casado
+// com cada item devolvido. NÃO EMITE NOTA.
+// É UMA devolução, sob demanda: aqui a busca do XML no Conta Azul CONTINUA ligada
+// (é justamente o que se quer conferir quando a nota é antiga do CA).
+router.get('/diag-devolucao-ref-item', async (req, res) => {
+    try {
+        const numero = parseInt(req.query.numero, 10);
+        if (!Number.isFinite(numero)) return res.status(400).json({ error: 'Informe ?numero=<nº da devolução>.' });
+
+        const emissao = require('../services/focusNfeEmissaoService');
+        const { normalizarChaveNFe, normalizarChaveNFeTolerante } = require('../utils/documento');
+
+        const dev = await prisma.devolucao.findFirst({
+            where: { numero },
+            include: {
+                itens: { include: { produto: true } },
+                pedidoOriginal: true,
+                // o cliente entra só para conferir as travas de cadastro da emissão
+                // (endereço/CPF-CNPJ) — são elas que hoje falham SEM deixar motivo gravado.
+                cliente: true,
+            },
+        });
+        if (!dev) return res.status(404).json({ error: `Devolução nº ${numero} não encontrada.` });
+
+        const pedido = dev.pedidoOriginal;
+        const notaVendaApp = pedido ? await emissao.notaAutorizadaDoPedido(pedido.id) : null;
+        // Mesma normalização TOLERANTE que a emissão usa (`pedidos.nfe_chave` vem crua do CA).
+        // A estrita é calculada junto só para expor quando a chave está fora do padrão.
+        const chaveBruta = notaVendaApp?.chave || pedido?.nfeChave || '';
+        const chaveOriginal = normalizarChaveNFeTolerante(chaveBruta);
+        const chaveEstrita = normalizarChaveNFe(chaveBruta);
+        const numeroOriginal = notaVendaApp?.numero || pedido?.nfeNumero || null;
+
+        const interruptor = await emissao.refItemLigada();
+        const origem = chaveOriginal || notaVendaApp
+            ? await emissao.itensDaNotaOriginal({ notaVendaApp, chaveOriginal })
+            : { fonte: null, itens: [] };
+
+        const rotuloNota = numeroOriginal ? `nº ${numeroOriginal}` : chaveOriginal;
+        const itensValidos = (dev.itens || []).filter(i => Number(i.quantidade) > 0);
+        const usados = new Set(); // mesmo consumo de linha que a emissão faz
+        const casamento = itensValidos.map((item) => {
+            // 5º argumento: recebe o motivo quando NÃO resolve. Espelha a emissão, que
+            // RECUSA (não reaproveita nItem) quando as linhas daquele produto na nota de
+            // origem acabaram — o diagnóstico tem que dizer o mesmo que a emissão faria.
+            const detalhe = {};
+            const achado = emissao.acharItemOrigem(item, origem.itens, rotuloNota, usados, detalhe);
+            return {
+                produto: item.produto?.nome || null,
+                codigo: item.produto?.codigo || null,
+                produtoId: item.produtoId,
+                quantidadeDevolvida: Number(item.quantidade),
+                nItemOrigem: achado?.nItem ?? null,
+                casouCom: achado ? { codigo: achado.codigo, descricao: achado.descricao, quantidade: achado.quantidade } : null,
+                resolvido: !!achado,
+                motivo: achado ? null : (detalhe.motivo === 'linhas-esgotadas'
+                    ? `O produto aparece menos vezes na NF-e ${rotuloNota} do que nas linhas desta devolução — todas as linhas dele na nota de origem já foram apontadas por outro item devolvido. A emissão RECUSA (não aponta o mesmo item de origem duas vezes).`
+                    : `Produto não consta na NF-e ${rotuloNota} da venda.`),
+            };
+        });
+
+        // ── Travas reais de `emitirDevolucao`, na MESMA ordem em que ela as aplica ──
+        // Existe para não presumir nada: a maioria destas travas falha ANTES de a
+        // NotaFiscalApp ser criada, ou seja, sem gravar motivo nenhum — a aba Devoluções
+        // não mostra vermelho e o único aviso é o toast do momento. Aqui elas ficam
+        // visíveis. `bonificacao` NÃO é trava da emissão de devolução (só da de venda).
+        const cli = dev.cliente;
+        const docCli = String(cli?.Documento || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase();
+        const faltandoCad = [];
+        if (cli && !cli.End_Logradouro) faltandoCad.push('endereço (rua)');
+        if (cli && !cli.End_Numero) faltandoCad.push('número');
+        if (cli && !cli.End_Bairro) faltandoCad.push('bairro');
+        if (cli && !cli.End_Cidade) faltandoCad.push('cidade');
+        if (cli && !cli.End_Estado) faltandoCad.push('UF');
+        if (cli && !cli.End_CEP) faltandoCad.push('CEP');
+        const focusNfeSvc = require('../services/focusNfeService');
+        const refNota = `nfd-${focusNfeSvc.ambiente() === 'producao' ? 'p' : 'h'}-${dev.id}`;
+        const notaDev = await prisma.notaFiscalApp.findUnique({ where: { ref: refNota } });
+        const travasDaEmissao = [
+            { trava: 'status ATIVA', bloqueia: dev.status !== 'ATIVA', gravaMotivo: false, detalhe: dev.status },
+            { trava: 'pedido especial (dev.tipo ESPECIAL ou pedidoOriginal.especial)', bloqueia: dev.tipo === 'ESPECIAL' || !!pedido?.especial, gravaMotivo: false, detalhe: `tipo=${dev.tipo} especial=${!!pedido?.especial}` },
+            { trava: 'já tem NF de devolução do Conta Azul', bloqueia: !!dev.notaDevolucaoCA, gravaMotivo: false, detalhe: dev.notaDevolucaoCA || null },
+            { trava: 'NF-e original da venda encontrada', bloqueia: !chaveOriginal, gravaMotivo: false, detalhe: chaveOriginal || 'sem chave' },
+            { trava: 'idempotência (nota já AUTORIZADO/PROCESSANDO)', bloqueia: !!notaDev && ['AUTORIZADO', 'PROCESSANDO'].includes(notaDev.status), gravaMotivo: false, detalhe: notaDev?.status || 'sem registro' },
+            { trava: 'cliente com CPF/CNPJ', bloqueia: !docCli, gravaMotivo: false, detalhe: docCli ? 'ok' : 'sem documento' },
+            { trava: 'cadastro do cliente completo (endereço/CEP)', bloqueia: faltandoCad.length > 0, gravaMotivo: false, detalhe: faltandoCad.length ? `falta ${faltandoCad.join(', ')}` : 'ok' },
+            { trava: 'devolução com itens (quantidade > 0)', bloqueia: itensValidos.length === 0, gravaMotivo: false, detalhe: `${itensValidos.length} item(ns)` },
+            { trava: 'referência por item resolve (só com o interruptor ligado)', bloqueia: interruptor && casamento.some(c => !c.resolvido), gravaMotivo: true, detalhe: interruptor ? `${casamento.filter(c => !c.resolvido).length} sem casar` : 'interruptor desligado' },
+        ];
+        // `bonificacao` fica de fora de propósito: NÃO é trava de `emitirDevolucao`.
+
+        res.json({
+            ok: true,
+            emiteNota: false,
+            somenteLeitura: false,
+            observacao: 'Não emite nota nenhuma. Mas pode BAIXAR o XML da nota de origem no Conta Azul e guardá-lo em uploads/xml-nfe (cache) — por isso não é 100% somente leitura.',
+            // gravaMotivo=false → se essa trava barrar, NADA fica gravado: a aba Devoluções
+            // não mostra texto vermelho e o motivo só aparece no aviso do momento do clique.
+            travasDaEmissao,
+            // A emissão para na PRIMEIRA trava — as de baixo nem chegam a ser avaliadas.
+            // É esta que determina o que o usuário vê (e se sobra motivo gravado ou não).
+            primeiraQueBloqueia: travasDaEmissao.find(t => t.bloqueia) || null,
+            emitiriaHoje: !travasDaEmissao.some(t => t.bloqueia),
+            notaDevolucaoNoApp: notaDev ? { ref: notaDev.ref, status: notaDev.status, numero: notaDev.numero, mensagemSefaz: notaDev.mensagemSefaz } : null,
+            devolucao: { numero: dev.numero, id: dev.id, status: dev.status, tipo: dev.tipo },
+            pedido: { numero: pedido?.numero ?? null, especial: !!pedido?.especial, bonificacao: !!pedido?.bonificacao },
+            notaOrigem: {
+                numero: numeroOriginal,
+                chave: chaveOriginal || null,
+                chaveBruta: chaveBruta || null,
+                // true = a chave só é aceita pela regra tolerante (prefixo "NFe"/pontuação na
+                // chave gravada crua do CA). A regra estrita a recusaria e a nota não sairia.
+                chaveSoPelaRegraTolerante: !!chaveOriginal && !chaveEstrita,
+                temNotaDoApp: !!notaVendaApp,
+            },
+            interruptor: { chave: 'nfe_devolucao_ref_item', ligado: interruptor, obrigatorioEm: emissao.DATA_OBRIGATORIA_REF_ITEM },
+            fonte: origem.fonte,
+            itensDaNotaOrigem: origem.itens,
+            casamento,
+            resumo: {
+                itensDevolvidos: casamento.length,
+                resolvidos: casamento.filter(c => c.resolvido).length,
+                naoResolvidos: casamento.filter(c => !c.resolvido).length,
+            },
+        });
+    } catch (err) {
+        console.error('[diag-devolucao-ref-item]', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/admin-exec/diag-devolucoes-ref-item-simulacao?dias=90&limite=300
+// Roda a resolução do nItem para as devoluções ATIVAS do período e diz quantas
+// resolveriam e quais falhariam (com motivo). É a prova, ANTES de 05/10/2026, de que
+// virar o interruptor não vai travar o Caixa. NÃO EMITE NOTA.
+// SOMENTE LEITURA DE VERDADE: a fonte `xml-ca` fica DESLIGADA aqui (`permitirRede: false`).
+// Sem isso, `?dias=730` viraria centenas de GETs sequenciais na API do Conta Azul — cada um
+// ainda gravando o XML no volume — e estouraria o tempo da requisição. Devolução que só
+// resolveria com o XML do CA sai num balde próprio, para ser conferida uma a uma na rota
+// individual. Por isso também existe `limite` (teto de linhas por chamada).
+router.get('/diag-devolucoes-ref-item-simulacao', async (req, res) => {
+    try {
+        const dias = Math.min(Math.max(parseInt(req.query.dias, 10) || 90, 1), 730);
+        const limite = Math.min(Math.max(parseInt(req.query.limite, 10) || 300, 1), 2000);
+        const desde = new Date(Date.now() - dias * 24 * 3600 * 1000);
+
+        const emissao = require('../services/focusNfeEmissaoService');
+        const { normalizarChaveNFe, normalizarChaveNFeTolerante } = require('../utils/documento');
+
+        // ⚠️ O filtro espelha AS TRAVAS REAIS de `emitirDevolucao`, não a convenção do resto
+        // deste arquivo. As travas são três — `status === 'ATIVA'`, especial
+        // (`dev.tipo === 'ESPECIAL' || pedidoOriginal.especial`) e `notaDevolucaoCA` — e
+        // **não existe trava de bonificação** na emissão de devolução (a de venda,
+        // `emitirVenda`, tem; a de devolução, não). Filtrar `bonificacao: false` aqui deixava
+        // de fora devoluções de pedido de bonificação que a virada da chave VAI atingir —
+        // e é este número que o dono usa em 05/10 para decidir. `notaDevolucaoCA` continua
+        // sendo tratado dentro do laço (balde `naoAplicaveis`), com o motivo escrito.
+        // `tipo` é NOT NULL no schema, então o `not` aqui não esconde linha nenhuma
+        // (ver a regra do `not`/`notIn` que exclui `null`).
+        const filtro = {
+            status: 'ATIVA',
+            dataDevolucao: { gte: desde },
+            tipo: { not: 'ESPECIAL' },
+            pedidoOriginal: { especial: false },
+        };
+        const totalNoPeriodo = await prisma.devolucao.count({ where: filtro });
+        const devolucoes = await prisma.devolucao.findMany({
+            where: filtro,
+            include: {
+                itens: { include: { produto: true } },
+                pedidoOriginal: true,
+            },
+            orderBy: { numero: 'desc' }, // as mais recentes primeiro — são as que importam para a virada
+            take: limite,
+        });
+
+        const falhas = [];         // emitiriam hoje, mas a referência por item NÃO resolve → é o que a virada quebraria
+        const naoAplicaveis = [];  // já não emitem hoje, com ou sem a virada (VERIFICADO, não presumido)
+        const precisamXmlDoCA = []; // indeterminadas AQUI: só o XML do Conta Azul resolveria, e esta rota não busca
+        // AVISO SOBREPOSTO (não é balde exclusivo — a mesma devolução também cai num dos de cima):
+        // chave fora do padrão, que vale pela regra antiga/tolerante e NÃO valeria pela estrita.
+        const chaveSoPelaRegraTolerante = [];
+        const porFonte = {};
+        let resolvidas = 0;
+
+        for (const dev of devolucoes) {
+            const pedido = dev.pedidoOriginal;
+            const registro = { devolucao: dev.numero, pedido: pedido?.numero ?? null };
+            try {
+                // Estas duas já não geram NF hoje (travas antigas do serviço). Ficam num balde
+                // separado de propósito: misturá-las com as falhas inflaria o número que o dono
+                // vai usar para decidir se pode virar a chave.
+                if (dev.notaDevolucaoCA) { naoAplicaveis.push({ ...registro, motivo: `Já tem NF de devolução do CA (nº ${dev.notaDevolucaoCA}) — não emite.` }); continue; }
+                const notaVendaApp = pedido ? await emissao.notaAutorizadaDoPedido(pedido.id) : null;
+                // As DUAS normalizações, lado a lado. A emissão usa a TOLERANTE; a estrita
+                // recusaria chave com prefixo "NFe"/pontuação — e `pedidos.nfe_chave` é gravada
+                // crua da API do Conta Azul. Só dá para dizer "já não emite hoje" quando
+                // NENHUMA das duas devolve chave; caso contrário seria afirmação não verificada.
+                const chaveBruta = notaVendaApp?.chave || pedido?.nfeChave || '';
+                const chaveOriginal = normalizarChaveNFeTolerante(chaveBruta);
+                const chaveEstrita = normalizarChaveNFe(chaveBruta);
+                const numeroOriginal = notaVendaApp?.numero || pedido?.nfeNumero || null;
+                if (!chaveOriginal) { naoAplicaveis.push({ ...registro, motivo: 'Sem chave da NF-e original da venda por nenhuma das duas regras (nem extraindo só os dígitos) — já não emite hoje.' }); continue; }
+                if (!chaveEstrita) {
+                    // Este balde é a prova do risco do dia: com a regra ESTRITA estas devoluções
+                    // parariam de emitir. Depois da correção (emissão usa a tolerante) ele deve
+                    // ficar VAZIO no relatório — é essa a evidência que interessa ao dono.
+                    chaveSoPelaRegraTolerante.push({ ...registro, chaveBruta: String(chaveBruta).slice(0, 60), motivo: 'Chave da NF-e de venda gravada fora do padrão (prefixo/pontuação): resolve pela regra antiga/tolerante, NÃO resolveria pela regra estrita.' });
+                }
+
+                const origem = await emissao.itensDaNotaOriginal({ notaVendaApp, chaveOriginal, permitirRede: false });
+                if (origem.redeNecessaria) {
+                    precisamXmlDoCA.push({ ...registro, motivo: `Sem payload da nota no app e sem XML no volume — precisaria buscar o XML da NF-e nº ${numeroOriginal || '?'} no Conta Azul. Esta rota não busca (para não martelar a API do CA); confira com diag-devolucao-ref-item?numero=${dev.numero}.` });
+                    continue;
+                }
+                if (!origem.itens.length) {
+                    falhas.push({ ...registro, motivo: `Itens da NF-e nº ${numeroOriginal || '?'} não puderam ser lidos (nota sem itens no payload e XML local ilegível).` });
+                    continue;
+                }
+                porFonte[origem.fonte] = (porFonte[origem.fonte] || 0) + 1;
+
+                const rotuloNota = numeroOriginal ? `nº ${numeroOriginal}` : chaveOriginal;
+                const usados = new Set(); // mesmo consumo de linha que a emissão faz
+                // 5º argumento: motivo da recusa. A emissão RECUSA (não reaproveita nItem)
+                // quando as linhas daquele produto na nota de origem acabaram; a simulação
+                // precisa contar essa devolução como falha pelo mesmo motivo, senão o
+                // relatório mente sobre o que a emissão faria.
+                const semCasar = [];
+                for (const i of (dev.itens || []).filter(x => Number(x.quantidade) > 0)) {
+                    const detalhe = {};
+                    if (emissao.acharItemOrigem(i, origem.itens, rotuloNota, usados, detalhe)) continue;
+                    const rotuloItem = `${i.produto?.nome || i.produtoId} (código ${i.produto?.codigo || '—'})`;
+                    semCasar.push(detalhe.motivo === 'linhas-esgotadas'
+                        ? `${rotuloItem} — aparece menos vezes na nota de origem do que nas linhas da devolução; todas as linhas dele já foram apontadas por outro item devolvido`
+                        : rotuloItem);
+                }
+                if (semCasar.length) {
+                    falhas.push({ ...registro, fonte: origem.fonte, motivo: `Itens sem item próprio para referenciar na NF-e nº ${numeroOriginal || '?'}: ${semCasar.join('; ')}` });
+                    continue;
+                }
+                resolvidas++;
+            } catch (e) {
+                falhas.push({ ...registro, motivo: `Erro ao simular: ${e.message}` });
+            }
+        }
+
+        res.json({
+            ok: true,
+            emiteNota: false,
+            somenteLeitura: true,
+            observacao: 'Não emite nota, não grava arquivo e NÃO chama a API do Conta Azul (a fonte xml-ca fica desligada nesta rota). Só lê o banco e os XMLs já guardados no volume.',
+            // Quem lê `falhariam` precisa saber exatamente que população foi medida — senão o
+            // número decide a virada da chave sem que ninguém saiba o que ficou de fora.
+            escopo: {
+                travasDaEmissaoEspelhadas: [
+                    "status === 'ATIVA' (devolução revertida não emite) — filtro SQL",
+                    "especial: dev.tipo === 'ESPECIAL' OU pedidoOriginal.especial — filtro SQL",
+                    'notaDevolucaoCA preenchida (já tem NF do Conta Azul) — balde naoAplicaveis',
+                    'NF-e original da venda ausente (nenhuma das duas normalizações de chave resolve) — balde naoAplicaveis',
+                ],
+                naoFiltradoPorqueAEmissaoTambemNaoFiltra: [
+                    'bonificação: emitirDevolucao NÃO tem trava de bonificação (só emitirVenda tem). Devolução de pedido de bonificação com chave de NF-e legada do Conta Azul ENTRA na conta.',
+                ],
+                travasDaEmissaoNAOSimuladas: [
+                    'cadastro do cliente incompleto (endereço, número, bairro, cidade, UF, CEP)',
+                    'cliente sem CPF/CNPJ',
+                    'devolução sem itens com quantidade > 0',
+                    'idempotência: nota já AUTORIZADO/PROCESSANDO nesta ref',
+                    'rejeição da SEFAZ / validação da Focus',
+                ],
+                porQue: 'As travas NÃO simuladas já barram a emissão HOJE, com ou sem a virada da chave — entrariam no número sem ser efeito da mudança. Uma devolução barrada por elas pode aparecer como "resolveria" aqui e mesmo assim não emitir.',
+            },
+            dias,
+            limite,
+            totalNoPeriodo,
+            truncado: totalNoPeriodo > devolucoes.length,
+            interruptor: { chave: 'nfe_devolucao_ref_item', ligado: await emissao.refItemLigada(), obrigatorioEm: emissao.DATA_OBRIGATORIA_REF_ITEM },
+            analisadas: devolucoes.length,
+            resolveriam: resolvidas,
+            falhariam: falhas.length,
+            precisariamXmlDoCA: precisamXmlDoCA.length,
+            chaveSoPelaRegraTolerante: chaveSoPelaRegraTolerante.length,
+            naoEmitemHoje: naoAplicaveis.length,
+            porFonte,
+            falhas,
+            precisamXmlDoCA,
+            listaChaveSoPelaRegraTolerante: chaveSoPelaRegraTolerante,
+            naoAplicaveis,
+        });
+    } catch (err) {
+        console.error('[diag-devolucoes-ref-item-simulacao]', err);
+        res.status(500).json({ error: err.message });
     }
 });
 

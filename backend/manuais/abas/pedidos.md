@@ -220,6 +220,30 @@ Desde 23/07/2026 o acerto financeiro da devolução acontece **nas parcelas do p
 
 Ainda **não existe** função de crédito de cliente no app: esse acerto é **manual** (abatimento no próximo pedido ou devolução do valor). O aviso fica gravado na devolução justamente para ninguém esquecer.
 
+**NF-e de devolução — status na linha e "Emitir novamente":** a nota da devolução é emitida
+automaticamente no Caixa, no mesmo clique que registra a devolução. Esta aba é o lugar de
+acompanhar e reemitir:
+
+- **"✕ Rejeitada: …"** em vermelho na linha — a nota não saiu, e o texto ao lado é o motivo exato.
+  O botão vira **"Emitir novamente"**: resolva o que a mensagem aponta e clique.
+- **A partir de 05/10/2026** (e só a partir dessa data — **até lá nada muda**) a SEFAZ passa a
+  exigir que **cada produto devolvido aponte a linha correspondente da nota de venda original**.
+  De lá em diante poderá aparecer *"Produto X (código N) não consta na NF-e nº Y da venda"*:
+  o produto devolvido não foi achado na nota da venda. Confira a nota original — produto
+  recadastrado com outro código, item trocado na entrega ou mercadoria de outra nota. Fora do
+  padrão, a devolução será emitida manualmente pelo contador.
+- Pela mesma regra, e também só a partir de 05/10/2026, poderá aparecer *"Produto X aparece MENOS
+  vezes na NF-e nº Y da venda do que nas linhas desta devolução"*: a devolução tem o mesmo produto
+  em mais de uma linha e a nota da venda tem menos linhas dele. Como a nota de devolução não pode
+  apontar duas vezes a mesma linha da venda, o app **prefere não emitir** a arriscar uma nota
+  errada. Junte as linhas repetidas desse produto na devolução e clique em "Emitir novamente" —
+  ou emita pelo contador.
+- Pela mesma regra, e também só a partir de 05/10/2026, poderá aparecer *"Não foi possível ler os
+  itens da NF-e nº Y"*: é nota antiga do Conta Azul cujo XML não está guardado no app. Avise o
+  escritório.
+- **A devolução em si continua valendo em qualquer um desses casos** — estoque, parcelas e boletos
+  já foram ajustados. O que falta é só o papel da nota.
+
 O **valor do título** em Contas a Receber sempre acompanha as parcelas: depois de uma devolução parcial ele passa a valer a **soma das parcelas que sobraram**, nunca menos. Assim o total do título e a lista de parcelas fecham entre si na tela (antes, num título de R$ 108 com R$ 50 já recebidos e R$ 63 devolvidos, a parcela ficava em R$ 50 e o título aparecia como R$ 45).
 
 ---

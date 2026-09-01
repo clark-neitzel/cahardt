@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Loader, Package, Upload, FileText } from 'lucide-react';
 import devolucaoService from '../../services/devolucaoService';
 import api from '../../services/api';
@@ -9,6 +9,7 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
     // entrega: { pedidoId, clienteNome, numero, especial, statusEntrega, valorPedido, itensDevolvidos, idVendaContaAzul }
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const salvandoRef = useRef(false);   // trava síncrona: 2º clique no mesmo tick não dispara request
     const [pedido, setPedido] = useState(null);
     const [itensQtd, setItensQtd] = useState({}); // produtoId → quantidade devolvida
     const [motivo, setMotivo] = useState('');
@@ -79,6 +80,9 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
             return;
         }
 
+        if (salvandoRef.current) return;   // já está salvando: ignora o clique repetido
+        salvandoRef.current = true;
+
         try {
             setSaving(true);
             const itens = itensParaDevolver.map(i => ({
@@ -102,8 +106,11 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                     await api.post(`/notas-fiscais/emitir-devolucao/${devCriada.id}`);
                     toast.success('NF de devolução enviada à SEFAZ — acompanhe na aba Devoluções.');
                 } catch (eNf) {
-                    toast(`Devolução registrada, mas a NF não saiu: ${eNf.response?.data?.error || 'erro'}.\nDá para emitir depois na aba Pedidos → Devoluções.`,
-                        { icon: '⚠️', duration: 10000, style: { maxWidth: '480px', whiteSpace: 'pre-line' } });
+                    // A mensagem do backend pode ou não terminar com pontuação — não duplicar o ponto.
+                    const motivoNf = String(eNf.response?.data?.error || 'erro').trim();
+                    const motivoNfPontuado = /[.!?…:]$/.test(motivoNf) ? motivoNf : `${motivoNf}.`;
+                    toast(`Devolução registrada, mas a NF não saiu: ${motivoNfPontuado}\nDá para emitir depois na aba Pedidos → Devoluções.`,
+                        { icon: '⚠️', duration: 10000, style: { maxWidth: '480px', whiteSpace: 'pre-line', overflowWrap: 'anywhere', wordBreak: 'break-word' } });
                 }
 
                 if (isBoleto) {
@@ -125,7 +132,7 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                             : '⚠️ Auto-processamento no CA falhou';
                     toast(
                         `${titulo}\n\n${mensagem}${sugestao ? `\n\n${sugestao}` : ''}`,
-                        { icon: '⚠️', duration: 12000, style: { maxWidth: '480px', whiteSpace: 'pre-line' } }
+                        { icon: '⚠️', duration: 12000, style: { maxWidth: '480px', whiteSpace: 'pre-line', overflowWrap: 'anywhere', wordBreak: 'break-word' } }
                     );
                 } else {
                     toast('Devolução registrada. Verifique manualmente no CA.', { icon: '⚠️' });
@@ -143,6 +150,7 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
         } catch (error) {
             toast.error(error.response?.data?.error || error.message || 'Erro ao registrar devolução.');
         } finally {
+            salvandoRef.current = false;
             setSaving(false);
         }
     };

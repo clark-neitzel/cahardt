@@ -140,6 +140,38 @@ function normalizarChaveNFe(v) {
     return s.length === 44 ? s : '';
 }
 
+/**
+ * Versão TOLERANTE da normalização da chave — use quando a chave vem de fonte
+ * que o app NÃO normaliza na gravação (ex.: `pedidos.nfe_chave`, gravada crua da
+ * API do Conta Azul em `pedidoController`), e recusar a chave significa deixar de
+ * emitir uma nota que hoje sai.
+ *
+ * Tenta, nesta ordem, e devolve a PRIMEIRA que der 44 posições:
+ *   1. a regra estrita (44 posições alfanuméricas) — chave já limpa ou com pontuação;
+ *   2. sem o prefixo `NFe` do atributo `Id` do XML (`NFe` + 44);
+ *   3. o comportamento ANTIGO (só dígitos) — cobre qualquer rótulo/prefixo com
+ *      letras grudado numa chave 100% numérica ("chave: 3512…", "NFe3512…").
+ * Só devolve '' quando não há chave utilizável de jeito nenhum (curta, vazia, ou
+ * com mais de 44 posições mesmo depois das tentativas acima).
+ *
+ * ⚠️ Não confundir com `normalizarChaveNFe`: para chave que o próprio app grava já
+ * normalizada (notas de entrada, DFe) continue usando a estrita.
+ */
+function normalizarChaveNFeTolerante(v) {
+    const estrita = normalizarChaveNFe(v);
+    if (estrita) return estrita;
+
+    const s = normalizarDoc(v);
+    // `NFe` + chave (inclusive chave alfanumérica da NT 2026.004 — por isso antes do só-dígitos)
+    if (s.length === 47 && s.startsWith('NFE')) return s.slice(3);
+
+    // comportamento antigo (`.replace(/\D/g,'')`): chave numérica com qualquer letra em volta
+    const d = soDigitos(v);
+    if (d.length === 44) return d;
+
+    return '';
+}
+
 module.exports = {
     normalizarDoc,
     soDigitos,
@@ -152,4 +184,5 @@ module.exports = {
     formatarDoc,
     mascaraDoc,
     normalizarChaveNFe,
+    normalizarChaveNFeTolerante,
 };

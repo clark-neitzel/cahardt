@@ -668,6 +668,154 @@ observação no padrão acima. Campos Focus: `finalidade_emissao: 4`, `tipo_docu
 `natureza_operacao: "Devolucao de venda"`, CFOP 1201, nota original referenciada
 (`notas_referenciadas`/chave — conferir nome exato do campo na doc de campos).
 
+#### 🔴 Referência da nota de origem **POR ITEM** (NT 2025.002 v1.51 — VC02-14 / VC03-20)
+
+A partir da NT 2025.002 v1.51 não basta referenciar a nota de origem no **cabeçalho**
+(`NFref`/`notas_referenciadas`): toda NF-e com `finalidade_emissao = 4` (devolução) precisa
+apontar o documento de origem **dentro de cada item** — a chave de acesso e o **número daquele
+item na nota ORIGINAL**. Sem isso a SEFAZ rejeita com **321**.
+
+**Prazos:** homologação já valida desde **01/09/2026**; **produção passa a exigir em 05/10/2026**.
+
+**Campos na API da Focus**, dentro de cada objeto de `items`:
+
+| Campo Focus | Tag NF-e | Tamanho | O que é |
+|---|---|---|---|
+| `chave_acesso_dfe_referenciado` | `DFeReferenciado/chaveAcesso` | String[44] | chave da NF-e da VENDA |
+| `numero_item_dfe_referenciado` | `DFeReferenciado/nItem` | String[3] | nº do item **na nota original** |
+
+> ⚠️ **`numero_item_dfe_referenciado` não é `numero_item`.** `numero_item` é o índice do item na
+> nota que estamos emitindo agora; o outro é a posição daquele produto na nota de venda antiga —
+> os dois quase nunca coincidem.
+
+**Como o app resolve o `nItem`** (`focusNfeEmissaoService.itensDaNotaOriginal`) — cascata, a
+primeira fonte que responder ganha:
+
+1. **`payloadEnviado.items`** da `NotaFiscalApp` da venda (fonte `payload`) — primária. É banco,
+   síncrono, sem rede; existe para toda nota emitida pelo app. Esta resolução roda **dentro do
+   clique que registra a devolução no Caixa**, então não pode depender de download.
+2. **XML no volume local** `backend/uploads/xml-nfe/<chave>.xml` (fonte `xml-local`), lido por
+   `xmlNfeService.lerXmlLocal` e parseado por `sefazDfeService.parseProcNFe` — também sem rede.
+3. **XML do Conta Azul** (fonte `xml-ca`) — chama a API do CA **e grava o XML no volume**; vai
+   dentro de `try/catch` e só como último recurso, para nota antiga do CA. Pode ser desligada com
+   `itensDaNotaOriginal({ ..., permitirRede: false })` — nesse caso a função para nas duas fontes
+   locais e devolve `redeNecessaria: true`. É o que a simulação em massa usa para não disparar
+   centenas de GETs sequenciais no Conta Azul.
+
+O casamento item devolvido → item da origem (`acharItemOrigem`) tenta, nesta ordem: código exato →
+código exato contra o UUID do produto → código ignorando zeros à esquerda → descrição normalizada.
+Sempre comparando **como string** (`Number()` perderia o zero à esquerda do código).
+
+A linha escolhida é **consumida** (Set `usados`, criado uma vez por devolução e passado como 4º
+argumento): duas linhas devolvidas do mesmo produto apontam linhas **diferentes** da nota de
+origem, em vez de repetirem o mesmo `nItem`. Entre as linhas livres fica com a primeira cuja
+quantidade comporte a devolvida. Se **todas** as candidatas já foram consumidas (a devolução tem
+mais linhas daquele produto do que a nota original), a função devolve `null` e a emissão é
+**recusada** — mesmo caminho de erro do "não consta na NF-e", com mensagem própria dizendo que o
+produto aparece menos vezes na nota de origem do que nas linhas devolvidas. A devolução continua
+registrada (estoque creditado, cobrança cancelada) e restam o botão "Emitir novamente" e a
+emissão manual. **Não** se reaproveita o `nItem`: não se sabe como a SEFAZ trata duas linhas
+apontando o mesmo item de origem — se rejeitar, reaproveitar só pioraria a mensagem; se aceitar,
+teria sido autorizado documento fiscal errado, e desfazer isso é cancelamento em 24h ou carta de
+correção (que não corrige valor). O 5º argumento opcional (`saida`) recebe
+`motivo: 'linhas-esgotadas'` nesse caso, para o chamador distinguir as duas recusas; as duas
+rotas de diagnóstico passam o mesmo argumento e relatam a mesma recusa.
+*Nunca foi observado nota de origem com o
+mesmo produto em duas linhas: o caminho de criação da devolução agrupa por `produtoId`. O consumo
+é precaução, não correção de caso visto.*
+
+**Chave da nota de origem:** a emissão usa `normalizarChaveNFeTolerante` (`utils/documento.js`),
+não a estrita. Motivo: `pedidos.nfe_chave` é gravada **crua** da API do Conta Azul
+(`pedidoController` → `nfeChave: nota.chave_acesso`), então pode chegar com prefixo `NFe` ou com
+pontuação — a regra estrita devolveria `''` e passaria a recusar devolução que **hoje** emite. A
+tolerante tenta: 44 posições alfanuméricas → sem o prefixo `NFe` → só dígitos; e só devolve `''`
+quando não há chave utilizável. Para chave que o próprio app grava já normalizada (notas de
+entrada, DFe) continue usando a estrita.
+
+**Quando o `nItem` não é encontrado, a nota NÃO é emitida** (não se inventa `nItem`): o motivo é
+gravado em `NotaFiscalApp.mensagemSefaz` com `status: 'ERRO'` — a aba Devoluções mostra
+"✕ Rejeitada: …" e o botão vira "Emitir novamente" — e o erro sobe como hoje (HTTP 400).
+**A devolução continua registrada, o estoque creditado e a cobrança cancelada.**
+
+**Interruptor** — chave `nfe_devolucao_ref_item` em `app_configs`:
+
+| Valor | Efeito |
+|---|---|
+| `auto` *(padrão)* | liga em homologação **ou** quando a data de Brasília ≥ `2026-10-05` |
+| `sempre` | força ligado (para testar em produção antes do prazo) |
+| `nunca` | força desligado (válvula de escape se algo der errado na virada) |
+
+> ⚠️ A chave é **separada de propósito** — nunca colocar esse ajuste dentro de `focus_nfe_config`:
+> o `PUT /api/config-notas/emissao` reescreve aquele objeto inteiro com só três campos, e um campo
+> extra ali seria apagado em silêncio quando alguém salvasse a tela de Configurações.
+
+**Diagnóstico (somente leitura, não emitem nada):**
+
+```bash
+# uma devolução: fonte usada, itens da nota de origem e o nItem casado de cada item devolvido
+curl -s -H "x-admin-secret: $ADMIN_SECRET" \
+  "$URL/api/admin-exec/diag-devolucao-ref-item?numero=49"
+
+# simulação em massa: quantas devoluções resolveriam e quais falhariam (com motivo)
+curl -s -H "x-admin-secret: $ADMIN_SECRET" \
+  "$URL/api/admin-exec/diag-devolucoes-ref-item-simulacao?dias=90"
+```
+
+Baldes da simulação em massa (`?dias=90&limite=300`, teto de 2000 por chamada; devoluções mais
+recentes primeiro, `truncado: true` quando o período tem mais do que o limite):
+
+| Balde | O que é |
+|---|---|
+| `resolveriam` | a referência por item resolve — a virada não muda nada |
+| `falhas` | emitiriam hoje, mas a referência por item **não** resolve → é o que a virada quebraria |
+| `precisamXmlDoCA` | indeterminado **aqui**: só o XML do Conta Azul resolveria, e esta rota não busca. Conferir uma a uma na rota individual |
+| `listaChaveSoPelaRegraTolerante` | chave da NF de venda gravada fora do padrão: resolve pela regra tolerante, **não** resolveria pela estrita. **Deve vir vazio** — é a prova de que a troca de normalização não tirou nota nenhuma do ar |
+| `naoAplicaveis` | já não emitem hoje, com ou sem a virada (sem chave por **nenhuma** das duas regras, ou já com NF de devolução do CA) |
+
+> `resolveriam` + `falhas` + `precisamXmlDoCA` + `naoAplicaveis` fecham o total analisado.
+> `listaChaveSoPelaRegraTolerante` é **aviso sobreposto**, não um balde exclusivo: a mesma
+> devolução pode aparecer nele e em qualquer um dos outros.
+
+> A rota em massa é **somente leitura de verdade** (não emite, não grava, não chama o Conta Azul).
+> A rota individual **não emite nota**, mas pode baixar o XML da nota de origem no CA e guardá-lo
+> em `uploads/xml-nfe` — cada resposta declara isso nos campos `somenteLeitura` / `observacao`.
+
+**Que população a simulação mede** (campo `escopo` da resposta): o filtro espelha as travas reais de
+`emitirDevolucao` — `status === 'ATIVA'`, especial (`dev.tipo === 'ESPECIAL'` **ou**
+`pedidoOriginal.especial`) e, dentro do laço, `notaDevolucaoCA` e "sem chave da NF-e original".
+**Não** filtra bonificação: `emitirDevolucao` não tem trava de bonificação (só `emitirVenda` tem),
+então devolução de pedido de bonificação com chave de NF-e legada do CA **entra na conta** — se
+fosse filtrada, o número que decide a virada erraria para o lado otimista. As travas que a
+simulação **não** reproduz (cadastro do cliente incompleto, cliente sem CPF/CNPJ, devolução sem
+itens, idempotência, rejeição da SEFAZ) já barram a emissão hoje, com ou sem a virada, e por isso
+ficam fora — a resposta lista todas em `escopo.travasDaEmissaoNAOSimuladas`.
+
+**Rota individual — `travasDaEmissao`:** devolve as travas de `emitirDevolucao` na ordem em que ela
+as aplica, cada uma com `bloqueia` e `gravaMotivo`, mais `primeiraQueBloqueia` e `emitiriaHoje`.
+`gravaMotivo: false` quer dizer que aquela trava falha **antes** de a `NotaFiscalApp` existir: nada
+é gravado, a aba Devoluções **não** mostra texto vermelho e o motivo aparece só no aviso do momento
+do clique. Hoje **só** as falhas de referência por item e as recusas da Focus/SEFAZ gravam motivo.
+
+#### `notas_referenciadas` de cabeçalho + referência por item — e o rollback de uma linha
+
+`notas_referenciadas` no cabeçalho **continua sendo enviado** junto com a referência por item: a
+NT muda *onde* a SEFAZ valida a origem, não proíbe a referência de cabeçalho. **Isso está SEM
+PROVA** — nenhuma nota foi emitida ainda com as duas referências juntas (não houve token de
+homologação para testar).
+
+Se a SEFAZ rejeitar a nota por causa dessa convivência, a correção é **uma linha só**, em
+`focusNfeEmissaoService.emitirDevolucao` (a linha está marcada com `⚠️ ROLLBACK DE UMA LINHA`):
+
+```js
+// de:
+notas_referenciadas: [{ chave_nfe: chaveOriginal }],
+// para:
+...(usarRefItem ? {} : { notas_referenciadas: [{ chave_nfe: chaveOriginal }] }),
+```
+
+Assim o cabeçalho continua enquanto o interruptor está desligado (comportamento de hoje, que já
+funciona em produção) e some quando a referência por item está ligada. Não mexer em mais nada.
+
 ### Venda para CPF (pessoa física / consumidor final) — perfil DIFERENTE
 
 > Extraído das NF-e reais **84791** (Fabiano Rodrigues) e **84787** (Jozileia Mews Ebert), ambas

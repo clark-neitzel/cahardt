@@ -8,6 +8,7 @@
 const prisma = require('../config/database');
 const focusNfe = require('./focusNfeService');
 const { gerarParcelasData, ehPedidoAPrazo } = require('./pedidoCalculos');
+const { normalizarChaveNFeTolerante } = require('../utils/documento');
 
 const EMITENTE = {
     cnpj_emitente: '08766459000102',
@@ -500,6 +501,218 @@ async function consultarPresas({ minutos = 3, maxNotas = 20, diasMax = 7 } = {})
     return { consultadas: presas.length, resolvidas, erros };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// REFERÊNCIA DA NOTA DE ORIGEM **POR ITEM** na NF-e de devolução
+// NT 2025.002 v1.51, regras VC02-14 / VC03-20: nota com finalidade_emissao = 4
+// (devolução) precisa apontar, DENTRO DE CADA ITEM, o documento de origem
+// (DFeReferenciado/chaveAcesso) e o número daquele item na nota ORIGINAL (nItem).
+// Sem isso a SEFAZ rejeita com 321. Homologação já valida desde 01/09/2026;
+// PRODUÇÃO passa a exigir em 05/10/2026.
+// Campos correspondentes na API da Focus, dentro de cada objeto de `items`:
+//   chave_acesso_dfe_referenciado (chaveAcesso, 44)  |  numero_item_dfe_referenciado (nItem, 3)
+// ⚠️ `numero_item_dfe_referenciado` NÃO é `numero_item` (esse é o índice do item na
+//    nota que estamos emitindo agora).
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DATA_OBRIGATORIA_REF_ITEM = '2026-10-05'; // produção passa a exigir nesta data
+
+/**
+ * O interruptor da referência por item.
+ * Chave `nfe_devolucao_ref_item` em `app_configs`: 'auto' (padrão) | 'sempre' | 'nunca'.
+ *  - auto   → ligado em homologação (que já valida) OU quando a data de Brasília ≥ 05/10/2026
+ *  - sempre / nunca → força, para o dono virar a chave sem precisar de deploy
+ * ⚠️ Chave SEPARADA de propósito, NUNCA dentro de `focus_nfe_config`: o
+ * `PUT /api/config-notas/emissao` (backend/routes/configNotas.js) reescreve aquele
+ * objeto inteiro com só três campos — qualquer campo extra ali seria apagado em
+ * silêncio na primeira vez que alguém salvasse a tela de Configurações.
+ */
+async function refItemLigada() {
+    let modo = 'auto';
+    try {
+        const reg = await prisma.appConfig.findUnique({ where: { key: 'nfe_devolucao_ref_item' } });
+        // aceita tanto o valor solto ("auto") quanto { modo: "auto" }
+        const bruto = (reg && reg.value && typeof reg.value === 'object' && !Array.isArray(reg.value))
+            ? reg.value.modo
+            : reg?.value;
+        const s = String(bruto ?? '').trim().toLowerCase();
+        if (['auto', 'sempre', 'nunca'].includes(s)) modo = s;
+    } catch (e) {
+        console.error('[NFDevolucao] falha ao ler nfe_devolucao_ref_item (assumindo auto):', e.message);
+    }
+    if (modo === 'sempre') return true;
+    if (modo === 'nunca') return false;
+    if (focusNfe.ambiente() === 'homologacao') return true;
+    const hojeBR = new Date(Date.now() - 3 * 3600 * 1000).toISOString().slice(0, 10);
+    return hojeBR >= DATA_OBRIGATORIA_REF_ITEM;
+}
+
+/**
+ * Itens da NF-e ORIGINAL da venda, com o nItem de cada um.
+ * Cascata — a primeira fonte que responder ganha:
+ *   1. `payloadEnviado.items` da NotaFiscalApp da venda ('payload') — PRIMÁRIA.
+ *      É banco, síncrono, sem rede, e existe para toda nota emitida pelo app.
+ *      Esta função roda dentro do clique que registra a devolução no Caixa: trocar
+ *      leitura de banco por download meteria uma falha de rede num caminho que hoje
+ *      não tem nenhuma.
+ *   2. XML já gravado no volume local ('xml-local') — também sem rede.
+ *   3. XML do Conta Azul ('xml-ca') — chama a API do CA (rede/token) E GRAVA o XML no
+ *      volume; por isso vai dentro de try/catch, só como último recurso (nota antiga do
+ *      CA), e pode ser DESLIGADA com `permitirRede: false`.
+ * `permitirRede: false` faz a função parar nas duas fontes locais e devolver
+ * `redeNecessaria: true` quando só o CA resolveria — é o que a simulação em massa usa
+ * para não martelar a API do Conta Azul com centenas de chamadas seguidas.
+ * Devolve { fonte, itens: [{ nItem, codigo, descricao, quantidade }], redeNecessaria };
+ * itens vazio quando nenhuma fonte resolveu (o chamador decide o que fazer).
+ */
+async function itensDaNotaOriginal({ notaVendaApp, chaveOriginal, permitirRede = true }) {
+    // 1) payload da própria nota emitida pelo app
+    const itensPayload = notaVendaApp?.payloadEnviado?.items;
+    if (Array.isArray(itensPayload) && itensPayload.length) {
+        return {
+            fonte: 'payload',
+            itens: itensPayload.map((it, idx) => ({
+                nItem: Number(it?.numero_item) || (idx + 1),
+                codigo: String(it?.codigo_produto ?? '').trim(),
+                descricao: String(it?.descricao ?? '').trim(),
+                quantidade: Number(it?.quantidade_comercial ?? it?.quantidade_tributavel ?? 0) || 0,
+            })),
+        };
+    }
+
+    const doXml = (xml) => {
+        const { parseProcNFe } = require('./sefazDfeService');
+        const nota = parseProcNFe(xml);
+        if (!Array.isArray(nota?.itens) || !nota.itens.length) return null;
+        return nota.itens.map((it, idx) => ({
+            nItem: Number(it?.numeroItem) || (idx + 1),
+            codigo: String(it?.codigoFornecedor ?? '').trim(),
+            descricao: String(it?.descricao ?? '').trim(),
+            quantidade: Number(it?.quantidade ?? 0) || 0,
+        }));
+    };
+
+    if (chaveOriginal) {
+        // 2) XML local (volume) — sem rede
+        try {
+            const xml = require('./xmlNfeService').lerXmlLocal(chaveOriginal);
+            if (xml) {
+                const itens = doXml(xml);
+                if (itens) return { fonte: 'xml-local', itens };
+            }
+        } catch (e) {
+            console.error('[NFDevolucao] XML local ilegível:', e.message);
+        }
+        // 3) XML do Conta Azul — REDE (e grava o XML no volume). Último recurso, nunca
+        // pode explodir aqui. Desligada quando o chamador pede `permitirRede: false`.
+        if (!permitirRede) return { fonte: null, itens: [], redeNecessaria: true };
+        try {
+            const xml = await require('./xmlNfeService').obterXmlNotaCA(chaveOriginal);
+            if (xml) {
+                const itens = doXml(xml);
+                if (itens) return { fonte: 'xml-ca', itens };
+            }
+        } catch (e) {
+            console.error('[NFDevolucao] XML do CA indisponível:', e.message);
+        }
+    }
+
+    return { fonte: null, itens: [], redeNecessaria: false };
+}
+
+const _semAcento = (s) => String(s ?? '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase().replace(/\s+/g, ' ').trim();
+// zeros à esquerda: o cProd do XML preserva ("0012"), o cadastro pode não ("12")
+const _semZeros = (s) => String(s ?? '').trim().replace(/^0+/, '');
+
+/**
+ * Casa um item DEVOLVIDO com o item correspondente da nota de origem.
+ * SEMPRE compara como STRING — `Number()` perderia o zero à esquerda do código.
+ * Ordem: código exato → código exato contra o UUID do produto (cobre produto que não
+ * tinha `codigo` na época: `montarNotaVenda` usa `item.produto?.codigo || item.produtoId`)
+ * → código ignorando zeros à esquerda → descrição normalizada.
+ *
+ * `usados` (Set de nItem, criado pelo chamador e compartilhado entre os itens da MESMA
+ * devolução) marca a linha escolhida como CONSUMIDA: duas linhas devolvidas do mesmo
+ * produto apontam linhas DIFERENTES da nota de origem, em vez de repetirem o mesmo nItem.
+ * Entre as linhas ainda livres, fica com a primeira cuja quantidade comporte a devolvida;
+ * se nenhuma comportar, a primeira livre. Se TODAS as linhas candidatas já foram
+ * consumidas (a devolução tem mais linhas daquele produto do que a nota original),
+ * devolve `null` — FALHA FECHADA: cai no mesmo caminho de erro do "não consta na NF-e",
+ * a nota não sai e a devolução continua registrada. NÃO se reaproveita o nItem: não se
+ * sabe como a SEFAZ trata duas linhas apontando o mesmo item de origem — se rejeitar,
+ * reaproveitar não ganharia nada (só uma mensagem pior); se aceitar, o app teria
+ * autorizado documento fiscal errado (duas devoluções creditando a mesma linha,
+ * possivelmente mais quantidade do que aquele item tinha), e desfazer isso é
+ * cancelamento em 24h ou carta de correção, que não corrige valor. Sem `usados`, o
+ * comportamento é o de antes (sem consumo).
+ *
+ * `saida` (opcional, objeto) recebe `motivo: 'linhas-esgotadas'` nesse caso, para o
+ * chamador escrever uma mensagem específica em vez do genérico "não consta na nota".
+ *
+ * Nota: NÃO foi verificado em que situações a nota de origem repete o mesmo produto em
+ * mais de uma linha — o caminho de criação da devolução hoje agrupa por `produtoId`
+ * (`devolucaoService.js`), então o consumo é precaução, não correção de caso observado.
+ */
+function acharItemOrigem(itemDev, itensOrigem, rotuloNota, usados, saida) {
+    if (!Array.isArray(itensOrigem) || !itensOrigem.length) return null;
+    const jaUsados = usados instanceof Set ? usados : new Set();
+    const cod = String(itemDev?.produto?.codigo ?? '').trim();
+    const uuid = String(itemDev?.produtoId ?? '').trim();
+    const nome = _semAcento(itemDev?.produto?.nome);
+    const qtdDev = Number(itemDev?.quantidade) || 0;
+    let jaAvisouEsgotado = false; // as 4 tentativas caem nas MESMAS linhas: 1 aviso basta
+
+    const escolher = (cands) => {
+        if (!cands.length) return null;
+        const livres = cands.filter(c => !jaUsados.has(c.nItem));
+        if (!livres.length) {
+            // Todas as linhas desse produto na nota de origem já foram apontadas por outra
+            // linha desta devolução. Recusa (ver cabeçalho): documento fiscal com incerteza
+            // declarada falha fechado.
+            if (!jaAvisouEsgotado) {
+                jaAvisouEsgotado = true;
+                console.warn(`[NFDevolucao] produto ${cod || uuid}: a NF ${rotuloNota || '?'} tem ${cands.length} linha(s) desse produto e todas já foram referenciadas nesta devolução — emissão recusada (não se reaproveita nItem)`);
+            }
+            if (saida && typeof saida === 'object') saida.motivo = 'linhas-esgotadas';
+            return null;
+        }
+        const alvo = (livres.length > 1 ? livres.find(c => Number(c.quantidade) >= qtdDev) : null) || livres[0];
+        if (cands.length > 1) {
+            console.warn(`[NFDevolucao] produto ${cod || uuid} com ${cands.length} linhas na NF ${rotuloNota || '?'} — referenciado o item ${alvo.nItem}`);
+        }
+        jaUsados.add(alvo.nItem);
+        return alvo;
+    };
+
+    let achado = null;
+    if (cod) achado = escolher(itensOrigem.filter(c => String(c.codigo).trim() === cod));
+    if (!achado && uuid) achado = escolher(itensOrigem.filter(c => String(c.codigo).trim() === uuid));
+    if (!achado && _semZeros(cod)) achado = escolher(itensOrigem.filter(c => _semZeros(c.codigo) === _semZeros(cod)));
+    if (!achado && nome) achado = escolher(itensOrigem.filter(c => _semAcento(c.descricao) === nome));
+    return achado;
+}
+
+/**
+ * Grava o motivo da recusa na NotaFiscalApp da devolução ANTES de lançar o erro.
+ * `ListaDevolucoes.jsx` já mostra "✕ Rejeitada: {mensagemSefaz}" e troca o botão para
+ * "Emitir novamente" — sem isso o motivo viveria só no toast, que some.
+ * Status ERRO NÃO afeta a idempotência (a trava só barra AUTORIZADO/PROCESSANDO) nem a
+ * rotina `contabilidade-emitir-devolucoes-pendentes`.
+ */
+async function registrarErroNotaDevolucao({ ref, ambiente, pedidoId, mensagem }) {
+    try {
+        const msg = String(mensagem || '').slice(0, 900);
+        await prisma.notaFiscalApp.upsert({
+            where: { ref },
+            update: { status: 'ERRO', mensagemSefaz: msg },
+            create: { ref, ambiente, tipo: 'DEVOLUCAO', pedidoId, status: 'ERRO', mensagemSefaz: msg },
+        });
+    } catch (e) {
+        console.error('[NFDevolucao] falha ao registrar o motivo da recusa:', e.message);
+    }
+}
+
 /**
  * Emite a NF-e de DEVOLUÇÃO de venda a partir de uma Devolucao registrada no app.
  * Perfil espelhado da nota real 84808 do CA: natOp "Devolucao de venda", finalidade 4,
@@ -528,7 +741,13 @@ async function emitirDevolucao(devolucaoId) {
 
     // Nota ORIGINAL da venda (obrigatória como referência na devolução)
     const notaVendaApp = await notaAutorizadaDoPedido(pedido.id);
-    const chaveOriginal = String(notaVendaApp?.chave || pedido.nfeChave || '').replace(/\D/g, '');
+    // TOLERANTE de propósito. `pedido.nfeChave` é gravada CRUA da API do Conta Azul
+    // (`pedidoController` → `nfeChave: nota.chave_acesso`), então pode vir com o prefixo
+    // "NFe" ou com pontuação. A regra estrita devolveria '' nesses casos e passaria a
+    // recusar uma devolução que HOJE emite. A tolerante preserva letras (NT 2026.004 —
+    // chave alfanumérica) e, se não fechar 44 posições, cai no comportamento antigo
+    // (`.replace(/\D/g,'')`) antes de desistir. Ver `utils/documento.js`.
+    const chaveOriginal = normalizarChaveNFeTolerante(notaVendaApp?.chave || pedido.nfeChave || '');
     const numeroOriginal = notaVendaApp?.numero || pedido.nfeNumero;
     if (!chaveOriginal) {
         throw new Error('NF-e original da venda não encontrada — a nota da venda precisa existir antes da devolução.');
@@ -562,6 +781,41 @@ async function emitirDevolucao(devolucaoId) {
     const itensValidos = (dev.itens || []).filter(i => Number(i.quantidade) > 0);
     if (!itensValidos.length) throw new Error('Devolução sem itens com quantidade.');
 
+    // ── Referência da nota de origem POR ITEM (VC02-14 / VC03-20 da NT 2025.002 v1.51) ──
+    // Com o interruptor ligado, cada item devolvido PRECISA apontar o item correspondente
+    // da NF-e de venda. Não se inventa nItem e não se emite sem a referência: seria
+    // rejeição 321 na SEFAZ. Quando não dá para resolver, o motivo é gravado na
+    // NotaFiscalApp (para a aba Devoluções mostrar) e o erro sobe — a DEVOLUÇÃO
+    // continua registrada, o estoque creditado e a cobrança cancelada, exatamente
+    // como hoje (a rota devolve 400 e o ModalDevolucao já trata como "NF não saiu").
+    const usarRefItem = await refItemLigada();
+    const nItemPorItemDev = new Map();
+    if (usarRefItem) {
+        const origem = await itensDaNotaOriginal({ notaVendaApp, chaveOriginal });
+        if (!origem.itens.length) {
+            const msg = `Não foi possível ler os itens da NF-e nº ${numeroOriginal || '?'} (chave ${chaveOriginal}) para referenciar a devolução por item. XML indisponível.`;
+            await registrarErroNotaDevolucao({ ref, ambiente, pedidoId: pedido.id, mensagem: msg });
+            throw new Error(msg);
+        }
+        const rotuloNota = numeroOriginal ? `nº ${numeroOriginal}` : chaveOriginal;
+        const usados = new Set(); // linhas da nota de origem já referenciadas nesta devolução
+        for (const item of itensValidos) {
+            const detalhe = {};
+            const achado = acharItemOrigem(item, origem.itens, rotuloNota, usados, detalhe);
+            if (!achado) {
+                const nomeProd = item.produto?.nome || item.produtoId;
+                const codProd = item.produto?.codigo || item.produtoId;
+                const msg = detalhe.motivo === 'linhas-esgotadas'
+                    ? `Produto "${nomeProd}" (código ${codProd}) aparece MENOS vezes na NF-e nº ${numeroOriginal || '?'} da venda do que nas linhas desta devolução — todas as linhas desse produto na nota de origem já foram apontadas por outro item devolvido. A SEFAZ exige que cada item devolvido aponte um item próprio da nota de origem, e a nota não pode apontar o mesmo item duas vezes. Junte as linhas repetidas desse produto na devolução, confira a nota original ou emita a devolução manualmente.`
+                    : `Produto "${nomeProd}" (código ${codProd}) não consta na NF-e nº ${numeroOriginal || '?'} da venda — a SEFAZ exige que cada item devolvido aponte o item da nota de origem. Confira a nota original ou emita a devolução manualmente.`;
+                await registrarErroNotaDevolucao({ ref, ambiente, pedidoId: pedido.id, mensagem: msg });
+                throw new Error(msg);
+            }
+            nItemPorItemDev.set(item.id, achado.nItem);
+        }
+        console.log(`[NFDevolucao] ref por item: fonte=${origem.fonte} itens=${itensValidos.length} nf=${rotuloNota}`);
+    }
+
     let total = 0;
     const items = itensValidos.map((item, idx) => {
         const q = Number(item.quantidade);
@@ -573,6 +827,12 @@ async function emitirDevolucao(devolucaoId) {
             numero_item: idx + 1,
             codigo_produto: item.produto?.codigo || item.produtoId,
             descricao: item.produto?.nome || 'PRODUTO',
+            // Documento de origem NO ITEM (NT 2025.002 v1.51). `numero_item_dfe_referenciado`
+            // é o nItem na nota ORIGINAL — não confundir com `numero_item` acima.
+            ...(usarRefItem ? {
+                chave_acesso_dfe_referenciado: chaveOriginal,
+                numero_item_dfe_referenciado: String(nItemPorItemDev.get(item.id)),
+            } : {}),
             cfop: revenda ? (interestadual ? '2202' : '1202') : (interestadual ? '2201' : '1201'), // entrada por devolução (espelho de 6102/6101/5102/5101)
             codigo_ncm: String(item.produto?.ncm || '').replace(/\D/g, '') || cfg.ncmPadrao,
             ...(revenda && item.produto?.nfeCest ? { cest: item.produto.nfeCest } : {}),
@@ -645,6 +905,14 @@ async function emitirDevolucao(devolucaoId) {
         valor_produtos: total,
         valor_total: total,
         formas_pagamento: [{ forma_pagamento: '90', valor_pagamento: 0 }], // sem pagamento (devolução)
+        // MANTIDO de propósito junto com a referência por item: a NT 2025.002 muda ONDE a
+        // SEFAZ valida a origem, não proíbe a referência de cabeçalho. SEM PROVA — ninguém
+        // emitiu ainda com as duas referências juntas.
+        // ⚠️ ROLLBACK DE UMA LINHA: se a SEFAZ rejeitar a nota por causa desta referência de
+        // cabeçalho convivendo com a referência por item, troque APENAS a linha abaixo por:
+        //     ...(usarRefItem ? {} : { notas_referenciadas: [{ chave_nfe: chaveOriginal }] }),
+        // (mantém o cabeçalho enquanto o interruptor está desligado, remove quando ligado).
+        // Documentado em backend/docs/focus-nfe-api.md → "Referência da nota de origem POR ITEM".
         notas_referenciadas: [{ chave_nfe: chaveOriginal }],
         informacoes_adicionais_contribuinte: linhas.filter(Boolean).join('#'),
         items,
@@ -680,4 +948,6 @@ async function notaAutorizadaDoPedido(pedidoId) {
     return nota && nota.status === 'AUTORIZADO' ? nota : null;
 }
 
-module.exports = { montarNotaVenda, emitirVenda, emitirDevolucao, sincronizarEventos, consultarAtualizar, consultarPresas, getConfig, notaAutorizadaDoPedido };
+module.exports = { montarNotaVenda, emitirVenda, emitirDevolucao, sincronizarEventos, consultarAtualizar, consultarPresas, getConfig, notaAutorizadaDoPedido,
+    // referência da nota de origem por item (usados pelas rotas de diagnóstico em adminExec)
+    refItemLigada, itensDaNotaOriginal, acharItemOrigem, DATA_OBRIGATORIA_REF_ITEM };
