@@ -8,6 +8,9 @@ import SeloWhatsappCliente, { LegendaSeloWhatsapp } from '../../components/SeloW
 import whatsappClientesService from '../../services/whatsappClientesService';
 import { useFiltrosSalvos } from '../../hooks/useFiltrosSalvos';
 import ClientePopup from '../Rota/ClientePopup';
+// Popup SÓ DE CONSULTA do pedido (leitura + fechar). A popup COMPLETA, com as ações do
+// pedido, continua sendo a da aba Pedidos — ver o cabeçalho de ModalPedidoConsulta.jsx.
+import ModalPedidoConsulta from './ModalPedidoConsulta';
 import {
     Search, RefreshCw, ChevronLeft, ChevronRight,
     User, MapPin, ArrowLeftRight, Bell, Clock,
@@ -78,6 +81,8 @@ const PainelAtendimentos = () => {
     const [vendedores, setVendedores] = useState([]);
     const [expandedRow, setExpandedRow] = useState(null);
     const [clientePopup, setClientePopup] = useState(null);
+    // Linha do painel cuja pílula "Pedido #NNNN" foi clicada (popup de consulta)
+    const [pedidoPopup, setPedidoPopup] = useState(null);
     const [confirmDelete, setConfirmDelete] = useState(null);
     const [deletando, setDeletando] = useState(false);
     // Tipos de atendimento são configuráveis (Configurações), então o select junta a lista
@@ -566,10 +571,18 @@ const PainelAtendimentos = () => {
                                         <td className="px-3 py-2.5">
                                             {a.origemPedido ? (
                                                 <div>
-                                                    <span className="text-[10px] font-bold text-green-800 bg-green-100 px-1.5 py-0.5 rounded block truncate">
-                                                        Pedido {a.rotuloPedido}
-                                                    </span>
-                                                    {a.cancelado && <span className="text-[10px] font-bold text-red-700">cancelado</span>}
+                                                    {/* Pílula clicável: abre a popup SÓ DE CONSULTA do pedido.
+                                                        stopPropagation porque a linha inteira já tem clique (expandir). */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); setPedidoPopup(a); }}
+                                                        title="Ver os detalhes deste pedido"
+                                                        className="inline-flex items-center gap-1 max-w-full text-[10px] font-bold text-green-800 bg-green-100 hover:bg-green-200 px-2 py-1 rounded-full transition-colors cursor-pointer"
+                                                    >
+                                                        <span className="truncate">Pedido {a.rotuloPedido}</span>
+                                                        <Eye className="h-3 w-3 shrink-0" />
+                                                    </button>
+                                                    {a.cancelado && <span className="block text-[10px] font-bold text-red-700">cancelado</span>}
                                                 </div>
                                             ) : a.acaoLabel ? (
                                                 <span className="text-[10px] font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded block truncate">{a.acaoLabel}</span>
@@ -621,6 +634,15 @@ const PainelAtendimentos = () => {
                                                                     {a.statusEnvio ? ` · ${a.statusEnvio}` : ''}
                                                                     {a.cancelado ? ' · CANCELADO' : ''}
                                                                 </p>
+                                                                {/* No mobile a linha expandida tem "Ver detalhes do pedido"; aqui só havia
+                                                                    texto morto. Mesmo caminho para a popup de consulta nos dois tamanhos. */}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setPedidoPopup(a)}
+                                                                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] text-[12px] font-semibold text-green-800 bg-green-50 hover:bg-green-100 rounded-full transition-colors"
+                                                                >
+                                                                    <Eye className="h-3.5 w-3.5" /> Ver detalhes do pedido
+                                                                </button>
                                                             </div>
                                                         )}
                                                         {a.transferidoParaId && (
@@ -749,12 +771,6 @@ const PainelAtendimentos = () => {
                                     <SeloWhatsappCliente cliente={a.cliente} mostrar={mostrarSeloWhats} />
                                 </div>
                                 {a.cliente?.End_Cidade && <p className="text-[11px] text-gray-500">{a.cliente.End_Cidade}</p>}
-                                {a.origemPedido && (
-                                    <p className="text-[12px] font-bold text-green-800 tabular-nums">
-                                        {a.rotuloPedido} · {a.bonificacao ? 'Bonificação' : fmtMoeda(a.valorPedido)}
-                                        {a.cancelado && <span className="text-red-700 font-bold"> · cancelado</span>}
-                                    </p>
-                                )}
                                 <div className="flex items-center gap-2 flex-wrap">
                                     {!a.origemPedido && a.acaoLabel && <span className="text-[10px] font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">{a.acaoLabel}</span>}
                                     {a.transferidoParaId && (
@@ -770,6 +786,28 @@ const PainelAtendimentos = () => {
                                 </div>
                                 {a.observacao && <p className="text-[12px] text-gray-500 line-clamp-2">{a.observacao}</p>}
                             </button>
+                            {/* Pílula do pedido: IRMÃ do botão de expandir, nunca dentro dele.
+                                Antes era um <span role="button"> aninhado no <button> do card — o
+                                toque funcionava, mas o leitor de tela achata o conteúdo do botão e
+                                não anuncia a pílula como um segundo comando. Como <button> irmão,
+                                ela vira um comando próprio ("Pedido ZZ#123, ver detalhes") e o
+                                HTML deixa de ter botão dentro de botão. */}
+                            {a.origemPedido && (
+                                <div className="flex items-center gap-2 flex-wrap px-3 pb-3 -mt-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPedidoPopup(a)}
+                                        aria-label={`Ver detalhes do pedido ${a.rotuloPedido}`}
+                                        className="inline-flex items-center gap-1.5 min-h-[44px] px-3.5 py-2 text-[13px] font-bold text-green-800 bg-green-100 active:bg-green-200 rounded-full"
+                                    >
+                                        {a.rotuloPedido} <Eye className="h-3.5 w-3.5 shrink-0" />
+                                    </button>
+                                    <span className="text-[12px] font-bold text-green-800 tabular-nums">
+                                        {a.bonificacao ? 'Bonificação' : fmtMoeda(a.valorPedido)}
+                                        {a.cancelado && <span className="text-red-700"> · cancelado</span>}
+                                    </span>
+                                </div>
+                            )}
                             {isExpanded && (
                                 <div className="border-t border-gray-100 bg-gray-50 p-3 space-y-2 text-sm">
                                     {a.observacao && (
@@ -817,9 +855,16 @@ const PainelAtendimentos = () => {
                                     <button onClick={() => {
                                         if (a.cliente) setClientePopup(a.cliente);
                                         else if (a.lead) setClientePopup(a.lead);
-                                    }} className="w-full text-center text-[12px] font-semibold text-blue-600 bg-blue-50 rounded-lg py-1.5 hover:bg-blue-100 transition-colors">
+                                    }} className="w-full text-center text-[12px] font-semibold text-blue-600 bg-blue-50 rounded-lg py-2.5 min-h-[44px] hover:bg-blue-100 transition-colors">
                                         <Eye className="h-3.5 w-3.5 inline mr-1" /> Ver detalhes do cliente
                                     </button>
+                                    {/* Linha de pedido: 2º caminho para a popup de consulta (o 1º é a pílula do topo) */}
+                                    {a.origemPedido && (
+                                        <button onClick={() => setPedidoPopup(a)}
+                                            className="w-full text-center text-[12px] font-semibold text-green-800 bg-green-50 rounded-lg py-2.5 min-h-[44px] hover:bg-green-100 transition-colors">
+                                            <ShoppingCart className="h-3.5 w-3.5 inline mr-1" /> Ver detalhes do pedido
+                                        </button>
+                                    )}
                                     {/* Desfazer mobile (admin) — não vale para linha de pedido */}
                                     {isAdmin && !a.origemPedido && (
                                         <div className="pt-1">
@@ -868,6 +913,16 @@ const PainelAtendimentos = () => {
                         </button>
                     </div>
                 </div>
+            )}
+
+            {/* Popup do PEDIDO — só consulta (nenhuma ação sobre o pedido).
+                A popup completa, com as ações, é a da aba Pedidos. */}
+            {pedidoPopup?.pedidoId && (
+                <ModalPedidoConsulta
+                    pedidoId={pedidoPopup.pedidoId}
+                    resumo={pedidoPopup}
+                    onClose={() => setPedidoPopup(null)}
+                />
             )}
 
             {/* Popup de Cliente */}

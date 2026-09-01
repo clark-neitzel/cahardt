@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: ver o pedido inteiro sem sair dos Atendimentos — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
+<meta property="og:title" content="🧾 Novo no Hardt App: clicar na pílula verde do pedido abre o pedido inteiro dentro dos Atendimentos">
+<meta property="og:description" content="No Painel de Atendimentos, a pílula 'Pedido #920' virou botão. Abre uma tela só de consulta com itens, parcelas, nota fiscal, entrega, devoluções e a linha do tempo de tudo o que aconteceu com aquele pedido — sem sair do painel e sem nenhum botão que mexa no pedido.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932;
+    --mint:#d4e9e2; --cream:#f2f0eb; --gold:#cba258;
+    --ink:rgba(0,0,0,.87); --ink-soft:#5f6b66;
+    letter-spacing:-0.01em;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--cream); color:var(--ink); line-height:1.55;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing:antialiased; font-variant-numeric:tabular-nums; }
+  .wrap { max-width:640px; margin:0 auto; padding:0 16px 56px; }
+
+  .hero { background:linear-gradient(168deg, var(--house) 0%, #16302a 100%); color:#fff;
+    padding:40px 16px 96px; text-align:center; }
+  .hero .chip { display:inline-block; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25);
+    color:#d4e9e2; font-size:12px; font-weight:800; letter-spacing:.14em; text-transform:uppercase;
+    border-radius:999px; padding:6px 14px; margin-bottom:14px; }
+  .hero h1 { font-size:28px; margin:0 0 10px; font-weight:800; }
+  .hero p { color:#c8d6d0; max-width:490px; margin:0 auto; font-size:15.5px; }
+
+  .cartao { background:#fff; border:1px solid #e5e7eb; border-radius:16px;
+    box-shadow:0 8px 24px rgba(30,57,50,.10); padding:20px; margin-top:-64px; }
+  .cartao + .cartao, .sec { margin-top:16px; }
+  .sec-titulo { font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-soft); margin:0 0 12px; display:flex; align-items:center; gap:8px; }
+  .texto { margin:0; font-size:14.5px; color:#3f4a46; }
+  .texto b { color:var(--house); }
+
+  .resumo { display:grid; gap:10px; margin-top:14px; }
+  .resumo div { display:flex; gap:10px; align-items:flex-start; background:#fbfaf8; border:1px solid #eceae4;
+    border-radius:12px; padding:12px 14px; font-size:14px; color:#3f4a46; }
+  .resumo .ic { font-size:17px; line-height:1.2; }
+  .resumo b { color:var(--house); }
+
+  /* DECISÃO (rodada 6): esta página usa o elemento nativo "details open" em vez do
+     par .acc/.acc-corpo do novidade-tarefas.html. O EFEITO EXIGIDO pelo CLAUDE.md é o
+     mesmo — todo accordion nasce ABERTO, o clique só serve para recolher — e o details
+     nativo entrega isso sem JavaScript nenhum, então continua aberto mesmo se algo na
+     página falhar. Mantido de propósito; não trocar por .acc sem motivo. */
+  details { background:#fff; border:1px solid #e5e7eb; border-radius:14px; margin-top:10px; overflow:hidden; }
+  summary { list-style:none; cursor:pointer; padding:15px 18px; font-weight:800; font-size:15px; color:var(--house);
+    display:flex; justify-content:space-between; align-items:center; gap:10px; }
+  summary::-webkit-details-marker { display:none; }
+  summary .mais { color:var(--primary); font-size:20px; font-weight:800; transition:transform .2s; flex:none; }
+  details[open] summary .mais { transform:rotate(45deg); }
+  .det-corpo { padding:0 18px 16px; font-size:14.5px; color:#3f4a46; }
+  .det-corpo b { color:var(--house); }
+  .det-corpo ul { margin:8px 0 0; padding-left:20px; }
+  .det-corpo li { margin-top:6px; }
+
+  /* ── MOCK DE TELA ── */
+  .tela { border:1px solid #e3e1da; border-radius:16px; overflow:hidden; background:#fff; margin-top:14px; }
+  .tela-titulo { background:var(--house); color:#fff; padding:10px 14px; font-size:12px; font-weight:800;
+    letter-spacing:.08em; text-transform:uppercase; display:flex; align-items:center; gap:8px; }
+  .tela-corpo { padding:14px; background:#f7f6f2; }
+  .app-card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; margin-bottom:10px; overflow:hidden; }
+  .app-card:last-child { margin-bottom:0; }
+  .app-head { display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:10px 13px; border-bottom:1px solid #f1f0ec; }
+  .app-head .t { font-size:10px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); }
+  .app-body { padding:13px; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:999px;
+    padding:9px 15px; font-size:13px; font-weight:700; }
+  .btn.pri { background:var(--primary); color:#fff; }
+  .btn.sec { background:#fff; border:1px solid var(--primary); color:var(--primary); }
+  .btn.escuro { background:#111827; color:#fff; }
+  .btn.blq { background:#f3f4f6; color:#9ca3af; border:1px solid #e5e7eb; }
+  .aviso { border-radius:10px; padding:10px 12px; font-size:12.5px; line-height:1.5; margin:8px 0; }
+  .a-green { background:#f0fdf4; border:1px solid #bbf7d0; color:#14532d; }
+  .a-gray { background:#f9fafb; border:1px solid #e5e7eb; color:#374151; }
+  .a-amber { background:#fffbeb; border:1px solid #fde68a; color:#92400e; }
+  .a-red { background:#fef2f2; border:1px solid #fecaca; color:#991b1b; }
+
+  /* ── tabela do painel (mock) ── */
+  .tab { width:100%; border-collapse:collapse; background:#fff; font-size:11.5px; }
+  .tab th { background:#f9fafb; text-align:left; padding:8px 9px; font-size:9px; letter-spacing:.09em;
+    text-transform:uppercase; color:#6b7280; font-weight:800; border-bottom:1px solid #e5e7eb; }
+  .tab td { padding:9px; border-bottom:1px solid #f3f4f6; color:#374151; vertical-align:top; }
+  .tab tr.pedido td { background:#f0fdf4; }
+  .pill { display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:3px 9px;
+    font-size:10px; font-weight:800; white-space:nowrap; }
+  .p-verde { background:#dcfce7; color:#166534; }
+  .p-verde-btn { background:#bbf7d0; color:#14532d; box-shadow:0 0 0 2px var(--gold); }
+  .p-cinza { background:#f3f4f6; color:#4b5563; }
+  .p-sky { background:#e0f2fe; color:#0369a1; }
+  .p-roxo { background:#f3e8ff; color:#7e22ce; }
+  .p-verm { background:#fee2e2; color:#b91c1c; }
+  .p-amar { background:#fef9c3; color:#854d0e; }
+  .p-azul { background:#dbeafe; color:#1e40af; }
+
+  /* ── popup do pedido (mock) ── */
+  .pop { border-radius:14px; overflow:hidden; border:1px solid #e5e7eb; background:#fff; }
+  .pop .topo { padding:12px 13px; border-bottom:1px solid #f1f0ec; display:flex;
+    justify-content:space-between; align-items:flex-start; gap:8px; }
+  .pop .topo .nm { font-size:15px; font-weight:900; color:#111827; }
+  .pop .topo .cli { font-size:11px; color:#6b7280; margin-top:2px; }
+  .pop .bloco { padding:11px 13px; border-top:1px solid #f7f6f2; }
+  .pop .bt { font-size:9.5px; font-weight:800; letter-spacing:.12em; text-transform:uppercase;
+    color:#6b7280; margin-bottom:7px; }
+  .pop .lin { display:flex; justify-content:space-between; gap:8px; padding:4px 0;
+    border-bottom:1px solid #f7f6f2; font-size:11.5px; color:#374151; }
+  .pop .lin:last-child { border-bottom:0; }
+  .pop .lin b { color:#111827; }
+  .pop .rodape { background:#f9fafb; border-top:1px solid #f1f0ec; padding:11px 13px;
+    display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .pop .total-rot { font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:#6b7280; font-weight:800; }
+  .pop .total-vl { font-size:19px; font-weight:900; color:var(--primary); }
+
+  /* ── linha do tempo (mock) ── */
+  .lt { border-left:2px solid #e5e7eb; margin-left:5px; padding-left:12px; }
+  .lt .ev { position:relative; margin-bottom:9px; }
+  .lt .ev:last-child { margin-bottom:0; }
+  .lt .ev::before { content:""; position:absolute; left:-17px; top:5px; width:8px; height:8px;
+    border-radius:999px; background:var(--primary); }
+  .lt .ev.ouro::before { background:var(--gold); }
+  .lt .ev.verm::before { background:#ef4444; }
+  .lt .ev.azul::before { background:#0ea5e9; }
+  .lt .tt { font-size:11.5px; font-weight:800; color:#111827; }
+  .lt .qd { font-size:10px; color:#6b7280; }
+
+  .duas { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  @media (max-width:520px){ .duas { grid-template-columns:1fr; } }
+  .rolar { overflow-x:auto; -webkit-overflow-scrolling:touch; border-radius:10px; border:1px solid #e5e7eb; }
+  .rolar table { min-width:520px; }
+
+  .pin { display:inline-flex; align-items:center; justify-content:center; width:19px; height:19px; flex:none;
+    border-radius:999px; background:var(--gold); color:#fff; font-size:10.5px; font-weight:800; vertical-align:middle; }
+  .legenda { padding:12px 14px 14px; background:#fff; border-top:1px solid #f1f0ec; }
+  .legenda div { display:flex; gap:8px; font-size:13px; color:var(--ink-soft); margin-bottom:7px; align-items:flex-start; }
+  .legenda div:last-child { margin-bottom:0; }
+  .legenda b { color:var(--ink); }
+
+  .passos { background:#fff; border:1px solid #e5e7eb; border-radius:16px; padding:18px 16px; margin-top:16px; }
+  .passo { display:flex; gap:12px; margin-top:14px; }
+  .passo:first-of-type { margin-top:10px; }
+  .passo .num { flex:none; width:28px; height:28px; border-radius:999px; background:var(--primary); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; }
+  .passo p { margin:3px 0 0; font-size:14.5px; color:#3f4a46; }
+  .passo b { color:var(--house); }
+  .rodape-pag { text-align:center; color:var(--ink-soft); font-size:12.5px; margin-top:34px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="chip">Novidade nos Atendimentos</div>
+  <h1>Clique no pedido e veja tudo ali mesmo</h1>
+  <p>No Painel de Atendimentos, a pílula verde <b>Pedido #920</b> virou botão. Abre o pedido inteiro
+     — e a linha do tempo de tudo o que aconteceu com ele — sem sair da tela.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="cartao">
+    <p class="sec-titulo">🧾 O que muda</p>
+    <p class="texto">Antes, para saber o que tinha dentro de um pedido que apareceu no painel, era preciso
+      decorar o número, ir até a aba <b>Pedidos</b>, procurar o pedido e perder o filtro do dia. Agora
+      é <b>um toque na própria pílula</b>.</p>
+    <div class="resumo">
+      <div><span class="ic">👆</span><span>A pílula <b>Pedido #920</b> (ou <b>ZZ#</b> de especial e <b>BN#</b> de bonificação) na coluna <b>Ação</b> agora é clicável. No celular ela aparece no cartão do pedido, em tamanho de dedo.</span></div>
+      <div><span class="ic">📄</span><span>Abre uma tela com <b>itens, valores, condição de pagamento, parcelas, nota fiscal, entrega e devoluções</b>.</span></div>
+      <div><span class="ic">🕒</span><span>E com a <b>linha do tempo</b>: tudo o que aconteceu com aquele pedido, em ordem, com data, hora e — quando o sistema guardou — <b>quem fez</b>.</span></div>
+      <div><span class="ic">👀</span><span><b>É só para olhar.</b> Não tem botão de cancelar, aprovar, converter, emitir boleto/PIX, mandar WhatsApp nem imprimir. Só leitura e o botão Fechar.</span></div>
+      <div><span class="ic">🗂️</span><span>Quem precisa <b>agir</b> sobre o pedido continua indo na aba <b>Pedidos</b>, que tem a tela completa com todos esses botões. <b>Nada mudou lá.</b></span></div>
+      <div><span class="ic">🚫</span><span>Linha que <b>não é pedido</b> (“Sem resposta / Ausente”, “Atendido sem pedido”…) continua sem clique — nada mudou nela.</span></div>
+    </div>
+  </div>
+
+  <div class="cartao">
+    <p class="sec-titulo">⚠️ Vale saber</p>
+    <p class="texto">A tela é <b>só de consulta de propósito</b>, e não por descuido. A tela de detalhe da aba
+      Pedidos é a que a equipe usa o dia inteiro para cancelar, faturar e cobrar; ela ficou <b>intocada</b>.
+      Esta é uma tela nova, separada, que não mexe em nada — assim ninguém corre o risco de apertar um botão
+      pesado enquanto só queria conferir uma venda.</p>
+    <div class="aviso a-amber" style="margin-top:12px">A linha do tempo mostra <b>só o que o sistema registrou</b>.
+      Ela não adivinha nem estima nada: se um passo não ficou gravado, ele simplesmente não aparece — e quando o
+      app guardou <b>só o dia</b> (saída da carga, baixa de parcela), o evento sai <b>sem hora</b>, com a
+      marca “sem hora registrada”, em vez de exibir uma hora que ninguém digitou. Esse evento <b>nunca sai do dia
+      em que foi gravado</b>: dentro daquele dia, a saída da carga é encaixada <b>o mais cedo possível</b>, logo
+      depois do que já tem hora <b>no mesmo dia</b>, e sem passar da entrega. Quando esses limites se contradizem ou caem em outro dia,
+      são eles que cedem — nunca o dia —, e aí a ordem na tela pode ficar estranha mesmo, porque quem está
+      errada é a <b>data lançada</b>. Quando o campo <b>tem</b> hora gravada, a hora aparece.
+      O que fica de fora está explicado lá embaixo, em <b>“O que a linha do tempo não mostra”</b>.</div>
+  </div>
+
+  <!-- ═══════════ TELAS ═══════════ -->
+  <p class="sec-titulo sec" style="margin-top:22px">📱 As telas do app</p>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">1 · No computador — a pílula da coluna Ação virou botão</div>
+    <div class="tela-corpo">
+      <div class="rolar">
+        <table class="tab">
+          <thead>
+            <tr><th>Data/Hora</th><th>Vendedor</th><th>Tipo</th><th>Cliente</th><th>Ação</th><th>Observação</th></tr>
+          </thead>
+          <tbody>
+            <tr class="pedido">
+              <td>31/08<br><span style="color:#6b7280">09:14</span></td>
+              <td>Marcos</td>
+              <td><span class="pill p-roxo">PRESENCIAL</span><br><span class="pill p-sky" style="margin-top:3px">🛒 PEDIDO</span></td>
+              <td style="color:#1d4ed8;font-weight:700">PANIFICADORA BOM DIA</td>
+              <td><span class="pill p-verde-btn">Pedido #920 👁</span> <span class="pin">1</span></td>
+              <td><b>R$ 1.284,50</b><br><span style="color:#6b7280">14 dias - Boleto</span></td>
+            </tr>
+            <tr class="pedido">
+              <td>31/08<br><span style="color:#6b7280">10:02</span></td>
+              <td>Ana</td>
+              <td><span class="pill p-roxo">PRESENCIAL</span><br><span class="pill p-sky" style="margin-top:3px">🛒 PEDIDO</span></td>
+              <td style="color:#1d4ed8;font-weight:700">MERCADO CENTRAL</td>
+              <td><span class="pill p-verde-btn">Pedido ZZ#77 👁</span><br><span style="color:#b91c1c;font-weight:800;font-size:10px">cancelado</span> <span class="pin">2</span></td>
+              <td><b>R$ 430,00</b></td>
+            </tr>
+            <tr>
+              <td>31/08<br><span style="color:#6b7280">10:40</span></td>
+              <td>Marcos</td>
+              <td><span class="pill p-azul">LIGACAO</span></td>
+              <td style="color:#1d4ed8;font-weight:700">PADARIA DO ZÉ</td>
+              <td><span class="pill p-cinza">Sem resposta / Ausente</span> <span class="pin">3</span></td>
+              <td style="color:#6b7280">Retornar amanhã</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>A pílula do pedido</b> agora tem o olhinho 👁 e muda de cor ao passar o mouse. Clicou, abre o pedido. Clicar em qualquer <b>outro lugar da linha</b> continua fazendo o que sempre fez: expandir os detalhes do atendimento.</span></div>
+      <div><span class="pin">2</span><span>Vale para <b>especial (ZZ#)</b>, <b>bonificação (BN#)</b> e pedido <b>cancelado</b> — o aviso “cancelado” continua embaixo da pílula.</span></div>
+      <div><span class="pin">2</span><span>Ao <b>expandir a linha</b> no computador, o bloco <b>Pedido</b> agora tem o botão verde <b>Ver detalhes do pedido</b> — antes ali era só texto, e o botão só existia no celular.</span></div>
+      <div><span class="pin">3</span><span><b>Linha que não é pedido não abre nada.</b> Continua exatamente como era.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">2 · A tela do pedido — só de consulta</div>
+    <div class="tela-corpo">
+      <div class="pop">
+        <div class="topo">
+          <div>
+            <div class="nm">Pedido #920 <span class="pill p-cinza">CONSULTA</span> <span class="pin">1</span></div>
+            <div class="cli">PANIFICADORA BOM DIA LTDA</div>
+          </div>
+          <div style="font-size:18px;color:#9ca3af">✕</div>
+        </div>
+        <div class="bloco" style="border-top:0">
+          <span class="pill p-verde">RECEBIDO</span>
+          <span class="pill p-verde">CA: FATURADO</span>
+          <span class="pin">2</span>
+        </div>
+        <div class="bloco">
+          <div class="bt">Dados do pedido</div>
+          <div class="lin"><span>Entrega</span><b>02/09/2026</b></div>
+          <div class="lin"><span>Emissão</span><b>31/08/2026</b></div>
+          <div class="lin"><span>Pagamento</span><b>14 dias - Boleto</b></div>
+          <div class="lin"><span>Vendedor / registrado por</span><b>Marcos · Marcos</b></div>
+          <div class="lin"><span>Tipo de atendimento na venda</span><b>VISITA</b></div>
+        </div>
+        <div class="bloco">
+          <div class="bt">Itens <span class="pin">3</span></div>
+          <div class="lin"><span>Coxinha de frango 1kg<br><span style="color:#6b7280;font-size:10px">12 un × R$ 42,00</span></span><b>R$ 504,00</b></div>
+          <div class="lin"><span>Pastel assado misto<br><span style="color:#6b7280;font-size:10px">15 un × R$ 38,50</span></span><b>R$ 577,50</b></div>
+          <div class="lin"><span>Frete</span><b>R$ 203,00</b></div>
+        </div>
+        <div class="bloco" style="background:#f0fdf4">
+          <div class="bt" style="color:#15803d">💰 Recebimento <span class="pin">4</span></div>
+          <div class="lin"><span>Parcela 1/2 · venc. 14/09</span><span><span class="pill p-verde">Pago</span> <b>R$ 642,25</b></span></div>
+          <div class="lin"><span style="color:#6b7280;font-size:10px">↳ baixado R$ 642,25 no total · Boleto · última baixa em 14/09/2026</span></div>
+          <div class="lin"><span>Parcela 2/2 · venc. 28/09</span><span><span class="pill p-cinza">Em aberto</span> <b>R$ 642,25</b></span></div>
+          <div class="lin"><span><b>Recebido até agora</b></span><b>R$ 642,25 de R$ 1.284,50</b></div>
+          <div class="bt" style="color:#6b7280;margin-top:8px">NA ENTREGA, O MOTORISTA REGISTROU <span class="pin">8</span></div>
+          <div class="lin"><span>Registrado como pago na hora (dinheiro/PIX/cartão)</span><b style="color:#15803d">R$ 0,00</b></div>
+          <div class="lin"><span>Registrado sem dinheiro na hora (14 dias - Boleto)</span><b>R$ 1.284,50</b></div>
+          <div class="lin"><span style="color:#6b7280;font-size:10px">Estas linhas são o que ficou registrado no fechamento da entrega, com a forma que o motorista informou. Registrar na entrega não é dar baixa: o que já foi abatido do título está em “Recebido até agora”, acima — por isso ele pode ser R$ 0,00 mesmo com valores registrados aqui.</span></div>
+        </div>
+        <div class="bloco">
+          <div class="bt">📄 Nota fiscal <span class="pin">5</span></div>
+          <div class="lin"><span>NF-e de venda nº <b>85231</b> · série 1</span><span class="pill p-verde">autorizada</span></div>
+        </div>
+        <div class="bloco" style="background:#f0f9ff">
+          <div class="bt" style="color:#0369a1">🚚 Entrega <span class="pin">6</span></div>
+          <div class="lin"><span><span class="pill p-verde">Entregue</span> 02/09/2026 11:32</span></div>
+          <div class="lin"><span>Carga Emb. <b>#412</b> · motorista <b>Jonas</b> · saiu em 02/09</span></div>
+          <div class="lin"><span style="color:#1d4ed8;font-weight:700">📍 Ver no mapa onde foi entregue</span></div>
+        </div>
+        <div class="rodape">
+          <div>
+            <div class="total-rot">Total geral</div>
+            <div class="total-vl">R$ 1.284,50</div>
+          </div>
+          <div class="btn escuro">Fechar <span class="pin">7</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>O selo CONSULTA</b> no cabeçalho lembra que esta tela só mostra — quem precisa mexer no pedido vai na aba Pedidos.</span></div>
+      <div><span class="pin">2</span><span><b>Situação do pedido</b> num relance: status de envio, situação no Conta Azul e, quando for o caso, os selos ESPECIAL, BONIFICAÇÃO e CANCELADO (com quem cancelou e por quê).</span></div>
+      <div><span class="pin">3</span><span><b>Os itens da venda</b> com quantidade, preço unitário e o total de cada linha, mais o frete.</span></div>
+      <div><span class="pin">4</span><span><b>Parcela a parcela:</b> vencimento, situação (Pago / Parcial / Vencido / Em aberto), valor, quanto já foi baixado <b>no total</b>, forma e a data da <b>última</b> baixa — e o total recebido até agora.</span></div>
+      <div><span class="pin">5</span><span><b>A nota fiscal</b> com número, série e situação. Se a nota tiver sido emitida no Conta Azul, aparece também a chave de acesso.</span></div>
+      <div><span class="pin">6</span><span><b>A entrega:</b> situação, data e hora, número da carga, motorista, observação do motorista e o mapa do ponto onde a mercadoria foi entregue.</span></div>
+      <div><span class="pin">7</span><span><b>O único botão do rodapé é Fechar.</b> Nenhum botão nesta tela altera o pedido. Fecha também com o <b>X</b> do canto, com a tecla <b>Esc</b> no computador ou tocando no <b>fundo escuro</b>.</span></div>
+      <div><span class="pin">8</span><span><b>O que foi lançado na entrega NÃO é tudo dinheiro.</b> São quatro coisas diferentes, e agora aparecem separadas: o que foi <b>registrado como pago na hora</b> (dinheiro/PIX/cartão), o que foi <b>pago por PIX Asaas</b> (o cliente leu o QR, o banco confirmou e o valor caiu <b>direto na conta da empresa</b>), o que <b>ficou a cobrar</b> (entrega marcada com Vendedor/Escritório/Motorista responsável = <b>ninguém pagou</b>) e o que foi <b>registrado sem dinheiro na hora</b> (boleto, prazo, bonificação). As linhas de <b>PIX Asaas</b> e de <b>“ficou a cobrar”</b> só aparecem quando têm valor — por isso elas não estão no exemplo ao lado. A de “registrado como pago na hora” aparece <b>sempre</b>, mesmo zerada: é o contraste dela com as de baixo que mostra que “registrado na entrega” não é sinônimo de dinheiro. <b>Esta tela fala do registro, não da prestação de contas:</b> ela não diz quem ficou com o dinheiro nem o que o motorista tem a prestar — quem responde isso é o <b>Caixa</b>, que conhece a marcação “debita caixa” de cada condição de pagamento. É por isso que “Recebido até agora” pode ser R$ 0,00 num pedido que tem valores registrados na entrega. Em <b>bonificação</b> (ou em pedido que ainda não virou conta a receber) o rodapé diz isso com todas as letras, em vez de falar em título em aberto.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-titulo">3 · A linha do tempo — tudo o que aconteceu com o pedido</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-head"><span class="t">🕒 Tudo o que aconteceu com este pedido</span></div>
+        <div class="app-body">
+          <div class="lt">
+            <div class="ev"><div class="tt">Pedido criado</div><div class="qd">31/08/2026 09:14 · registrado por Marcos · vendedor Marcos · origem VISITA <span class="pin">1</span></div></div>
+            <div class="ev azul"><div class="tt">Atendimento · Pedido #920</div><div class="qd">31/08/2026 09:14 · Marcos <span class="pin">2</span></div></div>
+            <div class="ev"><div class="tt">Conta a receber criada · R$ 1.284,50</div><div class="qd">31/08/2026 09:15 · 2 parcelas</div></div>
+            <div class="ev"><div class="tt">NF-e enviada para a SEFAZ</div><div class="qd">31/08/2026 16:41 · série 1</div></div>
+            <div class="ev ouro"><div class="tt">NF-e nº 85231 — consta como autorizada</div><div class="qd">31/08/2026 16:42 · data da última mudança nesse registro no app <span class="pin">3</span></div></div>
+            <div class="ev"><div class="tt">Conferido na carga</div><div class="qd">02/09/2026 06:12 · por Jonas · bipado no leitor</div></div>
+            <div class="ev"><div class="tt">Saiu na carga Emb. #412</div><div class="qd">02/09/2026 · <b>sem hora registrada</b> · motorista Jonas · o app guarda só o dia da saída <span class="pin">4</span></div></div>
+            <div class="ev"><div class="tt">Entregue</div><div class="qd">02/09/2026 11:32 · GPS registrado</div></div>
+            <div class="ev"><div class="tt">Registrado sem dinheiro na hora · R$ 1.284,50</div><div class="qd">02/09/2026 11:32 · 14 dias - Boleto — forma que não traz dinheiro na hora <span class="pin">5</span></div></div>
+            <div class="ev ouro"><div class="tt">Boleto Asaas pago · R$ 642,25</div><div class="qd">14/09/2026 08:03</div></div>
+            <div class="ev"><div class="tt">Parcela 1 quitada · R$ 642,25 no total</div><div class="qd">14/09/2026 · <b>sem hora registrada</b> · Boleto · total baixado na parcela (o app guarda só a data da última baixa)</div></div>
+          </div>
+          <div class="aviso a-gray" style="margin-top:12px">Este pedido consta como FATURADO, mas o app não guarda a
+            data em que isso aconteceu — por isso não existe evento de faturamento na linha do tempo. <span class="pin">6</span></div>
+          <div class="aviso a-gray" style="margin-top:8px">A linha do tempo mostra só o que o sistema registrou com
+            data. Quando o app guarda apenas o dia (saída da carga, baixa de parcela), a hora não aparece — não é hora
+            zerada, é hora que ninguém registrou. Estorno de baixa e o detalhe da conversa com a SEFAZ ficam em
+            Contas a Receber e em Notas Fiscais, e não aparecem aqui.</div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Onde tudo começou:</b> quem registrou, de qual vendedor é a venda e por qual canal ela entrou.</span></div>
+      <div><span class="pin">2</span><span><b>Bolinha azul = atendimento</b> amarrado a este pedido, com o nome de quem atendeu e a observação escrita na hora.</span></div>
+      <div><span class="pin">3</span><span><b>Bolinha dourada = o marco</b> — nota autorizada, cobrança paga, especial convertido em pedido com nota. O texto diz <b>“consta como autorizada”</b> porque a data é a da última vez que o app mexeu nesse registro, e nem sempre é a hora exata em que a SEFAZ autorizou.</span></div>
+      <div><span class="pin">4</span><span><b>“Sem hora registrada” = o app guardou só o dia.</b> A saída da carga e a baixa da parcela são assim (a <b>devolução não</b> — ela é gravada com hora de verdade). Antes a tela escrevia uma hora que ninguém tinha registrado (12:00, 09:00, ou o dia anterior às 21:00) e saía sequência impossível, tipo “entregue 11:44” acima de “saiu na carga 12:00”. Agora o evento sem hora fica <b>dentro do dia em que foi gravado</b>, e <b>nunca muda de dia</b> — essa regra vem antes de todas as outras. Dentro daquele dia, a saída da carga é colocada <b>o mais cedo possível</b>, logo depois do que já tem hora <b>no mesmo dia</b> (criação, conta a receber, impressão, conferência da carga), e sem passar de “Entregue”; a baixa da parcela fica depois de “Pedido criado”. Nenhuma hora é inventada — só a posição na fila. <b>Quando esses limites se contradizem ou caem em outro dia, são eles que cedem, nunca o dia</b>, e a ordem na tela sai diferente disso: acontece em poucos pedidos, ou porque o passo foi registrado em outro dia (o #21 foi impresso em 26/03 e a carga saiu em 24/03), ou porque o pedido foi <b>impresso depois de entregue</b> no mesmo dia (o ZZ#74, entregue 10:58 e impresso 21:12). A tela <b>mostra assim mesmo</b>: o erro é do lançamento, e escondê-lo só atrasaria a correção.</span></div>
+      <div><span class="pin">5</span><span><b>O que o motorista lançou na entrega tem rótulos diferentes:</b> “Registrado como pago na hora” (a entrega foi fechada em dinheiro/PIX/cartão), “PIX Asaas confirmado pelo banco” (cobrança do app confirmada pelo banco, caiu direto na conta da empresa), “Ficou a cobrar na entrega” (ninguém pagou — alguém ficou responsável pela cobrança) e “Registrado sem dinheiro na hora” (boleto, prazo, bonificação). Existe ainda um quinto, raro: <b>“Linha sem forma registrada”</b>, para a linha que veio sem forma de pagamento nenhuma — aí o app não afirma nem que houve dinheiro na hora nem quem ficou de cobrar, porque não tem como saber. São os <b>mesmos cinco rótulos</b> do quadro Recebimento — não escritos letra por letra: no quadro cabe o complemento explicativo (“Registrado como pago na hora <b>(dinheiro/PIX/cartão)</b>”, “Ficou a cobrar <b>— ninguém pagou</b>”) e no evento o texto é mais curto e situa a entrega (“Ficou a cobrar <b>na entrega</b>”, “PIX Asaas confirmado pelo banco”). O <b>miolo da frase é o mesmo</b> nos dois lugares, e os dois saem do <b>mesmo ponto do código</b> — então o quadro e a linha do tempo nunca vão chamar a mesma coisa por nomes diferentes. Antes tudo isso era anunciado como “Recebido na entrega”, mesmo quando ninguém tinha pago nada.</span></div>
+      <div><span class="pin">6</span><span><b>O rodapé diz o que falta</b> — a tela nunca deixa parecer que “não houve” quando na verdade é “não é aqui que se vê”. Aqui ele avisa que o app não guarda a <b>data</b> em que o pedido virou FATURADO: o selo existe, o evento não. Só <b>especial</b> e <b>bonificação</b> têm data própria, e nesses o evento se chama <b>“Pedido especial aprovado” / “Bonificação aprovada”</b> — porque nenhum dos dois vai ao Conta Azul.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4 -->
+  <div class="tela">
+    <div class="tela-titulo">4 · No celular — pílula grande e um botão a mais</div>
+    <div class="tela-corpo">
+      <div class="duas">
+        <div>
+          <div class="app-card">
+            <div class="app-body">
+              <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+                <span class="pill p-roxo">Marcos</span>
+                <span class="pill p-roxo">PRESENCIAL</span>
+                <span class="pill p-sky">🛒 PEDIDO</span>
+              </div>
+              <div style="font-size:13px;font-weight:800;margin-top:7px;color:#111827">PANIFICADORA BOM DIA</div>
+              <div style="font-size:10.5px;color:#6b7280">Joinville</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+                <span class="pill p-verde-btn" style="font-size:12px;padding:12px 14px">#920 👁 <span class="pin">1</span></span>
+                <span style="font-size:12px;font-weight:800;color:#166534">R$ 1.284,50</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="app-card">
+            <div class="app-head"><span class="t">Cartão aberto</span></div>
+            <div class="app-body">
+              <div style="font-size:10.5px;color:#6b7280">Vendedor: <b style="color:#111827">Marcos</b></div>
+              <div class="btn" style="width:100%;margin-top:9px;background:#eff6ff;color:#1d4ed8;font-size:12px">👁 Ver detalhes do cliente</div>
+              <div class="btn" style="width:100%;margin-top:7px;background:#f0fdf4;color:#166534;font-size:12px">🛒 Ver detalhes do pedido <span class="pin">2</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>No celular a pílula do pedido é <b>alta o bastante para o dedo</b> — não é preciso mirar. Tocar nela abre o pedido; tocar em qualquer outro ponto do cartão continua abrindo/fechando os detalhes do atendimento.</span></div>
+      <div><span class="pin">2</span><span>Com o cartão aberto tem um <b>segundo caminho</b>: o botão verde <b>Ver detalhes do pedido</b>, logo abaixo do já conhecido “Ver detalhes do cliente”.</span></div>
+    </div>
+  </div>
+
+  <!-- ═══════════ DETALHES ═══════════ -->
+  <p class="sec-titulo sec" style="margin-top:22px">📌 Detalhes</p>
+
+  <details open>
+    <summary>Tudo o que pode aparecer na linha do tempo <span class="mais">+</span></summary>
+    <div class="det-corpo">
+      <p style="margin:0">Em ordem de data, com o nome de quem fez sempre que o sistema guardou essa informação:</p>
+      <ul>
+        <li><b>Criação do pedido</b> — quem registrou, de qual vendedor é a venda e o canal de origem (visita, WhatsApp, ligação…)</li>
+        <li><b>Conta a receber criada</b>, com o valor e quantas parcelas</li>
+        <li><b>Aprovação do pedido especial</b> ou <b>da bonificação</b> — é o único “carimbo de liberação” que
+          tem data no app. Nenhum dos dois vai ao Conta Azul, então o evento não fala em faturamento</li>
+        <li><b>Conversão de pedido especial</b> em pedido com nota (e quanto já tinha sido recebido na conversão)</li>
+        <li><b>NF-e enviada para a SEFAZ</b> e, depois, <b>“consta como autorizada / recusada / cancelada”</b> —
+          inclusive a NF-e de devolução. É “consta como” porque a data é a da última mudança daquele registro no
+          app, que nem sempre é a hora exata em que a SEFAZ respondeu</li>
+        <li><b>Boleto ou PIX do Asaas gerado</b> e, quando o banco confirma, <b>pago</b></li>
+        <li><b>Baixa de cada parcela</b> — “Parcela N <b>quitada</b>” ou “<b>com baixa parcial</b>”, com a forma
+          de pagamento e o <b>total</b> baixado. O app guarda só a data da <b>última</b> baixa, então duas baixas
+          parciais aparecem como um evento só, no dia da segunda</li>
+        <li><b>Baixa registrada no Conta Azul</b> pela conferência do Caixa</li>
+        <li><b>O que o motorista registrou na entrega</b>, em <b>quatro rótulos que não se confundem</b>:
+          <b>“Registrado como pago na hora”</b> (a entrega foi fechada com dinheiro/PIX/cartão),
+          <b>“PIX Asaas confirmado pelo banco”</b> (o cliente leu o QR na entrega, o banco confirmou a cobrança
+          do app e o valor caiu <b>direto na conta da empresa</b>),
+          <b>“Ficou a cobrar na entrega”</b> (a entrega foi marcada com Vendedor/Escritório/Motorista responsável,
+          ou seja, <b>ninguém pagou</b>) e <b>“Registrado sem dinheiro na hora”</b> (boleto, prazo, bonificação).
+          A tela descreve o <b>registro</b>: ela não diz quem ficou com o dinheiro nem o que entra na conferência
+          do Caixa — isso depende da marcação “debita caixa” da condição, que é do <b>Caixa</b>. A prestação só
+          aparece como fato com data, no evento <b>“Baixa registrada no Conta Azul”</b></li>
+        <li><b>Impressão do pedido</b></li>
+        <li><b>Conferência de carga por bipagem</b> — quem bipou e se foi leitor ou digitado</li>
+        <li><b>Saída da carga</b> — número do embarque e motorista (<b>sem hora</b>: o app guarda só o dia)</li>
+        <li><b>Entrega</b> (entregue, entregue parcial ou devolvido)</li>
+        <li><b>Devolução</b> e, se houve, a <b>reversão da devolução</b></li>
+        <li><b>Cancelamento do pedido</b> — quem cancelou e o motivo</li>
+        <li><b>Atendimentos ligados a este pedido</b>, com o vendedor e a observação</li>
+      </ul>
+    </div>
+  </details>
+
+  <details open>
+    <summary>O que a linha do tempo NÃO mostra — e por quê <span class="mais">+</span></summary>
+    <div class="det-corpo">
+      <ul style="margin-top:0">
+        <li><b>Estorno de baixa.</b> O extrato completo de pagamentos e estornos de uma parcela fica em
+          <b>Contas a Receber</b>. Esta tela enxerga a <b>última baixa gravada na parcela</b>, não o histórico
+          de idas e vindas dela.</li>
+        <li><b>O detalhe da conversa com a SEFAZ</b> — mensagem de erro da recusa e a chave da nota emitida
+          pelo app. Isso fica em <b>Notas Fiscais</b>. Aqui aparece a situação da nota (autorizada, recusada,
+          cancelada) e o número.</li>
+        <li><b>A data de emissão da NF-e emitida no Conta Azul.</b> O app guarda a chave e o número dessa nota,
+          mas nunca guardou a data em que ela foi emitida — então ela aparece na seção <b>Nota fiscal</b> e
+          <b>não</b> na linha do tempo. Colocar uma data ali seria inventar.</li>
+        <li><b>Envio de WhatsApp do pedido.</b> O sistema guarda <b>se</b> a mensagem saiu, mas não a hora —
+          por isso não vira evento com horário.</li>
+        <li><b>A data em que o pedido virou FATURADO.</b> O app grava a <i>situação</i> (o selo “CA: FATURADO”),
+          mas não o momento em que ela mudou — isso vale para a grande maioria dos pedidos normais. Quando é o
+          caso, o rodapé da linha do tempo <b>avisa</b> em vez de criar um evento de faturamento que ninguém
+          registrou.</li>
+        <li><b>A hora dos eventos que só têm data</b> — saída da carga e baixa de parcela. (A <b>devolução</b>
+          não entra nessa lista: a data dela é gravada com hora de verdade.) Eles aparecem, mas com a marca
+          <b>“sem hora registrada”</b>. Antes a tela mostrava 12:00, 09:00, ou até o dia
+          anterior às 21:00, e isso produzia sequência impossível (“entregue 11:44” acima de “saiu na carga
+          12:00”). Agora esses eventos ficam na melhor posição possível <b>dentro do dia em que foram
+          gravados</b> — a saída da carga depois do que já tem hora <b>no mesmo dia</b> (criação, conta a
+          receber, impressão, conferência da carga na doca) e antes da entrega —, sem que nenhuma hora seja
+          inventada. O evento <b>nunca muda de dia</b>: quando os limites se contradizem ou caem em outro dia,
+          são eles que cedem, e a ordem pode aparecer estranha — nesses casos o que está errado é a data
+          lançada. E quando a saída da carga
+          <b>tem</b> hora gravada, ela aparece com a hora, sem a marca — a seção Entrega e a linha do tempo
+          mostram o mesmo texto.</li>
+      </ul>
+      <p style="margin-top:10px">A regra é essa: <b>o que não foi registrado não aparece, e o rótulo só afirma o
+        que o dado prova</b>. A tela prefere ficar calada a chutar.</p>
+    </div>
+  </details>
+
+  <details open>
+    <summary>Por que existem duas telas de detalhe do pedido <span class="mais">+</span></summary>
+    <div class="det-corpo">
+      <p style="margin:0">Porque a tela de detalhe da aba <b>Pedidos</b> não é só uma tela de olhar: ela
+        <b>age</b> sobre o pedido (cancelar, faturar, aprovar especial, converter, boleto, PIX, WhatsApp,
+        imprimir, reatribuir vendedor). É a tela mais usada da empresa e mexer nela para reaproveitá-la aqui
+        era risco desnecessário.</p>
+      <ul>
+        <li><b>Aba Pedidos</b> → tela completa, com todos os botões. <b>Continua igual, nada foi alterado nela.</b></li>
+        <li><b>Painel de Atendimentos</b> → esta tela nova, <b>só de consulta</b>, com a linha do tempo.</li>
+      </ul>
+      <p style="margin-top:10px">As duas leem <b>o mesmo pedido, do mesmo lugar</b> — não existe risco de uma
+        mostrar um número e a outra mostrar outro.</p>
+    </div>
+  </details>
+
+  <details open>
+    <summary>Quem pode ver e o que acontece se não carregar <span class="mais">+</span></summary>
+    <div class="det-corpo">
+      <p style="margin:0"><b>Nenhuma permissão nova foi criada</b> e nenhuma regra de acesso mudou. Quem já
+        entra no Painel de Atendimentos consegue abrir a consulta do pedido.</p>
+      <ul>
+        <li><b>Internet falhou?</b> Aparece um aviso amarelo com o botão <b>Tentar de novo</b>, sem fechar a tela.</li>
+        <li><b>Pedido excluído?</b> A tela diz isso, com todas as letras.</li>
+        <li><b>Sem permissão?</b> A tela avisa que é permissão e orienta a falar com o escritório — em vez de
+          quebrar ou aparecer em branco.</li>
+      </ul>
+    </div>
+  </details>
+
+  <div class="passos">
+    <p class="sec-titulo" style="margin:0">✅ Para começar a usar</p>
+    <div class="passo"><div class="num">1</div>
+      <p>Abra <b>Atendimentos</b> e ache uma linha verde de pedido.</p></div>
+    <div class="passo"><div class="num">2</div>
+      <p>Clique na pílula <b>Pedido #920</b> na coluna <b>Ação</b> (no celular, toque na pílula do cartão ou use o botão <b>Ver detalhes do pedido</b>).</p></div>
+    <div class="passo"><div class="num">3</div>
+      <p>Role até <b>“Tudo o que aconteceu com este pedido”</b> para ver a história completa da venda.</p></div>
+    <div class="passo"><div class="num">4</div>
+      <p>Precisa <b>mexer</b> no pedido (cancelar, boleto, imprimir)? Feche e vá na aba <b>Pedidos</b> — é lá que ficam os botões.</p></div>
+  </div>
+
+  <p class="rodape-pag">Hardt App · Painel de Atendimentos — consulta do pedido · agosto/2026</p>
+</div>
+
+</body>
+</html>
