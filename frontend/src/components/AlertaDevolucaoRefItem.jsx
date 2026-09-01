@@ -26,6 +26,37 @@ import configNotasService from '../services/configNotasService';
 const INTERVALO_MS = 10 * 60 * 1000;  // 10 minutos — o que ele pediu
 const DELAY_INICIAL_MS = 8000;        // 8s para não disputar com o carregamento da tela
 
+// ─── Quando o lembrete COMEÇA a aparecer ─────────────────────────────────────
+// Pedido do dono em 01/09/2026, depois de ver funcionando: "aparece direto (…) me comunique
+// no dia 03 em diante, assim vai ficar todo o dia até lá é muito". Do jeito original seriam
+// 34 dias de modal a cada 10 min (01/09 → 05/10). Fica quieto até a data abaixo e só cobra
+// nos 3 dias que importam: 03, 04 e 05/10.
+// A FREQUÊNCIA não mudou (continua 10 min) — ele pediu para mudar quando COMEÇA.
+// Para antecipar ou adiar, basta trocar esta linha.
+const INICIO_LEMBRETE = '2026-10-03';   // 'YYYY-MM-DD', no fuso de Brasília
+
+// Dia 'YYYY-MM-DD' → milissegundos UTC, montado pelos pedaços (nunca `new Date('2026-10-05')`,
+// que é lido como UTC e vira 04/10 no Brasil). Serve só para comparar datas entre si.
+const diaEmMs = (iso) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso ?? ''));
+    return m ? Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : null;
+};
+
+// "Hoje" vem do SERVIDOR, nunca do relógio do aparelho: `obrigatorioEm` menos `diasRestantes`
+// devolve a data de hoje já no fuso de Brasília — o mesmo fuso com que o backend decide o
+// próprio interruptor. O relógio do iPad pode estar errado ou em outro fuso, e numa janela de
+// 3 dias começar um dia tarde custa um terço dela.
+// Se o servidor não mandar os dados, ERRA PARA O LADO DE LEMBRAR: um aviso a mais é melhor do
+// que um prazo fiscal perdido em silêncio.
+const jaPodeLembrar = (data) => {
+    const dias = Number(data?.diasRestantes);
+    const prazoMs = diaEmMs(data?.obrigatorioEm);
+    const inicioMs = diaEmMs(INICIO_LEMBRETE);
+    if (!Number.isFinite(dias) || prazoMs === null || inicioMs === null) return true;
+    const hojeMs = prazoMs - dias * 86400000;   // data de hoje segundo o servidor
+    return hojeMs >= inicioMs;
+};
+
 // ─── Quem é o Clarkson ───────────────────────────────────────────────────────
 // ⚠️ NÃO "simplificar" isto de volta para só o ID.
 //
@@ -103,7 +134,9 @@ const AlertaDevolucaoRefItem = () => {
                 if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
                 return;
             }
-            if (!dispensadoRef.current) setVisivel(true);
+            // Antes de INICIO_LEMBRETE o ciclo continua rodando (barato, e é ele que descobre
+            // quando a data chega), mas nada aparece na tela.
+            if (!dispensadoRef.current && jaPodeLembrar(data)) setVisivel(true);
         } catch (error) {
             // Fica quieto na tela (sem internet ou backend ainda sem a rota não é assunto do
             // usuário) — mas NUNCA em silêncio no console: se um dia o lembrete sumir, tem que
@@ -150,7 +183,9 @@ const AlertaDevolucaoRefItem = () => {
         navigate('/admin/config#nfe-devolucao-ref-item');
     };
 
-    if (!paraMim || !visivel || !estado || chaveAcionada(estado)) return null;
+    // `jaPodeLembrar` também aqui, e não só no `verificar`: é a última porta antes de pintar na
+    // tela — protege de qualquer caminho que ligue `visivel` sem passar pela checagem de data.
+    if (!paraMim || !visivel || !estado || chaveAcionada(estado) || !jaPodeLembrar(estado)) return null;
 
     const dias = Number.isFinite(Number(estado.diasRestantes)) ? Number(estado.diasRestantes) : null;
     const dataLimite = fmtData(estado.obrigatorioEm) || '05/10/2026';
