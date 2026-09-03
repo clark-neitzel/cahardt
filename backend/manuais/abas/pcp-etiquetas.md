@@ -39,7 +39,7 @@ Desde 08/2026 o tamanho do rolo e o desenho da etiqueta são escolhidos de forma
   - **Clássico** — o layout de sempre, sem selos. É o padrão.
   - **ANVISA** — traz os selos de advertência **"ALTO EM"** (açúcar adicionado, gordura saturada e/ou sódio) no canto superior direito quando o produto ultrapassa os limites da ANVISA por 100 g. Os selos aparecem sozinhos, calculados pela tabela nutricional; se nenhum nutriente passa do limite, a etiqueta sai sem selo. O Clássico **nunca** mostra selo, em nenhum tamanho.
 
-As quatro combinações possíveis: **Clássico 80×100**, **Clássico 100×120**, **ANVISA 80×100** e **ANVISA 100×120**. No 100×120 o layout Clássico é ampliado para preencher a folha; no 80×100 o layout ANVISA fica mais compacto (fontes e espaçamentos apertados) para caber no rolo menor.
+As quatro combinações possíveis: **Clássico 80×100**, **Clássico 100×120**, **ANVISA 80×100** e **ANVISA 100×120**. No 80×100 o layout ANVISA fica mais compacto (fontes e espaçamentos apertados) para caber no rolo menor. **Atenção ao Clássico no 100×120:** o desenho Clássico é feito no tamanho 80×100 e sai impresso nesse tamanho mesmo na folha grande — sobra borda em branco na etiqueta. Para o rolo 100×120 o modelo que preenche o rótulo inteiro é o **ANVISA**.
 
 As duas escolhas ficam **salvas no navegador** e valem tanto no modal quanto na tela dedicada de impressão. O que manda o tamanho da folha impressa é o **Tamanho**.
 
@@ -54,6 +54,24 @@ As duas escolhas ficam **salvas no navegador** e valem tanto no modal quanto na 
 7. A **Validade** é calculada automaticamente somando os dias configurados na etiqueta.
 8. Ajuste o número de **Cópias** (use os botões + / − ou digite diretamente).
 9. Clique em **Imprimir** — o diálogo de impressão do navegador abre com as cópias pré-configuradas.
+10. **Na janela de impressão do computador, confira o papel e a escala** (ver abaixo).
+
+**O papel da janela de impressão (o que mais dá problema):**
+
+A impressora ZDesigner está configurada em **paisagem**: a etiqueta entra deitada, então a folha enviada é a etiqueta girada 90°.
+
+**Por isso os dois números aparecem invertidos, e os dois estão certos:** a etiqueta física é 100 × 120 mm, mas como ela imprime deitada o papel é listado como 120 × 100 mm (paisagem) na janela de impressão. O mesmo vale para a pequena: etiqueta 80 × 100 mm → papel 100 × 80 mm.
+
+| Tamanho da etiqueta (escolhido no app) | Papel a escolher na janela de impressão |
+|---|---|
+| 80 × 100 mm | **100 × 80 mm (paisagem)** |
+| 100 × 120 mm | **120 × 100 mm (paisagem)** |
+
+Esse aviso aparece na própria tela, num quadro amarelo, tanto no modal da lista quanto na tela dedicada — e o texto muda junto com o tamanho selecionado.
+
+- A **escala** precisa ficar em **100%**. Se estiver em "Ajustar à página" / "Fit to page", o navegador encolhe a etiqueta.
+- Se o papel escolhido for de outro tamanho, o navegador **encolhe o trabalho para caber nele** — foi o defeito de 08/2026: com o papel da etiqueta antiga (100 × 80) selecionado, a 100×120 saía reduzida a 80%, com o conteúdo do tamanho de uma 80×100 no canto de cima e o resto da etiqueta em branco. Nenhum ajuste dentro do app corrige isso: é o papel do diálogo (e, na origem, o tamanho da etiqueta configurado no driver da ZDesigner, que precisa ser 100 mm × 120 mm para o rolo grande).
+- Cada cópia sai em **exatamente uma etiqueta** (1 cópia = 1 etiqueta, 3 cópias = 3 etiquetas) — conferido gerando o PDF da própria impressão.
 
 ---
 

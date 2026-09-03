@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
 import { codExibir, imprimirEtiquetas, validadeDias } from './EtiquetaLabel';
 import { EtiquetaRender } from './EtiquetaLabelNova';
-import { TAMANHOS, TAMANHO_PADRAO, LAYOUTS, LAYOUT_PADRAO, layoutValido } from './etiquetaModelos';
+import { TAMANHOS, TAMANHO_PADRAO, LAYOUTS, LAYOUT_PADRAO, layoutValido, paginaImpressao } from './etiquetaModelos';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 // ─── Utilidades de data ───────────────────────────────────────────────────────
@@ -69,6 +69,7 @@ function PrintModal({ et, onClose }) {
     const labelRef = useRef(null);
 
     const dim = TAMANHOS[tamanho] || TAMANHOS[TAMANHO_PADRAO];
+    const pagina = paginaImpressao(tamanho);
     const dataFabDisplay = isoParaDisplay(dataFab);
     const dias = validadeDias(et);
     const dataValDisplay = somarDias(dataFab, dias);
@@ -178,6 +179,17 @@ function PrintModal({ et, onClose }) {
                         <Printer className="h-5 w-5" />
                         Imprimir{copies > 1 ? ` ${copies}×` : ''}
                     </button>
+                </div>
+
+                {/* Papel do diálogo do sistema — se não bater com a página, o navegador encolhe a etiqueta */}
+                <div className="px-6 pt-3 pb-1 bg-gray-50 border-b">
+                    <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                        <Printer className="h-4 w-4 text-amber-700 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs text-amber-900 leading-relaxed">
+                            A etiqueta é <b>{pagina.etiquetaTexto}</b>; como ela imprime deitada, na janela de impressão o papel aparece como <b>{pagina.texto}</b> — é esse que você escolhe.
+                            Mantenha a escala em <b>100%</b> (nada de &ldquo;ajustar à página&rdquo;): com papel de outro tamanho o navegador encolhe a etiqueta num canto.
+                        </p>
+                    </div>
                 </div>
 
                 {/* Preview */}

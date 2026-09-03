@@ -37,6 +37,26 @@ export const MODELOS = {
 
 export const MODELO_PADRAO = 'classico';
 
+// ─── Página enviada à impressora ──────────────────────────────────────────────
+// A ZDesigner está configurada em LANDSCAPE: a página tem altura × largura da etiqueta
+// e o rótulo é girado 90° na impressão. Isto aqui é a fonte única desse número — a tela
+// mostra ao usuário QUAL papel escolher no diálogo do sistema. Se o papel escolhido não
+// for exatamente esse, o navegador ENCOLHE o trabalho para caber (bug real de 08/2026:
+// com o papel 100×80 da etiqueta antiga selecionado, a 100×120 saía com o conteúdo do
+// tamanho de uma 80×100 num canto da etiqueta grande).
+export function paginaImpressao(tamanho) {
+    const cfg = TAMANHOS[tamanho] || MODELOS[tamanho] || TAMANHOS[TAMANHO_PADRAO];
+    return {
+        larguraMM: cfg.alturaMM,   // página (mm) — a etiqueta entra deitada
+        alturaMM: cfg.larguraMM,
+        // Os DOIS números aparecem juntos na tela de propósito: a etiqueta física é
+        // 100×120, mas como imprime deitada o papel é listado como 120×100 (paisagem).
+        // Sem essa explicação lado a lado ninguém deduz a inversão e escolhe o papel errado.
+        etiquetaTexto: `${cfg.larguraMM} × ${cfg.alturaMM} mm`,
+        texto: `${cfg.alturaMM} × ${cfg.larguraMM} mm (paisagem)`,
+    };
+}
+
 // SKU do catálogo tem prioridade; cai para o código interno se não vinculado
 export const codExibir = (et) => et.produto?.codigo || et.codigoProduto;
 

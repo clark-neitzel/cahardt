@@ -14,6 +14,22 @@ export { codExibir, validadeDias, pesoLiquidoStr, parseValor, parseVD, fmtNum, A
 export function imprimirEtiquetas(labelHtml, copies = 1, tamanho = TAMANHO_PADRAO) {
     const cfg = TAMANHOS[tamanho] || MODELOS[tamanho] || TAMANHOS[TAMANHO_PADRAO];
     const { larguraMM, alturaMM } = cfg;
+
+    // A impressora ZDesigner está configurada em LANDSCAPE (a mídia entra deitada), então a
+    // PÁGINA é alturaMM × larguraMM e a etiqueta (portrait larguraMM × alturaMM) é girada 90°.
+    const pgLargMM = alturaMM;   // largura da página (mm) — 100 (p80) / 120 (g120)
+    const pgAltMM  = larguraMM;  // altura  da página (mm) —  80 (p80) / 100 (g120)
+
+    // A caixa de cada etiqueta fica 0,3mm MENOR que a página — PRECAUÇÃO, não correção de um
+    // defeito observado. O que se mediu (08/2026): o Chrome converte mm→pontos e arredonda,
+    // então 100mm de @page viram 99,83mm de caixa útil e uma .pg do tamanho EXATO da página
+    // fica 0,17mm maior do que cabe. No Chrome isso só recorta a sobra, mas em um motor que
+    // fragmente (WebKit/AirPrint, driver) uma caixa que não cabe pode ir para a folha seguinte
+    // ou deixar página extra. NÃO é a causa do bug de 08/2026 (esse foi o papel divergente no
+    // driver encolhendo o trabalho). Os 0,3mm não aparecem na impressão (a borda tem 0,4mm).
+    const pgLargUtil = (pgLargMM - 0.3).toFixed(2);
+    const pgAltUtil  = (pgAltMM  - 0.3).toFixed(2);
+
     const ID_AREA = 'area-impressao';
     const ID_ESTILO = 'estilo-impressao';
     document.getElementById(ID_AREA)?.remove();
@@ -21,22 +37,35 @@ export function imprimirEtiquetas(labelHtml, copies = 1, tamanho = TAMANHO_PADRA
 
     const style = document.createElement('style');
     style.id = ID_ESTILO;
-    // Impressora ZDesigner está em LANDSCAPE (altura×largura da mídia). A etiqueta é
-    // desenhada em portrait (larguraMM×alturaMM), então a página sai em landscape e o
-    // conteúdo é girado 90° para casar com a mídia e sair reto na etiqueta.
     // @page no nível raiz (iOS não lida bem com @page dentro de @media)
     style.textContent = `
-        @page { size: ${alturaMM}mm ${larguraMM}mm; margin: 0; }
+        @page { size: ${pgLargMM}mm ${pgAltMM}mm; margin: 0; }
         #${ID_AREA} { display: none; }
         @media print {
-            html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; }
+            /* LARGURA EXPLÍCITA em mm: sem ela o documento fica com a largura da JANELA e o
+               WebKit/driver aplica "ajustar à página", encolhendo a etiqueta num cantinho. */
+            html, body {
+                margin: 0 !important; padding: 0 !important; background: #fff !important;
+                width: ${pgLargMM}mm !important; min-width: 0 !important; max-width: none !important;
+                height: auto !important; min-height: 0 !important; overflow: visible !important;
+            }
             /* remove o app do LAYOUT (não só esconde) — senão sobra altura "fantasma" = páginas em branco */
             body > *:not(#${ID_AREA}) { display: none !important; }
             #root { display: none !important; }
-            #${ID_AREA} { display: block !important; }
+            #${ID_AREA} { display: block !important; width: ${pgLargMM}mm; margin: 0; padding: 0; }
             #${ID_AREA}, #${ID_AREA} * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-            #${ID_AREA} .pg { width: ${alturaMM}mm; height: ${larguraMM}mm; display: flex; align-items: center; justify-content: center; overflow: hidden; page-break-after: always; }
-            #${ID_AREA} .pg:last-child { page-break-after: avoid; }
+            /* 1 etiqueta = 1 página. A caixa é 0,3mm menor que a folha (ver acima) e
+               overflow:hidden a torna monolítica: nada do conteúdo empurra papel.
+               Medido: 1 cópia = 1 página, 2 = 2, 3 = 3. */
+            #${ID_AREA} .pg {
+                width: ${pgLargUtil}mm; height: ${pgAltUtil}mm;
+                display: flex; align-items: center; justify-content: center;
+                overflow: hidden; break-inside: avoid; page-break-inside: avoid;
+            }
+            /* quebra ANTES de cada etiqueta seguinte — nunca DEPOIS da última.
+               page-break-after:always na última é causa conhecida de folha em branco no fim
+               do trabalho. Aqui é prevenção: no Chrome o :last-child { avoid } já dava conta. */
+            #${ID_AREA} .pg + .pg { break-before: page; page-break-before: always; }
             /* gira a etiqueta portrait para caber na página landscape */
             #${ID_AREA} .pg > * { transform: rotate(90deg); flex: 0 0 auto; }
         }

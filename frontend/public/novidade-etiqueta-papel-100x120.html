@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Etiqueta 100 × 120 imprimindo certo — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto) -->
+<meta property="og:title" content="🏷️ Etiqueta 100 × 120: corrigida a impressão encolhida">
+<meta property="og:description" content="A etiqueta grande saía pequena num canto: era o papel da janela de impressão. A tela agora avisa qual papel escolher — e por que 100×120 vira 120×100.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A; --primary-dark: #006241; --house: #1E3932;
+    --mint: #d4e9e2; --cream: #f2f0eb; --gold: #cba258;
+    --ink: rgba(0,0,0,.87); --ink-soft: #5f6b66; letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--cream); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55; -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* HERO */
+  .hero { background: linear-gradient(168deg, var(--house) 0%, #16302a 100%); color: #fff; padding: 40px 16px 96px; }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow { display: inline-block; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .14em; padding: 6px 14px; border-radius: 999px; margin-bottom: 18px; }
+  .hero h1 { font-size: clamp(26px, 6.6vw, 38px); font-weight: 800; line-height: 1.12; margin: 0 0 12px; text-wrap: balance; }
+  .hero p { color: rgba(255,255,255,.78); font-size: 16px; max-width: 48ch; margin: 0 auto; text-wrap: balance; }
+
+  /* mock flutuando sobre o hero */
+  .mock { max-width: 430px; margin: -70px auto 30px; background: #fff; border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28); overflow: hidden; text-align: left; }
+  .mock-top { background: #f7f6f2; padding: 14px 16px; border-bottom: 1px solid #e9e6df; }
+  .mock-top .lbl { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-soft); margin-bottom: 8px; }
+  .pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pill { padding: 9px 15px; border-radius: 999px; font-size: 13px; font-weight: 700; border: 1px solid #d3d0c8; background: #fff; color: #56605b; }
+  .pill.on { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .mock-body { padding: 16px; text-align: center; color: var(--ink-soft); font-size: 13px; }
+
+  h2.sec { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--primary-dark); margin: 34px 0 14px; }
+
+  /* Accordions */
+  .acc { background: #fff; border: 1px solid #e9e6df; border-radius: 14px; margin-bottom: 12px; overflow: hidden; }
+  .acc-head { width: 100%; display: flex; align-items: center; gap: 12px; padding: 15px 16px; background: none; border: 0; cursor: pointer; text-align: left; }
+  .acc-ico { width: 38px; height: 38px; flex: 0 0 auto; border-radius: 11px; background: var(--mint); display: flex; align-items: center; justify-content: center; font-size: 19px; }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* Grade das 4 combinações */
+  .grade { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .combo { background: #fff; border: 1px solid #e9e6df; border-radius: 13px; padding: 14px; }
+  .combo .t { font-weight: 800; font-size: 14.5px; margin-bottom: 3px; }
+  .combo .d { font-size: 12.5px; color: var(--ink-soft); }
+  .combo .tag { display: inline-block; margin-top: 8px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }
+  .tag.cl { background: var(--mint); color: var(--primary-dark); }
+  .tag.an { background: #fde8cf; color: #8a5a12; }
+
+  /* Telas do app (mockups com pins) */
+  .tela { background: #fff; border: 1px solid #e9e6df; border-radius: 16px; overflow: hidden; margin-bottom: 20px; }
+  .tela-titulo { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #eee; font-weight: 700; }
+  .tela-num { width: 26px; height: 26px; border-radius: 999px; background: var(--gold); color: #2b230f; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .tela-corpo { padding: 16px; background: #f7f6f2; position: relative; }
+  .app-card { background: #fff; border: 1px solid #e5e2db; border-radius: 12px; overflow: hidden; }
+  .app-card-head { padding: 10px 14px; border-bottom: 1px solid #eee; font-size: 13px; }
+  .app-card-head b { font-weight: 800; }
+  .app-card-body { padding: 14px; }
+  .campo-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-soft); margin: 12px 0 7px; display: flex; align-items: center; gap: 7px; }
+  .campo-lbl:first-child { margin-top: 0; }
+  .pin { width: 18px; height: 18px; flex: 0 0 auto; border-radius: 999px; background: var(--gold); color: #2b230f; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+  .legenda { padding: 4px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 8px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  .rodape { text-align: center; color: var(--ink-soft); font-size: 12.5px; margin-top: 30px; }
+</style>
+<style>
+  .aviso { background: #fffbeb; border: 1px solid #f6dfab; border-radius: 14px; padding: 14px 16px; margin: 14px 0 4px; }
+  .aviso .t { font-weight: 800; font-size: 14.5px; margin-bottom: 6px; color: #7c4d09; }
+  .aviso p { margin: 0; font-size: 14px; color: #8a5a12; }
+  .antes-depois { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+  @media (max-width: 420px) { .antes-depois { grid-template-columns: 1fr; } }
+  .ad { background: #fff; border: 1px solid #e9e6df; border-radius: 13px; padding: 12px; }
+  .ad .cap { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; margin-bottom: 8px; }
+  .ad.ruim .cap { color: #b3261e; }
+  .ad.bom .cap { color: var(--primary-dark); }
+  .folha { position: relative; border: 1.5px dashed #b9b3a6; border-radius: 6px; background: #fff;
+           width: 100%; max-width: 165px; margin: 0 auto; aspect-ratio: 100 / 120; }
+  .folha .conteudo { position: absolute; background: repeating-linear-gradient(180deg, #d8e6e0 0 3px, #fff 3px 6px);
+           border: 1px solid #6f8f84; border-radius: 3px; }
+  .ad.ruim .folha .conteudo { top: 2%; left: 2%; width: 78%; height: 66%; }
+  .ad.bom  .folha .conteudo { top: 2%; left: 2%; width: 96%; height: 96%; }
+  .ad .nota { font-size: 12px; color: var(--ink-soft); margin-top: 8px; }
+  .passo { display: flex; gap: 12px; background: #fff; border: 1px solid #e9e6df; border-radius: 13px; padding: 14px; margin-bottom: 10px; }
+  .passo .n { width: 26px; height: 26px; flex: 0 0 auto; border-radius: 999px; background: var(--primary); color: #fff;
+              font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .passo p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+</style>
+
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">Correção • PCP · Etiquetas</span>
+    <h1>Etiqueta 100 × 120 imprimindo certo</h1>
+    <p>No tamanho 100 × 120 com o modelo ANVISA, a etiqueta saía pequena, encolhida no canto de cima. Era o papel selecionado na janela de impressão — e agora a tela diz exatamente qual escolher.</p>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="mock">
+    <div class="mock-top">
+      <div class="lbl">Tamanho</div>
+      <div class="pills"><span class="pill">80 × 100</span><span class="pill on">100 × 120</span></div>
+    </div>
+    <div class="mock-top" style="border-top:0">
+      <div class="lbl">Modelo</div>
+      <div class="pills"><span class="pill">Clássico</span><span class="pill on">ANVISA</span></div>
+    </div>
+    <div class="mock-body">Papel a escolher: <b>120 × 100 mm (paisagem)</b> · escala <b>100%</b>.</div>
+  </div>
+
+  <h2 class="sec">O que estava acontecendo</h2>
+
+  <div class="antes-depois">
+    <div class="ad ruim">
+      <div class="cap">Antes</div>
+      <div class="folha"><div class="conteudo"></div></div>
+      <div class="nota">Conteúdo do tamanho de uma 80 × 100 encolhido no canto, o resto da etiqueta em branco.</div>
+      <div class="nota">O navegador estava <b>reduzindo o trabalho a 80%</b> para caber no papel da etiqueta antiga.</div>
+    </div>
+    <div class="ad bom">
+      <div class="cap">Agora</div>
+      <div class="folha"><div class="conteudo"></div></div>
+      <div class="nota">O rótulo ocupa a etiqueta inteira, de borda a borda.</div>
+      <div class="nota">Com o papel <b>120 × 100 mm (paisagem)</b> escolhido e a escala em <b>100%</b>.</div>
+    </div>
+  </div>
+
+  <h2 class="sec">O que mudou</h2>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🖨️</span>
+      <strong>A causa: o papel escolhido na janela de impressão</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Quando o papel selecionado na janela de impressão é de <b>outro tamanho</b>, o navegador <b>encolhe o trabalho</b> para caber nele. Estava selecionado o papel da etiqueta antiga (100 × 80 mm), e a etiqueta grande foi reduzida a <b>80%</b> do tamanho — é por isso que o rótulo saiu com a área de uma 80 × 100 num canto da etiqueta de 100 × 120. Reproduzimos aqui, gerando o PDF da impressão com o papel antigo selecionado, e deu exatamente o mesmo resultado.</p>
+      <p><b>Isso nenhum ajuste dentro do app corrige</b> — quem manda no tamanho é o papel do diálogo e, na origem, o tamanho da etiqueta configurado no driver da impressora.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📐</span>
+      <strong>A folha tem largura fixa em milímetros</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Faltava dizer ao navegador a <b>largura da folha em milímetros</b> na hora de imprimir. Sem isso, ele podia usar a largura da janela e aplicar "ajustar à página" — que é o que encolhe o rótulo num cantinho. Agora a folha tem tamanho declarado em mm, do jeito que o resto do sistema já faz.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⚠️</span>
+      <strong>O aviso do papel na tela de impressão</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O modal de impressão e a tela de imprimir etiqueta agora mostram, em amarelo, <b>exatamente qual papel escolher</b> — o texto muda junto com o tamanho selecionado.</p>
+      <p><b>E explica a inversão dos números,</b> que confundia todo mundo: a etiqueta é <b>100 × 120 mm</b>, mas como ela imprime <b>deitada</b>, o papel aparece como <b>120 × 100 mm (paisagem)</b> na janela de impressão. Os dois números estão certos — o que se escolhe no diálogo é o segundo. Na etiqueta pequena vale o mesmo: etiqueta 80 × 100 mm → papel 100 × 80 mm.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🛡️</span>
+      <strong>De quebra, um reforço por precaução (não era o que estava acontecendo)</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Aproveitando a mexida, a montagem da folha ganhou duas proteções — <b>não porque tenha dado problema</b>, mas para não dar: cada etiqueta passou a ser montada com uma folga mínima de <b>0,3 mm</b> (invisível na impressão, a borda tem 0,4 mm), porque o navegador arredonda 100 mm para 99,83 mm e a etiqueta do tamanho exato da folha fica maior do que cabe por uma fração de milímetro; e a quebra de página passou a ir <b>antes</b> de cada etiqueta seguinte, nunca depois da última.</p>
+      <p>Conferido gerando o PDF da própria impressão: <b>1 cópia = 1 página, 2 cópias = 2 páginas, 3 cópias = 3 páginas</b>.</p>
+    </div>
+  </div>
+
+  <h2 class="sec">Como imprimir a 100 × 120</h2>
+
+  <div class="passo"><span class="n">1</span><p>Coloque o <b>rolo 100 × 120</b> na impressora e escolha <b>Tamanho: 100 × 120</b> no app.</p></div>
+  <div class="passo"><span class="n">2</span><p>Escolha <b>Modelo: ANVISA</b> (é o desenho feito para a etiqueta grande) e as cópias.</p></div>
+  <div class="passo"><span class="n">3</span><p>Clique em <b>Imprimir</b>. Na janela do computador, o papel precisa ser <b>120 × 100 mm (paisagem)</b> — os números invertem porque a etiqueta de <b>100 × 120 mm</b> imprime <b>deitada</b>. É o que o aviso amarelo da tela mostra.</p></div>
+  <div class="passo"><span class="n">4</span><p>Deixe a escala em <b>100%</b>. Se estiver em "Ajustar à página" / "Fit to page", troque — é isso que encolhe a etiqueta.</p></div>
+
+  <div class="aviso">
+    <div class="t">Se a etiqueta ainda sair pequena</div>
+    <p>É o papel da impressora. Na configuração da ZDesigner, o tamanho da etiqueta precisa estar em <b>100 mm de largura por 120 mm de altura</b> (e a orientação em paisagem, como já estava para a 80 × 100). Enquanto o computador achar que a etiqueta é a antiga, ele vai continuar encolhendo o desenho para caber no tamanho velho.</p>
+  </div>
+
+  <h2 class="sec">As telas do app</h2>
+
+  <div class="tela">
+    <div class="tela-titulo"><span class="tela-num">1</span> Modal de impressão (lista de etiquetas)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head"><b>H22 - Mini Coxinha Frango</b> · Cód. H22 · 25g</div>
+        <div class="app-card-body">
+          <div class="campo-lbl"><span class="pin">1</span> Tamanho</div>
+          <div class="pills"><span class="pill">80 × 100</span><span class="pill on">100 × 120</span></div>
+          <div class="campo-lbl"><span class="pin">2</span> Modelo</div>
+          <div class="pills"><span class="pill">Clássico</span><span class="pill on">ANVISA</span></div>
+          <div class="campo-lbl"><span class="pin">3</span> Cópias / Imprimir</div>
+          <div class="pills"><span class="pill">−</span><span class="pill on">1</span><span class="pill">+</span><span class="pill" style="background:#4f46e5;color:#fff;border-color:#4f46e5">🖨 Imprimir</span></div>
+          <div class="campo-lbl"><span class="pin">4</span> Aviso do papel</div>
+          <div class="aviso" style="margin:0"><p>🖨 A etiqueta é <b>100 × 120 mm</b>; como ela imprime deitada, na janela de impressão o papel aparece como <b>120 × 100 mm (paisagem)</b> — é esse que você escolhe. Mantenha a escala em <b>100%</b> (nada de "ajustar à página"): com papel de outro tamanho o navegador encolhe a etiqueta num canto.</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Tamanho</b> — o rolo que está na impressora. Nada mudou aqui.</span></div>
+      <div><span class="pin">2</span><span><b>Modelo</b> — Clássico ou ANVISA. Nada mudou aqui.</span></div>
+      <div><span class="pin">3</span><span><b>Cópias</b> e <b>Imprimir</b> — cada cópia sai em exatamente uma etiqueta (conferido no PDF da impressão).</span></div>
+      <div><span class="pin">4</span><span><b>Novo:</b> o aviso amarelo com o papel certo e a explicação da inversão dos números. O texto muda sozinho conforme o tamanho escolhido (etiqueta 80 × 100 → papel 100 × 80 mm; etiqueta 100 × 120 → papel 120 × 100 mm).</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo"><span class="tela-num">2</span> Tela "Imprimir Etiqueta" (a dedicada)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head"><b>Imprimir Etiqueta</b> · H22 - Mini Coxinha Frango</div>
+        <div class="app-card-body">
+          <div class="campo-lbl"><span class="pin">1</span> Tamanho · Modelo · Data · Cópias</div>
+          <div class="pills"><span class="pill on">100 × 120</span><span class="pill on">ANVISA</span><span class="pill">02/09/2026</span><span class="pill">1 cópia</span></div>
+          <div class="campo-lbl"><span class="pin">2</span> Mesmo aviso do papel</div>
+          <div class="aviso" style="margin:0"><p>🖨 Etiqueta <b>100 × 120 mm</b> → papel <b>120 × 100 mm (paisagem)</b> · escala <b>100%</b>.</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Os controles continuam iguais — a escolha de tamanho e modelo segue salva por usuário.</span></div>
+      <div><span class="pin">2</span><span>O mesmo aviso aparece aqui, logo abaixo do botão Imprimir.</span></div>
+    </div>
+  </div>
+
+  <div class="aviso">
+    <div class="t">Um detalhe do modelo Clássico</div>
+    <p>O modelo <b>Clássico</b> foi desenhado no tamanho 80 × 100 e continua sendo impresso nesse tamanho, mesmo se você escolher a folha 100 × 120 — nele sobra borda em branco na etiqueta grande. Para o rolo 100 × 120, use o modelo <b>ANVISA</b>, que é o que preenche a etiqueta inteira.</p>
+  </div>
+
+  <div class="rodape">Qualquer dúvida, chama no grupo. 🏷️</div>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.closest('.acc');
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>
