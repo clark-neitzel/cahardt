@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantidade por Caixa — desenho das telas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --bg:#f2f0eb; --gold:#cba258; --ink:rgba(0,0,0,.87);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Manrope',-apple-system,sans-serif;letter-spacing:-0.01em;font-variant-numeric:tabular-nums;background:var(--bg);color:var(--ink);line-height:1.55}
+  .wrap{max-width:860px;margin:0 auto;padding:0 16px 60px}
+
+  /* hero */
+  .hero{background:var(--house);color:#fff;padding:36px 16px 30px;text-align:center}
+  .hero .tag{display:inline-block;background:var(--gold);color:#1E3932;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.12em;padding:4px 14px;border-radius:999px;margin-bottom:14px}
+  .hero h1{font-size:26px;font-weight:800;line-height:1.2}
+  .hero p{margin-top:10px;font-size:14px;opacity:.85;max-width:560px;margin-left:auto;margin-right:auto}
+
+  .intro{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px 20px;margin:22px 0;font-size:14px;color:#444}
+  .intro b{color:var(--primary-dark)}
+
+  /* seções */
+  .tela{margin-top:34px}
+  .tela-num{display:inline-flex;align-items:center;gap:10px;margin-bottom:6px}
+  .tela-num .n{width:30px;height:30px;border-radius:999px;background:var(--primary);color:#fff;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center}
+  .tela-num h2{font-size:19px;font-weight:800;color:var(--house)}
+  .tela > p.desc{font-size:14px;color:#555;margin:4px 0 14px}
+
+  /* mock de tela do app */
+  .app{background:#fff;border:1px solid #d1d5db;border-radius:16px;overflow:hidden;box-shadow:0 6px 24px rgba(0,0,0,.07)}
+  .app-bar{background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 16px;display:flex;align-items:center;gap:10px}
+  .app-bar .ico{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px}
+  .app-bar b{font-size:15px}
+  .app-body{padding:16px;background:#f8f7f4}
+
+  .card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden}
+  .card-h{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid #f3f4f6;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.14em;color:#6b7280}
+  .card-b{padding:16px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:520px){.grid2{grid-template-columns:1fr}}
+  .campo label{display:block;font-size:12px;font-weight:600;color:#374151;margin-bottom:4px}
+  .campo .inp{border:1px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:14px;background:#fff;color:#111}
+  .campo .inp.ro{background:#f9fafb;color:#6b7280}
+
+  /* destaque do que é NOVO */
+  .novo{position:relative;border:2px solid var(--primary)!important;background:#f0faf6!important;border-radius:8px;padding:10px!important}
+  .pin{position:absolute;top:-11px;right:-9px;background:var(--gold);color:#1E3932;width:22px;height:22px;border-radius:999px;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+  .legenda{margin-top:12px;background:#fff;border:1px solid #e5e7eb;border-left:4px solid var(--gold);border-radius:10px;padding:12px 16px;font-size:13.5px;color:#444}
+  .legenda .lp{display:inline-flex;width:20px;height:20px;border-radius:999px;background:var(--gold);color:#1E3932;font-size:11px;font-weight:800;align-items:center;justify-content:center;margin-right:8px;vertical-align:-4px}
+  .legenda p+p{margin-top:8px}
+
+  .badge{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11px;font-weight:700}
+  .b-ind{background:#eef2ff;color:#4338ca;font-family:ui-monospace,monospace}
+  .b-blue{background:#dbeafe;color:#1d4ed8;font-family:ui-monospace,monospace}
+  .meta{font-size:12.5px;color:#6b7280;margin-top:4px}
+  .meta .cx{color:var(--primary-dark);font-weight:700}
+
+  .btn{display:inline-block;padding:8px 18px;border-radius:999px;background:var(--primary);color:#fff;font-size:13px;font-weight:700;border:none}
+  .btn-sm{padding:6px 14px;font-size:12px}
+
+  /* inventário interativo */
+  .linha-inv{border:1px solid #d1d5db;border-radius:16px;padding:14px;background:#fff}
+  .linha-inv.ok{background:var(--mint);border-color:#9fc9bb}
+  .inv-inputs{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .inv-inputs input{width:74px;border:1px solid #d1d5db;border-radius:8px;padding:10px 8px;font-size:18px;font-weight:700;text-align:center;font-family:inherit}
+  .inv-inputs .op{font-size:15px;color:#6b7280;font-weight:600}
+  .inv-total{margin-top:10px;background:#fff;border:1.5px dashed var(--primary);border-radius:10px;padding:10px 14px;font-size:14px}
+  .inv-total b{font-size:20px;color:var(--primary-dark)}
+  .subt{font-size:11px;color:#6b7280;text-align:center;margin-top:2px}
+
+  .nao-muda{margin-top:36px;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:20px}
+  .nao-muda h3{font-size:15px;font-weight:800;color:var(--house);margin-bottom:10px}
+  .nao-muda ul{padding-left:20px;font-size:14px;color:#444}
+  .nao-muda li{margin-bottom:6px}
+  .etq{background:#111;color:#fff;font-size:10px;padding:8px 10px;border-radius:6px;font-family:ui-monospace,monospace;display:inline-block;margin-top:8px}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <span class="tag">Para sua aprovação — nada foi feito ainda</span>
+  <h1>📦 Quantidade por Caixa</h1>
+  <p>Desenho de como vão ficar as 4 telas. Os pontos <b style="color:var(--gold)">dourados</b> marcam o que é novo. Aprove ou peça mudanças antes de eu mandar a equipe executar.</p>
+</div>
+
+<div class="wrap">
+
+  <div class="intro">
+    <b>A ideia:</b> o cadastro do produto ganha um campo <b>"Quantidade por caixa"</b> (ex.: 10 pacotes por caixa). Onde esse campo estiver preenchido, o app mostra a conversão e faz a conta de caixas sozinho — principalmente no inventário, onde hoje você calcula de cabeça dentro da câmara fria. Produto sem esse campo preenchido continua exatamente como hoje.
+  </div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-num"><span class="n">1</span><h2>Cadastro do produto</h2></div>
+    <p class="desc">Na ficha do produto, card "Valores e Classificação", entra o campo novo ao lado do Peso Líquido.</p>
+    <div class="app">
+      <div class="app-bar"><span class="ico" style="background:#f3e8ff">🟣</span><b>Coxinha de Frango 1kg</b>&nbsp;<span class="badge" style="background:#dcfce7;color:#166534">Ativo</span></div>
+      <div class="app-body">
+        <div class="card">
+          <div class="card-h">💲 VALORES E CLASSIFICAÇÃO</div>
+          <div class="card-b grid2">
+            <div class="campo"><label>Valor de Venda</label><div class="inp ro">R$ 28,90</div></div>
+            <div class="campo"><label>Custo</label><div class="inp ro">R$ 14,20</div></div>
+            <div class="campo"><label>Unidade</label><div class="inp ro">PC</div></div>
+            <div class="campo"><label>Categoria</label><div class="inp ro">Congelados</div></div>
+            <div class="campo"><label>Peso Líquido (kg)</label><div class="inp ro">1,000</div></div>
+            <div class="campo novo"><span class="pin">1</span><label>Qtd. por caixa</label><input class="inp" style="width:100%" value="10"> </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <p><span class="lp">1</span><b>Campo novo, opcional.</b> Você digita quantos pacotes/unidades cabem numa caixa fechada. Se deixar vazio, nada muda para esse produto em nenhuma tela.</p>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-num"><span class="n">2</span><h2>Etiquetas (PCP) — card do produto</h2></div>
+    <p class="desc">A informação aparece no card de escolher o produto e no cabeçalho da janela de imprimir — <b>mas NÃO sai impressa na etiqueta</b>.</p>
+    <div class="app">
+      <div class="app-bar"><span class="ico" style="background:#ccfbf1">🏷️</span><b>Etiquetas</b></div>
+      <div class="app-body">
+        <div class="card" style="max-width:360px">
+          <div class="card-b">
+            <span class="badge b-ind">P0123</span>
+            <div style="font-weight:700;margin-top:6px">Coxinha de Frango 1kg</div>
+            <div class="meta" style="position:relative;display:inline-block;padding-right:26px">1000g/un · 20 un/emb · 90d <span class="cx">· 10 un/cx</span><span class="pin" style="top:-8px;right:-2px">2</span></div>
+            <div style="margin-top:10px"><span class="btn btn-sm">Imprimir</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <p><span class="lp">2</span><b>"10 un/cx"</b> entra na linha de informações do card (e no topo da janela de impressão). A etiqueta impressa continua idêntica à de hoje — nenhuma linha nova no papel.</p>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-num"><span class="n">3</span><h2>Ajuste de Estoque — escolher o produto</h2></div>
+    <p class="desc">Tanto na lista de escolha quanto no painel do produto selecionado, o app mostra a conversão em caixas.</p>
+    <div class="app">
+      <div class="app-bar"><span class="ico" style="background:#dbeafe">📦</span><b>Ajuste de Estoque</b></div>
+      <div class="app-body" style="display:grid;gap:12px">
+        <div class="card">
+          <div class="card-b" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+            <div>
+              <span class="badge b-blue">P0123</span> <b style="font-size:14px">Coxinha de Frango 1kg</b>
+              <div class="meta" style="position:relative;display:inline-block;padding-right:26px">Disponível: 54 PC <span class="cx">· cx de 10</span><span class="pin" style="top:-8px;right:-2px">3</span></div>
+            </div>
+            <span class="btn btn-sm" style="background:#fff;color:var(--primary);border:1.5px solid var(--primary)">Escolher</span>
+          </div>
+        </div>
+        <div class="card" style="border-color:#93c5fd">
+          <div class="card-b">
+            <b style="font-size:14px">Coxinha de Frango 1kg</b> <span class="meta" style="display:inline">· P0123 · Congelados</span>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;text-align:center">
+              <div style="background:#f9fafb;border-radius:8px;padding:8px"><div style="font-size:18px;font-weight:800">60</div><div class="subt">Total</div></div>
+              <div style="background:#fff7ed;border-radius:8px;padding:8px"><div style="font-size:18px;font-weight:800;color:#c2410c">6</div><div class="subt">Reservado</div></div>
+              <div style="background:#eff6ff;border-radius:8px;padding:8px"><div style="font-size:18px;font-weight:800;color:#1d4ed8">54</div><div class="subt">Disponível</div></div>
+            </div>
+            <div class="novo" style="margin-top:10px;font-size:13px"><span class="pin">4</span>📦 1 caixa = 10 PC — disponível equivale a <b>5 cx + 4 PC</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <p><span class="lp">3</span>No card da lista, a linha do disponível ganha o <b>"· cx de 10"</b>.</p>
+      <p><span class="lp">4</span>No painel do produto escolhido, uma faixa mostra a equivalência do estoque em <b>caixas + soltos</b>, para conferir de bater o olho.</p>
+    </div>
+  </div>
+
+  <!-- TELA 4 -->
+  <div class="tela">
+    <div class="tela-num"><span class="n">4</span><h2>Inventário — contar por caixas (experimente!)</h2></div>
+    <p class="desc">A principal mudança: para produto com caixa cadastrada, a linha de contagem ganha dois campos — <b>caixas fechadas</b> e <b>soltos</b>. O app soma sozinho. <b>Digite abaixo para testar a conta:</b></p>
+    <div class="app">
+      <div class="app-bar"><span class="ico" style="background:#dbeafe">📋</span><b>Inventário de Estoque</b></div>
+      <div class="app-body">
+        <div class="linha-inv" id="linhaInv">
+          <b style="font-size:14px">Coxinha de Frango 1kg</b>
+          <div class="meta">sistema: 60 PC <span class="cx">· cx de 10</span></div>
+          <div class="inv-inputs novo" style="padding:12px!important">
+            <span class="pin">5</span>
+            <div><input type="number" id="cx" value="5" min="0" inputmode="numeric"><div class="subt">caixas</div></div>
+            <span class="op">×10 +</span>
+            <div><input type="number" id="solto" value="4" min="0" inputmode="numeric"><div class="subt">soltos</div></div>
+          </div>
+          <div class="inv-total"><span class="pin" style="position:static;display:inline-flex;margin-right:8px">6</span>Contado: <b id="total">54</b> <span id="unidade">PC</span> <span style="color:#6b7280;font-size:12.5px">(5 cx × 10 + 4)</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <p><span class="lp">5</span>Dois campos grandes, fáceis de tocar com luva na câmara fria: <b>caixas fechadas</b> e <b>pacotes soltos</b>.</p>
+      <p><span class="lp">6</span>O total em pacotes é calculado na hora e é ele que vale como contagem — acabou a conta de cabeça. Produto sem caixa cadastrada continua com o campo único de hoje (−1 / +1 / +10). Tudo continua funcionando <b>offline</b> na câmara, como já é hoje.</p>
+    </div>
+  </div>
+
+  <!-- o que não muda -->
+  <div class="nao-muda">
+    <h3>✅ O que NÃO muda</h3>
+    <ul>
+      <li><b>A etiqueta impressa</b> — sai igualzinha à de hoje (a informação fica só na tela).</li>
+      <li><b>Produto sem "qtd. por caixa" preenchida</b> — todas as telas ficam como são hoje.</li>
+      <li><b>O estoque continua contado em pacotes/unidades</b> — a caixa é só uma ajuda de digitação e visualização; nada muda no cálculo do estoque, nas reservas ou nos pedidos.</li>
+      <li><b>O inventário offline</b> — continua salvando rascunho no aparelho e enviando depois, do mesmo jeito.</li>
+    </ul>
+    <div class="etq">ETIQUETA IMPRESSA: SEM MUDANÇA ✔</div>
+  </div>
+
+</div>
+
+<script>
+  const cx = document.getElementById('cx'), solto = document.getElementById('solto');
+  const tot = document.getElementById('total'), linha = document.getElementById('linhaInv');
+  function calc(){
+    const c = parseInt(cx.value||'0',10), s = parseInt(solto.value||'0',10);
+    const t = (isNaN(c)?0:c)*10 + (isNaN(s)?0:s);
+    tot.textContent = t;
+    tot.nextElementSibling.nextElementSibling.textContent = '('+(isNaN(c)?0:c)+' cx × 10 + '+(isNaN(s)?0:s)+')';
+    linha.classList.toggle('ok', t>0);
+  }
+  cx.addEventListener('input',calc); solto.addEventListener('input',calc); calc();
+</script>
+
+</body>
+</html>
