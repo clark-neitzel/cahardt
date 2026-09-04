@@ -323,7 +323,7 @@ const produtoController = {
                 'ativo', 'descricao', 'estoqueMinimo', 'unidade', 'custoManual',
                 'categoria', 'categoriaProdutoId', 'produtoSubstitutoId',
                 'permiteRecomendacao', 'prioridadeRecomendacao', 'controlaEstoque',
-                'validadeDias'
+                'validadeDias', 'quantidadePorCaixa'
             ];
             const data = {};
             for (const campo of CAMPOS_PERMITIDOS) {
@@ -333,6 +333,20 @@ const produtoController = {
             if (data.validadeDias !== undefined) {
                 const n = parseInt(data.validadeDias);
                 data.validadeDias = Number.isFinite(n) && n >= 1 ? n : null;
+            }
+            // Quantidade por caixa: inteiro >= 1, ou null (vazio limpa). Valor inválido é recusado
+            // com erro claro — nunca gravar silenciosamente algo diferente do que foi digitado.
+            if (data.quantidadePorCaixa !== undefined) {
+                const bruto = data.quantidadePorCaixa;
+                if (bruto === null || bruto === '') {
+                    data.quantidadePorCaixa = null;
+                } else {
+                    const n = Number(bruto);
+                    if (!Number.isInteger(n) || n < 1) {
+                        return res.status(400).json({ error: 'Quantidade por caixa inválida: informe um número inteiro maior ou igual a 1, ou deixe vazio para limpar.' });
+                    }
+                    data.quantidadePorCaixa = n;
+                }
             }
             // Controle de estoque por produto: true/false força; null volta a seguir a categoria
             if (data.controlaEstoque !== undefined && data.controlaEstoque !== null) {

@@ -45,9 +45,14 @@ function PilulaConexao({ online }) {
 
 // ─── Linha de produto na contagem ─────────────────────────────────────────────
 
-function LinhaProduto({ item, valor, onMudar }) {
+function LinhaProduto({ item, valor, caixas, onMudar, onCaixa }) {
     const contado = valor !== undefined;
     const mudar = (novo) => onMudar(item.id, novo);
+    // Produto com "qtd. por caixa" no cadastro: o botão da direita soma a caixa inteira.
+    // Sem o campo, continua somando 10 (valor padrão), mas em cinza para sinalizar.
+    const porCaixa = Number(item.quantidadePorCaixa);
+    const temCaixa = Number.isFinite(porCaixa) && porCaixa >= 1;
+    const passo = temCaixa ? porCaixa : 10;
     return (
         <div className={`rounded-2xl border p-3.5 mb-2.5 ${contado ? 'bg-mint/60 border-primary/40' : 'bg-white border-gray-200'}`}>
             <div className="flex items-baseline justify-between gap-2">
@@ -89,9 +94,17 @@ function LinhaProduto({ item, valor, onMudar }) {
                     aria-label="Aumentar 1"
                 >+</button>
                 <button
-                    onClick={() => mudar((valor || 0) + 10)}
-                    className="h-14 shrink-0 px-3 rounded-2xl bg-mint text-primaryDark text-sm font-extrabold"
-                >+10</button>
+                    onClick={() => onCaixa(item.id, passo, temCaixa)}
+                    className={`h-14 shrink-0 px-3 rounded-2xl text-sm font-extrabold ${
+                        temCaixa ? 'bg-mint text-primaryDark' : 'bg-gray-200 text-gray-500'
+                    }`}
+                    aria-label={temCaixa ? `Somar 1 caixa (${passo})` : 'Somar 10'}
+                >+{passo}</button>
+                {temCaixa && (
+                    <span className="shrink-0 rounded-full bg-house text-white text-xs font-bold px-2.5 py-1.5 whitespace-nowrap tabular-nums">
+                        {caixas || 0} cx
+                    </span>
+                )}
             </div>
             {contado && (
                 <div className="text-right mt-1">
@@ -201,7 +214,8 @@ export default function InventarioEstoque() {
                 codigo: p.codigo,
                 unidade: p.unidade,
                 sistema: parseFloat(p.estoqueTotal || 0),
-                reservado: parseFloat(p.estoqueReservado || 0)
+                reservado: parseFloat(p.estoqueReservado || 0),
+                quantidadePorCaixa: p.quantidadePorCaixa ?? null
             }));
         if (itens.length === 0) return toast.error('Nenhum produto nesta categoria.');
         setDraft({
@@ -209,6 +223,7 @@ export default function InventarioEstoque() {
             categoria: catSel,
             itens,
             cont: {},
+            caixas: {},
             obs: '',
             status: 'contagem',
             iniciadoEm: new Date().toISOString()
@@ -225,7 +240,23 @@ export default function InventarioEstoque() {
             const cont = { ...d.cont };
             if (valor === undefined) delete cont[produtoId];
             else cont[produtoId] = valor;
-            return { ...d, cont, status: 'contagem' };
+            // Contagem zerada/limpa → o contador de caixas daquele produto zera junto
+            const caixas = { ...(d.caixas || {}) };
+            if (valor === undefined || valor === 0) delete caixas[produtoId];
+            return { ...d, cont, caixas, status: 'contagem' };
+        });
+    };
+
+    // Botão da caixa: soma o passo (qtd. da caixa, ou 10 no padrão) e, se o produto
+    // tem caixa cadastrada, incrementa o contador "N cx" — que vive no rascunho
+    // (localStorage) para não perder a conta ao fechar o app na câmara fria.
+    const somarCaixa = (produtoId, passo, temCaixa) => {
+        setDraft(d => {
+            if (!d) return d;
+            const cont = { ...d.cont, [produtoId]: (d.cont[produtoId] || 0) + passo };
+            const caixas = { ...(d.caixas || {}) };
+            if (temCaixa) caixas[produtoId] = (caixas[produtoId] || 0) + 1;
+            return { ...d, cont, caixas, status: 'contagem' };
         });
     };
 
@@ -511,7 +542,14 @@ export default function InventarioEstoque() {
                     <p className="text-sm text-gray-400 text-center py-10">Nenhum produto neste filtro.</p>
                 ) : (
                     visiveis.map(it => (
-                        <LinhaProduto key={it.id} item={it} valor={draft.cont[it.id]} onMudar={mudarContagem} />
+                        <LinhaProduto
+                            key={it.id}
+                            item={it}
+                            valor={draft.cont[it.id]}
+                            caixas={draft.caixas?.[it.id]}
+                            onMudar={mudarContagem}
+                            onCaixa={somarCaixa}
+                        />
                     ))
                 )}
 

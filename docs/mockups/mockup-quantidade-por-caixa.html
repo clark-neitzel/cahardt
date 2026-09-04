@@ -66,11 +66,13 @@
   /* inventário interativo */
   .linha-inv{border:1px solid #d1d5db;border-radius:16px;padding:14px;background:#fff}
   .linha-inv.ok{background:var(--mint);border-color:#9fc9bb}
-  .inv-inputs{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
-  .inv-inputs input{width:74px;border:1px solid #d1d5db;border-radius:8px;padding:10px 8px;font-size:18px;font-weight:700;text-align:center;font-family:inherit}
-  .inv-inputs .op{font-size:15px;color:#6b7280;font-weight:600}
-  .inv-total{margin-top:10px;background:#fff;border:1.5px dashed var(--primary);border-radius:10px;padding:10px 14px;font-size:14px}
-  .inv-total b{font-size:20px;color:var(--primary-dark)}
+  .inv-inputs{display:flex;align-items:center;gap:8px;margin-top:12px}
+  .inv-inputs input{border:1px solid #d1d5db;border-radius:12px;padding:12px 8px;font-size:18px;font-weight:700;text-align:center;font-family:inherit}
+  .ibtn{border:none;border-radius:12px;padding:12px 0;width:52px;font-size:18px;font-weight:800;font-family:inherit;cursor:pointer;background:#e9e6dd;color:#374151}
+  .ibtn.verde{background:var(--primary);color:#fff}
+  .ibtn.caixa{background:var(--mint);color:var(--primary-dark);width:60px;font-size:15px}
+  .ibtn.neutro{background:#e5e7eb;color:#6b7280;width:60px;font-size:15px}
+  .chip-cx{background:var(--house);color:#fff;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800;white-space:nowrap}
   .subt{font-size:11px;color:#6b7280;text-align:center;margin-top:2px}
 
   .nao-muda{margin-top:36px;background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:20px}
@@ -157,48 +159,50 @@
             <span class="btn btn-sm" style="background:#fff;color:var(--primary);border:1.5px solid var(--primary)">Escolher</span>
           </div>
         </div>
-        <div class="card" style="border-color:#93c5fd">
-          <div class="card-b">
-            <b style="font-size:14px">Coxinha de Frango 1kg</b> <span class="meta" style="display:inline">· P0123 · Congelados</span>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px;text-align:center">
-              <div style="background:#f9fafb;border-radius:8px;padding:8px"><div style="font-size:18px;font-weight:800">60</div><div class="subt">Total</div></div>
-              <div style="background:#fff7ed;border-radius:8px;padding:8px"><div style="font-size:18px;font-weight:800;color:#c2410c">6</div><div class="subt">Reservado</div></div>
-              <div style="background:#eff6ff;border-radius:8px;padding:8px"><div style="font-size:18px;font-weight:800;color:#1d4ed8">54</div><div class="subt">Disponível</div></div>
-            </div>
-            <div class="novo" style="margin-top:10px;font-size:13px"><span class="pin">4</span>📦 1 caixa = 10 PC — disponível equivale a <b>5 cx + 4 PC</b></div>
-          </div>
-        </div>
       </div>
     </div>
     <div class="legenda">
-      <p><span class="lp">3</span>No card da lista, a linha do disponível ganha o <b>"· cx de 10"</b>.</p>
-      <p><span class="lp">4</span>No painel do produto escolhido, uma faixa mostra a equivalência do estoque em <b>caixas + soltos</b>, para conferir de bater o olho.</p>
+      <p><span class="lp">3</span>No card de escolher o produto, a linha do disponível ganha o <b>"· cx de 10"</b>. Só informação — nada de digitação em caixas aqui; o resto da tela fica como é hoje.</p>
     </div>
   </div>
 
   <!-- TELA 4 -->
   <div class="tela">
-    <div class="tela-num"><span class="n">4</span><h2>Inventário — contar por caixas (experimente!)</h2></div>
-    <p class="desc">A principal mudança: para produto com caixa cadastrada, a linha de contagem ganha dois campos — <b>caixas fechadas</b> e <b>soltos</b>. O app soma sozinho. <b>Digite abaixo para testar a conta:</b></p>
+    <div class="tela-num"><span class="n">4</span><h2>Inventário — o botão "+10" vira o "+caixa" (experimente!)</h2></div>
+    <p class="desc">A tela fica <b>exatamente como é hoje</b> (−, campo, +, e o botão da direita). A única mudança: o botão da direita passa a somar <b>a quantidade da caixa do produto</b>. Exemplo: 5 caixas + 4 pacotes = toque 5× no "+20"... quer dizer, no botão da caixa 😄 — teste abaixo:</p>
     <div class="app">
       <div class="app-bar"><span class="ico" style="background:#dbeafe">📋</span><b>Inventário de Estoque</b></div>
-      <div class="app-body">
-        <div class="linha-inv" id="linhaInv">
-          <b style="font-size:14px">Coxinha de Frango 1kg</b>
-          <div class="meta">sistema: 60 PC <span class="cx">· cx de 10</span></div>
-          <div class="inv-inputs novo" style="padding:12px!important">
-            <span class="pin">5</span>
-            <div><input type="number" id="cx" value="5" min="0" inputmode="numeric"><div class="subt">caixas</div></div>
-            <span class="op">×10 +</span>
-            <div><input type="number" id="solto" value="4" min="0" inputmode="numeric"><div class="subt">soltos</div></div>
+      <div class="app-body" style="display:grid;gap:10px">
+        <div class="linha-inv" id="linha1">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+            <b style="font-size:14px">1-G-COXINHA AIPIM FRANGO C/20 130GR</b>
+            <span class="meta" style="white-space:nowrap">sistema: 37 PT</span>
           </div>
-          <div class="inv-total"><span class="pin" style="position:static;display:inline-flex;margin-right:8px">6</span>Contado: <b id="total">54</b> <span id="unidade">PC</span> <span style="color:#6b7280;font-size:12.5px">(5 cx × 10 + 4)</span></div>
+          <div class="inv-inputs">
+            <button class="ibtn" onclick="soma('c1',-1)">−</button>
+            <input type="number" id="c1" value="0" min="0" inputmode="numeric" style="flex:1;max-width:160px">
+            <button class="ibtn verde" onclick="soma('c1',1)">+</button>
+            <span style="position:relative"><button class="ibtn caixa" onclick="soma('c1',20,true)">+20</button><span class="pin" style="top:-10px;right:-8px">4</span></span>
+            <span class="chip-cx" id="cx1">0 cx</span>
+          </div>
+        </div>
+        <div class="linha-inv" id="linha2">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start">
+            <b style="font-size:14px">1-G-EMPANADO SALSICHA 140GR <span style="font-weight:600;color:#9ca3af">(sem caixa no cadastro)</span></b>
+            <span class="meta" style="white-space:nowrap">sistema: 84 PT</span>
+          </div>
+          <div class="inv-inputs">
+            <button class="ibtn" onclick="soma('c2',-1)">−</button>
+            <input type="number" id="c2" value="0" min="0" inputmode="numeric" style="flex:1;max-width:160px">
+            <button class="ibtn verde" onclick="soma('c2',1)">+</button>
+            <span style="position:relative"><button class="ibtn neutro" onclick="soma('c2',10)">+10</button><span class="pin" style="top:-10px;right:-8px">5</span></span>
+          </div>
         </div>
       </div>
     </div>
     <div class="legenda">
-      <p><span class="lp">5</span>Dois campos grandes, fáceis de tocar com luva na câmara fria: <b>caixas fechadas</b> e <b>pacotes soltos</b>.</p>
-      <p><span class="lp">6</span>O total em pacotes é calculado na hora e é ele que vale como contagem — acabou a conta de cabeça. Produto sem caixa cadastrada continua com o campo único de hoje (−1 / +1 / +10). Tudo continua funcionando <b>offline</b> na câmara, como já é hoje.</p>
+      <p><span class="lp">4</span><b>Produto com caixa cadastrada:</b> o botão mostra <b>+20</b> (a quantidade da caixa daquele produto) e continua na cor verde de hoje. Contou 5 caixas e 4 pacotes? 5 toques no "+20" e 4 no "+" = 104. Sem conta de cabeça. Ao lado, um <b>contador escuro "N cx"</b> mostra quantas vezes você já tocou no botão da caixa — para não se perder no meio da contagem (zera quando a contagem volta a 0).</p>
+      <p><span class="lp">5</span><b>Produto sem caixa no cadastro:</b> o botão continua <b>+10</b>, mas em <b>cinza</b> — a cor diferente avisa que ali é o valor padrão, não o da caixa. Todo o resto da tela (busca, filtros, offline, envio) fica intocado.</p>
     </div>
   </div>
 
@@ -217,16 +221,15 @@
 </div>
 
 <script>
-  const cx = document.getElementById('cx'), solto = document.getElementById('solto');
-  const tot = document.getElementById('total'), linha = document.getElementById('linhaInv');
-  function calc(){
-    const c = parseInt(cx.value||'0',10), s = parseInt(solto.value||'0',10);
-    const t = (isNaN(c)?0:c)*10 + (isNaN(s)?0:s);
-    tot.textContent = t;
-    tot.nextElementSibling.nextElementSibling.textContent = '('+(isNaN(c)?0:c)+' cx × 10 + '+(isNaN(s)?0:s)+')';
-    linha.classList.toggle('ok', t>0);
+  let cliquesCx = 0;
+  function soma(id, v, ehCaixa){
+    const el = document.getElementById(id);
+    const atual = parseInt(el.value||'0',10);
+    el.value = Math.max(0, (isNaN(atual)?0:atual) + v);
+    if (ehCaixa) { cliquesCx++; document.getElementById('cx1').textContent = cliquesCx + ' cx'; }
+    if (parseInt(el.value,10) === 0 && id === 'c1') { cliquesCx = 0; document.getElementById('cx1').textContent = '0 cx'; }
+    el.closest('.linha-inv').classList.toggle('ok', parseInt(el.value,10) > 0);
   }
-  cx.addEventListener('input',calc); solto.addEventListener('input',calc); calc();
 </script>
 
 </body>

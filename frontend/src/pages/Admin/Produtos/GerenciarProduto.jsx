@@ -650,7 +650,8 @@ const GerenciarProduto = () => {
         permiteRecomendacao: true,
         prioridadeRecomendacao: 1,
         controlaEstoque: '', // '' = segue a categoria | 'true' | 'false'
-        validadeDias: '' // dias de validade p/ etiquetas (vazio = usa a da etiqueta)
+        validadeDias: '', // dias de validade p/ etiquetas (vazio = usa a da etiqueta)
+        quantidadePorCaixa: '' // un. por caixa fechada (vazio = produto sem caixa)
     });
 
     useEffect(() => {
@@ -688,7 +689,8 @@ const GerenciarProduto = () => {
                     permiteRecomendacao: data.permiteRecomendacao !== false,
                     prioridadeRecomendacao: data.prioridadeRecomendacao || 1,
                     controlaEstoque: data.controlaEstoque === true ? 'true' : data.controlaEstoque === false ? 'false' : '',
-                    validadeDias: data.validadeDias != null ? String(data.validadeDias) : ''
+                    validadeDias: data.validadeDias != null ? String(data.validadeDias) : '',
+                    quantidadePorCaixa: data.quantidadePorCaixa != null ? String(data.quantidadePorCaixa) : ''
                 });
             } catch (error) {
                 console.error('Erro ao carregar produto:', error);
@@ -758,6 +760,12 @@ const GerenciarProduto = () => {
                 return;
             }
             const custoManualVal = String(formData.custoManual ?? '').trim();
+            const qtdCaixaVal = String(formData.quantidadePorCaixa ?? '').trim();
+            if (qtdCaixaVal !== '' && (!/^\d+$/.test(qtdCaixaVal) || parseInt(qtdCaixaVal) < 1)) {
+                toast.error('Qtd. por caixa deve ser um número inteiro maior ou igual a 1 (ou vazio).');
+                setSalvandoComercial(false);
+                return;
+            }
             await produtoService.atualizar(id, {
                 unidade: unidadeLimpa,
                 categoria: (formData.categoria || '').trim() || null,
@@ -767,7 +775,8 @@ const GerenciarProduto = () => {
                 permiteRecomendacao: formData.permiteRecomendacao,
                 prioridadeRecomendacao: parseInt(formData.prioridadeRecomendacao) || 1,
                 controlaEstoque: formData.controlaEstoque === '' ? null : formData.controlaEstoque === 'true',
-                validadeDias: String(formData.validadeDias ?? '').trim() === '' ? null : parseInt(formData.validadeDias)
+                validadeDias: String(formData.validadeDias ?? '').trim() === '' ? null : parseInt(formData.validadeDias),
+                quantidadePorCaixa: qtdCaixaVal === '' ? null : parseInt(qtdCaixaVal)
             });
             toast.success('Configurações comerciais salvas!');
             handleBack();
@@ -1109,6 +1118,11 @@ const GerenciarProduto = () => {
                             <input type="number" min="1" max="3650" value={formData.validadeDias} onChange={e=>setFormData({...formData,validadeDias:e.target.value})} placeholder="Ex.: 180" className="flex-1 bg-transparent outline-none font-semibold font-mono" style={{fontSize:15,color:'#16192B'}}/>
                             <span className="text-sm font-medium" style={{color:'#9AA0B4'}}>dias</span>
                           </div> },
+                        { key: 'quantidadePorCaixa', label: 'Qtd. por caixa', tag: 'EDITÁVEL', helper: 'Quantos pacotes/unidades cabem numa caixa fechada. Vazio = produto sem caixa (as telas ficam como hoje).',
+                          input: <div className="flex items-center gap-2.5 rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#D8C9FB',background:'#fff'}}>
+                            <input type="number" min="1" max="9999" inputMode="numeric" value={formData.quantidadePorCaixa} onChange={e=>setFormData({...formData,quantidadePorCaixa:e.target.value})} placeholder="Ex.: 10" className="flex-1 bg-transparent outline-none font-semibold font-mono" style={{fontSize:15,color:'#16192B'}}/>
+                            <span className="text-sm font-medium" style={{color:'#9AA0B4'}}>un/cx</span>
+                          </div> },
                       ].map(f => (
                         <div key={f.key}>
                           <div className="flex items-center mb-2">
@@ -1423,6 +1437,21 @@ const GerenciarProduto = () => {
                                                     style={{ fontSize: 15, color: '#16192B' }} />
                                             </div>
                                             <div className="mt-1.5 text-xs" style={{ color: '#9AA0B4' }}>Unidade de venda no app.</div>
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center mb-2">
+                                                <span className="text-sm font-bold" style={{ color: '#3A3F52' }}>Qtd. por caixa</span>
+                                                <span className="ml-2 font-bold rounded-full" style={{ fontSize: 10.5, color: '#7C3AED', background: '#F1EAFF', padding: '2px 7px' }}>EDITÁVEL</span>
+                                            </div>
+                                            <div className="flex items-center gap-2.5 rounded-xl border" style={{ height: 50, padding: '0 16px', borderColor: '#D8C9FB', background: '#fff' }}>
+                                                <input type="number" min="1" max="9999" inputMode="numeric" value={formData.quantidadePorCaixa}
+                                                    onChange={(e) => setFormData({ ...formData, quantidadePorCaixa: e.target.value })}
+                                                    placeholder="Ex.: 10"
+                                                    className="flex-1 bg-transparent outline-none font-semibold font-mono"
+                                                    style={{ fontSize: 15, color: '#16192B' }} />
+                                                <span className="text-sm font-medium" style={{ color: '#9AA0B4' }}>un/cx</span>
+                                            </div>
+                                            <div className="mt-1.5 text-xs" style={{ color: '#9AA0B4' }}>Quantos pacotes/unidades cabem numa caixa fechada. Vazio = produto sem caixa.</div>
                                         </div>
                                         <div>
                                             <div className="text-sm font-bold mb-2" style={{ color: '#3A3F52' }}>Categoria Comercial</div>

@@ -88,7 +88,12 @@ function PrintModal({ et, onClose }) {
                 <div className="flex items-center justify-between px-6 py-4 border-b">
                     <div>
                         <h2 className="text-lg font-bold text-gray-800">{et.nomeProduto}</h2>
-                        <p className="text-sm text-gray-400">Cód. {codExibir(et)} · {et.pesoUnitario}g · {et.quantidadeEmbalagem} un/emb</p>
+                        <p className="text-sm text-gray-400">
+                            Cód. {codExibir(et)} · {et.pesoUnitario}g · {et.quantidadeEmbalagem} un/emb
+                            {et.produto?.quantidadePorCaixa != null && (
+                                <span className="text-primaryDark font-semibold"> · {et.produto.quantidadePorCaixa} un/cx</span>
+                            )}
+                        </p>
                     </div>
                     <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100">
                         <X className="h-5 w-5 text-gray-500" />
@@ -223,12 +228,18 @@ function EtiquetaCard({ et, onPrint }) {
                 </div>
                 <Tag className="h-4 w-4 text-gray-300 group-hover:text-indigo-400 flex-shrink-0 mt-1 transition-colors" />
             </div>
-            <div className="flex items-center gap-3 text-xs text-gray-500">
+            <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 text-xs text-gray-500">
                 <span>{et.pesoUnitario}g/un</span>
                 <span className="text-gray-300">·</span>
                 <span>{et.quantidadeEmbalagem} un/emb</span>
                 <span className="text-gray-300">·</span>
                 <span>{validadeDias(et)}d</span>
+                {et.produto?.quantidadePorCaixa != null && (
+                    <>
+                        <span className="text-gray-300">·</span>
+                        <span className="text-primaryDark font-bold">{et.produto.quantidadePorCaixa} un/cx</span>
+                    </>
+                )}
             </div>
             {et.codigoBarras && (
                 <div className="border-t pt-2">

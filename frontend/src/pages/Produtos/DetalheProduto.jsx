@@ -30,6 +30,7 @@ const DetalheProduto = () => {
         ean: '',
         ncm: '',
         pesoLiquido: '',
+        quantidadePorCaixa: '',
         descricao: '',
         contaAzulUpdatedAt: '',
         ativo: true
@@ -63,6 +64,7 @@ const DetalheProduto = () => {
                     ean: data.ean || '',
                     ncm: data.ncm || '',
                     pesoLiquido: data.pesoLiquido || '',
+                    quantidadePorCaixa: data.quantidadePorCaixa != null ? String(data.quantidadePorCaixa) : '',
                     descricao: data.descricao || '',
                     contaAzulUpdatedAt: data.contaAzulUpdatedAt || '',
                     ativo: data.ativo
@@ -305,6 +307,16 @@ const DetalheProduto = () => {
                                             type="text"
                                             value={formData.pesoLiquido}
                                             readOnly
+                                            className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 px-3 text-sm text-gray-700 cursor-default"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-500 mb-1">Qtd. por caixa</label>
+                                        <input
+                                            type="text"
+                                            value={formData.quantidadePorCaixa ? `${formData.quantidadePorCaixa} un/cx` : ''}
+                                            readOnly
+                                            placeholder="Sem caixa"
                                             className="w-full rounded-lg border border-gray-200 bg-gray-50 py-2 px-3 text-sm text-gray-700 cursor-default"
                                         />
                                     </div>

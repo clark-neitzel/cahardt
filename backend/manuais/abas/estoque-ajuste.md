@@ -17,6 +17,7 @@ Painel de ajuste manual de estoque. Usado para registrar entradas (compras, devo
 - Ver todos os produtos em cards (com busca e filtro por categoria comercial)
 - Ver "Lançados hoje" em cada card: saldo líquido do dia (+entrada / -saída)
 - Escolher um produto clicando em "Escolher" no card
+- **(09/2026)** Produto com **"Qtd. por caixa"** preenchida no cadastro: o card de escolher o produto mostra **"· cx de N"** ao lado do disponível (de relance dá para saber quantas caixas o saldo representa). É **só informação na tela** — entrada e saída continuam lançadas do mesmo jeito, em pacotes/unidades
 - Ver a posição atual do produto selecionado (total, reservado, disponível, mínimo)
 - Registrar entrada de estoque
 - Registrar saída de estoque

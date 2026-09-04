@@ -29,6 +29,7 @@ Tela usada na produção. Mostra todos os produtos com etiqueta ativa em cards (
 - Escolher o **Tamanho** e o **Modelo** da etiqueta, separadamente (ver abaixo)
 - Selecionar um produto e abrir o modal de impressão
 - Imprimir a etiqueta diretamente
+- **(09/2026)** Quando a etiqueta está vinculada a um produto do catálogo com **"Qtd. por caixa"** preenchida no cadastro (tela de Produtos), o card do produto e o topo da janela de imprimir mostram **"· N un/cx"** (quantos pacotes/unidades vêm na caixa fechada) — só informação de tela, para conferir na hora de etiquetar/encaixotar. **A etiqueta impressa não mudou**: nenhuma linha nova sai no papel
 
 **Tamanho e Modelo são escolhidos SEPARADAMENTE (dois seletores):**
 

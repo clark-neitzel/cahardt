@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Quantidade por Caixa — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem, de propósito: preview compacto) -->
+<meta property="og:title" content="📦 Novidade no Hardt App: Quantidade por Caixa">
+<meta property="og:description" content="No inventário, o botão soma a caixa inteira do produto e conta quantas caixas você já lançou. Chega de conta de cabeça na câmara fria!">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 15px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 14px 16px; }
+
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+    text-align: center;
+    text-decoration: none;
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible, .ibtn:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-input.ro { background: #f7f6f2; color: #6b756f; }
+  .app-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  @media (max-width: 420px) { .app-grid2 { grid-template-columns: 1fr; } }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .badge-cod {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .meta { font-size: 12.5px; color: #6b756f; margin-top: 4px; }
+  .meta .cx { color: var(--primary-dark); font-weight: 800; }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* linhas do inventário (mock e demo) */
+  .linha-inv {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+  .linha-inv.ok { background: var(--mint); border-color: #9fc9bb; }
+  .linha-inv .cab { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+  .linha-inv .cab b { font-size: 13.5px; }
+  .linha-inv .cab .sist { font-size: 11.5px; color: #6b756f; white-space: nowrap; }
+  .inv-inputs { display: flex; align-items: center; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+  .inv-inputs input {
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    padding: 11px 6px;
+    font-size: 17px;
+    font-weight: 700;
+    text-align: center;
+    font-family: inherit;
+    flex: 1;
+    min-width: 64px;
+    max-width: 130px;
+  }
+  .ibtn {
+    border: none;
+    border-radius: 12px;
+    padding: 12px 0;
+    width: 46px;
+    min-height: 44px;
+    font-size: 17px;
+    font-weight: 800;
+    font-family: inherit;
+    cursor: pointer;
+    background: #e9e6dd;
+    color: #374151;
+  }
+  .ibtn.verde { background: var(--primary); color: #fff; }
+  .ibtn.caixa { background: var(--mint); color: var(--primary-dark); width: 58px; font-size: 15px; }
+  .ibtn.neutro { background: #e5e7eb; color: #6b7280; width: 58px; font-size: 15px; }
+  .chip-cx {
+    background: var(--house);
+    color: #fff;
+    border-radius: 999px;
+    padding: 6px 11px;
+    font-size: 12px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Quantidade por Caixa:<br>conte caixas, não faça conta</h1>
+    <p>O cadastro do produto ganhou o campo "Qtd. por caixa". Com ele preenchido, o inventário soma a caixa inteira num toque — e ainda conta quantas caixas você já lançou. Chega de multiplicar de cabeça na câmara fria.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock flutuando: linha do inventário -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">📋</span>
+      <div>
+        <small>Estoque · Inventário</small>
+        <strong>Contando na câmara fria…</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="linha-inv ok" style="margin-bottom:0;">
+        <div class="cab">
+          <b>COXINHA FRANGO C/20</b>
+          <span class="sist">sistema: 98 PT</span>
+        </div>
+        <div class="inv-inputs">
+          <span class="ibtn" style="display:inline-flex;align-items:center;justify-content:center;">−</span>
+          <input type="text" value="104" readonly aria-hidden="true">
+          <span class="ibtn verde" style="display:inline-flex;align-items:center;justify-content:center;">+</span>
+          <span class="ibtn caixa" style="display:inline-flex;align-items:center;justify-content:center;">+20</span>
+          <span class="chip-cx">5 cx</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <a class="demo-cta" href="#demo">📦 Toque aqui e experimente o botão da caixa</a>
+  <p class="demo-hint">A demonstração está na Tela 4, mais abaixo — pode clicar sem medo.</p>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🗂️</span>
+      <strong>Um campo novo no cadastro do produto</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Na tela <b>Gerenciar Produto</b> (card Inteligência Comercial) entrou o campo <b>"Qtd. por caixa"</b>: quantos pacotes/unidades vêm numa <b>caixa fechada</b>.</li>
+        <li>É <b>opcional</b>: produto sem o campo preenchido continua exatamente como hoje, em todas as telas.</li>
+        <li>O valor também aparece na <b>ficha do produto</b> (card Valores e Classificação), só para consulta.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📋</span>
+      <strong>Inventário: o "+10" vira o botão da caixa</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Produto com caixa cadastrada: o botão da direita mostra <b>"+N"</b> (a quantidade da caixa daquele produto) e soma <b>uma caixa inteira</b> por toque.</li>
+        <li>Ao lado, um <b>contador escuro "X cx"</b> mostra quantas caixas você já lançou — para não se perder no meio da contagem. Ele zera quando a contagem do produto volta a 0.</li>
+        <li>Exemplo real de uso: encontrou <b>5 caixas fechadas + 4 pacotes soltos</b>? São 5 toques no "+20" e 4 no "+" — dá <b>104</b>, sem conta de cabeça.</li>
+        <li>Produto <b>sem</b> caixa no cadastro: o botão continua <b>"+10"</b>, agora em cinza — a cor avisa que ali é o valor padrão, não o da caixa.</li>
+        <li>Tudo continua funcionando <b>sem internet</b>: o contador de caixas fica guardado no rascunho da contagem, junto com o resto.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">👀</span>
+      <strong>Onde mais a informação aparece</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>Etiquetas (PCP):</b> o card do produto e o topo da janela de imprimir mostram <b>"· N un/cx"</b>.</li>
+        <li><b>Ajuste de Estoque:</b> o card de escolher o produto mostra <b>"· cx de N"</b> ao lado do disponível.</li>
+        <li>Nos dois casos é <b>só informação na tela</b> — nada muda na forma de lançar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✅</span>
+      <strong>O que NÃO muda</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>A etiqueta impressa</b> sai igualzinha à de hoje — a informação da caixa fica só na tela.</li>
+        <li><b>O estoque continua contado em pacotes/unidades.</b> A caixa é uma ajuda de digitação e visualização; nada muda no cálculo do estoque, nas reservas ou nos pedidos.</li>
+        <li><b>O inventário offline</b> continua salvando o rascunho no aparelho e enviando quando reconectar.</li>
+        <li><b>Produto sem "qtd. por caixa"</b> fica como sempre foi, em todas as telas.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1: cadastro -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Cadastro do produto — onde se preenche</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🧠 Inteligência Comercial</div>
+        <div class="app-card-body">
+          <div class="app-input"><small>Qtd. por caixa · EDITÁVEL</small>20 &nbsp;<span style="color:#9aa5a0;">un/cx</span><span class="pin">1</span></div>
+          <div style="font-size:11px;color:#9aa5a0;">Quantos pacotes/unidades cabem numa caixa fechada. Vazio = produto sem caixa.</div>
+        </div>
+      </div>
+      <div class="app-card" style="margin-bottom:0;">
+        <div class="app-card-head">💲 Valores e Classificação (ficha do produto)</div>
+        <div class="app-card-body">
+          <div class="app-grid2">
+            <div class="app-input ro" style="margin-bottom:0;"><small>Peso Líquido (kg)</small>2,600</div>
+            <div class="app-input ro" style="margin-bottom:0;"><small>Qtd. por caixa</small>20 un/cx<span class="pin">2</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>É aqui que se preenche:</b> na tela Gerenciar Produto, card Inteligência Comercial. Digite quantos pacotes vêm na caixa fechada e salve. Deixar vazio = nada muda para esse produto.</span></div>
+      <div><span class="pin">2</span><span>Na <b>ficha do produto</b> (Valores e Classificação) o valor aparece só para consulta.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: etiquetas -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Etiquetas (PCP) — informação no card</div>
+    <div class="tela-corpo">
+      <div class="app-card" style="max-width:340px;margin-bottom:0;">
+        <div class="app-card-body">
+          <span class="badge-cod">P0123</span>
+          <div style="font-weight:700;margin-top:6px;font-size:13.5px;">COXINHA FRANGO C/20</div>
+          <div class="meta">130g/un · 90d <span class="cx">· 20 un/cx</span><span class="pin">1</span></div>
+          <div style="margin-top:10px;"><span class="app-btn" style="padding:7px 14px;font-size:12px;">🖨️ Imprimir</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O <b>"· 20 un/cx"</b> entra na linha de informações do card e no topo da janela de imprimir — bom para conferir na hora de etiquetar. <b>A etiqueta impressa não mudou:</b> nenhuma linha nova sai no papel.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3: ajuste de estoque -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Ajuste de Estoque — escolher o produto</div>
+    <div class="tela-corpo">
+      <div class="app-card" style="margin-bottom:0;">
+        <div class="app-card-body" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+          <div>
+            <span class="badge-cod">P0123</span> <b style="font-size:13.5px;">COXINHA FRANGO C/20</b>
+            <div class="meta">Disponível: 98 PT <span class="cx">· cx de 20</span><span class="pin">1</span></div>
+          </div>
+          <span class="app-btn claro" style="padding:7px 14px;font-size:12px;">Escolher</span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>No card de escolher o produto, a linha do disponível ganha o <b>"· cx de 20"</b> — de relance você sabe quantas caixas o saldo representa. É <b>só informação</b>: a entrada e a saída continuam lançadas do mesmo jeito de hoje.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4: inventário (demo interativa) -->
+  <div class="tela" id="demo">
+    <div class="tela-titulo">📱 Tela 4 · Inventário — experimente aqui mesmo!</div>
+    <div class="tela-corpo">
+      <div class="linha-inv" id="linha1">
+        <div class="cab">
+          <b>COXINHA FRANGO C/20</b>
+          <span class="sist">sistema: 98 PT</span>
+        </div>
+        <div class="inv-inputs">
+          <button class="ibtn" onclick="soma('c1',-1)" aria-label="Diminuir 1">−</button>
+          <input type="number" id="c1" value="0" min="0" inputmode="numeric" aria-label="Quantidade contada">
+          <button class="ibtn verde" onclick="soma('c1',1)" aria-label="Somar 1">+</button>
+          <span style="position:relative;"><button class="ibtn caixa" onclick="soma('c1',20,true)" aria-label="Somar 1 caixa (20)">+20</button><span class="pin" style="position:absolute;top:-9px;right:-7px;margin:0;">1</span></span>
+          <span style="position:relative;"><span class="chip-cx" id="cx1">0 cx</span><span class="pin" style="position:absolute;top:-9px;right:-7px;margin:0;">2</span></span>
+        </div>
+      </div>
+      <div class="linha-inv" style="margin-bottom:0;" id="linha2">
+        <div class="cab">
+          <b>RISOLE CARNE 25GR <span style="font-weight:600;color:#9aa5a0;">(sem caixa no cadastro)</span></b>
+          <span class="sist">sistema: 51 PT</span>
+        </div>
+        <div class="inv-inputs">
+          <button class="ibtn" onclick="soma('c2',-1)" aria-label="Diminuir 1">−</button>
+          <input type="number" id="c2" value="0" min="0" inputmode="numeric" aria-label="Quantidade contada">
+          <button class="ibtn verde" onclick="soma('c2',1)" aria-label="Somar 1">+</button>
+          <span style="position:relative;"><button class="ibtn neutro" onclick="soma('c2',10)" aria-label="Somar 10">+10</button><span class="pin" style="position:absolute;top:-9px;right:-7px;margin:0;">3</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>O botão da caixa:</b> para este produto a caixa tem 20, então o botão mostra <b>"+20"</b> e soma a caixa inteira por toque. Contou <b>5 caixas + 4 pacotes soltos</b>? 5 toques no "+20" e 4 no "+" = <b>104</b>. Sem conta de cabeça. (Experimente acima!)</span></div>
+      <div><span class="pin">2</span><span><b>O contador "X cx"</b> mostra quantas caixas você já lançou — para não se perder no meio da contagem. Ele <b>zera quando a contagem volta a 0</b> e fica guardado no rascunho, mesmo sem internet.</span></div>
+      <div><span class="pin">3</span><span><b>Produto sem caixa no cadastro:</b> o botão continua <b>"+10"</b>, agora em <b>cinza</b> — a cor diferente avisa que ali é o valor padrão, não o da caixa. Todo o resto do inventário (busca, filtros, offline, envio) ficou igual.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO COMEÇAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra <b>Produtos</b>, entre no produto e preencha o campo <b>"Qtd. por caixa"</b> (card Inteligência Comercial). Comece pelos produtos que mais aparecem no inventário.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>No próximo <b>Inventário</b>, o botão da caixa já aparece com a quantidade certa de cada produto. 📦</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a novidade.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+
+  let cliquesCx = 0;
+  function soma(id, v, ehCaixa) {
+    const el = document.getElementById(id);
+    const atual = parseInt(el.value || '0', 10);
+    el.value = Math.max(0, (isNaN(atual) ? 0 : atual) + v);
+    if (ehCaixa) { cliquesCx++; document.getElementById('cx1').textContent = cliquesCx + ' cx'; }
+    if (id === 'c1' && parseInt(el.value, 10) === 0) {
+      cliquesCx = 0;
+      document.getElementById('cx1').textContent = '0 cx';
+    }
+    el.closest('.linha-inv').classList.toggle('ok', parseInt(el.value, 10) > 0);
+  }
+</script>
+</body>
+</html>

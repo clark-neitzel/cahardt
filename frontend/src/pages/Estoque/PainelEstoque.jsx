@@ -38,6 +38,9 @@ function ProdutoCard({ produto, isSelected, onEscolher, lancamentoHoje }) {
                     <span className="text-gray-400">Disponível</span>
                     <span className={`font-semibold ${abaixoMin ? 'text-amber-600' : 'text-blue-700'}`}>
                         {Number(produto.estoqueDisponivel || 0).toFixed(0)} {produto.unidade}
+                        {produto.quantidadePorCaixa != null && (
+                            <span className="text-primaryDark font-bold"> · cx de {produto.quantidadePorCaixa}</span>
+                        )}
                     </span>
                 </div>
                 {entradas > 0 && (

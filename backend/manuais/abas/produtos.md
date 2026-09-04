@@ -27,6 +27,7 @@ Gestão completa do cadastro de produtos da empresa. Permite criar, editar, ativ
 - **(08/2026) Bens do imobilizado (freezer, painel LED, móveis)**: cadastre o bem como produto normal e coloque-o numa **categoria com o toggle "Vende" desligado** (tela Categorias de Estoque). Ele passa a ter estoque e custo como qualquer produto, e **some das listas de venda** — catálogo, novo pedido e amostra recebem do servidor uma lista que já não o contém, então o vendedor não tem como encontrá-lo. *(O que ainda não existe é uma checagem na hora de gravar o pedido: quem estiver com a tela de pedido aberta desde antes da mudança precisa recarregar. Ver "Até onde a trava vai" no manual de Categorias de Estoque.)* Nesta tela de Produtos e no Histórico de Estoque ele **continua aparecendo** (é por aqui que você edita o bem) — o app pede a lista com `?incluirNaoVendaveis=1`
 - **Chip "Não vendável"** na lista de produtos: o bem do imobilizado aparece com esse selo, para você distinguir de relance quem está fora da venda sem precisar abrir o produto ou conferir a categoria
 - **O estoque não é mais importado do Conta Azul**: produto novo que chega pelo sync entra com estoque zerado; o saldo é formado pelas compras conferidas, ajustes manuais e saídas de faturamento — tudo dentro do app
+- **(09/2026) Campo "Qtd. por caixa"** (opcional): quantos pacotes/unidades vêm numa **caixa fechada** do produto. Edita-se na tela Gerenciar Produto, no card **Inteligência Comercial** (aceita número inteiro ≥ 1 ou vazio); aparece só para consulta na ficha do produto (card Valores e Classificação, como "N un/cx"). Com o campo preenchido: no **Inventário** o botão "+10" vira "+N" (soma uma caixa por toque, com contador de caixas lançadas), no **Ajuste de Estoque** o card de escolher o produto mostra "· cx de N" ao lado do disponível, e nas **Etiquetas (PCP)** o card do produto e o topo da janela de imprimir mostram "· N un/cx". Vazio = todas as telas ficam como sempre. É só ajuda de digitação/visualização — o estoque continua contado em pacotes/unidades e **nada muda** no cálculo de estoque, nas reservas, nos pedidos nem na etiqueta impressa.
 
 ---
 
@@ -42,7 +43,7 @@ Gestão completa do cadastro de produtos da empresa. Permite criar, editar, ativ
 1. Clique no nome ou na linha do produto
 2. A tela de detalhe abre
 3. Campos do cadastro original (nome, código, preço, custo médio, EAN, NCM, peso, descrição) são **somente leitura**
-4. Campos editáveis no app: **categoria**, **status (ativo/inativo)**, **unidade de medida**, **custo manual**, categoria comercial, produto substituto, prioridade de recomendação, permitir sugestão e imagens
+4. Campos editáveis no app: **categoria**, **status (ativo/inativo)**, **unidade de medida**, **custo manual**, **qtd. por caixa**, categoria comercial, produto substituto, prioridade de recomendação, permitir sugestão e imagens
 5. Clique em **Salvar** (botão da seção roxa "Inteligência Comercial") para gravar as alterações — exceto o ativar/inativar, que salva na hora ao confirmar
 
 ### Ativar ou inativar um produto

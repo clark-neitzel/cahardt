@@ -132,6 +132,7 @@ router.get('/posicao', async (req, res) => {
                 estoqueReservado: true,
                 estoqueDisponivel: true,
                 estoqueMinimo: true,
+                quantidadePorCaixa: true,
                 categoriaProduto: { select: { id: true, nome: true } }
             },
             orderBy: [{ categoria: 'asc' }, { nome: 'asc' }]

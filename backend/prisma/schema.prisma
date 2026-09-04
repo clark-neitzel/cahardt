@@ -45,6 +45,9 @@ model Produto {
   // Validade em dias para etiquetas (null = usa a validade da própria etiqueta)
   validadeDias Int? @map("validade_dias")
 
+  // Quantidade de unidades por caixa (null = não informado)
+  quantidadePorCaixa Int? @map("quantidade_por_caixa")
+
   // Timestamps
   contaAzulUpdatedAt DateTime? @map("conta_azul_updated_at") // Última atualização no Conta Azul
   createdAt          DateTime  @default(now()) @map("created_at")
