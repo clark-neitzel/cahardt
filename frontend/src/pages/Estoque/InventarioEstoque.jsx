@@ -53,6 +53,15 @@ function LinhaProduto({ item, valor, caixas, onMudar, onCaixa }) {
     const porCaixa = Number(item.quantidadePorCaixa);
     const temCaixa = Number.isFinite(porCaixa) && porCaixa >= 1;
     const passo = temCaixa ? porCaixa : 10;
+    // Unidades avulsas fora das caixas — sempre DERIVADO da contagem (nunca um campo novo
+    // no rascunho), assim continua certo mesmo se o usuário digitar o total à mão, usar o
+    // "−" ou limpar a contagem depois de somar caixas.
+    // O chip precisa ser SEMPRE coerente com o total contado: se o usuário reduziu o valor
+    // (botão "−" ou digitou um número menor) abaixo de caixas×porCaixa, mostramos só as
+    // caixas que ainda cabem no total — nunca o contador bruto de toques no botão "+caixa".
+    // cxShow×porCaixa + un = valor, sempre. O contador `caixas` do rascunho não muda aqui.
+    const cxShow = temCaixa ? Math.min(caixas || 0, Math.floor((valor || 0) / porCaixa)) : 0;
+    const un = temCaixa ? (valor || 0) - cxShow * porCaixa : 0;
     return (
         <div className={`rounded-2xl border p-3.5 mb-2.5 ${contado ? 'bg-mint/60 border-primary/40' : 'bg-white border-gray-200'}`}>
             <div className="flex items-baseline justify-between gap-2">
@@ -100,12 +109,17 @@ function LinhaProduto({ item, valor, caixas, onMudar, onCaixa }) {
                     }`}
                     aria-label={temCaixa ? `Somar 1 caixa (${passo})` : 'Somar 10'}
                 >+{passo}</button>
-                {temCaixa && (
-                    <span className="shrink-0 rounded-full bg-house text-white text-xs font-bold px-2.5 py-1.5 whitespace-nowrap tabular-nums">
-                        {caixas || 0} cx
-                    </span>
-                )}
             </div>
+            {/* Chip "N cx + M un" em linha própria — nunca dividir espaço com o input de
+                contagem (na linha dos botões, um chip largo encolhia o input a ponto do
+                número digitado ficar ilegível em telas de 375px). */}
+            {temCaixa && (
+                <div className="flex justify-end mt-1.5">
+                    <span className="rounded-full bg-house text-white text-xs font-bold px-2.5 py-1.5 whitespace-nowrap tabular-nums">
+                        {cxShow} cx{un > 0 ? ` + ${fmt(un)} un` : ''}
+                    </span>
+                </div>
+            )}
             {contado && (
                 <div className="text-right mt-1">
                     <button onClick={() => mudar(undefined)} className="text-xs font-semibold text-gray-500 underline p-2">
@@ -143,6 +157,39 @@ export default function InventarioEstoque() {
     const [enviando, setEnviando] = useState(false);
     const [resultado, setResultado] = useState(null);
     const autoEnvioRef = useRef(false);
+
+    // "qtd. por caixa" fica congelada no rascunho desde o "Baixar produtos e iniciar" —
+    // uma contagem antiga (iniciada antes do cadastro ser preenchido) nunca mais via o
+    // valor novo. Aqui, ao entrar na fase de contagem COM internet, buscamos a posição
+    // atual só para atualizar esse campo por produto — não mexe em cont/caixas/sistema.
+    // Uma tentativa por inventarioId (não a cada render/reconexão repetida).
+    const atualizacaoCaixaRef = useRef(null);
+    useEffect(() => {
+        if (fase !== 'contagem' || !online || !draft?.inventarioId) return;
+        if (atualizacaoCaixaRef.current === draft.inventarioId) return;
+        atualizacaoCaixaRef.current = draft.inventarioId;
+        (async () => {
+            try {
+                const pos = await estoqueService.getPosicao();
+                if (!Array.isArray(pos) || pos.length === 0) return;
+                const porId = new Map(pos.map(p => [p.id, p.quantidadePorCaixa ?? null]));
+                setDraft(d => {
+                    if (!d || d.inventarioId !== draft.inventarioId) return d;
+                    let mudou = false;
+                    const itens = d.itens.map(it => {
+                        if (!porId.has(it.id)) return it;
+                        const novo = porId.get(it.id);
+                        if (novo === (it.quantidadePorCaixa ?? null)) return it;
+                        mudou = true;
+                        return { ...it, quantidadePorCaixa: novo };
+                    });
+                    return mudou ? { ...d, itens } : d;
+                });
+            } catch {
+                // Sem internet de verdade, backend fora, etc. — segue com a foto antiga, sem toast.
+            }
+        })();
+    }, [fase, online, draft?.inventarioId]);
 
     // Persiste o rascunho a cada mudança — é isso que segura a contagem na câmara fria
     useEffect(() => { gravarDraft(draft); }, [draft]);
