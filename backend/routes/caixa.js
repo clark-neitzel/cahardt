@@ -706,6 +706,9 @@ router.get('/resumo', async (req, res) => {
                 parcial: c.valorCobrado != null && c.parcela != null && Number(c.valorCobrado) < Number(c.parcela.valor) - 0.01,
                 formaPagamentoNome: c.formaPagamentoNome,
                 debitaCaixa: ehDinheiro,
+                // Pix/cartão cobrado em rota: BAIXADA mas ainda sem confirmação do banco
+                // (09/2026) — a tela usa isto para não mostrar como resolvido à toa.
+                aguardandoConciliacao: c.aguardandoConciliacao === true,
                 embarqueNumero: c.embarque?.numero || null,
                 responsavelTipo: c.responsavelTipo,
                 responsavelVendedorNome: c.responsavelVendedorId ? (respVendNomes[c.responsavelVendedorId] || null) : null,

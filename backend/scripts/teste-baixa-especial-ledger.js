@@ -1549,11 +1549,72 @@ async function main() {
     ok('venda nova para este cliente NÃO é bloqueada depois do retroativo',
         vendaRetro.status === 201, `${vendaRetro.status} ${JSON.stringify(vendaRetro.body).slice(0, 160)}`);
 
+    // ── TESTE 35e: Kit Festa NÃO gera crédito de indicação com Pix aguardando ──
+    // Reprovação do QA/revisor (rodada de correção): kitFestaService.sincronizarPagamentos
+    // considerava `pedido.baixaCaRealizada === true` como "pago" — e o ramo normal-local do
+    // caixa seta esse campo mesmo só com Pix aguardando (o campo virou "processado pelo
+    // caixa", não "recebido confirmado" — ver CLAUDE.md). Reusa o t35 (normal, R$ 500 em
+    // Pix comum, ainda aguardando desde o teste [35]) para provar as duas pontas.
+    console.log('\n[35e] Kit Festa: sincronizarPagamentos não marca pago com Pix aguardando');
+    const kitFestaService = require('../services/kitFestaService');
+    const kfCliente = await prisma.kitFestaCliente.create({
+        data: { cpf: `${MARCA}`.replace(/\D/g, '').slice(-11).padStart(11, '0'), nome: `${MARCA} KitFesta Cliente` }
+    });
+    const kfPedido = await prisma.kitFestaPedido.create({
+        data: {
+            kitFestaClienteId: kfCliente.id, nomeCliente: `${MARCA} KitFesta Cliente`, cpfCliente: kfCliente.cpf,
+            modo: 'retirada', data: new Date(), horario: '10:00',
+            subtotal: 500, total: 500, totalCaixas: 1,
+            status: 'CONVERTIDO', pedidoId: t35.pedido.id, pago: false
+        }
+    });
+    const contaT35antes = await prisma.contaReceber.findUnique({ where: { id: t35.conta.id }, select: { status: true, aguardandoConciliacao: true } });
+    ok('preparo: conta do t35 ainda ABERTO com aguardandoConciliacao=true (Pix não confirmado)',
+        contaT35antes.status === 'ABERTO' && contaT35antes.aguardandoConciliacao === true, JSON.stringify(contaT35antes));
+    const sync1 = await kitFestaService.sincronizarPagamentos();
+    const kfPedido1 = await prisma.kitFestaPedido.findUnique({ where: { id: kfPedido.id } });
+    ok('Kit Festa com Pix aguardando NÃO é marcado como pago (sync não mexe nele)',
+        kfPedido1.pago === false, `pago=${kfPedido1.pago} atualizados=${sync1.atualizados}`);
+
+    // Confirma o Pix aguardando do t35 via Conciliação Bancária (mesmo caminho do [35c])
+    const contaFinKit = await prisma.contaFinanceira.create({
+        data: { id: `${MARCA}-BANCO-KIT`, nomeBanco: `${MARCA} Banco Kit`, tipoUso: 'CORRENTE', ativo: true }
+    });
+    const ledgerT35 = (await estado(t35.conta.id)).parcelas[0].pagamentos.filter(l => !l.estornado);
+    const linhaPixT35 = ledgerT35.find(l => l.confirmado === false);
+    const confKit = await conciliacaoService.corrigirContaBaixa({
+        tipo: 'RECEBER', pagamentoId: linhaPixT35.id, novaContaId: contaFinKit.id, userId: usuarioCaixa.id
+    });
+    ok('Conciliação confirma o Pix do t35', /Confirmado!/.test(confKit.message || ''), confKit.message);
+    const contaT35depois = await prisma.contaReceber.findUnique({ where: { id: t35.conta.id }, select: { status: true, aguardandoConciliacao: true } });
+    ok('depois de confirmado, a conta do t35 sai de aguardandoConciliacao',
+        contaT35depois.aguardandoConciliacao === false, JSON.stringify(contaT35depois));
+
+    const sync2 = await kitFestaService.sincronizarPagamentos();
+    const kfPedido2 = await prisma.kitFestaPedido.findUnique({ where: { id: kfPedido.id } });
+    ok('depois da Conciliação confirmar o Pix, o Kit Festa passa a ser marcado como pago',
+        kfPedido2.pago === true && kfPedido2.pagoEm != null, `pago=${kfPedido2.pago} atualizados=${sync2.atualizados}`);
+
+    // limpeza (não faz parte do prefixo TESTE-BXESP do limpar() automático)
+    await prisma.kitFestaPedido.delete({ where: { id: kfPedido.id } });
+    await prisma.kitFestaCliente.delete({ where: { id: kfCliente.id } });
+
     console.log(`\n=== ${falhas === 0 ? 'TODOS OS TESTES PASSARAM' : `${falhas} FALHA(S)`} ===\n`);
 }
 
 async function limpar() {
     try {
+        // Kit Festa [35e] — rede de segurança caso o teste tenha quebrado antes da limpeza
+        // inline (kitFestaCliente/kitFestaPedido não usam o model Cliente do resto do script).
+        const kfClientes = await prisma.kitFestaCliente.findMany({
+            where: { nome: { startsWith: 'TESTE-BXESP' } }, select: { id: true }
+        });
+        const kfIds = kfClientes.map(c => c.id);
+        if (kfIds.length > 0) {
+            await prisma.kitFestaPedido.deleteMany({ where: { kitFestaClienteId: { in: kfIds } } });
+            await prisma.kitFestaCliente.deleteMany({ where: { id: { in: kfIds } } });
+        }
+
         const clientes = await prisma.cliente.findMany({
             where: { Nome: { startsWith: 'TESTE-BXESP' } }, select: { UUID: true }
         });

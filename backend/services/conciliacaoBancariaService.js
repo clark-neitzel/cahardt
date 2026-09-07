@@ -2261,7 +2261,13 @@ async function parcelasReceberEmAberto({ valor, busca, de, ate }) {
         select: {
             id: true, numeroParcela: true, valor: true, valorPago: true, valorDescontoTotal: true,
             status: true, dataVencimento: true,
-            contaReceber: { select: { cliente: { select: { Nome: true, NomeFantasia: true } }, pedido: { select: { numero: true, nfeNumero: true } } } }
+            contaReceber: {
+                select: {
+                    aguardandoConciliacao: true,
+                    cliente: { select: { Nome: true, NomeFantasia: true } },
+                    pedido: { select: { numero: true, nfeNumero: true } }
+                }
+            }
         },
         orderBy: { dataVencimento: 'desc' },
         take: 500
@@ -2282,6 +2288,10 @@ async function parcelasReceberEmAberto({ valor, busca, de, ate }) {
                 cliente: cli?.NomeFantasia || cli?.Nome || 'Cliente',
                 pedido: p.contaReceber?.pedido?.numero || null,
                 nf: p.contaReceber?.pedido?.nfeNumero || null,
+                // Pix comum/cartão informado no Caixa aguardando a Conciliação confirmar
+                // (09/2026) — a ConciliacaoBancariaPage usa isto para destacar/priorizar
+                // a linha na seção "Contas a receber em aberto".
+                aguardandoConciliacao: p.contaReceber?.aguardandoConciliacao === true,
                 bate: Math.abs(saldo - alvo) <= 0.01
             };
         })

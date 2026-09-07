@@ -681,6 +681,14 @@ const kitFestaService = {
 
     // Detecta automaticamente quitação via Contas a Receber do Pedido convertido.
     // Um pedido é considerado pago se a Conta a Receber está QUITADA ou a baixa no CA foi feita.
+    //
+    // ⚠️ 09/2026 — Pix comum/cartão informado no Caixa NÃO quita sozinho (ver CLAUDE.md,
+    // seção "Pix comum e cartão NUNCA quitam sozinhos"): `baixaCaRealizada` passou a
+    // significar só "o caixa processou este pedido", não "recebeu tudo confirmado" — o
+    // ramo normal-local (`caixa.js`) seta esse campo mesmo quando só há Pix aguardando.
+    // Por isso as duas checagens (`baixaCaRealizada` E `status === 'QUITADO'`) exigem
+    // também `aguardandoConciliacao !== true` — sem isso o Kit Festa geraria o crédito de
+    // indicação antes do banco confirmar (regra do dono: sem confirmação, nada se efetiva).
     async sincronizarPagamentos() {
         const abertos = await prisma.kitFestaPedido.findMany({
             where: { pago: false, pedidoId: { not: null } },
@@ -691,9 +699,11 @@ const kitFestaService = {
             try {
                 const pedido = await prisma.pedido.findUnique({
                     where: { id: kp.pedidoId },
-                    select: { baixaCaRealizada: true, contaReceber: { select: { status: true } } },
+                    select: { baixaCaRealizada: true, contaReceber: { select: { status: true, aguardandoConciliacao: true } } },
                 });
-                const quitado = pedido && (pedido.baixaCaRealizada === true || pedido.contaReceber?.status === 'QUITADO');
+                const semPixAguardando = pedido?.contaReceber?.aguardandoConciliacao !== true;
+                const quitado = pedido && semPixAguardando
+                    && (pedido.baixaCaRealizada === true || pedido.contaReceber?.status === 'QUITADO');
                 if (quitado) { await this.adminMarcarPago(kp.id, true); atualizados++; }
             } catch (e) { /* segue para o próximo */ }
         }
