@@ -376,6 +376,10 @@ const ContasReceberTabela = () => {
                         vendedorNome: c.vendedorNome,
                         vendedorId: c.vendedorId,
                         statusConta: c.status,
+                        // Boolean por CONTA (não por parcela) — Pix/cartão informado no
+                        // Caixa e ainda não confirmado pelo banco. Sem copiar aqui o
+                        // campo se perde no flatten e o badge nunca aparece.
+                        aguardandoConciliacao: !!c.aguardandoConciliacao,
                         numeroParcela: p.numeroParcela,
                         parcelasTotal: c.parcelasTotal,
                         valor: p.valor,
@@ -2004,6 +2008,10 @@ const DetalheParcelaModal = ({
     // muda statusParcela (continua PENDENTE/VENCIDO por design) — sem esta condição a
     // linha informada existiria no backend mas nunca apareceria aqui.
     const temHistorico = l.statusParcela === 'PARCIAL' || l.statusParcela === 'PAGO' || !!l.aguardandoConciliacao;
+    // `l.aguardandoConciliacao` é só um boolean (contrato fechado) — o valor/forma/data/
+    // quem informou vêm das linhas do histórico (`GET /:parcelaId/pagamentos`), que já
+    // trazem tudo isso por linha com `confirmado: false`.
+    const linhasAguardando = pagamentos.filter(pg => pg.confirmado === false && !pg.estornado);
 
     return (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
@@ -2035,12 +2043,22 @@ const DetalheParcelaModal = ({
                             <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-amber-700">
                                 <Clock className="h-3.5 w-3.5" /> Pix/cartão informado — aguardando banco
                             </div>
-                            <p className="text-sm text-amber-900 mt-1">
-                                R$ {fmt(l.aguardandoConciliacao.valor)}
-                                {l.aguardandoConciliacao.forma ? ` · ${l.aguardandoConciliacao.forma}` : ''}
-                                {l.aguardandoConciliacao.dataInformado ? ` · informado em ${fmtData(l.aguardandoConciliacao.dataInformado)}` : ''}
-                                {nomeInformadoPor(l.aguardandoConciliacao.informadoPor) ? ` · por ${nomeInformadoPor(l.aguardandoConciliacao.informadoPor)}` : ''}
-                            </p>
+                            {loadingPag ? (
+                                <p className="text-xs text-amber-700 mt-1">Carregando...</p>
+                            ) : linhasAguardando.length > 0 ? (
+                                <div className="mt-1 space-y-1">
+                                    {linhasAguardando.map(pg => (
+                                        <p key={pg.id} className="text-sm text-amber-900">
+                                            R$ {fmt(pg.valorRecebido)}
+                                            {pg.formaPagamento ? ` · ${pg.formaPagamento}` : ''}
+                                            {pg.dataPagamento ? ` · informado em ${fmtData(pg.dataPagamento)}` : ''}
+                                            {nomeInformadoPor(pg.registradoPor) ? ` · por ${nomeInformadoPor(pg.registradoPor)}` : ''}
+                                        </p>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-sm text-amber-900 mt-1">Ver detalhe no histórico de pagamentos abaixo.</p>
+                            )}
                             <p className="text-xs text-amber-700 mt-1">
                                 Este valor ainda não conta como recebido — o título continua em aberto até a Conciliação Bancária bater com o extrato.
                             </p>

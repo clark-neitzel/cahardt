@@ -44,11 +44,10 @@ const CobrancasRotaCard = ({ cobrancas, podeBaixar, onChanged }) => {
             const ok = r.resultados?.filter(x => x.status === 'OK') || [];
             const jaBaixadas = r.resultados?.filter(x => x.status === 'JA_BAIXADO') || [];
             const erros = r.resultados?.filter(x => x.status === 'ERRO') || [];
-            // Item "OK" com detalhe de Pix/cartão aguardando conciliação: o registro no
-            // caixa aconteceu, mas não é uma baixa de verdade ainda — não pode entrar na
+            // Item "OK" com `aguardandoConciliacao: true`: o registro no caixa aconteceu,
+            // mas Pix/cartão ainda não foi confirmado pelo banco — não pode entrar na
             // mesma contagem "baixado(s)" (a linha some do card se não avisar aqui).
-            const textoDetalhes = (x) => (Array.isArray(x.detalhes) ? x.detalhes.join(' | ') : (x.detalhes || x.detalhe || ''));
-            const okAguardando = ok.filter(x => /aguardando concilia/i.test(textoDetalhes(x)));
+            const okAguardando = ok.filter(x => x.aguardandoConciliacao);
             const okConfirmados = ok.length - okAguardando.length;
             if (okConfirmados > 0) toast.success(`${okConfirmados} título(s) baixado(s)!`);
             if (okAguardando.length > 0) {
