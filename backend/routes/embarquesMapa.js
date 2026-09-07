@@ -541,7 +541,7 @@ router.get('/mapa', verificarAuth, checkAcessoEmbarque, async (req, res) => {
 // ==========================================
 router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, res) => {
     try {
-        let { data, entregaDe, entregaAte, embarqueIds, horaSaida, tempoParadaMin = 10 } = req.body || {};
+        let { data, entregaDe, entregaAte, embarqueIds, horaSaida, tempoParadaMin = 10, ancoras } = req.body || {};
         if (!Array.isArray(embarqueIds) || embarqueIds.length === 0) {
             return res.status(400).json({ error: 'Informe embarqueIds (as cargas que vão dividir as entregas).' });
         }
@@ -602,6 +602,23 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
         try {
             const idxGrupo = new Map(embarqueIds.map((id, i) => [id, i]));
 
+            // Âncora de região por carga (opcional): um ponto no mapa que a expedição
+            // marcou como referência daquela carga — orienta o setor angular dela na
+            // divisão. Ignora âncora inválida ou de carga fora do arranjo, sem erro.
+            const ancorasPorGrupo = embarqueIds.map(() => null);
+            let ancorasIgnoradas = 0;
+            if (Array.isArray(ancoras)) {
+                for (const a of ancoras) {
+                    const g = idxGrupo.get(a?.embarqueId);
+                    if (g == null || !osrm.coordenadaValida(a?.gps)) { ancorasIgnoradas++; continue; }
+                    ancorasPorGrupo[g] = { lat: Number(a.gps.lat), lng: Number(a.gps.lng) };
+                }
+            }
+            const teveAncoras = ancorasPorGrupo.some(a => a != null);
+            if (ancorasIgnoradas) {
+                avisos.push(`${ancorasIgnoradas} âncora(s) de região ignorada(s) (carga fora do arranjo ou coordenada inválida).`);
+            }
+
             // paradas = LOCAIS únicos (cliente/lead) dos itens com posição;
             // índice na matriz = posição no array + 1 (0 = base)
             const locais = agruparPorLocal([...entregas, ...amostras, ...cobrancas]);
@@ -635,7 +652,12 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
             const pontos = [osrm.BASE_EMPRESA, ...locais.map(l => l.gps)];
             const { matriz, precisao } = await montarMatriz(pontos, avisos);
 
-            const { grupos } = particionarParadas(matriz, embarqueIds.length, { fixos });
+            const { grupos } = particionarParadas(matriz, embarqueIds.length, {
+                fixos,
+                ancorasPorGrupo,
+                coordsParadas: pontos.slice(1), // coordsParadas[i] = parada i+1 (0 = base, já removida)
+                base: osrm.BASE_EMPRESA
+            });
 
             // Distribui os ITENS: cada local leva todos os seus itens para o grupo
             // sorteado — exceto item TRAVADO em carga do arranjo, que permanece
@@ -664,20 +686,30 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                 const med = await medirGrupo(stopsPorGrupo[g].map(l => l.gps), precisao, avisos);
                 const itensG = itensPorGrupo[g];
                 const carga = cargaPorId.get(embarqueIds[g]);
+                const nomeMotorista = carga?.responsavel?.nome || null;
+                const paradasG = stopsPorGrupo[g].length; // locais únicos (clientes) do grupo
                 gruposResp.push({
                     embarqueId: embarqueIds[g],
-                    motorista: carga?.responsavel?.nome || null,
+                    motorista: nomeMotorista,
                     // Compat: pedidoIds continua existindo (só os pedidos do grupo)
                     pedidoIds: itensG.filter(i => i.tipo === 'pedido').map(i => i.pedidoId),
                     // Aditivo: todos os itens do grupo, com tipo
                     itens: itensG.map(i => ({ tipo: i.tipo, id: idDoItem(i) })),
-                    paradas: stopsPorGrupo[g].length, // locais únicos (clientes) do grupo
+                    paradas: paradasG,
                     distanciaKm: med.distanciaKm,
                     duracaoMin: med.duracaoMin,
-                    previsaoRetorno: calcularRetorno(horaSaida, med.duracaoMin, tempoParadaMin, stopsPorGrupo[g].length),
+                    previsaoRetorno: calcularRetorno(horaSaida, med.duracaoMin, tempoParadaMin, paradasG),
                     precisao: med.precisao,
                     trajeto: med.trajeto
                 });
+                // Carga participante que fechou sem NENHUMA parada: sem aviso, o operador
+                // pode confirmar um caminhão vazio sem perceber. Caso comum: todos os
+                // clientes num aglomerado só, sem âncora — o critério por distância joga
+                // tudo numa carga e não tem sinal geográfico pra abrir a outra.
+                if (paradasG === 0) {
+                    const sujeito = nomeMotorista ? `Carga de ${nomeMotorista}` : `A carga ${carga?.numero ?? embarqueIds[g]}`;
+                    avisos.push(`${sujeito} ficou sem nenhuma parada nesta sugestão — para dividir uma mesma região entre dois motoristas, marque uma âncora para cada um.`);
+                }
             }
 
             res.json({
@@ -685,10 +717,19 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                 semGps,
                 avisos,
                 criterio: {
-                    principal: 'Equilibrar o tempo total das rotas entre as cargas',
-                    considera: ['tempo rodoviário entre os pontos', 'saída e retorno à Hardt', 'tempo informado por parada'],
+                    principal: 'Equilibrar o tempo total das rotas entre as cargas, respeitando a geografia',
+                    considera: [
+                        'tempo rodoviário entre os pontos',
+                        'saída e retorno à Hardt',
+                        'tempo informado por parada',
+                        'coerência geográfica por setor (cada carga cobre uma região do mapa, sem misturar áreas distantes)',
+                        'prioriza fechar primeiro a região mais distante; quem vai longe leva menos paradas, e o tempo total fica parecido entre as cargas',
+                        teveAncoras
+                            ? 'região/âncora definida por carga (aplicada nesta rodada)'
+                            : 'região/âncora definida por carga (quando informada)'
+                    ],
                     preserva: 'Itens já roteirizados, entregues ou cobrados permanecem na carga atual; pedido, amostra e cobrança do MESMO cliente ficam sempre no mesmo grupo (uma parada por cliente)',
-                    naoConsidera: ['territórios fixos por cidade', 'capacidade ou peso do veículo', 'valor do pedido']
+                    naoConsidera: ['capacidade ou peso do veículo', 'valor do pedido']
                 }
             });
         } finally {

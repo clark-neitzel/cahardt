@@ -175,11 +175,19 @@ export default function Clippy() {
     const painelPos = `${abrirParaCima ? 'bottom-full mb-3' : 'top-full mt-3'} ${alinharEsquerda ? 'left-0' : 'right-0'}`;
 
     return (
-        <div className="hidden lg:block fixed z-50 no-print" style={{ right: pos.right, bottom: pos.bottom }}>
+        // pointer-events-none no contêiner inteiro: a bolha de novidade/dica (balão
+        // decorativo, sem onClick) fica sempre por cima de conteúdo real da página
+        // (o mascote flutua perto do canto inferior direito, onde telas com coluna
+        // lateral direita costumam ter botões) e capturava o clique que era pra ir
+        // pro botão de baixo dela, mesmo sem fundo visível ali. Cada elemento que
+        // PRECISA responder a clique reativa com pointer-events-auto (mascote e os
+        // dois painéis abertos) — a bolha em si nunca teve handler, então segue
+        // "vazando" o clique através dela sem perder nenhuma função do Clippy.
+        <div className="hidden lg:block fixed z-50 no-print pointer-events-none" style={{ right: pos.right, bottom: pos.bottom }}>
             {/* ── Painel de novidade (anúncio igual ao do grupo do WhatsApp) ── */}
             {open && modo === 'novidade' && ultimaNovidade && (
                 <div
-                    className={`absolute ${painelPos} bg-white rounded-2xl border border-gray-200 shadow-2xl flex flex-col overflow-hidden`}
+                    className={`absolute ${painelPos} bg-white rounded-2xl border border-gray-200 shadow-2xl flex flex-col overflow-hidden pointer-events-auto`}
                     style={{ width: larguraPainel, height: alturaPainel, animation: 'clippyPop .18s ease-out' }}
                 >
                     {/* Header */}
@@ -218,7 +226,7 @@ export default function Clippy() {
             {/* ── Painel de chat ── */}
             {open && modo === 'chat' && (
                 <div
-                    className={`absolute ${painelPos} bg-white rounded-2xl border border-gray-200 shadow-2xl flex flex-col overflow-hidden`}
+                    className={`absolute ${painelPos} bg-white rounded-2xl border border-gray-200 shadow-2xl flex flex-col overflow-hidden pointer-events-auto`}
                     style={{ width: larguraPainel, height: alturaPainel, animation: 'clippyPop .18s ease-out' }}
                 >
                     {/* Header */}
@@ -355,7 +363,7 @@ export default function Clippy() {
                     onPointerMove={onPointerMove}
                     onPointerUp={onPointerUp}
                     title={temNovidade ? 'Tem novidade no sistema! Clique para ver' : 'Clique para abrir • arraste para mover'}
-                    className={`relative w-16 h-16 rounded-full bg-white border border-gray-200 shadow-xl flex items-center justify-center shrink-0 transition-transform ${arrastando ? 'cursor-grabbing scale-105' : 'cursor-grab hover:-translate-y-0.5'}`}
+                    className={`relative w-16 h-16 rounded-full bg-white border border-gray-200 shadow-xl flex items-center justify-center shrink-0 transition-transform pointer-events-auto ${arrastando ? 'cursor-grabbing scale-105' : 'cursor-grab hover:-translate-y-0.5'}`}
                     style={{ touchAction: 'none', ...((!open && !arrastando) ? { animation: temNovidade ? 'clippyWiggle 1.4s ease-in-out infinite' : 'clippyFloat 3.5s ease-in-out infinite' } : {}) }}
                 >
                     <ClippyMascot size={40} />

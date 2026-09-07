@@ -3,11 +3,11 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Map as MapIcon, Loader2, Wand2, Route as RouteIcon, X, Truck, Printer, MapPinOff, Lock, ArrowLeftRight, Trash2, AlertTriangle } from 'lucide-react';
+import { Map as MapIcon, Loader2, Wand2, Route as RouteIcon, X, Truck, Printer, MapPinOff, MapPin, Lock, ArrowLeftRight, Trash2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import mapaExpedicaoService from '../../../services/mapaExpedicaoService';
 import SelectBusca from '../../../components/SelectBusca';
-import { useFiltrosSalvos } from '../../../hooks/useFiltrosSalvos';
+import { useFiltrosSalvos, useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
 import FiltroPeriodo, { usePeriodoSalvo } from '../../../components/FiltroPeriodo';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -182,6 +182,36 @@ export default function MapaExpedicao() {
     // NÃO persiste (nem em useFiltrosSalvos): id de carga muda todo dia, salvar
     // prenderia o operador numa seleção velha — mesma razão de não salvar data absoluta.
     const [foraDaDivisao, setForaDaDivisao] = useState([]);
+    // Âncora de região por MOTORISTA (não por carga — a carga muda todo dia, o
+    // motorista repete a região). Persistida por usuário: { [responsavelId]: {lat,lng} }.
+    const [ancorasPorMotorista, setAncorasPorMotorista] = useFiltroSalvo('mapa-expedicao:ancoras', {});
+    // "Modo âncora": próximo clique no mapa grava a região da carga escolhida e sai do modo.
+    const [modoAncora, setModoAncora] = useState(null); // { embarqueId, responsavelId, nomeMotorista } | null
+    // Ref porque o clique no mapa é registrado UMA VEZ (efeito de montagem do Leaflet,
+    // deps []) — sem o ref o handler ficaria preso no `modoAncora` de quando o mapa nasceu.
+    const modoAncoraRef = useRef(null);
+    useEffect(() => { modoAncoraRef.current = modoAncora; }, [modoAncora]);
+
+    // Grava a âncora do clique (mapa, pino de cliente, marcador da base ou de outra
+    // âncora) e sai do modo. Também fica acessível por ref pelo mesmo motivo acima.
+    const definirAncora = useCallback((latlng) => {
+        const modo = modoAncoraRef.current;
+        if (!modo || latlng == null) return;
+        setAncorasPorMotorista(prev => ({ ...prev, [modo.responsavelId]: { lat: latlng.lat, lng: latlng.lng } }));
+        setModoAncora(null);
+        toast.success(`Região de ${modo.nomeMotorista || 'motorista'} marcada no mapa.`, { icon: '📍' });
+    }, [setAncorasPorMotorista]);
+    const definirAncoraRef = useRef(definirAncora);
+    useEffect(() => { definirAncoraRef.current = definirAncora; }, [definirAncora]);
+
+    const limparAncora = useCallback((responsavelId, nomeMotorista) => {
+        setAncorasPorMotorista(prev => {
+            const nx = { ...prev };
+            delete nx[responsavelId];
+            return nx;
+        });
+        toast(`Região de ${nomeMotorista || 'motorista'} removida.`, { icon: '🗑️' });
+    }, [setAncorasPorMotorista]);
     const [sugerindo, setSugerindo] = useState(false);
     const [recalculando, setRecalculando] = useState(false);
     const [aplicando, setAplicando] = useState(false);
@@ -599,6 +629,12 @@ export default function MapaExpedicao() {
             toast('Escolha ao menos uma carga para dividir — marque "participa da divisão" no cartão da carga.', { icon: '☑️', duration: 7000 });
             return;
         }
+        // Âncora de região por carga participante, a partir da âncora salva do
+        // MOTORISTA dela — guia o algoritmo a agrupar clientes perto de cada um.
+        // Carga sem motorista definido ou sem âncora salva simplesmente não entra.
+        const ancoras = cargasParticipantes
+            .filter(c => c.responsavel?.id != null && ancorasPorMotorista[c.responsavel.id])
+            .map(c => ({ embarqueId: c.id, gps: ancorasPorMotorista[c.responsavel.id] }));
         setSugerindo(true);
         try {
             const r = await mapaExpedicaoService.sugerirDivisao({
@@ -607,7 +643,8 @@ export default function MapaExpedicao() {
                 entregaAte: periodoEntrega.ate,
                 embarqueIds: idsParticipantes,
                 horaSaida: params.horaSaida,
-                tempoParadaMin
+                tempoParadaMin,
+                ancoras
             });
             const nx = {};
             (r.grupos || []).forEach(g => itensDoGrupo(g).forEach(ch => {
@@ -858,6 +895,7 @@ export default function MapaExpedicao() {
     const mapObj = useRef(null);
     const marcadores = useRef({});
     const baseMarker = useRef(null);
+    const ancoraMarkers = useRef({});
     const linhasRotas = useRef([]);
     const ajustouPara = useRef(null);
 
@@ -869,7 +907,12 @@ export default function MapaExpedicao() {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap'
         }).addTo(map);
-        map.on('click', () => setSelecionado(null));
+        // Em "modo âncora" o clique no mapa grava a região do motorista escolhido
+        // (via ref — este efeito roda uma vez só, no mount) em vez de desmarcar o pino.
+        map.on('click', (e) => {
+            if (modoAncoraRef.current) { definirAncoraRef.current(e.latlng); return; }
+            setSelecionado(null);
+        });
         mapObj.current = map;
         // A barra lateral pode alargar a área principal. Leaflet precisa ser
         // avisado da nova largura para redesenhar sem ficar sob o menu.
@@ -881,9 +924,31 @@ export default function MapaExpedicao() {
             mapObj.current = null;
             marcadores.current = {};
             baseMarker.current = null;
+            ancoraMarkers.current = {};
             linhasRotas.current = [];
         };
     }, []);
+
+    // Cursor em cruz durante o "modo âncora" — pista visual extra, além do chip fixo.
+    useEffect(() => {
+        const map = mapObj.current;
+        if (!map) return;
+        map.getContainer().style.cursor = modoAncora ? 'crosshair' : '';
+    }, [modoAncora]);
+
+    // Esc cancela o "modo âncora" (mesmo padrão do diálogo de apagar cobrança, abaixo).
+    useEffect(() => {
+        if (!modoAncora) return;
+        const aoTeclar = (ev) => {
+            if (ev.key === 'Escape') {
+                ev.stopPropagation();
+                setModoAncora(null);
+                toast('Marcação de região cancelada.', { icon: '↩️' });
+            }
+        };
+        window.addEventListener('keydown', aoTeclar);
+        return () => window.removeEventListener('keydown', aoTeclar);
+    }, [modoAncora]);
 
     // Pinos por CLIENTE (recriados a cada mudança de dados/rascunho — poucos por dia, é barato)
     useEffect(() => {
@@ -899,7 +964,8 @@ export default function MapaExpedicao() {
                     iconSize: [26, 26], iconAnchor: [13, 13]
                 }),
                 zIndexOffset: 500
-            }).addTo(map).bindTooltip('Hardt Salgados — saída das cargas');
+            }).addTo(map).bindTooltip('Hardt Salgados — saída das cargas')
+                .on('click', () => { if (modoAncoraRef.current) definirAncoraRef.current(dados.base); });
         }
 
         Object.values(marcadores.current).forEach(m => m.remove());
@@ -949,10 +1015,38 @@ export default function MapaExpedicao() {
             const mk = L.marker([g.gps.lat, g.gps.lng], {
                 icon: L.divIcon({ className: '', html, iconSize: [56, badges ? 46 : 26], iconAnchor: [28, 13] }),
                 keyboard: false
-            }).addTo(map).on('click', () => setSelecionado(g.chave));
+            }).addTo(map).on('click', () => {
+                // Em "modo âncora" o clique num pino de cliente grava a região ali mesmo
+                // (não abre o cartão de detalhes nem desmarca a seleção anterior).
+                if (modoAncoraRef.current) { definirAncoraRef.current(g.gps); return; }
+                setSelecionado(g.chave);
+            });
             marcadores.current[g.chave] = mk;
         });
-    }, [dados, gruposComPino, rascunho, corDaCarga, embarqueEfetivo, foraSet]);
+
+        // Âncoras de região: uma bandeira por MOTORISTA com região marcada, na cor
+        // da carga que ele leva hoje. Continua visível mesmo com a carga "fora da
+        // divisão" — é a região do motorista, não da carga do dia.
+        Object.values(ancoraMarkers.current).forEach(m => m.remove());
+        ancoraMarkers.current = {};
+        (dados.cargas || []).forEach((c, i) => {
+            const responsavelId = c.responsavel?.id;
+            const anc = responsavelId != null ? ancorasPorMotorista[responsavelId] : null;
+            if (!anc) return;
+            const cor = CORES[i % CORES.length];
+            const html = `<div style="width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);` +
+                `background:${cor};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);` +
+                `display:flex;align-items:center;justify-content:center">` +
+                `<span style="transform:rotate(45deg);font-size:12px;line-height:1">🚩</span></div>`;
+            const mk = L.marker([anc.lat, anc.lng], {
+                icon: L.divIcon({ className: '', html, iconSize: [26, 26], iconAnchor: [13, 26] }),
+                zIndexOffset: 400
+            }).addTo(map)
+                .bindTooltip(`Região de ${c.responsavel?.nome || 'motorista'}`)
+                .on('click', () => { if (modoAncoraRef.current) definirAncoraRef.current(anc); });
+            ancoraMarkers.current[c.id] = mk;
+        });
+    }, [dados, gruposComPino, rascunho, corDaCarga, embarqueEfetivo, foraSet, ancorasPorMotorista]);
 
     // Trajetos devolvidos pelo roteirizador: tornam visível por que um ponto
     // pertence a uma carga, em vez de mostrar apenas cores soltas no mapa.
@@ -1218,27 +1312,49 @@ export default function MapaExpedicao() {
                         </div>
                     )}
 
-                    {/* Banner do rascunho */}
-                    {mudancas.length > 0 && (
-                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1040] flex items-center gap-1.5 bg-white rounded-full border border-amber-300 shadow-lg pl-3 pr-1.5 py-1 max-w-[calc(100%-16px)]">
-                            <span className="text-xs font-semibold text-amber-800 whitespace-nowrap">
-                                {mudancas.length === 1 ? '1 alteração não aplicada' : `${mudancas.length} alterações não aplicadas`}
-                            </span>
-                            <button
-                                onClick={confirmar}
-                                disabled={aplicando}
-                                className="px-3 py-2 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold min-h-[40px] flex items-center gap-1.5 disabled:opacity-60"
-                            >
-                                {aplicando && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                                Confirmar
-                            </button>
-                            <button
-                                onClick={descartar}
-                                disabled={aplicando}
-                                className="px-2.5 py-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 text-xs font-medium min-h-[40px] disabled:opacity-60"
-                            >
-                                Descartar
-                            </button>
+                    {/* Chip do "modo âncora" + banner do rascunho — empilhados (nunca um
+                        sobre o outro) e presos ao topo do mapa, sem cobrir a topbar nem,
+                        no celular, a alça do painel inferior. */}
+                    {(modoAncora || mudancas.length > 0) && (
+                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1040] flex flex-col items-center gap-2 max-w-[calc(100%-16px)]">
+                            {modoAncora && (
+                                <div className="flex items-center gap-2 bg-house text-white rounded-full shadow-lg pl-3 pr-1.5 py-1.5 max-w-full">
+                                    <MapPin className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="text-xs font-semibold truncate">
+                                        Clique no mapa para marcar a região de {modoAncora.nomeMotorista} — Esc cancela
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setModoAncora(null)}
+                                        aria-label="Cancelar marcação de região"
+                                        className="shrink-0 p-1.5 rounded-full hover:bg-white/15"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+                            )}
+                            {mudancas.length > 0 && (
+                                <div className="flex items-center gap-1.5 bg-white rounded-full border border-amber-300 shadow-lg pl-3 pr-1.5 py-1 max-w-full">
+                                    <span className="text-xs font-semibold text-amber-800 whitespace-nowrap">
+                                        {mudancas.length === 1 ? '1 alteração não aplicada' : `${mudancas.length} alterações não aplicadas`}
+                                    </span>
+                                    <button
+                                        onClick={confirmar}
+                                        disabled={aplicando}
+                                        className="px-3 py-2 bg-primary hover:bg-primaryDark text-white rounded-full text-xs font-semibold min-h-[40px] flex items-center gap-1.5 disabled:opacity-60"
+                                    >
+                                        {aplicando && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                                        Confirmar
+                                    </button>
+                                    <button
+                                        onClick={descartar}
+                                        disabled={aplicando}
+                                        className="px-2.5 py-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100 text-xs font-medium min-h-[40px] disabled:opacity-60"
+                                    >
+                                        Descartar
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -1280,6 +1396,13 @@ export default function MapaExpedicao() {
                         <div className="flex items-center gap-1.5">
                             <span className="px-1 rounded-full bg-gray-200 text-gray-700 font-extrabold text-[8px] leading-3 border border-black/10 shrink-0">FORA</span>
                             carga fora da divisão automática
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <span
+                                className="shrink-0"
+                                style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50% 50% 50% 0', transform: 'rotate(-45deg)', background: '#00754A', border: '1.5px solid #fff', boxShadow: '0 0 0 1px rgba(0,0,0,.15)' }}
+                            />
+                            região marcada do motorista
                         </div>
                     </div>
 
@@ -1473,6 +1596,9 @@ export default function MapaExpedicao() {
                                         </p>
                                     )
                                 )}
+                                <p className="text-[11px] text-gray-500">
+                                    Defina a região de cada motorista no cartão da carga para guiar a divisão.
+                                </p>
                             </div>
                         </div>
 
@@ -1526,6 +1652,10 @@ export default function MapaExpedicao() {
                                 const foiImpressa = Number(c.ultimaImpressaoVersao) > 0;
                                 const reimprimir = foiImpressa && Number(c.versao) > Number(c.ultimaImpressaoVersao);
                                 const participa = !foraSet.has(c.id);
+                                const responsavelId = c.responsavel?.id ?? null;
+                                const nomeMotorista = c.responsavel?.nome || null;
+                                const ancoraAtual = responsavelId != null ? ancorasPorMotorista[responsavelId] : null;
+                                const emModoParaEstaCarga = modoAncora?.embarqueId === c.id;
                                 return (
                                     <div
                                         key={c.id}
@@ -1547,32 +1677,76 @@ export default function MapaExpedicao() {
                                             sugestão automática deixa de mexer nela.
                                             A caixa usa `accent-[#00754A]` (padrão do projeto): este projeto
                                             NÃO tem o plugin @tailwindcss/forms, então `text-primary` só
-                                            definiria `color` e a caixa sairia azul, fora do tema. */}
-                                        <div className="mt-1 flex items-center justify-between gap-2">
-                                            <label className="flex items-center gap-2 min-h-[44px] flex-1 min-w-0 cursor-pointer select-none">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={participa}
-                                                    onChange={() => alternarParticipacao(c.id)}
-                                                    className="h-5 w-5 shrink-0 accent-[#00754A]"
-                                                />
-                                                <span className={`text-xs font-medium truncate ${participa ? 'text-gray-700' : 'text-gray-600'}`}>
-                                                    Participa da divisão
-                                                </span>
-                                            </label>
+                                            definiria `color` e a caixa sairia azul, fora do tema.
+                                            Fundo/borda conforme participa ou não — o dono não tinha notado o
+                                            checkbox no cartão (antes era só texto pequeno em linha). */}
+                                        <label
+                                            className={`mt-2 flex items-center gap-2 min-h-[44px] rounded-lg border px-2.5 py-1.5 cursor-pointer select-none
+                                                ${participa ? 'bg-mint/40 border-primary/30' : 'bg-gray-100 border-gray-300'}`}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={participa}
+                                                onChange={() => alternarParticipacao(c.id)}
+                                                className="h-5 w-5 shrink-0 accent-[#00754A]"
+                                            />
+                                            <span className={`text-sm font-semibold flex-1 truncate ${participa ? 'text-primaryDark' : 'text-gray-600'}`}>
+                                                Participa da divisão automática
+                                            </span>
                                             {!participa && (
-                                                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 shrink-0">
-                                                    fora da divisão
+                                                <span className="px-2 py-0.5 text-[11px] font-semibold rounded-full bg-gray-200 text-gray-700 shrink-0">
+                                                    fora
                                                 </span>
                                             )}
-                                        </div>
+                                        </label>
                                         {!participa && (
-                                            <p className="-mt-1 mb-1 text-[11px] text-gray-600">
+                                            <p className="mt-1 mb-1 text-[11px] text-gray-600">
                                                 A sugestão automática não mexe nesta carga, nem no que você colocar nela ou tirar dela à mão. Ela continua
                                                 no mapa (pinos com a marca <span className="px-1 rounded-full bg-gray-200 text-gray-700 font-extrabold text-[9px] leading-3 border border-black/10">FORA</span>) e
                                                 aceita item pelo “Mover para…”.
                                             </p>
                                         )}
+
+                                        {/* Âncora de região do motorista: guia a "Sugerir divisão" a
+                                            agrupar os clientes perto de onde ele atua. Fica salva pelo
+                                            MOTORISTA (não pela carga) — reaproveita sozinha todo dia. */}
+                                        <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                                            {!responsavelId ? (
+                                                <span className="text-[11px] text-gray-500">
+                                                    Defina o motorista desta carga (no Painel de Expedição) para marcar a região dele.
+                                                </span>
+                                            ) : emModoParaEstaCarga ? (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setModoAncora(null)}
+                                                    className="px-3 py-2 rounded-full border border-amber-400 bg-amber-50 text-amber-800 text-xs font-semibold min-h-[44px] flex items-center gap-1.5"
+                                                >
+                                                    <X className="h-3.5 w-3.5" /> Cancelar marcação
+                                                </button>
+                                            ) : (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelecionado(null);
+                                                        setSheetAberta(false);
+                                                        setModoAncora({ embarqueId: c.id, responsavelId, nomeMotorista });
+                                                    }}
+                                                    className="px-3 py-2 rounded-full border border-primary text-primary hover:bg-mint/40 text-xs font-semibold min-h-[44px] flex items-center gap-1.5"
+                                                >
+                                                    <MapPin className="h-3.5 w-3.5" />
+                                                    {ancoraAtual ? 'Reposicionar região' : 'Definir região no mapa'}
+                                                </button>
+                                            )}
+                                            {ancoraAtual && !emModoParaEstaCarga && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => limparAncora(responsavelId, nomeMotorista)}
+                                                    className="px-2.5 py-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 text-xs font-medium min-h-[44px]"
+                                                >
+                                                    Limpar região
+                                                </button>
+                                            )}
+                                        </div>
                                         {outrasCargas.length > 0 && (
                                             <div className="mt-2 pt-2 border-t border-gray-100">
                                                 <p className="text-xs text-gray-600 mb-1.5">Trocar tudo desta rota (pedidos, amostras e cobranças) com</p>

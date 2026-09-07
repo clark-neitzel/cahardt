@@ -1,5 +1,11 @@
 [
   {
+    "slug": "divisao-por-regiao",
+    "titulo": "Divisão por região no mapa",
+    "resumo": "O \"Sugerir divisão\" do Mapa das entregas agora fecha primeiro a região mais distante e não mistura mais os corredores — os horários de volta ficam mais equilibrados entre as cargas. Novo botão \"Definir região no mapa\" em cada cartão de carga: marque a bandeira do motorista e a sugestão passa a agrupar os clientes ao redor dela (a região fica lembrada por motorista, não precisa marcar de novo todo dia; dá para reposicionar ou limpar, e Esc cancela). O checkbox \"Participa da divisão automática\" ficou bem mais visível no cartão, e agora aparece um aviso se alguma carga ficar sem nenhuma parada na sugestão.",
+    "data": "2026-09-07"
+  },
+  {
     "slug": "pix-aguardando-banco",
     "titulo": "Pix e cartão: agora \"Aguardando\"",
     "resumo": "Pix comum e cartão informados na conferência do Caixa (entrega ou cobrança em rota) não quitam mais o título na hora — o valor fica registrado, mas a parcela continua PENDENTE/VENCIDO com o selo âmbar \"Aguardando Pix\" até o Financeiro confirmar o pagamento na Conciliação Bancária, batendo o valor com o extrato do banco. Motivo: não pode existir baixa sem o dinheiro identificado no banco — antes, o título quitava só pela palavra de quem registrou o caixa, sem nenhum vínculo com a conta bancária. Dinheiro (Caixinha) e Pix do QR Code (Asaas) continuam baixando na hora, sem mudança nenhuma. O jeito de registrar a entrega e o caixa não muda para vendedor e motorista — só aparece o selo novo depois. O aviso aparece em três lugares: Contas a Receber (badge \"Aguardando Pix\" e caixa de detalhe na parcela), Cobranças da Rota do Caixa (\"Pix aguardando banco\" no lugar de \"Baixada ✓\") e Conciliação Bancária (título destacado e priorizado com \"Pix informado — bater com o extrato\"). Para confirmar: Financeiro → Conciliação Bancária → escolha a conta e o lançamento do extrato → marque o título destacado na lista de contas a receber em aberto → conclua a conciliação — a parcela vira PAGO/PARCIAL na hora, já com a conta certa.",

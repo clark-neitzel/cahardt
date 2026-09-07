@@ -111,6 +111,20 @@ function haversineKm(a, b) {
     return 2 * R * Math.asin(Math.sqrt(s));
 }
 
+// ── Bearing (ângulo de rumo) de a para b, em graus [0, 360) ───────────────────
+// 0° = norte, 90° = leste, 180° = sul, 270° = oeste (fórmula clássica de azimute
+// inicial em navegação esférica). Função pura, sem chamada de rede — usada pela
+// divisão de cargas por setor geográfico (divisaoCargasService.js).
+function bearingGraus(a, b) {
+    const rad = (g) => g * Math.PI / 180;
+    const phi1 = rad(a.lat), phi2 = rad(b.lat);
+    const dLambda = rad(b.lng - a.lng);
+    const y = Math.sin(dLambda) * Math.cos(phi2);
+    const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(dLambda);
+    const brutos = Math.atan2(y, x) * 180 / Math.PI;
+    return (brutos + 360) % 360;
+}
+
 module.exports = {
     OSRM_URL,
     OSRM_TIMEOUT_MS,
@@ -127,5 +141,6 @@ module.exports = {
     getLock,
     adquirirLock,
     liberarLock,
-    haversineKm
+    haversineKm,
+    bearingGraus
 };
