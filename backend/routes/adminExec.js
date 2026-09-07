@@ -8334,7 +8334,7 @@ function mensagemWhatsAppReversao(candidatos, { executado }) {
 
     const linhas = [];
     if (candidatos.length > 50) {
-        // Resumido por cliente (nome, contagem, soma) — lista línea a línea ficaria gigante
+        // Resumido por cliente (nome, contagem, soma) — lista linha a linha ficaria gigante
         const porCliente = new Map();
         for (const c of candidatos) {
             const info = porCliente.get(c.cliente) || { contagem: 0, soma: 0 };

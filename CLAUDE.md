@@ -194,11 +194,15 @@ vira `confirmado:true` e `recalcularParcelaReceber` recompõe a parcela na hora.
   aguardando conferência do Caixa" (dinheiro já confirmado, só falta o clique de processar). São
   **três conceitos diferentes** que não podem virar o mesmo `if`.
 
-**Retroativo (09/2026, já executado nesta rodada — histórico, não precisa repetir):**
-`GET/POST /api/admin-exec/reverter-baixas-sem-banco` reverteu as baixas antigas que tinham quitado
-"SEM banco" antes desta correção — dry-run com `mensagemWhatsApp` pronta, execução recebendo os
-mesmos ids do dry-run, idempotente (rodar de novo não reverte de novo). Reaproveita a classificação
-de origem extraída para `backend/services/pagamentoOrigemService.js`.
+**Retroativo (09/2026) — PENDENTE de rodar em produção.** `GET/POST /api/admin-exec/reverter-baixas-sem-banco`
+existe e foi validado só no banco de teste local (dry-run com `mensagemWhatsApp` pronta, execução
+recebendo os mesmos ids do dry-run, idempotente — rodar de novo não reverte de novo; reaproveita a
+classificação de origem extraída para `backend/services/pagamentoOrigemService.js`). **Ainda não foi
+executado contra o banco de produção.** Falta: deploy → rodar o `GET` (dry-run) em produção → mandar
+a `mensagemWhatsApp` para o dono aprovar → só então rodar o `POST` com os ids aprovados. Se você é a
+sessão que vai fazer isso, confira se já rodou (veja o histórico/AuditLog `REVERTER_BAIXAS_SEM_BANCO`)
+antes de rodar de novo, e **só troque este parágrafo para "executado em `<data>`" depois de rodar de
+verdade em produção** — não antes.
 
 **Regras ao mexer nestes arquivos:**
 1. **Nunca** deixar Pix comum/cartão quitar sozinho de novo em nenhum dos três ramos do Caixa.
