@@ -122,6 +122,13 @@ const linhasDetalhe = (r) => {
 // ("Baixa parcial: R$ X de R$ Y — saldo ..."), para a tela funcionar nos dois casos.
 const ehBaixaParcial = (r) => r?.parcial ?? /baixa parcial/i.test(linhasDetalhe(r).join(' | '));
 
+// Pix comum/cartão informado no Caixa não quita mais sozinho (09/2026) — fica
+// "aguardando conciliação bancária", o título continua em aberto. O backend manda essa
+// frase dentro de `detalhes`; aqui só detectamos o texto para destacar em âmbar — não
+// dependemos de nenhum valor específico de `status` (o item pode continuar "OK" porque o
+// registro no caixa deu certo, só a quitação é que ainda não aconteceu).
+const ehAguardandoConciliacao = (r) => /aguardando concilia/i.test(linhasDetalhe(r).join(' | '));
+
 // Saldo que continua em aberto depois da baixa (campo novo do backend; sem ele, a
 // informação continua aparecendo dentro do texto do detalhe)
 const saldoEmAberto = (r) => (typeof r?.saldoRestante === 'number' ? r.saldoRestante : null);
@@ -131,6 +138,7 @@ const saldoEmAberto = (r) => (typeof r?.saldoRestante === 'number' ? r.saldoRest
 const RESULTADO_BAIXA_ESTILO = {
     OK: { rotulo: 'BAIXADO', badge: 'bg-green-100 text-green-800', box: 'bg-green-50 border-green-200' },
     PARCIAL: { rotulo: 'BAIXA PARCIAL', badge: 'bg-amber-100 text-amber-700', box: 'bg-amber-50 border-amber-200' },
+    AGUARDANDO_PIX: { rotulo: 'AGUARDANDO PIX', badge: 'bg-amber-100 text-amber-700', box: 'bg-amber-50 border-amber-200' },
     SEM_BAIXA: { rotulo: 'SEM BAIXA', badge: 'bg-amber-100 text-amber-700', box: 'bg-amber-50 border-amber-200' },
     JA_QUITADO: { rotulo: 'JÁ QUITADO', badge: 'bg-gray-100 text-gray-700', box: 'bg-gray-50 border-gray-200' },
     ERRO: { rotulo: 'ERRO', badge: 'bg-red-100 text-red-700', box: 'bg-red-50 border-red-200' }
@@ -143,6 +151,10 @@ const RESULTADO_BAIXA_ESTILO = {
 const ResultadoBaixaPainel = ({ dados, onFechar }) => {
     if (!dados) return null;
     const { resultados, ok, erros, jaQuitados, avisos, totalBaixado, parciais } = dados;
+    // Contado por texto do `detalhes`, não por `status` — funciona qualquer que seja o
+    // valor de status que o backend escolher devolver para o item (ver comentário de
+    // `ehAguardandoConciliacao`).
+    const aguardandoPix = resultados.filter(r => r.status !== 'ERRO' && !ehBaixaParcial(r) && ehAguardandoConciliacao(r));
     return (
         <div className="mb-3 rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
             <div className="flex items-start justify-between gap-2 px-3 py-2 border-b border-gray-100 bg-gray-50">
@@ -151,13 +163,14 @@ const ResultadoBaixaPainel = ({ dados, onFechar }) => {
                     <p className="text-xs text-gray-600 mt-1 break-words">
                         <span className="font-semibold text-green-700">{ok.length} baixada(s) — R$ {fmtMoeda(totalBaixado)}</span>
                         {parciais.length > 0 && <span className="text-amber-700"> · {parciais.length} parcial(is)</span>}
+                        {aguardandoPix.length > 0 && <span className="text-amber-700"> · {aguardandoPix.length} aguardando Pix</span>}
                         {avisos.length > 0 && <span className="text-amber-700"> · {avisos.length} sem baixa</span>}
                         {jaQuitados.length > 0 && <span className="text-gray-500"> · {jaQuitados.length} já quitada(s)</span>}
                         {erros.length > 0 && <span className="text-red-700"> · {erros.length} com erro</span>}
                     </p>
-                    {(parciais.length > 0 || avisos.length > 0) && (
+                    {(parciais.length > 0 || avisos.length > 0 || aguardandoPix.length > 0) && (
                         <p className="text-[11px] text-amber-700 mt-1 break-words">
-                            Atenção: valor baixado não é o total — o que sobrou continua em aberto para cobrança.
+                            Atenção: valor baixado não é o total — o que sobrou (inclusive Pix/cartão aguardando o banco) continua em aberto para cobrança.
                         </p>
                     )}
                 </div>
@@ -171,7 +184,11 @@ const ResultadoBaixaPainel = ({ dados, onFechar }) => {
             </div>
             <div className="p-2 space-y-2 max-h-80 overflow-y-auto">
                 {resultados.map((r, i) => {
-                    const chave = r.status === 'OK' && ehBaixaParcial(r) ? 'PARCIAL' : r.status;
+                    const parcial = r.status === 'OK' && ehBaixaParcial(r);
+                    // "OK" só como Pix/cartão aguardando (nenhuma parte confirmada de fato)
+                    // não pode aparecer com o mesmo verde de uma baixa de verdade.
+                    const aguardando = !parcial && r.status === 'OK' && ehAguardandoConciliacao(r);
+                    const chave = parcial ? 'PARCIAL' : aguardando ? 'AGUARDANDO_PIX' : r.status;
                     const detalhes = linhasDetalhe(r);
                     const saldo = saldoEmAberto(r);
                     // Status desconhecido (backend novo, tela antiga): mostra neutro com o
@@ -199,9 +216,12 @@ const ResultadoBaixaPainel = ({ dados, onFechar }) => {
                             )}
                             {detalhes.length > 0 && (
                                 <ul className="mt-1 space-y-0.5" title={detalhes.join(' | ')}>
-                                    {detalhes.map((linha, j) => (
-                                        <li key={j} className="text-[11px] text-gray-600 break-words">• {linha}</li>
-                                    ))}
+                                    {detalhes.map((linha, j) => {
+                                        const linhaAguardando = /aguardando concilia/i.test(linha);
+                                        return (
+                                            <li key={j} className={`text-[11px] break-words ${linhaAguardando ? 'text-amber-700 font-semibold' : 'text-gray-600'}`}>• {linha}</li>
+                                        );
+                                    })}
                                 </ul>
                             )}
                             {saldo != null && saldo > 0.01 && (

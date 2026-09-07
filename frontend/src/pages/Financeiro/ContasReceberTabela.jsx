@@ -11,7 +11,7 @@ import {
     DollarSign, Search, Filter, X, RefreshCw, CheckCircle, Undo2,
     Download, ArrowUpDown, CheckSquare, Square, Link as LinkIcon,
     ChevronDown, ChevronUp, MoreVertical, Eye, Package, Truck, Wallet,
-    Receipt, FileText
+    Receipt, FileText, Clock
 } from 'lucide-react';
 import asaasService from '../../services/asaasService';
 import BoletosAsaasModal from './BoletosAsaasModal';
@@ -27,6 +27,22 @@ const fmt = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigit
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '-';
 // YYYY-MM-DD no fuso de SP — mesma data que fmtData mostra, p/ comparar com inputs date.
 const toYMD = (d) => d ? new Date(d).toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' }) : '';
+
+// Pix comum/cartão informados no Caixa não quitam mais sozinhos — ficam "aguardando
+// conciliação bancária" até o extrato bater (ver CLAUDE.md, seção NF-e/baixa sem banco
+// e plano de 09/2026). O backend manda esse campo derivado na parcela quando existe
+// pagamento informado, ainda não confirmado. Nome pode vir string ou objeto {nome}.
+const nomeInformadoPor = (v) => {
+    if (!v) return '';
+    if (typeof v === 'string') return v;
+    return v.nome || v.nomeCompleto || '';
+};
+
+const BadgeAguardandoPix = ({ className = '' }) => (
+    <span className={`px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 whitespace-nowrap ${className}`}>
+        Aguardando Pix
+    </span>
+);
 
 const STATUS_CONTA = {
     ABERTO: 'bg-blue-100 text-blue-800',
@@ -1155,6 +1171,7 @@ const ContasReceberTabela = () => {
                                     <div className="flex flex-wrap items-center gap-1.5 mt-2">
                                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${STATUS_PARC[l.statusParcela] || ''}`}>{l.statusParcela}</span>
                                         <span className={`px-2 py-1 text-xs font-semibold rounded-full ${STATUS_CONTA[l.statusConta] || ''}`}>{l.statusConta}</span>
+                                        {l.aguardandoConciliacao && <BadgeAguardandoPix />}
                                         <span className="text-[11px] text-gray-500 tabular-nums">
                                             Venc: {fmtData(l.dataVencimento)}
                                         </span>
@@ -1293,6 +1310,7 @@ const ContasReceberTabela = () => {
                                                 <span className="inline-flex items-center gap-1"><span className="text-gray-400">Status:</span>
                                                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${STATUS_PARC[l.statusParcela] || ''}`}>{l.statusParcela}</span>
                                                 </span>
+                                                {l.aguardandoConciliacao && <BadgeAguardandoPix />}
                                                 {l.dataPagamento && <span className="tabular-nums"><span className="text-gray-400">Pgto:</span> {fmtData(l.dataPagamento)}</span>}
                                                 {l.formaPagamento && <span><span className="text-gray-400">Forma:</span> {l.formaPagamento}</span>}
                                                 {l.baixadoPorNome && <span><span className="text-gray-400">Baixado por:</span> {l.baixadoPorNome}</span>}
@@ -1982,7 +2000,10 @@ const DetalheParcelaModal = ({
     );
 
     const saldo = saldoRestante(l);
-    const temHistorico = l.statusParcela === 'PARCIAL' || l.statusParcela === 'PAGO';
+    // Pix/cartão "aguardando conciliação" grava a linha em pagamentos_parcela mas NÃO
+    // muda statusParcela (continua PENDENTE/VENCIDO por design) — sem esta condição a
+    // linha informada existiria no backend mas nunca apareceria aqui.
+    const temHistorico = l.statusParcela === 'PARCIAL' || l.statusParcela === 'PAGO' || !!l.aguardandoConciliacao;
 
     return (
         <div className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center md:p-4" onClick={onClose}>
@@ -2005,8 +2026,26 @@ const DetalheParcelaModal = ({
                         <div className="flex flex-col items-end gap-1">
                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${STATUS_PARC[l.statusParcela] || ''}`}>{l.statusParcela}</span>
                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${STATUS_CONTA[l.statusConta] || ''}`}>Conta: {l.statusConta}</span>
+                            {l.aguardandoConciliacao && <BadgeAguardandoPix />}
                         </div>
                     </div>
+
+                    {l.aguardandoConciliacao && (
+                        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3">
+                            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-amber-700">
+                                <Clock className="h-3.5 w-3.5" /> Pix/cartão informado — aguardando banco
+                            </div>
+                            <p className="text-sm text-amber-900 mt-1">
+                                R$ {fmt(l.aguardandoConciliacao.valor)}
+                                {l.aguardandoConciliacao.forma ? ` · ${l.aguardandoConciliacao.forma}` : ''}
+                                {l.aguardandoConciliacao.dataInformado ? ` · informado em ${fmtData(l.aguardandoConciliacao.dataInformado)}` : ''}
+                                {nomeInformadoPor(l.aguardandoConciliacao.informadoPor) ? ` · por ${nomeInformadoPor(l.aguardandoConciliacao.informadoPor)}` : ''}
+                            </p>
+                            <p className="text-xs text-amber-700 mt-1">
+                                Este valor ainda não conta como recebido — o título continua em aberto até a Conciliação Bancária bater com o extrato.
+                            </p>
+                        </div>
+                    )}
 
                     {l.statusParcela === 'PARCIAL' && (
                         <div className="grid grid-cols-2 gap-3">
@@ -2044,14 +2083,26 @@ const DetalheParcelaModal = ({
                                     <p className="text-xs text-gray-400 text-center py-2">Nenhum pagamento registrado.</p>
                                 ) : (
                                     <div className="space-y-2">
-                                        {pagamentos.map(pg => (
+                                        {pagamentos.map(pg => {
+                                            // `confirmado: false` = Pix/cartão informado no Caixa, ainda sem o
+                                            // banco confirmar — NÃO é pagamento confirmado, não pode aparecer
+                                            // em verde como os demais (senão o operador lê como "já recebido").
+                                            const aguardando = pg.confirmado === false && !pg.estornado;
+                                            return (
                                             <div key={pg.id} className={`flex items-center justify-between text-sm border-b border-gray-100 last:border-0 pb-2 last:pb-0 ${pg.estornado ? 'opacity-50' : ''}`}>
                                                 <div>
-                                                    <div className="tabular-nums text-gray-700">{fmtData(pg.dataPagamento)} · {pg.formaPagamento || '-'}</div>
+                                                    <div className="tabular-nums text-gray-700">
+                                                        {fmtData(pg.dataPagamento)} · {pg.formaPagamento || '-'}
+                                                        {aguardando && (
+                                                            <span className="ml-1.5 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-amber-100 text-amber-700 align-middle whitespace-nowrap">
+                                                                Aguardando conciliação
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                     <div className="text-xs text-gray-400">{pg.registradoPor?.nome}</div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <div className={pg.estornado ? 'line-through' : 'font-medium text-green-700'}>R$ {fmt(pg.valorRecebido)}</div>
+                                                    <div className={pg.estornado ? 'line-through' : (aguardando ? 'font-medium text-amber-700' : 'font-medium text-green-700')}>R$ {fmt(pg.valorRecebido)}</div>
                                                     {Number(pg.valorDesconto) > 0 && (
                                                         <div className="text-xs text-purple-700">desconto R$ {fmt(pg.valorDesconto)}</div>
                                                     )}
@@ -2070,7 +2121,8 @@ const DetalheParcelaModal = ({
                                                     ) : null}
                                                 </div>
                                             </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>

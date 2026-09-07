@@ -226,7 +226,12 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
     // Abertas ordenadas: valor batendo primeiro, depois vencimento mais perto do lançamento
     const dist = (v) => Math.abs((new Date(`${v}T12:00:00Z`) - new Date(`${lancamento.data}T12:00:00Z`)) / 86400000);
     const listaAbertas = (abertas || []).slice().sort((a, b) => (b.bate - a.bate) || (dist(a.vencimento) - dist(b.vencimento)));
-    const listaAbertasReceber = (abertasReceber || []).slice().sort((a, b) => (b.bate - a.bate) || (dist(a.vencimento) - dist(b.vencimento)));
+    // Pix/cartão informado no Caixa e ainda "aguardando conciliação" vem primeiro — é
+    // exatamente o candidato que este operador está aqui para bater com o extrato.
+    const listaAbertasReceber = (abertasReceber || []).slice().sort((a, b) =>
+        ((b.aguardandoConciliacao ? 1 : 0) - (a.aguardandoConciliacao ? 1 : 0)) ||
+        (b.bate - a.bate) || (dist(a.vencimento) - dist(b.vencimento))
+    );
     // Filtro das baixas já registradas: nome, pedido ("Pedido 1860"), NF, valor
     // ("330,10" ou "330.1"), vencimento/data ("09/07/2026") — tudo num campo só.
     // As de OUTRAS contas (banco errado?) já vêm filtradas do servidor pela busca.
@@ -403,11 +408,12 @@ const BuscarModal = ({ lancamento, pendentes, contaId, onClose, onSuccess, onCri
                             )}
                             <div className="space-y-1.5 max-h-52 overflow-y-auto">
                                 {listaAbertasReceber.map(p => (
-                                    <label key={p.id} className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer ${selParcReceber.has(p.id) ? 'border-primary bg-mint/30' : 'border-gray-200 hover:bg-gray-50'}`}>
+                                    <label key={p.id} className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer ${selParcReceber.has(p.id) ? 'border-primary bg-mint/30' : (p.aguardandoConciliacao ? 'border-amber-200 bg-amber-50/50 hover:bg-amber-50' : 'border-gray-200 hover:bg-gray-50')}`}>
                                         <input type="checkbox" checked={selParcReceber.has(p.id)} onChange={() => alternar(setSelParcReceber, p.id)} className="mt-1 accent-[#00754A]" />
                                         <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-1.5">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
                                                 <span className="text-sm font-medium text-gray-900 truncate flex-1">{p.cliente}</span>
+                                                {p.aguardandoConciliacao && <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-100 text-amber-700">Pix informado — bater com o extrato</span>}
                                                 {p.bate && <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">valor bate</span>}
                                                 {p.status === 'PARCIAL' && <span className="shrink-0 px-2 py-0.5 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Parcial</span>}
                                                 <span className="text-sm font-semibold whitespace-nowrap">R$ {fmt(p.saldo)}</span>

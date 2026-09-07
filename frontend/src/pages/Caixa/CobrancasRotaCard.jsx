@@ -44,7 +44,16 @@ const CobrancasRotaCard = ({ cobrancas, podeBaixar, onChanged }) => {
             const ok = r.resultados?.filter(x => x.status === 'OK') || [];
             const jaBaixadas = r.resultados?.filter(x => x.status === 'JA_BAIXADO') || [];
             const erros = r.resultados?.filter(x => x.status === 'ERRO') || [];
-            if (ok.length > 0) toast.success(`${ok.length} título(s) baixado(s)!`);
+            // Item "OK" com detalhe de Pix/cartão aguardando conciliação: o registro no
+            // caixa aconteceu, mas não é uma baixa de verdade ainda — não pode entrar na
+            // mesma contagem "baixado(s)" (a linha some do card se não avisar aqui).
+            const textoDetalhes = (x) => (Array.isArray(x.detalhes) ? x.detalhes.join(' | ') : (x.detalhes || x.detalhe || ''));
+            const okAguardando = ok.filter(x => /aguardando concilia/i.test(textoDetalhes(x)));
+            const okConfirmados = ok.length - okAguardando.length;
+            if (okConfirmados > 0) toast.success(`${okConfirmados} título(s) baixado(s)!`);
+            if (okAguardando.length > 0) {
+                toast(`${okAguardando.length} Pix/cartão registrado(s) — aguardando conciliação bancária; título(s) continua(m) em aberto.`, { icon: '⏳', duration: 8000 });
+            }
             if (jaBaixadas.length > 0) toast(`${jaBaixadas.length} já estava(m) baixado(s).`);
             erros.forEach(e => toast.error(`${e.cliente || ''}: ${e.motivo}`, { duration: 7000 }));
             setSelecionadas(new Set());
@@ -56,7 +65,14 @@ const CobrancasRotaCard = ({ cobrancas, podeBaixar, onChanged }) => {
         }
     };
 
+    // Pix/cartão cobrado na rua e informado no Caixa NÃO quita mais sozinho (09/2026) —
+    // a cobrança fica com status BAIXADA (o registro no caixa aconteceu) mas o campo novo
+    // `aguardandoConciliacao` avisa que o título continua em aberto até o banco confirmar.
+    // Precisa aparecer diferente de "Baixada ✓", senão o operador acha que já terminou.
     const badge = (c) => {
+        if (c.status === 'BAIXADA' && c.aguardandoConciliacao) {
+            return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 whitespace-nowrap">Pix aguardando banco</span>;
+        }
         if (c.status === 'BAIXADA') return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800 whitespace-nowrap">Baixada ✓</span>;
         if (c.status === 'NAO_COBRADA') {
             return <span className="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-700 whitespace-nowrap">
@@ -71,6 +87,7 @@ const CobrancasRotaCard = ({ cobrancas, podeBaixar, onChanged }) => {
         const partes = [];
         if (c.parcial) partes.push(`parcial (de ${fmtMoeda(c.valorParcela)})`);
         if (c.formaPagamentoNome) partes.push(c.formaPagamentoNome);
+        if (c.aguardandoConciliacao) partes.push('aguardando conciliação bancária — título continua em aberto');
         return partes.join(' · ');
     };
 
