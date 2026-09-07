@@ -97,7 +97,7 @@ régua de cobrança.
 Uma parcela só deve virar PAGA por um destes caminhos:
 
 1. **Conciliação Bancária** — o dinheiro apareceu no extrato (boleto, Pix, transferência, cartão) ou o Asaas confirmou o pagamento. A baixa nasce do lançamento do banco, então o valor está conferido.
-2. **Caixa** — quem recebeu (motorista na rua ou quem atende no balcão) põe no caixa dela; ao processar o caixa a parcela é baixada e o valor entra no **valor a prestar** dessa pessoa.
+2. **Caixa** — quem recebeu (motorista na rua ou quem atende no balcão) põe no caixa dela; ao processar o caixa a parcela é baixada e o valor entra no **valor a prestar** dessa pessoa. Só **Dinheiro** e **PIX Asaas** baixam nessa hora — Pix comum e cartão processados aqui ficam **"Aguardando conciliação"** (ver abaixo) até a Conciliação Bancária confirmar.
 3. **Baixa manual aqui na tela** — é a **exceção**, e por isso:
    - exige a permissão **Pode_Baixar_Contas_Receber_Manual** (separada de "Dar Baixa em Parcelas"); sem ela os botões de baixa nem aparecem;
    - aceita **somente Dinheiro ou Cheque**. Boleto, Pix, cartão e transferência são recusados com a mensagem apontando a Conciliação Bancária — esses caem no extrato e é lá que o dinheiro é confrontado com o banco;
@@ -108,6 +108,13 @@ Uma parcela só deve virar PAGA por um destes caminhos:
 Desconto sem dinheiro (perdoar saldo) continua na mesma permissão de desconto e **não** passa por caixa — não há valor a prestar.
 
 **Especial entregue aparece na aba "Aberto":** desde 08/2026 a entrega não quita mais o título sozinha, então o especial entregue fica em **Aberto** até a baixa na conferência do Caixa. Se o cliente já pagou em dinheiro na entrega, ele **não** é tratado como devedor nesse intervalo (não bloqueia venda nova, não entra na régua nem na inadimplência das telas).
+
+**Aguardando conciliação bancária (Pix comum e cartão, 09/2026):** quando o Caixa processa um pagamento em Pix comum ou cartão — na conferência (especial ou normal/Faturado CA) ou numa Cobrança em Rota —, esse dinheiro **não quita mais sozinho**. Só Dinheiro e PIX Asaas continuam quitando na hora, porque só eles já têm um banco de verdade no momento do clique. O título fica com o selo **"Aguardando conciliação"**:
+- a informação (valor, forma, quando, quem processou) fica **registrada e visível** — não se perde;
+- a parcela continua **PENDENTE/VENCIDO** (ou **PARCIAL**, se só parte foi confirmada por outra forma) pelo valor **cheio**, sem contar esse Pix/cartão como recebido;
+- **não é dívida do cliente** — ele já pagou, só falta o banco confirmar. Por isso esse título **não bloqueia venda nova, não entra na régua de cobrança nem aparece como inadimplente** (mesmo caso do especial entregue aguardando conferência, ver acima — a partir de 09/2026 vale também para pedido **normal**);
+- a confirmação sai na **Conciliação Bancária** (Financeiro): quando o valor bate com o extrato, a linha vira baixa de verdade e a parcela é recalculada (PAGO/PARCIAL);
+- estornar essa linha funciona pelo fluxo normal de estorno (ver abaixo) — ela é uma linha de pagamento como qualquer outra, só que ainda não confirmada.
 
 **Parcela PARCIAL:** quando entra só parte do valor, a parcela fica com o selo **Parcial** e mostra **"Recebido (+ desconto)"** e **"Falta receber"** — o saldo continua em aberto e é o que entra na cobrança. O histórico de pagamento traz cada recebimento (valor, forma, banco/caixa, data e quem baixou).
 
@@ -209,7 +216,8 @@ A baixa continua sendo dada **aqui**, em Contas a Receber, quando o valor for de
 - **Conta Azul (legado)** — contas antigas da era CA foram importadas para cá (origem IMPORTADO_CA). Baixa dada **no Conta Azul** numa dessas contas importadas é espelhada no app sozinha (a cada 3 horas): a parcela é quitada com o banco/forma de lá e o crédito aparece na Conciliação Bancária e nos Saldos por Conta
 - **Notas Fiscais** — a NF-e do pedido é emitida pelo app (Focus NFe)
 - **Régua de Cobrança** — título de pedido **especial** (fiado local), **bonificação** e conta de origem ESPECIAL **nunca entram na cobrança automática** (decisão do dono, 08/2026): quem cobra especial é o escritório/vendedor, na mão. Amostra não gera título
-- **Caixa Diário** — é a conferência do caixa que baixa as parcelas do que foi recebido na rua. Desde 08/2026 a entrega **não quita mais nenhum título sozinha** (nem de pedido especial): ela só registra o que o motorista recebeu, e o título fica **em aberto** aqui até a baixa no Caixa. Recebendo menos que o valor, a parcela fica **PARCIAL** e o saldo continua em aberto para cobrança
+- **Caixa Diário** — é a conferência do caixa que baixa as parcelas do que foi recebido na rua. Desde 08/2026 a entrega **não quita mais nenhum título sozinha** (nem de pedido especial): ela só registra o que o motorista recebeu, e o título fica **em aberto** aqui até a baixa no Caixa. Recebendo menos que o valor, a parcela fica **PARCIAL** e o saldo continua em aberto para cobrança. Desde 09/2026, Pix comum/cartão processados pelo Caixa (conferência ou Cobrança em Rota) não quitam mais sozinhos — ficam "Aguardando conciliação" (ver acima)
+- **Conciliação Bancária** — é quem confirma um Pix comum/cartão "Aguardando conciliação": ao bater o valor com o extrato, a linha vira baixa de verdade e a parcela é recalculada. Ver [conciliacao-bancaria.md](conciliacao-bancaria.md)
 - **Clientes** — a inadimplência exibida na Rota e no detalhe do cliente vem dos dados desta tela
 
 ---

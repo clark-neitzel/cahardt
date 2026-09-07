@@ -282,7 +282,11 @@ const asaasBaixaService = {
                         data: { estornado: true, estornadoEm: new Date() }
                     });
                     const restantes = await tx.pagamentoParcela.findMany({ where: { parcelaId: parcela.id, estornado: false } });
-                    const novoValorPago = restantes.reduce((s, p) => s + Number(p.valorRecebido), 0);
+                    // Só CONFIRMADO soma em valorPago (09/2026: Pix comum/cartão informado no
+                    // Caixa pode conviver na MESMA parcela sem ter sido confirmado ainda —
+                    // sem este filtro, estornar o PIX Asaas recalcularia valorPago somando
+                    // também uma linha "aguardando conciliação" que nunca quitou nada).
+                    const novoValorPago = restantes.filter(p => p.confirmado !== false).reduce((s, p) => s + Number(p.valorRecebido), 0);
                     const novoDesconto = restantes.reduce((s, p) => s + Number(p.valorDesconto), 0);
                     const novoStatusParcela = calcularStatusParcela(parcela.valor, novoValorPago, novoDesconto);
                     await tx.parcela.update({

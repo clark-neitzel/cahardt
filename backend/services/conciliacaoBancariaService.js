@@ -1915,6 +1915,7 @@ async function baixasDisponiveis({ contaFinanceiraCaId, de, ate, tipo, busca }) 
             },
             select: {
                 id: true, valorRecebido: true, dataPagamento: true, formaPagamento: true, contaFinanceiraCaId: true,
+                confirmado: true,
                 parcela: {
                     select: {
                         numeroParcela: true, valor: true, dataVencimento: true,
@@ -1927,12 +1928,19 @@ async function baixasDisponiveis({ contaFinanceiraCaId, de, ate, tipo, busca }) 
         outras = regs.map((r) => {
             const cli = r.parcela?.contaReceber?.cliente;
             const nome = cli?.NomeFantasia || cli?.Nome || 'Cliente';
+            // "Aguardando conciliação" (confirmado:false) é o caso NORMAL desde 09/2026 —
+            // Pix comum/cartão informado no Caixa, por design sem conta ainda. "SEM banco"
+            // fica reservado ao caso raro: baixa CONFIRMADA mas sem conta financeira
+            // configurada (config faltando) — os dois precisam de rótulo diferente para o
+            // operador não achar que todo "sem conta" é a mesma coisa.
+            const rotuloSemConta = r.confirmado === false ? 'Aguardando conciliação (Pix/cartão informado)' : 'SEM banco';
             return {
                 id: r.id,
                 valor: round2(num(r.valorRecebido)),
                 data: ymd(r.dataPagamento),
                 label: `${nome} — parcela ${r.parcela?.numeroParcela ?? '?'}${r.formaPagamento ? ` (${r.formaPagamento})` : ''}`,
-                outraConta: { id: r.contaFinanceiraCaId, nome: r.contaFinanceiraCaId ? (nomesContas.get(r.contaFinanceiraCaId) || 'conta desconhecida') : 'SEM banco', tipo: 'RECEBER' },
+                confirmado: r.confirmado !== false,
+                outraConta: { id: r.contaFinanceiraCaId, nome: r.contaFinanceiraCaId ? (nomesContas.get(r.contaFinanceiraCaId) || 'conta desconhecida') : rotuloSemConta, tipo: 'RECEBER' },
                 detalhe: {
                     nome,
                     descricao: r.parcela?.contaReceber?.pedido?.numero ? `Pedido ${r.parcela.contaReceber.pedido.numero}` : null,
@@ -2006,11 +2014,30 @@ async function corrigirContaBaixa({ tipo, pagamentoId, novaContaId, userId }) {
     }
 
     // RECEBER: o ledger não guarda o id da baixa no CA — corrige o app e avisa
-    const pg = await prisma.pagamentoParcela.findUnique({ where: { id: pagamentoId }, select: { id: true, estornado: true } });
+    const pg = await prisma.pagamentoParcela.findUnique({
+        where: { id: pagamentoId },
+        select: { id: true, estornado: true, confirmado: true, parcelaId: true }
+    });
     if (!pg || pg.estornado) throw erro('Baixa não encontrada (ou estornada).');
-    await prisma.pagamentoParcela.update({ where: { id: pg.id }, data: { contaFinanceiraCaId: novaContaId } });
+
+    // Linha "aguardando conciliação" (Pix comum/cartão informado no Caixa, confirmado:false,
+    // sem conta): dar a ela a conta do extrato é a PRÓPRIA confirmação — a partir daqui ela
+    // deixa de ser "informada" e vira baixa de verdade, quitando a parcela (regra do dono,
+    // 09/2026). Baixa que já tinha conta (caso raro: config faltando) só move de banco, como
+    // sempre foi.
+    const eraAguardando = pg.confirmado === false;
+    await prisma.$transaction(async (tx) => {
+        await tx.pagamentoParcela.update({
+            where: { id: pg.id },
+            data: { contaFinanceiraCaId: novaContaId, ...(eraAguardando ? { confirmado: true } : {}) }
+        });
+        if (eraAguardando) await recalcularParcelaReceber(tx, pg.parcelaId);
+    }, { timeout: 20000, maxWait: 10000 });
+
     return {
-        message: `Baixa movida para ${conta.nomeBanco} no app. Confira o banco do recebimento no Conta Azul (o app não guarda o vínculo dessa baixa lá).`,
+        message: eraAguardando
+            ? `Confirmado! O Pix/cartão informado no Caixa bateu com o extrato — vinculado a ${conta.nomeBanco} e a parcela foi atualizada.`
+            : `Baixa movida para ${conta.nomeBanco} no app. Confira o banco do recebimento no Conta Azul (o app não guarda o vínculo dessa baixa lá).`,
         caAtualizado: false
     };
 }
@@ -2139,14 +2166,24 @@ const calcStatusContaReceber = (parcelas) => {
     return 'ABERTO';
 };
 
-/** Recalcula status da parcela a receber e da conta, dentro de uma transação. */
+/**
+ * Recalcula status da parcela a receber e da conta, dentro de uma transação.
+ *
+ * `valorPago` soma só `pagamentos` com `confirmado: true` — Pix comum/cartão INFORMADO
+ * no Caixa (confirmado:false) fica visível no ledger, mas não quita sozinho (regra do
+ * dono, 09/2026). `valorDesconto` não precisa do mesmo filtro: desconto (devolução)
+ * nasce sempre confirmado por default, nunca é criado como "aguardando".
+ * `aguardandoConciliacao` da conta é recalculada junto, sempre — é o que impede o Caixa
+ * de travar no fechamento (ver caixa.js:contaSemPendenciaDeCaixa).
+ */
 async function recalcularParcelaReceber(tx, parcelaId) {
     const p = await tx.parcela.findUnique({
         where: { id: parcelaId },
-        include: { pagamentos: { where: { estornado: false }, select: { valorRecebido: true, valorDesconto: true } } }
+        include: { pagamentos: { where: { estornado: false }, select: { valorRecebido: true, valorDesconto: true, confirmado: true } } }
     });
     if (!p) return;
-    const valorPago = round2(p.pagamentos.reduce((s, x) => s + num(x.valorRecebido), 0));
+    const confirmados = p.pagamentos.filter((x) => x.confirmado !== false);
+    const valorPago = round2(confirmados.reduce((s, x) => s + num(x.valorRecebido), 0));
     const valorDescontoTotal = round2(p.pagamentos.reduce((s, x) => s + num(x.valorDesconto), 0));
     const status = p.status === 'CANCELADO' ? 'CANCELADO' : calcStatusParcelaReceber(p.valor, valorPago, valorDescontoTotal);
     const ultimo = p.pagamentos.length > 0;
@@ -2159,7 +2196,13 @@ async function recalcularParcelaReceber(tx, parcelaId) {
     });
     const todas = await tx.parcela.findMany({ where: { contaReceberId: p.contaReceberId }, select: { id: true, status: true } });
     const atualizadas = todas.map((x) => (x.id === parcelaId ? { ...x, status } : x));
-    await tx.contaReceber.update({ where: { id: p.contaReceberId }, data: { status: calcStatusContaReceber(atualizadas) } });
+    const pendenteAguardando = await tx.pagamentoParcela.count({
+        where: { estornado: false, confirmado: false, parcela: { contaReceberId: p.contaReceberId } }
+    });
+    await tx.contaReceber.update({
+        where: { id: p.contaReceberId },
+        data: { status: calcStatusContaReceber(atualizadas), aguardandoConciliacao: pendenteAguardando > 0 }
+    });
 }
 
 /**
@@ -2891,6 +2934,11 @@ module.exports = {
     confirmarIdentificadas,
     identificarDebitosViaCA,
     corrigirContaBaixa,
+    // Exportado p/ o retroativo "reverter-baixas-sem-banco" (adminExec.js, 09/2026) —
+    // mesma função que confirma um Pix aguardando, usada aqui pra fazer o caminho
+    // inverso: tirar `confirmado` de uma baixa que ANTES quitava "SEM banco" e recompor
+    // a parcela como se a linha tivesse nascido `confirmado:false` desde sempre.
+    recalcularParcelaReceber,
     desfazer,
     desconciliarPorBaixa,
     listarImportacoes,

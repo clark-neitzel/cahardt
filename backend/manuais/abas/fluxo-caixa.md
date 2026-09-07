@@ -37,6 +37,8 @@ Visão gerencial de **quanto dinheiro entra e sai**, comparando **previsto × re
 
 > **Limitação:** o fluxo mostra o que está registrado no app. Despesa paga só dentro do Conta Azul aparece assim que a baixa é puxada pelo sync (a cada 30 min); despesa que nunca entrou no app não aparece.
 
+> **Pix comum/cartão do Caixa "Aguardando conciliação" (09/2026) NÃO entram no realizado.** Desde que o Caixa deixou de quitar Pix comum/cartão sozinho (ver `caixa.md`), essas linhas existem no ledger mas ainda não são dinheiro confirmado pelo banco — contá-las aqui inflaria o "entradas realizadas" com título que ainda pode não bater na Conciliação Bancária. Elas só entram no realizado no dia em que a Conciliação Bancária as confirma (mesma data do lançamento do extrato).
+
 ## Permissões necessárias
 
 | Permissão | Efeito |

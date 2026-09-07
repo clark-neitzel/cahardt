@@ -11,7 +11,15 @@
  *   4. rodar a baixa duas vezes não duplica ledger nem valor;
  *   5. estorno devolve a parcela ao valor cheio e marca o ledger como estornado;
  *   6. pedido do CA (não especial) continua igual (sem regressão);
- *   8. forma não permitida pela condição do pedido é recusada com mensagem clara.
+ *   8. forma não permitida pela condição do pedido é recusada com mensagem clara;
+ *   19. Pix comum/cartão do CAIXA (especial) NÃO quitam mais — só informam, ledger
+ *       confirmado:false, sem conta, e o fechamento do caixa NÃO trava (09/2026);
+ *   35. mesma regra para pedido NORMAL/Faturado CA (ramo duplicado do caixa.js) e para
+ *       Cobrança em Rota (Dinheiro em rota também passa a ganhar conta financeira —
+ *       bug pré-existente corrigido junto); a Conciliação Bancária confirma um Pix
+ *       aguardando (corrigirContaBaixa) e o retroativo admin-exec
+ *       (reverter-baixas-sem-banco) reverte uma baixa legada "SEM banco" com dry-run,
+ *       execução idempotente e sem gerar inadimplente fantasma.
  *
  * Cria e APAGA os próprios dados (prefixo TESTE-BXESP).
  * ⛔ SÓ RODA NO BANCO LOCAL (trava em exigir-banco-local.js).
@@ -544,8 +552,9 @@ async function main() {
     ok('bonificação fora da régua', !idsB.some(id => parcelasNaRegua.has(id)));
 
 
-    // ── TESTE 19: PIX comum e CARTÃO no especial quitam (não travam o caixa) ──
-    console.log('\n[19] Especial pago em PIX comum + cartão');
+    // ── TESTE 19: PIX comum e CARTÃO no especial NÃO quitam mais (só informam, aguardam
+    // conciliação) — mas também não podem travar o caixa (regra do dono, 09/2026) ──
+    console.log('\n[19] Especial pago em PIX comum + cartão (informado, aguardando conciliação)');
     const t19 = await criarPedido({ valor: 300, condicao: condDinheiro });
     await prisma.pedidoPagamentoReal.createMany({
         data: [
@@ -557,18 +566,38 @@ async function main() {
     const r19 = await api('POST', '/api/caixa/quitar-ca', { pedidoIds: [t19.pedido.id], dataPagamento: hoje });
     const e19 = await estado(t19.conta.id);
     const led19 = e19.parcelas[0].pagamentos;
-    ok('rota 200', r19.status === 200, JSON.stringify(r19.body?.resultados?.[0] || r19.body).slice(0, 220));
-    ok('parcela PAGO e conta QUITADO', e19.parcelas[0].status === 'PAGO' && e19.status === 'QUITADO',
-        `${e19.parcelas[0].status}/${e19.status}`);
-    ok('duas linhas de ledger (pix + cartão) somando R$ 300',
-        led19.length === 2 && Math.abs(led19.reduce((s, l) => s + num(l.valorRecebido), 0) - 300) < 0.01,
-        `${led19.length} linha(s)`);
-    ok('conta financeira fica "não informada" (null), sem chute',
+    const res19 = r19.body?.resultados?.[0];
+    ok('rota 200', r19.status === 200, JSON.stringify(res19 || r19.body).slice(0, 260));
+    ok('parcela continua PENDENTE (Pix/cartão não quitam sozinhos)',
+        e19.parcelas[0].status === 'PENDENTE' && e19.parcelas[0].valorPago === null,
+        `status=${e19.parcelas[0].status} pago=${e19.parcelas[0].valorPago}`);
+    ok('conta continua ABERTO (não é QUITADO nem PARCIAL)', e19.status === 'ABERTO', `status=${e19.status}`);
+    ok('conta marcada aguardandoConciliacao=true', e19.aguardandoConciliacao === true, `${e19.aguardandoConciliacao}`);
+    ok('duas linhas de ledger (pix + cartão) somando R$ 300, as DUAS confirmado:false',
+        led19.length === 2 && led19.every(l => l.confirmado === false)
+        && Math.abs(led19.reduce((s, l) => s + num(l.valorRecebido), 0) - 300) < 0.01,
+        `${led19.length} linha(s) confirmado=${JSON.stringify(led19.map(l => l.confirmado))}`);
+    ok('conta financeira fica null nas duas (aguardando — nunca se chuta banco)',
         led19.every(l => l.contaFinanceiraCaId === null));
-    // o caixa não pode continuar preso por causa desse pedido
-    // é o status QUITADO da conta que tira o pedido de "quitPendentes" no fechar e no
-    // reabrir-pendentes (ambos usam exatamente esta condição)
-    ok('sai das pendências de fechamento (conta QUITADO)', e19.status === 'QUITADO');
+    ok('resultado: valor confirmado = 0 e aguardandoConciliacao = 300',
+        num(res19?.valor) === 0 && Math.abs(num(res19?.aguardandoConciliacao) - 300) < 0.01,
+        JSON.stringify({ valor: res19?.valor, aguardandoConciliacao: res19?.aguardandoConciliacao }));
+    ok('detalhes avisa "aguardando conciliação bancária" para as duas formas',
+        (res19?.detalhes || []).filter(d => /aguardando conciliação bancária/i.test(d)).length === 2,
+        JSON.stringify(res19?.detalhes));
+    // o caixa NÃO pode ficar preso por causa desse pedido, mesmo sem quitar de verdade —
+    // é exatamente o ponto crítico do desenho (contaSemPendenciaDeCaixa + aguardandoConciliacao)
+    const resumo19 = await api('GET', `/api/caixa/resumo?data=${hoje}&vendedorId=${motorista.id}`);
+    const linha19 = (resumo19.body?.entregas || []).find(x => x.pedidoId === t19.pedido.id);
+    ok('a linha NÃO fica pendente de baixa no caixa (fechamento não trava)',
+        linha19?.pendenteBaixaCaixa === false, `pendenteBaixaCaixa=${linha19?.pendenteBaixaCaixa}`);
+    // rodar de novo não duplica as linhas "aguardando" (mesma idempotência por fila)
+    const r19b = await api('POST', '/api/caixa/quitar-ca', { pedidoIds: [t19.pedido.id], dataPagamento: hoje });
+    const e19b = await estado(t19.conta.id);
+    ok('reprocessar não duplica o ledger aguardando', e19b.parcelas[0].pagamentos.length === 2,
+        `${e19b.parcelas[0].pagamentos.length} linha(s)`);
+    ok('reprocessar avisa JA_QUITADO (nada novo, nem confirmado nem aguardando)',
+        r19b.body?.resultados?.[0]?.status === 'JA_QUITADO', JSON.stringify(r19b.body?.resultados?.[0]));
 
     // ── TESTE 20: idempotência POR FILA não troca a conta do dinheiro ──
     console.log('\n[20] Idempotência por fila (quebra por conta financeira)');
@@ -1321,6 +1350,205 @@ async function main() {
         selo34c && !selo34c.inadimplente, JSON.stringify({ achou: !!selo34c, inadimplente: selo34c?.inadimplente }));
 
 
+    // ── TESTE 35: pedido NORMAL (Faturado CA) com Pix comum — mesma regra do especial ──
+    // Até aqui só o especial (teste 19) provou "Pix comum não quita". Este é o cenário
+    // pedido pelo plano: "Pix comum não quita / normal entra na espera" — o ramo
+    // normal-local (caixa.js:3204+) tem implementação DUPLICADA da do especial (decisão
+    // documentada no código), então precisa da sua PRÓPRIA prova.
+    console.log('\n[35] Pix comum não quita — pedido NORMAL (Faturado CA) também entra em espera');
+    const t35 = await criarPedido({ valor: 500, especial: false, condicao: condDinheiro, faturado: true });
+    await prisma.pedidoPagamentoReal.create({
+        data: { pedidoId: t35.pedido.id, formaPagamentoNome: 'À vista - Pix', valor: 500 }
+    });
+    await prisma.pedido.update({ where: { id: t35.pedido.id }, data: { statusEntrega: 'ENTREGUE', dataEntrega: dataEntregaTeste } });
+    const r35 = await api('POST', '/api/caixa/quitar-ca', { pedidoIds: [t35.pedido.id], dataPagamento: hoje });
+    const e35 = await estado(t35.conta.id);
+    const led35 = e35.parcelas[0].pagamentos;
+    const res35 = r35.body?.resultados?.[0];
+    ok('rota 200', r35.status === 200, JSON.stringify(res35 || r35.body).slice(0, 220));
+    ok('parcela continua PENDENTE (pedido normal também não quita mais com Pix comum)',
+        e35.parcelas[0].status === 'PENDENTE' && e35.parcelas[0].valorPago === null,
+        `status=${e35.parcelas[0].status} pago=${e35.parcelas[0].valorPago}`);
+    ok('conta continua ABERTO com aguardandoConciliacao=true',
+        e35.status === 'ABERTO' && e35.aguardandoConciliacao === true, `${e35.status}/${e35.aguardandoConciliacao}`);
+    ok('1 linha de ledger confirmado:false, sem conta financeira',
+        led35.length === 1 && led35[0].confirmado === false && led35[0].contaFinanceiraCaId === null,
+        JSON.stringify(led35));
+    ok('resultado aponta aguardandoConciliacao=500 (nada confirmado ainda)',
+        Math.abs(num(res35?.aguardandoConciliacao) - 500) < 0.01, JSON.stringify(res35?.aguardandoConciliacao));
+    const ped35 = await prisma.pedido.findUnique({ where: { id: t35.pedido.id }, select: { baixaCaRealizada: true } });
+    ok('pedido.baixaCaRealizada continua sendo marcado (semântica NÃO mudou — "processado pelo caixa")',
+        ped35.baixaCaRealizada === true);
+    // reprocessar não duplica (idempotência NOVA do ramo normal-local — antes não precisava,
+    // porque Pix comum quitava na hora e a parcela saía de "abertas" sozinha)
+    const r35b = await api('POST', '/api/caixa/quitar-ca', { pedidoIds: [t35.pedido.id], dataPagamento: hoje });
+    const e35b = await estado(t35.conta.id);
+    ok('reprocessar NÃO duplica a linha aguardando', e35b.parcelas[0].pagamentos.length === 1,
+        `${e35b.parcelas[0].pagamentos.length} linha(s)`);
+    // a proteção "aguardando conferência" (antes só especial) agora também enxerga o normal
+    const { contasAguardandoConferencia: cac35 } = require('../services/recebimentoEntregaService');
+    const contaT35 = await prisma.contaReceber.findUnique({
+        where: { id: t35.conta.id },
+        include: { parcelas: true, pedido: { select: { especial: true, statusEntrega: true, pagamentosReais: true } } }
+    });
+    ok('pedido NORMAL com Pix aguardando é reconhecido pela janela (antes só especial)',
+        cac35([contaT35]).has(t35.conta.id));
+    // fechamento do caixa não pode travar por causa desse pedido
+    const resumo35 = await api('GET', `/api/caixa/resumo?data=${hoje}&vendedorId=${motorista.id}`);
+    const linha35 = (resumo35.body?.entregas || []).find(x => x.pedidoId === t35.pedido.id);
+    ok('linha NÃO fica pendente de baixa no caixa (fechamento não trava)',
+        linha35?.pendenteBaixaCaixa === false, `pendenteBaixaCaixa=${linha35?.pendenteBaixaCaixa}`);
+
+    // ── TESTE 35b: Cobrança em Rota — Pix não quita; Dinheiro passa a ganhar conta ──
+    // (bug pré-existente: Dinheiro em rota NUNCA teve contaFinanceiraCaId — corrigido
+    // junto por já estar mexendo no arquivo, regra "boy scout" do CLAUDE.md)
+    console.log('\n[35b] Cobrança em Rota: Pix não quita / Dinheiro agora quita COM conta financeira');
+    const t35r = await criarPedido({ valor: 220, especial: false, condicao: condDinheiro, faturado: true });
+    await prisma.pedido.update({ where: { id: t35r.pedido.id }, data: { statusEntrega: 'ENTREGUE', dataEntrega: dataEntregaTeste } });
+    const parcela35r = (await prisma.parcela.findMany({ where: { contaReceberId: t35r.conta.id } }))[0];
+    const cobrar35r = await api('POST', '/api/cobrancas-rota/avulsa/cobrar',
+        { parcelaId: parcela35r.id, valor: 220, formaPagamentoNome: 'Pix' }, motoristaToken);
+    ok('cobrança avulsa em Pix registrada na rua', cobrar35r.status === 200, JSON.stringify(cobrar35r.body).slice(0, 200));
+    const cobrancaId35r = cobrar35r.body?.cobranca?.id;
+    const baixar35r = await api('POST', '/api/caixa/cobrancas-rota/baixar', { ids: [cobrancaId35r] });
+    const e35r = await estado(t35r.conta.id);
+    const led35r = e35r.parcelas[0].pagamentos;
+    const res35r = baixar35r.body?.resultados?.[0];
+    ok('baixa da cobrança em rota respondeu OK', res35r?.status === 'OK', JSON.stringify(res35r));
+    ok('Pix em rota NÃO quita — parcela continua PENDENTE',
+        e35r.parcelas[0].status === 'PENDENTE' && e35r.parcelas[0].valorPago === null,
+        `status=${e35r.parcelas[0].status}`);
+    ok('ledger da cobrança em rota: confirmado:false, sem conta',
+        led35r.length === 1 && led35r[0].confirmado === false && led35r[0].contaFinanceiraCaId === null,
+        JSON.stringify(led35r));
+    ok('resultado sinaliza aguardandoConciliacao:true', res35r?.aguardandoConciliacao === true, JSON.stringify(res35r));
+    const cobRotaDb35r = await prisma.cobrancaRota.findUnique({ where: { id: cobrancaId35r } });
+    ok('CobrancaRota fica BAIXADA mas com aguardandoConciliacao=true (não parece resolvida à toa)',
+        cobRotaDb35r.status === 'BAIXADA' && cobRotaDb35r.aguardandoConciliacao === true,
+        `status=${cobRotaDb35r.status} aguardandoConciliacao=${cobRotaDb35r.aguardandoConciliacao}`);
+
+    // controle: Dinheiro em rota AGORA ganha conta financeira (bug pré-existente corrigido)
+    const t35d = await criarPedido({ valor: 90, especial: false, condicao: condDinheiro, faturado: true });
+    await prisma.pedido.update({ where: { id: t35d.pedido.id }, data: { statusEntrega: 'ENTREGUE', dataEntrega: dataEntregaTeste } });
+    const parcela35d = (await prisma.parcela.findMany({ where: { contaReceberId: t35d.conta.id } }))[0];
+    const cobrar35d = await api('POST', '/api/cobrancas-rota/avulsa/cobrar',
+        { parcelaId: parcela35d.id, valor: 90, formaPagamentoNome: 'Dinheiro' }, motoristaToken);
+    const cobrancaId35d = cobrar35d.body?.cobranca?.id;
+    const baixar35d = await api('POST', '/api/caixa/cobrancas-rota/baixar', { ids: [cobrancaId35d] });
+    const e35d = await estado(t35d.conta.id);
+    ok('Dinheiro em rota QUITA de verdade (parcela PAGO)', e35d.parcelas[0].status === 'PAGO',
+        `status=${e35d.parcelas[0].status} baixar=${JSON.stringify(baixar35d.body?.resultados?.[0])}`);
+    ok('Dinheiro em rota agora tem conta financeira (Caixinha) — bug antigo corrigido',
+        e35d.parcelas[0].pagamentos[0]?.contaFinanceiraCaId === caixinhaId,
+        `conta=${e35d.parcelas[0].pagamentos[0]?.contaFinanceiraCaId}`);
+    ok('Dinheiro em rota: linha nasce confirmado:true', e35d.parcelas[0].pagamentos[0]?.confirmado === true);
+
+    // ── TESTE 35c: Conciliação Bancária confirma um Pix aguardando (corrigirContaBaixa) ──
+    console.log('\n[35c] Conciliação Bancária confirma o Pix aguardando do teste [19]');
+    const conciliacaoService = require('../services/conciliacaoBancariaService');
+    const contaFinTeste = await prisma.contaFinanceira.create({
+        data: { id: `${MARCA}-BANCO-TESTE`, nomeBanco: `${MARCA} Banco Teste`, tipoUso: 'CORRENTE', ativo: true }
+    });
+    const ledgerT19 = (await estado(t19.conta.id)).parcelas[0].pagamentos;
+    const linhaPixT19 = ledgerT19.find(l => l.formaPagamento === 'À vista - Pix' && !l.estornado);
+    const rConf = await conciliacaoService.corrigirContaBaixa({
+        tipo: 'RECEBER', pagamentoId: linhaPixT19.id, novaContaId: contaFinTeste.id, userId: usuarioCaixa.id
+    });
+    ok('corrigirContaBaixa confirma a linha (mensagem de "Confirmado!")',
+        /Confirmado!/.test(rConf.message || ''), rConf.message);
+    const e19c = await estado(t19.conta.id);
+    const linhaConfirmada = e19c.parcelas[0].pagamentos.find(l => l.id === linhaPixT19.id);
+    ok('a linha virou confirmado:true, com a conta do extrato',
+        linhaConfirmada.confirmado === true && linhaConfirmada.contaFinanceiraCaId === contaFinTeste.id,
+        JSON.stringify(linhaConfirmada));
+    ok('parcela agora soma R$ 180 (só o Pix confirmou) e fica PARCIAL',
+        num(e19c.parcelas[0].valorPago) === 180 && e19c.parcelas[0].status === 'PARCIAL',
+        `pago=${num(e19c.parcelas[0].valorPago)} status=${e19c.parcelas[0].status}`);
+    ok('conta continua aguardandoConciliacao=true (o cartão ainda não confirmou)',
+        e19c.aguardandoConciliacao === true);
+
+    // ── TESTE 35d: RETROATIVO admin-exec — reverter-baixas-sem-banco (dry-run + execução) ──
+    console.log('\n[35d] Retroativo: GET/POST /admin-exec/reverter-baixas-sem-banco');
+    const clienteRetro = await prisma.cliente.create({
+        data: { UUID: `${MARCA}-CLIRETRO`, Nome: `${MARCA} Cliente Retro`, NomeFantasia: `${MARCA} Cliente Retro`, Condicao_de_pagamento: 'AVISTA_DIN' }
+    });
+    const t35x = await criarPedido({ valor: 260, condicao: condDinheiro, clienteUuid: clienteRetro.UUID });
+    await prisma.pedidoPagamentoReal.create({
+        data: { pedidoId: t35x.pedido.id, formaPagamentoNome: 'À vista - Pix', valor: 260 }
+    });
+    await prisma.pedido.update({ where: { id: t35x.pedido.id }, data: { statusEntrega: 'ENTREGUE', dataEntrega: dataEntregaTeste } });
+    const parcela35x = (await prisma.parcela.findMany({ where: { contaReceberId: t35x.conta.id } }))[0];
+    // simula uma baixa ANTIGA (de antes da coluna `confirmado` existir): quitou "SEM banco"
+    const legado35x = await prisma.pagamentoParcela.create({
+        data: {
+            parcelaId: parcela35x.id, valorRecebido: 260, formaPagamento: 'À vista - Pix',
+            contaFinanceiraCaId: null, confirmado: true, origem: 'CAIXA_BAIXA_CA',
+            dataPagamento: new Date(hoje + 'T12:00:00-03:00'), registradoPorId: usuarioCaixa.id
+        }
+    });
+    await prisma.parcela.update({ where: { id: parcela35x.id }, data: { status: 'PAGO', valorPago: 260 } });
+    await prisma.contaReceber.update({ where: { id: t35x.conta.id }, data: { status: 'QUITADO' } });
+
+    const dry35 = await fetch(`${base}/api/admin-exec/reverter-baixas-sem-banco?de=${hoje}&ate=${hoje}`, {
+        headers: { 'x-admin-secret': process.env.ADMIN_SECRET }
+    }).then(r => r.json());
+    const candidato35x = (dry35.candidatos || []).find(c => c.id === legado35x.id);
+    ok('dry-run encontra a baixa legada SEM banco', !!candidato35x,
+        `total candidatos=${dry35.candidatos?.length} totais=${JSON.stringify(dry35.totais)}`);
+    ok('dry-run traz mensagemWhatsApp pronta (*negrito*, agrupada, com total, sem tabela)',
+        /\*Pix comum\/cartão SEM banco\*/.test(dry35.mensagemWhatsApp || '')
+        && /\*Total:/.test(dry35.mensagemWhatsApp || '')
+        && !/\|.*\|.*\|/.test(dry35.mensagemWhatsApp || ''), // sem cara de tabela markdown
+        (dry35.mensagemWhatsApp || '').slice(0, 200));
+
+    const exec35 = await fetch(`${base}/api/admin-exec/reverter-baixas-sem-banco`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-secret': process.env.ADMIN_SECRET },
+        body: JSON.stringify({ ids: [legado35x.id] })
+    }).then(r => r.json());
+    ok('execução reverte exatamente 1 baixa', exec35.totais?.quantidade === 1, JSON.stringify(exec35.totais));
+    const e35x = await estado(t35x.conta.id);
+    ok('parcela volta a PENDENTE (recomposta como se tivesse nascido aguardando)',
+        e35x.parcelas[0].status === 'PENDENTE' && num(e35x.parcelas[0].valorPago) === 0,
+        `status=${e35x.parcelas[0].status} pago=${e35x.parcelas[0].valorPago}`);
+    ok('conta volta a ABERTO com aguardandoConciliacao=true',
+        e35x.status === 'ABERTO' && e35x.aguardandoConciliacao === true, `${e35x.status}/${e35x.aguardandoConciliacao}`);
+    const linhaRevertida = e35x.parcelas[0].pagamentos.find(l => l.id === legado35x.id);
+    ok('a linha do ledger vira confirmado:false — NÃO estornada (informação continua visível)',
+        linhaRevertida?.confirmado === false && linhaRevertida?.estornado === false,
+        JSON.stringify(linhaRevertida));
+
+    // idempotência: rodar a execução de novo não reverte de novo
+    const exec35b = await fetch(`${base}/api/admin-exec/reverter-baixas-sem-banco`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-admin-secret': process.env.ADMIN_SECRET },
+        body: JSON.stringify({ ids: [legado35x.id] })
+    }).then(r => r.json());
+    ok('rodar a execução de novo NÃO reverte de novo (idempotência)',
+        exec35b.totais?.quantidade === 0 && (exec35b.puladosJaRevertido || []).includes(legado35x.id),
+        JSON.stringify(exec35b));
+
+    // salvaguarda 6 do plano: depois do retroativo, o cliente NÃO pode virar inadimplente
+    await prisma.parcela.update({ where: { id: parcela35x.id }, data: { dataVencimento: new Date(Date.now() - 5 * 86400000) } });
+    const { contasAguardandoConferencia: cac35x } = require('../services/recebimentoEntregaService');
+    const contaT35x = await prisma.contaReceber.findUnique({
+        where: { id: t35x.conta.id },
+        include: { parcelas: true, pedido: { select: { especial: true, statusEntrega: true, pagamentosReais: true } } }
+    });
+    ok('título revertido é reconhecido pela janela "aguardando conferência" (não vira devedor fantasma)',
+        cac35x([contaT35x]).has(t35x.conta.id));
+    const fichaRetro = await api('GET', `/api/clientes/${clienteRetro.UUID}/inadimplencia`);
+    ok('ficha do cliente NÃO acusa atraso depois do retroativo',
+        num(fichaRetro.body?.totalVencido) === 0, `totalVencido=${fichaRetro.body?.totalVencido}`);
+    const vendaRetro = await api('POST', '/api/pedidos', {
+        clienteId: clienteRetro.UUID, vendedorId: vendedorComum.id,
+        dataVenda: new Date(Date.now() + 7 * 86400000).toISOString(), statusEnvio: 'ABERTO',
+        tipoPagamento: condDinheiro.tipoPagamento, opcaoCondicaoPagamento: condDinheiro.opcaoCondicao,
+        nomeCondicaoPagamento: condDinheiro.nomeCondicao,
+        itens: [{ produtoId: produto.id, quantidade: 1, valor: 50, valorBase: 50 }]
+    }, tokenVend);
+    if (vendaRetro.body?.id) criados.pedidos.push(vendaRetro.body.id);
+    ok('venda nova para este cliente NÃO é bloqueada depois do retroativo',
+        vendaRetro.status === 201, `${vendaRetro.status} ${JSON.stringify(vendaRetro.body).slice(0, 160)}`);
+
     console.log(`\n=== ${falhas === 0 ? 'TODOS OS TESTES PASSARAM' : `${falhas} FALHA(S)`} ===\n`);
 }
 
@@ -1335,9 +1563,14 @@ async function limpar() {
         const devs = await prisma.devolucao.findMany({ where: { pedidoOriginalId: { in: pids } }, select: { id: true } });
         await prisma.devolucaoItem.deleteMany({ where: { devolucaoId: { in: devs.map(d => d.id) } } });
         await prisma.devolucao.deleteMany({ where: { id: { in: devs.map(d => d.id) } } });
+        // Testes [35b] criam CobrancaRota de verdade (via /avulsa/cobrar) — a FK para
+        // Parcela é obrigatória (sem cascade), então precisa sair ANTES de apagar parcelas.
+        await prisma.cobrancaRota.deleteMany({ where: { parcela: { contaReceber: { clienteId: { in: ids } } } } });
         await prisma.pagamentoParcela.deleteMany({ where: { parcela: { contaReceber: { clienteId: { in: ids } } } } });
         await prisma.parcela.deleteMany({ where: { contaReceber: { clienteId: { in: ids } } } });
         await prisma.contaReceber.deleteMany({ where: { clienteId: { in: ids } } });
+        // Conta financeira de teste do [35c] (Conciliação) — só depois do ledger sair (FK).
+        await prisma.contaFinanceira.deleteMany({ where: { nomeBanco: { startsWith: 'TESTE-BXESP' } } });
         await prisma.pedidoPagamentoReal.deleteMany({ where: { pedidoId: { in: pids } } });
         await prisma.entregaItemDevolvido.deleteMany({ where: { pedidoId: { in: pids } } });
         await prisma.pedidoItem.deleteMany({ where: { pedidoId: { in: pids } } });

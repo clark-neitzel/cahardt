@@ -12,7 +12,7 @@ const { garantirContaFinanceira } = require('../services/contaFinanceiraGuardSer
 // PAGO só quando o recebido cobre o valor — ver services/recebimentoEntregaService.js
 const {
     aplicarRecebimentoEntrega, contaEspecieId, ehRecebimentoProprio, ehResponsavelPelaCobranca,
-    rotuloResponsavel
+    rotuloResponsavel, classificarBaixaPorForma, totalJaRegistradoPorFila
 } = require('../services/recebimentoEntregaService');
 const {
     acharRegrasCondicao, carregarMapaFormas, formaPermitida, nomesFormasPermitidas
@@ -29,7 +29,12 @@ const { intervaloDoCaixa, ehFimDeSemana, dataCaixaDe } = require('../utils/diasU
 // como "baixa de dinheiro pendente" e TRAVAVA o fechamento do caixa.
 // ⚠️ ABERTO continua sendo pendência (é o especial fiado com dinheiro em aberto).
 const STATUS_CONTA_SEM_PENDENCIA_CAIXA = ['QUITADO', 'PARCIAL', 'DEVOLVIDO', 'CANCELADO'];
-const contaSemPendenciaDeCaixa = (conta) => STATUS_CONTA_SEM_PENDENCIA_CAIXA.includes(conta?.status);
+// `aguardandoConciliacao` (09/2026): Pix comum/cartão informado no caixa não quita mais
+// sozinho — a conta pode continuar ABERTO/PARCIAL até a Conciliação Bancária confirmar.
+// Sem este OR o caixa travaria para sempre no fechamento (exatamente o bug que o "null
+// quita sozinho" resolvia antes) — ver recebimentoEntregaService.recalcularStatusConta.
+const contaSemPendenciaDeCaixa = (conta) => STATUS_CONTA_SEM_PENDENCIA_CAIXA.includes(conta?.status)
+    || conta?.aguardandoConciliacao === true;
 
 // Formas de pagamento que representam valor a prestar/baixar no caixa.
 // (boleto/prazo não entram: não há baixa a fazer aqui)
@@ -425,7 +430,7 @@ router.get('/resumo', async (req, res) => {
                 // Ignora pagamentos com valor 0 (gerados por cliques duplicados de motorista)
                 pagamentosReais: { where: { valor: { gt: 0 } } },
                 itensDevolvidos: { include: { produto: { select: { nome: true } } } },
-                contaReceber: { select: { status: true } },
+                contaReceber: { select: { status: true, aguardandoConciliacao: true } },
                 // NF de devolução p/ impressão no Caixa (nota do app casa com a devolução pela ref nfd-p-<devId>)
                 devolucoes: { where: { status: 'ATIVA' }, select: { id: true, numero: true, notaDevolucaoCA: true }, orderBy: { numero: 'desc' } },
                 notasFiscaisApp: { where: { tipo: 'DEVOLUCAO' }, select: { id: true, ref: true, status: true, numero: true } }
@@ -1180,7 +1185,7 @@ router.post('/fechar', async (req, res) => {
             },
             include: {
                 pagamentosReais: { where: { valor: { gt: 0 } } },
-                contaReceber: { select: { status: true } },
+                contaReceber: { select: { status: true, aguardandoConciliacao: true } },
                 cliente: { select: { NomeFantasia: true, Nome: true } },
                 itensDevolvidos: { select: { id: true } }
             }
@@ -1529,7 +1534,7 @@ router.post('/reabrir-pendentes', async (req, res) => {
                 },
                 include: {
                     pagamentosReais: { where: { valor: { gt: 0 } } },
-                    contaReceber: { select: { status: true } }
+                    contaReceber: { select: { status: true, aguardandoConciliacao: true } }
                 }
             });
 
@@ -2635,6 +2640,13 @@ router.post('/cobrancas-rota/baixar', async (req, res) => {
             return 'ABERTO';
         };
 
+        // Conta em espécie (Caixinha) — mesmo critério dos outros dois ramos do caixa.
+        // Dinheiro cobrado na rua nunca teve conta até aqui (bug pré-existente, independente
+        // desta mudança) — corrigido junto por já estar mexendo no arquivo (regra "boy
+        // scout" do CLAUDE.md). PIX Asaas não existe nesta tela (CobrancaRota não guarda
+        // vínculo com cobrança Asaas), então nunca é `ehPixAsaas`.
+        const contaEspecieRota = await contaEspecieId(prisma);
+
         const resultados = [];
         for (const id of ids) {
             const cobranca = await prisma.cobrancaRota.findUnique({
@@ -2660,42 +2672,66 @@ router.post('/cobrancas-rota/baixar', async (req, res) => {
             }
 
             try {
-                const novoValorPago = Number(parcela.valorPago || 0) + recebido;
-                const novoStatusParcela = statusParcelaPos(parcela.valor, novoValorPago, parcela.valorDescontoTotal);
+                // PONTO ÚNICO (mesmo dos outros dois ramos do caixa): só Dinheiro quita
+                // sozinho aqui — Pix/cartão cobrados na rua nascem confirmado:false, sem
+                // conta, só INFORMADOS, até a Conciliação Bancária confirmar.
+                const { contaCaId, confirmado } = classificarBaixaPorForma({
+                    formaNome: cobranca.formaPagamentoNome, contaEspecieId: contaEspecieRota
+                });
+                const novoValorPago = confirmado ? Number(parcela.valorPago || 0) + recebido : Number(parcela.valorPago || 0);
+                const novoStatusParcela = confirmado
+                    ? statusParcelaPos(parcela.valor, novoValorPago, parcela.valorDescontoTotal)
+                    : parcela.status;
                 const dataPgto = cobranca.cobradoEm || new Date();
                 const obsBaixa = `Cobrança em rota — cobrada por ${cobranca.cobradoPor?.nome || 'motorista'} em ${cobranca.dataReferencia || ''}`.trim();
 
                 await prisma.$transaction(async (tx) => {
+                    if (confirmado) await garantirContaFinanceira(contaCaId, tx); // conta pode não existir no cadastro local (FK)
                     const pagamento = await tx.pagamentoParcela.create({
                         data: {
                             parcelaId: parcela.id,
                             valorRecebido: recebido,
                             formaPagamento: cobranca.formaPagamentoNome || null,
+                            contaFinanceiraCaId: confirmado ? contaCaId : null,
+                            confirmado,
                             dataPagamento: dataPgto,
                             observacao: obsBaixa,
                             origem: 'CAIXA_ROTA',
                             registradoPorId: req.user.id
                         }
                     });
-                    await tx.parcela.update({
-                        where: { id: parcela.id },
-                        data: {
-                            status: novoStatusParcela,
-                            valorPago: novoValorPago,
-                            formaPagamento: cobranca.formaPagamentoNome || parcela.formaPagamento,
-                            dataPagamento: novoStatusParcela === 'PAGO' ? dataPgto : parcela.dataPagamento,
-                            baixadoPorId: req.user.id
-                        }
-                    });
-                    const todasParcelas = await tx.parcela.findMany({ where: { contaReceberId: parcela.contaReceberId } });
-                    const parcelasAtualizadas = todasParcelas.map(p => p.id === parcela.id ? { ...p, status: novoStatusParcela } : p);
-                    await tx.contaReceber.update({
-                        where: { id: parcela.contaReceberId },
-                        data: { status: statusContaPos(parcelasAtualizadas) }
-                    });
+                    if (confirmado) {
+                        await tx.parcela.update({
+                            where: { id: parcela.id },
+                            data: {
+                                status: novoStatusParcela,
+                                valorPago: novoValorPago,
+                                formaPagamento: cobranca.formaPagamentoNome || parcela.formaPagamento,
+                                contaFinanceiraCaId: contaCaId || parcela.contaFinanceiraCaId,
+                                dataPagamento: novoStatusParcela === 'PAGO' ? dataPgto : parcela.dataPagamento,
+                                baixadoPorId: req.user.id
+                            }
+                        });
+                        const todasParcelas = await tx.parcela.findMany({ where: { contaReceberId: parcela.contaReceberId } });
+                        const parcelasAtualizadas = todasParcelas.map(p => p.id === parcela.id ? { ...p, status: novoStatusParcela } : p);
+                        await tx.contaReceber.update({
+                            where: { id: parcela.contaReceberId },
+                            data: { status: statusContaPos(parcelasAtualizadas) }
+                        });
+                    } else {
+                        // Aguardando conciliação: NÃO muda status/valorPago da parcela — só
+                        // acende o selo na conta (o que impede o Caixa de travar no fechamento).
+                        await tx.contaReceber.update({
+                            where: { id: parcela.contaReceberId },
+                            data: { aguardandoConciliacao: true }
+                        });
+                    }
                     await tx.cobrancaRota.update({
                         where: { id: cobranca.id },
-                        data: { status: 'BAIXADA', baixadoPorId: req.user.id, baixadoEm: new Date(), pagamentoParcelaId: pagamento.id }
+                        data: {
+                            status: 'BAIXADA', baixadoPorId: req.user.id, baixadoEm: new Date(),
+                            pagamentoParcelaId: pagamento.id, aguardandoConciliacao: !confirmado
+                        }
                     });
                 }, { timeout: 20000, maxWait: 10000 });
 
@@ -2704,7 +2740,8 @@ router.post('/cobrancas-rota/baixar', async (req, res) => {
                     await prisma.atendimento.create({
                         data: {
                             tipo: 'FINANCEIRO',
-                            observacao: `Baixa de cobrança em rota — parcela ${parcela.numeroParcela}: R$ ${recebido.toFixed(2)} (${cobranca.formaPagamentoNome || 'N/I'}) | ${obsBaixa}`,
+                            observacao: `Baixa de cobrança em rota — parcela ${parcela.numeroParcela}: R$ ${recebido.toFixed(2)} (${cobranca.formaPagamentoNome || 'N/I'})`
+                                + `${confirmado ? '' : ' — informado, aguardando conciliação bancária'} | ${obsBaixa}`,
                             clienteId: parcela.contaReceber.clienteId,
                             idVendedor: req.user.id,
                             pedidoId: parcela.contaReceber.pedidoId || null
@@ -2716,13 +2753,18 @@ router.post('/cobrancas-rota/baixar', async (req, res) => {
 
                 // Cobrada em dinheiro na rua → o boleto/PIX Asaas daquela parcela precisa morrer,
                 // senão fica vivo e o cliente ainda pode pagá-lo (recebimento em dobro).
-                if (novoStatusParcela === 'PAGO') {
+                // Pix/cartão aguardando conciliação NÃO fecha a parcela — não dispara isto.
+                if (confirmado && novoStatusParcela === 'PAGO') {
                     const asaasService = require('../services/asaasService');
                     asaasService.cancelarCobrancasDaParcela(parcela.id, 'cobrada na rota e baixada no caixa')
                         .catch(e => console.error('[CobrancaRota] Falha ao cancelar cobrança Asaas (baixa já efetivada):', e.message));
                 }
 
-                resultados.push({ id, cliente: clienteNome, status: 'OK', novoStatusParcela });
+                resultados.push({
+                    id, cliente: clienteNome, status: 'OK',
+                    novoStatusParcela: confirmado ? novoStatusParcela : parcela.status,
+                    aguardandoConciliacao: !confirmado
+                });
             } catch (e) {
                 console.error(`[CobrancaRota] Erro ao baixar cobrança ${id}:`, e);
                 resultados.push({ id, cliente: clienteNome, status: 'ERRO', motivo: 'Erro ao efetivar a baixa. Tente novamente.' });
@@ -3059,26 +3101,29 @@ router.post('/quitar-ca', async (req, res) => {
                 }
 
                 // ┌── PONTO ÚNICO: qual conta financeira recebe o dinheiro do especial ──┐
-                // │ Regra do dono: dinheiro de pedido especial entra SEMPRE na Caixinha.  │
-                // │ PIX Asaas cai na conta do Asaas (o dinheiro já está lá).              │
-                // │ PIX comum e cartão QUITAM também, com conta "não informada" (null) —  │
-                // │ é exatamente o que o ramo dos pedidos do CA faz logo abaixo. Deixar   │
-                // │ essas formas sem baixa travaria o fechamento do caixa para sempre.    │
-                // │ NÃO se chuta conta: null aparece como "não informado" em Saldos por   │
-                // │ Conta e é corrigido quando o dono definir a conta dessas formas.      │
-                // │ Se um dia valer o `bancoPadrao` da condição, é AQUI que se troca.     │
+                // │ Regra do dono (09/2026): dinheiro de pedido especial entra SEMPRE na  │
+                // │ Caixinha. PIX Asaas cai na conta do Asaas (o dinheiro já está lá).    │
+                // │ PIX comum e cartão NÃO quitam mais sozinhos: ficam só INFORMADOS      │
+                // │ (confirmado:false, sem conta) até a Conciliação Bancária confirmar —  │
+                // │ classificarBaixaPorForma é o PONTO ÚNICO que decide isso (reusado nos │
+                // │ 3 ramos do caixa: aqui, no normal-local e em Cobrança em Rota).        │
                 // └──────────────────────────────────────────────────────────────────────┘
                 const filasEspecial = Object.entries(pedido._gruposPagamento)
                     .filter(([metodo, g]) => metodo !== 'OUTRO' && g.valor > 0)
                     .map(([metodo, g]) => ({
                         nome: g.formaNome,
                         valor: Math.round(g.valor * 100) / 100,
-                        contaCaId: metodo === 'DINHEIRO' ? contaEspecieEspecial
-                            : (metodo === 'PIX_ASAAS' ? contaAsaasCaId : null)
+                        ...classificarBaixaPorForma({
+                            formaNome: metodo,
+                            ehPixAsaas: metodo === 'PIX_ASAAS',
+                            contaEspecieId: contaEspecieEspecial,
+                            contaAsaasCaId
+                        })
                     }));
                 // "Escritório/Vendedor responsável" (grupo OUTRO, filtrado acima) é o ÚNICO
-                // caso que não quita: não é recebimento, é quem ficou de cobrar.
-                const semConta = filasEspecial.filter(f => !f.contaCaId);
+                // caso que não quita por ser dívida (não é recebimento, é quem ficou de
+                // cobrar). Confirmado sem conta é o caso raro de config faltando.
+                const semConta = filasEspecial.filter(f => f.confirmado && !f.contaCaId);
                 if (semConta.length > 0) {
                     console.warn(`[Caixa] Pedido especial #${pedido.numero}: baixa sem conta financeira definida (fica "não informado") —`,
                         semConta.map(f => `${f.nome}: R$ ${f.valor.toFixed(2)}`).join(', '));
@@ -3098,7 +3143,11 @@ router.post('/quitar-ca', async (req, res) => {
                     });
                 }, { timeout: 20000, maxWait: 10000 });
 
-                if (baixa.registrado <= 0 && baixa.jaRegistrado > 0) {
+                // Nada novo (nem confirmado, nem aguardando) E já havia registro antes:
+                // é reprocessamento (clique duplo). Sem checar `aguardandoConciliacao`
+                // aqui, um pedido SÓ Pix/cartão (registrado sempre 0) recém-processado
+                // seria confundido com "já quitado" mesmo sendo a 1ª vez.
+                if (baixa.registrado <= 0 && baixa.aguardandoConciliacao.length === 0 && baixa.jaRegistrado > 0) {
                     resultados.push({
                         pedidoId: pedido.id,
                         numero: pedido.numero,
@@ -3117,10 +3166,11 @@ router.post('/quitar-ca', async (req, res) => {
                 // Log de histórico FORA da transação — um log lento/falho nunca pode
                 // derrubar (rollback) uma baixa já efetivada.
                 try {
+                    const logAguardando = baixa.aguardandoTotal > 0.01 ? ` | Aguardando conciliação: R$ ${baixa.aguardandoTotal.toFixed(2)}` : '';
                     await prisma.atendimento.create({
                         data: {
                             tipo: 'FINANCEIRO',
-                            observacao: `Baixa caixa (especial) - R$ ${baixa.registrado.toFixed(2)} (${detalhePgtos})${isParcial ? ' — PARCIAL' : ''} | ${obs}`,
+                            observacao: `Baixa caixa (especial) - R$ ${baixa.registrado.toFixed(2)} (${detalhePgtos})${isParcial ? ' — PARCIAL' : ''}${logAguardando} | ${obs}`,
                             clienteId: pedido.cliente.UUID,
                             idVendedor: req.user.id,
                             pedidoId: pedido.id
@@ -3132,6 +3182,8 @@ router.post('/quitar-ca', async (req, res) => {
 
                 // `valor` = o que REALMENTE virou baixa agora (antes vinha o total das
                 // parcelas, o que fazia parecer quitado quando só entrou parte do dinheiro).
+                // Pix/cartão aguardando conciliação também fica "de fora" deste valor —
+                // continua em aberto, mas não é dívida real: ver detalhe separado abaixo.
                 const saldoRestante = Math.round((totalParcelas - baixa.registrado) * 100) / 100;
                 // `parcial` e `saldoRestante` são DADO, não texto: a tela não pode ter que
                 // adivinhar por expressão regular no `detalhe` se a baixa fechou o título
@@ -3139,8 +3191,12 @@ router.post('/quitar-ca', async (req, res) => {
                 const ehParcial = saldoRestante > 0.01;
                 const detalhes = [
                     ehParcial
-                        ? `Baixa parcial: R$ ${baixa.registrado.toFixed(2)} de R$ ${totalParcelas.toFixed(2)} — saldo de R$ ${saldoRestante.toFixed(2)} continua em aberto para cobrança`
+                        ? `Baixa parcial: R$ ${baixa.registrado.toFixed(2)} de R$ ${totalParcelas.toFixed(2)} — saldo de R$ ${saldoRestante.toFixed(2)} continua em aberto`
                         : `Baixa: R$ ${baixa.registrado.toFixed(2)} (${detalhePgtos})`,
+                    // Pix comum/cartão informado: NÃO quita — aguarda a Conciliação Bancária
+                    // bater com o extrato. Não é dívida do cliente, é o banco confirmando.
+                    ...baixa.aguardandoConciliacao.map(a =>
+                        `${a.forma}: R$ ${a.valor.toFixed(2)} — informado, aguardando conciliação bancária (parcela ${a.numeroParcela})`),
                     // Baixado sem conta definida: entra no ledger, mas o operador precisa ver
                     ...semConta.map(f => `${f.nome}: R$ ${f.valor.toFixed(2)} — baixado sem conta financeira definida ("não informado")`),
                     // Responsável não quita: fica em aberto no nome de quem vai cobrar
@@ -3163,6 +3219,9 @@ router.post('/quitar-ca', async (req, res) => {
                     parcelas: baixa.parcelasTocadas.length,
                     parcial: ehParcial,
                     saldoRestante: ehParcial ? saldoRestante : 0,
+                    // Pix comum/cartão informado — NÃO confirmado ainda (campo novo, dado
+                    // p/ a tela destacar sem ter que reler `detalhes` por texto)
+                    aguardandoConciliacao: baixa.aguardandoTotal > 0.01 ? baixa.aguardandoTotal : 0,
                     detalhes,                    // array (contrato novo)
                     detalhe: detalhes.join(' | ') // string (mantida p/ quem já lia assim)
                 });
@@ -3181,6 +3240,12 @@ router.post('/quitar-ca', async (req, res) => {
 
         // ═══ NORMAIS → Baixa no Conta Azul via API ═══
         // (contaAsaasCaId é lida lá em cima, antes do ramo dos especiais)
+        // ⚠️ INATIVO em produção (CA_SOMENTE_LEITURA: true, backend/config/contaAzulModo.js) —
+        // NÃO recebeu a regra `confirmado`/"Pix comum não quita sozinho" (09/2026) aplicada
+        // nos outros dois ramos e em /cobrancas-rota/baixar. Se um dia `CA_SOMENTE_LEITURA`
+        // voltar a `false`, este ramo passa a criar baixa "PIX_PAGAMENTO_INSTANTANEO"/cartão
+        // direto no Conta Azul sem o conceito de "aguardando conciliação" — aplicar a mesma
+        // regra aqui (ou reavaliar o desenho) ANTES de reativar o flag.
         let contaCaixinha = null;
         if (normais.length > 0 && !CA_SOMENTE_LEITURA) {
             try {
@@ -3262,29 +3327,65 @@ router.post('/quitar-ca', async (req, res) => {
                         (s, p) => s + Number(p.valor) - Number(p.valorPago || 0) - Number(p.valorDescontoTotal || 0), 0));
 
                     // "Filas" de dinheiro recebido por forma (OUTRO = vendedor/escritório
-                    // responsável não é recebimento — a parte dele fica em aberto p/ cobrança)
-                    const filas = Object.entries(grupos)
+                    // responsável não é recebimento — a parte dele fica em aberto p/ cobrança).
+                    // classificarBaixaPorForma é o PONTO ÚNICO (mesmo do ramo ESPECIAL, acima,
+                    // e de /cobrancas-rota/baixar): só Dinheiro e PIX Asaas quitam sozinhos;
+                    // Pix comum/cartão nascem confirmado:false, sem conta — só INFORMADOS,
+                    // até a Conciliação Bancária confirmar (regra do dono, 09/2026).
+                    //
+                    // ⚠️ NÃO reusa `aplicarRecebimentoEntrega` (services/recebimentoEntregaService.js)
+                    // — decisão deliberada: esta é a ÚNICA implementação que mistura desconto de
+                    // devolução no mesmo laço de distribuição por parcela, e um refactor para a
+                    // função central, sem banco local disponível para testar de ponta a ponta,
+                    // arriscava quebrar o ramo ESPECIAL (que já usa a função e já está em
+                    // produção). A regra `confirmado`/`aguardandoConciliacao` foi replicada aqui
+                    // manualmente — se mexer numa, conferir a outra.
+                    let filas = Object.entries(grupos)
                         .filter(([m, g]) => m !== 'OUTRO' && g.valor > 0)
                         .map(([m, g]) => ({
                             nome: g.formaNome,
                             restante: round2(g.valor),
-                            contaCaId: m === 'DINHEIRO' ? caixinhaLocalId : (m === 'PIX_ASAAS' ? contaAsaasCaId : null)
+                            ...classificarBaixaPorForma({
+                                formaNome: m,
+                                ehPixAsaas: m === 'PIX_ASAAS',
+                                contaEspecieId: caixinhaLocalId,
+                                contaAsaasCaId
+                            })
                         }));
-                    const valorRecebido = round2(filas.reduce((s, f) => s + f.restante, 0));
+                    // Idempotência POR FILA (mesmo critério de aplicarRecebimentoEntrega):
+                    // antes deste patch, Pix/cartão QUITAVA na hora e `parcelasAbertas.length
+                    // === 0` bastava para barrar reprocesso. Agora uma parcela SÓ com Pix
+                    // aguardando fica PARCIAL/PENDENTE para sempre até a conciliação — sem
+                    // este desconto, selecionar o mesmo pedido de novo no caixa duplicaria a
+                    // linha "aguardando" a cada clique.
+                    for (const f of filas) {
+                        const jaReg = await totalJaRegistradoPorFila(prisma, {
+                            contaReceberId: contaReceber.id, origem: 'CAIXA_BAIXA_CA',
+                            forma: f.nome, contaCaId: f.contaCaId, confirmado: f.confirmado
+                        });
+                        f.restante = round2(Math.max(0, f.restante - jaReg));
+                    }
+                    filas = filas.filter(f => f.restante > 0.001);
+                    const valorRecebido = round2(filas.filter(f => f.confirmado).reduce((s, f) => s + f.restante, 0));
+                    const valorAguardando = round2(filas.filter(f => !f.confirmado).reduce((s, f) => s + f.restante, 0));
 
                     // Devolução de mercadoria = o que estava em aberto menos TUDO que foi
-                    // acertado na entrega (inclui a parte "responsável"). Fecha como desconto.
+                    // acertado na entrega (inclui a parte "responsável" E a parte aguardando —
+                    // Pix/cartão informado NÃO é devolução, então não pode "abrir espaço" para
+                    // desconto de devolução também). Fecha como desconto.
                     const valorDevolvido = Math.max(0, round2(totalAberto - pedido._valorElegivel));
 
                     const dataPagamento = new Date(dataPgto + 'T12:00:00-03:00');
                     const acoes = [];
+                    const aguardandoDetalhe = []; // { forma, valor, numeroParcela } — p/ detalhe e log
 
                     await prisma.$transaction(async (tx) => {
                         let descontoRestante = valorDevolvido;
                         for (const parcela of parcelasAbertas) {
                             let saldo = round2(Number(parcela.valor) - Number(parcela.valorPago || 0) - Number(parcela.valorDescontoTotal || 0));
                             if (saldo <= 0) continue;
-                            let recebidoParcela = 0;
+                            let recebidoConfirmado = 0;
+                            let recebidoAguardando = 0;
                             let descontoParcela = 0;
                             let ultimaConta = null;
                             let formasParcela = [];
@@ -3293,14 +3394,16 @@ router.post('/quitar-ca', async (req, res) => {
                                 if (saldo <= 0.001) break;
                                 const usa = round2(Math.min(saldo, fila.restante));
                                 if (usa <= 0) continue;
-                                await garantirContaFinanceira(fila.contaCaId, tx); // conta da lista do CA pode não existir no cadastro local (FK)
+                                if (fila.confirmado) await garantirContaFinanceira(fila.contaCaId, tx); // conta da lista do CA pode não existir no cadastro local (FK)
                                 await tx.pagamentoParcela.create({
                                     data: {
                                         parcelaId: parcela.id,
                                         valorRecebido: usa,
                                         valorDesconto: 0,
                                         formaPagamento: fila.nome,
-                                        contaFinanceiraCaId: fila.contaCaId,
+                                        // Fila aguardando NUNCA leva conta — não existe ainda.
+                                        contaFinanceiraCaId: fila.confirmado ? fila.contaCaId : null,
+                                        confirmado: fila.confirmado,
                                         dataPagamento,
                                         observacao: obsBase,
                                         origem: 'CAIXA_BAIXA_CA',
@@ -3309,9 +3412,14 @@ router.post('/quitar-ca', async (req, res) => {
                                 });
                                 saldo = round2(saldo - usa);
                                 fila.restante = round2(fila.restante - usa);
-                                recebidoParcela = round2(recebidoParcela + usa);
-                                ultimaConta = fila.contaCaId || ultimaConta;
-                                formasParcela.push(fila.nome);
+                                if (fila.confirmado) {
+                                    recebidoConfirmado = round2(recebidoConfirmado + usa);
+                                    ultimaConta = fila.contaCaId || ultimaConta;
+                                    formasParcela.push(fila.nome);
+                                } else {
+                                    recebidoAguardando = round2(recebidoAguardando + usa);
+                                    aguardandoDetalhe.push({ forma: fila.nome, valor: usa, numeroParcela: parcela.numeroParcela });
+                                }
                             }
 
                             // Devolução entra como desconto na parcela que ainda tem saldo
@@ -3334,9 +3442,9 @@ router.post('/quitar-ca', async (req, res) => {
                                 descontoRestante = round2(descontoRestante - descontoParcela);
                             }
 
-                            if (recebidoParcela <= 0 && descontoParcela <= 0) continue;
+                            if (recebidoConfirmado <= 0 && descontoParcela <= 0) continue;
 
-                            const novoPago = round2(Number(parcela.valorPago || 0) + recebidoParcela);
+                            const novoPago = round2(Number(parcela.valorPago || 0) + recebidoConfirmado);
                             const novoDesc = round2(Number(parcela.valorDescontoTotal || 0) + descontoParcela);
                             const quitada = (novoPago + novoDesc) >= Number(parcela.valor) - 0.01;
                             await tx.parcela.update({
@@ -3360,7 +3468,16 @@ router.post('/quitar-ca', async (req, res) => {
                         const parciais = todasParcelas.filter(p => p.status === 'PARCIAL').length;
                         const novoStatus = (pagas + canceladas >= todasParcelas.length) ? 'QUITADO'
                             : (pagas > 0 || parciais > 0) ? 'PARCIAL' : 'ABERTO';
-                        await tx.contaReceber.update({ where: { id: contaReceber.id }, data: { status: novoStatus } });
+                        // aguardandoConciliacao: sobra alguma linha confirmado:false viva nesta
+                        // conta? É o que impede o Caixa de travar no fechamento sem precisar
+                        // mudar o significado de `baixaCaRealizada` (setado abaixo, como sempre).
+                        const pendenteAguardando = await tx.pagamentoParcela.count({
+                            where: { estornado: false, confirmado: false, parcela: { contaReceberId: contaReceber.id } }
+                        });
+                        await tx.contaReceber.update({
+                            where: { id: contaReceber.id },
+                            data: { status: novoStatus, aguardandoConciliacao: pendenteAguardando > 0 }
+                        });
 
                         await tx.pedido.update({
                             where: { id: pedido.id },
@@ -3373,10 +3490,13 @@ router.post('/quitar-ca', async (req, res) => {
                     }, { timeout: 20000, maxWait: 10000 });
 
                     // Saldo que sobrou em aberto depois da baixa (o "responsável" do grupo
-                    // OUTRO não é recebimento, então continua devendo)
-                    const saldoAposBaixa = round2(totalAberto - valorRecebido - valorDevolvido);
+                    // OUTRO não é recebimento, então continua devendo; Pix/cartão aguardando
+                    // também fica de fora — não é dívida, é o banco confirmando)
+                    const saldoAposBaixa = round2(totalAberto - valorRecebido - valorAguardando - valorDevolvido);
 
                     acoes.push(`Baixa local: R$ ${valorRecebido.toFixed(2)} (${detalhePgtos})`);
+                    aguardandoDetalhe.forEach(a =>
+                        acoes.push(`${a.forma}: R$ ${a.valor.toFixed(2)} — informado, aguardando conciliação bancária (parcela ${a.numeroParcela})`));
                     if (valorDevolvido > 0.01) acoes.push(`Devolução (desconto): R$ ${valorDevolvido.toFixed(2)}`);
                     if (saldoAposBaixa > 0.01) acoes.push(`Saldo de R$ ${saldoAposBaixa.toFixed(2)} continua em aberto para cobrança`);
                     if (grupos['OUTRO']) acoes.push(`${grupos['OUTRO'].formaNome}: R$ ${grupos['OUTRO'].valor.toFixed(2)} fica em aberto p/ cobrança`);
@@ -3402,6 +3522,7 @@ router.post('/quitar-ca', async (req, res) => {
                         // mesmo contrato do ramo especial: a tela lê dado, não frase
                         parcial: saldoAposBaixa > 0.01,
                         saldoRestante: saldoAposBaixa > 0.01 ? saldoAposBaixa : 0,
+                        aguardandoConciliacao: valorAguardando > 0.01 ? valorAguardando : 0,
                         detalhes: acoes,
                         detalhe: acoes.join(' | ')
                     });

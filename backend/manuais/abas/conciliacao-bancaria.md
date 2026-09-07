@@ -85,6 +85,17 @@ Quando o crédito não fecha com a baixa por **mais de um motivo** (ex.: cliente
 
 Os pagamentos de boleto na Conta PJ vêm sem nome ("Pagamento de Boleto para Nome não encontrado (Do…"). O botão **"Identificar débitos no CA (N)"** varre as contas a pagar do Conta Azul e descobre, pelo par exato **data + valor da baixa nesta conta**, de quem é cada débito — preenchendo **fornecedor, descrição da despesa e nº da nota** nas linhas (aí a busca por fornecedor funciona). Roda em segundo plano (~1–2 min; recarregue a tela). Só grava quando o match é **único** — ambíguo fica de fora, sem chute.
 
+## Pix comum/cartão "Aguardando conciliação" — confirmar um título informado no Caixa (09/2026)
+
+Desde 09/2026, Pix comum e cartão informados no **Caixa** (conferência de entregas, especial ou normal, e Cobrança em Rota) **não quitam mais sozinhos**: a linha nasce no ledger sem conta financeira e marcada como "aguardando" — é aqui, na Conciliação Bancária, que ela vira baixa de verdade.
+
+- No **Buscar…** de um crédito, essas linhas aparecem junto com as demais "achadas em outras contas", mas com o rótulo **"Aguardando conciliação (Pix/cartão informado)"** em vez de "SEM banco" — a diferença importa: "SEM banco" continua reservado ao caso raro de uma baixa **já confirmada** só sem conta cadastrada (config faltando); "Aguardando conciliação" é o funcionamento **normal** de todo Pix/cartão do Caixa até este passo.
+- O caminho é o mesmo do "banco errado" (ver seção acima): busque pelo cliente, pedido, valor ou parcela, encontre a linha e clique em **"Corrigir para esta conta"**, escolhendo a conta do extrato.
+- A diferença é o que acontece por baixo: como a linha ainda não estava confirmada, corrigir a conta **também confirma o pagamento** — a parcela é recalculada na hora (some no valorPago, muda de status para PARCIAL/PAGO conforme o caso) e some o selo "aguardando conciliação" do título (ou continua, se sobrar outra linha aguardando na mesma conta).
+- A mensagem de confirmação avisa: **"Confirmado! O Pix/cartão informado no Caixa bateu com o extrato — vinculado a `<banco>` e a parcela foi atualizada."**
+- Se o título tiver **mais de uma** forma aguardando (ex.: parte em Pix, parte em cartão, cada uma num lançamento diferente do extrato), cada uma é confirmada separadamente, no seu próprio lançamento — a parcela vai virando PARCIAL e depois PAGO conforme cada uma bate.
+- **Enquanto não confirmado**, o título aparece em **Financeiro → Contas a Receber** com o selo "Aguardando conciliação" e **não é tratado como inadimplente** em nenhuma tela (não bloqueia venda, não entra na régua) — ver [contas-receber.md](contas-receber.md).
+
 ## Baixa no banco errado — ver e corrigir sem ir ao CA
 
 Se uma baixa foi lançada em **outra conta** (ex.: despesa baixada "no Sicoob" mas o dinheiro saiu da Conta PJ), ela não aparece na conciliação da conta certa. Ao **buscar** no Buscar… (fornecedor, valor, pedido…), o app mostra a seção âmbar **"Achadas em OUTRAS contas (banco errado?)"** com o banco onde a baixa está. O botão **"Corrigir para esta conta (app + CA)"** move a baixa para a conta do extrato **no app e no Conta Azul** (quando a baixa tem vínculo lá — senão corrige só no app e avisa para conferir no CA). Depois é só marcar a baixa e Conciliar. Não precisa estornar na mão.

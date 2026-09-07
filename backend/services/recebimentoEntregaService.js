@@ -67,16 +67,46 @@ async function contaEspecieId(client = prisma) {
 }
 
 /**
- * Quanto JÁ virou ledger vivo nesta conta, POR FILA (forma + conta financeira + origem).
+ * PONTO ÚNICO — "esta forma quita sozinha no Caixa, ou só fica INFORMADA aguardando
+ * a Conciliação Bancária?" (regra do dono, 09/2026). Antes, PIX comum e cartão
+ * baixavam com `contaFinanceiraCaId: null` e isso já contava como pago — o próprio
+ * código chamava isso de baixa "SEM banco". Agora só Dinheiro (Caixinha) e PIX Asaas
+ * (a conta do Asaas) têm banco de verdade no momento do caixa; qualquer outra forma
+ * (Pix comum, cartão, e qualquer forma nova que apareça amanhã) nasce **informada**,
+ * sem conta e sem quitar — só vira baixa de verdade quando a Conciliação Bancária
+ * casar o valor com o extrato (ver conciliacaoBancariaService.corrigirContaBaixa).
  *
- * A idempotência é por CHAVE ESTRUTURADA, não por total: deduzir do total faria a 2ª
- * passada descontar de uma fila e sobrar em outra — o valor total ficaria certo e a
- * QUEBRA POR CONTA errada (ex.: R$ 50 do PIX Asaas descontados do dinheiro), o que
- * envenena Saldos por Conta, conciliação e DRE. Cada linha de ledger já carrega a
- * chave em colunas de verdade: `parcela.contaReceberId` (= o pedido, 1:1),
- * `origem`, `formaPagamento` e `contaFinanceiraCaId`.
+ * @param formaNome nome livre da forma (ex.: "Dinheiro", "Pix", "Cartão de Crédito")
+ *                  OU a chave já mapeada em caixa.js (`DINHEIRO`, `PIX_ASAAS`,
+ *                  `CARTAO_CREDITO`...) — só o prefixo "dinheiro"/"especie" importa.
+ * @param ehPixAsaas true quando o dinheiro já está confirmado na conta do Asaas
+ *                  (cobrancaAsaasId setado) — não dá para adivinhar isso pelo nome.
+ * @returns { contaCaId, confirmado }
  */
-async function totalJaRegistradoPorFila(tx, { contaReceberId, origem, forma, contaCaId }) {
+function classificarBaixaPorForma({ formaNome, ehPixAsaas = false, contaEspecieId: contaEspecie = null, contaAsaasCaId = null }) {
+    if (ehPixAsaas) return { contaCaId: contaAsaasCaId || null, confirmado: true };
+    const nome = String(formaNome || '').toLowerCase();
+    if (nome.includes('dinheiro') || nome.includes('espécie') || nome.includes('especie')) {
+        return { contaCaId: contaEspecie || null, confirmado: true };
+    }
+    // Pix comum, cartão ou qualquer outra forma própria: só INFORMADO, sem banco —
+    // a Conciliação Bancária é quem confirma (contaCaId sempre null aqui de propósito,
+    // nunca "chutado").
+    return { contaCaId: null, confirmado: false };
+}
+
+/**
+ * Quanto JÁ virou ledger vivo nesta conta, POR FILA (forma + conta financeira + origem
+ * + confirmado). A idempotência é por CHAVE ESTRUTURADA, não por total: deduzir do
+ * total faria a 2ª passada descontar de uma fila e sobrar em outra — o valor total
+ * ficaria certo e a QUEBRA POR CONTA errada (ex.: R$ 50 do PIX Asaas descontados do
+ * dinheiro), o que envenena Saldos por Conta, conciliação e DRE. Cada linha de ledger
+ * já carrega a chave em colunas de verdade: `parcela.contaReceberId` (= o pedido, 1:1),
+ * `origem`, `formaPagamento`, `contaFinanceiraCaId` e `confirmado` — este último entrou
+ * para que uma fila CONFIRMADA (dinheiro) e uma fila AGUARDANDO (pix comum, mesma
+ * forma/conta null) nunca sejam tratadas como a mesma fila.
+ */
+async function totalJaRegistradoPorFila(tx, { contaReceberId, origem, forma, contaCaId, confirmado = true }) {
     const linhas = await tx.pagamentoParcela.findMany({
         where: {
             estornado: false,
@@ -84,30 +114,53 @@ async function totalJaRegistradoPorFila(tx, { contaReceberId, origem, forma, con
             origem,
             formaPagamento: forma,
             // contaFinanceiraCaId null é valor legítimo ("não informado") — comparação direta
-            contaFinanceiraCaId: contaCaId || null
+            contaFinanceiraCaId: contaCaId || null,
+            confirmado
         },
         select: { valorRecebido: true }
     });
     return round2(linhas.reduce((s, l) => s + Number(l.valorRecebido), 0));
 }
 
+/**
+ * Recalcula, dentro da transação: status da conta (ABERTO|PARCIAL|QUITADO|CANCELADO)
+ * E `aguardandoConciliacao` — true quando sobra ao menos uma linha de ledger viva com
+ * `confirmado:false` (Pix comum/cartão informado, ainda esperando o extrato bater).
+ * `aguardandoConciliacao` é o que impede o Caixa de travar no fechamento sem precisar
+ * mexer em `pedido.baixaCaRealizada` (campo com outro significado em outros lugares —
+ * ver `kitFestaService.sincronizarPagamentos`) — ver `caixa.js:contaSemPendenciaDeCaixa`.
+ */
 async function recalcularStatusConta(tx, contaReceberId) {
     const todas = await tx.parcela.findMany({
         where: { contaReceberId },
         select: { id: true, status: true }
     });
     const novoStatus = statusContaPos(todas);
-    await tx.contaReceber.update({ where: { id: contaReceberId }, data: { status: novoStatus } });
+    const pendenteAguardando = await tx.pagamentoParcela.count({
+        where: { estornado: false, confirmado: false, parcela: { contaReceberId } }
+    });
+    await tx.contaReceber.update({
+        where: { id: contaReceberId },
+        data: { status: novoStatus, aguardandoConciliacao: pendenteAguardando > 0 }
+    });
     return novoStatus;
 }
 
 /**
  * Aplica o dinheiro recebido na entrega nas parcelas abertas da conta.
  *
+ * Cada fila carrega `confirmado` (ver `classificarBaixaPorForma`): fila CONFIRMADA
+ * (Dinheiro, PIX Asaas) soma em `parcela.valorPago`/`status`, exatamente como sempre
+ * foi. Fila NÃO confirmada (Pix comum, cartão) também vira linha de ledger — a
+ * informação nunca se perde — e também "usa" o saldo aberto da parcela na hora de
+ * distribuir entre parcelas (para saber quanto foi informado em qual título), mas
+ * NÃO muda `parcela.valorPago`/`status`/`baixadoPorId`: o título continua em aberto
+ * até a Conciliação Bancária confirmar (regra do dono, 09/2026).
+ *
  * @param tx            client da transação (obrigatório — sempre dentro de $transaction)
  * @param contaReceberId conta a receber do pedido (a idempotência é por ela + fila,
  *                       não por marca no texto — ver `totalJaRegistradoPorFila`)
- * @param filas         [{ nome, valor, contaCaId }] — dinheiro real, por forma
+ * @param filas         [{ nome, valor, contaCaId, confirmado }] — dinheiro real, por forma
  * @param dataPagamento data do recebimento
  * @param origem        CAIXA_ROTA (nasceu na entrega) | CAIXA_BAIXA_CA (conferência do caixa)
  * @param registradoPorId quem recebeu (entrega: o motorista; caixa: o operador)
@@ -117,16 +170,20 @@ async function aplicarRecebimentoEntrega(tx, {
     contaReceberId, filas, dataPagamento, origem, registradoPorId, observacao
 }) {
     const obs = observacao || null;
+    // Fila sem `confirmado` explícito é tratada como confirmada (compatibilidade com
+    // quem ainda não foi atualizado para passar o campo — nunca fica "aguardando" à toa).
+    const filasNormalizadas = (filas || []).map(f => ({ ...f, confirmado: f.confirmado !== false }));
 
-    // Idempotência POR FILA (forma + conta + origem): o que já virou ledger daquela
-    // forma/conta não é registrado de novo, e o desconto nunca "vaza" de uma conta
-    // para outra. `filas` vem do total acumulado dos pagamentos do pedido, então um
-    // recebimento NOVO na mesma forma entra como diferença, sem duplicar o anterior.
+    // Idempotência POR FILA (forma + conta + origem + confirmado): o que já virou ledger
+    // daquela forma/conta/confirmação não é registrado de novo, e o desconto nunca
+    // "vaza" de uma conta para outra. `filas` vem do total acumulado dos pagamentos do
+    // pedido, então um recebimento NOVO na mesma forma entra como diferença, sem
+    // duplicar o anterior.
     let jaRegistrado = 0;
     const pendentes = [];
-    for (const f of filas) {
+    for (const f of filasNormalizadas) {
         const registradoFila = await totalJaRegistradoPorFila(tx, {
-            contaReceberId, origem, forma: f.nome, contaCaId: f.contaCaId
+            contaReceberId, origem, forma: f.nome, contaCaId: f.contaCaId, confirmado: f.confirmado
         });
         jaRegistrado = round2(jaRegistrado + registradoFila);
         const disponivel = round2(Number(f.valor) - registradoFila);
@@ -135,9 +192,15 @@ async function aplicarRecebimentoEntrega(tx, {
 
     const resultado = {
         jaRegistrado,
+        // registrado = só o CONFIRMADO (o que realmente quitou agora)
         registrado: 0,
-        // formas que entraram no ledger SEM conta financeira definida (ficam "não informado")
+        // formas que entraram no ledger SEM conta financeira definida mas CONFIRMADAS
+        // (config faltando — caso raro, diferente de "aguardando conciliação")
         semConta: [],
+        // linhas NÃO confirmadas criadas agora — Pix comum/cartão informado, aguardando
+        // a Conciliação Bancária. Quem chama PRECISA mostrar isto ao operador.
+        aguardandoConciliacao: [],
+        aguardandoTotal: 0,
         parcelasTocadas: [],
         // dinheiro que sobrou das filas e não coube em parcela nenhuma (cliente pagou mais
         // do que o título) — quem chama TEM que mostrar isto ao operador, nunca engolir
@@ -159,7 +222,8 @@ async function aplicarRecebimentoEntrega(tx, {
         let saldo = round2(Number(parcela.valor) - Number(parcela.valorPago || 0) - Number(parcela.valorDescontoTotal || 0));
         if (saldo <= 0.001) continue;
 
-        let recebidoParcela = 0;
+        let recebidoConfirmado = 0;
+        let recebidoAguardando = 0;
         let ultimaConta = null;
         const formasParcela = [];
 
@@ -168,14 +232,16 @@ async function aplicarRecebimentoEntrega(tx, {
             const usa = round2(Math.min(saldo, fila.restante));
             if (usa <= 0) continue;
 
-            await garantirContaFinanceira(fila.contaCaId, tx); // conta pode não existir no cadastro local (FK)
+            if (fila.confirmado) await garantirContaFinanceira(fila.contaCaId, tx); // conta pode não existir no cadastro local (FK)
             await tx.pagamentoParcela.create({
                 data: {
                     parcelaId: parcela.id,
                     valorRecebido: usa,
                     valorDesconto: 0,
                     formaPagamento: fila.nome,
-                    contaFinanceiraCaId: fila.contaCaId || null,
+                    // Fila aguardando NUNCA leva conta — não existe ainda, não se chuta.
+                    contaFinanceiraCaId: fila.confirmado ? (fila.contaCaId || null) : null,
+                    confirmado: fila.confirmado,
                     dataPagamento,
                     observacao: obs,
                     origem,
@@ -185,34 +251,44 @@ async function aplicarRecebimentoEntrega(tx, {
                     registradoPorId
                 }
             });
-            if (!fila.contaCaId) resultado.semConta.push({ forma: fila.nome, valor: usa });
 
             saldo = round2(saldo - usa);
             fila.restante = round2(fila.restante - usa);
-            recebidoParcela = round2(recebidoParcela + usa);
-            ultimaConta = fila.contaCaId || ultimaConta;
-            if (!formasParcela.includes(fila.nome)) formasParcela.push(fila.nome);
+            if (fila.confirmado) {
+                if (!fila.contaCaId) resultado.semConta.push({ forma: fila.nome, valor: usa });
+                recebidoConfirmado = round2(recebidoConfirmado + usa);
+                ultimaConta = fila.contaCaId || ultimaConta;
+                if (!formasParcela.includes(fila.nome)) formasParcela.push(fila.nome);
+            } else {
+                resultado.aguardandoConciliacao.push({
+                    forma: fila.nome, valor: usa, parcelaId: parcela.id, numeroParcela: parcela.numeroParcela
+                });
+                recebidoAguardando = round2(recebidoAguardando + usa);
+            }
         }
 
-        if (recebidoParcela <= 0) continue;
+        if (recebidoConfirmado <= 0 && recebidoAguardando <= 0) continue;
 
-        const novoPago = round2(Number(parcela.valorPago || 0) + recebidoParcela);
-        const novoStatus = statusParcelaPos(parcela.valor, novoPago, parcela.valorDescontoTotal);
-        await tx.parcela.update({
-            where: { id: parcela.id },
-            data: {
-                status: novoStatus,
-                valorPago: novoPago,
-                formaPagamento: formasParcela.join(', ') || parcela.formaPagamento,
-                contaFinanceiraCaId: ultimaConta || parcela.contaFinanceiraCaId,
-                dataPagamento: novoStatus === 'PAGO' ? dataPagamento : parcela.dataPagamento,
-                baixadoPorId: registradoPorId,
-                observacao: obs
-            }
-        });
+        if (recebidoConfirmado > 0) {
+            const novoPago = round2(Number(parcela.valorPago || 0) + recebidoConfirmado);
+            const novoStatus = statusParcelaPos(parcela.valor, novoPago, parcela.valorDescontoTotal);
+            await tx.parcela.update({
+                where: { id: parcela.id },
+                data: {
+                    status: novoStatus,
+                    valorPago: novoPago,
+                    formaPagamento: formasParcela.join(', ') || parcela.formaPagamento,
+                    contaFinanceiraCaId: ultimaConta || parcela.contaFinanceiraCaId,
+                    dataPagamento: novoStatus === 'PAGO' ? dataPagamento : parcela.dataPagamento,
+                    baixadoPorId: registradoPorId,
+                    observacao: obs
+                }
+            });
+            resultado.parcelasTocadas.push({ id: parcela.id, numero: parcela.numeroParcela, recebido: recebidoConfirmado, status: novoStatus });
+        }
 
-        resultado.registrado = round2(resultado.registrado + recebidoParcela);
-        resultado.parcelasTocadas.push({ id: parcela.id, numero: parcela.numeroParcela, recebido: recebidoParcela, status: novoStatus });
+        resultado.registrado = round2(resultado.registrado + recebidoConfirmado);
+        resultado.aguardandoTotal = round2(resultado.aguardandoTotal + recebidoAguardando);
     }
 
     resultado.sobra = round2(pendentes.reduce((s, f) => s + f.restante, 0));
@@ -331,12 +407,22 @@ const MSG_TITULO_JA_BAIXADO = 'Este pedido já teve o título baixado no Caixa. 
     + 'e só então estorne/edite a entrega.';
 
 /**
- * Contas de pedido ESPECIAL que estão só AGUARDANDO A CONFERÊNCIA DO CAIXA:
- * entrega concluída e o dinheiro real recebido na rua (fora "escritório/vendedor
- * responsável", que não são recebimento) cobre o saldo em aberto do título.
+ * Contas (ESPECIAL ou normal/Faturado CA) que estão só AGUARDANDO A CONFERÊNCIA DO
+ * CAIXA OU A CONCILIAÇÃO BANCÁRIA: entrega concluída e o dinheiro real recebido na
+ * rua (fora "escritório/vendedor responsável", que não são recebimento) cobre o saldo
+ * em aberto do título — mesmo que ainda apareça ABERTO/PARCIAL porque o Pix comum/
+ * cartão informado no caixa ainda não foi confirmado pela Conciliação Bancária.
  * Quem está nessa janela NÃO é devedor — não bloqueia venda nem vai para cobrança
- * em rota. Especial fiado de verdade (nada recebido, ou só responsável) continua fora
- * desta lista e segue cobrável normalmente.
+ * em rota. Fiado de verdade (nada recebido, ou só responsável) continua fora desta
+ * lista e segue cobrável normalmente.
+ *
+ * Até 09/2026 esta função só considerava pedido especial (Pix comum de especial
+ * quitava "SEM banco" na hora, então o normal nunca precisava desta proteção — o
+ * saldo já baixava de verdade no caixa). Agora que Pix comum/cartão passam a só
+ * INFORMAR (não quitar) em QUALQUER pedido — especial, normal local e Cobrança em
+ * Rota —, a restrição `especial` foi removida: o critério abaixo (recebido próprio
+ * cobrindo o saldo aberto) já era agnóstico a especial/normal, só a condição de
+ * entrada mudou.
  *
  * @param contas lista com { id, parcelas[{valor,valorPago,valorDescontoTotal,status}],
  *                           pedido: { especial, statusEntrega, pagamentosReais[] } }
@@ -346,7 +432,7 @@ function contasAguardandoConferencia(contas) {
     const ids = new Set();
     for (const conta of contas || []) {
         const pedido = conta.pedido;
-        if (!pedido?.especial) continue;
+        if (!pedido) continue;
         if (!['ENTREGUE', 'ENTREGUE_PARCIAL'].includes(pedido.statusEntrega)) continue;
 
         const recebidoReal = round2((pedido.pagamentosReais || [])
@@ -366,13 +452,19 @@ function contasAguardandoConferencia(contas) {
 }
 
 /**
- * PONTO ÚNICO de consulta da janela: ids das contas de especial entregue e já pago em
- * dinheiro que só esperam a conferência do Caixa. Quem está aqui NÃO é devedor e não
- * pode aparecer como inadimplente em tela nenhuma (selo do cliente, rota do vendedor,
- * dashboards, aging) nem bloquear venda.
+ * PONTO ÚNICO de consulta da janela: ids das contas (especial OU normal/Faturado CA)
+ * entregues e já pagas de verdade (dinheiro/PIX Asaas, ou Pix comum/cartão informado
+ * cobrindo o saldo) que só esperam a conferência do Caixa ou a Conciliação Bancária.
+ * Quem está aqui NÃO é devedor e não pode aparecer como inadimplente em tela nenhuma
+ * (selo do cliente, rota do vendedor, dashboards, aging) nem bloquear venda.
  *
- * Uma consulta só e estreita (especial + entregue + conta aberta), por isso barata; o
- * resultado é um Set pequeno, seguro de usar em `notIn` ou em filtro no JS.
+ * Até 09/2026 só cobria pedido especial (`pedido.especial: true`) — restrição removida
+ * junto com `contasAguardandoConferencia` (ver comentário lá): Pix comum/cartão deixou
+ * de quitar sozinho também no pedido normal/Faturado CA, então ele passa a precisar
+ * exatamente da mesma proteção.
+ *
+ * Uma consulta só e estreita (entregue + conta aberta), por isso barata; o resultado é
+ * um Set pequeno, seguro de usar em `notIn` ou em filtro no JS.
  *
  * @param desdeDias  recorte OPCIONAL pela data de entrega (ex.: 90 = últimos 90 dias).
  *   Use SÓ em painel/dashboard/aging, onde o efeito de perder um caso antigo é um número
@@ -389,7 +481,7 @@ async function idsContasEmEsperaDeConferencia({ clienteIds = null, desdeDias = n
         where: {
             status: { in: ['ABERTO', 'PARCIAL'] },
             ...(clienteIds ? { clienteId: { in: clienteIds } } : {}),
-            pedido: { especial: true, statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL'] }, ...recorteEntrega }
+            pedido: { statusEntrega: { in: ['ENTREGUE', 'ENTREGUE_PARCIAL'] }, ...recorteEntrega }
         },
         select: {
             id: true,
@@ -419,6 +511,7 @@ module.exports = {
     statusParcelaPos,
     statusContaPos,
     contaEspecieId,
+    classificarBaixaPorForma,
     totalJaRegistradoPorFila,
     recalcularStatusConta,
     aplicarRecebimentoEntrega

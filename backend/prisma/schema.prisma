@@ -2282,6 +2282,15 @@ model ContaReceber {
   status     String  @default("ABERTO") // ABERTO | PARCIAL | QUITADO | CANCELADO
   observacao String? @db.Text
 
+  // Tem Pix comum/cartão INFORMADO no caixa (linha de pagamentos_parcela com
+  // confirmado=false) ainda esperando a Conciliação Bancária bater com o extrato?
+  // Recalculado sempre que o ledger desta conta muda (ver recebimentoEntregaService
+  // .recalcularStatusConta e conciliacaoBancariaService). NÃO é dívida: é o motivo
+  // pelo qual entregaPendenteDeBaixaNoCaixa (caixa.js) considera o pedido "processado"
+  // mesmo com status ABERTO/PARCIAL — sem isto o fechamento do caixa travaria de novo
+  // (regra do dono, 09/2026 — Pix comum/cartão deixam de quitar sozinhos no caixa).
+  aguardandoConciliacao Boolean @default(false) @map("aguardando_conciliacao")
+
   parcelas Parcela[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -2362,12 +2371,25 @@ model PagamentoParcela {
   estornadoPorId String?   @map("estornado_por_id")
   estornadoPor   Vendedor? @relation("PagamentosParcelaEstornados", fields: [estornadoPorId], references: [id])
 
+  // Pix comum e cartão informados no Caixa (conferência/especial/rota) deixam de quitar
+  // sozinhos (regra do dono, 09/2026 — o número da conta era sempre "não informado"/null
+  // e isso já contava como pago). A linha nasce com confirmado=false e SEM banco: existe,
+  // fica visível/auditável, mas NÃO entra na soma de parcela.valorPago/status (ver
+  // recebimentoEntregaService.aplicarRecebimentoEntrega e conciliacaoBancariaService
+  // .recalcularParcelaReceber). Só vira confirmado=true — e só então quita de verdade —
+  // quando a Conciliação Bancária casa a linha com o extrato (contaFinanceiraCaId deixa
+  // de ser null nesse momento). Dinheiro (Caixinha) e PIX Asaas continuam nascendo
+  // confirmado=true, como sempre. @default(true) preserva o significado de toda linha
+  // já gravada antes desta coluna existir — nenhuma delas precisa de migração de dado.
+  confirmado Boolean @default(true) @map("confirmado")
+
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([parcelaId])
   @@index([dataPagamento])
   @@index([caixaDiarioId])
   @@index([contaFinanceiraCaId])
+  @@index([confirmado])
   @@map("pagamentos_parcela")
 }
 
@@ -2409,6 +2431,13 @@ model CobrancaRota {
   baixadoPorId       String?   @map("baixado_por_id")
   baixadoEm          DateTime? @map("baixado_em")
   pagamentoParcelaId String?   @map("pagamento_parcela_id")
+
+  // BAIXADA mas o dinheiro (Pix comum/cartão) foi só INFORMADO — a linha de
+  // pagamentos_parcela nasceu confirmado=false e o título continua em aberto até a
+  // Conciliação Bancária bater com o extrato (regra do dono, 09/2026). Sem este campo
+  // a tela de Cobrança em Rota mostraria "BAIXADA" como se já tivesse dinheiro
+  // confirmado no banco — Dinheiro cobrado na rua continua BAIXADA com isto sempre false.
+  aguardandoConciliacao Boolean @default(false) @map("aguardando_conciliacao")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

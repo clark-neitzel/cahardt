@@ -104,23 +104,33 @@ Resumo financeiro diário do motorista/vendedor. Mostra tudo que aconteceu em um
 |---|---|---|
 | **BAIXADO** (verde) | O recebido cobriu o título — parcela quitada | Nada |
 | **BAIXA PARCIAL** (âmbar) | Entrou parte do dinheiro; o saldo continua em aberto (o painel mostra quanto falta) | Cobrar o saldo — ele fica no Contas a Receber |
+| **AGUARDANDO CONCILIAÇÃO** (informativo, dentro do detalhe da baixa) | Pix comum/cartão foi informado mas não quita sozinho (09/2026) — o título continua aberto até o banco confirmar | Nada a fazer aqui; a confirmação acontece na Conciliação Bancária quando o extrato chegar |
 | **SEM BAIXA** (âmbar) | Nada foi baixado — só havia valor de "responsável" | O título fica no nome do responsável; a baixa sai quando o valor for descontado dele |
 | **JÁ QUITADO** (cinza) | Aquele recebimento já tinha sido baixado antes | Nada — clicar duas vezes não duplica |
 | **ERRO** (vermelho) | Não deu para baixar (ex.: forma não permitida pela condição) | Ler a mensagem: ela diz o que corrigir |
 
 **Recebido a mais que o título:** se o dinheiro conferido passa do valor do título, a sobra **não é baixada em parcela nenhuma** — o painel mostra a linha "Sobra de R$ X — recebido a mais do que o título… Confira com o motorista e acerte com o cliente". Nada é lançado no chute.
 
-**Pix comum e cartão no pedido especial:** quitam normalmente, junto com o dinheiro. Enquanto não houver conta financeira definida para essas formas, a baixa fica com a conta **"não informada"** em Saldos por Conta (o app não escolhe conta no chute) — o valor está registrado e o título fecha.
+**Pix comum e cartão NÃO quitam mais sozinhos (regra do dono, 09/2026).** Só **Dinheiro** (Caixinha) e **PIX Asaas** (conta do Asaas) têm banco de verdade no momento do clique em Processar — são os únicos que fecham o título na hora. Pix comum e cartão passam a ser só **INFORMADOS**: a informação fica registrada (valor, forma, quem processou, quando), o título **continua aberto** e só vira baixa de verdade quando a **Conciliação Bancária** (Financeiro) casar aquele valor com o extrato do banco. Por quê: o app não quer mais inventar uma "conta não informada" que na prática nunca é corrigida — melhor deixar claro que falta confirmar o banco.
+- o painel de resultado mostra **"informado, aguardando conciliação bancária"** para cada forma que entrou assim — não é erro, é o novo funcionamento normal;
+- **o caixa NÃO trava** por causa disso: um pedido só com Pix/cartão informado sai das pendências do fechamento mesmo sem estar quitado — a conta ganha um selo interno "aguardando conciliação" que o fechamento já reconhece como resolvido;
+- o cliente **não vira inadimplente** nem é bloqueado em venda nova enquanto o valor está nessa espera — o app sabe que ele já pagou, só falta o banco confirmar;
+- a mesma regra vale para pedido **normal** (Faturado CA) processado aqui e para **Cobrança em Rota** (ver abaixo) — Pix/cartão cobrado na rua também entra em espera; só Dinheiro cobrado na rua quita e agora sempre com a conta Caixinha vinculada (antes nenhuma forma em rota tinha conta — corrigido junto);
+- clicar duas vezes não duplica a linha "aguardando", igual à baixa normal.
+
+> Onde acompanhar e confirmar: **Financeiro → Contas a Receber** mostra o selo de "aguardando conciliação" no título; **Financeiro → Conciliação Bancária** é onde o Pix/cartão informado é casado com o lançamento do extrato — a partir daí ele vira baixa de verdade e a parcela é atualizada.
 
 ### Baixar as cobranças da rota (títulos cobrados na rua)
 O cartão **Cobranças da Rota** aparece quando o motorista/vendedor registrou alguma cobrança de título naquele dia (seção **"Cobranças a fazer"**, na tela **Rota → Entregas**). Cada linha mostra o cliente, a parcela, quanto foi cobrado, a forma de pagamento e a carga de origem.
 
 1. Cobrança registrada na rua chega com o badge azul **"Aberto"** — a parcela **ainda não foi baixada**. Isso é de propósito: a baixa oficial sai aqui, depois da conferência
-2. Marque o box de cada cobrança conferida (ou **Todas**) e clique em **Baixar selecionadas** — o sistema registra o pagamento na parcela do Contas a Receber: valor cheio → **PAGO**, valor parcial → **PARCIAL** (o restante continua em aberto)
+2. Marque o box de cada cobrança conferida (ou **Todas**) e clique em **Baixar selecionadas**:
+   - **Dinheiro** → quita de verdade: valor cheio → **PAGO**, valor parcial → **PARCIAL** (o restante continua em aberto), e desde 09/2026 a baixa **já sai vinculada à conta Caixinha** (antes nenhuma cobrança de rota tinha conta financeira — corrigido junto com a mudança do Pix/cartão);
+   - **Pix comum ou cartão** (09/2026) → **não quita mais sozinho**: fica **"informado, aguardando conciliação bancária"** — a parcela continua com o mesmo status, o título segue aberto, e só vira baixa de verdade quando a Conciliação Bancária casar o valor com o extrato.
 3. Fica gravado **quem cobrou na rua** e **quem baixou no caixa** (aparece no histórico do cliente e no ledger da parcela)
 4. Cobrança marcada como **"não conseguiu cobrar"** aparece só como registro (sem box, riscada, com "Escritório resp." ou "Vendedor resp.") — o título continua em aberto e **não gera devolução**
 5. O que foi cobrado em **dinheiro** entra na linha "+ Cobranças da rota (dinheiro)" do **valor a prestar**; PIX/cartão não passam pela mão do motorista e não somam
-6. **O caixa não fecha** com cobrança de rota ainda em "Aberto" — baixe todas antes de fechar o dia
+6. **O caixa não fecha** com cobrança de rota ainda em "Aberto" — baixe todas antes de fechar o dia. Cobrança de **Pix/cartão já baixada mas aguardando conciliação NÃO é mais "Aberto"** — ela vira "Baixada" na tela mesmo sem ter quitado de verdade, e por isso **não trava** o fechamento
 7. Clicar duas vezes não duplica: cobrança já baixada devolve "já estava baixada" e é ignorada
 
 ### Títulos recebidos (baixa manual do Contas a Receber)
@@ -187,6 +197,8 @@ O caixa entra na fila de conferência **ao imprimir a folha** (a folha é a pres
 > **Título devolvido não é pendência (corrigido em 08/2026).** Quando a devolução zera o título (a conta fica marcada como **devolvida**, ou cancelada), não existe mais dinheiro a prestar naquela linha — ela sai da lista de "baixas de recebimento pendentes" e **não trava mais o fechamento**. Antes disso, um pedido devolvido continuava contando como pendência e o botão Fechar Caixa ficava desabilitado sem que houvesse nada a fazer. **Especial com dinheiro de verdade ainda em aberto continua travando**, como sempre.
 
 > **Baixa parcial não trava mais o fechamento (corrigido em 08/2026).** Quando o motorista traz menos do que o valor do especial e o caixa processa a Baixa CA, o título fica **parcial** (o saldo continua em aberto no Contas a Receber, para cobrar depois). Essa linha já foi baixada no caixa — não há mais dinheiro daquele dia a prestar — então ela **sai das pendências** e o botão Fechar Caixa continua liberado. Antes, o botão ficava desabilitado para sempre nesse caso, sem nenhuma ação possível na tela.
+
+> **Pix comum/cartão aguardando conciliação também não trava (09/2026).** Desde que Pix comum e cartão passaram a só "informar" em vez de quitar, um pedido processado assim fica com o título tecnicamente ABERTO — mas ele **não é mais dinheiro pendente de baixa**, é dinheiro **já processado, esperando o banco confirmar**. Por isso essa linha some das pendências do fechamento assim que o Processar é clicado, mesmo sem ter virado PAGO/PARCIAL. Quem quiser saber quanto ainda está "aguardando" acompanha pelo selo em Contas a Receber ou na Conciliação Bancária, não pelo Caixa.
 
 > **O que a tela mostra é o que o servidor aceita.** A contagem de **"baixa(s) de recebimento pendente(s)"** (nome novo — antes dizia "dinheiro", mas a conta sempre incluiu mais que dinheiro) usa exatamente a mesma regra do fechamento: entram as entregas com **dinheiro, PIX ou cartão** recebidos pelo motorista que ainda não foram baixados (Baixa CA / quitação do especial). **Não contam** como pendência: título já baixado, **baixa parcial** (o que falta vira cobrança normal, não prende o caixa), título devolvido ou cancelado, e a **linha de responsável pela cobrança** (escritório ou vendedor ficou de cobrar depois). A mensagem de recusa do servidor usa exatamente esse mesmo texto, para a tela e o toast não falarem duas línguas.
 

@@ -200,6 +200,7 @@ router.get('/relatorio-receber', verificarAuth, checkAcesso, async (req, res) =>
                 select: {
                     id: true, valorRecebido: true, valorDesconto: true, motivoDesconto: true,
                     formaPagamento: true, contaFinanceiraCaId: true, dataPagamento: true, origem: true,
+                    confirmado: true,
                     registradoPor: { select: { nome: true } },
                     parcela: {
                         select: {
@@ -242,6 +243,10 @@ router.get('/relatorio-receber', verificarAuth, checkAcesso, async (req, res) =>
                     dataBaixa: pg.dataPagamento,
                     baixadoPor: pg.registradoPor?.nome || null,
                     origemBaixa: pg.origem || null,
+                    // Pix comum/cartão informado no Caixa (09/2026): existe no ledger,
+                    // aparece aqui, mas NÃO entra no `resumo.recebidoTotal` abaixo até a
+                    // Conciliação Bancária confirmar (mesmo critério do Fluxo de Caixa).
+                    confirmado: pg.confirmado !== false,
                     conciliado: conciliados.has(pg.id),
                     status: pg.parcela.status,
                     origemConta: conta.origem,
@@ -332,9 +337,12 @@ router.get('/relatorio-receber', verificarAuth, checkAcesso, async (req, res) =>
             }
         }
 
-        // Resumo (sobre as linhas já filtradas)
+        // Resumo (sobre as linhas já filtradas). `recebidoTotal` só soma linha CONFIRMADA —
+        // visão "títulos" já vem de `parcela.valorPago` (sempre confirmado por construção);
+        // visão "recebimentos" tem `l.confirmado` explícito (linha `undefined` = título,
+        // sempre confirmada) e por isso NÃO entra Pix/cartão aguardando conciliação.
         const valorTotal = round2(linhas.reduce((s, l) => s + l.valor, 0));
-        const recebidoTotal = round2(linhas.reduce((s, l) => s + (l.valorRecebido || 0), 0));
+        const recebidoTotal = round2(linhas.filter((l) => l.confirmado !== false).reduce((s, l) => s + (l.valorRecebido || 0), 0));
         const comNF = round2(linhas.filter((l) => ['NF_CA', 'NF_APP'].includes(l.documento.tipo)).reduce((s, l) => s + l.valor, 0));
         const semNF = round2(linhas.filter((l) => l.documento.tipo === 'ESPECIAL').reduce((s, l) => s + l.valor, 0));
 
@@ -1032,17 +1040,22 @@ router.get('/pacote-mes', verificarAuth, checkAcesso, async (req, res) => {
             orderBy: { dataPagamento: 'asc' },
             select: {
                 valorRecebido: true, valorDesconto: true, formaPagamento: true, contaFinanceiraCaId: true,
+                confirmado: true,
                 dataPagamento: true, origem: true, registradoPor: { select: { nome: true } },
                 parcela: { select: { contaReceber: { select: SELECT_CONTA } } }
             }
         });
+        // Coluna "Confirmado": Pix comum/cartão informado no Caixa (09/2026) aparece no
+        // pacote (a informação não pode se perder), mas marcado como pendente — ainda não
+        // é dinheiro batido no extrato pela Conciliação Bancária.
         zip.addFile('02-receber-recebimentos.csv', Buffer.from(montarCsv(
-            ['Data', 'Cliente', 'Pedido', 'Valor recebido', 'Desconto', 'Forma', 'Banco', 'Origem da baixa', 'Baixado por'],
+            ['Data', 'Cliente', 'Pedido', 'Valor recebido', 'Desconto', 'Forma', 'Banco', 'Origem da baixa', 'Baixado por', 'Confirmado'],
             pgsRec.map((pg) => [
                 cData(pg.dataPagamento), cCampo(pg.parcela.contaReceber.cliente?.Nome),
                 pg.parcela.contaReceber.pedido?.numero ? `#${pg.parcela.contaReceber.pedido.numero}` : '',
                 cNum(pg.valorRecebido), cNum(pg.valorDesconto), cCampo(pg.formaPagamento),
-                cCampo(pg.contaFinanceiraCaId ? nomeBanco.get(pg.contaFinanceiraCaId) : ''), cCampo(pg.origem), cCampo(pg.registradoPor?.nome)
+                cCampo(pg.contaFinanceiraCaId ? nomeBanco.get(pg.contaFinanceiraCaId) : ''), cCampo(pg.origem), cCampo(pg.registradoPor?.nome),
+                pg.confirmado === false ? 'NAO - aguardando conciliacao' : 'SIM'
             ])
         ), 'utf8'));
 

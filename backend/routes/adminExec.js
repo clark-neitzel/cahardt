@@ -18,6 +18,9 @@ const {
     ehRecebimentoProprio, ehResponsavelPelaCobranca, papelResponsavel
 } = require('../services/recebimentoEntregaService');
 const contaAzulService = require('../services/contaAzulService');
+// Classificação de origem do ledger — ponto único (09/2026), reusado pelo retroativo
+// "Pix comum/cartão SEM banco" (reverter-baixas-sem-banco) e por diag-baixas-origem.
+const { classificarOrigemPagamento, ehDinheiroPagamento } = require('../services/pagamentoOrigemService');
 
 // Estado do backfill assíncrono da conta financeira em Contas a Receber (varre em segundo plano)
 const _backfillReceber = { rodando: false, progresso: null };
@@ -8081,6 +8084,7 @@ router.get('/diag-baixas-origem', async (req, res) => {
             select: {
                 id: true, valorRecebido: true, valorDesconto: true, formaPagamento: true, origem: true,
                 contaFinanceiraCaId: true, dataPagamento: true, observacao: true, estornado: true,
+                confirmado: true,
                 registradoPor: { select: { id: true, nome: true } },
                 parcela: {
                     select: {
@@ -8110,22 +8114,11 @@ router.get('/diag-baixas-origem', async (req, res) => {
             emGrupo.forEach(g => conciliados.add(g.pagamentoParcelaId));
         }
 
-        // Caminho de origem — inferido pela observação que cada rotina grava (não existe
-        // coluna de origem ainda; é exatamente o que a trava vai passar a carimbar).
-        const classificar = (p) => {
-            if (p.origem) return p.origem === 'MANUAL' ? 'MANUAL_CONTAS_RECEBER' : p.origem;
-            const obs = p.observacao || '';
-            if (/^Cobran[çc]a em rota/i.test(obs)) return 'CAIXA_ROTA';
-            if (/^Motorista:.*\| Caixa:/i.test(obs) || /^Baixa caixa - /i.test(obs)) return 'CAIXA_BAIXA_CA';
-            if (/conciliação bancária/i.test(obs)) return 'CONCILIACAO';
-            if (/^Pago via .*\(pay_/i.test(obs)) return 'ASAAS';
-            if (/Baixa espelhada do Conta Azul/i.test(obs)) return 'CA_EXTRATO';
-            if (/Baixa sincronizada do Conta Azul/i.test(obs)) return 'SYNC_CA';
-            if (Number(p.valorRecebido) <= 0 && Number(p.valorDesconto) > 0) return 'DEVOLUCAO';
-            return 'MANUAL_CONTAS_RECEBER';
-        };
-
-        const ehDinheiro = (f) => /dinheiro|especie|espécie/i.test(String(f || ''));
+        // Caminho de origem — PONTO ÚNICO extraído para services/pagamentoOrigemService.js
+        // (09/2026, reusado pelo retroativo "Pix comum/cartão SEM banco" — ver
+        // POST/GET /admin-exec/reverter-baixas-sem-banco).
+        const classificar = classificarOrigemPagamento;
+        const ehDinheiro = ehDinheiroPagamento;
         const r2 = (n) => Math.round(n * 100) / 100;
 
         const porOrigem = {};
@@ -8142,12 +8135,16 @@ router.get('/diag-baixas-origem', async (req, res) => {
             if (p.estornado) continue;
             const origem = classificar(p);
             const valor = Number(p.valorRecebido);
-            const o = porOrigem[origem] || (porOrigem[origem] = { baixas: 0, valor: 0, dinheiro: 0, semContaFinanceira: 0, semLastroBancario: 0, formas: {} });
+            const o = porOrigem[origem] || (porOrigem[origem] = { baixas: 0, valor: 0, dinheiro: 0, semContaFinanceira: 0, semLastroBancario: 0, aguardandoConciliacao: 0, valorAguardando: 0, formas: {} });
             o.baixas++;
             o.valor = r2(o.valor + valor);
             if (ehDinheiro(p.formaPagamento)) o.dinheiro = r2(o.dinheiro + valor);
             if (!p.contaFinanceiraCaId) o.semContaFinanceira++;
             if (!conciliados.has(p.id)) o.semLastroBancario++;
+            // Pix comum/cartão informado no Caixa (09/2026) — visível aqui, não escondido;
+            // só não é somado como "confirmado" (é exatamente o que esta rota já checava
+            // olhando `semContaFinanceira`, agora com a coluna de verdade).
+            if (p.confirmado === false) { o.aguardandoConciliacao++; o.valorAguardando = r2(o.valorAguardando + valor); }
             const f = p.formaPagamento || 'N/I';
             o.formas[f] = r2((o.formas[f] || 0) + valor);
 
@@ -8206,6 +8203,7 @@ router.get('/diag-baixas-origem', async (req, res) => {
                     valor: r2(valor),
                     forma: p.formaPagamento || 'N/I',
                     contaInformada: !!p.contaFinanceiraCaId,
+                    confirmado: p.confirmado !== false,
                     baixadoPor: nome,
                     obs: (p.observacao || '').slice(0, 120) || null
                 });
@@ -8258,6 +8256,262 @@ router.get('/diag-baixas-origem', async (req, res) => {
     }
 });
 
+// ═══════════════════════════════════════════════════════════════════
+// RETROATIVO — "Pix comum/cartão SEM banco" (09/2026)
+//
+// Antes desta mudança, Pix comum/cartão quitavam no Caixa (conferência/especial/
+// normal-local/rota) com `contaFinanceiraCaId: null` — o próprio código chamava isso
+// de baixa "SEM banco". O dono determinou o fim disso: nenhuma baixa fica sem vínculo
+// bancário real. Esta rota devolve ao estado "aguardando conciliação" (confirmado:false)
+// as baixas antigas que quitaram assim, sem tocar em Dinheiro nem em nenhuma baixa que
+// já tem conta financeira (essas continuam corretas como estão).
+//
+// GET  = dry-run, só leitura, devolve a lista + `mensagemWhatsApp` pronta pro dono revisar.
+// POST = execução de verdade, recebendo os MESMOS ids do dry-run (nunca recalcula filtro
+//        sozinho) — ver salvaguardas no comentário de cada rota abaixo.
+// ═══════════════════════════════════════════════════════════════════
+
+const r2Reversao = (n) => Math.round(Number(n || 0) * 100) / 100;
+
+/** Candidatos: ledger SEM banco, nascido no Caixa (nunca Dinheiro), ainda não revertido. */
+async function candidatosBaixasSemBanco(gte, lte) {
+    const pagamentos = await prisma.pagamentoParcela.findMany({
+        where: {
+            estornado: false,
+            confirmado: true, // já revertido (confirmado:false) não é candidato de novo — idempotência
+            contaFinanceiraCaId: null,
+            origem: { in: ['CAIXA_BAIXA_CA', 'CAIXA_ROTA'] },
+            dataPagamento: { gte, lte }
+        },
+        select: {
+            id: true, valorRecebido: true, formaPagamento: true, origem: true, dataPagamento: true,
+            registradoPor: { select: { nome: true } },
+            parcela: {
+                select: {
+                    id: true, numeroParcela: true, contaReceberId: true,
+                    contaReceber: {
+                        select: {
+                            id: true, status: true,
+                            cliente: { select: { NomeFantasia: true, Nome: true } },
+                            pedido: { select: { numero: true, especial: true, idVendaContaAzul: true } }
+                        }
+                    }
+                }
+            }
+        },
+        orderBy: { dataPagamento: 'asc' }
+    });
+    // ehDinheiroPagamento por segurança extra: Dinheiro sempre teve conta (Caixinha) — se
+    // aparecer aqui é outro problema (config faltando), fora do escopo deste retroativo.
+    return pagamentos.filter(p => !ehDinheiroPagamento(p.formaPagamento)).map(p => ({
+        id: p.id,
+        data: p.dataPagamento.toISOString().slice(0, 10),
+        valor: r2Reversao(Number(p.valorRecebido)),
+        forma: p.formaPagamento || 'N/I',
+        origem: p.origem,
+        cliente: p.parcela?.contaReceber?.cliente?.NomeFantasia || p.parcela?.contaReceber?.cliente?.Nome || 'Cliente',
+        pedido: p.parcela?.contaReceber?.pedido?.numero ?? null,
+        especial: !!p.parcela?.contaReceber?.pedido?.especial,
+        numeroParcela: p.parcela?.numeroParcela ?? null,
+        parcelaId: p.parcela?.id || null,
+        contaReceberId: p.parcela?.contaReceberId || null,
+        statusContaAtual: p.parcela?.contaReceber?.status || null,
+        baixadoPor: p.registradoPor?.nome || 'N/I',
+        temVendaContaAzul: !!p.parcela?.contaReceber?.pedido?.idVendaContaAzul
+    }));
+}
+
+/** Mensagem pronta pra WhatsApp — sem tabela, `*negrito*`, agrupada, com totais, resumida por cliente se >50 linhas. */
+function mensagemWhatsAppReversao(candidatos, { executado }) {
+    const totais = { quantidade: candidatos.length, valor: r2Reversao(candidatos.reduce((s, c) => s + c.valor, 0)) };
+    const abertura = executado
+        ? '⚠️ *Reversão de baixas SEM banco* — os títulos abaixo, que tinham quitado direto no Caixa com Pix comum/cartão sem conta financeira vinculada, foram *revertidos*: voltam a ficar em aberto até serem identificados na Conciliação Bancária.'
+        : '⚠️ *Pix comum/cartão SEM banco* — os títulos abaixo quitaram no Caixa sem conta financeira vinculada (era assim que o sistema funcionava antes desta correção). Ao confirmar, eles voltam a ficar em aberto até serem identificados na Conciliação Bancária.\n\n*Revise a lista antes de aprovar a reversão.*';
+
+    if (candidatos.length === 0) {
+        return `${abertura}\n\nNenhum título encontrado no período informado.`;
+    }
+
+    const linhas = [];
+    if (candidatos.length > 50) {
+        // Resumido por cliente (nome, contagem, soma) — lista línea a línea ficaria gigante
+        const porCliente = new Map();
+        for (const c of candidatos) {
+            const info = porCliente.get(c.cliente) || { contagem: 0, soma: 0 };
+            info.contagem++;
+            info.soma = r2Reversao(info.soma + c.valor);
+            porCliente.set(c.cliente, info);
+        }
+        const ordenado = [...porCliente.entries()].sort((a, b) => b[1].soma - a[1].soma);
+        linhas.push(`*Resumo por cliente* (${ordenado.length} clientes):`);
+        for (const [cliente, info] of ordenado) {
+            linhas.push(`• ${cliente} — ${info.contagem}x — R$ ${info.soma.toFixed(2)}`);
+        }
+    } else {
+        // Agrupada por forma de pagamento
+        const porForma = new Map();
+        for (const c of candidatos) {
+            if (!porForma.has(c.forma)) porForma.set(c.forma, []);
+            porForma.get(c.forma).push(c);
+        }
+        for (const [forma, itens] of porForma) {
+            linhas.push(`\n*${forma}* (${itens.length}):`);
+            for (const it of itens) {
+                const pedidoTxt = it.pedido ? `pedido #${it.pedido}` : 'especial';
+                linhas.push(`• ${it.cliente} · ${pedidoTxt}/parcela ${it.numeroParcela} · R$ ${it.valor.toFixed(2)} · ${it.data}`);
+            }
+        }
+    }
+
+    const comVendaCA = candidatos.filter(c => c.temVendaContaAzul).length;
+    const avisoCA = comVendaCA > 0
+        ? `\n\n_${comVendaCA} título(s) têm venda espelhada no Conta Azul — vale conferir lá antes de aprovar (o app é só leitura do CA, mas a venda existe dos dois lados)._`
+        : '';
+
+    const fechamento = `\n\n*Total: ${totais.quantidade} título(s) — R$ ${totais.valor.toFixed(2)}*`;
+    return `${abertura}\n${linhas.join('\n')}${fechamento}${avisoCA}`;
+}
+
+// ── GET /reverter-baixas-sem-banco?de=YYYY-MM-DD&ate=YYYY-MM-DD — DRY-RUN, só leitura ──
+router.get('/reverter-baixas-sem-banco', async (req, res) => {
+    try {
+        const { de, ate } = req.query;
+        if (!de || !ate || !/^\d{4}-\d{2}-\d{2}$/.test(de) || !/^\d{4}-\d{2}-\d{2}$/.test(ate)) {
+            return res.status(400).json({ error: 'Informe ?de=YYYY-MM-DD&ate=YYYY-MM-DD.' });
+        }
+        const gte = new Date(`${de}T00:00:00-03:00`);
+        const lte = new Date(`${ate}T23:59:59-03:00`);
+        if (lte < gte) return res.status(400).json({ error: '"ate" não pode ser antes de "de".' });
+
+        const candidatos = await candidatosBaixasSemBanco(gte, lte);
+        const totais = { quantidade: candidatos.length, valor: r2Reversao(candidatos.reduce((s, c) => s + c.valor, 0)) };
+
+        res.json({
+            ok: true,
+            periodo: { de, ate },
+            totais,
+            candidatos,
+            mensagemWhatsApp: mensagemWhatsAppReversao(candidatos, { executado: false })
+        });
+    } catch (e) {
+        console.error('[admin-exec] reverter-baixas-sem-banco (dry-run):', e.message);
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+// ── POST /reverter-baixas-sem-banco — EXECUÇÃO, recebe os IDs exatos do dry-run ──
+//
+// Salvaguardas (plano aprovado 09/2026):
+//  1. Dry-run sempre primeiro (GET acima) — o dono revisa a `mensagemWhatsApp` antes.
+//  2. Esta rota SÓ aceita `ids` explícitos — nunca recalcula o filtro de data sozinha,
+//     então não existe "reverter tudo de novo" por engano.
+//  3. Idempotência: rodar duas vezes não reverte duas vezes — linha já `confirmado:false`
+//     é pulada com aviso, não re-processada.
+//  4. `DEVOLUCAO` e linha de "responsável" nunca entram (não são criadas por esta origem).
+//  5. Erro de NF-e ou de rede nunca entra aqui — é só banco, dentro da transação.
+router.post('/reverter-baixas-sem-banco', async (req, res) => {
+    try {
+        const { recalcularParcelaReceber } = require('../services/conciliacaoBancariaService');
+        const { ids } = req.body;
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'Informe `ids` — os ids exatos devolvidos pelo dry-run (GET desta mesma rota).' });
+        }
+        if (ids.length > 500) {
+            return res.status(400).json({ error: 'Máximo de 500 ids por execução — rode em lotes menores.' });
+        }
+
+        const linhas = await prisma.pagamentoParcela.findMany({
+            where: { id: { in: [...new Set(ids)] } },
+            select: {
+                id: true, estornado: true, confirmado: true, contaFinanceiraCaId: true, origem: true,
+                formaPagamento: true, valorRecebido: true, dataPagamento: true, parcelaId: true,
+                registradoPor: { select: { nome: true } },
+                parcela: {
+                    select: {
+                        id: true, numeroParcela: true, contaReceberId: true,
+                        contaReceber: {
+                            select: {
+                                id: true, status: true,
+                                cliente: { select: { NomeFantasia: true, Nome: true } },
+                                pedido: { select: { numero: true, especial: true, idVendaContaAzul: true } }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        const encontrados = new Set(linhas.map(l => l.id));
+        const naoEncontrados = ids.filter(id => !encontrados.has(id));
+
+        const revertidos = [];
+        const puladosJaRevertido = [];
+        const puladosForaDoEscopo = [];
+
+        for (const l of linhas) {
+            // Recusas — a linha não é (ou deixou de ser) candidata de verdade
+            if (l.estornado) { puladosForaDoEscopo.push({ id: l.id, motivo: 'estornado' }); continue; }
+            if (l.contaFinanceiraCaId) { puladosForaDoEscopo.push({ id: l.id, motivo: 'já tem conta financeira vinculada' }); continue; }
+            if (!['CAIXA_BAIXA_CA', 'CAIXA_ROTA'].includes(l.origem)) { puladosForaDoEscopo.push({ id: l.id, motivo: `origem "${l.origem}" fora do escopo (só CAIXA_BAIXA_CA/CAIXA_ROTA)` }); continue; }
+            if (ehDinheiroPagamento(l.formaPagamento)) { puladosForaDoEscopo.push({ id: l.id, motivo: 'é Dinheiro — nunca deveria ter entrado nesta lista' }); continue; }
+            // Idempotência: já revertido numa execução anterior — não reverte de novo
+            if (l.confirmado === false) { puladosJaRevertido.push(l.id); continue; }
+
+            const cliente = l.parcela?.contaReceber?.cliente?.NomeFantasia || l.parcela?.contaReceber?.cliente?.Nome || 'Cliente';
+            const pedido = l.parcela?.contaReceber?.pedido?.numero ?? null;
+
+            await prisma.$transaction(async (tx) => {
+                await tx.pagamentoParcela.update({ where: { id: l.id }, data: { confirmado: false } });
+                // Mesma função que CONFIRMA um Pix aguardando na Conciliação — aqui faz o
+                // caminho inverso: recompõe parcela/conta como se esta linha tivesse
+                // nascido `confirmado:false` desde sempre (não soma mais em valorPago).
+                await recalcularParcelaReceber(tx, l.parcelaId);
+            }, { timeout: 20000, maxWait: 10000 });
+
+            revertidos.push({
+                id: l.id, cliente, pedido, especial: !!l.parcela?.contaReceber?.pedido?.especial,
+                numeroParcela: l.parcela?.numeroParcela ?? null, valor: r2Reversao(Number(l.valorRecebido)),
+                forma: l.formaPagamento || 'N/I', data: l.dataPagamento.toISOString().slice(0, 10),
+                baixadoPor: l.registradoPor?.nome || 'N/I'
+            });
+        }
+
+        const totais = { quantidade: revertidos.length, valor: r2Reversao(revertidos.reduce((s, c) => s + c.valor, 0)) };
+
+        // Log FORA das transações individuais (auditLog não tem FK de vendedor — é o
+        // registro certo para ação de admin-exec, sem sessão de usuário logado) — falha
+        // no log nunca desfaz as reversões já efetivadas.
+        if (revertidos.length > 0) {
+            try {
+                await prisma.auditLog.create({
+                    data: {
+                        acao: 'REVERTER_BAIXAS_SEM_BANCO',
+                        entidade: 'PagamentoParcela',
+                        entidadeId: revertidos.map(r => r.id).join(','),
+                        detalhes: JSON.stringify({ totais, revertidos }),
+                        usuarioId: 'admin-exec',
+                        usuarioNome: 'Retroativo (admin-exec)'
+                    }
+                });
+            } catch (logErr) {
+                console.error('[admin-exec] reverter-baixas-sem-banco: falha no audit log (reversão já efetivada):', logErr.message);
+            }
+        }
+
+        res.json({
+            ok: true,
+            totais,
+            revertidos,
+            puladosJaRevertido,
+            puladosForaDoEscopo,
+            naoEncontrados,
+            mensagemWhatsApp: mensagemWhatsAppReversao(revertidos, { executado: true })
+        });
+    } catch (e) {
+        console.error('[admin-exec] reverter-baixas-sem-banco (execução):', e.message);
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
 // ── GET /diag-pedido-financeiro/:numero — histórico completo do dinheiro de um pedido ──
 // Para o caso "entrega devolvida mas conta quitada": mostra a entrega, as devoluções, cada
 // parcela e CADA lançamento do ledger (quem registrou, por qual caminho, se foi estornado,
@@ -8305,7 +8559,8 @@ router.get('/diag-pedido-financeiro/:numero', async (req, res) => {
                             orderBy: { createdAt: 'asc' },
                             select: {
                                 id: true, valorRecebido: true, valorDesconto: true, motivoDesconto: true,
-                                formaPagamento: true, dataPagamento: true, observacao: true, origem: true,
+                                formaPagamento: true, contaFinanceiraCaId: true, confirmado: true,
+                                dataPagamento: true, observacao: true, origem: true,
                                 caixaDiarioId: true, estornado: true, estornadoEm: true, createdAt: true,
                                 registradoPor: { select: { nome: true } },
                                 estornadoPor: { select: { nome: true } }
@@ -8356,6 +8611,10 @@ router.get('/diag-pedido-financeiro/:numero', async (req, res) => {
                 origem: x.origem || '(antes do carimbo — ver observação)',
                 porQuem: x.registradoPor?.nome || null,
                 noCaixaDe: x.caixaDiarioId || null,
+                banco: x.contaFinanceiraCaId || null,
+                // Pix comum/cartão informado no Caixa (09/2026) fica visível aqui como
+                // qualquer outra linha — só não conta em `valorPago` até confirmar.
+                confirmado: x.confirmado !== false,
                 temLastroNoExtrato: comLastro.has(x.id),
                 estornado: x.estornado,
                 estornadoPor: x.estornadoPor?.nome || null,

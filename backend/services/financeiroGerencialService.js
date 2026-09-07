@@ -149,7 +149,10 @@ async function fluxoCaixa(de, ate, granularidade = 'dia') {
             select: { dataVencimento: true, valor: true }
         }),
         prisma.pagamentoParcela.findMany({
-            where: { dataPagamento: { gte, lte }, estornado: false },
+            // confirmado:true — Pix comum/cartão informado no Caixa (09/2026) ainda não é
+            // dinheiro confirmado pelo banco; o REALIZADO do Fluxo de Caixa não pode contar
+            // esse valor antes da Conciliação Bancária bater com o extrato.
+            where: { dataPagamento: { gte, lte }, estornado: false, confirmado: true },
             select: { dataPagamento: true, valorRecebido: true }
         }),
         prisma.parcelaPagar.findMany({

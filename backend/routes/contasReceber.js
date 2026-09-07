@@ -898,8 +898,11 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
 
         // Quitadas no mês: soma dos pagamentos/descontos (do ledger) lançados no mês corrente,
         // independente do status atual da parcela (cobre baixas parciais e totais).
+        // `confirmado: true` exclui Pix comum/cartão só INFORMADO no Caixa (09/2026) — essa
+        // linha existe no ledger mas ainda não é dinheiro confirmado pelo banco; contá-la
+        // aqui infla "quitado no mês" com título que ainda pode não bater na conciliação.
         const pagamentosDoMes = await prisma.pagamentoParcela.findMany({
-            where: { estornado: false, dataPagamento: { gte: inicioMes, lte: fimMes } },
+            where: { estornado: false, confirmado: true, dataPagamento: { gte: inicioMes, lte: fimMes } },
             select: { valorRecebido: true, valorDesconto: true }
         });
         totalQuitadasMes = pagamentosDoMes.reduce((s, p) => s + Number(p.valorRecebido) + Number(p.valorDesconto), 0);
@@ -947,6 +950,10 @@ router.get('/', verificarAuth, checkAcesso, async (req, res) => {
                 origem: c.origem,
                 valorTotal: Number(c.valorTotal),
                 status: c.status,
+                // Pix comum/cartão informado no Caixa, ainda esperando a Conciliação Bancária
+                // bater com o extrato (regra do dono, 09/2026) — NÃO é dívida do cliente.
+                // Ver backend/services/recebimentoEntregaService.js e conciliacaoBancariaService.js.
+                aguardandoConciliacao: c.aguardandoConciliacao || false,
                 observacao: c.observacao,
                 parcelasTotal: c.parcelas.length,
                 parcelasPagas,
@@ -1443,7 +1450,11 @@ router.delete('/:parcelaId/pagamentos/:pagamentoId', verificarAuth, checkBaixa, 
             });
 
             const restantes = await tx.pagamentoParcela.findMany({ where: { parcelaId, estornado: false } });
-            novoValorPago = restantes.reduce((s, p) => s + Number(p.valorRecebido), 0);
+            // Só CONFIRMADO soma em valorPago (09/2026: Pix comum/cartão informado no Caixa
+            // pode conviver na mesma parcela sem ainda ter sido confirmado) — sem este
+            // filtro, estornar QUALQUER linha recalcularia somando também o que só está
+            // "aguardando conciliação" e nunca quitou nada de verdade.
+            novoValorPago = restantes.filter(p => p.confirmado !== false).reduce((s, p) => s + Number(p.valorRecebido), 0);
             novoValorDescontoTotal = restantes.reduce((s, p) => s + Number(p.valorDesconto), 0);
             novoStatusParcela = calcularStatusParcela(parcela.valor, novoValorPago, novoValorDescontoTotal);
 
@@ -1461,7 +1472,15 @@ router.delete('/:parcelaId/pagamentos/:pagamentoId', verificarAuth, checkBaixa, 
             const parcelasAtualizadas = todasParcelas.map(p => p.id === parcelaId ? { ...p, status: novoStatusParcela } : p);
             novoStatusConta = calcularStatusConta(parcelasAtualizadas);
 
-            await tx.contaReceber.update({ where: { id: parcela.contaReceberId }, data: { status: novoStatusConta } });
+            // Estornar pode ter sido justamente a última linha "aguardando conciliação" —
+            // recalcula o selo para a conta não ficar presa como "aguardando" para sempre.
+            const pendenteAguardando = await tx.pagamentoParcela.count({
+                where: { estornado: false, confirmado: false, parcela: { contaReceberId: parcela.contaReceberId } }
+            });
+            await tx.contaReceber.update({
+                where: { id: parcela.contaReceberId },
+                data: { status: novoStatusConta, aguardandoConciliacao: pendenteAguardando > 0 }
+            });
         }, { timeout: 20000, maxWait: 10000 });
 
         // Conciliação bancária presa nesta baixa volta para pendente (estorno já efetivado).
@@ -1522,7 +1541,16 @@ router.delete('/:parcelaId/baixa', verificarAuth, checkBaixa, async (req, res) =
             const parcelasAtualizadas = todasParcelas.map(p => p.id === parcelaId ? { ...p, status: 'PENDENTE' } : p);
             novoStatusConta = calcularStatusConta(parcelasAtualizadas);
 
-            await tx.contaReceber.update({ where: { id: parcela.contaReceberId }, data: { status: novoStatusConta } });
+            // Estorno em lote apaga TODAS as linhas desta parcela — inclusive qualquer Pix/
+            // cartão "aguardando conciliação"; recalcula o selo da conta (pode continuar
+            // aguardando se OUTRA parcela da mesma conta ainda tiver linha pendente).
+            const pendenteAguardando = await tx.pagamentoParcela.count({
+                where: { estornado: false, confirmado: false, parcela: { contaReceberId: parcela.contaReceberId } }
+            });
+            await tx.contaReceber.update({
+                where: { id: parcela.contaReceberId },
+                data: { status: novoStatusConta, aguardandoConciliacao: pendenteAguardando > 0 }
+            });
         }, { timeout: 20000, maxWait: 10000 });
 
         // Conciliação bancária presa nestas baixas volta para pendente (estorno já efetivado).
@@ -1674,7 +1702,9 @@ router.put('/:id/reverter-quitacao', verificarAuth, async (req, res) => {
                     observacao: null
                 }
             });
-            await tx.contaReceber.update({ where: { id: conta.id }, data: { status: 'ABERTO' } });
+            // Estorna TODOS os pagamentos da conta (idsEstornar acima) — inclusive qualquer
+            // Pix/cartão "aguardando conciliação". O selo volta a false junto com o status.
+            await tx.contaReceber.update({ where: { id: conta.id }, data: { status: 'ABERTO', aguardandoConciliacao: false } });
         }, { timeout: 20000, maxWait: 10000 });
 
         // Conciliação bancária presa nestas baixas volta para pendente (estorno já efetivado)
