@@ -1,5 +1,11 @@
 [
   {
+    "slug": "pix-aguardando-banco",
+    "titulo": "Pix e cartão: agora \"Aguardando\"",
+    "resumo": "Pix comum e cartão informados na conferência do Caixa (entrega ou cobrança em rota) não quitam mais o título na hora — o valor fica registrado, mas a parcela continua PENDENTE/VENCIDO com o selo âmbar \"Aguardando Pix\" até o Financeiro confirmar o pagamento na Conciliação Bancária, batendo o valor com o extrato do banco. Motivo: não pode existir baixa sem o dinheiro identificado no banco — antes, o título quitava só pela palavra de quem registrou o caixa, sem nenhum vínculo com a conta bancária. Dinheiro (Caixinha) e Pix do QR Code (Asaas) continuam baixando na hora, sem mudança nenhuma. O jeito de registrar a entrega e o caixa não muda para vendedor e motorista — só aparece o selo novo depois. O aviso aparece em três lugares: Contas a Receber (badge \"Aguardando Pix\" e caixa de detalhe na parcela), Cobranças da Rota do Caixa (\"Pix aguardando banco\" no lugar de \"Baixada ✓\") e Conciliação Bancária (título destacado e priorizado com \"Pix informado — bater com o extrato\"). Para confirmar: Financeiro → Conciliação Bancária → escolha a conta e o lançamento do extrato → marque o título destacado na lista de contas a receber em aberto → conclua a conciliação — a parcela vira PAGO/PARCIAL na hora, já com a conta certa.",
+    "data": "2026-09-07"
+  },
+  {
     "slug": "quantidade-por-caixa",
     "titulo": "Quantidade por caixa no inventário",
     "resumo": "O cadastro do produto ganhou o campo \"Qtd. por caixa\": no inventário o botão soma a caixa inteira num toque e um contador mostra quantas caixas você já lançou (sem conta de cabeça); a informação também aparece nas Etiquetas do PCP e no Ajuste de Estoque. A etiqueta impressa e o cálculo do estoque não mudam.",
