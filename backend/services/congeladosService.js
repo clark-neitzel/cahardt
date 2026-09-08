@@ -459,6 +459,7 @@ const congeladosService = {
                 pesoPorcao: et.pesoTabelaNutricional,
                 quantidadeEmbalagem: et.quantidadeEmbalagem,
                 quantidadeAproximada: et.quantidadeAproximada,
+                pesoPacote: et.pesoPacote, // gramas; null = sem peso fixo cadastrado
                 // valores nutricionais crus (ex.: "169kcal (12% VD)") — o front calcula 100g/porção/%VD
                 nutricional: {
                     valorEnergetico: et.valorEnergetico,

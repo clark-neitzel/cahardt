@@ -209,6 +209,7 @@ const produtoController = {
                     pesoPorcao: et.pesoTabelaNutricional,
                     quantidadeEmbalagem: et.quantidadeEmbalagem,
                     quantidadeAproximada: et.quantidadeAproximada,
+                    pesoPacote: et.pesoPacote, // gramas; null = sem peso fixo cadastrado
                     nutricional: {
                         valorEnergetico: et.valorEnergetico,
                         carboidratos: et.carboidratos,

@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
 import { codExibir, imprimirEtiquetas, validadeDias } from './EtiquetaLabel';
 import { EtiquetaRender } from './EtiquetaLabelNova';
-import { TAMANHOS, TAMANHO_PADRAO, LAYOUTS, LAYOUT_PADRAO, layoutValido, paginaImpressao } from './etiquetaModelos';
+import { TAMANHOS, TAMANHO_PADRAO, LAYOUTS, LAYOUT_PADRAO, layoutValido, paginaImpressao, pesoPacoteStr } from './etiquetaModelos';
 import { useFiltroSalvo } from '../../hooks/useFiltrosSalvos';
 
 // ─── Utilidades de data ───────────────────────────────────────────────────────
@@ -90,6 +90,9 @@ function PrintModal({ et, onClose }) {
                         <h2 className="text-lg font-bold text-gray-800">{et.nomeProduto}</h2>
                         <p className="text-sm text-gray-400">
                             Cód. {codExibir(et)} · {et.pesoUnitario}g · {et.quantidadeEmbalagem} un/emb
+                            {pesoPacoteStr(et.pesoPacote) && (
+                                <span> · pacote {pesoPacoteStr(et.pesoPacote)}</span>
+                            )}
                             {et.produto?.quantidadePorCaixa != null && (
                                 <span className="text-primaryDark font-semibold"> · {et.produto.quantidadePorCaixa} un/cx</span>
                             )}
@@ -232,6 +235,12 @@ function EtiquetaCard({ et, onPrint }) {
                 <span>{et.pesoUnitario}g/un</span>
                 <span className="text-gray-300">·</span>
                 <span>{et.quantidadeEmbalagem} un/emb</span>
+                {pesoPacoteStr(et.pesoPacote) && (
+                    <>
+                        <span className="text-gray-300">·</span>
+                        <span>pacote {pesoPacoteStr(et.pesoPacote)}</span>
+                    </>
+                )}
                 <span className="text-gray-300">·</span>
                 <span>{validadeDias(et)}d</span>
                 {et.produto?.quantidadePorCaixa != null && (

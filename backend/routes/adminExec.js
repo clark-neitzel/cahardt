@@ -21,6 +21,8 @@ const contaAzulService = require('../services/contaAzulService');
 // Classificação de origem do ledger — ponto único (09/2026), reusado pelo retroativo
 // "Pix comum/cartão SEM banco" (reverter-baixas-sem-banco) e por diag-baixas-origem.
 const { classificarOrigemPagamento, ehDinheiroPagamento } = require('../services/pagamentoOrigemService');
+// Peso do pacote da etiqueta — validação única (mesma do /api/pcp/etiquetas)
+const { pesoPacoteDaPlanilhaKg } = require('../utils/pesoPacote');
 
 // Estado do backfill assíncrono da conta financeira em Contas a Receber (varre em segundo plano)
 const _backfillReceber = { rodando: false, progresso: null };
@@ -4456,6 +4458,10 @@ router.post('/estoque-ajuste-batch', async (req, res) => {
     return res.json({ ok: true, aplicados: resultados.length, erros: erros.length, resultados, erros });
 });
 
+// Peso do pacote na planilha de importação: KG com até 3 casas (vírgula ou ponto) —
+// a MESMA unidade que o formulário da tela mostra. Converte para gramas inteiras e
+// devolve erro quando a célula não converte; ver backend/utils/pesoPacote.js.
+
 // POST /api/admin-exec/import-etiquetas — upsert em lote de etiquetas (por codigoProduto)
 router.post('/import-etiquetas', async (req, res) => {
     try {
@@ -4475,8 +4481,19 @@ router.post('/import-etiquetas', async (req, res) => {
 
         const criados = [], atualizados = [], erros = [];
 
-        for (const et of etiquetas) {
+        for (let i = 0; i < etiquetas.length; i++) {
+            const et = etiquetas[i] || {};
+            const linha = i + 1;   // 1 = primeira etiqueta enviada (linha da planilha)
             try {
+                // Peso do pacote vem em KG na planilha. Célula vazia/ausente não mexe no que já
+                // está gravado; célula preenchida e ilegível/fora da faixa DERRUBA a linha inteira
+                // para erros[] — antes virava null calado e a linha era contada como sucesso.
+                const peso = pesoPacoteDaPlanilhaKg(et.pesoPacote);
+                if (!peso.ok) {
+                    erros.push({ linha, codigo: et.codigoProduto, erro: peso.erro });
+                    continue;
+                }
+
                 // Match por codigoProduto + pesoUnitario para não sobrescrever versões diferentes
                 const existente = await prisma.etiquetaProduto.findFirst({
                     where: {
@@ -4511,6 +4528,9 @@ router.post('/import-etiquetas', async (req, res) => {
                     produtoId:             produtoIdFinal,
                     quantidadeEmbalagem:   parseInt(et.quantidadeEmbalagem) || 1,
                     quantidadeAproximada:  Boolean(et.quantidadeAproximada),
+                    // peso FIXO do pacote em gramas, convertido dos KG da planilha (1,350 → 1350).
+                    // Célula vazia/ausente NÃO apaga o que já está gravado.
+                    ...(peso.ausente ? {} : { pesoPacote: peso.gramas }),
                     composicao:            String(et.composicao  || ''),
                     modoPreparo:           String(et.modoPreparo || ''),
                     codigoBarras:          et.codigoBarras       || null,
@@ -4537,7 +4557,7 @@ router.post('/import-etiquetas', async (req, res) => {
                     criados.push(et.codigoProduto);
                 }
             } catch (e) {
-                erros.push({ codigo: et.codigoProduto, erro: e.message });
+                erros.push({ linha, codigo: et.codigoProduto, erro: e.message });
             }
         }
         return res.json({ ok: true, criados: criados.length, atualizados: atualizados.length, erros, detalhe: { criados, atualizados } });

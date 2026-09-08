@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Peso do pacote na etiqueta — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: cartão compacto no grupo) -->
+<meta property="og:title" content="⚖️ Novidade no Hardt App: Peso do pacote na etiqueta">
+<meta property="og:description" content="Agora dá para cadastrar o peso fixo do pacote (ex.: 1,350 kg) e é ele que sai como PESO LÍQUIDO na etiqueta. Quem não preencher, nada muda.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 12px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid var(--primary);
+    box-shadow: 0 0 0 3px rgba(0,117,74,.14);
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 16px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-ajuda { font-size: 12px; color: var(--ink-soft); margin-top: 7px; }
+  .mock-ajuda b { color: var(--ink); }
+  .seta-desce { text-align: center; font-size: 20px; color: #b9b5aa; margin: 10px 0 2px; }
+
+  /* etiqueta impressa (mock) */
+  .etiqueta {
+    max-width: 420px;
+    margin: 0 auto 34px;
+    background: #fff;
+    border: 1px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 14px 16px;
+    box-shadow: 0 4px 14px rgba(20,40,34,.10);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .etq-nome { font-size: 17px; font-weight: 800; letter-spacing: -.02em; font-family: inherit; }
+  .etq-linha {
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #33403a;
+    border-top: 1px solid #e3e1da;
+    border-bottom: 1px solid #e3e1da;
+    padding: 7px 0;
+  }
+  .etq-destaque { background: var(--mint); color: var(--primary-dark); padding: 1px 5px; border-radius: 4px; }
+  .etq-sub { font-size: 12px; font-weight: 700; color: #33403a; margin-top: 5px; }
+  .etq-rodape { font-size: 10.5px; color: #9aa5a0; margin-top: 7px; }
+  .etq-legenda {
+    max-width: 420px;
+    margin: -26px auto 34px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  .acc-corpo code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: #f3f2ed;
+    border: 1px solid #e3e1da;
+    border-radius: 5px;
+    padding: 1px 5px;
+    font-size: 12.5px;
+    color: var(--ink);
+  }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* tabela do que o app recusa */
+  .regras { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .regras td { font-size: 13px; padding: 7px 0; border-top: 1px dashed #e3e1da; vertical-align: top; color: var(--ink-soft); }
+  .regras tr:first-child td { border-top: none; }
+  .regras td:first-child {
+    width: 92px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-weight: 700;
+    color: var(--ink);
+    padding-right: 10px;
+    white-space: nowrap;
+  }
+  .regras .sim { color: var(--primary-dark); font-weight: 700; }
+  .regras .nao { color: #b4463c; font-weight: 700; }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-input.erro { border-color: #e08a80; box-shadow: 0 0 0 2px rgba(224,138,128,.18); }
+  .app-input.vazio { color: #b9b5aa; }
+  .app-dica { font-size: 11px; color: #7b857f; margin: -4px 0 8px; }
+  .app-dica b { color: var(--ink); }
+  .app-erro { font-size: 11.5px; font-weight: 700; color: #b4463c; margin: -4px 0 8px; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-toast {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fdecea;
+    border: 1px solid #f2c4bf;
+    color: #8f342b;
+    font-size: 12px;
+    font-weight: 700;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-top: 10px;
+  }
+  .app-toast.bom { background: var(--mint); border-color: rgba(0,117,74,.25); color: var(--primary-dark); }
+  .app-linha-lista {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+  }
+  .app-linha-lista .sub { display: block; font-size: 11px; color: #7b857f; }
+
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>O peso do pacote,<br>direto na etiqueta</h1>
+    <p>As etiquetas do PCP ganharam um campo novo: o <b>peso do pacote</b>. Você digita uma vez, em quilos, e é esse valor que passa a sair como PESO LÍQUIDO na etiqueta impressa — sempre igual, não importa a quantidade.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock: o campo novo -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">⚖️</span>
+      <div>
+        <small>PCP · Etiquetas · Dados da etiqueta</small>
+        <strong>Peso do pacote (kg)</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-label">Peso do pacote (kg)</div>
+      <div class="mock-input">1,350</div>
+      <div class="mock-ajuda">Valor fixo impresso como <b>PESO LÍQUIDO</b> — sai <b>1,350 kg</b> na etiqueta.</div>
+    </div>
+  </div>
+
+  <div class="seta-desce" aria-hidden="true">↓</div>
+
+  <!-- mock: como sai impresso -->
+  <div class="etiqueta" aria-hidden="true">
+    <div class="etq-nome">COXINHA DE FRANGO</div>
+    <div class="etq-sub">Contém 50 unidades · <span class="etq-destaque">aprox.</span> 28 g</div>
+    <div class="etq-linha">CÓD. 1024 · PESO LÍQUIDO <span class="etq-destaque">1,350 kg</span></div>
+    <div class="etq-rodape">VALIDADE 90 DIAS</div>
+  </div>
+  <p class="etq-legenda">É assim que sai na etiqueta impressa. O <b>PESO LÍQUIDO</b> vale nos dois modelos (ANVISA e Clássico); a linha <b>"Contém … unidades"</b> só existe no <b>ANVISA</b>.</p>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⚖️</span>
+      <strong>Campo novo: "Peso do pacote (kg)"</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Fica no cadastro da etiqueta (<b>PCP → Etiquetas → Dados das Etiquetas</b>), logo abaixo de "Quantidade por Embalagem".</li>
+        <li>Digite <b>em quilos, com até 3 casas</b>: <code>1,350</code> = um quilo e trezentos e cinquenta gramas. Pode usar vírgula ou ponto.</li>
+        <li>Zero à direita não atrapalha: <code>1,3500</code> e <code>1,35</code> são o mesmo peso e os dois são aceitos.</li>
+        <li>Enquanto você digita, o app mostra logo abaixo do campo <b>exatamente o que vai sair na etiqueta</b>.</li>
+        <li>Vale de <code>0,001</code> até <code>999,999</code> kg.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🏷️</span>
+      <strong>É ele que vira o PESO LÍQUIDO impresso</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Com o campo preenchido, a etiqueta imprime <b>esse valor fixo</b>, sempre no formato <code>1,350 kg</code> — <b>independente da quantidade</b> cadastrada na embalagem.</li>
+        <li>Motivo: o peso real do pacote fechado é aproximado. Multiplicar quantidade × peso unitário dava um número que não batia com a balança.</li>
+        <li>Nas listas de <b>Etiquetas</b> e de <b>Dados das Etiquetas</b> o valor aparece como <code>pacote 1,350 kg</code>, para você conferir antes de mandar imprimir.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📐</span>
+      <strong>"aprox. 28 g": a etiqueta parou de se contradizer</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>No <b>modelo ANVISA</b>, a linha abaixo do nome dizia <code>Contém 50 unidades · 28 g cada</code>. Só que 50 × 28 g = 1.400 g, e logo abaixo saía <code>PESO LÍQUIDO 1,350 kg</code> — dois números brigando no mesmo papel.</p>
+      <ul>
+        <li>Agora essa linha sai <code>Contém 50 unidades · aprox. 28 g</code>.</li>
+        <li>O <b>"aprox." aparece sempre</b>, com ou sem peso do pacote cadastrado — o peso de cada unidade sempre foi aproximado, a etiqueta só passou a dizer isso.</li>
+        <li>O <b>modelo Clássico não tem essa linha</b>, então nele não mudou nada.</li>
+        <li>Quem marca <b>"Qtd. aproximada"</b> no cadastro continua vendo o outro "aprox.", o da quantidade (<code>Contém aprox. 50 unidades</code>) — são duas coisas diferentes.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🤝</span>
+      <strong>Quem não preencher: nada muda</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O campo é <b>opcional</b>. Etiqueta com o campo em branco continua funcionando exatamente como sempre funcionou:</p>
+      <ul>
+        <li>O peso líquido segue sendo <b>quantidade por embalagem × peso unitário</b> (em kg acima de 1000 g, senão em gramas).</li>
+        <li><b>Nenhuma etiqueta antiga mudou.</b> Elas só mudam se alguém entrar e preencher o campo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🛡️</span>
+      <strong>O app não deixa gravar peso errado</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Se o que foi digitado não serve como peso, a borda do campo fica <b>vermelha</b>, o motivo aparece logo abaixo e o app <b>avisa e não salva</b> — o peso que já estava gravado <b>continua lá</b>. Nenhum valor digitado apaga o peso por engano.</p>
+      <table class="regras">
+        <tr><td>1,350</td><td><span class="sim">Salva</span> — sai <code>1,350 kg</code>.</td></tr>
+        <tr><td>0,001</td><td><span class="sim">Salva</span> — é o menor peso aceito.</td></tr>
+        <tr><td>999,999</td><td><span class="sim">Salva</span> — é o maior peso aceito.</td></tr>
+        <tr><td>(vazio)</td><td><span class="sim">Salva</span> — limpa o peso. <b>É a única forma de tirar o peso fixo.</b></td></tr>
+        <tr><td>1,3500 · 1,3</td><td><span class="sim">Salva</span> — zero à direita não conta: viram <code>1,350 kg</code> e <code>1,300 kg</code>.</td></tr>
+        <tr><td>1,3505</td><td><span class="nao">Recusa</span> — "use no máximo 3 casas decimais". O app não arredonda escondido.</td></tr>
+        <tr><td>0 · 0,0004</td><td><span class="nao">Recusa</span> — "deve ser no mínimo 0,001 kg".</td></tr>
+        <tr><td>1000 · 9999999</td><td><span class="nao">Recusa</span> — "deve ser no máximo 999,999 kg".</td></tr>
+        <tr><td>abc · -1 · 1.350,5</td><td><span class="nao">Recusa</span> — "peso do pacote inválido. Digite em kg, ex.: 1,350".</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1: onde fica o campo -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Dados da etiqueta — onde fica o campo novo</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🏷️ Dados do produto</div>
+        <div class="app-card-body">
+          <div class="app-input"><small>Peso Unitário (g) *</small>28</div>
+          <div class="app-input"><small>Quantidade por Embalagem *</small>50</div>
+          <div class="app-input ok"><small>Peso do pacote (kg)<span class="pin">1</span></small>1,350</div>
+          <div class="app-dica">Valor fixo impresso como <b>PESO LÍQUIDO</b> — sai <b>1,350 kg</b> na etiqueta.<span class="pin">2</span></div>
+          <div class="app-input vazio" style="margin-bottom:0;"><small>Código de Barras (EAN)</small>Ex: 7898620330460</div>
+        </div>
+      </div>
+      <div style="text-align:right;"><span class="app-btn">💾 Salvar<span class="pin">3</span></span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O campo <b>"Peso do pacote (kg)"</b> fica logo abaixo de "Quantidade por Embalagem". É <b>opcional</b> — não tem o asterisco vermelho dos obrigatórios.</span></div>
+      <div><span class="pin">2</span><span>A linha de ajuda <b>muda enquanto você digita</b> e mostra o valor exato que vai sair impresso. Com o campo em branco, ela explica que a etiqueta segue calculando quantidade × peso unitário.</span></div>
+      <div><span class="pin">3</span><span><b>Salvar</b> grava normalmente, junto com o resto da etiqueta. Não tem botão separado nem etapa a mais.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: valor recusado -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Quando o peso digitado não serve</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🏷️ Dados do produto</div>
+        <div class="app-card-body">
+          <div class="app-input erro" style="margin-bottom:4px;"><small>Peso do pacote (kg)</small>0,0004<span class="pin">1</span></div>
+          <div class="app-dica">Valor fixo impresso como <b>PESO LÍQUIDO</b> — digite em kg com até 3 casas (ex.: 1,350), de 0,001 a 999,999.<span class="pin">2</span></div>
+          <div class="app-erro">Peso do pacote deve ser no mínimo 0,001 kg.<span class="pin">3</span></div>
+        </div>
+      </div>
+      <div style="text-align:right;"><span class="app-btn">💾 Salvar</span></div>
+      <div class="app-toast">⚠️ Peso do pacote deve ser no mínimo 0,001 kg.<span class="pin">4</span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>A <b>borda fica vermelha</b> assim que o valor digitado deixa de servir — antes mesmo de você clicar em Salvar.</span></div>
+      <div><span class="pin">2</span><span>Quando o valor não serve, a linha de ajuda volta a explicar <b>como deve ser digitado</b>, em vez de mostrar um resultado.</span></div>
+      <div><span class="pin">3</span><span>Logo abaixo aparece <b>o motivo exato</b> da recusa (casas decimais demais, peso pequeno demais, peso grande demais ou formato inválido).</span></div>
+      <div><span class="pin">4</span><span>Ao clicar em <b>Salvar</b>, o app mostra o mesmo aviso e <b>não grava nada</b>. O peso que já estava salvo continua intacto — para limpar o peso, deixe o campo <b>totalmente em branco</b> e salve.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3: como aparece na lista e na etiqueta -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Na lista e na etiqueta impressa</div>
+    <div class="tela-corpo">
+      <div class="app-linha-lista" style="margin-bottom:10px;">
+        <span>🏷️</span>
+        <span>
+          <b>COXINHA DE FRANGO</b>
+          <span class="sub">28g/un · 50 un/emb · <b>pacote 1,350 kg</b><span class="pin">1</span> · 90d</span>
+        </span>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">🖨️ Etiqueta impressa</div>
+        <div class="app-card-body" style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;">
+          <div style="font-size:15px;font-weight:800;">COXINHA DE FRANGO</div>
+          <div style="font-size:11px;font-weight:700;margin-top:4px;">Contém 50 unidades · <span class="etq-destaque">aprox.</span> 28 g<span class="pin">2</span></div>
+          <div style="font-size:11.5px;font-weight:700;border-top:1px solid #e3e1da;border-bottom:1px solid #e3e1da;padding:6px 0;margin-top:5px;">
+            CÓD. 1024 · PESO LÍQUIDO <span class="etq-destaque">1,350 kg</span><span class="pin">3</span>
+          </div>
+          <div style="font-size:10px;color:#9aa5a0;margin-top:6px;">VALIDADE 90 DIAS<span class="pin">4</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Nas listas de <b>Etiquetas</b> e <b>Dados das Etiquetas</b>, o peso do pacote aparece junto dos outros dados — dá para conferir sem abrir o cadastro.</span></div>
+      <div><span class="pin">2</span><span>No <b>modelo ANVISA</b>, o peso de cada unidade passou a sair marcado como <b>"aprox."</b>. Antes dizia "28 g cada", e 50 × 28 g dá 1.400 g — brigava com o peso líquido logo abaixo. O peso de cada unidade sempre foi aproximado; agora a etiqueta diz isso. <b>O modelo Clássico não tem essa linha</b>, então lá nada mudou.</span></div>
+      <div><span class="pin">3</span><span>O <b>PESO LÍQUIDO</b> sai no lugar de sempre, com 3 casas e vírgula. Vale nos dois modelos (ANVISA e Clássico) e em todos os tamanhos.</span></div>
+      <div><span class="pin">4</span><span>O restante da etiqueta <b>não muda</b>: validade, tabela nutricional, ingredientes e alérgicos continuam exatamente como estavam.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO USAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div>Abra <b>PCP → Dados Etiquetas</b> e clique no lápis da etiqueta que você quer ajustar.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Pese um pacote fechado na balança e digite o valor em <b>"Peso do pacote (kg)"</b> — em quilos, com até 3 casas (ex.: <b>1,350</b>).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Confira a <b>linha de ajuda logo abaixo do campo</b>: ela mostra o valor exato que vai sair impresso.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">4</span>
+      <div>Clique em <b>Salvar</b> e imprima a etiqueta normalmente. Mudou de ideia? Apague o campo, salve, e a etiqueta volta a calcular como antes.</div>
+    </div>
+  </div>
+
+  <p class="rodape">
+    Qualquer dúvida, chama no grupo.<br>
+    <strong>Hardt App</strong> · PCP → Etiquetas
+  </p>
+
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

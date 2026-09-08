@@ -4,6 +4,7 @@ import { Search, Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Printer } from '
 import toast from 'react-hot-toast';
 import etiquetaService from '../../services/etiquetaService';
 import SelectBusca from '../../components/SelectBusca';
+import { pesoPacoteStr } from './etiquetaModelos';
 
 export default function EtiquetasDados() {
     const navigate = useNavigate();
@@ -139,7 +140,12 @@ export default function EtiquetasDados() {
                                             </span>
                                         )}
                                     </td>
-                                    <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{et.pesoUnitario}g</td>
+                                    <td className="px-4 py-3 text-gray-600 hidden md:table-cell">
+                                        {et.pesoUnitario}g
+                                        {pesoPacoteStr(et.pesoPacote) && (
+                                            <span className="block text-[11px] text-gray-500">pacote {pesoPacoteStr(et.pesoPacote)}</span>
+                                        )}
+                                    </td>
                                     <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">{et.quantidadeEmbalagem} un</td>
                                     <td className="px-4 py-3 text-gray-600 hidden lg:table-cell">{et.validadeDias} dias</td>
                                     <td className="px-4 py-3">

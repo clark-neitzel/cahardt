@@ -180,9 +180,18 @@ export function EtiquetaLabelNova({ et, dataFab, dataVal, larguraMM = 100, altur
                     {et.nomeProduto}
                 </div>
                 <div style={{ fontWeight: 700, fontSize: fs(sm ? 6 : 7), marginTop: vmm(sm ? 1 : 1.5) }}>
-                    {/* "aprox." só com a config quantidadeAproximada ligada (paridade
-                        com o Clássico: "CONTÉM APROXIMADAMENTE X" só com a flag) */}
-                    Contém {et.quantidadeAproximada ? 'aprox. ' : ''}{et.quantidadeEmbalagem} unidades{et.pesoUnitario != null ? ` · ${et.pesoUnitario} g cada` : ''}
+                    {/* Esta linha só existe no layout ANVISA — o Clássico não tem linha de
+                        unidades (a quantidade lá aparece só dentro da tabela nutricional).
+                        Dois "aprox." diferentes convivem aqui, e os dois saem escritos "aprox.":
+                        1) na QUANTIDADE, só com a config quantidadeAproximada ligada;
+                        2) no PESO POR UNIDADE, SEMPRE — o peso de cada unidade sempre foi
+                           aproximado, e sem essa marca a linha contradizia o PESO LÍQUIDO logo
+                           abaixo quando a etiqueta tem "Peso do pacote" fixo cadastrado
+                           (ex.: 50 × 28 g = 1.400 g, mas o pacote pesa 1,350 kg).
+                        Sem peso unitário cadastrado o trecho inteiro some: o sanitize do backend
+                        faz `parseInt(...) || 0`, então o campo chega 0 (não null) e imprimir
+                        "aprox. 0 g" no papel é pior do que não dizer nada. */}
+                    Contém {et.quantidadeAproximada ? 'aprox. ' : ''}{et.quantidadeEmbalagem} unidades{Number(et.pesoUnitario) > 0 ? ` · aprox. ${et.pesoUnitario} g` : ''}
                 </div>
                 <div style={{ fontWeight: 700, fontSize: fs(sm ? 6.5 : 7.5), marginTop: vmm(0.8) }}>
                     CÓD. {cod}{pesoLiq ? ` · PESO LÍQUIDO ${pesoLiq}` : ''}

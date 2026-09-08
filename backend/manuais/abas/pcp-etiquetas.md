@@ -96,7 +96,10 @@ Gerenciamento do cadastro. Permite criar, editar, ativar/inativar e remover etiq
    - **Nome do Produto** (obrigatório)
    - **Peso Unitário (g)**: peso de cada unidade
    - **Peso Tabela Nutricional / Porção (g)**: tamanho da porção usada na tabela
-   - **Quantidade por Embalagem**: quantas unidades por pacote; marque "Qtd. aproximada" se necessário (exibe "APROXIMADAMENTE" na etiqueta)
+   - **Quantidade por Embalagem**: quantas unidades por pacote; marque "Qtd. aproximada" se necessário — no modelo
+     ANVISA a linha passa a sair `Contém aprox. N unidades` (é o único lugar onde essa marca aparece; o modelo
+     Clássico não tem linha de unidades). **Não** sai mais a palavra "APROXIMADAMENTE" por extenso
+   - **Peso do pacote (kg)** (opcional): peso FIXO do pacote fechado, digitado em quilos com 3 casas (ex.: `1,350`). Aceita vírgula ou ponto, de **0,001 kg até 999,999 kg**. É esse valor que sai como **PESO LÍQUIDO** na etiqueta impressa, sempre no formato `1,350 kg`, independente da quantidade. **Deixando em branco**, a etiqueta continua calculando o peso líquido como quantidade × peso unitário, como sempre foi — as etiquetas antigas não mudam em nada. O sistema **avisa na hora e não salva** quando o valor digitado não serve, dizendo o motivo: letra ou pontuação errada (`abc`, `1.350,5`), **mais de 3 casas decimais significativas** (`1,3505` — não é arredondado, é recusado; zero à direita não conta, então `1,3500` e `1,3` são aceitos e valem 1,350 kg e 1,300 kg), **menos de 0,001 kg** (inclusive zero) ou **mais de 999,999 kg**. Enquanto o valor estiver errado, a borda do campo fica vermelha e o motivo aparece logo abaixo. Nesses casos **nada é enviado ao servidor** e o peso que já estava gravado continua lá — nenhum valor digitado apaga o peso por engano. Para tirar o peso fixo, **apague o campo** (deixe totalmente em branco) e salve: essa é a única forma de limpar.
    - **Código de Barras**: EAN-13 (opcional; se inválido para EAN-13, usa CODE-128)
    - **Tipo de Produto**: texto livre (ex: "Mini - Fritar")
    - **Validade (dias)**: padrão 90 dias
@@ -121,6 +124,8 @@ A **impressão sai na própria página** (não abre janela nem aba nova) — fun
 
 ### Modelo ANVISA
 
+Logo abaixo do nome do produto sai a linha **`Contém N unidades · aprox. X g`** e, na linha seguinte, **`CÓD. … · PESO LÍQUIDO …`**. O **`aprox.` do peso por unidade aparece sempre** (09/2026): o peso de cada unidade sempre foi aproximado, e sem essa marca a linha contradizia o PESO LÍQUIDO logo abaixo quando a etiqueta tem **Peso do pacote** cadastrado — por exemplo, 50 × 28 g dá 1.400 g, mas o pacote pesado na balança tem 1,350 kg. Existe ainda um **segundo** `aprox.`, na quantidade (`Contém aprox. 50 unidades`), que só aparece quando a opção **"Qtd. aproximada"** está marcada no cadastro. **Etiqueta sem Peso Unitário cadastrado** (campo em 0) não imprime o trecho do peso por unidade: a linha sai só como `Contém 50 unidades`, sem "0 g" nem "aprox.".
+
 Etiqueta organizada por zonas: nome centralizado no topo (com folga para o selo quando houver), selo(s) "ALTO EM" no canto superior direito (a tabela começa sempre abaixo do selo, sem sobreposição), tabela nutricional completa (colunas 100 g / porção / %VD), e na zona inferior os textos de ingredientes/preparo/conservação à esquerda com o **código de barras EAN-13 na vertical** (girado 90°, número acompanhando na lateral, lendo de baixo para cima — como um EAN de embalagem em pé) numa coluna à direita, sem nunca encostar na tabela. No rodapé, sempre visíveis, as datas de Fabricação/Lote e Validade. Tudo em preto puro, pensado para a impressora térmica. Sai no tamanho escolhido — no 80 × 100 as fontes e espaçamentos ficam mais compactos para caber no rolo menor.
 
 Quando o produto tem muito texto (ingredientes e modo de preparo longos), a etiqueta **encolhe as fontes automaticamente** até tudo caber na altura da folha — é um ajuste de layout de verdade (não um "zoom" de tela), então o que aparece no preview é exatamente o que sai impresso, no computador e no iPad. As datas de Fabricação/Validade ficam num rodapé fixo, fora do bloco que encolhe — aparecem sempre inteiras na impressão, nunca cortadas. O código de barras também não encolhe: mantém as proporções e o tamanho corretos de leitura.
@@ -129,10 +134,11 @@ Quando o produto tem muito texto (ingredientes e modo de preparo longos), a etiq
 
 O conteúdo clássico contém (nesta ordem):
 1. Nome do produto (negrito, grande)
-2. Código + Peso unitário em gramas
+2. Código + **PESO LÍQUIDO** (o "Peso do pacote" cadastrado, ex.: `1,350 kg`; sem ele, quantidade × peso unitário)
 3. Tabela nutricional por porção
 4. Nota de valores diários
-5. "CONTÉM X UNIDADES" (ou "APROXIMADAMENTE X UNIDADES")
+5. *(o Clássico **não** tem a linha "Contém N unidades" do modelo ANVISA — a quantidade aparece só dentro da
+   tabela nutricional, como "Porções por embalagem: N porções" / "Porção X g (1 unidade)")*
 6. INGREDIENTES
 7. Aviso de alérgenos (ALÉRGICOS: Contém leite, glúten...)
 8. MODO DE PREPARO
@@ -141,6 +147,15 @@ O conteúdo clássico contém (nesta ordem):
 11. "Fabricação - DD/MM/AAAA   Validade - DD/MM/AAAA"
 
 No tamanho 80 × 100 sai no formato original; no 100 × 120 o mesmo conteúdo é ampliado e centralizado para preencher a folha, sem cortar nada.
+
+### De onde sai o PESO LÍQUIDO
+
+Nos dois modelos (ANVISA e Clássico) o peso líquido impresso segue esta ordem:
+
+1. Se a etiqueta tem **Peso do pacote** preenchido no cadastro, é ele que sai — sempre em quilos com 3 casas e vírgula (ex.: `1,350 kg`, `0,500 kg`, `12,000 kg`). Como o peso real do pacote é aproximado, esse valor é fixo e não depende da quantidade cadastrada.
+2. Se o campo estiver em branco, vale o cálculo antigo: **quantidade por embalagem × peso unitário** (mostrado em kg acima de 1000 g, senão em gramas).
+
+Nas telas de Etiquetas e de Dados das Etiquetas, quando o peso do pacote está cadastrado ele aparece ao lado dos demais dados como `pacote 1,350 kg`, para conferir antes de imprimir.
 
 ## Permissões necessárias
 

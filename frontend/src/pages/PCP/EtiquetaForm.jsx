@@ -25,6 +25,7 @@ const VAZIO = {
     sodio: '',
     quantidadeEmbalagem: '',
     quantidadeAproximada: false,
+    pesoPacote: '',   // texto em KG na tela (ex.: "1,350"); vai p/ a API em GRAMAS inteiras
     composicao: '',
     modoPreparo: '',
     codigoBarras: '',
@@ -43,6 +44,59 @@ const VAZIO = {
     tipoProduto: '',
     tarjaPreta: false,
 };
+
+// Limites do campo (em GRAMAS inteiras, que é como a API guarda).
+// 999.999 kg = 999999 g — cabe folgado no INT4 do banco (teto ~2,1 bilhões).
+const PESO_PACOTE_MIN_G = 1;         // 0,001 kg
+const PESO_PACOTE_MAX_G = 999999;    // 999,999 kg
+
+// Valida o "Peso do pacote (kg)" digitado na tela.
+// Devolve { ok, gramas, erro }:
+//   - campo VAZIO  → { ok: true, gramas: null }  ← ÚNICO jeito de limpar o peso gravado
+//   - valor válido → { ok: true, gramas: <inteiro em g> }
+//   - qualquer outra coisa → { ok: false, erro: '<mensagem para o usuário>' }
+// NENHUM valor digitado pode virar null/0: se não dá para gravar exatamente o que foi
+// digitado, a gente RECUSA com mensagem (nunca arredonda nem apaga calado).
+function validarPesoPacote(txt) {
+    const s = String(txt ?? '').trim();
+    if (s === '') return { ok: true, gramas: null, erro: '' };
+
+    // Só "123" ou "123,456" / "123.456" — recusa negativo, "abc", "1.350,5", "1e3", "1,".
+    if (!/^\d+(?:[.,]\d+)?$/.test(s)) {
+        return { ok: false, gramas: null, erro: 'Peso do pacote inválido. Digite em kg, ex.: 1,350.' };
+    }
+
+    const normalizado = s.replace(',', '.');
+    const n = Number(normalizado);
+    if (!Number.isFinite(n)) {
+        return { ok: false, gramas: null, erro: 'Peso do pacote inválido. Digite em kg, ex.: 1,350.' };
+    }
+
+    const gramas = Math.round(n * 1000);
+    if (gramas < PESO_PACOTE_MIN_G) {
+        return { ok: false, gramas: null, erro: 'Peso do pacote deve ser no mínimo 0,001 kg.' };
+    }
+    if (gramas > PESO_PACOTE_MAX_G) {
+        return { ok: false, gramas: null, erro: 'Peso do pacote deve ser no máximo 999,999 kg.' };
+    }
+
+    // Mais de 3 casas SIGNIFICATIVAS não cabe em gramas inteiras — recusar em vez de arredondar.
+    // Zero à direita não conta: "1,3500" e "1,35" são o mesmo peso, os dois viram 1350 g.
+    // Já "1,3505" tem dígito de verdade na 4ª casa e continua recusado.
+    const casas = (normalizado.split('.')[1] || '').replace(/0+$/, '').length;
+    if (casas > 3) {
+        return { ok: false, gramas: null, erro: 'Peso do pacote: use no máximo 3 casas decimais (ex.: 1,350).' };
+    }
+
+    return { ok: true, gramas, erro: '' };
+}
+
+// 1350 (gramas vindas da API) → "1,350" para preencher o campo. Sem valor → ''.
+function gramasParaKgTexto(g) {
+    const n = Number(g);
+    if (!Number.isFinite(n) || n <= 0) return '';
+    return (n / 1000).toFixed(3).replace('.', ',');
+}
 
 function Campo({ label, required, children }) {
     return (
@@ -93,11 +147,15 @@ export default function EtiquetaForm() {
                 armazenamento:   et.armazenamento   ?? '',
                 tipoProduto:     et.tipoProduto     ?? '',
                 codigoBarras:    et.codigoBarras    ?? '',
+                pesoPacote:      gramasParaKgTexto(et.pesoPacote),
             });
         }).catch(err => { toast.error(err.message); navigate('/pcp/etiquetas/dados'); });
     }, [id, editando, navigate]);
 
     const set = (field, value) => setForm(f => ({ ...f, [field]: value }));
+
+    // Avaliação ao vivo do peso do pacote (texto de ajuda + aviso vermelho abaixo do campo)
+    const pesoPacote = validarPesoPacote(form.pesoPacote);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -105,10 +163,14 @@ export default function EtiquetaForm() {
         if (!form.nomeProduto.trim())   return toast.error('Nome é obrigatório.');
         if (!form.composicao.trim())    return toast.error('Composição é obrigatória.');
         if (!form.modoPreparo.trim())   return toast.error('Modo de preparo é obrigatório.');
+        // Peso do pacote: recusa ANTES de chamar a API (nada digitado pode apagar o peso salvo)
+        const peso = validarPesoPacote(form.pesoPacote);   // mesma regra do aviso ao vivo abaixo do campo
+        if (!peso.ok) return toast.error(peso.erro);
 
         setSalvando(true);
         try {
-            const payload = { ...form, produtoId: form.produtoId || null };
+            // pesoPacote vai para a API em GRAMAS inteiras (1,350 kg → 1350); só o campo VAZIO manda null
+            const payload = { ...form, produtoId: form.produtoId || null, pesoPacote: peso.gramas };
             if (editando) {
                 await etiquetaService.atualizar(id, payload);
                 toast.success('Etiqueta atualizada!');
@@ -169,6 +231,25 @@ export default function EtiquetaForm() {
                                     Qtd. aproximada (~)
                                 </label>
                             </div>
+                        </Campo>
+                        <Campo label="Peso do pacote (kg)">
+                            <input
+                                type="text"
+                                inputMode="decimal"
+                                value={form.pesoPacote}
+                                onChange={e => set('pesoPacote', e.target.value)}
+                                className={pesoPacote.ok ? inputCls : `${inputCls} border-red-400 focus:ring-red-400`}
+                                placeholder="ex.: 1,350 — até 3 casas"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">
+                                Valor fixo impresso como <strong>PESO LÍQUIDO</strong>
+                                {pesoPacote.gramas != null
+                                    ? <> — sai <strong>{gramasParaKgTexto(pesoPacote.gramas)} kg</strong> na etiqueta.</>
+                                    : ' — digite em kg com até 3 casas (ex.: 1,350), de 0,001 a 999,999. Em branco, a etiqueta segue calculando quantidade × peso unitário.'}
+                            </p>
+                            {!pesoPacote.ok && (
+                                <p className="mt-1 text-xs font-medium text-red-600">{pesoPacote.erro}</p>
+                            )}
                         </Campo>
                         <Campo label="Código de Barras (EAN)">
                             <input type="text" value={form.codigoBarras} onChange={e => set('codigoBarras', e.target.value)} className={inputCls} placeholder="Ex: 7898620330460" />

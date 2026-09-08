@@ -94,8 +94,25 @@ export function fmtNum(n, dec) {
     return String(r).replace('.', ',');
 }
 
-// Peso líquido = quantidade da embalagem × peso unitário (kg se ≥ 1000g)
+// Peso do pacote (gramas inteiras vindas da API) formatado SEMPRE em kg com
+// 3 casas decimais e vírgula: 1350 → "1,350 kg" | 500 → "0,500 kg".
+// Devolve '' quando não há valor — é o que faz o pesoLiquidoStr cair no cálculo antigo.
+export function pesoPacoteStr(pesoPacoteG) {
+    const g = Number(pesoPacoteG);
+    if (!Number.isFinite(g) || g <= 0) return '';
+    return `${(g / 1000).toFixed(3).replace('.', ',')} kg`;
+}
+
+// Peso líquido impresso na etiqueta.
+// 1) Se a etiqueta tem "Peso do pacote" cadastrado (valor FIXO em gramas), é ele
+//    que sai — sempre em kg com 3 casas. O peso do pacote é aproximado, então
+//    multiplicar quantidade × peso unitário não faz sentido.
+// 2) Sem peso do pacote (etiquetas antigas), mantém o comportamento de sempre:
+//    quantidade da embalagem × peso unitário (kg se ≥ 1000g).
 export function pesoLiquidoStr(et) {
+    const fixo = pesoPacoteStr(et?.pesoPacote);
+    if (fixo) return fixo;
+
     const g = (Number(et.quantidadeEmbalagem) || 0) * (Number(et.pesoUnitario) || 0);
     if (g <= 0) return '';
     if (g >= 1000) {

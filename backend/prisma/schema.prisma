@@ -2855,6 +2855,7 @@ model EtiquetaProduto {
   // Conteúdo do rótulo
   quantidadeEmbalagem  Int     @map("quantidade_embalagem")
   quantidadeAproximada Boolean @default(false) @map("quantidade_aproximada")
+  pesoPacote           Int?    @map("peso_pacote") // peso FIXO do pacote em GRAMAS (o form digita em kg); null/0 = usa o cálculo antigo (quantidade × peso unitário)
   composicao           String  @db.Text
   modoPreparo          String  @map("modo_preparo") @db.Text
   codigoBarras         String? @map("codigo_barras")
