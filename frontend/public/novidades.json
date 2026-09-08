@@ -2,7 +2,7 @@
   {
     "slug": "divisao-por-regiao",
     "titulo": "Divisão por região no mapa",
-    "resumo": "O \"Sugerir divisão\" do Mapa das entregas agora fecha primeiro a região mais distante e não mistura mais os corredores — os horários de volta ficam mais equilibrados entre as cargas. Novo botão \"Definir região no mapa\" em cada cartão de carga: marque a bandeira do motorista e a sugestão passa a agrupar os clientes ao redor dela (a região fica lembrada por motorista, não precisa marcar de novo todo dia; dá para reposicionar ou limpar, e Esc cancela). O checkbox \"Participa da divisão automática\" ficou bem mais visível no cartão, e agora aparece um aviso se alguma carga ficar sem nenhuma parada na sugestão.",
+    "resumo": "O \"Sugerir divisão\" do Mapa das entregas agora fecha primeiro a região mais distante e não mistura mais os corredores — os horários de volta ficam mais equilibrados entre as cargas. Novo botão \"Definir região no mapa\" em cada cartão de carga: marque a bandeira do motorista e a sugestão passa a agrupar os clientes ao redor dela (a região fica lembrada por motorista, não precisa marcar de novo todo dia; dá para reposicionar ou limpar, e Esc cancela). Motorista com 2 cargas no mesmo dia agora conta como uma pessoa só (o tempo soma as viagens, em sequência, repartindo pela região). Novo ícone de olho no cartão da carga mostra no mapa só as entregas daquela carga (as outras ficam quase apagadas) — o chip \"Vendo só Carga #N — ver todas\" volta a mostrar tudo. Quando a sugestão bate com o arranjo atual, um aviso deixa claro que não há nada a alterar. O checkbox \"Participa da divisão automática\" ficou bem mais visível no cartão.",
     "data": "2026-09-07"
   },
   {

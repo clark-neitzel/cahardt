@@ -7,7 +7,7 @@
 <link rel="icon" href="/logo-192.png">
 <!-- Preview do link no WhatsApp (sem og:image de propósito — cartão compacto) -->
 <meta property="og:title" content="🚩 Novidade no Hardt App: Divisão por Região">
-<meta property="og:description" content="O &quot;Sugerir divisão&quot; do Mapa das entregas agora entende a região de cada motorista: marque a bandeira no mapa e o app agrupa os clientes ao redor dela. Veja como funciona.">
+<meta property="og:description" content="O &quot;Sugerir divisão&quot; do Mapa das entregas agora entende a região de cada motorista, sabe quando ele tem 2 cargas no dia, e tem o olhinho pra ver só uma carga no mapa. Veja como funciona.">
 <meta property="og:type" content="website">
 <style>
   :root {
@@ -149,6 +149,8 @@
     will-change: opacity;
   }
   .mini-dot.on .fill { opacity: 1; }
+  /* pino "apagado" pelo foco de carga (ícone de olho) — some quase todo, mas não de vez */
+  .mini-dot.apagado { opacity: .15; }
   .mini-flag {
     position: absolute;
     font-size: 22px;
@@ -329,6 +331,14 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 13px; font-weight: 800;
   }
+  .app-eye {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--mint);
+    color: var(--primary-dark);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+  }
   .app-warn {
     display: flex;
     gap: 10px;
@@ -417,6 +427,23 @@
 
   <div class="acc aberto">
     <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">👁️</span>
+      <strong>O olhinho: veja só as entregas de um motorista</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quando as rotas se cruzam no mapa, fica difícil separar visualmente qual pino é de qual carga. Agora cada cartão de carga tem um <b>ícone de olho</b> no cabeçalho: toque nele para <b>ver só aquela carga</b> no mapa.</li>
+        <li>Com o foco ligado: os <b>pinos de cliente das outras cargas</b> ficam quase transparentes (não somem de vez — dá pra ver onde estão, se precisar mover algo de lá para a carga em foco), e a <b>linha de rota e a bandeira de região das outras cargas somem por completo</b>.</li>
+        <li>Pinos <b>"sem carga" continuam normais</b> — pode ser justamente o que falta encaixar na carga que você está olhando.</li>
+        <li>Aparece um chip verde-escuro no topo do mapa, <b>"Vendo só Carga #N — ver todas"</b>: toque nele (ou de novo no olho da mesma carga) para voltar a enxergar tudo.</li>
+        <li>O foco é sempre de <b>uma carga por vez</b> — focar outra troca direto. E é <b>só visual</b>: não mexe em rascunho, na marcação "Participa da divisão automática" nem no que a "Sugerir divisão" envia. Também <b>não fica salvo</b>: some sozinho ao trocar o dia do embarque ou recarregar a tela.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
       <span class="acc-ico">📍</span>
       <strong>Divisão por região de verdade</strong>
       <span class="acc-seta">▼</span>
@@ -427,6 +454,23 @@
         <li>Os <b>corredores não se misturam mais</b> — cada carga tende a cobrir uma região só, em vez de pular de bairro em bairro.</li>
         <li>Os <b>horários de volta ficam mais equilibrados</b> entre as cargas do dia.</li>
         <li>Nada mudou na forma de usar: continua sendo o mesmo botão <b>"Sugerir divisão"</b>, com o resultado aparecendo como rascunho para você conferir antes de confirmar.</li>
+        <li>Se o resultado for <b>igual ao que já está</b> nas cargas, nada entra no rascunho (por isso o Confirmar não aparece — não há o que aplicar) e a tela avisa: <b>"A sugestão concorda com o arranjo atual — nada a alterar."</b></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🔁</span>
+      <strong>Motorista com 2 cargas no mesmo dia</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Quando o mesmo motorista participa com <b>duas (ou mais) cargas</b> no dia, o cálculo agora entende que é <b>a mesma pessoa</b> — antes tratava cada carga como se fosse um motorista diferente.</li>
+        <li>O tempo dele passa a ser a <b>soma das viagens</b>, porque elas são em <b>sequência</b>: a 2ª viagem só sai quando a 1ª voltar para a Hardt — o cálculo não finge que ele está em dois lugares ao mesmo tempo.</li>
+        <li>A sugestão reparte as entregas dele entre as viagens <b>também pela região</b>, priorizando a <b>mais distante primeiro</b> — do mesmo jeito que já faz entre motoristas diferentes.</li>
+        <li>A tela avisa quando isso acontece (algo como "Carlos tem 2 cargas participando — o tempo dele é a soma das rotas..."). Se o território inteiro dele for uma região só, sem uma divisão natural, uma das viagens pode ficar sem nenhuma parada — nesse caso também aparece aviso, e é só mover manualmente entre as cargas dele.</li>
       </ul>
     </div>
   </div>
@@ -530,9 +574,41 @@
     </div>
   </div>
 
-  <!-- TELA 3: aviso de carga vazia -->
+  <!-- TELA 3: o olhinho de foco -->
   <div class="tela">
-    <div class="tela-titulo">📱 Tela 3 · Aviso de carga sem nenhuma parada</div>
+    <div class="tela-titulo">📱 Tela 3 · O olhinho — ver só uma carga no mapa</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body" style="display:flex;align-items:center;gap:8px;padding:12px;">
+          <span style="width:14px;height:14px;border-radius:50%;background:var(--primary);flex-shrink:0;"></span>
+          <b style="flex:1;font-size:13px;">Carga #3 · Carlos</b>
+          <span class="app-eye">👁</span>
+          <span class="pin">1</span>
+          <span style="font-size:11px;color:#6b756f;">42 pedidos</span>
+        </div>
+      </div>
+      <div class="mapa-mock" style="margin-top:10px;">
+        <div class="mini-chip on" style="position:absolute;">👁 Vendo só Carga #3 · Carlos<span class="pin" style="margin-left:6px;">2</span></div>
+        <span class="mini-dot on" style="top:55%;left:22%;"><span class="fill"></span></span>
+        <span class="mini-dot on" style="top:68%;left:34%;"><span class="fill"></span></span>
+        <span class="mini-dot apagado" style="top:35%;left:70%;"><span class="fill"></span></span>
+        <span class="mini-dot apagado" style="top:22%;left:55%;"><span class="fill"></span></span>
+        <span class="mini-flag on" style="top:60%;left:28%;">🚩</span>
+      </div>
+      <div class="mapa-legenda-mini">
+        <span><span class="pin">3</span>pinos apagados = outras cargas (ficam quase transparentes, não somem)</span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Ícone de <b>olho</b> no cabeçalho do cartão: toque para focar só essa carga no mapa. Toque de novo para desfocar.</span></div>
+      <div><span class="pin">2</span><span>Chip <b>"Vendo só Carga #N — ver todas"</b> fica preso no topo do mapa enquanto o foco está ligado — toque nele pra voltar a ver tudo de uma vez.</span></div>
+      <div><span class="pin">3</span><span>Pinos de <b>outras cargas</b> ficam quase transparentes. A linha de rota e a bandeira de região das outras cargas <b>somem por completo</b> enquanto o foco está ligado — só as da carga focada continuam aparecendo normais.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4: aviso de carga vazia -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 4 · Aviso de carga sem nenhuma parada</div>
     <div class="tela-corpo">
       <div class="app-warn">
         <span style="font-size:18px;">⚠️</span>
