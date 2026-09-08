@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Map as MapIcon, Loader2, Wand2, Route as RouteIcon, X, Truck, Printer, MapPinOff, MapPin, Eye, Lock, ArrowLeftRight, Trash2, AlertTriangle } from 'lucide-react';
+import { Map as MapIcon, Loader2, Wand2, Route as RouteIcon, X, Truck, Printer, MapPinOff, MapPin, Eye, EyeOff, Lock, ArrowLeftRight, Trash2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import mapaExpedicaoService from '../../../services/mapaExpedicaoService';
 import SelectBusca from '../../../components/SelectBusca';
@@ -213,14 +213,30 @@ export default function MapaExpedicao() {
         toast(`Região de ${nomeMotorista || 'motorista'} removida.`, { icon: '🗑️' });
     }, [setAncorasPorMotorista]);
 
-    // "Ver só esta carga no mapa" (botão de olho no cartão): só destaca o que já
+    // "Esconder esta carga do mapa" (botão de olho no cartão): só some com o que já
     // está desenhado — não mexe em rascunho, payload de sugerir nem em nada que
-    // grava. Estado de SESSÃO da tela: não persiste (foco de ontem não faz
-    // sentido hoje, as cargas são outras). Foco é exclusivo: focar uma troca a
-    // anterior; clicar de novo no olho da mesma carga desfoca.
-    const [cargaFocada, setCargaFocada] = useState(null); // embarqueId | null
-    const alternarFoco = useCallback((id) => {
-        setCargaFocada(prev => (prev === id ? null : id));
+    // grava. Estado de SESSÃO da tela: não persiste (esconder de ontem não faz
+    // sentido hoje, as cargas são outras). NÃO é exclusivo: dá para esconder
+    // várias cargas ao mesmo tempo; clicar de novo no olho da mesma carga mostra
+    // ela de volta. Mesmo padrão de `foraDaDivisao`/`foraSet` logo acima.
+    const [cargasEscondidas, setCargasEscondidas] = useState([]); // embarqueId[]
+    const escondidasSet = useMemo(() => new Set(cargasEscondidas), [cargasEscondidas]);
+    const alternarEsconder = useCallback((id) => {
+        setCargasEscondidas(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
+    }, []);
+
+    // Modo de viagem por motorista com 2+ cargas participantes: 'junto' = uma saída
+    // só (carrega tudo de uma vez); AUSENTE do objeto = sequencial (padrão: volta e
+    // carrega de novo). NÃO persiste (decisão do arquiteto): a escolha depende do
+    // volume do dia — salvar vazaria a escolha de um dia folgado para um dia cheio.
+    const [modoViagemPorMotorista, setModoViagemPorMotorista] = useState({}); // { [responsavelId]: 'junto' }
+    const definirModoViagem = useCallback((responsavelId, modo) => {
+        setModoViagemPorMotorista(prev => {
+            const nx = { ...prev };
+            if (modo === 'junto') nx[responsavelId] = 'junto';
+            else delete nx[responsavelId]; // sequencial = padrão, fica ausente do objeto
+            return nx;
+        });
     }, []);
 
     const [sugerindo, setSugerindo] = useState(false);
@@ -246,6 +262,22 @@ export default function MapaExpedicao() {
         () => (dados?.cargas || []).filter(c => !foraSet.has(c.id)),
         [dados, foraSet]
     );
+
+    // ── Motorista com 2+ cargas PARTICIPANTES no mesmo dia: pergunta como ele sai ──
+    // (mesmo agrupamento por responsavel.id das cargasParticipantes; carga fora da
+    // divisão não conta — ela não entra no cálculo mesmo).
+    const motoristasComDuasCargas = useMemo(() => {
+        const porResponsavel = new Map();
+        cargasParticipantes.forEach(c => {
+            const rid = c.responsavel?.id;
+            if (rid == null) return;
+            if (!porResponsavel.has(rid)) {
+                porResponsavel.set(rid, { responsavelId: rid, nome: c.responsavel?.nome || 'Motorista', cargas: [] });
+            }
+            porResponsavel.get(rid).cargas.push(c);
+        });
+        return [...porResponsavel.values()].filter(m => m.cargas.length >= 2);
+    }, [cargasParticipantes]);
 
     // ── Carregar o dia ──
     // `limparRascunho` separa QUEM chamou:
@@ -279,9 +311,9 @@ export default function MapaExpedicao() {
             // Aqui só descartamos id de carga que não existe mais no dia recarregado.
             const idsDoDia = new Set((r.cargas || []).map(c => c.id));
             setForaDaDivisao(prev => prev.filter(id => idsDoDia.has(id)));
-            // Foco visual é estado de sessão da tela (não persiste) — mesma poda: se a
-            // carga focada sumiu do dia recarregado, o foco não faz mais sentido.
-            setCargaFocada(prev => (prev != null && !idsDoDia.has(prev) ? null : prev));
+            // "Esconder do mapa" é estado de sessão da tela (não persiste) — mesma poda:
+            // carga escondida que sumiu do dia recarregado sai da lista.
+            setCargasEscondidas(prev => prev.filter(id => idsDoDia.has(id)));
             if (limparRascunho) {
                 setRascunho({});
                 chavesDaSugestao.current = new Set();
@@ -456,10 +488,13 @@ export default function MapaExpedicao() {
         if (novaData === data) return;
         if (mudancas.length && !window.confirm('Há alterações de carga ainda não aplicadas. Deseja mudar o dia e descartar o rascunho?')) return;
         // Outro dia = outras cargas: a marcação "participa da divisão" recomeça com
-        // TODAS marcadas (id de carga não se repete entre os dias), e o foco visual
+        // TODAS marcadas (id de carga não se repete entre os dias), e esconder do mapa
         // (estado de sessão, não persiste) não faz sentido apontando pra carga de outro dia.
         setForaDaDivisao([]);
-        setCargaFocada(null);
+        setCargasEscondidas([]);
+        // Modo de viagem também é escolha do DIA (volume muda) — não faz sentido
+        // carregar a escolha de ontem para hoje.
+        setModoViagemPorMotorista({});
         // Quem zera o rascunho é a troca de DATA (o `carregar` só poda) — e só depois
         // do "sim" acima. Trocar o período de entrega não passa por aqui.
         setRascunho({});
@@ -651,6 +686,14 @@ export default function MapaExpedicao() {
         const ancoras = cargasParticipantes
             .filter(c => c.responsavel?.id != null && ancorasPorMotorista[c.responsavel.id])
             .map(c => ({ embarqueId: c.id, gps: ancorasPorMotorista[c.responsavel.id] }));
+        // Modo de viagem só dos motoristas marcados como "uma saída só" — ausente
+        // do objeto (sequencial, o padrão) não vai no payload.
+        // responsavelId é UUID (Vendedor.id) — string, igual a todo outro uso de
+        // responsavel.id neste arquivo. Number(rid) virava NaN → null no JSON → o
+        // backend descartava a escolha em silêncio (bug real, achado do revisor).
+        const modoViagem = Object.keys(modoViagemPorMotorista)
+            .filter(rid => modoViagemPorMotorista[rid] === 'junto')
+            .map(rid => ({ responsavelId: rid, modo: 'junto' }));
         setSugerindo(true);
         try {
             const r = await mapaExpedicaoService.sugerirDivisao({
@@ -660,7 +703,8 @@ export default function MapaExpedicao() {
                 embarqueIds: idsParticipantes,
                 horaSaida: params.horaSaida,
                 tempoParadaMin,
-                ancoras
+                ancoras,
+                modoViagem
             });
             const nx = {};
             (r.grupos || []).forEach(g => itensDoGrupo(g).forEach(ch => {
@@ -729,7 +773,11 @@ export default function MapaExpedicao() {
                 gm[g.embarqueId] = {
                     distanciaKm: g.distanciaKm, duracaoMin: g.duracaoMin,
                     previsaoRetorno: g.previsaoRetorno, precisao: g.precisao || 'aproximada',
-                    trajeto: g.trajeto || []
+                    trajeto: g.trajeto || [],
+                    // Campos do motorista com 2+ cargas (só vêm em /sugerir-divisao, não em
+                    // /mapa) — o badge do cartão lê daqui (estimativas[c.id]), não de `c`.
+                    modoViagem: g.modoViagem, ordemCarregamento: g.ordemCarregamento,
+                    viagemNumero: g.viagemNumero, viagensTotalMotorista: g.viagensTotalMotorista
                 };
             });
             setEstimApi({ chave: montarChave(porCargaChaves), grupos: gm });
@@ -1013,11 +1061,11 @@ export default function MapaExpedicao() {
             const todosTravados = g.itens.every(i => i.travado);
             const mudou = g.itens.some(i => temChave(rascunho, i.chave) && rascunho[i.chave] !== (i.embarqueId ?? null));
             const aproximado = g.origemGps === 'endereco';
-            // "Ver só esta carga": os pinos das OUTRAS cargas ficam quase transparentes
-            // (não somem de vez — o operador ainda enxerga onde estão, para eventualmente
-            // arrastar item de lá pra cá). "Sem carga" (eidPino null) fica normal: pode ser
-            // justamente o que falta encaixar na carga focada.
-            const apagadoPorFoco = cargaFocada != null && eidPino != null && eidPino !== cargaFocada;
+            // "Esconder esta carga do mapa": o pino de quem está numa carga escondida
+            // SOME de vez (não é esmaecido) — inclusive item TRAVADO/já entregue, porque
+            // `embarqueEfetivo` devolve a carga real dele independente de estar travado.
+            // "Sem carga" (eidPino null) nunca é afetado: continua sempre visível.
+            if (eidPino != null && escondidasSet.has(eidPino)) return;
             // bolinha cheia = ponto GPS confirmado; anel tracejado com "≈" = posição pelo endereço
             const estilo = aproximado
                 ? `background:#fff;border:2.5px dashed ${cor};color:${cor};`
@@ -1045,14 +1093,13 @@ export default function MapaExpedicao() {
                 : '';
             const html = `<div style="display:flex;flex-direction:column;align-items:center;width:56px">` +
                 `<div style="width:26px;height:26px;border-radius:50%;${estilo}` +
-                `box-shadow:0 1px 4px rgba(0,0,0,.45);${apagadoPorFoco ? 'opacity:.15;' : todosTravados ? 'opacity:.55;' : cargaFora ? 'opacity:.6;' : ''}` +
+                `box-shadow:0 1px 4px rgba(0,0,0,.45);${todosTravados ? 'opacity:.55;' : cargaFora ? 'opacity:.6;' : ''}` +
                 `${mudou ? 'outline:3px solid #cba258;outline-offset:1px;' : ''}` +
                 `display:flex;align-items:center;justify-content:center;font-size:${todosTravados ? '12px' : '13px'};font-weight:800;line-height:1">` +
                 `${conteudo}</div>${badges}</div>`;
             const mk = L.marker([g.gps.lat, g.gps.lng], {
                 icon: L.divIcon({ className: '', html, iconSize: [56, badges ? 46 : 26], iconAnchor: [28, 13] }),
-                keyboard: false,
-                zIndexOffset: apagadoPorFoco ? -100 : 0
+                keyboard: false
             }).addTo(map).on('click', () => {
                 // Em "modo âncora" o clique num pino de cliente grava a região ali mesmo
                 // (não abre o cartão de detalhes nem desmarca a seleção anterior).
@@ -1071,10 +1118,10 @@ export default function MapaExpedicao() {
             const responsavelId = c.responsavel?.id;
             const anc = responsavelId != null ? ancorasPorMotorista[responsavelId] : null;
             if (!anc) return;
-            // "Ver só esta carga": bandeira de outra carga some (a linha e os pinos dela
-            // já ficaram de fora/apagados — manter só a bandeira ficaria com uma pista
-            // solta de uma região que não está em foco).
-            if (cargaFocada != null && c.id !== cargaFocada) return;
+            // "Esconder esta carga do mapa": a bandeira dela some junto (os pinos e a
+            // linha de rota já somem abaixo/no efeito de linhas) — manter só a bandeira
+            // ficaria com uma pista solta de uma carga que o operador tirou da vista.
+            if (escondidasSet.has(c.id)) return;
             const cor = CORES[i % CORES.length];
             const html = `<div style="width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);` +
                 `background:${cor};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);` +
@@ -1088,7 +1135,7 @@ export default function MapaExpedicao() {
                 .on('click', () => { if (modoAncoraRef.current) definirAncoraRef.current(anc); });
             ancoraMarkers.current[c.id] = mk;
         });
-    }, [dados, gruposComPino, rascunho, corDaCarga, embarqueEfetivo, foraSet, ancorasPorMotorista, cargaFocada]);
+    }, [dados, gruposComPino, rascunho, corDaCarga, embarqueEfetivo, foraSet, ancorasPorMotorista, escondidasSet]);
 
     // Trajetos devolvidos pelo roteirizador: tornam visível por que um ponto
     // pertence a uma carga, em vez de mostrar apenas cores soltas no mapa.
@@ -1099,9 +1146,8 @@ export default function MapaExpedicao() {
         linhasRotas.current = [];
         if (!estimApi || estimApi.chave !== chaveEstim) return;
         (dados?.cargas || []).forEach((c, i) => {
-            // "Ver só esta carga": some com a linha das outras — é o que mais atrapalha
-            // a leitura quando as rotas se cruzam (o motivo do pedido).
-            if (cargaFocada != null && c.id !== cargaFocada) return;
+            // "Esconder esta carga do mapa": a linha de rota dela some junto.
+            if (escondidasSet.has(c.id)) return;
             const trajeto = estimApi.grupos?.[c.id]?.trajeto || [];
             if (trajeto.length < 2) return;
             linhasRotas.current.push(L.polyline(
@@ -1109,7 +1155,7 @@ export default function MapaExpedicao() {
                 { color: CORES[i % CORES.length], weight: 4, opacity: 0.72 }
             ).addTo(map));
         });
-    }, [estimApi, chaveEstim, dados, cargaFocada]);
+    }, [estimApi, chaveEstim, dados, escondidasSet]);
 
     // Enquadrar o dia uma vez por carga de dados
     useEffect(() => {
@@ -1125,7 +1171,6 @@ export default function MapaExpedicao() {
 
     // ── Peças de UI ──
     const sel = selecionado != null ? gruposCliente.find(g => g.chave === selecionado) : null;
-    const cargaFocadaObj = cargaFocada != null ? (dados?.cargas || []).find(c => c.id === cargaFocada) : null;
     const focarCliente = useCallback((g) => {
         setSelecionado(g.chave);
         if (g.gps && mapObj.current) mapObj.current.flyTo([g.gps.lat, g.gps.lng], Math.max(mapObj.current.getZoom(), 14));
@@ -1358,7 +1403,7 @@ export default function MapaExpedicao() {
                         </div>
                     )}
 
-                    {/* Chip do "modo âncora" + chip de foco de carga + banner do rascunho —
+                    {/* Chip do "modo âncora" + chip de cargas escondidas + banner do rascunho —
                         empilhados (nunca um sobre o outro) e presos ao topo do mapa, sem
                         cobrir a topbar nem, no celular, a alça do painel inferior.
                         left-14 (em vez de centralizar com left-1/2): o controle de zoom do
@@ -1374,7 +1419,7 @@ export default function MapaExpedicao() {
                         gap-2 entre chips empilhados, ou a sobra quando um chip é mais
                         estreito que os outros) ainda captura clique por padrão mesmo sem
                         fundo visível ali; isso garante que só a pílula visível responde. */}
-                    {(modoAncora || cargaFocada != null || mudancas.length > 0) && (
+                    {(modoAncora || cargasEscondidas.length > 0 || mudancas.length > 0) && (
                         <div className="absolute top-2 left-14 right-2 z-[1040] flex flex-col items-center gap-2 pointer-events-none">
                             {modoAncora && (
                                 <div className="flex items-center gap-2 bg-house text-white rounded-full shadow-lg pl-3 pr-1.5 py-1.5 max-w-full pointer-events-auto">
@@ -1392,18 +1437,19 @@ export default function MapaExpedicao() {
                                     </button>
                                 </div>
                             )}
-                            {cargaFocada != null && (
+                            {cargasEscondidas.length > 0 && (
                                 <div className="flex items-center gap-2 bg-house text-white rounded-full shadow-lg pl-3 pr-1.5 py-1.5 max-w-full pointer-events-auto">
-                                    <Eye className="h-3.5 w-3.5 shrink-0" />
+                                    <EyeOff className="h-3.5 w-3.5 shrink-0" />
                                     <span className="text-xs font-semibold truncate">
-                                        Vendo só Carga #{cargaFocadaObj?.numero ?? ''}{cargaFocadaObj?.responsavel?.nome ? ` · ${cargaFocadaObj.responsavel.nome}` : ''}
+                                        {cargasEscondidas.length === 1 ? '1 carga escondida' : `${cargasEscondidas.length} cargas escondidas`}
                                     </span>
+                                    <span className="text-xs text-white/70 shrink-0">—</span>
                                     <button
                                         type="button"
-                                        onClick={() => setCargaFocada(null)}
+                                        onClick={() => setCargasEscondidas([])}
                                         className="shrink-0 min-h-[36px] px-2.5 flex items-center justify-center rounded-full text-xs font-semibold hover:bg-white/15"
                                     >
-                                        ver todas
+                                        mostrar todas
                                     </button>
                                 </div>
                             )}
@@ -1479,8 +1525,8 @@ export default function MapaExpedicao() {
                             região marcada do motorista
                         </div>
                         <div className="flex items-center gap-1.5">
-                            <Eye className="w-3 h-3 text-gray-500 shrink-0" />
-                            no cartão da carga = ver só ela no mapa (as outras ficam apagadas)
+                            <EyeOff className="w-3 h-3 text-gray-500 shrink-0" />
+                            no cartão da carga = esconder ela do mapa (dá pra esconder várias)
                         </div>
                     </div>
 
@@ -1713,6 +1759,47 @@ export default function MapaExpedicao() {
                             </div>
                         )}
 
+                        {/* Motorista com 2+ cargas participantes no mesmo dia: pergunta como ele
+                            sai. NÃO persiste (o volume do dia varia) — some sozinho ao trocar a
+                            data do embarque. Padrão (sem marcar nada) é "duas viagens". */}
+                        {motoristasComDuasCargas.length > 0 && (
+                            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-3">
+                                <p className="text-xs font-bold uppercase tracking-widest text-gray-600 mb-2">Como cada motorista sai hoje</p>
+                                <div className="space-y-3">
+                                    {motoristasComDuasCargas.map(m => {
+                                        const modoJunto = modoViagemPorMotorista[m.responsavelId] === 'junto';
+                                        return (
+                                            <div key={m.responsavelId}>
+                                                <p className="text-sm font-medium text-gray-700 truncate mb-1">
+                                                    {m.nome} <span className="text-xs text-gray-500 font-normal">· {m.cargas.length} cargas hoje</span>
+                                                </p>
+                                                <div className="grid grid-cols-2 gap-1.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => definirModoViagem(m.responsavelId, 'sequencial')}
+                                                        aria-pressed={!modoJunto}
+                                                        className={`min-h-[44px] px-2 rounded-full text-xs font-semibold border text-center leading-tight
+                                                            ${!modoJunto ? 'bg-primary text-white border-primary' : 'bg-white border-primary text-primary hover:bg-mint/40'}`}
+                                                    >
+                                                        Duas viagens — volta e carrega
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => definirModoViagem(m.responsavelId, 'junto')}
+                                                        aria-pressed={modoJunto}
+                                                        className={`min-h-[44px] px-2 rounded-full text-xs font-semibold border text-center leading-tight
+                                                            ${modoJunto ? 'bg-primary text-white border-primary' : 'bg-white border-primary text-primary hover:bg-mint/40'}`}
+                                                    >
+                                                        Uma saída só — leva tudo
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Cartões por carga */}
                         <div className="space-y-2">
                             <p className="text-xs font-bold uppercase tracking-widest text-gray-600 px-1">Cargas do dia</p>
@@ -1734,30 +1821,40 @@ export default function MapaExpedicao() {
                                 const nomeMotorista = c.responsavel?.nome || null;
                                 const ancoraAtual = responsavelId != null ? ancorasPorMotorista[responsavelId] : null;
                                 const emModoParaEstaCarga = modoAncora?.embarqueId === c.id;
-                                const focada = cargaFocada === c.id;
+                                const escondida = escondidasSet.has(c.id);
+                                // Campos do modo de viagem só existem na resposta de /sugerir-divisao
+                                // (não em /mapa) — por isso lêem de `est` (estimativas[c.id], que é o
+                                // gm da sugestão) e não de `c`. Sem sugestão rodada na sessão, `est`
+                                // não tem esses campos e o badge simplesmente não aparece (aceito).
+                                // Guardados com != null antes de interpolar, senão vira "undefined" na tela.
+                                const rotuloViagem = est?.modoViagem === 'junto'
+                                    ? `Saída única${est.ordemCarregamento != null ? ` · carregamento ${est.ordemCarregamento}` : ''}`
+                                    : (est?.modoViagem === 'sequencial' && est.viagemNumero != null)
+                                        ? `${est.viagemNumero}ª viagem`
+                                        : null;
                                 return (
                                     <div
                                         key={c.id}
-                                        className={`rounded-xl border shadow-sm p-3 ${participa ? 'bg-white border-gray-200' : 'bg-gray-50 border-dashed border-gray-300'}`}
+                                        className={`rounded-xl border shadow-sm p-3 ${participa ? 'bg-white border-gray-200' : 'bg-gray-50 border-dashed border-gray-300'} ${escondida ? 'opacity-60' : ''}`}
                                     >
                                         <div className="flex items-center gap-2 min-w-0">
                                             <span className="w-3.5 h-3.5 rounded-full shrink-0" style={{ background: CORES[i % CORES.length] }} />
                                             <span className="font-semibold text-gray-900 text-sm truncate flex-1">
                                                 Carga #{c.numero}{c.responsavel?.nome ? ` · ${c.responsavel.nome}` : ''}
                                             </span>
-                                            {/* "Ver só esta carga no mapa": foco visual, exclusivo, não persiste
-                                                e não mexe em rascunho/payload — só o que já está desenhado no
-                                                mapa (pinos, linha de rota, bandeira) muda de visibilidade. */}
+                                            {/* "Esconder esta carga do mapa": some com o que já está desenhado
+                                                no mapa (pinos, linha de rota, bandeira) — não é exclusivo (dá
+                                                pra esconder várias) e não mexe em rascunho/payload nenhum. */}
                                             <button
                                                 type="button"
-                                                onClick={() => alternarFoco(c.id)}
-                                                title={focada ? 'Ver todas as cargas no mapa' : 'Ver só esta carga no mapa'}
-                                                aria-label={focada ? 'Ver todas as cargas no mapa' : 'Ver só esta carga no mapa'}
-                                                aria-pressed={focada}
+                                                onClick={() => alternarEsconder(c.id)}
+                                                title={escondida ? 'Mostrar esta carga no mapa' : 'Esconder esta carga do mapa'}
+                                                aria-label={escondida ? 'Mostrar esta carga no mapa' : 'Esconder esta carga do mapa'}
+                                                aria-pressed={escondida}
                                                 className={`shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full
-                                                    ${focada ? 'text-primary bg-mint/40' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                                                    ${escondida ? 'text-gray-500 bg-gray-100' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
                                             >
-                                                <Eye className="h-4 w-4" />
+                                                {escondida ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                             </button>
                                             <span className="text-xs text-gray-500 shrink-0 text-right">
                                                 {contagemTipos(ps)}
@@ -1866,6 +1963,11 @@ export default function MapaExpedicao() {
                                             </div>
                                         )}
                                         <div className="mt-2 flex flex-wrap items-center gap-2">
+                                            {rotuloViagem && (
+                                                <span className="px-2 py-1 text-xs font-semibold rounded-full bg-mint text-primaryDark flex items-center gap-1">
+                                                    <Truck className="h-3 w-3" /> {rotuloViagem}
+                                                </span>
+                                            )}
                                             {reimprimir && (
                                                 <span className="px-2 py-1 text-xs font-semibold rounded-full bg-amber-100 text-amber-700 flex items-center gap-1">
                                                     <Printer className="h-3 w-3" />

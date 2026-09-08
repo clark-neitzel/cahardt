@@ -347,6 +347,23 @@ function calcularRetorno(horaSaida, duracaoMin, tempoParadaMin, nParadas) {
     return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
 }
 
+// Corta `lista` (já numa ordem definida) em `n` pedaços CONTÍGUOS por posição —
+// usado no modo "sair junto": floor(total/n) por pedaço, com a sobra indo pros
+// PRIMEIROS pedaços. Se total < n, os últimos pedaços saem vazios (nunca undefined).
+function cortarContiguo(lista, n) {
+    const total = lista.length;
+    const base = Math.floor(total / n);
+    const resto = total % n;
+    const pedacos = [];
+    let idx = 0;
+    for (let i = 0; i < n; i++) {
+        const tamanho = base + (i < resto ? 1 : 0);
+        pedacos.push(lista.slice(idx, idx + tamanho));
+        idx += tamanho;
+    }
+    return pedacos;
+}
+
 // Matriz de durações entre base + paradas (Table API; fallback linha reta ×1,3 a 40 km/h)
 async function montarMatriz(pontos, avisos) {
     const aproximada = () => pontos.map(a => pontos.map(b => (a === b ? 0 : duracaoAproxSeg(a, b))));
@@ -541,7 +558,7 @@ router.get('/mapa', verificarAuth, checkAcessoEmbarque, async (req, res) => {
 // ==========================================
 router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, res) => {
     try {
-        let { data, entregaDe, entregaAte, embarqueIds, horaSaida, tempoParadaMin = 10, ancoras } = req.body || {};
+        let { data, entregaDe, entregaAte, embarqueIds, horaSaida, tempoParadaMin = 10, ancoras, modoViagem } = req.body || {};
         if (!Array.isArray(embarqueIds) || embarqueIds.length === 0) {
             return res.status(400).json({ error: 'Informe embarqueIds (as cargas que vão dividir as entregas).' });
         }
@@ -629,6 +646,30 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
             });
             const K_MOTORISTAS = motoristaIds.length;
 
+            // Modo de viagem por MOTORISTA (opcional, 09/2026): 'junto' = uma
+            // ÚNICA saída levando as cargas dele juntas — a divisão entre elas é só
+            // organização de romaneio/carregamento, km/duração/retorno saem iguais
+            // nas N cargas. Qualquer outro valor, ausência do motorista na lista ou
+            // motorista com 1 carga só = 'sequencial' (comportamento de sempre, sem
+            // mudança). Entrada malformada é ignorada, sem erro.
+            const motoristaIdsSet = new Set(motoristaIds);
+            const modoPorMotorista = new Map(); // responsavelId -> 'junto' (ausência = sequencial)
+            if (Array.isArray(modoViagem)) {
+                for (const m of modoViagem) {
+                    if (!m || typeof m.responsavelId !== 'string' || m.modo !== 'junto') continue;
+                    if (!motoristaIdsSet.has(m.responsavelId)) continue; // motorista fora do arranjo
+                    modoPorMotorista.set(m.responsavelId, 'junto');
+                }
+            }
+            // Consulta rápida por CARGA (só motorista com 2+ cargas participantes têm entrada aqui).
+            const modoPorEmbarque = new Map(); // embarqueId -> 'junto' | 'sequencial'
+            for (const respId of motoristaIds) {
+                const cargasDoResp = embarqueIdsPorMotorista.get(respId);
+                if (cargasDoResp.length < 2) continue;
+                const modo = modoPorMotorista.get(respId) === 'junto' ? 'junto' : 'sequencial';
+                for (const embarqueId of cargasDoResp) modoPorEmbarque.set(embarqueId, modo);
+            }
+
             // Âncora de região por MOTORISTA (opcional): um ponto no mapa que a
             // expedição marcou como referência — orienta o setor dele na divisão.
             // Ignora âncora inválida ou de carga fora do arranjo, sem erro. Duas
@@ -700,10 +741,13 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                 base: osrm.BASE_EMPRESA
             });
 
-            // 2ª rodada: motorista com 2+ cargas tem as PRÓPRIAS paradas sub-divididas
-            // entre as viagens dele (só geografia/tempo — a âncora já decidiu o que é
-            // dele; entre as viagens não faz sentido âncora de novo). Motorista com 1
-            // carga não precisa de sub-divisão: tudo que é dele vai pra ela.
+            // 2ª rodada: motorista com 2+ cargas tem as PRÓPRIAS paradas divididas entre
+            // as viagens dele (a âncora já decidiu o que é dele; entre as viagens não
+            // faz sentido âncora de novo). Dois modos (09/2026, opcional por motorista):
+            // 'sequencial' (sempre foi assim) sub-divide de verdade por geografia/tempo;
+            // 'junto' ordena tudo numa rota só e corta em pedaços contíguos (é uma
+            // viagem física só, a divisão em cargas é só organização de romaneio).
+            // Motorista com 1 carga não precisa de nada disso: tudo vai pra ela.
             // `grupos` mantém o formato de sempre (índice = posição em embarqueIds) —
             // o resto da rota (distribuição de itens, medirGrupo, contagem) não muda.
             const grupos = embarqueIds.map(() => []);
@@ -724,6 +768,28 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                     gi => [0, ...paradasDoMotorista].map(gj => matriz[gi][gj])
                 );
                 const subCoords = paradasDoMotorista.map(gi => coordsParadas[gi - 1]);
+
+                if (modoPorMotorista.get(motoristaIds[mi]) === 'junto') {
+                    // "Sair junto": uma rota SÓ (k=1) ordena as paradas dele; a divisão
+                    // em N cargas é só posicional (romaneio/carregamento), cortando a
+                    // rota em pedaços contíguos — 1º trecho (entregue primeiro) vai pra
+                    // carga de MENOR número (carregada por último, sai primeiro na
+                    // entrega). Item travado não precisa de fixos aqui: o redirecionamento
+                    // por ITEM (mais abaixo, na distribuição) já garante que ele conte na
+                    // carga real dele, não importa em qual pedaço a parada caiu.
+                    const { grupos: rotaUnica } = particionarParadas(subMatriz, 1, {
+                        coordsParadas: subCoords,
+                        base: osrm.BASE_EMPRESA
+                    });
+                    const pedacos = cortarContiguo(rotaUnica[0], cargasDoMotorista.length);
+                    pedacos.forEach((pedacoLocal, ci) => {
+                        grupos[idxGrupo.get(cargasDoMotorista[ci])] = pedacoLocal.map(subIdx => paradasDoMotorista[subIdx - 1]);
+                    });
+                    continue;
+                }
+
+                // Sequencial (comportamento de sempre): sub-divide de verdade entre as
+                // viagens dele (só geografia/tempo — a âncora já decidiu o que é dele).
                 const cargaOrdemPorEmbarque = new Map(cargasDoMotorista.map((id, ci) => [id, ci]));
                 const subFixos = [];
                 paradasDoMotorista.forEach((gi, subIdx) => {
@@ -768,7 +834,13 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
 
             const gruposResp = [];
             for (let g = 0; g < embarqueIds.length; g++) {
-                const med = await medirGrupo(stopsPorGrupo[g].map(l => l.gps), precisao, avisos);
+                // Modo "junto": km/duração/trajeto saem da rota INTEIRA do motorista,
+                // numa medição combinada só (mais abaixo) — pula a medição individual
+                // aqui (placeholder) pra não gastar chamada de OSRM à toa por carga.
+                const modoDestaCarga = modoPorEmbarque.get(embarqueIds[g]);
+                const med = modoDestaCarga === 'junto'
+                    ? { distanciaKm: 0, duracaoMin: 0, precisao, trajeto: [] }
+                    : await medirGrupo(stopsPorGrupo[g].map(l => l.gps), precisao, avisos);
                 const itensG = itensPorGrupo[g];
                 const carga = cargaPorId.get(embarqueIds[g]);
                 const nomeMotorista = carga?.responsavel?.nome || null;
@@ -793,20 +865,54 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                 // tudo numa carga e não tem sinal geográfico pra abrir a outra.
                 if (paradasG === 0) {
                     const sujeito = nomeMotorista ? `Carga de ${nomeMotorista}` : `A carga ${carga?.numero ?? embarqueIds[g]}`;
-                    avisos.push(`${sujeito} ficou sem nenhuma parada nesta sugestão — para dividir uma mesma região entre dois motoristas, marque uma âncora para cada um.`);
+                    const complemento = modoDestaCarga === 'junto'
+                        ? 'não sobrou cliente para esta carga na saída única — considere reduzir para 1 carga hoje.'
+                        : 'para dividir uma mesma região entre dois motoristas, marque uma âncora para cada um.';
+                    avisos.push(`${sujeito} ficou sem nenhuma parada nesta sugestão — ${complemento}`);
                 }
             }
 
-            // Horário ENCADEADO: motorista com 2+ cargas no dia faz as viagens em
-            // SEQUÊNCIA (mesma pessoa, um caminhão só) — a viagem 2 só sai quando a 1
-            // retornar à Hardt. A viagem 1 já saiu certa (horaSaida normal, calculada
-            // no loop acima); a partir da 2ª, encadeia a saída no retorno da anterior.
-            let teveMotoristaMultiCarga = false;
+            // Pós-processamento por motorista com 2+ cargas — um dos dois modos:
+            //  - 'sequencial' (sempre foi assim): horário ENCADEADO — a viagem 2 só
+            //    sai quando a 1 retornar à Hardt (a 1ª já saiu certa no loop acima).
+            //  - 'junto' (09/2026): as N cargas são uma viagem física SÓ — uma medição
+            //    combinada (1 chamada de OSRM, não N) preenche o mesmo km/duração/
+            //    trajeto/retorno em todas; a divisão em cargas é só pro romaneio.
+            let teveMotoristaSequencial = false;
+            let teveMotoristaJunto = false;
             for (let mi = 0; mi < K_MOTORISTAS; mi++) {
                 const cargasDoMotorista = embarqueIdsPorMotorista.get(motoristaIds[mi]);
                 if (cargasDoMotorista.length < 2) continue;
-                teveMotoristaMultiCarga = true;
+                const nomeParaAviso = cargaPorId.get(cargasDoMotorista[0])?.responsavel?.nome || 'O motorista';
 
+                if (modoPorMotorista.get(motoristaIds[mi]) === 'junto') {
+                    teveMotoristaJunto = true;
+
+                    // Concatenar os pedaços na ordem por número reconstrói a rota
+                    // única original (foi cortada contígua, nessa mesma ordem).
+                    const stopsCombinados = cargasDoMotorista.flatMap(id => stopsPorGrupo[idxGrupo.get(id)]);
+                    const medCombinado = await medirGrupo(stopsCombinados.map(l => l.gps), precisao, avisos);
+                    const totalParadas = stopsCombinados.length;
+                    const retornoCombinado = calcularRetorno(horaSaida, medCombinado.duracaoMin, tempoParadaMin, totalParadas);
+
+                    cargasDoMotorista.forEach((embarqueId, ci) => {
+                        const respGrupo = gruposResp[idxGrupo.get(embarqueId)];
+                        if (!respGrupo) return;
+                        respGrupo.distanciaKm = medCombinado.distanciaKm;
+                        respGrupo.duracaoMin = medCombinado.duracaoMin;
+                        respGrupo.precisao = medCombinado.precisao;
+                        respGrupo.trajeto = medCombinado.trajeto;
+                        respGrupo.previsaoRetorno = retornoCombinado;
+                        respGrupo.modoViagem = 'junto';
+                        respGrupo.ordemCarregamento = ci + 1;
+                        respGrupo.viagensTotalMotorista = cargasDoMotorista.length;
+                    });
+
+                    avisos.push(`${nomeParaAviso} sai em UMA viagem só levando as ${cargasDoMotorista.length} cargas juntas — km, duração e retorno são da rota inteira (mesmos números nas ${cargasDoMotorista.length} cargas); a divisão dos clientes entre elas é só pra organizar o romaneio/carregamento.`);
+                    continue;
+                }
+
+                teveMotoristaSequencial = true;
                 let saidaAtual = horaSaida;
                 cargasDoMotorista.forEach((embarqueId, vi) => {
                     const respGrupo = gruposResp[idxGrupo.get(embarqueId)];
@@ -814,12 +920,12 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                     if (vi > 0) {
                         respGrupo.previsaoRetorno = calcularRetorno(saidaAtual, respGrupo.duracaoMin, tempoParadaMin, respGrupo.paradas);
                     }
+                    respGrupo.modoViagem = 'sequencial';
                     respGrupo.viagemNumero = vi + 1;
                     respGrupo.viagensTotalMotorista = cargasDoMotorista.length;
                     saidaAtual = respGrupo.previsaoRetorno;
                 });
 
-                const nomeParaAviso = cargaPorId.get(cargasDoMotorista[0])?.responsavel?.nome || 'O motorista';
                 avisos.push(`${nomeParaAviso} tem ${cargasDoMotorista.length} cargas participando — o tempo dele é a SOMA das rotas; cada viagem só sai quando a anterior retornar à Hardt (não conta tempo de preparo entre elas).`);
             }
 
@@ -838,8 +944,11 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                         teveAncoras
                             ? 'região/âncora definida por carga (aplicada nesta rodada)'
                             : 'região/âncora definida por carga (quando informada)',
-                        ...(teveMotoristaMultiCarga
+                        ...(teveMotoristaSequencial
                             ? ['tempo somado quando o mesmo motorista tem mais de uma carga no dia (mesma pessoa, viagens em sequência)']
+                            : []),
+                        ...(teveMotoristaJunto
+                            ? ['motorista em modo "sair junto" leva as cargas dele numa única viagem — mesma distância/duração/retorno em todas, só a lista de clientes é dividida entre elas']
                             : [])
                     ],
                     preserva: 'Itens já roteirizados, entregues ou cobrados permanecem na carga atual; pedido, amostra e cobrança do MESMO cliente ficam sempre no mesmo grupo (uma parada por cliente)',

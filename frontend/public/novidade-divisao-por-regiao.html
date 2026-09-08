@@ -7,7 +7,7 @@
 <link rel="icon" href="/logo-192.png">
 <!-- Preview do link no WhatsApp (sem og:image de propósito — cartão compacto) -->
 <meta property="og:title" content="🚩 Novidade no Hardt App: Divisão por Região">
-<meta property="og:description" content="O &quot;Sugerir divisão&quot; do Mapa das entregas agora entende a região de cada motorista, sabe quando ele tem 2 cargas no dia, e tem o olhinho pra ver só uma carga no mapa. Veja como funciona.">
+<meta property="og:description" content="O &quot;Sugerir divisão&quot; do Mapa das entregas agora entende a região de cada motorista, sabe quando ele tem 2 cargas no dia, e tem o olhinho pra esconder carga do mapa. Veja como funciona.">
 <meta property="og:type" content="website">
 <style>
   :root {
@@ -149,8 +149,6 @@
     will-change: opacity;
   }
   .mini-dot.on .fill { opacity: 1; }
-  /* pino "apagado" pelo foco de carga (ícone de olho) — some quase todo, mas não de vez */
-  .mini-dot.apagado { opacity: .15; }
   .mini-flag {
     position: absolute;
     font-size: 22px;
@@ -332,6 +330,7 @@
     font-size: 13px; font-weight: 800;
   }
   .app-eye {
+    position: relative;
     width: 30px; height: 30px; flex-shrink: 0;
     border-radius: 999px;
     background: var(--mint);
@@ -339,6 +338,32 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 15px;
   }
+  /* olho "cortado" — carga escondida do mapa */
+  .app-eye.escondido { background: #e5e7eb; color: #6b756f; }
+  .app-eye.escondido::after {
+    content: '';
+    position: absolute;
+    width: 20px; height: 1.5px;
+    background: #6b756f;
+    transform: rotate(-45deg);
+  }
+  /* pill do modo de viagem (mock estático, sem JS) */
+  .app-pill-viagem {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 9px 8px;
+    border-radius: 999px;
+    border: 1.5px solid var(--primary);
+    color: var(--primary);
+    background: #fff;
+    line-height: 1.25;
+  }
+  .app-pill-viagem.on { background: var(--primary); color: #fff; }
   .app-warn {
     display: flex;
     gap: 10px;
@@ -428,16 +453,17 @@
   <div class="acc aberto">
     <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
       <span class="acc-ico">👁️</span>
-      <strong>O olhinho: veja só as entregas de um motorista</strong>
+      <strong>O olhinho: esconda carga(s) do mapa</strong>
       <span class="acc-seta">▼</span>
     </button>
     <div class="acc-corpo">
       <ul>
-        <li>Quando as rotas se cruzam no mapa, fica difícil separar visualmente qual pino é de qual carga. Agora cada cartão de carga tem um <b>ícone de olho</b> no cabeçalho: toque nele para <b>ver só aquela carga</b> no mapa.</li>
-        <li>Com o foco ligado: os <b>pinos de cliente das outras cargas</b> ficam quase transparentes (não somem de vez — dá pra ver onde estão, se precisar mover algo de lá para a carga em foco), e a <b>linha de rota e a bandeira de região das outras cargas somem por completo</b>.</li>
-        <li>Pinos <b>"sem carga" continuam normais</b> — pode ser justamente o que falta encaixar na carga que você está olhando.</li>
-        <li>Aparece um chip verde-escuro no topo do mapa, <b>"Vendo só Carga #N — ver todas"</b>: toque nele (ou de novo no olho da mesma carga) para voltar a enxergar tudo.</li>
-        <li>O foco é sempre de <b>uma carga por vez</b> — focar outra troca direto. E é <b>só visual</b>: não mexe em rascunho, na marcação "Participa da divisão automática" nem no que a "Sugerir divisão" envia. Também <b>não fica salvo</b>: some sozinho ao trocar o dia do embarque ou recarregar a tela.</li>
+        <li>Quando as rotas se cruzam no mapa, fica difícil separar visualmente qual pino é de qual carga. Agora cada cartão de carga tem um <b>ícone de olho</b> no cabeçalho: toque nele para <b>esconder aquela carga</b> do mapa.</li>
+        <li>Ao esconder: os <b>pinos de cliente daquela carga somem de verdade</b> (não é esmaecido — some por completo), junto com a <b>linha de rota e a bandeira de região dela</b>. Isso vale <b>até para entrega que já saiu</b>: se o pedido já foi entregue, o pino dele some junto se a carga estiver escondida.</li>
+        <li>Pinos <b>"sem carga" nunca são afetados</b> — continuam sempre visíveis.</li>
+        <li>Dá pra esconder <b>várias cargas ao mesmo tempo</b> — não é uma de cada vez. O ícone vira <b>olho cortado</b> na carga escondida, e o cartão dela fica com uma leve opacidade, avisando "escondida no mapa".</li>
+        <li>Aparece um chip verde-escuro no topo do mapa — <b>"1 carga escondida — mostrar todas"</b> ou <b>"N cargas escondidas — mostrar todas"</b> — para trazer tudo de volta de uma vez (o mesmo efeito de tocar de novo em cada olho).</li>
+        <li>É <b>só visual</b>: não mexe em rascunho, na marcação "Participa da divisão automática" nem no que a "Sugerir divisão" envia. Também <b>não fica salvo</b>: volta tudo visível sozinho ao trocar o dia do embarque ou recarregar a tela.</li>
       </ul>
     </div>
   </div>
@@ -471,6 +497,9 @@
         <li>O tempo dele passa a ser a <b>soma das viagens</b>, porque elas são em <b>sequência</b>: a 2ª viagem só sai quando a 1ª voltar para a Hardt — o cálculo não finge que ele está em dois lugares ao mesmo tempo.</li>
         <li>A sugestão reparte as entregas dele entre as viagens <b>também pela região</b>, priorizando a <b>mais distante primeiro</b> — do mesmo jeito que já faz entre motoristas diferentes.</li>
         <li>A tela avisa quando isso acontece (algo como "Carlos tem 2 cargas participando — o tempo dele é a soma das rotas..."). Se o território inteiro dele for uma região só, sem uma divisão natural, uma das viagens pode ficar sem nenhuma parada — nesse caso também aparece aviso, e é só mover manualmente entre as cargas dele.</li>
+        <li>Quando isso acontece, aparece o bloco <b>"Como cada motorista sai hoje"</b> (acima de "Cargas do dia"), com duas opções para escolher: <b>"Duas viagens — volta e carrega"</b> (o padrão, já vem marcado) é o caso comum: ele sai, entrega, volta pra carregar de novo e sai na 2ª viagem. <b>"Uma saída só — leva tudo"</b> é para quando as duas cargas vão <b>juntas no mesmo caminhão</b>, numa saída só (veículo grande o bastante pra não precisar voltar).</li>
+        <li>No modo <b>"uma saída só"</b>, o km, a duração e a volta prevista saem <b>iguais nas duas cargas</b> — porque é a rota inteira de um caminhão só, só a entrega é que é organizada em duas cargas (quem entrega primeiro é carregado por último no caminhão). Cada cartão mostra o selo <b>"Saída única · carregamento N"</b> (ou <b>"1ª/2ª viagem"</b> no modo padrão).</li>
+        <li>A escolha vale <b>só para aquele dia</b> — não fica salva, porque o volume muda todo dia. Reabrir a tela ou trocar a data do embarque volta para o padrão (duas viagens).</li>
       </ul>
     </div>
   </div>
@@ -574,35 +603,32 @@
     </div>
   </div>
 
-  <!-- TELA 3: o olhinho de foco -->
+  <!-- TELA 3: o olhinho para esconder carga -->
   <div class="tela">
-    <div class="tela-titulo">📱 Tela 3 · O olhinho — ver só uma carga no mapa</div>
+    <div class="tela-titulo">📱 Tela 3 · O olhinho — esconder carga do mapa</div>
     <div class="tela-corpo">
-      <div class="app-card">
+      <div class="app-card" style="opacity:.7;">
         <div class="app-card-body" style="display:flex;align-items:center;gap:8px;padding:12px;">
           <span style="width:14px;height:14px;border-radius:50%;background:var(--primary);flex-shrink:0;"></span>
           <b style="flex:1;font-size:13px;">Carga #3 · Carlos</b>
-          <span class="app-eye">👁</span>
+          <span class="app-eye escondido">👁</span>
           <span class="pin">1</span>
           <span style="font-size:11px;color:#6b756f;">42 pedidos</span>
         </div>
       </div>
       <div class="mapa-mock" style="margin-top:10px;">
-        <div class="mini-chip on" style="position:absolute;">👁 Vendo só Carga #3 · Carlos<span class="pin" style="margin-left:6px;">2</span></div>
-        <span class="mini-dot on" style="top:55%;left:22%;"><span class="fill"></span></span>
-        <span class="mini-dot on" style="top:68%;left:34%;"><span class="fill"></span></span>
-        <span class="mini-dot apagado" style="top:35%;left:70%;"><span class="fill"></span></span>
-        <span class="mini-dot apagado" style="top:22%;left:55%;"><span class="fill"></span></span>
-        <span class="mini-flag on" style="top:60%;left:28%;">🚩</span>
+        <div class="mini-chip on" style="position:absolute;">🙈 2 cargas escondidas — mostrar todas<span class="pin" style="margin-left:6px;">2</span></div>
+        <span class="mini-dot on" style="top:60%;left:22%;background:#2563eb;"><span class="fill" style="background:#2563eb;"></span></span>
+        <span class="mini-dot on" style="top:35%;left:70%;background:#d97706;"><span class="fill" style="background:#d97706;"></span></span>
       </div>
       <div class="mapa-legenda-mini">
-        <span><span class="pin">3</span>pinos apagados = outras cargas (ficam quase transparentes, não somem)</span>
+        <span><span class="pin">3</span>a carga escondida (verde) não deixa NENHUM rastro aqui</span>
       </div>
     </div>
     <div class="legenda">
-      <div><span class="pin">1</span><span>Ícone de <b>olho</b> no cabeçalho do cartão: toque para focar só essa carga no mapa. Toque de novo para desfocar.</span></div>
-      <div><span class="pin">2</span><span>Chip <b>"Vendo só Carga #N — ver todas"</b> fica preso no topo do mapa enquanto o foco está ligado — toque nele pra voltar a ver tudo de uma vez.</span></div>
-      <div><span class="pin">3</span><span>Pinos de <b>outras cargas</b> ficam quase transparentes. A linha de rota e a bandeira de região das outras cargas <b>somem por completo</b> enquanto o foco está ligado — só as da carga focada continuam aparecendo normais.</span></div>
+      <div><span class="pin">1</span><span>Ícone de <b>olho cortado</b> = essa carga está escondida do mapa. O cartão dela fica com uma leve opacidade. Toque de novo para mostrar.</span></div>
+      <div><span class="pin">2</span><span>Chip <b>"1 carga escondida — mostrar todas"</b> (ou "N cargas escondidas") fica preso no topo do mapa enquanto houver alguma escondida — toque nele pra trazer tudo de volta de uma vez.</span></div>
+      <div><span class="pin">3</span><span>Repare que só os pinos azul e âmbar (das outras cargas) aparecem no mapa. O pino, a linha de rota e a bandeira de região da carga verde <b>escondida</b> somem por completo — inclusive se algum pedido dela já tiver sido entregue.</span></div>
     </div>
   </div>
 
@@ -617,6 +643,36 @@
     </div>
     <div class="legenda">
       <div><span class="pin">1</span><span>Esse aviso aparece no bloco de avisos da sugestão, acima dos cartões das cargas. É sinal de que a região do João está sendo coberta por outra carga — marque uma <b>bandeira também para o João</b> (e para o outro motorista, se ele ainda não tiver uma) para o app repartir a área entre os dois.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 5: motorista com 2 cargas — como ele sai -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 5 · Motorista com 2 cargas — como ele sai hoje</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">🚚 Como cada motorista sai hoje<span class="pin">1</span></div>
+        <div class="app-card-body">
+          <p style="font-size:12.5px;font-weight:600;color:var(--ink);margin:0 0 6px;">Carlos <span style="font-weight:400;color:#6b756f;">· 2 cargas hoje</span></p>
+          <div style="display:flex;gap:6px;">
+            <span class="app-pill-viagem on">Duas viagens<br>volta e carrega</span>
+            <span class="app-pill-viagem">Uma saída só<br>leva tudo</span>
+          </div>
+          <span class="pin" style="margin-top:6px;display:inline-block;">2</span>
+        </div>
+      </div>
+      <div class="app-card" style="margin-top:10px;">
+        <div class="app-card-head">🚚 Carga #5 · Carlos <span style="margin-left:auto;font-weight:600;text-transform:none;letter-spacing:0;">18 pedidos</span></div>
+        <div class="app-card-body" style="padding:10px 12px;">
+          <span style="display:inline-flex;align-items:center;gap:5px;background:var(--mint);color:var(--primary-dark);font-size:11px;font-weight:700;padding:4px 10px;border-radius:999px;">🚚 1ª viagem</span>
+          <span class="pin">3</span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Esse bloco só aparece quando algum motorista tem <b>2 ou mais cargas participando</b> no dia — fica acima da lista "Cargas do dia".</span></div>
+      <div><span class="pin">2</span><span><b>"Duas viagens — volta e carrega"</b> é o padrão (já vem marcado): ele sai, entrega, volta pra carregar de novo e sai na 2ª viagem. <b>"Uma saída só — leva tudo"</b> é só quando as duas cargas vão juntas no mesmo caminhão — nesse modo, km/duração/volta saem <b>iguais nas duas cargas</b> (é a rota inteira de um caminhão só; a divisão entre cargas só organiza a ordem de carregamento — quem entrega primeiro é carregado por último).</span></div>
+      <div><span class="pin">3</span><span>Depois de rodar a "Sugerir divisão", o cartão de cada carga ganha o selo <b>"1ª/2ª viagem"</b> (modo padrão) ou <b>"Saída única · carregamento N"</b> (modo "uma saída só"). A escolha <b>não fica salva</b> — reabrir a tela ou trocar a data volta para o padrão.</span></div>
     </div>
   </div>
 
