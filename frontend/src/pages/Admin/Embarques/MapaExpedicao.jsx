@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Map as MapIcon, Loader2, Wand2, Route as RouteIcon, X, Truck, Printer, MapPinOff, MapPin, Lock, ArrowLeftRight, Trash2, AlertTriangle } from 'lucide-react';
+import { Map as MapIcon, Loader2, Wand2, Route as RouteIcon, X, Truck, Printer, MapPinOff, MapPin, Eye, Lock, ArrowLeftRight, Trash2, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import mapaExpedicaoService from '../../../services/mapaExpedicaoService';
 import SelectBusca from '../../../components/SelectBusca';
@@ -212,6 +212,17 @@ export default function MapaExpedicao() {
         });
         toast(`Região de ${nomeMotorista || 'motorista'} removida.`, { icon: '🗑️' });
     }, [setAncorasPorMotorista]);
+
+    // "Ver só esta carga no mapa" (botão de olho no cartão): só destaca o que já
+    // está desenhado — não mexe em rascunho, payload de sugerir nem em nada que
+    // grava. Estado de SESSÃO da tela: não persiste (foco de ontem não faz
+    // sentido hoje, as cargas são outras). Foco é exclusivo: focar uma troca a
+    // anterior; clicar de novo no olho da mesma carga desfoca.
+    const [cargaFocada, setCargaFocada] = useState(null); // embarqueId | null
+    const alternarFoco = useCallback((id) => {
+        setCargaFocada(prev => (prev === id ? null : id));
+    }, []);
+
     const [sugerindo, setSugerindo] = useState(false);
     const [recalculando, setRecalculando] = useState(false);
     const [aplicando, setAplicando] = useState(false);
@@ -268,6 +279,9 @@ export default function MapaExpedicao() {
             // Aqui só descartamos id de carga que não existe mais no dia recarregado.
             const idsDoDia = new Set((r.cargas || []).map(c => c.id));
             setForaDaDivisao(prev => prev.filter(id => idsDoDia.has(id)));
+            // Foco visual é estado de sessão da tela (não persiste) — mesma poda: se a
+            // carga focada sumiu do dia recarregado, o foco não faz mais sentido.
+            setCargaFocada(prev => (prev != null && !idsDoDia.has(prev) ? null : prev));
             if (limparRascunho) {
                 setRascunho({});
                 chavesDaSugestao.current = new Set();
@@ -442,8 +456,10 @@ export default function MapaExpedicao() {
         if (novaData === data) return;
         if (mudancas.length && !window.confirm('Há alterações de carga ainda não aplicadas. Deseja mudar o dia e descartar o rascunho?')) return;
         // Outro dia = outras cargas: a marcação "participa da divisão" recomeça com
-        // TODAS marcadas (id de carga não se repete entre os dias).
+        // TODAS marcadas (id de carga não se repete entre os dias), e o foco visual
+        // (estado de sessão, não persiste) não faz sentido apontando pra carga de outro dia.
         setForaDaDivisao([]);
+        setCargaFocada(null);
         // Quem zera o rascunho é a troca de DATA (o `carregar` só poda) — e só depois
         // do "sim" acima. Trocar o período de entrega não passa por aqui.
         setRascunho({});
@@ -687,6 +703,16 @@ export default function MapaExpedicao() {
             setRascunho(nx);
             chavesDaSugestao.current = criadasPelaSugestao;
             setAvisos(r.avisos || []);
+            // Mesmo critério do banner "N alterações não aplicadas" (useMemo `mudancas`,
+            // que compara rascunho[chave] com o embarqueId ATUAL do item) — mas calculado
+            // aqui sobre o resultado REAL desta sugestão (`nx`, já com as preservações
+            // acima), não sobre a resposta crua do backend. Sem isso, quando a sugestão
+            // concordava com o arranjo de hoje o banner de Confirmar/Descartar não
+            // aparecia (0 mudanças) e nada mais na tela avisava — o operador ficava sem
+            // saber se o clique tinha funcionado (foi o que aconteceu com o dono).
+            const semMudancaReal = todas.every(p => (
+                (temChave(nx, p.chave) ? nx[p.chave] : (p.embarqueId ?? null)) === (p.embarqueId ?? null)
+            ));
             // guarda os números da sugestão presos a este arranjo
             const porCargaChaves = {};
             todas.forEach(p => {
@@ -709,18 +735,24 @@ export default function MapaExpedicao() {
             setEstimApi({ chave: montarChave(porCargaChaves), grupos: gm });
             // guarda quem participou DESTA sugestão (o operador pode mexer nas caixas depois)
             setCriterioSugestao(r.criterio ? { ...r.criterio, nParticipantes: idsParticipantes.length, nFora } : null);
-            const baseToast = idsParticipantes.length === 1
-                ? 'Sugestão pronta com UMA carga participando — tudo o que estava livre foi para ela. Confira antes de confirmar.'
-                : 'Sugestão pronta — confira as linhas das rotas antes de confirmar.';
-            const sufixoPreservado = nPreservados
-                ? (nPreservados === 1
-                    ? ' A mudança que você fez à mão envolvendo carga fora da divisão foi mantida.'
-                    : ` As ${nPreservados} mudanças que você fez à mão envolvendo carga fora da divisão foram mantidas.`)
-                : '';
-            toast.success(
-                `${baseToast}${sufixoPreservado}`,
-                (idsParticipantes.length === 1 || nPreservados) ? { duration: 9000 } : undefined
-            );
+            if (semMudancaReal) {
+                // Nada para o banner Confirmar/Descartar mostrar (0 mudanças de verdade) —
+                // por isso este toast É a confirmação de que a sugestão rodou.
+                toast.success('A sugestão concorda com o arranjo atual — nada a alterar.', { icon: '👍' });
+            } else {
+                const baseToast = idsParticipantes.length === 1
+                    ? 'Sugestão pronta com UMA carga participando — tudo o que estava livre foi para ela. Confira antes de confirmar.'
+                    : 'Sugestão pronta — confira as linhas das rotas antes de confirmar.';
+                const sufixoPreservado = nPreservados
+                    ? (nPreservados === 1
+                        ? ' A mudança que você fez à mão envolvendo carga fora da divisão foi mantida.'
+                        : ` As ${nPreservados} mudanças que você fez à mão envolvendo carga fora da divisão foram mantidas.`)
+                    : '';
+                toast.success(
+                    `${baseToast}${sufixoPreservado}`,
+                    (idsParticipantes.length === 1 || nPreservados) ? { duration: 9000 } : undefined
+                );
+            }
         } catch (e) {
             if (e.response?.status === 423) toast('Outro cálculo de rota está em andamento — aguarde um instante e tente de novo.', { icon: '⏳', duration: 6000 });
             else toast.error(mensagemErro(e, 'Não deu para montar a sugestão agora. Tente de novo.'));
@@ -981,6 +1013,11 @@ export default function MapaExpedicao() {
             const todosTravados = g.itens.every(i => i.travado);
             const mudou = g.itens.some(i => temChave(rascunho, i.chave) && rascunho[i.chave] !== (i.embarqueId ?? null));
             const aproximado = g.origemGps === 'endereco';
+            // "Ver só esta carga": os pinos das OUTRAS cargas ficam quase transparentes
+            // (não somem de vez — o operador ainda enxerga onde estão, para eventualmente
+            // arrastar item de lá pra cá). "Sem carga" (eidPino null) fica normal: pode ser
+            // justamente o que falta encaixar na carga focada.
+            const apagadoPorFoco = cargaFocada != null && eidPino != null && eidPino !== cargaFocada;
             // bolinha cheia = ponto GPS confirmado; anel tracejado com "≈" = posição pelo endereço
             const estilo = aproximado
                 ? `background:#fff;border:2.5px dashed ${cor};color:${cor};`
@@ -1008,13 +1045,14 @@ export default function MapaExpedicao() {
                 : '';
             const html = `<div style="display:flex;flex-direction:column;align-items:center;width:56px">` +
                 `<div style="width:26px;height:26px;border-radius:50%;${estilo}` +
-                `box-shadow:0 1px 4px rgba(0,0,0,.45);${todosTravados ? 'opacity:.55;' : cargaFora ? 'opacity:.6;' : ''}` +
+                `box-shadow:0 1px 4px rgba(0,0,0,.45);${apagadoPorFoco ? 'opacity:.15;' : todosTravados ? 'opacity:.55;' : cargaFora ? 'opacity:.6;' : ''}` +
                 `${mudou ? 'outline:3px solid #cba258;outline-offset:1px;' : ''}` +
                 `display:flex;align-items:center;justify-content:center;font-size:${todosTravados ? '12px' : '13px'};font-weight:800;line-height:1">` +
                 `${conteudo}</div>${badges}</div>`;
             const mk = L.marker([g.gps.lat, g.gps.lng], {
                 icon: L.divIcon({ className: '', html, iconSize: [56, badges ? 46 : 26], iconAnchor: [28, 13] }),
-                keyboard: false
+                keyboard: false,
+                zIndexOffset: apagadoPorFoco ? -100 : 0
             }).addTo(map).on('click', () => {
                 // Em "modo âncora" o clique num pino de cliente grava a região ali mesmo
                 // (não abre o cartão de detalhes nem desmarca a seleção anterior).
@@ -1033,6 +1071,10 @@ export default function MapaExpedicao() {
             const responsavelId = c.responsavel?.id;
             const anc = responsavelId != null ? ancorasPorMotorista[responsavelId] : null;
             if (!anc) return;
+            // "Ver só esta carga": bandeira de outra carga some (a linha e os pinos dela
+            // já ficaram de fora/apagados — manter só a bandeira ficaria com uma pista
+            // solta de uma região que não está em foco).
+            if (cargaFocada != null && c.id !== cargaFocada) return;
             const cor = CORES[i % CORES.length];
             const html = `<div style="width:26px;height:26px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);` +
                 `background:${cor};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);` +
@@ -1046,7 +1088,7 @@ export default function MapaExpedicao() {
                 .on('click', () => { if (modoAncoraRef.current) definirAncoraRef.current(anc); });
             ancoraMarkers.current[c.id] = mk;
         });
-    }, [dados, gruposComPino, rascunho, corDaCarga, embarqueEfetivo, foraSet, ancorasPorMotorista]);
+    }, [dados, gruposComPino, rascunho, corDaCarga, embarqueEfetivo, foraSet, ancorasPorMotorista, cargaFocada]);
 
     // Trajetos devolvidos pelo roteirizador: tornam visível por que um ponto
     // pertence a uma carga, em vez de mostrar apenas cores soltas no mapa.
@@ -1057,6 +1099,9 @@ export default function MapaExpedicao() {
         linhasRotas.current = [];
         if (!estimApi || estimApi.chave !== chaveEstim) return;
         (dados?.cargas || []).forEach((c, i) => {
+            // "Ver só esta carga": some com a linha das outras — é o que mais atrapalha
+            // a leitura quando as rotas se cruzam (o motivo do pedido).
+            if (cargaFocada != null && c.id !== cargaFocada) return;
             const trajeto = estimApi.grupos?.[c.id]?.trajeto || [];
             if (trajeto.length < 2) return;
             linhasRotas.current.push(L.polyline(
@@ -1064,7 +1109,7 @@ export default function MapaExpedicao() {
                 { color: CORES[i % CORES.length], weight: 4, opacity: 0.72 }
             ).addTo(map));
         });
-    }, [estimApi, chaveEstim, dados]);
+    }, [estimApi, chaveEstim, dados, cargaFocada]);
 
     // Enquadrar o dia uma vez por carga de dados
     useEffect(() => {
@@ -1080,6 +1125,7 @@ export default function MapaExpedicao() {
 
     // ── Peças de UI ──
     const sel = selecionado != null ? gruposCliente.find(g => g.chave === selecionado) : null;
+    const cargaFocadaObj = cargaFocada != null ? (dados?.cargas || []).find(c => c.id === cargaFocada) : null;
     const focarCliente = useCallback((g) => {
         setSelecionado(g.chave);
         if (g.gps && mapObj.current) mapObj.current.flyTo([g.gps.lat, g.gps.lng], Math.max(mapObj.current.getZoom(), 14));
@@ -1312,13 +1358,26 @@ export default function MapaExpedicao() {
                         </div>
                     )}
 
-                    {/* Chip do "modo âncora" + banner do rascunho — empilhados (nunca um
-                        sobre o outro) e presos ao topo do mapa, sem cobrir a topbar nem,
-                        no celular, a alça do painel inferior. */}
-                    {(modoAncora || mudancas.length > 0) && (
-                        <div className="absolute top-2 left-1/2 -translate-x-1/2 z-[1040] flex flex-col items-center gap-2 max-w-[calc(100%-16px)]">
+                    {/* Chip do "modo âncora" + chip de foco de carga + banner do rascunho —
+                        empilhados (nunca um sobre o outro) e presos ao topo do mapa, sem
+                        cobrir a topbar nem, no celular, a alça do painel inferior.
+                        left-14 (em vez de centralizar com left-1/2): o controle de zoom do
+                        Leaflet (.leaflet-control-zoom) mora fixo no canto superior ESQUERDO
+                        do mapa (~10–40px). Um chip comprido (motorista de nome longo, "N
+                        alterações não aplicadas" + Confirmar + Descartar) centralizado no
+                        mapa inteiro cobre esse canto — o "+" ficava embaixo do chip e o
+                        clique nunca chegava ao Leaflet (achado do QA em 375px). Reservando
+                        56px à esquerda em QUALQUER largura, a caixa dos chips nunca desenha
+                        ali, em vez de só "parecer" que não cobre.
+                        pointer-events-none no contêiner + pointer-events-auto em cada chip:
+                        mesma causa-raiz do fix do balão do Clippy — um <div> "vazio" (o
+                        gap-2 entre chips empilhados, ou a sobra quando um chip é mais
+                        estreito que os outros) ainda captura clique por padrão mesmo sem
+                        fundo visível ali; isso garante que só a pílula visível responde. */}
+                    {(modoAncora || cargaFocada != null || mudancas.length > 0) && (
+                        <div className="absolute top-2 left-14 right-2 z-[1040] flex flex-col items-center gap-2 pointer-events-none">
                             {modoAncora && (
-                                <div className="flex items-center gap-2 bg-house text-white rounded-full shadow-lg pl-3 pr-1.5 py-1.5 max-w-full">
+                                <div className="flex items-center gap-2 bg-house text-white rounded-full shadow-lg pl-3 pr-1.5 py-1.5 max-w-full pointer-events-auto">
                                     <MapPin className="h-3.5 w-3.5 shrink-0" />
                                     <span className="text-xs font-semibold truncate">
                                         Clique no mapa para marcar a região de {modoAncora.nomeMotorista} — Esc cancela
@@ -1327,14 +1386,29 @@ export default function MapaExpedicao() {
                                         type="button"
                                         onClick={() => setModoAncora(null)}
                                         aria-label="Cancelar marcação de região"
-                                        className="shrink-0 p-1.5 rounded-full hover:bg-white/15"
+                                        className="shrink-0 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-full hover:bg-white/15"
                                     >
                                         <X className="h-3.5 w-3.5" />
                                     </button>
                                 </div>
                             )}
+                            {cargaFocada != null && (
+                                <div className="flex items-center gap-2 bg-house text-white rounded-full shadow-lg pl-3 pr-1.5 py-1.5 max-w-full pointer-events-auto">
+                                    <Eye className="h-3.5 w-3.5 shrink-0" />
+                                    <span className="text-xs font-semibold truncate">
+                                        Vendo só Carga #{cargaFocadaObj?.numero ?? ''}{cargaFocadaObj?.responsavel?.nome ? ` · ${cargaFocadaObj.responsavel.nome}` : ''}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setCargaFocada(null)}
+                                        className="shrink-0 min-h-[36px] px-2.5 flex items-center justify-center rounded-full text-xs font-semibold hover:bg-white/15"
+                                    >
+                                        ver todas
+                                    </button>
+                                </div>
+                            )}
                             {mudancas.length > 0 && (
-                                <div className="flex items-center gap-1.5 bg-white rounded-full border border-amber-300 shadow-lg pl-3 pr-1.5 py-1 max-w-full">
+                                <div className="flex items-center gap-1.5 bg-white rounded-full border border-amber-300 shadow-lg pl-3 pr-1.5 py-1 max-w-full pointer-events-auto">
                                     <span className="text-xs font-semibold text-amber-800 whitespace-nowrap">
                                         {mudancas.length === 1 ? '1 alteração não aplicada' : `${mudancas.length} alterações não aplicadas`}
                                     </span>
@@ -1403,6 +1477,10 @@ export default function MapaExpedicao() {
                                 style={{ display: 'inline-block', width: 12, height: 12, borderRadius: '50% 50% 50% 0', transform: 'rotate(-45deg)', background: '#00754A', border: '1.5px solid #fff', boxShadow: '0 0 0 1px rgba(0,0,0,.15)' }}
                             />
                             região marcada do motorista
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <Eye className="w-3 h-3 text-gray-500 shrink-0" />
+                            no cartão da carga = ver só ela no mapa (as outras ficam apagadas)
                         </div>
                     </div>
 
@@ -1656,6 +1734,7 @@ export default function MapaExpedicao() {
                                 const nomeMotorista = c.responsavel?.nome || null;
                                 const ancoraAtual = responsavelId != null ? ancorasPorMotorista[responsavelId] : null;
                                 const emModoParaEstaCarga = modoAncora?.embarqueId === c.id;
+                                const focada = cargaFocada === c.id;
                                 return (
                                     <div
                                         key={c.id}
@@ -1666,6 +1745,20 @@ export default function MapaExpedicao() {
                                             <span className="font-semibold text-gray-900 text-sm truncate flex-1">
                                                 Carga #{c.numero}{c.responsavel?.nome ? ` · ${c.responsavel.nome}` : ''}
                                             </span>
+                                            {/* "Ver só esta carga no mapa": foco visual, exclusivo, não persiste
+                                                e não mexe em rascunho/payload — só o que já está desenhado no
+                                                mapa (pinos, linha de rota, bandeira) muda de visibilidade. */}
+                                            <button
+                                                type="button"
+                                                onClick={() => alternarFoco(c.id)}
+                                                title={focada ? 'Ver todas as cargas no mapa' : 'Ver só esta carga no mapa'}
+                                                aria-label={focada ? 'Ver todas as cargas no mapa' : 'Ver só esta carga no mapa'}
+                                                aria-pressed={focada}
+                                                className={`shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full
+                                                    ${focada ? 'text-primary bg-mint/40' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}
+                                            >
+                                                <Eye className="h-4 w-4" />
+                                            </button>
                                             <span className="text-xs text-gray-500 shrink-0 text-right">
                                                 {contagemTipos(ps)}
                                             </span>

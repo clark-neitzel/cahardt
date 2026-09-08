@@ -602,19 +602,51 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
         try {
             const idxGrupo = new Map(embarqueIds.map((id, i) => [id, i]));
 
-            // Âncora de região por carga (opcional): um ponto no mapa que a expedição
-            // marcou como referência daquela carga — orienta o setor angular dela na
-            // divisão. Ignora âncora inválida ou de carga fora do arranjo, sem erro.
-            const ancorasPorGrupo = embarqueIds.map(() => null);
+            // Motorista com 2+ cargas no MESMO dia conta como UMA pessoa no cálculo
+            // (pedido do dono, 09/2026 — caso real 01/09/2026): o tempo dele é a SOMA
+            // das viagens (sequenciais, o caminhão só sai de novo depois de voltar),
+            // então a geografia/âncora é decidida por MOTORISTA, não por carga — e só
+            // depois as paradas dele são sub-divididas entre as cargas (viagens) na
+            // ordem do número (a menor = viagem 1).
+            const embarqueIdsPorMotorista = new Map(); // responsavelId -> [embarqueId,...] (ordenado por numero)
+            const motoristaIds = []; // ordem de 1ª aparição em embarqueIds
+            for (const id of embarqueIds) {
+                const respId = cargaPorId.get(id)?.responsavelId;
+                if (!embarqueIdsPorMotorista.has(respId)) {
+                    embarqueIdsPorMotorista.set(respId, []);
+                    motoristaIds.push(respId);
+                }
+                embarqueIdsPorMotorista.get(respId).push(id);
+            }
+            for (const respId of motoristaIds) {
+                embarqueIdsPorMotorista.get(respId).sort(
+                    (a, b) => (cargaPorId.get(a)?.numero || 0) - (cargaPorId.get(b)?.numero || 0)
+                );
+            }
+            const motoristaIdxPorEmbarque = new Map();
+            motoristaIds.forEach((respId, mi) => {
+                for (const id of embarqueIdsPorMotorista.get(respId)) motoristaIdxPorEmbarque.set(id, mi);
+            });
+            const K_MOTORISTAS = motoristaIds.length;
+
+            // Âncora de região por MOTORISTA (opcional): um ponto no mapa que a
+            // expedição marcou como referência — orienta o setor dele na divisão.
+            // Ignora âncora inválida ou de carga fora do arranjo, sem erro. Duas
+            // âncoras DIFERENTES pro mesmo motorista (uma por carga dele, o normal
+            // é a mesma repetida): usa a 1ª, ignora a 2ª.
+            const ancorasPorMotorista = motoristaIds.map(() => null);
             let ancorasIgnoradas = 0;
             if (Array.isArray(ancoras)) {
                 for (const a of ancoras) {
-                    const g = idxGrupo.get(a?.embarqueId);
-                    if (g == null || !osrm.coordenadaValida(a?.gps)) { ancorasIgnoradas++; continue; }
-                    ancorasPorGrupo[g] = { lat: Number(a.gps.lat), lng: Number(a.gps.lng) };
+                    const mi = motoristaIdxPorEmbarque.get(a?.embarqueId);
+                    if (mi == null || !osrm.coordenadaValida(a?.gps)) { ancorasIgnoradas++; continue; }
+                    const nova = { lat: Number(a.gps.lat), lng: Number(a.gps.lng) };
+                    const atual = ancorasPorMotorista[mi];
+                    if (atual == null) ancorasPorMotorista[mi] = nova;
+                    else if (atual.lat !== nova.lat || atual.lng !== nova.lng) ancorasIgnoradas++;
                 }
             }
-            const teveAncoras = ancorasPorGrupo.some(a => a != null);
+            const teveAncoras = ancorasPorMotorista.some(a => a != null);
             if (ancorasIgnoradas) {
                 avisos.push(`${ancorasIgnoradas} âncora(s) de região ignorada(s) (carga fora do arranjo ou coordenada inválida).`);
             }
@@ -625,8 +657,11 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
 
             // Local com item travado (já roteirizado/entregue/cobrado) em alguma
             // carga do arranjo fica preso à carga desse item — os itens livres do
-            // mesmo cliente vão juntos para lá.
+            // mesmo cliente vão juntos para lá. Guarda tanto o MOTORISTA (pra travar
+            // na divisão principal) quanto a CARGA específica (pra travar na
+            // sub-divisão entre as viagens dele, mais abaixo).
             const fixos = [];
+            const fixoEmbarquePorLocal = new Map(); // local (1..n) -> embarqueId travado específico
             let locaisComTravaConflitante = 0;
             locais.forEach((loc, i) => {
                 const cargasTravadas = [...new Set(
@@ -634,7 +669,11 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                         .filter(it => it.travado && it.embarqueId && idxGrupo.has(it.embarqueId))
                         .map(it => it.embarqueId)
                 )];
-                if (cargasTravadas.length) fixos.push({ parada: i + 1, grupo: idxGrupo.get(cargasTravadas[0]) });
+                if (cargasTravadas.length) {
+                    const embarqueTravado = cargasTravadas[0];
+                    fixos.push({ parada: i + 1, grupo: motoristaIdxPorEmbarque.get(embarqueTravado) });
+                    fixoEmbarquePorLocal.set(i + 1, embarqueTravado);
+                }
                 if (cargasTravadas.length > 1) locaisComTravaConflitante++;
             });
             if (locaisComTravaConflitante) {
@@ -651,13 +690,59 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
 
             const pontos = [osrm.BASE_EMPRESA, ...locais.map(l => l.gps)];
             const { matriz, precisao } = await montarMatriz(pontos, avisos);
+            const coordsParadas = pontos.slice(1); // coordsParadas[i] = parada i+1 (0 = base, já removida)
 
-            const { grupos } = particionarParadas(matriz, embarqueIds.length, {
+            // 1ª rodada: divide as paradas entre os MOTORISTAS (âncora/geografia).
+            const { grupos: gruposPorMotorista } = particionarParadas(matriz, K_MOTORISTAS, {
                 fixos,
-                ancorasPorGrupo,
-                coordsParadas: pontos.slice(1), // coordsParadas[i] = parada i+1 (0 = base, já removida)
+                ancorasPorGrupo: ancorasPorMotorista,
+                coordsParadas,
                 base: osrm.BASE_EMPRESA
             });
+
+            // 2ª rodada: motorista com 2+ cargas tem as PRÓPRIAS paradas sub-divididas
+            // entre as viagens dele (só geografia/tempo — a âncora já decidiu o que é
+            // dele; entre as viagens não faz sentido âncora de novo). Motorista com 1
+            // carga não precisa de sub-divisão: tudo que é dele vai pra ela.
+            // `grupos` mantém o formato de sempre (índice = posição em embarqueIds) —
+            // o resto da rota (distribuição de itens, medirGrupo, contagem) não muda.
+            const grupos = embarqueIds.map(() => []);
+            for (let mi = 0; mi < K_MOTORISTAS; mi++) {
+                const cargasDoMotorista = embarqueIdsPorMotorista.get(motoristaIds[mi]);
+                const paradasDoMotorista = gruposPorMotorista[mi]; // índices GLOBAIS de local (1..n)
+
+                if (cargasDoMotorista.length === 1) {
+                    grupos[idxGrupo.get(cargasDoMotorista[0])] = paradasDoMotorista;
+                    continue;
+                }
+                if (paradasDoMotorista.length === 0) {
+                    for (const embarqueId of cargasDoMotorista) grupos[idxGrupo.get(embarqueId)] = [];
+                    continue;
+                }
+
+                const subMatriz = [0, ...paradasDoMotorista].map(
+                    gi => [0, ...paradasDoMotorista].map(gj => matriz[gi][gj])
+                );
+                const subCoords = paradasDoMotorista.map(gi => coordsParadas[gi - 1]);
+                const cargaOrdemPorEmbarque = new Map(cargasDoMotorista.map((id, ci) => [id, ci]));
+                const subFixos = [];
+                paradasDoMotorista.forEach((gi, subIdx) => {
+                    const embarqueTravado = fixoEmbarquePorLocal.get(gi);
+                    if (embarqueTravado != null && cargaOrdemPorEmbarque.has(embarqueTravado)) {
+                        subFixos.push({ parada: subIdx + 1, grupo: cargaOrdemPorEmbarque.get(embarqueTravado) });
+                    }
+                });
+
+                const { grupos: subGrupos } = particionarParadas(subMatriz, cargasDoMotorista.length, {
+                    fixos: subFixos,
+                    coordsParadas: subCoords,
+                    base: osrm.BASE_EMPRESA
+                });
+
+                subGrupos.forEach((subG, ci) => {
+                    grupos[idxGrupo.get(cargasDoMotorista[ci])] = subG.map(subIdx => paradasDoMotorista[subIdx - 1]);
+                });
+            }
 
             // Distribui os ITENS: cada local leva todos os seus itens para o grupo
             // sorteado — exceto item TRAVADO em carga do arranjo, que permanece
@@ -712,6 +797,32 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                 }
             }
 
+            // Horário ENCADEADO: motorista com 2+ cargas no dia faz as viagens em
+            // SEQUÊNCIA (mesma pessoa, um caminhão só) — a viagem 2 só sai quando a 1
+            // retornar à Hardt. A viagem 1 já saiu certa (horaSaida normal, calculada
+            // no loop acima); a partir da 2ª, encadeia a saída no retorno da anterior.
+            let teveMotoristaMultiCarga = false;
+            for (let mi = 0; mi < K_MOTORISTAS; mi++) {
+                const cargasDoMotorista = embarqueIdsPorMotorista.get(motoristaIds[mi]);
+                if (cargasDoMotorista.length < 2) continue;
+                teveMotoristaMultiCarga = true;
+
+                let saidaAtual = horaSaida;
+                cargasDoMotorista.forEach((embarqueId, vi) => {
+                    const respGrupo = gruposResp[idxGrupo.get(embarqueId)];
+                    if (!respGrupo) return;
+                    if (vi > 0) {
+                        respGrupo.previsaoRetorno = calcularRetorno(saidaAtual, respGrupo.duracaoMin, tempoParadaMin, respGrupo.paradas);
+                    }
+                    respGrupo.viagemNumero = vi + 1;
+                    respGrupo.viagensTotalMotorista = cargasDoMotorista.length;
+                    saidaAtual = respGrupo.previsaoRetorno;
+                });
+
+                const nomeParaAviso = cargaPorId.get(cargasDoMotorista[0])?.responsavel?.nome || 'O motorista';
+                avisos.push(`${nomeParaAviso} tem ${cargasDoMotorista.length} cargas participando — o tempo dele é a SOMA das rotas; cada viagem só sai quando a anterior retornar à Hardt (não conta tempo de preparo entre elas).`);
+            }
+
             res.json({
                 grupos: gruposResp,
                 semGps,
@@ -726,7 +837,10 @@ router.post('/sugerir-divisao', verificarAuth, checkAcessoEmbarque, async (req, 
                         'prioriza fechar primeiro a região mais distante; quem vai longe leva menos paradas, e o tempo total fica parecido entre as cargas',
                         teveAncoras
                             ? 'região/âncora definida por carga (aplicada nesta rodada)'
-                            : 'região/âncora definida por carga (quando informada)'
+                            : 'região/âncora definida por carga (quando informada)',
+                        ...(teveMotoristaMultiCarga
+                            ? ['tempo somado quando o mesmo motorista tem mais de uma carga no dia (mesma pessoa, viagens em sequência)']
+                            : [])
                     ],
                     preserva: 'Itens já roteirizados, entregues ou cobrados permanecem na carga atual; pedido, amostra e cobrança do MESMO cliente ficam sempre no mesmo grupo (uma parada por cliente)',
                     naoConsidera: ['capacidade ou peso do veículo', 'valor do pedido']
