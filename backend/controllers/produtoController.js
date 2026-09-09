@@ -4,6 +4,10 @@ const path = require('path');
 const pcpReceitaService = require('../services/pcpReceitaService');
 const categoriaEstoqueService = require('../services/categoriaEstoqueService');
 
+// Moeda em português para os textos que o usuário lê (log de auditoria).
+// Mesmo padrão de uma linha já usado em cobrancaService.js e reciboEspecialPdf.js.
+const fmtMoeda = (v) => Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 const produtoController = {
     // Listar produtos com paginação e filtros
     listar: async (req, res) => {
@@ -300,7 +304,9 @@ const produtoController = {
                     descricao: descricao?.trim() || '',
                     status: 'ATIVO',
                     ativo: true,
-                    origem: 'APP'
+                    origem: 'APP',
+                    // O preço foi definido aqui, no app — o CA nunca deve sobrescrevê-lo.
+                    precoLocal: true
                 }
             });
 
@@ -324,7 +330,7 @@ const produtoController = {
                 'ativo', 'descricao', 'estoqueMinimo', 'unidade', 'custoManual',
                 'categoria', 'categoriaProdutoId', 'produtoSubstitutoId',
                 'permiteRecomendacao', 'prioridadeRecomendacao', 'controlaEstoque',
-                'validadeDias', 'quantidadePorCaixa'
+                'validadeDias', 'quantidadePorCaixa', 'valorVenda'
             ];
             const data = {};
             for (const campo of CAMPOS_PERMITIDOS) {
@@ -377,10 +383,72 @@ const produtoController = {
                 data.custoManual = Number.isFinite(n) && n >= 0 ? n : null;
             }
 
+            // Preço de venda: editável no app desde 09/2026 (o Conta Azul deixou de ser a
+            // fonte do cadastro). Valor inválido é RECUSADO com erro claro — nunca gravar
+            // silenciosamente algo diferente do que foi digitado (mesmo padrão do
+            // quantidadePorCaixa). Quando o preço muda, o produto passa a ter precoLocal =
+            // true e o sync do CA nunca mais sobrescreve esse valor.
+            let precoAnterior = null;   // usado só na auditoria, depois do update
+            let precoNovo = null;
+            if (data.valorVenda !== undefined) {
+                const bruto = data.valorVenda;
+                if (bruto === null || String(bruto).trim() === '') {
+                    return res.status(400).json({ error: 'Valor de venda inválido: informe um número maior ou igual a zero.' });
+                }
+                const n = Number(String(bruto).trim().replace(',', '.'));
+                if (!Number.isFinite(n) || n < 0) {
+                    return res.status(400).json({ error: 'Valor de venda inválido: informe um número maior ou igual a zero.' });
+                }
+                // A coluna é Decimal(10,2): mais de 2 casas seria arredondado pelo banco e
+                // gravaria um preço diferente do digitado, sem o usuário perceber.
+                if (Math.round(n * 100) / 100 !== n) {
+                    return res.status(400).json({ error: 'Valor de venda inválido: use no máximo duas casas decimais (centavos), por exemplo 12.50.' });
+                }
+                if (n > 99999999.99) {
+                    return res.status(400).json({ error: 'Valor de venda inválido: o valor máximo permitido é 99.999.999,99.' });
+                }
+
+                const atualDb = await prisma.produto.findUnique({
+                    where: { id },
+                    select: { id: true, nome: true, valorVenda: true }
+                });
+                if (!atualDb) return res.status(404).json({ error: 'Produto não encontrado.' });
+
+                const anterior = Number(atualDb.valorVenda);
+                data.valorVenda = n;
+                if (n !== anterior) {
+                    // Só marca quando o preço realmente mudou (reenviar o mesmo valor não
+                    // "adota" o preço nem gera registro de auditoria).
+                    data.precoLocal = true;
+                    precoAnterior = anterior;
+                    precoNovo = n;
+                }
+            }
+
             const produto = await prisma.produto.update({
                 where: { id },
                 data
             });
+
+            // Auditoria da mudança de preço — informação comercial sensível.
+            // FORA da operação principal e em try/catch próprio: falha de log nunca pode
+            // derrubar nem desfazer a alteração já gravada.
+            if (precoNovo !== null) {
+                try {
+                    await prisma.auditLog.create({
+                        data: {
+                            acao: 'ALTERAR_PRECO_VENDA',
+                            entidade: 'Produto',
+                            entidadeId: id,
+                            detalhes: `Preço de venda de "${produto.nome}" alterado de R$ ${fmtMoeda(precoAnterior)} para R$ ${fmtMoeda(precoNovo)} por ${req.user?.nome || req.user?.login || '-'}.`,
+                            usuarioId: req.user?.id || '-',
+                            usuarioNome: req.user?.nome || req.user?.login || '-'
+                        }
+                    });
+                } catch (logErr) {
+                    console.error('Falha ao registrar auditoria de preço (alteração já efetivada):', logErr.message);
+                }
+            }
 
             res.json(produto);
         } catch (error) {

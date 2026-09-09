@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import produtoService from '../../../services/produtoService';
+import { useAuth } from '../../../contexts/AuthContext';
 import produtoServiceFront from '../../../services/produtoService';
 import configService from '../../../services/configService';
 import promocaoService from '../../../services/promocaoService';
@@ -16,7 +17,7 @@ import {
 } from 'lucide-react';
 
 // Componente autocomplete de produto por nome
-const BuscaProduto = ({ value, onChange, todosOsProdutos }) => {
+const BuscaProduto = ({ value, onChange, todosOsProdutos, desabilitado = false }) => {
     const [busca, setBusca] = useState('');
     const [aberto, setAberto] = useState(false);
     const [nomeSelecionado, setNomeSelecionado] = useState('');
@@ -46,6 +47,11 @@ const BuscaProduto = ({ value, onChange, todosOsProdutos }) => {
         setAberto(false);
         onChange(prod.id);
     };
+
+    if (desabilitado) {
+        const prod = todosOsProdutos.find(p => p.id === value);
+        return <span className="flex-1 text-xs truncate" style={{ color: prod ? '#16192B' : '#A6ABBD' }}>{prod ? prod.nome : 'Nenhum'}</span>;
+    }
 
     return (
         <div className="relative flex-1" ref={ref}>
@@ -95,6 +101,93 @@ const InfoField = ({ label, value }) => (
     <div>
         <div className="text-xs text-gray-400">{label}</div>
         <div className="text-sm font-medium text-gray-800 truncate" title={String(value ?? '')}>{value || '—'}</div>
+    </div>
+);
+
+// -------------------------------------------------------
+// Preço de venda — máscara em reais (digitação natural pt-BR)
+// -------------------------------------------------------
+// Aceita o que o usuário digita (vírgula do teclado brasileiro, ponto do
+// teclado numérico) e devolve sempre no formato "1234,56".
+const mascaraPreco = (txt) => {
+    let s = String(txt ?? '').replace(/[^\d.,]/g, '');
+    if (s.includes(',')) {
+        s = s.replace(/\./g, '');                       // tem vírgula: o ponto é separador de milhar
+    } else if (/^\d{1,3}(\.\d{3})+$/.test(s)) {
+        s = s.replace(/\./g, '');                       // "1.234" = mil duzentos e trinta e quatro
+    } else {
+        const i = s.lastIndexOf('.');                   // ponto do teclado numérico = vírgula decimal
+        if (i >= 0) s = `${s.slice(0, i).replace(/\./g, '')},${s.slice(i + 1)}`;
+    }
+    const partes = s.split(',');
+    if (partes.length > 1) {
+        const inteiro = partes.shift();
+        s = `${inteiro},${partes.join('').slice(0, 2)}`;
+    }
+    return s;
+};
+
+// "1234,56" -> 1234.56 (NaN quando vazio/inválido). Aceita também o formato
+// que vem do backend com ponto decimal ("12.50").
+const precoParaNumero = (txt) => {
+    const s = String(txt ?? '').trim();
+    if (!s) return NaN;
+    const norm = s.includes(',') ? s.replace(/\./g, '').replace(',', '.') : s;
+    const n = Number(norm);
+    return Number.isFinite(n) ? n : NaN;
+};
+
+const formatarPrecoBR = (n) => Number(n || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// -------------------------------------------------------
+// Campo editável de Valor de Venda (usado no KPI do mobile e no do desktop)
+// Mesmo visual do cartão de KPI, porém com input — o preço agora é do app.
+// -------------------------------------------------------
+const CampoPrecoVenda = ({ valor, onChange, compacto = false, somenteLeitura = false }) => (
+    somenteLeitura ? (
+        // Sem permissão de editar: volta a ser o cartão de leitura de sempre
+        <div>
+            <div className="font-bold tracking-[.04em] uppercase mb-1" style={{ fontSize: compacto ? 10 : 11, color: '#9AA0B4' }}>Valor de Venda</div>
+            <div className="flex items-center gap-1 font-extrabold font-mono" style={{ fontSize: compacto ? 19 : 22, color: '#16192B' }}>
+                R$ {formatarPrecoBR(precoParaNumero(valor) || 0)}
+            </div>
+        </div>
+    ) : (
+    <div>
+        <div className="font-bold tracking-[.04em] uppercase mb-1 flex items-center flex-wrap gap-x-1.5 gap-y-0.5"
+            style={{ fontSize: compacto ? 10 : 11, color: '#9AA0B4' }}>
+            Valor de Venda
+            <span className="font-bold rounded-full" style={{ fontSize: 9, color: '#7C3AED', background: '#F1EAFF', padding: '1px 6px' }}>EDITÁVEL</span>
+        </div>
+        <label className="flex items-center gap-1.5 rounded-xl border cursor-text"
+            style={{ height: 46, padding: '0 10px', borderColor: '#D8C9FB', background: '#fff' }}>
+            <span className="font-bold font-mono flex-shrink-0" style={{ fontSize: compacto ? 13 : 15, color: '#9AA0B4' }}>R$</span>
+            <input
+                type="text"
+                inputMode="decimal"
+                size={1}
+                value={valor}
+                onChange={(e) => onChange(mascaraPreco(e.target.value))}
+                placeholder="0,00"
+                aria-label="Valor de venda em reais"
+                title="Preço de venda do produto — salve para aplicar"
+                className="w-full min-w-0 bg-transparent outline-none font-extrabold font-mono"
+                style={{ fontSize: compacto ? 17 : 20, color: '#16192B' }}
+            />
+        </label>
+    </div>
+    )
+);
+
+// Aviso de acesso somente leitura (o backend recusa qualquer gravação com 403)
+const AvisoSomenteLeitura = () => (
+    <div className="flex items-start gap-2 rounded-xl border" style={{ borderColor: '#FCD34D', background: '#FFFBEB', padding: '10px 12px' }}>
+        <AlertCircle className="h-4 w-4 flex-shrink-0" style={{ color: '#B45309', marginTop: 1 }} />
+        <div style={{ fontSize: 12.5, color: '#78350F', lineHeight: 1.4 }}>
+            <b>Acesso somente leitura.</b> Você pode consultar tudo deste produto — inclusive promoções e histórico de compras —,
+            mas não alterar nada: preço, custo, imagens, ativar/inativar nem criar ou encerrar promoção.
+            Peça a um administrador a permissão <b>“Produtos → editar”</b>.
+        </div>
     </div>
 );
 
@@ -179,7 +272,7 @@ const SecaoCompras = ({ produtoId }) => {
     );
 };
 
-const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
+const SecaoPromocoes = ({ produtoId, valorVendaBase, podeEditar = false }) => {
     const [tab, setTab] = useState('atual'); // 'atual' | 'nova' | 'historico'
     const [promocoes, setPromocoes] = useState([]);
     const [promoAtiva, setPromoAtiva] = useState(null);
@@ -259,6 +352,7 @@ const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
     }, [carregarPromocoes]);
 
     const handleEncerrar = async () => {
+        if (!podeEditar) { setErro('Você não tem permissão para editar produtos.'); return; }
         setSalvando(true);
         setErro(''); setSucesso('');
         try {
@@ -295,6 +389,7 @@ const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
     };
 
     const handleCriar = async () => {
+        if (!podeEditar) { setErro('Você não tem permissão para editar produtos.'); return; }
         setErro(''); setSucesso('');
         if (!novaPromo.nome || !novaPromo.precoPromocional || !novaPromo.dataInicio || !novaPromo.dataFim) {
             setErro('Preencha: Nome, Preço Promocional, Data Início e Data Fim.');
@@ -350,7 +445,7 @@ const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
             <div className="flex gap-1 mb-4 bg-gray-100 rounded-lg p-1">
                 {[
                     { key: 'atual', label: 'Promoção Atual' },
-                    !promoAtiva ? { key: 'nova', label: '+ Nova Promoção' } : null,
+                    (!promoAtiva && podeEditar) ? { key: 'nova', label: '+ Nova Promoção' } : null,
                     { key: 'historico', label: `Histórico (${promocoes.length})` }
                 ].filter(Boolean).map(({ key, label }) => (
                     <button key={key} onClick={() => setTab(key)}
@@ -413,8 +508,8 @@ const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
                             </div>
                         </div>
 
-                        {/* Botão de Encerrar */}
-                        {!confirmEncerrar ? (
+                        {/* Botão de Encerrar — só para quem tem produtos.edit */}
+                        {!podeEditar ? null : !confirmEncerrar ? (
                             <button onClick={() => setConfirmEncerrar(true)}
                                 className="mt-4 w-full py-2 px-4 bg-red-50 border border-red-300 text-red-700 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
                                 <XCircle className="h-4 w-4" /> Encerrar Promoção
@@ -439,13 +534,13 @@ const SecaoPromocoes = ({ produtoId, valorVendaBase }) => {
                     <div className="text-center py-8 text-gray-500">
                         <Tag className="h-10 w-10 text-gray-300 mx-auto mb-2" />
                         <p className="font-medium">Nenhuma promoção ativa</p>
-                        <p className="text-sm mt-1">Clique em "+ Nova Promoção" para criar.</p>
+                        {podeEditar && <p className="text-sm mt-1">Clique em "+ Nova Promoção" para criar.</p>}
                     </div>
                 )
             )}
 
             {/* === ABA NOVA PROMOÇÃO === */}
-            {tab === 'nova' && (
+            {tab === 'nova' && podeEditar && (
                 <div className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Nome da Promoção <span className="text-red-500">*</span></label>
@@ -617,6 +712,12 @@ const GerenciarProduto = () => {
     const [error, setError] = useState('');
     const [abaAtiva, setAbaAtiva] = useState('dados'); // 'dados' | 'promocoes'
 
+    // Permissão: ESPELHA o backend (produtoRoutes.exigeEdicaoProdutos) — admin OU produtos.edit.
+    // Permissão é OBJETO: `perms.produtos` sozinho é sempre verdadeiro, mesmo com edit:false.
+    // Por isso o segundo argumento 'edit' é obrigatório (hasPermission(tab) sem ele vale 'view').
+    const { hasPermission } = useAuth();
+    const podeEditar = hasPermission('produtos', 'edit');
+
     // Data States
     const [produto, setProduto] = useState(null);
     const [imagemAtual, setImagemAtual] = useState(0);
@@ -673,7 +774,7 @@ const GerenciarProduto = () => {
                 setFormData({
                     nome: data.nome || '',
                     codigo: data.codigo || '',
-                    valorVenda: data.valorVenda ? Number(data.valorVenda).toFixed(2) : '0.00',
+                    valorVenda: data.valorVenda != null ? formatarPrecoBR(data.valorVenda) : '0,00',
                     custoMedio: data.custoMedio ? Number(data.custoMedio).toFixed(2) : '0.00',
                     custoManual: data.custoManual != null ? Number(data.custoManual).toFixed(2) : '',
                     unidade: data.unidade || '',
@@ -722,6 +823,7 @@ const GerenciarProduto = () => {
 
     // Ativar/Inativar direto na tela (o sync do CA não mexe mais nesse campo)
     const handleToggleAtivo = async () => {
+        if (!podeEditar) { toast.error('Você não tem permissão para editar produtos.'); return; }
         const novo = !formData.ativo;
         const msg = novo
             ? `Ativar "${formData.nome}"?\n\nEle volta a aparecer no site, nos catálogos e nas listas de venda.`
@@ -751,6 +853,7 @@ const GerenciarProduto = () => {
     };
 
     const handleSaveComercial = async () => {
+        if (!podeEditar) { toast.error('Você não tem permissão para editar produtos.'); return; }
         setSalvandoComercial(true);
         try {
             const unidadeLimpa = (formData.unidade || '').trim();
@@ -766,7 +869,16 @@ const GerenciarProduto = () => {
                 setSalvandoComercial(false);
                 return;
             }
-            await produtoService.atualizar(id, {
+            // Preço de venda — o app é a fonte do preço (o Conta Azul não manda mais)
+            const precoTexto = String(formData.valorVenda ?? '').trim();
+            const precoNum = precoParaNumero(precoTexto);
+            if (precoTexto === '' || !Number.isFinite(precoNum) || precoNum < 0) {
+                toast.error('Informe um valor de venda válido (ex.: 12,50).');
+                setSalvandoComercial(false);
+                return;
+            }
+            const salvo = await produtoService.atualizar(id, {
+                valorVenda: precoNum.toFixed(2),
                 unidade: unidadeLimpa,
                 categoria: (formData.categoria || '').trim() || null,
                 custoManual: custoManualVal === '' ? null : parseFloat(custoManualVal.replace(',', '.')),
@@ -778,11 +890,31 @@ const GerenciarProduto = () => {
                 validadeDias: String(formData.validadeDias ?? '').trim() === '' ? null : parseInt(formData.validadeDias),
                 quantidadePorCaixa: qtdCaixaVal === '' ? null : parseInt(qtdCaixaVal)
             });
-            toast.success('Configurações comerciais salvas!');
+            // O servidor manda de volta o produto salvo — conferir que o preço mudou
+            // mesmo (200 não é prova: uma versão antiga do backend descarta o campo).
+            const precoRetornado = salvo && salvo.valorVenda != null ? Number(salvo.valorVenda) : null;
+            if (precoRetornado != null && Number.isFinite(precoRetornado) && Math.abs(precoRetornado - precoNum) > 0.005) {
+                setFormData(prev => ({ ...prev, valorVenda: formatarPrecoBR(precoRetornado) }));
+                toast.error(`Os demais dados foram salvos, mas o preço NÃO mudou: continua R$ ${formatarPrecoBR(precoRetornado)}. Avise o suporte.`, { duration: 8000 });
+                setSalvandoComercial(false);
+                return;
+            }
+            toast.success(`Salvo! Valor de venda: R$ ${formatarPrecoBR(precoNum)}`);
             handleBack();
         } catch (error) {
             console.error(error);
-            toast.error('Erro ao salvar as configurações.');
+            // Mostrar a mensagem que o backend devolveu (ex.: preço inválido), não um erro genérico
+            const msgBackend = error?.response?.data?.error || error?.response?.data?.message;
+            if (msgBackend) {
+                toast.error(msgBackend);
+            } else if (!error?.response) {
+                // Sem resposta nenhuma do servidor = rede caiu ou servidor fora do ar.
+                // Nada foi gravado e o formulário continua preenchido — dizer isso, para o
+                // usuário não achar que perdeu o que digitou nem que salvou.
+                toast.error('Sem conexão com o servidor. Nada foi salvo — o que você digitou continua aqui na tela. Confira a internet e toque em Salvar de novo.', { duration: 8000 });
+            } else {
+                toast.error('Erro ao salvar as configurações.');
+            }
         } finally {
             setSalvandoComercial(false);
         }
@@ -792,6 +924,8 @@ const GerenciarProduto = () => {
     const handleUploadImagens = async (e) => {
         const files = e.target.files;
         if (!files || files.length === 0) return;
+        if (!podeEditar) { toast.error('Você não tem permissão para editar produtos.'); return; }
+
         setUploadingImagem(true);
         try {
             const formData = new FormData();
@@ -809,6 +943,7 @@ const GerenciarProduto = () => {
     };
 
     const handleRemoverImagem = async (imagemId) => {
+        if (!podeEditar) { toast.error('Você não tem permissão para editar produtos.'); return; }
         if (!confirm('Remover esta imagem?')) return;
         try {
             await produtoService.removerImagem(imagemId);
@@ -822,6 +957,7 @@ const GerenciarProduto = () => {
     };
 
     const handleDefinirPrincipal = async (imagemId) => {
+        if (!podeEditar) { toast.error('Você não tem permissão para editar produtos.'); return; }
         try {
             await produtoService.definirPrincipal(id, imagemId);
             setImagensLocal(prev => prev.map(i => ({ ...i, principal: i.id === imagemId })));
@@ -833,6 +969,7 @@ const GerenciarProduto = () => {
     };
 
     const handleMoverImagem = async (index, direcao) => {
+        if (!podeEditar) { toast.error('Você não tem permissão para editar produtos.'); return; }
         const novaLista = [...imagensLocal];
         const targetIndex = index + direcao;
         if (targetIndex < 0 || targetIndex >= novaLista.length) return;
@@ -866,9 +1003,15 @@ const GerenciarProduto = () => {
     const helperCustoManual = custoReceita
         ? 'Produto tem receita — o custo da receita prevalece.'
         : 'Este é o custo do produto — cada entrada de compra (nota) o atualiza por média ponderada. Lançamento errado? Cancele a conferência da nota que o custo se recalcula.';
-    const margem = custoEfetivo > 0 && Number(formData.valorVenda) > 0
-        ? (((Number(formData.valorVenda) - custoEfetivo) / Number(formData.valorVenda)) * 100).toFixed(1)
+    // Preço digitado -> número (recalcula a margem ao vivo enquanto o usuário digita)
+    const precoDigitado = precoParaNumero(formData.valorVenda);
+    const precoValido = Number.isFinite(precoDigitado) && precoDigitado > 0 ? precoDigitado : null;
+    const margem = custoEfetivo > 0 && precoValido
+        ? (((precoValido - custoEfetivo) / precoValido) * 100).toFixed(1)
         : null;
+    const definirPreco = (v) => setFormData(prev => ({ ...prev, valorVenda: v }));
+    // "Tabela normal" das promoções tem que mostrar o preço GRAVADO, não o que está sendo digitado
+    const precoSalvo = produto?.valorVenda != null && Number(produto.valorVenda) > 0 ? Number(produto.valorVenda) : null;
 
     return (
         <div className="min-h-screen" style={{ background: '#F4F5FA' }}>
@@ -887,12 +1030,12 @@ const GerenciarProduto = () => {
                   <div className="flex-1 min-w-0">
                     <div className="font-extrabold truncate" style={{ fontSize: 15, color: '#16192B' }}>{formData.nome || 'Produto'}</div>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <button onClick={handleToggleAtivo} disabled={alterandoStatus}
-                        title={formData.ativo ? 'Toque para inativar o produto' : 'Toque para ativar o produto'}
+                      <button onClick={handleToggleAtivo} disabled={alterandoStatus || !podeEditar}
+                        title={!podeEditar ? 'Você não tem permissão para ativar/inativar produtos' : (formData.ativo ? 'Toque para inativar o produto' : 'Toque para ativar o produto')}
                         className="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full disabled:opacity-50"
-                        style={{ fontSize: 11, ...(formData.ativo ? { color: '#15A05A', background: '#E6F7EE' } : { color: '#ef4444', background: '#fee2e2' }) }}>
+                        style={{ fontSize: 11, ...(formData.ativo ? { color: '#15A05A', background: '#E6F7EE' } : { color: '#ef4444', background: '#fee2e2' }), ...(podeEditar ? {} : { cursor: 'default', opacity: 1 }) }}>
                         <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'currentColor' }} />{formData.ativo ? 'Ativo' : 'Inativo'}
-                        <Power className="h-3 w-3 flex-shrink-0" style={{ opacity: .7 }} />
+                        {podeEditar && <Power className="h-3 w-3 flex-shrink-0" style={{ opacity: .7 }} />}
                       </button>
                       <span className="text-xs font-mono" style={{ color: '#8A90A2' }}>Cód. {formData.codigo}</span>
                     </div>
@@ -925,20 +1068,22 @@ const GerenciarProduto = () => {
                         <div className="min-w-0">
                             <h1 className="font-extrabold leading-tight truncate" style={{ fontSize: 19, color: '#16192B' }}>{formData.nome || 'Produto'}</h1>
                             <div className="flex items-center gap-2.5 mt-1">
-                                <button onClick={handleToggleAtivo} disabled={alterandoStatus}
-                                    title={formData.ativo ? 'Clique para inativar o produto' : 'Clique para ativar o produto'}
+                                <button onClick={handleToggleAtivo} disabled={alterandoStatus || !podeEditar}
+                                    title={!podeEditar ? 'Você não tem permissão para ativar/inativar produtos' : (formData.ativo ? 'Clique para inativar o produto' : 'Clique para ativar o produto')}
                                     className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full transition-opacity hover:opacity-80 disabled:opacity-50"
-                                    style={formData.ativo ? { color: '#15A05A', background: '#E6F7EE' } : { color: '#ef4444', background: '#fee2e2' }}>
+                                    style={{ ...(formData.ativo ? { color: '#15A05A', background: '#E6F7EE' } : { color: '#ef4444', background: '#fee2e2' }), ...(podeEditar ? {} : { cursor: 'default', opacity: 1 }) }}>
                                     <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'currentColor' }} />
                                     {formData.ativo ? 'Ativo' : 'Inativo'}
-                                    <Power className="h-3 w-3 flex-shrink-0" style={{ opacity: .7 }} />
+                                    {podeEditar && <Power className="h-3 w-3 flex-shrink-0" style={{ opacity: .7 }} />}
                                 </button>
                                 <span className="text-sm font-mono" style={{ color: '#8A90A2' }}>Cód. {formData.codigo}</span>
+                                {podeEditar && (
                                 <button onClick={handleToggleAtivo} disabled={alterandoStatus}
                                     className="text-xs font-semibold underline underline-offset-2 disabled:opacity-50"
                                     style={{ color: formData.ativo ? '#B4232C' : '#15A05A' }}>
                                     {alterandoStatus ? 'Alterando…' : (formData.ativo ? 'Inativar produto' : 'Ativar produto')}
                                 </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -968,10 +1113,13 @@ const GerenciarProduto = () => {
             <div className="md:hidden pb-28">
               {abaAtiva === 'dados' && (
                 <div className="px-3.5 pt-3.5 flex flex-col gap-3.5">
+                  {!podeEditar && <AvisoSomenteLeitura />}
                   {/* KPI grid 2x3 */}
                   <div className="grid grid-cols-2 gap-2.5">
+                    <div className="bg-white rounded-2xl border p-3" style={{ borderColor: '#E7E9F2' }}>
+                      <CampoPrecoVenda compacto valor={formData.valorVenda} onChange={definirPreco} somenteLeitura={!podeEditar} />
+                    </div>
                     {[
-                      { label: 'Valor de Venda', value: `R$ ${Number(formData.valorVenda||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}`, color: '#16192B' },
                       { label: labelCusto, value: valorCusto, color: custoReceita ? '#7C3AED' : '#16192B' },
                       { label: 'Margem',          value: margem ? `${margem}%` : '—', color: '#15A05A', showIcon: !!margem },
                       { label: 'Disponível',      value: String(produto.estoqueDisponivel??0), color: '#15A05A' },
@@ -997,10 +1145,12 @@ const GerenciarProduto = () => {
                         </span>
                         <span className="font-extrabold" style={{ fontSize: 15, color: '#16192B' }}>Imagens</span>
                       </div>
+                      {podeEditar && (
                       <button onClick={() => fileInputRef.current?.click()} disabled={uploadingImagem} className="flex items-center gap-1.5 text-sm font-bold disabled:opacity-50" style={{ color: '#2563EB' }}>
                         <Upload className="h-3.5 w-3.5" />{uploadingImagem ? 'Enviando...' : 'Enviar'}
                       </button>
-                      <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleUploadImagens} />
+                      )}
+                      <input disabled={!podeEditar} ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleUploadImagens} />
                     </div>
                     <div className="p-4">
                       <div className="relative w-full rounded-xl flex items-center justify-center overflow-hidden mb-3" style={{ height: 210, background: '#F7F8FC', border: '1px solid #ECEEF5' }}>
@@ -1024,6 +1174,7 @@ const GerenciarProduto = () => {
                                 <img src={`${API_URL}${img.url}`} className="w-full h-full object-contain" alt=""/>
                               </div>
                               <span className="flex-1 font-bold truncate" style={{ fontSize: 14, color: '#16192B' }}>#{idx+1}{img.principal?' — Capa':''}</span>
+                              {podeEditar && (
                               <div className="flex items-center gap-1 flex-shrink-0" onClick={e=>e.stopPropagation()}>
                                 <button onClick={()=>handleMoverImagem(idx,-1)} disabled={idx===0} className="flex items-center justify-center rounded-lg disabled:opacity-20" style={{width:34,height:34,color:'#7A8094'}}><ArrowUp className="h-4 w-4"/></button>
                                 <button onClick={()=>handleMoverImagem(idx,1)} disabled={idx===imagensLocal.length-1} className="flex items-center justify-center rounded-lg disabled:opacity-20" style={{width:34,height:34,color:'#7A8094'}}><ArrowDown className="h-4 w-4"/></button>
@@ -1032,6 +1183,7 @@ const GerenciarProduto = () => {
                                 </button>
                                 <button onClick={()=>handleRemoverImagem(img.id)} className="flex items-center justify-center rounded-lg" style={{width:34,height:34,color:'#9AA0B4'}}><Trash2 className="h-4 w-4"/></button>
                               </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1067,8 +1219,9 @@ const GerenciarProduto = () => {
                       <div className="mt-3 pt-3" style={{ borderTop: '1px solid #F2F3F8' }}>
                         <div className="flex items-center mb-1.5">
                           <span className="text-sm" style={{ color: '#8A90A2' }}>Categoria</span>
-                          <span className="ml-2 font-bold rounded-full" style={{ fontSize: 10, color: '#7C3AED', background: '#F1EAFF', padding: '2px 7px' }}>EDITÁVEL</span>
+                          {podeEditar && <span className="ml-2 font-bold rounded-full" style={{ fontSize: 10, color: '#7C3AED', background: '#F1EAFF', padding: '2px 7px' }}>EDITÁVEL</span>}
                         </div>
+                        {podeEditar ? (
                         <ComboBusca
                           value={formData.categoria}
                           onChange={val => setFormData(prev => ({ ...prev, categoria: val }))}
@@ -1077,7 +1230,10 @@ const GerenciarProduto = () => {
                           extraAction={{ label: '+ Criar categoria nova…', onClick: criarCategoriaNova }}
                           className="w-full"
                         />
-                        <div className="mt-1 text-xs" style={{ color: '#9AA0B4' }}>Agrupa estoque, relatórios e flex. Salve para confirmar.</div>
+                        ) : (
+                          <div className="text-sm font-semibold" style={{ color: formData.categoria ? '#16192B' : '#A6ABBD' }}>{formData.categoria || 'Sem categoria'}</div>
+                        )}
+                        {podeEditar && <div className="mt-1 text-xs" style={{ color: '#9AA0B4' }}>Agrupa estoque, relatórios e flex. Salve para confirmar.</div>}
                       </div>
                       <div className="flex items-center gap-2 mt-3 pt-3" style={{ borderTop: '1px dashed #EEF0F7', color: '#9AA0B4', fontSize: 11.5 }}>
                         <AlertCircle className="h-3.5 w-3.5 flex-shrink-0"/>Nome, código, EAN, NCM e peso vêm do cadastro original — somente leitura.
@@ -1101,8 +1257,8 @@ const GerenciarProduto = () => {
                         { key: 'custoManual', label: 'Custo (R$)', tag: 'EDITÁVEL', helper: helperCustoManual,
                           input: <div className="flex items-center gap-2.5 rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#D8C9FB',background:'#fff'}}>
                             <span className="text-sm font-medium" style={{color:'#3A3F52'}}>R$</span>
-                            <input type="number" step="0.01" min="0" value={formData.custoManual} onChange={e=>setFormData({...formData,custoManual:e.target.value})} placeholder="0,00" className="flex-1 bg-transparent outline-none font-medium font-mono" style={{fontSize:15,color:'#16192B'}}/>
-                            <select value={formData.controlaEstoque} onChange={e=>setFormData({...formData,controlaEstoque:e.target.value})}
+                            <input disabled={!podeEditar} type="number" step="0.01" min="0" value={formData.custoManual} onChange={e=>setFormData({...formData,custoManual:e.target.value})} placeholder="0,00" className="flex-1 bg-transparent outline-none font-medium font-mono" style={{fontSize:15,color:'#16192B'}}/>
+                            <select disabled={!podeEditar} value={formData.controlaEstoque} onChange={e=>setFormData({...formData,controlaEstoque:e.target.value})}
                                 className="w-full mt-2 rounded-xl border px-3 text-sm bg-white" style={{height:44,borderColor:'#E4E7F2',color:'#16192B'}}>
                                 <option value="">Estoque: seguir a categoria (padrão)</option>
                                 <option value="true">Estoque: controlar SEMPRE</option>
@@ -1111,16 +1267,16 @@ const GerenciarProduto = () => {
                           </div> },
                         { key: 'unidade', label: 'Unidade', tag: 'EDITÁVEL', helper: 'Unidade de venda no app.',
                           input: <div className="flex items-center rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#D8C9FB',background:'#fff'}}>
-                            <input type="text" value={formData.unidade} maxLength={10} onChange={e=>setFormData({...formData,unidade:e.target.value.toUpperCase()})} placeholder="Ex.: UN, KG, PT" className="flex-1 bg-transparent outline-none font-semibold uppercase" style={{fontSize:15,color:'#16192B'}}/>
+                            <input disabled={!podeEditar} type="text" value={formData.unidade} maxLength={10} onChange={e=>setFormData({...formData,unidade:e.target.value.toUpperCase()})} placeholder="Ex.: UN, KG, PT" className="flex-1 bg-transparent outline-none font-semibold uppercase" style={{fontSize:15,color:'#16192B'}}/>
                           </div> },
                         { key: 'validadeDias', label: 'Validade (dias)', tag: 'EDITÁVEL', helper: 'Dias de validade usados nas etiquetas deste produto. Vazio = usa a validade da própria etiqueta.',
                           input: <div className="flex items-center gap-2.5 rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#D8C9FB',background:'#fff'}}>
-                            <input type="number" min="1" max="3650" value={formData.validadeDias} onChange={e=>setFormData({...formData,validadeDias:e.target.value})} placeholder="Ex.: 180" className="flex-1 bg-transparent outline-none font-semibold font-mono" style={{fontSize:15,color:'#16192B'}}/>
+                            <input disabled={!podeEditar} type="number" min="1" max="3650" value={formData.validadeDias} onChange={e=>setFormData({...formData,validadeDias:e.target.value})} placeholder="Ex.: 180" className="flex-1 bg-transparent outline-none font-semibold font-mono" style={{fontSize:15,color:'#16192B'}}/>
                             <span className="text-sm font-medium" style={{color:'#9AA0B4'}}>dias</span>
                           </div> },
                         { key: 'quantidadePorCaixa', label: 'Qtd. por caixa', tag: 'EDITÁVEL', helper: 'Quantos pacotes/unidades cabem numa caixa fechada. Vazio = produto sem caixa (as telas ficam como hoje).',
                           input: <div className="flex items-center gap-2.5 rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#D8C9FB',background:'#fff'}}>
-                            <input type="number" min="1" max="9999" inputMode="numeric" value={formData.quantidadePorCaixa} onChange={e=>setFormData({...formData,quantidadePorCaixa:e.target.value})} placeholder="Ex.: 10" className="flex-1 bg-transparent outline-none font-semibold font-mono" style={{fontSize:15,color:'#16192B'}}/>
+                            <input disabled={!podeEditar} type="number" min="1" max="9999" inputMode="numeric" value={formData.quantidadePorCaixa} onChange={e=>setFormData({...formData,quantidadePorCaixa:e.target.value})} placeholder="Ex.: 10" className="flex-1 bg-transparent outline-none font-semibold font-mono" style={{fontSize:15,color:'#16192B'}}/>
                             <span className="text-sm font-medium" style={{color:'#9AA0B4'}}>un/cx</span>
                           </div> },
                       ].map(f => (
@@ -1136,7 +1292,7 @@ const GerenciarProduto = () => {
                       <div>
                         <div className="text-sm font-bold mb-2" style={{color:'#3A3F52'}}>Categoria Comercial</div>
                         <div className="flex items-center rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#E4E7F2',background:'#fff'}}>
-                          <select className="flex-1 bg-transparent outline-none font-medium appearance-none" style={{fontSize:15,color:formData.categoriaProdutoId?'#16192B':'#A6ABBD'}} value={formData.categoriaProdutoId} onChange={e=>setFormData({...formData,categoriaProdutoId:e.target.value})}>
+                          <select disabled={!podeEditar} className="flex-1 bg-transparent outline-none font-medium appearance-none" style={{fontSize:15,color:formData.categoriaProdutoId?'#16192B':'#A6ABBD'}} value={formData.categoriaProdutoId} onChange={e=>setFormData({...formData,categoriaProdutoId:e.target.value})}>
                             <option value="">Selecione...</option>
                             {categoriasProduto.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
                           </select>
@@ -1147,17 +1303,17 @@ const GerenciarProduto = () => {
                       <div>
                         <div className="text-sm font-bold mb-2" style={{color:'#3A3F52'}}>Produto Substituto</div>
                         <div className="flex items-center rounded-xl border" style={{minHeight:52,padding:'6px 12px',borderColor:'#E4E7F2',background:'#fff'}}>
-                          <BuscaProduto value={formData.produtoSubstitutoId} onChange={val=>setFormData({...formData,produtoSubstitutoId:val})} todosOsProdutos={todosProdutos}/>
+                          <BuscaProduto value={formData.produtoSubstitutoId} onChange={val=>setFormData({...formData,produtoSubstitutoId:val})} todosOsProdutos={todosProdutos} desabilitado={!podeEditar}/>
                         </div>
                         <div className="mt-1.5 text-xs" style={{color:'#9AA0B4'}}>Sugerido em falta de estoque.</div>
                       </div>
                       <div>
                         <div className="text-sm font-bold mb-2" style={{color:'#3A3F52'}}>Prioridade de Recomendação</div>
                         <div className="flex items-center justify-between rounded-xl border" style={{height:52,padding:'0 8px 0 16px',borderColor:'#E4E7F2',background:'#fff'}}>
-                          <input type="number" min="1" max="99" value={formData.prioridadeRecomendacao} onChange={e=>setFormData({...formData,prioridadeRecomendacao:e.target.value})} className="flex-1 bg-transparent outline-none font-semibold font-mono" style={{fontSize:15,color:'#16192B'}}/>
+                          <input disabled={!podeEditar} type="number" min="1" max="99" value={formData.prioridadeRecomendacao} onChange={e=>setFormData({...formData,prioridadeRecomendacao:e.target.value})} className="flex-1 bg-transparent outline-none font-semibold font-mono" style={{fontSize:15,color:'#16192B'}}/>
                           <div className="flex flex-col gap-1.5 flex-shrink-0">
-                            <button onClick={()=>setFormData({...formData,prioridadeRecomendacao:Math.max(1,parseInt(formData.prioridadeRecomendacao||1)-1)})} className="flex items-center justify-center rounded-lg" style={{width:38,height:36,background:'#F2F3F8',color:'#9AA0B4'}}><ChevronUp className="h-3.5 w-3.5"/></button>
-                            <button onClick={()=>setFormData({...formData,prioridadeRecomendacao:Math.min(99,parseInt(formData.prioridadeRecomendacao||1)+1)})} className="flex items-center justify-center rounded-lg" style={{width:38,height:36,background:'#F2F3F8',color:'#9AA0B4'}}><ChevronDown className="h-3.5 w-3.5"/></button>
+                            <button disabled={!podeEditar} onClick={()=>setFormData({...formData,prioridadeRecomendacao:Math.max(1,parseInt(formData.prioridadeRecomendacao||1)-1)})} className="flex items-center justify-center rounded-lg" style={{width:38,height:36,background:'#F2F3F8',color:'#9AA0B4'}}><ChevronUp className="h-3.5 w-3.5"/></button>
+                            <button disabled={!podeEditar} onClick={()=>setFormData({...formData,prioridadeRecomendacao:Math.min(99,parseInt(formData.prioridadeRecomendacao||1)+1)})} className="flex items-center justify-center rounded-lg" style={{width:38,height:36,background:'#F2F3F8',color:'#9AA0B4'}}><ChevronDown className="h-3.5 w-3.5"/></button>
                           </div>
                         </div>
                         <div className="mt-1.5 text-xs" style={{color:'#9AA0B4'}}>1 é a mais alta.</div>
@@ -1166,7 +1322,7 @@ const GerenciarProduto = () => {
                         <div className="text-sm font-bold mb-2" style={{color:'#3A3F52'}}>Sugestão do Produto</div>
                         <div className="flex items-center justify-between rounded-xl border" style={{height:52,padding:'0 16px',borderColor:'#E4E7F2',background:'#fff'}}>
                           <span className="font-semibold" style={{fontSize:14,color:'#16192B'}}>Permitir sugestão</span>
-                          <button onClick={()=>setFormData({...formData,permiteRecomendacao:!formData.permiteRecomendacao})} className="flex items-center rounded-full flex-shrink-0 transition-all" style={{width:48,height:27,background:formData.permiteRecomendacao?'#7C3AED':'#D1D5DB',padding:'0 3px',justifyContent:formData.permiteRecomendacao?'flex-end':'flex-start'}}>
+                          <button disabled={!podeEditar} onClick={()=>setFormData({...formData,permiteRecomendacao:!formData.permiteRecomendacao})} className="flex items-center rounded-full flex-shrink-0 transition-all" style={{width:48,height:27,background:formData.permiteRecomendacao?'#7C3AED':'#D1D5DB',padding:'0 3px',justifyContent:formData.permiteRecomendacao?'flex-end':'flex-start'}}>
                             <span className="rounded-full bg-white flex-shrink-0" style={{width:21,height:21,boxShadow:'0 1px 3px rgba(0,0,0,.25)'}}/>
                           </button>
                         </div>
@@ -1182,7 +1338,7 @@ const GerenciarProduto = () => {
                   <div className="p-4 border-b flex items-center gap-2" style={{ background: '#F0FDF4', borderColor: '#BBF7D0' }}>
                     <Tag className="h-4 w-4" style={{ color: '#15A05A' }}/><h3 className="font-bold text-sm" style={{ color: '#166534' }}>Promoções — {formData.nome}</h3>
                   </div>
-                  <div className="p-4"><SecaoPromocoes produtoId={id} valorVendaBase={formData.valorVenda}/></div>
+                  <div className="p-4"><SecaoPromocoes produtoId={id} valorVendaBase={precoSalvo} podeEditar={podeEditar}/></div>
                 </div>
               )}
 
@@ -1197,13 +1353,15 @@ const GerenciarProduto = () => {
 
               {/* Sticky savebar */}
               <div className="fixed bottom-0 left-0 right-0 z-20 flex gap-3 p-3" style={{ background: 'rgba(255,255,255,.93)', backdropFilter: 'blur(8px)', borderTop: '1px solid #E7E9F2' }}>
-                <button onClick={handleBack} className="flex items-center justify-center font-bold text-sm rounded-xl border" style={{ height: 50, padding: '0 20px', borderColor: '#E4E7F2', color: '#5A6072', background: '#fff' }}>Cancelar</button>
+                <button onClick={handleBack} className={`flex items-center justify-center font-bold text-sm rounded-xl border ${podeEditar ? '' : 'flex-1'}`} style={{ height: 50, padding: '0 20px', borderColor: '#E4E7F2', color: '#5A6072', background: '#fff' }}>{podeEditar ? 'Cancelar' : 'Voltar'}</button>
+                {podeEditar && (
                 <button onClick={handleSaveComercial} disabled={salvandoComercial || abaAtiva !== 'dados'}
                   className="flex-1 flex items-center justify-center gap-2 font-bold text-white rounded-xl disabled:opacity-50 transition-all"
                   style={{ height: 50, fontSize: 15, background: abaAtiva==='dados'?'linear-gradient(135deg,#7C3AED,#6D28D9)':'#9CA3AF', boxShadow: abaAtiva==='dados'?'0 6px 18px rgba(124,58,237,.32)':'none' }}>
                   <Save className="h-[18px] w-[18px]"/>
                   {salvandoComercial ? 'Salvando...' : 'Salvar e Voltar'}
                 </button>
+                )}
               </div>
             </div>
 
@@ -1222,10 +1380,13 @@ const GerenciarProduto = () => {
                 {/* ABA DADOS */}
                 {abaAtiva === 'dados' && (
                     <>
+                        {!podeEditar && <AvisoSomenteLeitura />}
                         {/* KPI STRIP */}
                         <div className="bg-white rounded-2xl border flex" style={{ borderColor: '#E7E9F2', boxShadow: '0 1px 2px rgba(16,20,40,.04)' }}>
+                            <div className="flex-1 min-w-0 py-4 px-[22px]" style={{ borderRight: '1px solid #EEF0F7' }}>
+                                <CampoPrecoVenda valor={formData.valorVenda} onChange={definirPreco} somenteLeitura={!podeEditar} />
+                            </div>
                             {[
-                                { label: 'Valor de Venda', value: `R$ ${Number(formData.valorVenda || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, color: '#16192B' },
                                 { label: labelCusto, value: valorCusto, color: custoReceita ? '#7C3AED' : '#16192B' },
                                 { label: 'Margem', value: margem ? `${margem}%` : '—', color: '#15A05A', showIcon: !!margem },
                                 { label: 'Disponível', value: String(produto.estoqueDisponivel ?? 0), color: '#15A05A' },
@@ -1257,11 +1418,13 @@ const GerenciarProduto = () => {
                                             </span>
                                             <span className="font-extrabold" style={{ fontSize: 15, color: '#16192B' }}>Imagens</span>
                                         </div>
+                                        {podeEditar && (
                                         <button onClick={() => fileInputRef.current?.click()} disabled={uploadingImagem} className="flex items-center gap-1.5 text-sm font-bold disabled:opacity-50 transition-colors" style={{ color: '#2563EB' }}>
                                             <Upload className="h-3.5 w-3.5" />
                                             {uploadingImagem ? 'Enviando...' : 'Enviar'}
                                         </button>
-                                        <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleUploadImagens} />
+                                        )}
+                                        <input disabled={!podeEditar} ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleUploadImagens} />
                                     </div>
                                     <div className="flex gap-3 p-4">
                                         <div className="relative rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden" style={{ width: 150, height: 150, background: '#F7F8FC', border: '1px solid #ECEEF5' }}>
@@ -1290,6 +1453,7 @@ const GerenciarProduto = () => {
                                                             <img src={`${API_URL}${img.url}`} className="w-full h-full object-contain" alt="" />
                                                         </div>
                                                         <span className="text-sm font-bold flex-1 truncate" style={{ color: '#16192B' }}>#{idx + 1}{img.principal ? ' — Capa' : ''}</span>
+                                                        {podeEditar && (
                                                         <div className="flex items-center gap-0.5 flex-shrink-0" onClick={e => e.stopPropagation()}>
                                                             <button onClick={() => handleMoverImagem(idx, -1)} disabled={idx === 0} className="flex items-center justify-center rounded-lg transition-colors hover:bg-gray-100 disabled:opacity-20" style={{ width: 30, height: 30, color: '#7A8094' }}>
                                                                 <ArrowUp className="h-3.5 w-3.5" />
@@ -1304,9 +1468,10 @@ const GerenciarProduto = () => {
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </button>
                                                         </div>
+                                                        )}
                                                     </div>
                                                 )) : (
-                                                    <div className="text-sm text-center py-6" style={{ color: '#9AA0B4' }}>Nenhuma imagem. Clique em Enviar.</div>
+                                                    <div className="text-sm text-center py-6" style={{ color: '#9AA0B4' }}>{podeEditar ? 'Nenhuma imagem. Clique em Enviar.' : 'Nenhuma imagem.'}</div>
                                                 )}
                                             </div>
                                         </div>
@@ -1350,8 +1515,9 @@ const GerenciarProduto = () => {
                                             <div style={{ gridColumn: 'span 2' }}>
                                                 <div className="flex items-center mb-1">
                                                     <span className="font-bold tracking-[.05em] uppercase" style={{ fontSize: 10.5, color: '#9AA0B4' }}>Categoria</span>
-                                                    <span className="ml-2 font-bold rounded-full" style={{ fontSize: 10, color: '#7C3AED', background: '#F1EAFF', padding: '2px 7px' }}>EDITÁVEL</span>
+                                                    {podeEditar && <span className="ml-2 font-bold rounded-full" style={{ fontSize: 10, color: '#7C3AED', background: '#F1EAFF', padding: '2px 7px' }}>EDITÁVEL</span>}
                                                 </div>
+                                                {podeEditar ? (
                                                 <ComboBusca
                                                     value={formData.categoria}
                                                     onChange={val => setFormData(prev => ({ ...prev, categoria: val }))}
@@ -1360,7 +1526,10 @@ const GerenciarProduto = () => {
                                                     extraAction={{ label: '+ Criar categoria nova…', onClick: criarCategoriaNova }}
                                                     className="w-full"
                                                 />
-                                                <div className="mt-1 text-xs" style={{ color: '#9AA0B4' }}>Agrupa estoque, relatórios e flex. Salve para confirmar.</div>
+                                                ) : (
+                                                    <div className="font-semibold" style={{ fontSize: 14, color: formData.categoria ? '#16192B' : '#A6ABBD' }}>{formData.categoria || 'Sem categoria'}</div>
+                                                )}
+                                                {podeEditar && <div className="mt-1 text-xs" style={{ color: '#9AA0B4' }}>Agrupa estoque, relatórios e flex. Salve para confirmar.</div>}
                                             </div>
                                             {formData.contaAzulUpdatedAt && (
                                                 <div style={{ gridColumn: 'span 2' }}>
@@ -1399,7 +1568,7 @@ const GerenciarProduto = () => {
                                             </div>
                                             <div className="flex items-center gap-2.5 rounded-xl border" style={{ height: 50, padding: '0 16px', borderColor: '#D8C9FB', background: '#fff' }}>
                                                 <span className="text-sm font-medium" style={{ color: '#3A3F52' }}>R$</span>
-                                                <input type="number" step="0.01" min="0" value={formData.custoManual}
+                                                <input disabled={!podeEditar} type="number" step="0.01" min="0" value={formData.custoManual}
                                                     onChange={(e) => setFormData({ ...formData, custoManual: e.target.value })}
                                                     placeholder="0,00"
                                                     className="flex-1 bg-transparent outline-none font-medium font-mono"
@@ -1413,7 +1582,7 @@ const GerenciarProduto = () => {
                                                 <span className="ml-2 font-bold rounded-full" style={{ fontSize: 10.5, color: '#7C3AED', background: '#F1EAFF', padding: '2px 7px' }}>EDITÁVEL</span>
                                             </div>
                                             <div className="flex items-center rounded-xl border" style={{ height: 50, padding: '0 12px', borderColor: '#D8C9FB', background: '#fff' }}>
-                                                <select value={formData.controlaEstoque}
+                                                <select disabled={!podeEditar} value={formData.controlaEstoque}
                                                     onChange={(e) => setFormData({ ...formData, controlaEstoque: e.target.value })}
                                                     className="flex-1 bg-transparent outline-none font-medium"
                                                     style={{ fontSize: 14, color: '#16192B' }}>
@@ -1430,7 +1599,7 @@ const GerenciarProduto = () => {
                                                 <span className="ml-2 font-bold rounded-full" style={{ fontSize: 10.5, color: '#7C3AED', background: '#F1EAFF', padding: '2px 7px' }}>EDITÁVEL</span>
                                             </div>
                                             <div className="flex items-center rounded-xl border" style={{ height: 50, padding: '0 16px', borderColor: '#D8C9FB', background: '#fff' }}>
-                                                <input type="text" value={formData.unidade} maxLength={10}
+                                                <input disabled={!podeEditar} type="text" value={formData.unidade} maxLength={10}
                                                     onChange={(e) => setFormData({ ...formData, unidade: e.target.value.toUpperCase() })}
                                                     placeholder="Ex.: UN, KG, PT"
                                                     className="flex-1 bg-transparent outline-none font-semibold uppercase"
@@ -1444,7 +1613,7 @@ const GerenciarProduto = () => {
                                                 <span className="ml-2 font-bold rounded-full" style={{ fontSize: 10.5, color: '#7C3AED', background: '#F1EAFF', padding: '2px 7px' }}>EDITÁVEL</span>
                                             </div>
                                             <div className="flex items-center gap-2.5 rounded-xl border" style={{ height: 50, padding: '0 16px', borderColor: '#D8C9FB', background: '#fff' }}>
-                                                <input type="number" min="1" max="9999" inputMode="numeric" value={formData.quantidadePorCaixa}
+                                                <input disabled={!podeEditar} type="number" min="1" max="9999" inputMode="numeric" value={formData.quantidadePorCaixa}
                                                     onChange={(e) => setFormData({ ...formData, quantidadePorCaixa: e.target.value })}
                                                     placeholder="Ex.: 10"
                                                     className="flex-1 bg-transparent outline-none font-semibold font-mono"
@@ -1456,7 +1625,7 @@ const GerenciarProduto = () => {
                                         <div>
                                             <div className="text-sm font-bold mb-2" style={{ color: '#3A3F52' }}>Categoria Comercial</div>
                                             <div className="flex items-center rounded-xl border" style={{ height: 50, padding: '0 16px', borderColor: '#E4E7F2', background: '#fff' }}>
-                                                <select
+                                                <select disabled={!podeEditar}
                                                     className="flex-1 bg-transparent outline-none font-medium appearance-none truncate"
                                                     style={{ fontSize: 15, color: formData.categoriaProdutoId ? '#16192B' : '#A6ABBD' }}
                                                     value={formData.categoriaProdutoId}
@@ -1475,6 +1644,7 @@ const GerenciarProduto = () => {
                                                     value={formData.produtoSubstitutoId}
                                                     onChange={(val) => setFormData({ ...formData, produtoSubstitutoId: val })}
                                                     todosOsProdutos={todosProdutos}
+                                                    desabilitado={!podeEditar}
                                                 />
                                             </div>
                                             <div className="mt-1.5 text-xs" style={{ color: '#9AA0B4' }}>Sugerido em falta de estoque.</div>
@@ -1482,16 +1652,16 @@ const GerenciarProduto = () => {
                                         <div>
                                             <div className="text-sm font-bold mb-2" style={{ color: '#3A3F52' }}>Prioridade de Recomendação</div>
                                             <div className="flex items-center justify-between rounded-xl border" style={{ height: 50, padding: '0 8px 0 16px', borderColor: '#E4E7F2', background: '#fff' }}>
-                                                <input type="number" min="1" max="99"
+                                                <input disabled={!podeEditar} type="number" min="1" max="99"
                                                     value={formData.prioridadeRecomendacao}
                                                     onChange={(e) => setFormData({ ...formData, prioridadeRecomendacao: e.target.value })}
                                                     className="flex-1 bg-transparent outline-none font-semibold font-mono"
                                                     style={{ fontSize: 15, color: '#16192B' }} />
                                                 <div className="flex flex-col gap-[3px] flex-shrink-0">
-                                                    <button onClick={() => setFormData({ ...formData, prioridadeRecomendacao: Math.max(1, parseInt(formData.prioridadeRecomendacao || 1) - 1) })} className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 18, background: '#F2F3F8', color: '#9AA0B4' }}>
+                                                    <button disabled={!podeEditar} onClick={() => setFormData({ ...formData, prioridadeRecomendacao: Math.max(1, parseInt(formData.prioridadeRecomendacao || 1) - 1) })} className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 18, background: '#F2F3F8', color: '#9AA0B4' }}>
                                                         <ChevronUp className="h-3 w-3" />
                                                     </button>
-                                                    <button onClick={() => setFormData({ ...formData, prioridadeRecomendacao: Math.min(99, parseInt(formData.prioridadeRecomendacao || 1) + 1) })} className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 18, background: '#F2F3F8', color: '#9AA0B4' }}>
+                                                    <button disabled={!podeEditar} onClick={() => setFormData({ ...formData, prioridadeRecomendacao: Math.min(99, parseInt(formData.prioridadeRecomendacao || 1) + 1) })} className="flex items-center justify-center rounded-lg" style={{ width: 32, height: 18, background: '#F2F3F8', color: '#9AA0B4' }}>
                                                         <ChevronDown className="h-3 w-3" />
                                                     </button>
                                                 </div>
@@ -1502,7 +1672,7 @@ const GerenciarProduto = () => {
                                             <div className="text-sm font-bold mb-2" style={{ color: '#3A3F52' }}>Sugestão do Produto</div>
                                             <div className="flex items-center justify-between rounded-xl border" style={{ height: 50, padding: '0 16px', borderColor: '#E4E7F2', background: '#fff' }}>
                                                 <span className="font-semibold" style={{ fontSize: 14, color: '#16192B' }}>Permitir sugestão</span>
-                                                <button
+                                                <button disabled={!podeEditar}
                                                     onClick={() => setFormData({ ...formData, permiteRecomendacao: !formData.permiteRecomendacao })}
                                                     className="flex items-center rounded-full flex-shrink-0 transition-all"
                                                     style={{ width: 48, height: 27, background: formData.permiteRecomendacao ? '#7C3AED' : '#D1D5DB', padding: '0 3px', justifyContent: formData.permiteRecomendacao ? 'flex-end' : 'flex-start' }}>
@@ -1518,18 +1688,20 @@ const GerenciarProduto = () => {
                                 <div className="flex items-center justify-between gap-3 px-6 py-[18px] mt-6 border-t" style={{ borderColor: '#F0EEF7' }}>
                                     <div className="flex items-center gap-2" style={{ fontSize: 11.5, color: '#9AA0B4' }}>
                                         <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
-                                        As alterações entram em vigor no próximo sync do app.
+                                        As alterações valem assim que você salva — não esperam sincronização. Quem já está com o app aberto vê ao recarregar a tela.
                                     </div>
                                     <div className="flex items-center gap-2.5 flex-shrink-0">
                                         <button onClick={handleBack} className="flex items-center font-bold text-sm rounded-xl border transition-colors hover:bg-gray-50" style={{ height: 46, padding: '0 18px', borderColor: '#E4E7F2', color: '#5A6072', background: 'none' }}>
-                                            Cancelar
+                                            {podeEditar ? 'Cancelar' : 'Voltar'}
                                         </button>
+                                        {podeEditar && (
                                         <button onClick={handleSaveComercial} disabled={salvandoComercial}
                                             className="flex items-center gap-2 font-bold text-white rounded-xl disabled:opacity-50 transition-all"
                                             style={{ height: 46, padding: '0 22px', fontSize: 14.5, background: 'linear-gradient(135deg,#7C3AED,#6D28D9)', boxShadow: '0 6px 18px rgba(124,58,237,.35)' }}>
                                             <Save className="h-[17px] w-[17px]" />
                                             {salvandoComercial ? 'Salvando...' : 'Salvar e Voltar'}
                                         </button>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -1545,7 +1717,7 @@ const GerenciarProduto = () => {
                             <h3 className="font-bold text-sm" style={{ color: '#166534' }}>Promoções — {formData.nome}</h3>
                         </div>
                         <div className="p-6">
-                            <SecaoPromocoes produtoId={id} valorVendaBase={formData.valorVenda} />
+                            <SecaoPromocoes produtoId={id} valorVendaBase={precoSalvo} podeEditar={podeEditar} />
                         </div>
                     </div>
                 )}

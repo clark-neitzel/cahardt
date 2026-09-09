@@ -138,6 +138,6 @@
 | Config — Bancos | `/configuracoes/bancos` | Contas financeiras sincronizadas do Conta Azul (somente leitura) | [config-bancos.md](config-bancos.md) |
 | Config — Metas | `/configuracoes/metas` | Definição de metas mensais por vendedor com produtos, cidades e promoções | [config-metas.md](config-metas.md) |
 | Config — Comissões | `/config/comissoes` | Configuração e apuração de comissões por vendedor: faixas e bônus | [config-comissoes.md](config-comissoes.md) |
-| Config — Cat. Produto | `/configuracoes/categorias-produto` | Categorias comerciais de produto para organização e controle de acesso | [config-categorias-produto.md](config-categorias-produto.md) |
+| Config — Cat. Produto | `/config/categorias-produto` | Categorias comerciais de produto — ver é livre; criar/editar/excluir só admin ou `Pode_Editar_Categorias_Produto` | [config-categorias-produto.md](config-categorias-produto.md) |
 | Config — Cat. Cliente | `/configuracoes/categorias-cliente` | Segmentos de cliente com ciclo padrão e regras de desconto | [config-categorias-cliente.md](config-categorias-cliente.md) |
 | Config — Cat. Estoque | `/configuracoes/categorias-estoque` | Define quais categorias de produto têm controle de estoque ativo | [config-categorias-estoque.md](config-categorias-estoque.md) |

@@ -3,12 +3,9 @@ const router = express.Router();
 const produtoController = require('../controllers/produtoController');
 const upload = require('../middlewares/uploadMiddleware');
 
-// Middleware: exige permissão 'produtos' ou admin para rotas de escrita
-const exigeAdmin = (req, res, next) => {
-    const permissoes = req.user?.permissoes || {};
-    if (permissoes.admin || permissoes.produtos) return next();
-    return res.status(403).json({ error: 'Sem permissão para gerenciar produtos.' });
-};
+// Regra de escrita do cadastro de produtos (admin OU produtos.edit). A mesma regra
+// protege as promoções — por isso ela mora em middlewares/permissaoProdutos.js.
+const { exigeEdicaoProdutos } = require('../middlewares/permissaoProdutos');
 
 // Leitura (qualquer autenticado)
 router.get('/categorias-ca', produtoController.categoriasCA);
@@ -29,17 +26,17 @@ router.get('/:id/compras', async (req, res) => {
 
 router.get('/:id', produtoController.detalhar);
 
-// Escrita (somente admin/produtos)
+// Escrita (exige admin OU produtos.edit — ver o middleware acima)
 // Fase 6: criar produto novo — nasce no Conta Azul primeiro, depois local
-router.post('/', exigeAdmin, produtoController.criar);
-router.put('/:id', exigeAdmin, produtoController.atualizar);
-router.patch('/:id/status', exigeAdmin, produtoController.alterarStatus);
-router.patch('/:id/custo-ca', exigeAdmin, produtoController.alterarCustoCa);
+router.post('/', exigeEdicaoProdutos, produtoController.criar);
+router.put('/:id', exigeEdicaoProdutos, produtoController.atualizar);
+router.patch('/:id/status', exigeEdicaoProdutos, produtoController.alterarStatus);
+router.patch('/:id/custo-ca', exigeEdicaoProdutos, produtoController.alterarCustoCa);
 
-// Imagens (somente admin/produtos)
-router.post('/:id/imagens', exigeAdmin, upload.array('imagens', 5), produtoController.uploadImagem);
-router.delete('/imagens/:id', exigeAdmin, produtoController.removerImagem);
-router.patch('/:id/imagens/reordenar', exigeAdmin, produtoController.reordenarImagens);
-router.patch('/:id/imagens/:imagemId/principal', exigeAdmin, produtoController.definirPrincipal);
+// Imagens (exige admin OU produtos.edit)
+router.post('/:id/imagens', exigeEdicaoProdutos, upload.array('imagens', 5), produtoController.uploadImagem);
+router.delete('/imagens/:id', exigeEdicaoProdutos, produtoController.removerImagem);
+router.patch('/:id/imagens/reordenar', exigeEdicaoProdutos, produtoController.reordenarImagens);
+router.patch('/:id/imagens/:imagemId/principal', exigeEdicaoProdutos, produtoController.definirPrincipal);
 
 module.exports = router;

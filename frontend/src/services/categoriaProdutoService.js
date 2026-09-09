@@ -17,8 +17,15 @@ const categoriaProdutoService = {
         const res = await api.put(`/categorias-produto/${id}`, dados);
         return res.data;
     },
-    deletar: async (id) => {
-        const res = await api.delete(`/categorias-produto/${id}`);
+    // Quantos produtos usam a categoria (o que se perde ao apagá-la)
+    uso: async (id) => {
+        const res = await api.get(`/categorias-produto/${id}/uso`);
+        return res.data;
+    },
+    // confirmar=true é a confirmação explícita para apagar categoria que ainda
+    // tem produtos; sem ela o backend recusa com 409 e devolve a contagem.
+    deletar: async (id, { confirmar = false } = {}) => {
+        const res = await api.delete(`/categorias-produto/${id}${confirmar ? '?confirmar=1' : ''}`);
         return res.data;
     }
 };

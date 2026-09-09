@@ -7,7 +7,7 @@ import {
     Settings, DollarSign, Warehouse, TrendingUp,
     Factory, Package, BookOpen as BookOpenIcon, Play, Calendar, Lightbulb, BarChart3, BarChart2,
     Clock, CalendarOff, ClipboardCheck, Tag, PartyPopper, Inbox, Building2, CalendarCheck, BellRing,
-    KeyRound, History, Zap, UsersRound, ChevronRight, ArrowLeft
+    KeyRound, History, Zap, UsersRound, ChevronRight, ArrowLeft, FolderOpen
 } from 'lucide-react';
 import vendedorService from '../../../services/vendedorService';
 import configService from '../../../services/configService';
@@ -134,6 +134,8 @@ const DEFAULT_PERMISSIONS = {
     Pode_Entregar_Fim_Semana: false,
     // Bloqueio de venda além do estoque disponível (restrição, não capacidade)
     Bloqueio_Venda_Sem_Estoque: false,
+    // Categorias comerciais de produto (Configurações)
+    Pode_Editar_Categorias_Produto: false,
     // Módulo RH — Currículos
     Pode_Ver_RH: false,
     Pode_Editar_RH: false,
@@ -350,6 +352,7 @@ const BOOL_INDEX = [
     // Configurações
     { sec: 'config', path: 'configuracoes.view', nome: 'Acesso às Configurações', desc: 'Menu Configurações visível', kw: 'configuracoes menu acesso' },
     { sec: 'config', path: 'configuracoes.edit', nome: 'Gerenciar Configurações', desc: 'Editar tabelas de preços, bancos, metas, categorias', kw: 'tabelas precos bancos metas categorias editar' },
+    { sec: 'config', path: 'Pode_Editar_Categorias_Produto', nome: 'Categorias de Produto (criar/editar/excluir)', desc: 'Mexer nas categorias comerciais de produto. Excluir uma categoria deixa TODOS os produtos dela sem classificação comercial — some dos filtros, do catálogo e das restrições de categoria por vendedor. Sem isto, só o admin altera; ver a lista continua liberado para todos', kw: 'categoria comercial produto criar editar excluir apagar renomear classificacao linha', danger: true, noBulk: true },
 ];
 
 // Itens que NÃO são interruptor (aparecem na busca como atalho para a seção)
@@ -1434,6 +1437,14 @@ const PermissoesModal = ({ vendedor, onClose, onUpdated }) => {
                 <Toggle checked={!!permissoes.configuracoes?.edit} onChange={() => toggleEdit('configuracoes')}
                     label="Gerenciar Configurações" sublabel="Pode editar tabelas de preços, bancos, metas, categorias" />
             )}
+            <Toggle
+                checked={!!permissoes.Pode_Editar_Categorias_Produto}
+                onChange={() => toggleBool('Pode_Editar_Categorias_Produto')}
+                label="Categorias de Produto (criar/editar/excluir)"
+                sublabel="Mexer nas categorias comerciais de produto. Excluir uma categoria deixa TODOS os produtos dela sem classificação comercial (some dos filtros, do catálogo e das restrições de categoria por vendedor). Sem isto, só o admin altera — ver a lista continua liberado para todos"
+                icon={FolderOpen}
+                danger
+            />
         </div>
     );
 

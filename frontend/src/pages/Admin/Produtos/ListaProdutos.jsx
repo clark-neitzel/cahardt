@@ -10,8 +10,13 @@ import toast from 'react-hot-toast';
 import MultiSelect from '../../../components/MultiSelect';
 import ComboBusca from '../../../components/ComboBusca';
 import { useFiltroSalvo } from '../../../hooks/useFiltrosSalvos';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const ListaProdutos = () => {
+    // Espelha o backend (produtoRoutes.exigeEdicaoProdutos): admin OU produtos.edit.
+    // Permissão é OBJETO — `perms.produtos` sozinho é sempre verdadeiro; o 'edit' é obrigatório.
+    const { hasPermission } = useAuth();
+    const podeEditar = hasPermission('produtos', 'edit');
     const [searchParams, setSearchParams] = useSearchParams();
     const navigate = useNavigate();
 
@@ -56,6 +61,7 @@ const ListaProdutos = () => {
     };
 
     const criarProduto = async () => {
+        if (!podeEditar) { toast.error('Você não tem permissão para criar produtos.'); return; }
         if (!novoProduto.nome.trim()) { toast.error('Informe o nome do produto.'); return; }
         setCriando(true);
         try {
@@ -208,12 +214,14 @@ const ListaProdutos = () => {
                     >
                         ir para Sincronização <ArrowLeft className="h-4 w-4 ml-1 rotate-180" />
                     </Link>
-                    <button
-                        onClick={() => setModalNovo(true)}
-                        className="px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm font-semibold text-sm inline-flex items-center gap-1.5"
-                    >
-                        <Plus className="h-4 w-4" /> Novo produto
-                    </button>
+                    {podeEditar && (
+                        <button
+                            onClick={() => setModalNovo(true)}
+                            className="px-4 py-2 bg-primary hover:bg-blue-700 text-white rounded-md shadow-sm font-semibold text-sm inline-flex items-center gap-1.5"
+                        >
+                            <Plus className="h-4 w-4" /> Novo produto
+                        </button>
+                    )}
                 </div>
             </div>
 

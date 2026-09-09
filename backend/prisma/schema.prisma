@@ -16,6 +16,10 @@ model Produto {
   codigo      String
   nome        String
   valorVenda  Decimal @map("valor_venda") @db.Decimal(10, 2)
+  // Preço gerenciado pelo app: quando true, o sync do Conta Azul NÃO sobrescreve mais o
+  // valorVenda (mesma ideia do custoCaZerado, que já protege o custo). Vira true sozinho
+  // quando alguém altera o preço na tela de Produtos, e nasce true em produto criado no app.
+  precoLocal  Boolean @default(false) @map("preco_local")
   unidade     String
 
   // Estoques

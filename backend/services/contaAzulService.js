@@ -322,7 +322,8 @@ const contaAzulService = {
                 select: {
                     contaAzulId: true,
                     contaAzulUpdatedAt: true,
-                    custoCaZerado: true
+                    custoCaZerado: true,
+                    precoLocal: true
                 }
             });
 
@@ -439,7 +440,10 @@ const contaAzulService = {
                     update: {
                         nome: dadosProduto.nome,
                         codigo: dadosProduto.codigo,
-                        valorVenda: dadosProduto.valorVenda,
+                        // Preço gerenciado pelo app (alguém editou o preço na tela de Produtos,
+                        // ou o produto nasceu aqui): o CA não manda mais no valorVenda. Sem isto,
+                        // o preço digitado voltava sozinho no próximo ciclo do sync, em silêncio.
+                        ...(produtoLocal?.precoLocal ? {} : { valorVenda: dadosProduto.valorVenda }),
                         // unidade NÃO é atualizada do CA — editável no app (só definida na criação)
                         ean: dadosProduto.ean,
                         ncm: dadosProduto.ncm,
@@ -769,7 +773,11 @@ const contaAzulService = {
             const caPrice = Number(caProd.value || caProd.valor_venda || 0).toFixed(2);
             const dbPrice = localProd ? Number(localProd.valorVenda).toFixed(2) : 'N/A';
             const dbStock = localProd ? Number(localProd.estoqueDisponivel).toFixed(3) : 'N/A';
-            const status = localProd ? (caPrice === dbPrice ? 'OK' : 'DIFF') : 'MISSING';
+            // Preço gerenciado pelo app: divergir do CA é o comportamento ESPERADO —
+            // marcar como DIFF aqui seria alarme falso.
+            const status = localProd
+                ? (localProd.precoLocal ? 'PRECO_APP' : (caPrice === dbPrice ? 'OK' : 'DIFF'))
+                : 'MISSING';
 
             comparison.push({
                 name: caProd.name || caProd.nome,
@@ -777,6 +785,7 @@ const contaAzulService = {
                 ca_price: caPrice,
                 db_price: dbPrice,
                 db_stock: dbStock,
+                preco_local: localProd ? localProd.precoLocal === true : false,
                 status: status
             });
         }
@@ -1836,12 +1845,22 @@ const contaAzulService = {
             unidadeObj.descricao || unidadeObj.codigo ||
             (typeof p.unidade_medida === 'string' ? p.unidade_medida : 'UN');
 
+        // Preço gerenciado pelo app: mesmo tratamento do syncProdutos — se o preço foi
+        // definido/editado aqui, o CA não sobrescreve mais (senão o preço voltava sozinho
+        // depois de qualquer movimentação de estoque que dispara este sync individual).
+        const localAntes = await prisma.produto.findFirst({
+            where: { contaAzulId: p.id },
+            select: { precoLocal: true }
+        });
+
         // Fase 6: estoque NÃO é mais importado do CA — o controle é só no app.
         // Este sync individual atualiza apenas preço/status; o saldo local fica intacto.
         await prisma.produto.updateMany({
             where: { contaAzulId: p.id },
             data: {
-                valorVenda: parseFloat(estoqueObj.valor_venda ?? p.value ?? p.valor_venda ?? 0) || undefined,
+                ...(localAntes?.precoLocal
+                    ? {}
+                    : { valorVenda: parseFloat(estoqueObj.valor_venda ?? p.value ?? p.valor_venda ?? 0) || undefined }),
                 // unidade NÃO é sincronizada do CA — é editável no app e não deve ser sobrescrita
                 status: p.status,
                 ativo: p.status === 'ACTIVE' || p.status === 'ativo' || p.status === 'ATIVO',
