@@ -4,6 +4,7 @@ import { Truck, MapPin, CheckCircle, Clock, Navigation, Star, X, QrCode } from '
 import toast from 'react-hot-toast';
 import entregasService from '../../../services/entregasService';
 import CheckoutEntregaModal from './CheckoutEntregaModal';
+import EntregarAmostraModal from './EntregarAmostraModal';
 import ConferirFolhaModal from './ConferirFolhaModal';
 import CobrancasRotaAba from './CobrancasRotaAba';
 import { useAuth } from '../../../contexts/AuthContext';
@@ -15,6 +16,8 @@ const PainelMotorista = () => {
     const [entregas, setEntregas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [entregaAtivaParaCheckout, setEntregaAtivaParaCheckout] = useState(null);
+    // Amostra tem checkout próprio (sem dinheiro): localização + observação
+    const [amostraParaEntregar, setAmostraParaEntregar] = useState(null);
     const [conferirFolhaAberto, setConferirFolhaAberto] = useState(false);
 
     const fetchEntregas = async () => {
@@ -52,6 +55,12 @@ const PainelMotorista = () => {
         setEntregaAtivaParaCheckout(null);
         fetchEntregas();
         toast.success('Check-in Logístico concluído! Muito bem.');
+    };
+
+    // O toast da amostra sai do próprio modal (avisa quando o ponto do lead foi salvo)
+    const handleAmostraEntregue = () => {
+        setAmostraParaEntregar(null);
+        fetchEntregas();
     };
 
     // --- Prioridade (backend calcula número por motorista) ---
@@ -199,11 +208,13 @@ const PainelMotorista = () => {
                                             Maps
                                         </button>
                                         <button
-                                            onClick={() => setEntregaAtivaParaCheckout(entrega)}
-                                            className="flex-[2] flex justify-center items-center py-2 bg-primary text-white rounded-lg text-sm font-bold active:bg-primaryDark shadow-sm"
+                                            onClick={() => entrega._tipoEntrega === 'amostra'
+                                                ? setAmostraParaEntregar(entrega)
+                                                : setEntregaAtivaParaCheckout(entrega)}
+                                            className={`flex-[2] flex justify-center items-center py-2 text-white rounded-lg text-sm font-bold shadow-sm ${entrega._tipoEntrega === 'amostra' ? 'bg-orange-500 active:bg-orange-600' : 'bg-primary active:bg-primaryDark'}`}
                                         >
                                             <CheckCircle className="h-4 w-4 mr-1" />
-                                            Fazer Check-in (Entregar)
+                                            {entrega._tipoEntrega === 'amostra' ? 'Entregar Amostra' : 'Fazer Check-in (Entregar)'}
                                         </button>
                                     </div>
                                 </div>
@@ -213,10 +224,17 @@ const PainelMotorista = () => {
                                 <div className="p-3 flex flex-col space-y-2 bg-gray-50">
                                     <div className="flex justify-between items-center">
                                         <span className="text-xs font-semibold text-gray-500">Status Fisíco</span>
+                                        {entrega._tipoEntrega === 'amostra' && <span className="text-xs font-bold text-orange-700 bg-orange-100 px-2 rounded">AMOSTRA ENTREGUE</span>}
                                         {entrega.statusEntrega === 'ENTREGUE' && <span className="text-xs font-bold text-green-700 bg-green-100 px-2 rounded">ENTREGUE</span>}
                                         {entrega.statusEntrega === 'ENTREGUE_PARCIAL' && <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2 rounded">PARCIAL</span>}
                                         {entrega.statusEntrega === 'DEVOLVIDO' && <span className="text-xs font-bold text-red-700 bg-red-100 px-2 rounded">DEVOLVIDO 100%</span>}
                                     </div>
+
+                                    {entrega.observacaoEntrega && (
+                                        <div className="text-[11px] text-gray-600 bg-white border border-gray-200 rounded px-2 py-1">
+                                            <span className="font-semibold text-gray-500">Na entrega: </span>{entrega.observacaoEntrega}
+                                        </div>
+                                    )}
 
                                     {entrega.divergenciaPagamento && (
                                         <div className="text-[10px] font-bold text-amber-600 bg-amber-50 p-1 rounded">
@@ -239,6 +257,15 @@ const PainelMotorista = () => {
             {/* Conferência da folha impressa (QR) */}
             {conferirFolhaAberto && (
                 <ConferirFolhaModal onClose={() => setConferirFolhaAberto(false)} />
+            )}
+
+            {/* Entrega de amostra (localização + observação) */}
+            {amostraParaEntregar && (
+                <EntregarAmostraModal
+                    amostra={amostraParaEntregar}
+                    onClose={() => setAmostraParaEntregar(null)}
+                    onSuccess={handleAmostraEntregue}
+                />
             )}
 
             {/* Modal Fullscreen do Checkout (Carrinho Reverso) */}

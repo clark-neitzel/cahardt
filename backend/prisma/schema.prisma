@@ -2109,6 +2109,13 @@ model Amostra {
   embarqueId      String?   @map("embarque_id")
   embarque        Embarque? @relation(fields: [embarqueId], references: [id])
 
+  // Entrega da amostra (motorista/vendedor na rua) — ver POST /entregas/amostra/:id/concluir.
+  // `observacao` (acima) é o que o VENDEDOR pediu na solicitação; `observacaoEntrega` é o que
+  // quem ENTREGOU anotou na porta. São coisas diferentes: nunca sobrescrever uma com a outra.
+  gpsEntrega        String?   @map("gps_entrega")
+  observacaoEntrega String?   @db.Text @map("observacao_entrega")
+  entregueEm        DateTime? @map("entregue_em")
+
   // Conferência de carga por bipagem (AM# no recibo) — ver comentário em Pedido.
   cargaConferidaEm      DateTime?     @map("carga_conferida_em")
   cargaConferidaPorId   String?       @map("carga_conferida_por_id")

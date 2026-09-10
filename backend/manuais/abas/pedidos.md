@@ -206,6 +206,14 @@ Status possíveis: `SOLICITADA → PREPARACAO → LIBERADO → ENTREGUE`
 - Botão de avançar status: muda para o próximo estado
 - Botão de excluir amostra (quem tem `Pode_Excluir_Amostra`)
 - Controle de amostras por produto
+- **Observação da entrega**: ao abrir a linha de uma amostra já entregue, aparece o recado que quem
+  entregou escreveu na porta ("deixei com o gerente", "pediu para o vendedor passar sexta"), com a data da
+  entrega. É escrito na hora da entrega, na **Rota → Entregas** ou em **Minhas Entregas**, e é diferente da
+  observação que o vendedor digitou ao pedir a amostra (essa continua no próprio pedido de amostra).
+  Amostra entregue sem nenhum recado simplesmente não mostra a linha.
+- A entrega da amostra também **aproveita a visita para acertar o mapa**: se o destinatário ainda não tem
+  ponto GPS, a localização de quem entregou vira o ponto (lead na hora; cliente depois do "estou na porta"
+  com foto da fachada)
 
 ### Devoluções
 Visível apenas para quem tem `Pode_Fazer_Devolucao` ou `admin`. Renderiza o componente `ListaDevolucoes`.

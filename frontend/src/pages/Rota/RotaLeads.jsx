@@ -21,6 +21,7 @@ import ModalAtendimento from './ModalAtendimento';
 import ModalAmostra from '../Pedidos/ModalAmostra';
 import ModalNovoLead from './ModalNovoLead';
 import CheckoutEntregaModal from '../Motorista/Entregas/CheckoutEntregaModal';
+import EntregarAmostraModal from '../Motorista/Entregas/EntregarAmostraModal';
 import ConferirFolhaModal from '../Motorista/Entregas/ConferirFolhaModal';
 import CobrancasRotaAba from '../Motorista/Entregas/CobrancasRotaAba';
 import ClientePopup from './ClientePopup';
@@ -1112,7 +1113,7 @@ const CardAmostraEntrega = ({ amostra, onEntregarAmostra, podeCheckout, semRound
                 )}
                 {podeCheckout && (
                     <button
-                        onClick={() => onEntregarAmostra(amostra.id)}
+                        onClick={() => onEntregarAmostra(amostra)}
                         className="w-full mt-2 bg-orange-500 text-white text-[12px] md:text-[13px] font-semibold py-1.5 md:py-2 rounded-lg flex items-center justify-center gap-1.5 active:opacity-80"
                     >
                         <CheckCircle className="h-4 w-4" /> Entregar Amostra
@@ -1542,6 +1543,7 @@ const RotaLeads = () => {
     const [loadingEntregas, setLoadingEntregas] = useState(false);
     const [conferirFolhaAberto, setConferirFolhaAberto] = useState(false);
     const [checkoutPedido, setCheckoutPedido] = useState(null);
+    const [amostraParaEntregar, setAmostraParaEntregar] = useState(null);
 
     // Alertas visuais
     const [alertasAtivos, setAlertasAtivos] = useState([]); // atendimentos com alertaVisualAtivo
@@ -2226,16 +2228,20 @@ const RotaLeads = () => {
         }
     }, [podeVerTodasEntregas, vendedorId, vendedorFiltro]);
 
-    const handleEntregarAmostra = async (amostraId) => {
-        if (!window.confirm('Confirmar entrega desta amostra?')) return;
-        try {
-            await entregasService.concluirAmostra(amostraId);
-            toast.success('Amostra entregue!');
-            carregarEntregas('pendentes');
-            carregarEntregas('concluidas');
-        } catch (e) {
-            toast.error(e?.response?.data?.error || 'Erro ao entregar amostra.');
+    // A entrega da amostra passa pelo modal (localização + observação) — ver
+    // EntregarAmostraModal. O toast sai de lá; aqui só fecha e atualiza a rota,
+    // igual ao checkout de pedido (amostra também entra na rota organizada).
+    const handleAmostraEntregue = () => {
+        setAmostraParaEntregar(null);
+        if (entregasPendentes.length <= 1) {
+            handleLimparRota(false);
+        } else if (rotaOrganizada) {
+            roteirizacaoService.recalcularEtas(rotaVendedorId)
+                .then(novaRota => setRotaOrganizada(novaRota || null))
+                .catch(() => setRotaOrganizada(null));
         }
+        carregarEntregas('pendentes');
+        carregarEntregas('concluidas');
     };
 
     // --- Prioridade de entregas (backend calcula número por motorista) ---
@@ -2631,7 +2637,7 @@ const RotaLeads = () => {
                                                     {p._tipoEntrega === 'amostra' ? (
                                                         <CardAmostraEntrega
                                                             amostra={p}
-                                                            onEntregarAmostra={handleEntregarAmostra}
+                                                            onEntregarAmostra={setAmostraParaEntregar}
                                                             podeCheckout={podeEntregas}
                                                             semRounded={!!rotaInfo}
                                                             selo={seloWhats}
@@ -2680,6 +2686,12 @@ const RotaLeads = () => {
                                                         <span>{p.itens?.length || 0} itens</span>
                                                         <span className="font-semibold text-orange-600">Amostra</span>
                                                     </div>
+                                                    {/* Recado de quem entregou (não é a observação do pedido de amostra) */}
+                                                    {p.observacaoEntrega && (
+                                                        <p className="mt-1.5 text-[11px] text-gray-600 bg-gray-50 border border-gray-100 rounded px-2 py-1">
+                                                            <span className="font-semibold text-gray-500">Na entrega: </span>{p.observacaoEntrega}
+                                                        </p>
+                                                    )}
                                                 </div>
                                             </div>
                                         ) : (
@@ -2775,6 +2787,15 @@ const RotaLeads = () => {
                         carregarEntregas('concluidas');
                         toast.success('Entrega registrada com sucesso!');
                     }}
+                />
+            )}
+
+            {/* Modal Entrega de Amostra (localização + observação) */}
+            {amostraParaEntregar && (
+                <EntregarAmostraModal
+                    amostra={amostraParaEntregar}
+                    onClose={() => setAmostraParaEntregar(null)}
+                    onSuccess={handleAmostraEntregue}
                 />
             )}
 

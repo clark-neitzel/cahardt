@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Entrega de amostra com localização e observação — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: com imagem o cartão fica gigante no grupo) -->
+<meta property="og:title" content="📦 Novidade no Hardt App: entrega de amostra registrada">
+<meta property="og:description" content="Ao entregar uma amostra o app pega a localização (e acerta o ponto de quem ainda não tem) e deixa escrever o que aconteceu na porta.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo {
+    background: #f6f5f1;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .4s, color .4s;
+  }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+<style>
+  /* extras desta página */
+  .laranja { --primary: #f97316; }
+  .app-btn.laranja-btn { background: #f97316; }
+  .badge-am { font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 6px; background: #fff2e6; color: #b45309; letter-spacing: .04em; }
+  .badge-ok { font-size: 10px; font-weight: 800; padding: 3px 7px; border-radius: 6px; background: #ffedd5; color: #9a3412; letter-spacing: .04em; }
+  .app-obs { background: #f7f6f2; border: 1px solid #edece6; border-radius: 9px; padding: 9px 11px; font-size: 12.5px; color: #6b756f; }
+  .app-obs b { color: var(--ink); }
+  .app-textarea { border: 1px solid #d8d5cc; border-radius: 8px; padding: 9px 10px; font-size: 12.5px; color: #a9b0ab; background: #fff; min-height: 52px; }
+  .app-gps { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--mint); border: 1px solid rgba(0,117,74,.25); border-radius: 9px; padding: 10px 12px; font-size: 12.5px; font-weight: 700; color: var(--primary-dark); }
+  .aviso { background: #fffaf0; border: 1px solid #f5e2bf; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: #7a5b1e; margin-bottom: 12px; }
+  .aviso b { color: #5b430f; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Entrega de amostra<br>agora fica registrada</h1>
+    <p>Ao entregar uma amostra, o app pega a localização (e usa para acertar o ponto de quem ainda não tem no cadastro) e deixa você escrever o que aconteceu na porta. O vendedor que pediu a amostra lê o recado depois.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">📦</span>
+      <div>
+        <small>Rota · Entregas</small>
+        <strong>Entregar amostra</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-label">Localização da entrega</div>
+      <div class="app-gps" style="margin-bottom:12px;"><span>✅ Localização capturada</span><span>⟳</span></div>
+      <div class="mock-label">Observação da entrega (opcional)</div>
+      <div class="app-textarea">Deixei com o gerente; pediu para o vendedor passar sexta.</div>
+      <div class="mock-status ok" style="margin-top:12px;">✅ Confirmar entrega</div>
+    </div>
+  </div>
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📍</span>
+      <strong>A entrega da amostra pega a localização</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Antes, entregar uma amostra era só um <b>"Confirmar?"</b> — nada ficava registrado além do status.</li>
+        <li>Agora abre uma tela própria e o app <b>já tenta pegar sua localização sozinho</b>, sem você precisar apertar nada.</li>
+        <li>Se o destinatário <b>ainda não tem ponto no cadastro</b>, a tela avisa — e essa localização vira o ponto dele. Em <b>lead</b> (cliente novo, ainda sem cadastro), o ponto é salvo na hora; em <b>cliente cadastrado</b>, o app pergunta em seguida se você está na porta e pede a foto da fachada, igual à entrega de pedido.</li>
+        <li>Amostra costuma ser a <b>primeira visita</b> naquele endereço: é a melhor chance de marcar o lugar certo no mapa para quem for depois.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📝</span>
+      <strong>Dá para escrever o que aconteceu na porta</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Campo <b>"Observação da entrega"</b>, opcional: "deixei com o gerente", "pediu para o vendedor passar sexta", "achou o produto salgado".</li>
+        <li>Esse recado aparece na lista de <b>entregas já finalizadas</b> e na aba <b>Pedidos → Amostras</b> — é lá que o vendedor que pediu a amostra vai ler.</li>
+        <li>Não se confunde com a observação que o vendedor escreveu ao <b>pedir</b> a amostra: são dois campos diferentes, e os dois continuam aparecendo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📶</span>
+      <strong>Sem sinal? A entrega passa do mesmo jeito</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>A localização e a observação são <b>opcionais</b>. Se o GPS não pegar (sem sinal, permissão negada), a tela avisa e você confirma a entrega assim mesmo — amostra não fica parada na sua mão por causa disso. Nesse caso, nada é gravado no cadastro do cliente.</p>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+
+  <div class="aviso">Os quadros abaixo são <b>reproduções</b> das telas, com os números explicando cada parte.</div>
+
+  <!-- TELA 1 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 — o card da amostra na lista de entregas</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head"><span class="badge-am">AM#37</span> <span>CARGA #74</span> <span>· JOCIEL</span></div>
+        <div class="app-card-body">
+          <div style="font-weight:700;font-size:13.5px;">PADARIA DO CENTRO<span class="pin">1</span></div>
+          <div style="font-size:12px;color:#9aa5a0;margin:2px 0 10px;">1 item · Amostra (sem valor)</div>
+          <div class="app-btn laranja-btn" style="width:100%;justify-content:center;">✅ Entregar Amostra<span class="pin">2</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>O destinatário da amostra — pode ser um <b>cliente cadastrado</b> ou um <b>lead</b> (estabelecimento que ainda não é cliente).</span></div>
+      <div><span class="pin">2</span><span>O botão laranja <b>Entregar Amostra</b>. Amostra não tem dinheiro nem devolução, então não passa pelo check-in de pedido — abre a tela da Tela 2.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 — a tela de entrega da amostra</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head" style="background:#f97316;color:#fff;">📦 ENTREGAR AMOSTRA · AM#37 · PADARIA DO CENTRO</div>
+        <div class="app-card-body">
+          <div class="app-obs" style="margin-bottom:12px;">Amostra - EMPANADO DE FRANGO C/10 &nbsp;·&nbsp; <b>2 un</b><span class="pin">1</span></div>
+
+          <div class="app-input" style="border:none;padding:0;margin-bottom:6px;"><small>📍 Localização da entrega</small></div>
+          <div class="app-gps"><span>✅ Localização capturada<span class="pin">2</span></span><span>⟳</span></div>
+          <div style="font-size:11.5px;color:#9aa5a0;margin:6px 0 12px;">Este destinatário ainda não tem ponto no cadastro — sua localização vira o ponto dele.<span class="pin">3</span></div>
+
+          <div class="app-input" style="border:none;padding:0;margin-bottom:6px;"><small>Observação da entrega (opcional)</small></div>
+          <div class="app-textarea">Deixei com o gerente; pediu para o vendedor passar sexta.<span class="pin">4</span></div>
+          <div style="font-size:11.5px;color:#9aa5a0;margin:6px 0 12px;">O vendedor que pediu a amostra vê esse recado.</div>
+
+          <div style="display:flex;gap:8px;">
+            <div class="app-btn claro">Cancelar</div>
+            <div class="app-btn" style="flex:1;justify-content:center;">✅ Confirmar entrega<span class="pin">5</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Os produtos da amostra, para conferir antes de entregar.</span></div>
+      <div><span class="pin">2</span><span>A localização, capturada <b>sozinha</b> quando a tela abre. O ⟳ pega de novo, se você andou até a porta depois de abrir. Sem sinal, aparece o botão <b>Pegar minha localização</b> e a entrega segue mesmo sem ela.</span></div>
+      <div><span class="pin">3</span><span>Este aviso só aparece quando o destinatário <b>ainda não tem ponto</b> no cadastro. Se ele já tem, a frase muda para "serve para conferir se o ponto do cadastro está no lugar certo".</span></div>
+      <div><span class="pin">4</span><span>O recado da entrega. Opcional — se não tiver nada a dizer, deixe em branco.</span></div>
+      <div><span class="pin">5</span><span><b>Confirmar entrega</b>: a amostra sai da lista e vai para "Já Finalizadas"/"Entregues".</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 — cliente sem ponto: "você está na porta?"</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head" style="background:#f59e0b;color:#fff;">📍 CLIENTE SEM PONTO GPS</div>
+        <div class="app-card-body">
+          <div style="font-size:13px;color:#6b756f;margin-bottom:10px;"><b>MERCADO DO BAIRRO</b> ainda não tem ponto GPS cadastrado.</div>
+          <div style="font-weight:700;font-size:14px;margin-bottom:10px;">Você está na porta do cliente agora?<span class="pin">1</span></div>
+          <div style="display:flex;gap:8px;">
+            <div class="app-btn claro" style="flex:1;justify-content:center;">Não</div>
+            <div class="app-btn" style="flex:1;justify-content:center;">Sim, estou na porta<span class="pin">2</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Aparece depois de confirmar a entrega, <b>só para cliente cadastrado</b> sem ponto (ou quando a entrega foi longe do ponto que está no cadastro). É a mesma pergunta que já existe na entrega de pedido.</span></div>
+      <div><span class="pin">2</span><span>Respondendo <b>Sim</b>, o app pede a <b>foto da fachada</b> — é ela que confirma o lugar certo para o próximo entregador. Respondendo <b>Não</b>, nada muda no cadastro; a amostra continua entregue de qualquer forma.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4 -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 4 — onde o recado aparece depois</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head"><span>ROTA · ENTREGUES / MINHAS ENTREGAS</span></div>
+        <div class="app-card-body">
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;"><span class="badge-ok">AMOSTRA ENTREGUE</span><span class="badge-am">AM#37</span></div>
+          <div style="font-weight:700;font-size:13.5px;">PADARIA DO CENTRO</div>
+          <div class="app-obs" style="margin-top:8px;"><b>Na entrega:</b> Deixei com o gerente; pediu para o vendedor passar sexta.<span class="pin">1</span></div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head"><span>PEDIDOS · ABA AMOSTRAS</span></div>
+        <div class="app-card-body">
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;"><span class="badge-am">AM#37</span><span style="font-weight:700;font-size:13px;">PADARIA DO CENTRO</span></div>
+          <div class="app-obs"><b>Observação da entrega:</b> Deixei com o gerente; pediu para o vendedor passar sexta. <span style="color:#b9b5aa;">· 10/09/2026</span><span class="pin">2</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span>Na lista de entregas concluídas (Rota → Entregues e Minhas Entregas), a amostra aparece com o selo <b>AMOSTRA ENTREGUE</b> e o recado logo abaixo.</span></div>
+      <div><span class="pin">2</span><span>Na aba <b>Pedidos → Amostras</b>, abra a linha da amostra: o recado aparece com a data da entrega. É aqui que o vendedor confere o retorno do que ele mandou.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><div class="passo-n">1</div><div>Abra <b>Rota → Entregas</b> (ou <b>Minhas Entregas</b>, no celular do motorista).</div></div>
+    <div class="passo"><div class="passo-n">2</div><div>No card laranja da amostra, toque em <b>Entregar Amostra</b>.</div></div>
+    <div class="passo"><div class="passo-n">3</div><div>Confira a localização (ela vem sozinha) e escreva a <b>observação</b>, se tiver algo a dizer.</div></div>
+    <div class="passo"><div class="passo-n">4</div><div>Toque em <b>Confirmar entrega</b>. Se o app perguntar se você está na porta, responda — é isso que acerta o mapa.</div></div>
+  </div>
+
+  <p class="rodape">Dúvida? Fale com o <strong>Clarkson</strong>.</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

@@ -149,6 +149,21 @@ Lista de pedidos faturados em embarques que ainda precisam ser entregues fisicam
 - **Selo GPS × endereço** (aparece depois de organizar a rota) — compara o ponto GPS cadastrado com o endereço escrito e mostra no card: verde "GPS no endereço", âmbar "GPS a ~X do endereço", vermelho "GPS longe do endereço (~X)" (ver seção própria abaixo)
 - **Selo de WhatsApp** ao lado do nome do cliente, quando a chave "Mostrar selo nas listas" estiver ligada (ver seção própria abaixo) — vale também para as **amostras de cliente cadastrado** que estão na carga; **amostra de lead não tem selo**
 
+**Amostras da carga (AM#)** aparecem nesta mesma lista, em card laranja, com o botão **Entregar Amostra**
+(amostra não tem dinheiro nem devolução — não passa pelo checkout de pedido). Ao tocar nele abre a tela da
+amostra:
+
+- **Localização da entrega**: o app tenta pegar sozinho ao abrir. Se o destinatário ainda não tem ponto no
+  cadastro, a tela avisa e essa localização vira o ponto dele — em **lead**, salvo na hora; em **cliente**,
+  o app pergunta em seguida se você está na porta e pede a foto da fachada (mesma pergunta da entrega de pedido)
+- **Observação da entrega** (opcional): o que aconteceu na porta ("deixei com o gerente", "pediu para o
+  vendedor passar sexta"). Fica visível na sub-aba **Entregues** e na aba **Pedidos → Amostras**
+- **Sem GPS não trava**: sem sinal ou sem permissão, dá para confirmar a entrega assim mesmo (aí nada é
+  gravado no cadastro)
+
+> A observação da entrega **não substitui** a observação que o vendedor escreveu ao pedir a amostra — são
+> dois campos diferentes.
+
 Para organizar a sequência de entrega, há o botão **Organizar Rota** (roteirizador por GPS).
 
 Ao lado dele fica o botão verde **Conferir Folha** (ícone de QR): abre a câmera dentro do app para escanear o QR no cabeçalho do romaneio impresso e conferir se aquela folha ainda é a versão atual da carga — **verde** = folha confere (versão atual); **amarelo** = a carga mudou depois da impressão (a tela mostra o que mudou; reimprimir/pedir a folha nova). O resultado vale para qualquer pessoa que escaneie (motorista, separação ou conferência); se a carga for de outro motorista, aparece um aviso complementar dizendo de quem ela é. Se o motorista tem duas cargas, escaneia uma folha de cada vez.
@@ -156,9 +171,10 @@ Ao lado dele fica o botão verde **Conferir Folha** (ícone de QR): abre a câme
 ### Entregues (concluídas pelo motorista)
 Visível apenas para usuários com `Pode_Executar_Entregas` ou `admin`.
 
-Lista de pedidos cujo check-in de entrega já foi realizado. Cada card mostra:
+Lista de pedidos cujo check-in de entrega já foi realizado (e as amostras já entregues). Cada card mostra:
 
-- Status físico da entrega: ENTREGUE, PARCIAL ou DEVOLVIDO
+- Status físico da entrega: ENTREGUE, PARCIAL ou DEVOLVIDO (amostra aparece como **Entregue**, em card laranja)
+- Nas amostras, a **observação escrita na entrega**, quando houver ("Na entrega: …")
 - Se houve divergência de pagamento apontada
 - Horário e data do check-in
 - **Selo de WhatsApp** ao lado do nome do cliente, quando a chave "Mostrar selo nas listas" estiver ligada (ver seção própria abaixo)

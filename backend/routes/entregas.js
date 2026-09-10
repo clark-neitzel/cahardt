@@ -108,6 +108,18 @@ const validarPessoasResponsaveis = async (linhas, { idsJaMarcados = [] } = {}) =
     return null;
 };
 
+// Coordenada aproveitável de verdade. O app do motorista manda marcadores quando não
+// consegue posição ("FalhaSinal" no erro do GPS, "0,0" no desktop sem módulo) — gravar isso
+// como ponto de cliente/lead colocaria o cadastro no meio do Atlântico.
+const pontoUsavel = (s) => {
+    if (!s) return null;
+    const [lat, lng] = String(s).split(',').map(x => parseFloat(String(x).trim()));
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    if (Math.abs(lat) < 0.0001 && Math.abs(lng) < 0.0001) return null; // "0,0"
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+    return `${lat},${lng}`;
+};
+
 const getPerms = async (userId) => {
     const vendedor = await prisma.vendedor.findUnique({
         where: { id: userId },
@@ -438,7 +450,13 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
             numero: a.numero,
             status: a.status,
             observacao: a.observacao,
-            dataEntrega: a.updatedAt,
+            // `observacaoEntrega`/`gpsEntrega`: o que quem ENTREGOU anotou na porta
+            // (a `observacao` acima é o pedido do vendedor na solicitação).
+            observacaoEntrega: a.observacaoEntrega,
+            gpsEntrega: a.gpsEntrega,
+            // entregueEm é o carimbo da entrega; updatedAt só como resgate das
+            // amostras entregues ANTES deste campo existir (09/2026).
+            dataEntrega: a.entregueEm || a.updatedAt,
             embarque: a.embarque,
             solicitadoPor: a.solicitadoPor,
             itens: a.itens,
@@ -462,11 +480,15 @@ router.get('/concluidas', verificarAuth, checkAcessoEntregador, async (req, res)
 router.post('/amostra/:id/concluir', verificarAuth, checkAcessoEntregador, async (req, res) => {
     try {
         const { id } = req.params;
-        const { gpsEntrega } = req.body;
+        const { gpsEntrega, observacaoEntrega } = req.body;
 
         const amostra = await prisma.amostra.findUnique({
             where: { id },
-            include: { embarque: true }
+            include: {
+                embarque: true,
+                cliente: { select: { UUID: true, Ponto_GPS: true, gps: { select: { balcao: true } } } },
+                lead: { select: { id: true, nomeEstabelecimento: true, pontoGps: true } }
+            }
         });
 
         if (!amostra) return res.status(404).json({ error: 'Amostra não localizada.' });
@@ -477,12 +499,52 @@ router.post('/amostra/:id/concluir', verificarAuth, checkAcessoEntregador, async
             return res.status(403).json({ error: 'Esta amostra pertence à carga de outro motorista.' });
         }
 
+        // GPS e observação são OPCIONAIS: entrega de amostra nunca pode travar por falta de
+        // sinal (o motorista pode estar num ponto sem cobertura). O que chegar, a gente guarda.
+        const pontoEntrega = pontoUsavel(gpsEntrega);
+        const obsEntrega = (observacaoEntrega || '').trim().slice(0, 1000) || null;
+
         await prisma.amostra.update({
             where: { id },
-            data: { status: 'ENTREGUE' }
+            data: {
+                status: 'ENTREGUE',
+                entregueEm: new Date(),
+                gpsEntrega: pontoEntrega || null,
+                observacaoEntrega: obsEntrega
+            }
         });
 
-        res.json({ message: 'Amostra entregue com sucesso!' });
+        // Ponto do cadastro: mesma ideia da entrega de pedido.
+        //  - CLIENTE sem ponto (ou entrega longe dele) → o app pergunta "está na porta?" e a
+        //    resposta com foto define/corrige o ponto (rota /gps-clientes/cliente/:uuid/na-porta).
+        //  - LEAD sem ponto → grava direto: prospect não tem selo nem histórico de GPS, e a
+        //    amostra costuma ser a PRIMEIRA visita — é a única chance de fisgar o lugar.
+        // Nada aqui pode derrubar a entrega: já está registrada.
+        let gpsInfo = null;
+        let leadPontoDefinido = false;
+        try {
+            const gpsClientesService = require('../services/gpsClientesService');
+            if (amostra.cliente && !amostra.cliente.gps?.balcao) {
+                const selo = gpsClientesService.seloEntrega(pontoEntrega, amostra.cliente.Ponto_GPS);
+                gpsInfo = {
+                    clienteUuid: amostra.cliente.UUID || null,
+                    status: selo.status,
+                    distanciaM: selo.distanciaM,
+                    perguntarNaPorta: ['FORA', 'SEM_PONTO'].includes(selo.status) && !!pontoEntrega
+                };
+                if (pontoEntrega && amostra.cliente.UUID) {
+                    gpsClientesService.reavaliarCliente(amostra.cliente.UUID)
+                        .catch(err => console.error('[GpsClientes] reavaliar pós-amostra:', err.message));
+                }
+            } else if (amostra.lead && !amostra.lead.pontoGps && pontoEntrega) {
+                await prisma.lead.update({ where: { id: amostra.lead.id }, data: { pontoGps: pontoEntrega } });
+                leadPontoDefinido = true;
+            }
+        } catch (gpsErr) {
+            console.error('[GpsClientes] ponto pós-amostra (amostra já entregue):', gpsErr.message);
+        }
+
+        res.json({ message: 'Amostra entregue com sucesso!', gps: gpsInfo, leadPontoDefinido });
     } catch (error) {
         console.error('Erro ao concluir entrega de amostra:', error);
         res.status(500).json({ error: 'Erro ao processar entrega da amostra.' });

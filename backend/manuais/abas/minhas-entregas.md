@@ -21,6 +21,7 @@ Tela exclusiva do motorista, usada no celular. Mostra o roteiro de entrega do di
 - Marcar prioridade de entrega com estrela (ordena a sequência de visitas)
 - Abrir o endereço do cliente no Google Maps (usa GPS cadastrado ou o endereço completo)
 - Dar baixa na entrega via modal de checkout (informar status físico e pagamento recebido)
+- **Entregar uma amostra** que está na carga (AM#) — tela própria, sem dinheiro: registra a localização e uma observação do que aconteceu na porta
 - **Conferir a folha impressa** (botão **Folha** no header): escaneia o QR do romaneio e o app diz se aquela impressão ainda é a versão atual da carga
 - **Cobrar títulos em rota** (sub-aba **Cobranças**, exige `Pode_Cobrar_Titulo_Rota`): cobrar na rua parcelas em aberto que o escritório pendurou na carga, ou buscar um cliente e cobrar um título na hora
   > Na prática a equipe cobra pela tela **Rota → Entregas** (seção "Cobranças a fazer"), que é onde o roteiro do dia é trabalhado. Aqui é a mesma função, para quem usa esta tela.
@@ -103,6 +104,8 @@ Pontos importantes:
 - Combinações aceitas: só PIX, dinheiro + PIX, devolução + PIX, ou os três juntos — a conta precisa fechar como sempre
 - A linha do PIX confirmado não pode ser removida pelo motorista (estorno só pelo escritório, no painel do Asaas)
 - Se o motorista fechar o QR sem o cliente pagar, a cobrança é cancelada automaticamente
+- **Se o celular ficar sem sinal na hora de fechar**, o cancelamento pode não sair — nesse caso o QR fica vivo. Não tem problema: quando o Caixa fizer a conferência e o título for quitado (em dinheiro, chave PIX ou o que for), **o sistema mata esse QR sozinho**. O que o motorista NÃO deve fazer é gerar um segundo QR "para garantir" — aí ficam dois vivos e o cliente pode pagar duas vezes
+- **Se o QR aparecer como vencido**, a tela diz: *"Este QR Code venceu, mas o cliente ainda consegue pagar por ele."* — **não** é um QR morto. QR com vencimento continua valendo por meses no banco do cliente. Por isso, antes de tocar em **Gerar novo PIX**, a tela avisa que ficariam **dois QR Codes vivos** e o cliente poderia pagar em dobro: confirme com o escritório antes de gerar outro. (Até 09/2026 esta tela dizia "Este QR Code expirou" — era falso, e foi o que levou cliente a pagar duas vezes)
 - **Pedido ESPECIAL + PIX = vira nota fiscal**: antes de gerar o QR aparece um aviso vermelho — ao receber o PIX, o pedido especial é convertido automaticamente em pedido normal (com NF-e). Se o cliente não quiser nota, receber em dinheiro
 
 **Etapa 4 — GPS e Conclusão**
@@ -110,6 +113,29 @@ Pontos importantes:
 - O navegador pedirá permissão de localização
 - Clique em **Finalizar** para confirmar — a entrega é salva, o caixa é atualizado e a entrega some da lista de pendentes
 - **O que a finalização faz com o título:** ela **registra o que o motorista recebeu**, e só. Desde 08/2026 nem o pedido especial é quitado sozinho aqui — o título continua em aberto até alguém **conferir e dar a baixa no Caixa**. O dinheiro entra normalmente no "a prestar" do motorista — **menos** o que foi marcado no bloco "Quem vai cobrar este valor?", que não é recebimento e fica de fora do acerto do dia (ver Etapa 3)
+
+### Entregar uma amostra (AM#)
+
+As amostras que a expedição colocou na carga aparecem na mesma lista dos pedidos, com o botão
+laranja **Entregar Amostra** (amostra não tem dinheiro nem devolução, então não passa pelo checkout
+de pedido).
+
+1. Toque em **Entregar Amostra** no card
+2. Abre a tela da amostra com os produtos, para conferir antes de entregar
+3. **Localização da entrega**: o app já tenta pegar sozinho ao abrir
+   - Se o destinatário **ainda não tem ponto no cadastro**, a tela avisa — e essa localização vira o ponto dele
+     (no caso de **lead**, o ponto é salvo na hora; no caso de **cliente**, o app pergunta em seguida se você
+     está na porta e pede a foto da fachada, igual à entrega de pedido)
+   - Sem sinal ou sem permissão de GPS? **Dá para entregar assim mesmo** — a amostra nunca fica parada por
+     causa disso (nada é gravado no cadastro nesse caso)
+4. **Observação da entrega** (opcional): escreva o que aconteceu — "deixei com o gerente", "pediu para o
+   vendedor passar sexta". Esse recado aparece para o vendedor que pediu a amostra, na aba **Pedidos → Amostras**,
+   e na lista de entregas concluídas
+5. Toque em **Confirmar entrega** — a amostra sai da lista e vai para **Já Finalizadas** com o selo
+   **AMOSTRA ENTREGUE**
+
+> A observação da entrega **não é** a observação da solicitação (o que o vendedor pediu ao criar a amostra).
+> São dois campos diferentes e os dois continuam visíveis.
 
 ### Conferir a folha impressa (QR code)
 1. Antes de carregar o caminhão, toque no botão **Folha** (ícone de QR, no header verde da tela)
@@ -136,7 +162,8 @@ Pontos importantes:
 1. Clique na sub-aba **Já Finalizadas**
 2. A lista carrega do backend com as entregas concluídas
 3. Cada card mostra:
-   - Status físico: ENTREGUE (verde), PARCIAL (âmbar) ou DEVOLVIDO 100% (vermelho)
+   - Status físico: ENTREGUE (verde), PARCIAL (âmbar), DEVOLVIDO 100% (vermelho) ou **AMOSTRA ENTREGUE** (laranja)
+   - A **observação da entrega**, quando quem entregou escreveu alguma (linha "Na entrega: …")
    - Se houve divergência de pagamento apontada
    - Horário e data do check-in
 
@@ -152,16 +179,17 @@ Cada card mostra:
 - Endereço completo
 - Número do embarque (badge cinza)
 - Badge de prioridade (número âmbar, se definido)
-- Botão estrela para marcar/desmarcar prioridade
-- Botões **Maps** e **Fazer Check-in (Entregar)**
+- Botão estrela para marcar/desmarcar prioridade (amostra não tem prioridade)
+- Botões **Maps** e **Fazer Check-in (Entregar)** — nas amostras, o botão é **Entregar Amostra** (laranja)
 
 ### Já Finalizadas
 Lista de entregas **concluídas** pelo motorista. Carregada do backend ao clicar na aba.
 
 Cada card mostra:
-- Nome fantasia do cliente
+- Nome fantasia do cliente (ou o nome do estabelecimento, no caso de amostra de lead)
 - Número do embarque
-- Status físico da entrega (badge colorido)
+- Status físico da entrega (badge colorido) — amostra aparece como **AMOSTRA ENTREGUE**
+- A observação escrita na entrega, quando houver ("Na entrega: …")
 - Aviso de divergência de pagamento (se houver)
 - Horário e data da conclusão
 

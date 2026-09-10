@@ -1079,6 +1079,16 @@ const ListaPedidos = () => {
                                                         <span className="font-bold text-gray-900">{Number(item.quantidade)} un</span>
                                                     </div>
                                                 ))}
+                                                {/* Recado de quem ENTREGOU na rua (≠ observação do pedido de amostra) */}
+                                                {amostra.observacaoEntrega && (
+                                                    <div className="text-[12px] text-gray-700 bg-gray-50 border border-gray-200 rounded px-3 py-2">
+                                                        <span className="font-semibold text-gray-500">Observação da entrega: </span>
+                                                        {amostra.observacaoEntrega}
+                                                        {amostra.entregueEm && (
+                                                            <span className="text-gray-400"> · {new Date(amostra.entregueEm).toLocaleDateString('pt-BR')}</span>
+                                                        )}
+                                                    </div>
+                                                )}
                                                 <div className="flex items-center gap-2 pt-2">
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); navigate(`/pedidos/imprimir/${amostra.id}?tipo=amostra`); }}

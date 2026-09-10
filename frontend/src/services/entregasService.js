@@ -30,8 +30,10 @@ const entregasService = {
         const response = await api.patch(`/entregas/${id}/editar`, dados);
         return response.data;
     },
-    concluirAmostra: async (id) => {
-        const response = await api.post(`/entregas/amostra/${id}/concluir`);
+    // dados: { gpsEntrega, observacaoEntrega } — os dois opcionais (entrega de amostra
+    // nunca trava por falta de sinal). Resposta traz { gps, leadPontoDefinido }.
+    concluirAmostra: async (id, dados = {}) => {
+        const response = await api.post(`/entregas/amostra/${id}/concluir`, dados);
         return response.data;
     },
     definirPrioridade: async (id, prioridade) => {
