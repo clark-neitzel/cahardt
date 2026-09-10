@@ -17,10 +17,11 @@ Painel de ajuste manual de estoque. Usado para registrar entradas (compras, devo
 - Ver todos os produtos em cards (com busca e filtro por categoria comercial)
 - Ver "Lançados hoje" em cada card: saldo líquido do dia (+entrada / -saída)
 - Escolher um produto clicando em "Escolher" no card
+- **(09/2026)** Cada card mostra o **código do produto** (etiqueta verde-escura) e a **embalagem/peso** (etiqueta verde-clara, ex.: `C/50 · 30GR`, `C/10 · 170GR`) **antes do nome**, e o nome deixou de ser cortado. Serve para não lançar no produto errado — existem 11 "COXINHA FRANGO" no catálogo. **Quem identifica é o código**; a embalagem ajuda a conferir e pode se repetir entre produtos diferentes
 - **(09/2026)** Produto com **"Qtd. por caixa"** preenchida no cadastro: o card de escolher o produto mostra **"· cx de N"** ao lado do disponível (de relance dá para saber quantas caixas o saldo representa). É **só informação na tela** — entrada e saída continuam lançadas do mesmo jeito, em pacotes/unidades
 - Ver a posição atual do produto selecionado (total, reservado, disponível, mínimo)
 - Registrar entrada de estoque
-- Registrar saída de estoque
+- Registrar saída de estoque — **(09/2026) a saída exige o motivo escrito** (mínimo 3 letras); a entrada continua com observação opcional
 - Editar o estoque mínimo do produto (admin)
 - Ir para o histórico de movimentações
 
@@ -39,11 +40,49 @@ No **mobile**, a lista de cards aparece primeiro. Ao clicar em "Escolher", a lis
 ### Registrar uma entrada ou saída
 1. Use a busca ou clique em uma categoria para filtrar os produtos
 2. Clique em **Escolher** no card do produto desejado
-3. O painel à direita (ou abaixo, no mobile) mostra o produto com o estoque atual
+3. O painel à direita (ou abaixo, no mobile) mostra o produto com o estoque atual.
+   **Confira o código e a embalagem nas etiquetas do topo** antes de lançar — é a última conferência
 4. Informe a quantidade
-5. Adicione uma observação (opcional)
+5. Escreva a observação (o motivo):
+   - **Saída: obrigatório** — mínimo 3 letras. Sem isso o sistema recusa com a mensagem *"Informe o motivo da saída (mínimo 3 caracteres)."* e nada é lançado
+   - **Entrada: opcional** — continua como sempre foi
 6. Clique em **+ Entrada** ou **- Saída**
 7. O estoque é atualizado imediatamente; o card na lista reflete o novo saldo
+
+### Produtos de nome parecido — confira o código e a embalagem (09/2026)
+O catálogo tem **11 produtos com "COXINHA FRANGO" no nome**, sendo três a mesma mini coxinha em
+embalagens diferentes. Lançar no produto errado é fácil — e o erro só aparece depois, no saldo:
+
+| Código | Produto | Embalagem |
+|--------|---------|-----------|
+| `5569` | G-MINI COXINHA FRANGO 500GR | 500GR |
+| `H22MI4` | H22 - MINI COXINHA FRANGO 2KG | 2KG |
+| `3081` | 4-MINI COXINHA FRANGO C/50 30GR | C/50 · 30GR |
+
+Por isso, tanto no card da lista quanto no cabeçalho do produto escolhido aparecem, **acima do nome**:
+- **etiqueta verde-escura = o código do produto.** É ele que **identifica** o produto sem ambiguidade
+  (campo `codigo` do cadastro; produto sem código aparece como "sem código").
+- **etiqueta verde-clara = a embalagem/peso**, lida do próprio nome (`C/50`, `30GR`, `2KG`, `500ML`…).
+  Ela **ajuda a conferir**, mas **não identifica sozinha**. Produto cujo nome não traz peso nem
+  quantidade simplesmente não ganha essa etiqueta.
+
+> **A embalagem se repete — o código não.** Entre os "COXINHA FRANGO", `C/20 · 130GR` sai igual para
+> três produtos (códigos `1`, `3059` e `3051`), `C/10 · 170GR` para dois (`5151` e `5182`) e
+> `C/30 · 60GR` para dois (`5023` e `4826`). **Na dúvida, o código é que manda.**
+
+O nome do produto **não é mais cortado** no card — antes o final do nome (justo onde fica "500GR" /
+"2KG") ficava escondido nas reticências. Hoje ele aparece em até três linhas.
+
+### Por que a saída pede o motivo (09/2026)
+Dois produtos apareceram com estoque negativo por causa de uma saída manual de 20 unidades lançada
+**sem nenhuma observação** — depois ninguém conseguiu explicar de onde veio. Agora toda saída manual
+nasce com o motivo escrito junto, e ele fica no histórico da movimentação. Escreva algo que a pessoa
+que ler daqui a três meses entenda ("Perda — caiu na câmara fria", "Amostra para o cliente X",
+"Acerto de contagem do inventário"), não só "ajuste".
+
+A exigência vale para a **saída manual feita nesta tela**. Saídas automáticas do sistema (faturamento
+de pedido, estorno de compra, produção do PCP, correções administrativas) já gravam o motivo sozinhas
+e não mudaram.
 
 ### Estoque negativo (comportamento esperado)
 - A **saída pode deixar o estoque negativo** — não existe trava em zero
@@ -94,4 +133,5 @@ O admin configura as regras em Configurações. Cada regra define:
 |---------|-------|
 | `frontend/src/pages/Estoque/PainelEstoque.jsx` | Painel de ajuste |
 | `frontend/src/services/estoqueService.js` | Chamadas de API |
-| `backend/src/routes/estoque.js` | Rotas do backend |
+| `backend/routes/estoqueRoutes.js` | Rota `POST /api/estoque/ajuste` (é aqui que a saída sem motivo é recusada) |
+| `backend/services/estoqueService.js` | Grava a movimentação e recalcula o saldo |

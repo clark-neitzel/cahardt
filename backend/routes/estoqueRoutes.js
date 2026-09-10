@@ -33,11 +33,29 @@ router.post('/ajuste', async (req, res) => {
         if (!produtoId || !tipo || !quantidade) {
             return res.status(400).json({ error: 'produtoId, tipo e quantidade são obrigatórios.' });
         }
+        // Tipo errado no corpo (número, objeto, array) não pode chegar ao Prisma: o erro dele
+        // vem com o caminho e o trecho do arquivo do servidor dentro da mensagem.
+        if (typeof produtoId !== 'string' || !produtoId.trim()) {
+            return res.status(400).json({ error: 'produtoId inválido.' });
+        }
         if (!['ENTRADA', 'SAIDA'].includes(tipo)) {
             return res.status(400).json({ error: 'tipo deve ser ENTRADA ou SAIDA.' });
         }
-        if (parseFloat(quantidade) <= 0) {
+        // parseFloat de objeto/array/"abc" vira NaN, e NaN <= 0 é false — passava direto.
+        const qtdNum = (typeof quantidade === 'number' || typeof quantidade === 'string')
+            ? parseFloat(quantidade)
+            : NaN;
+        if (!Number.isFinite(qtdNum) || qtdNum <= 0) {
             return res.status(400).json({ error: 'quantidade deve ser maior que zero.' });
+        }
+        // Observação, quando vier, tem que ser texto — inclusive na ENTRADA, onde é opcional.
+        if (observacao !== undefined && observacao !== null && typeof observacao !== 'string') {
+            return res.status(400).json({ error: 'A observação deve ser um texto.' });
+        }
+        // Saída manual SEMPRE precisa de motivo — saída sem rastro já deixou produto negativo
+        // sem ninguém conseguir explicar depois. ENTRADA continua sem exigir observação.
+        if (tipo === 'SAIDA' && String(observacao || '').trim().length < 3) {
+            return res.status(400).json({ error: 'Informe o motivo da saída (mínimo 3 caracteres).' });
         }
 
         // Verifica permissão de estoque
@@ -56,15 +74,20 @@ router.post('/ajuste', async (req, res) => {
             produtoId,
             vendedorId,
             tipo,
-            quantidade: parseFloat(quantidade),
+            quantidade: qtdNum,
             motivo: 'AJUSTE_MANUAL',
             observacao
         });
 
         return res.json(resultado);
     } catch (err) {
-        console.error('[Estoque] Erro ajuste manual:', err.message);
-        return res.status(500).json({ error: err.message });
+        console.error('[Estoque] Erro ajuste manual:', err);
+        // Erro do Prisma traz caminho e trecho do arquivo do servidor na mensagem — nunca
+        // devolver isso ao cliente. Erro de negócio ("Produto não encontrado") continua saindo.
+        const ehErroInterno = typeof err?.name === 'string' && err.name.startsWith('Prisma');
+        return res.status(500).json({
+            error: ehErroInterno ? 'Não foi possível registrar o ajuste de estoque.' : err.message
+        });
     }
 });
 

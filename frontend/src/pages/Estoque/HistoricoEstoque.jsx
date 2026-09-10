@@ -33,7 +33,10 @@ const MovimentacaoCard = ({ item, compact }) => (
         }
         <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-                <p className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-900 truncate`}>{item.produto?.nome || '—'}</p>
+                {/* Nada de `truncate`: cortava o nome justo no fim, que é onde fica a
+                    embalagem ("…C/10 170…"). Duas linhas cabem o nome inteiro dos salgados
+                    sem esticar a lista. Mesmo motivo do card do Ajuste de Estoque. */}
+                <p className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-900 min-w-0 line-clamp-2 break-words`}>{item.produto?.nome || '—'}</p>
                 <span className={`${compact ? 'text-xs' : 'text-sm'} font-bold shrink-0 ${item.tipo === 'ENTRADA' ? 'text-green-600' : 'text-red-600'}`}>
                     {item.tipo === 'ENTRADA' ? '+' : '-'}{Number(item.quantidade).toFixed(0)}
                 </span>
@@ -43,14 +46,14 @@ const MovimentacaoCard = ({ item, compact }) => (
                 {item.vendedor && <span className="text-[11px] text-gray-400">· {item.vendedor.nome}</span>}
                 <span className="text-[11px] text-gray-400">· {formatDate(item.createdAt)}</span>
             </div>
-            <div className="flex items-center gap-3 mt-0.5">
-                <span className="text-[11px] text-gray-400">
+            {/* Selo de sincronização com o Conta Azul removido (09/2026): desde 23/07 o CA é
+                somente leitura e NENHUM movimento sincroniza — o backend grava sincCA:false em
+                todos. O selo "CA pendente" aparecia em 100% das linhas e fazia o usuário achar
+                que o lançamento não tinha sido registrado. Os dois ramos eram código morto. */}
+            <div className="mt-0.5">
+                <span className="text-[11px] text-gray-500">
                     {Number(item.estoqueAntes).toFixed(0)} → <span className="font-medium text-gray-700">{Number(item.estoqueDepois).toFixed(0)}</span>
                 </span>
-                {item.sincCA
-                    ? <span className="text-[10px] bg-green-100 text-green-700 rounded-full px-1.5 py-0.5 font-medium">CA ✓</span>
-                    : <span className="text-[10px] bg-amber-100 text-amber-700 rounded-full px-1.5 py-0.5 font-medium">CA pendente</span>
-                }
             </div>
             {item.observacao && <p className="text-[11px] text-gray-500 mt-0.5 italic">{item.observacao}</p>}
             {item.erroCA && <p className="text-[11px] text-red-500 mt-0.5">Erro CA: {item.erroCA}</p>}
@@ -159,11 +162,18 @@ export default function HistoricoEstoque() {
     return (
         <div className="w-full px-4 py-6">
             {/* Header */}
-            <div className="flex items-center gap-3 mb-5">
-                <button onClick={() => navigate('/estoque')} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100">
+            {/* Cabeçalho: no mobile o seletor de produto desce para uma linha própria — antes
+                tudo ficava na mesma linha e o botão "Filtros" saía da tela (a 375px terminava
+                em 431px, fora da viewport, e não dava para tocar nele no celular). */}
+            <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-5">
+                <button
+                    onClick={() => navigate('/estoque')}
+                    aria-label="Voltar para o Ajuste de Estoque"
+                    className="shrink-0 flex items-center justify-center min-h-[44px] min-w-[44px] rounded-lg text-gray-500 hover:text-gray-700 hover:bg-gray-100"
+                >
                     <ChevronLeft className="h-5 w-5" />
                 </button>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                     <h1 className="text-xl font-bold text-gray-900">Histórico de Estoque</h1>
                     <p className="text-xs text-gray-500">
                         {total} movimentações
@@ -179,7 +189,7 @@ export default function HistoricoEstoque() {
                         )}
                     </p>
                 </div>
-                <div className="flex-1 max-w-xs">
+                <div className="w-full order-last md:order-none md:w-auto md:flex-1 md:max-w-xs">
                     <SelectBusca value={produtoId} onChange={e => setProdutoId(e.target.value)} className="w-full">
                         <option value="">Todos os produtos</option>
                         {produtos.map(p => (
@@ -189,7 +199,7 @@ export default function HistoricoEstoque() {
                 </div>
                 <button
                     onClick={() => setShowFiltros(!showFiltros)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${temFiltros ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    className={`shrink-0 flex items-center gap-1.5 px-3 min-h-[44px] md:min-h-0 md:py-1.5 rounded-full text-sm font-medium transition-colors ${temFiltros ? 'bg-mint text-primaryDark' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
                     <Filter className="h-3.5 w-3.5" />
                     Filtros{temFiltros ? ` (${numFiltrosAtivos})` : ''}

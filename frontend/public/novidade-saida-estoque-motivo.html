@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Saída de estoque com motivo — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem imagem, de propósito: preview compacto) -->
+<meta property="og:title" content="📦 Novidade no Hardt App: saída de estoque agora pede o motivo">
+<meta property="og:description" content="Toda saída manual de estoque passa a exigir o motivo escrito. O selo amarelo 'CA pendente' saiu do histórico. E o código e a embalagem do produto ficaram em destaque na hora de lançar.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 34px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 15px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 14px 16px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 3px; }
+  .app-input.erro { border-color: #fca5a5; background: #fef4f4; }
+  .app-input .vazio { color: #b6bdb9; }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 800;
+    padding: 12px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.vermelho { background: #ef4444; }
+  .botoes2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* etiquetas de código e embalagem — o destaque novo */
+  .tag-cod {
+    display: inline-block;
+    background: var(--house);
+    color: #fff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-weight: 800;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+  .tag-emb {
+    display: inline-block;
+    background: var(--mint);
+    color: var(--primary-dark);
+    font-weight: 800;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 6px;
+  }
+  .prod-nome { font-weight: 800; font-size: 13px; line-height: 1.25; margin-top: 6px; }
+  .prod-meta { font-size: 11.5px; color: #6b756f; margin-top: 3px; }
+
+  /* aviso vermelho da tela */
+  .app-aviso {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    background: #fef4f4;
+    border: 1px solid #fbcfcf;
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-size: 12px;
+    color: #b03434;
+    margin-bottom: 10px;
+  }
+  .app-aviso b { color: #8f2626; }
+  .obrig { color: #dc2626; font-weight: 800; }
+
+  /* toast de erro */
+  .toast {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-left: 4px solid #ef4444;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 12.5px;
+    box-shadow: 0 6px 18px rgba(30,57,50,.12);
+    margin-bottom: 10px;
+  }
+
+  /* linha do histórico */
+  .linha-hist {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    padding: 11px 12px;
+    margin-bottom: 8px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .linha-hist .seta { font-size: 15px; line-height: 1; }
+  .linha-hist .corpo { flex: 1; min-width: 0; }
+  .linha-hist .nome { font-weight: 700; font-size: 12.5px; }
+  .linha-hist .sub { font-size: 11px; color: #6b756f; margin-top: 2px; }
+  .linha-hist .obs { font-size: 11px; color: #6b756f; font-style: italic; margin-top: 3px; }
+  .linha-hist .qtd { font-weight: 800; font-size: 13px; white-space: nowrap; }
+  .qtd.mais { color: var(--primary-dark); }
+  .qtd.menos { color: #dc2626; }
+  .selo-velho {
+    display: inline-block;
+    background: #fef3c7;
+    color: #92400e;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 999px;
+    text-decoration: line-through;
+    opacity: .75;
+  }
+
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+
+  /* tabela de produtos parecidos */
+  .tab-prod { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 4px; }
+  .tab-prod th {
+    text-align: left;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: #8a938e;
+    padding: 6px 8px;
+    border-bottom: 1px solid #e5e3dc;
+  }
+  .tab-prod td { padding: 8px; border-bottom: 1px solid #f0efe9; vertical-align: middle; }
+  .tab-prod tr:last-child td { border-bottom: none; }
+  .tab-wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<!-- ══════════ HERO ══════════ -->
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Saída de estoque<br>agora pede o motivo</h1>
+    <p>Toda saída manual passa a exigir uma explicação escrita — e ela fica gravada no histórico. Junto vieram duas correções no Ajuste de Estoque: o selo amarelo "CA pendente" saiu de vez, e o código e a embalagem do produto ficaram em destaque na hora de lançar.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- mock flutuando: o formulário pedindo o motivo -->
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">📦</span>
+      <div>
+        <small>Produção / Estoque · Ajuste</small>
+        <strong>Lançando uma saída…</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="app-input erro" style="margin-bottom:10px;">
+        <small>Motivo <span class="obrig">* obrigatório para dar Saída</span></small>
+        <span class="vazio">Ex.: perda, quebra, uso interno, ajuste de inventário</span>
+      </div>
+      <div class="app-aviso">
+        <span>⚠️</span>
+        <span><b>Para dar Saída, escreva o motivo acima.</b> A entrada pode ser lançada sem motivo.</span>
+      </div>
+      <div class="botoes2">
+        <span class="app-btn vermelho">− Saída</span>
+        <span class="app-btn">+ Entrada</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ O QUE MUDOU ══════════ -->
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✍️</span>
+      <strong>Saída manual só passa com o motivo escrito</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Em <b>Produção / Estoque → Ajuste de Estoque</b>, o campo que antes se chamava "Observação (opcional)" virou <b>"Motivo"</b> e ganhou um aviso vermelho: <b>* obrigatório para dar Saída</b>.</li>
+        <li>Precisa de <b>pelo menos 3 letras</b>. Só espaço em branco não vale.</li>
+        <li>Se clicar em <b>Saída</b> sem preencher, o app avisa na hora — <i>"Para dar SAÍDA é obrigatório escrever o motivo (mínimo 3 letras). Ex.: perda, quebra, uso interno."</i> — e leva o cursor direto para o campo. <b>Nada é lançado</b>.</li>
+        <li><b>A entrada não mudou:</b> continua podendo ser lançada sem escrever nada.</li>
+        <li>A regra vale nos <b>dois lados</b> — na tela e no servidor. Não tem como escapar dela por engano.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🕵️</span>
+      <strong>Por que essa exigência apareceu</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Dois produtos ficaram com <b>estoque negativo</b> por causa de saídas manuais lançadas <b>sem nenhuma explicação</b>. Semanas depois, ninguém conseguiu dizer de onde tinham vindo: se foi perda, amostra, acerto de contagem ou lançamento errado.</p>
+      <p>Com o motivo obrigatório, cada saída manual nasce com a explicação junto — e ela aparece no <b>Histórico de Estoque</b> para sempre.</p>
+      <p><b>Escreva pensando em quem vai ler daqui a três meses:</b> "Perda — caiu na câmara fria", "Amostra para o cliente Zé do Mercado", "Acerto da contagem do inventário". Só "ajuste" não ajuda ninguém.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🚫</span>
+      <strong>O selo amarelo "CA pendente" saiu do histórico</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Cada linha do <b>Histórico de Estoque</b> mostrava um selo amarelo <b>"CA pendente"</b>, que dizia se a movimentação tinha sido enviada ao Conta Azul.</li>
+        <li>Só que desde <b>julho de 2026</b> o Conta Azul é somente leitura e <b>nada mais é enviado para lá</b>. Resultado: o selo amarelo aparecia em <b>100% das linhas</b>, o tempo todo.</li>
+        <li>Isso enganava: dava a impressão de que o lançamento <b>não tinha sido registrado</b>, quando na verdade estava tudo certo. O selo foi removido.</li>
+        <li><b>Como saber se o seu lançamento entrou:</b> ele aparece na lista do histórico, com o saldo mudando na linha <b>"antes → depois"</b>. Se está lá, está registrado.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🏷️</span>
+      <strong>Código e embalagem em destaque: chega de lançar no produto errado</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>O catálogo tem <b>11 produtos com "COXINHA FRANGO" no nome</b> — e três deles são a mesma mini coxinha, só que em embalagens diferentes:</p>
+      <div class="tab-wrap">
+        <table class="tab-prod">
+          <tr><th>Código (identifica)</th><th>Produto</th><th>Embalagem (confere)</th></tr>
+          <tr><td><span class="tag-cod">5569</span></td><td>G-MINI COXINHA FRANGO 500GR</td><td><span class="tag-emb">500GR</span></td></tr>
+          <tr><td><span class="tag-cod">H22MI4</span></td><td>H22 - MINI COXINHA FRANGO 2KG</td><td><span class="tag-emb">2KG</span></td></tr>
+          <tr><td><span class="tag-cod">3081</span></td><td>4-MINI COXINHA FRANGO C/50 30GR</td><td><span class="tag-emb">C/50 · 30GR</span></td></tr>
+        </table>
+      </div>
+      <p style="margin-top:12px;">Por isso, no card da lista <b>e</b> no cabeçalho do produto escolhido, agora aparecem <b>acima do nome</b>:</p>
+      <ul>
+        <li>uma <b>etiqueta verde-escura</b> com o <b>código do produto</b> — é ele que <b>identifica</b> o produto sem ambiguidade;</li>
+        <li>uma <b>etiqueta verde-clara</b> com a <b>embalagem/peso</b> (<b>C/50 · 30GR</b>, <b>C/10 · 170GR</b>, <b>500GR</b>…) — ela <b>ajuda a conferir</b>, mas <b>não resolve sozinha</b>.</li>
+      </ul>
+      <p><b>Atenção: a embalagem se repete.</b> Entre os COXINHA FRANGO, <b>C/20 · 130GR</b> sai igual para três produtos (códigos <b>1</b>, <b>3059</b> e <b>3051</b>) e <b>C/10 · 170GR</b> para dois (<b>5151</b> e <b>5182</b>). <b>Na dúvida, olhe o código.</b></p>
+      <p>E o <b>nome não é mais cortado</b> no card — antes o final, justo onde fica o "500GR" ou o "2KG", sumia nas reticências. Agora o nome aparece inteiro.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✅</span>
+      <strong>O que NÃO muda</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li><b>A entrada de estoque</b> continua igual: quantidade, botão verde, sem precisar escrever nada.</li>
+        <li><b>As saídas automáticas do sistema</b> (faturamento de pedido, devolução, produção do PCP, inventário) já gravavam o motivo sozinhas e <b>não mudaram</b>.</li>
+        <li><b>O estoque pode continuar ficando negativo</b> — isso é de propósito e não mudou. A diferença é que agora dá para saber o porquê.</li>
+        <li><b>Nenhum lançamento antigo foi alterado.</b></li>
+        <li><b>As permissões são as mesmas:</b> quem podia dar saída continua podendo; quem não podia, continua não podendo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ══════════ AS TELAS DO APP ══════════ -->
+  <div class="sec-label">As telas do app, sem mistério</div>
+
+  <!-- TELA 1: escolher o produto -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Escolher o produto — código e embalagem em destaque</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div><span class="tag-cod">5151</span> <span class="tag-emb">C/10 · 170GR</span><span class="pin">1</span></div>
+          <div class="prod-nome">1-GG-COXINHA FRANGO C/10 170GR<span class="pin">2</span></div>
+          <div class="prod-meta">Disponível &nbsp;<b style="color:var(--primary-dark);">500 PT</b></div>
+          <div style="margin-top:10px;"><span class="app-btn" style="width:100%;">Escolher</span><span class="pin">3</span></div>
+        </div>
+      </div>
+      <div class="app-card" style="margin-bottom:0;">
+        <div class="app-card-body">
+          <div><span class="tag-cod">3081</span> <span class="tag-emb">C/50 · 30GR</span></div>
+          <div class="prod-nome">4-MINI COXINHA FRANGO C/50 30GR</div>
+          <div class="prod-meta">Disponível &nbsp;<b style="color:var(--primary-dark);">200 PT</b></div>
+          <div style="margin-top:10px;"><span class="app-btn" style="width:100%;">Escolher</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>As duas etiquetas novas:</b> a escura é o <b>código</b> — é ele que identifica o produto sem ambiguidade. A clara é a <b>embalagem/peso</b>, que ajuda a conferir, mas <b>pode ser igual em dois produtos diferentes</b>. Na dúvida, vale o código.</span></div>
+      <div><span class="pin">2</span><span><b>O nome aparece inteiro</b> (até três linhas). Antes o card cortava em duas e escondia justo o final, que é onde fica o peso.</span></div>
+      <div><span class="pin">3</span><span>O botão <b>Escolher</b> ficou maior, mais confortável de tocar no celular na câmara fria.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 2: formulário de saída -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 2 · Lançar a saída — o motivo é obrigatório</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-body">
+          <div><span class="tag-cod">5151</span> <span class="tag-emb">C/10 · 170GR</span><span class="pin">1</span></div>
+          <div class="prod-nome">1-GG-COXINHA FRANGO C/10 170GR</div>
+          <div class="prod-meta">Produto Acabado</div>
+        </div>
+      </div>
+      <div class="app-input"><small>Quantidade</small><b style="font-size:18px;">3</b></div>
+      <div class="app-input erro">
+        <small>Motivo <span class="obrig">* obrigatório para dar Saída</span><span class="pin">2</span></small>
+        <span class="vazio">Ex.: perda, quebra, uso interno, ajuste de inventário</span>
+      </div>
+      <div class="app-aviso">
+        <span>⚠️</span>
+        <span><b>Para dar Saída, escreva o motivo acima.</b> A entrada pode ser lançada sem motivo.<span class="pin">3</span></span>
+      </div>
+      <div class="botoes2">
+        <span class="app-btn vermelho">− Saída</span>
+        <span class="app-btn">+ Entrada<span class="pin">4</span></span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Última conferência antes de lançar:</b> o código e a embalagem aparecem também aqui, acima do nome do produto escolhido.</span></div>
+      <div><span class="pin">2</span><span><b>O campo mudou de nome:</b> era "Observação (opcional)", virou <b>"Motivo"</b> com o aviso vermelho. Enquanto estiver vazio (ou com menos de 3 letras) a borda fica vermelha.</span></div>
+      <div><span class="pin">3</span><span><b>O aviso explica antes de você tentar</b>, para ninguém ficar olhando para a tela sem entender por que não passou.</span></div>
+      <div><span class="pin">4</span><span><b>A Entrada continua livre:</b> pode lançar sem escrever nada, exatamente como sempre foi.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 3: o aviso quando falta o motivo -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 3 · Clicou em "Saída" sem o motivo? Isto aparece</div>
+    <div class="tela-corpo">
+      <div class="toast">
+        <span style="color:#ef4444;font-size:16px;line-height:1;">✕</span>
+        <span>Para dar SAÍDA é obrigatório escrever o motivo (mínimo 3 letras). Ex.: perda, quebra, uso interno.<span class="pin">1</span></span>
+      </div>
+      <div class="app-input erro" style="margin-bottom:0;">
+        <small>Motivo <span class="obrig">* obrigatório para dar Saída</span></small>
+        <span style="color:var(--ink);">Perda — caiu na câmara fria<span class="pin">2</span></span>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>O recado é claro e traz exemplos.</b> O estoque <b>não muda</b> — nada foi lançado.</span></div>
+      <div><span class="pin">2</span><span><b>O cursor pula sozinho para o campo do motivo.</b> Escreva a explicação e clique em Saída de novo — aí sim vai.</span></div>
+    </div>
+  </div>
+
+  <!-- TELA 4: histórico sem o selo -->
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 4 · Histórico de Estoque — sem o selo "CA pendente"</div>
+    <div class="tela-corpo">
+      <div class="linha-hist">
+        <span class="seta">🔴</span>
+        <div class="corpo">
+          <div class="nome">1-GG-COXINHA FRANGO C/10 170GR</div>
+          <div class="sub">Ajuste Manual · Josiane · 08/09/26, 18:32</div>
+          <div class="sub">500 → <b style="color:#374151;">497</b><span class="pin">1</span></div>
+          <div class="obs">Perda — caiu na câmara fria<span class="pin">2</span></div>
+        </div>
+        <span class="qtd menos">-3</span>
+      </div>
+      <div class="linha-hist" style="margin-bottom:0;">
+        <span class="seta">🟢</span>
+        <div class="corpo">
+          <div class="nome">4-MINI COXINHA FRANGO C/50 30GR</div>
+          <div class="sub">Ajuste Manual · Josiane · 08/09/26, 18:29</div>
+          <div class="sub">200 → <b style="color:#374151;">201</b></div>
+        </div>
+        <span class="qtd mais">+1</span>
+      </div>
+      <p style="font-size:12px;color:#8a938e;margin:12px 0 0;">Saiu daqui: <span class="selo-velho">CA pendente</span><span class="pin">3</span></p>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>É esta linha que prova que entrou:</b> o saldo antes → depois. Se o lançamento está no histórico, ele está registrado.</span></div>
+      <div><span class="pin">2</span><span><b>O motivo que você escreveu fica aqui</b>, para sempre — é o que permite entender o saldo daqui a meses.</span></div>
+      <div><span class="pin">3</span><span><b>O selo amarelo "CA pendente" não existe mais.</b> Ele aparecia em toda linha e não queria dizer nada — só assustava.</span></div>
+    </div>
+  </div>
+
+  <!-- ══════════ COMO COMEÇAR ══════════ -->
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo">
+      <span class="passo-n">1</span>
+      <div><b>Atualize o app:</b> toque no ícone de atualizar ↻ (ou feche e abra o app).</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">2</span>
+      <div>Abra <b>Produção / Estoque → Ajuste de Estoque</b> e escolha o produto <b>conferindo o código e a embalagem</b> nas etiquetas.</div>
+    </div>
+    <div class="passo">
+      <span class="passo-n">3</span>
+      <div>Para dar <b>Saída</b>, escreva o motivo com pelo menos 3 letras. Combine com a equipe o padrão de escrita — <b>perda</b>, <b>quebra</b>, <b>amostra</b>, <b>uso interno</b>, <b>acerto de contagem</b>. 📦</div>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvidas? Pergunte ao <strong>Clippy</strong> dentro do app — ele já conhece a novidade.<br>— Hardt Salgados</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

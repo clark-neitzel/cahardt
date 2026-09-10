@@ -6,6 +6,47 @@ import estoqueService from '../../services/estoqueService';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAtualizaAoVoltar } from '../../hooks/useAtualizaAoVoltar';
 
+// ─── Embalagem / peso do produto ──────────────────────────────────────────────
+// O catálogo tem 11 produtos com "COXINHA FRANGO" no nome. A embalagem ("C/50 30GR",
+// "500GR", "2KG") ajuda a CONFERIR, mas NÃO identifica sozinha — em produção
+// "C/20 · 130GR" sai igual para 3 produtos (códigos 1, 3059 e 3051) e "C/10 · 170GR"
+// para 2 (5151 e 5182). Quem identifica é o CÓDIGO; a etiqueta é apoio visual.
+// Não existe campo de embalagem no produto: `unidade` é texto livre (quase tudo
+// "PT"/"UN") e `quantidadePorCaixa` é nulo em quase todo o catálogo — por isso a
+// etiqueta é extraída do nome. Sem correspondência, devolve null (nada na tela).
+// Duas formas: "C/50" (quantidade por pacote) e número+unidade ("30GR", "1,5L", "2KG").
+// O grupo 1 é o caractere ANTERIOR ao número — existe só para recusar um número que
+// comece no meio de outro ("6X1,5L" precisa virar "1,5L", nunca "5L") e é descartado.
+// NÃO usar lookbehind `(?<!…)`: em literal de regex é ERRO DE SINTAXE no Safari
+// anterior ao iOS 16.4 e derruba o módulo inteiro (tela branca no iPad antigo).
+// O `(?!\/)` no fim recusa vazão/proporção ("2 KG/H" não é embalagem). Lookahead
+// é seguro em qualquer navegador; só o lookBEHIND é proibido.
+const RE_EMBALAGEM = /\bC\/\s?\d+\b|(^|[^0-9,])(\d+(?:[.,]\d+)?\s?(?:KG|GRS|GR|G|ML|LT|L|UNID|UN))\b(?!\/)/gi;
+
+function embalagemDoNome(nome) {
+    const texto = String(nome || '');
+    if (!texto) return null;
+    const re = new RegExp(RE_EMBALAGEM.source, 'gi');   // regex própria: `lastIndex` não vaza entre chamadas
+    const vistos = new Set();
+    const partes = [];
+    let achado;
+    while ((achado = re.exec(texto)) !== null) {
+        const bruto = achado[2] !== undefined ? achado[2] : achado[0];  // grupo 2 = etiqueta sem o caractere anterior
+        const t = bruto.toUpperCase().replace(/\s+/g, '');
+        if (!vistos.has(t)) {
+            vistos.add(t);
+            partes.push(t);
+        }
+        if (partes.length === 2) break;   // "C/50 · 30GR" já basta para conferir
+    }
+    return partes.length > 0 ? partes.join(' · ') : null;
+}
+
+// Motivo obrigatório na SAÍDA — mesma regra do backend (POST /estoque/ajuste
+// devolve 400 se a observação tiver menos de 3 caracteres depois do trim).
+const MOTIVO_MINIMO = 3;
+const motivoValido = (texto) => String(texto || '').trim().length >= MOTIVO_MINIMO;
+
 // ─── Card de produto ──────────────────────────────────────────────────────────
 
 function ProdutoCard({ produto, isSelected, onEscolher, lancamentoHoje }) {
@@ -13,6 +54,7 @@ function ProdutoCard({ produto, isSelected, onEscolher, lancamentoHoje }) {
     const saidas = lancamentoHoje?.saidas ?? 0;
     const abaixoMin = (produto.estoqueMinimo || 0) > 0 &&
         parseFloat(produto.estoqueDisponivel || 0) < parseFloat(produto.estoqueMinimo || 0);
+    const embalagem = embalagemDoNome(produto.nome);
 
     return (
         <div
@@ -25,10 +67,21 @@ function ProdutoCard({ produto, isSelected, onEscolher, lancamentoHoje }) {
         >
             <div className="flex items-start justify-between gap-1">
                 <div className="min-w-0 flex-1">
-                    <span className="inline-block text-xs font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded mb-1">
-                        {produto.codigo || '—'}
-                    </span>
-                    <h3 className="font-bold text-gray-900 text-xs leading-tight line-clamp-2">{produto.nome}</h3>
+                    {/* Código (identifica) e embalagem (confere) acima do nome, para não
+                        lançar no produto errado. O nome agora vai até 3 linhas: com
+                        line-clamp-2 sumia justo o final — "500GR" / "2KG" — e sem limite
+                        nenhum um nome de 100 caracteres esticava o card vizinho do grid. */}
+                    <div className="flex flex-wrap items-center gap-1 mb-1">
+                        <span className="inline-block text-[11px] font-mono font-bold text-white bg-house px-1.5 py-0.5 rounded">
+                            {produto.codigo || 'sem código'}
+                        </span>
+                        {embalagem && (
+                            <span className="inline-block text-[11px] font-bold text-primaryDark bg-mint px-1.5 py-0.5 rounded">
+                                {embalagem}
+                            </span>
+                        )}
+                    </div>
+                    <h3 className="font-bold text-gray-900 text-xs leading-tight line-clamp-3 break-words">{produto.nome}</h3>
                 </div>
                 {abaixoMin && <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />}
             </div>
@@ -59,10 +112,10 @@ function ProdutoCard({ produto, isSelected, onEscolher, lancamentoHoje }) {
 
             <button
                 onClick={e => { e.stopPropagation(); onEscolher(produto); }}
-                className={`w-full flex items-center justify-center py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                className={`w-full flex items-center justify-center min-h-[44px] py-1.5 rounded-full text-xs font-semibold transition-colors ${
                     isSelected
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
+                        ? 'bg-primary text-white'
+                        : 'bg-mint text-primaryDark hover:bg-primary hover:text-white'
                 }`}
             >
                 {isSelected ? 'Selecionado' : 'Escolher'}
@@ -101,6 +154,7 @@ export default function PainelEstoque() {
     const [salvandoMinimo, setSalvandoMinimo] = useState(false);
 
     const formRef = useRef(null);
+    const obsRef = useRef(null);
     const isAdmin = user?.permissoes?.admin === true;
 
     // Carrega permissões
@@ -224,6 +278,12 @@ export default function PainelEstoque() {
         const qtd = parseFloat(quantidade);
         if (!qtd || qtd <= 0) return toast.error('Informe uma quantidade válida.');
         if (!podeFazer(tipo)) return toast.error('Você não tem permissão para esta operação.');
+        // Saída sem motivo já deixou produto negativo sem ninguém saber explicar depois.
+        // Mesma regra do backend (400 'Informe o motivo da saída (mínimo 3 caracteres).').
+        if (tipo === 'SAIDA' && !motivoValido(observacao)) {
+            obsRef.current?.focus();
+            return toast.error('Para dar SAÍDA é obrigatório escrever o motivo (mínimo 3 letras). Ex.: perda, quebra, uso interno.');
+        }
 
         setLoadingAjuste(true);
         try {
@@ -293,6 +353,12 @@ export default function PainelEstoque() {
 
     const podeEntrada = podeFazer('ENTRADA');
     const podeSaida = podeFazer('SAIDA');
+    const embalagemSelecionado = embalagemDoNome(produtoSelecionado?.nome);
+    const motivoOk = motivoValido(observacao);
+    // Quem só tem permissão de ADICIONAR nunca vai dar saída: para essa pessoa o motivo
+    // é sempre opcional e o campo NÃO pode aparecer pintado de erro numa entrada legítima.
+    // Rótulo, borda do campo e faixa de aviso usam esta mesma condição.
+    const exigeMotivo = podeSaida && !motivoOk;
     const estoqueMin = parseFloat(produtoSelecionado?.estoqueMinimo || 0);
     const estoqueDisp = parseFloat(produtoSelecionado?.estoqueDisponivel || 0);
     const abaixoMinimo = estoqueMin > 0 && estoqueDisp < estoqueMin;
@@ -307,7 +373,7 @@ export default function PainelEstoque() {
                 </div>
                 <button
                     onClick={() => navigate('/estoque/historico')}
-                    className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    className="flex items-center gap-1.5 px-3 min-h-[44px] rounded-full text-sm text-primary hover:text-primaryDark hover:bg-mint/50 font-medium"
                 >
                     <History className="h-4 w-4" />
                     Histórico
@@ -422,9 +488,21 @@ export default function PainelEstoque() {
                                 <div className={`border rounded-xl p-4 ${abaixoMinimo ? 'bg-amber-50 border-amber-300' : 'bg-blue-50 border-blue-200'}`}>
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="min-w-0">
-                                            <p className="font-semibold text-gray-900 leading-snug">{produtoSelecionado.nome}</p>
+                                            {/* Código + embalagem em destaque ANTES do nome: é a última
+                                                conferência antes de lançar entrada/saída. */}
+                                            <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                                <span className="inline-block text-xs font-mono font-bold text-white bg-house px-2 py-0.5 rounded-full">
+                                                    {produtoSelecionado.codigo || 'sem código'}
+                                                </span>
+                                                {embalagemSelecionado && (
+                                                    <span className="inline-block text-xs font-bold text-primaryDark bg-mint px-2 py-0.5 rounded-full">
+                                                        {embalagemSelecionado}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="font-semibold text-gray-900 leading-snug break-words">{produtoSelecionado.nome}</p>
                                             <p className="text-xs text-gray-500 mt-0.5">
-                                                {produtoSelecionado.codigo || '—'} · {produtoSelecionado.categoria || 'sem categoria'}
+                                                {produtoSelecionado.categoria || 'sem categoria'}
                                             </p>
                                         </div>
                                         <button
@@ -517,19 +595,40 @@ export default function PainelEstoque() {
                                     />
                                 </div>
 
-                                {/* Observação */}
+                                {/* Motivo — obrigatório para SAÍDA, opcional para ENTRADA */}
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                                        Observação <span className="text-gray-400 font-normal">(opcional)</span>
+                                        Motivo
+                                        {exigeMotivo ? (
+                                            <span className="text-red-600 font-semibold"> * obrigatório para dar Saída</span>
+                                        ) : (
+                                            <span className="text-gray-500 font-normal"> · opcional na entrada</span>
+                                        )}
                                     </label>
                                     <input
+                                        ref={obsRef}
                                         type="text"
                                         value={observacao}
                                         onChange={e => setObservacao(e.target.value)}
-                                        placeholder="Ex: ajuste de inventário, devolução..."
-                                        className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Ex.: perda, quebra, uso interno, ajuste de inventário"
+                                        className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 ${
+                                            exigeMotivo
+                                                ? 'border-red-300 bg-red-50/40 focus:ring-red-400 focus:border-red-400'
+                                                : 'border-gray-300 focus:ring-primary focus:border-primary'
+                                        }`}
                                     />
                                 </div>
+
+                                {/* Aviso visível: por que a Saída ainda não vai passar */}
+                                {exigeMotivo && (
+                                    <div className="flex items-start gap-2 text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl px-3 py-2.5">
+                                        <AlertCircle className="h-4 w-4 shrink-0 mt-px" />
+                                        <span>
+                                            <span className="font-semibold">Para dar Saída, escreva o motivo acima.</span>{' '}
+                                            A entrada pode ser lançada sem motivo.
+                                        </span>
+                                    </div>
+                                )}
 
                                 {/* Botões Saída / Entrada */}
                                 <div className="grid grid-cols-2 gap-3 pt-1">

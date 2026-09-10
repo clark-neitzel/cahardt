@@ -79,7 +79,17 @@ Registro completo de todas as movimentações de estoque (entradas e saídas), c
 | Responsável | Usuário que fez a movimentação |
 | Data | Data e hora do registro |
 | Antes → Depois | Estoque antes e depois da movimentação |
-| CA | Verde = sincronizado com CA; Âmbar = pendente |
+| Observação | O que a pessoa escreveu ao lançar (nas saídas manuais é obrigatório desde 09/2026) |
+
+### O selo "CA pendente" saiu da tela (09/2026)
+Cada linha mostrava um selo amarelo **"CA pendente"** (ou verde "CA ✓") dizendo se a movimentação
+tinha sido enviada ao Conta Azul. Desde 23/07/2026 o Conta Azul é **somente leitura** e nenhuma
+movimentação é mais enviada para lá — resultado: o selo amarelo aparecia em **100% das linhas**,
+para sempre. Isso fazia o usuário achar que o lançamento dele "não tinha registrado", quando na
+verdade estava registrado e correto. O selo foi removido; nada mais mudou na tela.
+
+**Como saber se o lançamento entrou:** ele aparece nesta lista, com a coluna Antes → Depois
+mostrando o saldo mudando. Se está aqui, está registrado.
 
 ---
 
