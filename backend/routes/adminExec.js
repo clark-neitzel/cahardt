@@ -194,6 +194,61 @@ router.get('/diag-conferencia-caixa', async (req, res) => {
     }
 });
 
+// GET /api/admin-exec/diag-entrega-amostra
+// Sonda de deploy + conferência da entrega de amostra (09/2026): as colunas novas
+// de `amostras` existem no banco de produção, e o que já foi gravado por elas.
+// Devolve 404 antes do deploy desta entrega e 200 depois. Só leitura.
+router.get('/diag-entrega-amostra', async (req, res) => {
+    try {
+        const colunas = await prisma.$queryRawUnsafe(`
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'amostras'
+              AND column_name IN ('gps_entrega','observacao_entrega','entregue_em')
+        `);
+        const nomes = colunas.map(c => c.column_name).sort();
+
+        const [entregues, comGps, comObs, comCarimbo] = await Promise.all([
+            prisma.amostra.count({ where: { status: 'ENTREGUE' } }),
+            prisma.amostra.count({ where: { gpsEntrega: { not: null } } }),
+            prisma.amostra.count({ where: { observacaoEntrega: { not: null } } }),
+            prisma.amostra.count({ where: { entregueEm: { not: null } } }),
+        ]);
+
+        const ultimas = await prisma.amostra.findMany({
+            where: { entregueEm: { not: null } },
+            orderBy: { entregueEm: 'desc' },
+            take: 5,
+            select: {
+                numero: true, entregueEm: true, gpsEntrega: true, observacaoEntrega: true,
+                cliente: { select: { NomeFantasia: true, Nome: true, Ponto_GPS: true } },
+                lead: { select: { nomeEstabelecimento: true, pontoGps: true } },
+            },
+        });
+
+        res.json({
+            ok: nomes.length === 3,
+            colunasNoBanco: nomes,
+            colunasEsperadas: ['entregue_em', 'gps_entrega', 'observacao_entrega'],
+            amostras: { entregues, comGpsDaEntrega: comGps, comObservacaoDaEntrega: comObs, comCarimboDeEntrega: comCarimbo },
+            ultimasEntregues: ultimas.map(a => ({
+                numero: a.numero,
+                destinatario: a.cliente?.NomeFantasia || a.cliente?.Nome || a.lead?.nomeEstabelecimento || null,
+                tipo: a.cliente ? 'cliente' : 'lead',
+                entregueEm: a.entregueEm,
+                gpsDaEntrega: a.gpsEntrega,
+                observacaoDaEntrega: a.observacaoEntrega,
+                pontoNoCadastro: a.cliente ? (a.cliente.Ponto_GPS || null) : (a.lead?.pontoGps || null),
+            })),
+            aviso: nomes.length === 3
+                ? 'Colunas no ar. Amostra entregue antes desta data continua sem gps/observação — é esperado.'
+                : 'Colunas AINDA NÃO existem no banco: o deploy desta entrega não subiu.',
+        });
+    } catch (error) {
+        console.error('[diag-entrega-amostra]', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // GET /api/admin-exec/diag-cartao-ponto?funcionarioId=&de=&ate=
 // Confere em produção o cartão de ponto por período + folha (tabelas novas de
 // 08/2026: ponto_ocorrencias e folha_periodos, e as colunas de cálculo da folha).
