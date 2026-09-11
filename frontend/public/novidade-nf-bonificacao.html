@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Novidade: Bonificação com nota fiscal — Hardt App</title>
+<link rel="icon" href="/logo-192.png">
+<!-- Preview do link no WhatsApp (sem og:image de propósito: com imagem o cartão fica gigante no grupo) -->
+<meta property="og:title" content="📄 Novidade no Hardt App: bonificação com nota fiscal">
+<meta property="og:description" content="Agora quem cria a bonificação escolhe se ela sai com nota ou sem nota. A marcada &quot;com nota&quot; vai sozinha para a fila do Financeiro — e, se o cliente devolver, a NF-e de devolução sai sozinha no Caixa.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --primary: #00754A;
+    --primary-dark: #006241;
+    --house: #1E3932;
+    --mint: #d4e9e2;
+    --cream: #f2f0eb;
+    --gold: #cba258;
+    --ink: rgba(0,0,0,.87);
+    --ink-soft: #5f6b66;
+    letter-spacing: -0.01em;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px 56px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(168deg, var(--house) 0%, #16302a 100%);
+    color: #fff;
+    padding: 40px 16px 96px;
+  }
+  .hero-inner { max-width: 620px; margin: 0 auto; text-align: center; }
+  .eyebrow {
+    display: inline-block;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    padding: 6px 14px;
+    border-radius: 999px;
+    margin-bottom: 18px;
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 40px);
+    font-weight: 800;
+    line-height: 1.12;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .hero p {
+    color: rgba(255,255,255,.75);
+    font-size: 16px;
+    max-width: 46ch;
+    margin: 0 auto;
+    text-wrap: balance;
+  }
+
+  /* mock da tela flutuando sobre o hero */
+  .mock {
+    max-width: 420px;
+    margin: -68px auto 28px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 18px 44px rgba(20,40,34,.28);
+    overflow: hidden;
+    text-align: left;
+  }
+  .mock-top {
+    background: var(--house);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .mock-top small {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    color: rgba(255,255,255,.55);
+  }
+  .mock-top strong { font-size: 16px; line-height: 1.2; }
+  .mock-ico { font-size: 24px; }
+  .mock-body { padding: 16px 18px 18px; }
+  .mock-label {
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+  }
+  .mock-input {
+    border: 1.5px solid #d8d5cc;
+    border-radius: 10px;
+    padding: 11px 13px;
+    font-size: 15px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    color: var(--ink);
+    background: #fff;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  .mock-input.focado { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,117,74,.14); }
+  .cursor { display: inline-block; width: 2px; height: 18px; background: var(--primary); margin-left: 2px; animation: pisca 1s steps(1) infinite; }
+  @keyframes pisca { 50% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .cursor { animation: none; } }
+  .mock-campos { margin-top: 14px; display: grid; gap: 9px; }
+  .campo {
+    background: #f6f5f1;
+    border-radius: 9px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #b9b5aa;
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background .4s, color .4s;
+  }
+  .campo b { font-weight: 700; }
+  .campo.cheio { background: var(--mint); color: var(--primary-dark); }
+  .campo .ck { opacity: 0; transition: opacity .4s; }
+  .campo.cheio .ck { opacity: 1; }
+  .mock-status {
+    margin-top: 12px;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    min-height: 20px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .mock-status.ok { color: var(--primary-dark); }
+
+  /* botão de demo */
+  .demo-cta {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto 8px;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font: inherit;
+    font-size: 16px;
+    font-weight: 800;
+    padding: 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    box-shadow: 0 6px 18px rgba(0,117,74,.35);
+  }
+  .demo-cta:hover { background: var(--primary-dark); }
+  .demo-cta:focus-visible, .acc-head:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .demo-hint { text-align: center; font-size: 12px; color: var(--ink-soft); margin: 0 0 34px; }
+
+  /* ── SEÇÕES / ACCORDION ── */
+  .sec-label {
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .16em;
+    color: var(--primary-dark);
+    margin: 34px 4px 12px;
+  }
+  .acc {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .acc-head {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    font: inherit;
+    text-align: left;
+    padding: 15px 16px;
+    cursor: pointer;
+    min-height: 56px;
+  }
+  .acc-ico {
+    width: 38px; height: 38px;
+    border-radius: 11px;
+    background: var(--mint);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+  .acc-head strong { flex: 1; font-size: 15.5px; font-weight: 700; }
+  .acc-seta { color: #9aa5a0; transition: transform .2s; font-size: 13px; }
+  .acc.aberto .acc-seta { transform: rotate(180deg); }
+  .acc-corpo { display: none; padding: 0 16px 16px 66px; }
+  .acc.aberto .acc-corpo { display: block; }
+  .acc-corpo p, .acc-corpo li { font-size: 14px; color: var(--ink-soft); }
+  .acc-corpo p { margin: 0 0 10px; }
+  .acc-corpo ul { margin: 0; padding-left: 18px; }
+  .acc-corpo li { margin-bottom: 7px; }
+  .acc-corpo b { color: var(--ink); }
+  @media (max-width: 420px) { .acc-corpo { padding-left: 16px; } }
+
+  /* passos */
+  .passos { background: #fff; border: 1px solid #e3e1da; border-radius: 16px; padding: 18px 16px; }
+  .passo { display: flex; gap: 14px; padding: 10px 0; }
+  .passo + .passo { border-top: 1px dashed #e3e1da; }
+  .passo-n {
+    width: 30px; height: 30px; flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .passo div { font-size: 14px; color: var(--ink-soft); }
+  .passo b { color: var(--ink); }
+
+  .rodape {
+    text-align: center;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 40px;
+  }
+  .rodape strong { color: var(--primary-dark); }
+
+  /* ── MOCKUPS DAS TELAS DO APP ── */
+  .tela {
+    background: #fff;
+    border: 1px solid #e3e1da;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 2px rgba(30,57,50,.05);
+  }
+  .tela-titulo {
+    background: var(--house);
+    color: #fff;
+    padding: 12px 16px;
+    font-size: 13px;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .tela-corpo { padding: 16px; background: #f7f6f2; }
+  .app-card {
+    background: #fff;
+    border: 1px solid #e5e3dc;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .app-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 12px;
+    border-bottom: 1px solid #f0efe9;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #6b756f;
+  }
+  .app-card-body { padding: 12px; }
+  .app-input {
+    border: 1px solid #d8d5cc;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12.5px;
+    color: var(--ink);
+    background: #fff;
+    margin-bottom: 8px;
+  }
+  .app-input small { display: block; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: #9aa5a0; margin-bottom: 2px; }
+  .app-input.ok { background: var(--mint); border-color: rgba(0,117,74,.25); }
+  .app-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--primary);
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 9px 16px;
+    border-radius: 999px;
+  }
+  .app-btn.claro { background: #fff; border: 1.5px solid var(--primary); color: var(--primary); }
+  .app-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+  .app-pill {
+    font-size: 12px;
+    font-weight: 700;
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1.5px solid #d8d5cc;
+    color: #6b756f;
+    background: #fff;
+  }
+  .app-pill.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .app-busca {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-busca .app-input { flex: 1; margin-bottom: 0; color: #9aa5a0; }
+  .app-toggle-linha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #f7f6f2;
+    border: 1px solid #edece6;
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+  }
+  .app-toggle-linha small { display: block; font-size: 10.5px; color: #9aa5a0; }
+  .app-toggle {
+    width: 38px; height: 22px; flex-shrink: 0;
+    border-radius: 999px;
+    background: var(--primary);
+    position: relative;
+  }
+  .app-toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px; right: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: #fff;
+  }
+  .pin {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gold);
+    color: #2b230f;
+    font-size: 11px;
+    font-weight: 800;
+    flex-shrink: 0;
+    vertical-align: 2px;
+    margin-left: 6px;
+  }
+  .legenda { padding: 12px 16px 16px; }
+  .legenda div { display: flex; gap: 8px; font-size: 13px; color: var(--ink-soft); margin-bottom: 7px; align-items: flex-start; }
+  .legenda .pin { margin: 1px 0 0; }
+  .legenda b { color: var(--ink); }
+</style>
+<style>
+  /* extras desta página */
+  .doc-par { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .doc-op {
+    border: 2px solid #e3e1da;
+    border-radius: 12px;
+    padding: 10px 11px;
+    background: #fff;
+  }
+  .doc-op .t { font-size: 13px; font-weight: 800; color: var(--ink); line-height: 1.2; }
+  .doc-op .s { font-size: 11px; color: #8b938e; margin-top: 4px; line-height: 1.35; }
+  .doc-op.on { border-color: var(--primary); background: #f0fdf6; }
+  .doc-op.on .t { color: var(--primary-dark); }
+  .doc-op.off { background: #f7f6f2; border-color: #e8e6df; opacity: .75; }
+  .doc-op.off .t, .doc-op.off .s { color: #a9b0ab; }
+  .faixa-ok { background: var(--mint); color: var(--primary-dark); border-radius: 9px; padding: 9px 11px; font-size: 12px; font-weight: 700; margin-top: 9px; }
+  .faixa-cinza { background: #f0efe9; color: #6b756f; border-radius: 9px; padding: 9px 11px; font-size: 12px; font-weight: 700; margin-top: 9px; }
+  .faixa-am { background: #fef3c7; color: #92400e; border-radius: 9px; padding: 9px 11px; font-size: 12px; font-weight: 700; margin-top: 9px; line-height: 1.4; }
+  .btn-travado { background: #d8d5cc; color: #8b938e; text-align: center; font-size: 12.5px; font-weight: 800; padding: 12px; border-radius: 999px; letter-spacing: .02em; }
+  .btn-solto { background: var(--primary); color: #fff; text-align: center; font-size: 12.5px; font-weight: 800; padding: 12px; border-radius: 999px; }
+  .selo { font-size: 10.5px; font-weight: 800; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+  .selo.verde { background: #dcfce7; color: #166534; }
+  .selo.cinza { background: #f0efe9; color: #4b5563; }
+  .selo.am { background: #fef3c7; color: #92400e; }
+  .selo.roxo { background: #f3e8ff; color: #7e22ce; }
+  .selo.azul { background: #dbeafe; color: #1e40af; }
+  .linha-bn { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; padding: 10px 12px; border-top: 1px solid #f0efe9; font-size: 12.5px; }
+  .linha-bn:first-child { border-top: 0; }
+  .linha-bn .num { font-size: 10.5px; font-weight: 800; padding: 2px 7px; border-radius: 6px; background: #f0fdf6; color: var(--primary-dark); border: 1px solid rgba(0,117,74,.2); }
+  .linha-bn .cli { font-weight: 700; color: var(--ink); }
+  .menu-mock { border: 1px solid #e3e1da; border-radius: 11px; background: #fff; box-shadow: 0 6px 18px rgba(30,57,50,.12); overflow: hidden; margin-top: 8px; max-width: 250px; }
+  .menu-mock div { padding: 9px 12px; font-size: 12.5px; font-weight: 700; color: var(--ink); border-top: 1px solid #f0efe9; }
+  .menu-mock div:first-child { border-top: 0; }
+  .menu-mock small { display: block; font-weight: 500; color: #9aa5a0; font-size: 10.5px; margin-top: 2px; }
+  .aviso { background: #fffaf0; border: 1px solid #f5e2bf; border-radius: 12px; padding: 12px 14px; font-size: 13.5px; color: #7a5b1e; margin-bottom: 12px; }
+  .aviso b { color: #5b430f; }
+  @media (max-width: 380px) { .doc-par { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-inner">
+    <span class="eyebrow">✦ Novidade no Hardt App</span>
+    <h1>Bonificação agora pode<br>sair com nota fiscal</h1>
+    <p>Quem cria a bonificação responde uma pergunta nova: sai <b>com nota</b> ou <b>sem nota</b>? Quem marcar "com nota" manda a BN# direto para a fila do Financeiro. Quem marcar "sem nota" segue exatamente como sempre foi.</p>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="mock" aria-hidden="true">
+    <div class="mock-top">
+      <span class="mock-ico">📄</span>
+      <div>
+        <small>Pedidos · Nova Bonificação</small>
+        <strong>Esta bonificação sai com nota fiscal?</strong>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="doc-par">
+        <div class="doc-op on">
+          <div class="t">📄 Com nota</div>
+          <div class="s">O escritório emite a NF-e de bonificação</div>
+        </div>
+        <div class="doc-op">
+          <div class="t">Sem nota</div>
+          <div class="s">Sai só com o romaneio, como hoje</div>
+        </div>
+      </div>
+      <div class="faixa-ok">✓ Vai para o Financeiro → Notas Fiscais assim que você fechar a bonificação.</div>
+    </div>
+  </div>
+
+  <div class="aviso">
+    <b>Nada muda para quem não quer mexer com nota.</b> É só marcar "Sem nota" e a bonificação segue igual a sempre: sai com o recibo, não gera cobrança e não aparece no Financeiro.
+  </div>
+
+  <div class="sec-label">O que mudou</div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">❓</span>
+      <strong>Uma pergunta obrigatória na Nova Bonificação</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Logo depois de escolher o tipo <b>Bonificação</b> aparece a pergunta <b>"Esta bonificação sai com nota fiscal?"</b>, com as duas respostas do mesmo tamanho.</p>
+      <ul>
+        <li><b>Nada vem marcado de véspera.</b> Enquanto você não responder, o botão de fechar fica <b>cinza e travado</b>. É de propósito: se uma opção viesse marcada, com o tempo todo mundo fecharia no automático sem pensar.</li>
+        <li>Ao marcar, a tela já diz o que vai acontecer — faixa verde para "com nota", faixa cinza para "sem nota".</li>
+        <li>Na <b>confirmação antes de fechar</b> a escolha aparece de novo, por extenso. É a última chance de perceber um engano.</li>
+        <li>Se o botão estiver travado e o formulário já tiver se recolhido, toque no aviso amarelo <b>"Responder agora"</b> — ele reabre direto na pergunta.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">⚠️</span>
+      <strong>Cliente sem cadastro completo: o app avisa NA HORA</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Nota fiscal exige <b>CNPJ/CPF e endereço completo</b> no cadastro do cliente. Antes, esse tipo de problema só estourava dias depois, com a nota travada no Financeiro.</p>
+      <ul>
+        <li>Se o cliente não estiver apto, a opção <b>"Com nota" fica desabilitada</b> (continua visível, para você entender por quê) e um aviso amarelo diz <b>exatamente o que falta</b> no cadastro dele.</li>
+        <li><b>"Sem nota" continua disponível</b> — a bonificação não fica travada por causa do cadastro.</li>
+        <li>Corrigiu o cadastro do cliente? A opção libera sozinha.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">📋</span>
+      <strong>Na lista de Bonificações dá para ver e corrigir</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Em <b>Pedidos → Bonificação</b>, cada linha mostra a escolha e o estado da nota, e há chips para filtrar.</p>
+      <ul>
+        <li>Chips <b>Com nota</b>, <b>Sem nota</b> e <b>Nota pendente</b> (marcadas "com nota" que ainda não foram emitidas — é a lista que não pode ficar crescendo esquecida). O filtro que você usar fica guardado e volta quando reabrir a tela.</li>
+        <li>Botão <b>Ações</b> na linha: <b>Emitir NF-e agora</b>, <b>Mudar para "com nota" / "sem nota"</b> e <b>Imprimir DANFE</b> quando a nota já está autorizada.</li>
+        <li>Dá para <b>corrigir o engano do vendedor</b> enquanto a NF-e não saiu. Depois de a nota estar autorizada ou a caminho da SEFAZ, a opção some — e fica registrado <b>quem mudou e quando</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🧾</span>
+      <strong>No Financeiro, só as "com nota" aparecem</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Em <b>Financeiro → Notas Fiscais</b> a fila recebe apenas a bonificação marcada "com nota". A "sem nota" nunca aparece ali — não é o escritório que decide o que o vendedor já decidiu.</p>
+      <ul>
+        <li>A linha vem com o selo roxo <b>Bonificação</b>, o número no formato <b>BN#61</b> e, embaixo do cliente, <b>"marcada COM NOTA por Fulano em 10/09"</b>. Se aparecer uma nota que ninguém entende, dá para saber de onde veio.</li>
+        <li>Filtro novo <b>Bonificações</b>, ao lado de A emitir / Emitidas / Canhotos / Todas, para conferir só elas.</li>
+        <li><b>Bonificação ainda não aprovada não emite:</b> o botão fica desabilitado e explica — <i>"aprove na aba Bonificações antes de emitir a nota"</i>. Ela também não entra no "Emitir todas".</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">🖨️</span>
+      <strong>O papel avisa se vai DANFE junto</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>A impressão da bonificação (folha, cupom e impressora térmica) passa a trazer uma linha em destaque: <b>"COM NOTA FISCAL (NF-e nº 85231)"</b> ou <b>"SEM NOTA FISCAL"</b>. Quem separa e quem entrega vê no papel se a mercadoria sai com documento fiscal, sem precisar perguntar.</p>
+    </div>
+  </div>
+
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">↩️</span>
+      <strong>E se o cliente devolver?</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <p>Bonificação que saiu <b>com nota</b> e o cliente devolveu (no todo ou em parte) precisa de uma <b>NF-e de devolução</b> — igual à venda. Agora o app faz isso sozinho: ao registrar a devolução da BN# no <b>Caixa</b>, a NF-e de devolução da bonificação é emitida <b>no mesmo clique</b>, referenciando a NF-e de bonificação original. <b>Sem cobrança</b>: bonificação nunca tem conta a receber, e a devolução dela também não mexe em dinheiro — só o estoque volta.</p>
+      <ul>
+        <li>O modal de devolução avisa antes: o cabeçalho ganha <b>"(bonificação com nota fiscal)"</b> e uma caixa verde diz qual NF-e vai ser referenciada.</li>
+        <li><b>Se a nota não sair</b> (SEFAZ fora do ar, cadastro incompleto…), a devolução <b>fica registrada do mesmo jeito</b> e o app avisa. Dá para emitir depois em <b>Pedidos → Devoluções</b>, botão <b>Emitir novamente</b>.</li>
+        <li>Na aba <b>Pedidos → Devoluções</b> a devolução de bonificação aparece com o número <b>BN#61</b> e o selo roxo <b>BONIF.</b>; o bloco verde da NF (selo autorizada, DANFE, emitir de novo) aparece só quando a bonificação tem NF-e autorizada.</li>
+        <li>Depois de autorizada, o botão <b>🧾 NF dev.</b> aparece na linha do Caixa para imprimir a DANFE da devolução.</li>
+        <li><b>Bonificação "sem nota"</b> (ou com nota ainda não autorizada) devolve como sempre: só o estoque volta, nenhuma nota é emitida, nenhum aviso novo.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="sec-label">As telas do app</div>
+
+  <div class="tela">
+    <div class="tela-titulo">📱 Tela 1 · Nova Bonificação (no celular)</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Tipo de Pedido *</div>
+        <div class="app-card-body">
+          <div class="app-pills">
+            <span class="app-pill">Pedido</span>
+            <span class="app-pill">Especial</span>
+            <span class="app-pill on">Bonificação</span>
+          </div>
+        </div>
+      </div>
+      <div class="app-card">
+        <div class="app-card-head">Esta bonificação sai com nota fiscal? * <span class="pin">1</span></div>
+        <div class="app-card-body">
+          <div class="doc-par">
+            <div class="doc-op on"><div class="t">📄 Com nota</div><div class="s">O escritório emite a NF-e de bonificação</div></div>
+            <div class="doc-op"><div class="t">Sem nota</div><div class="s">Sai só com o romaneio, como hoje</div></div>
+          </div>
+          <div class="faixa-ok">✓ Vai para o Financeiro → Notas Fiscais assim que você fechar a bonificação. <span class="pin">2</span></div>
+        </div>
+      </div>
+      <div class="btn-solto">FECHAR BONIFICAÇÃO · R$ 0,00 <span class="pin">3</span></div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>A pergunta nova</b>, entre o tipo de pedido e a condição de pagamento. Só aparece na bonificação — pedido normal e especial não mudaram em nada.</span></div>
+      <div><span class="pin">2</span><span><b>Confirmação na hora.</b> Marcou "com nota", a faixa verde explica o que vai acontecer; marcou "sem nota", a faixa cinza diz "Sai só com o romaneio — nenhuma nota será emitida".</span></div>
+      <div><span class="pin">3</span><span><b>Só destrava depois de responder.</b> Antes disso o botão fica cinza escrito <i>"RESPONDA: COM NOTA OU SEM NOTA?"</i>, e o aviso amarelo acima dele leva de volta à pergunta.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">⚠️ Tela 2 · Quando o cliente não pode receber nota</div>
+    <div class="tela-corpo">
+      <div class="app-card">
+        <div class="app-card-head">Esta bonificação sai com nota fiscal? *</div>
+        <div class="app-card-body">
+          <div class="doc-par">
+            <div class="doc-op off"><div class="t">📄 Com nota</div><div class="s">Indisponível para este cliente <span class="pin">1</span></div></div>
+            <div class="doc-op"><div class="t">Sem nota</div><div class="s">Sai só com o romaneio, como hoje</div></div>
+          </div>
+          <div class="faixa-am">⚠️ Para sair com nota, este cliente precisa de CNPJ/CPF, bairro, CEP no cadastro. Corrija o cadastro e a opção libera. <span class="pin">2</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>A opção fica desabilitada, não some.</b> Você vê que ela existe e entende por que não dá para marcar.</span></div>
+      <div><span class="pin">2</span><span><b>O app diz o que falta</b> no cadastro daquele cliente — não é um "erro" genérico. "Sem nota" continua disponível: a bonificação não trava.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">📋 Tela 3 · Pedidos → Bonificação</div>
+    <div class="tela-corpo">
+      <div style="margin-bottom:10px;">
+        <div class="app-pills">
+          <span class="app-pill on">Com nota <b>7</b></span>
+          <span class="app-pill">Sem nota <b>11</b></span>
+          <span class="app-pill">Nota pendente <b>2</b></span>
+        </div>
+        <div style="font-size:11px;color:#9aa5a0;margin-top:5px;">Chips de filtro <span class="pin">1</span></div>
+      </div>
+      <div class="app-card">
+        <div class="linha-bn">
+          <span class="num">BN#61</span><span class="cli">PADARIA CENTRAL ME</span>
+          <span class="selo verde">📄 Com nota</span><span class="selo am">Aguardando emissão</span>
+          <span class="app-btn claro" style="margin-left:auto;">Ações ▾ <span class="pin">2</span></span>
+        </div>
+        <div class="linha-bn">
+          <span class="num">BN#60</span><span class="cli">EMPÓRIO DO BAIRRO</span>
+          <span class="selo verde">📄 Com nota</span><span class="selo verde">NF 85231 autorizada</span>
+        </div>
+        <div class="linha-bn">
+          <span class="num">BN#59</span><span class="cli">MERCADO SÃO JORGE</span>
+          <span class="selo cinza">Sem nota</span>
+        </div>
+      </div>
+      <div class="menu-mock">
+        <div>Emitir NF-e agora</div>
+        <div>Mudar para "sem nota"<small>Só enquanto a nota não foi emitida <span class="pin">3</span></small></div>
+        <div>Imprimir DANFE</div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Filtros com o total de cada um.</b> "Nota pendente" é o que foi marcado "com nota" e ainda não virou nota — a lista que precisa ser zerada.</span></div>
+      <div><span class="pin">2</span><span><b>Botão Ações</b> em cada bonificação. Só aparece para quem pode fazer alguma coisa ali.</span></div>
+      <div><span class="pin">3</span><span><b>Corrigir o engano</b> só enquanto a NF-e não saiu. Depois de autorizada, some — e o app não cancela nota por conta própria.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">🧾 Tela 4 · Financeiro → Notas Fiscais</div>
+    <div class="tela-corpo">
+      <div style="margin-bottom:10px;">
+        <div class="app-pills">
+          <span class="app-pill">A emitir <b>9</b></span>
+          <span class="app-pill">Emitidas <b>126</b></span>
+          <span class="app-pill">Canhotos <b>18</b></span>
+          <span class="app-pill on">Bonificações <b>2</b> </span>
+        </div>
+        <div style="font-size:11px;color:#9aa5a0;margin-top:5px;">Filtro novo <span class="pin">1</span></div>
+      </div>
+      <div class="app-card">
+        <div class="linha-bn" style="align-items:flex-start;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+              <span class="num">BN#61</span><span class="selo roxo">Bonificação <span class="pin">2</span></span>
+            </div>
+            <div class="cli" style="margin-top:4px;">PADARIA CENTRAL ME</div>
+            <div style="font-size:11px;color:#9aa5a0;">marcada COM NOTA por Marcos em 10/09 <span class="pin">3</span></div>
+          </div>
+          <span class="app-btn">Emitir NF-e</span>
+        </div>
+        <div class="linha-bn" style="align-items:flex-start;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+              <span class="num">BN#56</span><span class="selo roxo">Bonificação</span>
+            </div>
+            <div class="cli" style="margin-top:4px;">POSTO IRMÃOS DE FAVERI</div>
+            <div style="font-size:11px;color:#9aa5a0;">marcada COM NOTA por Marcos em 10/09</div>
+          </div>
+          <span class="btn-travado" style="padding:9px 14px;">Emitir NF-e <span class="pin">4</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Filtro "Bonificações"</b> para conferir só elas. Nas outras abas elas aparecem junto com as vendas, sempre com o selo roxo.</span></div>
+      <div><span class="pin">2</span><span><b>Selo roxo Bonificação</b> e o número no formato <b>BN#61</b> — dá para diferenciar de uma venda de relance.</span></div>
+      <div><span class="pin">3</span><span><b>Quem pediu a nota</b> e quando. Se aparecer uma nota que ninguém entende, é aqui que se descobre de onde ela veio.</span></div>
+      <div><span class="pin">4</span><span><b>Bonificação ainda não aprovada não emite:</b> o botão fica cinza e explica que é preciso aprovar a BN# na aba Bonificações antes.</span></div>
+    </div>
+  </div>
+
+  <div class="tela">
+    <div class="tela-titulo">↩️ Tela 5 · Caixa → Devolução de bonificação com nota</div>
+    <div class="tela-corpo">
+      <div class="app-card" style="margin-bottom:10px;">
+        <div class="linha-bn" style="align-items:flex-start;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+              <span class="num">BN#61</span><span class="selo roxo">Bonificação</span><span class="selo verde">📄 NF 85231</span>
+            </div>
+            <div class="cli" style="margin-top:4px;">PADARIA CENTRAL ME</div>
+            <div style="font-size:11px;color:#9aa5a0;">Entregue · R$ 0,00 · Marcos</div>
+          </div>
+          <span class="selo" style="background:#fee2e2;color:#b91c1c;border:1px solid #fecaca;padding:7px 10px;">Fazer Devolução <span class="pin">1</span></span>
+        </div>
+      </div>
+      <div class="app-card">
+        <div style="padding:11px 12px;border-bottom:1px solid #f0efe9;display:flex;gap:9px;align-items:flex-start;">
+          <span style="background:#fee2e2;border-radius:8px;padding:6px;font-size:13px;line-height:1;">📦</span>
+          <div style="min-width:0;">
+            <div style="font-weight:800;font-size:13.5px;color:var(--ink);">Registrar Devolução</div>
+            <div style="font-size:11.5px;color:#6b756f;">Pedido #61 · PADARIA CENTRAL ME <span style="color:var(--primary);font-weight:700;">(bonificação com nota fiscal)</span> <span class="pin">2</span></div>
+          </div>
+        </div>
+        <div class="app-card-body">
+          <div class="linha-bn" style="border:1px solid #fecaca;background:#fef2f2;border-radius:9px;">
+            <span class="cli" style="flex:1;">COXINHA FRANGO C/50</span><span class="app-input" style="width:44px;margin:0;text-align:center;padding:5px;">2</span>
+          </div>
+          <div class="app-input" style="margin-top:9px;color:#9aa5a0;"><small>Motivo da devolução *</small>Produto veio amassado</div>
+          <div class="faixa-ok">🧾 <b>NF de devolução automática:</b> ao salvar, o app emite a NF-e de devolução da bonificação referenciando a NF-e nº <b>85231</b> — sem cobrança. <span class="pin">3</span></div>
+          <div class="btn-solto" style="background:#dc2626;margin-top:10px;">Confirmar Devolução · R$ 20,00</div>
+        </div>
+      </div>
+      <div class="app-card" style="margin-top:10px;">
+        <div class="linha-bn" style="align-items:flex-start;">
+          <div style="flex:1;min-width:0;">
+            <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+              <span class="num">BN#61</span><span class="selo roxo">Bonificação</span>
+            </div>
+            <div class="cli" style="margin-top:4px;">PADARIA CENTRAL ME</div>
+            <div style="font-size:11px;color:#b91c1c;font-weight:700;">Devolvido: R$ 20,00</div>
+          </div>
+          <span class="selo verde" style="border:1px solid #bbf7d0;padding:7px 10px;">🧾 NF dev. 85240 <span class="pin">4</span></span>
+        </div>
+      </div>
+    </div>
+    <div class="legenda">
+      <div><span class="pin">1</span><span><b>Botão Fazer Devolução</b> na linha da bonificação, no Caixa do dia — o mesmo botão de sempre, nada de novo para achar.</span></div>
+      <div><span class="pin">2</span><span><b>Cabeçalho avisa</b> "(bonificação com nota fiscal)": você sabe que vai sair NF-e de devolução antes de confirmar. Bonificação sem nota não mostra nada disso.</span></div>
+      <div><span class="pin">3</span><span><b>Caixa verde</b> diz qual NF-e de bonificação vai ser referenciada e que <b>não há cobrança</b>. Se a nota não sair, a devolução fica registrada e o app avisa — emita depois em Pedidos → Devoluções.</span></div>
+      <div><span class="pin">4</span><span><b>Botão 🧾 NF dev.</b> aparece na linha depois que a NF-e de devolução é autorizada — toque para abrir a DANFE.</span></div>
+    </div>
+  </div>
+
+  <div class="sec-label">Para começar a usar</div>
+  <div class="passos">
+    <div class="passo"><div class="passo-n">1</div><div>Em <b>Pedidos → Novo</b>, escolha o cliente e o tipo <b>Bonificação</b>.</div></div>
+    <div class="passo"><div class="passo-n">2</div><div>Responda a pergunta nova: <b>Com nota</b> ou <b>Sem nota</b>. Sem responder, a bonificação não fecha.</div></div>
+    <div class="passo"><div class="passo-n">3</div><div>Siga normalmente (condição, data, itens) e confira a faixa da escolha no <b>modal de confirmação</b>.</div></div>
+    <div class="passo"><div class="passo-n">4</div><div>Errou? Em <b>Pedidos → Bonificação</b>, botão <b>Ações</b> → mudar a escolha, <b>enquanto a nota não saiu</b>.</div></div>
+    <div class="passo"><div class="passo-n">5</div><div>No escritório: aprove a bonificação e depois emita a NF-e em <b>Financeiro → Notas Fiscais</b> (filtro <b>Bonificações</b>).</div></div>
+    <div class="passo"><div class="passo-n">6</div><div>Cliente devolveu? Registre no <b>Caixa</b> como sempre — a NF-e de devolução da bonificação sai sozinha, sem cobrança.</div></div>
+  </div>
+
+  <div class="sec-label">O que NÃO muda</div>
+  <div class="acc aberto">
+    <button class="acc-head" onclick="alternar(this)" aria-expanded="true">
+      <span class="acc-ico">✅</span>
+      <strong>Garantias</strong>
+      <span class="acc-seta">▼</span>
+    </button>
+    <div class="acc-corpo">
+      <ul>
+        <li>Bonificação <b>"sem nota" é idêntica a hoje</b> — quem não quiser mexer com nota marca "Sem nota" e a vida segue igual.</li>
+        <li>Bonificação <b>não vira venda</b>: fora de comissão, meta, dashboard e faturamento — com nota ou sem nota.</li>
+        <li>O <b>cliente não paga nada</b>: nenhuma bonificação gera conta a receber, boleto, PIX ou cobrança da régua.</li>
+        <li><b>Pedido normal e pedido especial não mudaram em nada</b> — nem a tela, nem a impressão.</li>
+        <li><b>Bonificações antigas</b> ficam como "sem nota", que é o que elas sempre foram. Só as novas nascem com a pergunta.</li>
+        <li><b>Nenhuma permissão nova</b>: quem já cria bonificação passa a escolher; quem já emite nota passa a emitir também a de bonificação.</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="rodape">Dúvida? Fale com o <strong>Clarkson</strong>.</p>
+</div>
+
+<script>
+  function alternar(btn) {
+    const acc = btn.parentElement;
+    const abriu = !acc.classList.contains('aberto');
+    acc.classList.toggle('aberto');
+    btn.setAttribute('aria-expanded', abriu ? 'true' : 'false');
+  }
+</script>
+</body>
+</html>

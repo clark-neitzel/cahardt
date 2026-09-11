@@ -31,13 +31,19 @@ Desde 23/07/2026 a NF-e de venda é emitida **pelo próprio app**, via Focus NFe
 
 Quando a nota é **autorizada**, o pedido correspondente vira **FATURADO** na aba Pedidos automaticamente — e lá o botão DANFE já imprime a nota nova (o mesmo fluxo de impressão de sempre).
 
+> **Bonificação é a exceção:** emitir a nota da BN# **não muda o status dela**. Quem manda no status da bonificação continua sendo aprovar/reverter na aba Pedidos. A bonificação também **não** vira venda, comissão, meta, conta a receber, boleto ou cobrança — com nota ou sem nota.
+
 ## Proteções automáticas (importante)
 
 - **Nunca emite em dobro:** pedido com nota já autorizada (do app ou do CA) é bloqueado. Para pedidos antigos da era CA sem registro local, o app **confere no Conta Azul antes** de emitir.
-- **Pedido especial e bonificação não aparecem** na fila (não geram nota).
+- **Pedido especial não aparece** na fila (não gera nota).
+- **Bonificação (BN#)**: só aparece na fila a que foi marcada **"com nota"** por quem criou o pedido (09/2026). A marcada "sem nota" nunca entra aqui — não é o escritório que decide o que o vendedor já decidiu. A linha da bonificação vem com o selo **Bonificação** e o rótulo `BN#61`, além de **quem marcou "com nota" e quando**.
+- **Bonificação ainda não aprovada** aparece na fila com o aviso *"aguardando aprovação"* e o botão de emitir recusa — aprove a BN# na aba Pedidos → Bonificação primeiro.
 - **Pedido cancelado não aparece** na fila e a emissão é recusada ("Pedido cancelado — não é possível emitir NF-e"). Vale tanto para o cancelamento feito pelo app quanto para pedidos **cancelados/excluídos na época do Conta Azul** — venda que não aconteceu não gera nota.
 - Nota rejeitada pode ser reenviada à vontade — a referência única na Focus impede duplicidade.
 - Pedido faturado pelo app fica **imune ao sync do Conta Azul** (o status FATURADO não é revertido).
+- **NF-e de bonificação (09/2026):** perfil fiscal próprio, diferente da nota de venda — natureza de operação **"Remessa em bonificacao"**, **CFOP 5910** (dentro de SC) ou **6910** (outro estado), **ICMS CSOSN 102** (sem crédito para o cliente, por isso a nota **não** traz a frase de aproveitamento de crédito), forma de pagamento **"90 – sem pagamento"** e **nenhuma fatura/duplicata**. Nas Informações Complementares sai *"MERCADORIA ENTREGUE EM BONIFICACAO - SEM COBRANCA AO DESTINATARIO."* e a referência ao `BN#`. O valor da nota é o **preço de tabela** dos itens (a SEFAZ não aceita nota zerada) — o cliente continua **não pagando nada**.
+
 - **Venda para outro estado (interestadual):** o app ajusta a nota sozinho pela UF do cliente — usa **CFOP 6101/6102** e marca a operação como **interestadual** (dentro de SC continua 5101/5102). Para sair certa, o cliente precisa estar cadastrado com a **UF correta** e, se for contribuinte de ICMS, com a **Inscrição Estadual** preenchida. Os impostos do Simples (CSOSN 101 + crédito) e os demais campos são os mesmos da venda interna.
 
 - **Crédito de ICMS do Simples (`pCredSN`):** o percentual que o cliente CNPJ aproveita de crédito sai da configuração em **Configurações → Emissão de NF-e — Simples Nacional** (padrão 3,82%). Ele muda conforme a faixa do Simples da empresa; quem alterar deve confirmar o valor com a contabilidade. O mesmo lugar define o **NCM padrão** (usado só quando o produto não tem NCM próprio) e os **textos legais** das Informações Complementares. Vale para a próxima nota emitida — notas já autorizadas não mudam.
@@ -76,6 +82,16 @@ Na aba **Pedidos → Devoluções**, ao expandir uma devolução de pedido **com
 - **Devolução de pedido ESPECIAL não gera nota** (pedido sem nota) — o botão nem aparece; o fluxo especial segue como sempre.
 - Devolução que já teve nota emitida pelo CA (campo "Nota Devolução" preenchido) também não emite de novo.
 - **Referência por item (prazo da SEFAZ: 05/10/2026):** a partir dessa data a SEFAZ exige que a nota de devolução aponte, **dentro de cada item**, de qual item da nota original o produto veio. O sistema já faz isso; o interruptor fica em **Configurações → NF-e de devolução — referência por item** (Automático / Sempre / Nunca), e no **Automático** liga sozinho na data — não é preciso fazer nada. **Nesta aba, e no Caixa, não há aviso do estado da chave**: para conferir como ela está é preciso abrir essa seção das Configurações, que só aparece para quem tem `admin` ou `configuracoes.edit`.
+
+### NF-e de DEVOLUÇÃO de bonificação (09/2026)
+
+Quando a devolução é de uma **bonificação (BN#) que saiu COM nota fiscal autorizada**, o app emite uma nota de devolução própria — **não** é a "Devolução de venda":
+- Natureza de operação **"Devolução de mercadoria remetida a título de bonificação"**, nota de **entrada**, CFOP **1949** (cliente em SC) ou **2949** (outro estado), referenciando a **NF-e da bonificação** (no cabeçalho e, a partir de 05/10/2026, item a item).
+- ICMS **CSOSN 102 sem crédito** (para CNPJ e CPF — a remessa saiu sem crédito, a volta também não gera), PIS/COFINS 99, forma de pagamento **"90 – sem pagamento"**, **sem fatura e sem duplicata**.
+- Nas Informações Complementares sai *"DEVOLUCAO DE MERCADORIA RECEBIDA EM BONIFICACAO (REMESSA CFOP 5910/6910) - REFERENTE A NF-e N …"*, o `BN#` e o `DEV#`, e a frase *"SEM COBRANCA E SEM EFEITO FINANCEIRO"*.
+- **Nenhum efeito financeiro**: bonificação não tem conta a receber, e a devolução dela não cria, cancela nem abate nada — só o estoque volta (no registro da devolução, uma única vez). No pacote da contabilidade (CSV 07) ela sai com **Tipo = BONIFICACAO**, para **não** ser somada como abatimento de faturamento.
+- Mesma referência interna da devolução de venda (`nfd-…`): aparece na aba Devoluções, no ZIP de XMLs e na aba **Canhotos** como **"Estado desconhecido"** (nota de entrada, não sai com motorista).
+- **Bonificação que saiu SEM nota** (ou cuja nota ainda está processando/deu erro) **não gera** nota de devolução — a mensagem é *"Esta bonificação não tem NF-e autorizada — a devolução fica registrada só no estoque, sem nota fiscal."*
 
 ---
 
@@ -202,14 +218,14 @@ Se a DANFE da devolução não estiver no arquivo, use o botão **"Reimprimir DA
 | **"Código inválido — o dígito verificador não confere"** | A leitura saiu torta. **Passe o leitor de novo, mais devagar.** Não é defeito do sistema nem nota errada. |
 | **"Não reconheci esse código"** | O que entrou no campo não é um código de nota. Bipe o código de barras da DANFE ou digite só o número da nota. |
 | **"Essa nota é de outro mês"** (amarelo) — *"A nota 85142 é de maio/2026. Troque o período para bipá-la."* | Não é erro seu: a nota **existe** e está tudo certo com ela, só não é do mês aberto. Troque o mês no filtro do topo e bipe de novo. *(Bipando pelo código de barras ela é aceita de qualquer mês; só a busca pelo número olha o mês escolhido.)* |
-| **"Não encontrei essa nota"** (vermelho) — *"Nota X não encontrada no sistema"* | Aí a nota realmente não existe no controle. Confira o número. Se for nota de pedido especial ou bonificação, ela **não entra** aqui mesmo (veja abaixo). |
+| **"Não encontrei essa nota"** (vermelho) — *"Nota X não encontrada no sistema"* | Aí a nota realmente não existe no controle. Confira o número. Se for de pedido especial (ou de bonificação **sem nota**), ela **não entra** aqui mesmo (veja abaixo). |
 | **"Número X está repetido"** | Há mais de uma nota com esse número em períodos diferentes. **Bipe o código de barras** para não errar, ou escolha na lista que aparece. |
 | **"Falha de conexão"** | Problema de internet/servidor. Confira a conexão e bipe de novo — nada foi perdido. |
 
 ## O que NÃO entra nesta aba
 
 - **Pedido especial** — não gera nota fiscal, então não tem canhoto.
-- **Pedido bonificação** — idem.
+- **Pedido bonificação marcado "sem nota"** — não gera nota fiscal, então não tem canhoto. A bonificação **"com nota"** ENTRA nesta aba normalmente: a mercadoria foi entregue, o canhoto assinado volta e é bipado como o das vendas.
 - **Pedido cancelado** (no app ou na era do Conta Azul) — venda que não aconteceu.
 - Notas de **teste/homologação** — só notas de produção entram.
 

@@ -73,6 +73,25 @@ const devolucaoService = {
             console.error('[Devolucao] Falha ao anexar NF de devolução:', e.message);
         }
 
+        // Bonificação COM NOTA (09/2026): `pedidoOriginal.nfBonificacaoAutorizada` = resumo
+        // da NF-e de bonificação AUTORIZADA da BN# (null nos demais — venda, especial, BN#
+        // sem nota ou com nota PROCESSANDO/ERRO). É o que a aba Devoluções usa para mostrar
+        // o selo/DANFE da BN#. Contrato do front: null | { id, numero, serie, chave }.
+        // try/catch próprio: falha aqui NUNCA derruba a lista.
+        try {
+            const idsBn = [...new Set(items.filter(d => d.pedidoOriginal?.bonificacao).map(d => d.pedidoOriginal.id))];
+            const emissao = require('./focusNfeEmissaoService');
+            const mapaBn = idsBn.length ? await emissao.mapaNotasBonificacaoAutorizadas(idsBn) : new Map();
+            for (const d of items) {
+                if (!d.pedidoOriginal) continue;
+                d.pedidoOriginal.nfBonificacaoAutorizada = d.pedidoOriginal.bonificacao
+                    ? emissao.resumoNotaParaFront(mapaBn.get(d.pedidoOriginal.id) || null)
+                    : null;
+            }
+        } catch (e) {
+            console.error('[Devolucao] Falha ao anexar NF-e da bonificação:', e.message);
+        }
+
         return { items, total, pagina, tamanhoPagina };
     },
 

@@ -21,6 +21,12 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
     // Wizard de boleto só para pedido da era CA (a parcela a cancelar vive no CA);
     // boleto local (Asaas) não tem o que processar lá.
     const isBoleto = isCA && !!entrega.idVendaContaAzul && (entrega.condicaoPagamento || '').toLowerCase().includes('boleto');
+    // Bonificação COM NOTA (09/2026): BN# cuja NF-e de bonificação está AUTORIZADA ganha
+    // NF-e de devolução automática (espelho da venda, sem cobrança). `nfBonificacaoAutorizada`
+    // vem do GET /pedidos/:id — null/undefined = sem nota ou nota ainda não autorizada →
+    // comportamento de sempre (só estoque, sem tentar emitir). NÃO altera `isCA`.
+    const nfBonif = !!entrega.bonificacao && !!pedido?.nfBonificacaoAutorizada;
+    const numeroNfBonif = pedido?.nfBonificacaoAutorizada?.numero ?? null;
     const [notaDevolucaoCA, setNotaDevolucaoCA] = useState('');
     const [pdfFile, setPdfFile] = useState(null);
     const [wizardDevolucao, setWizardDevolucao] = useState(null); // devolução criada, abre wizard
@@ -138,12 +144,27 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                     toast('Devolução registrada. Verifique manualmente no CA.', { icon: '⚠️' });
                 }
             } else {
-                await devolucaoService.criarEspecial({
+                const devCriada = await devolucaoService.criarEspecial({
                     pedidoId: entrega.pedidoId,
                     itens,
                     motivo: motivo.trim(),
                     observacao: observacao.trim()
                 });
+
+                // Bonificação COM NOTA: emite a NF-e de devolução da bonificação no mesmo clique.
+                // Erro na NF NUNCA desfaz nem bloqueia a devolução (estoque já ajustado) —
+                // dá para emitir depois na aba Pedidos → Devoluções.
+                if (nfBonif && devCriada?.id) {
+                    try {
+                        await api.post(`/notas-fiscais/emitir-devolucao/${devCriada.id}`);
+                        toast.success('Devolução registrada e NF-e de devolução da bonificação emitida.');
+                    } catch (eNf) {
+                        const motivoNf = String(eNf.response?.data?.error || 'erro').trim();
+                        const motivoNfPontuado = /[.!?…:]$/.test(motivoNf) ? motivoNf : `${motivoNf}.`;
+                        toast(`Devolução registrada, mas a NF não saiu: ${motivoNfPontuado}\nDá para emitir depois na aba Pedidos → Devoluções.`,
+                            { icon: '⚠️', duration: 10000, style: { maxWidth: '480px', whiteSpace: 'pre-line', overflowWrap: 'anywhere', wordBreak: 'break-word' } });
+                    }
+                }
             }
 
             onSalvo();
@@ -172,6 +193,7 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                             <p className="text-xs text-gray-500">
                                 {entrega.numero ? `Pedido #${entrega.numero}` : entrega.pedidoId.slice(0, 8)} · {entrega.clienteNome}
                                 {isCA && <span className="ml-1 text-blue-600 font-medium">(com nota fiscal)</span>}
+                                {nfBonif && <span className="ml-1 text-primary font-medium">(bonificação com nota fiscal)</span>}
                             </p>
                         </div>
                     </div>
@@ -278,6 +300,14 @@ const ModalDevolucao = ({ entrega, onClose, onSalvo }) => {
                                 🧾 <b>NF de devolução automática:</b> ao confirmar, o app emite a nota de devolução
                                 na SEFAZ referenciando a nota original — sem digitar nada. Acompanhe e imprima a
                                 DANFE na aba <b>Pedidos → Devoluções</b>.
+                            </div>
+                        )}
+                        {/* Bonificação COM NOTA autorizada: NF-e de devolução da bonificação (sem cobrança) */}
+                        {nfBonif && (
+                            <div className="p-3 bg-mint rounded-lg border border-emerald-200 text-sm text-primaryDark">
+                                🧾 <b>NF de devolução automática:</b> ao salvar, o app emite a NF-e de devolução da
+                                bonificação referenciando a NF-e nº <b>{numeroNfBonif != null ? numeroNfBonif : '—'}</b> — sem cobrança.
+                                Acompanhe e imprima a DANFE na aba <b>Pedidos → Devoluções</b>.
                             </div>
                         )}
                         {false && (

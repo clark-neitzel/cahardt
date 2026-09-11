@@ -109,7 +109,10 @@ async function carregarPedidos(pedidoIds) {
                 }
             },
             vendedor: { select: { nome: true } },
-            itens: { include: { produto: { select: { nome: true } } } }
+            itens: { include: { produto: { select: { nome: true } } } },
+            // Número da NF-e no recibo da bonificação COM NOTA (09/2026).
+            // `status`/`numero` bastam: o recibo só mostra a nota já AUTORIZADA.
+            notasFiscaisApp: { select: { status: true, numero: true, tipo: true } }
         }
     });
     const mapa = new Map(pedidos.map(p => [p.id, p]));

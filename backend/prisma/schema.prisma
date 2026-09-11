@@ -450,6 +450,14 @@ model Pedido {
   especial               Boolean   @default(false) // Pedido especial (sem nota) - não envia ao CA
   bonificacao            Boolean   @default(false) // Pedido bonificação - não envia ao CA, valor total 0, sem contas a receber
 
+  // Bonificação COM NOTA (09/2026) — escolha de quem cria o pedido, na tela Nova Bonificação.
+  // Default false: toda BN# que já existe fica "sem nota", que é o que ela é hoje.
+  // Snapshot solto (mesmo padrão de `canceladoPorId`): sem @relation e sem índice.
+  nfBonificacao                Boolean   @default(false) @map("nf_bonificacao")
+  nfBonificacaoDefinidaEm      DateTime? @map("nf_bonificacao_definida_em")
+  nfBonificacaoDefinidaPorId   String?   @map("nf_bonificacao_definida_por_id")
+  nfBonificacaoDefinidaPorNome String?   @map("nf_bonificacao_definida_por_nome")
+
   // Status de Integração
   statusEnvio      String    @default("ABERTO") @map("status_envio") // ABERTO, ENVIAR, SINCRONIZANDO, RECEBIDO, ERRO
   idVendaContaAzul String?   @map("id_venda_contaazul") // ID gerado na API
@@ -865,7 +873,7 @@ model NotaFiscalApp {
   id             String  @id @default(uuid())
   ref            String  @unique
   ambiente       String // homologacao | producao
-  tipo           String  @default("VENDA") // VENDA | DEVOLUCAO
+  tipo           String  @default("VENDA") // VENDA | DEVOLUCAO | BONIFICACAO (string livre — não exige migração)
   status         String  @default("PROCESSANDO") // PROCESSANDO | AUTORIZADO | ERRO | CANCELADO | DENEGADO
   numero         Int?
   serie          Int?

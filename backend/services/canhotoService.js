@@ -119,7 +119,16 @@ const diasDesde = (data) => (data ? Math.floor((Date.now() - new Date(data).getT
 /** Pedido que pode ter canhoto? (escopo do módulo — ver regra 3 do cabeçalho) */
 function pedidoElegivel(p) {
     if (!p) return false;
-    if (p.especial || p.bonificacao || p.cancelado) return false;
+    if (p.especial || p.cancelado) return false;
+    // Bonificação COM NOTA (09/2026) entra no controle de canhotos como qualquer venda
+    // (decisão do dono: a mercadoria foi entregue, o papel assinado volta e é bipado).
+    // A BN# "sem nota" continua fora — não existe DANFE para assinar.
+    // `nfBonificacao` precisa vir carregado: os chamadores usam `include: INCLUDE_PEDIDO`,
+    // que traz todos os escalares do Pedido. Se alguém trocar por um `select` sem o campo,
+    // ele chega `undefined` e a bonificação passa a ser tratada como "SEM nota" — ou seja,
+    // some do controle de canhotos. Falha para o lado seguro (nunca cobra papel que não
+    // existe), mas esconde o canhoto da BN# que deveria voltar: não trocar por `select`.
+    if (p.bonificacao && !p.nfBonificacao) return false;
     if (p.statusEnvio === 'EXCLUIDO') return false;
     if (p.situacaoCA && ['CANCELADO', 'EXCLUIDO'].includes(p.situacaoCA)) return false;
     return true;
@@ -825,7 +834,7 @@ async function backfill({ de, ate, statusInicial = STATUS.DESCONHECIDO, inferirN
             nfeChave: { not: null },
             dataVenda: { gte: ini, lte: fim },
             especial: false,
-            bonificacao: false,
+            bonificacao: false, // nota antiga do CA nunca foi de bonificação — segue fora
             cancelado: false,
             statusEnvio: { not: 'EXCLUIDO' },
             // situacaoCA é nullable e `notIn` do Prisma EXCLUI linhas null — OR explícito.
@@ -1061,15 +1070,23 @@ async function listarPeriodo({ de, ate, status, busca, autocura = true } = {}) {
     // Alerta: na rua há >= diasAlerta dias. Só AGUARDANDO — DESCONHECIDO é o passado
     // do mutirão e inundaria a lista no primeiro dia.
     //
-    // `tipo: 'VENDA'` é cinto e suspensório: o `semNaRua` já impede que devolução nasça
+    // O filtro de tipo é cinto e suspensório: o `semNaRua` já impede que devolução nasça
     // AGUARDANDO, mas linha antiga gravada antes desta correção (ou vinda de um caminho
     // futuro) não pode voltar a poluir a tarja vermelha. O alerta é sobre canhoto
     // ASSINADO que não voltou — devolução não pede assinatura de ninguém.
+    //
+    // ⚠️ `not: 'DEVOLUCAO'` e NÃO `tipo: 'VENDA'` (corrigido 09/2026): a NF-e de
+    // BONIFICAÇÃO nasce com `tipo: 'BONIFICACAO'` e o canhoto dela é cobrado igual ao
+    // da venda — a mercadoria foi entregue e o papel assinado tem que voltar. Com
+    // `tipo: 'VENDA'` o canhoto da BN# aparecia na lista e nos contadores, mas NUNCA
+    // entrava na tarja vermelha, que é justamente o mecanismo que faz o papel voltar.
+    // Qualquer tipo NOVO que venha a existir entra no alerta por padrão — o que fica
+    // de fora é só o que explicitamente não pede assinatura.
     const corte = new Date(Date.now() - cfg.diasAlerta * 86400000);
     const atrasadas = await prisma.canhotoNota.findMany({
         where: {
             ...whereBase,
-            tipo: 'VENDA',
+            tipo: { not: 'DEVOLUCAO' },
             status: STATUS.AGUARDANDO,
             OR: [{ saiuEm: { lte: corte } }, { saiuEm: null, emitidaEm: { lte: corte } }],
         },

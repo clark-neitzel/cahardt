@@ -9,6 +9,7 @@ const prisma = require('../config/database');
 const focusNfe = require('./focusNfeService');
 const { gerarParcelasData, ehPedidoAPrazo } = require('./pedidoCalculos');
 const { normalizarChaveNFeTolerante } = require('../utils/documento');
+const { mensagemCadastroIncompleto, documentoNormalizado, ehCPFDoc } = require('../utils/cadastroFiscal');
 
 const EMITENTE = {
     cnpj_emitente: '08766459000102',
@@ -138,48 +139,69 @@ function montarCobranca(pedido, total) {
 }
 
 /**
+ * Cadastro fiscal do destinatário — cliente presente, CPF/CNPJ e endereço completos.
+ * Extraída de `montarNotaVenda` em 09/2026 (a bonificação com nota usa a MESMA regra).
+ * As mensagens vêm de `utils/cadastroFiscal.js` e são IDÊNTICAS às de sempre.
+ * Devolve { doc, ehCPF, interestadual } — `interestadual` = cliente em UF != SC, que
+ * troca o CFOP (5xxx → 6xxx) e o local_destino (1 → 2); sem o idDest=2 a SEFAZ rejeita
+ * ("idDest incompatível com a UF de destino").
+ */
+function validarCadastroFiscal(cliente) {
+    if (!cliente) throw new Error('Pedido sem cliente.');
+    const msg = mensagemCadastroIncompleto(cliente);
+    if (msg) throw new Error(msg);
+    const doc = documentoNormalizado(cliente);
+    return {
+        doc,
+        ehCPF: ehCPFDoc(doc),
+        interestadual: String(cliente.End_Estado || '').trim().toUpperCase() !== EMITENTE.uf_emitente,
+    };
+}
+
+/** Bloco do destinatário (nome + documento + indicador de IE). Extraído de `montarNotaVenda`. */
+function montarDestinatario(cliente, doc, ehCPF) {
+    if (ehCPF) {
+        return {
+            nome_destinatario: cliente.Nome,
+            cpf_destinatario: doc,
+            indicador_inscricao_estadual_destinatario: 9, // não contribuinte
+        };
+    }
+    const ie = String(cliente.fiscal?.inscricaoEstadual || '').replace(/\D/g, '');
+    return {
+        nome_destinatario: cliente.Nome,
+        cnpj_destinatario: doc,
+        // Com IE → contribuinte (1). Sem IE → isento (2), como as notas de MEI do CA.
+        ...(ie
+            ? { indicador_inscricao_estadual_destinatario: 1, inscricao_estadual_destinatario: ie }
+            : { indicador_inscricao_estadual_destinatario: 2 }),
+    };
+}
+
+/** Bloco de endereço do destinatário — igual na venda e na bonificação. */
+function montarEnderecoDestinatario(cliente) {
+    return {
+        logradouro_destinatario: cliente.End_Logradouro,
+        numero_destinatario: String(cliente.End_Numero),
+        ...(cliente.End_Complemento ? { complemento_destinatario: cliente.End_Complemento } : {}),
+        bairro_destinatario: cliente.End_Bairro,
+        municipio_destinatario: cliente.End_Cidade,
+        uf_destinatario: cliente.End_Estado,
+        cep_destinatario: String(cliente.End_CEP).replace(/\D/g, ''),
+        pais_destinatario: 'Brasil',
+        ...(cliente.Telefone ? { telefone_destinatario: String(cliente.Telefone).replace(/\D/g, '') } : {}),
+    };
+}
+
+/**
  * Monta o JSON da NF-e de venda a partir do pedido (com cliente.fiscal e itens.produto carregados).
  * Lança Error com mensagem AMIGÁVEL quando falta cadastro (a UI mostra ao usuário o que corrigir).
  */
 async function montarNotaVenda(pedido) {
     const cfg = await getConfig();
     const cliente = pedido.cliente;
-    if (!cliente) throw new Error('Pedido sem cliente.');
-
-    const doc = String(cliente.Documento || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase();
-    if (!doc) throw new Error(`Cliente "${cliente.Nome}" sem CPF/CNPJ no cadastro — preencha para emitir a nota.`);
-    const ehCPF = /^\d{11}$/.test(doc);
-
-    const faltando = [];
-    if (!cliente.End_Logradouro) faltando.push('endereço (rua)');
-    if (!cliente.End_Numero) faltando.push('número');
-    if (!cliente.End_Bairro) faltando.push('bairro');
-    if (!cliente.End_Cidade) faltando.push('cidade');
-    if (!cliente.End_Estado) faltando.push('UF');
-    if (!cliente.End_CEP) faltando.push('CEP');
-    if (faltando.length) throw new Error(`Cliente "${cliente.Nome}" com cadastro incompleto para a nota: falta ${faltando.join(', ')}.`);
-
-    const ie = String(cliente.fiscal?.inscricaoEstadual || '').replace(/\D/g, '');
-
-    // Operação interestadual: cliente em UF diferente da do emitente (SC).
-    // Troca o CFOP (5xxx interno → 6xxx interestadual) e o local_destino (1 → 2);
-    // sem o idDest=2 a SEFAZ rejeita ("idDest incompatível com a UF de destino").
-    const interestadual = String(cliente.End_Estado || '').trim().toUpperCase() !== EMITENTE.uf_emitente;
-
-    const destinatario = ehCPF
-        ? {
-            nome_destinatario: cliente.Nome,
-            cpf_destinatario: doc,
-            indicador_inscricao_estadual_destinatario: 9, // não contribuinte
-        }
-        : {
-            nome_destinatario: cliente.Nome,
-            cnpj_destinatario: doc,
-            // Com IE → contribuinte (1). Sem IE → isento (2), como as notas de MEI do CA.
-            ...(ie
-                ? { indicador_inscricao_estadual_destinatario: 1, inscricao_estadual_destinatario: ie }
-                : { indicador_inscricao_estadual_destinatario: 2 }),
-        };
+    const { doc, ehCPF, interestadual } = validarCadastroFiscal(cliente);
+    const destinatario = montarDestinatario(cliente, doc, ehCPF);
 
     const itensValidos = (pedido.itens || []).filter(i => Number(i.quantidade) > 0);
     if (!itensValidos.length) throw new Error('Pedido sem itens com quantidade.');
@@ -261,15 +283,7 @@ async function montarNotaVenda(pedido) {
         presenca_comprador: 1,
         ...EMITENTE,
         ...destinatario,
-        logradouro_destinatario: cliente.End_Logradouro,
-        numero_destinatario: String(cliente.End_Numero),
-        ...(cliente.End_Complemento ? { complemento_destinatario: cliente.End_Complemento } : {}),
-        bairro_destinatario: cliente.End_Bairro,
-        municipio_destinatario: cliente.End_Cidade,
-        uf_destinatario: cliente.End_Estado,
-        cep_destinatario: String(cliente.End_CEP).replace(/\D/g, ''),
-        pais_destinatario: 'Brasil',
-        ...(cliente.Telefone ? { telefone_destinatario: String(cliente.Telefone).replace(/\D/g, '') } : {}),
+        ...montarEnderecoDestinatario(cliente),
         modalidade_frete: 0, // por conta do emitente, como todas as notas do CA
         valor_frete: 0,
         valor_seguro: 0,
@@ -282,6 +296,272 @@ async function montarNotaVenda(pedido) {
         informacoes_adicionais_contribuinte: linhas.filter(Boolean).join('#'),
         items,
     };
+}
+
+/**
+ * NF-e de BONIFICAÇÃO (remessa em bonificação — BN# marcada "com nota"), 09/2026.
+ *
+ * Função SEPARADA da nota de venda de propósito: o perfil fiscal é outro e o payload
+ * da venda não pode mudar em nada por causa dela.
+ *
+ * Perfil (CFOP confirmado pelo dono em 09/2026):
+ *   - natOp "Remessa em bonificacao", finalidade 1 (normal), tipo 1 (saída)
+ *   - CFOP 5910 dentro de SC / 6910 para outra UF. IGNORA `nfeRevenda`: ao contrário
+ *     de 5101/5102, o par 5910/6910 não tem versão "revenda" e "produção própria".
+ *   - CSOSN 102 (sem permissão de crédito) para CNPJ **e** CPF. Por isso a nota NÃO
+ *     leva a frase "PERMITE O APROVEITAMENTO DO CREDITO DE ICMS…", que é do CSOSN 101 —
+ *     com 102 seria informação FALSA num documento fiscal.
+ *   - PIS/COFINS CST 49; IPI omitido (mesmo motivo da venda: só o CST 99 gera IPITrib
+ *     inválido no schema da SEFAZ).
+ *   - Pagamento "90 - sem pagamento", valor 0, SEM `indicador_pagamento`.
+ *   - SEM fatura/duplicatas em nenhuma hipótese: bonificação não gera cobrança
+ *     (por isso `montarCobranca` NÃO é chamada aqui).
+ *
+ * Valor: preço de tabela já gravado em cada `pedido_itens.valor` (decisão do dono —
+ * nota zerada a SEFAZ não aceita). O cliente continua não pagando nada: bonificação
+ * não vira conta a receber, boleto, PIX, comissão, meta nem receita.
+ */
+async function montarNotaBonificacao(pedido) {
+    const cfg = await getConfig();
+    const cliente = pedido.cliente;
+    const { doc, ehCPF, interestadual } = validarCadastroFiscal(cliente);
+    const destinatario = montarDestinatario(cliente, doc, ehCPF);
+
+    const itensValidos = (pedido.itens || []).filter(i => Number(i.quantidade) > 0);
+    if (!itensValidos.length) throw new Error('Bonificação sem itens com quantidade.');
+
+    let total = 0;
+    const items = itensValidos.map((item, idx) => {
+        const q = Number(item.quantidade);
+        const v = Number(item.valor); // preço de tabela gravado no item
+        const bruto = round2(q * v);
+        total = round2(total + bruto);
+        const revenda = !!item.produto?.nfeRevenda;
+        const ncm = String(item.produto?.ncm || '').replace(/\D/g, '') || cfg.ncmPadrao;
+        return {
+            numero_item: idx + 1,
+            codigo_produto: item.produto?.codigo || item.produtoId,
+            descricao: item.produto?.nome || item.descricao || 'PRODUTO',
+            // 5910/6910 — bonificação/brinde. Sem par revenda/produção (ver cabeçalho).
+            cfop: interestadual ? '6910' : '5910',
+            codigo_ncm: ncm,
+            // CEST segue a mesma regra da venda (só produto de revenda que tem CEST cadastrado)
+            ...(revenda && item.produto?.nfeCest ? { cest: item.produto.nfeCest } : {}),
+            unidade_comercial: item.produto?.unidade || 'PT',
+            unidade_tributavel: item.produto?.unidade || 'PT',
+            quantidade_comercial: q,
+            quantidade_tributavel: q,
+            valor_unitario_comercial: v,
+            valor_unitario_tributavel: v,
+            valor_bruto: bruto,
+            inclui_no_total: 1,
+            icms_origem: 0,
+            // IPI omitido de propósito (idem venda — CST 99 sozinho gera IPITrib inválido)
+            pis_situacao_tributaria: '49',
+            cofins_situacao_tributaria: '49',
+            icms_situacao_tributaria: '102', // sem permissão de crédito — CNPJ e CPF
+        };
+    });
+
+    // Dados adicionais. Separador '#': a Focus grava '\n' como literal no XML; a DANFE
+    // do app converte '#' em quebra de linha.
+    const linhas = ['MERCADORIA ENTREGUE EM BONIFICACAO - SEM COBRANCA AO DESTINATARIO.'];
+    linhas.push(`Referente à bonificação BN#${pedido.numero}`);
+    if (pedido.observacoes) linhas.push(String(pedido.observacoes).replace(/\r?\n/g, '#').trim());
+    linhas.push(...cfg.textosLegais);
+    // ⚠️ NÃO acrescentar a frase "PERMITE O APROVEITAMENTO DO CREDITO DE ICMS…": ela é do
+    // CSOSN 101 e aqui o CSOSN é 102 (sem crédito) — seria informação falsa na nota.
+
+    const agora = agoraBrasilia();
+    return {
+        natureza_operacao: 'Remessa em bonificacao',
+        data_emissao: agora,
+        data_entrada_saida: agora,
+        tipo_documento: 1, // saída
+        finalidade_emissao: 1, // normal
+        local_destino: interestadual ? 2 : 1,
+        consumidor_final: ehCPF ? 1 : 0,
+        presenca_comprador: 1,
+        ...EMITENTE,
+        ...destinatario,
+        ...montarEnderecoDestinatario(cliente),
+        modalidade_frete: 0,
+        valor_frete: 0,
+        valor_seguro: 0,
+        valor_desconto: 0,
+        valor_outras_despesas: 0,
+        valor_produtos: total,
+        valor_total: total,
+        // Sem pagamento — e SEM numero_fatura/duplicatas/valor_*_fatura (não há o que cobrar).
+        formas_pagamento: [{ forma_pagamento: '90', valor_pagamento: 0 }],
+        informacoes_adicionais_contribuinte: linhas.filter(Boolean).join('#'),
+        items,
+    };
+}
+
+/**
+ * NF-e de DEVOLUÇÃO de BONIFICAÇÃO (09/2026) — função PURA: só monta o JSON. Não grava,
+ * não chama a Focus. Quem emite é `emitirDevolucaoBonificacao`; `diag-nf-devolucao-bonificacao`
+ * (adminExec) usa esta mesma função para a contabilidade conferir o payload em produção.
+ *
+ * Perfil fechado pelo dono com a contabilidade (09/2026). Nossa nota é de ENTRADA:
+ *   - natOp "Devolucao de mercadoria remetida a titulo de bonificacao"
+ *   - finalidade 4 (devolução), tipo 0 (entrada)
+ *   - CFOP 1949 (cliente em SC) / 2949 (outra UF) — "outra entrada não especificada";
+ *     NÃO é 1201/1202 (esses são devolução de VENDA e abatem faturamento).
+ *   - CSOSN 102 para CNPJ **e** CPF, SEM `icms_*_credito_simples` — a remessa (5910/6910)
+ *     saiu com 102, sem crédito; a volta também não pode gerar. Por isso NUNCA a frase
+ *     "PERMITE O APROVEITAMENTO DO CREDITO DE ICMS…" (é do CSOSN 101).
+ *   - PIS/COFINS CST 99; IPI omitido (só o CST 99 sozinho gera IPITrib inválido).
+ *   - tPag 90 valor 0; SEM fatura/duplicata: bonificação não tem conta a receber e a
+ *     devolução dela NÃO tem NENHUM efeito financeiro.
+ *   - Referencia a NF-e da bonificação no cabeçalho (`notas_referenciadas`) E por item
+ *     (`chave_acesso_dfe_referenciado` + `numero_item_dfe_referenciado`, NT 2025.002)
+ *     quando `usarRefItem` — mesma mecânica da devolução de venda.
+ *
+ * Entradas: `dev` (Devolucao com `itens.produto`), `pedido` (a BN#), `cliente` (com
+ * `fiscal`), `notaBonif` (NotaFiscalApp tipo BONIFICACAO AUTORIZADA — é dela que saem a
+ * chave, o nº/série/data e os itens/nItem, via `payloadEnviado`), `usarRefItem` (bool).
+ * Devolve { nota, refItem: { usado, fonte, casamento: [{ produtoId, codigo, nItemOrigem }] } }.
+ * Erros são amigáveis (a tela mostra `e.message`); os de referência por item levam
+ * `err.codigo = 'REF_ITEM'` para o emissor gravar o motivo na NotaFiscalApp antes de subir.
+ */
+async function montarNotaDevolucaoBonificacao({ dev, pedido, cliente, notaBonif, usarRefItem }) {
+    const cfg = await getConfig();
+    if (!notaBonif) throw new Error('Esta bonificação não tem NF-e autorizada — a devolução fica registrada só no estoque, sem nota fiscal.');
+    const { doc, ehCPF, interestadual } = validarCadastroFiscal(cliente);
+    const destinatario = montarDestinatario(cliente, doc, ehCPF);
+
+    // Chave da NF-e da bonificação (emitida pelo app: já vem só com os 44 caracteres, mas a
+    // normalização tolerante é a mesma da venda, por segurança).
+    const chaveOriginal = normalizarChaveNFeTolerante(notaBonif.chave || '');
+    if (!chaveOriginal) throw new Error('NF-e da bonificação sem chave de acesso válida — não é possível referenciá-la na devolução.');
+    const numeroOriginal = notaBonif.numero || null;
+    const serieOriginal = notaBonif.serie ?? 1;
+
+    const itensValidos = (dev.itens || []).filter(i => Number(i.quantidade) > 0);
+    if (!itensValidos.length) throw new Error('Devolução sem itens com quantidade.');
+
+    // ── Referência POR ITEM (mesma regra da devolução de venda) ─────────────────────
+    const refItem = { usado: !!usarRefItem, fonte: null, casamento: [] };
+    const nItemPorItemDev = new Map();
+    if (usarRefItem) {
+        // Fonte: `payloadEnviado.items` da própria nota de bonificação (banco, sem rede).
+        // `permitirRede: false` de propósito: a nota de bonificação NUNCA existiu no Conta Azul,
+        // então a fonte `xml-ca` não teria o que achar — e esta função é pura (a rota de
+        // diagnóstico promete "não grava nada"; a busca no CA gravaria XML no volume).
+        const origem = await itensDaNotaOriginal({ notaVendaApp: notaBonif, chaveOriginal, permitirRede: false });
+        refItem.fonte = origem.fonte;
+        if (!origem.itens.length) {
+            const err = new Error(`NF-e nº ${numeroOriginal || '?'} da bonificação sem itens gravados — não é possível montar a devolução por item. Confira a nota da bonificação ou emita a devolução manualmente.`);
+            err.codigo = 'REF_ITEM';
+            throw err;
+        }
+        const rotuloNota = numeroOriginal ? `nº ${numeroOriginal}` : chaveOriginal;
+        const usados = new Set(); // linhas da nota de origem já referenciadas nesta devolução
+        for (const item of itensValidos) {
+            const detalhe = {};
+            const achado = acharItemOrigem(item, origem.itens, rotuloNota, usados, detalhe);
+            if (!achado) {
+                const nomeProd = item.produto?.nome || item.produtoId;
+                const codProd = item.produto?.codigo || item.produtoId;
+                const err = new Error(detalhe.motivo === 'linhas-esgotadas'
+                    ? `Produto "${nomeProd}" (código ${codProd}) aparece MENOS vezes na NF-e nº ${numeroOriginal || '?'} da bonificação do que nas linhas desta devolução — todas as linhas desse produto na nota de origem já foram apontadas por outro item devolvido. A SEFAZ exige que cada item devolvido aponte um item próprio da nota de origem, e a nota não pode apontar o mesmo item duas vezes. Junte as linhas repetidas desse produto na devolução, confira a nota original ou emita a devolução manualmente.`
+                    : `Produto "${nomeProd}" (código ${codProd}) não consta na NF-e nº ${numeroOriginal || '?'} da bonificação — a SEFAZ exige que cada item devolvido aponte o item da nota de origem. Confira a nota original ou emita a devolução manualmente.`);
+                err.codigo = 'REF_ITEM';
+                throw err;
+            }
+            nItemPorItemDev.set(item.id, achado.nItem);
+            refItem.casamento.push({ produtoId: item.produtoId, codigo: item.produto?.codigo || null, nItemOrigem: achado.nItem });
+        }
+    }
+
+    let total = 0;
+    const items = itensValidos.map((item, idx) => {
+        const q = Number(item.quantidade);
+        const v = Number(item.valorUnitario); // valor gravado na DevolucaoItem (= preço de tabela da BN#)
+        const bruto = round2(q * v);
+        total = round2(total + bruto);
+        const revenda = !!item.produto?.nfeRevenda;
+        return {
+            numero_item: idx + 1,
+            codigo_produto: item.produto?.codigo || item.produtoId,
+            descricao: item.produto?.nome || 'PRODUTO',
+            // Documento de origem NO ITEM (NT 2025.002 v1.51). `numero_item_dfe_referenciado`
+            // é o nItem na nota da BONIFICAÇÃO — não confundir com `numero_item` acima.
+            ...(usarRefItem ? {
+                chave_acesso_dfe_referenciado: chaveOriginal,
+                numero_item_dfe_referenciado: String(nItemPorItemDev.get(item.id)),
+            } : {}),
+            // 1949/2949: entrada por devolução de bonificação (espelho de 5910/6910). Sem par
+            // revenda/produção — `nfeRevenda` só decide o CEST, como na remessa.
+            cfop: interestadual ? '2949' : '1949',
+            codigo_ncm: String(item.produto?.ncm || '').replace(/\D/g, '') || cfg.ncmPadrao,
+            ...(revenda && item.produto?.nfeCest ? { cest: item.produto.nfeCest } : {}),
+            unidade_comercial: item.produto?.unidade || 'PT',
+            unidade_tributavel: item.produto?.unidade || 'PT',
+            quantidade_comercial: q,
+            quantidade_tributavel: q,
+            valor_unitario_comercial: v,
+            valor_unitario_tributavel: v,
+            valor_bruto: bruto,
+            inclui_no_total: 1,
+            icms_origem: 0,
+            // IPI omitido de propósito (idem venda/bonificação)
+            pis_situacao_tributaria: '99',
+            cofins_situacao_tributaria: '99',
+            icms_situacao_tributaria: '102', // sem crédito — CNPJ e CPF, SEM icms_*_credito_simples
+        };
+    });
+
+    // CFOP com que a mercadoria SAIU (5910 dentro de SC / 6910 outra UF) — lido do payload
+    // da própria nota de bonificação; se faltar, deduzido pela UF do cliente.
+    const cfopRemessa = String(notaBonif.payloadEnviado?.items?.[0]?.cfop || (interestadual ? '6910' : '5910'));
+    const dataOrig = notaBonif.criadoEm || pedido.dataVenda;
+    const dataOrigBR = dataOrig ? new Date(dataOrig).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : null;
+    // Separador '#': a Focus grava '\n' literal no XML; a DANFE do app converte '#' em quebra.
+    const linhas = [
+        `DEVOLUCAO DE MERCADORIA RECEBIDA EM BONIFICACAO (REMESSA CFOP ${cfopRemessa}) - REFERENTE A NF-e N ${serieOriginal}-${numeroOriginal || ''}${dataOrigBR ? ` DE ${dataOrigBR}` : ''}`.trim(),
+        `Referente à bonificação BN#${pedido.numero} - devolução DEV#${dev.numero}`,
+        'SEM COBRANCA E SEM EFEITO FINANCEIRO - MERCADORIA HAVIA SIDO REMETIDA SEM ONUS AO DESTINATARIO.',
+        ...cfg.textosLegais,
+    ];
+    // ⚠️ NUNCA acrescentar a frase "PERMITE O APROVEITAMENTO DO CREDITO DE ICMS…" (CSOSN 101).
+
+    const agora = agoraBrasilia();
+    const nota = {
+        natureza_operacao: 'Devolucao de mercadoria remetida a titulo de bonificacao',
+        data_emissao: agora,
+        data_entrada_saida: agora,
+        tipo_documento: 0, // ENTRADA
+        finalidade_emissao: 4, // devolução
+        local_destino: interestadual ? 2 : 1,
+        consumidor_final: ehCPF ? 1 : 0,
+        presenca_comprador: 1,
+        ...EMITENTE,
+        ...destinatario,
+        ...montarEnderecoDestinatario(cliente),
+        modalidade_frete: 0,
+        valor_frete: 0,
+        valor_seguro: 0,
+        valor_desconto: 0,
+        valor_outras_despesas: 0,
+        valor_produtos: total,
+        valor_total: total,
+        // Sem pagamento — e SEM numero_fatura/duplicatas (não há cobrança em bonificação).
+        formas_pagamento: [{ forma_pagamento: '90', valor_pagamento: 0 }],
+        // MANTIDO de propósito junto com a referência por item: a NT 2025.002 muda ONDE a
+        // SEFAZ valida a origem, não proíbe a referência de cabeçalho. SEM PROVA — ninguém
+        // emitiu ainda com as duas referências juntas.
+        // ⚠️ ROLLBACK DE UMA LINHA: se a SEFAZ rejeitar por causa desta referência de
+        // cabeçalho convivendo com a referência por item, troque APENAS a linha abaixo por:
+        //     ...(usarRefItem ? {} : { notas_referenciadas: [{ chave_nfe: chaveOriginal }] }),
+        // (mesmo rollback documentado para a devolução de venda em focus-nfe-api.md).
+        notas_referenciadas: [{ chave_nfe: chaveOriginal }],
+        informacoes_adicionais_contribuinte: linhas.filter(Boolean).join('#'),
+        items,
+    };
+    return { nota, refItem };
 }
 
 const MAPA_STATUS = {
@@ -299,8 +579,13 @@ async function marcarPedidoFaturado(nota) {
     if (nota.status !== 'AUTORIZADO' || nota.ambiente !== 'producao') return;
     if (nota.tipo && nota.tipo !== 'VENDA') return;
     try {
-        await prisma.pedido.update({
-            where: { id: nota.pedidoId },
+        // `updateMany` com `bonificacao: false` no WHERE (09/2026): a NF-e de bonificação
+        // NÃO pode mexer no situacaoCA da BN#. Quem manda no status da bonificação é
+        // aprovar/reverter (aprovarBonificacao já grava FATURADO; reverter volta a null) —
+        // se a nota também mexesse, reverter uma bonificação já com nota deixaria o
+        // status "consertado" de volta para FATURADO na reconciliação seguinte.
+        await prisma.pedido.updateMany({
+            where: { id: nota.pedidoId, bonificacao: false },
             data: { situacaoCA: 'FATURADO', nfeConsultadoEm: new Date() },
         });
     } catch (e) {
@@ -355,7 +640,12 @@ async function emitirVenda(pedidoId) {
         throw new Error('Pedido cancelado/excluído na época do Conta Azul — não é possível emitir NF-e.');
     }
     if (pedido.especial) throw new Error('Pedido especial não gera nota fiscal.');
-    if (pedido.bonificacao) throw new Error('Bonificação ainda não é emitida pelo app.');
+    // Bonificação COM NOTA (09/2026): só emite a BN# que quem criou marcou "com nota"
+    // E que já foi aprovada (a aprovação é o que baixa o estoque da bonificação).
+    if (pedido.bonificacao) {
+        if (!pedido.nfBonificacao) throw new Error('Esta bonificação foi registrada como "sem nota" — mude a escolha na aba Bonificações antes de emitir.');
+        if (pedido.statusEnvio !== 'RECEBIDO') throw new Error('Bonificação ainda não aprovada — aprove a bonificação antes de emitir a nota.');
+    }
     if (!pedido.numero) throw new Error('Pedido ainda sem número de venda.');
     if (pedido.nfeChave) throw new Error(`Este pedido já tem NF-e emitida pelo Conta Azul (nº ${pedido.nfeNumero || '—'}).`);
 
@@ -385,10 +675,13 @@ async function emitirVenda(pedidoId) {
         throw new Error(`Nota deste pedido já está "${existente.status}" — não é preciso emitir de novo.`);
     }
 
-    const nota = await montarNotaVenda(pedido);
+    // Mesma ref (`nf-<p|h>-<pedidoId>`) para venda e bonificação — DANFE, canhoto, ZIP de
+    // XMLs e a coluna da fila dependem dela. O que muda é o montador e o `tipo`.
+    const tipoNota = pedido.bonificacao ? 'BONIFICACAO' : 'VENDA';
+    const nota = pedido.bonificacao ? await montarNotaBonificacao(pedido) : await montarNotaVenda(pedido);
     const registro = existente
-        ? await prisma.notaFiscalApp.update({ where: { ref }, data: { status: 'PROCESSANDO', mensagemSefaz: null, payloadEnviado: nota } })
-        : await prisma.notaFiscalApp.create({ data: { ref, ambiente, pedidoId: pedido.id, payloadEnviado: nota } });
+        ? await prisma.notaFiscalApp.update({ where: { ref }, data: { tipo: tipoNota, status: 'PROCESSANDO', mensagemSefaz: null, payloadEnviado: nota } })
+        : await prisma.notaFiscalApp.create({ data: { ref, ambiente, tipo: tipoNota, pedidoId: pedido.id, payloadEnviado: nota } });
 
     const { httpStatus, data } = await focusNfe.emitir(ref, nota);
     if (httpStatus >= 400) {
@@ -435,7 +728,11 @@ async function sincronizarEventos() {
             where: {
                 status: 'AUTORIZADO',
                 ambiente: 'producao',
-                pedido: { OR: [{ situacaoCA: null }, { situacaoCA: { not: 'FATURADO' } }] },
+                // `bonificacao: false`: a nota de bonificação nunca fatura o pedido (ver
+                // `marcarPedidoFaturado`). Sem este filtro, TODA bonificação com nota
+                // apareceria aqui como "desalinhada" e a auto-cura tentaria consertá-la
+                // a cada 5 minutos, para sempre.
+                pedido: { bonificacao: false, OR: [{ situacaoCA: null }, { situacaoCA: { not: 'FATURADO' } }] },
             },
         });
         for (const n of desalinhadas) {
@@ -714,11 +1011,95 @@ async function registrarErroNotaDevolucao({ ref, ambiente, pedidoId, mensagem })
 }
 
 /**
- * Emite a NF-e de DEVOLUÇÃO de venda a partir de uma Devolucao registrada no app.
- * Perfil espelhado da nota real 84808 do CA: natOp "Devolucao de venda", finalidade 4,
- * tipo entrada (0), CFOP 1201 (produção própria) / 1202 (revenda), PIS/COFINS CST 99,
- * pagamento "90 - sem pagamento", referenciando a chave da NF-e original da venda.
- * SÓ para devolução de pedido COM nota (tipo CONTA_AZUL) — pedido especial não tem NF.
+ * Emite a NF-e de DEVOLUÇÃO de BONIFICAÇÃO (09/2026). Chamada SÓ por `emitirDevolucao`,
+ * pelo despacho `dev.pedidoOriginal.bonificacao` — a rota, o Caixa, a aba Devoluções, o
+ * canhoto e o ZIP continuam falando só com `emitirDevolucao` e com a ref `nfd-<amb>-<devId>`.
+ * `dev` já vem carregado com `itens.produto`, `cliente.fiscal` e `pedidoOriginal`.
+ *
+ * Travas, nesta ordem (as duas primeiras espelham a devolução de venda):
+ *   1. pedido especial → recusa (mensagem de sempre);
+ *   2. `notaDevolucaoCA` → recusa (já tem nota do CA);
+ *   3. BN# SEM NF-e de bonificação AUTORIZADA no ambiente atual → recusa SEM gravar
+ *      motivo (não há o que reemitir: a devolução fica só no estoque, como sempre foi);
+ *   4. idempotência pela ref (AUTORIZADO/PROCESSANDO recusa — mesma mensagem da venda);
+ *   5. sem itens com quantidade → recusa;
+ *   6. referência por item não resolve → grava o motivo (`registrarErroNotaDevolucao`) e sobe.
+ * NÃO chama `marcarPedidoFaturado` (a BN# não fatura, e a devolução dela não mexe em
+ * status nenhum). Sem `$transaction` — o arquivo não tem nenhuma.
+ */
+async function emitirDevolucaoBonificacao(dev) {
+    const pedido = dev.pedidoOriginal;
+    if (!pedido) throw new Error('Devolução sem pedido de origem.');
+    if (pedido.especial) throw new Error('Devolução de pedido especial não gera nota fiscal (pedido sem nota).');
+    if (dev.notaDevolucaoCA) {
+        throw new Error(`Esta devolução já tem NF de devolução do Conta Azul (nº ${dev.notaDevolucaoCA}).`);
+    }
+
+    // NF-e da BONIFICAÇÃO (tipo BONIFICACAO, AUTORIZADO, ambiente atual) — obrigatória
+    // como referência. Nota em PROCESSANDO/ERRO/CANCELADO conta como "sem nota".
+    const notaBonif = await notaBonificacaoAutorizada(pedido.id);
+    if (!notaBonif) {
+        throw new Error('Esta bonificação não tem NF-e autorizada — a devolução fica registrada só no estoque, sem nota fiscal.');
+    }
+
+    const ambiente = focusNfe.ambiente();
+    const ref = `nfd-${ambiente === 'producao' ? 'p' : 'h'}-${dev.id}`;
+    const existente = await prisma.notaFiscalApp.findUnique({ where: { ref } });
+    if (existente && ['AUTORIZADO', 'PROCESSANDO'].includes(existente.status)) {
+        throw new Error(`Nota de devolução deste registro já está "${existente.status}".`);
+    }
+
+    const itensValidos = (dev.itens || []).filter(i => Number(i.quantidade) > 0);
+    if (!itensValidos.length) throw new Error('Devolução sem itens com quantidade.');
+
+    const usarRefItem = await refItemLigada();
+    let montada;
+    try {
+        montada = await montarNotaDevolucaoBonificacao({ dev, pedido, cliente: dev.cliente, notaBonif, usarRefItem });
+    } catch (err) {
+        // Só o erro de referência por item deixa motivo gravado (a aba Devoluções mostra
+        // "Rejeitada: …" e oferece "Emitir novamente"). Cadastro incompleto etc. sobem
+        // sem registro, exatamente como na devolução de venda.
+        if (err && err.codigo === 'REF_ITEM') {
+            await registrarErroNotaDevolucao({ ref, ambiente, pedidoId: pedido.id, mensagem: err.message });
+        }
+        throw err;
+    }
+    const { nota, refItem } = montada;
+    if (refItem.usado) {
+        console.log(`[NFDevolucao] BN#${pedido.numero} DEV#${dev.numero} ref por item: fonte=${refItem.fonte} itens=${itensValidos.length} nf=nº ${notaBonif.numero || '?'}`);
+    }
+
+    // Persistência IDÊNTICA à devolução de venda: mesma ref, mesmo tipo 'DEVOLUCAO'.
+    const registro = existente
+        ? await prisma.notaFiscalApp.update({ where: { ref }, data: { status: 'PROCESSANDO', mensagemSefaz: null, payloadEnviado: nota } })
+        : await prisma.notaFiscalApp.create({ data: { ref, ambiente, tipo: 'DEVOLUCAO', pedidoId: pedido.id, payloadEnviado: nota } });
+
+    const { httpStatus, data } = await focusNfe.emitir(ref, nota);
+    if (httpStatus >= 400) {
+        const msg = data?.mensagem || data?.erros?.map?.(e => e.mensagem).join('; ') || JSON.stringify(data).slice(0, 300);
+        await prisma.notaFiscalApp.update({ where: { ref }, data: { status: 'ERRO', mensagemSefaz: `Validação Focus: ${msg}` } });
+        throw new Error(`Nota de devolução recusada na validação: ${msg}`);
+    }
+    const atualizada = await prisma.notaFiscalApp.update({ where: { ref }, data: aplicarRetornoFocus(data) });
+    // Canhoto: best-effort, nunca lança (ver comentário na devolução de venda). Como a
+    // nota é de ENTRADA, `registrarDeNotaApp` a classifica como DESCONHECIDO, igual à
+    // devolução de venda.
+    await registrarCanhoto(atualizada);
+    return atualizada;
+}
+
+/**
+ * Emite a NF-e de DEVOLUÇÃO a partir de uma Devolucao registrada no app.
+ * Devolução de VENDA — perfil espelhado da nota real 84808 do CA: natOp "Devolucao de
+ * venda", finalidade 4, tipo entrada (0), CFOP 1201 (produção própria) / 1202 (revenda),
+ * PIS/COFINS CST 99, pagamento "90 - sem pagamento", referenciando a chave da NF-e
+ * original da venda. SÓ para devolução de pedido COM nota — pedido especial não tem NF.
+ * Devolução de BONIFICAÇÃO (09/2026) — despachada logo após a trava ATIVA para
+ * `emitirDevolucaoBonificacao` (CFOP 1949/2949, sem efeito financeiro). Ela precisa vir
+ * ANTES da trava `dev.tipo === 'ESPECIAL'`: toda devolução de BN# é gravada como
+ * tipo ESPECIAL pelo ModalDevolucao (é assim que o Caixa a trata: sem cobrança). O que
+ * barra a BN# sem nota é a trava própria de lá ("não tem NF-e autorizada").
  */
 async function emitirDevolucao(devolucaoId) {
     const dev = await prisma.devolucao.findUnique({
@@ -731,6 +1112,8 @@ async function emitirDevolucao(devolucaoId) {
     });
     if (!dev) throw new Error('Devolução não encontrada.');
     if (dev.status !== 'ATIVA') throw new Error('Devolução revertida não gera nota fiscal.');
+    // Devolução de BONIFICAÇÃO (09/2026): caminho próprio. Antes da trava ESPECIAL de propósito (ver cabeçalho).
+    if (dev.pedidoOriginal?.bonificacao) return emitirDevolucaoBonificacao(dev);
     if (dev.tipo === 'ESPECIAL' || dev.pedidoOriginal?.especial) {
         throw new Error('Devolução de pedido especial não gera nota fiscal (pedido sem nota).');
     }
@@ -948,6 +1331,46 @@ async function notaAutorizadaDoPedido(pedidoId) {
     return nota && nota.status === 'AUTORIZADO' ? nota : null;
 }
 
-module.exports = { montarNotaVenda, emitirVenda, emitirDevolucao, sincronizarEventos, consultarAtualizar, consultarPresas, getConfig, notaAutorizadaDoPedido,
+// ── NF-e de BONIFICAÇÃO autorizada (BN# "com nota") — descoberta em lote e unitária ──
+// Diferente de `notaAutorizadaDoPedido` (que NÃO filtra `tipo` e continua assim: a DANFE
+// do pedido e `_localizarNotaFiscal` dependem dela), estas duas só enxergam nota
+// `tipo: 'BONIFICACAO'` + `status: 'AUTORIZADO'` no ambiente atual. São a fonte de
+// `nfBonificacaoAutorizada` (pedido detalhado e aba Devoluções) e da trava 3 de
+// `emitirDevolucaoBonificacao`.
+
+/** Map<pedidoId, NotaFiscalApp> — um único findMany pelas refs `nf-<amb>-<id>`. */
+async function mapaNotasBonificacaoAutorizadas(pedidoIds) {
+    const mapa = new Map();
+    const ids = [...new Set((pedidoIds || []).filter(Boolean).map(String))];
+    if (!ids.length) return mapa;
+    const prefixo = `nf-${focusNfe.ambiente() === 'producao' ? 'p' : 'h'}-`;
+    const notas = await prisma.notaFiscalApp.findMany({
+        where: { ref: { in: ids.map(id => `${prefixo}${id}`) }, tipo: 'BONIFICACAO', status: 'AUTORIZADO' },
+    });
+    for (const n of notas) mapa.set(n.pedidoId, n);
+    return mapa;
+}
+
+/** NotaFiscalApp da bonificação AUTORIZADA de UM pedido, ou null (delega ao mapa). */
+async function notaBonificacaoAutorizada(pedidoId) {
+    if (!pedidoId) return null;
+    const mapa = await mapaNotasBonificacaoAutorizadas([pedidoId]);
+    return mapa.get(String(pedidoId)) || null;
+}
+
+/**
+ * Contrato do front (09/2026): `nfBonificacaoAutorizada: null | { id, numero, serie, chave }`.
+ * Consumido em GET /api/pedidos/:id (raiz) e GET /api/devolucoes (items[].pedidoOriginal).
+ * Só ADICIONAR campos aqui — nunca renomear.
+ */
+function resumoNotaParaFront(nota) {
+    if (!nota) return null;
+    return { id: nota.id, numero: nota.numero ?? null, serie: nota.serie ?? null, chave: nota.chave ?? null };
+}
+
+module.exports = { montarNotaVenda, montarNotaBonificacao, emitirVenda, emitirDevolucao, sincronizarEventos, consultarAtualizar, consultarPresas, getConfig, notaAutorizadaDoPedido,
+    // devolução de BONIFICAÇÃO (09/2026)
+    montarNotaDevolucaoBonificacao, emitirDevolucaoBonificacao,
+    mapaNotasBonificacaoAutorizadas, notaBonificacaoAutorizada, resumoNotaParaFront,
     // referência da nota de origem por item (usados pelas rotas de diagnóstico em adminExec)
     refItemLigada, itensDaNotaOriginal, acharItemOrigem, DATA_OBRIGATORIA_REF_ITEM };

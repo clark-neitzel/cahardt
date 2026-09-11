@@ -232,7 +232,8 @@ O relatório sai em **2 folhas A4**:
 ### Registrar devolução
 - Na linha de uma entrega, clique no botão de devolução (ícone de retorno)
 - O modal de devolução abre vinculado àquele pedido e àquele caixa
-- Ao salvar, o app **emite a NF-e de devolução automaticamente** (pedido com nota; especial e bonificação não geram NF). Se a emissão falhar, a devolução fica registrada e dá para emitir depois em Pedidos → aba Devoluções
+- Ao salvar, o app **emite a NF-e de devolução automaticamente** (pedido com nota). **Especial nunca gera NF.** **Bonificação (BN#)**: gera NF-e de devolução **só se a bonificação saiu COM nota fiscal autorizada** (09/2026) — é uma nota de devolução de bonificação (CFOP 1949/2949, **sem nenhum efeito financeiro**); bonificação **sem** nota continua como sempre: a devolução fica só no estoque. Se a emissão falhar, a devolução fica registrada e dá para emitir depois em Pedidos → aba Devoluções
+- **Como o modal avisa (bonificação com nota):** o cabeçalho ganha **"(bonificação com nota fiscal)"** e aparece uma caixa verde *"ao salvar, o app emite a NF-e de devolução da bonificação referenciando a NF-e nº X — sem cobrança"*. Se a nota sair, o aviso é *"Devolução registrada e NF-e de devolução da bonificação emitida"*; se falhar, *"Devolução registrada, mas a NF não saiu: motivo"* — a devolução fica registrada e o botão de reemitir está em Pedidos → Devoluções. Bonificação **sem** nota (ou com nota ainda não autorizada) não mostra cabeçalho, caixa verde nem aviso algum: o modal é o mesmo de sempre. Depois que a NF-e de devolução é autorizada, o botão **"🧾 NF dev. N"** aparece na linha da entrega para abrir a DANFE (igual à venda)
 - Ao salvar, o app também **cancela no Asaas os boletos/PIX ainda pagáveis** do pedido — na devolução total porque o cliente não deve mais nada, e na parcial porque o boleto antigo cobra um valor que mudou (reemita o boleto pelo valor novo se o cliente for pagar assim)
 
 > **É o registro da devolução aqui que encerra a cobrança — e ele não espera o caixa fechar.**
@@ -283,6 +284,10 @@ para guardar o texto:
   devolução precisa apontar para ela.
 - **Casos que nunca geram nota, por regra:** devolução já revertida, devolução de pedido especial
   (pedido sem nota de origem) e devolução que já tem NF de devolução do Conta Azul.
+- **"Esta bonificação não tem NF-e autorizada — a devolução fica registrada só no estoque, sem
+  nota fiscal."** — a BN# saiu **sem nota** (ou a nota dela ainda está processando/deu erro).
+  Não é falha: bonificação sem nota nunca teve nota de devolução. Se a nota da bonificação for
+  autorizada depois, clique em "Emitir NF de devolução" na aba Devoluções.
 - **"Nota de devolução deste registro já está AUTORIZADO/PROCESSANDO"** — não é falha: a nota já
   saiu (ou está saindo). É a trava que impede emitir a mesma nota duas vezes; a linha vai mostrar
   o número da NF ou "NF dev. emitindo…".

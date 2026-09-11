@@ -18,6 +18,41 @@ const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: '
 
 const msgErroApi = (e, padrao) => e?.response?.data?.error || padrao;
 
+// O rótulo do documento vem JÁ FORMATADO do backend ('#12480' / 'BN#61') — a tela não
+// monta prefixo. O fallback só cobre um backend antigo, sem o campo.
+const rotuloPedido = (p) => p.rotulo || (p.numero != null ? `Pedido ${p.numero}` : '—');
+
+const ehBonificacao = (p) => p.tipo === 'BONIFICACAO' || !!p.bonificacao;
+
+// Subtítulo da linha: venda mostra a forma de pagamento; bonificação não tem cobrança
+// (o tipoPagamento herdado do pedido — "DINHEIRO" — só confundia).
+const subtituloLinha = (p) => ehBonificacao(p)
+    ? `${fmtData(p.dataVenda)} · Bonificação · sem cobrança`
+    : `${fmtData(p.dataVenda)}${p.tipoPagamento ? ` · ${p.tipoPagamento}` : ''}`;
+
+// Selo roxo da bonificação (cor semântica do design system para "Especial/Bonificação")
+const SeloBonificacao = ({ pedido }) => {
+    if (!ehBonificacao(pedido)) return null;
+    return (
+        <span className="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-700 whitespace-nowrap">
+            Bonificação
+        </span>
+    );
+};
+
+// "marcada COM NOTA por Fulano em 10/09" — de onde veio esta nota na fila
+const MarcadaPor = ({ pedido }) => {
+    const m = pedido.marcadaPor;
+    if (!m || !ehBonificacao(pedido)) return null;
+    const quem = m.nome || 'alguém';
+    const quando = m.em ? new Date(m.em).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit' }) : null;
+    return (
+        <div className="text-xs text-gray-500 mt-0.5">
+            marcada COM NOTA por {quem}{quando ? ` em ${quando}` : ''}
+        </div>
+    );
+};
+
 // Badge de status da nota do pedido (cores semânticas do design system — não mudar)
 const BadgeNota = ({ pedido }) => {
     const { nota, notaCA } = pedido;
@@ -219,20 +254,27 @@ const NotasFiscais = () => {
         [pedidos]
     );
 
+    // Fila do "Emitir todas": só o que o servidor libera emitir agora (bonificação
+    // ainda não aprovada fica de fora — o backend recusaria uma a uma).
     const pedidosSemNota = useMemo(
-        () => pedidos.filter(p => !p.notaCA && !p.nota),
+        () => pedidos.filter(p => !p.notaCA && !p.nota && p.podeEmitir !== false),
         [pedidos]
     );
 
+    const totalBonificacoes = useMemo(() => pedidos.filter(ehBonificacao).length, [pedidos]);
+
     // Filtro de status (salvo por usuário): a emitir (sem nota/erro/processando) · emitidas · todas
     const pedidosVisiveis = useMemo(() => {
+        if (filtroStatus === 'bonificacoes') return pedidos.filter(ehBonificacao);
         if (filtroStatus === 'emitidas') return pedidos.filter(p => p.notaCA || p.nota?.status === 'AUTORIZADO');
         if (filtroStatus === 'todas') return pedidos;
         return pedidos.filter(p => !p.notaCA && (!p.nota || ['ERRO', 'PROCESSANDO'].includes(p.nota.status)));
     }, [pedidos, filtroStatus]);
 
-    // Seleção por checkbox: só pedidos elegíveis (sem nota ou com erro) podem ser marcados
-    const elegivel = (p) => !p.notaCA && (!p.nota || p.nota.status === 'ERRO');
+    // Seleção por checkbox: só pedidos elegíveis (sem nota ou com erro) podem ser marcados.
+    // `podeEmitir` vem do backend e manda: bonificação aguardando aprovação não entra.
+    // (`!== false` para um backend antigo, sem o campo, não travar a fila de vendas.)
+    const elegivel = (p) => !p.notaCA && (!p.nota || p.nota.status === 'ERRO') && p.podeEmitir !== false;
     const visiveisElegiveis = useMemo(() => pedidosVisiveis.filter(elegivel), [pedidosVisiveis]);
     const selecionadosValidos = useMemo(
         () => visiveisElegiveis.filter(p => selecionados.has(p.id)),
@@ -271,7 +313,7 @@ const NotasFiscais = () => {
         setEmitindo(pedido.id);
         try {
             await api.post(`/notas-fiscais/emitir/${pedido.id}`);
-            toast.success(`NF-e do pedido ${pedido.numero != null ? pedido.numero : ''} enviada para emissão.`);
+            toast.success(`NF-e de ${rotuloPedido(pedido)} enviada para emissão.`);
             await carregar(true);
         } catch (e) {
             toast.error(msgErroApi(e, 'Erro ao emitir a NF-e.'));
@@ -317,7 +359,7 @@ const NotasFiscais = () => {
                     await api.post(`/notas-fiscais/emitir/${pedido.id}`);
                 } catch (e) {
                     erros++;
-                    toast.error(`Pedido ${pedido.numero != null ? pedido.numero : pedido.id}: ${msgErroApi(e, 'erro ao emitir')}`);
+                    toast.error(`${rotuloPedido(pedido)}: ${msgErroApi(e, 'erro ao emitir')}`);
                 }
             }
         } finally {
@@ -420,12 +462,17 @@ const NotasFiscais = () => {
         if (!nota || nota.status === 'ERRO') {
             if (!podeEmitir && !podeCancelarPedido) return <span className="text-xs text-gray-500">—</span>;
             const ocupado = emitindo === pedido.id || progressoLote != null;
+            // Bonificação só emite depois de aprovada na aba Bonificações (regra do backend)
+            const aguardandoAprovacao = pedido.bloqueioEmissao === 'AGUARDANDO_APROVACAO';
             return (
                 <div className="flex items-center gap-2 flex-wrap">
                     {podeEmitir && (
                         <button
                             onClick={() => emitir(pedido)}
-                            disabled={ocupado}
+                            disabled={ocupado || aguardandoAprovacao}
+                            title={aguardandoAprovacao
+                                ? 'Bonificação ainda não aprovada — aprove na aba Bonificações antes de emitir a nota.'
+                                : undefined}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] bg-primary hover:bg-primaryDark text-white rounded-full shadow-sm font-semibold text-xs disabled:opacity-50"
                         >
                             {emitindo === pedido.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
@@ -557,6 +604,7 @@ const NotasFiscais = () => {
                             ['a-emitir', `A emitir (${kpis.semNota + kpis.comErro + kpis.processando})`],
                             ['emitidas', `Emitidas (${totalEmitidas})`],
                             ['canhotos', totalCanhotos == null ? 'Canhotos' : `Canhotos (${totalCanhotos})`],
+                            ['bonificacoes', `Bonificações (${totalBonificacoes})`],
                             ['todas', 'Todas'],
                         ].map(([valor, rotulo]) => (
                             <button
@@ -628,15 +676,19 @@ const NotasFiscais = () => {
                                                         onChange={() => alternarSelecao(p.id)}
                                                     />
                                                 )}
-                                                Pedido {p.numero != null ? p.numero : '—'}
+                                                {rotuloPedido(p)}
                                             </span>
                                             <BadgeNota pedido={p} />
                                         </div>
+                                        {ehBonificacao(p) && (
+                                            <div className="mb-1"><SeloBonificacao pedido={p} /></div>
+                                        )}
                                         <div className="text-sm text-gray-900">{p.cliente?.nome || '—'}</div>
+                                        <MarcadaPor pedido={p} />
                                         <div className="mt-1"><BadgeDoc cliente={p.cliente} /></div>
                                         <div className="flex items-center justify-between mt-2 text-sm">
                                             <span className="text-gray-500">
-                                                {fmtData(p.dataVenda)}{p.tipoPagamento ? ` · ${p.tipoPagamento}` : ''}
+                                                {subtituloLinha(p)}
                                             </span>
                                             <span className="font-semibold text-gray-900">R$ {fmt(p.total)}</span>
                                         </div>
@@ -689,13 +741,17 @@ const NotasFiscais = () => {
                                                     </td>
                                                 )}
                                                 <td className="px-5 py-3 text-gray-900">
-                                                    <div className="font-semibold">{p.numero != null ? p.numero : '—'}</div>
+                                                    <div className="flex items-center gap-2 flex-wrap">
+                                                        <span className="font-semibold">{rotuloPedido(p)}</span>
+                                                        <SeloBonificacao pedido={p} />
+                                                    </div>
                                                     <div className="text-xs text-gray-500">
-                                                        {fmtData(p.dataVenda)}{p.tipoPagamento ? ` · ${p.tipoPagamento}` : ''}
+                                                        {subtituloLinha(p)}
                                                     </div>
                                                 </td>
                                                 <td className="px-5 py-3 text-gray-900">
                                                     <div>{p.cliente?.nome || '—'}</div>
+                                                    <MarcadaPor pedido={p} />
                                                     <div className="mt-0.5"><BadgeDoc cliente={p.cliente} /></div>
                                                 </td>
                                                 <td className="px-5 py-3 text-right font-semibold text-gray-900 whitespace-nowrap">{fmt(p.total)}</td>

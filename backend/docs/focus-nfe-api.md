@@ -915,3 +915,110 @@ implementação, marcar a flag `revenda` nesses dois.
    acontece — fica fora do MVP; se surgir, tratar no montador.
 3. `tPag` por forma de recebimento do app: dinheiro=01, boleto=15, PIX=17, cartão=03/04 (tabela
    completa na doc de campos da Focus).
+
+---
+
+## 13. Perfil fiscal da NF-e de BONIFICAÇÃO (09/2026)
+
+> Implementado em `focusNfeEmissaoService.montarNotaBonificacao`. **CFOP confirmado pelo dono
+> em 09/2026.** A bonificação (BN#) pode sair COM ou SEM nota — quem cria o pedido escolhe
+> (`Pedido.nfBonificacao`). Só a marcada "com nota" entra na fila de emissão.
+
+| Campo | Nota de VENDA (hoje) | Nota de BONIFICAÇÃO |
+|---|---|---|
+| `natureza_operacao` | `Venda de Mercadorias / Produtos` / `Venda a Nao Contribuinte` | **`Remessa em bonificacao`** |
+| `finalidade_emissao` / `tipo_documento` | 1 / 1 | 1 / 1 (igual — é saída normal) |
+| `local_destino` | 1 interno · 2 interestadual | igual (pela UF do cliente) |
+| CFOP do item | 5101/5102 · 6101/6102 (revenda × produção) | **5910** (SC) · **6910** (outra UF) — **ignora `nfeRevenda`**: 5910/6910 não tem par revenda/produção |
+| `icms_situacao_tributaria` | 101 + crédito (CNPJ) · 102 (CPF) | **102** para CNPJ **e** CPF |
+| Crédito do Simples (`pCredSN`) | sim, no item + frase na infoAdic | **não** — e a frase "PERMITE O APROVEITAMENTO DO CREDITO…" **NÃO** vai na nota (é do CSOSN 101; com 102 seria informação falsa) |
+| PIS/COFINS CST | 49 | 49 (igual) |
+| IPI | omitido | omitido (mesmo motivo: CST 99 sozinho gera IPITrib inválido) |
+| `formas_pagamento` | 01/03/15/17 com o valor da nota | **`[{ forma_pagamento: '90', valor_pagamento: 0 }]`** (sem pagamento), **sem** `indicador_pagamento` |
+| Fatura / duplicatas | nas notas a prazo/boleto | **NUNCA** — `montarCobranca` não é chamada |
+| Valor | preço do item | preço de tabela do item (nota zerada a SEFAZ não aceita) |
+| `informacoes_adicionais_contribuinte` | `Referente ao pedido #N` + textos legais | `MERCADORIA ENTREGUE EM BONIFICACAO - SEM COBRANCA AO DESTINATARIO.` + `Referente à bonificação BN#N` + observações do pedido + textos legais |
+| Efeito no pedido | vira `situacaoCA = FATURADO` | **nenhum** — o status da BN# continua sendo de aprovar/reverter |
+
+**`ref`:** a mesma da venda — `nf-<p|h>-<pedidoId>` (DANFE, canhoto, ZIP de XMLs e a coluna da fila
+dependem dela). O que distingue é `NotaFiscalApp.tipo = 'BONIFICACAO'`.
+
+**Travas da emissão** (`emitirVenda`): a BN# tem que estar marcada `nfBonificacao = true` **e**
+aprovada (`statusEnvio = 'RECEBIDO'`); idempotência pela `ref` (AUTORIZADO/PROCESSANDO recusa).
+
+**Conferência em produção sem emitir nada:** `GET /api/admin-exec/diag-nf-bonificacao[?pedidoId=]`
+(header `x-admin-secret`) devolve o JSON que *seria* enviado à Focus. É **somente leitura**.
+
+---
+
+## 14. NF-e de DEVOLUÇÃO de bonificação (09/2026)
+
+> Implementado em `focusNfeEmissaoService.montarNotaDevolucaoBonificacao` (montador **puro**) e
+> `emitirDevolucaoBonificacao` (emissor). **Perfil fechado pelo dono com a contabilidade em 09/2026.**
+> O caminho da devolução de **venda** (`emitirDevolucao`) **não mudou**: ganhou UMA linha de despacho
+> logo após a trava ATIVA — `if (dev.pedidoOriginal?.bonificacao) return emitirDevolucaoBonificacao(dev)`
+> — antes da trava `dev.tipo === 'ESPECIAL'` (toda devolução de BN# é gravada como tipo ESPECIAL
+> pelo `ModalDevolucao`; é assim que o Caixa a trata: sem cobrança). Prova de regressão: fixture
+> `scripts/fixtures/nf-devolucao-venda-antes.json` (gerada ANTES do despacho) comparada byte a byte
+> em `scripts/teste-nf-devolucao-bonificacao.js`, cenário (f).
+
+**Por que existe:** antes, uma devolução de BN# gravada por engano como `CONTA_AZUL` sairia como
+"Devolucao de venda" CFOP 1201 (documento **errado**, e `notaAutorizadaDoPedido` não filtra `tipo`);
+e a gravada como ESPECIAL era barrada sem nota nenhuma. Agora a BN# tem caminho próprio.
+
+| Campo | Devolução de VENDA | Devolução de BONIFICAÇÃO |
+|---|---|---|
+| `natureza_operacao` | `Devolucao de venda` | **`Devolucao de mercadoria remetida a titulo de bonificacao`** |
+| `finalidade_emissao` / `tipo_documento` | 4 / 0 | 4 / 0 (igual — entrada por devolução) |
+| `local_destino` | 1 interno · 2 interestadual | igual (pela UF do cliente) |
+| `consumidor_final` / `presenca_comprador` | CPF→1 / 1 | igual |
+| CFOP do item | 1201/1202 · 2201/2202 | **1949** (SC) · **2949** (outra UF) — ignora `nfeRevenda` (só decide o CEST) |
+| `icms_situacao_tributaria` | 101 + crédito (CNPJ) · 102 (CPF) | **102** para CNPJ **e** CPF, **sem** `icms_aliquota_credito_simples`/`icms_valor_credito_simples` |
+| PIS/COFINS CST | 99 | 99 (igual) |
+| IPI | omitido | omitido |
+| `formas_pagamento` | `[{ '90', 0 }]` | `[{ forma_pagamento: '90', valor_pagamento: 0 }]` (igual) |
+| Fatura / duplicatas | nunca | **nunca** |
+| Valor | `DevolucaoItem.valorUnitario` × qtd | igual (preço de tabela gravado na BN#) |
+| Nota referenciada | NF-e da **venda** (`notaAutorizadaDoPedido` ou `pedido.nfeChave`) | NF-e da **bonificação** (`notaBonificacaoAutorizada`: `tipo BONIFICACAO` + `AUTORIZADO`, ref `nf-<amb>-<pedidoId>`) — cabeçalho `notas_referenciadas` **e** por item (`chave_acesso_dfe_referenciado` + `numero_item_dfe_referenciado`) com o mesmo interruptor `nfe_devolucao_ref_item` |
+| Fonte dos itens/nItem da origem | payload → xml-local → xml-ca | `payloadEnviado.items` da nota de bonificação (fonte `payload`, banco, sem rede) |
+| `informacoes_adicionais_contribuinte` | `DEVOLUCAO REFERENTE SUA NF N 1-N DE dd/mm/aaaa` + `Referente ao pedido #N` + textos legais + frase de crédito (CNPJ) | `DEVOLUCAO DE MERCADORIA RECEBIDA EM BONIFICACAO (REMESSA CFOP <5910|6910 lido de notaBonif.payloadEnviado.items[0].cfop>) - REFERENTE A NF-e N <serie>-<numero> DE <dd/mm/aaaa>` · `Referente à bonificação BN#N - devolução DEV#N` · `SEM COBRANCA E SEM EFEITO FINANCEIRO - MERCADORIA HAVIA SIDO REMETIDA SEM ONUS AO DESTINATARIO.` · textos legais. **NUNCA** a frase de aproveitamento de crédito de ICMS |
+| Efeito financeiro | parcelas/boletos ajustados no registro da devolução | **nenhum** (bonificação não tem conta a receber). Só o estoque, creditado UMA vez no registro da devolução (`estoqueService.creditarDevolucao`) — a emissão da nota não mexe em estoque |
+| `marcarPedidoFaturado` | não chama | **não chama** |
+
+**`ref` e persistência:** idênticas à devolução de venda — `nfd-<p|h>-<devolucaoId>`, `NotaFiscalApp.tipo = 'DEVOLUCAO'`
+(sem tipo novo). Caixa, aba Devoluções, canhoto (`registrarDeNotaApp` → DESCONHECIDO), ZIP de XMLs e linha
+do tempo dependem dessa ref e continuam funcionando sem mudança.
+
+**Travas de `emitirDevolucaoBonificacao`, na ordem** (depois da trava ATIVA de `emitirDevolucao`):
+1. `pedidoOriginal.especial` → recusa (mensagem de sempre);
+2. `dev.notaDevolucaoCA` → recusa;
+3. BN# **sem** NF-e de bonificação AUTORIZADA no ambiente atual → `Esta bonificação não tem NF-e autorizada — a devolução fica registrada só no estoque, sem nota fiscal.` (**não** grava motivo — não há o que reemitir; nota em PROCESSANDO/ERRO/CANCELADO conta como ausente);
+4. idempotência pela `ref` (`AUTORIZADO`/`PROCESSANDO` recusa com a mesma mensagem da venda);
+5. sem itens com quantidade → recusa;
+6. cadastro fiscal do cliente (`validarCadastroFiscal`, mesmas mensagens da venda) — sem gravar motivo;
+7. referência por item não resolve → `err.codigo = 'REF_ITEM'`, motivo gravado por `registrarErroNotaDevolucao` (aba Devoluções mostra "Rejeitada" + "Emitir novamente") e o erro sobe.
+Erro da validação Focus (`httpStatus >= 400`) → `status ERRO` + `Validação Focus: …`, igual à venda. ERRO **não** trava a reemissão.
+
+**Contrato para o front (só adição):** `nfBonificacaoAutorizada: null | { id, numero, serie, chave }`
+- `GET /api/pedidos/:id` → na raiz do pedido (`pedidoService.detalhar`); `null` para pedido que não é BN# e para nota PROCESSANDO/ERRO/CANCELADO.
+- `GET /api/devolucoes` → `items[].pedidoOriginal.nfBonificacaoAutorizada` (`devolucaoService.listar`, um `findMany` em lote por `mapaNotasBonificacaoAutorizadas`; falha aqui não derruba a lista).
+
+**Fora do caminho, de propósito:** `contabilidade-emitir-devolucoes-pendentes` e `devolucoes-registrar-retroativo`
+continuam com `bonificacao: false` (a BN# com nota emite pelo Caixa/aba Devoluções, uma a uma);
+`diag-devolucoes-ref-item-simulacao` também exclui BN# (a resolução dela é pelo payload da nota de bonificação).
+`notaAutorizadaDoPedido` **não** filtra `tipo` (DANFE do pedido e `_localizarNotaFiscal` dependem dela).
+
+**Pacote da contabilidade** (`GET /api/contabilidade/pacote-mes`, CSV `07-devolucoes-com-nf.csv`): ganhou a coluna
+`Tipo` (`BONIFICACAO`/`VENDA`) no FIM e o rótulo `BN#` — a devolução de bonificação **não abate faturamento**.
+
+**Conferência em produção sem emitir nada:** `GET /api/admin-exec/diag-nf-devolucao-bonificacao[?numero=<nº da devolução>]`
+(header `x-admin-secret`) — SOMENTE LEITURA (não chama a Focus, não grava nem XML): contadores
+(`bonificacoesComNotaAutorizada`, `devolucoesDeBnAtivas`, `devolucoesDeBnSemNfDevolucao`), as travas reais na ordem
+acima, o casamento por item, o `payload` que seria enviado (ou `erroMontagem`) e o `interruptorRefItem`.
+Sem `numero`, pega a devolução ATIVA mais recente de BN# com nota autorizada.
+
+**Teste local (Focus simulada — a SEFAZ NÃO é exercitada):** `cd backend && node scripts/teste-nf-devolucao-bonificacao.js`
+(banco `hardt_local` obrigatório). Cenários (a)–(j) do plano de 09/2026: sem nota, parcial SC, PR, CPF, idempotência,
+regressão byte a byte da venda, estoque uma vez + sem conta a receber, contrato do front, PROCESSANDO, ERRO → reemissão.
+**Só a primeira nota real em homologação/produção prova a aceitação da SEFAZ** (CFOP 1949 com finalidade 4 e as duas
+referências juntas — ver o rollback de uma linha comentado em `notas_referenciadas`).

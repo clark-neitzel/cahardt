@@ -30,6 +30,21 @@ const notaFiscalViva = (p) => !!p.nfeChave || (p.notasFiscaisApp || []).some(
     n => n.tipo !== 'DEVOLUCAO' && ['AUTORIZADO', 'PROCESSANDO'].includes(n.status)
 );
 
+// Bonificação COM nota: estado da NF-e lido do `notaApp` que a lista traz do backend.
+// Devolve null quando não há nada a mostrar (bonificação "sem nota" nunca tem nota).
+const estadoNotaBonificacao = (pedido) => {
+    const n = pedido.notaApp;
+    if (!n) return pedido.nfBonificacao ? { texto: 'Aguardando emissão', cls: 'bg-amber-100 text-amber-700' } : null;
+    if (n.status === 'PROCESSANDO') return { texto: 'Processando', cls: 'bg-blue-100 text-blue-800' };
+    if (n.status === 'AUTORIZADO') return { texto: n.numero != null ? `NF ${n.numero} autorizada` : 'NF autorizada', cls: 'bg-green-100 text-green-800' };
+    if (n.status === 'ERRO') return { texto: 'Erro', cls: 'bg-red-100 text-red-700' };
+    if (n.status === 'CANCELADO') return { texto: 'Nota cancelada', cls: 'bg-red-100 text-red-700' };
+    return { texto: n.status || '—', cls: 'bg-gray-100 text-gray-700' };
+};
+
+// Nota viva (autorizada ou a caminho da SEFAZ): a escolha com/sem nota não muda mais
+const notaBonificacaoViva = (pedido) => ['AUTORIZADO', 'PROCESSANDO'].includes(pedido.notaApp?.status);
+
 const fmtMoeda = (v) => `R$ ${Number(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const fmtDataHora = (d) => d ? new Date(d).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 const fmtData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : '—';
@@ -132,12 +147,33 @@ const ListaPedidos = () => {
     const [todosVendedores, setTodosVendedores] = useState([]);
     const [showFilters, setShowFilters] = useState(false);
     const [filtroStatus, setFiltroStatus] = useFiltroSalvo('lista-pedidos:filtroStatus', 'TODOS');
+    // Aba Bonificações: com nota / sem nota / nota pendente (filtrado no servidor)
+    const [filtroNota, setFiltroNota] = useFiltroSalvo('lista-pedidos:notaBonificacao', 'todas');
+    const [contagensNota, setContagensNota] = useState(null); // { com, sem, pendente } do backend
+    const [menuAcoes, setMenuAcoes] = useState(null);         // pedidoId com o menu Ações aberto
+    const [mudandoNota, setMudandoNota] = useState(null);     // pedidoId trocando com/sem nota
+    const [emitindoNota, setEmitindoNota] = useState(null);   // pedidoId em emissão de NF-e
+    const emitindoNotaRef = useRef(null);                     // guarda síncrona: o state só trava após o render
+    // Aviso de reversão de bonificação com NF-e autorizada. É MODAL DO APP, não
+    // window.confirm: no iPad/iOS o 2º diálogo nativo seguido pode ser suprimido
+    // ("impedir diálogos adicionais") e a reversão falharia em silêncio.
+    // Guarda os dados por cópia — recarregar a lista não desmonta o aviso.
+    const [avisoNotaReversao, setAvisoNotaReversao] = useState(null); // { pedidoId, numero, numeroNota }
 
     const podeAprovar = user?.permissoes?.Pode_Aprovar_Especial || user?.permissoes?.admin;
     const podeReverter = user?.permissoes?.Pode_Reverter_Especial || user?.permissoes?.admin;
     const podeAprovarBonificacao = user?.permissoes?.Pode_Aprovar_Bonificacao || user?.permissoes?.admin;
     const podeReverterBonificacao = user?.permissoes?.Pode_Reverter_Bonificacao || user?.permissoes?.admin;
     const podeExcluirPedido = user?.permissoes?.Pode_Excluir_Pedido || user?.permissoes?.admin;
+    // Espelham EXATAMENTE o backend: quem cria bonificação muda a escolha da nota;
+    // quem emite NF emite também a de bonificação.
+    const podeCriarBonificacao = user?.permissoes?.admin || user?.permissoes?.Pode_Criar_Bonificacao;
+    const podeEmitirNF = user?.permissoes?.admin || user?.permissoes?.Pode_Emitir_NF;
+    // Espelha o checkVerOuDevolucao de notasFiscaisRoutes.js (GET /:id/danfe):
+    // sem uma destas três, baixar a DANFE volta 403.
+    const podeBaixarDanfeNota = user?.permissoes?.admin
+        || user?.permissoes?.Pode_Acessar_Notas_Fiscais
+        || user?.permissoes?.Pode_Fazer_Devolucao;
 
     // Boletos Asaas direto do pedido (espelha o checkPodeCobrar do backend)
     const podeBoletoAsaas = user?.permissoes?.admin || user?.permissoes?.Pode_Baixar_Contas_Receber
@@ -237,7 +273,7 @@ const ListaPedidos = () => {
     }, []);
 
     // Carrega uma página. pg === 1 reinicia a lista; pg > 1 acrescenta (Carregar mais).
-    const carregar = useCallback(async (pg, aba, f, status, buscaSrv) => {
+    const carregar = useCallback(async (pg, aba, f, status, buscaSrv, notaBon) => {
         const primeira = pg === 1;
         if (primeira) setLoading(true); else setLoadingMais(true);
         try {
@@ -269,6 +305,7 @@ const ListaPedidos = () => {
             if (status && status !== 'TODOS') params.statusRapido = status;
             if (aba === 'bonificacao') {
                 params.bonificacao = 'true';
+                if (notaBon && notaBon !== 'todas') params.notaBonificacao = notaBon;
             } else {
                 params.especial = aba === 'especiais' ? 'true' : 'false';
                 params.bonificacao = 'false';
@@ -280,6 +317,7 @@ const ListaPedidos = () => {
             if (primeira) {
                 setPedidos(items);
                 if (data.contagens) setContagens(data.contagens);
+                setContagensNota(data.contagensNota || null);
             } else {
                 setPedidos(prev => [...prev, ...items]);
             }
@@ -311,8 +349,9 @@ const ListaPedidos = () => {
     // Recarrega a 1ª página sempre que aba, filtros, status ou busca (debounced) mudam
     useEffect(() => {
         setPagina(1);
-        carregar(1, abaAtiva, filtrosComDatas, filtroStatus, buscaServer);
-    }, [carregar, abaAtiva, filtrosComDatas, filtroStatus, buscaServer]);
+        setAvisoNotaReversao(null); // trocou de aba/filtro: o aviso não fica preso na tela
+        carregar(1, abaAtiva, filtrosComDatas, filtroStatus, buscaServer, filtroNota);
+    }, [carregar, abaAtiva, filtrosComDatas, filtroStatus, buscaServer, filtroNota]);
 
     // Detalhe completo do pedido do modal (parcelas, cobranças Asaas, NF-e, conversão) —
     // buscado ao abrir; as seções aparecem quando chega (o modal já abre com o que a lista tem)
@@ -330,7 +369,7 @@ const ListaPedidos = () => {
     const carregarMais = () => {
         const nova = pagina + 1;
         setPagina(nova);
-        carregar(nova, abaAtiva, filtrosComDatas, filtroStatus, buscaServer);
+        carregar(nova, abaAtiva, filtrosComDatas, filtroStatus, buscaServer, filtroNota);
     };
 
     const handleBuscaChange = (valor) => {
@@ -445,12 +484,82 @@ const ListaPedidos = () => {
         }
     };
 
-    const handleReverterBonificacao = async (pedidoId) => {
-        if (!podeReverterBonificacao) return;
-        if (!window.confirm('Tem certeza que deseja reverter esta bonificação para ABERTO?')) return;
+    // Recarrega a 1ª página com os filtros da tela (usado depois das ações do menu)
+    const recarregarLista = () => {
+        setPagina(1);
+        carregar(1, abaAtiva, filtrosComDatas, filtroStatus, buscaServer, filtroNota);
+    };
+
+    // Corrigir a escolha do vendedor enquanto a NF-e não saiu (PATCH /pedidos/:id/nf-bonificacao)
+    const handleMudarNfBonificacao = async (pedido, novoValor) => {
+        if (!podeCriarBonificacao) return;
+        setMenuAcoes(null);
+        const rotulo = novoValor ? 'COM nota fiscal' : 'SEM nota fiscal';
+        if (!window.confirm(`Marcar a bonificação BN#${pedido.numero} como ${rotulo}?`)) return;
+        setMudandoNota(pedido.id);
         try {
-            setRevertendo(pedidoId);
-            await pedidoService.reverterBonificacao(pedidoId);
+            const data = await pedidoService.definirNfBonificacao(pedido.id, novoValor);
+            toast.success(`Bonificação marcada como ${rotulo}.`);
+            // Atualiza a linha na hora com o que o servidor devolveu (quem mudou e quando)
+            if (data?.pedido) {
+                setPedidos(prev => prev.map(p => p.id === pedido.id ? { ...p, ...data.pedido } : p));
+            }
+            recarregarLista();
+        } catch (error) {
+            // 400/403/409 chegam com a explicação em português já pronta do backend
+            toast.error(error.response?.data?.error || 'Não foi possível mudar a escolha da nota.', { duration: 7000 });
+            recarregarLista();
+        } finally {
+            setMudandoNota(null);
+        }
+    };
+
+    // Emitir a NF-e da bonificação sem sair da lista (mesma rota da fila do Financeiro)
+    const handleEmitirNfBonificacao = async (pedido) => {
+        if (!podeEmitirNF) return;
+        if (emitindoNotaRef.current) return;   // clique duplo: o 2º não dispara nada
+        emitindoNotaRef.current = pedido.id;
+        setMenuAcoes(null);
+        setEmitindoNota(pedido.id);
+        try {
+            await api.post(`/notas-fiscais/emitir/${pedido.id}`);
+            toast.success(`NF-e da bonificação BN#${pedido.numero} enviada para emissão.`);
+            recarregarLista();
+        } catch (error) {
+            toast.error(error.response?.data?.error || 'Erro ao emitir a NF-e da bonificação.', { duration: 7000 });
+            recarregarLista();
+        } finally {
+            emitindoNotaRef.current = null;
+            setEmitindoNota(null);
+        }
+    };
+
+    // DANFE da nota emitida pelo app (a do CA tem rota própria — handleDanfe acima)
+    const handleDanfeNotaApp = async (pedido) => {
+        const notaId = pedido.notaApp?.id;
+        if (!notaId) return;
+        setMenuAcoes(null);
+        setGerandoDanfe(pedido.id);
+        try {
+            const resp = await api.get(`/notas-fiscais/${notaId}/danfe`, { responseType: 'blob' });
+            const url = URL.createObjectURL(new Blob([resp.data], { type: 'application/pdf' }));
+            window.open(url, '_blank'); // visualização de documento (como link externo)
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        } catch (e) {
+            let msg = 'Erro ao gerar a DANFE.';
+            try { msg = JSON.parse(await e.response.data.text()).error || msg; } catch (_) { /* mantém genérica */ }
+            toast.error(msg);
+        } finally {
+            setGerandoDanfe(null);
+        }
+    };
+
+    // Executa a reversão. `confirmado` = o usuário já aceitou o aviso da NF-e autorizada
+    // (é o que o backend exige em `{ confirmarComNotaEmitida: true }`).
+    const executarReversaoBonificacao = async (pedidoId, confirmado) => {
+        setRevertendo(pedidoId);
+        try {
+            await pedidoService.reverterBonificacao(pedidoId, confirmado ? { confirmarComNotaEmitida: true } : undefined);
             toast.success('Bonificação revertida para ABERTO!');
             setPedidos(prev => prev.map(p =>
                 p.id === pedidoId ? { ...p, statusEnvio: 'ABERTO', situacaoCA: null } : p
@@ -458,11 +567,31 @@ const ListaPedidos = () => {
             if (selectedPedido?.id === pedidoId) {
                 setSelectedPedido(prev => ({ ...prev, statusEnvio: 'ABERTO', situacaoCA: null }));
             }
+            setAvisoNotaReversao(null);
         } catch (error) {
-            toast.error(error.response?.data?.error || 'Erro ao reverter bonificação.');
+            const dados = error.response?.data;
+            // 409 + exigeConfirmacao: a BN# tem NF-e AUTORIZADA e o backend só reverte
+            // com o aceite explícito. Abre o aviso DENTRO do app (ver comentário do estado).
+            if (!confirmado && error.response?.status === 409 && dados?.exigeConfirmacao) {
+                const pedido = pedidos.find(p => p.id === pedidoId);
+                setAvisoNotaReversao({
+                    pedidoId,
+                    numero: pedido?.numero ?? null,
+                    numeroNota: dados.numeroNota ?? null,
+                });
+                return;
+            }
+            toast.error(dados?.error || 'Erro ao reverter bonificação.', { duration: 8000 });
+            setAvisoNotaReversao(null);
         } finally {
             setRevertendo(null);
         }
+    };
+
+    const handleReverterBonificacao = async (pedidoId) => {
+        if (!podeReverterBonificacao) return;
+        if (!window.confirm('Tem certeza que deseja reverter esta bonificação para ABERTO?')) return;
+        await executarReversaoBonificacao(pedidoId, false);
     };
 
     const handleExcluirPedido = async (pedido) => {
@@ -929,6 +1058,34 @@ const ListaPedidos = () => {
                 );
             })()}
 
+            {/* Aba Bonificações: filtro com nota / sem nota / nota pendente (servidor) */}
+            {abaAtiva === 'bonificacao' && (
+                <div className="flex items-center gap-1.5 mb-2 overflow-x-auto scrollbar-hide">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide shrink-0">Nota:</span>
+                    {[
+                        { key: 'com', label: 'Com nota', count: contagensNota?.com, active: 'bg-green-100 text-green-800 border-green-300' },
+                        { key: 'sem', label: 'Sem nota', count: contagensNota?.sem, active: 'bg-gray-200 text-gray-800 border-gray-400' },
+                        { key: 'pendente', label: 'Nota pendente', count: contagensNota?.pendente, active: 'bg-amber-100 text-amber-800 border-amber-300' },
+                    ].map(({ key, label, count, active }) => {
+                        const ativo = filtroNota === key;
+                        return (
+                            <button
+                                key={key}
+                                onClick={() => setFiltroNota(ativo ? 'todas' : key)}
+                                title={label}
+                                className={`flex items-center gap-1 px-2.5 py-1.5 min-h-[32px] text-[11px] font-bold rounded-full border transition-colors shrink-0 ${ativo ? active : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}
+                            >
+                                <FileText className="h-3.5 w-3.5" />
+                                <span>{label}</span>
+                                {count != null && (
+                                    <span className={`px-1.5 rounded-full text-[10px] ${ativo ? 'bg-white/70' : 'bg-gray-100'}`}>{count}</span>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
             {/* Filtro rápido por status */}
             {!['amostras'].includes(abaAtiva) && (
                 <div className="flex items-center gap-1.5 mb-3 overflow-x-auto scrollbar-hide">
@@ -1194,6 +1351,31 @@ const ListaPedidos = () => {
                                         )}
                                     </div>
 
+                                    {/* Bonificação: escolha do vendedor + estado da NF-e, em LINHA PRÓPRIA.
+                                        Na linha 3 os selos disputam espaço com até 5 botões e, a 375px,
+                                        "📄 Com nota" ficava escondido por baixo deles. */}
+                                    {pedido.bonificacao && (
+                                        <div className="flex flex-wrap items-center gap-1 mb-2">
+                                            <span
+                                                className={`px-2 py-1 text-[10px] leading-tight font-semibold rounded-full whitespace-nowrap ${pedido.nfBonificacao ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'}`}
+                                                title={pedido.nfBonificacao
+                                                    ? `Marcada COM NOTA${pedido.nfBonificacaoDefinidaPorNome ? ` por ${pedido.nfBonificacaoDefinidaPorNome}` : ''}${pedido.nfBonificacaoDefinidaEm ? ` em ${fmtData(pedido.nfBonificacaoDefinidaEm)}` : ''}`
+                                                    : 'Sai só com o romaneio — nenhuma nota será emitida'}
+                                            >
+                                                {pedido.nfBonificacao ? '📄 Com nota' : 'Sem nota'}
+                                            </span>
+                                            {(() => {
+                                                const est = estadoNotaBonificacao(pedido);
+                                                if (!est) return null;
+                                                return (
+                                                    <span className={`px-2 py-1 text-[10px] leading-tight font-semibold rounded-full whitespace-nowrap ${est.cls}`}>
+                                                        {est.texto}
+                                                    </span>
+                                                );
+                                            })()}
+                                        </div>
+                                    )}
+
                                     {/* Linha 3: badges de status + botões de ação */}
                                     <div className="flex items-center justify-between gap-2">
                                         <div className="flex flex-wrap items-center gap-1 min-w-0">
@@ -1392,6 +1574,64 @@ const ListaPedidos = () => {
                                                     <span className="hidden lg:inline">Excluir</span>
                                                 </button>
                                             )}
+                                            {/* Ações da bonificação: emitir, corrigir a escolha, DANFE */}
+                                            {pedido.bonificacao && (podeEmitirNF || podeCriarBonificacao || podeBaixarDanfeNota) && (() => {
+                                                const notaViva = notaBonificacaoViva(pedido);
+                                                const autorizada = pedido.notaApp?.status === 'AUTORIZADO';
+                                                // BN# cancelada/excluída: o backend recusa tanto EMITIR
+                                                // (focusNfeEmissaoService) quanto ligar "com nota"
+                                                // (alterarNfBonificacao). Desligar ("sem nota") continua livre.
+                                                const canceladaOuExcluida = !!pedido.cancelado
+                                                    || pedido.statusEnvio === 'EXCLUIDO'
+                                                    || ['CANCELADO', 'EXCLUIDO'].includes(pedido.situacaoCA);
+                                                const podeEmitirAgora = podeEmitirNF && pedido.nfBonificacao && !notaViva && !canceladaOuExcluida;
+                                                const podeTrocar = podeCriarBonificacao && !notaViva
+                                                    && (pedido.nfBonificacao || !canceladaOuExcluida);
+                                                const podeDanfe = autorizada && podeBaixarDanfeNota;
+                                                if (!podeEmitirAgora && !podeTrocar && !podeDanfe) return null;
+                                                const ocupado = mudandoNota === pedido.id || emitindoNota === pedido.id || gerandoDanfe === pedido.id;
+                                                const aberto = menuAcoes === pedido.id;
+                                                const itemCls = 'w-full text-left px-3 py-2.5 min-h-[44px] text-[12px] font-semibold text-gray-700 hover:bg-gray-50 border-b border-gray-100 last:border-b-0';
+                                                return (
+                                                    <div className="relative">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setMenuAcoes(aberto ? null : pedido.id); }}
+                                                            disabled={ocupado}
+                                                            className="flex items-center gap-1 px-2.5 py-1.5 min-h-[32px] rounded-full text-[10.5px] font-bold bg-white border border-primary text-primary hover:bg-mint/40 transition-colors disabled:opacity-50"
+                                                            title="Ações da bonificação"
+                                                        >
+                                                            {ocupado ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+                                                            Ações
+                                                            <ChevronDown className="h-3 w-3" />
+                                                        </button>
+                                                        {aberto && (
+                                                            <>
+                                                                <div className="fixed inset-0 z-10" onClick={() => setMenuAcoes(null)} />
+                                                                <div className="absolute right-0 bottom-full mb-1 z-20 bg-white border border-gray-200 rounded-xl shadow-lg min-w-[230px] max-w-[80vw] overflow-hidden">
+                                                                    {podeEmitirAgora && (
+                                                                        <button className={itemCls} onClick={() => handleEmitirNfBonificacao(pedido)}>
+                                                                            Emitir NF-e agora
+                                                                        </button>
+                                                                    )}
+                                                                    {podeTrocar && (
+                                                                        <button className={itemCls} onClick={() => handleMudarNfBonificacao(pedido, !pedido.nfBonificacao)}>
+                                                                            {pedido.nfBonificacao ? 'Mudar para "sem nota"' : 'Mudar para "com nota"'}
+                                                                            <span className="block text-[10.5px] font-medium text-gray-500 mt-0.5">
+                                                                                Só enquanto a nota não foi emitida
+                                                                            </span>
+                                                                        </button>
+                                                                    )}
+                                                                    {podeDanfe && (
+                                                                        <button className={itemCls} onClick={() => handleDanfeNotaApp(pedido)}>
+                                                                            Imprimir DANFE
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })()}
                                             <button
                                                 onClick={() => {
                                                     const bloq = pedido.statusEnvio === 'RECEBIDO' || ['APROVADO', 'FATURADO', 'EM_ABERTO'].includes(pedido.situacaoCA);
@@ -1932,6 +2172,66 @@ const ListaPedidos = () => {
                     pedido={pixModal}
                     onClose={() => setPixModal(null)}
                 />
+            )}
+
+            {/* Reverter bonificação que JÁ TEM NF-e autorizada — ação de risco.
+                Modal do app (não window.confirm) para funcionar no iPad/iPhone. */}
+            {avisoNotaReversao && (
+                <div
+                    className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-3"
+                    onClick={() => { if (revertendo !== avisoNotaReversao.pedidoId) setAvisoNotaReversao(null); }}
+                >
+                    <div
+                        className="bg-white w-full sm:max-w-md rounded-2xl shadow-xl overflow-hidden"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-start gap-3 px-5 pt-5 pb-3">
+                            <div className="bg-red-100 p-2 rounded-lg shrink-0">
+                                <AlertCircle className="h-5 w-5 text-red-600" />
+                            </div>
+                            <div className="min-w-0">
+                                <h2 className="text-base font-bold text-gray-900 leading-tight">
+                                    Esta bonificação tem NF-e autorizada
+                                </h2>
+                                {avisoNotaReversao.numero != null && (
+                                    <p className="text-xs text-gray-500 mt-0.5">BN#{avisoNotaReversao.numero}</p>
+                                )}
+                            </div>
+                        </div>
+                        <div className="px-5 pb-4 space-y-2.5">
+                            <p className="text-sm text-gray-700">
+                                A NF-e {avisoNotaReversao.numeroNota != null
+                                    ? <b>nº {avisoNotaReversao.numeroNota}</b>
+                                    : 'desta bonificação'} já foi <b>autorizada na SEFAZ</b>.
+                            </p>
+                            <div className="bg-red-50 border border-red-100 rounded-lg px-3 py-2.5">
+                                <p className="text-sm text-red-700 font-semibold">
+                                    Reverter NÃO cancela a nota — ela continua valendo.
+                                </p>
+                            </div>
+                            <p className="text-sm text-gray-600">
+                                Só continue depois de <b>avisar a contabilidade</b>. A reversão fica registrada com o número da nota.
+                            </p>
+                        </div>
+                        <div className="px-5 py-4 border-t border-gray-100 flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2">
+                            <button
+                                onClick={() => setAvisoNotaReversao(null)}
+                                disabled={revertendo === avisoNotaReversao.pedidoId}
+                                className="flex-1 min-h-[44px] px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-full font-semibold text-sm disabled:opacity-50"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={() => executarReversaoBonificacao(avisoNotaReversao.pedidoId, true)}
+                                disabled={revertendo === avisoNotaReversao.pedidoId}
+                                className="flex-1 min-h-[44px] px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-full font-semibold text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {revertendo === avisoNotaReversao.pedidoId && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Reverter mesmo assim
+                            </button>
+                        </div>
+                    </div>
+                </div>
             )}
 
             {/* Modal de impressão em lote */}

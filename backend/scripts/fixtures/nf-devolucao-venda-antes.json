@@ -1,0 +1,81 @@
+{
+  "geradoEm": "2026-09-11T06:43:31.078Z",
+  "produtos": [
+    "1",
+    "3051"
+  ],
+  "aviso": "Payload de emitirDevolucao para pedido NORMAL, gerado ANTES do despacho de bonificação (09/2026). Não regenerar sem motivo.",
+  "payload": {
+    "natureza_operacao": "Devolucao de venda",
+    "tipo_documento": 0,
+    "finalidade_emissao": 4,
+    "local_destino": 1,
+    "consumidor_final": 0,
+    "presenca_comprador": 1,
+    "cnpj_emitente": "08766459000102",
+    "nome_emitente": "HARDT DOCES E SALGADOS LTDA",
+    "nome_fantasia_emitente": "HARDT DOCES E SALGADOS LTDA",
+    "logradouro_emitente": "R 15 DE OUTUBRO",
+    "numero_emitente": "170",
+    "bairro_emitente": "RIO BONITO",
+    "municipio_emitente": "Joinville",
+    "uf_emitente": "SC",
+    "cep_emitente": "89239700",
+    "inscricao_estadual_emitente": "255372744",
+    "regime_tributario_emitente": 1,
+    "nome_destinatario": "TESTE-NFDEVBONIF PADARIA SC",
+    "cnpj_destinatario": "98765432000110",
+    "indicador_inscricao_estadual_destinatario": 2,
+    "logradouro_destinatario": "RUA DE TESTE",
+    "numero_destinatario": "100",
+    "bairro_destinatario": "CENTRO",
+    "municipio_destinatario": "Joinville",
+    "uf_destinatario": "SC",
+    "cep_destinatario": "89200000",
+    "pais_destinatario": "Brasil",
+    "modalidade_frete": 0,
+    "valor_frete": 0,
+    "valor_seguro": 0,
+    "valor_desconto": 0,
+    "valor_outras_despesas": 0,
+    "valor_produtos": 41,
+    "valor_total": 41,
+    "formas_pagamento": [
+      {
+        "forma_pagamento": "90",
+        "valor_pagamento": 0
+      }
+    ],
+    "notas_referenciadas": [
+      {
+        "chave_nfe": "11111111111111111111111111111111111111111111"
+      }
+    ],
+    "informacoes_adicionais_contribuinte": "DEVOLUCAO REFERENTE SUA NF N 1-880001 DE 01/09/2026#Referente ao pedido #9890001#DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.#NAO GERA DIREITO A CREDITO FISCAL DE IPI.#PERMITE O APROVEITAMENTO DO CREDITO DE ICMS NO VALOR DE R$ 1,57, CORRESPONDENTE A ALIQUOTA DE 3,82%, NOS TERMOS DO ART. 23 DA LC 123/2006.",
+    "items": [
+      {
+        "numero_item": 1,
+        "codigo_produto": "3051",
+        "descricao": "2-FR-G-COXINHA-AIPIM-FRANGO C/20 130GR",
+        "chave_acesso_dfe_referenciado": "11111111111111111111111111111111111111111111",
+        "numero_item_dfe_referenciado": "2",
+        "cfop": "1201",
+        "codigo_ncm": "19022000",
+        "unidade_comercial": "PT",
+        "unidade_tributavel": "PT",
+        "quantidade_comercial": 2,
+        "quantidade_tributavel": 2,
+        "valor_unitario_comercial": 20.5,
+        "valor_unitario_tributavel": 20.5,
+        "valor_bruto": 41,
+        "inclui_no_total": 1,
+        "icms_origem": 0,
+        "pis_situacao_tributaria": "99",
+        "cofins_situacao_tributaria": "99",
+        "icms_situacao_tributaria": "101",
+        "icms_aliquota_credito_simples": 3.82,
+        "icms_valor_credito_simples": 1.57
+      }
+    ]
+  }
+}

@@ -4,6 +4,68 @@ const clienteInsightService = require('./clienteInsightService');
 const { calcularItensComFlex, calcularDiferencaFlex, gerarParcelasData } = require('./pedidoCalculos');
 const estoqueService = require('./estoqueService');
 const { calcularFlexDinamico, obterRegrasCategoria } = require('./flexService');
+const { camposFaltandoParaNota } = require('../utils/cadastroFiscal');
+
+// ── Bonificação COM NOTA (09/2026) ───────────────────────────────────────────
+// Prefixo da ref da NF-e do pedido no ambiente ATUAL ('nf-p-' | 'nf-h-'). Mesma ref
+// da venda (`focusNfeEmissaoService`) — a de devolução é 'nfd-…' e não colide.
+function prefixoRefNota() {
+    const amb = require('./focusNfeService').ambiente();
+    return `nf-${amb === 'producao' ? 'p' : 'h'}-`;
+}
+
+/**
+ * Valida se o cliente pode RECEBER nota (CNPJ/CPF + endereço completo).
+ * Lança Error com a mensagem em português que a tela mostra ao usuário.
+ * Mesma regra da emissão (`utils/cadastroFiscal.js`) — o erro aparece na hora da
+ * escolha, não dias depois com a nota travada no Financeiro.
+ */
+async function exigirClienteAptoParaNota(clienteId, tx = prisma) {
+    const cli = await tx.cliente.findUnique({
+        where: { UUID: clienteId },
+        select: {
+            Nome: true, Documento: true, End_Logradouro: true, End_Numero: true,
+            End_Bairro: true, End_Cidade: true, End_Estado: true, End_CEP: true,
+        },
+    });
+    if (!cli) throw new Error('Cliente não encontrado.');
+    const faltando = camposFaltandoParaNota(cli);
+    if (faltando.length) {
+        throw new Error(`Cliente "${cli.Nome}" não pode receber nota: falta ${faltando.join(', ')}.`);
+    }
+}
+
+
+// Condição Prisma dos chips "com nota" / "sem nota" / "nota pendente" da aba Bonificações.
+// `pendente` = marcada COM NOTA e ainda SEM NF-e viva (AUTORIZADO/PROCESSANDO) no
+// ambiente atual — é a lista que não pode ficar crescendo esquecida. Nota em ERRO
+// continua contando como pendente (é justamente a que precisa de alguém).
+function condicaoNotaBonificacao(valor) {
+    const notaViva = {
+        ref: { startsWith: prefixoRefNota() },
+        status: { in: ['AUTORIZADO', 'PROCESSANDO'] },
+    };
+    if (valor === 'com') return { nfBonificacao: true };
+    if (valor === 'sem') return { nfBonificacao: false };
+    if (valor === 'pendente') return { nfBonificacao: true, notasFiscaisApp: { none: notaViva } };
+    return null;
+}
+
+/**
+ * Anexa `notaApp` a cada linha da listagem (só ADIÇÃO de campo).
+ * `notaApp` = a NF-e DESTE pedido no ambiente atual (ref 'nf-p-…'/'nf-h-…'), ou null.
+ * A nota de DEVOLUÇÃO também mora em `notasFiscaisApp` (ref 'nfd-…') — por isso o
+ * casamento é pela ref, nunca "a primeira da lista".
+ */
+function anexarNotaApp(items) {
+    if (!Array.isArray(items) || !items.length) return items;
+    const prefixo = prefixoRefNota();
+    for (const p of items) {
+        const n = (p.notasFiscaisApp || []).find(x => x.ref === `${prefixo}${p.id}`) || null;
+        p.notaApp = n ? { id: n.id, status: n.status, numero: n.numero, chave: n.chave } : null;
+    }
+    return items;
+}
 
 const pedidoService = {
     // Resumo de pendências: conta pedidos por tipo e status (leve, só COUNT)
@@ -147,6 +209,19 @@ const pedidoService = {
         return c;
     },
 
+    // Chips "Com nota" / "Sem nota" / "Nota pendente" da aba Bonificações (3 COUNTs leves).
+    // O WHERE base já traz `bonificacao: true` — sem ele os números não querem dizer nada,
+    // por isso o chamador só pede dentro da aba.
+    contarNotaBonificacao: async (whereBase) => {
+        const semChipNota = { ...whereBase };
+        const [com, sem, pendente] = await Promise.all([
+            prisma.pedido.count({ where: { ...semChipNota, AND: [...(semChipNota.AND || []), condicaoNotaBonificacao('com')] } }),
+            prisma.pedido.count({ where: { ...semChipNota, AND: [...(semChipNota.AND || []), condicaoNotaBonificacao('sem')] } }),
+            prisma.pedido.count({ where: { ...semChipNota, AND: [...(semChipNota.AND || []), condicaoNotaBonificacao('pendente')] } }),
+        ]);
+        return { com, sem, pendente };
+    },
+
     // 1. Listagem de pedidos com filtros. DOIS modos, pelo parâmetro de paginação:
     //   - SEM pagina/tamanhoPagina → retorna ARRAY com todos os itens (modo legado; usado
     //     por Rota, HistoricoModal, DetalheCliente e outras telas que esperam array).
@@ -159,6 +234,14 @@ const pedidoService = {
 
         // Aplica o filtro rápido de status por cima do WHERE base (sem mutar o base)
         const where = { ...whereBase };
+
+        // Chip de nota da aba Bonificações (com / sem / pendente) — 09/2026.
+        // Fica FORA do `whereBase` de propósito: se entrasse lá, a contagem dos próprios
+        // chips sairia filtrada por si mesma ("Sem nota" mostraria 0 com "Com nota" ativo).
+        if (whereBase.bonificacao === true && filtros.notaBonificacao && filtros.notaBonificacao !== 'todas') {
+            const condNota = condicaoNotaBonificacao(filtros.notaBonificacao);
+            if (condNota) where.AND = [...(where.AND || []), condNota];
+        }
         if (statusRapido && statusRapido !== 'TODOS') {
             if (statusRapido === 'FATURADO') {
                 where.situacaoCA = 'FATURADO';
@@ -174,7 +257,7 @@ const pedidoService = {
                 // por isso o OR explícito com { situacaoCA: null }. Vai como termo do AND para não
                 // colidir com o where.OR da busca.
                 where.AND = [
-                    ...(whereBase.AND || []),
+                    ...(where.AND || []),
                     { OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['FATURADO', 'APROVADO'] } }] },
                 ];
             }
@@ -218,19 +301,22 @@ const pedidoService = {
                     itens: { select: { quantidade: true, valorUnitario: true, produto: { select: { nome: true } } } }
                 }
             },
-            // Estado da NF-e do app — a lista usa para saber se o pedido ainda pode ser cancelado
-            notasFiscaisApp: { select: { id: true, tipo: true, status: true, numero: true } }
+            // Estado da NF-e do app — a lista usa para saber se o pedido ainda pode ser
+            // cancelado, e (bonificação com nota) para montar `notaApp` na linha.
+            // `ref` é o que identifica a nota DESTE pedido no ambiente atual
+            // (a de devolução também mora aqui, com ref 'nfd-…').
+            notasFiscaisApp: { select: { id: true, ref: true, tipo: true, status: true, numero: true, chave: true } }
         };
 
         // Modo LEGADO (sem paginação): retorna ARRAY com TODOS os itens. Mantém compatíveis
         // as telas que consomem pedidoService.listar esperando array (Rota/atendido-hoje,
         // HistoricoModal, DetalheCliente). SÓ a tela de Pedidos passa pagina/tamanhoPagina.
         if (pagina === undefined && tamanhoPagina === undefined) {
-            return await prisma.pedido.findMany({
+            return anexarNotaApp(await prisma.pedido.findMany({
                 where,
                 include: includePedido,
                 orderBy: { createdAt: 'desc' }
-            });
+            }));
         }
 
         // Modo PAGINADO (tela de Pedidos): retorna { items, total, contagens }
@@ -249,11 +335,21 @@ const pedidoService = {
             prisma.pedido.count({ where }),
         ]);
 
+        anexarNotaApp(items);
+
         // Contagem dos chips só na 1ª página (não recalcula a cada "Carregar mais")
         let contagens = null;
-        if (pag === 1) contagens = await pedidoService.contarPorStatus(whereBase);
+        let contagensNota = null;
+        if (pag === 1) {
+            contagens = await pedidoService.contarPorStatus(whereBase);
+            // Chips da aba Bonificações (com nota / sem nota / nota pendente). Só na aba —
+            // nas outras abas fica null e o front nem desenha.
+            if (whereBase.bonificacao === true) {
+                contagensNota = await pedidoService.contarNotaBonificacao(whereBase);
+            }
+        }
 
-        return { items, total, pagina: pag, tamanhoPagina: tam, contagens };
+        return { items, total, pagina: pag, tamanhoPagina: tam, contagens, contagensNota };
     },
 
     // 2. Criação de novo pedido validando banco e regras de negócio
@@ -276,6 +372,7 @@ const pedidoService = {
             usuarioLancamentoId,
             especial, // Pedido especial (sem nota)
             bonificacao, // Pedido bonificação (não vai pro CA, valor 0)
+            nfBonificacao, // Bonificação COM NOTA (09/2026) — escolha de quem cria o pedido
             itens, // array de objetos
             statusEnvio, // ABERTO ou ENVIAR
             valorFrete
@@ -315,6 +412,13 @@ const pedidoService = {
 
         // Buscar regras de flex por categoria (antes da transação)
         const regrasCategoria = await obterRegrasCategoria(produtoIds);
+
+        // Bonificação COM NOTA: o cliente precisa de cadastro fiscal completo. Validado
+        // AQUI, FORA da transação (é só leitura) e antes de qualquer escrita — o vendedor
+        // descobre na hora, não dias depois com a nota travada no Financeiro.
+        // Campo AUSENTE = false: vendedor com JS velho em cache não pode ser travado.
+        const querNotaBonif = !!bonificacao && nfBonificacao === true;
+        if (querNotaBonif) await exigirClienteAptoParaNota(clienteId);
 
         // A validação de Flex e atualização do vendedor ocorrerá dentro de uma transação
         return await prisma.$transaction(async (tx) => {
@@ -358,6 +462,16 @@ const pedidoService = {
                     observacoes,
                     especial: !!especial,
                     bonificacao: !!bonificacao,
+                    // Só bonificação carrega a escolha; pedido/especial ficam no default false.
+                    ...(bonificacao ? {
+                        nfBonificacao: querNotaBonif,
+                        // Carimbo de quem decidiu — gravado sempre que o campo veio explícito.
+                        ...(nfBonificacao !== undefined ? {
+                            nfBonificacaoDefinidaEm: new Date(),
+                            nfBonificacaoDefinidaPorId: dadosPedido.nfBonificacaoPorId || dadosPedido.usuarioLancamentoId || null,
+                            nfBonificacaoDefinidaPorNome: dadosPedido.nfBonificacaoPorNome || null,
+                        } : {}),
+                    } : {}),
                     numero: numeroBonificacao || numeroEspecial || undefined,
                     tipoPagamento: tipoPagamento || (especial ? 'DINHEIRO' : (bonificacao ? 'DINHEIRO' : undefined)),
                     opcaoCondicaoPagamento: opcaoCondicaoPagamento || undefined,
@@ -444,7 +558,7 @@ const pedidoService = {
     },
 
     editar: async (id, dadosPedido) => {
-        const { clienteId, vendedorId, itens, statusEnvio, observacoes, dataVenda, opcaoCondicaoPagamento, nomeCondicaoPagamento, tipoPagamento, especial, bonificacao, valorFrete } = dadosPedido;
+        const { clienteId, vendedorId, itens, statusEnvio, observacoes, dataVenda, opcaoCondicaoPagamento, nomeCondicaoPagamento, tipoPagamento, especial, bonificacao, nfBonificacao, valorFrete } = dadosPedido;
 
         // Buscar isentoFlex do cliente antes da transação
         const clienteEditado = clienteId ? await prisma.cliente.findUnique({
@@ -453,6 +567,10 @@ const pedidoService = {
         }) : null;
         const isentoFlexEdit = clienteEditado?.categoriaCliente?.isentoFlex || false;
 
+        // Bonificação COM NOTA: valida o cadastro fiscal FORA da transação (só leitura).
+        // Campo ausente = não mexe na escolha que já está gravada.
+        if (nfBonificacao === true && clienteId) await exigirClienteAptoParaNota(clienteId);
+
         return await prisma.$transaction(async (tx) => {
             const pedidoAntigo = await tx.pedido.findUnique({
                 where: { id },
@@ -460,6 +578,15 @@ const pedidoService = {
             });
 
             if (!pedidoAntigo) throw new Error('Pedido não encontrado');
+
+            // Escolha "com nota / sem nota" da bonificação (09/2026).
+            // `vaiGravarNfBonificacao`: o campo veio explícito E o pedido é (ou está virando)
+            // bonificação. `mudouEscolhaNfBonificacao`: o valor é DIFERENTE do que está gravado —
+            // é o único caso em que o carimbo de quem decidiu pode ser reescrito.
+            const ehBonificacaoAgora = bonificacao !== undefined ? !!bonificacao : pedidoAntigo.bonificacao;
+            const querNotaBonifEdit = nfBonificacao === true;
+            const vaiGravarNfBonificacao = nfBonificacao !== undefined && ehBonificacaoAgora;
+            const mudouEscolhaNfBonificacao = vaiGravarNfBonificacao && querNotaBonifEdit !== pedidoAntigo.nfBonificacao;
 
             // Permite edição de 'revisaoPendente' mesmo se o pedido não estiver ABERTO
             const isSomenteRevisao = Object.keys(dadosPedido).length === 1 && typeof dadosPedido.revisaoPendente === 'boolean';
@@ -546,6 +673,20 @@ const pedidoService = {
                     observacoes,
                     especial: especial !== undefined ? !!especial : undefined,
                     bonificacao: bonificacao !== undefined ? !!bonificacao : undefined,
+                    // Escolha "com nota / sem nota" (09/2026): só grava quando veio explícita
+                    // e o pedido é (ou está virando) bonificação.
+                    // ⚠️ O CARIMBO ("quem decidiu pela nota" e quando) só é reescrito quando o
+                    // valor MUDA de verdade. O NovoPedido manda `nfBonificacao` em todo salvamento;
+                    // carimbar sempre transformaria o rastro em "quem editou a BN# por último" —
+                    // e é justamente esse rastro que o Financeiro lê para saber de onde veio a nota.
+                    ...(vaiGravarNfBonificacao ? {
+                        nfBonificacao: querNotaBonifEdit,
+                        ...(mudouEscolhaNfBonificacao ? {
+                            nfBonificacaoDefinidaEm: new Date(),
+                            nfBonificacaoDefinidaPorId: dadosPedido.nfBonificacaoPorId || null,
+                            nfBonificacaoDefinidaPorNome: dadosPedido.nfBonificacaoPorNome || null,
+                        } : {}),
+                    } : {}),
                     ...(numeroGerado !== undefined ? { numero: numeroGerado } : {}),
                     opcaoCondicaoPagamento,
                     nomeCondicaoPagamento: nomeCondicaoPagamento || undefined,
@@ -715,7 +856,7 @@ const pedidoService = {
 
     // 4. Detalhar um pedido
     detalhar: async (id) => {
-        return await prisma.pedido.findUnique({
+        const pedido = await prisma.pedido.findUnique({
             where: { id },
             include: {
                 cliente: true,
@@ -754,6 +895,23 @@ const pedidoService = {
                 }
             }
         });
+        // Bonificação COM NOTA (09/2026): `nfBonificacaoAutorizada` = resumo da NF-e de
+        // bonificação AUTORIZADA no ambiente atual, ou null (também null para nota em
+        // PROCESSANDO/ERRO/CANCELADO e para pedido que não é BN#). Só ADIÇÃO de campo —
+        // contrato do front: null | { id, numero, serie, chave }. `require` preguiçoso para
+        // não criar ciclo de import com o serviço de emissão.
+        if (pedido) {
+            pedido.nfBonificacaoAutorizada = null;
+            if (pedido.bonificacao) {
+                try {
+                    const emissao = require('./focusNfeEmissaoService');
+                    pedido.nfBonificacaoAutorizada = emissao.resumoNotaParaFront(await emissao.notaBonificacaoAutorizada(id));
+                } catch (e) {
+                    console.error('[Pedido] Falha ao anexar NF-e da bonificação ao detalhe:', e.message);
+                }
+            }
+        }
+        return pedido;
     },
 
     // 5. Excluir pedido (apenas se não estiver ENVIADO/SINCRONIZADO)

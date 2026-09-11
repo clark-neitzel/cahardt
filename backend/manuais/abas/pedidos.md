@@ -58,6 +58,8 @@ Central de consulta e gerenciamento de todos os pedidos lançados no sistema. Aq
 3. Clique em **"Novo Pedido"** no card
 4. O sistema abre `/pedidos/novo?clienteId=...` (tela `NovoPedido`)
 5. Escolha o **tipo** (Pedido Normal, Especial ou Bonificação)
+   - Escolhendo **Bonificação**, aparece a pergunta obrigatória **"Esta bonificação sai com nota fiscal?"** — *Com nota* (o escritório emite a NF-e de bonificação) ou *Sem nota* (sai só com o recibo, como sempre foi). Nada vem marcado de véspera: enquanto não responder, não dá para fechar a bonificação
+   - Se o cliente não tiver **CNPJ/CPF e endereço completo** no cadastro, a opção "Com nota" fica indisponível e a tela diz exatamente o que falta preencher
 6. Selecione a **condição de pagamento** e a **data de entrega**
    - Só aparecem (e só são aceitas) as condições **liberadas para o cliente** — a lista "Condições de pagamento permitidas" do cadastro do cliente (ou, se vazia, apenas a condição padrão dele). O backend também valida: escolher condição fora da lista dá erro "condição não liberada para este cliente". Para liberar outra condição, ajuste o cadastro do cliente
    - Ao **editar** um pedido cuja condição atual não está liberada (ex.: pedido vindo do Site Congelados com a condição "Site"), a tela pede para escolher uma condição liberada antes de salvar
@@ -127,7 +129,7 @@ Quando **não** é possível cancelar (o app avisa e explica):
 3. **Imprime boleto do Conta Azul E do Asaas** — ao clicar em Imprimir, o app consulta o CA de cada pedido; se achar boleto lá, baixa o PDF e inclui na sequência (junto com os do Asaas). Condição com 2 parcelas = 2 boletos, na ordem
 4. **Boleto já quitado NÃO é impresso** (não faz sentido). Se precisar imprimir um boleto pago (p/ o cliente conferir), faça pelo **Contas a Receber**
 5. Avisos automáticos: pedidos **a prazo sem boleto (nem no CA, nem no Asaas)** aparecem em destaque com o botão **"Gerar boletos agora"** (gera no Asaas — o do CA só é gerado manualmente lá dentro); pedidos **sem NF-e emitida** são pulados (emita a nota no CA primeiro); pedidos **à vista** saem sem boleto (não há o que cobrar)
-6. Pedido **ESPECIAL (ZZ#)** e **BONIFICAÇÃO (BN#)** saem no **recibo de conferência** (modelo sem a marca da Hardt, com itens, total e linha de assinatura) — eles só imprimem pelo lote. Bonificação também é selecionável pelo checkbox quando faturada. O recibo traz o quadro **"Dados do cliente · Local de entrega"** (estilo do quadro de destinatário da nota fiscal): nome, CNPJ/CPF, fone, endereço completo (rua, número, complemento, bairro, CEP, município, UF) e a data de entrega — o entregador sabe aonde ir; campo sem cadastro sai como "—". No **canto direito da faixa verde** do recibo há uma **etiqueta branca com código de barras** do número do documento (`ZZ4821` / `BN233`) e, embaixo, o número legível (`ZZ#4821`) — dá para **bipar o recibo** com o leitor em vez de digitar o número
+6. Pedido **ESPECIAL (ZZ#)** e **BONIFICAÇÃO (BN#)** saem no **recibo de conferência** (modelo sem a marca da Hardt, com itens, total e linha de assinatura) — eles só imprimem pelo lote. Bonificação também é selecionável pelo checkbox quando faturada. O recibo traz o quadro **"Dados do cliente · Local de entrega"** (estilo do quadro de destinatário da nota fiscal): nome, CNPJ/CPF, fone, endereço completo (rua, número, complemento, bairro, CEP, município, UF) e a data de entrega — o entregador sabe aonde ir; campo sem cadastro sai como "—". No **canto direito da faixa verde** do recibo há uma **etiqueta branca com código de barras** do número do documento (`ZZ4821` / `BN233`) e, embaixo, o número legível (`ZZ#4821`) — dá para **bipar o recibo** com o leitor em vez de digitar o número. No recibo da **bonificação** há ainda uma faixa dizendo **"COM NOTA FISCAL (NF-e nº …)"** ou **"SEM NOTA FISCAL"** — quem recebe a mercadoria vê no papel se vem DANFE junto
 7. **AMOSTRAS (AM#)**: na aba Amostras também há checkboxes (e o "Selecionar todas") — saem no **recibo de conferência sem valores** (produto e quantidade + faixa "AMOSTRA — SEM VALOR COMERCIAL"), com o mesmo quadro de dados do cliente/local de entrega (amostra de **lead** sai só com o nome do estabelecimento; o resto "—"); amostra não passa pela conferência de boletos. O recibo da amostra também traz a etiqueta com **código de barras** no cabeçalho (`AM17`, legível como `AM#17`)
 8. Sai **um único PDF** com as folhas na ordem certa; as opções ficam lembradas para a próxima
 - O botão de imprimir o pedido individual foi **removido** — a DANFE substitui; para mandar um pedido a alguém, use um print da tela
@@ -198,6 +200,20 @@ Lista pedidos do tipo **Bonificação** (`BN#`). Produtos enviados de graça par
 - Mesma lógica de aprovação e reversão dos Especiais
 - Permissões separadas: `Pode_Aprovar_Bonificacao` e `Pode_Reverter_Bonificacao`
 
+#### Bonificação com nota fiscal (09/2026)
+A bonificação pode sair **com** ou **sem** nota fiscal — **quem cria o pedido escolhe**, na tela de Nova Bonificação. A escolha fica gravada na BN# e aparece na lista, no recibo e no Financeiro; ninguém precisa lembrar depois.
+
+- **Com nota** → a BN# entra na fila de **Financeiro → Notas Fiscais**, e quem tem `Pode_Emitir_NF` emite a NF-e de bonificação (CFOP 5910 dentro de SC, 6910 para outro estado; ICMS sem crédito — CSOSN 102; **sem fatura e sem duplicata**, porque não há nada a cobrar). A DANFE vai junto com a mercadoria e o canhoto assinado é cobrado na aba **Canhotos**, como o de qualquer venda.
+- **Sem nota** → tudo exatamente como sempre foi: sai só com o recibo de conferência, nunca aparece na fila de notas.
+- **Só emite depois de aprovada.** Enquanto a bonificação não estiver aprovada, o Financeiro vê a linha com o aviso *"aguardando aprovação"* e o botão de emitir recusa: *"Bonificação ainda não aprovada — aprove a bonificação antes de emitir a nota."*
+- **Cliente precisa de cadastro fiscal completo** (CNPJ/CPF, rua, número, bairro, cidade, UF e CEP). Sem isso o app já recusa na hora de criar o pedido, dizendo o que falta — em vez de a nota travar dias depois no Financeiro.
+- **Dá para corrigir um engano**: nas ações da linha, mudar de "com nota" para "sem nota" (e o contrário) **enquanto a NF-e não saiu**. Depois de autorizada, a escolha trava (o app não cancela NF-e). Quem mudou e quando fica registrado.
+- Chips da aba: **Com nota**, **Sem nota** e **Nota pendente** (marcadas "com nota" que ainda não foram emitidas — a lista que não pode ficar crescendo esquecida).
+- **Reverter uma bonificação que já tem NF-e autorizada** é permitido, mas pede confirmação: o app **não cancela** a NF-e, ela continua valendo na SEFAZ. Confirme só depois de avisar a contabilidade — a reversão fica registrada no histórico com o número da nota.
+- Continua valendo o de sempre: bonificação **não vira** conta a receber, boleto, PIX, cobrança da régua, comissão, meta nem faturamento — **com nota ou sem nota**.
+- **Bonificações antigas** (anteriores a 09/2026) ficam como "sem nota", que é o que elas são hoje. Só as novas nascem com a pergunta.
+- Não exige permissão nova: quem já cria bonificação passa a escolher; quem já emite nota passa a emitir também a de bonificação.
+
 ### Amostras
 Lista pedidos do tipo **Amostra** (`AM#`). Produtos enviados como amostra com fluxo de status próprio.
 
@@ -252,6 +268,35 @@ acompanhar e reemitir:
 - **A devolução em si continua valendo em qualquer um desses casos** — estoque, parcelas e boletos
   já foram ajustados. O que falta é só o papel da nota.
 
+#### Devolução de bonificação com nota (09/2026)
+Quando a devolução é de uma **bonificação (BN#) que saiu COM nota fiscal autorizada**, o app também
+emite a NF-e de devolução — mas é um documento diferente do da venda: **"Devolução de mercadoria
+remetida a título de bonificação"**, CFOP **1949** (dentro de SC) ou **2949** (outro estado),
+referenciando a **NF-e da bonificação** (não existe nota de venda). Ela **não tem nenhum efeito
+financeiro** — bonificação nunca teve conta a receber, boleto ou cobrança, e a devolução dela
+também não mexe em nada disso; só o **estoque** volta (uma única vez, no registro da devolução).
+
+- Na aba Devoluções, a devolução de BN# aparece com o número no formato **BN#61** e o selo roxo
+  **BONIF.** (no lugar de CA/ESPECIAL). Quando a bonificação tem NF-e autorizada, a linha traz o
+  **mesmo bloco verde** das devoluções de venda: selo *"✓ NF devolução N"* com o botão **DANFE**
+  quando a nota saiu, *"⏳ processando"* enquanto a SEFAZ responde, *"✕ Rejeitada: motivo"* com o
+  botão **"Emitir novamente"** se falhou, ou só o botão **"Emitir NF de devolução"** se ainda não
+  houve tentativa.
+- **Bonificação que saiu SEM nota** não gera NF de devolução (nunca gerou): a linha na aba
+  Devoluções **não mostra o bloco verde nem botão de emitir** — fica igual a uma devolução de
+  especial. Nota da bonificação ainda **processando** ou **com erro** conta como "sem nota" — emita
+  a nota da bonificação primeiro (Financeiro → Notas Fiscais); a partir daí o bloco verde aparece
+  e dá para clicar em "Emitir NF de devolução". (Se alguém forçar a emissão por fora, o app recusa
+  com *"Esta bonificação não tem NF-e autorizada — a devolução fica registrada só no estoque, sem
+  nota fiscal."*)
+- As mesmas regras da venda valem aqui: devolução revertida não emite, uma só nota por devolução
+  (clicar de novo não duplica), e a referência por item a partir de 05/10/2026 aponta a linha da
+  **nota de bonificação**.
+- Na aba **Canhotos**, essa nota entra como **"Estado desconhecido"** (é nota de entrada: não sai com
+  motorista nem pede assinatura), igual à devolução de venda; no pacote da contabilidade ela sai
+  no CSV de devoluções com a coluna **Tipo = BONIFICACAO** — a contabilidade **não** a abate do
+  faturamento.
+
 O **valor do título** em Contas a Receber sempre acompanha as parcelas: depois de uma devolução parcial ele passa a valer a **soma das parcelas que sobraram**, nunca menos. Assim o total do título e a lista de parcelas fecham entre si na tela (antes, num título de R$ 108 com R$ 50 já recebidos e R$ 63 devolvidos, a parcela ficava em R$ 50 e o título aparecia como R$ 45).
 
 ---
@@ -291,6 +336,8 @@ O **valor do título** em Contas a Receber sempre acompanha as parcelas: depois 
 | Reverter Especial | `Pode_Reverter_Especial` ou `admin` |
 | Aprovar Bonificação | `Pode_Aprovar_Bonificacao` ou `admin` |
 | Reverter Bonificação | `Pode_Reverter_Bonificacao` ou `admin` |
+| Escolher/corrigir "com nota / sem nota" da bonificação | `Pode_Criar_Bonificacao` ou `admin` (nenhuma permissão nova) |
+| Emitir a NF-e da bonificação marcada "com nota" | `Pode_Emitir_NF` ou `admin` (em Financeiro → Notas Fiscais) |
 | Excluir pedido normal | `Pode_Excluir_Pedido` ou `admin` |
 | Excluir pedido especial | `Pode_Excluir_Especial` ou `admin` |
 | Excluir bonificação | `Pode_Excluir_Bonificacao` ou `admin` |

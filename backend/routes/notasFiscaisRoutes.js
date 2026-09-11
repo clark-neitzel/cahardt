@@ -68,14 +68,21 @@ router.get('/fila', checkVer, async (req, res) => {
         const pedidos = await prisma.pedido.findMany({
             where: {
                 especial: false,
-                bonificacao: false,
                 cancelado: false, // pedido cancelado no app não entra na fila de emissão
-                // Cancelado/excluído na era Conta Azul também não (venda que não aconteceu
-                // aparecia como "Sem nota" com botão de emitir). situacaoCA é nullable e
-                // notIn excluiria as linhas null — por isso o OR explícito.
                 statusEnvio: { not: 'EXCLUIDO' },
-                OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }],
                 numero: { not: null },
+                // ⚠️ DOIS `OR` no mesmo objeto se atropelam em silêncio (o segundo
+                // sobrescreve o primeiro) — por isso os dois vão como termos do AND.
+                AND: [
+                    // Cancelado/excluído na era Conta Azul não entra (venda que não
+                    // aconteceu aparecia como "Sem nota" com botão de emitir).
+                    // situacaoCA é nullable e `notIn` do Prisma EXCLUI linhas null.
+                    { OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }] },
+                    // Venda entra sempre; bonificação só a marcada "com nota" (09/2026).
+                    // A BN# "sem nota" NUNCA aparece aqui — não é o escritório que decide
+                    // o que quem criou o pedido já decidiu.
+                    { OR: [{ bonificacao: false }, { bonificacao: true, nfBonificacao: true }] },
+                ],
                 ...(de || ate ? { dataVenda: { ...(de ? { gte: de } : {}), ...(ate ? { lte: ate } : {}) } } : {}),
             },
             include: {
@@ -91,12 +98,27 @@ router.get('/fila', checkVer, async (req, res) => {
             const doc = String(p.cliente?.Documento || '').replace(/[^0-9A-Za-z]/g, '');
             const total = p.itens.reduce((s, i) => s + Math.round(Number(i.quantidade) * Number(i.valor) * 100) / 100, 0);
             const nota = p.notasFiscaisApp.find(n => n.ref === `${prefixo}${p.id}`) || null;
+            // A bonificação só pode emitir depois de APROVADA (é a aprovação que baixa o
+            // estoque dela). Antes disso a linha aparece na fila, mas com o motivo do
+            // bloqueio — para o Financeiro saber que falta alguém aprovar, e não achar
+            // que a nota sumiu.
+            const bloqueioEmissao = (p.bonificacao && p.statusEnvio !== 'RECEBIDO') ? 'AGUARDANDO_APROVACAO' : null;
             return {
                 id: p.id,
                 numero: p.numero,
                 dataVenda: p.dataVenda,
                 total: Math.round(total * 100) / 100,
                 tipoPagamento: p.tipoPagamento,
+                // Tipo e RÓTULO JÁ FORMATADO ('#12480' / 'BN#61') — o front não monta prefixo.
+                tipo: p.bonificacao ? 'BONIFICACAO' : 'VENDA',
+                rotulo: `${p.bonificacao ? 'BN#' : '#'}${p.numero}`,
+                bonificacao: p.bonificacao,
+                nfBonificacao: p.nfBonificacao,
+                marcadaPor: p.nfBonificacaoDefinidaPorNome
+                    ? { nome: p.nfBonificacaoDefinidaPorNome, em: p.nfBonificacaoDefinidaEm }
+                    : null,
+                podeEmitir: !bloqueioEmissao,
+                bloqueioEmissao,
                 cliente: {
                     nome: p.cliente?.Nome || '—',
                     documento: p.cliente?.Documento || null,
@@ -165,7 +187,7 @@ router.get('/xmls-zip', checkVer, async (req, res) => {
         for (const n of notasApp) {
             try {
                 const xml = await xmlNfeService.obterXmlNotaApp(n.id);
-                const rotulo = n.tipo === 'DEVOLUCAO' ? 'devolucao' : 'venda';
+                const rotulo = n.tipo === 'DEVOLUCAO' ? 'devolucao' : n.tipo === 'BONIFICACAO' ? 'bonificacao' : 'venda';
                 zip.addFile(`nfe-${n.numero || n.ref}-${rotulo}-pedido-${n.pedido?.numero || ''}.xml`, Buffer.from(xml, 'utf8'));
             } catch (e) {
                 erros.push(`NF ${n.numero || n.ref}: ${e.message}`);

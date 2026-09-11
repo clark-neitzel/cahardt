@@ -1130,14 +1130,17 @@ router.get('/pacote-mes', verificarAuth, checkAcesso, async (req, res) => {
             ]
         ), 'utf8'));
 
-        // 7) Devoluções do mês com NF-e própria (abatem faturamento)
+        // 7) Devoluções do mês com NF-e própria. A de VENDA abate faturamento; a de
+        // BONIFICAÇÃO (09/2026: CFOP 1949/2949, pedido BN#) NÃO abate — a bonificação nunca
+        // foi receita. Por isso a coluna `Tipo` no FIM (BONIFICACAO/VENDA) e o rótulo BN#:
+        // a contabilidade precisa separar antes de somar. Colunas antigas intocadas.
         const devolucoes = await prisma.notaFiscalApp.findMany({
             where: { tipo: 'DEVOLUCAO', status: 'AUTORIZADO', ambiente: 'producao', atualizadoEm: { gte: diaIni(de), lte: diaFim(ate) } },
-            select: { numero: true, chave: true, atualizadoEm: true, pedido: { select: { numero: true, cliente: { select: { Nome: true } } } } }
+            select: { numero: true, chave: true, atualizadoEm: true, pedido: { select: { numero: true, bonificacao: true, cliente: { select: { Nome: true } } } } }
         });
         zip.addFile('07-devolucoes-com-nf.csv', Buffer.from(montarCsv(
-            ['NF devolucao', 'Data', 'Pedido', 'Cliente', 'Chave'],
-            devolucoes.map((d) => [d.numero || '', cData(d.atualizadoEm), d.pedido?.numero ? `#${d.pedido.numero}` : '', cCampo(d.pedido?.cliente?.Nome), d.chave || ''])
+            ['NF devolucao', 'Data', 'Pedido', 'Cliente', 'Chave', 'Tipo'],
+            devolucoes.map((d) => [d.numero || '', cData(d.atualizadoEm), d.pedido?.numero ? `${d.pedido.bonificacao ? 'BN#' : '#'}${d.pedido.numero}` : '', cCampo(d.pedido?.cliente?.Nome), d.chave || '', d.pedido?.bonificacao ? 'BONIFICACAO' : 'VENDA'])
         ), 'utf8'));
 
         // 8) XMLs de SAÍDA do mês (acervo local; mês = posições 3-6 da chave: AAMM)
@@ -1170,7 +1173,7 @@ router.get('/pacote-mes', verificarAuth, checkAcesso, async (req, res) => {
             `01 Títulos a receber criados no mês\n02 Recebimentos do mês (por baixa, com forma e banco)\n` +
             `03 Contas a pagar do mês (com rateio por categoria DRE)\n04 Pagamentos do mês (com juros/multa/desconto)\n` +
             `05 Extrato de cada conta com a identificação da conciliação\n06 Transferências entre contas e ajustes de saldo (não entram na DRE)\n` +
-            `07 Devoluções com NF-e própria\nxmls-saida/ (${xmlSaida} arquivos) — NF-e de venda e devolução\n` +
+            `07 Devoluções com NF-e própria (coluna Tipo: VENDA abate faturamento; BONIFICACAO não abate)\nxmls-saida/ (${xmlSaida} arquivos) — NF-e de venda e devolução\n` +
             `xmls-entrada/ (${xmlEntrada} arquivos) — NF-e/NFS-e de compras\n`, 'utf8'));
 
         res.setHeader('Content-Type', 'application/zip');

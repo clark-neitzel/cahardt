@@ -17,6 +17,18 @@ const fmtEndereco = (c) => {
 
 const DIGITAL_FONT = "'Share Tech Mono', 'Courier New', Courier, monospace";
 
+// Bonificação COM ou SEM nota fiscal — o motorista precisa saber, na folha, se leva DANFE.
+// Só aparece em BN#; pedido normal e especial continuam sem esta linha.
+const linhaNotaBonificacao = (pedido) => {
+    if (!pedido?.bonificacao) return null;
+    if (!pedido.nfBonificacao) return 'SEM NOTA FISCAL';
+    const nota = pedido.notaApp
+        || (pedido.notasFiscaisApp || []).find(n => n.tipo !== 'DEVOLUCAO' && n.status === 'AUTORIZADO');
+    // Campo opcional: só entra no texto quando existe (senão sairia "nº undefined")
+    const numero = nota && nota.numero != null ? nota.numero : null;
+    return numero != null ? `COM NOTA FISCAL (NF-e nº ${numero})` : 'COM NOTA FISCAL';
+};
+
 // ═══════════════════════════════════════════════════════════
 //  Componente de Impressão A4 (meia folha, fonte digital)
 // ═══════════════════════════════════════════════════════════
@@ -44,6 +56,11 @@ const PedidoA4 = ({ pedido }) => {
                     <span style={{ fontSize: '28px', fontWeight: 'bold', letterSpacing: '2px' }}>{numStr}</span>
                     {pedido.especial && <div style={{ fontSize: '11px', color: '#666', textAlign: 'right' }}>[ESPECIAL]</div>}
                     {pedido.bonificacao && <div style={{ fontSize: '11px', color: '#666', textAlign: 'right' }}>[BONIFICACAO]</div>}
+                    {linhaNotaBonificacao(pedido) && (
+                        <div style={{ fontSize: '12px', fontWeight: 'bold', textAlign: 'right', marginTop: '1mm' }}>
+                            {linhaNotaBonificacao(pedido)}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -157,6 +174,9 @@ const PedidoCupom = ({ pedido, isLast }) => {
             <div style={{ textAlign: 'center', marginBottom: '3mm' }}>
                 <p style={{ fontSize: '18px', fontWeight: '900', margin: 0 }}>Pedido {numStr}</p>
                 {pedido.especial && <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '2px 0' }}>PEDIDO ESPECIAL</p>}
+                {linhaNotaBonificacao(pedido) && (
+                    <p style={{ fontSize: '13px', fontWeight: 'bold', margin: '2px 0' }}>{linhaNotaBonificacao(pedido)}</p>
+                )}
             </div>
 
             <p style={{ margin: '1mm 0', textAlign: 'center', fontSize: '11px' }}>{sep}</p>
@@ -450,6 +470,13 @@ const ImpressaoPedido = () => {
         if (pedido.especial) {
             dados.push(ESC + 'E' + '\x01');
             dados.push('PEDIDO ESPECIAL\n');
+            dados.push(ESC + 'E' + '\x00');
+        }
+
+        const notaBonif = linhaNotaBonificacao(pedido);
+        if (notaBonif) {
+            dados.push(ESC + 'E' + '\x01');
+            dados.push(notaBonif + '\n');
             dados.push(ESC + 'E' + '\x00');
         }
 

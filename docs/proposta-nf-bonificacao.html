@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NF-e de Bonificação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+  :root{
+    --primary:#00754A; --primary-dark:#006241; --house:#1E3932; --mint:#d4e9e2;
+    --creme:#f2f0eb; --surface:#ffffff; --ink:rgba(0,0,0,.87); --ink-2:#374151; --ink-3:#4b5563;
+    --linha:#e5e7eb; --linha-leve:#f3f4f6; --ouro:#cba258;
+    --verm:#dc2626; --verm-bg:#fee2e2; --verm-tx:#b91c1c;
+    --amar-bg:#fef3c7; --amar-tx:#92400e;
+    --azul-bg:#dbeafe; --azul-tx:#1e40af;
+    --roxo-bg:#f3e8ff; --roxo-tx:#7e22ce;
+    --verde-bg:#dcfce7; --verde-tx:#166534;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--creme);color:var(--ink);
+    font-family:Manrope,'SF Pro Text',-apple-system,sans-serif;
+    letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.7}
+  .pagina{max-width:1060px;margin:0 auto;padding:0 16px 64px}
+
+  /* ── hero ── */
+  .hero{background:var(--house);color:#fff;border-radius:0 0 24px 24px;
+    padding:36px 24px 32px;margin:0 -16px 28px;text-align:left}
+  .hero .miolo{max-width:948px;margin:0 auto;padding:0 8px}
+  .hero .selo{display:inline-block;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+    color:#fff;font-size:14px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;
+    padding:5px 12px;border-radius:999px;margin-bottom:14px}
+  .hero h1{margin:0 0 10px;font-size:clamp(26px,5vw,38px);font-weight:800;line-height:1.15;text-wrap:balance}
+  .hero p{margin:0;max-width:62ch;color:rgba(255,255,255,.85);font-size:18px}
+
+  h2{font-size:16px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-2);margin:40px 0 14px;display:flex;align-items:center;gap:10px}
+  h2::after{content:'';flex:1;height:1px;background:var(--linha)}
+  p{max-width:80ch}
+  .destaque{color:var(--primary-dark);font-weight:700}
+
+  .cartao{background:var(--surface);border:1px solid var(--linha);border-radius:12px;
+    box-shadow:0 1px 2px rgba(0,0,0,.05);padding:18px 20px;margin-bottom:12px}
+
+  /* já temos / falta */
+  .duas-colunas{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:720px){.duas-colunas{grid-template-columns:1fr}}
+  .lista-check{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+  .lista-check li{display:flex;gap:12px;line-height:1.6;font-size:17px;color:var(--ink-2)}
+  .lista-check li b{color:var(--ink)}
+  .tique{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+    font-size:15px;font-weight:800;margin-top:1px}
+  .tem .tique{background:var(--mint);color:var(--primary-dark)}
+  .falta .tique{background:var(--verm-bg);color:var(--verm-tx)}
+  .painel-titulo{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:800;
+    letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);
+    padding-bottom:12px;border-bottom:1px solid var(--linha-leve);margin-bottom:14px}
+
+  /* ── mock do app ── */
+  .tela{background:var(--surface);border:1px solid var(--linha);border-radius:16px;
+    box-shadow:0 8px 24px rgba(30,57,50,.10);overflow:hidden;margin:18px 0 8px;position:relative}
+  .tela-barra{background:var(--house);color:#fff;padding:10px 16px;display:flex;align-items:center;gap:8px;
+    font-size:16px;font-weight:700}
+  .tela-barra .bolas{display:flex;gap:5px;margin-right:6px}
+  .tela-barra .bolas i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.35)}
+  .tela-corpo{padding:16px;background:var(--creme)}
+  .app-card{background:#fff;border:1px solid var(--linha);border-radius:12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+  @media(max-width:720px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi{background:#fff;border:1px solid var(--linha);border-radius:12px;padding:10px 12px}
+  .kpi .rotulo{font-size:13px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+  .kpi .valor{font-size:24px;font-weight:800;margin-top:2px}
+
+  .abas{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  .aba{padding:7px 14px;border-radius:999px;font-size:15.5px;font-weight:700;border:1px solid var(--linha);
+    background:#fff;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+  .aba.ativa{background:var(--primary);border-color:var(--primary);color:#fff}
+  .aba .num{background:rgba(0,0,0,.08);border-radius:999px;padding:1px 7px;font-size:14px}
+  .aba.ativa .num{background:rgba(255,255,255,.25)}
+
+  .linha-cli{display:flex;align-items:center;gap:10px;padding:12px 14px;border-top:1px solid var(--linha-leve);flex-wrap:wrap}
+  .linha-cli:first-child{border-top:0}
+  .cli-nome{font-size:16.5px;font-weight:700}
+  .cli-sub{font-size:14.5px;color:var(--ink-3)}
+  .cli-valor{margin-left:auto;font-weight:800;color:var(--verm);font-size:16.5px;white-space:nowrap}
+  .chip{padding:3px 9px;border-radius:999px;font-size:13.5px;font-weight:700;white-space:nowrap}
+  .chip.verm{background:var(--verm-bg);color:var(--verm-tx)}
+  .chip.amar{background:var(--amar-bg);color:var(--amar-tx)}
+  .chip.azul{background:var(--azul-bg);color:var(--azul-tx)}
+  .chip.roxo{background:var(--roxo-bg);color:var(--roxo-tx)}
+  .chip.verde{background:var(--verde-bg);color:var(--verde-tx)}
+  .chip.cinza{background:#f3f4f6;color:#374151}
+  .btn-acoes{border:1px solid var(--primary);color:var(--primary);background:#fff;
+    padding:5px 12px;border-radius:999px;font-size:14.5px;font-weight:700;white-space:nowrap}
+  .btn-verde{background:var(--primary);border:1px solid var(--primary);color:#fff;
+    padding:6px 14px;border-radius:999px;font-size:14.5px;font-weight:700;white-space:nowrap}
+
+  .menu-flutuante{position:relative}
+  .menu{position:absolute;right:0;top:calc(100% + 6px);z-index:5;background:#fff;border:1px solid var(--linha);
+    border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.14);min-width:230px;overflow:hidden}
+  .menu a{display:block;padding:9px 14px;font-size:15.5px;color:var(--ink);text-decoration:none;font-weight:600}
+  .menu a+a{border-top:1px solid var(--linha-leve)}
+  .menu a.perigo{color:var(--verm-tx)}
+  .menu a small{display:block;font-weight:500;color:var(--ink-3);font-size:13.5px}
+
+  .timeline{background:#fafaf8;border-top:1px solid var(--linha-leve);padding:10px 16px 12px}
+  .tl-item{display:flex;gap:10px;font-size:14.5px;color:var(--ink-2);padding:4px 0}
+  .tl-item .ponto{flex:none;width:8px;height:8px;border-radius:50%;background:var(--primary);margin-top:5px}
+  .tl-item.auto .ponto{background:#9ca3af}
+  .tl-item b{color:var(--ink)}
+
+  /* pins e legendas */
+  .pin{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;
+    background:var(--ouro);color:#fff;font-size:14px;font-weight:800;flex:none;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+  .legendas{display:flex;flex-direction:column;gap:8px;margin:14px 0 6px}
+  .legendas div{display:flex;gap:12px;line-height:1.65;font-size:16.5px;color:var(--ink-2)}
+  .legendas b{color:var(--ink)}
+
+  /* modais mock */
+  .modal-mock{max-width:520px;margin:18px auto 8px;background:#fff;border:1px solid var(--linha);
+    border-radius:16px;box-shadow:0 12px 32px rgba(30,57,50,.14);overflow:hidden}
+  .modal-cab{padding:14px 18px;border-bottom:1px solid var(--linha-leve);font-weight:800;font-size:17px}
+  .modal-corpo{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+  .campo label{display:block;font-size:14px;font-weight:700;color:var(--ink-2);margin-bottom:4px;
+    text-transform:uppercase;letter-spacing:.06em}
+  .campo .caixa{border:1px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:16px;background:#fff}
+  .parcelas-sel{border:1px solid var(--linha);border-radius:10px;overflow:hidden}
+  .parcelas-sel .item{display:flex;align-items:center;gap:10px;padding:8px 12px;font-size:15.5px;border-top:1px solid var(--linha-leve)}
+  .parcelas-sel .item:first-child{border-top:0}
+  .parcelas-sel .marcado{width:16px;height:16px;border-radius:4px;background:var(--primary);color:#fff;
+    display:grid;place-items:center;font-size:14px;font-weight:800;flex:none}
+  .parcelas-sel .valor{margin-left:auto;font-weight:700}
+  .caixa-info{background:var(--mint);border-radius:10px;padding:10px 14px;font-size:15.5px;color:var(--primary-dark)}
+  .caixa-aviso{background:var(--amar-bg);border-radius:10px;padding:10px 14px;font-size:15.5px;color:var(--amar-tx)}
+  .modal-pe{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--linha-leve)}
+  .grade-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  table.simples{width:100%;border-collapse:collapse;font-size:15.5px}
+  table.simples th{text-align:left;padding:10px 12px;font-size:13.5px;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--ink-3);padding:6px 10px;background:#f9fafb;border-bottom:1px solid var(--linha)}
+  table.simples td{padding:11px 12px;border-bottom:1px solid var(--linha-leve)}
+  table.simples td:last-child,table.simples th:last-child{text-align:right}
+
+  .fluxo{display:flex;flex-wrap:wrap;gap:8px;align-items:center;font-size:15.5px;font-weight:700}
+  .fluxo .passo{background:#fff;border:1px solid var(--linha);border-radius:999px;padding:7px 14px}
+  .fluxo .seta{color:var(--ink-3)}
+  .rodape{margin-top:48px;padding-top:16px;border-top:1px solid var(--linha);font-size:15px;color:var(--ink-3)}
+  /* extras desta proposta */
+  .danfe{border:1px solid #111;border-radius:4px;background:#fff;font-family:'SF Mono',Menlo,monospace;font-size:14px;color:#111}
+  .danfe .faixa{background:#111;color:#fff;padding:5px 10px;font-weight:700;letter-spacing:.04em;font-size:13.5px;text-transform:uppercase}
+  .danfe .linha{display:flex;border-top:1px solid #d1d5db}
+  .danfe .cel{padding:6px 10px;flex:1;border-left:1px solid #d1d5db}
+  .danfe .cel:first-child{border-left:0}
+  .danfe .rot{display:block;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#4b5563;font-weight:700;margin-bottom:2px}
+  .danfe .val{font-weight:700}
+  .marca{background:#fff7d6;border-radius:3px;padding:0 3px;box-shadow:inset 0 -6px 0 #fdf0b5}
+  table.comparativo th:first-child,table.comparativo td:first-child{text-align:left}
+  table.comparativo th:last-child,table.comparativo td:last-child{text-align:left}
+  .comparativo td b{color:var(--primary-dark)}
+  .escolha{border:1px solid var(--linha);border-radius:12px;padding:14px 16px;background:#fff;margin-bottom:10px}
+  .escolha .titulo{font-weight:800;font-size:17px;margin-bottom:8px;display:flex;gap:9px;align-items:center}
+  .opcao{display:flex;gap:10px;padding:9px 12px;border:1px solid var(--linha);border-radius:10px;margin-top:8px;font-size:16.5px;color:var(--ink-2)}
+  .opcao.rec{border-color:var(--primary);background:#f4fbf8}
+  .opcao .marcador{flex:none;width:18px;height:18px;border-radius:50%;border:2px solid #cbd5e1;margin-top:2px}
+  .opcao.rec .marcador{border-color:var(--primary);background:radial-gradient(circle,#00754A 0 5px,#fff 6px)}
+  .opcao b{color:var(--ink)}
+  .selo-rec{background:var(--mint);color:var(--primary-dark);font-size:13px;font-weight:800;letter-spacing:.08em;
+    text-transform:uppercase;padding:2px 8px;border-radius:999px;margin-left:auto}
+</style>
+</head>
+<body><style>
+  /* celular do vendedor */
+  .fone{max-width:400px;margin:18px auto 8px;border:10px solid #1f2937;border-radius:34px;
+    background:#fff;box-shadow:0 14px 34px rgba(30,57,50,.18);overflow:hidden}
+  .fone-topo{background:#fff;border-bottom:1px solid var(--linha);padding:10px 14px;display:flex;
+    align-items:center;gap:8px;font-size:15px;font-weight:800}
+  .fone-faixa{background:#15803d;color:#fff;padding:6px 14px;display:flex;justify-content:space-between;
+    font-size:13px;font-weight:800}
+  .fone-corpo{padding:14px;background:#f9fafb;display:flex;flex-direction:column;gap:14px}
+  .etapa{background:#fff;border:1px solid var(--linha);border-radius:12px;padding:12px 14px}
+  .etapa .rot{font-size:13px;color:var(--ink-3);font-weight:700;margin-bottom:8px;display:block}
+  .tipos{display:flex;gap:8px}
+  .tipo{flex:1;text-align:center;padding:11px 6px;border-radius:8px;font-size:14px;font-weight:800;
+    border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8}
+  .tipo.roxo{border-color:#e9d5ff;background:#faf5ff;color:#7e22ce}
+  .tipo.verde{border-color:#bbf7d0;background:#f0fdf4;color:#15803d}
+  .tipo.on{background:#15803d;border-color:#15803d;color:#fff}
+  .doc{display:flex;gap:10px}
+  .doc-op{flex:1;border:2px solid var(--linha);border-radius:12px;padding:12px;text-align:center;background:#fff}
+  .doc-op .titulo-op{font-size:15px;font-weight:800;color:var(--ink)}
+  .doc-op .sub{font-size:12.5px;color:var(--ink-3);margin-top:3px;line-height:1.4}
+  .doc-op.on{border-color:var(--primary);background:#f0fdf4;box-shadow:0 0 0 3px rgba(0,117,74,.12)}
+  .doc-op.on .titulo-op{color:var(--primary-dark)}
+  .aviso-linha{background:var(--amar-bg);color:var(--amar-tx);border-radius:10px;padding:10px 12px;
+    font-size:13px;font-weight:600;margin-top:10px;line-height:1.45}
+  .botao-fechar{background:var(--primary);color:#fff;text-align:center;padding:14px;border-radius:12px;
+    font-size:15px;font-weight:800}
+  .botao-fechar.travado{background:#d1d5db;color:#6b7280}
+  .marca-fiscal{background:var(--mint);color:var(--primary-dark);border-radius:10px;padding:10px 12px;
+    font-size:13.5px;font-weight:700}
+</style>
+
+<div class="hero">
+  <div class="miolo">
+    <span class="selo">Proposta v2 · nada foi implementado ainda</span>
+    <h1>Bonificação com ou sem nota — quem faz o pedido escolhe</h1>
+    <p>Hoje toda bonificação sai <b>sem documento fiscal</b> (o app recusa: "Bonificação ainda não é emitida pelo app").
+    A proposta é a tela de <b>Nova Bonificação</b> ganhar uma pergunta obrigatória — <b>"sai com nota fiscal?"</b> —
+    respondida por quem está fazendo o pedido. Quem marcar <b>Com nota</b> manda a BN# para a fila de Notas Fiscais;
+    quem marcar <b>Sem nota</b> continua exatamente como é hoje.</p>
+  </div>
+</div>
+
+<div class="pagina">
+
+  <h2>A regra em uma frase</h2>
+  <div class="cartao">
+    <div class="fluxo">
+      <span class="passo">Vendedor escolhe o tipo <b>Bonificação</b></span><span class="seta">→</span>
+      <span class="passo" style="background:var(--mint);border-color:var(--mint);color:var(--primary-dark)">Pergunta nova: com nota ou sem nota?</span><span class="seta">→</span>
+      <span class="passo">Com nota: vai para o Financeiro emitir</span>
+      <span class="seta">ou</span>
+      <span class="passo">Sem nota: igual a hoje</span>
+    </div>
+    <p style="margin:14px 0 0">A escolha fica <b>gravada na bonificação</b> — aparece na lista, na impressão e no Financeiro.
+    Ninguém precisa lembrar depois qual bonificação era para sair com nota: quem fez já disse.</p>
+  </div>
+
+  <h2>Tela 1 — Nova Bonificação, no celular do vendedor</h2>
+  <p>É a tela que já existe (Tipo → Condição → Data → Atendimento → Observações). A novidade é a
+  <b>Etapa 2</b>, que só aparece quando o tipo escolhido é <b>Bonificação</b>.</p>
+
+  <div class="fone">
+    <div class="fone-topo">← Nova Bonificação <span class="chip verde" style="margin-left:auto">BONIFICAÇÃO</span></div>
+    <div class="fone-faixa"><span>Bonificação</span><span style="font-weight:500">2 itens · Total: R$ 0,00</span></div>
+    <div class="fone-corpo">
+
+      <div class="etapa">
+        <span class="rot">Cliente</span>
+        <div style="font-size:15px;font-weight:700">PADARIA CENTRAL ME</div>
+        <div style="font-size:13px;color:var(--ink-3)">CNPJ 98.765.432/0001-10 · Joinville/SC</div>
+      </div>
+
+      <div class="etapa">
+        <span class="rot">Etapa 1 · Tipo de Pedido *</span>
+        <div class="tipos">
+          <div class="tipo">Pedido</div>
+          <div class="tipo roxo">Especial</div>
+          <div class="tipo verde on">Bonificação</div>
+        </div>
+      </div>
+
+      <div class="etapa" style="border-color:var(--primary);box-shadow:0 0 0 3px rgba(0,117,74,.10)">
+        <span class="rot" style="color:var(--primary-dark)">Etapa 2 · Esta bonificação sai com nota fiscal? * <span class="pin">1</span></span>
+        <div class="doc">
+          <div class="doc-op on">
+            <div class="titulo-op">📄 Com nota</div>
+            <div class="sub">O escritório emite a NF-e de bonificação</div>
+          </div>
+          <div class="doc-op">
+            <div class="titulo-op">Sem nota</div>
+            <div class="sub">Sai só com o romaneio, como hoje</div>
+          </div>
+        </div>
+        <div class="marca-fiscal" style="margin-top:10px">✓ Vai para o Financeiro → Notas Fiscais assim que você fechar a bonificação. <span class="pin">2</span></div>
+      </div>
+
+      <div class="etapa">
+        <span class="rot">Etapa 3 · Condição de Pagamento * <span style="color:var(--primary-dark)">(Bonificação)</span></span>
+        <div class="caixa" style="border:1px solid #d1d5db;border-radius:6px;padding:10px;font-size:14.5px">Bonificação ▾</div>
+      </div>
+
+      <div class="etapa">
+        <span class="rot">Etapa 4 · Data de Entrega *</span>
+        <div class="caixa" style="border:1px solid #d1d5db;border-radius:6px;padding:10px;font-size:14.5px">12/09/2026</div>
+      </div>
+
+      <div class="botao-fechar">FECHAR BONIFICAÇÃO · R$ 0,00</div>
+    </div>
+  </div>
+
+  <div class="legendas">
+    <div><span class="pin">1</span><span><b>Pergunta obrigatória, com as duas respostas do mesmo tamanho.</b> Não vem nada marcado de véspera: enquanto o vendedor não responder, o botão "Fechar bonificação" fica travado (cinza). É de propósito — se uma das opções viesse marcada, com o tempo todo mundo fecharia no automático sem pensar.</span></div>
+    <div><span class="pin">2</span><span><b>Confirmação na hora</b>: ao marcar "Com nota", aparece a faixa verde explicando o que vai acontecer. Ao marcar "Sem nota", a faixa diz "Sai só com o romaneio — nenhuma nota será emitida".</span></div>
+  </div>
+
+  <h2>Tela 1b — Quando o cliente não pode receber nota</h2>
+  <p>A nota exige <b>CNPJ/CPF e endereço completo</b> no cadastro. Em vez de o vendedor descobrir isso dias depois
+  (com a nota travada no Financeiro), o app avisa <b>na hora da escolha</b>:</p>
+
+  <div class="fone" style="max-width:400px">
+    <div class="fone-topo">← Nova Bonificação <span class="chip verde" style="margin-left:auto">BONIFICAÇÃO</span></div>
+    <div class="fone-corpo">
+      <div class="etapa">
+        <span class="rot">Cliente</span>
+        <div style="font-size:15px;font-weight:700">MERCEARIA DO ZÉ</div>
+        <div style="font-size:13px;color:var(--verm-tx);font-weight:700">Sem CNPJ e sem endereço completo</div>
+      </div>
+      <div class="etapa" style="border-color:#fbbf24">
+        <span class="rot">Etapa 2 · Esta bonificação sai com nota fiscal? *</span>
+        <div class="doc">
+          <div class="doc-op" style="opacity:.55;border-style:dashed">
+            <div class="titulo-op">📄 Com nota</div>
+            <div class="sub">Indisponível para este cliente</div>
+          </div>
+          <div class="doc-op on">
+            <div class="titulo-op">Sem nota</div>
+            <div class="sub">Sai só com o romaneio, como hoje</div>
+          </div>
+        </div>
+        <div class="aviso-linha">⚠️ Para sair com nota, este cliente precisa de <b>CNPJ/CPF, rua, número, bairro, cidade, UF e CEP</b> no cadastro. Corrija o cadastro e a opção libera. <span class="pin">3</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legendas">
+    <div><span class="pin">3</span><span><b>O erro aparece antes, não depois.</b> Hoje, na venda, o problema de cadastro só estoura na hora de emitir. Aqui o vendedor vê na hora — e ainda fica sabendo exatamente o que falta no cadastro do cliente.</span></div>
+  </div>
+
+  <h2>Tela 2 — Confirmação antes de fechar</h2>
+  <p>A tela de confirmação que já existe passa a mostrar a escolha em destaque — é a última chance de perceber um engano.</p>
+
+  <div class="modal-mock">
+    <div class="modal-cab">Confirmar Bonificação</div>
+    <div class="modal-corpo">
+      <div class="campo"><label>Cliente</label><div class="caixa">PADARIA CENTRAL ME</div></div>
+      <div class="grade-2">
+        <div class="campo"><label>Entrega</label><div class="caixa">12/09/2026</div></div>
+        <div class="campo"><label>Itens</label><div class="caixa">2 itens · R$ 0,00</div></div>
+      </div>
+      <div class="caixa-info"><b>📄 COM NOTA FISCAL</b> — a NF-e de bonificação será emitida pelo escritório
+        (aparece em Financeiro → Notas Fiscais). O cliente <b>não paga nada</b>: a nota é só o documento da mercadoria. <span class="pin">4</span></div>
+    </div>
+    <div class="modal-pe"><span class="btn-acoes">Voltar</span><span class="btn-verde">Confirmar Bonificação</span></div>
+  </div>
+
+  <div class="legendas">
+    <div><span class="pin">4</span><span><b>Escolha escrita por extenso na confirmação.</b> Se o vendedor marcou "Sem nota", a mesma faixa aparece em cinza: "SEM NOTA FISCAL — a mercadoria sai só com o romaneio".</span></div>
+  </div>
+
+  <h2>Tela 3 — Pedidos → aba Bonificações</h2>
+  <p>Na lista, cada bonificação mostra a escolha e o estado da nota. É aqui que o escritório corrige um engano
+  do vendedor, enquanto a nota ainda não saiu.</p>
+
+  <div class="tela">
+    <div class="tela-barra"><span class="bolas"><i></i><i></i><i></i></span> Pedidos → Bonificações</div>
+    <div class="tela-corpo">
+      <div class="app-card" style="padding:10px 12px;margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span class="aba ativa">Todas <span class="num">18</span></span>
+        <span class="aba">Com nota <span class="num">7</span></span>
+        <span class="aba">Sem nota <span class="num">11</span></span>
+        <span class="aba" style="border-color:#fca5a5;color:var(--verm-tx)">Nota pendente <span class="num">2</span> <span class="pin">5</span></span>
+      </div>
+      <div class="app-card">
+        <div class="linha-cli">
+          <span class="cli-nome">BN#61</span>
+          <span><span class="cli-nome">PADARIA CENTRAL ME</span><br><span class="cli-sub">Entrega 12/09 · 2 itens · Vendedor: Marcos</span></span>
+          <span class="chip verde">📄 Com nota</span>
+          <span class="chip cinza">Aguardando emissão</span>
+          <span class="menu-flutuante"><span class="btn-acoes">Ações ▾</span>
+            <span class="menu">
+              <a href="#">Emitir NF-e agora</a>
+              <a href="#">Mudar para "sem nota" <small>só enquanto a nota não foi emitida <span class="pin">6</span></small></a>
+              <a href="#">Ver pedido</a>
+            </span>
+          </span>
+        </div>
+        <div class="linha-cli" style="padding-top:120px">
+          <span class="cli-nome">BN#60</span>
+          <span><span class="cli-nome">EMPÓRIO DO BAIRRO</span><br><span class="cli-sub">Entrega 11/09 · 1 item · Vendedor: Ana</span></span>
+          <span class="chip verde">📄 Com nota</span>
+          <span class="chip verde">NF 85231 autorizada</span>
+          <span class="btn-acoes">Imprimir DANFE</span>
+        </div>
+        <div class="linha-cli">
+          <span class="cli-nome">BN#59</span>
+          <span><span class="cli-nome">MERCADO SÃO JORGE LTDA</span><br><span class="cli-sub">Entrega 10/09 · 3 itens · Vendedor: Marcos</span></span>
+          <span class="chip cinza">Sem nota</span>
+          <span class="chip cinza">—</span>
+          <span class="btn-acoes">Ações ▾</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legendas">
+    <div><span class="pin">5</span><span><b>Filtro "Nota pendente"</b> — as bonificações marcadas "com nota" que ainda não foram emitidas. É a lista que não pode ficar crescendo esquecida.</span></div>
+    <div><span class="pin">6</span><span><b>Dá para corrigir o engano</b>: mudar de "com nota" para "sem nota" (e o contrário) enquanto a NF-e não foi emitida. Depois de a nota estar autorizada, só cancelando a nota — e isso fica registrado em quem mudou e quando.</span></div>
+  </div>
+
+  <h2>Tela 4 — Financeiro → Notas Fiscais (só as "com nota")</h2>
+  <p>A fila de emissão só recebe as bonificações marcadas <b>Com nota</b>. As "sem nota" nunca aparecem aqui —
+  não é para o escritório ficar decidindo o que o vendedor já decidiu.</p>
+
+  <div class="tela">
+    <div class="tela-barra"><span class="bolas"><i></i><i></i><i></i></span> Financeiro → Notas Fiscais</div>
+    <div class="tela-corpo">
+      <div class="kpis">
+        <div class="kpi"><div class="rotulo">Sem nota</div><div class="valor">7</div></div>
+        <div class="kpi"><div class="rotulo" style="color:#2563eb">Processando</div><div class="valor" style="color:#2563eb">1</div></div>
+        <div class="kpi"><div class="rotulo" style="color:var(--primary-dark)">Autorizadas</div><div class="valor" style="color:var(--primary-dark)">126</div></div>
+        <div class="kpi"><div class="rotulo" style="color:var(--verm)">Com erro</div><div class="valor" style="color:var(--verm)">1</div></div>
+      </div>
+      <div class="app-card" style="padding:10px 12px;margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span class="btn-acoes" style="border-color:var(--linha);color:var(--ink)">Este mês · 01/09 – 30/09 ▾</span>
+        <span class="aba ativa">A emitir <span class="num">9</span></span>
+        <span class="aba">Emitidas <span class="num">126</span></span>
+        <span class="aba">Canhotos <span class="num">18</span></span>
+        <span class="aba" style="border-color:#c084fc;color:#7e22ce;background:#faf5ff">Bonificações <span class="num">2</span> <span class="pin">7</span></span>
+      </div>
+      <div class="app-card">
+        <div class="linha-cli">
+          <span class="cli-nome">#12480</span>
+          <span><span class="cli-nome">MERCADO SÃO JORGE LTDA</span><br><span class="cli-sub">Venda · CNPJ 12.345.678/0001-90</span></span>
+          <span class="cli-valor" style="color:var(--ink)">R$ 1.842,60</span>
+          <span class="chip cinza">Sem nota</span>
+          <span class="btn-verde">Emitir NF-e</span>
+        </div>
+        <div class="linha-cli" style="background:#fdfaff">
+          <span class="cli-nome">BN#61</span>
+          <span><span class="cli-nome">PADARIA CENTRAL ME</span><br><span class="cli-sub">Bonificação · marcada COM NOTA por Marcos em 10/09 <span class="pin">8</span></span></span>
+          <span class="cli-valor" style="color:var(--ink)">R$ 66,47</span>
+          <span class="chip cinza">Sem nota</span>
+          <span class="btn-verde">Emitir NF-e</span>
+        </div>
+        <div class="linha-cli" style="background:#fdfaff">
+          <span class="cli-nome">BN#60</span>
+          <span><span class="cli-nome">EMPÓRIO DO BAIRRO</span><br><span class="cli-sub">Bonificação · CNPJ 45.111.222/0001-33</span></span>
+          <span class="cli-valor" style="color:var(--ink)">R$ 201,12</span>
+          <span class="chip verde">Autorizada · nº 85231</span>
+          <span class="btn-acoes">DANFE</span><span class="btn-acoes">XML</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="legendas">
+    <div><span class="pin">7</span><span><b>Filtro "Bonificações"</b> para conferir só elas; nas outras abas aparecem junto com as vendas, sempre com o selo roxo.</span></div>
+    <div><span class="pin">8</span><span><b>Fica registrado quem pediu a nota</b> — nome de quem marcou "com nota" e quando. Se aparecer uma nota que ninguém entende, dá para saber de onde veio.</span></div>
+  </div>
+
+  <h2>Quem pode fazer o quê</h2>
+  <div class="cartao" style="overflow-x:auto">
+    <table class="simples comparativo">
+      <tr><th>Pessoa</th><th>O que ela faz hoje</th><th>O que passa a poder</th></tr>
+      <tr><td><b>Vendedor</b> (tem "Criar Bonificação")</td><td>Cria a BN#, sem nenhuma opção de nota</td><td><b>Escolhe com nota ou sem nota</b> ao criar</td></tr>
+      <tr><td><b>Escritório</b> (tem "Criar Bonificação")</td><td>Cria a BN# igual ao vendedor</td><td>Escolhe também, e <b>corrige a escolha</b> na lista enquanto a nota não saiu</td></tr>
+      <tr><td><b>Quem emite nota</b> (tem "Emitir NF")</td><td>Emite nota de venda e de devolução</td><td><b>Emite a NF-e da bonificação</b> que veio marcada "com nota"</td></tr>
+      <tr><td><b>Motorista</b></td><td>Entrega com romaneio</td><td>Leva também a <b>DANFE</b> quando a bonificação tem nota</td></tr>
+      <tr><td>Quem <b>não</b> tem "Criar Bonificação"</td><td>Não vê o botão Bonificação</td><td>Continua sem ver — nada muda</td></tr>
+    </table>
+    <p style="margin:14px 0 0;font-size:15px;color:var(--ink-2)">Ou seja: <b>não crio permissão nova</b>.
+    Quem já pode criar bonificação passa a escolher; quem já pode emitir nota passa a emitir também a de bonificação.
+    Se você preferir travar a opção "com nota" só para algumas pessoas, é a decisão 1 logo abaixo.</p>
+  </div>
+
+  <h2>Preciso da sua decisão</h2>
+
+  <div class="escolha">
+    <div class="titulo"><span class="pin">1</span> Quem pode marcar "com nota"?</div>
+    <div class="opcao rec"><span class="marcador"></span><span><b>Todo mundo que já cria bonificação</b> — vendedor e escritório escolhem. É o mais simples e é o que você descreveu. <span class="selo-rec">Recomendo</span></span></div>
+    <div class="opcao"><span class="marcador"></span><span><b>Permissão nova</b> (ex.: "Bonificar com nota") — só quem você liberar vê a opção "com nota"; os demais só conseguem criar bonificação sem nota.</span></div>
+  </div>
+
+  <div class="escolha">
+    <div class="titulo"><span class="pin">2</span> Alguma opção vem marcada por padrão?</div>
+    <div class="opcao rec"><span class="marcador"></span><span><b>Nenhuma</b> — o vendedor é obrigado a responder, e o botão de fechar fica travado até ele escolher. <span class="selo-rec">Recomendo</span></span></div>
+    <div class="opcao"><span class="marcador"></span><span><b>"Sem nota" já marcado</b> — mais rápido no dia a dia, mas o risco é sair sem nota por costume, sem ninguém perceber.</span></div>
+    <div class="opcao"><span class="marcador"></span><span><b>"Com nota" já marcado</b> — mais seguro fiscalmente, mas enche a fila do Financeiro de nota que talvez ninguém quisesse.</span></div>
+  </div>
+
+  <div class="escolha">
+    <div class="titulo"><span class="pin">3</span> Dá para mudar a escolha depois?</div>
+    <div class="opcao rec"><span class="marcador"></span><span><b>Sim, enquanto a nota não foi emitida</b>, pelo menu Ações da lista — e fica registrado quem mudou. Depois de autorizada, só cancelando a nota. <span class="selo-rec">Recomendo</span></span></div>
+    <div class="opcao"><span class="marcador"></span><span><b>Não</b> — escolheu, acabou. Errou? Exclui a bonificação e faz outra.</span></div>
+  </div>
+
+  <div class="escolha">
+    <div class="titulo"><span class="pin">4</span> Qual valor vai na nota?</div>
+    <div class="opcao rec"><span class="marcador"></span><span><b>Preço de tabela do produto</b> — é o que o sistema já guarda em cada item da bonificação. <span class="selo-rec">Recomendo</span></span></div>
+    <div class="opcao"><span class="marcador"></span><span><b>Preço de custo</b> — nota de valor menor, mas exige puxar o custo na hora da emissão e a contabilidade precisa concordar.</span></div>
+    <p style="font-size:14px;color:var(--ink-3);margin:10px 0 0">Nota zerada não é opção: a SEFAZ não aceita saída de mercadoria sem valor. O cliente continua <b>não pagando nada</b> — a bonificação não vira contas a receber nem boleto.</p>
+  </div>
+
+  <div class="escolha">
+    <div class="titulo"><span class="pin">5</span> CFOP 5910/6910 e ICMS sem crédito (CSOSN 102) estão certos para nós?</div>
+    <div class="opcao rec"><span class="marcador"></span><span><b>Sim — é o padrão de bonificação.</b> Vale mandar esta página para a contabilidade antes de eu começar: trocar um CFOP agora é um campo; depois da primeira nota, dá muito mais trabalho. <span class="selo-rec">Confirmar</span></span></div>
+  </div>
+
+  <div class="escolha">
+    <div class="titulo"><span class="pin">6</span> A bonificação com nota entra no controle de canhotos?</div>
+    <div class="opcao rec"><span class="marcador"></span><span><b>Sim</b> — a mercadoria foi entregue, o canhoto assinado volta e é bipado como o das vendas. <span class="selo-rec">Recomendo</span></span></div>
+    <div class="opcao"><span class="marcador"></span><span><b>Não</b> — a aba Canhotos ignora as notas de bonificação.</span></div>
+  </div>
+
+  <h2>A cara da nota (DANFE)</h2>
+  <p>Só para você e a contabilidade conferirem o que sai impresso. Em amarelo, o que difere da nota de venda.</p>
+
+  <div class="danfe" style="margin:16px 0 8px">
+    <div class="faixa">DANFE · Documento Auxiliar da Nota Fiscal Eletrônica · SAÍDA</div>
+    <div class="linha">
+      <div class="cel" style="flex:2"><span class="rot">Natureza da operação</span><span class="val marca">Remessa em bonificação</span></div>
+      <div class="cel"><span class="rot">Nº / Série</span><span class="val">85.231 / 1</span></div>
+      <div class="cel"><span class="rot">Emissão</span><span class="val">10/09/2026</span></div>
+    </div>
+    <div class="linha">
+      <div class="cel" style="flex:2"><span class="rot">Destinatário</span><span class="val">PADARIA CENTRAL ME</span></div>
+      <div class="cel"><span class="rot">CNPJ</span><span class="val">98.765.432/0001-10</span></div>
+      <div class="cel"><span class="rot">Cidade / UF</span><span class="val">Joinville / SC</span></div>
+    </div>
+    <div class="faixa">Dados dos produtos</div>
+    <div class="linha">
+      <div class="cel" style="flex:3"><span class="rot">Descrição</span><span class="val">COXINHA DE FRANGO 500G</span></div>
+      <div class="cel"><span class="rot">CFOP</span><span class="val marca">5910</span></div>
+      <div class="cel"><span class="rot">Qtd</span><span class="val">2</span></div>
+      <div class="cel"><span class="rot">Vl. unitário</span><span class="val">33,235</span></div>
+      <div class="cel"><span class="rot">Vl. total</span><span class="val">66,47</span></div>
+    </div>
+    <div class="linha">
+      <div class="cel"><span class="rot">Valor total da nota</span><span class="val">R$ 66,47</span></div>
+      <div class="cel"><span class="rot">Forma de pagamento</span><span class="val marca">Sem pagamento</span></div>
+      <div class="cel"><span class="rot">Duplicatas / fatura</span><span class="val marca">— não tem —</span></div>
+    </div>
+    <div class="faixa">Informações complementares</div>
+    <div class="linha">
+      <div class="cel"><span class="val" style="font-weight:400;line-height:1.7">
+        <span class="marca">MERCADORIA ENTREGUE EM BONIFICACAO — SEM COBRANCA AO DESTINATARIO.</span><br>
+        Referente à bonificação BN#61.<br>
+        DOCUMENTO EMITIDO POR ME OU EPP OPTANTE PELO SIMPLES NACIONAL.
+      </span></div>
+    </div>
+  </div>
+
+  <div class="cartao" style="overflow-x:auto;margin-top:16px">
+    <table class="simples comparativo">
+      <tr><th>Campo</th><th>Nota de venda (hoje)</th><th>Nota de bonificação (proposta)</th></tr>
+      <tr><td>Natureza da operação</td><td>Venda de Mercadorias / Produtos</td><td><b>Remessa em bonificação</b></td></tr>
+      <tr><td>CFOP dentro de SC / outra UF</td><td>5101-5102 / 6101-6102</td><td><b>5910 / 6910</b></td></tr>
+      <tr><td>Fatura / duplicatas</td><td>Nas notas a prazo/boleto</td><td><b>Nunca</b> — não há o que cobrar</td></tr>
+      <tr><td>Forma de pagamento</td><td>Dinheiro / PIX / boleto / cartão</td><td><b>Sem pagamento</b></td></tr>
+      <tr><td>ICMS (Simples)</td><td>CSOSN 101 com crédito / 102</td><td><b>CSOSN 102 — sem crédito</b> (a confirmar)</td></tr>
+      <tr><td>Efeito no app</td><td>Pedido vira FATURADO</td><td>BN# marcada <b>"nota emitida"</b>, mas <b>fora</b> de venda, comissão e meta</td></tr>
+    </table>
+  </div>
+
+  <h2>O que NÃO muda (garantias)</h2>
+  <div class="cartao">
+    <ul class="lista-check">
+      <li><span class="tique">✓</span><span><b>Bonificação "sem nota" continua idêntica a hoje</b> — quem não quiser mexer com nota simplesmente marca "Sem nota" e a vida segue igual.</span></li>
+      <li><span class="tique">✓</span><span><b>Bonificação não vira venda</b>: fora de comissão, meta, dashboard e faturamento — com nota ou sem nota.</span></li>
+      <li><span class="tique">✓</span><span><b>O cliente não paga nada</b>: nenhuma bonificação gera contas a receber, boleto, PIX ou cobrança da régua.</span></li>
+      <li><span class="tique">✓</span><span><b>Nota de venda e de devolução não são tocadas</b> — a bonificação entra como um caminho novo ao lado.</span></li>
+      <li><span class="tique">✓</span><span><b>Estoque continua baixando como hoje</b>; a nota não mexe em estoque.</span></li>
+      <li><span class="tique">✓</span><span><b>Pedido especial (ZZ#) continua sem nota</b>, como sempre foi.</span></li>
+    </ul>
+  </div>
+
+  <h2>Riscos que vou tratar na implementação</h2>
+  <div class="cartao">
+    <ul class="lista-check">
+      <li><span class="tique" style="background:var(--amar-bg);color:var(--amar-tx)">!</span><span><b>Bonificação antiga</b> — as BN# que já existem ficam como <b>"sem nota"</b> (é o que elas são hoje). Só as novas nascem com a pergunta.</span></li>
+      <li><span class="tique" style="background:var(--amar-bg);color:var(--amar-tx)">!</span><span><b>Nota em dobro</b> — mesma trava da venda e da devolução: se a nota já está autorizada ou processando, o botão recusa em vez de emitir de novo.</span></li>
+      <li><span class="tique" style="background:var(--amar-bg);color:var(--amar-tx)">!</span><span><b>Fila esquecida</b> — o filtro "Nota pendente" existe justamente para ninguém deixar bonificação marcada "com nota" sem emitir.</span></li>
+      <li><span class="tique" style="background:var(--amar-bg);color:var(--amar-tx)">!</span><span><b>Teste em homologação primeiro</b> — a primeira nota de bonificação sai no ambiente de teste (sem valor fiscal); só depois liga em produção.</span></li>
+    </ul>
+  </div>
+
+  <div class="rodape">
+    Proposta v2 de 10/09/2026 · CA-Hardt · <b>Nada foi implementado</b> — esta página é o desenho para você aprovar.<br>
+    Porte: tarefa <b>grande</b> (mexe em fiscal/NF-e e na tela de pedidos). Depois do seu OK: arquiteto desenha o plano →
+    backend + frontend → teste clicando na tela e nota real em homologação → revisão de código → gerente de entrega → publicação.
+  </div>
+</div>
+</body>
+</html>

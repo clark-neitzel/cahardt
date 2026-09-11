@@ -125,6 +125,9 @@ const NovoPedido = () => {
     const [saving, setSaving] = useState(false);
     const [especial, setEspecial] = useState(false);
     const [bonificacao, setBonificacao] = useState(false);
+    // Bonificação COM ou SEM nota fiscal — resposta obrigatória de quem cria o pedido.
+    // null = ainda não respondeu (trava o botão de fechar) | true = com nota | false = sem nota.
+    const [nfBonificacao, setNfBonificacao] = useState(null);
     const [tipoPedido, setTipoPedido] = useState(null); // 'PEDIDO' | 'ESPECIAL' | 'BONIFICACAO' | null
     const [showClientePopup, setShowClientePopup] = useState(false);
 
@@ -283,6 +286,8 @@ const NovoPedido = () => {
                         } else if (pd.bonificacao) {
                             setBonificacao(true);
                             setTipoPedido('BONIFICACAO');
+                            // Bonificação antiga (antes desta função) não tem o campo: vale "sem nota"
+                            setNfBonificacao(pd.nfBonificacao === true);
                         } else {
                             setTipoPedido('PEDIDO');
                         }
@@ -347,7 +352,12 @@ const NovoPedido = () => {
                         if (pd.tipoPedido && mesmoCLiente) {
                             setTipoPedido(pd.tipoPedido);
                             if (pd.tipoPedido === 'ESPECIAL') setEspecial(true);
-                            else if (pd.tipoPedido === 'BONIFICACAO') setBonificacao(true);
+                            else if (pd.tipoPedido === 'BONIFICACAO') {
+                                setBonificacao(true);
+                                // Só restaura se o rascunho já tinha resposta (true/false);
+                                // rascunho antigo (undefined) volta como "não respondido".
+                                if (pd.nfBonificacao === true || pd.nfBonificacao === false) setNfBonificacao(pd.nfBonificacao);
+                            }
                         }
 
                         if (mesmoCLiente) {
@@ -388,13 +398,14 @@ const NovoPedido = () => {
                 observacoes,
                 canalOrigem,
                 tipoPedido,
+                nfBonificacao,
                 itensMap: Array.from(itensMap.entries())
             };
             try {
                 localStorage.setItem('@CAHardt:NovoPedido_Draft', JSON.stringify(dataToSave));
             } catch (e) { }
         }
-    }, [clienteId, clienteSearchText, dataEntrega, condicaoPagamentoId, isEncaixe, observacoes, canalOrigem, tipoPedido, itensMap, loading, editId]);
+    }, [clienteId, clienteSearchText, dataEntrega, condicaoPagamentoId, isEncaixe, observacoes, canalOrigem, tipoPedido, nfBonificacao, itensMap, loading, editId]);
 
     // Auto-recolher formulário quando todas as etapas estão preenchidas (edição / draft restaurado)
     useEffect(() => {
@@ -511,6 +522,14 @@ const NovoPedido = () => {
     useEffect(() => {
         if (clienteSelecionado) verificarDataEntrega(dataEntrega, clienteSelecionado);
     }, [dataEntrega]);
+
+    // "Com nota" só vale enquanto o cliente puder receber nota. Se a escolha veio de um
+    // rascunho/edição e o cliente não está apto (ou o cadastro piorou), a pergunta volta.
+    useEffect(() => {
+        if (nfBonificacao === true && clienteSelecionado?.fiscalApto?.ok === false) {
+            setNfBonificacao(null);
+        }
+    }, [clienteSelecionado, nfBonificacao]);
 
     // Verifica se já existe pedido para este cliente+data ao alterar data ou cliente
     useEffect(() => {
@@ -929,6 +948,7 @@ const NovoPedido = () => {
 
         if (!clienteId || itensMap.size === 0) { toast.error("Preencha cliente e adicione itens.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (!tipoPedido) { toast.error("Selecione o tipo de pedido (Pedido, Especial ou Bonificação).", { duration: 6000, style: { maxWidth: "600px" } }); return; }
+        if (bonificacao && nfBonificacao === null) { toast.error("Responda se esta bonificação sai COM nota fiscal ou SEM nota fiscal.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (!condicaoPagamentoId || !condicaoSelecionada) { toast.error("Selecione uma condição de pagamento (entre as liberadas para este cliente).", { duration: 6000, style: { maxWidth: "600px" } }); return; }
         if (!dataEntrega) { toast.error("Selecione a data de entrega.", { duration: 6000, style: { maxWidth: "600px" } }); return; }
 
@@ -986,6 +1006,8 @@ const NovoPedido = () => {
             canalOrigem: canalOrigem || null,
             especial: !!especial,
             bonificacao: !!bonificacao,
+            // Só a bonificação carrega a escolha; pedido normal e especial vão sempre false
+            nfBonificacao: !!bonificacao && nfBonificacao === true,
             valorFrete: valorFrete !== '' && Number(valorFrete) > 0 ? Number(valorFrete) : null,
             itens: itensLimpos
         };
@@ -1452,6 +1474,20 @@ const NovoPedido = () => {
         );
     };
 
+    // ── Bonificação com/sem nota fiscal ──
+    // A aptidão fiscal do cliente vem PRONTA do backend (`cliente.fiscalApto`). A regra de
+    // "o que falta no cadastro" NÃO é reimplementada aqui — a tela só lê e mostra.
+    const fiscalApto = clienteSelecionado?.fiscalApto;
+    // Backend antigo (sem o campo) não pode travar o vendedor: só bloqueia quando o
+    // servidor diz explicitamente que este cliente NÃO está apto a receber nota.
+    const clienteAptoNf = !(fiscalApto && fiscalApto.ok === false);
+    const faltandoNf = (Array.isArray(fiscalApto?.faltando) && fiscalApto.faltando.length > 0)
+        ? fiscalApto.faltando.join(', ')
+        : 'CNPJ/CPF e endereço completo';
+    // Pergunta obrigatória: enquanto não responder, o fechamento fica travado
+    const faltaEscolherNf = bonificacao && nfBonificacao === null;
+    const TITULO_TRAVA_NF = 'Responda antes: esta bonificação sai com nota fiscal ou sem nota fiscal?';
+
     return (
         <div className="bg-gray-50 min-h-screen flex flex-col">
             {/* ===== HEADER COMPACTO ===== */}
@@ -1626,6 +1662,7 @@ const NovoPedido = () => {
                                                 setTipoPedido('PEDIDO');
                                                 setEspecial(false);
                                                 setBonificacao(false);
+                                                setNfBonificacao(null);
                                                 setCondicaoPagamentoId('');
                                                 setCondicaoSelecionada(null);
                                                 await recarregarProdutos(categoriasNormalRef.current);
@@ -1643,6 +1680,7 @@ const NovoPedido = () => {
                                                     setTipoPedido('ESPECIAL');
                                                     setEspecial(true);
                                                     setBonificacao(false);
+                                                    setNfBonificacao(null);
                                                     setCondicaoPagamentoId('');
                                                     setCondicaoSelecionada(null);
                                                     setProdutos([]);
@@ -1661,6 +1699,7 @@ const NovoPedido = () => {
                                                     setTipoPedido('BONIFICACAO');
                                                     setBonificacao(true);
                                                     setEspecial(false);
+                                                    setNfBonificacao(null);
                                                     setCondicaoPagamentoId('');
                                                     setCondicaoSelecionada(null);
                                                     await recarregarProdutos(categoriasNormalRef.current);
@@ -1672,7 +1711,78 @@ const NovoPedido = () => {
                                     </div>
                                 </div>
 
-                                {/* ── ETAPA 2: Condição de Pagamento (só após tipo escolhido) ── */}
+                                {/* ── ETAPA 2 (SÓ BONIFICAÇÃO): sai com nota fiscal? ──
+                                    Pergunta obrigatória, sem nada pré-marcado: se uma das
+                                    opções viesse marcada, com o tempo todo mundo fecharia
+                                    no automático sem pensar. */}
+                                {bonificacao && (
+                                    <div className="pt-2 border-t border-gray-100">
+                                        <label className="text-xs text-gray-500 font-medium mb-1.5 block">
+                                            Esta bonificação sai com nota fiscal? *
+                                        </label>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {/* Com nota */}
+                                            <button
+                                                type="button"
+                                                disabled={!clienteAptoNf}
+                                                onClick={() => setNfBonificacao(true)}
+                                                title={clienteAptoNf
+                                                    ? 'O escritório emite a NF-e desta bonificação'
+                                                    : `Cadastro fiscal incompleto: falta ${faltandoNf}`}
+                                                className={`min-h-[64px] px-3 py-2.5 rounded-xl border-2 text-left transition-colors ${!clienteAptoNf
+                                                    ? 'bg-gray-50 border-gray-200 cursor-not-allowed opacity-70'
+                                                    : nfBonificacao === true
+                                                        ? 'bg-mint border-primary shadow-sm'
+                                                        : 'bg-white border-gray-200 hover:bg-gray-50 active:bg-gray-100'}`}
+                                            >
+                                                <span className={`block text-[13px] font-bold leading-tight ${!clienteAptoNf ? 'text-gray-400' : nfBonificacao === true ? 'text-primaryDark' : 'text-gray-800'}`}>
+                                                    📄 Com nota
+                                                </span>
+                                                <span className={`block text-[11px] leading-snug mt-1 ${!clienteAptoNf ? 'text-gray-400' : 'text-gray-500'}`}>
+                                                    {clienteAptoNf ? 'O escritório emite a NF-e de bonificação' : 'Indisponível para este cliente'}
+                                                </span>
+                                            </button>
+
+                                            {/* Sem nota */}
+                                            <button
+                                                type="button"
+                                                onClick={() => setNfBonificacao(false)}
+                                                title="Sai só com o romaneio, como hoje"
+                                                className={`min-h-[64px] px-3 py-2.5 rounded-xl border-2 text-left transition-colors ${nfBonificacao === false
+                                                    ? 'bg-gray-100 border-gray-500 shadow-sm'
+                                                    : 'bg-white border-gray-200 hover:bg-gray-50 active:bg-gray-100'}`}
+                                            >
+                                                <span className={`block text-[13px] font-bold leading-tight ${nfBonificacao === false ? 'text-gray-900' : 'text-gray-800'}`}>
+                                                    Sem nota
+                                                </span>
+                                                <span className="block text-[11px] leading-snug mt-1 text-gray-500">
+                                                    Sai só com o romaneio, como hoje
+                                                </span>
+                                            </button>
+                                        </div>
+
+                                        {/* Confirmação na hora do que foi escolhido */}
+                                        {nfBonificacao === true && (
+                                            <div className="mt-2 bg-mint text-primaryDark rounded-lg px-3 py-2 text-[11.5px] font-semibold leading-snug">
+                                                ✓ Vai para o Financeiro → Notas Fiscais assim que você fechar a bonificação.
+                                            </div>
+                                        )}
+                                        {nfBonificacao === false && (
+                                            <div className="mt-2 bg-gray-100 text-gray-700 rounded-lg px-3 py-2 text-[11.5px] font-semibold leading-snug">
+                                                Sai só com o romaneio — nenhuma nota será emitida.
+                                            </div>
+                                        )}
+
+                                        {/* Cliente sem cadastro fiscal: explica na HORA o que falta */}
+                                        {!clienteAptoNf && (
+                                            <div className="mt-2 bg-amber-100 text-amber-800 rounded-lg px-3 py-2 text-[11.5px] font-semibold leading-snug">
+                                                ⚠️ Para sair com nota, este cliente precisa de {faltandoNf} no cadastro. Corrija o cadastro e a opção libera.
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* ── ETAPA 3: Condição de Pagamento (só após tipo escolhido) ── */}
                                 {tipoPedido && (
                                     <div className="relative pt-2 border-t border-gray-100">
                                         <label className="text-xs text-gray-500 font-medium">
@@ -2113,6 +2223,28 @@ const NovoPedido = () => {
                                     </div>
                                 );
                             }
+                            // Bonificação sem a pergunta respondida: fechamento travado de verdade
+                            if (faltaEscolherNf) {
+                                return (
+                                    <div className="flex flex-col gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => { setMostrarFormulario(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                            className="w-full text-left bg-amber-50 text-amber-700 px-3 py-2 min-h-[44px] rounded-md text-xs font-semibold flex items-center gap-2 border border-amber-100 hover:bg-amber-100"
+                                        >
+                                            <AlertCircle className="h-4 w-4 shrink-0" />
+                                            <span>Escolha "Com nota" ou "Sem nota" para poder fechar. <u>Responder agora</u></span>
+                                        </button>
+                                        <button
+                                            disabled
+                                            title={TITULO_TRAVA_NF}
+                                            className="w-full bg-gray-300 text-gray-500 font-bold py-2.5 rounded-lg text-xs cursor-not-allowed uppercase tracking-wide"
+                                        >
+                                            Responda: com nota ou sem nota?
+                                        </button>
+                                    </div>
+                                );
+                            }
                             if (estourosEstoque.length > 0) {
                                 return (
                                     <button
@@ -2165,6 +2297,28 @@ const NovoPedido = () => {
                             );
                         }
 
+                        // Bonificação sem a pergunta respondida: fechamento travado de verdade
+                        if (faltaEscolherNf) {
+                            return (
+                                <div className="flex flex-col gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setMostrarFormulario(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                                        className="w-full text-left bg-amber-50 text-amber-700 px-3 py-2 min-h-[44px] rounded-md text-xs font-semibold flex items-center gap-2 border border-amber-100 active:bg-amber-100"
+                                    >
+                                        <AlertCircle className="h-4 w-4 shrink-0" />
+                                        <span>Escolha "Com nota" ou "Sem nota" para poder fechar. <u>Responder agora</u></span>
+                                    </button>
+                                    <button
+                                        disabled
+                                        title={TITULO_TRAVA_NF}
+                                        className="w-full bg-gray-300 text-gray-500 font-bold py-3.5 rounded-lg text-[15px] cursor-not-allowed uppercase tracking-wide"
+                                    >
+                                        RESPONDA: COM NOTA OU SEM NOTA?
+                                    </button>
+                                </div>
+                            );
+                        }
                         if (estourosEstoque.length > 0) {
                             return (
                                 <button
@@ -2231,6 +2385,18 @@ const NovoPedido = () => {
                                     <p className="text-sm font-semibold text-gray-900 leading-tight">{condicaoSelecionada?.nomeCondicao || '—'}</p>
                                 </div>
                             </div>
+
+                            {/* Bonificação: a escolha da nota por extenso — última chance de ver o engano */}
+                            {bonificacao && nfBonificacao === true && (
+                                <div className="bg-mint text-primaryDark rounded-lg px-3 py-2.5 mb-4 text-[12.5px] font-semibold leading-snug">
+                                    📄 COM NOTA FISCAL — a NF-e de bonificação será emitida pelo escritório. O cliente não paga nada.
+                                </div>
+                            )}
+                            {bonificacao && nfBonificacao === false && (
+                                <div className="bg-gray-100 text-gray-700 rounded-lg px-3 py-2.5 mb-4 text-[12.5px] font-semibold leading-snug">
+                                    SEM NOTA FISCAL — a mercadoria sai só com o romaneio.
+                                </div>
+                            )}
 
                             {/* Itens */}
                             <div className="border border-gray-100 rounded-lg overflow-hidden mb-4">
@@ -2468,6 +2634,10 @@ const NovoPedido = () => {
                                     key={c.UUID}
                                     className="bg-white p-4 rounded shadow-[0_1px_2px_rgba(0,0,0,0.05)] border border-gray-100 cursor-pointer active:bg-blue-50 active:border-blue-100 transition-colors"
                                     onClick={() => {
+                                        if (clienteId !== c.UUID) {
+                                            // Cadastro fiscal é por cliente: a resposta "com nota" tem de ser dada de novo
+                                            setNfBonificacao(null);
+                                        }
                                         if (clienteId && clienteId !== c.UUID) {
                                             setItensMap(new Map());
                                             setCondicaoPagamentoId('');

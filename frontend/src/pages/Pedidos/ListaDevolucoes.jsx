@@ -137,9 +137,15 @@ const ListaDevolucoes = ({ filtros }) => {
                     const isExpanded = expandedId === dev.id;
                     const fmtDate = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
                     const fmtDateTime = (d) => d ? new Date(d).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+                    const ehBonif = !!dev.pedidoOriginal?.bonificacao;
                     const numPedido = dev.pedidoOriginal?.numero
-                        ? (dev.pedidoOriginal.especial ? `ZZ#${dev.pedidoOriginal.numero}` : `#${dev.pedidoOriginal.numero}`)
+                        ? (ehBonif ? `BN#${dev.pedidoOriginal.numero}` : dev.pedidoOriginal.especial ? `ZZ#${dev.pedidoOriginal.numero}` : `#${dev.pedidoOriginal.numero}`)
                         : dev.pedidoOriginalId.slice(0, 8);
+                    // Bloco verde da NF-e de devolução: na bonificação só quando a NF-e da
+                    // bonificação está AUTORIZADA (é ela que a devolução referencia); na venda, regra de sempre.
+                    const mostraNf = ehBonif
+                        ? !!dev.pedidoOriginal?.nfBonificacaoAutorizada
+                        : (dev.tipo !== 'ESPECIAL' && !dev.notaDevolucaoCA);
 
                     return (
                         <div key={dev.id} className="border-b border-gray-100">
@@ -153,8 +159,8 @@ const ListaDevolucoes = ({ filtros }) => {
                                             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded border text-red-700 bg-red-50 border-red-200 shadow-sm shrink-0">
                                                 DEV#{dev.numero}
                                             </span>
-                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${TIPO_BADGE[dev.tipo]}`}>
-                                                {dev.tipo === 'CONTA_AZUL' ? 'CA' : 'ESPECIAL'}
+                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${ehBonif ? 'bg-purple-100 text-purple-700' : TIPO_BADGE[dev.tipo]}`}>
+                                                {ehBonif ? 'BONIF.' : dev.tipo === 'CONTA_AZUL' ? 'CA' : 'ESPECIAL'}
                                             </span>
                                             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${STATUS_BADGE[dev.status]}`}>
                                                 {dev.status}
@@ -237,8 +243,8 @@ const ListaDevolucoes = ({ filtros }) => {
                                         </div>
                                     )}
 
-                                    {/* NF-e de devolução emitida pelo APP (Focus) — só p/ devolução de pedido com nota */}
-                                    {dev.tipo !== 'ESPECIAL' && !dev.notaDevolucaoCA && (
+                                    {/* NF-e de devolução emitida pelo APP (Focus) — devolução de pedido com nota ou de bonificação com NF-e autorizada */}
+                                    {mostraNf && (
                                         <div className="p-2 bg-emerald-50 rounded border border-emerald-200 text-xs space-y-1.5">
                                             {dev.notaFiscalDevolucao?.status === 'AUTORIZADO' ? (
                                                 <div className="flex items-center gap-2 flex-wrap">

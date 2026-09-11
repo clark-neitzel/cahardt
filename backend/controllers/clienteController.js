@@ -281,10 +281,18 @@ const clienteController = {
                 }
             }
 
+            // `fiscalApto` (09/2026): este cliente pode RECEBER nota fiscal?
+            // Campo NOVO, só adição — quem já consumia /clientes ignora.
+            // Sem query nova: é um map sobre o que já veio (Documento + End_* são
+            // escalares do Cliente e vêm no `include` acima).
+            // Serve à bonificação COM NOTA: o vendedor vê na hora o que falta no
+            // cadastro, em vez de descobrir com a nota travada no Financeiro.
+            const { fiscalApto } = require('../utils/cadastroFiscal');
             const clientesComFlag = clientes.map(c => ({
                 ...c,
                 inadimplente: !!delinqMap[c.UUID],
-                totalVencido: delinqMap[c.UUID] || 0
+                totalVencido: delinqMap[c.UUID] || 0,
+                fiscalApto: fiscalApto(c)
             }));
 
             res.json({
@@ -401,6 +409,9 @@ const clienteController = {
             } else if (cliente.whatsappStatus) {
                 cliente.whatsappStatus.dispensaValidaAte = null;
             }
+
+            // Pode receber nota fiscal? (só adição — ver comentário em `listar`)
+            cliente.fiscalApto = require('../utils/cadastroFiscal').fiscalApto(cliente);
 
             // Este cadastro também é fornecedor? (tabela fornecedores, por documento)
             const docNorm = normalizarDoc(cliente.Documento);

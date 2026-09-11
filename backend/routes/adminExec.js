@@ -60,7 +60,7 @@ router.get('/ping', (req, res) => {
         ok: true,
         // Marcador de deploy: bumpar a cada mudança de backend que precise de confirmação
         // em produção (não há outro jeito de saber de fora qual versão está no ar).
-        deployMarker: 'qtd-por-caixa-2026-09-03',
+        deployMarker: 'nf-bonificacao-2026-09-11',
         uptimeSegundos: Math.round(process.uptime()),
         timestamp: new Date().toISOString(),
         openaiConfigurada: !!process.env.OPENAI_API_KEY,
@@ -245,6 +245,228 @@ router.get('/diag-entrega-amostra', async (req, res) => {
         });
     } catch (error) {
         console.error('[diag-entrega-amostra]', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/admin-exec/diag-nf-bonificacao[?pedidoId=]
+// Sonda de deploy + conferência da NF-e de BONIFICAÇÃO (09/2026). SOMENTE LEITURA:
+// MONTA o JSON que iria para a Focus, mas NÃO EMITE NADA (não chama a Focus, não grava).
+// Serve para a contabilidade conferir natOp/CFOP/CSOSN/infoAdic em produção antes da
+// primeira nota real. Sem `pedidoId`, pega a BN# marcada "com nota" mais recente.
+router.get('/diag-nf-bonificacao', async (req, res) => {
+    try {
+        const colunas = await prisma.$queryRawUnsafe(`
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'pedidos'
+              AND column_name IN ('nf_bonificacao','nf_bonificacao_definida_em','nf_bonificacao_definida_por_id','nf_bonificacao_definida_por_nome')
+        `);
+        const nomes = colunas.map(c => c.column_name).sort();
+        if (nomes.length !== 4) {
+            return res.status(404).json({
+                ok: false,
+                colunasNoBanco: nomes,
+                aviso: 'As colunas da bonificação com nota AINDA NÃO existem no banco: o deploy desta entrega não subiu.',
+            });
+        }
+
+        const emissao = require('../services/focusNfeEmissaoService');
+        const focusNfeSvc = require('../services/focusNfeService');
+        const ambiente = focusNfeSvc.ambiente();
+
+        const [comNota, semNota, pendentes] = await Promise.all([
+            prisma.pedido.count({ where: { bonificacao: true, nfBonificacao: true } }),
+            prisma.pedido.count({ where: { bonificacao: true, nfBonificacao: false } }),
+            prisma.pedido.count({
+                where: {
+                    bonificacao: true, nfBonificacao: true,
+                    notasFiscaisApp: {
+                        none: {
+                            ref: { startsWith: `nf-${ambiente === 'producao' ? 'p' : 'h'}-` },
+                            status: { in: ['AUTORIZADO', 'PROCESSANDO'] },
+                        },
+                    },
+                },
+            }),
+        ]);
+
+        const pedido = await prisma.pedido.findFirst({
+            where: req.query.pedidoId
+                ? { id: String(req.query.pedidoId) }
+                : { bonificacao: true, nfBonificacao: true },
+            orderBy: { createdAt: 'desc' },
+            include: { cliente: { include: { fiscal: true } }, itens: { include: { produto: true } } },
+        });
+
+        let payload = null;
+        let erroMontagem = null;
+        if (pedido?.bonificacao) {
+            try {
+                payload = await emissao.montarNotaBonificacao(pedido);
+            } catch (e) {
+                erroMontagem = e.message;
+            }
+        }
+
+        res.json({
+            ok: true,
+            ambiente,
+            colunasNoBanco: nomes,
+            bonificacoes: { comNota, semNota, pendentesDeEmissao: pendentes },
+            pedidoConferido: pedido ? {
+                id: pedido.id,
+                rotulo: `${pedido.bonificacao ? 'BN#' : '#'}${pedido.numero}`,
+                bonificacao: pedido.bonificacao,
+                nfBonificacao: pedido.nfBonificacao,
+                marcadaPor: pedido.nfBonificacaoDefinidaPorNome,
+                marcadaEm: pedido.nfBonificacaoDefinidaEm,
+                statusEnvio: pedido.statusEnvio,
+                situacaoCA: pedido.situacaoCA,
+                clienteUF: pedido.cliente?.End_Estado || null,
+            } : null,
+            erroMontagem,
+            payloadQueSeriaEnviado: payload,
+            aviso: 'SOMENTE LEITURA — esta rota NÃO emite nota nenhuma. Ela só monta o JSON para conferência.',
+        });
+    } catch (error) {
+        console.error('[diag-nf-bonificacao]', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/admin-exec/diag-nf-devolucao-bonificacao[?numero=<nº da devolução>]
+// Sonda + conferência da NF-e de DEVOLUÇÃO DE BONIFICAÇÃO (09/2026). SOMENTE LEITURA:
+// MONTA o JSON que iria para a Focus (`montarNotaDevolucaoBonificacao`, função pura), mas
+// NÃO EMITE, NÃO chama a Focus e NÃO grava nada (nem NotaFiscalApp, nem XML no volume —
+// a fonte dos itens é o payload da própria nota de bonificação, que mora no banco).
+// Serve para a contabilidade conferir natOp/CFOP 1949-2949/CSOSN/infoAdic em produção
+// antes da primeira nota real. Sem `numero`, pega a devolução ATIVA mais recente de BN#
+// que tem NF-e de bonificação autorizada.
+router.get('/diag-nf-devolucao-bonificacao', async (req, res) => {
+    try {
+        const emissao = require('../services/focusNfeEmissaoService');
+        const focusNfeSvc = require('../services/focusNfeService');
+        const ambiente = focusNfeSvc.ambiente();
+        const prefixoNf = `nf-${ambiente === 'producao' ? 'p' : 'h'}-`;
+        const prefixoNfd = `nfd-${ambiente === 'producao' ? 'p' : 'h'}-`;
+
+        // Contadores do ambiente atual
+        const notasBonif = await prisma.notaFiscalApp.findMany({
+            where: { tipo: 'BONIFICACAO', status: 'AUTORIZADO', ambiente, ref: { startsWith: prefixoNf } },
+            select: { pedidoId: true },
+        });
+        const idsBnComNota = [...new Set(notasBonif.map(n => n.pedidoId))];
+        const devsBnAtivas = await prisma.devolucao.findMany({
+            where: { status: 'ATIVA', pedidoOriginal: { bonificacao: true } },
+            select: { id: true, numero: true, pedidoOriginalId: true, dataDevolucao: true },
+            orderBy: { numero: 'desc' },
+        });
+        const nfdVivas = devsBnAtivas.length
+            ? await prisma.notaFiscalApp.findMany({
+                where: { ref: { in: devsBnAtivas.map(d => `${prefixoNfd}${d.id}`) }, status: { in: ['AUTORIZADO', 'PROCESSANDO'] } },
+                select: { ref: true },
+            })
+            : [];
+        const temNfd = new Set(nfdVivas.map(n => n.ref));
+        const setBnComNota = new Set(idsBnComNota);
+        const devsBnComNotaSemNfd = devsBnAtivas.filter(d => setBnComNota.has(d.pedidoOriginalId) && !temNfd.has(`${prefixoNfd}${d.id}`));
+
+        // Devolução conferida: a pedida, ou a ATIVA mais recente de BN# com nota autorizada
+        const numero = req.query.numero ? parseInt(req.query.numero, 10) : null;
+        if (req.query.numero && !Number.isFinite(numero)) return res.status(400).json({ error: 'numero inválido' });
+        const alvoId = numero
+            ? (await prisma.devolucao.findFirst({ where: { numero }, select: { id: true } }))?.id
+            : devsBnAtivas.find(d => setBnComNota.has(d.pedidoOriginalId))?.id;
+        const dev = alvoId ? await prisma.devolucao.findUnique({
+            where: { id: alvoId },
+            include: {
+                itens: { include: { produto: true } },
+                cliente: { include: { fiscal: true } },
+                pedidoOriginal: true,
+            },
+        }) : null;
+        if (numero && !dev) return res.status(404).json({ error: `Devolução nº ${numero} não encontrada.` });
+
+        const contadores = {
+            bonificacoesComNotaAutorizada: idsBnComNota.length,
+            devolucoesDeBnAtivas: devsBnAtivas.length,
+            devolucoesDeBnSemNfDevolucao: devsBnComNotaSemNfd.length,
+        };
+        const interruptorRefItem = { chave: 'nfe_devolucao_ref_item', ligado: await emissao.refItemLigada(), obrigatorioEm: emissao.DATA_OBRIGATORIA_REF_ITEM };
+        if (!dev) {
+            return res.json({
+                ok: true, ambiente, emiteNota: false, somenteLeitura: true, contadores, interruptorRefItem,
+                devolucaoConferida: null,
+                aviso: 'Nenhuma devolução ATIVA de bonificação com NF-e autorizada para conferir. Passe ?numero=<nº da devolução> para forçar uma.',
+            });
+        }
+
+        const pedido = dev.pedidoOriginal;
+        const notaBonif = pedido ? await emissao.notaBonificacaoAutorizada(pedido.id) : null;
+        const notaDev = await prisma.notaFiscalApp.findUnique({ where: { ref: `${prefixoNfd}${dev.id}` } });
+        const itensValidos = (dev.itens || []).filter(i => Number(i.quantidade) > 0);
+
+        // Cadastro do cliente (mesma regra da emissão — `validarCadastroFiscal`)
+        const { camposFaltandoParaNota } = require('../utils/cadastroFiscal');
+        const faltandoCad = dev.cliente ? camposFaltandoParaNota(dev.cliente) : ['cliente'];
+
+        // ── Travas REAIS, na ordem em que `emitirDevolucao` → `emitirDevolucaoBonificacao` as aplica ──
+        const travasDaEmissao = [
+            { trava: 'status ATIVA', bloqueia: dev.status !== 'ATIVA', gravaMotivo: false, detalhe: dev.status },
+            { trava: 'despacho: pedidoOriginal.bonificacao (sem isso cai no caminho da venda)', bloqueia: !pedido?.bonificacao, gravaMotivo: false, detalhe: `bonificacao=${!!pedido?.bonificacao} tipoDev=${dev.tipo}` },
+            { trava: 'pedido especial', bloqueia: !!pedido?.especial, gravaMotivo: false, detalhe: `especial=${!!pedido?.especial}` },
+            { trava: 'já tem NF de devolução do Conta Azul', bloqueia: !!dev.notaDevolucaoCA, gravaMotivo: false, detalhe: dev.notaDevolucaoCA || null },
+            { trava: 'BN# com NF-e de bonificação AUTORIZADA (tipo BONIFICACAO, ambiente atual)', bloqueia: !notaBonif, gravaMotivo: false, detalhe: notaBonif ? `nº ${notaBonif.numero} chave ${notaBonif.chave}` : 'sem nota autorizada (PROCESSANDO/ERRO/sem nota contam como ausente)' },
+            { trava: 'idempotência (nota já AUTORIZADO/PROCESSANDO)', bloqueia: !!notaDev && ['AUTORIZADO', 'PROCESSANDO'].includes(notaDev.status), gravaMotivo: false, detalhe: notaDev?.status || 'sem registro' },
+            { trava: 'devolução com itens (quantidade > 0)', bloqueia: itensValidos.length === 0, gravaMotivo: false, detalhe: `${itensValidos.length} item(ns)` },
+            { trava: 'cadastro do cliente completo (CPF/CNPJ + endereço)', bloqueia: faltandoCad.length > 0, gravaMotivo: false, detalhe: faltandoCad.length ? `falta ${faltandoCad.join(', ')}` : 'ok' },
+        ];
+
+        // Montagem (pura) — o casamento por item sai do próprio montador
+        let payload = null;
+        let refItem = null;
+        let erroMontagem = null;
+        if (pedido && notaBonif && itensValidos.length) {
+            try {
+                const r = await emissao.montarNotaDevolucaoBonificacao({ dev, pedido, cliente: dev.cliente, notaBonif, usarRefItem: interruptorRefItem.ligado });
+                payload = r.nota;
+                refItem = r.refItem;
+            } catch (e) {
+                erroMontagem = { mensagem: e.message, codigo: e.codigo || null };
+            }
+        }
+        travasDaEmissao.push({
+            trava: 'referência por item resolve (só com o interruptor ligado)',
+            bloqueia: !!(erroMontagem && erroMontagem.codigo === 'REF_ITEM'),
+            gravaMotivo: true,
+            detalhe: !interruptorRefItem.ligado ? 'interruptor desligado' : (erroMontagem?.codigo === 'REF_ITEM' ? erroMontagem.mensagem : (refItem ? `fonte=${refItem.fonte}` : 'não avaliada')),
+        });
+
+        res.json({
+            ok: true,
+            ambiente,
+            emiteNota: false,
+            somenteLeitura: true,
+            observacao: 'Não emite nota, não chama a Focus e não grava nada. Só lê o banco e monta o JSON para conferência.',
+            contadores,
+            interruptorRefItem,
+            travasDaEmissao,
+            primeiraQueBloqueia: travasDaEmissao.find(t => t.bloqueia) || null,
+            emitiriaHoje: !travasDaEmissao.some(t => t.bloqueia),
+            devolucaoConferida: { numero: dev.numero, id: dev.id, status: dev.status, tipo: dev.tipo, escopo: dev.escopo, dataDevolucao: dev.dataDevolucao },
+            pedido: pedido ? { numero: pedido.numero, rotulo: `${pedido.bonificacao ? 'BN#' : pedido.especial ? 'ZZ#' : '#'}${pedido.numero}`, bonificacao: pedido.bonificacao, especial: pedido.especial, nfBonificacao: pedido.nfBonificacao, statusEnvio: pedido.statusEnvio, situacaoCA: pedido.situacaoCA } : null,
+            clienteUF: dev.cliente?.End_Estado || null,
+            notaBonificacao: emissao.resumoNotaParaFront(notaBonif),
+            cfopRemessa: notaBonif?.payloadEnviado?.items?.[0]?.cfop || null,
+            notaDevolucaoNoApp: notaDev ? { ref: notaDev.ref, status: notaDev.status, numero: notaDev.numero, mensagemSefaz: notaDev.mensagemSefaz } : null,
+            casamento: refItem ? refItem.casamento : [],
+            erroMontagem,
+            payload,
+            devolucoesDeBnSemNfDevolucao: devsBnComNotaSemNfd.slice(0, 50).map(d => ({ devolucao: d.numero, dataDevolucao: d.dataDevolucao })),
+            aviso: 'SOMENTE LEITURA — esta rota NÃO emite nota nenhuma. Ela só monta o JSON para conferência.',
+        });
+    } catch (error) {
+        console.error('[diag-nf-devolucao-bonificacao]', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -9665,6 +9887,9 @@ router.post('/contabilidade-corrigir-devolucao-tipo', async (req, res) => {
 // Emite a NF-e de devolução (Focus) de toda devolução ATIVA sem nota — pedido com
 // nota original, não-especial/não-bonificação. Usa o MESMO serviço do botão da aba
 // Devoluções (todas as travas valem: idempotência por ref, revertida não emite…).
+// `bonificacao: false` FICA (09/2026): a BN# com nota tem caminho próprio (despacho em
+// `emitirDevolucao` → `emitirDevolucaoBonificacao`, CFOP 1949/2949, sem efeito
+// financeiro) e a emissão dela é pelo Caixa/aba Devoluções, uma a uma — não em lote.
 // Sequencial; erro em uma não trava as demais. Body: { numero: 126 } emite só uma;
 // { somenteListar: true } só mostra o que seria emitido.
 router.post('/contabilidade-emitir-devolucoes-pendentes', async (req, res) => {
@@ -10026,7 +10251,10 @@ router.post('/devolucoes-registrar-retroativo', async (req, res) => {
                     }
                 }
 
-                // 3. NF-e de devolução — igual ao ModalDevolucao: falha aqui não desfaz o registro
+                // 3. NF-e de devolução — igual ao ModalDevolucao: falha aqui não desfaz o registro.
+                // `!p.bonificacao` FICA (09/2026): este registro retroativo cria a devolução como
+                // CONTA_AZUL; a BN# com nota tem caminho próprio (despacho em `emitirDevolucao`)
+                // e fica fora daqui de propósito.
                 if (emitirNota && !p.especial && !p.bonificacao) {
                     try {
                         const emissao = require('../services/focusNfeEmissaoService');
@@ -10107,22 +10335,31 @@ router.get('/canhotos-diag', async (req, res) => {
         const lista = await canhotoService.listarPeriodo({ ...periodo, autocura: false });
 
         // Notas do app autorizadas no período que ainda não têm canhoto.
-        // O filtro pelo PEDIDO é essencial: nota de pedido especial/bonificação/cancelado
-        // nunca vira canhoto por regra, e sem este filtro ela apareceria eternamente como
-        // "faltando registrar" — mandando quem lê o diagnóstico caçar um buraco que não existe.
+        // O filtro pelo PEDIDO é essencial: nota de pedido especial/cancelado nunca vira
+        // canhoto por regra, e sem este filtro ela apareceria eternamente como "faltando
+        // registrar" — mandando quem lê o diagnóstico caçar um buraco que não existe.
+        // ⚠️ 09/2026: a BONIFICAÇÃO marcada "com nota" AGORA vira canhoto (ver
+        // `canhotoService.pedidoElegivel`). Com o antigo `bonificacao: false` aqui, um
+        // canhoto de BN# que não fosse registrado ficaria INVISÍVEL no diagnóstico — o
+        // buraco existiria e não seria medido. Os dois OR vão dentro de um AND: dois `OR`
+        // irmãos no mesmo objeto se atropelam em silêncio.
+        const PEDIDO_ELEGIVEL_CANHOTO = {
+            especial: false,
+            cancelado: false,
+            statusEnvio: { not: 'EXCLUIDO' },
+            AND: [
+                // situacaoCA é nullable e `notIn` do Prisma EXCLUI linhas null.
+                { OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }] },
+                { OR: [{ bonificacao: false }, { bonificacao: true, nfBonificacao: true }] },
+            ],
+        };
         const notasApp = await prisma.notaFiscalApp.findMany({
             where: {
                 status: 'AUTORIZADO',
                 ambiente: 'producao',
                 chave: { not: null },
                 criadoEm: { gte: ini, lte: fim },
-                pedido: {
-                    especial: false,
-                    bonificacao: false,
-                    cancelado: false,
-                    statusEnvio: { not: 'EXCLUIDO' },
-                    OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }],
-                },
+                pedido: PEDIDO_ELEGIVEL_CANHOTO,
             },
             select: { id: true, chave: true, numero: true, tipo: true, criadoEm: true },
             take: 5000,
@@ -10153,13 +10390,7 @@ router.get('/canhotos-diag', async (req, res) => {
                 ambiente: 'producao',
                 chave: null,
                 criadoEm: { gte: ini, lte: fim },
-                pedido: {
-                    especial: false,
-                    bonificacao: false,
-                    cancelado: false,
-                    statusEnvio: { not: 'EXCLUIDO' },
-                    OR: [{ situacaoCA: null }, { situacaoCA: { notIn: ['CANCELADO', 'EXCLUIDO'] } }],
-                },
+                pedido: PEDIDO_ELEGIVEL_CANHOTO, // inclui a BN# "com nota" (ver acima)
             },
             select: { id: true, ref: true, numero: true, tipo: true, criadoEm: true },
             take: 200,
@@ -11387,7 +11618,10 @@ router.get('/diag-devolucao-ref-item', async (req, res) => {
         // Existe para não presumir nada: a maioria destas travas falha ANTES de a
         // NotaFiscalApp ser criada, ou seja, sem gravar motivo nenhum — a aba Devoluções
         // não mostra vermelho e o único aviso é o toast do momento. Aqui elas ficam
-        // visíveis. `bonificacao` NÃO é trava da emissão de devolução (só da de venda).
+        // visíveis. Desde 09/2026 `pedidoOriginal.bonificacao` DESPACHA (logo após a trava
+        // ATIVA) para `emitirDevolucaoBonificacao` — caminho próprio (CFOP 1949/2949), com
+        // travas próprias: ver `diag-nf-devolucao-bonificacao`. Esta lista é a do caminho
+        // da VENDA; para devolução de BN# ela só vale até a linha do despacho.
         const cli = dev.cliente;
         const docCli = String(cli?.Documento || '').replace(/[^0-9A-Za-z]/g, '').toUpperCase();
         const faltandoCad = [];
@@ -11402,6 +11636,9 @@ router.get('/diag-devolucao-ref-item', async (req, res) => {
         const notaDev = await prisma.notaFiscalApp.findUnique({ where: { ref: refNota } });
         const travasDaEmissao = [
             { trava: 'status ATIVA', bloqueia: dev.status !== 'ATIVA', gravaMotivo: false, detalhe: dev.status },
+            // Não é trava: é DESPACHO. Devolução de BN# sai desta lista aqui e segue as travas
+            // de `emitirDevolucaoBonificacao` (conferir em diag-nf-devolucao-bonificacao?numero=).
+            { trava: 'despacho: pedidoOriginal.bonificacao → caminho da devolução de BONIFICAÇÃO (as travas abaixo NÃO se aplicam)', bloqueia: !!pedido?.bonificacao, gravaMotivo: false, detalhe: pedido?.bonificacao ? `BN# — ver diag-nf-devolucao-bonificacao?numero=${dev.numero}` : 'não é bonificação' },
             { trava: 'pedido especial (dev.tipo ESPECIAL ou pedidoOriginal.especial)', bloqueia: dev.tipo === 'ESPECIAL' || !!pedido?.especial, gravaMotivo: false, detalhe: `tipo=${dev.tipo} especial=${!!pedido?.especial}` },
             { trava: 'já tem NF de devolução do Conta Azul', bloqueia: !!dev.notaDevolucaoCA, gravaMotivo: false, detalhe: dev.notaDevolucaoCA || null },
             { trava: 'NF-e original da venda encontrada', bloqueia: !chaveOriginal, gravaMotivo: false, detalhe: chaveOriginal || 'sem chave' },
@@ -11411,7 +11648,7 @@ router.get('/diag-devolucao-ref-item', async (req, res) => {
             { trava: 'devolução com itens (quantidade > 0)', bloqueia: itensValidos.length === 0, gravaMotivo: false, detalhe: `${itensValidos.length} item(ns)` },
             { trava: 'referência por item resolve (só com o interruptor ligado)', bloqueia: interruptor && casamento.some(c => !c.resolvido), gravaMotivo: true, detalhe: interruptor ? `${casamento.filter(c => !c.resolvido).length} sem casar` : 'interruptor desligado' },
         ];
-        // `bonificacao` fica de fora de propósito: NÃO é trava de `emitirDevolucao`.
+        // `bonificacao` aparece como DESPACHO (não trava): a BN# tem caminho próprio desde 09/2026.
 
         res.json({
             ok: true,
@@ -11471,21 +11708,24 @@ router.get('/diag-devolucoes-ref-item-simulacao', async (req, res) => {
         const emissao = require('../services/focusNfeEmissaoService');
         const { normalizarChaveNFe, normalizarChaveNFeTolerante } = require('../utils/documento');
 
-        // ⚠️ O filtro espelha AS TRAVAS REAIS de `emitirDevolucao`, não a convenção do resto
-        // deste arquivo. As travas são três — `status === 'ATIVA'`, especial
-        // (`dev.tipo === 'ESPECIAL' || pedidoOriginal.especial`) e `notaDevolucaoCA` — e
-        // **não existe trava de bonificação** na emissão de devolução (a de venda,
-        // `emitirVenda`, tem; a de devolução, não). Filtrar `bonificacao: false` aqui deixava
-        // de fora devoluções de pedido de bonificação que a virada da chave VAI atingir —
-        // e é este número que o dono usa em 05/10 para decidir. `notaDevolucaoCA` continua
-        // sendo tratado dentro do laço (balde `naoAplicaveis`), com o motivo escrito.
+        // ⚠️ O filtro espelha AS TRAVAS REAIS do caminho de VENDA de `emitirDevolucao`, não a
+        // convenção do resto deste arquivo. As travas são três — `status === 'ATIVA'`, especial
+        // (`dev.tipo === 'ESPECIAL' || pedidoOriginal.especial`) e `notaDevolucaoCA`.
+        // Desde 09/2026 `pedidoOriginal.bonificacao` é DESPACHO para o caminho próprio da
+        // devolução de bonificação (`emitirDevolucaoBonificacao`: referencia a NF-e da
+        // BONIFICAÇÃO emitida pelo app, nunca `pedido.nfeChave`). Por isso a BN# fica FORA
+        // desta simulação (`bonificacao: false`): a resolução dela é outra (payload da nota de
+        // bonificação) e se confere em `diag-nf-devolucao-bonificacao`. Antes de 09/2026 a
+        // BN# entrava aqui porque não havia trava nem despacho — e teria saído como
+        // "devolução de venda" CFOP 1201 (documento errado); o despacho fecha isso.
+        // `notaDevolucaoCA` continua sendo tratado dentro do laço (balde `naoAplicaveis`).
         // `tipo` é NOT NULL no schema, então o `not` aqui não esconde linha nenhuma
         // (ver a regra do `not`/`notIn` que exclui `null`).
         const filtro = {
             status: 'ATIVA',
             dataDevolucao: { gte: desde },
             tipo: { not: 'ESPECIAL' },
-            pedidoOriginal: { especial: false },
+            pedidoOriginal: { especial: false, bonificacao: false },
         };
         const totalNoPeriodo = await prisma.devolucao.count({ where: filtro });
         const devolucoes = await prisma.devolucao.findMany({
@@ -11582,8 +11822,8 @@ router.get('/diag-devolucoes-ref-item-simulacao', async (req, res) => {
                     'notaDevolucaoCA preenchida (já tem NF do Conta Azul) — balde naoAplicaveis',
                     'NF-e original da venda ausente (nenhuma das duas normalizações de chave resolve) — balde naoAplicaveis',
                 ],
-                naoFiltradoPorqueAEmissaoTambemNaoFiltra: [
-                    'bonificação: emitirDevolucao NÃO tem trava de bonificação (só emitirVenda tem). Devolução de pedido de bonificação com chave de NF-e legada do Conta Azul ENTRA na conta.',
+                foraDestaSimulacao: [
+                    'bonificação: desde 09/2026 emitirDevolucao DESPACHA pedidoOriginal.bonificacao para emitirDevolucaoBonificacao (referencia a NF-e da BONIFICAÇÃO do app, CFOP 1949/2949). A BN# não usa pedido.nfeChave — confira-a em diag-nf-devolucao-bonificacao?numero=.',
                 ],
                 travasDaEmissaoNAOSimuladas: [
                     'cadastro do cliente incompleto (endereço, número, bairro, cidade, UF, CEP)',

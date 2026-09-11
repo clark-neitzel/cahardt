@@ -87,9 +87,18 @@ const pedidoService = {
         return response.data;
     },
 
-    // Reverter Pedido Bonificação (desfaz aprovação → volta ABERTO)
-    reverterBonificacao: async (id) => {
-        const response = await api.put(`/pedidos/${id}/reverter-bonificacao`);
+    // Bonificação COM/SEM nota fiscal — corrige a escolha enquanto a NF-e não saiu.
+    // Erros (400/403/409) voltam em { error: "<texto em português>" }.
+    definirNfBonificacao: async (id, nfBonificacao) => {
+        const response = await api.patch(`/pedidos/${id}/nf-bonificacao`, { nfBonificacao: !!nfBonificacao });
+        return response.data;
+    },
+
+    // Reverter Pedido Bonificação (desfaz aprovação → volta ABERTO).
+    // Bonificação com NF-e AUTORIZADA volta 409 { error, exigeConfirmacao: true, numeroNota }:
+    // só reverte com `{ confirmarComNotaEmitida: true }` no corpo (o app NÃO cancela a NF-e).
+    reverterBonificacao: async (id, corpo) => {
+        const response = await api.put(`/pedidos/${id}/reverter-bonificacao`, corpo || {});
         return response.data;
     },
 

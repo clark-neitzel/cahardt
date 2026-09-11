@@ -272,6 +272,10 @@ const pedidoController = {
             const dadosPedido = req.body;
             if (req.user && req.user.id) {
                 dadosPedido.usuarioLancamentoId = req.user.id;
+                // Quem marcou "com nota / sem nota" — só o snapshot da bonificação,
+                // não é campo do Pedido.
+                dadosPedido.nfBonificacaoPorId = req.user.id;
+                dadosPedido.nfBonificacaoPorNome = req.user.nome || req.user.login || null;
             }
 
             // Validação de permissão para pedidos especiais
@@ -575,6 +579,13 @@ const pedidoController = {
                         clienteNome: c?.NomeFantasia || c?.Nome || null
                     });
                 }
+            }
+
+            // Quem está mexendo agora — só para carimbar a escolha "com nota / sem nota"
+            // da bonificação. NÃO mexe em `usuarioLancamentoId` (dono do lançamento).
+            if (req.user?.id) {
+                dadosPedido.nfBonificacaoPorId = req.user.id;
+                dadosPedido.nfBonificacaoPorNome = req.user.nome || req.user.login || null;
             }
 
             const pedidoAtualizado = await pedidoService.editar(id, dadosPedido);
@@ -905,6 +916,120 @@ const pedidoController = {
         }
     },
 
+    /**
+     * PATCH /api/pedidos/:id/nf-bonificacao  { nfBonificacao: boolean }
+     * Corrige a escolha "com nota / sem nota" de uma BN# — enquanto a NF-e não saiu.
+     *
+     * Permissão: quem JÁ pode criar bonificação (admin || Pode_Criar_Bonificacao).
+     * NENHUMA permissão nova (decisão do dono, 09/2026).
+     */
+    alterarNfBonificacao: async (req, res) => {
+        try {
+            const id = req.params.id;
+            const permissoes = req.user?.permissoes || {};
+            if (!permissoes.admin && !permissoes.Pode_Criar_Bonificacao) {
+                return res.status(403).json({ error: 'Você não tem permissão para alterar a bonificação.' });
+            }
+
+            const { nfBonificacao } = req.body || {};
+            if (typeof nfBonificacao !== 'boolean') {
+                return res.status(400).json({ error: 'Informe se a bonificação sai com nota (true) ou sem nota (false).' });
+            }
+
+            const pedido = await prisma.pedido.findUnique({
+                where: { id },
+                select: {
+                    id: true, numero: true, bonificacao: true, nfBonificacao: true, clienteId: true,
+                    cancelado: true, statusEnvio: true, situacaoCA: true,
+                    cliente: {
+                        select: {
+                            Nome: true, Documento: true, End_Logradouro: true, End_Numero: true,
+                            End_Bairro: true, End_Cidade: true, End_Estado: true, End_CEP: true,
+                        },
+                    },
+                },
+            });
+            if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
+            if (!pedido.bonificacao) return res.status(400).json({ error: 'Este pedido não é uma bonificação.' });
+
+            // Bonificação cancelada/excluída não pode ser marcada "com nota": ela nunca vai
+            // emitir (a emissão recusa pedido cancelado) e ficaria para sempre no chip
+            // "Nota pendente", que existe justamente para não acumular pendência falsa.
+            // Desmarcar ("sem nota") continua permitido — é limpar uma pendência, não criar.
+            if (nfBonificacao === true) {
+                if (pedido.cancelado) {
+                    return res.status(400).json({ error: 'Esta bonificação está cancelada — não é possível marcá-la para sair com nota fiscal.' });
+                }
+                if (pedido.statusEnvio === 'EXCLUIDO' || ['CANCELADO', 'EXCLUIDO'].includes(pedido.situacaoCA)) {
+                    return res.status(400).json({ error: 'Esta bonificação está excluída/cancelada — não é possível marcá-la para sair com nota fiscal.' });
+                }
+            }
+
+            // Nota já viva = escolha congelada. O app não cancela NF-e: mudar a escolha
+            // aqui deixaria uma nota autorizada órfã de justificativa.
+            const focusNfeSvc = require('../services/focusNfeService');
+            const ref = `nf-${focusNfeSvc.ambiente() === 'producao' ? 'p' : 'h'}-${id}`;
+            const nota = await prisma.notaFiscalApp.findUnique({
+                where: { ref },
+                select: { status: true, numero: true },
+            });
+            if (nota && ['AUTORIZADO', 'PROCESSANDO'].includes(nota.status)) {
+                return res.status(400).json({
+                    error: nota.status === 'AUTORIZADO'
+                        ? `Esta bonificação já tem NF-e autorizada${nota.numero ? ` nº ${nota.numero}` : ''} — não dá para mudar a escolha. O app não cancela NF-e.`
+                        : 'A NF-e desta bonificação está sendo processada na SEFAZ — aguarde o retorno antes de mudar a escolha.',
+                });
+            }
+
+            // Ligar para "com nota" exige cadastro fiscal completo (mesma regra da emissão)
+            if (nfBonificacao === true) {
+                const { camposFaltandoParaNota } = require('../utils/cadastroFiscal');
+                const faltando = camposFaltandoParaNota(pedido.cliente);
+                if (faltando.length) {
+                    return res.status(400).json({
+                        error: `Cliente "${pedido.cliente?.Nome}" não pode receber nota: falta ${faltando.join(', ')}.`,
+                    });
+                }
+            }
+
+            const atualizado = await prisma.pedido.update({
+                where: { id },
+                data: {
+                    nfBonificacao,
+                    nfBonificacaoDefinidaEm: new Date(),
+                    nfBonificacaoDefinidaPorId: req.user.id,
+                    nfBonificacaoDefinidaPorNome: req.user.nome || req.user.login || null,
+                },
+                select: {
+                    id: true, nfBonificacao: true,
+                    nfBonificacaoDefinidaPorNome: true, nfBonificacaoDefinidaEm: true,
+                },
+            });
+
+            // Log FORA de qualquer transação e em try/catch próprio — falha de log nunca
+            // desfaz a operação principal.
+            try {
+                await prisma.auditLog.create({
+                    data: {
+                        acao: 'NF_BONIFICACAO',
+                        entidade: 'Pedido',
+                        entidadeId: id,
+                        detalhes: `BN#${pedido.numero ?? '?'}: escolha alterada de "${pedido.nfBonificacao ? 'com nota' : 'sem nota'}" para "${nfBonificacao ? 'com nota' : 'sem nota'}"`,
+                        usuarioId: req.user.id,
+                        usuarioNome: req.user.nome || req.user.login || '-',
+                    },
+                });
+            } catch (logErr) {
+                console.error('Falha ao registrar log da escolha de NF da bonificação (alteração já efetivada):', logErr.message);
+            }
+
+            res.json({ ok: true, pedido: atualizado });
+        } catch (error) {
+            console.error('Erro ao alterar escolha de NF da bonificação:', error);
+            res.status(400).json({ error: error.message });
+        }
+    },
+
     reverterBonificacao: async (req, res) => {
         try {
             const id = req.params.id;
@@ -916,11 +1041,28 @@ const pedidoController = {
 
             const pedido = await prisma.pedido.findUnique({
                 where: { id },
-                select: { bonificacao: true, statusEnvio: true, embarqueId: true },
+                select: { bonificacao: true, statusEnvio: true, embarqueId: true, nfBonificacao: true, numero: true },
             });
             if (!pedido) return res.status(404).json({ error: 'Pedido não encontrado.' });
             if (!pedido.bonificacao) return res.status(400).json({ error: 'Este pedido não é uma bonificação.' });
             if (pedido.statusEnvio !== 'RECEBIDO') return res.status(400).json({ error: 'Bonificação não está aprovada/faturada.' });
+
+            // Bonificação COM NOTA já autorizada (09/2026): NÃO bloqueia — quem reverte
+            // pode ter motivo (mercadoria não saiu). Mas o app não cancela NF-e, então a
+            // nota continua valendo na SEFAZ: exige confirmação explícita de quem reverte.
+            const focusNfeSvc = require('../services/focusNfeService');
+            const refNota = `nf-${focusNfeSvc.ambiente() === 'producao' ? 'p' : 'h'}-${id}`;
+            const notaBonif = pedido.nfBonificacao
+                ? await prisma.notaFiscalApp.findUnique({ where: { ref: refNota }, select: { status: true, numero: true } })
+                : null;
+            const temNotaAutorizada = notaBonif?.status === 'AUTORIZADO';
+            if (temNotaAutorizada && req.body?.confirmarComNotaEmitida !== true) {
+                return res.status(409).json({
+                    error: `Esta bonificação tem NF-e autorizada nº ${notaBonif.numero ?? '?'}. O app não cancela NF-e — confirme apenas se a contabilidade já foi avisada.`,
+                    exigeConfirmacao: true,
+                    numeroNota: notaBonif.numero ?? null,
+                });
+            }
 
             const pedidoRevertido = await prisma.pedido.update({
                 where: { id },
@@ -946,7 +1088,8 @@ const pedidoController = {
                     acao: 'REVERTER_BONIFICACAO',
                     entidade: 'Pedido',
                     entidadeId: id,
-                    detalhes: `Bonificação revertida para ABERTO por ${req.user.nome || req.user.login}`,
+                    detalhes: `Bonificação revertida para ABERTO por ${req.user.nome || req.user.login}`
+                        + (temNotaAutorizada ? ` — COM NF-e nº ${notaBonif.numero ?? '?'} JÁ AUTORIZADA (não cancelada pelo app; reversão confirmada pelo usuário)` : ''),
                     usuarioId: req.user.id,
                     usuarioNome: req.user.nome || req.user.login || '-'
                 }

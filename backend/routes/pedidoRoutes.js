@@ -68,6 +68,9 @@ router.put('/:id/aprovar-bonificacao', pedidoController.aprovarBonificacao);
 // Reverter Pedido Bonificação (desfazer aprovação → volta para ABERTO)
 router.put('/:id/reverter-bonificacao', pedidoController.reverterBonificacao);
 
+// Bonificação COM NOTA: corrigir a escolha "com nota / sem nota" enquanto a NF-e não saiu
+router.patch('/:id/nf-bonificacao', pedidoController.alterarNfBonificacao);
+
 // Cancelar Pedido (venda não vai acontecer) — só enquanto NÃO houver NF-e emitida
 router.put('/:id/cancelar', pedidoController.cancelar);
 

@@ -211,6 +211,24 @@ function gerarReciboEspecial(pedido) {
         }), colG);
         y += 40;
 
+        // ── Faixa "com nota / sem nota" (bonificação, 09/2026) ──
+        // Quem recebe a mercadoria precisa saber, no papel, se vem NF-e junto.
+        // `notasFiscaisApp` (quando vier carregado) dá o número da nota já autorizada.
+        if (pedido.bonificacao) {
+            // `tipo !== 'DEVOLUCAO'`: a nota de devolução mora na mesma lista e não é
+            // a nota DESTA remessa — sem o filtro, o recibo mostraria o número errado.
+            const notaAut = (pedido.notasFiscaisApp || [])
+                .find(n => n.status === 'AUTORIZADO' && n.numero && n.tipo !== 'DEVOLUCAO');
+            const comNota = !!pedido.nfBonificacao;
+            const texto = comNota
+                ? (notaAut ? `COM NOTA FISCAL (NF-e nº ${notaAut.numero})` : 'COM NOTA FISCAL (a emitir)')
+                : 'SEM NOTA FISCAL';
+            doc.roundedRect(x0, y, largura, 22, 6).fill(comNota ? MINT : '#f1f3f2');
+            doc.font('Helvetica-Bold').fontSize(8.5).fillColor(comNota ? VERDE : '#5b655f')
+                .text(texto, x0 + 14, y + 7, { width: largura - 28, characterSpacing: 1 });
+            y += 34;
+        }
+
         // ── Tabela de itens ──
         const colunas = [
             { titulo: 'PRODUTO', x: x0, larg: largura - 210, align: 'left' },
